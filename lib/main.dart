@@ -1,8 +1,9 @@
 import 'package:athena/page/chat_assistant.dart';
+import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(const AthenaApp());
+  runApp(CreatorGraph(child: const AthenaApp()));
 }
 
 class AthenaApp extends StatelessWidget {

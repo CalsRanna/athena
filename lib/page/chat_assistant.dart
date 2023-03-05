@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena/creator/global.dart';
+import 'package:athena/page/setting.dart';
+import 'package:creator/creator.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
@@ -12,7 +15,8 @@ class ChatAssistant extends StatefulWidget {
 }
 
 class _ChatAssistantState extends State<ChatAssistant> {
-  static const appToken = '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';
+  static const secretKey =
+      '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';
   static const model = 'gpt-3.5-turbo';
   static const url = 'https://api.openai.com/v1/chat/completions';
 
@@ -153,7 +157,7 @@ class _ChatAssistantState extends State<ChatAssistant> {
 
   void navigateSettingPage() {
     Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => SizedBox()));
+        .push(MaterialPageRoute(builder: (context) => const SettingPage()));
   }
 
   void handleSubmitted(String value) async {
@@ -191,7 +195,8 @@ class _ChatAssistantState extends State<ChatAssistant> {
           ),
         );
       });
-      var response = await Dio().post(
+      final dio = context.ref.watch(dioEmitter.asyncData).data;
+      var response = await dio?.post(
         url,
         data: {
           "model": model,
@@ -203,12 +208,8 @@ class _ChatAssistantState extends State<ChatAssistant> {
               .toList(),
           "stream": true,
         },
-        options: Options(headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $appToken",
-        }, responseType: ResponseType.stream),
       );
-      ResponseBody data = response.data;
+      ResponseBody data = response?.data;
       var streamContent = '';
       data.stream.every(
         (codeUnits) {
@@ -223,13 +224,12 @@ class _ChatAssistantState extends State<ChatAssistant> {
               streamContent += map['choices'][0]['delta']['content'] ?? '';
               setState(() {
                 messages[0] = Message(
-                    content: streamContent,
-                    createdAt: DateTime.fromMillisecondsSinceEpoch(
-                            (int.tryParse(map['created'].toString()) ?? 0) *
-                                1000)
-                        .toIso8601String(),
-                    // createdAt: map['created'],
-                    role: map['choices'][0]['delta']['role'] ?? 'assistant');
+                  content: streamContent,
+                  createdAt: DateTime.fromMillisecondsSinceEpoch(
+                          (int.tryParse(map['created'].toString()) ?? 0) * 1000)
+                      .toIso8601String(),
+                  role: map['choices'][0]['delta']['role'] ?? 'assistant',
+                );
               });
             }
           } catch (error) {
@@ -256,17 +256,15 @@ class _ChatAssistantState extends State<ChatAssistant> {
           return true;
         },
       );
-      // setState(() {
-      //   loading = false;
-      // });
-      // return Message(
-      //   content:
-      //       response.data['choices'][0]['message']['content'].toString().trim(),
-      //   createdAt: DateTime.fromMillisecondsSinceEpoch(
-      //           (int.tryParse(response.data['created'].toString()) ?? 0) * 1000)
-      //       .toIso8601String(),
-      //   role: 'assistant',
-      // );
+    } on DioError catch (error) {
+      setState(() {
+        messages[0] = Message(
+          content: error.message ?? error.type.toString(),
+          createdAt: DateTime.now().toIso8601String(),
+          role: 'assistant',
+        );
+        loading = false;
+      });
     } catch (error) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -383,7 +381,7 @@ class ChatTile extends StatelessWidget {
                       size: 10,
                       color: Theme.of(context).colorScheme.secondary,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     Text(
                       message.createdAt.substring(11, 16),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -392,7 +390,7 @@ class ChatTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(message.content),
               ],
             ),
