@@ -6,6 +6,8 @@ part 'setting.g.dart';
 @Name('settings')
 class Setting {
   Id id = Isar.autoIncrement;
+  String url = 'https://api.openai.com/v1/chat/completions';
+  String model = 'gpt-3.5-turbo';
   @Name('secret_key')
   String? secretKey;
 }
