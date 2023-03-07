@@ -1,4 +1,4 @@
-import 'package:athena/page/chat_assistant.dart';
+import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 
@@ -11,9 +11,9 @@ class AthenaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: const ChatAssistant(),
-      theme: ThemeData(useMaterial3: true),
+    return MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.greenAccent),
     );
   }
 }

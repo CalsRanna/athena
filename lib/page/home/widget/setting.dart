@@ -5,36 +5,33 @@ import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 
-class SettingPage extends StatelessWidget {
-  const SettingPage({super.key});
+class SettingWidget extends StatelessWidget {
+  const SettingWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: ListView(
-        children: [
-          EmitterWatcher<String>(
-            builder: (context, secretKey) => ListTile(
-              leading: Icon(
-                Icons.key_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              subtitle: Text(
-                'In order to protect the security of your account, OpenAI may also automatically rotate any API key that we\'ve found has leaked publicly.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.secondary),
-              ),
-              title: const Text('SECRET KEY'),
-              trailing: const Icon(Icons.chevron_right_outlined),
-              onTap: () => updateSecretKey(context, secretKey),
+    return ListView(
+      children: [
+        EmitterWatcher<String>(
+          builder: (context, secretKey) => ListTile(
+            leading: Icon(
+              Icons.key_outlined,
+              color: Theme.of(context).colorScheme.primary,
             ),
-            emitter: secretKeyEmitter,
-          )
-        ],
-      ),
+            subtitle: Text(
+              'In order to protect the security of your account, OpenAI may also automatically rotate any API key that we\'ve found has leaked publicly.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+            ),
+            title: const Text('SECRET KEY'),
+            trailing: const Icon(Icons.chevron_right_outlined),
+            onTap: () => updateSecretKey(context, secretKey),
+          ),
+          emitter: secretKeyEmitter,
+        )
+      ],
     );
   }
 
@@ -83,8 +80,8 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
       children: [
         TextField(
           controller: controller,
-          decoration:
-              const InputDecoration(hintText: 'ENTER YOUR SECRET KEY HERE'),
+          decoration: const InputDecoration(
+              hintText: 'PLEASE ENTER YOUR SECRET KEY HERE'),
           onSubmitted: handleSubmitted,
           onTapOutside: (event) => FocusScope.of(context).unfocus(),
         ),

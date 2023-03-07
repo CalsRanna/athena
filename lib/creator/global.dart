@@ -1,3 +1,4 @@
+import 'package:athena/model/chat.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:dio/dio.dart';
@@ -5,7 +6,7 @@ import 'package:isar/isar.dart';
 
 final isarEmitter = Emitter<Isar>(
   (ref, emit) async {
-    final isar = await Isar.open([SettingSchema]);
+    final isar = await Isar.open([ChatSchema, SettingSchema]);
     emit(isar);
   },
   keepAlive: true,
