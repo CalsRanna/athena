@@ -24,7 +24,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (loading) const CircularProgressIndicator.adaptive(),
             if (loading) const SizedBox(width: 8),
-            const Text('Athena'),
+            Text(selectedIndex == 0 ? 'Athena' : 'Setting'),
           ],
         ),
       ),

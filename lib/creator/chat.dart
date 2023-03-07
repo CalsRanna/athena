@@ -11,12 +11,3 @@ final chatsEmitter = Emitter<List<Chat>?>(
   },
   name: 'chatsEmitter',
 );
-
-final chatEmitter = Emitter.arg1<Chat?, Id?>(
-  (ref, id, emit) async {
-    final isar = ref.watch(isarEmitter.asyncData).data;
-    final chat = await isar?.chats.filter().idEqualTo(id ?? 0).findFirst();
-    emit(chat);
-  },
-  name: (id) => 'chatEmitter_$id',
-);

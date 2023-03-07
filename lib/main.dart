@@ -13,7 +13,7 @@ class AthenaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       routerConfig: router,
-      theme: ThemeData(useMaterial3: true),
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.greenAccent),
     );
   }
 }

@@ -49,17 +49,12 @@ int _chatEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.messages.length * 3;
   {
-    final list = object.messages;
-    if (list != null) {
-      bytesCount += 3 + list.length * 3;
-      {
-        final offsets = allOffsets[Message]!;
-        for (var i = 0; i < list.length; i++) {
-          final value = list[i];
-          bytesCount += MessageSchema.estimateSize(value, offsets, allOffsets);
-        }
-      }
+    final offsets = allOffsets[Message]!;
+    for (var i = 0; i < object.messages.length; i++) {
+      final value = object.messages[i];
+      bytesCount += MessageSchema.estimateSize(value, offsets, allOffsets);
     }
   }
   {
@@ -95,11 +90,12 @@ Chat _chatDeserialize(
   final object = Chat();
   object.id = id;
   object.messages = reader.readObjectList<Message>(
-    offsets[0],
-    MessageSchema.deserialize,
-    allOffsets,
-    Message(),
-  );
+        offsets[0],
+        MessageSchema.deserialize,
+        allOffsets,
+        Message(),
+      ) ??
+      [];
   object.title = reader.readStringOrNull(offsets[1]);
   return object;
 }
@@ -113,11 +109,12 @@ P _chatDeserializeProp<P>(
   switch (propertyId) {
     case 0:
       return (reader.readObjectList<Message>(
-        offset,
-        MessageSchema.deserialize,
-        allOffsets,
-        Message(),
-      )) as P;
+            offset,
+            MessageSchema.deserialize,
+            allOffsets,
+            Message(),
+          ) ??
+          []) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     default:
@@ -261,22 +258,6 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<Chat, Chat, QAfterFilterCondition> messagesIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'messages',
-      ));
-    });
-  }
-
-  QueryBuilder<Chat, Chat, QAfterFilterCondition> messagesIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'messages',
       ));
     });
   }
@@ -577,7 +558,7 @@ extension ChatQueryProperty on QueryBuilder<Chat, Chat, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Chat, List<Message>?, QQueryOperations> messagesProperty() {
+  QueryBuilder<Chat, List<Message>, QQueryOperations> messagesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'messages');
     });
