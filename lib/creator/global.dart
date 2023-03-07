@@ -1,3 +1,4 @@
+import 'package:athena/creator/setting.dart';
 import 'package:athena/model/chat.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
@@ -13,25 +14,15 @@ final isarEmitter = Emitter<Isar>(
   name: 'isarEmitter',
 );
 
-final secretKeyEmitter = Emitter<String>(
-  (ref, emit) async {
-    final isar = ref.watch(isarEmitter.asyncData).data;
-    final setting = await isar?.settings.where().findFirst();
-    final secretKey = setting?.secretKey ?? '';
-    emit(secretKey);
-  },
-  name: 'secretKeyEmitter',
-);
-
 final dioEmitter = Emitter<Dio>(
   (ref, emit) async {
-    final secretKey = ref.watch(secretKeyEmitter.asyncData).data;
+    final setting = ref.watch(settingEmitter.asyncData).data;
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 10),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $secretKey",
+          "Authorization": "Bearer ${setting?.secretKey}",
         },
         responseType: ResponseType.stream,
       ),

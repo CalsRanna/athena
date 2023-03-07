@@ -1,4 +1,5 @@
 import 'package:athena/creator/global.dart';
+import 'package:athena/creator/setting.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
@@ -12,8 +13,8 @@ class SettingWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        EmitterWatcher<String>(
-          builder: (context, secretKey) => ListTile(
+        EmitterWatcher<Setting>(
+          builder: (context, setting) => ListTile(
             leading: Icon(
               Icons.key_outlined,
               color: Theme.of(context).colorScheme.primary,
@@ -27,9 +28,9 @@ class SettingWidget extends StatelessWidget {
             ),
             title: const Text('SECRET KEY'),
             trailing: const Icon(Icons.chevron_right_outlined),
-            onTap: () => updateSecretKey(context, secretKey),
+            onTap: () => updateSecretKey(context, setting.secretKey),
           ),
-          emitter: secretKeyEmitter,
+          emitter: settingEmitter,
         )
       ],
     );
@@ -58,13 +59,7 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
   @override
   void initState() {
     super.initState();
-    // controller.value = TextEditingValue(text: widget.secretKey ?? '');
     controller.text = widget.secretKey ?? '';
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
   }
 
   @override
@@ -105,7 +100,7 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
       var setting = await isar.settings.where().findFirst() ?? Setting();
       setting.secretKey = value;
       isar.settings.put(setting);
-      ref.emit(secretKeyEmitter, value);
+      ref.emit(settingEmitter, setting);
       focusScope.unfocus();
     });
   }

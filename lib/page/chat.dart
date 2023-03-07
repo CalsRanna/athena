@@ -56,10 +56,13 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final floatingActionButton = showFloatingActionButton
-        ? FloatingActionButton.small(
-            shape: const CircleBorder(),
-            onPressed: scrollToBottom,
-            child: const Icon(Icons.arrow_downward_outlined),
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 72),
+            child: FloatingActionButton.small(
+              shape: const CircleBorder(),
+              onPressed: scrollToBottom,
+              child: const Icon(Icons.arrow_downward_outlined),
+            ),
           )
         : null;
 
@@ -160,14 +163,15 @@ class _ChatPageState extends State<ChatPage> {
 
   void handleSubmitted(String value) async {
     textEditingController.clear();
-    if (value.trim().isEmpty) return;
+    final trimmedValue = value.trim().replaceAll('\n', '');
+    if (trimmedValue.isEmpty) return;
     try {
       final message = Message()
         ..role = 'user'
         ..createdAt = DateTime.now().millisecondsSinceEpoch
-        ..content = value;
+        ..content = trimmedValue;
       setState(() {
-        chat.title = value;
+        chat.title = chat.title ?? trimmedValue;
         chat.messages.add(message);
       });
     } catch (error) {
@@ -192,40 +196,32 @@ class _ChatPageState extends State<ChatPage> {
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
       var content = '';
-      print(setting.url);
-      print({
-        "model": setting.model,
-        "messages": messages,
-        "stream": true,
-      });
       var response = await dio.post(setting.url, data: {
         "model": setting.model,
-        "messages": messages.toString(),
+        "messages": messages,
         "stream": true,
       });
       Stream<List<int>> stream = response.data.stream;
       await stream.every(
         (codeUnits) {
           try {
-            final decodedContent = json.decode('{${utf8.decode(codeUnits)}}');
-            final role = decodedContent['data']['choices'][0]['delta']
-                    ['role'] ??
-                'assistant';
-            content +=
-                decodedContent['data']['choices'][0]['delta']['content'] ?? '';
+            final decodedJson = utf8.decode(codeUnits).replaceAll('data:', '');
+            if (decodedJson.contains('[DONE]')) return true;
+            final decodedContent = json.decode(decodedJson);
+            content += decodedContent['choices'][0]['delta']['content'] ?? '';
             setState(() {
-              chat.messages.last.role = role;
+              chat.messages.last.role = 'assistant';
               chat.messages.last.content = content;
-              chat.messages.last.createdAt = chat.messages.last.createdAt ??
-                  int.tryParse(decodedContent['data']['choices'][0]['delta']
-                      ['content']) ??
-                  0;
+              chat.messages.last.createdAt =
+                  DateTime.now().millisecondsSinceEpoch;
             });
           } catch (error) {
             logger.e(error);
-            content += '❎';
+            content += '⛔';
             setState(() {
               chat.messages.last.content = content;
+              chat.messages.last.createdAt =
+                  DateTime.now().millisecondsSinceEpoch;
             });
           }
           return true;
@@ -307,7 +303,7 @@ class ChatTile extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: message.role == 'assistant'
-                  ? Theme.of(context).colorScheme.primaryContainer
+                  ? Theme.of(context).colorScheme.secondaryContainer
                   : Theme.of(context).colorScheme.errorContainer,
               shape: BoxShape.circle,
             ),
@@ -320,9 +316,9 @@ class ChatTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               color: message.role == 'user'
-                  ? Colors.greenAccent
+                  ? Theme.of(context).colorScheme.primaryContainer
                   : message.role == 'assistant'
-                      ? Theme.of(context).colorScheme.primaryContainer
+                      ? Theme.of(context).colorScheme.secondaryContainer
                       : Theme.of(context).colorScheme.errorContainer,
             ),
             margin: const EdgeInsets.symmetric(vertical: 8),
@@ -361,8 +357,8 @@ class ChatTile extends StatelessWidget {
         ),
         if (message.role == 'user')
           Container(
-            decoration: const BoxDecoration(
-              color: Colors.greenAccent,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
               shape: BoxShape.circle,
             ),
             padding: const EdgeInsets.all(8),
