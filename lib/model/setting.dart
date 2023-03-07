@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:isar/isar.dart';
 
 part 'setting.g.dart';
@@ -10,4 +12,6 @@ class Setting {
   String model = 'gpt-3.5-turbo';
   @Name('secret_key')
   String? secretKey;
+  @Name('dark-mode')
+  bool darkMode = false;
 }

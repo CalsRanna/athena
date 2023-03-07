@@ -17,18 +17,23 @@ const SettingSchema = CollectionSchema(
   name: r'settings',
   id: -5221820136678325216,
   properties: {
-    r'model': PropertySchema(
+    r'dark-mode': PropertySchema(
       id: 0,
+      name: r'dark-mode',
+      type: IsarType.bool,
+    ),
+    r'model': PropertySchema(
+      id: 1,
       name: r'model',
       type: IsarType.string,
     ),
     r'secret_key': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'secret_key',
       type: IsarType.string,
     ),
     r'url': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'url',
       type: IsarType.string,
     )
@@ -70,9 +75,10 @@ void _settingSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.model);
-  writer.writeString(offsets[1], object.secretKey);
-  writer.writeString(offsets[2], object.url);
+  writer.writeBool(offsets[0], object.darkMode);
+  writer.writeString(offsets[1], object.model);
+  writer.writeString(offsets[2], object.secretKey);
+  writer.writeString(offsets[3], object.url);
 }
 
 Setting _settingDeserialize(
@@ -82,10 +88,11 @@ Setting _settingDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Setting();
+  object.darkMode = reader.readBool(offsets[0]);
   object.id = id;
-  object.model = reader.readString(offsets[0]);
-  object.secretKey = reader.readStringOrNull(offsets[1]);
-  object.url = reader.readString(offsets[2]);
+  object.model = reader.readString(offsets[1]);
+  object.secretKey = reader.readStringOrNull(offsets[2]);
+  object.url = reader.readString(offsets[3]);
   return object;
 }
 
@@ -97,10 +104,12 @@ P _settingDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -196,6 +205,16 @@ extension SettingQueryWhere on QueryBuilder<Setting, Setting, QWhereClause> {
 
 extension SettingQueryFilter
     on QueryBuilder<Setting, Setting, QFilterCondition> {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> darkModeEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dark-mode',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -662,6 +681,18 @@ extension SettingQueryLinks
     on QueryBuilder<Setting, Setting, QFilterCondition> {}
 
 extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dark-mode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dark-mode', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByModel() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.asc);
@@ -701,6 +732,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
 
 extension SettingQuerySortThenBy
     on QueryBuilder<Setting, Setting, QSortThenBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dark-mode', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkModeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dark-mode', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -752,6 +795,12 @@ extension SettingQuerySortThenBy
 
 extension SettingQueryWhereDistinct
     on QueryBuilder<Setting, Setting, QDistinct> {
+  QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'dark-mode');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByModel(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -779,6 +828,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dark-mode');
     });
   }
 

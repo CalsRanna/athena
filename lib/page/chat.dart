@@ -71,71 +71,78 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             if (loading) const CircularProgressIndicator.adaptive(),
             if (loading) const SizedBox(width: 8),
-            Text(chat.title ?? ''),
+            Flexible(
+              child: Text(chat.title ?? '', overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
       ),
-      body: ListView.builder(
-        controller: scrollController,
-        itemBuilder: (context, index) =>
-            ChatTile(message: chat.messages.reversed.elementAt(index)),
-        itemCount: chat.messages.length,
-        padding: const EdgeInsets.all(16),
-        reverse: true,
-      ),
-      bottomNavigationBar: Material(
-        color: Theme.of(context).colorScheme.surface,
-        elevation: 3,
-        surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            top: 12,
-            right: 16,
-            bottom: 48,
-            left: 12,
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              itemBuilder: (context, index) =>
+                  ChatTile(message: chat.messages.reversed.elementAt(index)),
+              itemCount: chat.messages.length,
+              padding: const EdgeInsets.all(16),
+              reverse: true,
+            ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: textEditingController,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(50),
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            elevation: 3,
+            surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: textEditingController,
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          hintText: 'Ask me anything...',
+                          isCollapsed: false,
+                          isDense: true,
+                        ),
+                        maxLines: null,
+                        textInputAction: TextInputAction.send,
+                        scrollPadding: EdgeInsets.zero,
+                        onSubmitted: handleSubmitted,
+                        onTapOutside: (event) =>
+                            FocusScope.of(context).unfocus(),
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    hintText: 'Ask me anything...',
-                    isCollapsed: false,
-                    isDense: true,
-                  ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  scrollPadding: EdgeInsets.zero,
-                  onSubmitted: handleSubmitted,
-                  onTapOutside: (event) => FocusScope.of(context).unfocus(),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primaryContainer,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimaryContainer,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12.0,
+                        ),
+                      ),
+                      onPressed: () =>
+                          handleSubmitted(textEditingController.text),
+                      child: const Icon(Icons.send_outlined),
+                    )
+                  ],
                 ),
               ),
-              const SizedBox(width: 16),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
-                  foregroundColor:
-                      Theme.of(context).colorScheme.onPrimaryContainer,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12.0,
-                  ),
-                ),
-                onPressed: () => handleSubmitted(textEditingController.text),
-                child: const Icon(Icons.send_outlined),
-              )
-            ],
+            ),
           ),
-        ),
+        ],
       ),
       floatingActionButton: floatingActionButton,
     );
@@ -177,7 +184,7 @@ class _ChatPageState extends State<ChatPage> {
     final logger = Logger();
     final ref = context.ref;
     try {
-      final dio = await ref.watch(dioEmitter);
+      final dio = await ref.read(dioEmitter);
       final setting = await ref.read(settingEmitter);
       final messages = chat.messages
           .where(
@@ -185,6 +192,12 @@ class _ChatPageState extends State<ChatPage> {
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
       var content = '';
+      print(setting.url);
+      print({
+        "model": setting.model,
+        "messages": messages,
+        "stream": true,
+      });
       var response = await dio.post(setting.url, data: {
         "model": setting.model,
         "messages": messages.toString(),
