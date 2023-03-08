@@ -6,10 +6,13 @@ part 'setting.g.dart';
 @Name('settings')
 class Setting {
   Id id = Isar.autoIncrement;
-  String url = 'https://api.openai.com/v1/chat/completions';
+  @Name('dark_mode')
+  bool darkMode = false;
   String model = 'gpt-3.5-turbo';
+  String proxy = "http://proxy.cooleio.tech:34311";
+  @Name('proxy_enabled')
+  bool proxyEnabled = true;
   @Name('secret_key')
   String? secretKey;
-  @Name('dark-mode')
-  bool darkMode = false;
+  String url = 'https://api.openai.com/v1/chat/completions';
 }

@@ -39,6 +39,22 @@ class _ChatWidgetState extends State<ChatWidget> {
           ),
           child: ListTile(
             title: Text(chats![index].title ?? ''),
+            leading: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              height: 48,
+              width: 48,
+              child: Center(
+                child: Text(
+                  chats[index].title?.substring(0, 1).toUpperCase() ?? '',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
             onTap: () => handleTap(chats[index].id),
           ),
         ),

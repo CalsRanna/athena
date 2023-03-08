@@ -17,9 +17,9 @@ const SettingSchema = CollectionSchema(
   name: r'settings',
   id: -5221820136678325216,
   properties: {
-    r'dark-mode': PropertySchema(
+    r'dark_mode': PropertySchema(
       id: 0,
-      name: r'dark-mode',
+      name: r'dark_mode',
       type: IsarType.bool,
     ),
     r'model': PropertySchema(
@@ -27,13 +27,23 @@ const SettingSchema = CollectionSchema(
       name: r'model',
       type: IsarType.string,
     ),
-    r'secret_key': PropertySchema(
+    r'proxy': PropertySchema(
       id: 2,
+      name: r'proxy',
+      type: IsarType.string,
+    ),
+    r'proxy_enabled': PropertySchema(
+      id: 3,
+      name: r'proxy_enabled',
+      type: IsarType.bool,
+    ),
+    r'secret_key': PropertySchema(
+      id: 4,
       name: r'secret_key',
       type: IsarType.string,
     ),
     r'url': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'url',
       type: IsarType.string,
     )
@@ -59,6 +69,7 @@ int _settingEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.model.length * 3;
+  bytesCount += 3 + object.proxy.length * 3;
   {
     final value = object.secretKey;
     if (value != null) {
@@ -77,8 +88,10 @@ void _settingSerialize(
 ) {
   writer.writeBool(offsets[0], object.darkMode);
   writer.writeString(offsets[1], object.model);
-  writer.writeString(offsets[2], object.secretKey);
-  writer.writeString(offsets[3], object.url);
+  writer.writeString(offsets[2], object.proxy);
+  writer.writeBool(offsets[3], object.proxyEnabled);
+  writer.writeString(offsets[4], object.secretKey);
+  writer.writeString(offsets[5], object.url);
 }
 
 Setting _settingDeserialize(
@@ -91,8 +104,10 @@ Setting _settingDeserialize(
   object.darkMode = reader.readBool(offsets[0]);
   object.id = id;
   object.model = reader.readString(offsets[1]);
-  object.secretKey = reader.readStringOrNull(offsets[2]);
-  object.url = reader.readString(offsets[3]);
+  object.proxy = reader.readString(offsets[2]);
+  object.proxyEnabled = reader.readBool(offsets[3]);
+  object.secretKey = reader.readStringOrNull(offsets[4]);
+  object.url = reader.readString(offsets[5]);
   return object;
 }
 
@@ -108,8 +123,12 @@ P _settingDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
+      return (reader.readBool(offset)) as P;
+    case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -209,7 +228,7 @@ extension SettingQueryFilter
       bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'dark-mode',
+        property: r'dark_mode',
         value: value,
       ));
     });
@@ -393,6 +412,146 @@ extension SettingQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'model',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'proxy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'proxy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'proxy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proxy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'proxy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> proxyEnabledEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proxy_enabled',
+        value: value,
       ));
     });
   }
@@ -683,13 +842,13 @@ extension SettingQueryLinks
 extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dark-mode', Sort.asc);
+      return query.addSortBy(r'dark_mode', Sort.asc);
     });
   }
 
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkModeDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dark-mode', Sort.desc);
+      return query.addSortBy(r'dark_mode', Sort.desc);
     });
   }
 
@@ -702,6 +861,30 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByModelDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProxy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProxyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProxyEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy_enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProxyEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy_enabled', Sort.desc);
     });
   }
 
@@ -734,13 +917,13 @@ extension SettingQuerySortThenBy
     on QueryBuilder<Setting, Setting, QSortThenBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkMode() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dark-mode', Sort.asc);
+      return query.addSortBy(r'dark_mode', Sort.asc);
     });
   }
 
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkModeDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'dark-mode', Sort.desc);
+      return query.addSortBy(r'dark_mode', Sort.desc);
     });
   }
 
@@ -765,6 +948,30 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByModelDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProxy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProxyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProxyEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy_enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProxyEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proxy_enabled', Sort.desc);
     });
   }
 
@@ -797,7 +1004,7 @@ extension SettingQueryWhereDistinct
     on QueryBuilder<Setting, Setting, QDistinct> {
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'dark-mode');
+      return query.addDistinctBy(r'dark_mode');
     });
   }
 
@@ -805,6 +1012,19 @@ extension SettingQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'model', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByProxy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'proxy', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByProxyEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'proxy_enabled');
     });
   }
 
@@ -833,13 +1053,25 @@ extension SettingQueryProperty
 
   QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'dark-mode');
+      return query.addPropertyName(r'dark_mode');
     });
   }
 
   QueryBuilder<Setting, String, QQueryOperations> modelProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'model');
+    });
+  }
+
+  QueryBuilder<Setting, String, QQueryOperations> proxyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'proxy');
+    });
+  }
+
+  QueryBuilder<Setting, bool, QQueryOperations> proxyEnabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'proxy_enabled');
     });
   }
 

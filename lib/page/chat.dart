@@ -201,59 +201,51 @@ class _ChatPageState extends State<ChatPage> {
         "messages": messages,
         "stream": true,
       });
-      Stream<List<int>> stream = response.data.stream;
-      await stream.every(
-        (codeUnits) {
-          try {
-            final decodedJson = utf8.decode(codeUnits).replaceAll('data:', '');
-            if (decodedJson.contains('[DONE]')) return true;
-            final decodedContent = json.decode(decodedJson);
-            content += decodedContent['choices'][0]['delta']['content'] ?? '';
-            setState(() {
-              chat.messages.last.role = 'assistant';
-              chat.messages.last.content = content;
-              chat.messages.last.createdAt =
-                  DateTime.now().millisecondsSinceEpoch;
-            });
-          } catch (error) {
-            logger.e(error);
-            content += '⛔';
-            setState(() {
-              chat.messages.last.content = content;
-              chat.messages.last.createdAt =
-                  DateTime.now().millisecondsSinceEpoch;
-            });
-          }
-          return true;
-        },
-      );
+      final Stream<List<int>> stream = response.data.stream;
+      stream.listen((codeUnits) {
+        final decodedMessage = utf8.decode(codeUnits);
+        final regExp = RegExp(r'"delta":{"content":[\s\S]*?}');
+        final matches = regExp.allMatches(decodedMessage);
+        if (matches.isNotEmpty) {
+          final choices = matches.elementAt(0).group(0);
+          final decodedJson = json.decode('{$choices}');
+          content += decodedJson['delta']['content'];
+          setState(() {
+            chat.messages.last.role = 'assistant';
+            chat.messages.last.content = content;
+            chat.messages.last.createdAt =
+                DateTime.now().millisecondsSinceEpoch;
+          });
+        }
+      });
     } on DioError catch (error) {
-      logger.e(error);
+      var content = error.type.toString();
+      if (error.type == DioErrorType.unknown) {
+        content = error.error.toString();
+      }
+      Response? response = error.response;
+      if (response != null) {
+        Stream<List<int>> stream = error.response?.data.stream;
+        final codeUnits = await stream.first;
+        final decodedJson = json.decode(utf8.decode(codeUnits));
+        content = decodedJson['error']['message'];
+      }
       final message = Message()
         ..role = 'error'
-        ..content = error.message ?? error.type.toString()
+        ..content = content
         ..createdAt = DateTime.now().millisecondsSinceEpoch;
-
       setState(() {
         chat.messages.last = message;
       });
     } catch (error) {
       logger.e(error);
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            error.toString(),
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onErrorContainer,
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: const StadiumBorder(),
-          backgroundColor: Theme.of(context).colorScheme.errorContainer,
-          // padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        ),
-      );
+      final message = Message()
+        ..role = 'error'
+        ..content = error.toString()
+        ..createdAt = DateTime.now().millisecondsSinceEpoch;
+      setState(() {
+        chat.messages.last = message;
+      });
     } finally {
       storeChat();
       setState(() {

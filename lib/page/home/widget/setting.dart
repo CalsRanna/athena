@@ -5,18 +5,20 @@ import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
+import 'package:logger/logger.dart';
 
 class SettingWidget extends StatelessWidget {
   const SettingWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        EmitterWatcher<Setting>(
-          builder: (context, setting) => ListTile(
+    return EmitterWatcher<Setting>(
+      emitter: settingEmitter,
+      builder: (context, setting) => ListView(
+        children: [
+          ListTile(
             leading: Icon(
-              Icons.key_outlined,
+              Icons.generating_tokens_outlined,
               color: Theme.of(context).colorScheme.primary,
             ),
             subtitle: Text(
@@ -30,9 +32,26 @@ class SettingWidget extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_outlined),
             onTap: () => updateSecretKey(context, setting.secretKey),
           ),
-          emitter: settingEmitter,
-        )
-      ],
+          SwitchListTile.adaptive(
+            secondary: Icon(
+              setting.proxyEnabled
+                  ? Icons.key_outlined
+                  : Icons.key_off_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            subtitle: Text(
+              setting.proxy,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+            ),
+            title: const Text('PROXY'),
+            value: setting.proxyEnabled,
+            onChanged: (value) => changeProxyEnabled(context, value),
+          ),
+        ],
+      ),
     );
   }
 
@@ -41,6 +60,21 @@ class SettingWidget extends StatelessWidget {
       context: context,
       builder: (context) => _SecretKeyBottomsheet(secretKey: secretKey),
     );
+  }
+
+  void changeProxyEnabled(BuildContext context, bool value) async {
+    try {
+      final ref = context.ref;
+      final isar = await ref.read(isarEmitter);
+      final setting = await isar.settings.where().findFirst();
+      setting!.proxyEnabled = value;
+      await isar.writeTxn(() async {
+        isar.settings.put(setting);
+      });
+      ref.emit(settingEmitter, setting);
+    } catch (error) {
+      Logger().e(error);
+    }
   }
 }
 
