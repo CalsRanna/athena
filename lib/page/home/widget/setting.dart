@@ -68,6 +68,7 @@ class SettingWidget extends StatelessWidget {
       final isar = await ref.read(isarEmitter);
       final setting = await isar.settings.where().findFirst();
       setting!.proxyEnabled = value;
+      setting.proxy = Setting().proxy;
       await isar.writeTxn(() async {
         isar.settings.put(setting);
       });

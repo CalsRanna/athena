@@ -3,6 +3,7 @@ import 'package:athena/model/chat.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:isar/isar.dart';
 
 final isarEmitter = Emitter<Isar>(
@@ -27,6 +28,15 @@ final dioEmitter = Emitter<Dio>(
         responseType: ResponseType.stream,
       ),
     );
+    dio.httpClientAdapter = IOHttpClientAdapter()
+      ..onHttpClientCreate = (client) {
+        if (setting?.proxyEnabled != null && setting!.proxyEnabled) {
+          client.findProxy = (uri) {
+            return 'PROXY ${setting.proxy}';
+          };
+        }
+        return client;
+      };
     emit(dio);
   },
   keepAlive: true,

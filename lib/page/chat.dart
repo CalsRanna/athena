@@ -216,6 +216,7 @@ class _ChatPageState extends State<ChatPage> {
             chat.messages.last.createdAt =
                 DateTime.now().millisecondsSinceEpoch;
           });
+          storeChat();
         }
       });
     } on DioError catch (error) {
@@ -237,6 +238,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         chat.messages.last = message;
       });
+      storeChat();
     } catch (error) {
       logger.e(error);
       final message = Message()
@@ -246,8 +248,8 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         chat.messages.last = message;
       });
-    } finally {
       storeChat();
+    } finally {
       setState(() {
         loading = false;
       });
