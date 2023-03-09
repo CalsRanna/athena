@@ -9,7 +9,7 @@ class Setting {
   @Name('dark_mode')
   bool darkMode = false;
   String model = 'gpt-3.5-turbo';
-  String proxy = "http://proxy.cooleio.tech:34311";
+  String proxy = "proxy.cooleio.tech:34311";
   @Name('proxy_enabled')
   bool proxyEnabled = true;
   @Name('secret_key')

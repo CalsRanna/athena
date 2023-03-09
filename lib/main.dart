@@ -19,7 +19,7 @@ class AthenaApp extends StatelessWidget {
         routerConfig: router,
         theme: ThemeData(
           brightness: setting.darkMode ? Brightness.dark : Brightness.light,
-          colorSchemeSeed: Colors.greenAccent,
+          colorSchemeSeed: const Color.fromRGBO(74, 161, 129, 1),
           useMaterial3: true,
         ),
       ),

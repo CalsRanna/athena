@@ -41,11 +41,11 @@ class _ChatWidgetState extends State<ChatWidget> {
             title: Text(chats![index].title ?? ''),
             leading: Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
+                color: Theme.of(context).colorScheme.tertiary,
                 shape: BoxShape.circle,
               ),
-              height: 48,
-              width: 48,
+              height: 40,
+              width: 40,
               child: Center(
                 child: Text(
                   chats[index].title?.substring(0, 1).toUpperCase() ?? '',

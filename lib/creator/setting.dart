@@ -5,13 +5,13 @@ import 'package:isar/isar.dart';
 
 final settingEmitter = Emitter<Setting>(
   (ref, emit) async {
-    final isar = ref.watch(isarEmitter.asyncData).data;
-    Setting? setting = await isar?.settings.where().findFirst();
+    final isar = await ref.watch(isarEmitter);
+    Setting? setting = await isar.settings.where().findFirst();
     if (setting == null) {
-      await isar?.writeTxn(() async {
+      await isar.writeTxn(() async {
         isar.settings.put(Setting());
       });
-      setting = await isar?.settings.where().findFirst();
+      setting = await isar.settings.where().findFirst();
     }
     emit(setting!);
   },

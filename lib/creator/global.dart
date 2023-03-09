@@ -17,20 +17,20 @@ final isarEmitter = Emitter<Isar>(
 
 final dioEmitter = Emitter<Dio>(
   (ref, emit) async {
-    final setting = ref.watch(settingEmitter.asyncData).data;
+    final setting = await ref.watch(settingEmitter);
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 10),
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer ${setting?.secretKey}",
+          "Authorization": "Bearer ${setting.secretKey}",
         },
         responseType: ResponseType.stream,
       ),
     );
     dio.httpClientAdapter = IOHttpClientAdapter()
       ..onHttpClientCreate = (client) {
-        if (setting?.proxyEnabled != null && setting!.proxyEnabled) {
+        if (setting.proxyEnabled) {
           client.findProxy = (uri) {
             return 'PROXY ${setting.proxy}';
           };

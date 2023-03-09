@@ -162,21 +162,17 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void handleSubmitted(String value) async {
-    textEditingController.clear();
     final trimmedValue = value.trim().replaceAll('\n', '');
     if (trimmedValue.isEmpty) return;
-    try {
-      final message = Message()
-        ..role = 'user'
-        ..createdAt = DateTime.now().millisecondsSinceEpoch
-        ..content = trimmedValue;
-      setState(() {
-        chat.title = chat.title ?? trimmedValue;
-        chat.messages.add(message);
-      });
-    } catch (error) {
-      Logger().e(error);
-    }
+    final message = Message()
+      ..role = 'user'
+      ..createdAt = DateTime.now().millisecondsSinceEpoch
+      ..content = trimmedValue;
+    setState(() {
+      chat.title = chat.title ?? trimmedValue;
+      chat.messages.add(message);
+    });
+    textEditingController.clear();
     await fetchResponse();
   }
 

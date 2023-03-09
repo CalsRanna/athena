@@ -130,8 +130,8 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
   void handleSubmitted(String value) async {
     final ref = context.ref;
     final focusScope = FocusScope.of(context);
-    final isar = ref.read(isarEmitter.asyncData).data;
-    await isar?.writeTxn(() async {
+    final isar = await ref.read(isarEmitter);
+    await isar.writeTxn(() async {
       var setting = await isar.settings.where().findFirst() ?? Setting();
       setting.secretKey = value;
       isar.settings.put(setting);
