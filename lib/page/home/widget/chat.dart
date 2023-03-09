@@ -22,7 +22,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     return EmitterWatcher<List<Chat>?>(
       emitter: chatsEmitter,
       placeholder: const SizedBox(),
-      builder: (context, chats) => ListView.builder(
+      builder: (context, chats) => ListView.separated(
         itemCount: chats?.length ?? 0,
         itemBuilder: (context, index) => Slidable(
           endActionPane: ActionPane(
@@ -38,25 +38,41 @@ class _ChatWidgetState extends State<ChatWidget> {
             ],
           ),
           child: ListTile(
-            title: Text(chats![index].title ?? ''),
             leading: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.tertiary,
                 shape: BoxShape.circle,
               ),
-              height: 40,
-              width: 40,
+              height: 56,
+              width: 56,
               child: Center(
                 child: Text(
-                  chats[index].title?.substring(0, 1).toUpperCase() ?? '',
+                  chats![index].title?.substring(0, 1).toUpperCase() ?? '',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold),
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
             ),
+            title: Text(
+              chats[index].title ?? '',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: Text(
+              DateTime.fromMillisecondsSinceEpoch(
+                      chats[index].messages.last.createdAt!)
+                  .toString()
+                  .substring(0, 19),
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
             onTap: () => handleTap(chats[index].id),
           ),
+        ),
+        separatorBuilder: (context, index) => const Divider(
+          height: 1,
+          indent: 72,
         ),
       ),
     );

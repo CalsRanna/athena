@@ -4,6 +4,7 @@ import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 
@@ -16,22 +17,6 @@ class SettingWidget extends StatelessWidget {
       emitter: settingEmitter,
       builder: (context, setting) => ListView(
         children: [
-          ListTile(
-            leading: Icon(
-              Icons.generating_tokens_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            subtitle: Text(
-              'In order to protect the security of your account, OpenAI may also automatically rotate any API key that we\'ve found has leaked publicly.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
-            ),
-            title: const Text('SECRET KEY'),
-            trailing: const Icon(Icons.chevron_right_outlined),
-            onTap: () => updateSecretKey(context, setting.secretKey),
-          ),
           SwitchListTile.adaptive(
             secondary: Icon(
               setting.proxyEnabled
@@ -41,15 +26,34 @@ class SettingWidget extends StatelessWidget {
             ),
             subtitle: Text(
               setting.proxy,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             title: const Text('PROXY'),
             value: setting.proxyEnabled,
             onChanged: (value) => changeProxyEnabled(context, value),
           ),
+          ListTile(
+            leading: Icon(
+              Icons.generating_tokens_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            subtitle: Text(
+              'In order to protect the security of your account, OpenAI may also automatically rotate any API key that we\'ve found has leaked publicly.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            title: const Text('SECRET KEY'),
+            trailing: const Icon(Icons.chevron_right_outlined),
+            onTap: () => updateSecretKey(context, setting.secretKey),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.tune_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: const Text('ADVANCED'),
+            trailing: const Icon(Icons.chevron_right_outlined),
+            onTap: () => navigate(context),
+          )
         ],
       ),
     );
@@ -76,6 +80,10 @@ class SettingWidget extends StatelessWidget {
     } catch (error) {
       Logger().e(error);
     }
+  }
+
+  void navigate(BuildContext context) {
+    context.push('/setting/advanced');
   }
 }
 
@@ -111,17 +119,15 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
         TextField(
           controller: controller,
           decoration: const InputDecoration(
-              hintText: 'PLEASE ENTER YOUR SECRET KEY HERE'),
+            hintText: 'PLEASE ENTER YOUR SECRET KEY HERE',
+          ),
           onSubmitted: handleSubmitted,
-          onTapOutside: (event) => FocusScope.of(context).unfocus(),
+          onTapOutside: (event) => handleSubmitted(controller.text),
         ),
         const SizedBox(height: 8),
         Text(
           'Do not share your API key with others, or expose it in the browser or other client-side code.',
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium
-              ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+          style: Theme.of(context).textTheme.bodyMedium,
         )
       ],
     );

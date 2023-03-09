@@ -17,33 +17,68 @@ const SettingSchema = CollectionSchema(
   name: r'settings',
   id: -5221820136678325216,
   properties: {
-    r'dark_mode': PropertySchema(
+    r'PRESENCE_PENALTY': PropertySchema(
       id: 0,
+      name: r'PRESENCE_PENALTY',
+      type: IsarType.double,
+    ),
+    r'dark_mode': PropertySchema(
+      id: 1,
       name: r'dark_mode',
       type: IsarType.bool,
     ),
+    r'frequencePenalty': PropertySchema(
+      id: 2,
+      name: r'frequencePenalty',
+      type: IsarType.double,
+    ),
+    r'max_tokens': PropertySchema(
+      id: 3,
+      name: r'max_tokens',
+      type: IsarType.long,
+    ),
     r'model': PropertySchema(
-      id: 1,
+      id: 4,
       name: r'model',
       type: IsarType.string,
     ),
+    r'n': PropertySchema(
+      id: 5,
+      name: r'n',
+      type: IsarType.long,
+    ),
     r'proxy': PropertySchema(
-      id: 2,
+      id: 6,
       name: r'proxy',
       type: IsarType.string,
     ),
     r'proxy_enabled': PropertySchema(
-      id: 3,
+      id: 7,
       name: r'proxy_enabled',
       type: IsarType.bool,
     ),
     r'secret_key': PropertySchema(
-      id: 4,
+      id: 8,
       name: r'secret_key',
       type: IsarType.string,
     ),
+    r'stream': PropertySchema(
+      id: 9,
+      name: r'stream',
+      type: IsarType.bool,
+    ),
+    r'temperature': PropertySchema(
+      id: 10,
+      name: r'temperature',
+      type: IsarType.double,
+    ),
+    r'top_p': PropertySchema(
+      id: 11,
+      name: r'top_p',
+      type: IsarType.double,
+    ),
     r'url': PropertySchema(
-      id: 5,
+      id: 12,
       name: r'url',
       type: IsarType.string,
     )
@@ -86,12 +121,19 @@ void _settingSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.darkMode);
-  writer.writeString(offsets[1], object.model);
-  writer.writeString(offsets[2], object.proxy);
-  writer.writeBool(offsets[3], object.proxyEnabled);
-  writer.writeString(offsets[4], object.secretKey);
-  writer.writeString(offsets[5], object.url);
+  writer.writeDouble(offsets[0], object.presencePenalty);
+  writer.writeBool(offsets[1], object.darkMode);
+  writer.writeDouble(offsets[2], object.frequencePenalty);
+  writer.writeLong(offsets[3], object.maxTokens);
+  writer.writeString(offsets[4], object.model);
+  writer.writeLong(offsets[5], object.n);
+  writer.writeString(offsets[6], object.proxy);
+  writer.writeBool(offsets[7], object.proxyEnabled);
+  writer.writeString(offsets[8], object.secretKey);
+  writer.writeBool(offsets[9], object.stream);
+  writer.writeDouble(offsets[10], object.temperature);
+  writer.writeDouble(offsets[11], object.topP);
+  writer.writeString(offsets[12], object.url);
 }
 
 Setting _settingDeserialize(
@@ -101,13 +143,20 @@ Setting _settingDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Setting();
-  object.darkMode = reader.readBool(offsets[0]);
+  object.presencePenalty = reader.readDouble(offsets[0]);
+  object.darkMode = reader.readBool(offsets[1]);
+  object.frequencePenalty = reader.readDouble(offsets[2]);
   object.id = id;
-  object.model = reader.readString(offsets[1]);
-  object.proxy = reader.readString(offsets[2]);
-  object.proxyEnabled = reader.readBool(offsets[3]);
-  object.secretKey = reader.readStringOrNull(offsets[4]);
-  object.url = reader.readString(offsets[5]);
+  object.maxTokens = reader.readLong(offsets[3]);
+  object.model = reader.readString(offsets[4]);
+  object.n = reader.readLong(offsets[5]);
+  object.proxy = reader.readString(offsets[6]);
+  object.proxyEnabled = reader.readBool(offsets[7]);
+  object.secretKey = reader.readStringOrNull(offsets[8]);
+  object.stream = reader.readBool(offsets[9]);
+  object.temperature = reader.readDouble(offsets[10]);
+  object.topP = reader.readDouble(offsets[11]);
+  object.url = reader.readString(offsets[12]);
   return object;
 }
 
@@ -119,16 +168,30 @@ P _settingDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
-    case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
+    case 2:
+      return (reader.readDouble(offset)) as P;
+    case 3:
+      return (reader.readLong(offset)) as P;
     case 4:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 5:
+      return (reader.readLong(offset)) as P;
+    case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
+      return (reader.readBool(offset)) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
+      return (reader.readBool(offset)) as P;
+    case 10:
+      return (reader.readDouble(offset)) as P;
+    case 11:
+      return (reader.readDouble(offset)) as P;
+    case 12:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -224,12 +287,139 @@ extension SettingQueryWhere on QueryBuilder<Setting, Setting, QWhereClause> {
 
 extension SettingQueryFilter
     on QueryBuilder<Setting, Setting, QFilterCondition> {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'PRESENCE_PENALTY',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      presencePenaltyGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'PRESENCE_PENALTY',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'PRESENCE_PENALTY',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'PRESENCE_PENALTY',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> darkModeEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'dark_mode',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencePenaltyEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'frequencePenalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      frequencePenaltyGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'frequencePenalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      frequencePenaltyLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'frequencePenalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencePenaltyBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'frequencePenalty',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -278,6 +468,59 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> maxTokensEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'max_tokens',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> maxTokensGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'max_tokens',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> maxTokensLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'max_tokens',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> maxTokensBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'max_tokens',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -412,6 +655,58 @@ extension SettingQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'model',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> nEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'n',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> nGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'n',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> nLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'n',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> nBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'n',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -702,6 +997,140 @@ extension SettingQueryFilter
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> streamEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stream',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> temperatureEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'temperature',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> temperatureGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'temperature',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> temperatureLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'temperature',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> temperatureBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'temperature',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> topPEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'top_p',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> topPGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'top_p',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> topPLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'top_p',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> topPBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'top_p',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -840,6 +1269,18 @@ extension SettingQueryLinks
     on QueryBuilder<Setting, Setting, QFilterCondition> {}
 
 extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'PRESENCE_PENALTY', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'PRESENCE_PENALTY', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -852,6 +1293,30 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequencePenalty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequencePenalty', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByMaxTokens() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'max_tokens', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByMaxTokensDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'max_tokens', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByModel() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.asc);
@@ -861,6 +1326,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByModelDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByN() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'n', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByNDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'n', Sort.desc);
     });
   }
 
@@ -900,6 +1377,42 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByStream() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stream', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByStreamDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stream', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTemperature() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'temperature', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTemperatureDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'temperature', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTopP() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'top_p', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTopPDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'top_p', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -915,6 +1428,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
 
 extension SettingQuerySortThenBy
     on QueryBuilder<Setting, Setting, QSortThenBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'PRESENCE_PENALTY', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'PRESENCE_PENALTY', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -924,6 +1449,18 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequencePenalty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequencePenalty', Sort.desc);
     });
   }
 
@@ -939,6 +1476,18 @@ extension SettingQuerySortThenBy
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByMaxTokens() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'max_tokens', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByMaxTokensDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'max_tokens', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByModel() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.asc);
@@ -948,6 +1497,18 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByModelDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByN() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'n', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByNDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'n', Sort.desc);
     });
   }
 
@@ -987,6 +1548,42 @@ extension SettingQuerySortThenBy
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByStream() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stream', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByStreamDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stream', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTemperature() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'temperature', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTemperatureDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'temperature', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTopP() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'top_p', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTopPDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'top_p', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -1002,9 +1599,27 @@ extension SettingQuerySortThenBy
 
 extension SettingQueryWhereDistinct
     on QueryBuilder<Setting, Setting, QDistinct> {
+  QueryBuilder<Setting, Setting, QDistinct> distinctByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'PRESENCE_PENALTY');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dark_mode');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByFrequencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'frequencePenalty');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByMaxTokens() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'max_tokens');
     });
   }
 
@@ -1012,6 +1627,12 @@ extension SettingQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'model', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByN() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'n');
     });
   }
 
@@ -1035,6 +1656,24 @@ extension SettingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Setting, Setting, QDistinct> distinctByStream() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stream');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByTemperature() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'temperature');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByTopP() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'top_p');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByUrl(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1051,15 +1690,39 @@ extension SettingQueryProperty
     });
   }
 
+  QueryBuilder<Setting, double, QQueryOperations> presencePenaltyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'PRESENCE_PENALTY');
+    });
+  }
+
   QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dark_mode');
     });
   }
 
+  QueryBuilder<Setting, double, QQueryOperations> frequencePenaltyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'frequencePenalty');
+    });
+  }
+
+  QueryBuilder<Setting, int, QQueryOperations> maxTokensProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'max_tokens');
+    });
+  }
+
   QueryBuilder<Setting, String, QQueryOperations> modelProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'model');
+    });
+  }
+
+  QueryBuilder<Setting, int, QQueryOperations> nProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'n');
     });
   }
 
@@ -1078,6 +1741,24 @@ extension SettingQueryProperty
   QueryBuilder<Setting, String?, QQueryOperations> secretKeyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'secret_key');
+    });
+  }
+
+  QueryBuilder<Setting, bool, QQueryOperations> streamProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stream');
+    });
+  }
+
+  QueryBuilder<Setting, double, QQueryOperations> temperatureProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'temperature');
+    });
+  }
+
+  QueryBuilder<Setting, double, QQueryOperations> topPProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'top_p');
     });
   }
 

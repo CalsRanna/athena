@@ -69,16 +69,7 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (loading) const CircularProgressIndicator.adaptive(),
-            if (loading) const SizedBox(width: 8),
-            Flexible(
-              child: Text(chat.title ?? '', overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
+        title: Text(chat.title ?? '', overflow: TextOverflow.ellipsis),
       ),
       body: Column(
         children: [
@@ -338,7 +329,8 @@ class ChatTile extends StatelessWidget {
                     ],
                   ),
                 if (message.createdAt != null) const SizedBox(height: 2),
-                if (message.createdAt != null) Text(message.content ?? ''),
+                if (message.createdAt != null)
+                  SelectableText(message.content ?? ''),
                 if (message.createdAt == null)
                   const CircularProgressIndicator.adaptive(),
               ],

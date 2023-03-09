@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: NavigationBar(
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.message_outlined),
+            icon: Icon(Icons.question_answer_outlined),
             label: 'Chat',
           ),
           NavigationDestination(
@@ -62,10 +62,15 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: handleDestinationSelected,
       ),
       floatingActionButton: selectedIndex == 0
-          ? FloatingActionButton(
-              onPressed: handlePressed,
-              child: const Icon(
-                Icons.chat_bubble_outline,
+          ? EmitterWatcher<Setting>(
+              emitter: settingEmitter,
+              builder: (context, setting) => FloatingActionButton(
+                onPressed: handlePressed,
+                child: Icon(
+                  setting.proxyEnabled
+                      ? Icons.quickreply_outlined
+                      : Icons.chat_bubble_outline,
+                ),
               ),
             )
           : null,
