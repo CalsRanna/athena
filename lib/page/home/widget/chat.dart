@@ -64,7 +64,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               DateTime.fromMillisecondsSinceEpoch(
                       chats[index].messages.last.createdAt!)
                   .toString()
-                  .substring(0, 19),
+                  .substring(11, 16),
               style: Theme.of(context).textTheme.labelSmall,
             ),
             onTap: () => handleTap(chats[index].id),
