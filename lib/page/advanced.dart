@@ -3,8 +3,8 @@ import 'package:athena/model/setting.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
 
-class AdvancedSetting extends StatelessWidget {
-  const AdvancedSetting({super.key});
+class AdvancedPage extends StatelessWidget {
+  const AdvancedPage({super.key});
 
   @override
   Widget build(BuildContext context) {
