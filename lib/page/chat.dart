@@ -8,6 +8,7 @@ import 'package:athena/model/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 
@@ -96,9 +97,8 @@ class _ChatPageState extends State<ChatPage> {
                       child: TextField(
                         controller: textEditingController,
                         decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(50),
-                          ),
+                          border: const OutlineInputBorder(),
+                          focusedBorder: const OutlineInputBorder(),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -106,8 +106,30 @@ class _ChatPageState extends State<ChatPage> {
                           hintText: 'Ask me anything...',
                           isCollapsed: false,
                           isDense: true,
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2.0,
+                            ),
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                                foregroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .onPrimaryContainer,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              onPressed: () =>
+                                  handleSubmitted(textEditingController.text),
+                              child: const Icon(Icons.send_outlined),
+                            ),
+                          ),
                         ),
-                        maxLines: null,
+                        maxLines: 1,
                         textInputAction: TextInputAction.send,
                         scrollPadding: EdgeInsets.zero,
                         onSubmitted: handleSubmitted,
@@ -115,22 +137,6 @@ class _ChatPageState extends State<ChatPage> {
                             FocusScope.of(context).unfocus(),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primaryContainer,
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimaryContainer,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12.0,
-                        ),
-                      ),
-                      onPressed: () =>
-                          handleSubmitted(textEditingController.text),
-                      child: const Icon(Icons.send_outlined),
-                    )
                   ],
                 ),
               ),
@@ -160,11 +166,13 @@ class _ChatPageState extends State<ChatPage> {
       ..createdAt = DateTime.now().millisecondsSinceEpoch
       ..content = trimmedValue;
     setState(() {
-      chat.title = chat.title ?? trimmedValue;
       chat.messages.add(message);
     });
     textEditingController.clear();
     await fetchResponse();
+    if (chat.title == null) {
+      generateTitle(value);
+    }
   }
 
   Future<void> fetchResponse() async {
@@ -240,6 +248,46 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         loading = false;
       });
+    }
+  }
+
+  generateTitle(String value) async {
+    final logger = Logger();
+    final ref = context.ref;
+    try {
+      final dio = await ref.read(dioEmitter);
+      final setting = await ref.read(settingEmitter);
+      final messages = [
+        {'role': 'user', 'content': value},
+        {
+          'role': 'user',
+          'content':
+              '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本，如果没有主题，请节制返回“闲聊”。',
+        },
+      ];
+      var content = '';
+      var response = await dio.post(setting.url, data: {
+        "model": setting.model,
+        "messages": messages,
+        "stream": true,
+      });
+      final Stream<List<int>> stream = response.data.stream;
+      stream.listen((codeUnits) {
+        final decodedMessage = utf8.decode(codeUnits);
+        final regExp = RegExp(r'"delta":{"content":[\s\S]*?}');
+        final matches = regExp.allMatches(decodedMessage);
+        if (matches.isNotEmpty) {
+          final choices = matches.elementAt(0).group(0);
+          final decodedJson = json.decode('{$choices}');
+          content += decodedJson['delta']['content'];
+          setState(() {
+            chat.title = content.replaceAll('。', '');
+          });
+          storeChat();
+        }
+      });
+    } catch (error) {
+      logger.e(error);
     }
   }
 
@@ -326,6 +374,19 @@ class ChatTile extends StatelessWidget {
                               color: Theme.of(context).colorScheme.secondary,
                             ),
                       ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => copy(context, message),
+                        child: Text(
+                          '复制',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                        ),
+                      )
                     ],
                   ),
                 if (message.createdAt != null) const SizedBox(height: 2),
@@ -348,6 +409,19 @@ class ChatTile extends StatelessWidget {
             child: const Icon(Icons.face_outlined),
           ),
       ],
+    );
+  }
+
+  void copy(BuildContext context, Message message) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await Clipboard.setData(ClipboardData(text: message.content));
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      const SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text('已复制'),
+        width: 75,
+      ),
     );
   }
 }

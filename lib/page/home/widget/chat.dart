@@ -37,43 +37,34 @@ class _ChatWidgetState extends State<ChatWidget> {
               ),
             ],
           ),
-          child: ListTile(
-            leading: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.tertiary,
-                shape: BoxShape.circle,
-              ),
-              height: 56,
-              width: 56,
-              child: Center(
-                child: Text(
-                  chats![index].title?.substring(0, 1).toUpperCase() ?? '',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
+          child: Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceVariant,
+            child: ListTile(
+              title: Text(
+                chats![index].title ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
+              trailing: Text(
+                DateTime.fromMillisecondsSinceEpoch(
+                        chats[index].messages.last.createdAt!)
+                    .toString()
+                    .substring(11, 16),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              ),
+              onTap: () => handleTap(chats[index].id),
             ),
-            title: Text(
-              chats[index].title ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: Text(
-              DateTime.fromMillisecondsSinceEpoch(
-                      chats[index].messages.last.createdAt!)
-                  .toString()
-                  .substring(11, 16),
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            onTap: () => handleTap(chats[index].id),
           ),
         ),
-        separatorBuilder: (context, index) => const Divider(
-          height: 1,
-          indent: 72,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
       ),
     );
   }
