@@ -25,17 +25,19 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          EmitterWatcher<Setting>(
-            emitter: settingEmitter,
-            builder: (context, setting) => IconButton(
-              onPressed: triggerDarkMode,
-              icon: Icon(setting.darkMode
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined),
-            ),
-          )
-        ],
+        actions: selectedIndex == 1
+            ? [
+                EmitterWatcher<Setting>(
+                  emitter: settingEmitter,
+                  builder: (context, setting) => IconButton(
+                    onPressed: triggerDarkMode,
+                    icon: Icon(setting.darkMode
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined),
+                  ),
+                )
+              ]
+            : null,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,

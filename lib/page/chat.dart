@@ -262,7 +262,7 @@ class _ChatPageState extends State<ChatPage> {
         {
           'role': 'user',
           'content':
-              '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本，如果没有主题，请节制返回“闲聊”。',
+              '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本，如果没有主题，请直接返回“闲聊”。',
         },
       ];
       var content = '';
@@ -317,8 +317,15 @@ class _ChatPageState extends State<ChatPage> {
 }
 
 class ChatTile extends StatelessWidget {
-  const ChatTile({super.key, required this.message});
+  const ChatTile({
+    super.key,
+    required this.message,
+    this.onDelete,
+    this.onRetry,
+  });
   final Message message;
+  final void Function(Message)? onDelete;
+  final void Function(Message)? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -368,13 +375,26 @@ class ChatTile extends StatelessWidget {
                       Text(
                         DateTime.fromMillisecondsSinceEpoch(
                                 message.createdAt ?? 0)
-                            .toIso8601String()
-                            .substring(11, 16),
+                            .toString()
+                            .substring(0, 16),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: Theme.of(context).colorScheme.secondary,
                             ),
                       ),
                       const Spacer(),
+                      GestureDetector(
+                        onTap: () => onRetry?.call(message),
+                        child: Text(
+                          '重试',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => copy(context, message),
                         child: Text(
@@ -385,6 +405,17 @@ class ChatTile extends StatelessWidget {
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.secondary,
                               ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => onDelete?.call(message),
+                        child: Text(
+                          '删除',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                         ),
                       )
                     ],
@@ -414,7 +445,7 @@ class ChatTile extends StatelessWidget {
 
   void copy(BuildContext context, Message message) async {
     final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(ClipboardData(text: message.content));
+    await Clipboard.setData(ClipboardData(text: message.content ?? ''));
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(
       const SnackBar(

@@ -17,7 +17,7 @@ class SettingWidget extends StatelessWidget {
       emitter: settingEmitter,
       builder: (context, setting) => ListView(
         children: [
-          SwitchListTile.adaptive(
+          SwitchListTile(
             secondary: Icon(
               setting.proxyEnabled
                   ? Icons.key_outlined
@@ -42,6 +42,19 @@ class SettingWidget extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             title: const Text('SECRET KEY'),
+            trailing: const Icon(Icons.chevron_right_outlined),
+            onTap: () => updateSecretKey(context, setting.secretKey),
+          ),
+          ListTile(
+            leading: Icon(
+              Icons.history_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            subtitle: Text(
+              'Number of sent messages attached per request.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            title: const Text('ATTACHED MESSAGES COUNT'),
             trailing: const Icon(Icons.chevron_right_outlined),
             onTap: () => updateSecretKey(context, setting.secretKey),
           ),

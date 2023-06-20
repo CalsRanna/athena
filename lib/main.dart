@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena/creator/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
@@ -43,6 +45,8 @@ class _AthenaAppState extends State<AthenaApp> {
   }
 
   initTray() async {
-    await tray.initSystemTray(iconPath: 'asset/image/flutter_icon.png');
+    if (Platform.isMacOS) {
+      await tray.initSystemTray(iconPath: 'asset/image/flutter_icon.png');
+    }
   }
 }
