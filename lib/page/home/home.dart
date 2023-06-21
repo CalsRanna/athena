@@ -1,5 +1,5 @@
-import 'package:athena/creator/global.dart';
 import 'package:athena/creator/setting.dart';
+import 'package:athena/main.dart';
 import 'package:athena/model/setting.dart';
 import 'package:athena/page/home/widget/chat.dart';
 import 'package:athena/page/home/widget/setting.dart';
@@ -82,7 +82,6 @@ class _HomePageState extends State<HomePage> {
   void triggerDarkMode() async {
     try {
       final ref = context.ref;
-      final isar = await ref.read(isarEmitter);
       await isar.writeTxn(() async {
         var setting = await isar.settings.where().findFirst() ?? Setting();
         setting.darkMode = !setting.darkMode;

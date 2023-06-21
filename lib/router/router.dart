@@ -7,7 +7,8 @@ final router = GoRouter(routes: [
   GoRoute(builder: (_, __) => const HomePage(), path: '/'),
   GoRoute(builder: (_, __) => const ChatPage(), path: '/chat'),
   GoRoute(
-    builder: (_, state) => ChatPage(id: int.tryParse(state.params['id'] ?? '')),
+    builder: (_, state) =>
+        ChatPage(id: int.tryParse(state.queryParameters['id'] ?? '')),
     path: '/chat/:id',
   ),
   GoRoute(

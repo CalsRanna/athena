@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/global.dart';
 import 'package:athena/creator/setting.dart';
+import 'package:athena/main.dart';
 import 'package:athena/model/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:dio/dio.dart';
@@ -154,7 +155,6 @@ class _ChatPageState extends State<ChatPage> {
 
   void fetchChat() async {
     if (widget.id != null) {
-      final isar = await context.ref.read(isarEmitter);
       final exist = await isar.chats.get(widget.id!);
       setState(() {
         chat = exist?.withGrowableMessages() ?? Chat();
@@ -239,9 +239,9 @@ class _ChatPageState extends State<ChatPage> {
           storeChat();
         }
       });
-    } on DioError catch (error) {
+    } on DioException catch (error) {
       var content = error.type.toString();
-      if (error.type == DioErrorType.unknown) {
+      if (error.type == DioExceptionType.unknown) {
         content = error.error.toString();
       }
       Response? response = error.response;
@@ -321,7 +321,6 @@ class _ChatPageState extends State<ChatPage> {
   void storeChat() async {
     try {
       final ref = context.ref;
-      final isar = await ref.read(isarEmitter);
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
       });

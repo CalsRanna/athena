@@ -1,5 +1,5 @@
-import 'package:athena/creator/global.dart';
 import 'package:athena/creator/setting.dart';
+import 'package:athena/main.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
@@ -19,7 +19,7 @@ class AdvancedPage extends StatelessWidget {
         builder: (context, setting) => ListView(
           children: [
             const ListTile(
-              title: Text('FREQUENCE_PENALTY'),
+              title: Text('FREQUENCY_PENALTY'),
               trailing: Icon(Icons.chevron_right_outlined),
               subtitle: Text(
                   'Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model\'s likelihood to repeat the same line verbatim.'),
@@ -88,7 +88,6 @@ class AdvancedPage extends StatelessWidget {
   void changeStream(BuildContext context, bool value) async {
     try {
       final ref = context.ref;
-      final isar = await ref.read(isarEmitter);
       final setting = await isar.settings.where().findFirst();
       setting!.stream = value;
       await isar.writeTxn(() async {

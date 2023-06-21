@@ -1,5 +1,5 @@
 import 'package:athena/creator/chat.dart';
-import 'package:athena/creator/global.dart';
+import 'package:athena/main.dart';
 import 'package:athena/model/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
@@ -88,7 +88,6 @@ class _ChatWidgetState extends State<ChatWidget> {
   void handleDelete(int id) async {
     try {
       final ref = context.ref;
-      final isar = await ref.read(isarEmitter);
       await isar.writeTxn(() async {
         await isar.chats.delete(id);
       });

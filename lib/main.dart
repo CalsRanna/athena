@@ -1,13 +1,24 @@
 import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
+import 'package:athena/model/chat.dart';
+import 'package:athena/model/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
+import 'package:isar/isar.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:system_tray/system_tray.dart';
 
-void main() {
+late Isar isar;
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final directory = await getApplicationSupportDirectory();
+  isar = await Isar.open(
+    [ChatSchema, SettingSchema],
+    directory: directory.path,
+  );
   runApp(CreatorGraph(child: const AthenaApp()));
 }
 

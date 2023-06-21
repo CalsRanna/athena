@@ -1,5 +1,5 @@
-import 'package:athena/creator/global.dart';
 import 'package:athena/creator/setting.dart';
+import 'package:athena/main.dart';
 import 'package:athena/model/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
@@ -75,14 +75,13 @@ class SettingWidget extends StatelessWidget {
   void updateSecretKey(BuildContext context, String? secretKey) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => _SecretKeyBottomsheet(secretKey: secretKey),
+      builder: (context) => _SecretKeyBottomSheet(secretKey: secretKey),
     );
   }
 
   void changeProxyEnabled(BuildContext context, bool value) async {
     try {
       final ref = context.ref;
-      final isar = await ref.read(isarEmitter);
       final setting = await isar.settings.where().findFirst();
       setting!.proxyEnabled = value;
       setting.proxy = Setting().proxy;
@@ -100,16 +99,16 @@ class SettingWidget extends StatelessWidget {
   }
 }
 
-class _SecretKeyBottomsheet extends StatefulWidget {
-  const _SecretKeyBottomsheet({this.secretKey});
+class _SecretKeyBottomSheet extends StatefulWidget {
+  const _SecretKeyBottomSheet({this.secretKey});
 
   final String? secretKey;
 
   @override
-  State<_SecretKeyBottomsheet> createState() => __SecretKeyBottomsheetState();
+  State<_SecretKeyBottomSheet> createState() => _SecretKeyBottomSheetState();
 }
 
-class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
+class _SecretKeyBottomSheetState extends State<_SecretKeyBottomSheet> {
   TextEditingController controller = TextEditingController();
 
   @override
@@ -149,7 +148,6 @@ class __SecretKeyBottomsheetState extends State<_SecretKeyBottomsheet> {
   void handleSubmitted(String value) async {
     final ref = context.ref;
     final focusScope = FocusScope.of(context);
-    final isar = await ref.read(isarEmitter);
     await isar.writeTxn(() async {
       var setting = await isar.settings.where().findFirst() ?? Setting();
       setting.secretKey = value;
