@@ -27,48 +27,50 @@ class _ChatWidgetState extends State<ChatWidget> {
         itemBuilder: (context, index) => Card(
           elevation: 0,
           color: Theme.of(context).colorScheme.surfaceVariant,
-          child: Slidable(
-            endActionPane: ActionPane(
-              motion: const ScrollMotion(),
-              children: [
-                SlidableAction(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  borderRadius: const BorderRadius.only(
-                    bottomRight: Radius.circular(12),
-                    topRight: Radius.circular(12),
+          child: ClipRRect(
+            child: Slidable(
+              endActionPane: ActionPane(
+                motion: const BehindMotion(),
+                children: [
+                  SlidableAction(
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    borderRadius: const BorderRadius.only(
+                      bottomRight: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    label: '删除',
+                    icon: Icons.delete_outline,
+                    onPressed: (context) => handleDelete(chats![index].id),
                   ),
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                  label: '删除',
-                  icon: Icons.delete_outline,
-                  onPressed: (context) => handleDelete(chats![index].id),
+                ],
+              ),
+              child: ListTile(
+                subtitle: Text(
+                  '${chats![index].messages.length}条对话',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
-              ],
-            ),
-            child: ListTile(
-              subtitle: Text(
-                '${chats![index].messages.length}条对话',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              title: Text(
-                chats[index].title ?? '',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                title: Text(
+                  chats[index].title ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
+                trailing: Text(
+                  DateTime.fromMillisecondsSinceEpoch(
+                          chats[index].messages.last.createdAt!)
+                      .toString()
+                      .substring(0, 16),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                ),
+                onTap: () => handleTap(chats[index].id),
               ),
-              trailing: Text(
-                DateTime.fromMillisecondsSinceEpoch(
-                        chats[index].messages.last.createdAt!)
-                    .toString()
-                    .substring(0, 16),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-              ),
-              onTap: () => handleTap(chats[index].id),
             ),
           ),
         ),
