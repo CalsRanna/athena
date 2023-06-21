@@ -8,12 +8,13 @@ class Setting {
   Id id = Isar.autoIncrement;
   @Name('dark_mode')
   bool darkMode = false;
-  double frequencePenalty = 0;
+  @Name('frequency_penalty')
+  double frequencyPenalty = 0;
   @Name('max_tokens')
   int maxTokens = 4096;
   String model = 'gpt-3.5-turbo';
   int n = 1;
-  @Name('PRESENCE_PENALTY')
+  @Name('presence_penalty')
   double presencePenalty = 0;
   String proxy = "43.154.15.116:11111";
   @Name('proxy_enabled')

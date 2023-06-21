@@ -77,8 +77,12 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: ListView.builder(
               controller: scrollController,
-              itemBuilder: (context, index) =>
-                  ChatTile(message: chat.messages.reversed.elementAt(index)),
+              itemBuilder: (context, index) => ChatTile(
+                message: chat.messages.reversed.elementAt(index),
+                onDelete: () => handleDelete(index),
+                onEdit: () => handleEdit(index),
+                onRetry: () => handleRetry(index),
+              ),
               itemCount: chat.messages.length,
               padding: const EdgeInsets.all(16),
               reverse: true,
@@ -158,6 +162,25 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void handleDelete(int index) async {
+    setState(() {
+      chat.messages.removeRange(index, chat.messages.length);
+      if (chat.messages.isEmpty) {
+        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      } else {
+        chat.updatedAt = chat.messages.last.createdAt;
+      }
+    });
+    storeChat();
+  }
+
+  void handleEdit(int index) {
+    final message = chat.messages.elementAt(index);
+    textEditingController.text = message.content ?? '';
+  }
+
+  void handleRetry(int index) {}
+
   void handleSubmitted(String value) async {
     final trimmedValue = value.trim().replaceAll('\n', '');
     if (trimmedValue.isEmpty) return;
@@ -167,6 +190,7 @@ class _ChatPageState extends State<ChatPage> {
       ..content = trimmedValue;
     setState(() {
       chat.messages.add(message);
+      chat.updatedAt = message.createdAt;
     });
     textEditingController.clear();
     await fetchResponse();
@@ -205,11 +229,12 @@ class _ChatPageState extends State<ChatPage> {
           final choices = matches.elementAt(0).group(0);
           final decodedJson = json.decode('{$choices}');
           content += decodedJson['delta']['content'];
+          final now = DateTime.now().millisecondsSinceEpoch;
           setState(() {
             chat.messages.last.role = 'assistant';
             chat.messages.last.content = content;
-            chat.messages.last.createdAt =
-                DateTime.now().millisecondsSinceEpoch;
+            chat.messages.last.createdAt = now;
+            chat.updatedAt = now;
           });
           storeChat();
         }
@@ -232,6 +257,7 @@ class _ChatPageState extends State<ChatPage> {
         ..createdAt = DateTime.now().millisecondsSinceEpoch;
       setState(() {
         chat.messages.last = message;
+        chat.updatedAt = chat.messages.last.createdAt;
       });
       storeChat();
     } catch (error) {
@@ -242,6 +268,7 @@ class _ChatPageState extends State<ChatPage> {
         ..createdAt = DateTime.now().millisecondsSinceEpoch;
       setState(() {
         chat.messages.last = message;
+        chat.updatedAt = chat.messages.last.createdAt;
       });
       storeChat();
     } finally {
@@ -321,11 +348,13 @@ class ChatTile extends StatelessWidget {
     super.key,
     required this.message,
     this.onDelete,
+    this.onEdit,
     this.onRetry,
   });
   final Message message;
-  final void Function(Message)? onDelete;
-  final void Function(Message)? onRetry;
+  final void Function()? onDelete;
+  final void Function()? onEdit;
+  final void Function()? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -382,18 +411,48 @@ class ChatTile extends StatelessWidget {
                             ),
                       ),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () => onRetry?.call(message),
-                        child: Text(
-                          '重试',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
+                      if (message.role == 'user')
+                        GestureDetector(
+                          onTap: () => onDelete?.call(),
+                          child: Text(
+                            '删除对话',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                          ),
                         ),
-                      ),
+                      const SizedBox(width: 4),
+                      if (message.role == 'assistant')
+                        GestureDetector(
+                          onTap: () => onRetry?.call(),
+                          child: Text(
+                            '重试',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
+                                ),
+                          ),
+                        ),
+                      if (message.role == 'user')
+                        GestureDetector(
+                          onTap: () => onEdit?.call(),
+                          child: Text(
+                            '编辑',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
+                                ),
+                          ),
+                        ),
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () => copy(context, message),
@@ -405,17 +464,6 @@ class ChatTile extends StatelessWidget {
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.secondary,
                               ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () => onDelete?.call(message),
-                        child: Text(
-                          '删除',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
                         ),
                       )
                     ],

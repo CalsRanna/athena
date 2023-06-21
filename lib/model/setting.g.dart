@@ -17,35 +17,35 @@ const SettingSchema = CollectionSchema(
   name: r'settings',
   id: -5221820136678325216,
   properties: {
-    r'PRESENCE_PENALTY': PropertySchema(
-      id: 0,
-      name: r'PRESENCE_PENALTY',
-      type: IsarType.double,
-    ),
     r'dark_mode': PropertySchema(
-      id: 1,
+      id: 0,
       name: r'dark_mode',
       type: IsarType.bool,
     ),
-    r'frequencePenalty': PropertySchema(
-      id: 2,
-      name: r'frequencePenalty',
+    r'frequency_penalty': PropertySchema(
+      id: 1,
+      name: r'frequency_penalty',
       type: IsarType.double,
     ),
     r'max_tokens': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'max_tokens',
       type: IsarType.long,
     ),
     r'model': PropertySchema(
-      id: 4,
+      id: 3,
       name: r'model',
       type: IsarType.string,
     ),
     r'n': PropertySchema(
-      id: 5,
+      id: 4,
       name: r'n',
       type: IsarType.long,
+    ),
+    r'presence_penalty': PropertySchema(
+      id: 5,
+      name: r'presence_penalty',
+      type: IsarType.double,
     ),
     r'proxy': PropertySchema(
       id: 6,
@@ -121,12 +121,12 @@ void _settingSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDouble(offsets[0], object.presencePenalty);
-  writer.writeBool(offsets[1], object.darkMode);
-  writer.writeDouble(offsets[2], object.frequencePenalty);
-  writer.writeLong(offsets[3], object.maxTokens);
-  writer.writeString(offsets[4], object.model);
-  writer.writeLong(offsets[5], object.n);
+  writer.writeBool(offsets[0], object.darkMode);
+  writer.writeDouble(offsets[1], object.frequencyPenalty);
+  writer.writeLong(offsets[2], object.maxTokens);
+  writer.writeString(offsets[3], object.model);
+  writer.writeLong(offsets[4], object.n);
+  writer.writeDouble(offsets[5], object.presencePenalty);
   writer.writeString(offsets[6], object.proxy);
   writer.writeBool(offsets[7], object.proxyEnabled);
   writer.writeString(offsets[8], object.secretKey);
@@ -143,13 +143,13 @@ Setting _settingDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Setting();
-  object.presencePenalty = reader.readDouble(offsets[0]);
-  object.darkMode = reader.readBool(offsets[1]);
-  object.frequencePenalty = reader.readDouble(offsets[2]);
+  object.darkMode = reader.readBool(offsets[0]);
+  object.frequencyPenalty = reader.readDouble(offsets[1]);
   object.id = id;
-  object.maxTokens = reader.readLong(offsets[3]);
-  object.model = reader.readString(offsets[4]);
-  object.n = reader.readLong(offsets[5]);
+  object.maxTokens = reader.readLong(offsets[2]);
+  object.model = reader.readString(offsets[3]);
+  object.n = reader.readLong(offsets[4]);
+  object.presencePenalty = reader.readDouble(offsets[5]);
   object.proxy = reader.readString(offsets[6]);
   object.proxyEnabled = reader.readBool(offsets[7]);
   object.secretKey = reader.readStringOrNull(offsets[8]);
@@ -168,17 +168,17 @@ P _settingDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDouble(offset)) as P;
-    case 1:
       return (reader.readBool(offset)) as P;
-    case 2:
+    case 1:
       return (reader.readDouble(offset)) as P;
+    case 2:
+      return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readLong(offset)) as P;
-    case 4:
       return (reader.readString(offset)) as P;
-    case 5:
+    case 4:
       return (reader.readLong(offset)) as P;
+    case 5:
+      return (reader.readDouble(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
@@ -287,69 +287,6 @@ extension SettingQueryWhere on QueryBuilder<Setting, Setting, QWhereClause> {
 
 extension SettingQueryFilter
     on QueryBuilder<Setting, Setting, QFilterCondition> {
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'PRESENCE_PENALTY',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      presencePenaltyGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'PRESENCE_PENALTY',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyLessThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'PRESENCE_PENALTY',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyBetween(
-    double lower,
-    double upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'PRESENCE_PENALTY',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterFilterCondition> darkModeEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -360,13 +297,13 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencePenaltyEqualTo(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencyPenaltyEqualTo(
     double value, {
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'frequencePenalty',
+        property: r'frequency_penalty',
         value: value,
         epsilon: epsilon,
       ));
@@ -374,7 +311,7 @@ extension SettingQueryFilter
   }
 
   QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      frequencePenaltyGreaterThan(
+      frequencyPenaltyGreaterThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
@@ -382,7 +319,7 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'frequencePenalty',
+        property: r'frequency_penalty',
         value: value,
         epsilon: epsilon,
       ));
@@ -390,7 +327,7 @@ extension SettingQueryFilter
   }
 
   QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      frequencePenaltyLessThan(
+      frequencyPenaltyLessThan(
     double value, {
     bool include = false,
     double epsilon = Query.epsilon,
@@ -398,14 +335,14 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'frequencePenalty',
+        property: r'frequency_penalty',
         value: value,
         epsilon: epsilon,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencePenaltyBetween(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> frequencyPenaltyBetween(
     double lower,
     double upper, {
     bool includeLower = true,
@@ -414,7 +351,7 @@ extension SettingQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'frequencePenalty',
+        property: r'frequency_penalty',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -707,6 +644,69 @@ extension SettingQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'presence_penalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      presencePenaltyGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'presence_penalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'presence_penalty',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> presencePenaltyBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'presence_penalty',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -1269,18 +1269,6 @@ extension SettingQueryLinks
     on QueryBuilder<Setting, Setting, QFilterCondition> {}
 
 extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenalty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'PRESENCE_PENALTY', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenaltyDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'PRESENCE_PENALTY', Sort.desc);
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -1293,15 +1281,15 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencePenalty() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencyPenalty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'frequencePenalty', Sort.asc);
+      return query.addSortBy(r'frequency_penalty', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencePenaltyDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByFrequencyPenaltyDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'frequencePenalty', Sort.desc);
+      return query.addSortBy(r'frequency_penalty', Sort.desc);
     });
   }
 
@@ -1338,6 +1326,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByNDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'n', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'presence_penalty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByPresencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'presence_penalty', Sort.desc);
     });
   }
 
@@ -1428,18 +1428,6 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
 
 extension SettingQuerySortThenBy
     on QueryBuilder<Setting, Setting, QSortThenBy> {
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenalty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'PRESENCE_PENALTY', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenaltyDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'PRESENCE_PENALTY', Sort.desc);
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -1452,15 +1440,15 @@ extension SettingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencePenalty() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencyPenalty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'frequencePenalty', Sort.asc);
+      return query.addSortBy(r'frequency_penalty', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencePenaltyDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByFrequencyPenaltyDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'frequencePenalty', Sort.desc);
+      return query.addSortBy(r'frequency_penalty', Sort.desc);
     });
   }
 
@@ -1509,6 +1497,18 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByNDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'n', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'presence_penalty', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByPresencePenaltyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'presence_penalty', Sort.desc);
     });
   }
 
@@ -1599,21 +1599,15 @@ extension SettingQuerySortThenBy
 
 extension SettingQueryWhereDistinct
     on QueryBuilder<Setting, Setting, QDistinct> {
-  QueryBuilder<Setting, Setting, QDistinct> distinctByPresencePenalty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'PRESENCE_PENALTY');
-    });
-  }
-
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dark_mode');
     });
   }
 
-  QueryBuilder<Setting, Setting, QDistinct> distinctByFrequencePenalty() {
+  QueryBuilder<Setting, Setting, QDistinct> distinctByFrequencyPenalty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'frequencePenalty');
+      return query.addDistinctBy(r'frequency_penalty');
     });
   }
 
@@ -1633,6 +1627,12 @@ extension SettingQueryWhereDistinct
   QueryBuilder<Setting, Setting, QDistinct> distinctByN() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'n');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByPresencePenalty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'presence_penalty');
     });
   }
 
@@ -1690,21 +1690,15 @@ extension SettingQueryProperty
     });
   }
 
-  QueryBuilder<Setting, double, QQueryOperations> presencePenaltyProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'PRESENCE_PENALTY');
-    });
-  }
-
   QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dark_mode');
     });
   }
 
-  QueryBuilder<Setting, double, QQueryOperations> frequencePenaltyProperty() {
+  QueryBuilder<Setting, double, QQueryOperations> frequencyPenaltyProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'frequencePenalty');
+      return query.addPropertyName(r'frequency_penalty');
     });
   }
 
@@ -1723,6 +1717,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, int, QQueryOperations> nProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'n');
+    });
+  }
+
+  QueryBuilder<Setting, double, QQueryOperations> presencePenaltyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'presence_penalty');
     });
   }
 

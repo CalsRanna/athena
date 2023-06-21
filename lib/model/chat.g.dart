@@ -27,6 +27,11 @@ const ChatSchema = CollectionSchema(
       id: 1,
       name: r'title',
       type: IsarType.string,
+    ),
+    r'updated_at': PropertySchema(
+      id: 2,
+      name: r'updated_at',
+      type: IsarType.long,
     )
   },
   estimateSize: _chatEstimateSize,
@@ -79,6 +84,7 @@ void _chatSerialize(
     object.messages,
   );
   writer.writeString(offsets[1], object.title);
+  writer.writeLong(offsets[2], object.updatedAt);
 }
 
 Chat _chatDeserialize(
@@ -97,6 +103,7 @@ Chat _chatDeserialize(
       ) ??
       [];
   object.title = reader.readStringOrNull(offsets[1]);
+  object.updatedAt = reader.readLongOrNull(offsets[2]);
   return object;
 }
 
@@ -117,6 +124,8 @@ P _chatDeserializeProp<P>(
           []) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;
+    case 2:
+      return (reader.readLongOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -489,6 +498,74 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
       ));
     });
   }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'updated_at',
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'updated_at',
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> updatedAtBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'updated_at',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension ChatQueryObject on QueryBuilder<Chat, Chat, QFilterCondition> {
@@ -512,6 +589,18 @@ extension ChatQuerySortBy on QueryBuilder<Chat, Chat, QSortBy> {
   QueryBuilder<Chat, Chat, QAfterSortBy> sortByTitleDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'title', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> sortByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updated_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> sortByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updated_at', Sort.desc);
     });
   }
 }
@@ -540,6 +629,18 @@ extension ChatQuerySortThenBy on QueryBuilder<Chat, Chat, QSortThenBy> {
       return query.addSortBy(r'title', Sort.desc);
     });
   }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> thenByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updated_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> thenByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updated_at', Sort.desc);
+    });
+  }
 }
 
 extension ChatQueryWhereDistinct on QueryBuilder<Chat, Chat, QDistinct> {
@@ -547,6 +648,12 @@ extension ChatQueryWhereDistinct on QueryBuilder<Chat, Chat, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'title', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QDistinct> distinctByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'updated_at');
     });
   }
 }
@@ -567,6 +674,12 @@ extension ChatQueryProperty on QueryBuilder<Chat, Chat, QQueryProperty> {
   QueryBuilder<Chat, String?, QQueryOperations> titleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'title');
+    });
+  }
+
+  QueryBuilder<Chat, int?, QQueryOperations> updatedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'updated_at');
     });
   }
 }

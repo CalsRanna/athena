@@ -61,10 +61,11 @@ class _ChatWidgetState extends State<ChatWidget> {
                   ),
                 ),
                 trailing: Text(
-                  DateTime.fromMillisecondsSinceEpoch(
-                          chats[index].messages.last.createdAt!)
-                      .toString()
-                      .substring(0, 16),
+                  chats[index].messages.isNotEmpty
+                      ? DateTime.fromMillisecondsSinceEpoch(
+                          chats[index].messages.last.createdAt!,
+                        ).toString().substring(0, 16)
+                      : '',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Theme.of(context).colorScheme.outline,
                       ),

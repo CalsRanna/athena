@@ -6,16 +6,18 @@ part 'chat.g.dart';
 @Name('chats')
 class Chat {
   Id id = Isar.autoIncrement;
-  String? title;
   List<Message> messages = [];
+  String? title;
+  @Name('updated_at')
+  int? updatedAt;
 }
 
 @embedded
 class Message {
-  String? role;
-  String? content;
   @Name('created_at')
   int? createdAt;
+  String? content;
+  String? role;
 }
 
 extension ChatExtension on Chat {
