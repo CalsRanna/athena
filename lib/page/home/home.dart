@@ -64,16 +64,9 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: handleDestinationSelected,
       ),
       floatingActionButton: selectedIndex == 0
-          ? EmitterWatcher<Setting>(
-              emitter: settingEmitter,
-              builder: (context, setting) => FloatingActionButton(
-                onPressed: handlePressed,
-                child: Icon(
-                  setting.proxyEnabled
-                      ? Icons.quickreply_outlined
-                      : Icons.chat_bubble_outline,
-                ),
-              ),
+          ? FloatingActionButton(
+              onPressed: handlePressed,
+              child: const Icon(Icons.chat_bubble_outline),
             )
           : null,
     );

@@ -6,7 +6,6 @@ import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:isar/isar.dart';
-import 'package:logger/logger.dart';
 
 class SettingWidget extends StatelessWidget {
   const SettingWidget({super.key});
@@ -17,21 +16,6 @@ class SettingWidget extends StatelessWidget {
       emitter: settingEmitter,
       builder: (context, setting) => ListView(
         children: [
-          SwitchListTile(
-            secondary: Icon(
-              setting.proxyEnabled
-                  ? Icons.key_outlined
-                  : Icons.key_off_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            subtitle: Text(
-              setting.proxy,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            title: const Text('PROXY'),
-            value: setting.proxyEnabled,
-            onChanged: (value) => changeProxyEnabled(context, value),
-          ),
           ListTile(
             leading: Icon(
               Icons.generating_tokens_outlined,
@@ -50,13 +34,9 @@ class SettingWidget extends StatelessWidget {
               Icons.history_outlined,
               color: Theme.of(context).colorScheme.primary,
             ),
-            subtitle: Text(
-              'Number of sent messages attached per request.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
             title: const Text('ATTACHED MESSAGES COUNT'),
             trailing: const Icon(Icons.chevron_right_outlined),
-            onTap: () => updateSecretKey(context, setting.secretKey),
+            onTap: () {},
           ),
           ListTile(
             leading: Icon(
@@ -77,21 +57,6 @@ class SettingWidget extends StatelessWidget {
       context: context,
       builder: (context) => _SecretKeyBottomSheet(secretKey: secretKey),
     );
-  }
-
-  void changeProxyEnabled(BuildContext context, bool value) async {
-    try {
-      final ref = context.ref;
-      final setting = await isar.settings.where().findFirst();
-      setting!.proxyEnabled = value;
-      setting.proxy = Setting().proxy;
-      await isar.writeTxn(() async {
-        isar.settings.put(setting);
-      });
-      ref.emit(settingEmitter, setting);
-    } catch (error) {
-      Logger().e(error);
-    }
   }
 
   void navigate(BuildContext context) {

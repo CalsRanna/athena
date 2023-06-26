@@ -1,4 +1,5 @@
 import 'package:athena/creator/chat.dart';
+import 'package:athena/extension/date_time.dart';
 import 'package:athena/main.dart';
 import 'package:athena/model/chat.dart';
 import 'package:creator/creator.dart';
@@ -64,7 +65,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                   chats[index].messages.isNotEmpty
                       ? DateTime.fromMillisecondsSinceEpoch(
                           chats[index].messages.last.createdAt!,
-                        ).toString().substring(0, 16)
+                        ).toHumanReadableString()
                       : '',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: Theme.of(context).colorScheme.outline,

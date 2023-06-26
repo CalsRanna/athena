@@ -32,6 +32,7 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
+    fetchChat();
     scrollController = ScrollController()
       ..addListener(() {
         setState(() {
@@ -40,12 +41,6 @@ class _ChatPageState extends State<ChatPage> {
         });
       });
     textEditingController = TextEditingController();
-  }
-
-  @override
-  void didChangeDependencies() {
-    fetchChat();
-    super.didChangeDependencies();
   }
 
   @override
@@ -324,7 +319,7 @@ class _ChatPageState extends State<ChatPage> {
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
       });
-      final chats = await isar.chats.where().findAll();
+      final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
       ref.emit(chatsEmitter, chats);
     } catch (error) {
       Logger().e(error);

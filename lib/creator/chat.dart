@@ -5,7 +5,7 @@ import 'package:isar/isar.dart';
 
 final chatsEmitter = Emitter<List<Chat>?>(
   (ref, emit) async {
-    final chats = await isar.chats.where().findAll();
+    final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
     emit(chats);
   },
   name: 'chatsEmitter',
