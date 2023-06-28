@@ -1,6 +1,6 @@
 import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/setting.dart';
+import 'package:athena/schema/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';

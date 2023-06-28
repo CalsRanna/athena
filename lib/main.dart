@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
-import 'package:athena/model/chat.dart';
-import 'package:athena/model/setting.dart';
+import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';

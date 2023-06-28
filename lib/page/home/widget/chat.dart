@@ -1,7 +1,7 @@
 import 'package:athena/creator/chat.dart';
 import 'package:athena/extension/date_time.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/chat.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';

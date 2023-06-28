@@ -1,6 +1,6 @@
 import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/setting.dart';
+import 'package:athena/schema/setting.dart';
 import 'package:athena/page/home/widget/chat.dart';
 import 'package:athena/page/home/widget/setting.dart';
 import 'package:creator/creator.dart';

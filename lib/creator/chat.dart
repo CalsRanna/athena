@@ -1,5 +1,5 @@
 import 'package:athena/main.dart';
-import 'package:athena/model/chat.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:isar/isar.dart';
 
