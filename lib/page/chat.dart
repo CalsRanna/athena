@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:athena/creator/chat.dart';
-import 'package:athena/creator/global.dart';
-import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
+import 'package:athena/model/liaobots_model.dart';
+import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
@@ -28,11 +26,13 @@ class _ChatPageState extends State<ChatPage> {
   bool loading = false;
   bool showFloatingActionButton = false;
   Chat chat = Chat();
+  List<LiaobotsModel> models = [];
 
   @override
   void initState() {
     super.initState();
     fetchChat();
+    getModels();
     scrollController = ScrollController()
       ..addListener(() {
         setState(() {
@@ -157,6 +157,13 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void getModels() async {
+    final models = await LiaobotsProvider().getModels();
+    setState(() {
+      this.models = models;
+    });
+  }
+
   void handleDelete(int index) async {
     setState(() {
       chat.messages.removeRange(index, chat.messages.length);
@@ -200,61 +207,34 @@ class _ChatPageState extends State<ChatPage> {
       chat.messages.add(Message()..role = 'assistant');
     });
     final logger = Logger();
-    final ref = context.ref;
     try {
-      final dio = await ref.read(dioEmitter);
-      final setting = await ref.read(settingEmitter);
       final messages = chat.messages
           .where(
               (message) => message.role != 'error' && message.createdAt != null)
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
-      var content = '';
-      var response = await dio.post(setting.url, data: {
-        "model": setting.model,
-        "messages": messages,
-        "stream": true,
+      final stream = await LiaobotsProvider().getCompletion(
+        messages: messages,
+        model: models.first,
+      );
+      setState(() {
+        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
       });
-      final Stream<List<int>> stream = response.data.stream;
-      stream.listen((codeUnits) {
-        final decodedMessage = utf8.decode(codeUnits);
-        final regExp = RegExp(r'"delta":{"content":[\s\S]*?}');
-        final matches = regExp.allMatches(decodedMessage);
-        if (matches.isNotEmpty) {
-          final choices = matches.elementAt(0).group(0);
-          final decodedJson = json.decode('{$choices}');
-          content += decodedJson['delta']['content'];
-          final now = DateTime.now().millisecondsSinceEpoch;
+      stream.listen(
+        (token) {
           setState(() {
             chat.messages.last.role = 'assistant';
-            chat.messages.last.content = content;
-            chat.messages.last.createdAt = now;
-            chat.updatedAt = now;
+            chat.messages.last.content =
+                '${chat.messages.last.content ?? ''}$token';
+          });
+        },
+        onDone: () {
+          setState(() {
+            chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
           });
           storeChat();
-        }
-      });
-    } on DioException catch (error) {
-      var content = error.type.toString();
-      if (error.type == DioExceptionType.unknown) {
-        content = error.error.toString();
-      }
-      Response? response = error.response;
-      if (response != null) {
-        Stream<List<int>> stream = error.response?.data.stream;
-        final codeUnits = await stream.first;
-        final decodedJson = json.decode(utf8.decode(codeUnits));
-        content = decodedJson['error']['message'];
-      }
-      final message = Message()
-        ..role = 'error'
-        ..content = content
-        ..createdAt = DateTime.now().millisecondsSinceEpoch;
-      setState(() {
-        chat.messages.last = message;
-        chat.updatedAt = chat.messages.last.createdAt;
-      });
-      storeChat();
+        },
+      );
     } catch (error) {
       logger.e(error);
       final message = Message()
@@ -275,39 +255,24 @@ class _ChatPageState extends State<ChatPage> {
 
   generateTitle(String value) async {
     final logger = Logger();
-    final ref = context.ref;
     try {
-      final dio = await ref.read(dioEmitter);
-      final setting = await ref.read(settingEmitter);
-      final messages = [
-        {'role': 'user', 'content': value},
-        {
-          'role': 'user',
-          'content':
-              '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本，如果没有主题，请直接返回“闲聊”。',
-        },
-      ];
-      var content = '';
-      var response = await dio.post(setting.url, data: {
-        "model": setting.model,
-        "messages": messages,
-        "stream": true,
+      final stream = await LiaobotsProvider().getTitle(
+        value: value,
+        model: models.first,
+      );
+      setState(() {
+        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
       });
-      final Stream<List<int>> stream = response.data.stream;
-      stream.listen((codeUnits) {
-        final decodedMessage = utf8.decode(codeUnits);
-        final regExp = RegExp(r'"delta":{"content":[\s\S]*?}');
-        final matches = regExp.allMatches(decodedMessage);
-        if (matches.isNotEmpty) {
-          final choices = matches.elementAt(0).group(0);
-          final decodedJson = json.decode('{$choices}');
-          content += decodedJson['delta']['content'];
+      stream.listen(
+        (token) {
           setState(() {
-            chat.title = content.replaceAll('。', '');
+            chat.title = token.replaceAll('。', '');
           });
+        },
+        onDone: () {
           storeChat();
-        }
-      });
+        },
+      );
     } catch (error) {
       logger.e(error);
     }
