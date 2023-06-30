@@ -1,8 +1,11 @@
+import 'package:athena/creator/account.dart';
 import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
+import 'package:athena/model/liaobots_account.dart';
+import 'package:athena/page/home/widget/account.dart';
+import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/page/home/widget/chat.dart';
-import 'package:athena/page/home/widget/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +23,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool loading = false;
   int selectedIndex = 0;
+
+  @override
+  void didChangeDependencies() {
+    updateAccount();
+    super.didChangeDependencies();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +53,11 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (loading) const CircularProgressIndicator.adaptive(),
             if (loading) const SizedBox(width: 8),
-            Text(selectedIndex == 0 ? 'Athena' : 'Setting'),
+            Text(selectedIndex == 0 ? 'Athena' : 'Account'),
           ],
         ),
       ),
-      body: const [ChatWidget(), SettingWidget()][selectedIndex],
+      body: const [ChatWidget(), AccountWidget()][selectedIndex],
       bottomNavigationBar: NavigationBar(
         destinations: const [
           NavigationDestination(
@@ -56,8 +65,8 @@ class _HomePageState extends State<HomePage> {
             label: 'Chat',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Setting',
+            icon: Icon(Icons.account_circle_outlined),
+            label: 'Account',
           ),
         ],
         selectedIndex: selectedIndex,
@@ -70,6 +79,12 @@ class _HomePageState extends State<HomePage> {
             )
           : null,
     );
+  }
+
+  void updateAccount() async {
+    final ref = context.ref;
+    final response = await LiaobotsProvider().getAccount();
+    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
   }
 
   void triggerDarkMode() async {

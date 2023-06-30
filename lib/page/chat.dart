@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:athena/creator/account.dart';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/main.dart';
+import 'package:athena/model/liaobots_account.dart';
 import 'package:athena/model/liaobots_model.dart';
 import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
@@ -215,7 +217,7 @@ class _ChatPageState extends State<ChatPage> {
           .toList();
       final stream = await LiaobotsProvider().getCompletion(
         messages: messages,
-        model: models.first,
+        model: models.elementAt(1),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
@@ -233,6 +235,7 @@ class _ChatPageState extends State<ChatPage> {
             chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
           });
           storeChat();
+          updateAccount();
         },
       );
     } catch (error) {
@@ -258,7 +261,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final stream = await LiaobotsProvider().getTitle(
         value: value,
-        model: models.first,
+        model: models.elementAt(1),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
@@ -266,16 +269,23 @@ class _ChatPageState extends State<ChatPage> {
       stream.listen(
         (token) {
           setState(() {
-            chat.title = token.replaceAll('。', '');
+            chat.title = '${chat.title ?? ''}$token'.replaceAll('。', '');
           });
         },
         onDone: () {
           storeChat();
+          updateAccount();
         },
       );
     } catch (error) {
       logger.e(error);
     }
+  }
+
+  void updateAccount() async {
+    final ref = context.ref;
+    final response = await LiaobotsProvider().getAccount();
+    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
   }
 
   void storeChat() async {

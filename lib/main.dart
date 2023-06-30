@@ -45,6 +45,7 @@ class _AthenaAppState extends State<AthenaApp> {
     return EmitterWatcher(
       emitter: settingEmitter,
       builder: (context, setting) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         routerConfig: router,
         theme: ThemeData(
           brightness: setting.darkMode ? Brightness.dark : Brightness.light,
