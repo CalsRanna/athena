@@ -25,7 +25,7 @@ class _AccountWidgetState extends State<AccountWidget> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
                     children: [
                       Container(
@@ -34,11 +34,14 @@ class _AccountWidgetState extends State<AccountWidget> {
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             colors: [
-                              Theme.of(context).colorScheme.primary,
                               Theme.of(context)
                                   .colorScheme
                                   .primary
-                                  .withOpacity(0.5)
+                                  .withOpacity(0.75),
+                              Theme.of(context)
+                                  .colorScheme
+                                  .tertiary
+                                  .withOpacity(0.25)
                             ],
                             end: Alignment.bottomRight,
                           ),
@@ -48,7 +51,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                               '超级VIP',
                               style: Theme.of(context)
                                   .textTheme
-                                  .labelSmall
+                                  .labelLarge
                                   ?.copyWith(
                                     color:
                                         Theme.of(context).colorScheme.onPrimary,
@@ -136,6 +139,30 @@ class _AccountWidgetState extends State<AccountWidget> {
               ),
             )
           ],
+        ),
+        const SizedBox(height: 16),
+        ListTile(
+          title: Text('默认模型'),
+          trailing: Text('gpt-4-0613'),
+        ),
+        ListTile(
+          title: Text('上下文数量'),
+          trailing: Text('8条对话'),
+        ),
+        AboutListTile(
+          aboutBoxChildren: [
+            Text(
+              'This is an app used to talk with different ai models, basically chat gpt.',
+            ),
+            Text(
+              'Ask me anything!',
+            ),
+          ],
+          applicationName: 'Athena',
+          applicationLegalese: 'Developed by Cals Ranna',
+          applicationVersion: '1.0.0+17',
+          applicationIcon: FlutterLogo(),
+          child: Text('关于Athena'),
         ),
       ],
     );

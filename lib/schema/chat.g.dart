@@ -40,7 +40,14 @@ const ChatSchema = CollectionSchema(
   deserializeProp: _chatDeserializeProp,
   idName: r'id',
   indexes: {},
-  links: {},
+  links: {
+    r'model': LinkSchema(
+      id: -4043635973569016713,
+      name: r'model',
+      target: r'models',
+      single: true,
+    )
+  },
   embeddedSchemas: {r'Message': MessageSchema},
   getId: _chatGetId,
   getLinks: _chatGetLinks,
@@ -136,11 +143,12 @@ Id _chatGetId(Chat object) {
 }
 
 List<IsarLinkBase<dynamic>> _chatGetLinks(Chat object) {
-  return [];
+  return [object.model];
 }
 
 void _chatAttach(IsarCollection<dynamic> col, Id id, Chat object) {
   object.id = id;
+  object.model.attach(col, col.isar.collection<Model>(), r'model', id);
 }
 
 extension ChatQueryWhereSort on QueryBuilder<Chat, Chat, QWhere> {
@@ -577,7 +585,19 @@ extension ChatQueryObject on QueryBuilder<Chat, Chat, QFilterCondition> {
   }
 }
 
-extension ChatQueryLinks on QueryBuilder<Chat, Chat, QFilterCondition> {}
+extension ChatQueryLinks on QueryBuilder<Chat, Chat, QFilterCondition> {
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> model(FilterQuery<Model> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'model');
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> modelIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'model', 0, true, 0, true);
+    });
+  }
+}
 
 extension ChatQuerySortBy on QueryBuilder<Chat, Chat, QSortBy> {
   QueryBuilder<Chat, Chat, QAfterSortBy> sortByTitle() {

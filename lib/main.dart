@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/model.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
@@ -16,7 +17,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final directory = await getApplicationSupportDirectory();
   isar = await Isar.open(
-    [ChatSchema, SettingSchema],
+    [ChatSchema, ModelSchema, SettingSchema],
     directory: directory.path,
   );
   runApp(CreatorGraph(child: const AthenaApp()));
@@ -45,11 +46,9 @@ class _AthenaAppState extends State<AthenaApp> {
     return EmitterWatcher(
       emitter: settingEmitter,
       builder: (context, setting) => MaterialApp.router(
-        debugShowCheckedModeBanner: false,
         routerConfig: router,
         theme: ThemeData(
           brightness: setting.darkMode ? Brightness.dark : Brightness.light,
-          colorSchemeSeed: const Color.fromRGBO(74, 161, 129, 1),
           useMaterial3: true,
         ),
       ),

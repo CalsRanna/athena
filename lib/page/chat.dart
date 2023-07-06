@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:athena/creator/account.dart';
 import 'package:athena/creator/chat.dart';
+import 'package:athena/creator/model.dart';
 import 'package:athena/main.dart';
 import 'package:athena/model/liaobots_account.dart';
 import 'package:athena/model/liaobots_model.dart';
@@ -28,14 +29,11 @@ class _ChatPageState extends State<ChatPage> {
   bool loading = false;
   bool showFloatingActionButton = false;
   Chat chat = Chat();
-  List<LiaobotsModel> models = [];
-  int currentModel = 1;
 
   @override
   void initState() {
     super.initState();
     fetchChat();
-    getModels();
     scrollController = ScrollController()
       ..addListener(() {
         setState(() {
@@ -44,6 +42,12 @@ class _ChatPageState extends State<ChatPage> {
         });
       });
     textEditingController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    setDefaultModel();
+    super.didChangeDependencies();
   }
 
   @override
@@ -118,23 +122,17 @@ class _ChatPageState extends State<ChatPage> {
                             FocusScope.of(context).unfocus(),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2.0,
+                    SizedBox(width: 16),
+                    IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primaryContainer,
                       ),
-                      child: IconButton(
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: selectModel,
-                        icon: const Icon(Icons.expand_less_outlined),
+                      onPressed: selectModel,
+                      icon: Icon(
+                        Icons.explore_outlined,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        size: 32,
                       ),
                     )
                   ],
@@ -157,11 +155,17 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void getModels() async {
-    final models = await LiaobotsProvider().getModels();
-    setState(() {
-      this.models = models;
-    });
+  Future<void> setDefaultModel() async {
+    final ref = context.ref;
+    final models = ref.read(modelsCreator);
+    if (chat.model.value != null) return;
+    chat.model.value = models.elementAt(1);
+    if (chat.messages.isNotEmpty) {
+      await isar.writeTxn(() async {
+        await isar.chats.put(chat);
+        await chat.model.save();
+      });
+    }
   }
 
   void handleDelete(int index) async {
@@ -202,25 +206,40 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void selectModel() {
+    final models = context.ref.read(modelsCreator);
     showModalBottomSheet(
       context: context,
       builder: (context) => ListView.builder(
-        itemBuilder: (context, index) => ListTile(
-          title: Text(models[index].id),
-          trailing: currentModel == index ? Icon(Icons.check_outlined) : null,
-          onTap: () => handleSelect(index),
-        ),
+        itemBuilder: (context, index) {
+          var selected = false;
+          if (chat.model.value == null) {
+            selected = true;
+          } else {
+            selected = models[index].id == chat.model.value?.id;
+          }
+          return ListTile(
+            title: Text(models[index].modelId),
+            trailing: selected ? Icon(Icons.check_outlined) : null,
+            onTap: () => handleSelect(index),
+          );
+        },
         itemCount: models.length,
         padding: EdgeInsets.symmetric(vertical: 8),
       ),
     );
   }
 
-  void handleSelect(int index) {
-    setState(() {
-      currentModel = index;
+  void handleSelect(int index) async {
+    final ref = context.ref;
+    final navigator = Navigator.of(context);
+    final models = ref.read(modelsCreator);
+    chat.model.value = models[index];
+    await isar.writeTxn(() async {
+      chat.model.value = models[index];
+      await isar.chats.put(chat);
+      await chat.model.save();
     });
-    Navigator.of(context).pop();
+    navigator.pop();
   }
 
   Future<void> fetchResponse() async {
@@ -233,11 +252,22 @@ class _ChatPageState extends State<ChatPage> {
       final messages = chat.messages
           .where(
               (message) => message.role != 'error' && message.createdAt != null)
+          .toList();
+      final limitedMessages = messages.reversed
+          .take(8)
+          .toList()
+          .reversed
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
+      final model = chat.model.value!;
       final stream = await LiaobotsProvider().getCompletion(
-        messages: messages,
-        model: models.elementAt(currentModel),
+        messages: limitedMessages,
+        model: LiaobotsModel.fromJson({
+          "id": model.modelId,
+          "maxLength": model.maxLength,
+          "name": model.name,
+          "tokenLimit": model.tokenLimit
+        }),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
@@ -279,9 +309,15 @@ class _ChatPageState extends State<ChatPage> {
   generateTitle(String value) async {
     final logger = Logger();
     try {
+      final model = chat.model.value!;
       final stream = await LiaobotsProvider().getTitle(
         value: value,
-        model: models.elementAt(currentModel),
+        model: LiaobotsModel.fromJson({
+          "id": model.modelId,
+          "maxLength": model.maxLength,
+          "name": model.name,
+          "tokenLimit": model.tokenLimit
+        }),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;

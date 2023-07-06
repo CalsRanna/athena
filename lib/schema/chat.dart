@@ -1,3 +1,4 @@
+import 'package:athena/schema/model.dart';
 import 'package:isar/isar.dart';
 
 part 'chat.g.dart';
@@ -7,6 +8,7 @@ part 'chat.g.dart';
 class Chat {
   Id id = Isar.autoIncrement;
   List<Message> messages = [];
+  final model = IsarLink<Model>();
   String? title;
   @Name('updated_at')
   int? updatedAt;
