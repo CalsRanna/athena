@@ -281,7 +281,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final stream = await LiaobotsProvider().getTitle(
         value: value,
-        model: models.elementAt(1),
+        model: models.elementAt(currentModel),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
