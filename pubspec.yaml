@@ -38,4 +38,5 @@ flutter:
   uses-material-design: true
 
   assets:
+    - asset/
     - asset/image/flutter_icon.png

@@ -206,7 +206,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       builder: (context) => ListView.builder(
         itemBuilder: (context, index) => ListTile(
-          title: Text(models[index].name),
+          title: Text(models[index].id),
           trailing: currentModel == index ? Icon(Icons.check_outlined) : null,
           onTap: () => handleSelect(index),
         ),
