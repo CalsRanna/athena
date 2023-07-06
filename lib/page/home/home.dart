@@ -51,9 +51,9 @@ class _HomePageState extends State<HomePage> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (loading) const CircularProgressIndicator.adaptive(),
-            if (loading) const SizedBox(width: 8),
             Text(selectedIndex == 0 ? 'Athena' : 'Account'),
+            if (loading) const SizedBox(width: 8),
+            if (loading) const CircularProgressIndicator.adaptive(),
           ],
         ),
       ),
@@ -83,8 +83,32 @@ class _HomePageState extends State<HomePage> {
 
   void updateAccount() async {
     final ref = context.ref;
-    final response = await LiaobotsProvider().getAccount();
-    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
+    final account = ref.read(accountCreator);
+    if (account != null) return;
+    setState(() {
+      loading = true;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    try {
+      final response = await LiaobotsProvider().getAccount();
+      ref.set(accountCreator, LiaobotsAccount.fromJson(response));
+      setState(() {
+        loading = false;
+      });
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(
+        backgroundColor: scheme.error,
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          error.toString(),
+          style: TextStyle(color: scheme.onError),
+        ),
+      ));
+      setState(() {
+        loading = false;
+      });
+    }
   }
 
   void triggerDarkMode() async {

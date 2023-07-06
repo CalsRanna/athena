@@ -29,6 +29,7 @@ class _ChatPageState extends State<ChatPage> {
   bool showFloatingActionButton = false;
   Chat chat = Chat();
   List<LiaobotsModel> models = [];
+  int currentModel = 1;
 
   @override
   void initState() {
@@ -108,28 +109,6 @@ class _ChatPageState extends State<ChatPage> {
                           hintText: 'Ask me anything...',
                           isCollapsed: false,
                           isDense: true,
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2.0,
-                            ),
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer,
-                                foregroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onPressed: () =>
-                                  handleSubmitted(textEditingController.text),
-                              child: const Icon(Icons.send_outlined),
-                            ),
-                          ),
                         ),
                         maxLines: 1,
                         textInputAction: TextInputAction.send,
@@ -139,6 +118,25 @@ class _ChatPageState extends State<ChatPage> {
                             FocusScope.of(context).unfocus(),
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2.0,
+                      ),
+                      child: IconButton(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: selectModel,
+                        icon: const Icon(Icons.expand_less_outlined),
+                      ),
+                    )
                   ],
                 ),
               ),
@@ -203,6 +201,28 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void selectModel() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => ListView.builder(
+        itemBuilder: (context, index) => ListTile(
+          title: Text(models[index].name),
+          trailing: currentModel == index ? Icon(Icons.check_outlined) : null,
+          onTap: () => handleSelect(index),
+        ),
+        itemCount: models.length,
+        padding: EdgeInsets.symmetric(vertical: 8),
+      ),
+    );
+  }
+
+  void handleSelect(int index) {
+    setState(() {
+      currentModel = index;
+    });
+    Navigator.of(context).pop();
+  }
+
   Future<void> fetchResponse() async {
     setState(() {
       loading = true;
@@ -217,7 +237,7 @@ class _ChatPageState extends State<ChatPage> {
           .toList();
       final stream = await LiaobotsProvider().getCompletion(
         messages: messages,
-        model: models.elementAt(1),
+        model: models.elementAt(currentModel),
       );
       setState(() {
         chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;

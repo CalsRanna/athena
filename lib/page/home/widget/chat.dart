@@ -92,7 +92,7 @@ class _ChatWidgetState extends State<ChatWidget> {
       await isar.writeTxn(() async {
         await isar.chats.delete(id);
       });
-      final chats = await isar.chats.where().findAll();
+      final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
       ref.emit(chatsEmitter, chats);
     } catch (error) {
       Logger().e(error);

@@ -58,7 +58,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                       const SizedBox(height: 8),
                       Watcher(
                         (context, ref, child) => Text(
-                          '过期时间：${formatExpireDate(ref.read(accountCreator).expireDate)}',
+                          '过期时间：${formatExpireDate(ref.read(accountCreator)?.expireDate ?? 0)}',
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       )
@@ -90,11 +90,11 @@ class _AccountWidgetState extends State<AccountWidget> {
                         Watcher(
                           (context, ref, child) => Text.rich(
                             TextSpan(
-                              text: '${ref.read(accountCreator).balance} / ',
+                              text: '${ref.read(accountCreator)?.balance} / ',
                               style: Theme.of(context).textTheme.headlineLarge,
                               children: [
                                 TextSpan(
-                                  text: '${ref.read(accountCreator).amount}',
+                                  text: '${ref.read(accountCreator)?.amount}',
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 )
                               ],
@@ -125,7 +125,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                         const SizedBox(height: 8),
                         Watcher(
                           (context, ref, child) => Text(
-                            '${ref.read(accountCreator).gpt4}',
+                            '${ref.read(accountCreator)?.gpt4}',
                             style: Theme.of(context).textTheme.headlineLarge,
                           ),
                         )
