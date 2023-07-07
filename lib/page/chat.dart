@@ -149,7 +149,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void fetchChat() async {
+  Future<void> fetchChat() async {
     if (widget.id != null) {
       final exist = await isar.chats.get(widget.id!);
       setState(() {
@@ -171,7 +171,7 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void handleDelete(int index) async {
+  Future<void> handleDelete(int index) async {
     final realIndex = chat.messages.length - 1 - index;
     setState(() {
       chat.messages.removeRange(realIndex, chat.messages.length);
@@ -191,12 +191,12 @@ class _ChatPageState extends State<ChatPage> {
     textEditingController.text = message.content ?? '';
   }
 
-  void handleRetry(int index) async {
+  Future<void> handleRetry(int index) async {
     handleDelete(index);
     await fetchResponse();
   }
 
-  void handleSubmitted(String value) async {
+  Future<void> handleSubmitted(String value) async {
     final trimmedValue = value.trim().replaceAll('\n', '');
     if (trimmedValue.isEmpty) return;
     final message = Message()
@@ -238,7 +238,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void handleSelect(int index) async {
+  Future<void> handleSelect(int index) async {
     final ref = context.ref;
     final navigator = Navigator.of(context);
     final models = ref.read(modelsCreator);
@@ -313,7 +313,7 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  generateTitle(String value) async {
+  Future<void> generateTitle(String value) async {
     final logger = Logger();
     try {
       final model = chat.model.value!;
@@ -345,13 +345,13 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void updateAccount() async {
+  Future<void> updateAccount() async {
     final ref = context.ref;
     final response = await LiaobotsProvider().getAccount();
     ref.set(accountCreator, LiaobotsAccount.fromJson(response));
   }
 
-  void storeChat() async {
+  Future<void> storeChat() async {
     try {
       final ref = context.ref;
       await isar.writeTxn(() async {
