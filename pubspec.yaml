@@ -2,7 +2,7 @@ name: athena
 description: A new Flutter project.
 publish_to: "none"
 
-version: 1.0.0+18
+version: 1.0.0+19
 
 environment:
   sdk: ">=2.19.2 <3.0.0"
@@ -33,10 +33,25 @@ dev_dependencies:
   freezed: ^2.3.5
   isar_generator: ^3.0.5
   json_serializable: ^6.6.1
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
 
   assets:
     - asset/
-    - asset/image/flutter_icon.png
+    - asset/image/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "asset/image/icon.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  web:
+    generate: true
+  windows:
+    generate: true
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true

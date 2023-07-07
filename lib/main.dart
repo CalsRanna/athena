@@ -57,7 +57,7 @@ class _AthenaAppState extends State<AthenaApp> {
 
   initTray() async {
     if (Platform.isMacOS) {
-      await tray.initSystemTray(iconPath: 'asset/image/flutter_icon.png');
+      await tray.initSystemTray(iconPath: 'asset/image/icon.png');
     }
   }
 }
