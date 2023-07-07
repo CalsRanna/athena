@@ -64,7 +64,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 trailing: Text(
                   chats[index].messages.isNotEmpty
                       ? DateTime.fromMillisecondsSinceEpoch(
-                          chats[index].messages.last.createdAt!,
+                          chats[index].updatedAt!,
                         ).toHumanReadableString()
                       : '',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(

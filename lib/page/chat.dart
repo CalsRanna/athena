@@ -169,9 +169,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void handleDelete(int index) async {
+    final realIndex = chat.messages.length - 1 - index;
     setState(() {
-      chat.messages.removeRange(index, chat.messages.length);
+      chat.messages.removeRange(realIndex, chat.messages.length);
       if (chat.messages.isEmpty) {
+        chat.title = null;
         chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
       } else {
         chat.updatedAt = chat.messages.last.createdAt;
@@ -181,11 +183,15 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void handleEdit(int index) {
-    final message = chat.messages.elementAt(index);
+    final realIndex = chat.messages.length - 1 - index;
+    final message = chat.messages.elementAt(realIndex);
     textEditingController.text = message.content ?? '';
   }
 
-  void handleRetry(int index) {}
+  void handleRetry(int index) async {
+    handleDelete(index);
+    await fetchResponse();
+  }
 
   void handleSubmitted(String value) async {
     final trimmedValue = value.trim().replaceAll('\n', '');
@@ -325,7 +331,7 @@ class _ChatPageState extends State<ChatPage> {
       stream.listen(
         (token) {
           setState(() {
-            chat.title = '${chat.title ?? ''}$token'.replaceAll('。', '');
+            chat.title = '${chat.title ?? ''}$token'.trim().replaceAll('。', '');
           });
         },
         onDone: () {
@@ -450,7 +456,7 @@ class ChatTile extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(width: 4),
-                      if (message.role == 'assistant')
+                      if (message.role != 'user')
                         GestureDetector(
                           onTap: () => onRetry?.call(),
                           child: Text(
@@ -479,18 +485,20 @@ class ChatTile extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(width: 4),
-                      GestureDetector(
-                        onTap: () => copy(context, message),
-                        child: Text(
-                          '复制',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                        ),
-                      )
+                      if (message.role != 'error')
+                        GestureDetector(
+                          onTap: () => copy(context, message),
+                          child: Text(
+                            '复制',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color:
+                                      Theme.of(context).colorScheme.secondary,
+                                ),
+                          ),
+                        )
                     ],
                   ),
                 if (message.createdAt != null) const SizedBox(height: 2),
