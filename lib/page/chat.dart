@@ -73,7 +73,10 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text(chat.title ?? '', overflow: TextOverflow.ellipsis),
+        title: Text(
+          loading ? '对方正在输入...' : chat.title ?? '',
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
       body: Column(
         children: [
@@ -289,6 +292,7 @@ class _ChatPageState extends State<ChatPage> {
         onDone: () {
           setState(() {
             chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+            loading = false;
           });
           storeChat();
           updateAccount();
@@ -303,12 +307,9 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         chat.messages.last = message;
         chat.updatedAt = chat.messages.last.createdAt;
-      });
-      storeChat();
-    } finally {
-      setState(() {
         loading = false;
       });
+      storeChat();
     }
   }
 
@@ -504,8 +505,7 @@ class ChatTile extends StatelessWidget {
                 if (message.createdAt != null) const SizedBox(height: 2),
                 if (message.createdAt != null)
                   SelectableText(message.content ?? ''),
-                if (message.createdAt == null)
-                  const CircularProgressIndicator.adaptive(),
+                if (message.createdAt == null) const Text('正在思考...'),
               ],
             ),
           ),
