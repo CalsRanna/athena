@@ -140,30 +140,6 @@ class _AccountWidgetState extends State<AccountWidget> {
             )
           ],
         ),
-        const SizedBox(height: 16),
-        ListTile(
-          title: Text('默认模型'),
-          trailing: Text('gpt-4-0613'),
-        ),
-        ListTile(
-          title: Text('上下文数量'),
-          trailing: Text('8条对话'),
-        ),
-        AboutListTile(
-          aboutBoxChildren: [
-            Text(
-              'This is an app used to talk with different ai models, basically chat gpt.',
-            ),
-            Text(
-              'Ask me anything!',
-            ),
-          ],
-          applicationName: 'Athena',
-          applicationLegalese: 'Developed by Cals Ranna',
-          applicationVersion: '1.0.0+17',
-          applicationIcon: FlutterLogo(),
-          child: Text('关于Athena'),
-        ),
       ],
     );
   }
