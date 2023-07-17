@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena/main.dart';
 import 'package:athena/model/liaobots_model.dart';
+import 'package:athena/schema/cookie.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:isar/isar.dart';
 
 class LiaobotsProvider {
   final Dio dio = Dio();
@@ -50,12 +53,34 @@ class LiaobotsProvider {
 
   Future<Map<String, String>> _getKey() async {
     final bytes = await rootBundle.load('asset/liaobots.key');
-    final content = utf8.decode(bytes.buffer.asUint8List());
-    final patterns = content.split('\n');
-    return {
-      'authCode': patterns.first.split('=').last,
-      'cookie': patterns.last.split('=').last
-    };
+    final authCode = utf8.decode(bytes.buffer.asUint8List());
+    final cookie = await _getCookie();
+    return {'authCode': authCode, 'cookie': cookie};
+  }
+
+  Future<String> _getCookie() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    var cookie = await isar.cookies.where().findFirst();
+    if (cookie == null || cookie.expiredAt <= now) {
+      final response = await dio.post(
+        'https://liaobots.work/recaptcha/api/login',
+        data: {"token": "abcdefghijklmnopqrst"},
+      );
+      var headers = response.headers.value('Set-Cookie')?.split(';');
+      cookie = Cookie();
+      headers?.forEach((header) {
+        final patterns = header.split('=');
+        if (patterns[0] == 'gkp2') {
+          cookie!.cookie = patterns[1];
+        }
+        if (patterns[0] == 'Max-Age') {
+          final maxAge = int.parse(patterns[1]);
+          cookie!.expiredAt = now + maxAge;
+        }
+      });
+      await isar.writeTxn(() async => await isar.cookies.put(cookie!));
+    }
+    return cookie.cookie;
   }
 
   Future<Stream<String>> _request({

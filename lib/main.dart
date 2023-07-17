@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/cookie.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/router/router.dart';
@@ -17,7 +18,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final directory = await getApplicationSupportDirectory();
   isar = await Isar.open(
-    [ChatSchema, ModelSchema, SettingSchema],
+    [ChatSchema, CookieSchema, ModelSchema, SettingSchema],
     directory: directory.path,
   );
   runApp(CreatorGraph(child: const AthenaApp()));
