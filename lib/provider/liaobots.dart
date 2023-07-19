@@ -60,7 +60,7 @@ class LiaobotsProvider {
 
   Future<String> _getCookie() async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    var cookie = await isar.cookies.where().findFirst();
+    var cookie = await isar.cookies.where().sortByExpiredAtDesc().findFirst();
     if (cookie == null || cookie.expiredAt <= now) {
       final response = await dio.post(
         'https://liaobots.work/recaptcha/api/login',

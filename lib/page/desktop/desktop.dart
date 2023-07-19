@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:athena/extension/date_time.dart';
 import 'package:athena/main.dart';
+import 'package:athena/model/liaobots_account.dart';
 import 'package:athena/model/liaobots_model.dart';
 import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
-// import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_widget/markdown_widget.dart';
@@ -21,6 +23,11 @@ class _DesktopState extends State<Desktop> {
   List<Chat> chats = [];
   List<Model> models = [];
   Chat chat = Chat();
+  int current = 0;
+  bool showFloatingActionButton = false;
+  LiaobotsAccount account =
+      LiaobotsAccount(amount: 0, balance: 0, gpt4: 0, expireDate: 0);
+  bool streaming = false;
   late ScrollController scrollController;
   late TextEditingController textEditingController;
 
@@ -32,6 +39,7 @@ class _DesktopState extends State<Desktop> {
     init();
     getChats();
     updateModels();
+    updateAccount();
   }
 
   @override
@@ -43,6 +51,11 @@ class _DesktopState extends State<Desktop> {
 
   void init() async {
     scrollController = ScrollController();
+    scrollController.addListener(() {
+      setState(() {
+        showFloatingActionButton = scrollController.position.extentBefore != 0;
+      });
+    });
     textEditingController = TextEditingController();
   }
 
@@ -57,28 +70,31 @@ class _DesktopState extends State<Desktop> {
     var models = await isar.models.where().findAll();
     setState(() {
       this.models = models;
+      chat.model.value = models[0];
     });
-    try {
-      final liaobotsModels = await LiaobotsProvider().getModels();
-      models = liaobotsModels
-          .map((model) => Model()
-            ..maxLength = model.maxLength
-            ..modelId = model.id
-            ..name = model.name
-            ..tokenLimit = model.tokenLimit)
-          .toList();
-      await isar.writeTxn(() async {
-        await isar.models.clear();
-        await isar.models.putAll(models);
-      });
-      setState(() {
-        this.models = models;
-        chat.model.value = models[0];
-      });
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+    if (models.isEmpty) {
+      try {
+        final liaobotsModels = await LiaobotsProvider().getModels();
+        models = liaobotsModels
+            .map((model) => Model()
+              ..maxLength = model.maxLength
+              ..modelId = model.id
+              ..name = model.name
+              ..tokenLimit = model.tokenLimit)
+            .toList();
+        await isar.writeTxn(() async {
+          await isar.models.clear();
+          await isar.models.putAll(models);
+        });
+        setState(() {
+          this.models = models;
+          chat.model.value = models[0];
+        });
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
     }
   }
 
@@ -97,65 +113,48 @@ class _DesktopState extends State<Desktop> {
                   children: [
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: createChat,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onPrimary
-                                      .withOpacity(0.25),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              height: 48,
-                              width: 180,
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.add,
-                                    size: 20,
-                                    color:
-                                        Theme.of(context).colorScheme.onPrimary,
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: createChat,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimary
+                                        .withOpacity(0.25),
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'New Chat',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary,
-                                        ),
-                                  )
-                                ],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                height: 48,
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.add,
+                                      size: 20,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimary,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'New Chat',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onPrimary,
+                                          ),
+                                    )
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimary
-                                  .withOpacity(0.25),
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          height: 48,
-                          width: 48,
-                          child: Icon(
-                            Icons.space_dashboard_outlined,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.onPrimary,
                           ),
                         ),
                       ],
@@ -167,6 +166,7 @@ class _DesktopState extends State<Desktop> {
                           return _ChatTile(
                             active: chats[index].id == chat.id,
                             chat: chats[index],
+                            onDelete: () => deleteChat(index),
                             onTap: () => selectChat(index),
                           );
                         },
@@ -176,23 +176,9 @@ class _DesktopState extends State<Desktop> {
                         },
                       ),
                     ),
-                    Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                      ),
-                      height: 48,
-                      width: 256,
-                      child: Text(
-                        'Some Information',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                            ),
-                      ),
+                    _AccountInformation(
+                      balance: account.balance,
+                      discount: account.gpt4,
                     )
                   ],
                 ),
@@ -207,7 +193,7 @@ class _DesktopState extends State<Desktop> {
                     children: [
                       if (models.isNotEmpty)
                         _ModelSwitcher(
-                          current: 0,
+                          current: current,
                           models: models,
                           onChange: handleSelect,
                         ),
@@ -292,14 +278,26 @@ class _DesktopState extends State<Desktop> {
                               ),
                             ),
                             SizedBox(width: 16),
-                            Icon(
-                              Icons.send,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outline
-                                  .withOpacity(0.25),
-                              size: 20,
-                            )
+                            streaming
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outline
+                                          .withOpacity(0.25),
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.send,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .outline
+                                        .withOpacity(0.25),
+                                    size: 20,
+                                  )
                           ],
                         ),
                       )
@@ -309,19 +307,20 @@ class _DesktopState extends State<Desktop> {
               )
             ],
           ),
-          Positioned(
-            right: 32,
-            bottom: 80,
-            child: FloatingActionButton(
-              mini: true,
-              shape: CircleBorder(),
-              onPressed: () {},
-              child: Icon(
-                Icons.arrow_downward_outlined,
-                size: 20,
+          if (showFloatingActionButton)
+            Positioned(
+              right: 32,
+              bottom: 80,
+              child: FloatingActionButton(
+                mini: true,
+                shape: CircleBorder(),
+                onPressed: scrollToBottom,
+                child: Icon(
+                  Icons.arrow_downward_outlined,
+                  size: 20,
+                ),
               ),
-            ),
-          )
+            )
         ],
       ),
     );
@@ -330,16 +329,41 @@ class _DesktopState extends State<Desktop> {
   void createChat() {
     setState(() {
       chat = Chat();
+      chat.model.value = models[0];
+      current = 0;
     });
+  }
+
+  void deleteChat(int index) async {
+    final chat = chats.removeAt(index);
+    setState(() {
+      chats = chats;
+      this.chat = Chat();
+      current = 0;
+    });
+    try {
+      await isar.writeTxn(() async {
+        await isar.chats.delete(chat.id);
+      });
+    } catch (error) {
+      Logger().e(error);
+    }
   }
 
   void selectChat(int index) {
     setState(() {
       chat = chats[index].withGrowableMessages();
+      var modelIndex = models
+          .indexWhere((model) => chat.model.value?.modelId == model.modelId);
+      current = modelIndex >= 0 ? modelIndex : 0;
     });
   }
 
   Future<void> handleSubmitted(String value) async {
+    scrollToBottom();
+    setState(() {
+      streaming = true;
+    });
     final trimmedValue = value.trim().replaceAll('\n', '');
     if (trimmedValue.isEmpty) return;
     final message = Message()
@@ -374,7 +398,6 @@ class _DesktopState extends State<Desktop> {
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
       final model = chat.model.value ?? models[0];
-      print(model.name);
       final stream = await LiaobotsProvider().getCompletion(
         messages: limitedMessages,
         model: LiaobotsModel.fromJson({
@@ -398,6 +421,7 @@ class _DesktopState extends State<Desktop> {
         onDone: () {
           setState(() {
             chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+            streaming = false;
           });
           storeChat();
           updateAccount();
@@ -412,6 +436,7 @@ class _DesktopState extends State<Desktop> {
       setState(() {
         chat.messages.last = message;
         chat.updatedAt = chat.messages.last.createdAt;
+        streaming = false;
       });
       storeChat();
     }
@@ -450,17 +475,17 @@ class _DesktopState extends State<Desktop> {
   }
 
   Future<void> updateAccount() async {
-    // final ref = context.ref;
-    // final response = await LiaobotsProvider().getAccount();
-    // ref.set(accountCreator, LiaobotsAccount.fromJson(response));
+    final response = await LiaobotsProvider().getAccount();
+    setState(() {
+      account = LiaobotsAccount.fromJson(response);
+    });
   }
 
   Future<void> storeChat() async {
     try {
-      // final ref = context.ref;
-      chat.model.value = models[0];
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
+        await chat.model.save();
       });
       final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
       setState(() {
@@ -472,33 +497,66 @@ class _DesktopState extends State<Desktop> {
   }
 
   Future<void> handleSelect(int index) async {
-    chat.model.value = models[index];
-    await isar.writeTxn(() async {
+    setState(() {
+      current = index;
       chat.model.value = models[index];
-      await isar.chats.put(chat);
-      await chat.model.save();
+    });
+    if (chat.messages.isNotEmpty) {
+      await isar.writeTxn(() async {
+        chat.model.value = models[index];
+        await isar.chats.put(chat);
+        await chat.model.save();
+      });
+    }
+  }
+
+  void scrollToBottom() {
+    Timer(const Duration(milliseconds: 16), () {
+      scrollController.animateTo(
+        scrollController.position.minScrollExtent,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutQuart,
+      );
     });
   }
 }
 
 class _ChatTile extends StatelessWidget {
-  const _ChatTile({this.active = false, required this.chat, this.onTap});
+  const _ChatTile({
+    this.active = false,
+    required this.chat,
+    this.onDelete,
+    this.onTap,
+  });
 
   final bool active;
   final Chat chat;
+  final void Function()? onDelete;
   final void Function()? onTap;
 
   String get title => chat.title ?? '';
 
   String get updatedAt {
-    if (chat.messages.isEmpty) return '';
+    if (chat.updatedAt == null) return '';
     final dateTime = DateTime.fromMillisecondsSinceEpoch(chat.updatedAt!);
     return dateTime.toHumanReadableString();
   }
 
   IconData get icon {
-    if (chat.model.value?.name == 'GPT-4') return Icons.chat_bubble;
-    return Icons.chat_bubble_outline;
+    switch (chat.model.value?.name) {
+      case 'GPT-3.5-16k':
+        return Icons.chat_bubble_outline;
+      case 'GPT-4':
+        return Icons.chat_bubble;
+      case 'claude-v1.3':
+        return Icons.comment_bank_outlined;
+      case 'claude-instant-100k':
+        return Icons.comment_bank;
+      case 'claude-2-100k':
+        return Icons.reviews;
+      default:
+        return Icons.announcement_outlined;
+    }
   }
 
   @override
@@ -507,6 +565,7 @@ class _ChatTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final primary = colorScheme.inversePrimary;
     final onPrimary = colorScheme.onPrimary;
+    final error = colorScheme.error;
     final textTheme = theme.textTheme;
     final titleMedium = textTheme.titleMedium;
     final titleSmall = textTheme.titleSmall;
@@ -537,13 +596,46 @@ class _ChatTile extends StatelessWidget {
                   style: titleMedium?.copyWith(color: onPrimary),
                 ),
               ),
-              Text(
-                updatedAt,
-                style: titleSmall?.copyWith(color: onPrimary.withOpacity(0.5)),
-              )
+              if (active)
+                GestureDetector(
+                  onTap: onDelete,
+                  child: Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: error,
+                  ),
+                ),
+              if (!active)
+                Text(
+                  updatedAt,
+                  style:
+                      titleSmall?.copyWith(color: onPrimary.withOpacity(0.5)),
+                )
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AccountInformation extends StatelessWidget {
+  const _AccountInformation({super.key, this.balance = 0, this.discount = 0});
+
+  final double balance;
+  final int discount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      height: 48,
+      width: 256,
+      child: Text(
+        '¥$balance/$discount',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
       ),
     );
   }
@@ -576,10 +668,16 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
     );
     controller.addListener(() {
       setState(() {
-        offset = controller.value * 142;
+        offset = controller.value * 150;
       });
     });
     controller.animateTo(widget.current.toDouble());
+  }
+
+  @override
+  void didUpdateWidget(_ModelSwitcher oldWidget) {
+    controller.animateTo(widget.current.toDouble());
+    super.didUpdateWidget(oldWidget);
   }
 
   @override
@@ -591,7 +689,6 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: widget.models.length * 150,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: Theme.of(context).colorScheme.surfaceVariant,
@@ -601,7 +698,7 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
         children: [
           Positioned(
             left: offset,
-            width: 142,
+            width: 150,
             child: Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -612,6 +709,7 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
             ),
           ),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: List.generate(widget.models.length, (index) {
               return _ModelSwitcherTile(
                 name: widget.models[index].name,
@@ -644,7 +742,7 @@ class _ModelSwitcherTile extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Container(
           alignment: Alignment.center,
-          width: 142,
+          width: 150,
           padding: EdgeInsets.all(12),
           child: Text(
             name,

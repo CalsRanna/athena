@@ -26,6 +26,7 @@ void main() async {
   final options = WindowOptions(
     center: true,
     size: Size(1200, 900),
+    titleBarStyle: TitleBarStyle.hidden,
     windowButtonVisibility: false,
   );
   windowManager.waitUntilReadyToShow(options, () async {
