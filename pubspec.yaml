@@ -23,6 +23,9 @@ dependencies:
   flutter_slidable: ^3.0.0
   system_tray: ^2.0.2
   path_provider: ^2.0.15
+  window_manager: ^0.3.5
+  flutter_markdown: ^0.6.17
+  markdown_widget: ^2.2.0
 
 dev_dependencies:
   flutter_test:

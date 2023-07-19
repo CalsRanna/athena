@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:system_tray/system_tray.dart';
+import 'package:window_manager/window_manager.dart';
 
 late Isar isar;
 void main() async {
@@ -21,6 +22,16 @@ void main() async {
     [ChatSchema, CookieSchema, ModelSchema, SettingSchema],
     directory: directory.path,
   );
+  await windowManager.ensureInitialized();
+  final options = WindowOptions(
+    center: true,
+    size: Size(1200, 900),
+    windowButtonVisibility: false,
+  );
+  windowManager.waitUntilReadyToShow(options, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
   runApp(CreatorGraph(child: const AthenaApp()));
 }
 

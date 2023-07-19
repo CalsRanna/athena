@@ -1,10 +1,21 @@
+import 'dart:io';
+
 import 'package:athena/page/advanced.dart';
 import 'package:athena/page/chat.dart';
+import 'package:athena/page/desktop/desktop.dart';
 import 'package:athena/page/home/home.dart';
 import 'package:go_router/go_router.dart';
 
 final router = GoRouter(routes: [
-  GoRoute(builder: (_, __) => const HomePage(), path: '/'),
+  GoRoute(
+      builder: (_, __) {
+        if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+          return const Desktop();
+        } else {
+          return const HomePage();
+        }
+      },
+      path: '/'),
   GoRoute(builder: (_, __) => const ChatPage(), path: '/chat'),
   GoRoute(
     builder: (_, state) =>
