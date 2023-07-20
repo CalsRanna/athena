@@ -27,7 +27,7 @@ void main() async {
     center: true,
     size: Size(1200, 900),
     titleBarStyle: TitleBarStyle.hidden,
-    windowButtonVisibility: false,
+    // windowButtonVisibility: false,
   );
   windowManager.waitUntilReadyToShow(options, () async {
     await windowManager.show();

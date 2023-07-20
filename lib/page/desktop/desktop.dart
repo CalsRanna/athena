@@ -8,6 +8,7 @@ import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_widget/markdown_widget.dart';
@@ -100,6 +101,13 @@ class _DesktopState extends State<Desktop> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onSurface = colorScheme.onSurface;
+    final outline = colorScheme.outline;
+    final textTheme = theme.textTheme;
+    final displayLarge = textTheme.displayLarge;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -107,58 +115,11 @@ class _DesktopState extends State<Desktop> {
             children: [
               Container(
                 color: Theme.of(context).colorScheme.primary,
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.fromLTRB(8, 28, 8, 8),
                 width: 256,
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: createChat,
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimary
-                                        .withOpacity(0.25),
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                height: 48,
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.add,
-                                      size: 20,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onPrimary,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'New Chat',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleSmall
-                                          ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onPrimary,
-                                          ),
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _CreateChatButton(onTap: createChat),
                     SizedBox(height: 8),
                     Expanded(
                       child: ListView.separated(
@@ -203,16 +164,10 @@ class _DesktopState extends State<Desktop> {
                             ? Center(
                                 child: Text(
                                   'Athena',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .displayLarge
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withOpacity(0.15),
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                  style: displayLarge?.copyWith(
+                                    color: onSurface.withOpacity(0.15),
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               )
                             : ListView.builder(
@@ -220,32 +175,7 @@ class _DesktopState extends State<Desktop> {
                                 itemBuilder: (context, index) {
                                   final message =
                                       chat.messages.reversed.elementAt(index);
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(vertical: 8),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(
-                                          message.role == 'user'
-                                              ? Icons.person_outline
-                                              : Icons.smart_toy_outlined,
-                                        ),
-                                        SizedBox(
-                                          width: 8,
-                                        ),
-                                        Expanded(
-                                          child: MarkdownWidget(
-                                            data: message.content ?? '',
-                                            shrinkWrap: true,
-                                            selectable: true,
-                                            physics:
-                                                NeverScrollableScrollPhysics(),
-                                          ),
-                                        )
-                                      ],
-                                    ),
-                                  );
+                                  return _MessageTile(message: message);
                                 },
                                 itemCount: chat.messages.length,
                                 reverse: true,
@@ -254,12 +184,7 @@ class _DesktopState extends State<Desktop> {
                       SizedBox(height: 16),
                       Container(
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withOpacity(0.25),
-                          ),
+                          border: Border.all(color: outline.withOpacity(0.25)),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         padding: EdgeInsets.all(16),
@@ -278,26 +203,21 @@ class _DesktopState extends State<Desktop> {
                               ),
                             ),
                             SizedBox(width: 16),
-                            streaming
-                                ? SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 1,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outline
-                                          .withOpacity(0.25),
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.send,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outline
-                                        .withOpacity(0.25),
-                                    size: 20,
-                                  )
+                            if (streaming)
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: outline.withOpacity(0.25),
+                                ),
+                              ),
+                            if (!streaming)
+                              Icon(
+                                Icons.send,
+                                color: outline.withOpacity(0.25),
+                                size: 20,
+                              )
                           ],
                         ),
                       )
@@ -512,12 +432,61 @@ class _DesktopState extends State<Desktop> {
 
   void scrollToBottom() {
     Timer(const Duration(milliseconds: 16), () {
-      scrollController.animateTo(
-        scrollController.position.minScrollExtent,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOutQuart,
-      );
+      try {
+        scrollController.animateTo(
+          scrollController.position.minScrollExtent,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOutQuart,
+        );
+      } catch (error) {
+        Logger().e(error);
+      }
     });
+  }
+}
+
+class _CreateChatButton extends StatelessWidget {
+  const _CreateChatButton({required this.onTap});
+
+  final void Function()? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onPrimary = colorScheme.onPrimary;
+    final textTheme = theme.textTheme;
+    final titleSmall = textTheme.titleSmall;
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: onTap,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: onPrimary.withOpacity(0.25)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                height: 48,
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.add, size: 20, color: onPrimary),
+                    SizedBox(width: 8),
+                    Text(
+                      'New Chat',
+                      style: titleSmall?.copyWith(color: onPrimary),
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -620,7 +589,7 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _AccountInformation extends StatelessWidget {
-  const _AccountInformation({super.key, this.balance = 0, this.discount = 0});
+  const _AccountInformation({this.balance = 0, this.discount = 0});
 
   final double balance;
   final int discount;
@@ -643,7 +612,7 @@ class _AccountInformation extends StatelessWidget {
 
 class _ModelSwitcher extends StatefulWidget {
   const _ModelSwitcher(
-      {super.key, this.current = 0, required this.models, this.onChange});
+      {this.current = 0, required this.models, this.onChange});
 
   final int current;
   final List<Model> models;
@@ -752,5 +721,85 @@ class _ModelSwitcherTile extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _MessageTile extends StatelessWidget {
+  const _MessageTile({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            message.role == 'user'
+                ? Icons.person_outline
+                : Icons.smart_toy_outlined,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: MarkdownWidget(
+              config: MarkdownConfig(configs: [
+                PreConfig(
+                  wrapper: (child, code) {
+                    return Stack(children: [child, _CopyButton(code: code)]);
+                  },
+                )
+              ]),
+              data: message.content ?? '',
+              physics: NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyButton extends StatefulWidget {
+  const _CopyButton({required this.code});
+
+  final String code;
+
+  @override
+  State<_CopyButton> createState() => __CopyButtonState();
+}
+
+class __CopyButtonState extends State<_CopyButton> {
+  bool copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 8,
+      top: 16,
+      child: IconButton(
+        onPressed: copied ? null : handlePressed,
+        icon: AnimatedSwitcher(
+          duration: Duration(milliseconds: 200),
+          child: copied
+              ? Icon(Icons.check_outlined, size: 20)
+              : Icon(Icons.content_copy_outlined, size: 20),
+        ),
+      ),
+    );
+  }
+
+  void handlePressed() async {
+    final data = ClipboardData(text: widget.code);
+    await Clipboard.setData(data);
+    setState(() {
+      copied = true;
+    });
+    await Future.delayed(Duration(seconds: 2));
+    setState(() {
+      copied = false;
+    });
   }
 }
