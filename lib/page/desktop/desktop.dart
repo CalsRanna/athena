@@ -68,10 +68,6 @@ class _DesktopState extends State<Desktop> {
 
   Future<void> updateModels() async {
     var models = await isar.models.where().findAll();
-    setState(() {
-      this.models = models;
-      chat.model.value = models[0];
-    });
     if (models.isEmpty) {
       try {
         final liaobotsModels = await LiaobotsProvider().getModels();
@@ -83,7 +79,6 @@ class _DesktopState extends State<Desktop> {
               ..tokenLimit = model.tokenLimit)
             .toList();
         await isar.writeTxn(() async {
-          await isar.models.clear();
           await isar.models.putAll(models);
         });
         setState(() {
@@ -95,6 +90,11 @@ class _DesktopState extends State<Desktop> {
           SnackBar(content: Text(error.toString())),
         );
       }
+    } else {
+      setState(() {
+        this.models = models;
+        chat.model.value = models[0];
+      });
     }
   }
 
