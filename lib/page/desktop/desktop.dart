@@ -104,7 +104,6 @@ class _DesktopState extends State<Desktop> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final onSurface = colorScheme.onSurface;
-    final outline = colorScheme.outline;
     final textTheme = theme.textTheme;
     final displayLarge = textTheme.displayLarge;
 
@@ -113,42 +112,17 @@ class _DesktopState extends State<Desktop> {
         children: [
           Row(
             children: [
-              Container(
-                color: Theme.of(context).colorScheme.primary,
-                padding: EdgeInsets.fromLTRB(8, 28, 8, 8),
-                width: 256,
-                child: Column(
-                  children: [
-                    _CreateChatButton(onTap: createChat),
-                    SizedBox(height: 8),
-                    Expanded(
-                      child: ListView.separated(
-                        itemBuilder: (context, index) {
-                          return _ChatTile(
-                            active: chats[index].id == chat.id,
-                            chat: chats[index],
-                            onDelete: () => deleteChat(index),
-                            onTap: () => selectChat(index),
-                          );
-                        },
-                        itemCount: chats.length,
-                        separatorBuilder: (context, index) {
-                          return SizedBox(height: 8);
-                        },
-                      ),
-                    ),
-                    _AccountInformation(
-                      balance: account.balance,
-                      discount: account.gpt4,
-                    )
-                  ],
-                ),
+              _ChatList(
+                account: account,
+                chats: chats,
+                currentChatId: chat.id,
+                onCreated: createChat,
+                onDeleted: deleteChat,
+                onSelected: selectChat,
               ),
-              SizedBox(width: 32),
               Expanded(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -178,49 +152,15 @@ class _DesktopState extends State<Desktop> {
                                   return _MessageTile(message: message);
                                 },
                                 itemCount: chat.messages.length,
+                                padding: EdgeInsets.fromLTRB(32, 0, 32, 8),
                                 reverse: true,
                               ),
                       ),
-                      SizedBox(height: 16),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: outline.withOpacity(0.25)),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: textEditingController,
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  hintText: 'Ask me anything',
-                                ),
-                                onSubmitted: handleSubmitted,
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            if (streaming)
-                              SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: outline.withOpacity(0.25),
-                                ),
-                              ),
-                            if (!streaming)
-                              Icon(
-                                Icons.send,
-                                color: outline.withOpacity(0.25),
-                                size: 20,
-                              )
-                          ],
-                        ),
-                      )
+                      _Input(
+                        controller: textEditingController,
+                        streaming: streaming,
+                        onSubmitted: handleSubmitted,
+                      ),
                     ],
                   ),
                 ),
@@ -228,19 +168,7 @@ class _DesktopState extends State<Desktop> {
             ],
           ),
           if (showFloatingActionButton)
-            Positioned(
-              right: 32,
-              bottom: 80,
-              child: FloatingActionButton(
-                mini: true,
-                shape: CircleBorder(),
-                onPressed: scrollToBottom,
-                child: Icon(
-                  Icons.arrow_downward_outlined,
-                  size: 20,
-                ),
-              ),
-            )
+            _FloatingButton(onPressed: scrollToBottom),
         ],
       ),
     );
@@ -311,10 +239,7 @@ class _DesktopState extends State<Desktop> {
           .where(
               (message) => message.role != 'error' && message.createdAt != null)
           .toList();
-      final limitedMessages = messages.reversed
-          .take(8)
-          .toList()
-          .reversed
+      final limitedMessages = messages
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
       final model = chat.model.value ?? models[0];
@@ -445,6 +370,56 @@ class _DesktopState extends State<Desktop> {
   }
 }
 
+class _ChatList extends StatelessWidget {
+  const _ChatList({
+    required this.account,
+    required this.chats,
+    this.currentChatId,
+    this.onCreated,
+    this.onDeleted,
+    this.onSelected,
+  });
+
+  final LiaobotsAccount account;
+  final List<Chat> chats;
+  final int? currentChatId;
+  final void Function()? onCreated;
+  final void Function(int)? onDeleted;
+  final void Function(int)? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.primary,
+      padding: EdgeInsets.fromLTRB(8, 28, 8, 8),
+      width: 256,
+      child: Column(
+        children: [
+          _CreateChatButton(onTap: onCreated),
+          SizedBox(height: 8),
+          Expanded(
+            child: ListView.separated(
+              itemBuilder: (context, index) {
+                return _ChatTile(
+                  active: chats[index].id == currentChatId,
+                  chat: chats[index],
+                  onDelete: () => onDeleted?.call(index),
+                  onTap: () => onSelected?.call(index),
+                );
+              },
+              itemCount: chats.length,
+              separatorBuilder: (context, index) {
+                return SizedBox(height: 8);
+              },
+            ),
+          ),
+          _AccountInformation(balance: account.balance, discount: account.gpt4)
+        ],
+      ),
+    );
+  }
+}
+
 class _CreateChatButton extends StatelessWidget {
   const _CreateChatButton({required this.onTap});
 
@@ -534,7 +509,6 @@ class _ChatTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final primary = colorScheme.inversePrimary;
     final onPrimary = colorScheme.onPrimary;
-    final error = colorScheme.error;
     final textTheme = theme.textTheme;
     final titleMedium = textTheme.titleMedium;
     final titleSmall = textTheme.titleSmall;
@@ -551,11 +525,7 @@ class _ChatTile extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           child: Row(
             children: [
-              Icon(
-                icon,
-                size: 20,
-                color: onPrimary,
-              ),
+              Icon(icon, size: 20, color: onPrimary),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -568,17 +538,14 @@ class _ChatTile extends StatelessWidget {
               if (active)
                 GestureDetector(
                   onTap: onDelete,
-                  child: Icon(
-                    Icons.delete_outline,
-                    size: 20,
-                    color: error,
-                  ),
+                  child: Icon(Icons.delete, size: 20, color: onPrimary),
                 ),
               if (!active)
                 Text(
                   updatedAt,
-                  style:
-                      titleSmall?.copyWith(color: onPrimary.withOpacity(0.5)),
+                  style: titleSmall?.copyWith(
+                    color: onPrimary.withOpacity(0.5),
+                  ),
                 )
             ],
           ),
@@ -596,23 +563,26 @@ class _AccountInformation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onPrimary = colorScheme.onPrimary;
+    final textTheme = theme.textTheme;
+    final bodyMedium = textTheme.bodyMedium;
+
     return Container(
       alignment: Alignment.center,
       height: 48,
       width: 256,
       child: Text(
         '¥$balance/$discount',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
+        style: bodyMedium?.copyWith(color: onPrimary),
       ),
     );
   }
 }
 
 class _ModelSwitcher extends StatefulWidget {
-  const _ModelSwitcher(
-      {this.current = 0, required this.models, this.onChange});
+  const _ModelSwitcher({this.current = 0, required this.models, this.onChange});
 
   final int current;
   final List<Model> models;
@@ -731,32 +701,34 @@ class _MessageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.content == null) {
+      return SizedBox();
+    }
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            message.role == 'user'
-                ? Icons.person_outline
-                : Icons.smart_toy_outlined,
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: MarkdownWidget(
-              config: MarkdownConfig(configs: [
-                PreConfig(
-                  wrapper: (child, code) {
-                    return Stack(children: [child, _CopyButton(code: code)]);
-                  },
-                )
-              ]),
-              data: message.content ?? '',
-              physics: NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-            ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(4, 4),
           )
         ],
+        color: Theme.of(context).colorScheme.surface,
+      ),
+      margin: EdgeInsets.only(bottom: 8, top: 8),
+      padding: EdgeInsets.all(16),
+      child: MarkdownWidget(
+        config: MarkdownConfig(configs: [
+          PreConfig(
+            wrapper: (child, code) {
+              return Stack(children: [child, _CopyButton(code: code)]);
+            },
+          ),
+        ]),
+        data: message.content ?? '',
+        physics: NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
       ),
     );
   }
@@ -801,5 +773,77 @@ class __CopyButtonState extends State<_CopyButton> {
     setState(() {
       copied = false;
     });
+  }
+}
+
+class _Input extends StatelessWidget {
+  const _Input({this.controller, this.streaming = false, this.onSubmitted});
+
+  final TextEditingController? controller;
+  final bool streaming;
+  final void Function(String)? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final outline = colorScheme.outline;
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: outline.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      margin: EdgeInsets.fromLTRB(32, 8, 32, 0),
+      padding: EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                hintText: 'Ask me anything',
+              ),
+              onSubmitted: onSubmitted,
+            ),
+          ),
+          SizedBox(width: 16),
+          if (streaming)
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: outline.withOpacity(0.25),
+              ),
+            ),
+          if (!streaming)
+            Icon(Icons.send, color: outline.withOpacity(0.25), size: 20)
+        ],
+      ),
+    );
+  }
+}
+
+class _FloatingButton extends StatelessWidget {
+  const _FloatingButton({this.onPressed});
+
+  final void Function()? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 32,
+      bottom: 80,
+      child: FloatingActionButton(
+        mini: true,
+        shape: CircleBorder(),
+        onPressed: onPressed,
+        child: Icon(Icons.arrow_downward_outlined, size: 20),
+      ),
+    );
   }
 }

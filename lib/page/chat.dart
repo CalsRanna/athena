@@ -262,10 +262,7 @@ class _ChatPageState extends State<ChatPage> {
           .where(
               (message) => message.role != 'error' && message.createdAt != null)
           .toList();
-      final limitedMessages = messages.reversed
-          .take(8)
-          .toList()
-          .reversed
+      final limitedMessages = messages
           .map((message) => {'role': message.role, 'content': message.content})
           .toList();
       final model = chat.model.value!;
