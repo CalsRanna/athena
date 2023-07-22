@@ -22,17 +22,19 @@ void main() async {
     [ChatSchema, CookieSchema, ModelSchema, SettingSchema],
     directory: directory.path,
   );
-  await windowManager.ensureInitialized();
-  final options = WindowOptions(
-    center: true,
-    size: Size(1200, 900),
-    titleBarStyle: TitleBarStyle.hidden,
-    // windowButtonVisibility: false,
-  );
-  windowManager.waitUntilReadyToShow(options, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
+  if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+    await windowManager.ensureInitialized();
+    final options = WindowOptions(
+      center: true,
+      size: Size(1200, 900),
+      titleBarStyle: TitleBarStyle.hidden,
+      // windowButtonVisibility: false,
+    );
+    windowManager.waitUntilReadyToShow(options, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   runApp(CreatorGraph(child: const AthenaApp()));
 }
 

@@ -122,19 +122,30 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> updateModels() async {
     final ref = context.ref;
-    final liaobotsModels = await LiaobotsProvider().getModels();
-    final models = liaobotsModels
-        .map((model) => Model()
-          ..maxLength = model.maxLength
-          ..modelId = model.id
-          ..name = model.name
-          ..tokenLimit = model.tokenLimit)
-        .toList();
-    await isar.writeTxn(() async {
-      await isar.models.clear();
-      await isar.models.putAll(models);
-    });
-    ref.set(modelsCreator, models);
+    var models = await isar.models.where().findAll();
+    if (models.isEmpty) {
+      try {
+        final liaobotsModels = await LiaobotsProvider().getModels();
+        models = liaobotsModels
+            .map((model) => Model()
+              ..maxLength = model.maxLength
+              ..modelId = model.id
+              ..name = model.name
+              ..tokenLimit = model.tokenLimit)
+            .toList();
+        await isar.writeTxn(() async {
+          await isar.models.putAll(models);
+        });
+
+        ref.set(modelsCreator, models);
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    } else {
+      ref.set(modelsCreator, models);
+    }
   }
 
   void triggerDarkMode() async {

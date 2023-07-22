@@ -199,6 +199,7 @@ class _DesktopState extends State<Desktop> {
   }
 
   void selectChat(int index) {
+    scrollToBottom();
     setState(() {
       chat = chats[index].withGrowableMessages();
       var modelIndex = models

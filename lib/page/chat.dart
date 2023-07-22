@@ -162,7 +162,7 @@ class _ChatPageState extends State<ChatPage> {
     final ref = context.ref;
     final models = ref.read(modelsCreator);
     if (chat.model.value != null) return;
-    chat.model.value = models.elementAt(1);
+    chat.model.value = models.first;
     if (chat.messages.isNotEmpty) {
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
