@@ -31,6 +31,7 @@ class _DesktopState extends State<Desktop> {
   bool streaming = false;
   late ScrollController scrollController;
   late TextEditingController textEditingController;
+  late FocusNode focusNode;
 
   bool get showLogo => chat.messages.isEmpty;
 
@@ -47,6 +48,7 @@ class _DesktopState extends State<Desktop> {
   void dispose() {
     scrollController.dispose();
     textEditingController.dispose();
+    focusNode.dispose();
     super.dispose();
   }
 
@@ -58,6 +60,7 @@ class _DesktopState extends State<Desktop> {
       });
     });
     textEditingController = TextEditingController();
+    focusNode = FocusNode();
   }
 
   void getChats() async {
@@ -149,7 +152,12 @@ class _DesktopState extends State<Desktop> {
                                 itemBuilder: (context, index) {
                                   final message =
                                       chat.messages.reversed.elementAt(index);
-                                  return _MessageTile(message: message);
+                                  return _MessageTile(
+                                    message: message,
+                                    onRegenerated: () => handleRetry(index),
+                                    onEdited: () => handleEdit(index),
+                                    onDeleted: () => handleDelete(index),
+                                  );
                                 },
                                 itemCount: chat.messages.length,
                                 padding: EdgeInsets.fromLTRB(32, 0, 32, 8),
@@ -158,6 +166,7 @@ class _DesktopState extends State<Desktop> {
                       ),
                       _Input(
                         controller: textEditingController,
+                        focusNode: focusNode,
                         streaming: streaming,
                         onSubmitted: handleSubmitted,
                       ),
@@ -180,6 +189,8 @@ class _DesktopState extends State<Desktop> {
       chat.model.value = models[0];
       current = 0;
     });
+    textEditingController.clear();
+    focusNode.requestFocus();
   }
 
   void deleteChat(int index) async {
@@ -208,17 +219,43 @@ class _DesktopState extends State<Desktop> {
     });
   }
 
-  Future<void> handleSubmitted(String value) async {
-    scrollToBottom();
+  Future<void> handleDelete(int index) async {
+    final realIndex = chat.messages.length - 1 - index;
+    setState(() {
+      chat.messages.removeRange(realIndex, chat.messages.length);
+      if (chat.messages.isEmpty) {
+        chat.title = null;
+        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      } else {
+        chat.updatedAt = chat.messages.last.createdAt;
+      }
+    });
+    storeChat();
+  }
+
+  void handleEdit(int index) {
+    final realIndex = chat.messages.length - 1 - index;
+    final message = chat.messages.elementAt(realIndex);
+    textEditingController.text = message.content ?? '';
+    focusNode.requestFocus();
+  }
+
+  Future<void> handleRetry(int index) async {
     setState(() {
       streaming = true;
     });
-    final trimmedValue = value.trim().replaceAll('\n', '');
-    if (trimmedValue.isEmpty) return;
+    handleDelete(index);
+    await fetchResponse();
+  }
+
+  Future<void> handleSubmitted(String value) async {
+    setState(() {
+      streaming = true;
+    });
     final message = Message()
       ..role = 'user'
       ..createdAt = DateTime.now().millisecondsSinceEpoch
-      ..content = trimmedValue;
+      ..content = value;
     setState(() {
       chat.messages.add(message);
       chat.updatedAt = message.createdAt;
@@ -231,6 +268,7 @@ class _DesktopState extends State<Desktop> {
   }
 
   Future<void> fetchResponse() async {
+    scrollToBottom();
     setState(() {
       chat.messages.add(Message()..role = 'assistant');
     });
@@ -696,9 +734,17 @@ class _ModelSwitcherTile extends StatelessWidget {
 }
 
 class _MessageTile extends StatelessWidget {
-  const _MessageTile({required this.message});
+  const _MessageTile({
+    required this.message,
+    this.onDeleted,
+    this.onEdited,
+    this.onRegenerated,
+  });
 
   final Message message;
+  final void Function()? onDeleted;
+  final void Function()? onEdited;
+  final void Function()? onRegenerated;
 
   @override
   Widget build(BuildContext context) {
@@ -719,17 +765,69 @@ class _MessageTile extends StatelessWidget {
       ),
       margin: EdgeInsets.only(bottom: 8, top: 8),
       padding: EdgeInsets.all(16),
-      child: MarkdownWidget(
-        config: MarkdownConfig(configs: [
-          PreConfig(
-            wrapper: (child, code) {
-              return Stack(children: [child, _CopyButton(code: code)]);
-            },
+      child: Column(
+        children: [
+          MarkdownWidget(
+            config: MarkdownConfig(configs: [
+              PreConfig(
+                wrapper: (child, code) {
+                  return Stack(children: [child, _CopyButton(code: code)]);
+                },
+              ),
+            ]),
+            data: message.content ?? '',
+            physics: NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
           ),
-        ]),
-        data: message.content ?? '',
-        physics: NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
+          if (message.role == 'user')
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Row(
+                children: [
+                  TextButton(onPressed: onEdited, child: Text('编辑')),
+                  SizedBox(width: 4),
+                  TextButton(
+                    onPressed: onDeleted,
+                    child: Text(
+                      '删除',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (message.role != 'user')
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Row(
+                children: [
+                  ElevatedButton(onPressed: onRegenerated, child: Text('重新生成')),
+                  SizedBox(width: 4),
+                  TextButton(onPressed: () => copy(context), child: Text('复制')),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void copy(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryContainer = colorScheme.primaryContainer;
+    final onPrimaryContainer = colorScheme.onPrimaryContainer;
+    await Clipboard.setData(ClipboardData(text: message.content ?? ''));
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        backgroundColor: primaryContainer,
+        behavior: SnackBarBehavior.floating,
+        content: Text('已复制', style: TextStyle(color: onPrimaryContainer)),
+        width: 75,
       ),
     );
   }
@@ -777,18 +875,32 @@ class __CopyButtonState extends State<_CopyButton> {
   }
 }
 
-class _Input extends StatelessWidget {
-  const _Input({this.controller, this.streaming = false, this.onSubmitted});
+class _Input extends StatefulWidget {
+  const _Input({
+    this.controller,
+    this.focusNode,
+    this.streaming = false,
+    this.onSubmitted,
+  });
 
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final bool streaming;
   final void Function(String)? onSubmitted;
+
+  @override
+  State<_Input> createState() => __InputState();
+}
+
+class __InputState extends State<_Input> {
+  bool shift = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final outline = colorScheme.outline;
+    final primary = colorScheme.primary;
 
     return Container(
       decoration: BoxDecoration(
@@ -800,19 +912,25 @@ class _Input extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-                hintText: 'Ask me anything',
+            child: RawKeyboardListener(
+              focusNode: FocusNode(),
+              onKey: handleKey,
+              child: TextField(
+                controller: widget.controller,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  hintText: 'Ask me anything',
+                ),
+                focusNode: widget.focusNode,
+                maxLines: 3,
+                minLines: 1,
               ),
-              onSubmitted: onSubmitted,
             ),
           ),
           SizedBox(width: 16),
-          if (streaming)
+          if (widget.streaming)
             SizedBox(
               width: 20,
               height: 20,
@@ -821,11 +939,42 @@ class _Input extends StatelessWidget {
                 color: outline.withOpacity(0.25),
               ),
             ),
-          if (!streaming)
-            Icon(Icons.send, color: outline.withOpacity(0.25), size: 20)
+          if (!widget.streaming)
+            GestureDetector(
+              onTap: handleTap,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Icon(
+                  Icons.send,
+                  color: primary,
+                  size: 20,
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  void handleKey(RawKeyEvent event) {
+    final isShiftPressed = event.isShiftPressed;
+    final isEnterPressed = event.isKeyPressed(LogicalKeyboardKey.enter);
+    if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
+      if (!isShiftPressed && isEnterPressed) {
+        final text = widget.controller?.text ?? '';
+        if (text.trim().isNotEmpty) {
+          widget.onSubmitted?.call(text);
+        }
+        widget.focusNode?.unfocus();
+      }
+    }
+  }
+
+  void handleTap() {
+    final text = widget.controller?.text ?? '';
+    if (text.trim().isNotEmpty) {
+      widget.onSubmitted?.call(text);
+    }
   }
 }
 
