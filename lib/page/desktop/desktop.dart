@@ -368,6 +368,7 @@ class _DesktopState extends State<Desktop> {
   Future<void> storeChat() async {
     try {
       await isar.writeTxn(() async {
+        chat.model.value = models[current];
         await isar.chats.put(chat);
         await chat.model.save();
       });
@@ -594,29 +595,120 @@ class _ChatTile extends StatelessWidget {
   }
 }
 
-class _AccountInformation extends StatelessWidget {
+class _AccountInformation extends StatefulWidget {
   const _AccountInformation({this.balance = 0, this.discount = 0});
 
   final double balance;
   final int discount;
 
   @override
+  State<_AccountInformation> createState() => __AccountInformation();
+}
+
+class __AccountInformation extends State<_AccountInformation> {
+  LayerLink link = LayerLink();
+  OverlayEntry? entry;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final onPrimary = colorScheme.onPrimary;
+    final primary = colorScheme.primary;
     final textTheme = theme.textTheme;
-    final bodyMedium = textTheme.bodyMedium;
+    final bodyLarge = textTheme.titleLarge;
+    final bodySmall = textTheme.bodySmall;
 
-    return Container(
-      alignment: Alignment.center,
-      height: 48,
-      width: 256,
-      child: Text(
-        '¥$balance/$discount',
-        style: bodyMedium?.copyWith(color: onPrimary),
-      ),
+    return Row(
+      children: [
+        Container(
+          decoration: BoxDecoration(color: onPrimary, shape: BoxShape.circle),
+          padding: EdgeInsets.all(8),
+          child: Icon(Icons.person, color: primary, size: 32),
+        ),
+        SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '¥ ${widget.balance}',
+              style: bodyLarge?.copyWith(
+                color: onPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${widget.discount}次GPT4免费调用',
+              style: bodySmall?.copyWith(color: onPrimary),
+            ),
+          ],
+        ),
+        // Spacer(),
+        // CompositedTransformTarget(
+        //   link: link,
+        //   child: IconButton(
+        //     onPressed: handlePressed,
+        //     icon: Icon(Icons.more_horiz, color: onPrimary),
+        //   ),
+        // ),
+      ],
     );
+  }
+
+  void handlePressed() {
+    if (entry != null) {
+      entry!.remove();
+      entry = null;
+    } else {
+      entry = OverlayEntry(
+        builder: (context) => Material(
+          color: Colors.transparent,
+          child: Stack(
+            children: [
+              GestureDetector(
+                onTap: handleTap,
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
+              Positioned(
+                width: 240,
+                child: CompositedTransformFollower(
+                  followerAnchor: Alignment.bottomRight,
+                  link: link,
+                  offset: Offset(0, -12),
+                  targetAnchor: Alignment.topRight,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).colorScheme.surface,
+                    ),
+                    padding: EdgeInsets.all(8),
+                    child: Text(
+                      '删除所有对话',
+                      style: TextStyle(
+                        color: Colors.black,
+                        decoration: TextDecoration.none,
+                        fontSize: 14,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      Overlay.of(context).insert(entry!);
+    }
+  }
+
+  void handleTap() {
+    if (entry != null) {
+      entry!.remove();
+      entry = null;
+    }
   }
 }
 
