@@ -122,6 +122,7 @@ class _DesktopState extends State<Desktop> {
                 onCreated: createChat,
                 onDeleted: deleteChat,
                 onSelected: selectChat,
+                onAccountUpdated: updateAccount,
               ),
               Expanded(
                 child: Padding(
@@ -418,6 +419,7 @@ class _ChatList extends StatelessWidget {
     this.onCreated,
     this.onDeleted,
     this.onSelected,
+    this.onAccountUpdated,
   });
 
   final LiaobotsAccount account;
@@ -426,6 +428,7 @@ class _ChatList extends StatelessWidget {
   final void Function()? onCreated;
   final void Function(int)? onDeleted;
   final void Function(int)? onSelected;
+  final Future<void> Function()? onAccountUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -453,7 +456,11 @@ class _ChatList extends StatelessWidget {
               },
             ),
           ),
-          _AccountInformation(balance: account.balance, discount: account.gpt4)
+          _AccountInformation(
+            balance: account.balance,
+            discount: account.gpt4,
+            onTap: onAccountUpdated,
+          )
         ],
       ),
     );
@@ -596,10 +603,11 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _AccountInformation extends StatefulWidget {
-  const _AccountInformation({this.balance = 0, this.discount = 0});
+  const _AccountInformation({this.balance = 0, this.discount = 0, this.onTap});
 
   final double balance;
   final int discount;
+  final Future<void> Function()? onTap;
 
   @override
   State<_AccountInformation> createState() => __AccountInformation();
@@ -608,6 +616,7 @@ class _AccountInformation extends StatefulWidget {
 class __AccountInformation extends State<_AccountInformation> {
   LayerLink link = LayerLink();
   OverlayEntry? entry;
+  bool loading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -624,7 +633,19 @@ class __AccountInformation extends State<_AccountInformation> {
         Container(
           decoration: BoxDecoration(color: onPrimary, shape: BoxShape.circle),
           padding: EdgeInsets.all(8),
-          child: Icon(Icons.person, color: primary, size: 32),
+          child: loading
+              ? SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator.adaptive(),
+                )
+              : GestureDetector(
+                  onTap: updateAccount,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Icon(Icons.person, color: primary, size: 32),
+                  ),
+                ),
         ),
         SizedBox(width: 16),
         Column(
@@ -653,6 +674,16 @@ class __AccountInformation extends State<_AccountInformation> {
         // ),
       ],
     );
+  }
+
+  void updateAccount() async {
+    setState(() {
+      loading = true;
+    });
+    await widget.onTap?.call();
+    setState(() {
+      loading = false;
+    });
   }
 
   void handlePressed() {
