@@ -459,6 +459,7 @@ class _ChatList extends StatelessWidget {
           _AccountInformation(
             balance: account.balance,
             discount: account.gpt4,
+            expireDate: account.expireDate,
             onTap: onAccountUpdated,
           )
         ],
@@ -603,10 +604,16 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _AccountInformation extends StatefulWidget {
-  const _AccountInformation({this.balance = 0, this.discount = 0, this.onTap});
+  const _AccountInformation({
+    this.balance = 0,
+    this.discount = 0,
+    required this.expireDate,
+    this.onTap,
+  });
 
   final double balance;
   final int discount;
+  final int expireDate;
   final Future<void> Function()? onTap;
 
   @override
@@ -617,6 +624,13 @@ class __AccountInformation extends State<_AccountInformation> {
   LayerLink link = LayerLink();
   OverlayEntry? entry;
   bool loading = false;
+
+  int get expire {
+    final now = DateTime.now();
+    final expireDate = DateTime.fromMillisecondsSinceEpoch(widget.expireDate);
+    final days = now.difference(expireDate).inDays + 1;
+    return days > 100 ? 99 : days;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -651,12 +665,30 @@ class __AccountInformation extends State<_AccountInformation> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '¥ ${widget.balance}',
-              style: bodyLarge?.copyWith(
-                color: onPrimary,
-                fontWeight: FontWeight.w500,
-              ),
+            Row(
+              children: [
+                Text(
+                  '¥ ${widget.balance}',
+                  style: bodyLarge?.copyWith(
+                    color: onPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: onPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                  width: 16,
+                  height: 16,
+                  child: Text(
+                    '$expire',
+                    style: bodySmall?.copyWith(color: primary),
+                  ),
+                )
+              ],
             ),
             Text(
               '${widget.discount}次GPT4免费调用',
