@@ -681,8 +681,8 @@ class __AccountInformation extends State<_AccountInformation> {
                     color: onPrimary,
                     shape: BoxShape.circle,
                   ),
-                  width: 16,
-                  height: 16,
+                  width: 20,
+                  height: 20,
                   child: Text(
                     '$expire',
                     style: bodySmall?.copyWith(color: primary),
