@@ -11,16 +11,15 @@ import 'package:isar/isar.dart';
 class LiaobotsProvider {
   final Dio dio = Dio();
 
-  Future<Stream<String>> getTitle({
-    required String value,
-    required LiaobotsModel model,
-  }) {
-    const String prompt = '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本。'
-        '如果没有主题，请直接返回“闲聊”。';
-    return _request(messages: [
-      {'role': 'user', 'content': value},
-      {'role': 'user', 'content': prompt}
-    ], model: model);
+  Future<Map<String, dynamic>> getAccount() async {
+    final key = await _getKey();
+    final response = await dio.post(
+      'https://liaobots.work/api/user',
+      data: {"authcode": key['authCode']},
+      options: Options(headers: {"Cookie": 'gkp2=${key['cookie']}'}),
+    );
+    final Map<String, dynamic> account = jsonDecode(response.data);
+    return account;
   }
 
   Future<Stream<String>> getCompletion({
@@ -40,22 +39,16 @@ class LiaobotsProvider {
     return json.map((item) => LiaobotsModel.fromJson(item)).toList();
   }
 
-  Future<Map<String, dynamic>> getAccount() async {
-    final key = await _getKey();
-    final response = await dio.post(
-      'https://liaobots.work/api/user',
-      data: {"authcode": key['authCode']},
-      options: Options(headers: {"Cookie": 'gkp2=${key['cookie']}'}),
-    );
-    final Map<String, dynamic> account = jsonDecode(response.data);
-    return account;
-  }
-
-  Future<Map<String, String>> _getKey() async {
-    final bytes = await rootBundle.load('asset/liaobots.key');
-    final authCode = utf8.decode(bytes.buffer.asUint8List());
-    final cookie = await _getCookie();
-    return {'authCode': authCode, 'cookie': cookie};
+  Future<Stream<String>> getTitle({
+    required String value,
+    required LiaobotsModel model,
+  }) {
+    const String prompt = '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本。'
+        '如果没有主题，请直接返回“闲聊”。';
+    return _request(messages: [
+      {'role': 'user', 'content': value},
+      {'role': 'user', 'content': prompt}
+    ], model: model);
   }
 
   Future<String> _getCookie() async {
@@ -81,6 +74,13 @@ class LiaobotsProvider {
       await isar.writeTxn(() async => await isar.cookies.put(cookie!));
     }
     return cookie.cookie;
+  }
+
+  Future<Map<String, String>> _getKey() async {
+    final bytes = await rootBundle.load('asset/liaobots.key');
+    final authCode = utf8.decode(bytes.buffer.asUint8List());
+    final cookie = await _getCookie();
+    return {'authCode': authCode, 'cookie': cookie};
   }
 
   Future<Stream<String>> _request({

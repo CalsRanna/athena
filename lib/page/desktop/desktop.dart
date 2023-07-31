@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:athena/creator/setting.dart';
 import 'package:athena/extension/date_time.dart';
 import 'package:athena/main.dart';
 import 'package:athena/model/liaobots_account.dart';
@@ -7,6 +8,8 @@ import 'package:athena/model/liaobots_model.dart';
 import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/setting.dart';
+import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
@@ -628,8 +631,9 @@ class __AccountInformation extends State<_AccountInformation> {
   int get expire {
     final now = DateTime.now();
     final expireDate = DateTime.fromMillisecondsSinceEpoch(widget.expireDate);
-    final days = now.difference(expireDate).inDays + 1;
-    return days > 100 ? 99 : days;
+    final difference = now.difference(expireDate);
+    final days = difference.inDays;
+    return days >= 100 ? 99 : days;
   }
 
   @override
@@ -668,7 +672,7 @@ class __AccountInformation extends State<_AccountInformation> {
             Row(
               children: [
                 Text(
-                  '¥ ${widget.balance}',
+                  '¥ ${widget.balance.toStringAsFixed(2)}',
                   style: bodyLarge?.copyWith(
                     color: onPrimary,
                     fontWeight: FontWeight.w500,
@@ -746,15 +750,33 @@ class __AccountInformation extends State<_AccountInformation> {
                       borderRadius: BorderRadius.circular(8),
                       color: Theme.of(context).colorScheme.surface,
                     ),
-                    padding: EdgeInsets.all(8),
-                    child: Text(
-                      '删除所有对话',
-                      style: TextStyle(
-                        color: Colors.black,
-                        decoration: TextDecoration.none,
-                        fontSize: 14,
-                        fontWeight: FontWeight.normal,
-                      ),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ListTile(
+                          title: Text('删除所有对话'),
+                          onTap: () {},
+                        ),
+                        ListTile(
+                          title: Text('深色模式'),
+                          onTap: () async {
+                            try {
+                              final ref = context.ref;
+                              await isar.writeTxn(() async {
+                                var setting =
+                                    await isar.settings.where().findFirst() ??
+                                        Setting();
+                                setting.darkMode = !setting.darkMode;
+                                isar.settings.put(setting);
+                                ref.emit(settingEmitter, setting);
+                              });
+                            } catch (error) {
+                              Logger().e(error);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -836,7 +858,7 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.background,
               ),
               child: Text(''),
             ),
