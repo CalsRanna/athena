@@ -56,6 +56,7 @@ class _DesktopState extends State<Desktop> {
   }
 
   void init() async {
+    focusNode = FocusNode();
     scrollController = ScrollController();
     scrollController.addListener(() {
       setState(() {
@@ -63,7 +64,6 @@ class _DesktopState extends State<Desktop> {
       });
     });
     textEditingController = TextEditingController();
-    focusNode = FocusNode();
   }
 
   void getChats() async {
@@ -631,9 +631,8 @@ class __AccountInformation extends State<_AccountInformation> {
   int get expire {
     final now = DateTime.now();
     final expireDate = DateTime.fromMillisecondsSinceEpoch(widget.expireDate);
-    final difference = now.difference(expireDate);
-    final days = difference.inDays;
-    return days >= 100 ? 99 : days;
+    final difference = expireDate.difference(now);
+    return difference.inDays;
   }
 
   @override
@@ -694,9 +693,24 @@ class __AccountInformation extends State<_AccountInformation> {
                 )
               ],
             ),
-            Text(
-              '${widget.discount}次GPT4免费调用',
-              style: bodySmall?.copyWith(color: onPrimary),
+            Row(
+              children: [
+                Text(
+                  '${widget.discount} calls left',
+                  style: bodySmall?.copyWith(color: onPrimary),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  decoration: ShapeDecoration(
+                    shape: StadiumBorder(side: BorderSide(color: onPrimary)),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    'GPT-4',
+                    style: bodySmall?.copyWith(color: onPrimary),
+                  ),
+                )
+              ],
             ),
           ],
         ),
