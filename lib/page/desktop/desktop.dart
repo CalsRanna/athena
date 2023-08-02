@@ -158,6 +158,7 @@ class _DesktopState extends State<Desktop> {
                                       chat.messages.reversed.elementAt(index);
                                   return _MessageTile(
                                     message: message,
+                                    showToolbar: !(index == 0 && streaming),
                                     onRegenerated: () => handleRetry(index),
                                     onEdited: () => handleEdit(index),
                                     onDeleted: () => handleDelete(index),
@@ -927,12 +928,14 @@ class _ModelSwitcherTile extends StatelessWidget {
 class _MessageTile extends StatelessWidget {
   const _MessageTile({
     required this.message,
+    this.showToolbar = true,
     this.onDeleted,
     this.onEdited,
     this.onRegenerated,
   });
 
   final Message message;
+  final bool showToolbar;
   final void Function()? onDeleted;
   final void Function()? onEdited;
   final void Function()? onRegenerated;
@@ -970,7 +973,7 @@ class _MessageTile extends StatelessWidget {
             physics: NeverScrollableScrollPhysics(),
             shrinkWrap: true,
           ),
-          if (message.role == 'user')
+          if (message.role == 'user' && showToolbar)
             Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: Row(
@@ -989,7 +992,7 @@ class _MessageTile extends StatelessWidget {
                 ],
               ),
             ),
-          if (message.role != 'user')
+          if (message.role != 'user' && showToolbar)
             Padding(
               padding: const EdgeInsets.only(top: 4.0),
               child: Row(
