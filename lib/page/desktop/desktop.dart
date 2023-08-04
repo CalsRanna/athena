@@ -633,7 +633,8 @@ class __AccountInformation extends State<_AccountInformation> {
     final now = DateTime.now();
     final expireDate = DateTime.fromMillisecondsSinceEpoch(widget.expireDate);
     final difference = expireDate.difference(now);
-    return difference.inDays;
+    final days = difference.inDays;
+    return days.clamp(0, 99);
   }
 
   @override
@@ -665,7 +666,7 @@ class __AccountInformation extends State<_AccountInformation> {
                   ),
                 ),
         ),
-        SizedBox(width: 16),
+        SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -678,7 +679,7 @@ class __AccountInformation extends State<_AccountInformation> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 4),
                 Container(
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
@@ -697,10 +698,10 @@ class __AccountInformation extends State<_AccountInformation> {
             Row(
               children: [
                 Text(
-                  '${widget.discount} calls left',
+                  '${widget.discount} FREE CALLS',
                   style: bodySmall?.copyWith(color: onPrimary),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 4),
                 Container(
                   decoration: ShapeDecoration(
                     shape: StadiumBorder(side: BorderSide(color: onPrimary)),
@@ -710,7 +711,7 @@ class __AccountInformation extends State<_AccountInformation> {
                     'GPT-4',
                     style: bodySmall?.copyWith(color: onPrimary),
                   ),
-                )
+                ),
               ],
             ),
           ],
