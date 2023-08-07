@@ -64,6 +64,7 @@ class _AthenaAppState extends State<AthenaApp> {
         routerConfig: router,
         theme: ThemeData(
           brightness: setting.darkMode ? Brightness.dark : Brightness.light,
+          fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
           useMaterial3: true,
         ),
       ),

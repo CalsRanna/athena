@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
 import 'package:athena/extension/date_time.dart';
@@ -15,6 +16,7 @@ import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:window_manager/window_manager.dart';
 
 class Desktop extends StatefulWidget {
   const Desktop({super.key});
@@ -129,10 +131,13 @@ class _DesktopState extends State<Desktop> {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: Platform.isWindows
+                      ? const EdgeInsets.only(bottom: 16)
+                      : const EdgeInsets.symmetric(vertical: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      if (Platform.isWindows) _Toolbar(),
                       if (models.isNotEmpty)
                         _ModelSwitcher(
                           current: current,
@@ -438,10 +443,11 @@ class _ChatList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).colorScheme.primary,
-      padding: EdgeInsets.fromLTRB(8, 28, 8, 8),
+      padding: EdgeInsets.all(8),
       width: 256,
       child: Column(
         children: [
+          if (Platform.isMacOS) SizedBox(height: 20),
           _CreateChatButton(onTap: onCreated),
           SizedBox(height: 8),
           Expanded(
@@ -810,6 +816,98 @@ class __AccountInformation extends State<_AccountInformation> {
       entry!.remove();
       entry = null;
     }
+  }
+}
+
+class _Toolbar extends StatefulWidget {
+  const _Toolbar();
+
+  @override
+  State<_Toolbar> createState() => __ToolbarState();
+}
+
+class __ToolbarState extends State<_Toolbar> {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: SizedBox(
+        height: 24,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _ToolbarTile(icon: Icon(Icons.remove_outlined), onTap: minimize),
+            _ToolbarTile(
+              color: Colors.red,
+              icon: Icon(Icons.close_outlined),
+              onTap: close,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void minimize() {
+    windowManager.minimize();
+  }
+
+  void close() {
+    windowManager.close();
+  }
+}
+
+class _ToolbarTile extends StatefulWidget {
+  const _ToolbarTile({this.color, required this.icon, this.onTap});
+
+  final Color? color;
+  final Icon icon;
+  final void Function()? onTap;
+
+  @override
+  State<_ToolbarTile> createState() => __ToolbarTileState();
+}
+
+class __ToolbarTileState extends State<_ToolbarTile> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final shadow = colorScheme.shadow;
+    final onSurface = colorScheme.onSurface;
+    var color = widget.color ?? shadow.withOpacity(0.05);
+
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: handleEnter,
+        onExit: handleExit,
+        child: Container(
+          alignment: Alignment.center,
+          color: hover ? color : null,
+          height: 24,
+          width: 40,
+          child: IconTheme(
+            data: IconThemeData(size: 20, color: onSurface),
+            child: widget.icon,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() {
+      hover = false;
+    });
   }
 }
 

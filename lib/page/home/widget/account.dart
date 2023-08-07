@@ -48,7 +48,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                         ),
                         padding: const EdgeInsets.all(4),
                         child: Watcher((context, ref, child) => Text(
-                              '超级VIP',
+                              'UNLIMITED VIP',
                               style: Theme.of(context)
                                   .textTheme
                                   .labelLarge
@@ -61,7 +61,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                       const SizedBox(height: 8),
                       Watcher(
                         (context, ref, child) => Text(
-                          '过期时间：${formatExpireDate(ref.read(accountCreator)?.expireDate ?? 0)}',
+                          'EXPIRE DATE：${formatExpireDate(ref.read(accountCreator)?.expireDate ?? 0)}',
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       )
@@ -86,24 +86,16 @@ class _AccountWidgetState extends State<AccountWidget> {
                     child: Column(
                       children: [
                         Text(
-                          '账户余额（¥）',
+                          'BALANCE',
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                         const SizedBox(height: 8),
                         Watcher(
-                          (context, ref, child) => Text.rich(
-                            TextSpan(
-                              text: '${ref.read(accountCreator)?.balance} / ',
-                              style: Theme.of(context).textTheme.headlineLarge,
-                              children: [
-                                TextSpan(
-                                  text: '${ref.read(accountCreator)?.amount}',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                )
-                              ],
-                            ),
+                          (context, ref, child) => Text(
+                            '${ref.read(accountCreator)?.balance.toStringAsFixed(2)}',
+                            style: Theme.of(context).textTheme.headlineLarge,
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -122,7 +114,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                     child: Column(
                       children: [
                         Text(
-                          '剩余GPT-4调用次数',
+                          'GPT-4 FREE CALLS',
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                         const SizedBox(height: 8),
