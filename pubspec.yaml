@@ -48,7 +48,7 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "asset/image/icon.png"
+  image_path: "asset/image/launcher_icon_ios_512x512.jpg"
   min_sdk_android: 21 # android min sdk min:16, default 21
   web:
     generate: true
@@ -57,3 +57,4 @@ flutter_launcher_icons:
     icon_size: 48 # min:48, max:256, default: 48
   macos:
     generate: true
+    image_path: "asset/image/launcher_icon_macos_512x512.png"
