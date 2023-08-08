@@ -73,7 +73,13 @@ class _AthenaAppState extends State<AthenaApp> {
 
   initTray() async {
     if (Platform.isMacOS) {
-      await tray.initSystemTray(iconPath: 'asset/image/tray_512x512.jpg');
+      await tray.initSystemTray(
+        iconPath: 'asset/image/tray_512x512.jpg',
+        isTemplate: true,
+      );
+      tray.registerSystemTrayEventHandler((eventName) {
+        windowManager.show();
+      });
     }
   }
 }
