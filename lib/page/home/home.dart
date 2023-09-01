@@ -1,11 +1,6 @@
-import 'package:athena/creator/account.dart';
-import 'package:athena/creator/model.dart';
 import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/liaobots_account.dart';
 import 'package:athena/page/home/widget/account.dart';
-import 'package:athena/provider/liaobots.dart';
-import 'package:athena/schema/model.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/page/home/widget/chat.dart';
 import 'package:creator/creator.dart';
@@ -25,12 +20,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool loading = false;
   int selectedIndex = 0;
-
-  @override
-  void didChangeDependencies() {
-    update();
-    super.didChangeDependencies();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,70 +71,6 @@ class _HomePageState extends State<HomePage> {
             )
           : null,
     );
-  }
-
-  void update() async {
-    final ref = context.ref;
-    final account = ref.read(accountCreator);
-    final models = ref.read(modelsCreator);
-    if (account != null && models.isNotEmpty) return;
-    setState(() {
-      loading = true;
-    });
-    final messenger = ScaffoldMessenger.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    try {
-      await Future.wait([updateAccount(), updateModels()]);
-      setState(() {
-        loading = false;
-      });
-    } catch (error) {
-      messenger.showSnackBar(SnackBar(
-        backgroundColor: scheme.error,
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          error.toString(),
-          style: TextStyle(color: scheme.onError),
-        ),
-      ));
-      setState(() {
-        loading = false;
-      });
-    }
-  }
-
-  Future<void> updateAccount() async {
-    final ref = context.ref;
-    final response = await LiaobotsProvider().getAccount();
-    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
-  }
-
-  Future<void> updateModels() async {
-    final ref = context.ref;
-    var models = await isar.models.where().findAll();
-    if (models.isEmpty) {
-      try {
-        final liaobotsModels = await LiaobotsProvider().getModels();
-        models = liaobotsModels
-            .map((model) => Model()
-              ..maxLength = model.maxLength
-              ..modelId = model.id
-              ..name = model.name
-              ..tokenLimit = model.tokenLimit)
-            .toList();
-        await isar.writeTxn(() async {
-          await isar.models.putAll(models);
-        });
-
-        ref.set(modelsCreator, models);
-      } catch (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    } else {
-      ref.set(modelsCreator, models);
-    }
   }
 
   void triggerDarkMode() async {

@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:athena/api/chat.dart';
+import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/setting.dart';
 import 'package:athena/extension/date_time.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/liaobots_account.dart';
-import 'package:athena/model/liaobots_model.dart';
-import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/model.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
@@ -26,13 +24,9 @@ class Desktop extends StatefulWidget {
 }
 
 class _DesktopState extends State<Desktop> {
-  List<Chat> chats = [];
-  List<Model> models = [];
   Chat chat = Chat();
   int current = 0;
   bool showFloatingActionButton = false;
-  LiaobotsAccount account =
-      LiaobotsAccount(amount: 0, balance: 0, gpt4: 0, expireDate: 0);
   bool streaming = false;
   late ScrollController scrollController;
   late TextEditingController textEditingController;
@@ -44,9 +38,12 @@ class _DesktopState extends State<Desktop> {
   void initState() {
     super.initState();
     init();
+  }
+
+  @override
+  void didChangeDependencies() {
     getChats();
-    updateModels();
-    updateAccount();
+    super.didChangeDependencies();
   }
 
   @override
@@ -69,42 +66,9 @@ class _DesktopState extends State<Desktop> {
   }
 
   void getChats() async {
-    final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-    setState(() {
-      this.chats = chats;
-    });
-  }
-
-  Future<void> updateModels() async {
-    var models = await isar.models.where().findAll();
-    if (models.isEmpty) {
-      try {
-        final liaobotsModels = await LiaobotsProvider().getModels();
-        models = liaobotsModels
-            .map((model) => Model()
-              ..maxLength = model.maxLength
-              ..modelId = model.id
-              ..name = model.name
-              ..tokenLimit = model.tokenLimit)
-            .toList();
-        await isar.writeTxn(() async {
-          await isar.models.putAll(models);
-        });
-        setState(() {
-          this.models = models;
-          chat.model.value = models[0];
-        });
-      } catch (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    } else {
-      setState(() {
-        this.models = models;
-        chat.model.value = models[0];
-      });
-    }
+    final ref = context.ref;
+    final chats = await isar.chats.where().findAll();
+    ref.set(chatsCreator, chats);
   }
 
   @override
@@ -120,15 +84,16 @@ class _DesktopState extends State<Desktop> {
         children: [
           Row(
             children: [
-              _ChatList(
-                account: account,
-                chats: chats,
-                currentChatId: chat.id,
-                onCreated: createChat,
-                onDeleted: deleteChat,
-                onSelected: selectChat,
-                onAccountUpdated: updateAccount,
-              ),
+              Watcher((context, ref, child) {
+                var chats = ref.watch(chatsCreator);
+                return _ChatList(
+                  chats: chats,
+                  currentChatId: chat.id,
+                  onCreated: createChat,
+                  onDeleted: deleteChat,
+                  onSelected: selectChat,
+                );
+              }),
               Expanded(
                 child: Padding(
                   padding: Platform.isWindows
@@ -138,13 +103,12 @@ class _DesktopState extends State<Desktop> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       if (Platform.isWindows) _Toolbar(),
-                      if (models.isNotEmpty)
-                        _ModelSwitcher(
+                      Watcher((context, ref, child) {
+                        return _ModelSwitcher(
                           current: current,
-                          models: models,
                           onChange: handleSelect,
-                        ),
-                      if (models.isNotEmpty) SizedBox(height: 16),
+                        );
+                      }),
                       Expanded(
                         child: showLogo
                             ? Center(
@@ -196,7 +160,6 @@ class _DesktopState extends State<Desktop> {
   void createChat() {
     setState(() {
       chat = Chat();
-      chat.model.value = models[0];
       current = 0;
     });
     textEditingController.clear();
@@ -204,16 +167,17 @@ class _DesktopState extends State<Desktop> {
   }
 
   void deleteChat(int index) async {
-    final chat = chats.removeAt(index);
-    setState(() {
-      chats = chats;
-      this.chat = Chat();
-      current = 0;
-    });
     try {
       await isar.writeTxn(() async {
         await isar.chats.delete(chat.id);
       });
+      final chats = await isar.chats.where().findAll();
+
+      setState(() {
+        this.chat = Chat();
+        current = 0;
+      });
+      context.ref.set(chatsCreator, chats);
     } catch (error) {
       Logger().e(error);
     }
@@ -221,11 +185,10 @@ class _DesktopState extends State<Desktop> {
 
   void selectChat(int index) {
     scrollToBottom();
+    final chats = context.ref.read(chatsCreator);
     setState(() {
       chat = chats[index].withGrowableMessages();
-      var modelIndex = models
-          .indexWhere((model) => chat.model.value?.modelId == model.modelId);
-      current = modelIndex >= 0 ? modelIndex : 0;
+      current = chat.model == 'gpt-4' ? 1 : 0;
     });
   }
 
@@ -235,10 +198,8 @@ class _DesktopState extends State<Desktop> {
       chat.messages.removeRange(realIndex, chat.messages.length);
       if (chat.messages.isEmpty) {
         chat.title = null;
-        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-      } else {
-        chat.updatedAt = chat.messages.last.createdAt;
       }
+      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     });
     storeChat();
   }
@@ -264,14 +225,13 @@ class _DesktopState extends State<Desktop> {
     });
     final message = Message()
       ..role = 'user'
-      ..createdAt = DateTime.now().millisecondsSinceEpoch
       ..content = value;
     setState(() {
       chat.messages.add(message);
-      chat.updatedAt = message.createdAt;
+      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     });
     textEditingController.clear();
-    await fetchResponse();
+    fetchResponse();
     if (chat.title == null) {
       generateTitle(value);
     }
@@ -284,26 +244,13 @@ class _DesktopState extends State<Desktop> {
     });
     final logger = Logger();
     try {
-      final messages = chat.messages
-          .where(
-              (message) => message.role != 'error' && message.createdAt != null)
-          .toList();
-      final limitedMessages = messages
-          .map((message) => {'role': message.role, 'content': message.content})
-          .toList();
-      final model = chat.model.value ?? models[0];
-      final stream = await LiaobotsProvider().getCompletion(
-        messages: limitedMessages,
-        model: LiaobotsModel.fromJson({
-          "id": model.modelId,
-          "maxLength": model.maxLength,
-          "name": model.name,
-          "tokenLimit": model.tokenLimit
-        }),
+      final messages = chat.messages.where((message) {
+        return message.role != 'error' && message.content != null;
+      }).toList();
+      final stream = await ChatApi().getCompletion(
+        messages: messages,
+        model: chat.model,
       );
-      setState(() {
-        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
-      });
       stream.listen(
         (token) {
           setState(() {
@@ -318,18 +265,16 @@ class _DesktopState extends State<Desktop> {
             streaming = false;
           });
           storeChat();
-          updateAccount();
         },
       );
     } catch (error) {
       logger.e(error);
       final message = Message()
         ..role = 'error'
-        ..content = error.toString()
-        ..createdAt = DateTime.now().millisecondsSinceEpoch;
+        ..content = error.toString();
       setState(() {
         chat.messages.last = message;
-        chat.updatedAt = chat.messages.last.createdAt;
+        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
         streaming = false;
       });
       storeChat();
@@ -339,19 +284,7 @@ class _DesktopState extends State<Desktop> {
   Future<void> generateTitle(String value) async {
     final logger = Logger();
     try {
-      final model = chat.model.value ?? models[0];
-      final stream = await LiaobotsProvider().getTitle(
-        value: value,
-        model: LiaobotsModel.fromJson({
-          "id": model.modelId,
-          "maxLength": model.maxLength,
-          "name": model.name,
-          "tokenLimit": model.tokenLimit
-        }),
-      );
-      setState(() {
-        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
-      });
+      final stream = await ChatApi().getTitle(value: value);
       stream.listen(
         (token) {
           setState(() {
@@ -360,7 +293,6 @@ class _DesktopState extends State<Desktop> {
         },
         onDone: () {
           storeChat();
-          updateAccount();
         },
       );
     } catch (error) {
@@ -368,39 +300,29 @@ class _DesktopState extends State<Desktop> {
     }
   }
 
-  Future<void> updateAccount() async {
-    final response = await LiaobotsProvider().getAccount();
-    setState(() {
-      account = LiaobotsAccount.fromJson(response);
-    });
-  }
-
   Future<void> storeChat() async {
     try {
+      if (!chat.model.startsWith('gpt')) {
+        chat.model = 'gpt-3.5-turbo-16k';
+      }
       await isar.writeTxn(() async {
-        chat.model.value = models[current];
         await isar.chats.put(chat);
-        await chat.model.save();
       });
-      final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-      setState(() {
-        this.chats = chats;
-      });
+      final chats = await isar.chats.where().findAll();
+      context.ref.set(chatsCreator, chats);
     } catch (error) {
       Logger().e(error);
     }
   }
 
-  Future<void> handleSelect(int index) async {
+  Future<void> handleSelect(int index, String model) async {
     setState(() {
+      chat.model = model;
       current = index;
-      chat.model.value = models[index];
     });
     if (chat.messages.isNotEmpty) {
       await isar.writeTxn(() async {
-        chat.model.value = models[index];
         await isar.chats.put(chat);
-        await chat.model.save();
       });
     }
   }
@@ -422,7 +344,6 @@ class _DesktopState extends State<Desktop> {
 
 class _ChatList extends StatelessWidget {
   const _ChatList({
-    required this.account,
     required this.chats,
     this.currentChatId,
     this.onCreated,
@@ -431,7 +352,6 @@ class _ChatList extends StatelessWidget {
     this.onAccountUpdated,
   });
 
-  final LiaobotsAccount account;
   final List<Chat> chats;
   final int? currentChatId;
   final void Function()? onCreated;
@@ -444,7 +364,7 @@ class _ChatList extends StatelessWidget {
     return Container(
       color: Theme.of(context).colorScheme.primary,
       padding: EdgeInsets.all(8),
-      width: 256,
+      width: 272,
       child: Column(
         children: [
           if (Platform.isMacOS) SizedBox(height: 20),
@@ -466,12 +386,6 @@ class _ChatList extends StatelessWidget {
               },
             ),
           ),
-          _AccountInformation(
-            balance: account.balance,
-            discount: account.gpt4,
-            expireDate: account.expireDate,
-            onTap: onAccountUpdated,
-          )
         ],
       ),
     );
@@ -545,16 +459,10 @@ class _ChatTile extends StatelessWidget {
   }
 
   IconData get icon {
-    switch (chat.model.value?.name) {
-      case 'GPT-3.5-16k':
-        return Icons.chat_bubble_outline;
-      case 'GPT-4':
+    switch (chat.model) {
+      case 'gpt-3.5-turbo-16k':
         return Icons.chat_bubble;
-      case 'claude-v1.3':
-        return Icons.comment_bank_outlined;
-      case 'claude-instant-100k':
-        return Icons.comment_bank;
-      case 'claude-2-100k':
+      case 'gpt-4':
         return Icons.reviews;
       default:
         return Icons.announcement_outlined;
@@ -722,14 +630,14 @@ class __AccountInformation extends State<_AccountInformation> {
             ),
           ],
         ),
-        // Spacer(),
-        // CompositedTransformTarget(
-        //   link: link,
-        //   child: IconButton(
-        //     onPressed: handlePressed,
-        //     icon: Icon(Icons.more_horiz, color: onPrimary),
-        //   ),
-        // ),
+        Spacer(),
+        CompositedTransformTarget(
+          link: link,
+          child: IconButton(
+            onPressed: handlePressed,
+            icon: Icon(Icons.more_horiz, color: onPrimary),
+          ),
+        ),
       ],
     );
   }
@@ -761,7 +669,7 @@ class __AccountInformation extends State<_AccountInformation> {
                 ),
               ),
               Positioned(
-                width: 240,
+                width: 256,
                 child: CompositedTransformFollower(
                   followerAnchor: Alignment.bottomRight,
                   link: link,
@@ -780,24 +688,33 @@ class __AccountInformation extends State<_AccountInformation> {
                           title: Text('删除所有对话'),
                           onTap: () {},
                         ),
-                        ListTile(
-                          title: Text('深色模式'),
-                          onTap: () async {
-                            try {
-                              final ref = context.ref;
-                              await isar.writeTxn(() async {
-                                var setting =
-                                    await isar.settings.where().findFirst() ??
-                                        Setting();
-                                setting.darkMode = !setting.darkMode;
-                                isar.settings.put(setting);
-                                ref.emit(settingEmitter, setting);
-                              });
-                            } catch (error) {
-                              Logger().e(error);
-                            }
-                          },
-                        ),
+                        Watcher((context, ref, child) {
+                          final setting =
+                              ref.watch(settingEmitter.asyncData).data;
+                          var prefix = '深色';
+                          if (setting?.darkMode == true) {
+                            prefix = '浅色';
+                          }
+                          return ListTile(
+                            title: Text('$prefix模式'),
+                            onTap: () async {
+                              try {
+                                final ref = context.ref;
+                                await isar.writeTxn(() async {
+                                  var setting =
+                                      await isar.settings.where().findFirst() ??
+                                          Setting();
+                                  setting.darkMode = !setting.darkMode;
+                                  isar.settings.put(setting);
+                                  ref.emit(settingEmitter, setting);
+                                });
+                              } catch (error) {
+                                Logger().e(error);
+                              }
+                            },
+                          );
+                        }),
+                        _ProviderSwitcher(),
                       ],
                     ),
                   ),
@@ -816,6 +733,87 @@ class __AccountInformation extends State<_AccountInformation> {
       entry!.remove();
       entry = null;
     }
+  }
+}
+
+class _ProviderSwitcher extends StatefulWidget {
+  const _ProviderSwitcher({super.key});
+
+  @override
+  State<_ProviderSwitcher> createState() => __ProviderSwitcherState();
+}
+
+class __ProviderSwitcherState extends State<_ProviderSwitcher> {
+  @override
+  Widget build(BuildContext context) {
+    return Watcher((context, ref, child) {
+      return Row(
+        children: [
+          _ProviderSwitcherTile(
+            title: 'Liaobots',
+            onTap: () => handleTap('liaobots'),
+          ),
+          SizedBox(width: 8),
+          _ProviderSwitcherTile(
+            title: 'Alpaca',
+            onTap: () => handleTap('alpaca'),
+          ),
+        ],
+      );
+    });
+  }
+
+  void handleTap(String provider) async {
+    final ref = context.ref;
+    var setting = await isar.settings.where().findFirst();
+    await isar.writeTxn(() async {
+      setting?.provider = provider;
+      await isar.settings.put(setting!);
+    });
+    final chats = await isar.chats.where().findAll();
+    ref.set(chatsCreator, chats);
+  }
+}
+
+class _ProviderSwitcherTile extends StatelessWidget {
+  const _ProviderSwitcherTile({
+    super.key,
+    this.active = false,
+    required this.title,
+    this.onTap,
+  });
+
+  final bool active;
+  final String title;
+  final void Function()? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
+    final onPrimary = colorScheme.onPrimary;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: active ? primary : null,
+            ),
+            margin: EdgeInsets.only(top: 8),
+            padding: EdgeInsets.all(16),
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: active ? onPrimary : null),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -912,11 +910,10 @@ class __ToolbarTileState extends State<_ToolbarTile> {
 }
 
 class _ModelSwitcher extends StatefulWidget {
-  const _ModelSwitcher({this.current = 0, required this.models, this.onChange});
+  const _ModelSwitcher({this.current = 0, this.onChange});
 
   final int current;
-  final List<Model> models;
-  final void Function(int)? onChange;
+  final void Function(int, String)? onChange;
 
   @override
   State<StatefulWidget> createState() => __ModelSwitcherState();
@@ -926,13 +923,13 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
     with SingleTickerProviderStateMixin {
   late final controller;
   double offset = 0;
+  List<String> models = ['gpt-3.5-turbo-16k', 'gpt-4'];
 
   @override
   void initState() {
     super.initState();
     controller = AnimationController(
-      duration: Duration(milliseconds: 450),
-      upperBound: widget.models.length.toDouble(),
+      duration: Duration(milliseconds: 200),
       vsync: this,
     );
     controller.addListener(() {
@@ -962,6 +959,7 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
         borderRadius: BorderRadius.circular(16),
         color: Theme.of(context).colorScheme.surfaceVariant,
       ),
+      margin: EdgeInsets.only(bottom: 16),
       padding: EdgeInsets.all(8),
       child: Stack(
         children: [
@@ -979,9 +977,10 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
-            children: List.generate(widget.models.length, (index) {
+            children: List.generate(models.length, (index) {
+              final title = models[index].replaceAll('-turbo-16k', '');
               return _ModelSwitcherTile(
-                name: widget.models[index].name,
+                name: title.toUpperCase(),
                 onTap: () => handleTap(index),
               );
             }),
@@ -993,7 +992,8 @@ class __ModelSwitcherState extends State<_ModelSwitcher>
 
   void handleTap(int index) {
     controller.animateTo(index.toDouble());
-    widget.onChange?.call(index);
+    widget.onChange?.call(index, models[index]);
+    context.ref.set(modelCreator, models[index]);
   }
 }
 

@@ -1,4 +1,3 @@
-import 'package:athena/schema/model.dart';
 import 'package:isar/isar.dart';
 
 part 'chat.g.dart';
@@ -8,7 +7,7 @@ part 'chat.g.dart';
 class Chat {
   Id id = Isar.autoIncrement;
   List<Message> messages = [];
-  final model = IsarLink<Model>();
+  String model = '';
   String? title;
   @Name('updated_at')
   int? updatedAt;
@@ -16,10 +15,28 @@ class Chat {
 
 @embedded
 class Message {
-  @Name('created_at')
-  int? createdAt;
   String? content;
   String? role;
+
+  Message();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content,
+      'role': role,
+    };
+  }
+
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message()
+      ..content = json['content']
+      ..role = json['role'];
+  }
+
+  @override
+  String toString() {
+    return toJson().toString();
+  }
 }
 
 extension ChatExtension on Chat {

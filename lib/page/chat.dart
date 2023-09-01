@@ -1,12 +1,8 @@
 import 'dart:async';
 
-import 'package:athena/creator/account.dart';
+import 'package:athena/api/chat.dart';
 import 'package:athena/creator/chat.dart';
-import 'package:athena/creator/model.dart';
 import 'package:athena/main.dart';
-import 'package:athena/model/liaobots_account.dart';
-import 'package:athena/model/liaobots_model.dart';
-import 'package:athena/provider/liaobots.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
@@ -159,14 +155,10 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> setDefaultModel() async {
-    final ref = context.ref;
-    final models = ref.read(modelsCreator);
-    if (chat.model.value != null) return;
-    chat.model.value = models.first;
+    if (chat.model.isNotEmpty) return;
     if (chat.messages.isNotEmpty) {
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
-        await chat.model.save();
       });
     }
   }
@@ -177,10 +169,8 @@ class _ChatPageState extends State<ChatPage> {
       chat.messages.removeRange(realIndex, chat.messages.length);
       if (chat.messages.isEmpty) {
         chat.title = null;
-        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-      } else {
-        chat.updatedAt = chat.messages.last.createdAt;
       }
+      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     });
     storeChat();
   }
@@ -201,11 +191,10 @@ class _ChatPageState extends State<ChatPage> {
     if (trimmedValue.isEmpty) return;
     final message = Message()
       ..role = 'user'
-      ..createdAt = DateTime.now().millisecondsSinceEpoch
       ..content = trimmedValue;
     setState(() {
       chat.messages.add(message);
-      chat.updatedAt = message.createdAt;
+      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     });
     textEditingController.clear();
     await fetchResponse();
@@ -215,19 +204,19 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void selectModel() {
-    final models = context.ref.read(modelsCreator);
+    final models = [];
     showModalBottomSheet(
       context: context,
       builder: (context) => ListView.builder(
         itemBuilder: (context, index) {
           var selected = false;
-          if (chat.model.value == null) {
+          if (chat.model.isEmpty) {
             selected = true;
           } else {
-            selected = models[index].id == chat.model.value?.id;
+            selected = true;
           }
           return ListTile(
-            title: Text(models[index].modelId),
+            title: Text(models[index]),
             trailing: selected ? Icon(Icons.check_outlined) : null,
             onTap: () => handleSelect(index),
           );
@@ -239,14 +228,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> handleSelect(int index) async {
-    final ref = context.ref;
     final navigator = Navigator.of(context);
-    final models = ref.read(modelsCreator);
-    chat.model.value = models[index];
     await isar.writeTxn(() async {
-      chat.model.value = models[index];
       await isar.chats.put(chat);
-      await chat.model.save();
     });
     navigator.pop();
   }
@@ -258,26 +242,12 @@ class _ChatPageState extends State<ChatPage> {
     });
     final logger = Logger();
     try {
-      final messages = chat.messages
-          .where(
-              (message) => message.role != 'error' && message.createdAt != null)
-          .toList();
-      final limitedMessages = messages
-          .map((message) => {'role': message.role, 'content': message.content})
-          .toList();
-      final model = chat.model.value!;
-      final stream = await LiaobotsProvider().getCompletion(
-        messages: limitedMessages,
-        model: LiaobotsModel.fromJson({
-          "id": model.modelId,
-          "maxLength": model.maxLength,
-          "name": model.name,
-          "tokenLimit": model.tokenLimit
-        }),
+      final messages =
+          chat.messages.where((message) => message.role != 'error').toList();
+      final stream = await ChatApi().getCompletion(
+        messages: messages,
+        model: 'gpt-3.5-turbo-16k',
       );
-      setState(() {
-        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
-      });
       stream.listen(
         (token) {
           setState(() {
@@ -292,18 +262,16 @@ class _ChatPageState extends State<ChatPage> {
             loading = false;
           });
           storeChat();
-          updateAccount();
         },
       );
     } catch (error) {
       logger.e(error);
       final message = Message()
         ..role = 'error'
-        ..content = error.toString()
-        ..createdAt = DateTime.now().millisecondsSinceEpoch;
+        ..content = error.toString();
       setState(() {
         chat.messages.last = message;
-        chat.updatedAt = chat.messages.last.createdAt;
+        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
         loading = false;
       });
       storeChat();
@@ -313,19 +281,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> generateTitle(String value) async {
     final logger = Logger();
     try {
-      final model = chat.model.value!;
-      final stream = await LiaobotsProvider().getTitle(
-        value: value,
-        model: LiaobotsModel.fromJson({
-          "id": model.modelId,
-          "maxLength": model.maxLength,
-          "name": model.name,
-          "tokenLimit": model.tokenLimit
-        }),
-      );
-      setState(() {
-        chat.messages.last.createdAt = DateTime.now().millisecondsSinceEpoch;
-      });
+      final stream = await ChatApi().getTitle(value: value);
       stream.listen(
         (token) {
           setState(() {
@@ -334,18 +290,11 @@ class _ChatPageState extends State<ChatPage> {
         },
         onDone: () {
           storeChat();
-          updateAccount();
         },
       );
     } catch (error) {
       logger.e(error);
     }
-  }
-
-  Future<void> updateAccount() async {
-    final ref = context.ref;
-    final response = await LiaobotsProvider().getAccount();
-    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
   }
 
   Future<void> storeChat() async {
@@ -420,89 +369,69 @@ class ChatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (message.createdAt != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.access_time_outlined,
-                        size: 10,
-                        color: Theme.of(context).colorScheme.secondary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.access_time_outlined,
+                      size: 10,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                    const Spacer(),
+                    if (message.role == 'user')
+                      GestureDetector(
+                        onTap: () => onDelete?.call(),
+                        child: Text(
+                          '删除对话',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                        ),
                       ),
-                      const SizedBox(width: 2),
-                      Text(
-                        DateTime.fromMillisecondsSinceEpoch(
-                                message.createdAt ?? 0)
-                            .toString()
-                            .substring(0, 16),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.secondary,
-                            ),
+                    const SizedBox(width: 4),
+                    if (message.role != 'user')
+                      GestureDetector(
+                        onTap: () => onRetry?.call(),
+                        child: Text(
+                          '重试',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                        ),
                       ),
-                      const Spacer(),
-                      if (message.role == 'user')
-                        GestureDetector(
-                          onTap: () => onDelete?.call(),
-                          child: Text(
-                            '删除对话',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                          ),
+                    if (message.role == 'user')
+                      GestureDetector(
+                        onTap: () => onEdit?.call(),
+                        child: Text(
+                          '编辑',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
                         ),
-                      const SizedBox(width: 4),
-                      if (message.role != 'user')
-                        GestureDetector(
-                          onTap: () => onRetry?.call(),
-                          child: Text(
-                            '重试',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                          ),
+                      ),
+                    const SizedBox(width: 4),
+                    if (message.role != 'error')
+                      GestureDetector(
+                        onTap: () => copy(context, message),
+                        child: Text(
+                          '复制',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
                         ),
-                      if (message.role == 'user')
-                        GestureDetector(
-                          onTap: () => onEdit?.call(),
-                          child: Text(
-                            '编辑',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                          ),
-                        ),
-                      const SizedBox(width: 4),
-                      if (message.role != 'error')
-                        GestureDetector(
-                          onTap: () => copy(context, message),
-                          child: Text(
-                            '复制',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.secondary,
-                                ),
-                          ),
-                        )
-                    ],
-                  ),
-                if (message.createdAt != null) const SizedBox(height: 2),
-                if (message.createdAt != null)
-                  SelectableText(message.content ?? ''),
-                if (message.createdAt == null) const Text('正在思考...'),
+                      )
+                  ],
+                ),
               ],
             ),
           ),

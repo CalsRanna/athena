@@ -1,6 +1,3 @@
-import 'package:athena/creator/account.dart';
-import 'package:athena/model/liaobots_account.dart';
-import 'package:athena/provider/liaobots.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 
@@ -18,7 +15,6 @@ class _AccountWidgetState extends State<AccountWidget> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         GestureDetector(
-          onTap: updateAccount,
           child: Card(
             color: Theme.of(context).colorScheme.surfaceVariant,
             elevation: 0,
@@ -61,7 +57,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                       const SizedBox(height: 8),
                       Watcher(
                         (context, ref, child) => Text(
-                          'EXPIRE DATE：${formatExpireDate(ref.read(accountCreator)?.expireDate ?? 0)}',
+                          'EXPIRE DATE：${formatExpireDate(0)}',
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       )
@@ -77,7 +73,6 @@ class _AccountWidgetState extends State<AccountWidget> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: updateAccount,
                 child: Card(
                   color: Theme.of(context).colorScheme.surfaceVariant,
                   elevation: 0,
@@ -92,7 +87,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                         const SizedBox(height: 8),
                         Watcher(
                           (context, ref, child) => Text(
-                            '${ref.read(accountCreator)?.balance.toStringAsFixed(2)}',
+                            '${0.toStringAsFixed(2)}',
                             style: Theme.of(context).textTheme.headlineLarge,
                           ),
                         ),
@@ -105,7 +100,6 @@ class _AccountWidgetState extends State<AccountWidget> {
             const SizedBox(width: 16),
             Expanded(
               child: GestureDetector(
-                onTap: updateAccount,
                 child: Card(
                   color: Theme.of(context).colorScheme.surfaceVariant,
                   elevation: 0,
@@ -120,7 +114,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                         const SizedBox(height: 8),
                         Watcher(
                           (context, ref, child) => Text(
-                            '${ref.read(accountCreator)?.gpt4}',
+                            '0',
                             style: Theme.of(context).textTheme.headlineLarge,
                           ),
                         )
@@ -140,11 +134,5 @@ class _AccountWidgetState extends State<AccountWidget> {
     return DateTime.fromMillisecondsSinceEpoch(expireDate)
         .toString()
         .substring(0, 10);
-  }
-
-  void updateAccount() async {
-    final ref = context.ref;
-    final response = await LiaobotsProvider().getAccount();
-    ref.set(accountCreator, LiaobotsAccount.fromJson(response));
   }
 }

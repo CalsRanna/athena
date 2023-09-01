@@ -10,3 +10,7 @@ final chatsEmitter = Emitter<List<Chat>?>(
   },
   name: 'chatsEmitter',
 );
+
+final chatsCreator = Creator<List<Chat>>.value([], name: 'chatsCreator');
+
+final modelCreator = Creator<String>.value('gpt-4', name: 'modelCreator');
