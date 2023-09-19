@@ -102,10 +102,10 @@ class _ChatPageState extends State<ChatPage> {
                     Expanded(
                       child: TextField(
                         controller: textEditingController,
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          focusedBorder: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
                           ),
@@ -121,7 +121,7 @@ class _ChatPageState extends State<ChatPage> {
                             FocusScope.of(context).unfocus(),
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     IconButton(
                       style: IconButton.styleFrom(
                         backgroundColor:
@@ -217,12 +217,12 @@ class _ChatPageState extends State<ChatPage> {
           }
           return ListTile(
             title: Text(models[index]),
-            trailing: selected ? Icon(Icons.check_outlined) : null,
+            trailing: selected ? const Icon(Icons.check_outlined) : null,
             onTap: () => handleSelect(index),
           );
         },
         itemCount: models.length,
-        padding: EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
       ),
     );
   }

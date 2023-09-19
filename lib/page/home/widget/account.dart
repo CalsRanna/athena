@@ -87,7 +87,7 @@ class _AccountWidgetState extends State<AccountWidget> {
                         const SizedBox(height: 8),
                         Watcher(
                           (context, ref, child) => Text(
-                            '${0.toStringAsFixed(2)}',
+                            0.toStringAsFixed(2),
                             style: Theme.of(context).textTheme.headlineLarge,
                           ),
                         ),

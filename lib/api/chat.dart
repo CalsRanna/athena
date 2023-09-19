@@ -37,7 +37,7 @@ class ChatApi {
   }) async {
     final key = await _getKey();
     final client = http.Client();
-    final uri = Uri.parse('https://api.aiproxy.io/v1/chat/completions');
+    final uri = Uri.parse('https://apivip.aiproxy.io/v1/chat/completions');
     final header = {
       "Content-Type": 'application/json',
       "Authorization": 'Bearer $key'

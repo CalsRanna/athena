@@ -16,3 +16,5 @@ final settingEmitter = Emitter<Setting>(
   },
   name: 'settingEmitter',
 );
+
+final darkModeCreator = Creator<bool>.value(false, name: 'darkModeCreator');
