@@ -1,14 +1,14 @@
 import 'dart:async';
 
-import 'package:athena/api/chat.dart';
 import 'package:athena/creator/chat.dart';
+import 'package:athena/creator/input.dart';
 import 'package:athena/main.dart';
+import 'package:athena/provider/chat_provider.dart';
+import 'package:athena/provider/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:isar/isar.dart';
-import 'package:logger/logger.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.id});
@@ -20,16 +20,13 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   late ScrollController scrollController;
-  late TextEditingController textEditingController;
 
   bool loading = false;
   bool showFloatingActionButton = false;
-  Chat chat = Chat();
 
   @override
   void initState() {
     super.initState();
-    fetchChat();
     scrollController = ScrollController()
       ..addListener(() {
         setState(() {
@@ -37,19 +34,11 @@ class _ChatPageState extends State<ChatPage> {
               scrollController.position.extentBefore != 0;
         });
       });
-    textEditingController = TextEditingController();
-  }
-
-  @override
-  void didChangeDependencies() {
-    setDefaultModel();
-    super.didChangeDependencies();
   }
 
   @override
   void dispose() {
     scrollController.dispose();
-    textEditingController.dispose();
     super.dispose();
   }
 
@@ -69,26 +58,34 @@ class _ChatPageState extends State<ChatPage> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Text(
-          loading ? '对方正在输入...' : chat.title ?? '',
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Watcher((context, ref, child) {
+          final chats = ref.watch(chatsCreator);
+          final current = ref.watch(currentChatCreator) ?? 0;
+          return Text(
+            loading ? '对方正在输入...' : chats[current].title ?? '',
+            overflow: TextOverflow.ellipsis,
+          );
+        }),
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              itemBuilder: (context, index) => ChatTile(
-                message: chat.messages.reversed.elementAt(index),
-                onDelete: () => handleDelete(index),
-                onEdit: () => handleEdit(index),
-                onRetry: () => handleRetry(index),
-              ),
-              itemCount: chat.messages.length,
-              padding: const EdgeInsets.all(16),
-              reverse: true,
-            ),
+            child: Watcher((context, ref, child) {
+              final chats = ref.watch(chatsCreator);
+              final current = ref.watch(currentChatCreator) ?? 0;
+              return ListView.builder(
+                controller: scrollController,
+                itemBuilder: (context, index) => ChatTile(
+                  message: chats[current].messages.reversed.elementAt(index),
+                  onDelete: () => handleDelete(index),
+                  onEdit: () => handleEdit(index),
+                  onRetry: () => handleRetry(index),
+                ),
+                itemCount: chats[current].messages.length,
+                padding: const EdgeInsets.all(16),
+                reverse: true,
+              );
+            }),
           ),
           Material(
             color: Theme.of(context).colorScheme.surface,
@@ -100,26 +97,31 @@ class _ChatPageState extends State<ChatPage> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: textEditingController,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          focusedBorder: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                      child: Watcher((context, ref, child) {
+                        final controller =
+                            ref.watch(textEditingControllerCreator);
+                        final node = ref.watch(focusNodeCreator);
+                        return TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            focusedBorder: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            hintText: 'Ask me anything...',
+                            isCollapsed: false,
+                            isDense: true,
                           ),
-                          hintText: 'Ask me anything...',
-                          isCollapsed: false,
-                          isDense: true,
-                        ),
-                        maxLines: 1,
-                        textInputAction: TextInputAction.send,
-                        scrollPadding: EdgeInsets.zero,
-                        onSubmitted: handleSubmitted,
-                        onTapOutside: (event) =>
-                            FocusScope.of(context).unfocus(),
-                      ),
+                          focusNode: node,
+                          maxLines: 1,
+                          textInputAction: TextInputAction.send,
+                          scrollPadding: EdgeInsets.zero,
+                          onSubmitted: handleSubmitted,
+                          onTapOutside: (event) => node.unfocus(),
+                        );
+                      }),
                     ),
                     const SizedBox(width: 16),
                     IconButton(
@@ -145,75 +147,37 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Future<void> fetchChat() async {
-    if (widget.id != null) {
-      final exist = await isar.chats.get(widget.id!);
-      setState(() {
-        chat = exist?.withGrowableMessages() ?? Chat();
-      });
-    }
-  }
-
-  Future<void> setDefaultModel() async {
-    if (chat.model.isNotEmpty) return;
-    if (chat.messages.isNotEmpty) {
-      await isar.writeTxn(() async {
-        await isar.chats.put(chat);
-      });
-    }
-  }
-
   Future<void> handleDelete(int index) async {
-    final realIndex = chat.messages.length - 1 - index;
-    setState(() {
-      chat.messages.removeRange(realIndex, chat.messages.length);
-      if (chat.messages.isEmpty) {
-        chat.title = null;
-      }
-      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-    });
-    storeChat();
+    ChatProvider.of(context).delete(index);
   }
 
   void handleEdit(int index) {
-    final realIndex = chat.messages.length - 1 - index;
-    final message = chat.messages.elementAt(realIndex);
-    textEditingController.text = message.content ?? '';
+    ChatProvider.of(context).edit(index);
   }
 
   Future<void> handleRetry(int index) async {
-    handleDelete(index);
-    await fetchResponse();
+    ChatProvider.of(context).retry(index);
   }
 
   Future<void> handleSubmitted(String value) async {
-    final trimmedValue = value.trim().replaceAll('\n', '');
-    if (trimmedValue.isEmpty) return;
-    final message = Message()
-      ..role = 'user'
-      ..content = trimmedValue;
-    setState(() {
-      chat.messages.add(message);
-      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-    });
-    textEditingController.clear();
-    await fetchResponse();
-    if (chat.title == null) {
-      generateTitle(value);
-    }
+    ChatProvider.of(context).submit();
   }
 
   void selectModel() {
-    final models = [];
+    final chats = context.ref.read(chatsCreator);
+    final current = context.ref.read(currentChatCreator);
+    if (current == null) return;
+    final chat = chats[current];
+    final models = ModelProvider.of(context).models;
     showModalBottomSheet(
       context: context,
       builder: (context) => ListView.builder(
         itemBuilder: (context, index) {
           var selected = false;
-          if (chat.model.isEmpty) {
+          if (chat.model == models[index]) {
             selected = true;
           } else {
-            selected = true;
+            selected = false;
           }
           return ListTile(
             title: Text(models[index]),
@@ -228,86 +192,18 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> handleSelect(int index) async {
+    final chats = context.ref.read(chatsCreator);
+    final current = context.ref.read(currentChatCreator);
+    if (current == null) return;
+    final chat = chats[current];
+    final models = ModelProvider.of(context).models;
+    chat.model = models[index];
+    context.ref.set(chatsCreator, [...chats]);
     final navigator = Navigator.of(context);
     await isar.writeTxn(() async {
       await isar.chats.put(chat);
     });
     navigator.pop();
-  }
-
-  Future<void> fetchResponse() async {
-    setState(() {
-      loading = true;
-      chat.messages.add(Message()..role = 'assistant');
-    });
-    final logger = Logger();
-    try {
-      final messages =
-          chat.messages.where((message) => message.role != 'error').toList();
-      final stream = await ChatApi().getCompletion(
-        messages: messages,
-        model: 'gpt-3.5-turbo-16k',
-      );
-      stream.listen(
-        (token) {
-          setState(() {
-            chat.messages.last.role = 'assistant';
-            chat.messages.last.content =
-                '${chat.messages.last.content ?? ''}$token';
-          });
-        },
-        onDone: () {
-          setState(() {
-            chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-            loading = false;
-          });
-          storeChat();
-        },
-      );
-    } catch (error) {
-      logger.e(error);
-      final message = Message()
-        ..role = 'error'
-        ..content = error.toString();
-      setState(() {
-        chat.messages.last = message;
-        chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-        loading = false;
-      });
-      storeChat();
-    }
-  }
-
-  Future<void> generateTitle(String value) async {
-    final logger = Logger();
-    try {
-      final stream = await ChatApi().getTitle(value: value);
-      stream.listen(
-        (token) {
-          setState(() {
-            chat.title = '${chat.title ?? ''}$token'.trim().replaceAll('。', '');
-          });
-        },
-        onDone: () {
-          storeChat();
-        },
-      );
-    } catch (error) {
-      logger.e(error);
-    }
-  }
-
-  Future<void> storeChat() async {
-    try {
-      final ref = context.ref;
-      await isar.writeTxn(() async {
-        await isar.chats.put(chat);
-      });
-      final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-      ref.emit(chatsEmitter, chats);
-    } catch (error) {
-      Logger().e(error);
-    }
   }
 
   void scrollToBottom() {
@@ -336,6 +232,15 @@ class ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final secondaryContainer = colorScheme.secondaryContainer;
+    final errorContainer = colorScheme.errorContainer;
+    final primaryContainer = colorScheme.primaryContainer;
+    final secondary = colorScheme.secondary;
+    final error = colorScheme.error;
+    final textTheme = theme.textTheme;
+    final labelSmall = textTheme.labelSmall;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: message.role == 'user'
@@ -346,8 +251,8 @@ class ChatTile extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               color: message.role == 'assistant'
-                  ? Theme.of(context).colorScheme.secondaryContainer
-                  : Theme.of(context).colorScheme.errorContainer,
+                  ? secondaryContainer
+                  : errorContainer,
               shape: BoxShape.circle,
             ),
             padding: const EdgeInsets.all(8),
@@ -359,10 +264,10 @@ class ChatTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               color: message.role == 'user'
-                  ? Theme.of(context).colorScheme.primaryContainer
+                  ? primaryContainer
                   : message.role == 'assistant'
-                      ? Theme.of(context).colorScheme.secondaryContainer
-                      : Theme.of(context).colorScheme.errorContainer,
+                      ? secondaryContainer
+                      : errorContainer,
             ),
             margin: const EdgeInsets.symmetric(vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -375,18 +280,17 @@ class ChatTile extends StatelessWidget {
                     Icon(
                       Icons.access_time_outlined,
                       size: 10,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: secondary,
                     ),
                     const Spacer(),
                     if (message.role == 'user')
                       GestureDetector(
                         onTap: () => onDelete?.call(),
                         child: Text(
-                          '删除对话',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
+                          '删除',
+                          style: labelSmall?.copyWith(
+                            color: error,
+                          ),
                         ),
                       ),
                     const SizedBox(width: 4),
@@ -394,13 +298,10 @@ class ChatTile extends StatelessWidget {
                       GestureDetector(
                         onTap: () => onRetry?.call(),
                         child: Text(
-                          '重试',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
+                          '重新生成',
+                          style: labelSmall?.copyWith(
+                            color: secondary,
+                          ),
                         ),
                       ),
                     if (message.role == 'user')
@@ -408,12 +309,9 @@ class ChatTile extends StatelessWidget {
                         onTap: () => onEdit?.call(),
                         child: Text(
                           '编辑',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
+                          style: labelSmall?.copyWith(
+                            color: secondary,
+                          ),
                         ),
                       ),
                     const SizedBox(width: 4),
@@ -422,16 +320,14 @@ class ChatTile extends StatelessWidget {
                         onTap: () => copy(context, message),
                         child: Text(
                           '复制',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
+                          style: labelSmall?.copyWith(
+                            color: secondary,
+                          ),
                         ),
                       )
                   ],
                 ),
+                Text(message.content ?? ''),
               ],
             ),
           ),
@@ -439,7 +335,7 @@ class ChatTile extends StatelessWidget {
         if (message.role == 'user')
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              color: primaryContainer,
               shape: BoxShape.circle,
             ),
             padding: const EdgeInsets.all(8),

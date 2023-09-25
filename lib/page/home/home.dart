@@ -1,6 +1,7 @@
 import 'package:athena/creator/setting.dart';
 import 'package:athena/main.dart';
 import 'package:athena/page/home/widget/account.dart';
+import 'package:athena/provider/chat_provider.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/page/home/widget/chat.dart';
 import 'package:creator/creator.dart';
@@ -94,6 +95,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void handlePressed() {
+    ChatProvider.of(context).create();
     context.push('/chat');
   }
 }

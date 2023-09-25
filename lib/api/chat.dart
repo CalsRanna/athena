@@ -14,7 +14,8 @@ class ChatApi {
   }
 
   Future<Stream<String>> getTitle({required String value}) {
-    const String prompt = '请使用四到五个字直接返回这句话的简要主题，不要解释、不要标点符号、不要语气助词、不要多余文本。'
+    const String prompt = '请使用四到五个字描述下面这句话的简要主题，而不是回答这句话提及到的问题。'
+        '不要解释、不要标点符号、不要语气助词、不要多余文本。'
         '如果没有主题，请直接返回“随便聊聊”。';
     return _request(messages: [
       Message()

@@ -1,14 +1,10 @@
 import 'package:athena/creator/chat.dart';
 import 'package:athena/extension/date_time.dart';
-import 'package:athena/main.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/provider/chat_provider.dart';
 import 'package:creator/creator.dart';
-import 'package:creator_watcher/creator_watcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
-import 'package:isar/isar.dart';
-import 'package:logger/logger.dart';
 
 class ChatWidget extends StatefulWidget {
   const ChatWidget({super.key});
@@ -20,46 +16,52 @@ class ChatWidget extends StatefulWidget {
 class _ChatWidgetState extends State<ChatWidget> {
   @override
   Widget build(BuildContext context) {
-    return EmitterWatcher<List<Chat>?>(
-      emitter: chatsEmitter,
-      placeholder: const SizedBox(),
-      builder: (context, chats) => ListView.separated(
-        itemCount: chats?.length ?? 0,
+    return Watcher((context, ref, child) {
+      final chats = ref.watch(chatsCreator);
+      final theme = Theme.of(context);
+      final textTheme = theme.textTheme;
+      final labelMedium = textTheme.labelMedium;
+      final labelSmall = textTheme.labelSmall;
+      final colorScheme = theme.colorScheme;
+      final surfaceVariant = colorScheme.surfaceVariant;
+      final error = colorScheme.error;
+      final onError = colorScheme.onError;
+      final onSurfaceVariant = colorScheme.onSurfaceVariant;
+      final outline = colorScheme.outline;
+      return ListView.separated(
+        itemCount: chats.length,
         itemBuilder: (context, index) => Card(
           elevation: 0,
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: surfaceVariant,
+          margin: EdgeInsets.zero,
           child: ClipRRect(
             child: Slidable(
               endActionPane: ActionPane(
                 motion: const BehindMotion(),
                 children: [
                   SlidableAction(
-                    backgroundColor: Theme.of(context).colorScheme.error,
+                    backgroundColor: error,
                     borderRadius: const BorderRadius.only(
                       bottomRight: Radius.circular(12),
                       topRight: Radius.circular(12),
                     ),
-                    foregroundColor: Theme.of(context).colorScheme.onError,
+                    foregroundColor: onError,
                     label: '删除',
                     icon: Icons.delete_outline,
-                    onPressed: (context) => handleDelete(chats![index].id),
+                    onPressed: (context) => handleDelete(index),
                   ),
                 ],
               ),
               child: ListTile(
                 subtitle: Text(
-                  '${chats![index].messages.length}条对话',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                  '${chats[index].messages.length}条对话',
+                  style: labelMedium?.copyWith(color: onSurfaceVariant),
                 ),
                 title: Text(
                   chats[index].title ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: TextStyle(color: onSurfaceVariant),
                 ),
                 trailing: Text(
                   chats[index].messages.isNotEmpty
@@ -67,35 +69,35 @@ class _ChatWidgetState extends State<ChatWidget> {
                           chats[index].updatedAt!,
                         ).toHumanReadableString()
                       : '',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
+                  style: labelSmall?.copyWith(color: outline),
                 ),
-                onTap: () => handleTap(chats[index].id),
+                onTap: () => handleTap(index),
               ),
             ),
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         separatorBuilder: (context, index) => const SizedBox(height: 8),
-      ),
-    );
+      );
+    });
   }
 
-  void handleTap(int id) {
-    context.push('/chat/$id');
-  }
-
-  void handleDelete(int id) async {
-    try {
-      final ref = context.ref;
-      await isar.writeTxn(() async {
-        await isar.chats.delete(id);
-      });
-      final chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-      ref.emit(chatsEmitter, chats);
-    } catch (error) {
-      Logger().e(error);
+  @override
+  void didChangeDependencies() {
+    final chats = context.ref.read(chatsCreator);
+    if (chats.isEmpty) {
+      ChatProvider.of(context).getChats();
     }
+    super.didChangeDependencies();
+  }
+
+  void handleTap(int index) {
+    ChatProvider.of(context).selectChat(index);
+    final chats = context.ref.read(chatsCreator);
+    context.push('/chat/${chats[index].id}');
+  }
+
+  void handleDelete(int index) async {
+    ChatProvider.of(context).deleteChat(index);
   }
 }

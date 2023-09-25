@@ -14,13 +14,14 @@ class ModelProvider {
 
   void animate() {
     final ref = context.ref;
+    final controller = ref.read(animationControllerCreator);
+    if (controller == null) return;
     final chats = ref.read(chatsCreator);
     final current = ref.read(currentChatCreator);
     if (current == null) return;
     final chat = chats[current];
     final model = chat.model;
     final index = models.indexOf(model);
-    final controller = ref.read(animationControllerCreator);
-    controller?.animateTo(index.toDouble());
+    controller.animateTo(index.toDouble());
   }
 }

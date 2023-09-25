@@ -118,8 +118,11 @@ class ChatProvider {
       _storeChat(chat);
       controller.clear();
       _fetchResponse(chat);
-      if (chat.title == '新建对话') {
-        getTitle(chat, text);
+      final conditionA = chat.title == null;
+      final conditionB = chat.title != null && chat.title!.isEmpty;
+      final conditionC = chat.title != null && chat.title! == '新建对话';
+      if (conditionA || conditionB || conditionC) {
+        getTitle(chat, chat.messages.first.content ?? text);
       }
     }
   }
