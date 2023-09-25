@@ -1,11 +1,6 @@
-import 'package:athena/creator/chat.dart';
-import 'package:athena/main.dart';
 import 'package:athena/page/desktop/component/chat_list.dart';
 import 'package:athena/page/desktop/component/workspace.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
 
 class Desktop extends StatefulWidget {
   const Desktop({super.key});
@@ -25,12 +20,6 @@ class _DesktopState extends State<Desktop> {
   }
 
   @override
-  void didChangeDependencies() {
-    getChats();
-    super.didChangeDependencies();
-  }
-
-  @override
   void dispose() {
     scrollController.dispose();
     super.dispose();
@@ -43,15 +32,6 @@ class _DesktopState extends State<Desktop> {
         showFloatingActionButton = scrollController.position.extentBefore != 0;
       });
     });
-  }
-
-  void getChats() async {
-    final ref = context.ref;
-    var chats = await isar.chats.where().findAll();
-    chats = chats.map((chat) {
-      return chat.withGrowableMessages();
-    }).toList();
-    ref.set(chatsCreator, [...chats]);
   }
 
   @override

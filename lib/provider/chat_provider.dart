@@ -4,6 +4,7 @@ import 'package:athena/api/chat.dart';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
 import 'package:athena/main.dart';
+import 'package:athena/provider/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
@@ -12,11 +13,89 @@ import 'package:logger/logger.dart';
 
 class ChatProvider {
   BuildContext context;
+  final models = ['gpt-3.5-turbo-16k', 'gpt-4'];
 
   ChatProvider(this.context);
 
   static ChatProvider of(BuildContext context) {
     return ChatProvider(context);
+  }
+
+  void create() async {
+    final ref = context.ref;
+    final chat = Chat();
+    chat.title = '新建对话';
+    chat.model = 'gpt-3.5-turbo-16k';
+    final modelProvider = ModelProvider.of(context);
+    await isar.writeTxn(() async {
+      await isar.chats.put(chat);
+    });
+    final chats = ref.read(chatsCreator);
+    chats.add(chat);
+    ref.set(chatsCreator, [...chats]);
+    ref.set(currentChatCreator, chats.length - 1);
+    final node = ref.read(focusNodeCreator);
+    node.requestFocus();
+    final controller = ref.read(textEditingControllerCreator);
+    controller.clear();
+    modelProvider.animate();
+  }
+
+  void getChats() async {
+    final ref = context.ref;
+    final modelProvider = ModelProvider.of(context);
+    var chats = await isar.chats.where().findAll();
+    chats = chats.map((chat) {
+      return chat.withGrowableMessages();
+    }).toList();
+    ref.set(chatsCreator, [...chats]);
+    if (chats.isNotEmpty) {
+      final index = chats.length - 1;
+      ref.set(currentChatCreator, index);
+    }
+    modelProvider.animate();
+  }
+
+  void selectChat(int index) {
+    context.ref.set(currentChatCreator, index);
+    ModelProvider.of(context).animate();
+  }
+
+  void deleteChat(int index) async {
+    final ref = context.ref;
+    var chats = ref.read(chatsCreator);
+    final chat = chats[index];
+    final modelProvider = ModelProvider.of(context);
+    try {
+      await isar.writeTxn(() async {
+        await isar.chats.delete(chat.id);
+      });
+      chats = await isar.chats.where().findAll();
+      chats = chats.map((chat) {
+        return chat.withGrowableMessages();
+      }).toList();
+      ref.set(chatsCreator, [...chats]);
+      if (chats.isNotEmpty) {
+        ref.set(currentChatCreator, chats.length - 1);
+      } else {
+        ref.set(currentChatCreator, null);
+      }
+      modelProvider.animate();
+    } catch (error) {
+      Logger().e(error);
+    }
+  }
+
+  void updateChat(String model) {
+    context.ref.set(modelCreator, model);
+    final current = context.ref.read(currentChatCreator);
+    if (current == null) return;
+    final chats = context.ref.read(chatsCreator);
+    chats[current].model = model;
+    context.ref.set(chatsCreator, [...chats]);
+    isar.writeTxn(() async {
+      await isar.chats.put(chats[current]);
+    });
   }
 
   void submit() async {
@@ -36,16 +115,16 @@ class ChatProvider {
       chat.messages.add(message);
       chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
       context.ref.set(chatsCreator, [...chats]);
-      storeChat(chat);
+      _storeChat(chat);
       controller.clear();
-      fetchResponse(chat);
+      _fetchResponse(chat);
       if (chat.title == '新建对话') {
-        generateTitle(chat, text);
+        getTitle(chat, text);
       }
     }
   }
 
-  Future<void> storeChat(Chat chat) async {
+  Future<void> _storeChat(Chat chat) async {
     final ref = context.ref;
     try {
       if (!chat.model.startsWith('gpt')) {
@@ -64,7 +143,7 @@ class ChatProvider {
     }
   }
 
-  Future<void> fetchResponse(Chat chat) async {
+  Future<void> _fetchResponse(Chat chat) async {
     final ref = context.ref;
     scrollToBottom();
     chat.messages.add(Message()..role = 'assistant');
@@ -81,11 +160,13 @@ class ChatProvider {
           chat.messages.last.role = 'assistant';
           chat.messages.last.content =
               '${chat.messages.last.content ?? ''}$token';
+          chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+          _storeChat(chat);
         },
         onDone: () {
           chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
           context.ref.set(streamingCreator, false);
-          storeChat(chat);
+          _storeChat(chat);
         },
       );
     } catch (error) {
@@ -96,19 +177,18 @@ class ChatProvider {
       chat.messages.last = message;
       chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
       ref.set(streamingCreator, false);
-      storeChat(chat);
+      _storeChat(chat);
     }
   }
 
-  Future<void> generateTitle(Chat chat, String value) async {
+  Future<void> getTitle(Chat chat, String value) async {
     try {
       final stream = await ChatApi().getTitle(value: value);
       stream.listen(
         (token) {
           chat.title = '${chat.title ?? ''}$token'.trim().replaceAll('。', '');
-        },
-        onDone: () {
-          storeChat(chat);
+          chat.title = chat.title?.replaceAll('新建对话', '');
+          _storeChat(chat);
         },
       );
     } catch (error) {
@@ -143,7 +223,7 @@ class ChatProvider {
     }
     chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     context.ref.set(chatsCreator, [...chats]);
-    storeChat(chat);
+    _storeChat(chat);
   }
 
   void edit(int index) {
@@ -166,6 +246,6 @@ class ChatProvider {
     final current = context.ref.watch(currentChatCreator);
     if (current == null) return;
     final chat = chats[current];
-    await fetchResponse(chat);
+    await _fetchResponse(chat);
   }
 }

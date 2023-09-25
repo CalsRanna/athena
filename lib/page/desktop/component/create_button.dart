@@ -1,8 +1,4 @@
-import 'package:athena/creator/chat.dart';
-import 'package:athena/creator/input.dart';
-import 'package:athena/main.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:creator/creator.dart';
+import 'package:athena/provider/chat_provider.dart';
 import 'package:flutter/material.dart';
 
 class CreateButton extends StatelessWidget {
@@ -48,20 +44,6 @@ class CreateButton extends StatelessWidget {
   }
 
   void handleTap(BuildContext context) async {
-    final ref = context.ref;
-    final chat = Chat();
-    chat.title = '新建对话';
-    chat.model = 'gpt-3.5-turbo-16k';
-    await isar.writeTxn(() async {
-      await isar.chats.put(chat);
-    });
-    final chats = ref.read(chatsCreator);
-    chats.add(chat);
-    ref.set(chatsCreator, [...chats]);
-    ref.set(currentChatCreator, chats.length - 1);
-    final node = ref.read(focusNodeCreator);
-    node.requestFocus();
-    final controller = ref.read(textEditingControllerCreator);
-    controller.clear();
+    ChatProvider.of(context).create();
   }
 }

@@ -1,5 +1,7 @@
 import 'package:athena/creator/chat.dart';
 import 'package:athena/page/desktop/component/model_tile.dart';
+import 'package:athena/provider/chat_provider.dart';
+import 'package:athena/provider/model_provider.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 
@@ -32,24 +34,21 @@ class _ModelSegmentControllerState extends State<ModelSegmentController>
 
   @override
   void didChangeDependencies() {
-    final chats = context.ref.read(chatsCreator);
-    final current = context.ref.read(currentChatCreator);
-    if (current == null) return;
-    final chat = chats[current];
-    final model = chat.model;
-    final index = models.indexOf(model);
-    controller.animateTo(index.toDouble());
+    context.ref.set(animationControllerCreator, controller);
+    ModelProvider.of(context).animate();
     super.didChangeDependencies();
   }
 
   @override
   void dispose() {
     controller.dispose();
+    context.ref.set(animationControllerCreator, null);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final models = ModelProvider.of(context).models;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -88,11 +87,6 @@ class _ModelSegmentControllerState extends State<ModelSegmentController>
 
   void handleTap(int index) {
     controller.animateTo(index.toDouble());
-    context.ref.set(modelCreator, models[index]);
-    final current = context.ref.read(currentChatCreator);
-    if (current == null) return;
-    final chats = context.ref.read(chatsCreator);
-    chats[index].model = models[index];
-    context.ref.set(chatsCreator, [...chats]);
+    ChatProvider.of(context).updateChat(models[index]);
   }
 }

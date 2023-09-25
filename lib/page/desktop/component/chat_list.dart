@@ -1,18 +1,20 @@
 import 'dart:io';
 
 import 'package:athena/creator/chat.dart';
-import 'package:athena/main.dart';
 import 'package:athena/page/desktop/component/chat_tile.dart';
 import 'package:athena/page/desktop/component/create_button.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/provider/chat_provider.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
-import 'package:isar/isar.dart';
-import 'package:logger/logger.dart';
 
-class ChatList extends StatelessWidget {
+class ChatList extends StatefulWidget {
   const ChatList({super.key});
 
+  @override
+  State<ChatList> createState() => _ChatListState();
+}
+
+class _ChatListState extends State<ChatList> {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -32,8 +34,8 @@ class ChatList extends StatelessWidget {
                 return ChatTile(
                   active: index == current,
                   chat: chats[index],
-                  onDelete: () => handleDelete(context, index),
-                  onSelected: () => handleSelect(context, index),
+                  onDelete: () => handleDelete(index),
+                  onSelected: () => handleSelect(index),
                 );
               },
               itemCount: chats.length,
@@ -47,27 +49,17 @@ class ChatList extends StatelessWidget {
     );
   }
 
-  void handleDelete(BuildContext context, int index) async {
-    final ref = context.ref;
-    var chats = ref.read(chatsCreator);
-    final chat = chats[index];
-    try {
-      await isar.writeTxn(() async {
-        await isar.chats.delete(chat.id);
-      });
-      chats = await isar.chats.where().findAll();
-      chats = chats.map((chat) {
-        return chat.withGrowableMessages();
-      }).toList();
-      ref.set(chatsCreator, [...chats]);
-      ref.set(currentChatCreator, null);
-    } catch (error) {
-      Logger().e(error);
-    }
+  @override
+  void didChangeDependencies() {
+    ChatProvider.of(context).getChats();
+    super.didChangeDependencies();
   }
 
-  void handleSelect(BuildContext context, int index) {
-    // scrollToBottom();
-    context.ref.set(currentChatCreator, index);
+  void handleDelete(int index) async {
+    ChatProvider.of(context).deleteChat(index);
+  }
+
+  void handleSelect(int index) {
+    ChatProvider.of(context).selectChat(index);
   }
 }

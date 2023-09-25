@@ -19,6 +19,11 @@ final currentChatCreator = Creator<int?>.value(
   name: 'currentChatCreator',
 );
 
+final animationControllerCreator = Creator<AnimationController?>.value(
+  null,
+  name: 'animationControllerCreator',
+);
+
 final scrollControllerCreator = Creator<ScrollController>.value(
   ScrollController(),
   name: 'scrollControllerCreator',
