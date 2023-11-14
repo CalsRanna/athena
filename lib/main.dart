@@ -32,7 +32,9 @@ void main() async {
       await windowManager.focus();
     });
   }
-  runApp(CreatorGraph(child: const AthenaApp()));
+  runApp(
+    CreatorGraph(observer: const CreatorObserver(), child: const AthenaApp()),
+  );
 }
 
 class AthenaApp extends StatefulWidget {

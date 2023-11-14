@@ -154,10 +154,7 @@ class ChatProvider {
       final messages = chat.messages.where((message) {
         return message.role != 'error' && message.content != null;
       }).toList();
-      final stream = await ChatApi().getCompletion(
-        messages: messages,
-        model: chat.model,
-      );
+      final stream = await ChatApi().getCompletion(messages: messages);
       stream.listen(
         (token) {
           chat.messages.last.role = 'assistant';
@@ -174,10 +171,7 @@ class ChatProvider {
       );
     } catch (error) {
       Logger().e(error);
-      final message = Message()
-        ..role = 'error'
-        ..content = error.toString();
-      chat.messages.last = message;
+      chat.messages.last.content = error.toString();
       chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
       ref.set(streamingCreator, false);
       _storeChat(chat);

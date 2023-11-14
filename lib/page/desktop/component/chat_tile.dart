@@ -24,17 +24,6 @@ class ChatTile extends StatelessWidget {
     return dateTime.toHumanReadableString();
   }
 
-  IconData get icon {
-    switch (chat.model) {
-      case 'gpt-3.5-turbo-16k':
-        return Icons.chat_bubble;
-      case 'gpt-4':
-        return Icons.reviews;
-      default:
-        return Icons.announcement_outlined;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -57,7 +46,7 @@ class ChatTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: onPrimary),
+              Icon(Icons.chat_bubble, size: 20, color: onPrimary),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(

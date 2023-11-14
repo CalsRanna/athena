@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:athena/page/desktop/component/input.dart';
 import 'package:athena/page/desktop/component/message_list.dart';
-import 'package:athena/page/desktop/component/model_segment_controller.dart';
 import 'package:athena/page/desktop/component/toolbar.dart';
 import 'package:flutter/material.dart';
 
@@ -21,7 +20,6 @@ class WorkSpace extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (Platform.isWindows) const Toolbar(),
-          const ModelSegmentController(),
           const Expanded(child: MessageList()),
           const Input(),
         ],

@@ -33,7 +33,7 @@ class _CopyButtonState extends State<CopyButton> {
   }
 
   void handlePressed() async {
-    if (!copied) return;
+    if (copied) return;
     final data = ClipboardData(text: widget.code);
     await Clipboard.setData(data);
     setState(() {

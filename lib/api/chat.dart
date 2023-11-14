@@ -6,15 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 class ChatApi {
-  Future<Stream<String>> getCompletion({
-    required List<Message> messages,
-    required String model,
-  }) {
-    return _request(messages: messages, model: model);
+  final String model = 'gpt-4-1106-preview';
+  final String url = 'https://api.aiproxy.io/v1';
+  Future<Stream<String>> getCompletion({required List<Message> messages}) {
+    return _request(messages: messages);
   }
 
   Future<Stream<String>> getTitle({required String value}) {
-    const String prompt = '请使用四到五个字描述下面这句话的简要主题，而不是回答这句话提及到的问题。'
+    const String prompt = '请使用四到五个字描述上面这句话的简要主题，而不是回答这句话提及到的问题。'
         '不要解释、不要标点符号、不要语气助词、不要多余文本。'
         '如果没有主题，请直接返回“随便聊聊”。';
     return _request(messages: [
@@ -24,7 +23,7 @@ class ChatApi {
       Message()
         ..content = prompt
         ..role = 'user'
-    ], model: 'gpt-3.5-turbo-16k');
+    ]);
   }
 
   Future<String> _getKey() async {
@@ -34,18 +33,14 @@ class ChatApi {
 
   Future<Stream<String>> _request({
     required List<Message> messages,
-    required String model,
   }) async {
     final key = await _getKey();
     final client = http.Client();
-    final uri = Uri.parse('https://apivip.aiproxy.io/v1/chat/completions');
+    final uri = Uri.parse('$url/chat/completions');
     final header = {
       "Content-Type": 'application/json',
       "Authorization": 'Bearer $key'
     };
-    if (!model.startsWith('gpt')) {
-      model = 'gpt-3.5-turbo-16k';
-    }
     final body = {"model": model, "messages": messages, "stream": true};
     var request = http.Request('post', uri);
     request.headers.addAll(header);
@@ -59,8 +54,13 @@ class ChatApi {
         pattern = pattern.trim();
         if (pattern.isNotEmpty) {
           final data = json.decode(pattern);
-          final delta = data['choices'][0]['delta'];
-          controller.add(delta['content'] ?? '');
+          if (data['error'] != null) {
+            final error = data['error'];
+            controller.add('[${error['type']}]:${error['message']}');
+          } else {
+            final delta = data['choices'][0]['delta'];
+            controller.add(delta['content'] ?? '');
+          }
         }
       }
     }, onDone: () {
