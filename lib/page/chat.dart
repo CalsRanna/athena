@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
 import 'package:athena/main.dart';
+import 'package:athena/widget/copy_button.dart';
 import 'package:athena/provider/chat_provider.dart';
 import 'package:athena/provider/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:markdown_widget/markdown_widget.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.id});
@@ -131,7 +133,7 @@ class _ChatPageState extends State<ChatPage> {
                       ),
                       onPressed: selectModel,
                       icon: Icon(
-                        Icons.explore_outlined,
+                        Icons.send_outlined,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                         size: 32,
                       ),
@@ -164,31 +166,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   void selectModel() {
-    final chats = context.ref.read(chatsCreator);
-    final current = context.ref.read(currentChatCreator);
-    if (current == null) return;
-    final chat = chats[current];
-    final models = ModelProvider.of(context).models;
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => ListView.builder(
-        itemBuilder: (context, index) {
-          var selected = false;
-          if (chat.model == models[index]) {
-            selected = true;
-          } else {
-            selected = false;
-          }
-          return ListTile(
-            title: Text(models[index]),
-            trailing: selected ? const Icon(Icons.check_outlined) : null,
-            onTap: () => handleSelect(index),
-          );
-        },
-        itemCount: models.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-      ),
-    );
+    ChatProvider.of(context).submit();
   }
 
   Future<void> handleSelect(int index) async {
@@ -257,7 +235,11 @@ class ChatTile extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
             margin: const EdgeInsets.only(right: 8, top: 8),
-            child: const Icon(Icons.smart_toy_outlined),
+            child: Image.asset(
+              'asset/image/tray_512x512.jpg',
+              color: Colors.black,
+              width: 24,
+            ),
           ),
         Flexible(
           child: Container(
@@ -274,36 +256,22 @@ class ChatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                MarkdownWidget(
+                  config: MarkdownConfig(configs: [
+                    PreConfig(
+                      wrapper: (child, code) {
+                        return Stack(children: [child, CopyButton(code: code)]);
+                      },
+                    ),
+                  ]),
+                  data: message.content ?? '',
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.access_time_outlined,
-                      size: 10,
-                      color: secondary,
-                    ),
-                    const Spacer(),
-                    if (message.role == 'user')
-                      GestureDetector(
-                        onTap: () => onDelete?.call(),
-                        child: Text(
-                          '删除',
-                          style: labelSmall?.copyWith(
-                            color: error,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 4),
-                    if (message.role != 'user')
-                      GestureDetector(
-                        onTap: () => onRetry?.call(),
-                        child: Text(
-                          '重新生成',
-                          style: labelSmall?.copyWith(
-                            color: secondary,
-                          ),
-                        ),
-                      ),
                     if (message.role == 'user')
                       GestureDetector(
                         onTap: () => onEdit?.call(),
@@ -314,8 +282,30 @@ class ChatTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                    const SizedBox(width: 4),
-                    if (message.role != 'error')
+                    if (message.role == 'user') const SizedBox(width: 4),
+                    if (message.role == 'user')
+                      GestureDetector(
+                        onTap: () => onDelete?.call(),
+                        child: Text(
+                          '删除',
+                          style: labelSmall?.copyWith(
+                            color: error,
+                          ),
+                        ),
+                      ),
+                    if (message.role == 'user') const SizedBox(width: 4),
+                    if (message.role != 'user')
+                      GestureDetector(
+                        onTap: () => onRetry?.call(),
+                        child: Text(
+                          '重新生成',
+                          style: labelSmall?.copyWith(
+                            color: secondary,
+                          ),
+                        ),
+                      ),
+                    if (message.role != 'user') const SizedBox(width: 4),
+                    if (message.role != 'user')
                       GestureDetector(
                         onTap: () => copy(context, message),
                         child: Text(
@@ -327,7 +317,6 @@ class ChatTile extends StatelessWidget {
                       )
                   ],
                 ),
-                Text(message.content ?? ''),
               ],
             ),
           ),
@@ -340,7 +329,11 @@ class ChatTile extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
             margin: const EdgeInsets.only(left: 8, top: 8),
-            child: const Icon(Icons.face_outlined),
+            child: const Icon(
+              Icons.face_outlined,
+              color: Colors.black,
+              size: 24,
+            ),
           ),
       ],
     );

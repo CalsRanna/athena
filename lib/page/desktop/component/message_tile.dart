@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/component/copy_button.dart';
+import 'package:athena/widget/copy_button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +55,7 @@ class MessageTile extends StatelessWidget {
               ),
             ]),
             data: message.content ?? '',
+            padding: EdgeInsets.zero,
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
           ),
@@ -65,7 +66,8 @@ class MessageTile extends StatelessWidget {
                 if (message.role == 'user' && showToolbar)
                   TextButton(onPressed: onEdited, child: const Text('编辑')),
                 if (message.role != 'user' && showToolbar)
-                  ElevatedButton(onPressed: onRegenerated, child: const Text('重新生成')),
+                  ElevatedButton(
+                      onPressed: onRegenerated, child: const Text('重新生成')),
                 const SizedBox(width: 4),
                 if (message.role == 'user' && showToolbar)
                   TextButton(
@@ -73,7 +75,8 @@ class MessageTile extends StatelessWidget {
                     child: Text('删除', style: TextStyle(color: error)),
                   ),
                 if (message.role != 'user' && showToolbar)
-                  TextButton(onPressed: () => copy(context), child: const Text('复制')),
+                  TextButton(
+                      onPressed: () => copy(context), child: const Text('复制')),
               ],
             ),
           ),

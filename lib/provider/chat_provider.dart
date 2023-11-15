@@ -21,7 +21,7 @@ class ChatProvider {
     return ChatProvider(context);
   }
 
-  void create() async {
+  Future<void> create() async {
     final ref = context.ref;
     final chat = Chat();
     chat.title = '新建对话';
