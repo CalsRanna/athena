@@ -49,7 +49,7 @@ class MessageTile extends StatelessWidget {
           MarkdownWidget(
             config: MarkdownConfig(configs: [
               PreConfig(
-                wrapper: (child, code) {
+                wrapper: (child, code, language) {
                   return Stack(children: [child, CopyButton(code: code)]);
                 },
               ),
