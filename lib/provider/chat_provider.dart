@@ -31,9 +31,9 @@ class ChatProvider {
       await isar.chats.put(chat);
     });
     final chats = ref.read(chatsCreator);
-    chats.add(chat);
+    chats.insert(0, chat);
     ref.set(chatsCreator, [...chats]);
-    ref.set(currentChatCreator, chats.length - 1);
+    ref.set(currentChatCreator, 0);
     final node = ref.read(focusNodeCreator);
     node.requestFocus();
     final controller = ref.read(textEditingControllerCreator);
@@ -44,14 +44,13 @@ class ChatProvider {
   void getChats() async {
     final ref = context.ref;
     final modelProvider = ModelProvider.of(context);
-    var chats = await isar.chats.where().findAll();
+    var chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
     chats = chats.map((chat) {
       return chat.withGrowableMessages();
     }).toList();
     ref.set(chatsCreator, [...chats]);
     if (chats.isNotEmpty) {
-      final index = chats.length - 1;
-      ref.set(currentChatCreator, index);
+      ref.set(currentChatCreator, 0);
     }
     modelProvider.animate();
   }
@@ -70,13 +69,15 @@ class ChatProvider {
       await isar.writeTxn(() async {
         await isar.chats.delete(chat.id);
       });
-      chats = await isar.chats.where().findAll();
+      chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
       chats = chats.map((chat) {
         return chat.withGrowableMessages();
       }).toList();
       ref.set(chatsCreator, [...chats]);
       if (chats.isNotEmpty) {
-        ref.set(currentChatCreator, chats.length - 1);
+        if (chats.length - 1 < index) {
+          ref.set(currentChatCreator, chats.length - 1);
+        }
       } else {
         ref.set(currentChatCreator, null);
       }
@@ -136,7 +137,7 @@ class ChatProvider {
       await isar.writeTxn(() async {
         await isar.chats.put(chat);
       });
-      var chats = await isar.chats.where().findAll();
+      var chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
       chats = chats.map((chat) {
         return chat.withGrowableMessages();
       }).toList();
