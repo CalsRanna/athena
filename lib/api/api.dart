@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 mixin Api {
-  final String model = 'gpt-4-1106-preview';
+  final String model = 'gpt-4-0125-preview';
   final String baseUrl = 'https://api.aiproxy.io/v1';
 
   Future<String> _getKey() async {
