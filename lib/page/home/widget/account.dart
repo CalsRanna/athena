@@ -16,7 +16,7 @@ class _AccountWidgetState extends State<AccountWidget> {
       children: [
         GestureDetector(
           child: Card(
-            color: Theme.of(context).colorScheme.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             elevation: 0,
             child: Column(
               children: [
@@ -74,7 +74,7 @@ class _AccountWidgetState extends State<AccountWidget> {
             Expanded(
               child: GestureDetector(
                 child: Card(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -101,7 +101,7 @@ class _AccountWidgetState extends State<AccountWidget> {
             Expanded(
               child: GestureDetector(
                 child: Card(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),

@@ -1,31 +1,29 @@
 import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
-late Isar isar;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final directory = await getApplicationSupportDirectory();
-  isar = await Isar.open(
-    [ChatSchema, SettingSchema],
-    directory: directory.path,
-  );
+  await IsarInitializer.ensureInitialized();
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
     const options = WindowOptions(
       center: true,
-      size: Size(1200, 900),
+      minimumSize: Size(1146, 822),
+      size: Size(1146, 822),
       titleBarStyle: TitleBarStyle.hidden,
-      // windowButtonVisibility: false,
+      windowButtonVisibility: false,
     );
     windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
@@ -33,7 +31,12 @@ void main() async {
     });
   }
   runApp(
-    CreatorGraph(observer: const CreatorObserver(), child: const AthenaApp()),
+    ProviderScope(
+      child: CreatorGraph(
+        observer: const CreatorObserver(),
+        child: const AthenaApp(),
+      ),
+    ),
   );
 }
 
@@ -63,8 +66,9 @@ class _AthenaAppState extends State<AthenaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Watcher((context, ref, child) {
-      final darkMode = ref.watch(darkModeCreator);
+    return Consumer(builder: (context, ref, child) {
+      final setting = ref.watch(settingNotifierProvider).value;
+      final darkMode = setting?.darkMode ?? false;
       return MaterialApp.router(
         routerConfig: router,
         theme: ThemeData(

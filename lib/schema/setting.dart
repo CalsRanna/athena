@@ -8,5 +8,6 @@ class Setting {
   Id id = Isar.autoIncrement;
   @Name('dark_mode')
   bool darkMode = false;
-  String provider = 'liaobots';
+  String key = '';
+  String url = '';
 }

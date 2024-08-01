@@ -4,7 +4,8 @@ import 'package:athena/api/chat.dart';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
 import 'package:athena/main.dart';
-import 'package:athena/provider/model_provider.dart';
+import 'package:athena/schema/isar.dart';
+import 'package:athena/service/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
@@ -45,9 +46,6 @@ class ChatProvider {
     final ref = context.ref;
     final modelProvider = ModelProvider.of(context);
     var chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-    chats = chats.map((chat) {
-      return chat.withGrowableMessages();
-    }).toList();
     ref.set(chatsCreator, [...chats]);
     if (chats.isNotEmpty) {
       ref.set(currentChatCreator, 0);
@@ -70,9 +68,6 @@ class ChatProvider {
         await isar.chats.delete(chat.id);
       });
       chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-      chats = chats.map((chat) {
-        return chat.withGrowableMessages();
-      }).toList();
       ref.set(chatsCreator, [...chats]);
       if (chats.isNotEmpty) {
         if (chats.length - 1 < index) {
@@ -113,8 +108,8 @@ class ChatProvider {
       final message = Message()
         ..role = 'user'
         ..content = text;
-      chat.messages.add(message);
-      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      // chat.messages.add(message);
+      chat.updatedAt = DateTime.now();
       context.ref.set(chatsCreator, [...chats]);
       _storeChat(chat);
       controller.clear();
@@ -123,7 +118,7 @@ class ChatProvider {
       final conditionB = chat.title != null && chat.title!.isEmpty;
       final conditionC = chat.title != null && chat.title! == '新建对话';
       if (conditionA || conditionB || conditionC) {
-        getTitle(chat, chat.messages.first.content ?? text);
+        // getTitle(chat, chat.messages.first.content ?? text);
       }
     }
   }
@@ -138,9 +133,6 @@ class ChatProvider {
         await isar.chats.put(chat);
       });
       var chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
-      chats = chats.map((chat) {
-        return chat.withGrowableMessages();
-      }).toList();
       ref.set(chatsCreator, [...chats]);
     } catch (error) {
       Logger().e(error);
@@ -150,31 +142,31 @@ class ChatProvider {
   Future<void> _fetchResponse(Chat chat) async {
     final ref = context.ref;
     scrollToBottom();
-    chat.messages.add(Message()..role = 'assistant');
+    // chat.messages.add(Message()..role = 'assistant');
     try {
-      final messages = chat.messages.where((message) {
-        return message.role != 'error' && message.content != null;
-      }).toList();
-      final stream = await ChatApi().getCompletion(messages: messages);
-      stream.listen(
-        (token) {
-          chat.messages.last.role = 'assistant';
-          chat.messages.last.content =
-              '${chat.messages.last.content ?? ''}$token';
-          chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-          _storeChat(chat);
-        },
-        onDone: () {
-          chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-          context.ref.set(streamingCreator, false);
-          _storeChat(chat);
-        },
-      );
+      //   final messages = chat.messages.where((message) {
+      //     return message.role != 'error' && message.content != null;
+      //   }).toList();
+      //   final stream = await ChatApi().getCompletion(messages: messages);
+      //   stream.listen(
+      //     (token) {
+      //       chat.messages.last.role = 'assistant';
+      //       chat.messages.last.content =
+      //           '${chat.messages.last.content ?? ''}$token';
+      //       chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      //       _storeChat(chat);
+      //     },
+      //     onDone: () {
+      //       chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      //       context.ref.set(streamingCreator, false);
+      //       _storeChat(chat);
+      //     },
+      //   );
     } catch (error) {
       Logger().e(error);
-      chat.messages.last.content = error.toString();
-      chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
-      ref.set(streamingCreator, false);
+      // chat.messages.last.content = error.toString();
+      // chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      // ref.set(streamingCreator, false);
       _storeChat(chat);
     }
   }
@@ -214,12 +206,12 @@ class ChatProvider {
     final current = context.ref.watch(currentChatCreator);
     if (current == null) return;
     final chat = chats[current];
-    final realIndex = chat.messages.length - 1 - index;
-    chat.messages.removeRange(realIndex, chat.messages.length);
-    if (chat.messages.isEmpty) {
-      chat.title = null;
-    }
-    chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
+    // final realIndex = chat.messages.length - 1 - index;
+    // chat.messages.removeRange(realIndex, chat.messages.length);
+    // if (chat.messages.isEmpty) {
+    //   chat.title = null;
+    // }
+    // chat.updatedAt = DateTime.now().millisecondsSinceEpoch;
     context.ref.set(chatsCreator, [...chats]);
     _storeChat(chat);
   }
@@ -228,12 +220,11 @@ class ChatProvider {
     final chats = context.ref.read(chatsCreator);
     final current = context.ref.watch(currentChatCreator);
     if (current == null) return;
-    final chat = chats[current];
-    final realIndex = chat.messages.length - 1 - index;
-    final message = chat.messages.elementAt(realIndex);
+    // final realIndex = chat.messages.length - 1 - index;
+    // final message = chat.messages.elementAt(realIndex);
     final controller = context.ref.read(textEditingControllerCreator);
     final node = context.ref.read(focusNodeCreator);
-    controller.text = message.content ?? '';
+    // controller.text = message.content ?? '';
     node.requestFocus();
   }
 

@@ -22,9 +22,14 @@ const SettingSchema = CollectionSchema(
       name: r'dark_mode',
       type: IsarType.bool,
     ),
-    r'provider': PropertySchema(
+    r'key': PropertySchema(
       id: 1,
-      name: r'provider',
+      name: r'key',
+      type: IsarType.string,
+    ),
+    r'url': PropertySchema(
+      id: 2,
+      name: r'url',
       type: IsarType.string,
     )
   },
@@ -48,7 +53,8 @@ int _settingEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.provider.length * 3;
+  bytesCount += 3 + object.key.length * 3;
+  bytesCount += 3 + object.url.length * 3;
   return bytesCount;
 }
 
@@ -59,7 +65,8 @@ void _settingSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeBool(offsets[0], object.darkMode);
-  writer.writeString(offsets[1], object.provider);
+  writer.writeString(offsets[1], object.key);
+  writer.writeString(offsets[2], object.url);
 }
 
 Setting _settingDeserialize(
@@ -71,7 +78,8 @@ Setting _settingDeserialize(
   final object = Setting();
   object.darkMode = reader.readBool(offsets[0]);
   object.id = id;
-  object.provider = reader.readString(offsets[1]);
+  object.key = reader.readString(offsets[1]);
+  object.url = reader.readString(offsets[2]);
   return object;
 }
 
@@ -85,6 +93,8 @@ P _settingDeserializeProp<P>(
     case 0:
       return (reader.readBool(offset)) as P;
     case 1:
+      return (reader.readString(offset)) as P;
+    case 2:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -242,20 +252,20 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerEqualTo(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerGreaterThan(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -263,14 +273,14 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerLessThan(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -278,14 +288,14 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerBetween(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -294,7 +304,7 @@ extension SettingQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'provider',
+        property: r'key',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -304,69 +314,199 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerStartsWith(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerEndsWith(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerContains(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyContains(
       String value,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
-        property: r'provider',
+        property: r'key',
         value: value,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerMatches(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyMatches(
       String pattern,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
-        property: r'provider',
+        property: r'key',
         wildcard: pattern,
         caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerIsEmpty() {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'provider',
+        property: r'key',
         value: '',
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> providerIsNotEmpty() {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'provider',
+        property: r'key',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'url',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'url',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'url',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'url',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'url',
         value: '',
       ));
     });
@@ -392,15 +532,27 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProvider() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByKey() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'provider', Sort.asc);
+      return query.addSortBy(r'key', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByProviderDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByKeyDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'provider', Sort.desc);
+      return query.addSortBy(r'key', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'url', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'url', Sort.desc);
     });
   }
 }
@@ -431,15 +583,27 @@ extension SettingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProvider() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByKey() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'provider', Sort.asc);
+      return query.addSortBy(r'key', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByProviderDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByKeyDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'provider', Sort.desc);
+      return query.addSortBy(r'key', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrl() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'url', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrlDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'url', Sort.desc);
     });
   }
 }
@@ -452,10 +616,17 @@ extension SettingQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Setting, Setting, QDistinct> distinctByProvider(
+  QueryBuilder<Setting, Setting, QDistinct> distinctByKey(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'provider', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'key', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByUrl(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'url', caseSensitive: caseSensitive);
     });
   }
 }
@@ -474,9 +645,15 @@ extension SettingQueryProperty
     });
   }
 
-  QueryBuilder<Setting, String, QQueryOperations> providerProperty() {
+  QueryBuilder<Setting, String, QQueryOperations> keyProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'provider');
+      return query.addPropertyName(r'key');
+    });
+  }
+
+  QueryBuilder<Setting, String, QQueryOperations> urlProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'url');
     });
   }
 }

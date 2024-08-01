@@ -19,9 +19,10 @@ class ChatTile extends StatelessWidget {
   String get title => chat.title ?? '';
 
   String get updatedAt {
-    if (chat.updatedAt == null) return '';
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(chat.updatedAt!);
-    return dateTime.toHumanReadableString();
+    return chat.updatedAt.toHumanReadableString();
+    // if (chat.updatedAt == null) return '';
+    // final dateTime = DateTime.fromMillisecondsSinceEpoch(chat.updatedAt!);
+    // return dateTime.toHumanReadableString();
   }
 
   @override

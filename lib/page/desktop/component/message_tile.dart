@@ -28,37 +28,33 @@ class MessageTile extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final shadow = colorScheme.shadow;
-    final background = colorScheme.background;
+    final background = colorScheme.surfaceContainer;
     final error = colorScheme.error;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: shadow.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(4, 4),
-          )
-        ],
-        color: background,
+        color: message.role == 'user' ? background : null,
       ),
       margin: const EdgeInsets.only(bottom: 8, top: 8),
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          MarkdownWidget(
-            config: MarkdownConfig(configs: [
-              PreConfig(
-                wrapper: (child, code, language) {
-                  return Stack(children: [child, CopyButton(code: code)]);
-                },
-              ),
-            ]),
-            data: message.content ?? '',
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-          ),
+          if (message.role == 'assistant')
+            MarkdownWidget(
+              config: MarkdownConfig(configs: [
+                PreConfig(
+                  wrapper: (child, code, language) {
+                    return Stack(children: [child, CopyButton(code: code)]);
+                  },
+                ),
+              ]),
+              data: message.content ?? '',
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+            ),
+          if (message.role == 'user') Text(message.content ?? ''),
           Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Row(

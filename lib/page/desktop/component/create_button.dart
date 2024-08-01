@@ -1,4 +1,4 @@
-import 'package:athena/provider/chat_provider.dart';
+import 'package:athena/service/chat_provider.dart';
 import 'package:flutter/material.dart';
 
 class CreateButton extends StatelessWidget {

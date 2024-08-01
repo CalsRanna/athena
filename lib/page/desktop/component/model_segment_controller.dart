@@ -1,7 +1,7 @@
 import 'package:athena/creator/chat.dart';
 import 'package:athena/page/desktop/component/model_tile.dart';
-import 'package:athena/provider/chat_provider.dart';
-import 'package:athena/provider/model_provider.dart';
+import 'package:athena/service/chat_provider.dart';
+import 'package:athena/service/model_provider.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 
@@ -52,7 +52,7 @@ class _ModelSegmentControllerState extends State<ModelSegmentController>
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
       ),
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(8),
@@ -65,7 +65,7 @@ class _ModelSegmentControllerState extends State<ModelSegmentController>
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.background,
+                color: Theme.of(context).colorScheme.surface,
               ),
               child: const Text(''),
             ),

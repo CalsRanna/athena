@@ -6,17 +6,31 @@ part 'chat.g.dart';
 @Name('chats')
 class Chat {
   Id id = Isar.autoIncrement;
-  List<Message> messages = [];
   String model = '';
+  @Name('sentinel_id')
+  int sentinelId = 0;
   String? title;
+  @Name('created_at')
+  DateTime createdAt = DateTime.now();
   @Name('updated_at')
-  int? updatedAt;
+  DateTime updatedAt = DateTime.now();
+
+  Chat copyWith({String? model, String? title}) {
+    return Chat()
+      ..model = model ?? this.model
+      ..title = title ?? this.title
+      ..updatedAt = DateTime.now();
+  }
 }
 
-@embedded
+@collection
+@Name('messages')
 class Message {
+  Id id = Isar.autoIncrement;
   String? content;
   String? role;
+  @Name('chat_id')
+  int chatId = 0;
 
   Message();
 
@@ -39,8 +53,11 @@ class Message {
   }
 }
 
-extension ChatExtension on Chat {
-  // 因为isar为了性能考虑，在返回数组时会返回FixedList，为了能够执行add等操作，需要通过
-  // toList转换为GrowableList
-  Chat withGrowableMessages() => this..messages = messages.toList();
+@collection
+@Name('sentinels')
+class Sentinel {
+  Id id = Isar.autoIncrement;
+  String name = '';
+  String description = '';
+  String prompt = '';
 }

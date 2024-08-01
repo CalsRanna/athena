@@ -8,12 +8,12 @@ class FloatingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      right: 32,
       bottom: 80,
+      right: 32,
       child: FloatingActionButton(
         mini: true,
-        shape: const CircleBorder(),
         onPressed: onPressed,
+        shape: const CircleBorder(),
         child: const Icon(Icons.arrow_downward_outlined, size: 20),
       ),
     );

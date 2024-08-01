@@ -1,6 +1,5 @@
 import 'package:athena/creator/chat.dart';
-import 'package:athena/extension/date_time.dart';
-import 'package:athena/provider/chat_provider.dart';
+import 'package:athena/service/chat_provider.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -23,7 +22,7 @@ class _ChatWidgetState extends State<ChatWidget> {
       final labelMedium = textTheme.labelMedium;
       final labelSmall = textTheme.labelSmall;
       final colorScheme = theme.colorScheme;
-      final surfaceVariant = colorScheme.surfaceVariant;
+      final surfaceVariant = colorScheme.surfaceContainerHighest;
       final error = colorScheme.error;
       final onError = colorScheme.onError;
       final onSurfaceVariant = colorScheme.onSurfaceVariant;
@@ -53,24 +52,24 @@ class _ChatWidgetState extends State<ChatWidget> {
                 ],
               ),
               child: ListTile(
-                subtitle: Text(
-                  '${chats[index].messages.length}条对话',
-                  style: labelMedium?.copyWith(color: onSurfaceVariant),
-                ),
+                // subtitle: Text(
+                //   '${chats[index].messages.length}条对话',
+                //   style: labelMedium?.copyWith(color: onSurfaceVariant),
+                // ),
                 title: Text(
                   chats[index].title ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: onSurfaceVariant),
                 ),
-                trailing: Text(
-                  chats[index].messages.isNotEmpty
-                      ? DateTime.fromMillisecondsSinceEpoch(
-                          chats[index].updatedAt!,
-                        ).toHumanReadableString()
-                      : '',
-                  style: labelSmall?.copyWith(color: outline),
-                ),
+                // trailing: Text(
+                //   chats[index].messages.isNotEmpty
+                //       ? DateTime.fromMillisecondsSinceEpoch(
+                //           chats[index].updatedAt!,
+                //         ).toHumanReadableString()
+                //       : '',
+                //   style: labelSmall?.copyWith(color: outline),
+                // ),
                 onTap: () => handleTap(index),
               ),
             ),

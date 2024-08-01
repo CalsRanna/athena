@@ -1,6 +1,6 @@
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
-import 'package:athena/provider/chat_provider.dart';
+import 'package:athena/service/chat_provider.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,7 +47,7 @@ class _InputState extends State<Input> {
                     hintText: 'Ask me anything',
                   ),
                   focusNode: node,
-                  maxLines: 3,
+                  maxLines: 4,
                   minLines: 1,
                 );
               }),
