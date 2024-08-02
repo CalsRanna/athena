@@ -15,11 +15,11 @@ class Chat {
   @Name('updated_at')
   DateTime updatedAt = DateTime.now();
 
-  Chat copyWith({String? model, String? title}) {
+  Chat copyWith({String? model, String? title, DateTime? updatedAt}) {
     return Chat()
       ..model = model ?? this.model
       ..title = title ?? this.title
-      ..updatedAt = DateTime.now();
+      ..updatedAt = updatedAt ?? this.updatedAt;
   }
 }
 
@@ -27,8 +27,8 @@ class Chat {
 @Name('messages')
 class Message {
   Id id = Isar.autoIncrement;
-  String? content;
-  String? role;
+  String content = '';
+  String role = 'user';
   @Name('chat_id')
   int chatId = 0;
 

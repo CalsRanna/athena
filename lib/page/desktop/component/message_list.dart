@@ -1,13 +1,35 @@
 import 'package:athena/page/desktop/component/logo.dart';
+import 'package:athena/page/desktop/component/message_tile.dart';
+import 'package:athena/provider/chat.dart';
 import 'package:athena/service/chat_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class MessageList extends StatelessWidget {
   const MessageList({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Logo();
+    return Consumer(builder: (context, ref, child) {
+      final messages = ref.watch(messagesNotifierProvider).value;
+      if (messages == null) return const Logo();
+      return ListView.builder(
+        itemBuilder: (context, index) {
+          final message = messages.reversed.elementAt(index);
+          return MessageTile(
+            message: message,
+            // showToolbar: !(index == 0 && streaming),
+            onRegenerated: () => handleRetry(context, index),
+            onEdited: () => handleEdit(context, index),
+            onDeleted: () => handleDelete(context, index),
+          );
+        },
+        itemCount: messages.length,
+        padding: const EdgeInsets.fromLTRB(32, 0, 32, 8),
+        reverse: true,
+      );
+    });
+    // return const Logo();
     // return Watcher((context, ref, child) {
     //   final chats = ref.watch(chatsCreator);
     //   final current = ref.watch(currentChatCreator);

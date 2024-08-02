@@ -954,18 +954,8 @@ int _messageEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  {
-    final value = object.content;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
-  {
-    final value = object.role;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
+  bytesCount += 3 + object.content.length * 3;
+  bytesCount += 3 + object.role.length * 3;
   return bytesCount;
 }
 
@@ -988,9 +978,9 @@ Message _messageDeserialize(
 ) {
   final object = Message();
   object.chatId = reader.readLong(offsets[0]);
-  object.content = reader.readStringOrNull(offsets[1]);
+  object.content = reader.readString(offsets[1]);
   object.id = id;
-  object.role = reader.readStringOrNull(offsets[2]);
+  object.role = reader.readString(offsets[2]);
   return object;
 }
 
@@ -1004,9 +994,9 @@ P _messageDeserializeProp<P>(
     case 0:
       return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1154,24 +1144,8 @@ extension MessageQueryFilter
     });
   }
 
-  QueryBuilder<Message, Message, QAfterFilterCondition> contentIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'content',
-      ));
-    });
-  }
-
-  QueryBuilder<Message, Message, QAfterFilterCondition> contentIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'content',
-      ));
-    });
-  }
-
   QueryBuilder<Message, Message, QAfterFilterCondition> contentEqualTo(
-    String? value, {
+    String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -1184,7 +1158,7 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> contentGreaterThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1199,7 +1173,7 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> contentLessThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1214,8 +1188,8 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> contentBetween(
-    String? lower,
-    String? upper, {
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -1352,24 +1326,8 @@ extension MessageQueryFilter
     });
   }
 
-  QueryBuilder<Message, Message, QAfterFilterCondition> roleIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'role',
-      ));
-    });
-  }
-
-  QueryBuilder<Message, Message, QAfterFilterCondition> roleIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'role',
-      ));
-    });
-  }
-
   QueryBuilder<Message, Message, QAfterFilterCondition> roleEqualTo(
-    String? value, {
+    String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -1382,7 +1340,7 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> roleGreaterThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1397,7 +1355,7 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> roleLessThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1412,8 +1370,8 @@ extension MessageQueryFilter
   }
 
   QueryBuilder<Message, Message, QAfterFilterCondition> roleBetween(
-    String? lower,
-    String? upper, {
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -1631,13 +1589,13 @@ extension MessageQueryProperty
     });
   }
 
-  QueryBuilder<Message, String?, QQueryOperations> contentProperty() {
+  QueryBuilder<Message, String, QQueryOperations> contentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'content');
     });
   }
 
-  QueryBuilder<Message, String?, QQueryOperations> roleProperty() {
+  QueryBuilder<Message, String, QQueryOperations> roleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'role');
     });

@@ -29,7 +29,6 @@ class ChatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final primary = colorScheme.inversePrimary;
     final onPrimary = colorScheme.onPrimary;
     final textTheme = theme.textTheme;
     final titleMedium = textTheme.titleMedium;
@@ -42,34 +41,14 @@ class ChatTile extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            color: active ? primary : null,
+            color: active ? onPrimary.withOpacity(0.2) : null,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.chat_bubble, size: 20, color: onPrimary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: titleMedium?.copyWith(color: onPrimary),
-                ),
-              ),
-              if (active)
-                GestureDetector(
-                  onTap: onDelete,
-                  child: Icon(Icons.delete, size: 20, color: onPrimary),
-                ),
-              if (!active)
-                Text(
-                  updatedAt,
-                  style: titleSmall?.copyWith(
-                    color: onPrimary.withOpacity(0.5),
-                  ),
-                )
-            ],
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: titleMedium?.copyWith(color: onPrimary),
           ),
         ),
       ),

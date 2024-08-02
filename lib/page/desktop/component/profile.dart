@@ -1,5 +1,7 @@
 import 'package:athena/component/divider.dart';
+import 'package:athena/provider/model.dart';
 import 'package:athena/provider/setting.dart';
+import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -168,9 +170,10 @@ class _Setting extends StatelessWidget {
                   ),
                   const ADivider(),
                   const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(width: 200, child: Text('Models')),
-                      Expanded(child: _Url())
+                      Expanded(child: _Model())
                     ],
                   ),
                   const ADivider(),
@@ -301,6 +304,65 @@ class _UrlState extends State<_Url> {
   void handleSubmitted(WidgetRef ref, String value) {
     final notifier = ref.read(settingNotifierProvider.notifier);
     notifier.updateUrl(value);
+  }
+}
+
+class _Model extends StatelessWidget {
+  const _Model({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = getColor(context);
+    return Consumer(builder: (context, ref, child) {
+      final models = ref.watch(modelsNotifierProvider).value;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: color.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            width: double.infinity,
+            child: Wrap(
+              runSpacing: 4,
+              spacing: 4,
+              children: getChildren(context, models),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () => handleTap(ref),
+            child: const Text('Get Models'),
+          ),
+        ],
+      );
+    });
+  }
+
+  List<Widget> getChildren(BuildContext context, List<Model>? models) {
+    if (models == null) return [];
+    return models
+        .map(
+          (model) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(model.name),
+          ),
+        )
+        .toList();
+  }
+
+  Color getColor(BuildContext context) {
+    return Theme.of(context).colorScheme.onSurface;
+  }
+
+  void handleTap(WidgetRef ref) {
+    ref.invalidate(modelsNotifierProvider);
   }
 }
 

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
 import 'package:athena/provider/setting.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/router/router.dart';

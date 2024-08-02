@@ -172,18 +172,18 @@ class ChatProvider {
   }
 
   Future<void> getTitle(Chat chat, String value) async {
-    try {
-      final stream = await ChatApi().getTitle(value: value);
-      stream.listen(
-        (token) {
-          chat.title = '${chat.title ?? ''}$token'.trim().replaceAll('。', '');
-          chat.title = chat.title?.replaceAll('新建对话', '');
-          _storeChat(chat);
-        },
-      );
-    } catch (error) {
-      Logger().e(error);
-    }
+    // try {
+    //   final stream = await ChatApi().getTitle(value: value);
+    //   stream.listen(
+    //     (token) {
+    //       chat.title = '${chat.title ?? ''}$token'.trim().replaceAll('。', '');
+    //       chat.title = chat.title?.replaceAll('新建对话', '');
+    //       _storeChat(chat);
+    //     },
+    //   );
+    // } catch (error) {
+    //   Logger().e(error);
+    // }
   }
 
   void scrollToBottom() {

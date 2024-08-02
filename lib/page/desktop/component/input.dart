@@ -1,9 +1,7 @@
-import 'package:athena/creator/chat.dart';
-import 'package:athena/creator/input.dart';
-import 'package:athena/service/chat_provider.dart';
-import 'package:creator/creator.dart';
+import 'package:athena/provider/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class Input extends StatefulWidget {
   const Input({super.key});
@@ -13,88 +11,77 @@ class Input extends StatefulWidget {
 }
 
 class _InputState extends State<Input> {
+  final controller = TextEditingController();
   bool shift = false;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final outline = colorScheme.outline;
-    final primary = colorScheme.primary;
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: outline.withOpacity(0.25)),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      margin: const EdgeInsets.fromLTRB(32, 8, 32, 0),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: RawKeyboardListener(
-              focusNode: FocusNode(),
-              onKey: handleKey,
-              child: Watcher((context, ref, child) {
-                final controller = ref.watch(textEditingControllerCreator);
-                final node = ref.watch(focusNodeCreator);
-                return TextField(
+    return Consumer(builder: (context, ref, child) {
+      ref.watch(chatNotifierProvider);
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: outline.withOpacity(0.25)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        margin: const EdgeInsets.fromLTRB(32, 8, 32, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: KeyboardListener(
+                focusNode: FocusNode(),
+                onKeyEvent: (event) => handleKeyEvent(ref, event),
+                child: TextField(
                   controller: controller,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                  decoration: const InputDecoration.collapsed(
                     hintText: 'Ask me anything',
                   ),
-                  focusNode: node,
                   maxLines: 4,
                   minLines: 1,
-                );
-              }),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Watcher((context, ref, child) {
-            final streaming = ref.watch(streamingCreator);
-            if (streaming) {
-              return SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: outline.withOpacity(0.25),
-                ),
-              );
-            } else {
-              return GestureDetector(
-                onTap: handleTap,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Icon(
-                    Icons.send,
-                    color: primary,
-                    size: 20,
-                  ),
-                ),
-              );
-            }
-          })
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+    });
   }
 
-  void handleKey(RawKeyEvent event) {
-    final isShiftPressed = event.isShiftPressed;
-    final isEnterPressed = event.isKeyPressed(LogicalKeyboardKey.enter);
-    if (event.isKeyPressed(LogicalKeyboardKey.enter)) {
-      if (!isShiftPressed && isEnterPressed) {
-        ChatProvider.of(context).submit();
+  void handleKeyEvent(WidgetRef ref, KeyEvent event) {
+    bool isShift() {
+      const left = LogicalKeyboardKey.shiftLeft;
+      const right = LogicalKeyboardKey.shiftRight;
+      return [left, right].contains(event.logicalKey);
+    }
+
+    bool isEnter() => event.logicalKey == LogicalKeyboardKey.enter;
+
+    if (event is KeyDownEvent) {
+      if (isShift()) shift = true;
+      if (shift && isEnter()) {
+        send(ref);
       }
+    } else if (event is KeyUpEvent) {
+      if (isShift()) shift = false;
     }
   }
 
-  void handleTap() {
-    ChatProvider.of(context).submit();
+  void send(WidgetRef ref) {
+    final text = controller.text;
+    if (text.isEmpty) return;
+    controller.clear();
+    FocusScope.of(context).unfocus();
+    final notifier = ref.read(chatNotifierProvider.notifier);
+    notifier.send(text);
   }
 }
