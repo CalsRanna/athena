@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:athena/page/desktop/component/chat_list.dart';
 import 'package:athena/page/desktop/component/workspace.dart';
+import 'package:athena/provider/chat.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 class Desktop extends StatelessWidget {
@@ -42,7 +44,7 @@ class _ButtonsState extends State<_Buttons> {
           const SizedBox(width: 8),
           _MinimumButton(hover: hover),
           const SizedBox(width: 8),
-          _FullscreenButton(hover: hover),
+          _FullScreenButton(hover: hover),
         ],
       ),
     );
@@ -87,8 +89,31 @@ class _CloseButton extends StatelessWidget {
   }
 }
 
-class _FoldButton extends StatelessWidget {
-  const _FoldButton();
+class _Create extends StatelessWidget {
+  const _Create();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return Consumer(builder: (context, ref, child) {
+      return GestureDetector(
+        onTap: () => handleTap(ref),
+        child: Icon(
+          Icons.maps_ugc_outlined,
+          color: onSurface.withOpacity(0.2),
+        ),
+      );
+    });
+  }
+
+  void handleTap(WidgetRef ref) {
+    ref.invalidate(chatNotifierProvider);
+  }
+}
+
+class _Fold extends StatelessWidget {
+  const _Fold();
 
   @override
   Widget build(BuildContext context) {
@@ -102,20 +127,20 @@ class _FoldButton extends StatelessWidget {
   }
 }
 
-class _FullscreenButton extends StatefulWidget {
+class _FullScreenButton extends StatefulWidget {
   final bool hover;
-  const _FullscreenButton({this.hover = false});
+  const _FullScreenButton({this.hover = false});
 
   @override
-  State<_FullscreenButton> createState() => _FullscreenButtonState();
+  State<_FullScreenButton> createState() => _FullScreenButtonState();
 }
 
-class _FullscreenButtonState extends State<_FullscreenButton> {
-  bool fullscreen = false;
+class _FullScreenButtonState extends State<_FullScreenButton> {
+  bool fullScreen = false;
 
   @override
   Widget build(BuildContext context) {
-    final icon = fullscreen ? Icons.unfold_less : Icons.unfold_more;
+    final icon = fullScreen ? Icons.unfold_less : Icons.unfold_more;
     const angle = pi * 3 / 4;
     final child = Transform.rotate(angle: angle, child: Icon(icon, size: 10));
     const placeholder = SizedBox(height: 10, width: 10);
@@ -134,9 +159,9 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
   }
 
   void handleTap() {
-    windowManager.setFullScreen(!fullscreen);
+    windowManager.setFullScreen(!fullScreen);
     setState(() {
-      fullscreen = !fullscreen;
+      fullScreen = !fullScreen;
     });
   }
 }
@@ -172,20 +197,22 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onSurface = colorScheme.onSurface;
     return Row(
       children: [
         const SizedBox(width: 16),
         const _Buttons(),
-        const SizedBox(width: 16),
-        const _FoldButton(),
-        const SizedBox(width: 200 - 16 * 2 - 14 * 3 - 8 * 2 - 48),
+        // const SizedBox(width: 16),
+        // const _FoldButton(),
+        // const SizedBox(width: 200 - 16 * 2 - 14 * 3 - 8 * 2 - 48),
+        const SizedBox(width: 200 - 16 - 14 * 3 - 8 * 2),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                ),
+                bottom: BorderSide(color: onSurface.withOpacity(0.2)),
               ),
             ),
             height: 50,
@@ -193,17 +220,9 @@ class _Toolbar extends StatelessWidget {
             child: Row(
               children: [
                 const Text('Athena'),
-                Icon(
-                  Icons.chevron_right,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                ),
+                Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
                 const Spacer(),
-                Icon(
-                  Icons.maps_ugc_outlined,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
-                )
+                const _Create()
               ],
             ),
           ),

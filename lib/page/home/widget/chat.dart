@@ -15,18 +15,13 @@ class ChatWidget extends StatefulWidget {
 class _ChatWidgetState extends State<ChatWidget> {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final surfaceVariant = colorScheme.surfaceContainerHighest;
+    final error = colorScheme.error;
+    final onError = colorScheme.onError;
+    final onSurfaceVariant = colorScheme.onSurfaceVariant;
     return Watcher((context, ref, child) {
       final chats = ref.watch(chatsCreator);
-      final theme = Theme.of(context);
-      final textTheme = theme.textTheme;
-      final labelMedium = textTheme.labelMedium;
-      final labelSmall = textTheme.labelSmall;
-      final colorScheme = theme.colorScheme;
-      final surfaceVariant = colorScheme.surfaceContainerHighest;
-      final error = colorScheme.error;
-      final onError = colorScheme.onError;
-      final onSurfaceVariant = colorScheme.onSurfaceVariant;
-      final outline = colorScheme.outline;
       return ListView.separated(
         itemCount: chats.length,
         itemBuilder: (context, index) => Card(

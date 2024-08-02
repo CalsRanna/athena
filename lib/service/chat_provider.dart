@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:athena/api/chat.dart';
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
-import 'package:athena/main.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/service/model_provider.dart';
 import 'package:athena/schema/chat.dart';
@@ -105,9 +103,9 @@ class ChatProvider {
       final current = context.ref.watch(currentChatCreator);
       if (current == null) return;
       final chat = chats[current];
-      final message = Message()
-        ..role = 'user'
-        ..content = text;
+      // final message = Message()
+      //   ..role = 'user'
+      //   ..content = text;
       // chat.messages.add(message);
       chat.updatedAt = DateTime.now();
       context.ref.set(chatsCreator, [...chats]);
@@ -140,7 +138,7 @@ class ChatProvider {
   }
 
   Future<void> _fetchResponse(Chat chat) async {
-    final ref = context.ref;
+    // final ref = context.ref;
     scrollToBottom();
     // chat.messages.add(Message()..role = 'assistant');
     try {
@@ -217,12 +215,12 @@ class ChatProvider {
   }
 
   void edit(int index) {
-    final chats = context.ref.read(chatsCreator);
+    // final chats = context.ref.read(chatsCreator);
     final current = context.ref.watch(currentChatCreator);
     if (current == null) return;
     // final realIndex = chat.messages.length - 1 - index;
     // final message = chat.messages.elementAt(realIndex);
-    final controller = context.ref.read(textEditingControllerCreator);
+    // final controller = context.ref.read(textEditingControllerCreator);
     final node = context.ref.read(focusNodeCreator);
     // controller.text = message.content ?? '';
     node.requestFocus();

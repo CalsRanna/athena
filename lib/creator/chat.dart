@@ -1,4 +1,3 @@
-import 'package:athena/main.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:creator/creator.dart';

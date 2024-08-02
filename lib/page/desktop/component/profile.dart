@@ -78,7 +78,7 @@ class _ProfileTileState extends State<ProfileTile> {
 
 class _Dialog extends StatelessWidget {
   final void Function()? onTap;
-  const _Dialog({super.key, this.onTap});
+  const _Dialog({this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -179,9 +179,13 @@ class _Setting extends StatelessWidget {
                   const ADivider(),
                   Row(
                     children: [
-                      SizedBox(width: 200, child: Text('Check Connection')),
+                      const SizedBox(
+                        width: 200,
+                        child: Text('Check Connection'),
+                      ),
                       const Spacer(),
-                      OutlinedButton(onPressed: () {}, child: Text('Check'))
+                      OutlinedButton(
+                          onPressed: () {}, child: const Text('Check'))
                     ],
                   ),
                 ],
@@ -195,12 +199,12 @@ class _Setting extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 color: Theme.of(context).colorScheme.surfaceContainer,
               ),
-              padding: EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      SizedBox(width: 200, child: Text('Dark Mode')),
+                      const SizedBox(width: 200, child: Text('Dark Mode')),
                       const Spacer(),
                       Consumer(builder: (context, ref, child) {
                         final setting =
@@ -236,9 +240,7 @@ class _Setting extends StatelessWidget {
 }
 
 class _Key extends StatefulWidget {
-  const _Key({
-    super.key,
-  });
+  const _Key();
 
   @override
   State<_Key> createState() => _KeyState();
@@ -273,7 +275,7 @@ class _KeyState extends State<_Key> {
 }
 
 class _Url extends StatefulWidget {
-  const _Url({super.key});
+  const _Url();
 
   @override
   State<_Url> createState() => _UrlState();
@@ -308,7 +310,7 @@ class _UrlState extends State<_Url> {
 }
 
 class _Model extends StatelessWidget {
-  const _Model({super.key});
+  const _Model();
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +364,8 @@ class _Model extends StatelessWidget {
   }
 
   void handleTap(WidgetRef ref) {
-    ref.invalidate(modelsNotifierProvider);
+    final notifier = ref.read(modelsNotifierProvider.notifier);
+    notifier.getModels();
   }
 }
 

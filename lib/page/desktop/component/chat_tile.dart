@@ -27,13 +27,8 @@ class ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final onPrimary = colorScheme.onPrimary;
-    final textTheme = theme.textTheme;
-    final titleMedium = textTheme.titleMedium;
-    final titleSmall = textTheme.titleSmall;
-
     return GestureDetector(
       onTap: onSelected,
       child: MouseRegion(
@@ -43,12 +38,12 @@ class ChatTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             color: active ? onPrimary.withOpacity(0.2) : null,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: titleMedium?.copyWith(color: onPrimary),
+            style: TextStyle(color: onPrimary, fontSize: 14),
           ),
         ),
       ),

@@ -25,7 +25,6 @@ class MessageList extends StatelessWidget {
           );
         },
         itemCount: messages.length,
-        padding: const EdgeInsets.fromLTRB(32, 0, 32, 8),
         reverse: true,
       );
     });

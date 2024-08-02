@@ -1,4 +1,3 @@
-import 'package:athena/main.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:creator/creator.dart';

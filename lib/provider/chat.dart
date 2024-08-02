@@ -69,6 +69,7 @@ class ChatNotifier extends _$ChatNotifier {
     isar.writeTxn(() async {
       await isar.chats.put(state);
     });
+    ref.invalidate(chatsNotifierProvider);
   }
 }
 
@@ -76,7 +77,7 @@ class ChatNotifier extends _$ChatNotifier {
 class ChatsNotifier extends _$ChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    return await isar.chats.where().findAll();
+    return await isar.chats.filter().titleIsNotNull().findAll();
   }
 
   Future<void> select(int index) async {

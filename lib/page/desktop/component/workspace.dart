@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:athena/page/desktop/component/input.dart';
 import 'package:athena/page/desktop/component/message_list.dart';
-import 'package:athena/page/desktop/component/toolbar.dart';
 import 'package:flutter/material.dart';
 
 class WorkSpace extends StatelessWidget {
@@ -10,18 +7,15 @@ class WorkSpace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var padding = const EdgeInsets.symmetric(vertical: 16);
-    if (Platform.isWindows) {
-      padding = const EdgeInsets.only(bottom: 8);
-    }
-    return Padding(
-      padding: padding,
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (Platform.isWindows) const Toolbar(),
-          const Expanded(child: MessageList()),
-          const Input(),
+          SizedBox(height: 50),
+          Expanded(child: MessageList()),
+          Input(),
+          SizedBox(height: 12),
         ],
       ),
     );

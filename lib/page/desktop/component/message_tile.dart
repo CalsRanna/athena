@@ -1,11 +1,55 @@
-import 'package:athena/widget/copy_button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import 'package:markdown_widget/markdown_widget.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown/markdown.dart' as md;
 
-class MessageTile extends StatelessWidget {
+class CodeElementBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final multipleLines = element.textContent.split('\n').length > 1;
+    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+    if (multipleLines) {
+      padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    }
+    final width = multipleLines ? double.infinity : null;
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            color: Theme.of(context).colorScheme.surfaceContainer,
+          ),
+          padding: padding,
+          width: width,
+          child: Text(
+            element.textContent.trim(),
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        if (multipleLines)
+          const Positioned(
+            right: 12,
+            top: 12,
+            child: Icon(Icons.copy, size: 12),
+          ),
+      ],
+    );
+  }
+}
+
+class MessageTile extends StatefulWidget {
+  final Message message;
+
+  final bool showToolbar;
+  final void Function()? onDeleted;
+  final void Function()? onEdited;
+  final void Function()? onRegenerated;
   const MessageTile({
     super.key,
     required this.message,
@@ -15,63 +59,40 @@ class MessageTile extends StatelessWidget {
     this.onRegenerated,
   });
 
-  final Message message;
-  final bool showToolbar;
-  final void Function()? onDeleted;
-  final void Function()? onEdited;
-  final void Function()? onRegenerated;
+  @override
+  State<MessageTile> createState() => _MessageTileState();
+}
 
+class _MessageTileState extends State<MessageTile> {
+  double opacity = 0.0;
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final shadow = colorScheme.shadow;
-    final background = colorScheme.surfaceContainer;
-    final error = colorScheme.error;
-    final onSurface = colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (message.role == 'assistant')
-          MarkdownWidget(
-            config: MarkdownConfig(configs: [
-              PreConfig(
-                wrapper: (child, code, language) {
-                  return Stack(children: [child, CopyButton(code: code)]);
-                },
-              ),
-            ]),
-            data: message.content,
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-          ),
-        if (message.role == 'user')
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: message.role == 'user' ? background : null,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: SelectableText(message.content),
-          ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4.0),
-          child: Row(
-            children: [
-              Icon(Icons.copy, size: 12, color: onSurface.withOpacity(0.2)),
-              const SizedBox(width: 4),
-              Icon(Icons.edit, size: 12, color: onSurface.withOpacity(0.2)),
-              const SizedBox(width: 4),
-              Icon(Icons.refresh, size: 12, color: onSurface.withOpacity(0.2)),
-              const SizedBox(width: 4),
-              Icon(Icons.auto_awesome_outlined,
-                  size: 12, color: onSurface.withOpacity(0.2)),
-            ],
-          ),
-        ),
-      ],
+    Widget child;
+    if (widget.message.role == 'user') {
+      child = _UserMessage(content: widget.message.content, opacity: opacity);
+    } else {
+      child = _AssistantMessage(
+        content: widget.message.content,
+        opacity: opacity,
+      );
+    }
+    return MouseRegion(
+      onEnter: handleEnter,
+      onExit: handleExit,
+      child: child,
     );
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() {
+      opacity = 1.0;
+    });
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() {
+      opacity = 0.0;
+    });
   }
 
   void copy(BuildContext context) async {
@@ -80,7 +101,7 @@ class MessageTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final primaryContainer = colorScheme.primaryContainer;
     final onPrimaryContainer = colorScheme.onPrimaryContainer;
-    await Clipboard.setData(ClipboardData(text: message.content ?? ''));
+    await Clipboard.setData(ClipboardData(text: widget.message.content));
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
@@ -89,6 +110,104 @@ class MessageTile extends StatelessWidget {
         content: Text('已复制', style: TextStyle(color: onPrimaryContainer)),
         width: 75,
       ),
+    );
+  }
+}
+
+class _AssistantMessage extends StatelessWidget {
+  final String content;
+  final double opacity;
+  const _AssistantMessage({required this.content, this.opacity = 0.0});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipOval(
+              child: Image.asset(
+                'asset/image/launcher_icon_ios_512x512.jpg',
+                height: 32,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SelectionArea(
+                child: MarkdownBody(
+                  builders: {'code': CodeElementBuilder()},
+                  data: content,
+                ),
+              ),
+            ),
+          ],
+        ),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: opacity,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12, left: 40, top: 4.0),
+            child: Row(
+              children: [
+                Icon(Icons.copy, size: 12, color: onSurface.withOpacity(0.2)),
+                const SizedBox(width: 8),
+                Icon(Icons.edit, size: 12, color: onSurface.withOpacity(0.2)),
+                const SizedBox(width: 8),
+                Icon(Icons.refresh,
+                    size: 12, color: onSurface.withOpacity(0.2)),
+                const SizedBox(width: 8),
+                Icon(Icons.auto_awesome_outlined,
+                    size: 12, color: onSurface.withOpacity(0.2)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UserMessage extends StatelessWidget {
+  final String content;
+  final double opacity;
+  const _UserMessage({required this.content, this.opacity = 0.0});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final surfaceContainer = colorScheme.surfaceContainer;
+    final onSurface = colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: surfaceContainer,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: SelectableText(content),
+        ),
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: opacity,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12, left: 12, top: 4.0),
+            child: Row(
+              children: [
+                Icon(Icons.edit, size: 12, color: onSurface.withOpacity(0.2)),
+                const SizedBox(width: 8),
+                Icon(Icons.refresh,
+                    size: 12, color: onSurface.withOpacity(0.2)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

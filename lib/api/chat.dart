@@ -44,17 +44,21 @@ class ChatApi {
     final controller = StreamController<String>();
     response.stream.transform(utf8.decoder).listen((chunk) {
       chunk = chunk.replaceAll('data:', '').trim();
-      if (chunk.isEmpty) return;
-      if (chunk == '[DONE]') return;
-      print('[chunk]$chunk');
-      try {
-        final json = jsonDecode(chunk);
-        if (json['choices'] == null) throw Exception(chunk);
-        final content = json['choices'][0]['delta']['content'] ?? '';
-        controller.add(content);
-      } catch (error) {
-        print('[error]$error');
-        controller.add('[🐛]');
+      // chunk may contains multiple messages, string buffer would be better
+      final parts = chunk.split('\n');
+      for (final part in parts) {
+        if (part.isEmpty) continue;
+        if (part.trim() == '[DONE]') return;
+        print('[chunk]$part');
+        try {
+          final json = jsonDecode(part);
+          if (json['choices'] == null) throw Exception(part);
+          final content = json['choices'][0]['delta']['content'] ?? '';
+          controller.add(content);
+        } catch (error) {
+          print('[error]$error');
+          controller.add('[🐛]');
+        }
       }
     }, onDone: () {
       controller.close();

@@ -17,8 +17,11 @@ class Chat {
 
   Chat copyWith({String? model, String? title, DateTime? updatedAt}) {
     return Chat()
+      ..id = id
       ..model = model ?? this.model
+      ..sentinelId = sentinelId
       ..title = title ?? this.title
+      ..createdAt = createdAt
       ..updatedAt = updatedAt ?? this.updatedAt;
   }
 }

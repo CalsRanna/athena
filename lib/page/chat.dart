@@ -2,16 +2,13 @@ import 'dart:async';
 
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
-import 'package:athena/main.dart';
 import 'package:athena/schema/isar.dart';
-import 'package:athena/widget/copy_button.dart';
 import 'package:athena/service/chat_provider.dart';
 import 'package:athena/service/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:markdown_widget/markdown_widget.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.id});
@@ -257,19 +254,7 @@ class ChatTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                MarkdownWidget(
-                  config: MarkdownConfig(configs: [
-                    PreConfig(
-                      wrapper: (child, code, language) {
-                        return Stack(children: [child, CopyButton(code: code)]);
-                      },
-                    ),
-                  ]),
-                  data: message.content ?? '',
-                  padding: EdgeInsets.zero,
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                ),
+                SelectableText(message.content),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -342,7 +327,7 @@ class ChatTile extends StatelessWidget {
 
   void copy(BuildContext context, Message message) async {
     final messenger = ScaffoldMessenger.of(context);
-    await Clipboard.setData(ClipboardData(text: message.content ?? ''));
+    await Clipboard.setData(ClipboardData(text: message.content));
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(
       const SnackBar(

@@ -20,4 +20,18 @@ class ModelsNotifier extends _$ModelsNotifier {
     }
     return models;
   }
+
+  Future<void> getModels() async {
+    final models = await ManagerApi().getModels();
+    state = AsyncData([...models]);
+    for (final model in models) {
+      final queryBuilder = isar.models.filter().valueEqualTo(model.value);
+      final exist = await queryBuilder.findFirst();
+      if (exist == null) {
+        isar.writeTxn(() async {
+          isar.models.put(model);
+        });
+      }
+    }
+  }
 }

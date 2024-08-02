@@ -6,7 +6,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   isar_flutter_libs
   screen_retriever
   system_tray
-  url_launcher_windows
   window_manager
 )
 

@@ -33,7 +33,6 @@ class _InputState extends State<Input> {
           border: Border.all(color: outline.withOpacity(0.25)),
           borderRadius: BorderRadius.circular(16),
         ),
-        margin: const EdgeInsets.fromLTRB(32, 8, 32, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
@@ -69,6 +68,7 @@ class _InputState extends State<Input> {
     if (event is KeyDownEvent) {
       if (isShift()) shift = true;
       if (shift && isEnter()) {
+        shift = false;
         send(ref);
       }
     } else if (event is KeyUpEvent) {
