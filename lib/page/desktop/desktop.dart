@@ -217,17 +217,34 @@ class _Toolbar extends StatelessWidget {
             ),
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Row(
-              children: [
-                const Text('Athena'),
-                Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
-                const Spacer(),
-                const _Create()
-              ],
+            child: const Row(
+              children: [_SentinelSelector(), Spacer(), _Create()],
             ),
           ),
         )
       ],
+    );
+  }
+}
+
+class _SentinelSelector extends StatelessWidget {
+  const _SentinelSelector({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Consumer(builder: (context, ref, child) {
+            final sentinel = ref.watch(sentinelNotifierProvider).value;
+            return Text(sentinel?.name ?? 'Athena');
+          }),
+          Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
+        ],
+      ),
     );
   }
 }

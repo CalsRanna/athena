@@ -14,13 +14,7 @@ class WorkSpace extends StatelessWidget {
         children: [
           SizedBox(height: 50),
           Expanded(child: MessageList()),
-          Row(
-            children: [
-              Icon(Icons.auto_awesome_outlined),
-              SizedBox(width: 8),
-              Expanded(child: Input()),
-            ],
-          ),
+          Input(),
           SizedBox(height: 12),
         ],
       ),

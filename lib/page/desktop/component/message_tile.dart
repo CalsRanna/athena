@@ -1,7 +1,9 @@
+import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 
@@ -150,9 +152,11 @@ class _AssistantMessage extends StatelessWidget {
         AnimatedOpacity(
           duration: const Duration(milliseconds: 300),
           opacity: opacity,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 12, left: 40, top: 4.0),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12, left: 40, top: 4.0),
+            height: 16,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(Icons.copy, size: 12, color: onSurface.withOpacity(0.2)),
                 const SizedBox(width: 8),
@@ -161,8 +165,17 @@ class _AssistantMessage extends StatelessWidget {
                 Icon(Icons.refresh,
                     size: 12, color: onSurface.withOpacity(0.2)),
                 const SizedBox(width: 8),
-                Icon(Icons.auto_awesome_outlined,
-                    size: 12, color: onSurface.withOpacity(0.2)),
+                Consumer(builder: (context, ref, child) {
+                  final chat = ref.watch(chatNotifierProvider);
+                  return Text(
+                    chat.model,
+                    style: TextStyle(
+                      color: onSurface.withOpacity(0.2),
+                      fontSize: 12,
+                      height: 12 / 12,
+                    ),
+                  );
+                })
               ],
             ),
           ),

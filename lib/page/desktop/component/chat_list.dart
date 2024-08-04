@@ -40,8 +40,8 @@ class _List extends StatelessWidget {
       return ListView.separated(
         itemBuilder: (context, index) {
           return ChatTile(
-            active: chats[index].id == chat.id,
-            chat: chats[index],
+            active: chats.reversed.elementAt(index).id == chat.id,
+            chat: chats.reversed.elementAt(index),
             onSelected: () => handleSelect(ref, index),
           );
         },

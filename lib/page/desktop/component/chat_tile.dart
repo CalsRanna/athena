@@ -37,10 +37,10 @@ class ChatTile extends StatelessWidget {
                 style: TextStyle(color: onPrimary, fontSize: 14),
               ),
             ),
-            if (chat.model.isNotEmpty) ...[
-              const SizedBox(width: 8),
-              _Model(chat: chat),
-            ],
+            // if (chat.model.isNotEmpty) ...[
+            //   const SizedBox(width: 8),
+            //   _Model(chat: chat),
+            // ],
           ],
         ),
       ),
@@ -64,7 +64,7 @@ class _Model extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
-        chat.model + 'gpt-4o',
+        chat.model,
         style: TextStyle(
           color: onPrimary.withOpacity(0.2),
           fontSize: 8,
