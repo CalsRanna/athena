@@ -15,15 +15,14 @@ class ChatApi {
   }
 
   Future<Stream<String>> getTitle(String value, {required String model}) {
-    const String prompt = '请使用四到五个字描述上面这句话的简要主题，而不是回答这句话提及到的问题。'
-        '不要解释、不要标点符号、不要语气助词、不要多余文本。'
-        '如果没有主题，请直接返回“闲聊”。';
+    const String prompt = '请使用四到五个字总结出简要主题。如果提问是中文，那么用中文总结；如果提问是英文，那么用英语总结。不要解'
+        '释、不要标点符号、不要语气助词、不要多余文本。';
     final List<Message> messages = [
       Message()
-        ..content = value
-        ..role = 'user',
-      Message()
         ..content = prompt
+        ..role = 'system',
+      Message()
+        ..content = value
         ..role = 'user',
     ];
     final body = {'model': model, 'messages': messages, 'stream': true};

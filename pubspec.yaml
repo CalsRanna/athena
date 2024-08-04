@@ -19,6 +19,7 @@ dependencies:
   flutter_markdown: ^0.7.3
   flutter_riverpod: ^2.5.1
   flutter_slidable: ^3.0.0
+  google_fonts: ^6.2.1
   system_tray: ^2.0.2
   path_provider: ^2.0.15
   window_manager: ^0.3.5

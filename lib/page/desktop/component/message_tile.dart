@@ -2,6 +2,7 @@ import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class CodeElementBuilder extends MarkdownElementBuilder {
@@ -29,7 +30,7 @@ class CodeElementBuilder extends MarkdownElementBuilder {
           width: width,
           child: Text(
             element.textContent.trim(),
-            style: const TextStyle(fontSize: 12),
+            style: GoogleFonts.firaCode(fontSize: 12),
           ),
         ),
         if (multipleLines)

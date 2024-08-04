@@ -30,7 +30,7 @@ class _InputState extends State<Input> {
       ref.watch(chatNotifierProvider);
       return Container(
         decoration: BoxDecoration(
-          border: Border.all(color: outline.withOpacity(0.25)),
+          border: Border.all(color: outline.withOpacity(0.2)),
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -42,9 +42,15 @@ class _InputState extends State<Input> {
                 onKeyEvent: (event) => handleKeyEvent(ref, event),
                 child: TextField(
                   controller: controller,
-                  decoration: const InputDecoration.collapsed(
+                  cursorHeight: 16,
+                  decoration: InputDecoration.collapsed(
                     hintText: 'Ask me anything',
+                    hintStyle: TextStyle(
+                      color: outline.withOpacity(0.4),
+                      fontSize: 14,
+                    ),
                   ),
+                  style: const TextStyle(fontSize: 14),
                   maxLines: 4,
                   minLines: 1,
                 ),

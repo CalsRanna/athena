@@ -21,7 +21,7 @@ class _ProfileTileState extends State<ProfileTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final primaryContainer = colorScheme.primaryContainer;
+    final onPrimary = colorScheme.onPrimary;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handleTap(context),
@@ -29,10 +29,10 @@ class _ProfileTileState extends State<ProfileTile> {
         link: link,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: clicked ? primaryContainer : null,
+            borderRadius: BorderRadius.circular(8),
+            color: clicked ? onPrimary.withOpacity(0.2) : null,
           ),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: const Row(children: [
             _Avatar(),
             SizedBox(width: 8),
@@ -84,10 +84,10 @@ class _Dialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.primary,
       ),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -105,7 +105,7 @@ class _Dialog extends StatelessWidget {
             }
             return _ListTile(enabled: false, title: title);
           }),
-          const ADivider(width: 200),
+          ADivider(color: Theme.of(context).colorScheme.onPrimary, width: 200),
           _ListTile(title: 'Setting', onTap: () => handleTap(context)),
         ],
       ),
@@ -334,10 +334,7 @@ class _Model extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          TextButton(
-            onPressed: () => handleTap(ref),
-            child: const Text('Get Models'),
-          ),
+          const _ModelButton(),
         ],
       );
     });
@@ -362,10 +359,48 @@ class _Model extends StatelessWidget {
   Color getColor(BuildContext context) {
     return Theme.of(context).colorScheme.onSurface;
   }
+}
 
-  void handleTap(WidgetRef ref) {
+class _ModelButton extends StatefulWidget {
+  const _ModelButton({super.key});
+
+  @override
+  State<_ModelButton> createState() => _ModelButtonState();
+}
+
+class _ModelButtonState extends State<_ModelButton> {
+  bool loading = false;
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, child) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (loading)
+            const SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(strokeWidth: 1),
+            ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => handleTap(ref),
+            child: const Text('Get Models'),
+          ),
+        ],
+      );
+    });
+  }
+
+  void handleTap(WidgetRef ref) async {
+    setState(() {
+      loading = true;
+    });
     final notifier = ref.read(modelsNotifierProvider.notifier);
-    notifier.getModels();
+    await notifier.getModels();
+    setState(() {
+      loading = false;
+    });
   }
 }
 
@@ -398,8 +433,8 @@ class _ListTile extends StatelessWidget {
   }
 
   Color getColor(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface;
-    if (!enabled) return color.withOpacity(0.2);
+    final color = Theme.of(context).colorScheme.onPrimary;
+    if (!enabled) return color.withOpacity(0.4);
     return color;
   }
 
