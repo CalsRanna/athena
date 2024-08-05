@@ -45,7 +45,7 @@ class ChatNotifier extends _$ChatNotifier {
       await messageNotifier.closeStreaming();
       await store();
     } catch (error) {
-      messageNotifier.store(error.toString());
+      messageNotifier.store(error.toString(), role: 'assistant');
     }
     if (state.title != null) return;
     try {
