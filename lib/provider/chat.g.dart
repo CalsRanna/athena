@@ -6,12 +6,12 @@ part of 'chat.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatNotifierHash() => r'155aa5f3fd6ea60ad4271654f1aa88d7069c907a';
+String _$chatNotifierHash() => r'4a3061701723e79f3dd8218fca33b407c342b1ee';
 
 /// See also [ChatNotifier].
 @ProviderFor(ChatNotifier)
 final chatNotifierProvider =
-    AutoDisposeNotifierProvider<ChatNotifier, Chat>.internal(
+    AutoDisposeAsyncNotifierProvider<ChatNotifier, Chat>.internal(
   ChatNotifier.new,
   name: r'chatNotifierProvider',
   debugGetCreateSourceHash:
@@ -20,8 +20,8 @@ final chatNotifierProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$ChatNotifier = AutoDisposeNotifier<Chat>;
-String _$chatsNotifierHash() => r'd4af228f6d58af48ec0ae005e25e4be2f1df1f47';
+typedef _$ChatNotifier = AutoDisposeAsyncNotifier<Chat>;
+String _$chatsNotifierHash() => r'8bdade86752670b533e1317710213c400f51d952';
 
 /// See also [ChatsNotifier].
 @ProviderFor(ChatsNotifier)
@@ -37,7 +37,7 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$messagesNotifierHash() => r'edc44f5caca6be5f1d93dcf06b186cf45dc92455';
+String _$messagesNotifierHash() => r'10375ea06d2e4301ce3b03ba23148980cf69c2dd';
 
 /// See also [MessagesNotifier].
 @ProviderFor(MessagesNotifier)
@@ -85,5 +85,21 @@ final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
 );
 
 typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
+String _$streamingNotifierHash() => r'cab3b5f93f1a0c2c777ad3873b14c2e3c9c5777f';
+
+/// See also [StreamingNotifier].
+@ProviderFor(StreamingNotifier)
+final streamingNotifierProvider =
+    AutoDisposeNotifierProvider<StreamingNotifier, bool>.internal(
+  StreamingNotifier.new,
+  name: r'streamingNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$streamingNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$StreamingNotifier = AutoDisposeNotifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

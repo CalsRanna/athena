@@ -192,6 +192,28 @@ class _MinimumButton extends StatelessWidget {
   }
 }
 
+class _SentinelSelector extends StatelessWidget {
+  const _SentinelSelector();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        children: [
+          Consumer(builder: (context, ref, child) {
+            final sentinel = ref.watch(sentinelNotifierProvider).value;
+            return Text(sentinel?.name ?? 'Athena');
+          }),
+          Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
+        ],
+      ),
+    );
+  }
+}
+
 class _Toolbar extends StatelessWidget {
   const _Toolbar();
 
@@ -223,28 +245,6 @@ class _Toolbar extends StatelessWidget {
           ),
         )
       ],
-    );
-  }
-}
-
-class _SentinelSelector extends StatelessWidget {
-  const _SentinelSelector({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Consumer(builder: (context, ref, child) {
-            final sentinel = ref.watch(sentinelNotifierProvider).value;
-            return Text(sentinel?.name ?? 'Athena');
-          }),
-          Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
-        ],
-      ),
     );
   }
 }

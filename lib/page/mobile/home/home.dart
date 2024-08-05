@@ -2,7 +2,7 @@ import 'package:athena/creator/setting.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/service/chat_provider.dart';
 import 'package:athena/schema/setting.dart';
-import 'package:athena/page/home/widget/chat.dart';
+import 'package:athena/page/mobile/home/widget/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

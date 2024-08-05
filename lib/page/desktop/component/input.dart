@@ -20,8 +20,32 @@ class Input extends StatelessWidget {
   }
 }
 
+class _Dialog extends StatelessWidget {
+  final void Function()? onTap;
+  const _Dialog({this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.primary,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: 200,
+      child: Consumer(builder: (context, ref, child) {
+        final state = ref.watch(modelsNotifierProvider);
+        return switch (state) {
+          AsyncData(:final value) => _List(onTap: onTap, models: value),
+          _ => const SizedBox(),
+        };
+      }),
+    );
+  }
+}
+
 class _Input extends StatefulWidget {
-  const _Input({super.key});
+  const _Input();
 
   @override
   State<_Input> createState() => _InputState();
@@ -30,12 +54,6 @@ class _Input extends StatefulWidget {
 class _InputState extends State<_Input> {
   final controller = TextEditingController();
   bool shift = false;
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +68,7 @@ class _InputState extends State<_Input> {
           border: Border.all(color: outline.withOpacity(0.2)),
           borderRadius: BorderRadius.circular(16),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           children: [
             Expanded(
@@ -65,9 +83,10 @@ class _InputState extends State<_Input> {
                     hintStyle: TextStyle(
                       color: outline.withOpacity(0.4),
                       fontSize: 14,
+                      height: 16 / 14,
                     ),
                   ),
-                  style: const TextStyle(fontSize: 14),
+                  style: const TextStyle(fontSize: 14, height: 16 / 14),
                   maxLines: 4,
                   minLines: 1,
                 ),
@@ -77,6 +96,12 @@ class _InputState extends State<_Input> {
         ),
       );
     });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   void handleKeyEvent(WidgetRef ref, KeyEvent event) {
@@ -100,8 +125,10 @@ class _InputState extends State<_Input> {
   }
 
   void send(WidgetRef ref) {
-    final text = controller.text;
+    final text = controller.text.trim();
     if (text.isEmpty) return;
+    final streaming = ref.read(streamingNotifierProvider);
+    if (streaming) return;
     controller.clear();
     FocusScope.of(context).unfocus();
     final notifier = ref.read(chatNotifierProvider.notifier);
@@ -109,8 +136,27 @@ class _InputState extends State<_Input> {
   }
 }
 
+class _List extends StatelessWidget {
+  final void Function()? onTap;
+  final List<Model> models;
+  const _List({this.onTap, required this.models});
+
+  @override
+  Widget build(BuildContext context) {
+    if (models.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: getChildren(context),
+    );
+  }
+
+  List<Widget> getChildren(BuildContext context) {
+    return models.map((model) => _Tile(model, onTap: onTap)).toList();
+  }
+}
+
 class _ModelSelector extends StatefulWidget {
-  const _ModelSelector({super.key});
+  const _ModelSelector();
 
   @override
   State<_ModelSelector> createState() => _ModelSelectorState();
@@ -121,11 +167,23 @@ class _ModelSelectorState extends State<_ModelSelector> {
   final link = LayerLink();
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface.withOpacity(0.6);
     return GestureDetector(
       onTap: handleTap,
       child: CompositedTransformTarget(
         link: link,
-        child: const Icon(Icons.auto_awesome_outlined),
+        child: Consumer(builder: (context, ref, child) {
+          final streaming = ref.watch(streamingNotifierProvider);
+          if (!streaming) {
+            return Icon(Icons.auto_awesome_outlined, color: color, size: 24);
+          }
+          return const SizedBox(
+            height: 24,
+            width: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          );
+        }),
       ),
     );
   }
@@ -154,49 +212,6 @@ class _ModelSelectorState extends State<_ModelSelector> {
   void removeEntry() {
     entry?.remove();
     entry = null;
-  }
-}
-
-class _Dialog extends StatelessWidget {
-  final void Function()? onTap;
-  const _Dialog({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      width: 200,
-      child: Consumer(builder: (context, ref, child) {
-        final state = ref.watch(modelsNotifierProvider);
-        return switch (state) {
-          AsyncData(:final value) => _List(onTap: onTap, models: value),
-          _ => const SizedBox(),
-        };
-      }),
-    );
-  }
-}
-
-class _List extends StatelessWidget {
-  final void Function()? onTap;
-  final List<Model> models;
-  const _List({super.key, this.onTap, required this.models});
-
-  @override
-  Widget build(BuildContext context) {
-    if (models.isEmpty) return const SizedBox();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: getChildren(context),
-    );
-  }
-
-  List<Widget> getChildren(BuildContext context) {
-    return models.map((model) => _Tile(model, onTap: onTap)).toList();
   }
 }
 

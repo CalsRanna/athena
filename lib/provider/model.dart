@@ -11,20 +11,17 @@ class ModelsNotifier extends _$ModelsNotifier {
   @override
   Future<List<Model>> build() async {
     final models = await isar.models.where().findAll();
-    if (models.isEmpty) {
-      final remoteModels = await ManagerApi().getModels();
-      isar.writeTxn(() async {
-        isar.models.putAll(remoteModels);
-      });
-      return remoteModels;
-    }
-    return models;
+    if (models.isNotEmpty) return _sort(models);
+    final remoteModels = await ManagerApi().getModels();
+    isar.writeTxn(() async {
+      isar.models.putAll(remoteModels);
+    });
+    return _sort(remoteModels);
   }
 
   Future<void> getModels() async {
-    final models = await ManagerApi().getModels();
-    state = AsyncData([...models]);
-    for (final model in models) {
+    final remoteModels = await ManagerApi().getModels();
+    for (final model in remoteModels) {
       final queryBuilder = isar.models.filter().valueEqualTo(model.value);
       final exist = await queryBuilder.findFirst();
       if (exist == null) {
@@ -33,5 +30,11 @@ class ModelsNotifier extends _$ModelsNotifier {
         });
       }
     }
+    ref.invalidateSelf();
+  }
+
+  List<Model> _sort(List<Model> models) {
+    models.sort((a, b) => a.name.compareTo(b.name));
+    return models;
   }
 }
