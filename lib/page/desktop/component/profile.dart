@@ -12,67 +12,46 @@ class ProfileTile extends StatefulWidget {
   State<ProfileTile> createState() => _ProfileTileState();
 }
 
-class _ProfileTileState extends State<ProfileTile> {
-  bool clicked = false;
-  OverlayEntry? entry;
-  final link = LayerLink();
+class _Account extends StatelessWidget {
+  const _Account();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final onPrimary = colorScheme.onPrimary;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: CompositedTransformTarget(
-        link: link,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: clicked ? onPrimary.withOpacity(0.2) : null,
+    return _Card(
+      child: Column(
+        children: [
+          const Row(
+            children: [
+              SizedBox(width: 200, child: Text('API Key')),
+              Expanded(child: _Key())
+            ],
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: const Row(children: [
-            _Avatar(),
-            SizedBox(width: 8),
-            Expanded(child: _Name())
-          ]),
-        ),
+          const ADivider(),
+          const Row(
+            children: [
+              SizedBox(width: 200, child: Text('API Proxy Url (Optional)')),
+              Expanded(child: _Url())
+            ],
+          ),
+          const ADivider(),
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 200, child: Text('Models')),
+              Expanded(child: _Model())
+            ],
+          ),
+          const ADivider(),
+          Row(
+            children: [
+              const SizedBox(width: 200, child: Text('Check Connection')),
+              const Spacer(),
+              OutlinedButton(onPressed: () {}, child: const Text('Check'))
+            ],
+          ),
+        ],
       ),
     );
-  }
-
-  void handleTap(BuildContext context) {
-    setState(() {
-      clicked = !clicked;
-    });
-    entry = OverlayEntry(builder: (context) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: removeEntry,
-        child: SizedBox.expand(
-          child: UnconstrainedBox(
-            child: CompositedTransformFollower(
-              followerAnchor: Alignment.bottomLeft,
-              link: link,
-              offset: const Offset(24, 0),
-              targetAnchor: Alignment.bottomRight,
-              child: _Dialog(onTap: removeEntry),
-            ),
-          ),
-        ),
-      );
-    });
-    Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    entry?.remove();
-    entry = null;
-    setState(() {
-      clicked = false;
-    });
   }
 }
 
@@ -93,6 +72,55 @@ class _Avatar extends StatelessWidget {
 
   Color getColor(BuildContext context) {
     return Theme.of(context).colorScheme.surface;
+  }
+}
+
+class _Card extends StatelessWidget {
+  final Widget child;
+  const _Card({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        color: Theme.of(context).colorScheme.surfaceContainer,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: child,
+    );
+  }
+}
+
+class _DarkMode extends StatelessWidget {
+  const _DarkMode();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, child) {
+      final setting = ref.watch(settingNotifierProvider).value;
+      final darkMode = setting?.darkMode ?? false;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => toggleMode(ref, !darkMode),
+        child: _Card(child: getTile(darkMode, ref)),
+      );
+    });
+  }
+
+  Row getTile(bool darkMode, WidgetRef ref) {
+    return Row(
+      children: [
+        const SizedBox(width: 200, child: Text('Dark Mode')),
+        const Spacer(),
+        Switch(value: darkMode, onChanged: (value) => toggleMode(ref, value))
+      ],
+    );
+  }
+
+  void toggleMode(WidgetRef ref, bool value) {
+    final notifier = ref.read(settingNotifierProvider.notifier);
+    notifier.toggleMode();
   }
 }
 
@@ -135,6 +163,52 @@ class _Dialog extends StatelessWidget {
   void handleTap(BuildContext context) {
     onTap?.call();
     showDialog(context: context, builder: (context) => const _Setting());
+  }
+}
+
+class _Experimental extends StatelessWidget {
+  const _Experimental();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, child) {
+      final setting = ref.watch(settingNotifierProvider).value;
+      final latex = setting?.latex ?? false;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => toggleLatex(ref, !latex),
+        child: _Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [getTile(latex, ref), getTip(context)],
+          ),
+        ),
+      );
+    });
+  }
+
+  Row getTile(bool latex, WidgetRef ref) {
+    return Row(
+      children: [
+        const SizedBox(width: 200, child: Text('LaTex')),
+        const Spacer(),
+        Switch(value: latex, onChanged: (value) => toggleLatex(ref, value))
+      ],
+    );
+  }
+
+  Text getTip(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface.withOpacity(0.4);
+    return Text(
+      'May cause render issues.',
+      style: TextStyle(color: color, fontSize: 10),
+    );
+  }
+
+  void toggleLatex(WidgetRef ref, bool value) {
+    final notifier = ref.read(settingNotifierProvider.notifier);
+    notifier.toggleLatex();
   }
 }
 
@@ -370,12 +444,75 @@ class _Name extends StatelessWidget {
   }
 }
 
+class _ProfileTileState extends State<ProfileTile> {
+  bool clicked = false;
+  OverlayEntry? entry;
+  final link = LayerLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onPrimary = colorScheme.onPrimary;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(context),
+      child: CompositedTransformTarget(
+        link: link,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: clicked ? onPrimary.withOpacity(0.2) : null,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: const Row(children: [
+            _Avatar(),
+            SizedBox(width: 8),
+            Expanded(child: _Name())
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    setState(() {
+      clicked = !clicked;
+    });
+    entry = OverlayEntry(builder: (context) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: removeEntry,
+        child: SizedBox.expand(
+          child: UnconstrainedBox(
+            child: CompositedTransformFollower(
+              followerAnchor: Alignment.bottomLeft,
+              link: link,
+              offset: const Offset(24, 0),
+              targetAnchor: Alignment.bottomRight,
+              child: _Dialog(onTap: removeEntry),
+            ),
+          ),
+        ),
+      );
+    });
+    Overlay.of(context).insert(entry!);
+  }
+
+  void removeEntry() {
+    entry?.remove();
+    entry = null;
+    setState(() {
+      clicked = false;
+    });
+  }
+}
+
 class _Setting extends StatelessWidget {
   const _Setting();
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = getBackgroundColor(context);
     final borderColor = getBorderColor(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -396,103 +533,23 @@ class _Setting extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Account'),
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: backgroundColor,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                children: [
-                  const Row(
-                    children: [
-                      SizedBox(width: 200, child: Text('API Key')),
-                      Expanded(child: _Key())
-                    ],
-                  ),
-                  const ADivider(),
-                  const Row(
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        child: Text('API Proxy Url (Optional)'),
-                      ),
-                      Expanded(child: _Url())
-                    ],
-                  ),
-                  const ADivider(),
-                  const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(width: 200, child: Text('Models')),
-                      Expanded(child: _Model())
-                    ],
-                  ),
-                  const ADivider(),
-                  Row(
-                    children: [
-                      const SizedBox(
-                        width: 200,
-                        child: Text('Check Connection'),
-                      ),
-                      const Spacer(),
-                      OutlinedButton(
-                          onPressed: () {}, child: const Text('Check'))
-                    ],
-                  ),
-                ],
-              ),
-            ),
+            const _Account(),
             const SizedBox(height: 8),
             const Text('Application'),
             const SizedBox(height: 8),
-            Consumer(builder: (context, ref, child) {
-              final setting = ref.watch(settingNotifierProvider).value;
-              final darkMode = setting?.darkMode ?? false;
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => toggleMode(ref, !darkMode),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(width: 200, child: Text('Dark Mode')),
-                          const Spacer(),
-                          Switch.adaptive(
-                            value: darkMode,
-                            onChanged: (value) => toggleMode(ref, value),
-                          )
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+            const _DarkMode(),
+            const SizedBox(height: 8),
+            const Text('Experimental'),
+            const SizedBox(height: 8),
+            const _Experimental(),
           ],
         ),
       ),
     );
   }
 
-  Color getBackgroundColor(BuildContext context) {
-    return Theme.of(context).colorScheme.surfaceContainer;
-  }
-
   Color getBorderColor(BuildContext context) {
     return Theme.of(context).colorScheme.onSurface.withOpacity(0.2);
-  }
-
-  void toggleMode(WidgetRef ref, bool value) {
-    final notifier = ref.read(settingNotifierProvider.notifier);
-    notifier.toggleMode();
   }
 }
 

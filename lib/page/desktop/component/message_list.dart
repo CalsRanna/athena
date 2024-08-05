@@ -1,10 +1,12 @@
 import 'package:athena/component/button.dart';
 import 'package:athena/page/desktop/component/logo.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -56,12 +58,7 @@ class _AssistantMessage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SelectionArea(
-                    child: MarkdownBody(
-                      builders: {'code': _CodeElementBuilder()},
-                      data: message.content,
-                    ),
-                  ),
+                  SelectionArea(child: _Markdown(message: message)),
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 300),
                     opacity: opacity,
@@ -189,6 +186,34 @@ class _CopyState extends State<_Copy> {
     if (!mounted) return;
     setState(() {
       copied = false;
+    });
+  }
+}
+
+class _Markdown extends StatelessWidget {
+  final Message message;
+
+  const _Markdown({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, child) {
+      final setting = ref.watch(settingNotifierProvider).value;
+      final latex = setting?.latex ?? false;
+      Map<String, MarkdownElementBuilder> builders = {
+        'code': _CodeElementBuilder()
+      };
+      if (latex) builders['latex'] = LatexElementBuilder();
+      List<md.BlockSyntax> blockSyntaxes = [LatexBlockSyntax()];
+      blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
+      final inlineSyntaxes = [LatexInlineSyntax()];
+      final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
+      return MarkdownBody(
+        key: ValueKey('markdown-${latex.toString()}'),
+        builders: builders,
+        data: message.content,
+        extensionSet: latex ? extensions : null,
+      );
     });
   }
 }

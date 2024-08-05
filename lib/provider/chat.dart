@@ -43,8 +43,8 @@ class ChatNotifier extends _$ChatNotifier {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     await _ensurePersistence();
-    final messageNotifier = ref.read(messagesNotifierProvider.notifier);
-    await messageNotifier.store(message);
+    final messagesNotifier = ref.read(messagesNotifierProvider.notifier);
+    await messagesNotifier.store(message);
     final histories = await ref.read(messagesNotifierProvider.future);
     final messages = histories.map((item) {
       return {'role': item.role, 'content': item.content};
@@ -53,12 +53,12 @@ class ChatNotifier extends _$ChatNotifier {
     try {
       final stream = await ChatApi().getCompletion(messages, model: model);
       await for (final token in stream) {
-        await messageNotifier.streaming(token);
+        await messagesNotifier.streaming(token);
       }
-      await messageNotifier.closeStreaming();
+      await messagesNotifier.closeStreaming();
       await store();
     } catch (error) {
-      messageNotifier.store(error.toString(), role: 'assistant');
+      messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
     await _generateTitle(message, model);
@@ -105,7 +105,7 @@ class ChatNotifier extends _$ChatNotifier {
       }
       closeStreaming();
     } catch (error) {
-      store(title: error.toString());
+      store(title: '');
     }
   }
 
@@ -139,6 +139,25 @@ class ChatsNotifier extends _$ChatsNotifier {
 
 @riverpod
 class MessagesNotifier extends _$MessagesNotifier {
+  /// **IMPORTANT** Only called for appending error message
+  ///
+  /// Appends error message to the last message if its role is 'assistant'.
+  /// If the last message is not from the assistant or does not exist,
+  /// it stores a new error message with the role of 'assistant'.
+  Future<void> append(String error) async {
+    final messages = await future;
+    final message = messages.lastOrNull;
+    if (message?.role != 'assistant') {
+      await store(error, role: 'assistant');
+    } else {
+      message!.content = '${message.content}\n$error';
+      await isar.writeTxn(() async {
+        await isar.messages.put(message);
+      });
+    }
+    ref.invalidateSelf();
+  }
+
   @override
   Future<List<Message>> build() async {
     final chat = await ref.watch(chatNotifierProvider.future);

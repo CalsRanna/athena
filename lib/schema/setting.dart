@@ -9,5 +9,6 @@ class Setting {
   @Name('dark_mode')
   bool darkMode = false;
   String key = '';
+  bool latex = false;
   String url = '';
 }

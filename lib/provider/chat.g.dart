@@ -6,7 +6,7 @@ part of 'chat.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatNotifierHash() => r'4a3061701723e79f3dd8218fca33b407c342b1ee';
+String _$chatNotifierHash() => r'a812fa8bd620a096678e61fdab37730e55e9fbfb';
 
 /// See also [ChatNotifier].
 @ProviderFor(ChatNotifier)
@@ -37,7 +37,7 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$messagesNotifierHash() => r'10375ea06d2e4301ce3b03ba23148980cf69c2dd';
+String _$messagesNotifierHash() => r'891a5baed42fc941248eac87dcde6aeaa2a94a55';
 
 /// See also [MessagesNotifier].
 @ProviderFor(MessagesNotifier)

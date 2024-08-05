@@ -27,8 +27,13 @@ const SettingSchema = CollectionSchema(
       name: r'key',
       type: IsarType.string,
     ),
-    r'url': PropertySchema(
+    r'latex': PropertySchema(
       id: 2,
+      name: r'latex',
+      type: IsarType.bool,
+    ),
+    r'url': PropertySchema(
+      id: 3,
       name: r'url',
       type: IsarType.string,
     )
@@ -66,7 +71,8 @@ void _settingSerialize(
 ) {
   writer.writeBool(offsets[0], object.darkMode);
   writer.writeString(offsets[1], object.key);
-  writer.writeString(offsets[2], object.url);
+  writer.writeBool(offsets[2], object.latex);
+  writer.writeString(offsets[3], object.url);
 }
 
 Setting _settingDeserialize(
@@ -79,7 +85,8 @@ Setting _settingDeserialize(
   object.darkMode = reader.readBool(offsets[0]);
   object.id = id;
   object.key = reader.readString(offsets[1]);
-  object.url = reader.readString(offsets[2]);
+  object.latex = reader.readBool(offsets[2]);
+  object.url = reader.readString(offsets[3]);
   return object;
 }
 
@@ -95,6 +102,8 @@ P _settingDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
+      return (reader.readBool(offset)) as P;
+    case 3:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -382,6 +391,16 @@ extension SettingQueryFilter
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> latexEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'latex',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -544,6 +563,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByLatex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByLatexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latex', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -595,6 +626,18 @@ extension SettingQuerySortThenBy
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByLatex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latex', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByLatexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latex', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -623,6 +666,12 @@ extension SettingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Setting, Setting, QDistinct> distinctByLatex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'latex');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByUrl(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -648,6 +697,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, String, QQueryOperations> keyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'key');
+    });
+  }
+
+  QueryBuilder<Setting, bool, QQueryOperations> latexProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'latex');
     });
   }
 
