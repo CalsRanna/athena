@@ -51,4 +51,13 @@ class SettingNotifier extends _$SettingNotifier {
       await isar.settings.put(setting);
     });
   }
+
+  Future<void> updateModel(String model) async {
+    final setting = await future;
+    setting.model = model;
+    state = AsyncData(setting);
+    await isar.writeTxn(() async {
+      await isar.settings.put(setting);
+    });
+  }
 }

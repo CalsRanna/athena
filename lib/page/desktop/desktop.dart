@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:athena/page/desktop/component/chat_list.dart';
+import 'package:athena/page/desktop/component/chat.dart';
 import 'package:athena/page/desktop/component/workspace.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:flutter/gestures.dart';

@@ -1,5 +1,6 @@
 import 'package:athena/api/chat.dart';
 import 'package:athena/provider/model.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:isar/isar.dart';
@@ -11,9 +12,12 @@ part 'chat.g.dart';
 class ChatNotifier extends _$ChatNotifier {
   @override
   Future<Chat> build() async {
+    final setting = await ref.watch(settingNotifierProvider.future);
+    final model = setting.model;
+    if (model.isNotEmpty) return Chat()..model = model;
     final models = await ref.watch(modelsNotifierProvider.future);
-    final model = models.first.value;
-    return Chat()..model = model;
+    final firstModel = models.first.value;
+    return Chat()..model = firstModel;
   }
 
   Future<void> closeStreaming() async {

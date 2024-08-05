@@ -32,8 +32,13 @@ const SettingSchema = CollectionSchema(
       name: r'latex',
       type: IsarType.bool,
     ),
-    r'url': PropertySchema(
+    r'model': PropertySchema(
       id: 3,
+      name: r'model',
+      type: IsarType.string,
+    ),
+    r'url': PropertySchema(
+      id: 4,
       name: r'url',
       type: IsarType.string,
     )
@@ -59,6 +64,7 @@ int _settingEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.key.length * 3;
+  bytesCount += 3 + object.model.length * 3;
   bytesCount += 3 + object.url.length * 3;
   return bytesCount;
 }
@@ -72,7 +78,8 @@ void _settingSerialize(
   writer.writeBool(offsets[0], object.darkMode);
   writer.writeString(offsets[1], object.key);
   writer.writeBool(offsets[2], object.latex);
-  writer.writeString(offsets[3], object.url);
+  writer.writeString(offsets[3], object.model);
+  writer.writeString(offsets[4], object.url);
 }
 
 Setting _settingDeserialize(
@@ -86,7 +93,8 @@ Setting _settingDeserialize(
   object.id = id;
   object.key = reader.readString(offsets[1]);
   object.latex = reader.readBool(offsets[2]);
-  object.url = reader.readString(offsets[3]);
+  object.model = reader.readString(offsets[3]);
+  object.url = reader.readString(offsets[4]);
   return object;
 }
 
@@ -104,6 +112,8 @@ P _settingDeserializeProp<P>(
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -401,6 +411,136 @@ extension SettingQueryFilter
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'model',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'model',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'model',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'model',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'model',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -575,6 +715,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByModel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'model', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByModelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -638,6 +790,18 @@ extension SettingQuerySortThenBy
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByModel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'model', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByModelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'model', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'url', Sort.asc);
@@ -672,6 +836,13 @@ extension SettingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Setting, Setting, QDistinct> distinctByModel(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'model', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByUrl(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -703,6 +874,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, bool, QQueryOperations> latexProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'latex');
+    });
+  }
+
+  QueryBuilder<Setting, String, QQueryOperations> modelProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'model');
     });
   }
 

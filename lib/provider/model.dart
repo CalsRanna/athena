@@ -1,4 +1,5 @@
 import 'package:athena/api/manager.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:isar/isar.dart';
@@ -31,6 +32,10 @@ class ModelsNotifier extends _$ModelsNotifier {
       }
     }
     ref.invalidateSelf();
+    final setting = await ref.read(settingNotifierProvider.future);
+    if (setting.model.isNotEmpty) return;
+    final notifier = ref.read(settingNotifierProvider.notifier);
+    notifier.updateModel(remoteModels.first.value);
   }
 
   List<Model> _sort(List<Model> models) {
