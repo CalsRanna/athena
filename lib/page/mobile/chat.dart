@@ -8,6 +8,7 @@ import 'package:athena/service/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key, this.id});
@@ -49,7 +50,10 @@ class _ChatPageState extends State<ChatPage> {
             child: FloatingActionButton.small(
               shape: const CircleBorder(),
               onPressed: scrollToBottom,
-              child: const Icon(Icons.arrow_downward_outlined),
+              child: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowDown01,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ),
           )
         : null;
@@ -129,10 +133,10 @@ class _ChatPageState extends State<ChatPage> {
                             Theme.of(context).colorScheme.primaryContainer,
                       ),
                       onPressed: selectModel,
-                      icon: Icon(
-                        Icons.send_outlined,
+                      icon: HugeIcon(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: 32,
+                        icon: HugeIcons.strokeRoundedSent,
+                        size: 32.0,
                       ),
                     )
                   ],

@@ -4,6 +4,7 @@ import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class Input extends StatelessWidget {
   const Input({super.key});
@@ -176,7 +177,11 @@ class _ModelSelectorState extends State<_ModelSelector> {
         child: Consumer(builder: (context, ref, child) {
           final streaming = ref.watch(streamingNotifierProvider);
           if (!streaming) {
-            return Icon(Icons.auto_awesome_outlined, color: color, size: 24);
+            return HugeIcon(
+              icon: HugeIcons.strokeRoundedAiBrain01,
+              color: color,
+              size: 20,
+            );
           }
           return const SizedBox(
             height: 24,

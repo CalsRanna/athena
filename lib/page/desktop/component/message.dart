@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 
 class MessageList extends StatelessWidget {
@@ -166,8 +167,18 @@ class _CopyState extends State<_Copy> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface.withOpacity(0.2);
-    Widget icon = Icon(Icons.copy, color: color, size: 12);
-    if (copied) icon = Icon(Icons.check_outlined, color: color, size: 12);
+    Widget icon = HugeIcon(
+      color: color,
+      icon: HugeIcons.strokeRoundedCopy01,
+      size: 12.0,
+    );
+    if (copied) {
+      icon = HugeIcon(
+        color: color,
+        icon: HugeIcons.strokeRoundedTick01,
+        size: 12.0,
+      );
+    }
     const duration = Duration(milliseconds: 200);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -285,7 +296,11 @@ class _Refresh extends StatelessWidget {
     final onSurface = colorScheme.onSurface;
     return GestureDetector(
       onTap: onTap,
-      child: Icon(Icons.autorenew, size: 12, color: onSurface.withOpacity(0.2)),
+      child: HugeIcon(
+        color: onSurface.withOpacity(0.2),
+        icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+        size: 12.0,
+      ),
     );
   }
 }
@@ -321,7 +336,11 @@ class _UserMessage extends StatelessWidget {
               children: [
                 _Copy(onTap: handleTap),
                 const SizedBox(width: 12),
-                Icon(Icons.edit, size: 12, color: onSurface.withOpacity(0.2)),
+                HugeIcon(
+                  color: onSurface.withOpacity(0.2),
+                  icon: HugeIcons.strokeRoundedPencilEdit01,
+                  size: 12.0,
+                ),
               ],
             ),
           ),

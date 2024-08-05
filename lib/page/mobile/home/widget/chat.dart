@@ -4,6 +4,7 @@ import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ChatWidget extends StatefulWidget {
   const ChatWidget({super.key});
@@ -41,7 +42,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                     ),
                     foregroundColor: onError,
                     label: '删除',
-                    icon: Icons.delete_outline,
+                    icon: HugeIcons.strokeRoundedDelete02,
                     onPressed: (context) => handleDelete(index),
                   ),
                 ],

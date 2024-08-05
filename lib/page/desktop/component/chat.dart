@@ -3,6 +3,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ChatList extends StatelessWidget {
   const ChatList({super.key});
@@ -256,9 +257,9 @@ class _Search extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
-          Icon(
-            Icons.search,
+          HugeIcon(
             color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+            icon: HugeIcons.strokeRoundedSearch01,
             size: 16,
           ),
           const SizedBox(width: 8),

@@ -6,6 +6,7 @@ import 'package:athena/page/mobile/home/widget/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:isar/isar.dart';
 import 'package:logger/logger.dart';
 
@@ -19,6 +20,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -27,12 +30,16 @@ class _HomePageState extends State<HomePage> {
             if (setting == null) {
               return const SizedBox();
             } else {
+              final sun = HugeIcon(
+                color: onSurface,
+                icon: HugeIcons.strokeRoundedSun02,
+              );
+              final moon = HugeIcon(
+                color: onSurface,
+                icon: HugeIcons.strokeRoundedMoon02,
+              );
               return IconButton(
-                icon: Icon(
-                  setting.darkMode
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                ),
+                icon: setting.darkMode ? sun : moon,
                 onPressed: triggerDarkMode,
               );
             }
@@ -44,7 +51,10 @@ class _HomePageState extends State<HomePage> {
       body: const ChatWidget(),
       floatingActionButton: FloatingActionButton(
         onPressed: handlePressed,
-        child: const Icon(Icons.chat_bubble_outline),
+        child: HugeIcon(
+          color: onSurface,
+          icon: HugeIcons.strokeRoundedAiChat02,
+        ),
       ),
     );
   }

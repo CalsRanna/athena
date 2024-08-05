@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class CopyButton extends StatefulWidget {
   final void Function()? onTap;
@@ -13,13 +14,23 @@ class _CopyButtonState extends State<CopyButton> {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = const Icon(Icons.content_copy_outlined, size: 12);
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface.withOpacity(0.4);
+    Widget child = HugeIcon(
+      color: color,
+      icon: HugeIcons.strokeRoundedCopy01,
+      size: 12.0,
+    );
     if (copied) {
-      child = const Row(
+      child = Row(
         children: [
-          Icon(Icons.check_outlined, size: 12),
-          SizedBox(width: 4),
-          Text('Copied!', style: TextStyle(fontSize: 12, height: 1))
+          HugeIcon(
+            color: color,
+            icon: HugeIcons.strokeRoundedTick01,
+            size: 12.0,
+          ),
+          const SizedBox(width: 4),
+          const Text('Copied!', style: TextStyle(fontSize: 12, height: 1))
         ],
       );
     }

@@ -5,6 +5,7 @@ import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class Setting extends StatelessWidget {
   const Setting({super.key});
@@ -329,7 +330,10 @@ class _ModelState extends State<_Model> {
               AnimatedRotation(
                 turns: show ? 0.5 : 0,
                 duration: const Duration(milliseconds: 200),
-                child: const Icon(Icons.expand_more),
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowDown01,
+                  color: onSurface.withOpacity(0.4),
+                ),
               ),
             ],
           ),

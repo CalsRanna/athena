@@ -1,11 +1,10 @@
-import 'dart:math';
-
 import 'package:athena/page/desktop/component/chat.dart';
 import 'package:athena/page/desktop/component/workspace.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:window_manager/window_manager.dart';
 
 class Desktop extends StatelessWidget {
@@ -69,6 +68,11 @@ class _CloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = HugeIcon(
+      color: Theme.of(context).colorScheme.onSurface,
+      icon: HugeIcons.strokeRoundedCancel01,
+      size: 10.0,
+    );
     const placeholder = SizedBox(height: 10, width: 10);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -79,7 +83,7 @@ class _CloseButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         padding: const EdgeInsets.all(2),
-        child: hover ? const Icon(Icons.close, size: 10) : placeholder,
+        child: hover ? icon : placeholder,
       ),
     );
   }
@@ -99,8 +103,8 @@ class _Create extends StatelessWidget {
     return Consumer(builder: (context, ref, child) {
       return GestureDetector(
         onTap: () => handleTap(ref),
-        child: Icon(
-          Icons.maps_ugc_outlined,
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedPencilEdit02,
           color: onSurface.withOpacity(0.2),
         ),
       );
@@ -119,9 +123,9 @@ class _Fold extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 48,
-      child: Icon(
-        Icons.space_dashboard_outlined,
+      child: HugeIcon(
         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+        icon: HugeIcons.strokeRoundedSidebarLeft,
       ),
     );
   }
@@ -140,9 +144,13 @@ class _FullScreenButtonState extends State<_FullScreenButton> {
 
   @override
   Widget build(BuildContext context) {
-    final icon = fullScreen ? Icons.unfold_less : Icons.unfold_more;
-    const angle = pi * 3 / 4;
-    final child = Transform.rotate(angle: angle, child: Icon(icon, size: 10));
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface;
+    final child = HugeIcon(
+      color: color,
+      icon: HugeIcons.strokeRoundedArrowExpand02,
+      size: 10,
+    );
     const placeholder = SizedBox(height: 10, width: 10);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -172,6 +180,13 @@ class _MinimumButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface;
+    final icon = HugeIcon(
+      color: color,
+      icon: HugeIcons.strokeRoundedRemove01,
+      size: 10,
+    );
     const placeholder = SizedBox(height: 10, width: 10);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -182,7 +197,7 @@ class _MinimumButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         padding: const EdgeInsets.all(2),
-        child: hover ? const Icon(Icons.remove, size: 10) : placeholder,
+        child: hover ? icon : placeholder,
       ),
     );
   }
@@ -207,7 +222,10 @@ class _SentinelSelector extends StatelessWidget {
             final sentinel = ref.watch(sentinelNotifierProvider).value;
             return Text(sentinel?.name ?? 'Athena');
           }),
-          Icon(Icons.chevron_right, color: onSurface.withOpacity(0.2)),
+          HugeIcon(
+            color: onSurface.withOpacity(0.2),
+            icon: HugeIcons.strokeRoundedArrowRight01,
+          ),
         ],
       ),
     );
