@@ -417,7 +417,7 @@ packages:
     source: hosted
     version: "3.1.0+1"
   isar_generator:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: isar_generator
       sha256: "76c121e1295a30423604f2f819bc255bc79f852f3bc8743a24017df6068ad133"
@@ -489,7 +489,7 @@ packages:
     source: hosted
     version: "1.2.0"
   markdown:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: markdown
       sha256: ef2a1298144e3f985cc736b22e0ccdaf188b5b3970648f2d9dc13efd1d9df051
