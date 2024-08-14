@@ -434,29 +434,37 @@ class _Toolbar extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final onSurface = colorScheme.onSurface;
-    return Row(
-      children: [
-        const SizedBox(width: 16),
-        const _Buttons(),
-        // const SizedBox(width: 16),
-        // const _FoldButton(),
-        // const SizedBox(width: 200 - 16 * 2 - 14 * 3 - 8 * 2 - 48),
-        const SizedBox(width: 200 - 16 - 14 * 3 - 8 * 2),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: onSurface.withOpacity(0.2)),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: handlePanStart,
+      child: Row(
+        children: [
+          const SizedBox(width: 16),
+          const _Buttons(),
+          // const SizedBox(width: 16),
+          // const _FoldButton(),
+          // const SizedBox(width: 200 - 16 * 2 - 14 * 3 - 8 * 2 - 48),
+          const SizedBox(width: 200 - 16 - 14 * 3 - 8 * 2),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: onSurface.withOpacity(0.2)),
+                ),
+              ),
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: const Row(
+                children: [_SentinelSelector(), Spacer(), _Create()],
               ),
             ),
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: const Row(
-              children: [_SentinelSelector(), Spacer(), _Create()],
-            ),
-          ),
-        )
-      ],
+          )
+        ],
+      ),
     );
+  }
+
+  void handlePanStart(DragStartDetails details) {
+    windowManager.startDragging();
   }
 }
