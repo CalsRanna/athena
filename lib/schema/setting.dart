@@ -8,8 +8,10 @@ class Setting {
   Id id = Isar.autoIncrement;
   @Name('dark_mode')
   bool darkMode = false;
+  double height = 720;
   String model = '';
   String key = '';
   bool latex = false;
   String url = '';
+  double width = 960;
 }

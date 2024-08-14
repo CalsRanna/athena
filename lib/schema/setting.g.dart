@@ -22,25 +22,35 @@ const SettingSchema = CollectionSchema(
       name: r'dark_mode',
       type: IsarType.bool,
     ),
-    r'key': PropertySchema(
+    r'height': PropertySchema(
       id: 1,
+      name: r'height',
+      type: IsarType.double,
+    ),
+    r'key': PropertySchema(
+      id: 2,
       name: r'key',
       type: IsarType.string,
     ),
     r'latex': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'latex',
       type: IsarType.bool,
     ),
     r'model': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'model',
       type: IsarType.string,
     ),
     r'url': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'url',
       type: IsarType.string,
+    ),
+    r'width': PropertySchema(
+      id: 6,
+      name: r'width',
+      type: IsarType.double,
     )
   },
   estimateSize: _settingEstimateSize,
@@ -76,10 +86,12 @@ void _settingSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeBool(offsets[0], object.darkMode);
-  writer.writeString(offsets[1], object.key);
-  writer.writeBool(offsets[2], object.latex);
-  writer.writeString(offsets[3], object.model);
-  writer.writeString(offsets[4], object.url);
+  writer.writeDouble(offsets[1], object.height);
+  writer.writeString(offsets[2], object.key);
+  writer.writeBool(offsets[3], object.latex);
+  writer.writeString(offsets[4], object.model);
+  writer.writeString(offsets[5], object.url);
+  writer.writeDouble(offsets[6], object.width);
 }
 
 Setting _settingDeserialize(
@@ -90,11 +102,13 @@ Setting _settingDeserialize(
 ) {
   final object = Setting();
   object.darkMode = reader.readBool(offsets[0]);
+  object.height = reader.readDouble(offsets[1]);
   object.id = id;
-  object.key = reader.readString(offsets[1]);
-  object.latex = reader.readBool(offsets[2]);
-  object.model = reader.readString(offsets[3]);
-  object.url = reader.readString(offsets[4]);
+  object.key = reader.readString(offsets[2]);
+  object.latex = reader.readBool(offsets[3]);
+  object.model = reader.readString(offsets[4]);
+  object.url = reader.readString(offsets[5]);
+  object.width = reader.readDouble(offsets[6]);
   return object;
 }
 
@@ -108,13 +122,17 @@ P _settingDeserializeProp<P>(
     case 0:
       return (reader.readBool(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 2:
-      return (reader.readBool(offset)) as P;
-    case 3:
       return (reader.readString(offset)) as P;
+    case 3:
+      return (reader.readBool(offset)) as P;
     case 4:
       return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
+      return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -215,6 +233,68 @@ extension SettingQueryFilter
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'dark_mode',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> heightEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'height',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> heightGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'height',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> heightLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'height',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> heightBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'height',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -670,6 +750,68 @@ extension SettingQueryFilter
       ));
     });
   }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> widthEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'width',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> widthGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'width',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> widthLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'width',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> widthBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'width',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
 }
 
 extension SettingQueryObject
@@ -688,6 +830,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByHeight() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'height', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByHeightDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'height', Sort.desc);
     });
   }
 
@@ -738,6 +892,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
       return query.addSortBy(r'url', Sort.desc);
     });
   }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByWidth() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'width', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByWidthDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'width', Sort.desc);
+    });
+  }
 }
 
 extension SettingQuerySortThenBy
@@ -751,6 +917,18 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByHeight() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'height', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByHeightDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'height', Sort.desc);
     });
   }
 
@@ -813,6 +991,18 @@ extension SettingQuerySortThenBy
       return query.addSortBy(r'url', Sort.desc);
     });
   }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByWidth() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'width', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByWidthDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'width', Sort.desc);
+    });
+  }
 }
 
 extension SettingQueryWhereDistinct
@@ -820,6 +1010,12 @@ extension SettingQueryWhereDistinct
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dark_mode');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByHeight() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'height');
     });
   }
 
@@ -849,6 +1045,12 @@ extension SettingQueryWhereDistinct
       return query.addDistinctBy(r'url', caseSensitive: caseSensitive);
     });
   }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByWidth() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'width');
+    });
+  }
 }
 
 extension SettingQueryProperty
@@ -862,6 +1064,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dark_mode');
+    });
+  }
+
+  QueryBuilder<Setting, double, QQueryOperations> heightProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'height');
     });
   }
 
@@ -886,6 +1094,12 @@ extension SettingQueryProperty
   QueryBuilder<Setting, String, QQueryOperations> urlProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'url');
+    });
+  }
+
+  QueryBuilder<Setting, double, QQueryOperations> widthProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'width');
     });
   }
 }

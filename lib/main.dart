@@ -17,10 +17,11 @@ void main() async {
   await IsarInitializer.ensureInitialized();
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    const options = WindowOptions(
+    final setting = await isar.settings.where().findFirst();
+    final options = WindowOptions(
       center: true,
-      minimumSize: Size(960, 720),
-      size: Size(960, 720),
+      minimumSize: const Size(960, 720),
+      size: Size(setting?.width ?? 960, setting?.height ?? 720),
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );
@@ -48,19 +49,37 @@ class AthenaApp extends StatefulWidget {
   }
 }
 
-class _AthenaAppState extends State<AthenaApp> {
+class _AthenaAppState extends State<AthenaApp> with WindowListener {
   final SystemTray tray = SystemTray();
 
   @override
   void initState() {
     super.initState();
     initTray();
+    windowManager.addListener(this);
   }
 
   @override
   void didChangeDependencies() {
     initSetting();
     super.didChangeDependencies();
+  }
+
+  @override
+  void onWindowResized() {
+    resizeWindow();
+    super.onWindowResized();
+  }
+
+  Future<void> resizeWindow() async {
+    final size = await windowManager.getSize();
+    final setting = await isar.settings.where().findFirst();
+    if (setting == null) return;
+    setting.width = size.width;
+    setting.height = size.height;
+    await isar.writeTxn(() async {
+      await isar.settings.put(setting);
+    });
   }
 
   @override
