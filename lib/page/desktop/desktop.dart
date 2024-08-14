@@ -1,6 +1,8 @@
 import 'package:athena/page/desktop/component/chat.dart';
 import 'package:athena/page/desktop/component/workspace.dart';
+import 'package:athena/page/desktop/sentinel/form.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -207,8 +209,16 @@ class _MinimumButton extends StatelessWidget {
   }
 }
 
-class _SentinelSelector extends StatelessWidget {
+class _SentinelSelector extends StatefulWidget {
   const _SentinelSelector();
+
+  @override
+  State<_SentinelSelector> createState() => _SentinelSelectorState();
+}
+
+class _SentinelSelectorState extends State<_SentinelSelector> {
+  OverlayEntry? entry;
+  LayerLink link = LayerLink();
 
   @override
   Widget build(BuildContext context) {
@@ -216,19 +226,203 @@ class _SentinelSelector extends StatelessWidget {
     final onSurface = colorScheme.onSurface;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Consumer(builder: (context, ref, child) {
-            final sentinel = ref.watch(sentinelNotifierProvider).value;
-            return Text(sentinel?.name ?? 'Athena');
-          }),
-          HugeIcon(
-            color: onSurface.withOpacity(0.2),
-            icon: HugeIcons.strokeRoundedArrowRight01,
-          ),
-        ],
+      onTap: handleTap,
+      child: CompositedTransformTarget(
+        link: link,
+        child: Row(
+          children: [
+            Consumer(builder: (context, ref, child) {
+              final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
+              return Text(sentinel?.name ?? 'Athena');
+            }),
+            HugeIcon(
+              color: onSurface.withOpacity(0.2),
+              icon: HugeIcons.strokeRoundedArrowRight01,
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  void handleTap() {
+    entry = OverlayEntry(builder: (context) {
+      return _SentinelSelectorOverlay(
+        link: link,
+        onTap: removeEntry,
+      );
+    });
+    Overlay.of(context).insert(entry!);
+  }
+
+  void removeEntry() {
+    entry?.remove();
+    entry = null;
+  }
+}
+
+class _SentinelSelectorOverlay extends StatelessWidget {
+  final LayerLink link;
+  final void Function()? onTap;
+  const _SentinelSelectorOverlay({required this.link, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: const SizedBox.expand(),
+        ),
+        CompositedTransformFollower(
+          link: link,
+          followerAnchor: Alignment.topCenter,
+          targetAnchor: Alignment.bottomCenter,
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withOpacity(0.2),
+                  blurRadius: 12,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Consumer(builder: (context, ref, child) {
+              final sentinels =
+                  ref.watch(sentinelsNotifierProvider).valueOrNull ?? [];
+              final children = sentinels.map((sentinel) =>
+                  _SentinelTile(onTap: onTap, sentinel: sentinel));
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...children,
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => handleTap(context),
+                    child: Container(
+                      alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: onSurface.withOpacity(0.2)),
+                        ),
+                        color: Colors.transparent,
+                      ),
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      width: 320,
+                      child: Text(
+                        'Create New Sentinel',
+                        style: TextStyle(
+                          color: onSurface,
+                          decoration: TextDecoration.none,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  )
+                ],
+              );
+            }),
+          ),
+        )
+      ],
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    onTap?.call();
+    Navigator.of(context).push(PageRouteBuilder(
+      opaque: false,
+      pageBuilder: (context, _, __) {
+        return const SentinelFormPage();
+      },
+    ));
+  }
+}
+
+class _SentinelTile extends StatefulWidget {
+  final void Function()? onTap;
+  final Sentinel sentinel;
+  const _SentinelTile({this.onTap, required this.sentinel});
+
+  @override
+  State<_SentinelTile> createState() => _SentinelTileState();
+}
+
+class _SentinelTileState extends State<_SentinelTile> {
+  bool hover = false;
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    return Consumer(builder: (context, ref, child) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => handleTap(ref),
+        child: MouseRegion(
+          onEnter: handleEnter,
+          onExit: handleExit,
+          child: Container(
+            color: hover ? colorScheme.surfaceContainer : Colors.transparent,
+            alignment: Alignment.centerLeft,
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            width: 320,
+            child: Row(
+              children: [
+                if (widget.sentinel.avatar.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Text(
+                      widget.sentinel.avatar,
+                      style: TextStyle(
+                        color: onSurface,
+                        decoration: TextDecoration.none,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                Text(
+                  widget.sentinel.name,
+                  style: TextStyle(
+                    color: onSurface,
+                    decoration: TextDecoration.none,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() {
+      hover = false;
+    });
+  }
+
+  void handleTap(WidgetRef ref) {
+    widget.onTap?.call();
+    final notifier = ref.read(sentinelNotifierProvider.notifier);
+    notifier.select(widget.sentinel);
   }
 }
 

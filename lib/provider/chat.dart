@@ -12,12 +12,19 @@ part 'chat.g.dart';
 class ChatNotifier extends _$ChatNotifier {
   @override
   Future<Chat> build() async {
+    final sentinel = await ref.read(sentinelNotifierProvider.future);
     final setting = await ref.watch(settingNotifierProvider.future);
     final model = setting.model;
-    if (model.isNotEmpty) return Chat()..model = model;
+    if (model.isNotEmpty) {
+      return Chat()
+        ..model = model
+        ..sentinelId = sentinel.id;
+    }
     final models = await ref.watch(modelsNotifierProvider.future);
     final firstModel = models.first.value;
-    return Chat()..model = firstModel;
+    return Chat()
+      ..model = firstModel
+      ..sentinelId = sentinel.id;
   }
 
   Future<void> closeStreaming() async {
@@ -40,6 +47,12 @@ class ChatNotifier extends _$ChatNotifier {
 
   Future<void> replace(Chat chat) async {
     state = AsyncData(chat);
+    final sentinel =
+        await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
+    final athena =
+        await isar.sentinels.filter().nameEqualTo('Athena').findFirst();
+    final notifier = ref.read(sentinelNotifierProvider.notifier);
+    notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
     await future;
   }
 
@@ -49,13 +62,18 @@ class ChatNotifier extends _$ChatNotifier {
     await _ensurePersistence();
     final messagesNotifier = ref.read(messagesNotifierProvider.notifier);
     await messagesNotifier.store(message);
+    final prompt = await _getPrompt();
+    final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesNotifierProvider.future);
     final messages = histories.map((item) {
       return {'role': item.role, 'content': item.content};
     }).toList();
     final model = await _getModel();
     try {
-      final stream = await ChatApi().getCompletion(messages, model: model);
+      final stream = await ChatApi().getCompletion(
+        [system, ...messages],
+        model: model,
+      );
       await for (final token in stream) {
         await messagesNotifier.streaming(token);
       }
@@ -119,6 +137,11 @@ class ChatNotifier extends _$ChatNotifier {
     if (model.isNotEmpty) return model;
     final models = await ref.read(modelsNotifierProvider.future);
     return models.first.value;
+  }
+
+  Future<String> _getPrompt() async {
+    final sentinel = await ref.read(sentinelNotifierProvider.future);
+    return sentinel.prompt;
   }
 }
 
@@ -231,6 +254,12 @@ class SentinelNotifier extends _$SentinelNotifier {
     });
     return defaultSentinel;
   }
+
+  void select(Sentinel sentinel, {bool invalidate = true}) {
+    state = AsyncData(sentinel);
+    if (!invalidate) return;
+    ref.invalidate(chatNotifierProvider);
+  }
 }
 
 @riverpod
@@ -238,6 +267,13 @@ class SentinelsNotifier extends _$SentinelsNotifier {
   @override
   Future<List<Sentinel>> build() async {
     return await isar.sentinels.where().findAll();
+  }
+
+  Future<void> store(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(sentinel);
+    });
+    ref.invalidateSelf();
   }
 }
 

@@ -49,10 +49,20 @@ class _AssistantMessage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipOval(
-              child: Image.asset(
-                'asset/image/launcher_icon_ios_512x512.jpg',
-                height: 32,
-              ),
+              child: Consumer(builder: (context, ref, child) {
+                final sentinel =
+                    ref.watch(sentinelNotifierProvider).valueOrNull;
+                if (sentinel?.avatar.isNotEmpty == true) {
+                  return Text(
+                    sentinel!.avatar,
+                    style: const TextStyle(fontSize: 32, height: 1),
+                  );
+                }
+                return Image.asset(
+                  'asset/image/launcher_icon_ios_512x512.jpg',
+                  height: 32,
+                );
+              }),
             ),
             const SizedBox(width: 8),
             Expanded(

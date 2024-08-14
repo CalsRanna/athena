@@ -40,7 +40,7 @@ class _Dialog extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.primary,
+        color: Theme.of(context).colorScheme.surfaceContainer,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
@@ -60,7 +60,9 @@ class _Dialog extends StatelessWidget {
             }
             return _ListTile(enabled: false, title: title);
           }),
-          ADivider(color: Theme.of(context).colorScheme.onPrimary, width: 200),
+          ADivider(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
+              width: 200),
           _ListTile(title: 'Setting', onTap: () => handleTap(context)),
         ],
       ),
@@ -102,7 +104,7 @@ class _ListTile extends StatelessWidget {
   }
 
   Color getColor(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onPrimary;
+    final color = Theme.of(context).colorScheme.onSurface;
     if (!enabled) return color.withOpacity(0.4);
     return color;
   }

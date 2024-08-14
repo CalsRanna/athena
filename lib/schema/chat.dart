@@ -60,7 +60,9 @@ class Message {
 @Name('sentinels')
 class Sentinel {
   Id id = Isar.autoIncrement;
+  String avatar = '';
   String name = '';
   String description = '';
   String prompt = '';
+  List<String> tags = [];
 }
