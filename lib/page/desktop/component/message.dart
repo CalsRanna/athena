@@ -60,6 +60,7 @@ class _AssistantMessage extends StatelessWidget {
                 }
                 return Image.asset(
                   'asset/image/launcher_icon_ios_512x512.jpg',
+                  filterQuality: FilterQuality.medium,
                   height: 32,
                 );
               }),

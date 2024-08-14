@@ -3,6 +3,7 @@ import 'package:athena/page/desktop/component/workspace.dart';
 import 'package:athena/page/desktop/sentinel/form.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/card.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +35,7 @@ class _Buttons extends StatefulWidget {
 
 class _ButtonsState extends State<_Buttons> {
   bool hover = false;
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -66,6 +68,7 @@ class _ButtonsState extends State<_Buttons> {
 
 class _CloseButton extends StatelessWidget {
   final bool hover;
+
   const _CloseButton({this.hover = false});
 
   @override
@@ -135,6 +138,7 @@ class _Fold extends StatelessWidget {
 
 class _FullScreenButton extends StatefulWidget {
   final bool hover;
+
   const _FullScreenButton({this.hover = false});
 
   @override
@@ -178,6 +182,7 @@ class _FullScreenButtonState extends State<_FullScreenButton> {
 
 class _MinimumButton extends StatelessWidget {
   final bool hover;
+
   const _MinimumButton({this.hover = false});
 
   @override
@@ -247,7 +252,7 @@ class _SentinelSelectorState extends State<_SentinelSelector> {
 
   void handleTap() {
     entry = OverlayEntry(builder: (context) {
-      return _SentinelSelectorOverlay(
+      return _Overlay(
         link: link,
         onTap: removeEntry,
       );
@@ -261,10 +266,11 @@ class _SentinelSelectorState extends State<_SentinelSelector> {
   }
 }
 
-class _SentinelSelectorOverlay extends StatelessWidget {
+class _Overlay extends StatelessWidget {
   final LayerLink link;
   final void Function()? onTap;
-  const _SentinelSelectorOverlay({required this.link, this.onTap});
+
+  const _Overlay({required this.link, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -272,67 +278,45 @@ class _SentinelSelectorOverlay extends StatelessWidget {
     final onSurface = colorScheme.onSurface;
     return Stack(
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: const SizedBox.expand(),
-        ),
-        CompositedTransformFollower(
-          link: link,
-          followerAnchor: Alignment.topCenter,
-          targetAnchor: Alignment.bottomCenter,
-          child: Container(
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: colorScheme.shadow.withOpacity(0.2),
-                  blurRadius: 12,
-                  spreadRadius: 4,
-                ),
-              ],
-            ),
-            child: Consumer(builder: (context, ref, child) {
-              final sentinels =
-                  ref.watch(sentinelsNotifierProvider).valueOrNull ?? [];
-              final children = sentinels.map((sentinel) =>
-                  _SentinelTile(onTap: onTap, sentinel: sentinel));
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...children,
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => handleTap(context),
-                    child: Container(
-                      alignment: Alignment.centerLeft,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: onSurface.withOpacity(0.2)),
-                        ),
-                        color: Colors.transparent,
-                      ),
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      width: 320,
-                      child: Text(
-                        'Create New Sentinel',
-                        style: TextStyle(
-                          color: onSurface,
-                          decoration: TextDecoration.none,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  )
-                ],
-              );
-            }),
-          ),
-        )
+        _Barrier(onTap: onTap),
+        _Dialog(link: link, onTap: onTap),
       ],
+    );
+  }
+}
+
+class _Dialog extends StatelessWidget {
+  final LayerLink link;
+  final void Function()? onTap;
+
+  const _Dialog({super.key, required this.link, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformFollower(
+      link: link,
+      followerAnchor: Alignment.topLeft,
+      offset: const Offset(0, 12),
+      targetAnchor: Alignment.bottomLeft,
+      child: ACard(
+        child: Consumer(builder: (context, ref, child) {
+          final sentinels =
+              ref.watch(sentinelsNotifierProvider).valueOrNull ?? [];
+          final children = sentinels.map(
+              (sentinel) => _SentinelTile(onTap: onTap, sentinel: sentinel));
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...children,
+              const _Divider(),
+              _Tile(
+                onTap: () => handleTap(context),
+                title: 'Explore Sentinels',
+              ),
+            ],
+          );
+        }),
+      ),
     );
   }
 
@@ -347,82 +331,77 @@ class _SentinelSelectorOverlay extends StatelessWidget {
   }
 }
 
-class _SentinelTile extends StatefulWidget {
-  final void Function()? onTap;
-  final Sentinel sentinel;
-  const _SentinelTile({this.onTap, required this.sentinel});
+class _Divider extends StatelessWidget {
+  const _Divider({super.key});
 
   @override
-  State<_SentinelTile> createState() => _SentinelTileState();
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface.withOpacity(0.1);
+    final border = Border(top: BorderSide(color: onSurface));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Container(
+        decoration: BoxDecoration(border: border),
+        width: 320,
+      ),
+    );
+  }
 }
 
-class _SentinelTileState extends State<_SentinelTile> {
-  bool hover = false;
+class _Barrier extends StatelessWidget {
+  const _Barrier({
+    super.key,
+    required this.onTap,
+  });
+
+  final void Function()? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _SentinelTile extends StatelessWidget {
+  final void Function()? onTap;
+  final Sentinel sentinel;
+
+  const _SentinelTile({this.onTap, required this.sentinel});
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final onSurface = colorScheme.onSurface;
-    return Consumer(builder: (context, ref, child) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => handleTap(ref),
-        child: MouseRegion(
-          onEnter: handleEnter,
-          onExit: handleExit,
-          child: Container(
-            color: hover ? colorScheme.surfaceContainer : Colors.transparent,
-            alignment: Alignment.centerLeft,
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            width: 320,
-            child: Row(
-              children: [
-                if (widget.sentinel.avatar.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Text(
-                      widget.sentinel.avatar,
-                      style: TextStyle(
-                        color: onSurface,
-                        decoration: TextDecoration.none,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                Text(
-                  widget.sentinel.name,
-                  style: TextStyle(
-                    color: onSurface,
-                    decoration: TextDecoration.none,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                )
-              ],
-            ),
-          ),
+    Widget? leading;
+    if (sentinel.avatar.isNotEmpty) {
+      leading = Text(
+        sentinel.avatar,
+        style: TextStyle(
+          color: onSurface,
+          decoration: TextDecoration.none,
+          fontSize: 18,
+          fontWeight: FontWeight.w400,
         ),
+      );
+    }
+    return Consumer(builder: (context, ref, child) {
+      return _Tile(
+        leading: leading,
+        onTap: () => handleTap(ref),
+        title: sentinel.name,
       );
     });
   }
 
-  void handleEnter(PointerEnterEvent event) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() {
-      hover = false;
-    });
-  }
-
   void handleTap(WidgetRef ref) {
-    widget.onTap?.call();
+    onTap?.call();
     final notifier = ref.read(sentinelNotifierProvider.notifier);
-    notifier.select(widget.sentinel);
+    notifier.select(sentinel);
   }
 }
 
@@ -466,5 +445,75 @@ class _Toolbar extends StatelessWidget {
 
   void handlePanStart(DragStartDetails details) {
     windowManager.startDragging();
+  }
+}
+
+class _Tile extends StatefulWidget {
+  final Widget? leading;
+  final void Function()? onTap;
+  final String title;
+
+  const _Tile({super.key, this.leading, this.onTap, required this.title});
+
+  @override
+  State<_Tile> createState() => _TileState();
+}
+
+class _TileState extends State<_Tile> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final surfaceContainer = colorScheme.surfaceContainer;
+    final onSurface = colorScheme.onSurface;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      child: MouseRegion(
+        onEnter: handleEnter,
+        onExit: handleExit,
+        child: Container(
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: hover ? surfaceContainer : Colors.transparent,
+          ),
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          width: 320,
+          child: Row(
+            children: [
+              if (widget.leading != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: widget.leading,
+                ),
+              Text(
+                widget.title,
+                style: TextStyle(
+                  color: onSurface,
+                  decoration: TextDecoration.none,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() {
+      hover = false;
+    });
   }
 }
