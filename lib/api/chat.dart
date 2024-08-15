@@ -73,7 +73,12 @@ class ChatApi {
       final content = json['choices'][0]['delta']['content'] ?? '';
       yield content;
     } catch (error) {
-      yield '🪲';
+      try {
+        final json = jsonDecode(part);
+        yield json['message'];
+      } catch (error) {
+        yield '🪲';
+      }
     }
   }
 

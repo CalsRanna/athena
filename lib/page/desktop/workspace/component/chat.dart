@@ -1,7 +1,9 @@
-import 'package:athena/page/desktop/component/profile.dart';
+import 'package:athena/page/desktop/workspace/component/profile.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -10,8 +12,9 @@ class ChatList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainer;
     return Container(
-      color: Theme.of(context).colorScheme.primary,
+      color: color,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       width: 200,
       child: const Column(
@@ -45,7 +48,8 @@ class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final onPrimary = colorScheme.onPrimary;
+    final onSurface = colorScheme.onSurface;
+    final primaryContainer = colorScheme.primaryContainer;
     return Consumer(builder: (context, ref, child) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -54,14 +58,14 @@ class _ChatTileState extends State<_ChatTile> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            color: widget.active ? onPrimary.withOpacity(0.2) : null,
+            color: widget.active ? primaryContainer : null,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Text(
             widget.chat.title ?? '',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: onPrimary, fontSize: 14),
+            style: TextStyle(color: onSurface, fontSize: 14),
           ),
         ),
       );
@@ -108,17 +112,7 @@ class _ContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final surface = colorScheme.surface;
-    final onSurface = colorScheme.onSurface;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: onSurface.withOpacity(0.2)),
-        borderRadius: BorderRadius.circular(8),
-        color: surface,
-      ),
-      height: 66,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return ACard(
       child: Consumer(builder: (context, ref, child) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +140,7 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     if (group == null) return const SizedBox(height: 8);
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onPrimary.withOpacity(0.4);
+    final color = colorScheme.onSurface.withOpacity(0.4);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Text(group!, style: TextStyle(color: color, fontSize: 12)),
@@ -210,33 +204,61 @@ class _List extends StatelessWidget {
   }
 }
 
-class _Option extends StatelessWidget {
+class _Option extends StatefulWidget {
   final void Function()? onTap;
   final String text;
 
   const _Option({this.onTap, required this.text});
 
   @override
+  State<_Option> createState() => _OptionState();
+}
+
+class _OptionState extends State<_Option> {
+  bool hover = false;
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final onSurface = colorScheme.onSurface;
+    final surfaceContainer = colorScheme.surfaceContainer;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        alignment: Alignment.centerLeft,
-        height: 24,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: onSurface,
-            decoration: TextDecoration.none,
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
+      onTap: widget.onTap,
+      child: MouseRegion(
+        onEnter: handleEnter,
+        onExit: handleExit,
+        child: Container(
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: hover ? surfaceContainer : null,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          width: 100,
+          child: Text(
+            widget.text,
+            style: TextStyle(
+              color: onSurface,
+              decoration: TextDecoration.none,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void handleEnter(PointerEnterEvent _) {
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void handleExit(PointerExitEvent _) {
+    setState(() {
+      hover = false;
+    });
   }
 }
 
@@ -245,11 +267,13 @@ class _Search extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
     return Container(
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+          color: onSurface.withOpacity(0.2),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -258,19 +282,18 @@ class _Search extends StatelessWidget {
       child: Row(
         children: [
           HugeIcon(
-            color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+            color: onSurface.withOpacity(0.2),
             icon: HugeIcons.strokeRoundedSearch01,
             size: 16,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              cursorColor: Theme.of(context).colorScheme.onPrimary,
+              cursorColor: onSurface,
               decoration: InputDecoration.collapsed(
                 hintText: 'Search',
                 hintStyle: TextStyle(
-                  color:
-                      Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
+                  color: onSurface.withOpacity(0.2),
                   fontSize: 14,
                   height: 16 / 14,
                 ),

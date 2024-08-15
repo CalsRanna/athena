@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:athena/page/desktop/desktop.dart';
+import 'package:athena/page/desktop/workspace/workspace.dart';
 import 'package:athena/page/mobile/chat.dart';
 import 'package:athena/page/mobile/home/home.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,7 @@ final router = GoRouter(
     GoRoute(
       builder: (_, __) {
         if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-          return const Desktop();
+          return const DesktopWorkspace();
         } else {
           return const HomePage();
         }

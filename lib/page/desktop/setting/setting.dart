@@ -1,8 +1,9 @@
-import 'package:athena/component/divider.dart';
-import 'package:athena/component/dropdown.dart';
+import 'package:athena/page/desktop/setting/component/dropdown.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/widget/card.dart';
+import 'package:athena/widget/divider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -12,23 +13,13 @@ class Setting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = getBorderColor(context);
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+    return const Dialog(
+      child: ACard(
         width: 600,
         child: Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: borderColor)),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              width: double.infinity,
-              child: const Text('Setting'),
-            ),
-            const Expanded(
+            _Title(),
+            Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,10 +45,6 @@ class Setting extends StatelessWidget {
       ),
     );
   }
-
-  Color getBorderColor(BuildContext context) {
-    return Theme.of(context).colorScheme.onSurface.withOpacity(0.2);
-  }
 }
 
 class _Account extends StatelessWidget {
@@ -65,48 +52,18 @@ class _Account extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Card(
-      child: Column(
-        children: [
-          const Row(
-            children: [
-              SizedBox(width: 200, child: Text('API Key')),
-              Expanded(child: _Key())
-            ],
-          ),
-          const ADivider(),
-          const Row(
-            children: [
-              SizedBox(width: 200, child: Text('API Proxy Url (Optional)')),
-              Expanded(child: _Url())
-            ],
-          ),
-          const ADivider(),
-          const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(width: 200, child: Text('Models')),
-              Expanded(child: _Models())
-            ],
-          ),
-          const ADivider(),
-          const Row(
-            children: [
-              SizedBox(width: 200, child: Text('Default Model')),
-              Expanded(child: _Model())
-            ],
-          ),
-          const ADivider(),
-          Row(
-            children: [
-              const SizedBox(width: 200, child: Text('Check Connection')),
-              const Spacer(),
-              OutlinedButton(onPressed: () {}, child: const Text('Check'))
-            ],
-          ),
-        ],
-      ),
-    );
+    const children = [
+      _Tile(label: 'API Key', child: _Key()),
+      ADivider(),
+      _Tile(label: 'API Proxy Url (Optional)', child: _Url()),
+      ADivider(),
+      _ModelsTile(),
+      ADivider(),
+      _Tile(label: 'Default Model', child: _Model()),
+      ADivider(),
+      _ConnectionTile(),
+    ];
+    return const _Card(child: Column(children: children));
   }
 }
 
@@ -116,14 +73,29 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final decoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(4),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+    );
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Theme.of(context).colorScheme.surfaceContainer,
-      ),
+      decoration: decoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: child,
     );
+  }
+}
+
+class _ConnectionTile extends StatelessWidget {
+  const _ConnectionTile();
+
+  @override
+  Widget build(BuildContext context) {
+    const leading = SizedBox(width: 200, child: Text('Connection'));
+    final trailing = OutlinedButton(
+      onPressed: () {},
+      child: const Text('Check'),
+    );
+    return Row(children: [leading, const Spacer(), trailing]);
   }
 }
 
@@ -224,7 +196,7 @@ class _Input extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.2)),
         borderRadius: BorderRadius.circular(4),
       ),
-      height: 32,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextField(
         controller: controller,
@@ -293,6 +265,58 @@ class _Model extends StatefulWidget {
 
   @override
   State<_Model> createState() => _ModelState();
+}
+
+class _Models extends StatelessWidget {
+  const _Models();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = getColor(context);
+    return Consumer(builder: (context, ref, child) {
+      final models = ref.watch(modelsNotifierProvider).value;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: color.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            width: double.infinity,
+            child: Wrap(
+              runSpacing: 4,
+              spacing: 4,
+              children: getChildren(context, models),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const _ModelUpdater(),
+        ],
+      );
+    });
+  }
+
+  List<Widget> getChildren(BuildContext context, List<Model>? models) {
+    if (models == null) return [];
+    return models
+        .map(
+          (model) => Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(model.name),
+          ),
+        )
+        .toList();
+  }
+
+  Color getColor(BuildContext context) {
+    return Theme.of(context).colorScheme.onSurface;
+  }
 }
 
 class _ModelState extends State<_Model> {
@@ -374,55 +398,17 @@ class _ModelState extends State<_Model> {
   }
 }
 
-class _Models extends StatelessWidget {
-  const _Models();
+class _ModelsTile extends StatelessWidget {
+  const _ModelsTile();
 
   @override
   Widget build(BuildContext context) {
-    final color = getColor(context);
-    return Consumer(builder: (context, ref, child) {
-      final models = ref.watch(modelsNotifierProvider).value;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: color.withOpacity(0.2)),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            width: double.infinity,
-            child: Wrap(
-              runSpacing: 4,
-              spacing: 4,
-              children: getChildren(context, models),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const _ModelUpdater(),
-        ],
-      );
-    });
-  }
-
-  List<Widget> getChildren(BuildContext context, List<Model>? models) {
-    if (models == null) return [];
-    return models
-        .map(
-          (model) => Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text(model.name),
-          ),
-        )
-        .toList();
-  }
-
-  Color getColor(BuildContext context) {
-    return Theme.of(context).colorScheme.onSurface;
+    const leading = SizedBox(width: 200, child: Text('Models'));
+    const expanded = Expanded(child: _Models());
+    return const Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [leading, expanded],
+    );
   }
 }
 
@@ -441,16 +427,23 @@ class _ModelUpdaterState extends State<_ModelUpdater> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          if (loading)
-            const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(strokeWidth: 1),
-            ),
           const SizedBox(width: 8),
           TextButton(
             onPressed: () => handleTap(ref),
-            child: const Text('Get Models'),
+            child: Row(
+              children: [
+                if (loading)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 1),
+                    ),
+                  ),
+                const Text('Get Models'),
+              ],
+            ),
           ),
         ],
       );
@@ -466,6 +459,39 @@ class _ModelUpdaterState extends State<_ModelUpdater> {
     setState(() {
       loading = false;
     });
+  }
+}
+
+class _Tile extends StatelessWidget {
+  final String label;
+  final Widget child;
+  const _Tile({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final leading = SizedBox(width: 200, child: Text(label));
+    final expanded = Expanded(child: child);
+    return Row(children: [leading, expanded]);
+  }
+}
+
+class _Title extends StatelessWidget {
+  const _Title();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    final borderColor = onSurface.withOpacity(0.2);
+    final decoration = BoxDecoration(
+      border: Border(bottom: BorderSide(color: borderColor)),
+    );
+    return Container(
+      decoration: decoration,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      width: double.infinity,
+      child: const Text('Setting'),
+    );
   }
 }
 

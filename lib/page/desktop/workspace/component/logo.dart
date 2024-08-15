@@ -40,7 +40,7 @@ class Logo extends StatelessWidget {
                   style: displayLarge?.copyWith(
                     color: onSurface.withOpacity(0.15),
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               );
@@ -52,7 +52,7 @@ class Logo extends StatelessWidget {
             style: displayLarge?.copyWith(
               color: onSurface.withOpacity(0.15),
               fontSize: 14,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],

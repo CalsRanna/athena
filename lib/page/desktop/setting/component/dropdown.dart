@@ -1,5 +1,7 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/widget/card.dart';
+import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -72,12 +74,7 @@ class _Target extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return ACard(
       width: 200,
       child: Consumer(builder: (context, ref, child) {
         final state = ref.watch(modelsNotifierProvider);
@@ -98,21 +95,7 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
-      return GestureDetector(
-        onTap: () => handleTap(ref),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            model.name,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onPrimary,
-              decoration: TextDecoration.none,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      );
+      return ATile(onTap: () => handleTap(ref), title: model.name);
     });
   }
 

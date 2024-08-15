@@ -1,17 +1,18 @@
-import 'package:athena/page/desktop/component/chat.dart';
-import 'package:athena/page/desktop/component/workspace.dart';
+import 'package:athena/page/desktop/workspace/component/chat.dart';
+import 'package:athena/page/desktop/workspace/component/workspace.dart';
 import 'package:athena/page/desktop/sentinel/form.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/card.dart';
+import 'package:athena/widget/divider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:window_manager/window_manager.dart';
 
-class Desktop extends StatelessWidget {
-  const Desktop({super.key});
+class DesktopWorkspace extends StatelessWidget {
+  const DesktopWorkspace({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -240,6 +241,12 @@ class _SentinelSelectorState extends State<_SentinelSelector> {
               final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
               return Text(sentinel?.name ?? 'Athena');
             }),
+            const SizedBox(width: 8),
+            Consumer(builder: (context, ref, child) {
+              final chat = ref.watch(chatNotifierProvider).valueOrNull;
+              if (chat == null) return const SizedBox();
+              return _Tag(chat.model);
+            }),
             HugeIcon(
               color: onSurface.withOpacity(0.2),
               icon: HugeIcons.strokeRoundedArrowRight01,
@@ -266,6 +273,31 @@ class _SentinelSelectorState extends State<_SentinelSelector> {
   }
 }
 
+class _Tag extends StatelessWidget {
+  final String text;
+  const _Tag(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final onSurface = colorScheme.onSurface;
+    final decoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(2),
+      color: onSurface.withOpacity(0.05),
+    );
+    final style = TextStyle(
+      color: onSurface.withOpacity(0.15),
+      fontSize: 10,
+      fontWeight: FontWeight.w400,
+    );
+    return Container(
+      decoration: decoration,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Text(text, style: style),
+    );
+  }
+}
+
 class _Overlay extends StatelessWidget {
   final LayerLink link;
   final void Function()? onTap;
@@ -274,13 +306,8 @@ class _Overlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
     return Stack(
-      children: [
-        _Barrier(onTap: onTap),
-        _Dialog(link: link, onTap: onTap),
-      ],
+      children: [_Barrier(onTap: onTap), _Dialog(link: link, onTap: onTap)],
     );
   }
 }
@@ -289,7 +316,7 @@ class _Dialog extends StatelessWidget {
   final LayerLink link;
   final void Function()? onTap;
 
-  const _Dialog({super.key, required this.link, this.onTap});
+  const _Dialog({required this.link, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -308,7 +335,7 @@ class _Dialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ...children,
-              const _Divider(),
+              const ADivider(width: 320),
               _Tile(
                 onTap: () => handleTap(context),
                 title: 'Explore Sentinels',
@@ -331,29 +358,8 @@ class _Dialog extends StatelessWidget {
   }
 }
 
-class _Divider extends StatelessWidget {
-  const _Divider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withOpacity(0.1);
-    final border = Border(top: BorderSide(color: onSurface));
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Container(
-        decoration: BoxDecoration(border: border),
-        width: 320,
-      ),
-    );
-  }
-}
-
 class _Barrier extends StatelessWidget {
-  const _Barrier({
-    super.key,
-    required this.onTap,
-  });
+  const _Barrier({required this.onTap});
 
   final void Function()? onTap;
 
@@ -453,7 +459,7 @@ class _Tile extends StatefulWidget {
   final void Function()? onTap;
   final String title;
 
-  const _Tile({super.key, this.leading, this.onTap, required this.title});
+  const _Tile({this.leading, this.onTap, required this.title});
 
   @override
   State<_Tile> createState() => _TileState();

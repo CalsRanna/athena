@@ -1,6 +1,8 @@
-import 'package:athena/component/divider.dart';
-import 'package:athena/page/desktop/component/setting.dart';
+import 'package:athena/page/desktop/setting/setting.dart';
 import 'package:athena/provider/setting.dart';
+import 'package:athena/widget/card.dart';
+import 'package:athena/widget/divider.dart';
+import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,18 +18,14 @@ class _Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = getColor(context);
+    final color = Theme.of(context).colorScheme.surface;
     return Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      height: 32,
-      width: 32,
-      child: const Text('CA'),
+      height: 28,
+      width: 28,
+      child: const Text('CA', style: TextStyle(fontSize: 12)),
     );
-  }
-
-  Color getColor(BuildContext context) {
-    return Theme.of(context).colorScheme.surface;
   }
 }
 
@@ -37,12 +35,7 @@ class _Dialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: Theme.of(context).colorScheme.surfaceContainer,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return ACard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -58,12 +51,10 @@ class _Dialog extends StatelessWidget {
               final tailing = key.substring(key.length - 6, key.length);
               title = '$leading************$tailing';
             }
-            return _ListTile(enabled: false, title: title);
+            return ATile(title: title, width: 240);
           }),
-          ADivider(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1),
-              width: 200),
-          _ListTile(title: 'Setting', onTap: () => handleTap(context)),
+          const ADivider(width: 240),
+          ATile(title: 'Setting', onTap: () => handleTap(context), width: 240)
         ],
       ),
     );
@@ -75,57 +66,13 @@ class _Dialog extends StatelessWidget {
   }
 }
 
-class _ListTile extends StatelessWidget {
-  final bool enabled;
-  final void Function()? onTap;
-  final String title;
-  const _ListTile({this.enabled = true, this.onTap, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = getColor(context);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: SizedBox(
-        height: 24,
-        width: 200,
-        child: Text(
-          title,
-          style: TextStyle(
-            color: color,
-            decoration: TextDecoration.none,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color getColor(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface;
-    if (!enabled) return color.withOpacity(0.4);
-    return color;
-  }
-
-  void handleTap() {
-    if (!enabled) return;
-    onTap?.call();
-  }
-}
-
 class _Name extends StatelessWidget {
   const _Name();
 
   @override
   Widget build(BuildContext context) {
-    final color = getColor(context);
+    final color = Theme.of(context).colorScheme.onSurface;
     return Text('Cals Ranna', style: TextStyle(color: color));
-  }
-
-  Color getColor(BuildContext context) {
-    return Theme.of(context).colorScheme.onPrimary;
   }
 }
 
@@ -138,7 +85,7 @@ class _ProfileTileState extends State<ProfileTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final onPrimary = colorScheme.onPrimary;
+    final primaryContainer = colorScheme.primaryContainer;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handleTap(context),
@@ -147,7 +94,7 @@ class _ProfileTileState extends State<ProfileTile> {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            color: clicked ? onPrimary.withOpacity(0.2) : null,
+            color: clicked ? primaryContainer : null,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: const Row(children: [

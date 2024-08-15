@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class ACard extends StatelessWidget {
+  final double? width;
   final Widget child;
-  const ACard({super.key, required this.child});
+  const ACard({super.key, this.width, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +18,7 @@ class ACard extends StatelessWidget {
         boxShadow: [boxShadow],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: width,
       child: child,
     );
   }
