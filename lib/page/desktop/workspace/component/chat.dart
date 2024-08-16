@@ -100,7 +100,6 @@ class _ChatTileState extends State<_ChatTile> {
 
   void removeEntry() {
     entry?.remove();
-    entry = null;
   }
 }
 

@@ -133,7 +133,6 @@ class _ProfileTileState extends State<ProfileTile> {
 
   void removeEntry() {
     entry?.remove();
-    entry = null;
     setState(() {
       clicked = false;
     });

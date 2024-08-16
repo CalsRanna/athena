@@ -212,7 +212,6 @@ class _ModelSelectorState extends State<_ModelSelector> {
 
   void removeEntry() {
     entry?.remove();
-    entry = null;
   }
 }
 

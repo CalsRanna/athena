@@ -9,7 +9,7 @@ class ACard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final surface = colorScheme.surface;
-    final shadow = colorScheme.shadow.withOpacity(0.2);
+    final shadow = colorScheme.shadow.withOpacity(0.1);
     final boxShadow = BoxShadow(color: shadow, blurRadius: 12, spreadRadius: 4);
     return Container(
       decoration: BoxDecoration(

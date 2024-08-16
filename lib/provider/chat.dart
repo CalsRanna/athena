@@ -269,6 +269,13 @@ class SentinelsNotifier extends _$SentinelsNotifier {
     return await isar.sentinels.where().findAll();
   }
 
+  Future<void> destroy(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.delete(sentinel.id);
+    });
+    ref.invalidateSelf();
+  }
+
   Future<void> store(Sentinel sentinel) async {
     await isar.writeTxn(() async {
       await isar.sentinels.put(sentinel);

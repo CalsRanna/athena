@@ -391,7 +391,6 @@ class _ModelState extends State<_Model> {
 
   void removeEntry() {
     entry?.remove();
-    entry = null;
     setState(() {
       show = false;
     });

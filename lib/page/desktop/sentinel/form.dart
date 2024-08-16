@@ -6,20 +6,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SentinelFormPage extends StatefulWidget {
-  const SentinelFormPage({super.key});
+  final Sentinel? sentinel;
+  const SentinelFormPage({super.key, this.sentinel});
 
   @override
   State<SentinelFormPage> createState() => _SentinelFormPageState();
 }
 
 class _SentinelFormPageState extends State<SentinelFormPage> {
-  final controller = TextEditingController();
   String avatar = '';
   String name = '';
   String description = '';
   List<String> tags = [];
 
+  final controller = TextEditingController();
   bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sentinel != null) {
+      avatar = widget.sentinel!.avatar;
+      name = widget.sentinel!.name;
+      description = widget.sentinel!.description;
+      tags = widget.sentinel!.tags;
+
+      controller.text = widget.sentinel!.prompt;
+    }
+  }
 
   @override
   void dispose() {
@@ -32,6 +46,7 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
     final colorScheme = Theme.of(context).colorScheme;
     final shadow = colorScheme.shadow;
     final onSurface = colorScheme.onSurface;
+    final error = colorScheme.error;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Row(
@@ -180,15 +195,26 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Consumer(builder: (context, ref, child) {
-                            return ElevatedButton(
-                              onPressed: () => store(ref),
-                              child: const Text('Save'),
-                            );
-                          }),
-                        )
+                        Consumer(builder: (context, ref, child) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (widget.sentinel != null)
+                                ElevatedButton(
+                                  onPressed: () => delete(ref),
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: error,
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              const SizedBox(width: 12),
+                              ElevatedButton(
+                                onPressed: () => store(ref),
+                                child: const Text('Save'),
+                              ),
+                            ],
+                          );
+                        })
                       ],
                     ),
                   ),
@@ -230,13 +256,22 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
   void store(WidgetRef ref) async {
     if (controller.text.isEmpty) return;
     final notifier = ref.read(sentinelsNotifierProvider.notifier);
-    final sentinel = Sentinel()
+    var sentinel = Sentinel()
       ..avatar = avatar
       ..description = description
       ..name = name
       ..prompt = controller.text
       ..tags = tags;
+    if (widget.sentinel != null) {
+      sentinel.id = widget.sentinel!.id;
+    }
     notifier.store(sentinel);
+    Navigator.of(context).pop();
+  }
+
+  void delete(WidgetRef ref) async {
+    final notifier = ref.read(sentinelsNotifierProvider.notifier);
+    notifier.destroy(widget.sentinel!);
     Navigator.of(context).pop();
   }
 }
