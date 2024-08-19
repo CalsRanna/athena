@@ -309,7 +309,7 @@ class _Refresh extends StatelessWidget {
       onTap: onTap,
       child: HugeIcon(
         color: onSurface.withOpacity(0.2),
-        icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+        icon: HugeIcons.strokeRoundedRepeat,
         size: 12.0,
       ),
     );

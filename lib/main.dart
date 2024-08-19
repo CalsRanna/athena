@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:athena/creator/setting.dart';
 import 'package:athena/provider/setting.dart';
+import 'package:athena/router/router.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
-import 'package:athena/router/router.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,16 +53,54 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   final SystemTray tray = SystemTray();
 
   @override
-  void initState() {
-    super.initState();
-    initTray();
-    windowManager.addListener(this);
+  Widget build(BuildContext context) {
+    return Consumer(builder: (context, ref, child) {
+      final setting = ref.watch(settingNotifierProvider).value;
+      final darkMode = setting?.darkMode ?? false;
+      return MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData(
+          brightness: darkMode ? Brightness.dark : Brightness.light,
+          fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+          useMaterial3: true,
+        ),
+      );
+    });
   }
 
   @override
   void didChangeDependencies() {
     initSetting();
     super.didChangeDependencies();
+  }
+
+  void initSetting() async {
+    final ref = context.ref;
+    var setting = await isar.settings.where().findFirst();
+    setting ??= Setting();
+    ref.set(darkModeCreator, setting.darkMode);
+    isar.writeTxn(() async {
+      await isar.settings.put(setting!);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    initTray();
+    windowManager.addListener(this);
+  }
+
+  initTray() async {
+    if (Platform.isMacOS) {
+      await tray.initSystemTray(
+        iconPath: 'asset/image/tray_512x512.jpg',
+        isTemplate: true,
+      );
+      tray.registerSystemTrayEventHandler((eventName) {
+        windowManager.show();
+      });
+    }
   }
 
   @override
@@ -79,44 +117,6 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
     setting.height = size.height;
     await isar.writeTxn(() async {
       await isar.settings.put(setting);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      final setting = ref.watch(settingNotifierProvider).value;
-      final darkMode = setting?.darkMode ?? false;
-      return MaterialApp.router(
-        routerConfig: router,
-        theme: ThemeData(
-          brightness: darkMode ? Brightness.dark : Brightness.light,
-          fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
-          useMaterial3: true,
-        ),
-      );
-    });
-  }
-
-  initTray() async {
-    if (Platform.isMacOS) {
-      await tray.initSystemTray(
-        iconPath: 'asset/image/tray_512x512.jpg',
-        isTemplate: true,
-      );
-      tray.registerSystemTrayEventHandler((eventName) {
-        windowManager.show();
-      });
-    }
-  }
-
-  void initSetting() async {
-    final ref = context.ref;
-    var setting = await isar.settings.where().findFirst();
-    setting ??= Setting();
-    ref.set(darkModeCreator, setting.darkMode);
-    isar.writeTxn(() async {
-      await isar.settings.put(setting!);
     });
   }
 }
