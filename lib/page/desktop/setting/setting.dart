@@ -13,10 +13,12 @@ class Setting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Dialog(
+    final mediaQuery = MediaQuery.of(context);
+    final width = mediaQuery.size.width * 0.6;
+    return Dialog(
       child: ACard(
-        width: 600,
-        child: Column(
+        width: width,
+        child: const Column(
           children: [
             _Title(),
             Expanded(
@@ -69,6 +71,7 @@ class _Account extends StatelessWidget {
 
 class _Card extends StatelessWidget {
   final Widget child;
+
   const _Card({required this.child});
 
   @override
@@ -181,6 +184,7 @@ class _Input extends StatelessWidget {
   final TextEditingController controller;
   final void Function(String)? onSubmitted;
   final String placeholder;
+
   const _Input({
     required this.controller,
     this.onSubmitted,
@@ -323,6 +327,7 @@ class _ModelState extends State<_Model> {
   bool show = false;
   OverlayEntry? entry;
   LayerLink link = LayerLink();
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -420,6 +425,7 @@ class _ModelUpdater extends StatefulWidget {
 
 class _ModelUpdaterState extends State<_ModelUpdater> {
   bool loading = false;
+
   @override
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
@@ -464,6 +470,7 @@ class _ModelUpdaterState extends State<_ModelUpdater> {
 class _Tile extends StatelessWidget {
   final String label;
   final Widget child;
+
   const _Tile({required this.label, required this.child});
 
   @override

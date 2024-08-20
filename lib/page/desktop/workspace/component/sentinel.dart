@@ -67,12 +67,10 @@ class _SentinelTile extends StatelessWidget {
 
   void updateSentinel(BuildContext context) {
     onTap?.call();
-    Navigator.of(context).push(PageRouteBuilder(
-      opaque: false,
-      pageBuilder: (context, _, __) {
-        return SentinelFormPage(sentinel: sentinel);
-      },
-    ));
+    showDialog(
+      context: context,
+      builder: (_) => SentinelFormPage(sentinel: sentinel),
+    );
   }
 }
 
@@ -130,12 +128,7 @@ class _Dialog extends StatelessWidget {
 
   void handleTap(BuildContext context) {
     onTap?.call();
-    Navigator.of(context).push(PageRouteBuilder(
-      opaque: false,
-      pageBuilder: (context, _, __) {
-        return const SentinelFormPage();
-      },
-    ));
+    showDialog(context: context, builder: (_) => const SentinelFormPage());
   }
 }
 
@@ -205,6 +198,7 @@ class _SentinelSelectorState extends State<SentinelSelector> {
 
 class _Tag extends StatelessWidget {
   final String text;
+
   const _Tag(this.text);
 
   @override

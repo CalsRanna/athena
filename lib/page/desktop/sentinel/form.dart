@@ -2,6 +2,7 @@ import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 class SentinelFormPage extends StatefulWidget {
   final Sentinel? sentinel;
+
   const SentinelFormPage({super.key, this.sentinel});
 
   @override
@@ -19,6 +21,7 @@ class _ActionButtons extends ConsumerWidget {
   final Sentinel? sentinel;
   final void Function(WidgetRef)? onDelete;
   final void Function(WidgetRef)? onStore;
+
   const _ActionButtons({this.onDelete, this.sentinel, this.onStore});
 
   @override
@@ -58,6 +61,7 @@ class _ActionButtons extends ConsumerWidget {
 class _Avatar extends StatelessWidget {
   final String avatar;
   final Future<void> Function()? onRefresh;
+
   const _Avatar({required this.avatar, this.onRefresh});
 
   @override
@@ -84,6 +88,7 @@ class _Avatar extends StatelessWidget {
 class _Input extends StatelessWidget {
   final TextEditingController controller;
   final Future<void> Function()? onRefresh;
+
   const _Input({required this.controller, this.onRefresh});
 
   @override
@@ -119,6 +124,7 @@ class _Input extends StatelessWidget {
 
 class _Loading extends StatelessWidget {
   final double size;
+
   const _Loading({this.size = 16});
 
   @override
@@ -130,26 +136,9 @@ class _Loading extends StatelessWidget {
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  const _Placeholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final child = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: const SizedBox.expand(),
-    );
-    return Expanded(child: child);
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).pop();
-  }
-}
-
 class _RefreshIcon extends StatefulWidget {
   final Future<void> Function()? onTap;
+
   const _RefreshIcon({this.onTap});
 
   @override
@@ -159,6 +148,7 @@ class _RefreshIcon extends StatefulWidget {
 class _RefreshIconState extends State<_RefreshIcon> {
   bool hover = false;
   bool loading = false;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -218,18 +208,7 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final shadow = colorScheme.shadow;
     final onSurface = colorScheme.onSurface;
-    final boxShadow = BoxShadow(
-      color: shadow.withOpacity(0.2),
-      blurRadius: 24,
-      spreadRadius: 4,
-    );
-    final boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      boxShadow: [boxShadow],
-      color: colorScheme.surface,
-    );
     final consumer = Consumer(builder: (context, ref, child) {
       return _Avatar(
         avatar: avatar,
@@ -325,27 +304,10 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
       const SizedBox(height: 12),
       actionButtons
     ];
-    var container2 = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(children: children2),
-    );
-    var column = Column(
-      children: [
-        const _Placeholder(),
-        Expanded(flex: 4, child: container2),
-        const _Placeholder(),
-      ],
-    );
-    var children = [
-      const _Placeholder(),
-      Expanded(flex: 4, child: column),
-      const _Placeholder(),
-    ];
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Row(children: children),
-    );
+    var container2 = Column(children: children2);
+    final mediaQuery = MediaQuery.of(context);
+    final width = mediaQuery.size.width * 0.6;
+    return Dialog(child: ACard(width: width, child: container2));
   }
 
   void delete(WidgetRef ref) async {
@@ -438,6 +400,7 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
 
 class _Tag extends StatelessWidget {
   final String text;
+
   const _Tag(this.text);
 
   @override
@@ -478,6 +441,7 @@ class _Tag extends StatelessWidget {
 class _Tags extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final List<String> tags;
+
   const _Tags(this.tags, {required this.onRefresh});
 
   @override
