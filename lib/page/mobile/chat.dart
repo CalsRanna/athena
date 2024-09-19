@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:athena/creator/chat.dart';
 import 'package:athena/creator/input.dart';
+import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/service/chat_provider.dart';
 import 'package:athena/service/model_provider.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class ChatPage extends StatefulWidget {
@@ -59,95 +61,18 @@ class _ChatPageState extends State<ChatPage> {
         : null;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Watcher((context, ref, child) {
-          final chats = ref.watch(chatsCreator);
-          final current = ref.watch(currentChatCreator) ?? 0;
-          return Text(
-            loading ? '对方正在输入...' : chats[current].title ?? '',
-            overflow: TextOverflow.ellipsis,
-          );
-        }),
-      ),
-      body: Column(
-        children: [
-          // Expanded(
-          //   child: Watcher((context, ref, child) {
-          //     final chats = ref.watch(chatsCreator);
-          //     final current = ref.watch(currentChatCreator) ?? 0;
-          //     return ListView.builder(
-          //       controller: scrollController,
-          //       itemBuilder: (context, index) => ChatTile(
-          //         message: chats[current].messages.reversed.elementAt(index),
-          //         onDelete: () => handleDelete(index),
-          //         onEdit: () => handleEdit(index),
-          //         onRetry: () => handleRetry(index),
-          //       ),
-          //       itemCount: chats[current].messages.length,
-          //       padding: const EdgeInsets.all(16),
-          //       reverse: true,
-          //     );
-          //   }),
-          // ),
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            elevation: 3,
-            surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Watcher((context, ref, child) {
-                        final controller =
-                            ref.watch(textEditingControllerCreator);
-                        final node = ref.watch(focusNodeCreator);
-                        return TextField(
-                          controller: controller,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            focusedBorder: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            hintText: 'Ask me anything...',
-                            isCollapsed: false,
-                            isDense: true,
-                          ),
-                          focusNode: node,
-                          maxLines: 1,
-                          textInputAction: TextInputAction.send,
-                          scrollPadding: EdgeInsets.zero,
-                          onSubmitted: handleSubmitted,
-                          onTapOutside: (event) => node.unfocus(),
-                        );
-                      }),
-                    ),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      style: IconButton.styleFrom(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.primaryContainer,
-                      ),
-                      onPressed: selectModel,
-                      icon: HugeIcon(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        icon: HugeIcons.strokeRoundedSent,
-                        size: 32.0,
-                      ),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: floatingActionButton,
-    );
+        appBar: AppBar(
+          centerTitle: true,
+          title: Watcher((context, ref, child) {
+            final chats = ref.watch(chatsCreator);
+            final current = ref.watch(currentChatCreator) ?? 0;
+            return Text(
+              loading ? '对方正在输入...' : '',
+              overflow: TextOverflow.ellipsis,
+            );
+          }),
+        ),
+        body: _Messages());
   }
 
   Future<void> handleDelete(int index) async {
@@ -193,5 +118,43 @@ class _ChatPageState extends State<ChatPage> {
         curve: Curves.easeInOutQuart,
       );
     });
+  }
+}
+
+class _Messages extends ConsumerWidget {
+  const _Messages({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(messagesNotifierProvider);
+    return state.when(data: data, error: error, loading: loading);
+  }
+
+  Widget data(List<Message> chats) {
+    if (chats.isEmpty) return const SizedBox();
+    return ListView.separated(
+      controller: ScrollController(),
+      itemBuilder: (context, index) => _MessageTile(message: chats[index]),
+      itemCount: chats.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+    );
+  }
+
+  Widget error(Object error, StackTrace stackTrace) {
+    return Center(child: Text(error.toString()));
+  }
+
+  Widget loading() {
+    return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class _MessageTile extends StatelessWidget {
+  const _MessageTile({super.key, required this.message});
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(message.content);
   }
 }

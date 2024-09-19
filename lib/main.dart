@@ -7,6 +7,7 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:system_tray/system_tray.dart';
@@ -29,6 +30,8 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
+  } else {
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
   runApp(
     ProviderScope(
