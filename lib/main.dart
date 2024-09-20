@@ -1,11 +1,9 @@
 import 'dart:io';
 
-import 'package:athena/creator/setting.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
-import 'package:creator/creator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,14 +31,7 @@ void main() async {
   } else {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
-  runApp(
-    ProviderScope(
-      child: CreatorGraph(
-        observer: const CreatorObserver(),
-        child: const AthenaApp(),
-      ),
-    ),
-  );
+  runApp(const ProviderScope(child: AthenaApp()));
 }
 
 class AthenaApp extends StatefulWidget {
@@ -73,18 +64,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
 
   @override
   void didChangeDependencies() {
-    initSetting();
     super.didChangeDependencies();
-  }
-
-  void initSetting() async {
-    final ref = context.ref;
-    var setting = await isar.settings.where().findFirst();
-    setting ??= Setting();
-    ref.set(darkModeCreator, setting.darkMode);
-    isar.writeTxn(() async {
-      await isar.settings.put(setting!);
-    });
   }
 
   @override

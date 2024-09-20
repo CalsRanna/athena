@@ -177,22 +177,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.1"
-  creator:
-    dependency: "direct main"
-    description:
-      name: creator
-      sha256: a2fbbcc9cce2c49dcfd11a284379556f217c10b816c1a03696bbac0eec31afaa
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.3"
-  creator_core:
-    dependency: transitive
-    description:
-      name: creator_core
-      sha256: "8a0665fed37eb057d9bf38cac5b41db0e64d57f9182062dc85f7d4ee30d50038"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.3"
   crypto:
     dependency: transitive
     description:

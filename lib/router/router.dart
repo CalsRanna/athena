@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:athena/page/desktop/workspace/workspace.dart';
-import 'package:athena/page/mobile/chat.dart';
+import 'package:athena/page/mobile/chat/chat.dart';
 import 'package:athena/page/mobile/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
