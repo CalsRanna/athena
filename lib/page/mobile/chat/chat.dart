@@ -336,7 +336,13 @@ class _MessageTile extends StatelessWidget {
     final container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(16),
-      child: Column(children: children),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _Sentinel(),
+          Expanded(child: Column(children: children)),
+        ],
+      ),
     );
     const edgeInsets = EdgeInsets.symmetric(horizontal: 16, vertical: 2);
     return Padding(padding: edgeInsets, child: container);
@@ -425,6 +431,35 @@ class _SendButton extends ConsumerWidget {
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
     onTap?.call(ref);
+  }
+}
+
+class _Sentinel extends ConsumerWidget {
+  const _Sentinel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final image = Image.asset(
+      'asset/image/launcher_icon_ios_512x512.jpg',
+      height: 32,
+      width: 32,
+      fit: BoxFit.cover,
+    );
+    Widget defaultAvatar = ClipOval(child: image);
+    const edgeInsets = EdgeInsets.only(right: 8);
+    final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
+    if (sentinel == null) {
+      return Padding(padding: edgeInsets, child: defaultAvatar);
+    }
+    if (sentinel.avatar.isEmpty) {
+      return Padding(padding: edgeInsets, child: defaultAvatar);
+    }
+    final avatar = SizedBox(
+      width: 32,
+      height: 32,
+      child: Text(sentinel.avatar),
+    );
+    return Padding(padding: edgeInsets, child: avatar);
   }
 }
 

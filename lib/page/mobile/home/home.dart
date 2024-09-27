@@ -52,6 +52,8 @@ class _HomePageState extends State<HomePage> {
       _Welcome(),
       _Title('Recent'),
       SizedBox(height: 52, child: _Recent()),
+      _Title('Shortcut', icon: HugeIcons.strokeRoundedArrowRight02),
+      SizedBox(height: 52, child: _Sentinel()),
       _Title('Sentinel', icon: HugeIcons.strokeRoundedArrowRight02),
       SizedBox(height: 52, child: _Sentinel()),
       Spacer(),
@@ -251,7 +253,7 @@ class _Welcome extends StatelessWidget {
   Widget build(BuildContext context) {
     const circleAvatar = CircleAvatar(
       backgroundImage: AssetImage('asset/image/avatar.png'),
-      radius: 48,
+      radius: 32,
     );
     final gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -260,7 +262,7 @@ class _Welcome extends StatelessWidget {
     );
     const textStyle = TextStyle(
       color: Color(0xffffffff),
-      fontSize: 40,
+      fontSize: 32,
       fontWeight: FontWeight.w700,
       height: 1.2,
     );
