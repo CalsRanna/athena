@@ -13,76 +13,58 @@ class SettingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AScaffold(
-      appBar: const AAppBar(title: Text('Setting')),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _GroupLabel('Account'),
-            const _Key(),
-            const _Url(),
-            _Model(),
-            ListTile(
-              title: Text('Connect'),
-              titleTextStyle: const TextStyle(
-                fontSize: 16,
-                color: Color(0xffffffff),
-              ),
-              trailing: HugeIcon(
-                icon: HugeIcons.strokeRoundedLink01,
-                color: Color(0xffffffff),
-              ),
-            ),
-            _GroupLabel('Experimental'),
-            _Latex(),
-          ],
-        ),
-      ),
+    const children = [
+      _GroupLabel('Account'),
+      _Key(),
+      _Url(),
+      _Model(),
+      _Connect(),
+      _GroupLabel('Experimental'),
+      _Latex(),
+    ];
+    const column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return const AScaffold(
+      appBar: AAppBar(title: Text('Setting')),
+      body: SingleChildScrollView(child: column),
     );
   }
 }
 
-class _Model extends ConsumerWidget {
-  const _Model();
+class _Connect extends StatelessWidget {
+  const _Connect();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final setting = ref.watch(settingNotifierProvider).valueOrNull;
-    return _SettingTile(
-      onTap: () => handleTap(context),
-      title: 'Default Model',
-      trailing: setting?.model ?? '',
+  Widget build(BuildContext context) {
+    const hugeIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedLink01,
+      color: Color(0xffffffff),
     );
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
-      return const ModelPage();
-    }));
+    return const ListTile(
+      title: Text('Connect'),
+      titleTextStyle: TextStyle(fontSize: 16, color: Color(0xffffffff)),
+      trailing: hugeIcon,
+    );
   }
 }
 
-class _Url extends ConsumerWidget {
-  const _Url();
+class _GroupLabel extends StatelessWidget {
+  final String text;
+  const _GroupLabel(this.text);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final setting = ref.watch(settingNotifierProvider).valueOrNull;
-    if (setting == null) {
-      return const _SettingTile(title: 'API Proxy Url (Optional)');
-    }
-    return _SettingTile(
-      title: 'API Proxy Url (Optional)',
-      trailing: setting.url,
-      onTap: () => handleTap(context),
+  Widget build(BuildContext context) {
+    final textStyle = TextStyle(
+      color: const Color(0xffffffff).withOpacity(0.2),
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
     );
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
-      return const APIUrlPage();
-    }));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Text(text, style: textStyle),
+    );
   }
 }
 
@@ -129,21 +111,23 @@ class _Latex extends ConsumerWidget {
   }
 }
 
-class _GroupLabel extends StatelessWidget {
-  final String text;
-  const _GroupLabel(this.text);
+class _Model extends ConsumerWidget {
+  const _Model();
 
   @override
-  Widget build(BuildContext context) {
-    final textStyle = TextStyle(
-      color: const Color(0xffffffff).withOpacity(0.2),
-      fontSize: 14,
-      fontWeight: FontWeight.w700,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final setting = ref.watch(settingNotifierProvider).valueOrNull;
+    return _SettingTile(
+      onTap: () => handleTap(context),
+      title: 'Default Model',
+      trailing: setting?.model ?? '',
     );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(text, style: textStyle),
-    );
+  }
+
+  void handleTap(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
+      return const ModelPage();
+    }));
   }
 }
 
@@ -174,5 +158,28 @@ class _SettingTile extends StatelessWidget {
       hugeIcon,
     ];
     return ListTile(title: Row(children: children), onTap: onTap);
+  }
+}
+
+class _Url extends ConsumerWidget {
+  const _Url();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final setting = ref.watch(settingNotifierProvider).valueOrNull;
+    if (setting == null) {
+      return const _SettingTile(title: 'API Proxy Url (Optional)');
+    }
+    return _SettingTile(
+      title: 'API Proxy Url (Optional)',
+      trailing: setting.url,
+      onTap: () => handleTap(context),
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
+      return const APIUrlPage();
+    }));
   }
 }

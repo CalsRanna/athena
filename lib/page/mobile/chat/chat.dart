@@ -22,13 +22,44 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
+class _ActionButton extends ConsumerWidget {
+  final void Function(WidgetRef)? onTap;
+  const _ActionButton({this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const hugeIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedMoreHorizontal,
+      color: Color(0xff000000),
+    );
+    const boxDecoration = BoxDecoration(
+      color: Color(0xffffffff),
+      shape: BoxShape.circle,
+    );
+    final button = Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.all(8),
+      child: hugeIcon,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(ref),
+      child: button,
+    );
+  }
+
+  void handleTap(WidgetRef ref) {
+    onTap?.call(ref);
+  }
+}
+
 class _ChatPageState extends State<ChatPage> {
   final controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final children = [
-      Expanded(child: _Input(controller: controller)),
+      Expanded(child: _Input(controller: controller, onSubmitted: sendMessage)),
       const SizedBox(width: 16),
       _SendButton(onTap: sendMessage),
     ];
@@ -37,8 +68,18 @@ class _ChatPageState extends State<ChatPage> {
       padding: EdgeInsets.fromLTRB(16, 16, 16, mediaQuery.padding.bottom),
       child: Row(children: children),
     );
+    final actionButton = _ActionButton(onTap: destroyChat);
+    final appBar = AAppBar(action: actionButton, title: const _Title());
     final body = Column(children: [const Expanded(child: _Messages()), input]);
-    return AScaffold(appBar: const AAppBar(title: _Title()), body: body);
+    return AScaffold(appBar: appBar, body: body);
+  }
+
+  Future<void> destroyChat(WidgetRef ref) async {
+    if (widget.id == null) return;
+    final notifier = ref.read(chatsNotifierProvider.notifier);
+    await notifier.destroy(widget.id!);
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   @override
@@ -149,16 +190,19 @@ class _CopyButtonState extends State<_CopyButton> {
   }
 }
 
-class _Input extends StatelessWidget {
+class _Input extends ConsumerWidget {
   final TextEditingController controller;
-  const _Input({required this.controller});
+  final void Function(WidgetRef)? onSubmitted;
+  const _Input({required this.controller, this.onSubmitted});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textField = TextField(
       controller: controller,
       decoration: const InputDecoration.collapsed(hintText: 'Send a message'),
+      onSubmitted: (_) => handleSubmitted(ref),
       style: const TextStyle(color: Color(0xffffffff)),
+      textInputAction: TextInputAction.send,
     );
     const innerDecoration = ShapeDecoration(
       color: Color(0xff000000),
@@ -189,6 +233,12 @@ class _Input extends StatelessWidget {
       child: body,
     );
   }
+
+  void handleSubmitted(WidgetRef ref) {
+    final streaming = ref.read(streamingNotifierProvider);
+    if (streaming) return;
+    onSubmitted?.call(ref);
+  }
 }
 
 class _Markdown extends StatelessWidget {
@@ -209,12 +259,13 @@ class _Markdown extends StatelessWidget {
       blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
       final inlineSyntaxes = [LatexInlineSyntax()];
       final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-      return MarkdownBody(
+      final markdownBody = MarkdownBody(
         key: ValueKey('markdown-${latex.toString()}'),
         builders: builders,
         data: message.content,
         extensionSet: latex ? extensions : null,
       );
+      return SizedBox(width: double.infinity, child: markdownBody);
     });
   }
 }
@@ -225,7 +276,12 @@ class _Messages extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(messagesNotifierProvider);
-    return state.when(data: data, error: error, loading: loading);
+    return state.when(
+      data: data,
+      error: error,
+      loading: loading,
+      skipLoadingOnReload: true,
+    );
   }
 
   Widget data(List<Message> chats) {
@@ -321,18 +377,22 @@ class _SendButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const hugeIcon = HugeIcon(
+    const sendIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedSent,
       color: Color(0xffffffff),
+    );
+    const loading = CircularProgressIndicator.adaptive(
+      backgroundColor: Color(0xffffffff),
     );
     const innerDecoration = ShapeDecoration(
       color: Color(0xff000000),
       shape: StadiumBorder(),
     );
+    final streaming = ref.watch(streamingNotifierProvider);
     final body = Container(
       decoration: innerDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: hugeIcon,
+      child: streaming ? loading : sendIcon,
     );
     final colors = [
       const Color(0xffffffff).withOpacity(0.2),
@@ -362,6 +422,8 @@ class _SendButton extends ConsumerWidget {
 
   void handleTap(BuildContext context, WidgetRef ref) {
     FocusScope.of(context).unfocus();
+    final streaming = ref.read(streamingNotifierProvider);
+    if (streaming) return;
     onTap?.call(ref);
   }
 }
