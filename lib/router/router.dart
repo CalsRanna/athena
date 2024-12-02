@@ -1,31 +1,28 @@
 import 'dart:io';
 
-import 'package:athena/page/desktop/workspace/workspace.dart';
-import 'package:athena/page/mobile/chat/chat.dart';
-import 'package:athena/page/mobile/home/home.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:athena/router/router.gr.dart';
+import 'package:auto_route/auto_route.dart';
 
-final navigatorKey = GlobalKey<NavigatorState>();
-final router = GoRouter(
-  navigatorKey: navigatorKey,
-  routes: [
-    GoRoute(
-      builder: (_, __) {
-        if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
-          return const DesktopWorkspace();
-        } else {
-          return const HomePage();
-        }
-      },
-      path: '/',
-    ),
-    GoRoute(builder: (_, __) => const ChatPage(), path: '/chat'),
-    GoRoute(
-      builder: (_, state) {
-        return ChatPage(id: int.tryParse(state.pathParameters['id'] ?? ''));
-      },
-      path: '/chat/:id',
-    ),
-  ],
-);
+@AutoRouterConfig()
+class AppRouter extends RootStackRouter {
+  var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+
+  @override
+  List<AutoRoute> get routes {
+    var desktopSettingChildren = [
+      AutoRoute(page: DesktopSettingAccountRoute.page),
+      AutoRoute(page: DesktopSettingModelRoute.page),
+      AutoRoute(page: DesktopSettingApplicationRoute.page),
+      AutoRoute(page: DesktopSettingExperimentalRoute.page),
+    ];
+    var desktopSettingRoute = AutoRoute(
+      page: DesktopSettingRoute.page,
+      children: desktopSettingChildren,
+    );
+    return [
+      AutoRoute(page: DesktopHomeRoute.page, initial: isDesktop),
+      desktopSettingRoute,
+      AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
+    ];
+  }
+}

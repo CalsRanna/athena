@@ -54,7 +54,7 @@ const ChatSchema = CollectionSchema(
   getId: _chatGetId,
   getLinks: _chatGetLinks,
   attach: _chatAttach,
-  version: '3.1.0+1',
+  version: '3.1.8',
 );
 
 int _chatEstimateSize(
@@ -945,7 +945,7 @@ const MessageSchema = CollectionSchema(
   getId: _messageGetId,
   getLinks: _messageGetLinks,
   attach: _messageAttach,
-  version: '3.1.0+1',
+  version: '3.1.8',
 );
 
 int _messageEstimateSize(
@@ -1650,7 +1650,7 @@ const SentinelSchema = CollectionSchema(
   getId: _sentinelGetId,
   getLinks: _sentinelGetLinks,
   attach: _sentinelAttach,
-  version: '3.1.0+1',
+  version: '3.1.8',
 );
 
 int _sentinelEstimateSize(

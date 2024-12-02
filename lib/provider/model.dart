@@ -20,6 +20,29 @@ class ModelsNotifier extends _$ModelsNotifier {
     return _sort(remoteModels);
   }
 
+  Future<void> addModel(Model model) async {
+    var models = await future;
+    if (models.any((m) => m.value == model.value)) {
+      throw Exception('Model already exist');
+    }
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> deleteModel(Model model) async {
+    await isar.writeTxn(() async {
+      await isar.models.delete(model.id);
+    });
+    ref.invalidateSelf();
+    var setting = await ref.read(settingNotifierProvider.future);
+    if (setting.model == model.value) {
+      var notifier = ref.read(settingNotifierProvider.notifier);
+      notifier.updateModel('');
+    }
+  }
+
   Future<void> getModels() async {
     final remoteModels = await ManagerApi().getModels();
     for (final model in remoteModels) {

@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/workspace/component/profile.dart';
+import 'package:athena/page/desktop/home/component/profile.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/card.dart';
@@ -19,7 +19,6 @@ class ChatList extends StatelessWidget {
       width: 200,
       child: const Column(
         children: [
-          SizedBox(height: 50),
           _Search(),
           SizedBox(height: 8),
           Expanded(child: _List()),

@@ -1,5 +1,5 @@
 import 'package:athena/component/button.dart';
-import 'package:athena/page/desktop/workspace/component/logo.dart';
+import 'package:athena/page/desktop/home/component/logo.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';

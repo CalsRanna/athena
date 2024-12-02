@@ -1,5 +1,5 @@
-import 'package:athena/page/desktop/workspace/component/input.dart';
-import 'package:athena/page/desktop/workspace/component/message.dart';
+import 'package:athena/page/desktop/home/component/input.dart';
+import 'package:athena/page/desktop/home/component/message.dart';
 import 'package:flutter/material.dart';
 
 class WorkSpace extends StatelessWidget {
