@@ -6,7 +6,7 @@ part of 'model.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$modelsNotifierHash() => r'e3e6b63f35fde6fc7d302cee85778d9c4a30cfd0';
+String _$modelsNotifierHash() => r'44a62c6862840fef746de09a9510b418a4c0f88c';
 
 /// See also [ModelsNotifier].
 @ProviderFor(ModelsNotifier)
@@ -23,4 +23,4 @@ final modelsNotifierProvider =
 
 typedef _$ModelsNotifier = AutoDisposeAsyncNotifier<List<Model>>;
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

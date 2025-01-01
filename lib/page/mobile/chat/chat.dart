@@ -5,6 +5,7 @@ import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -14,6 +15,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 
+@RoutePage()
 class ChatPage extends StatefulWidget {
   final int? id;
   const ChatPage({super.key, this.id});
@@ -79,7 +81,7 @@ class _ChatPageState extends State<ChatPage> {
     final notifier = ref.read(chatsNotifierProvider.notifier);
     await notifier.destroy(widget.id!);
     if (!mounted) return;
-    Navigator.of(context).pop();
+    AutoRouter.of(context).maybePop();
   }
 
   @override

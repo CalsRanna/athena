@@ -1,5 +1,6 @@
 import 'package:athena/page/mobile/setting/setting.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -41,8 +42,7 @@ class _ChatTile extends ConsumerWidget {
     final notifier = ref.read(chatNotifierProvider.notifier);
     await notifier.replace(chat);
     if (!context.mounted) return;
-    // final router = GoRouter.of(context);
-    // router.push('/chat/${chat.id}');
+    ChatRoute(id: chat.id).push(context);
   }
 }
 
@@ -107,6 +107,7 @@ class _NewChat extends ConsumerWidget {
 
   void handleTap(BuildContext context, WidgetRef ref) async {
     ref.invalidate(chatNotifierProvider);
+    ChatRoute().push(context);
     // final router = GoRouter.of(context);
     // router.push('/chat');
   }
