@@ -65,13 +65,11 @@ class ChatNotifier extends _$ChatNotifier {
     final prompt = await _getPrompt();
     final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesNotifierProvider.future);
-    final messages = histories.map((item) {
-      return {'role': item.role, 'content': item.content};
-    }).toList();
     final model = await _getModel();
     try {
-      final stream = await ChatApi().getCompletion(
-        [system, ...messages],
+      final stream = ChatApi().getCompletion(
+        messages: [Message.fromJson(system), ...histories],
+        sentinel: await ref.read(sentinelNotifierProvider.future),
         model: model,
       );
       await for (final token in stream) {
