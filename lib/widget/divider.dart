@@ -7,7 +7,7 @@ class ADivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withOpacity(0.1);
+    final onSurface = colorScheme.onSurface.withValues(alpha: 0.1);
     final border = Border(top: BorderSide(color: onSurface));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

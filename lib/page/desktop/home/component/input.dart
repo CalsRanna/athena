@@ -62,7 +62,7 @@ class _InputState extends State<_Input> {
       ref.watch(chatNotifierProvider);
       return Container(
         decoration: BoxDecoration(
-          border: Border.all(color: outline.withOpacity(0.2)),
+          border: Border.all(color: outline.withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -78,7 +78,7 @@ class _InputState extends State<_Input> {
                   decoration: InputDecoration.collapsed(
                     hintText: 'Ask me anything',
                     hintStyle: TextStyle(
-                      color: outline.withOpacity(0.4),
+                      color: outline.withValues(alpha: 0.4),
                       fontSize: 14,
                       height: 16 / 14,
                     ),
@@ -165,7 +165,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.6);
+    final color = colorScheme.onSurface.withValues(alpha: 0.6);
     return GestureDetector(
       onTap: handleTap,
       child: CompositedTransformTarget(

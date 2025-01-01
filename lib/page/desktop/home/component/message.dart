@@ -91,7 +91,7 @@ class _AssistantMessage extends StatelessWidget {
                             return Text(
                               chat?.model ?? '',
                               style: TextStyle(
-                                color: onSurface.withOpacity(0.2),
+                                color: onSurface.withValues(alpha: 0.2),
                                 fontSize: 12,
                                 height: 12 / 12,
                               ),
@@ -177,7 +177,7 @@ class _CopyState extends State<_Copy> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.2);
+    final color = colorScheme.onSurface.withValues(alpha: 0.2);
     Widget icon = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,
@@ -308,7 +308,7 @@ class _Refresh extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: HugeIcon(
-        color: onSurface.withOpacity(0.2),
+        color: onSurface.withValues(alpha: 0.2),
         icon: HugeIcons.strokeRoundedRepeat,
         size: 12.0,
       ),
@@ -348,7 +348,7 @@ class _UserMessage extends StatelessWidget {
                 _Copy(onTap: handleTap),
                 const SizedBox(width: 12),
                 HugeIcon(
-                  color: onSurface.withOpacity(0.2),
+                  color: onSurface.withValues(alpha: 0.2),
                   icon: HugeIcons.strokeRoundedPencilEdit01,
                   size: 12.0,
                 ),

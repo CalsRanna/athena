@@ -17,10 +17,18 @@ void main() async {
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
     final setting = await isar.settings.where().findFirst();
+    var size = Size(960, 720);
+    if (setting != null) {
+      var width = setting.width;
+      var height = setting.height;
+      if (width.isNaN) width = 960;
+      if (height.isNaN) height = 720;
+      size = Size(width, height);
+    }
     final options = WindowOptions(
       center: true,
       minimumSize: const Size(960, 720),
-      size: Size(setting?.width ?? 960, setting?.height ?? 720),
+      size: size,
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );

@@ -21,7 +21,7 @@ class Logo extends StatelessWidget {
           Text(
             sentinel.name,
             style: displayLarge?.copyWith(
-              color: onSurface.withOpacity(0.15),
+              color: onSurface.withValues(alpha: 0.15),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -32,13 +32,13 @@ class Logo extends StatelessWidget {
               return Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(2),
-                  color: onSurface.withOpacity(0.05),
+                  color: onSurface.withValues(alpha: 0.05),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
                   tag,
                   style: displayLarge?.copyWith(
-                    color: onSurface.withOpacity(0.15),
+                    color: onSurface.withValues(alpha: 0.15),
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
                   ),
@@ -50,7 +50,7 @@ class Logo extends StatelessWidget {
           Text(
             sentinel.description,
             style: displayLarge?.copyWith(
-              color: onSurface.withOpacity(0.15),
+              color: onSurface.withValues(alpha: 0.15),
               fontSize: 14,
               fontWeight: FontWeight.w400,
             ),

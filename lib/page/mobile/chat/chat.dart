@@ -149,7 +149,7 @@ class _CopyButtonState extends State<_CopyButton> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.4);
+    final color = colorScheme.onSurface.withValues(alpha: 0.4);
     Widget child = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,
@@ -216,7 +216,7 @@ class _Input extends ConsumerWidget {
       child: textField,
     );
     final colors = [
-      const Color(0xffffffff).withOpacity(0.2),
+      const Color(0xffffffff).withValues(alpha: 0.2),
       const Color(0xff333333),
     ];
     final linearGradient = LinearGradient(
@@ -403,7 +403,7 @@ class _SendButton extends ConsumerWidget {
       child: streaming ? loading : sendIcon,
     );
     final colors = [
-      const Color(0xffffffff).withOpacity(0.2),
+      const Color(0xffffffff).withValues(alpha: 0.2),
       const Color(0xff333333),
     ];
     final linearGradient = LinearGradient(

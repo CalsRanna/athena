@@ -33,7 +33,7 @@ class SettingTile extends StatelessWidget {
   Widget _buildSubtitle(BuildContext context) {
     if (subtitle == null) return const SizedBox();
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.4);
+    final color = colorScheme.onSurface.withValues(alpha: 0.4);
     return Text(subtitle!, style: TextStyle(color: color, fontSize: 10));
   }
 }

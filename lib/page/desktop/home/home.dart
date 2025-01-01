@@ -30,7 +30,7 @@ class _CreateButton extends ConsumerWidget {
     var onSurface = colorScheme.onSurface;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
-      color: onSurface.withOpacity(0.2),
+      color: onSurface.withValues(alpha: 0.2),
     );
     return IconButton(onPressed: () => handleTap(ref), icon: icon);
   }

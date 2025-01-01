@@ -119,7 +119,7 @@ class ChatNotifier extends _$ChatNotifier {
     final previousState = await future;
     if (previousState.title?.isNotEmpty == true) return;
     try {
-      final titleTokens = await ChatApi().getTitle(message, model: model);
+      final titleTokens = ChatApi().getTitle(message, model: model);
       await for (final token in titleTokens) {
         streaming(token);
       }

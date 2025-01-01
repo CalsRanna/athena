@@ -124,7 +124,7 @@ class _DesktopAppBar extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: onSurface.withOpacity(0.2)),
+                  bottom: BorderSide(color: onSurface.withValues(alpha: 0.2)),
                 ),
               ),
               height: 50,
@@ -146,21 +146,6 @@ class _DesktopAppBar extends StatelessWidget {
 
   void handlePanStart(DragStartDetails details) {
     windowManager.startDragging();
-  }
-}
-
-class _Fold extends StatelessWidget {
-  const _Fold();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      child: HugeIcon(
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-        icon: HugeIcons.strokeRoundedSidebarLeft,
-      ),
-    );
   }
 }
 

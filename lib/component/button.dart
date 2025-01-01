@@ -15,7 +15,7 @@ class _CopyButtonState extends State<CopyButton> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.4);
+    final color = colorScheme.onSurface.withValues(alpha: 0.4);
     Widget child = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,

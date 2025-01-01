@@ -125,7 +125,7 @@ class _Input extends StatelessWidget {
     return Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         borderRadius: BorderRadius.circular(4),
       ),
       height: 48,
@@ -135,7 +135,7 @@ class _Input extends StatelessWidget {
         decoration: InputDecoration.collapsed(
           hintText: placeholder,
           hintStyle: TextStyle(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             fontSize: 14,
             fontWeight: FontWeight.w400,
             height: 16 / 14,

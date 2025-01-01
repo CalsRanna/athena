@@ -95,7 +95,7 @@ class _Input extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final onSurface = colorScheme.onSurface;
-    final borderColor = onSurface.withOpacity(0.2);
+    final borderColor = onSurface.withValues(alpha: 0.2);
     final decoration = BoxDecoration(
       border: Border.all(color: borderColor),
       borderRadius: BorderRadius.circular(8),
@@ -152,7 +152,7 @@ class _RefreshIconState extends State<_RefreshIcon> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withOpacity(0.2);
+    final onSurface = colorScheme.onSurface.withValues(alpha: 0.2);
     final primary = colorScheme.primary;
     const size = 16.0;
     const indicator = _Loading(size: size);
@@ -216,7 +216,7 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
       );
     });
     final boxDecoration2 = BoxDecoration(
-      border: Border.all(color: onSurface.withOpacity(0.2)),
+      border: Border.all(color: onSurface.withValues(alpha: 0.2)),
       borderRadius: BorderRadius.circular(8),
     );
     const inputDecoration = InputDecoration.collapsed(
@@ -409,16 +409,16 @@ class _Tag extends StatelessWidget {
     final onSurface = colorScheme.onSurface;
     final boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(2),
-      color: onSurface.withOpacity(0.05),
+      color: onSurface.withValues(alpha: 0.05),
     );
     final textStyle = TextStyle(
-      color: onSurface.withOpacity(0.15),
+      color: onSurface.withValues(alpha: 0.15),
       fontSize: 12,
       fontWeight: FontWeight.w400,
     );
     final hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedCancel01,
-      color: onSurface.withOpacity(0.25),
+      color: onSurface.withValues(alpha: 0.25),
       size: 12,
     );
     final children = [
@@ -447,7 +447,7 @@ class _Tags extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withOpacity(0.2);
+    final onSurface = colorScheme.onSurface.withValues(alpha: 0.2);
     final boxDecoration = BoxDecoration(
       border: Border.all(color: onSurface),
       borderRadius: BorderRadius.circular(8),

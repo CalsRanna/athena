@@ -138,7 +138,7 @@ class _Group extends StatelessWidget {
   Widget build(BuildContext context) {
     if (group == null) return const SizedBox(height: 8);
     final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withOpacity(0.4);
+    final color = colorScheme.onSurface.withValues(alpha: 0.4);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Text(group!, style: TextStyle(color: color, fontSize: 12)),
@@ -271,7 +271,7 @@ class _Search extends StatelessWidget {
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         border: Border.all(
-          color: onSurface.withOpacity(0.2),
+          color: onSurface.withValues(alpha: 0.2),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -280,7 +280,7 @@ class _Search extends StatelessWidget {
       child: Row(
         children: [
           HugeIcon(
-            color: onSurface.withOpacity(0.2),
+            color: onSurface.withValues(alpha: 0.2),
             icon: HugeIcons.strokeRoundedSearch01,
             size: 16,
           ),
@@ -291,7 +291,7 @@ class _Search extends StatelessWidget {
               decoration: InputDecoration.collapsed(
                 hintText: 'Search',
                 hintStyle: TextStyle(
-                  color: onSurface.withOpacity(0.2),
+                  color: onSurface.withValues(alpha: 0.2),
                   fontSize: 14,
                   height: 16 / 14,
                 ),

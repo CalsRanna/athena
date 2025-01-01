@@ -42,7 +42,7 @@ class _SentinelTile extends StatelessWidget {
       trailing = GestureDetector(
         onTap: () => updateSentinel(context),
         child: HugeIcon(
-          color: onSurface.withOpacity(0.2),
+          color: onSurface.withValues(alpha: 0.2),
           icon: HugeIcons.strokeRoundedSettings02,
           size: 14,
         ),
@@ -172,7 +172,7 @@ class _SentinelSelectorState extends State<SentinelSelector> {
               return _Tag(chat.model);
             }),
             HugeIcon(
-              color: onSurface.withOpacity(0.2),
+              color: onSurface.withValues(alpha: 0.2),
               icon: HugeIcons.strokeRoundedArrowRight01,
             ),
           ],
@@ -207,10 +207,10 @@ class _Tag extends StatelessWidget {
     final onSurface = colorScheme.onSurface;
     final decoration = BoxDecoration(
       borderRadius: BorderRadius.circular(2),
-      color: onSurface.withOpacity(0.05),
+      color: onSurface.withValues(alpha: 0.05),
     );
     final style = TextStyle(
-      color: onSurface.withOpacity(0.15),
+      color: onSurface.withValues(alpha: 0.15),
       fontSize: 10,
       fontWeight: FontWeight.w400,
     );

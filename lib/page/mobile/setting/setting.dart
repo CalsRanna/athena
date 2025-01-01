@@ -57,7 +57,7 @@ class _GroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textStyle = TextStyle(
-      color: const Color(0xffffffff).withOpacity(0.2),
+      color: const Color(0xffffffff).withValues(alpha: 0.2),
       fontSize: 14,
       fontWeight: FontWeight.w700,
     );
@@ -148,7 +148,7 @@ class _SettingTile extends StatelessWidget {
       trailing ?? '',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(color: color.withOpacity(0.2)),
+      style: TextStyle(color: color.withValues(alpha: 0.2)),
       textAlign: TextAlign.end,
     );
     final children = [

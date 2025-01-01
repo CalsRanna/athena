@@ -195,7 +195,7 @@ class _SentinelTile extends StatelessWidget {
       child: Text(sentinel.name, style: const TextStyle(color: Colors.white)),
     );
     final colors = [
-      const Color(0xffffffff).withOpacity(0.2),
+      const Color(0xffffffff).withValues(alpha: 0.2),
       const Color(0xff333333),
     ];
     final linearGradient = LinearGradient(
