@@ -2,6 +2,7 @@ import 'package:athena/page/mobile/setting/setting.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -51,14 +52,14 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget build(BuildContext context) {
     const children = [
       _Welcome(),
-      _Title('Recent'),
+      SizedBox(height: 24),
+      _NewChat(),
+      _Title('Chat history'),
       SizedBox(height: 52, child: _Recent()),
-      _Title('Shortcut', icon: HugeIcons.strokeRoundedArrowRight02),
+      _Title('Explore more'),
       SizedBox(height: 52, child: _Sentinel()),
-      _Title('Sentinel', icon: HugeIcons.strokeRoundedArrowRight02),
+      _Title('Sentinel'),
       SizedBox(height: 52, child: _Sentinel()),
-      Spacer(),
-      _NewChat()
     ];
     const body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,17 +76,8 @@ class _NewChat extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(chatNotifierProvider);
     const textStyle = TextStyle(
-      color: Color(0xff6A5ACD),
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-    );
-    const hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedAdd01,
-      color: Color(0xff6A5ACD),
-    );
-    const row = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [hugeIcon, Text('New Chat', style: textStyle)],
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
     );
     const shapeDecoration = ShapeDecoration(
       color: Color(0xffffffff),
@@ -96,7 +88,7 @@ class _NewChat extends ConsumerWidget {
       decoration: shapeDecoration,
       margin: EdgeInsets.fromLTRB(16, 0, 16, mediaQuery.padding.bottom),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-      child: row,
+      child: Center(child: Text('New Chat', style: textStyle)),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -225,9 +217,8 @@ class _SentinelTile extends StatelessWidget {
 }
 
 class _Title extends StatelessWidget {
-  final IconData icon;
   final String title;
-  const _Title(this.title, {this.icon = HugeIcons.strokeRoundedSearch01});
+  const _Title(this.title);
 
   @override
   Widget build(BuildContext context) {
@@ -237,9 +228,11 @@ class _Title extends StatelessWidget {
       fontWeight: FontWeight.w700,
       height: 1.2,
     );
-    final hugeIcon = HugeIcon(icon: icon, color: Colors.white);
     final body = Row(
-      children: [Expanded(child: Text(title, style: textStyle)), hugeIcon],
+      children: [
+        Expanded(child: Text(title, style: textStyle)),
+        AIconButton(icon: HugeIcons.strokeRoundedArrowRight02),
+      ],
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
