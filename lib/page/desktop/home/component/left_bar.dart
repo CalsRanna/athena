@@ -12,98 +12,112 @@ class DesktopLeftBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const children = [
+      _Search(),
+      SizedBox(height: 12),
+      Expanded(child: _ChatListView()),
+      SizedBox(height: 12),
+      _Sentinel(),
+      _Shortcut(),
+      _Setting(),
+    ];
+    const column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       width: 300,
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Search(),
-          SizedBox(height: 12),
-          Expanded(child: _List()),
-          SizedBox(height: 12),
-          _Sentinel(),
-          _Shortcut(),
-          _Setting(),
-        ],
-      ),
+      child: column,
     );
   }
 }
 
-class _ChatTile extends StatefulWidget {
+class _ChatListView extends ConsumerWidget {
+  const _ChatListView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = chatsNotifierProvider;
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(ref, value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(WidgetRef ref, List<Chat> chats) {
+    if (chats.isEmpty) return const SizedBox();
+    return ListView.separated(
+      itemBuilder: (context, index) => _itemBuilder(ref, chats[index]),
+      itemCount: chats.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+    );
+  }
+
+  Widget _itemBuilder(WidgetRef ref, Chat chat) {
+    final currentChat = ref.watch(chatNotifierProvider).value;
+    final active = currentChat?.id == chat.id;
+    return _ChatTile(active: active, chat: chat);
+  }
+}
+
+class _ChatTile extends ConsumerStatefulWidget {
   final bool active;
   final Chat chat;
 
   const _ChatTile({this.active = false, required this.chat});
 
   @override
-  State<_ChatTile> createState() => _ChatTileState();
+  ConsumerState<_ChatTile> createState() => _ChatTileState();
 }
 
-class _ChatTileState extends State<_ChatTile> {
+class _ChatTileState extends ConsumerState<_ChatTile> {
   OverlayEntry? entry;
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => handleTap(ref),
-        onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(35),
-            color: widget.active ? Color(0xFFE0E0E0) : Color(0xFF616161),
-          ),
-          padding: EdgeInsets.fromLTRB(6, 6, 40, 6),
-          child: Row(
-            children: [
-              Container(
-                height: 78,
-                width: 78,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(31),
-                  color: Color(0xFF242424),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.chat.title ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: widget.active ? Color(0xFF161616) : Colors.white,
-                      fontSize: 14,
-                      height: 1.7),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
+    var textStyle = TextStyle(
+      color: widget.active ? Color(0xFF161616) : Colors.white,
+      fontSize: 14,
+      height: 1.7,
+    );
+    var text = Text(
+      widget.chat.title ?? '',
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(35),
+      color: widget.active ? Color(0xFFE0E0E0) : Color(0xFF616161),
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: text,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(ref),
+      onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
+      child: container,
+    );
   }
 
   void handleSecondaryTap(BuildContext context, TapUpDetails details) {
     final position = details.globalPosition;
-    entry = OverlayEntry(builder: (context) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: removeEntry,
-        child: Stack(
-          children: [
-            const SizedBox.expand(),
-            Positioned(
-              left: position.dx,
-              top: position.dy,
-              child: _ContextMenu(chat: widget.chat, onTap: removeEntry),
-            ),
-          ],
-        ),
-      );
-    });
+    var contextMenu = _ContextMenu(chat: widget.chat, onTap: removeEntry);
+    var children = [
+      const SizedBox.expand(),
+      Positioned(left: position.dx, top: position.dy, child: contextMenu),
+    ];
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: removeEntry,
+      child: Stack(children: children),
+    );
+    entry = OverlayEntry(builder: (context) => gestureDetector);
     Overlay.of(context).insert(entry!);
   }
 
@@ -117,64 +131,29 @@ class _ChatTileState extends State<_ChatTile> {
   }
 }
 
-class _ContextMenu extends StatelessWidget {
+class _ContextMenu extends ConsumerWidget {
   final Chat chat;
   final void Function()? onTap;
 
   const _ContextMenu({required this.chat, this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return ACard(
-      child: Consumer(builder: (context, ref, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _Option(text: 'Rename', onTap: onTap),
-            _Option(text: 'Delete', onTap: () => destroy(ref)),
-          ],
-        );
-      }),
+  Widget build(BuildContext context, WidgetRef ref) {
+    var children = [
+      _Option(text: 'Rename', onTap: onTap),
+      _Option(text: 'Delete', onTap: () => destroy(ref)),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
+    return ACard(child: column);
   }
 
   void destroy(WidgetRef ref) {
     final notifier = ref.read(chatsNotifierProvider.notifier);
     notifier.destroy(chat.id);
     onTap?.call();
-  }
-}
-
-class _List extends StatelessWidget {
-  const _List();
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      final chat = ref.watch(chatNotifierProvider).value;
-      final chats = ref.watch(chatsNotifierProvider).value;
-      if (chats == null) return const SizedBox();
-      return ListView.separated(
-        itemBuilder: (context, index) {
-          return _ChatTile(
-            active: chats.reversed.elementAt(index).id == chat?.id,
-            chat: chats.reversed.elementAt(index),
-          );
-        },
-        itemCount: chats.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-      );
-    });
-  }
-
-  String getGroup(DateTime updatedAt) {
-    final now = DateTime.now();
-    final difference = now.difference(updatedAt);
-    return switch (difference.inDays) {
-      0 => 'Today',
-      1 => 'Yesterday',
-      _ => '${difference.inDays} days ago'
-    };
   }
 }
 
@@ -274,15 +253,6 @@ class _Search extends StatelessWidget {
   }
 }
 
-class _Shortcut extends StatelessWidget {
-  const _Shortcut();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Tile(icon: HugeIcons.strokeRoundedCommand, title: 'Shortcut');
-  }
-}
-
 class _Sentinel extends StatelessWidget {
   const _Sentinel();
 
@@ -314,6 +284,15 @@ class _Setting extends StatelessWidget {
 
   void handleTap(BuildContext context) {
     const DesktopSettingAccountRoute().push(context);
+  }
+}
+
+class _Shortcut extends StatelessWidget {
+  const _Shortcut();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Tile(icon: HugeIcons.strokeRoundedCommand, title: 'Shortcut');
   }
 }
 
