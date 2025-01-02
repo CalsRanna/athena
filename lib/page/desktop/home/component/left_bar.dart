@@ -80,19 +80,21 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
     var textStyle = TextStyle(
       color: widget.active ? Color(0xFF161616) : Colors.white,
       fontSize: 14,
-      height: 1.7,
+      height: 1.5,
     );
-    var text = Text(
-      widget.chat.title ?? '',
+    var text = AnimatedDefaultTextStyle(
+      duration: const Duration(milliseconds: 300),
       overflow: TextOverflow.ellipsis,
       style: textStyle,
+      child: Text(widget.chat.title ?? ''),
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(35),
       color: widget.active ? Color(0xFFE0E0E0) : Color(0xFF616161),
     );
-    var container = Container(
+    var container = AnimatedContainer(
       decoration: boxDecoration,
+      duration: const Duration(milliseconds: 300),
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: text,
     );
@@ -225,6 +227,7 @@ class _Search extends StatelessWidget {
       hintStyle: TextStyle(color: Color(0xFFC2C2C2), fontSize: 14),
     );
     var textField = TextField(
+      cursorColor: Colors.white,
       decoration: inputDecoration,
       style: const TextStyle(fontSize: 14),
     );
