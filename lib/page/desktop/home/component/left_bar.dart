@@ -174,31 +174,32 @@ class _OptionState extends State<_Option> {
     final colorScheme = Theme.of(context).colorScheme;
     final onSurface = colorScheme.onSurface;
     final surfaceContainer = colorScheme.surfaceContainer;
+    var textStyle = TextStyle(
+      color: onSurface,
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: hover ? surfaceContainer : null,
+    );
+    var container = Container(
+      alignment: Alignment.centerLeft,
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: 100,
+      child: Text(widget.text, style: textStyle),
+    );
+    var mouseRegion = MouseRegion(
+      onEnter: handleEnter,
+      onExit: handleExit,
+      child: container,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
-      child: MouseRegion(
-        onEnter: handleEnter,
-        onExit: handleExit,
-        child: Container(
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: hover ? surfaceContainer : null,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          width: 100,
-          child: Text(
-            widget.text,
-            style: TextStyle(
-              color: onSurface,
-              decoration: TextDecoration.none,
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
+      child: mouseRegion,
     );
   }
 
