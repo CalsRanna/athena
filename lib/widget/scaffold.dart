@@ -26,7 +26,21 @@ class _DesktopScaffold extends StatelessWidget {
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
     ];
-    return Scaffold(body: Column(children: children));
+    var innerDecoratedBox = DecoratedBox(
+      decoration: BoxDecoration(color: Color(0xFF282828)),
+      child: Column(children: children),
+    );
+    var colors = [Color(0xFF6ABEB9).withValues(alpha: 0.2), Colors.transparent];
+    var linearGradient = LinearGradient(
+      begin: Alignment.topRight,
+      colors: colors,
+      end: Alignment.bottomLeft,
+    );
+    var outerDecoratedBox = DecoratedBox(
+      decoration: BoxDecoration(gradient: linearGradient),
+      child: innerDecoratedBox,
+    );
+    return Scaffold(body: outerDecoratedBox);
   }
 }
 

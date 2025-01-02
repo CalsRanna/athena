@@ -7,17 +7,14 @@ class WorkSpace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: 50),
-          Expanded(child: MessageList()),
-          Input(),
-          SizedBox(height: 12),
-        ],
-      ),
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [Expanded(child: MessageList()), Input()],
+    );
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    return Container(
+      decoration: BoxDecoration(border: Border(left: borderSide)),
+      child: column,
     );
   }
 }

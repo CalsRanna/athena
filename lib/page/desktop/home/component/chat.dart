@@ -12,17 +12,15 @@ class ChatList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.surfaceContainer;
     return Container(
-      color: color,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      width: 200,
+      width: 300,
       child: const Column(
         children: [
           _Search(),
-          SizedBox(height: 8),
+          SizedBox(height: 12),
           Expanded(child: _List()),
-          SizedBox(height: 8),
+          SizedBox(height: 12),
           ProfileTile(),
           SizedBox(height: 12),
         ],
@@ -46,9 +44,6 @@ class _ChatTileState extends State<_ChatTile> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    final primaryContainer = colorScheme.primaryContainer;
     return Consumer(builder: (context, ref, child) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -56,15 +51,33 @@ class _ChatTileState extends State<_ChatTile> {
         onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: widget.active ? primaryContainer : null,
+            borderRadius: BorderRadius.circular(35),
+            color: widget.active ? Color(0xFFE0E0E0) : Color(0xFF616161),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            widget.chat.title ?? '',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: onSurface, fontSize: 14),
+          padding: EdgeInsets.fromLTRB(6, 6, 40, 6),
+          child: Row(
+            children: [
+              Container(
+                height: 78,
+                width: 78,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(31),
+                  color: Color(0xFF242424),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.chat.title ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      color: widget.active ? Color(0xFF161616) : Colors.white,
+                      fontSize: 14,
+                      height: 1.7),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -130,22 +143,6 @@ class _ContextMenu extends StatelessWidget {
   }
 }
 
-class _Group extends StatelessWidget {
-  final String? group;
-  const _Group({this.group});
-
-  @override
-  Widget build(BuildContext context) {
-    if (group == null) return const SizedBox(height: 8);
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.4);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Text(group!, style: TextStyle(color: color, fontSize: 12)),
-    );
-  }
-}
-
 class _List extends StatelessWidget {
   const _List();
 
@@ -155,38 +152,15 @@ class _List extends StatelessWidget {
       final chat = ref.watch(chatNotifierProvider).value;
       final chats = ref.watch(chatsNotifierProvider).value;
       if (chats == null) return const SizedBox();
-      List<String> groups = [];
       return ListView.separated(
         itemBuilder: (context, index) {
-          if (index == 0) {
-            final group = getGroup(chats.reversed.elementAt(index).updatedAt);
-            groups.add(group);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Group(group: group),
-                SizedBox(
-                  width: double.infinity,
-                  child: _ChatTile(
-                    active: chats.reversed.elementAt(index).id == chat?.id,
-                    chat: chats.reversed.elementAt(index),
-                  ),
-                )
-              ],
-            );
-          }
           return _ChatTile(
             active: chats.reversed.elementAt(index).id == chat?.id,
             chat: chats.reversed.elementAt(index),
           );
         },
         itemCount: chats.length,
-        separatorBuilder: (context, index) {
-          final group = getGroup(chats.reversed.elementAt(index).updatedAt);
-          if (groups.contains(group)) return const _Group();
-          groups.add(group);
-          return _Group(group: group);
-        },
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
     });
   }
@@ -265,42 +239,35 @@ class _Search extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
+    var inputDecoration = InputDecoration.collapsed(
+      hintText: 'Search',
+      hintStyle: TextStyle(color: Color(0xFFC2C2C2), fontSize: 14),
+    );
+    var textField = TextField(
+      decoration: inputDecoration,
+      style: const TextStyle(fontSize: 14),
+    );
+    var hugeIcon = HugeIcon(
+      color: Color(0xFFC2C2C2),
+      icon: HugeIcons.strokeRoundedSearch01,
+      size: 24,
+    );
+    var children = [
+      hugeIcon,
+      const SizedBox(width: 10),
+      Expanded(child: textField),
+    ];
+    var boxDecoration = BoxDecoration(
+      border: Border.all(color: Color(0xFF757575)),
+      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(56),
+    );
     return Container(
       alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: onSurface.withValues(alpha: 0.2),
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(
-        children: [
-          HugeIcon(
-            color: onSurface.withValues(alpha: 0.2),
-            icon: HugeIcons.strokeRoundedSearch01,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              cursorColor: onSurface,
-              decoration: InputDecoration.collapsed(
-                hintText: 'Search',
-                hintStyle: TextStyle(
-                  color: onSurface.withValues(alpha: 0.2),
-                  fontSize: 14,
-                  height: 16 / 14,
-                ),
-              ),
-              style: const TextStyle(fontSize: 14, height: 16 / 14),
-            ),
-          ),
-        ],
-      ),
+      decoration: boxDecoration,
+      height: 55,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(children: children),
     );
   }
 }

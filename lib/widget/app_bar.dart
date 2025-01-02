@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:athena/provider/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -59,6 +61,23 @@ class _ButtonsState extends State<_Buttons> {
   }
 }
 
+class _CreateButton extends ConsumerWidget {
+  const _CreateButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedPencilEdit02,
+      color: Color(0xFF616161),
+    );
+    return IconButton(onPressed: () => handleTap(ref), icon: icon);
+  }
+
+  void handleTap(WidgetRef ref) {
+    ref.invalidate(chatNotifierProvider);
+  }
+}
+
 class _CloseButton extends StatelessWidget {
   final bool hover;
 
@@ -99,32 +118,28 @@ class _DesktopAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final onSurface = colorScheme.onSurface;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: handlePanStart,
       child: Row(
         children: [
-          Container(
-            color: colorScheme.surfaceContainer,
+          SizedBox(
             height: 50,
-            width: 200,
+            width: 300,
             child: const Row(children: [
               SizedBox(width: 16),
               _Buttons(),
-              // const SizedBox(width: 16),
-              // const _FoldButton(),
-              // const SizedBox(width: 200 - 16 * 2 - 14 * 3 - 8 * 2 - 48),
-              SizedBox(width: 200 - 16 - 14 * 3 - 8 * 2),
+              Spacer(),
+              _CreateButton(),
             ]),
           ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: onSurface.withValues(alpha: 0.2)),
+                  bottom:
+                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  left: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                 ),
               ),
               height: 50,

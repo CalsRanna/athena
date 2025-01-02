@@ -8,8 +8,6 @@ class Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final onSurface = colorScheme.onSurface;
     final textTheme = theme.textTheme;
     final displayLarge = textTheme.displayLarge;
     return Consumer(builder: (context, ref, child) {
@@ -21,7 +19,7 @@ class Logo extends StatelessWidget {
           Text(
             sentinel.name,
             style: displayLarge?.copyWith(
-              color: onSurface.withValues(alpha: 0.15),
+              color: Colors.white,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -31,16 +29,31 @@ class Logo extends StatelessWidget {
             children: sentinel.tags.map((tag) {
               return Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  color: onSurface.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(36),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    colors: [
+                      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Text(
-                  tag,
-                  style: displayLarge?.copyWith(
-                    color: onSurface.withValues(alpha: 0.15),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
+                padding: EdgeInsets.all(1),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(36),
+                    color: Color(0xFF161616),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
+                  child: Text(
+                    tag,
+                    style: displayLarge?.copyWith(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
               );
@@ -50,7 +63,7 @@ class Logo extends StatelessWidget {
           Text(
             sentinel.description,
             style: displayLarge?.copyWith(
-              color: onSurface.withValues(alpha: 0.15),
+              color: Color(0xFFC2C2C2),
               fontSize: 14,
               fontWeight: FontWeight.w400,
             ),

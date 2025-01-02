@@ -13,12 +13,65 @@ class Input extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        _ModelSelector(),
-        SizedBox(width: 8),
-        Expanded(child: _Input()),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _ModelSelector(),
+              const SizedBox(width: 8),
+              Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
+              const SizedBox(width: 8),
+              Icon(HugeIcons.strokeRoundedTemperature,
+                  color: Color(0xFF616161)),
+              const SizedBox(width: 8),
+              Icon(HugeIcons.strokeRoundedGift, color: Color(0xFF616161)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Expanded(child: _Input()),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(55),
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    colors: [
+                      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+                      Colors.transparent,
+                    ],
+                    end: Alignment.centerRight,
+                  ),
+                ),
+                height: 55,
+                padding: EdgeInsets.all(1),
+                width: 55,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(55),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 16,
+                        color: Color(0xFFCED2E7).withValues(alpha: 0.5),
+                      )
+                    ],
+                  ),
+                  child: Icon(HugeIcons.strokeRoundedSent),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -54,42 +107,34 @@ class _InputState extends State<_Input> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final outline = colorScheme.outline;
-
     return Consumer(builder: (context, ref, child) {
       ref.watch(chatNotifierProvider);
       return Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: outline.withValues(alpha: 0.2)),
-          borderRadius: BorderRadius.circular(16),
+        decoration: ShapeDecoration(
+          color: Color(0xFFADADAD).withValues(alpha: 0.6),
+          shape: StadiumBorder(side: BorderSide(color: Color(0xFF757575))),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: KeyboardListener(
-                focusNode: FocusNode(),
-                onKeyEvent: (event) => handleKeyEvent(ref, event),
-                child: TextField(
-                  controller: controller,
-                  cursorHeight: 16,
-                  decoration: InputDecoration.collapsed(
-                    hintText: 'Ask me anything',
-                    hintStyle: TextStyle(
-                      color: outline.withValues(alpha: 0.4),
-                      fontSize: 14,
-                      height: 16 / 14,
-                    ),
-                  ),
-                  style: const TextStyle(fontSize: 14, height: 16 / 14),
-                  maxLines: 4,
-                  minLines: 1,
-                ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
+        child: KeyboardListener(
+          focusNode: FocusNode(),
+          onKeyEvent: (event) => handleKeyEvent(ref, event),
+          child: TextField(
+            controller: controller,
+            cursorHeight: 16,
+            cursorColor: Color(0xFFF5F5F5),
+            decoration: InputDecoration.collapsed(
+              hintText: 'Ask me anything',
+              hintStyle: TextStyle(
+                color: Color(0xFFC2C2C2),
+                fontSize: 14,
+                height: 1.7,
               ),
             ),
-          ],
+            style: const TextStyle(
+                color: Color(0xFFF5F5F5), fontSize: 14, height: 1.7),
+            maxLines: 4,
+            minLines: 1,
+          ),
         ),
       );
     });
@@ -164,27 +209,15 @@ class _ModelSelectorState extends State<_ModelSelector> {
   final link = LayerLink();
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.6);
     return GestureDetector(
       onTap: handleTap,
       child: CompositedTransformTarget(
         link: link,
-        child: Consumer(builder: (context, ref, child) {
-          final streaming = ref.watch(streamingNotifierProvider);
-          if (!streaming) {
-            return HugeIcon(
-              icon: HugeIcons.strokeRoundedAiBrain01,
-              color: color,
-              size: 20,
-            );
-          }
-          return const SizedBox(
-            height: 24,
-            width: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          );
-        }),
+        child: HugeIcon(
+          icon: HugeIcons.strokeRoundedAiBrain01,
+          color: Color(0xFF616161),
+          size: 24,
+        ),
       ),
     );
   }

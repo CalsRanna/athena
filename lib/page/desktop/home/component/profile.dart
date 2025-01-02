@@ -29,8 +29,7 @@ class _Name extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurface;
-    return Text('Cals Ranna', style: TextStyle(color: color));
+    return Text('Cals Ranna', style: TextStyle(color: Colors.white));
   }
 }
 

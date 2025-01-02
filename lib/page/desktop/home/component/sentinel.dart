@@ -152,8 +152,6 @@ class _SentinelSelectorState extends State<SentinelSelector> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: handleTap,
@@ -163,7 +161,10 @@ class _SentinelSelectorState extends State<SentinelSelector> {
           children: [
             Consumer(builder: (context, ref, child) {
               final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
-              return Text(sentinel?.name ?? 'Athena');
+              return Text(
+                sentinel?.name ?? 'Athena',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              );
             }),
             const SizedBox(width: 8),
             Consumer(builder: (context, ref, child) {
@@ -171,10 +172,6 @@ class _SentinelSelectorState extends State<SentinelSelector> {
               if (chat == null) return const SizedBox();
               return _Tag(chat.model);
             }),
-            HugeIcon(
-              color: onSurface.withValues(alpha: 0.2),
-              icon: HugeIcons.strokeRoundedArrowRight01,
-            ),
           ],
         ),
       ),
@@ -203,21 +200,30 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    final decoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(2),
-      color: onSurface.withValues(alpha: 0.05),
-    );
-    final style = TextStyle(
-      color: onSurface.withValues(alpha: 0.15),
-      fontSize: 10,
-      fontWeight: FontWeight.w400,
-    );
     return Container(
-      decoration: decoration,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Text(text, style: style),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(36),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          colors: [
+            Color(0xFFEAEAEA).withValues(alpha: 0.17),
+            Colors.white.withValues(alpha: 0),
+          ],
+          end: Alignment.bottomRight,
+        ),
+      ),
+      padding: EdgeInsets.all(1),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(36),
+          color: Color(0xFF161616),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.white, fontSize: 14),
+        ),
+      ),
     );
   }
 }

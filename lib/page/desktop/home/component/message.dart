@@ -21,13 +21,15 @@ class MessageList extends StatelessWidget {
       final messages = ref.watch(messagesNotifierProvider).value;
       if (messages == null) return const Logo();
       if (messages.isEmpty == true) return const Logo();
-      return ListView.builder(
+      return ListView.separated(
         itemBuilder: (context, index) {
           final message = messages.reversed.elementAt(index);
           return _MessageTile(message: message);
         },
         itemCount: messages.length,
         reverse: true,
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
     });
   }
@@ -40,73 +42,59 @@ class _AssistantMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipOval(
-              child: Consumer(builder: (context, ref, child) {
-                final sentinel =
-                    ref.watch(sentinelNotifierProvider).valueOrNull;
-                if (sentinel?.avatar.isNotEmpty == true) {
-                  return Text(
-                    sentinel!.avatar,
-                    style: const TextStyle(fontSize: 32, height: 1),
-                  );
-                }
-                return Image.asset(
-                  'asset/image/launcher_icon_ios_512x512.jpg',
-                  filterQuality: FilterQuality.medium,
-                  height: 32,
-                );
-              }),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SelectionArea(child: _Markdown(message: message)),
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: opacity,
-                    child: Container(
-                      height: 16,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _Copy(onTap: handleCopy),
-                          const SizedBox(width: 12),
-                          Consumer(builder: (context, ref, child) {
-                            return _Refresh(onTap: () => handleRefresh(ref));
-                          }),
-                          const SizedBox(width: 12),
-                          Consumer(builder: (context, ref, child) {
-                            final chat = ref.watch(chatNotifierProvider).value;
-                            return Text(
-                              chat?.model ?? '',
-                              style: TextStyle(
-                                color: onSurface.withValues(alpha: 0.2),
-                                fontSize: 12,
-                                height: 12 / 12,
-                              ),
-                            );
-                          })
-                        ],
-                      ),
-                    ),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withValues(alpha: 0.95),
+      ),
+      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipOval(
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF282F32),
                   ),
-                ],
+                  height: 36,
+                  width: 36,
+                  child: Consumer(builder: (context, ref, child) {
+                    final sentinel =
+                        ref.watch(sentinelNotifierProvider).valueOrNull;
+                    if (sentinel?.avatar.isNotEmpty == true) {
+                      return Text(
+                        sentinel!.avatar,
+                        style: const TextStyle(
+                            fontSize: 24, height: 1, color: Colors.white),
+                      );
+                    }
+                    return Image.asset(
+                      'asset/image/launcher_icon_ios_512x512.jpg',
+                      filterQuality: FilterQuality.medium,
+                      height: 36,
+                    );
+                  }),
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  alignment: Alignment.centerLeft,
+                  constraints: const BoxConstraints(minHeight: 36),
+                  child: _Markdown(message: message),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _Copy(onTap: handleCopy),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -176,18 +164,17 @@ class _CopyState extends State<_Copy> {
   bool copied = false;
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.2);
+    final color = Colors.black.withValues(alpha: 0.25);
     Widget icon = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,
-      size: 12.0,
+      size: 16.0,
     );
     if (copied) {
       icon = HugeIcon(
         color: color,
         icon: HugeIcons.strokeRoundedTick01,
-        size: 12.0,
+        size: 16.0,
       );
     }
     const duration = Duration(milliseconds: 200);
@@ -297,25 +284,6 @@ class _MessageTileState extends State<_MessageTile> {
   }
 }
 
-class _Refresh extends StatelessWidget {
-  final void Function()? onTap;
-  const _Refresh({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    return GestureDetector(
-      onTap: onTap,
-      child: HugeIcon(
-        color: onSurface.withValues(alpha: 0.2),
-        icon: HugeIcons.strokeRoundedRepeat,
-        size: 12.0,
-      ),
-    );
-  }
-}
-
 class _UserMessage extends StatelessWidget {
   final String content;
   final double opacity;
@@ -323,40 +291,50 @@ class _UserMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final surfaceContainer = colorScheme.surfaceContainer;
-    final onSurface = colorScheme.onSurface;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: surfaceContainer,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          child: SelectableText(content),
-        ),
-        AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
-          opacity: opacity,
-          child: Container(
-            height: 16,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                _Copy(onTap: handleTap),
-                const SizedBox(width: 12),
-                HugeIcon(
-                  color: onSurface.withValues(alpha: 0.2),
-                  icon: HugeIcons.strokeRoundedPencilEdit01,
-                  size: 12.0,
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipOval(
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.95),
+              ),
+              height: 36,
+              width: 36,
+              child: Text(
+                'CA',
+                style: const TextStyle(fontSize: 14, height: 1),
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              alignment: Alignment.centerLeft,
+              constraints: BoxConstraints(minHeight: 36),
+              child: Text(
+                content,
+                style: TextStyle(color: Color(0xFFCACACA)),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+            height: 24,
+            width: 24,
+            padding: const EdgeInsets.all(6),
+            child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
+          ),
+        ],
+      ),
     );
   }
 
