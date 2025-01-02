@@ -46,53 +46,22 @@ class _ProfileTileState extends State<ProfileTile> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handleTap(context),
-      child: CompositedTransformTarget(
-        link: link,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: clicked ? primaryContainer : null,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: const Row(children: [
-            _Avatar(),
-            SizedBox(width: 8),
-            Expanded(child: _Name())
-          ]),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: clicked ? primaryContainer : null,
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: const Row(children: [
+          _Avatar(),
+          SizedBox(width: 8),
+          Expanded(child: _Name())
+        ]),
       ),
     );
   }
 
   void handleTap(BuildContext context) {
-    // setState(() {
-    //   clicked = !clicked;
-    // });
-    // entry = OverlayEntry(builder: (context) {
-    //   return GestureDetector(
-    //     behavior: HitTestBehavior.opaque,
-    //     onTap: removeEntry,
-    //     child: SizedBox.expand(
-    //       child: UnconstrainedBox(
-    //         child: CompositedTransformFollower(
-    //           followerAnchor: Alignment.bottomLeft,
-    //           link: link,
-    //           offset: const Offset(24, 0),
-    //           targetAnchor: Alignment.bottomRight,
-    //           child: _Dialog(onTap: removeEntry),
-    //         ),
-    //       ),
-    //     ),
-    //   );
-    // });
-    // Overlay.of(context).insert(entry!);
     const DesktopSettingAccountRoute().push(context);
-  }
-
-  void removeEntry() {
-    entry?.remove();
-    setState(() {
-      clicked = false;
-    });
   }
 }

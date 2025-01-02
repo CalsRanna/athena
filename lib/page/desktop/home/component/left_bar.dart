@@ -1,5 +1,5 @@
-import 'package:athena/page/desktop/home/component/profile.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/card.dart';
 import 'package:flutter/material.dart';
@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class ChatList extends StatelessWidget {
-  const ChatList({super.key});
+class DesktopLeftBar extends StatelessWidget {
+  const DesktopLeftBar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,13 +16,15 @@ class ChatList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       width: 300,
       child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Search(),
           SizedBox(height: 12),
           Expanded(child: _List()),
           SizedBox(height: 12),
-          ProfileTile(),
-          SizedBox(height: 12),
+          _Sentinel(),
+          _Shortcut(),
+          _Setting(),
         ],
       ),
     );
@@ -268,6 +270,67 @@ class _Search extends StatelessWidget {
       height: 55,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(children: children),
+    );
+  }
+}
+
+class _Shortcut extends StatelessWidget {
+  const _Shortcut({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Tile(icon: HugeIcons.strokeRoundedCommand, title: 'Shortcut');
+  }
+}
+
+class _Sentinel extends StatelessWidget {
+  const _Sentinel();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Tile(icon: HugeIcons.strokeRoundedLibrary, title: 'Sentinel');
+  }
+}
+
+class _Setting extends StatelessWidget {
+  const _Setting();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Tile(
+      icon: HugeIcons.strokeRoundedSettings01,
+      title: 'Setting',
+      onTap: () => handleTap(context),
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    const DesktopSettingAccountRoute().push(context);
+  }
+}
+
+class _Tile extends StatelessWidget {
+  final IconData icon;
+  final void Function()? onTap;
+  final String title;
+  const _Tile({required this.icon, this.onTap, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      Icon(icon, color: Colors.white, size: 24),
+      const SizedBox(width: 12),
+      Expanded(child: Text(title, style: TextStyle(color: Colors.white))),
+      const SizedBox(width: 12),
+      Icon(HugeIcons.strokeRoundedArrowRight01, color: Colors.white, size: 16),
+    ];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(children: children),
+      ),
     );
   }
 }
