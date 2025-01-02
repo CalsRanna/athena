@@ -1,5 +1,5 @@
 import 'package:athena/component/button.dart';
-import 'package:athena/page/desktop/home/component/logo.dart';
+import 'package:athena/page/desktop/home/component/placeholder.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
@@ -19,8 +19,8 @@ class MessageList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
       final messages = ref.watch(messagesNotifierProvider).value;
-      if (messages == null) return const Logo();
-      if (messages.isEmpty == true) return const Logo();
+      if (messages == null) return const DesktopSentinelPlaceholder();
+      if (messages.isEmpty == true) return const DesktopSentinelPlaceholder();
       return ListView.separated(
         itemBuilder: (context, index) {
           final message = messages.reversed.elementAt(index);
