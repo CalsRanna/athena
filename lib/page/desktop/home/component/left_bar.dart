@@ -27,7 +27,7 @@ class DesktopLeftBar extends StatelessWidget {
     );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      width: 300,
+      width: 200,
       child: column,
     );
   }
@@ -84,7 +84,6 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
     );
     var text = Text(
       widget.chat.title ?? '',
-      maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );

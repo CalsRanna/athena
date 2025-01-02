@@ -125,7 +125,7 @@ class _DesktopAppBar extends StatelessWidget {
         children: [
           SizedBox(
             height: 50,
-            width: 300,
+            width: 200,
             child: const Row(children: [
               SizedBox(width: 16),
               _Buttons(),
