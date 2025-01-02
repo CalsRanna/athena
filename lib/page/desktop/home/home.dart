@@ -1,5 +1,5 @@
 import 'package:athena/page/desktop/home/component/chat.dart';
-import 'package:athena/page/desktop/home/component/sentinel.dart';
+import 'package:athena/page/desktop/home/component/indicator.dart';
 import 'package:athena/page/desktop/home/component/workspace.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -13,7 +13,7 @@ class DesktopHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AScaffold(
-      appBar: AAppBar(title: SentinelSelector()),
+      appBar: AAppBar(title: DesktopChatIndicator()),
       body: Row(children: [ChatList(), Expanded(child: WorkSpace())]),
     );
   }
