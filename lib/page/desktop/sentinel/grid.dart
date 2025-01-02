@@ -1,4 +1,5 @@
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -7,18 +8,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
-class DesktopSentinelGridPage extends ConsumerWidget {
+class DesktopSentinelGridPage extends StatelessWidget {
   const DesktopSentinelGridPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      SizedBox(height: 52, child: _TagListView()),
+      Expanded(child: _SentinelGridView()),
+    ];
+    return AScaffold(appBar: AAppBar(), body: Column(children: children));
+  }
+}
+
+class _SentinelGridView extends ConsumerWidget {
+  const _SentinelGridView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var provider = sentinelsNotifierProvider;
     var state = ref.watch(provider);
-    var grid = switch (state) {
+    return switch (state) {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return AScaffold(appBar: AAppBar(), body: grid);
   }
 
   Widget _buildData(List<Sentinel> sentinels) {
@@ -83,5 +96,71 @@ class _SentinelTile extends ConsumerWidget {
   void handleTap(BuildContext context, WidgetRef ref) {
     ref.read(sentinelNotifierProvider.notifier).select(sentinel);
     AutoRouter.of(context).maybePop();
+  }
+}
+
+class _Tag extends StatelessWidget {
+  final String text;
+  const _Tag({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    var textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var innerBoxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(44),
+      color: Color(0xFF161616),
+    );
+    var container = Container(
+      decoration: innerBoxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
+      child: Text(text, style: textStyle),
+    );
+    var colors = [
+      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      Colors.white.withValues(alpha: 0),
+    ];
+    var linearGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      colors: colors,
+      end: Alignment.bottomRight,
+    );
+    var outerBoxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(44),
+      gradient: linearGradient,
+    );
+    return Container(
+      decoration: outerBoxDecoration,
+      padding: EdgeInsets.all(1),
+      child: container,
+    );
+  }
+}
+
+class _TagListView extends ConsumerWidget {
+  const _TagListView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = sentinelTagsNotifierProvider;
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(List<String> tags) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemBuilder: (_, index) => _Tag(text: tags[index]),
+      itemCount: tags.length,
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      separatorBuilder: (context, index) => const SizedBox(width: 12),
+    );
   }
 }
