@@ -27,9 +27,13 @@ class DesktopSentinelPlaceholder extends ConsumerWidget {
       const SizedBox(height: 12),
       Text(sentinel.description, style: descriptionTextStyle),
     ];
-    return Column(
+    var column = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: children,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: column,
     );
   }
 }
@@ -42,7 +46,9 @@ class _TagWrap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
+      alignment: WrapAlignment.center,
+      runSpacing: 12,
+      spacing: 12,
       children: sentinel.tags.map(_buildTile).toList(),
     );
   }
