@@ -147,22 +147,11 @@ class _InputState extends State<_Input> {
   }
 
   void handleKeyEvent(WidgetRef ref, KeyEvent event) {
-    bool isShift() {
-      const left = LogicalKeyboardKey.shiftLeft;
-      const right = LogicalKeyboardKey.shiftRight;
-      return [left, right].contains(event.logicalKey);
-    }
-
-    bool isEnter() => event.logicalKey == LogicalKeyboardKey.enter;
-
     if (event is KeyDownEvent) {
-      if (isShift()) shift = true;
-      if (shift && isEnter()) {
-        shift = false;
-        send(ref);
-      }
+      if (_isModifierKey(event)) shift = true;
+      if (_isEnterKey(event) && !shift) send(ref);
     } else if (event is KeyUpEvent) {
-      if (isShift()) shift = false;
+      if (_isModifierKey(event)) shift = false;
     }
   }
 
@@ -175,6 +164,22 @@ class _InputState extends State<_Input> {
     FocusScope.of(context).unfocus();
     final notifier = ref.read(chatNotifierProvider.notifier);
     notifier.send(text);
+  }
+
+  bool _isEnterKey(KeyEvent event) {
+    return event.logicalKey == LogicalKeyboardKey.enter;
+  }
+
+  bool _isModifierKey(KeyEvent event) {
+    const modifierKeys = [
+      LogicalKeyboardKey.shiftLeft,
+      LogicalKeyboardKey.shiftRight,
+      LogicalKeyboardKey.controlLeft,
+      LogicalKeyboardKey.controlRight,
+      LogicalKeyboardKey.metaLeft,
+      LogicalKeyboardKey.metaRight,
+    ];
+    return modifierKeys.contains(event.logicalKey);
   }
 }
 
