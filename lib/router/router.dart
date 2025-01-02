@@ -22,6 +22,7 @@ class AppRouter extends RootStackRouter {
     return [
       AutoRoute(page: DesktopHomeRoute.page, initial: isDesktop),
       desktopSettingRoute,
+      AutoRoute(page: DesktopSentinelGridRoute.page),
       AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
       AutoRoute(page: ChatRoute.page),
     ];

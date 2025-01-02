@@ -275,7 +275,7 @@ class _Search extends StatelessWidget {
 }
 
 class _Shortcut extends StatelessWidget {
-  const _Shortcut({super.key});
+  const _Shortcut();
 
   @override
   Widget build(BuildContext context) {
@@ -288,7 +288,15 @@ class _Sentinel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Tile(icon: HugeIcons.strokeRoundedLibrary, title: 'Sentinel');
+    return _Tile(
+      icon: HugeIcons.strokeRoundedLibrary,
+      onTap: () => handleTap(context),
+      title: 'Sentinel',
+    );
+  }
+
+  void handleTap(BuildContext context) {
+    const DesktopSentinelGridRoute().push(context);
   }
 }
 
@@ -299,8 +307,8 @@ class _Setting extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Tile(
       icon: HugeIcons.strokeRoundedSettings01,
-      title: 'Setting',
       onTap: () => handleTap(context),
+      title: 'Setting',
     );
   }
 
