@@ -108,7 +108,7 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
-      ref.watch(chatNotifierProvider);
+      ref.watch(chatNotifierProvider(0));
       return Container(
         decoration: ShapeDecoration(
           color: Color(0xFFADADAD).withValues(alpha: 0.6),
@@ -162,7 +162,7 @@ class _InputState extends State<_Input> {
     if (streaming) return;
     controller.clear();
     FocusScope.of(context).unfocus();
-    final notifier = ref.read(chatNotifierProvider.notifier);
+    final notifier = ref.read(chatNotifierProvider(0).notifier);
     notifier.send(text);
   }
 
@@ -266,7 +266,7 @@ class _Tile extends StatelessWidget {
   }
 
   void handleTap(WidgetRef ref) {
-    final notifier = ref.read(chatNotifierProvider.notifier);
+    final notifier = ref.read(chatNotifierProvider(0).notifier);
     notifier.updateModel(model.value);
     onTap?.call();
   }

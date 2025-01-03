@@ -7,7 +7,6 @@ import 'package:openai_dart/openai_dart.dart';
 class ChatApi {
   Stream<String> getCompletion({
     required List<Message> messages,
-    required Sentinel sentinel,
     String model = 'gpt-4o',
   }) async* {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
@@ -31,6 +30,7 @@ class ChatApi {
     );
     var response = client.createChatCompletionStream(request: request);
     await for (final event in response) {
+      if (event.choices.isEmpty) continue;
       yield event.choices.first.delta.content ?? '';
     }
   }

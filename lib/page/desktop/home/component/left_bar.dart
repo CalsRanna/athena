@@ -55,7 +55,7 @@ class _ChatListView extends ConsumerWidget {
   }
 
   Widget _itemBuilder(WidgetRef ref, Chat chat) {
-    final currentChat = ref.watch(chatNotifierProvider).value;
+    final currentChat = ref.watch(chatNotifierProvider(0)).value;
     final active = currentChat?.id == chat.id;
     return _ChatTile(active: active, chat: chat);
   }
@@ -122,7 +122,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
   }
 
   void handleTap(WidgetRef ref) {
-    final notifier = ref.read(chatNotifierProvider.notifier);
+    final notifier = ref.read(chatNotifierProvider(0).notifier);
     notifier.replace(widget.chat);
   }
 

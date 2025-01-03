@@ -18,7 +18,7 @@ class MessageList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
-      final messages = ref.watch(messagesNotifierProvider).value;
+      final messages = ref.watch(messagesNotifierProvider(0)).value;
       if (messages == null) return const DesktopSentinelPlaceholder();
       if (messages.isEmpty == true) return const DesktopSentinelPlaceholder();
       return ListView.separated(
@@ -103,7 +103,7 @@ class _AssistantMessage extends StatelessWidget {
   }
 
   void handleRefresh(WidgetRef ref) {
-    final notifier = ref.read(chatNotifierProvider.notifier);
+    final notifier = ref.read(chatNotifierProvider(0).notifier);
     notifier.regenerate(message);
   }
 }

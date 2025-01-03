@@ -16,36 +16,38 @@ import 'package:athena/page/desktop/setting/experimental.dart' as _i6;
 import 'package:athena/page/desktop/setting/model.dart' as _i7;
 import 'package:athena/page/desktop/setting/setting.dart' as _i8;
 import 'package:athena/page/mobile/chat/chat.dart' as _i1;
-import 'package:athena/page/mobile/home/home.dart' as _i9;
-import 'package:auto_route/auto_route.dart' as _i10;
-import 'package:flutter/material.dart' as _i11;
+import 'package:athena/page/mobile/chat/list.dart' as _i9;
+import 'package:athena/page/mobile/home/home.dart' as _i10;
+import 'package:athena/schema/chat.dart' as _i13;
+import 'package:auto_route/auto_route.dart' as _i11;
+import 'package:flutter/material.dart' as _i12;
 
 /// generated route for
 /// [_i1.ChatPage]
-class ChatRoute extends _i10.PageRouteInfo<ChatRouteArgs> {
+class ChatRoute extends _i11.PageRouteInfo<ChatRouteArgs> {
   ChatRoute({
-    _i11.Key? key,
-    int? id,
-    List<_i10.PageRouteInfo>? children,
+    _i12.Key? key,
+    _i13.Chat? chat,
+    List<_i11.PageRouteInfo>? children,
   }) : super(
           ChatRoute.name,
           args: ChatRouteArgs(
             key: key,
-            id: id,
+            chat: chat,
           ),
           initialChildren: children,
         );
 
   static const String name = 'ChatRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       final args =
           data.argsAs<ChatRouteArgs>(orElse: () => const ChatRouteArgs());
       return _i1.ChatPage(
         key: args.key,
-        id: args.id,
+        chat: args.chat,
       );
     },
   );
@@ -54,23 +56,23 @@ class ChatRoute extends _i10.PageRouteInfo<ChatRouteArgs> {
 class ChatRouteArgs {
   const ChatRouteArgs({
     this.key,
-    this.id,
+    this.chat,
   });
 
-  final _i11.Key? key;
+  final _i12.Key? key;
 
-  final int? id;
+  final _i13.Chat? chat;
 
   @override
   String toString() {
-    return 'ChatRouteArgs{key: $key, id: $id}';
+    return 'ChatRouteArgs{key: $key, chat: $chat}';
   }
 }
 
 /// generated route for
 /// [_i2.DesktopHomePage]
-class DesktopHomeRoute extends _i10.PageRouteInfo<void> {
-  const DesktopHomeRoute({List<_i10.PageRouteInfo>? children})
+class DesktopHomeRoute extends _i11.PageRouteInfo<void> {
+  const DesktopHomeRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopHomeRoute.name,
           initialChildren: children,
@@ -78,7 +80,7 @@ class DesktopHomeRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopHomeRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i2.DesktopHomePage();
@@ -88,8 +90,8 @@ class DesktopHomeRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i3.DesktopSentinelGridPage]
-class DesktopSentinelGridRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSentinelGridRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSentinelGridRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSentinelGridRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSentinelGridRoute.name,
           initialChildren: children,
@@ -97,7 +99,7 @@ class DesktopSentinelGridRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSentinelGridRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i3.DesktopSentinelGridPage();
@@ -107,8 +109,8 @@ class DesktopSentinelGridRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i4.DesktopSettingAccountPage]
-class DesktopSettingAccountRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSettingAccountRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSettingAccountRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSettingAccountRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSettingAccountRoute.name,
           initialChildren: children,
@@ -116,7 +118,7 @@ class DesktopSettingAccountRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingAccountRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i4.DesktopSettingAccountPage();
@@ -126,8 +128,8 @@ class DesktopSettingAccountRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i5.DesktopSettingApplicationPage]
-class DesktopSettingApplicationRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSettingApplicationRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSettingApplicationRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSettingApplicationRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSettingApplicationRoute.name,
           initialChildren: children,
@@ -135,7 +137,7 @@ class DesktopSettingApplicationRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingApplicationRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i5.DesktopSettingApplicationPage();
@@ -145,8 +147,8 @@ class DesktopSettingApplicationRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i6.DesktopSettingExperimentalPage]
-class DesktopSettingExperimentalRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSettingExperimentalRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSettingExperimentalRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSettingExperimentalRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSettingExperimentalRoute.name,
           initialChildren: children,
@@ -154,7 +156,7 @@ class DesktopSettingExperimentalRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingExperimentalRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i6.DesktopSettingExperimentalPage();
@@ -164,8 +166,8 @@ class DesktopSettingExperimentalRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i7.DesktopSettingModelPage]
-class DesktopSettingModelRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSettingModelRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSettingModelRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSettingModelRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSettingModelRoute.name,
           initialChildren: children,
@@ -173,7 +175,7 @@ class DesktopSettingModelRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingModelRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i7.DesktopSettingModelPage();
@@ -183,8 +185,8 @@ class DesktopSettingModelRoute extends _i10.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i8.DesktopSettingPage]
-class DesktopSettingRoute extends _i10.PageRouteInfo<void> {
-  const DesktopSettingRoute({List<_i10.PageRouteInfo>? children})
+class DesktopSettingRoute extends _i11.PageRouteInfo<void> {
+  const DesktopSettingRoute({List<_i11.PageRouteInfo>? children})
       : super(
           DesktopSettingRoute.name,
           initialChildren: children,
@@ -192,7 +194,7 @@ class DesktopSettingRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
       return const _i8.DesktopSettingPage();
@@ -201,9 +203,28 @@ class DesktopSettingRoute extends _i10.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i9.MobileHomePage]
-class MobileHomeRoute extends _i10.PageRouteInfo<void> {
-  const MobileHomeRoute({List<_i10.PageRouteInfo>? children})
+/// [_i9.MobileChatListPage]
+class MobileChatListRoute extends _i11.PageRouteInfo<void> {
+  const MobileChatListRoute({List<_i11.PageRouteInfo>? children})
+      : super(
+          MobileChatListRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'MobileChatListRoute';
+
+  static _i11.PageInfo page = _i11.PageInfo(
+    name,
+    builder: (data) {
+      return const _i9.MobileChatListPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i10.MobileHomePage]
+class MobileHomeRoute extends _i11.PageRouteInfo<void> {
+  const MobileHomeRoute({List<_i11.PageRouteInfo>? children})
       : super(
           MobileHomeRoute.name,
           initialChildren: children,
@@ -211,10 +232,10 @@ class MobileHomeRoute extends _i10.PageRouteInfo<void> {
 
   static const String name = 'MobileHomeRoute';
 
-  static _i10.PageInfo page = _i10.PageInfo(
+  static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
-      return const _i9.MobileHomePage();
+      return const _i10.MobileHomePage();
     },
   );
 }

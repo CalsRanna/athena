@@ -17,12 +17,12 @@ class MobileHomePage extends StatefulWidget {
   State<MobileHomePage> createState() => _MobileHomePageState();
 }
 
-class _ChatTile extends ConsumerWidget {
+class _ChatTile extends StatelessWidget {
   final Chat chat;
   const _ChatTile(this.chat);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const shapeDecoration = ShapeDecoration(
       color: Color(0xffffffff),
       shape: StadiumBorder(),
@@ -34,38 +34,39 @@ class _ChatTile extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handlePressed(context, ref),
+      onTap: () => handlePressed(context),
       child: body,
     );
   }
 
-  void handlePressed(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(chatNotifierProvider.notifier);
-    await notifier.replace(chat);
-    if (!context.mounted) return;
-    ChatRoute(id: chat.id).push(context);
+  void handlePressed(BuildContext context) async {
+    ChatRoute(chat: chat).push(context);
   }
 }
 
 class _MobileHomePageState extends State<MobileHomePage> {
   @override
   Widget build(BuildContext context) {
-    const children = [
+    var children = [
       _Welcome(),
       SizedBox(height: 24),
       _NewChat(),
-      _Title('Chat history'),
+      _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 52, child: _Recent()),
       _Title('Explore more'),
       SizedBox(height: 52, child: _Sentinel()),
       _Title('Sentinel'),
       SizedBox(height: 52, child: _Sentinel()),
     ];
-    const body = Column(
+    var body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return const AScaffold(body: body);
+    return AScaffold(body: body);
+  }
+
+  void navigateChatList(BuildContext context) {
+    AutoRouter.of(context).push(const MobileChatListRoute());
   }
 }
 
@@ -74,7 +75,6 @@ class _NewChat extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(chatNotifierProvider);
     const textStyle = TextStyle(
       fontSize: 20,
       fontWeight: FontWeight.w500,
@@ -92,16 +92,13 @@ class _NewChat extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context, ref),
+      onTap: () => handleTap(context),
       child: button,
     );
   }
 
-  void handleTap(BuildContext context, WidgetRef ref) async {
-    ref.invalidate(chatNotifierProvider);
+  void handleTap(BuildContext context) async {
     ChatRoute().push(context);
-    // final router = GoRouter.of(context);
-    // router.push('/chat');
   }
 }
 
@@ -110,16 +107,15 @@ class _Recent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(chatsNotifierProvider);
+    final state = ref.watch(recentChatsNotifierProvider);
     return state.when(data: data, error: error, loading: loading);
   }
 
   Widget data(List<Chat> chats) {
     if (chats.isEmpty) return const SizedBox();
-    final reversedChats = chats.reversed.toList();
     return ListView.builder(
       scrollDirection: Axis.horizontal,
-      itemBuilder: (_, index) => itemBuilder(reversedChats, index),
+      itemBuilder: (_, index) => itemBuilder(chats, index),
       itemCount: chats.length,
     );
   }
@@ -217,8 +213,9 @@ class _SentinelTile extends StatelessWidget {
 }
 
 class _Title extends StatelessWidget {
+  final void Function()? onTap;
   final String title;
-  const _Title(this.title);
+  const _Title(this.title, {this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +228,7 @@ class _Title extends StatelessWidget {
     final body = Row(
       children: [
         Expanded(child: Text(title, style: textStyle)),
-        AIconButton(icon: HugeIcons.strokeRoundedArrowRight02),
+        AIconButton(icon: HugeIcons.strokeRoundedArrowRight02, onTap: onTap),
       ],
     );
     return Padding(

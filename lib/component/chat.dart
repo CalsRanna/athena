@@ -27,9 +27,9 @@ class ChatTile extends ConsumerWidget {
   }
 
   void handlePressed(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(chatNotifierProvider.notifier);
+    final notifier = ref.read(chatNotifierProvider(chat.id).notifier);
     await notifier.replace(chat);
     if (!context.mounted) return;
-    ChatRoute(id: chat.id).push(context);
+    ChatRoute(chat: chat).push(context);
   }
 }

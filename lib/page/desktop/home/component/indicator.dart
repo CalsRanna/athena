@@ -21,7 +21,7 @@ class _ModelIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chat = ref.watch(chatNotifierProvider).valueOrNull;
+    final chat = ref.watch(chatNotifierProvider(0)).valueOrNull;
     if (chat == null) return const SizedBox();
     var text = Text(
       chat.model,

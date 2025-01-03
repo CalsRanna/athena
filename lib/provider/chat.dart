@@ -11,7 +11,7 @@ part 'chat.g.dart';
 @riverpod
 class ChatNotifier extends _$ChatNotifier {
   @override
-  Future<Chat> build() async {
+  Future<Chat> build(int id, {int? sentinelId}) async {
     final sentinel = await ref.read(sentinelNotifierProvider.future);
     final setting = await ref.watch(settingNotifierProvider.future);
     final model = setting.model;
@@ -34,15 +34,16 @@ class ChatNotifier extends _$ChatNotifier {
       await isar.chats.put(chat);
     });
     ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<void> regenerate(Message message) async {
-    final messages = await ref.read(messagesNotifierProvider.future);
-    final index = messages.indexWhere((item) => item.id == message.id);
-    final userMessage = messages.elementAt(index - 1);
-    final notifier = ref.read(messagesNotifierProvider.notifier);
-    await notifier.destroy(message);
-    send(userMessage.content);
+    // final messages = await ref.read(messagesNotifierProvider.future);
+    // final index = messages.indexWhere((item) => item.id == message.id);
+    // final userMessage = messages.elementAt(index - 1);
+    // final notifier = ref.read(messagesNotifierProvider.notifier);
+    // await notifier.destroy(message);
+    // send(userMessage.content);
   }
 
   Future<void> replace(Chat chat) async {
@@ -59,17 +60,15 @@ class ChatNotifier extends _$ChatNotifier {
   Future<void> send(String message) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    await _ensurePersistence();
-    final messagesNotifier = ref.read(messagesNotifierProvider.notifier);
+    final messagesNotifier = ref.read(messagesNotifierProvider(id).notifier);
     await messagesNotifier.store(message);
     final prompt = await _getPrompt();
     final system = {'role': 'system', 'content': prompt};
-    final histories = await ref.read(messagesNotifierProvider.future);
+    final histories = await ref.read(messagesNotifierProvider(id).future);
     final model = await _getModel();
     try {
       final stream = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
-        sentinel: await ref.read(sentinelNotifierProvider.future),
         model: model,
       );
       await for (final token in stream) {
@@ -84,6 +83,19 @@ class ChatNotifier extends _$ChatNotifier {
     await _generateTitle(message, model);
   }
 
+  Future<int> create(String message) async {
+    var now = DateTime.now();
+    var chat = Chat()
+      ..createdAt = now
+      ..sentinelId = sentinelId ?? 0
+      ..title = ''
+      ..updatedAt = now;
+    await isar.writeTxn(() async {
+      chat.id = await isar.chats.put(chat);
+    });
+    return chat.id;
+  }
+
   Future<void> store({String? title}) async {
     final previousState = await future;
     final chat = previousState.copyWith(
@@ -95,6 +107,7 @@ class ChatNotifier extends _$ChatNotifier {
     });
     state = AsyncData(chat);
     ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<void> streaming(String token) async {
@@ -108,11 +121,6 @@ class ChatNotifier extends _$ChatNotifier {
     final previousState = await future;
     final chat = previousState.copyWith(model: model);
     state = AsyncData(chat);
-  }
-
-  Future<void> _ensurePersistence() async {
-    final chat = await future;
-    if (chat.id.isNegative) await store(title: '');
   }
 
   Future<void> _generateTitle(String message, String model) async {
@@ -148,7 +156,7 @@ class ChatsNotifier extends _$ChatsNotifier {
   @override
   Future<List<Chat>> build() async {
     final queryBuilder = isar.chats.filter().titleIsNotNull();
-    return await queryBuilder.sortByUpdatedAt().findAll();
+    return await queryBuilder.sortByUpdatedAtDesc().findAll();
   }
 
   Future<void> destroy(int id) async {
@@ -157,8 +165,17 @@ class ChatsNotifier extends _$ChatsNotifier {
       await isar.messages.filter().chatIdEqualTo(id).deleteAll();
     });
     ref.invalidateSelf();
-    final chat = await ref.read(chatNotifierProvider.future);
-    if (chat.id == id) ref.invalidate(chatNotifierProvider);
+    // final chat = await ref.read(chatNotifierProvider.future);
+    // if (chat.id == id) ref.invalidate(chatNotifierProvider);
+  }
+}
+
+@riverpod
+class RecentChatsNotifier extends _$RecentChatsNotifier {
+  @override
+  Future<List<Chat>> build() async {
+    final queryBuilder = isar.chats.filter().titleIsNotNull();
+    return await queryBuilder.sortByUpdatedAtDesc().limit(5).findAll();
   }
 }
 
@@ -184,9 +201,8 @@ class MessagesNotifier extends _$MessagesNotifier {
   }
 
   @override
-  Future<List<Message>> build() async {
-    final chat = await ref.watch(chatNotifierProvider.future);
-    return await isar.messages.filter().chatIdEqualTo(chat.id).findAll();
+  Future<List<Message>> build(int chatId) async {
+    return await isar.messages.filter().chatIdEqualTo(chatId).findAll();
   }
 
   Future<void> closeStreaming() async {
@@ -214,9 +230,8 @@ class MessagesNotifier extends _$MessagesNotifier {
   }
 
   Future<void> store(String content, {String role = 'user'}) async {
-    final chat = await ref.read(chatNotifierProvider.future);
     final message = Message();
-    message.chatId = chat.id;
+    message.chatId = chatId;
     message.content = content;
     message.role = role;
     await isar.writeTxn(() async {
@@ -229,8 +244,7 @@ class MessagesNotifier extends _$MessagesNotifier {
     final messages = await future;
     var message = messages.last;
     if (message.role == 'user') message = Message();
-    final chat = await ref.read(chatNotifierProvider.future);
-    message.chatId = chat.id;
+    message.chatId = chatId;
     message.content = '${message.content}$token';
     message.role = 'assistant';
     if (messages.last.role == 'assistant') {
