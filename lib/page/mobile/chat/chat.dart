@@ -69,7 +69,8 @@ class _ChatPageState extends State<ChatPage> {
       child: Row(children: inputChildren),
     );
     var columnChildren = [
-      if (id == null) Expanded(child: _SentinelPlaceholder(chatId: 0)),
+      if (id == null)
+        Expanded(child: _SentinelPlaceholder(sentinel: widget.sentinel)),
       if (id != null) Expanded(child: _MessageListView(chatId: id!)),
       input,
     ];
@@ -252,20 +253,30 @@ class _SendButton extends ConsumerWidget {
 }
 
 class _SentinelPlaceholder extends ConsumerWidget {
-  final int chatId;
-  const _SentinelPlaceholder({required this.chatId});
+  final Sentinel? sentinel;
+  const _SentinelPlaceholder({required this.sentinel});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = chatRelatedSentinelNotifierProvider(chatId);
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildData(Sentinel sentinel) {
-    return Text(sentinel.name);
+    const nameTextStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+    );
+    const descriptionTextStyle = TextStyle(
+      color: Color(0xFFC2C2C2),
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    var children = [
+      Text(sentinel?.name ?? '', style: nameTextStyle),
+      const SizedBox(height: 36),
+      Text(sentinel?.description ?? '', style: descriptionTextStyle),
+    ];
+    var column = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: children,
+    );
+    return Padding(padding: const EdgeInsets.all(16.0), child: column);
   }
 }
