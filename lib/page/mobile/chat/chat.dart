@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/message.dart';
@@ -67,10 +68,8 @@ class _ChatPageState extends State<ChatPage> {
       child: Row(children: inputChildren),
     );
     var columnChildren = [
-      Expanded(
-        child:
-            id != null ? _MessageListView(chatId: id!) : const Text('center'),
-      ),
+      if (id == null) Expanded(child: _SentinelPlaceholder(chatId: 0)),
+      if (id != null) Expanded(child: _MessageListView(chatId: id!)),
       input,
     ];
     var chatTitle = _ChatTitle(chatId: id);
@@ -263,5 +262,24 @@ class _SendButton extends ConsumerWidget {
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
     onTap?.call(ref);
+  }
+}
+
+class _SentinelPlaceholder extends ConsumerWidget {
+  final int chatId;
+  const _SentinelPlaceholder({required this.chatId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = chatRelatedSentinelNotifierProvider(chatId);
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(Sentinel sentinel) {
+    return Text(sentinel.name);
   }
 }
