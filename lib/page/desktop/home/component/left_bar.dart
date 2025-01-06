@@ -85,7 +85,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
       duration: const Duration(milliseconds: 300),
       overflow: TextOverflow.ellipsis,
       style: textStyle,
-      child: Text(widget.chat.title ?? ''),
+      child: Text(widget.chat.title),
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(35),

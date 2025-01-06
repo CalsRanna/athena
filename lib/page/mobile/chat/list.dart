@@ -62,7 +62,7 @@ class _ListTile extends ConsumerWidget {
       height: 1.5,
     );
     var title = Text(
-      chat.title ?? '',
+      chat.title,
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,

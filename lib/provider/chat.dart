@@ -12,19 +12,20 @@ part 'chat.g.dart';
 class ChatNotifier extends _$ChatNotifier {
   @override
   Future<Chat> build(int id, {int? sentinelId}) async {
-    final sentinel = await ref.read(sentinelNotifierProvider.future);
+    final chat = await isar.chats.where().idEqualTo(id).findFirst();
+    if (chat != null) return chat;
     final setting = await ref.watch(settingNotifierProvider.future);
     final model = setting.model;
     if (model.isNotEmpty) {
       return Chat()
         ..model = model
-        ..sentinelId = sentinel.id;
+        ..sentinelId = sentinelId ?? 0;
     }
     final models = await ref.watch(modelsNotifierProvider.future);
     final firstModel = models.first.value;
     return Chat()
       ..model = firstModel
-      ..sentinelId = sentinel.id;
+      ..sentinelId = sentinelId ?? 0;
   }
 
   Future<void> closeStreaming() async {
@@ -60,11 +61,12 @@ class ChatNotifier extends _$ChatNotifier {
   Future<void> send(String message) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    final messagesNotifier = ref.read(messagesNotifierProvider(id).notifier);
+    var messagesProvider = messagesNotifierProvider(id);
+    final messagesNotifier = ref.read(messagesProvider.notifier);
     await messagesNotifier.store(message);
     final prompt = await _getPrompt();
     final system = {'role': 'system', 'content': prompt};
-    final histories = await ref.read(messagesNotifierProvider(id).future);
+    final histories = await ref.read(messagesProvider.future);
     final model = await _getModel();
     try {
       final stream = ChatApi().getCompletion(
@@ -83,16 +85,15 @@ class ChatNotifier extends _$ChatNotifier {
     await _generateTitle(message, model);
   }
 
-  Future<int> create(String message) async {
-    var now = DateTime.now();
-    var chat = Chat()
-      ..createdAt = now
-      ..sentinelId = sentinelId ?? 0
-      ..title = ''
-      ..updatedAt = now;
+  Future<int> create() async {
+    var previousState = await future;
+    var chat = previousState.copyWith(
+      updatedAt: DateTime.now(),
+    );
     await isar.writeTxn(() async {
       chat.id = await isar.chats.put(chat);
     });
+    state = AsyncData(chat.copyWith(id: chat.id));
     return chat.id;
   }
 
@@ -112,7 +113,7 @@ class ChatNotifier extends _$ChatNotifier {
 
   Future<void> streaming(String token) async {
     final previousState = await future;
-    final title = (previousState.title ?? '') + token;
+    final title = (previousState.title) + token;
     final chat = previousState.copyWith(title: title);
     state = AsyncData(chat);
   }
@@ -125,7 +126,7 @@ class ChatNotifier extends _$ChatNotifier {
 
   Future<void> _generateTitle(String message, String model) async {
     final previousState = await future;
-    if (previousState.title?.isNotEmpty == true) return;
+    if (previousState.title.isNotEmpty == true) return;
     try {
       final titleTokens = ChatApi().getTitle(message, model: model);
       await for (final token in titleTokens) {
@@ -155,8 +156,7 @@ class ChatNotifier extends _$ChatNotifier {
 class ChatsNotifier extends _$ChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    final queryBuilder = isar.chats.filter().titleIsNotNull();
-    return await queryBuilder.sortByUpdatedAtDesc().findAll();
+    return await isar.chats.where().sortByUpdatedAtDesc().findAll();
   }
 
   Future<void> destroy(int id) async {
@@ -165,8 +165,7 @@ class ChatsNotifier extends _$ChatsNotifier {
       await isar.messages.filter().chatIdEqualTo(id).deleteAll();
     });
     ref.invalidateSelf();
-    // final chat = await ref.read(chatNotifierProvider.future);
-    // if (chat.id == id) ref.invalidate(chatNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 }
 
@@ -174,8 +173,7 @@ class ChatsNotifier extends _$ChatsNotifier {
 class RecentChatsNotifier extends _$RecentChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    final queryBuilder = isar.chats.filter().titleIsNotNull();
-    return await queryBuilder.sortByUpdatedAtDesc().limit(5).findAll();
+    return await isar.chats.where().sortByUpdatedAtDesc().limit(5).findAll();
   }
 }
 

@@ -9,19 +9,26 @@ class Chat {
   String model = '';
   @Name('sentinel_id')
   int sentinelId = 0;
-  String? title;
+  String title = '';
   @Name('created_at')
   DateTime createdAt = DateTime.now();
   @Name('updated_at')
   DateTime updatedAt = DateTime.now();
 
-  Chat copyWith({String? model, String? title, DateTime? updatedAt}) {
+  Chat copyWith({
+    int? id,
+    String? model,
+    String? title,
+    int? sentinelId,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
     return Chat()
-      ..id = id
+      ..id = id ?? this.id
       ..model = model ?? this.model
-      ..sentinelId = sentinelId
+      ..sentinelId = sentinelId ?? this.sentinelId
       ..title = title ?? this.title
-      ..createdAt = createdAt
+      ..createdAt = createdAt ?? this.createdAt
       ..updatedAt = updatedAt ?? this.updatedAt;
   }
 }

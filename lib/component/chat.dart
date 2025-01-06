@@ -17,7 +17,7 @@ class ChatTile extends ConsumerWidget {
     final body = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Text(chat.title ?? ''),
+      child: Text(chat.title),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

@@ -64,12 +64,7 @@ int _chatEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.model.length * 3;
-  {
-    final value = object.title;
-    if (value != null) {
-      bytesCount += 3 + value.length * 3;
-    }
-  }
+  bytesCount += 3 + object.title.length * 3;
   return bytesCount;
 }
 
@@ -97,7 +92,7 @@ Chat _chatDeserialize(
   object.id = id;
   object.model = reader.readString(offsets[1]);
   object.sentinelId = reader.readLong(offsets[2]);
-  object.title = reader.readStringOrNull(offsets[3]);
+  object.title = reader.readString(offsets[3]);
   object.updatedAt = reader.readDateTime(offsets[4]);
   return object;
 }
@@ -116,7 +111,7 @@ P _chatDeserializeProp<P>(
     case 2:
       return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 4:
       return (reader.readDateTime(offset)) as P;
     default:
@@ -497,24 +492,8 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
     });
   }
 
-  QueryBuilder<Chat, Chat, QAfterFilterCondition> titleIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'title',
-      ));
-    });
-  }
-
-  QueryBuilder<Chat, Chat, QAfterFilterCondition> titleIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'title',
-      ));
-    });
-  }
-
   QueryBuilder<Chat, Chat, QAfterFilterCondition> titleEqualTo(
-    String? value, {
+    String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -527,7 +506,7 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
   }
 
   QueryBuilder<Chat, Chat, QAfterFilterCondition> titleGreaterThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -542,7 +521,7 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
   }
 
   QueryBuilder<Chat, Chat, QAfterFilterCondition> titleLessThan(
-    String? value, {
+    String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -557,8 +536,8 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
   }
 
   QueryBuilder<Chat, Chat, QAfterFilterCondition> titleBetween(
-    String? lower,
-    String? upper, {
+    String lower,
+    String upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -894,7 +873,7 @@ extension ChatQueryProperty on QueryBuilder<Chat, Chat, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Chat, String?, QQueryOperations> titleProperty() {
+  QueryBuilder<Chat, String, QQueryOperations> titleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'title');
     });

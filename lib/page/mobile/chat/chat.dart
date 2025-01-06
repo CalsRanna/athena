@@ -53,7 +53,6 @@ class _ActionButton extends ConsumerWidget {
 class _ChatPageState extends State<ChatPage> {
   final controller = TextEditingController();
   int? id;
-  String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -68,19 +67,23 @@ class _ChatPageState extends State<ChatPage> {
       child: Row(children: inputChildren),
     );
     var columnChildren = [
-      Expanded(child: _MessageListView(chatId: id ?? 0)),
-      input
+      Expanded(
+        child:
+            id != null ? _MessageListView(chatId: id!) : const Text('center'),
+      ),
+      input,
     ];
+    var chatTitle = _ChatTitle(chatId: id);
     return AScaffold(
-      appBar: AAppBar(action: _ActionButton(), title: _ChatTitle(chatId: id)),
+      appBar: AAppBar(action: _ActionButton(), title: chatTitle),
       body: Column(children: columnChildren),
     );
   }
 
   Future<void> destroyChat(WidgetRef ref) async {
-    if (id == null) return;
+    if (widget.chat?.id == null) return;
     final notifier = ref.read(chatsNotifierProvider.notifier);
-    await notifier.destroy(id!);
+    await notifier.destroy(widget.chat!.id);
     if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
@@ -95,7 +98,6 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     id = widget.chat?.id;
-    title = widget.chat?.title;
   }
 
   Future<void> sendMessage(WidgetRef ref) async {
@@ -103,16 +105,15 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty) return;
     controller.clear();
     if (id == null) {
-      var provider = chatNotifierProvider(0);
-      var notifier = ref.read(provider.notifier);
-      var id = await notifier.create(text);
-      setState(() {
-        this.id = id;
-      });
+      id = await ref.read(chatNotifierProvider(0).notifier).create();
+      setState(() {});
     }
-    var provider = chatNotifierProvider(id ?? 0);
-    var notifier = ref.read(provider.notifier);
-    notifier.send(text);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var provider = chatNotifierProvider(id!);
+      var notifier = ref.read(provider.notifier);
+      notifier.send(text);
+      setState(() {});
+    });
   }
 }
 
@@ -122,8 +123,7 @@ class _ChatTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (chatId == null) return const Text('');
-    var provider = chatNotifierProvider(chatId!);
+    var provider = chatNotifierProvider(chatId ?? 0);
     var chat = ref.watch(provider).valueOrNull;
     return Text(chat?.title ?? '');
   }
@@ -181,27 +181,27 @@ class _Input extends ConsumerWidget {
 }
 
 class _MessageListView extends ConsumerWidget {
-  final int? chatId;
-  const _MessageListView({this.chatId});
+  final int chatId;
+  const _MessageListView({required this.chatId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (chatId == null) return const SizedBox();
-    var provider = messagesNotifierProvider(chatId!);
+    var provider = messagesNotifierProvider(chatId);
     var state = ref.watch(provider);
     return switch (state) {
       AsyncData(:final value) => _buildData(value),
+      AsyncLoading() => const Center(child: CircularProgressIndicator()),
       _ => const SizedBox(),
     };
   }
 
-  Widget _buildData(List<Message> chats) {
-    if (chats.isEmpty) return const SizedBox();
-    final reversedChats = chats.reversed.toList();
+  Widget _buildData(List<Message> messages) {
+    if (messages.isEmpty) return const SizedBox();
+    final reversedMessages = messages.reversed.toList();
     return ListView.separated(
       controller: ScrollController(),
-      itemBuilder: (_, index) => MessageTile(message: reversedChats[index]),
-      itemCount: chats.length,
+      itemBuilder: (_, index) => MessageTile(message: reversedMessages[index]),
+      itemCount: messages.length,
       padding: EdgeInsets.symmetric(horizontal: 16),
       reverse: true,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
