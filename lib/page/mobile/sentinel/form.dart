@@ -1,5 +1,4 @@
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/router/router.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -26,11 +25,33 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   final promptController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    nameController.text = widget.sentinel?.name ?? '';
-    descriptionController.text = widget.sentinel?.description ?? '';
-    promptController.text = widget.sentinel?.prompt ?? '';
+  Widget build(BuildContext context) {
+    var children = [
+      const AFormTileLabel(title: 'Prompt'),
+      const SizedBox(height: 12),
+      AInput(controller: promptController, minLines: 8),
+      const SizedBox(height: 32),
+      const AFormTileLabel(title: 'Name'),
+      const SizedBox(height: 12),
+      AInput(controller: nameController),
+      const SizedBox(height: 16),
+      const AFormTileLabel(title: 'Description'),
+      const SizedBox(height: 12),
+      AInput(controller: descriptionController, minLines: 4),
+      const SizedBox(height: 16),
+      _buildGenerateButton(),
+      const SizedBox(height: 12),
+      _buildStoreButton(),
+    ];
+    var bottom = MediaQuery.paddingOf(context).bottom;
+    var listView = ListView(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
+      children: children,
+    );
+    return AScaffold(
+      appBar: AAppBar(title: Text(widget.sentinel?.name ?? 'New Sentinel')),
+      body: listView,
+    );
   }
 
   @override
@@ -41,58 +62,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return AScaffold(
-      appBar: const AAppBar(title: Text('New Sentinel')),
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(
-            16, 0, 16, MediaQuery.paddingOf(context).bottom),
-        children: [
-          const AFormTileLabel(title: 'Prompt'),
-          const SizedBox(height: 12),
-          AInput(controller: promptController, minLines: 8),
-          const SizedBox(height: 32),
-          const AFormTileLabel(title: 'Name'),
-          const SizedBox(height: 12),
-          AInput(controller: nameController),
-          const SizedBox(height: 16),
-          const AFormTileLabel(title: 'Description'),
-          const SizedBox(height: 12),
-          AInput(controller: descriptionController, minLines: 4),
-          const SizedBox(height: 16),
-          AOutlinedButton(
-            child: Center(
-                child: Text(
-              'Generate',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            )),
-            onTap: () => generateSentinel(context),
-          ),
-          const SizedBox(height: 12),
-          APrimaryButton(
-            child: Center(
-              child: Text(
-                'Store',
-                style: TextStyle(
-                  color: Color(0xFF161616),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            onTap: () => storeSentinel(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> generateSentinel(BuildContext context) async {
+  Future<void> generateSentinel() async {
     if (promptController.text.isEmpty) {
       ADialog.success('Prompt is required');
     } else {
@@ -107,31 +77,70 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
   }
 
-  Future<void> storeSentinel(BuildContext context) async {
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.sentinel?.name ?? '';
+    descriptionController.text = widget.sentinel?.description ?? '';
+    promptController.text = widget.sentinel?.prompt ?? '';
+  }
+
+  Future<void> storeSentinel() async {
     var message = _validate();
-    if (message != null) {
-      ADialog.success(message);
-    } else {
-      var container = ProviderScope.containerOf(context);
-      var provider = sentinelsNotifierProvider;
-      var notifier = container.read(provider.notifier);
-      if (widget.sentinel == null) {
-        var sentinel = Sentinel()
-          ..name = nameController.text
-          ..description = descriptionController.text
-          ..prompt = promptController.text;
-        await notifier.store(sentinel);
-      } else {
-        var sentinel = widget.sentinel!.copyWith(
-          name: nameController.text,
-          description: descriptionController.text,
-          prompt: promptController.text,
-        );
-        await notifier.updateSentinel(sentinel);
-      }
-      if (!context.mounted) return;
-      AutoRouter.of(context).maybePop();
-    }
+    if (message != null) return ADialog.success(message);
+    if (widget.sentinel == null) return _store();
+    _update();
+  }
+
+  Widget _buildGenerateButton() {
+    var textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    return AOutlinedButton(
+      onTap: generateSentinel,
+      child: Center(child: Text('Generate', style: textStyle)),
+    );
+  }
+
+  Widget _buildStoreButton() {
+    var textStyle = TextStyle(
+      color: Color(0xFF161616),
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    return APrimaryButton(
+      onTap: storeSentinel,
+      child: Center(child: Text('Store', style: textStyle)),
+    );
+  }
+
+  Future<void> _store() async {
+    var container = ProviderScope.containerOf(context);
+    var provider = sentinelsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    var sentinel = Sentinel()
+      ..name = nameController.text
+      ..description = descriptionController.text
+      ..prompt = promptController.text;
+    await notifier.store(sentinel);
+    if (!mounted) return;
+    AutoRouter.of(context).maybePop();
+  }
+
+  Future<void> _update() async {
+    var container = ProviderScope.containerOf(context);
+    var provider = sentinelsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    var sentinel = widget.sentinel!.copyWith(
+      name: nameController.text,
+      description: descriptionController.text,
+      prompt: promptController.text,
+    );
+    await notifier.updateSentinel(sentinel);
+    if (!mounted) return;
+    AutoRouter.of(context).maybePop();
   }
 
   String? _validate() {

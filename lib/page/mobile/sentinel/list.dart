@@ -138,15 +138,10 @@ class _Tile extends StatelessWidget {
 
 class _ActionDialog extends StatelessWidget {
   final Sentinel sentinel;
-  const _ActionDialog({super.key, required this.sentinel});
+  const _ActionDialog({required this.sentinel});
 
   @override
   Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 24,
-      fontWeight: FontWeight.w500,
-    );
     var children = [
       APrimaryButton(
         child: Center(child: Text('Start Chat')),
@@ -154,7 +149,9 @@ class _ActionDialog extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       _OutlinedButton(
-          text: 'Edit', onTap: () => navigateSentinelFormPage(context)),
+        text: 'Edit',
+        onTap: () => navigateSentinelFormPage(context),
+      ),
       const SizedBox(height: 12),
       _OutlinedButton(text: 'Delete'),
       SizedBox(height: MediaQuery.paddingOf(context).bottom),

@@ -1,4 +1,3 @@
-import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
