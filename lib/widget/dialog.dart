@@ -157,7 +157,7 @@ class _SuccessDialog extends StatelessWidget {
         alignment: Alignment.center,
         decoration: shapeDecoration,
         padding: EdgeInsets.all(16),
-        child: Text('Confirm', style: textStyle),
+        child: Text('Done', style: textStyle),
       ),
     );
   }

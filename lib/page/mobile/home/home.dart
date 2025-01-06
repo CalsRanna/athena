@@ -1,5 +1,6 @@
 import 'package:athena/page/mobile/setting/setting.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/button.dart';
@@ -55,7 +56,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       SizedBox(height: 52, child: _Recent()),
       _Title('Explore more'),
       SizedBox(height: 52, child: _Sentinel()),
-      _Title('Sentinel'),
+      _Title('Sentinel', onTap: () => navigateSentinelList(context)),
       SizedBox(height: 52, child: _Sentinel()),
     ];
     var body = Column(
@@ -66,7 +67,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void navigateChatList(BuildContext context) {
-    AutoRouter.of(context).push(const MobileChatListRoute());
+    MobileChatListRoute().push(context);
+  }
+
+  void navigateSentinelList(BuildContext context) {
+    MobileSentinelListRoute().push(context);
   }
 }
 

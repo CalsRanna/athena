@@ -390,22 +390,6 @@ final sentinelNotifierProvider =
 );
 
 typedef _$SentinelNotifier = AutoDisposeAsyncNotifier<Sentinel>;
-String _$sentinelsNotifierHash() => r'59370fafcfed0b39dacfb9e1fef8bfad9f5db2c8';
-
-/// See also [SentinelsNotifier].
-@ProviderFor(SentinelsNotifier)
-final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
-    SentinelsNotifier, List<Sentinel>>.internal(
-  SentinelsNotifier.new,
-  name: r'sentinelsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sentinelsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
 String _$streamingNotifierHash() => r'cab3b5f93f1a0c2c777ad3873b14c2e3c9c5777f';
 
 /// See also [StreamingNotifier].

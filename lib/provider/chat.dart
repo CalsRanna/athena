@@ -273,28 +273,6 @@ class SentinelNotifier extends _$SentinelNotifier {
 }
 
 @riverpod
-class SentinelsNotifier extends _$SentinelsNotifier {
-  @override
-  Future<List<Sentinel>> build() async {
-    return await isar.sentinels.where().findAll();
-  }
-
-  Future<void> destroy(Sentinel sentinel) async {
-    await isar.writeTxn(() async {
-      await isar.sentinels.delete(sentinel.id);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> store(Sentinel sentinel) async {
-    await isar.writeTxn(() async {
-      await isar.sentinels.put(sentinel);
-    });
-    ref.invalidateSelf();
-  }
-}
-
-@riverpod
 class StreamingNotifier extends _$StreamingNotifier {
   @override
   bool build() {

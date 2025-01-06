@@ -31,3 +31,32 @@ class ChatRelatedSentinelNotifier extends _$ChatRelatedSentinelNotifier {
     return Sentinel();
   }
 }
+
+@riverpod
+class SentinelsNotifier extends _$SentinelsNotifier {
+  @override
+  Future<List<Sentinel>> build() async {
+    return await isar.sentinels.where().findAll();
+  }
+
+  Future<void> destroy(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.delete(sentinel.id);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> store(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(sentinel);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateSentinel(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(sentinel);
+    });
+    ref.invalidateSelf();
+  }
+}

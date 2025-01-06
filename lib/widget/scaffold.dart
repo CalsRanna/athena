@@ -51,18 +51,13 @@ class _MobileScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const linearGradient = LinearGradient(
-      begin: Alignment.topRight,
-      colors: [Color(0xff333333), Color(0xff111111)],
-      end: Alignment.bottomLeft,
-    );
     final children = [
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
     ];
     final mediaQuery = MediaQuery.of(context);
     final container = Container(
-      decoration: const BoxDecoration(gradient: linearGradient),
+      decoration: const BoxDecoration(color: Color(0xFF282F32)),
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );

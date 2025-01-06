@@ -193,5 +193,22 @@ class _ChatRelatedSentinelNotifierProviderElement
   @override
   int get chatId => (origin as ChatRelatedSentinelNotifierProvider).chatId;
 }
+
+String _$sentinelsNotifierHash() => r'19189e6770c305884dd7f1f67da8997b24120115';
+
+/// See also [SentinelsNotifier].
+@ProviderFor(SentinelsNotifier)
+final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    SentinelsNotifier, List<Sentinel>>.internal(
+  SentinelsNotifier.new,
+  name: r'sentinelsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sentinelsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
