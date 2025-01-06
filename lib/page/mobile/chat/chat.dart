@@ -139,40 +139,36 @@ class _Input extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    const hintTextStyle = TextStyle(
+      color: Color(0xFFC2C2C2),
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    const inputDecoration = InputDecoration.collapsed(
+      hintText: 'Send a message',
+      hintStyle: hintTextStyle,
+    );
+    const textStyle = TextStyle(
+      color: Color(0xFFF5F5F5),
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
     final textField = TextField(
       controller: controller,
-      decoration: const InputDecoration.collapsed(hintText: 'Send a message'),
+      cursorColor: Colors.white,
+      decoration: inputDecoration,
       onSubmitted: (_) => handleSubmitted(ref),
-      style: const TextStyle(color: Color(0xffffffff)),
+      style: textStyle,
       textInputAction: TextInputAction.send,
     );
-    const innerDecoration = ShapeDecoration(
-      color: Color(0xff000000),
+    var shapeDecoration = ShapeDecoration(
+      color: Color(0xFFADADAD).withValues(alpha: 0.6),
       shape: StadiumBorder(),
-    );
-    final body = Container(
-      decoration: innerDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: textField,
-    );
-    final colors = [
-      const Color(0xffffffff).withValues(alpha: 0.2),
-      const Color(0xff333333),
-    ];
-    final linearGradient = LinearGradient(
-      colors: colors,
-      stops: const [0, 0.4],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-    final shapeDecoration = ShapeDecoration(
-      gradient: linearGradient,
-      shape: const StadiumBorder(),
     );
     return Container(
       decoration: shapeDecoration,
-      padding: const EdgeInsets.all(1),
-      child: body,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: textField,
     );
   }
 
@@ -218,46 +214,32 @@ class _SendButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const sendIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedSent,
-      color: Color(0xffffffff),
+    var boxShadow = BoxShadow(
+      blurRadius: 16,
+      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
     );
-    const loading = CircularProgressIndicator.adaptive(
-      backgroundColor: Color(0xffffffff),
-    );
-    const innerDecoration = ShapeDecoration(
-      color: Color(0xff000000),
+    var shapeDecoration = ShapeDecoration(
+      color: Colors.white,
       shape: StadiumBorder(),
+      shadows: [boxShadow],
     );
     final streaming = ref.watch(streamingNotifierProvider);
-    final body = Container(
-      decoration: innerDecoration,
+    const loading = CircularProgressIndicator.adaptive(
+      backgroundColor: Color(0xFF161616),
+    );
+    const sendIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedSent,
+      color: Color(0xFF161616),
+    );
+    var container = Container(
+      decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: streaming ? loading : sendIcon,
-    );
-    final colors = [
-      const Color(0xffffffff).withValues(alpha: 0.2),
-      const Color(0xff333333),
-    ];
-    final linearGradient = LinearGradient(
-      colors: colors,
-      stops: const [0, 0.4],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-    final shapeDecoration = ShapeDecoration(
-      gradient: linearGradient,
-      shape: const StadiumBorder(),
-    );
-    final button = Container(
-      decoration: shapeDecoration,
-      padding: const EdgeInsets.all(1),
-      child: body,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handleTap(context, ref),
-      child: button,
+      child: container,
     );
   }
 
