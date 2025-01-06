@@ -1,4 +1,5 @@
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -62,7 +63,7 @@ class _SentinelIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
+    final sentinel = ref.watch(sentinelNotifierProvider(0)).valueOrNull;
     return Text(
       sentinel?.name ?? 'Athena',
       style: const TextStyle(color: Colors.white, fontSize: 14),

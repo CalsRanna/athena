@@ -1,3 +1,4 @@
+import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -36,7 +37,13 @@ class ChatRelatedSentinelNotifier extends _$ChatRelatedSentinelNotifier {
 class SentinelsNotifier extends _$SentinelsNotifier {
   @override
   Future<List<Sentinel>> build() async {
-    return await isar.sentinels.where().findAll();
+    var sentinels = await isar.sentinels.where().findAll();
+    if (sentinels.isNotEmpty) return sentinels;
+    var defaultSentinel = Sentinel()..name = 'Athena';
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(defaultSentinel);
+    });
+    return [defaultSentinel];
   }
 
   Future<void> destroy(Sentinel sentinel) async {
@@ -58,5 +65,25 @@ class SentinelsNotifier extends _$SentinelsNotifier {
       await isar.sentinels.put(sentinel);
     });
     ref.invalidateSelf();
+  }
+}
+
+@riverpod
+class SentinelNotifier extends _$SentinelNotifier {
+  @override
+  Future<Sentinel> build(int id) async {
+    final sentinel = await isar.sentinels.where().idEqualTo(id).findFirst();
+    if (sentinel != null) return sentinel;
+    return Sentinel()..name = 'Athena';
+  }
+
+  void select(Sentinel sentinel, {bool invalidate = true}) {
+    state = AsyncData(sentinel);
+    if (!invalidate) return;
+    ref.invalidate(chatNotifierProvider);
+  }
+
+  Future<Sentinel> generate(String prompt) async {
+    return SentinelApi().generate(prompt, model: 'gpt-4o-mini');
   }
 }

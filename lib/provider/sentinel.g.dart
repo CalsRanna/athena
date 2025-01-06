@@ -194,7 +194,7 @@ class _ChatRelatedSentinelNotifierProviderElement
   int get chatId => (origin as ChatRelatedSentinelNotifierProvider).chatId;
 }
 
-String _$sentinelsNotifierHash() => r'19189e6770c305884dd7f1f67da8997b24120115';
+String _$sentinelsNotifierHash() => r'04a12b7bdcea347ac211b5e3770ac1b5aa106b40';
 
 /// See also [SentinelsNotifier].
 @ProviderFor(SentinelsNotifier)
@@ -210,5 +210,150 @@ final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
 );
 
 typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
+String _$sentinelNotifierHash() => r'7251d43907305ae6c7c7c08c2f73c657e3654fbe';
+
+abstract class _$SentinelNotifier
+    extends BuildlessAutoDisposeAsyncNotifier<Sentinel> {
+  late final int id;
+
+  FutureOr<Sentinel> build(
+    int id,
+  );
+}
+
+/// See also [SentinelNotifier].
+@ProviderFor(SentinelNotifier)
+const sentinelNotifierProvider = SentinelNotifierFamily();
+
+/// See also [SentinelNotifier].
+class SentinelNotifierFamily extends Family<AsyncValue<Sentinel>> {
+  /// See also [SentinelNotifier].
+  const SentinelNotifierFamily();
+
+  /// See also [SentinelNotifier].
+  SentinelNotifierProvider call(
+    int id,
+  ) {
+    return SentinelNotifierProvider(
+      id,
+    );
+  }
+
+  @override
+  SentinelNotifierProvider getProviderOverride(
+    covariant SentinelNotifierProvider provider,
+  ) {
+    return call(
+      provider.id,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'sentinelNotifierProvider';
+}
+
+/// See also [SentinelNotifier].
+class SentinelNotifierProvider
+    extends AutoDisposeAsyncNotifierProviderImpl<SentinelNotifier, Sentinel> {
+  /// See also [SentinelNotifier].
+  SentinelNotifierProvider(
+    int id,
+  ) : this._internal(
+          () => SentinelNotifier()..id = id,
+          from: sentinelNotifierProvider,
+          name: r'sentinelNotifierProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$sentinelNotifierHash,
+          dependencies: SentinelNotifierFamily._dependencies,
+          allTransitiveDependencies:
+              SentinelNotifierFamily._allTransitiveDependencies,
+          id: id,
+        );
+
+  SentinelNotifierProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.id,
+  }) : super.internal();
+
+  final int id;
+
+  @override
+  FutureOr<Sentinel> runNotifierBuild(
+    covariant SentinelNotifier notifier,
+  ) {
+    return notifier.build(
+      id,
+    );
+  }
+
+  @override
+  Override overrideWith(SentinelNotifier Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: SentinelNotifierProvider._internal(
+        () => create()..id = id,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        id: id,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeAsyncNotifierProviderElement<SentinelNotifier, Sentinel>
+      createElement() {
+    return _SentinelNotifierProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SentinelNotifierProvider && other.id == id;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, id.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin SentinelNotifierRef on AutoDisposeAsyncNotifierProviderRef<Sentinel> {
+  /// The parameter `id` of this provider.
+  int get id;
+}
+
+class _SentinelNotifierProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<SentinelNotifier, Sentinel>
+    with SentinelNotifierRef {
+  _SentinelNotifierProviderElement(super.provider);
+
+  @override
+  int get id => (origin as SentinelNotifierProvider).id;
+}
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

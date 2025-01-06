@@ -46,8 +46,13 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     return AScaffold(
       appBar: const AAppBar(title: Text('New Sentinel')),
       body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.fromLTRB(
+            16, 0, 16, MediaQuery.paddingOf(context).bottom),
         children: [
+          const AFormTileLabel(title: 'Prompt'),
+          const SizedBox(height: 12),
+          AInput(controller: promptController, minLines: 8),
+          const SizedBox(height: 32),
           const AFormTileLabel(title: 'Name'),
           const SizedBox(height: 12),
           AInput(controller: nameController),
@@ -56,10 +61,19 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
           const SizedBox(height: 12),
           AInput(controller: descriptionController, minLines: 4),
           const SizedBox(height: 16),
-          const AFormTileLabel(title: 'Prompt'),
+          AOutlinedButton(
+            child: Center(
+                child: Text(
+              'Generate',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            )),
+            onTap: () => generateSentinel(context),
+          ),
           const SizedBox(height: 12),
-          AInput(controller: promptController, minLines: 8),
-          const SizedBox(height: 16),
           APrimaryButton(
             child: Center(
               child: Text(
@@ -76,6 +90,21 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         ],
       ),
     );
+  }
+
+  Future<void> generateSentinel(BuildContext context) async {
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var container = ProviderScope.containerOf(context);
+      var provider = sentinelNotifierProvider(0);
+      var notifier = container.read(provider.notifier);
+      var sentinel = await notifier.generate(promptController.text);
+      nameController.text = sentinel.name;
+      descriptionController.text = sentinel.description;
+      ADialog.dismiss();
+    }
   }
 
   Future<void> storeSentinel(BuildContext context) async {

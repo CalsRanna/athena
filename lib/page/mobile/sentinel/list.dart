@@ -148,7 +148,10 @@ class _ActionDialog extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
     var children = [
-      APrimaryButton(child: Center(child: Text('Start Chat'))),
+      APrimaryButton(
+        child: Center(child: Text('Start Chat')),
+        onTap: () => navigateChatPage(context),
+      ),
       const SizedBox(height: 12),
       _OutlinedButton(
           text: 'Edit', onTap: () => navigateSentinelFormPage(context)),
@@ -160,6 +163,11 @@ class _ActionDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
+  }
+
+  void navigateChatPage(BuildContext context) {
+    ADialog.dismiss();
+    ChatRoute(sentinel: sentinel).push(context);
   }
 
   void navigateSentinelFormPage(BuildContext context) {

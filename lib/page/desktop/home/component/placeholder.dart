@@ -1,4 +1,5 @@
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,7 @@ class DesktopSentinelPlaceholder extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sentinel = ref.watch(sentinelNotifierProvider).valueOrNull;
+    final sentinel = ref.watch(sentinelNotifierProvider(0)).valueOrNull;
     if (sentinel == null) return const SizedBox();
     var nameTextStyle = TextStyle(
       color: Colors.white,

@@ -1,5 +1,6 @@
 import 'package:athena/api/chat.dart';
 import 'package:athena/provider/model.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -53,7 +54,8 @@ class ChatNotifier extends _$ChatNotifier {
         await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
     final athena =
         await isar.sentinels.filter().nameEqualTo('Athena').findFirst();
-    final notifier = ref.read(sentinelNotifierProvider.notifier);
+    var provider = sentinelNotifierProvider(sentinelId ?? 0);
+    final notifier = ref.read(provider.notifier);
     notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
     await future;
   }
@@ -88,6 +90,7 @@ class ChatNotifier extends _$ChatNotifier {
   Future<int> create() async {
     var previousState = await future;
     var chat = previousState.copyWith(
+      sentinelId: sentinelId,
       updatedAt: DateTime.now(),
     );
     await isar.writeTxn(() async {
@@ -147,7 +150,8 @@ class ChatNotifier extends _$ChatNotifier {
   }
 
   Future<String> _getPrompt() async {
-    final sentinel = await ref.read(sentinelNotifierProvider.future);
+    var provider = sentinelNotifierProvider(sentinelId ?? 0);
+    final sentinel = await ref.read(provider.future);
     return sentinel.prompt;
   }
 }
@@ -249,26 +253,6 @@ class MessagesNotifier extends _$MessagesNotifier {
       messages.removeLast();
     }
     state = AsyncData([...messages, message]);
-  }
-}
-
-@riverpod
-class SentinelNotifier extends _$SentinelNotifier {
-  @override
-  Future<Sentinel> build() async {
-    final sentinel = await isar.sentinels.where().findFirst();
-    if (sentinel != null) return sentinel;
-    final defaultSentinel = Sentinel()..name = 'Athena';
-    isar.writeTxn(() async {
-      isar.sentinels.put(defaultSentinel);
-    });
-    return defaultSentinel;
-  }
-
-  void select(Sentinel sentinel, {bool invalidate = true}) {
-    state = AsyncData(sentinel);
-    if (!invalidate) return;
-    ref.invalidate(chatNotifierProvider);
   }
 }
 

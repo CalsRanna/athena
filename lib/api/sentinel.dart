@@ -2,17 +2,10 @@ import 'dart:convert';
 
 import 'package:athena/schema/chat.dart';
 import 'package:athena/util/proxy.dart';
-import 'package:http/http.dart';
+import 'package:openai_dart/openai_dart.dart';
 
 class SentinelApi {
-  Future<Sentinel> generate(String prompt, {required String model}) async {
-    final uri = Uri.parse('${ProxyConfig.instance.url}/chat/completions');
-    final key = ProxyConfig.instance.key;
-    final headers = {
-      "Content-Type": 'application/json',
-      "Authorization": 'Bearer $key'
-    };
-    const system = '''
+  static const system = '''
 R - Role (角色):
 你是一位专业的AI助手元数据生成器，擅长分析用户输入的agent prompt，并生成相应的名称、描述、
 标签和表情符号头像。
@@ -67,19 +60,32 @@ W - Workflow (工作流):
   "avatar": "📜"
 }
 ''';
-    final response = await post(uri,
-        headers: headers,
-        body: jsonEncode({
-          'model': model,
-          'messages': [
-            {'role': 'system', 'content': system},
-            {'role': 'user', 'content': '以下内容是我输入的prompt，你要根据这段prompt生成元数据。'},
-            {'role': 'user', 'content': prompt},
-          ],
-        }));
-    final body = utf8.decode(response.bodyBytes);
-    final json = jsonDecode(body);
-    final content = json['choices'][0]['message']['content'];
+  Future<Sentinel> generate(String prompt, {required String model}) async {
+    var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
+    var client = OpenAIClient(
+      apiKey: ProxyConfig.instance.key,
+      baseUrl: ProxyConfig.instance.url,
+      headers: headers,
+    );
+    var messages = [
+      Message.fromJson({'role': 'system', 'content': system}),
+      Message.fromJson({'role': 'user', 'content': '输入： $prompt'}),
+    ];
+    var wrappedMessages = messages.map((message) {
+      if (message.role == 'system') {
+        return ChatCompletionMessage.system(content: message.content);
+      } else {
+        return ChatCompletionMessage.user(
+          content: ChatCompletionUserMessageContent.string(message.content),
+        );
+      }
+    }).toList();
+    var request = CreateChatCompletionRequest(
+      model: ChatCompletionModel.modelId(model),
+      messages: wrappedMessages,
+    );
+    var response = await client.createChatCompletion(request: request);
+    final content = response.choices.first.message.content;
     try {
       final formatted = jsonDecode(
           content.toString().replaceAll('```json', '').replaceAll('```', ''));

@@ -30,12 +30,14 @@ class ChatRoute extends _i13.PageRouteInfo<ChatRouteArgs> {
   ChatRoute({
     _i14.Key? key,
     _i15.Chat? chat,
+    _i15.Sentinel? sentinel,
     List<_i13.PageRouteInfo>? children,
   }) : super(
           ChatRoute.name,
           args: ChatRouteArgs(
             key: key,
             chat: chat,
+            sentinel: sentinel,
           ),
           initialChildren: children,
         );
@@ -50,6 +52,7 @@ class ChatRoute extends _i13.PageRouteInfo<ChatRouteArgs> {
       return _i1.ChatPage(
         key: args.key,
         chat: args.chat,
+        sentinel: args.sentinel,
       );
     },
   );
@@ -59,15 +62,18 @@ class ChatRouteArgs {
   const ChatRouteArgs({
     this.key,
     this.chat,
+    this.sentinel,
   });
 
   final _i14.Key? key;
 
   final _i15.Chat? chat;
 
+  final _i15.Sentinel? sentinel;
+
   @override
   String toString() {
-    return 'ChatRouteArgs{key: $key, chat: $chat}';
+    return 'ChatRouteArgs{key: $key, chat: $chat, sentinel: $sentinel}';
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:athena/component/button.dart';
 import 'package:athena/page/desktop/home/component/placeholder.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
@@ -65,7 +66,7 @@ class _AssistantMessage extends StatelessWidget {
                   width: 36,
                   child: Consumer(builder: (context, ref, child) {
                     final sentinel =
-                        ref.watch(sentinelNotifierProvider).valueOrNull;
+                        ref.watch(sentinelNotifierProvider(0)).valueOrNull;
                     if (sentinel?.avatar.isNotEmpty == true) {
                       return Text(
                         sentinel!.avatar,

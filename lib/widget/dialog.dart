@@ -21,6 +21,17 @@ class ADialog {
   static void success(String message) {
     show(_SuccessDialog(message: message));
   }
+
+  static void loading() {
+    showDialog(
+      context: globalKey.currentContext!,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
 }
 
 class _ConfirmDialog extends StatelessWidget {

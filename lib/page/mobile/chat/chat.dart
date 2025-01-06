@@ -14,7 +14,8 @@ import 'package:hugeicons/hugeicons.dart';
 @RoutePage()
 class ChatPage extends StatefulWidget {
   final Chat? chat;
-  const ChatPage({super.key, this.chat});
+  final Sentinel? sentinel;
+  const ChatPage({super.key, this.chat, this.sentinel});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -104,11 +105,14 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty) return;
     controller.clear();
     if (id == null) {
-      id = await ref.read(chatNotifierProvider(0).notifier).create();
-      setState(() {});
+      var provider = chatNotifierProvider(0, sentinelId: widget.sentinel?.id);
+      var chatId = await ref.read(provider.notifier).create();
+      setState(() {
+        id = chatId;
+      });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      var provider = chatNotifierProvider(id!);
+      var provider = chatNotifierProvider(id!, sentinelId: widget.sentinel?.id);
       var notifier = ref.read(provider.notifier);
       notifier.send(text);
       setState(() {});

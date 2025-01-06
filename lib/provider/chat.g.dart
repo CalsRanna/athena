@@ -6,7 +6,7 @@ part of 'chat.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatNotifierHash() => r'6e37e179f650201f1cd6d62c8e7d17b048b89a2a';
+String _$chatNotifierHash() => r'6ecb063a412dbef9c207f9df94fd786339643a92';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -374,22 +374,6 @@ class _MessagesNotifierProviderElement
   int get chatId => (origin as MessagesNotifierProvider).chatId;
 }
 
-String _$sentinelNotifierHash() => r'ae8c459207084268f9f60b7c179fe4bcd8e5a714';
-
-/// See also [SentinelNotifier].
-@ProviderFor(SentinelNotifier)
-final sentinelNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<SentinelNotifier, Sentinel>.internal(
-  SentinelNotifier.new,
-  name: r'sentinelNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sentinelNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$SentinelNotifier = AutoDisposeAsyncNotifier<Sentinel>;
 String _$streamingNotifierHash() => r'cab3b5f93f1a0c2c777ad3873b14c2e3c9c5777f';
 
 /// See also [StreamingNotifier].

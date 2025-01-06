@@ -94,7 +94,7 @@ class _SentinelTile extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context, WidgetRef ref) {
-    ref.read(sentinelNotifierProvider.notifier).select(sentinel);
+    ref.read(sentinelNotifierProvider(0).notifier).select(sentinel);
     AutoRouter.of(context).maybePop();
   }
 }
