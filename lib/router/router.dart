@@ -5,6 +5,8 @@ import 'package:auto_route/auto_route.dart';
 
 @AutoRouterConfig()
 class AppRouter extends RootStackRouter {
+  AppRouter({super.navigatorKey});
+
   var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
 
   @override

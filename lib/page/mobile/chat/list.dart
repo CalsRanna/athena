@@ -2,6 +2,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -54,8 +55,6 @@ class _ListTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat.id);
-    var messages = ref.watch(provider).valueOrNull;
     var titleTextStyle = TextStyle(
       color: Colors.white,
       fontSize: 16,
@@ -68,10 +67,12 @@ class _ListTile extends ConsumerWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
-    var rowChildren = [
-      Expanded(child: title),
-      Icon(HugeIcons.strokeRoundedMoreHorizontal, color: Colors.white),
-    ];
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => openBottomSheet(context),
+      child: Icon(HugeIcons.strokeRoundedMoreHorizontal, color: Colors.white),
+    );
+    var rowChildren = [Expanded(child: title), gestureDetector];
     var messageTextStyle = TextStyle(
       color: Color(0xFFE0E0E0),
       fontSize: 12,
@@ -89,10 +90,11 @@ class _ListTile extends ConsumerWidget {
       const SizedBox(height: 8),
       message,
     ];
-    var padding = Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(children: columnChildren),
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: columnChildren,
     );
+    var padding = Padding(padding: const EdgeInsets.all(12.0), child: column);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => navigateChat(context),
@@ -110,5 +112,90 @@ class _ListTile extends ConsumerWidget {
 
   void navigateChat(BuildContext context) {
     ChatRoute(chat: chat).push(context);
+  }
+
+  void openBottomSheet(BuildContext context) {
+    var children = [
+      _buildRenameButton(context),
+      const SizedBox(height: 12),
+      _buildDeleteButton(context),
+      SizedBox(height: MediaQuery.paddingOf(context).bottom)
+    ];
+    var dialog = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    );
+    ADialog.show(dialog);
+  }
+
+  void showConfirmDialog(BuildContext context) {
+    ADialog.dismiss();
+    ADialog.confirm(
+      'Are you sure you want to delete this chat?',
+      onConfirmed: () => confirmDelete(context),
+    );
+  }
+
+  void confirmDelete(BuildContext context) {
+    var container = ProviderScope.containerOf(context);
+    var provider = chatsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    notifier.destroy(chat.id);
+    ADialog.dismiss();
+    ADialog.success('Chat deleted successfully');
+  }
+
+  Widget _buildDeleteButton(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => showConfirmDialog(context),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: ShapeDecoration(
+          shape: StadiumBorder(),
+          color: Color(0xFFFF3D3A),
+          shadows: [
+            BoxShadow(
+              blurRadius: 16,
+              color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+            )
+          ],
+        ),
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'Delete',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRenameButton(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      decoration: ShapeDecoration(
+        shape: StadiumBorder(),
+        color: Colors.white,
+        shadows: [
+          BoxShadow(
+            blurRadius: 16,
+            color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+          )
+        ],
+      ),
+      padding: EdgeInsets.all(16),
+      child: Text(
+        'Rename',
+        style: TextStyle(
+          color: Color(0xFF161616),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 }

@@ -11,6 +11,8 @@ import 'package:isar/isar.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
+final globalKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await IsarInitializer.ensureInitialized();
@@ -53,7 +55,9 @@ class AthenaApp extends StatefulWidget {
 
 class _AthenaAppState extends State<AthenaApp> with WindowListener {
   final SystemTray tray = SystemTray();
-  final router = AppRouter();
+  final router = AppRouter(
+    navigatorKey: globalKey,
+  );
 
   @override
   Widget build(BuildContext context) {
