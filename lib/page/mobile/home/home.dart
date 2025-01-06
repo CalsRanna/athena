@@ -54,7 +54,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       _NewChat(),
       _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 52, child: _Recent()),
-      _Title('Explore more'),
+      _Title('Shortcut'),
       SizedBox(height: 52, child: _Sentinel()),
       _Title('Sentinel', onTap: () => navigateSentinelList(context)),
       SizedBox(height: 52, child: _Sentinel()),
@@ -175,23 +175,28 @@ class _SentinelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const innerDecoration = ShapeDecoration(
-      color: Color(0xff333333),
+      color: Color(0xff161616),
       shape: StadiumBorder(),
     );
-    final body = Container(
+    const textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 12,
+      fontWeight: FontWeight.w500,
+    );
+    final innerContainer = Container(
+      alignment: Alignment.center,
       decoration: innerDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Text(sentinel.name, style: const TextStyle(color: Colors.white)),
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
+      child: Text(sentinel.name, style: textStyle),
     );
     final colors = [
-      const Color(0xffffffff).withValues(alpha: 0.2),
-      const Color(0xff333333),
+      const Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      Colors.transparent,
     ];
     final linearGradient = LinearGradient(
       begin: Alignment.topLeft,
       colors: colors,
       end: Alignment.bottomRight,
-      stops: const [0, 0.4],
     );
     final shapeDecoration = ShapeDecoration(
       gradient: linearGradient,
@@ -203,7 +208,7 @@ class _SentinelTile extends StatelessWidget {
       child: Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(1),
-        child: body,
+        child: innerContainer,
       ),
     );
   }
