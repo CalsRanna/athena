@@ -148,35 +148,23 @@ class _Sentinel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sentinelsNotifierProvider);
-    return state.when(data: data, error: error, loading: loading);
+    var provider = sentinelsNotifierProvider;
+    final state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
   }
 
-  Widget data(List<Sentinel> sentinels) {
+  Widget _buildData(List<Sentinel> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
     return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemBuilder: (_, index) => itemBuilder(sentinels, index),
+      itemBuilder: (_, index) => _SentinelTile(sentinels[index]),
       itemCount: sentinels.length,
-      separatorBuilder: (context, index) => const SizedBox(width: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      scrollDirection: Axis.horizontal,
+      separatorBuilder: (context, index) => const SizedBox(width: 12),
     );
-  }
-
-  Widget error(Object error, StackTrace stackTrace) {
-    return const SizedBox();
-  }
-
-  Widget itemBuilder(List<Sentinel> sentinels, int index) {
-    const left = 16.0;
-    final right = index == sentinels.length - 1 ? 16.0 : 0.0;
-    return Padding(
-      padding: EdgeInsets.only(left: left, right: right),
-      child: _SentinelTile(sentinels[index]),
-    );
-  }
-
-  Widget loading() {
-    return const SizedBox();
   }
 }
 
@@ -209,11 +197,19 @@ class _SentinelTile extends StatelessWidget {
       gradient: linearGradient,
       shape: const StadiumBorder(),
     );
-    return Container(
-      decoration: shapeDecoration,
-      padding: const EdgeInsets.all(1),
-      child: body,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => navigateChatPage(context),
+      child: Container(
+        decoration: shapeDecoration,
+        padding: const EdgeInsets.all(1),
+        child: body,
+      ),
     );
+  }
+
+  void navigateChatPage(BuildContext context) {
+    ChatRoute(sentinel: sentinel).push(context);
   }
 }
 
