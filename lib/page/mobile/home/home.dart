@@ -1,3 +1,4 @@
+import 'package:athena/model/shortcut.dart';
 import 'package:athena/page/mobile/setting/setting.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/sentinel.dart';
@@ -55,7 +56,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 52, child: _Recent()),
       _Title('Shortcut'),
-      SizedBox(height: 52, child: _Sentinel()),
+      SizedBox(height: 160, child: _ShortcutListView()),
       _Title('Sentinel', onTap: () => navigateSentinelList(context)),
       SizedBox(height: 52, child: _Sentinel()),
     ];
@@ -215,6 +216,85 @@ class _SentinelTile extends StatelessWidget {
 
   void navigateChatPage(BuildContext context) {
     ChatRoute(sentinel: sentinel).push(context);
+  }
+}
+
+class _ShortcutListView extends StatelessWidget {
+  const _ShortcutListView();
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = [
+      HugeIcons.strokeRoundedTranslate,
+      HugeIcons.strokeRoundedNaturalFood,
+      HugeIcons.strokeRoundedCode,
+    ];
+    final shortcuts = [
+      Shortcut()
+        ..name = 'Translate'
+        ..description = 'Translate input into selected language',
+      Shortcut()
+        ..name = 'Food'
+        ..description = 'Give you a recipe suggestion of healthy food',
+      Shortcut()
+        ..name = 'Code'
+        ..description =
+            'Give you a code suggestion about variables, functions, etc',
+    ];
+    return ListView.separated(
+      itemBuilder: (_, index) =>
+          _ShortcutTile(icon: icons[index], shortcut: shortcuts[index]),
+      itemCount: shortcuts.length,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      scrollDirection: Axis.horizontal,
+      separatorBuilder: (context, index) => const SizedBox(width: 12),
+    );
+  }
+}
+
+class _ShortcutTile extends StatelessWidget {
+  final IconData icon;
+  final Shortcut shortcut;
+
+  const _ShortcutTile({required this.icon, required this.shortcut});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Color(0xFF616161),
+      ),
+      padding: EdgeInsets.all(12),
+      height: 160,
+      width: 160,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white),
+          const SizedBox(height: 4),
+          Text(
+            shortcut.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Text(
+              shortcut.description,
+              style: const TextStyle(
+                color: Color(0xFFE0E0E0),
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
