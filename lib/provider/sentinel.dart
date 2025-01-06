@@ -21,19 +21,6 @@ class SentinelTagsNotifier extends _$SentinelTagsNotifier {
 }
 
 @riverpod
-class ChatRelatedSentinelNotifier extends _$ChatRelatedSentinelNotifier {
-  @override
-  Future<Sentinel> build(int chatId) async {
-    final chat = await ref.watch(chatNotifierProvider(chatId).future);
-    var sentinelId = chat.sentinelId;
-    var sentinel =
-        await isar.sentinels.where().idEqualTo(sentinelId).findFirst();
-    if (sentinel != null) return sentinel;
-    return Sentinel();
-  }
-}
-
-@riverpod
 class SentinelsNotifier extends _$SentinelsNotifier {
   @override
   Future<List<Sentinel>> build() async {
