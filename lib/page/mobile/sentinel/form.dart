@@ -146,7 +146,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return AOutlinedButton(
+    return ASecondaryButton(
       onTap: generateSentinel,
       child: Center(child: Text('Generate', style: textStyle)),
     );

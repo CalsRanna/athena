@@ -154,7 +154,7 @@ class _OutlinedButton extends StatelessWidget {
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return AOutlinedButton(
+    return ASecondaryButton(
       onTap: onTap,
       child: Center(child: Text(text, style: textStyle)),
     );

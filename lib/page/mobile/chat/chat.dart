@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/model.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/model.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/button.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/message.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -21,8 +25,8 @@ class MobileChatPage extends StatefulWidget {
 }
 
 class _ActionButton extends ConsumerWidget {
-  final void Function(WidgetRef)? onTap;
-  const _ActionButton({this.onTap});
+  final int? chatId;
+  const _ActionButton({this.chatId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +51,58 @@ class _ActionButton extends ConsumerWidget {
   }
 
   void handleTap(WidgetRef ref) {
-    onTap?.call(ref);
+    ADialog.show(_ActionDialog(chatId: chatId));
+  }
+}
+
+class _ActionDialog extends ConsumerWidget {
+  final int? chatId;
+  const _ActionDialog({this.chatId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = modelsNotifierProvider;
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(ref, value),
+      _ => const SizedBox(),
+    };
+  }
+
+  void replaceModel(WidgetRef ref, Model model) {
+    var provider = chatNotifierProvider(chatId ?? 0);
+    var notifier = ref.read(provider.notifier);
+    notifier.updateModel(model.value);
+    ADialog.dismiss();
+  }
+
+  Widget _buildData(WidgetRef ref, List<Model> models) {
+    return ListView.separated(
+      itemBuilder: (_, index) => _itemBuilder(ref, models[index]),
+      itemCount: models.length,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+    );
+  }
+
+  void _dismiss() {
+    ADialog.dismiss();
+  }
+
+  Widget _itemBuilder(WidgetRef ref, Model model) {
+    var provider = chatNotifierProvider(chatId ?? 0);
+    var chat = ref.watch(provider).valueOrNull;
+    final selected = chat?.model == model.value;
+    if (selected) {
+      return APrimaryButton(
+        onTap: _dismiss,
+        child: Center(child: Text(model.name)),
+      );
+    }
+    return _OutlinedButton(
+      onTap: () => replaceModel(ref, model),
+      text: model.name,
+    );
   }
 }
 
@@ -178,7 +233,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     ];
     var chatTitle = _ChatTitle(chatId: id);
     return AScaffold(
-      appBar: AAppBar(action: _ActionButton(), title: chatTitle),
+      appBar: AAppBar(action: _ActionButton(chatId: id), title: chatTitle),
       body: Column(children: columnChildren),
     );
   }
@@ -220,6 +275,25 @@ class _MobileChatPageState extends State<MobileChatPage> {
       notifier.send(text);
       setState(() {});
     });
+  }
+}
+
+class _OutlinedButton extends StatelessWidget {
+  final void Function()? onTap;
+  final String text;
+  const _OutlinedButton({this.onTap, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    var textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    return ASecondaryButton(
+      onTap: onTap,
+      child: Center(child: Text(text, style: textStyle)),
+    );
   }
 }
 

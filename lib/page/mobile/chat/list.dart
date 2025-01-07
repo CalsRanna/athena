@@ -152,7 +152,7 @@ class _ListTile extends ConsumerWidget {
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return AOutlinedButton(
+    return ASecondaryButton(
       onTap: () => showConfirmDialog(context),
       child: Center(child: Text('Delete', style: textStyle)),
     );
