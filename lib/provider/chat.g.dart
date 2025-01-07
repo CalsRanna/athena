@@ -6,7 +6,7 @@ part of 'chat.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatNotifierHash() => r'64074eb12108b7b133dfa7e767fb37c623910cc2';
+String _$chatNotifierHash() => r'f9007d3a7d612a06aea855b913fd339c4ec462bd';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -210,23 +210,6 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$recentChatsNotifierHash() =>
-    r'b5cefaffdaaf577fb09e341d61e76c1264b9d501';
-
-/// See also [RecentChatsNotifier].
-@ProviderFor(RecentChatsNotifier)
-final recentChatsNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<RecentChatsNotifier, List<Chat>>.internal(
-  RecentChatsNotifier.new,
-  name: r'recentChatsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$recentChatsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$RecentChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
 String _$messagesNotifierHash() => r'608f800e8f51fea192a3e70acf4420525a58d33b';
 
 abstract class _$MessagesNotifier
@@ -374,6 +357,23 @@ class _MessagesNotifierProviderElement
   int get chatId => (origin as MessagesNotifierProvider).chatId;
 }
 
+String _$recentChatsNotifierHash() =>
+    r'b5cefaffdaaf577fb09e341d61e76c1264b9d501';
+
+/// See also [RecentChatsNotifier].
+@ProviderFor(RecentChatsNotifier)
+final recentChatsNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<RecentChatsNotifier, List<Chat>>.internal(
+  RecentChatsNotifier.new,
+  name: r'recentChatsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$recentChatsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$RecentChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
 String _$streamingNotifierHash() => r'cab3b5f93f1a0c2c777ad3873b14c2e3c9c5777f';
 
 /// See also [StreamingNotifier].
