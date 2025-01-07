@@ -128,7 +128,9 @@ class _ChatTitle extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var provider = chatNotifierProvider(chatId ?? 0);
     var chat = ref.watch(provider).valueOrNull;
-    return Text(chat?.title ?? '');
+    var title = chat?.title ?? '';
+    if (title.isEmpty) title = '新的对话';
+    return Text(title);
   }
 }
 
@@ -267,8 +269,13 @@ class _SentinelPlaceholder extends ConsumerWidget {
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
+    var text = Text(
+      sentinel?.name ?? '',
+      style: nameTextStyle,
+      textAlign: TextAlign.center,
+    );
     var children = [
-      Text(sentinel?.name ?? '', style: nameTextStyle),
+      text,
       const SizedBox(height: 36),
       Text(sentinel?.description ?? '', style: descriptionTextStyle),
     ];

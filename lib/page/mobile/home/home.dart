@@ -31,7 +31,7 @@ class _ChatTile extends StatelessWidget {
     final body = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Text(chat.title),
+      child: Text(chat.title.isNotEmpty ? chat.title : '新的对话'),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -55,7 +55,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       SizedBox(height: 16),
       _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 8),
-      SizedBox(height: 52, child: _Recent()),
+      SizedBox(height: 52, child: _RecentChatListView()),
       SizedBox(height: 24),
       _Title('Shortcut'),
       SizedBox(height: 8),
@@ -119,8 +119,8 @@ class _NewChat extends ConsumerWidget {
   }
 }
 
-class _Recent extends ConsumerWidget {
-  const _Recent();
+class _RecentChatListView extends ConsumerWidget {
+  const _RecentChatListView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

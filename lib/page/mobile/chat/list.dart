@@ -63,7 +63,7 @@ class _ListTile extends ConsumerWidget {
       height: 1.5,
     );
     var title = Text(
-      chat.title,
+      chat.title.isNotEmpty ? chat.title : '新的对话',
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
