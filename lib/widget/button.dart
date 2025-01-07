@@ -55,10 +55,10 @@ class APrimaryButton extends StatelessWidget {
   }
 }
 
-class AOutlinedButton extends StatelessWidget {
+class ASecondaryButton extends StatelessWidget {
   final void Function()? onTap;
   final Widget child;
-  const AOutlinedButton({super.key, required this.child, this.onTap});
+  const ASecondaryButton({super.key, required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
