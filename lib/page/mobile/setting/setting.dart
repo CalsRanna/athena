@@ -1,7 +1,7 @@
 import 'package:athena/page/mobile/setting/key.dart';
-import 'package:athena/page/mobile/setting/model.dart';
 import 'package:athena/page/mobile/setting/url.dart';
 import 'package:athena/provider/setting.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:flutter/material.dart';
@@ -125,9 +125,7 @@ class _Model extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
-      return const ModelPage();
-    }));
+    MobileModelListRoute().push(context);
   }
 }
 
