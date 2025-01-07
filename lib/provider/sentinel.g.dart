@@ -6,40 +6,24 @@ part of 'sentinel.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sentinelTagsNotifierHash() =>
-    r'9e37bba106612e04f41ba2531c4d10a019088caf';
+String _$defaultSentinelNotifierHash() =>
+    r'ff5c49a74c5ca18ee09bf544b76daa1223027809';
 
-/// See also [SentinelTagsNotifier].
-@ProviderFor(SentinelTagsNotifier)
-final sentinelTagsNotifierProvider = AutoDisposeAsyncNotifierProvider<
-    SentinelTagsNotifier, List<String>>.internal(
-  SentinelTagsNotifier.new,
-  name: r'sentinelTagsNotifierProvider',
+/// See also [DefaultSentinelNotifier].
+@ProviderFor(DefaultSentinelNotifier)
+final defaultSentinelNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    DefaultSentinelNotifier, Sentinel>.internal(
+  DefaultSentinelNotifier.new,
+  name: r'defaultSentinelNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$sentinelTagsNotifierHash,
+      : _$defaultSentinelNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$SentinelTagsNotifier = AutoDisposeAsyncNotifier<List<String>>;
-String _$sentinelsNotifierHash() => r'a064a643c16c376c285c3733923262c62fb7cf9a';
-
-/// See also [SentinelsNotifier].
-@ProviderFor(SentinelsNotifier)
-final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
-    SentinelsNotifier, List<Sentinel>>.internal(
-  SentinelsNotifier.new,
-  name: r'sentinelsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sentinelsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
-String _$sentinelNotifierHash() => r'7251d43907305ae6c7c7c08c2f73c657e3654fbe';
+typedef _$DefaultSentinelNotifier = AutoDisposeAsyncNotifier<Sentinel>;
+String _$sentinelNotifierHash() => r'094acffbe782033fc6884c4a9ac7f6186239ded2';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -205,5 +189,39 @@ class _SentinelNotifierProviderElement
   @override
   int get id => (origin as SentinelNotifierProvider).id;
 }
+
+String _$sentinelsNotifierHash() => r'a064a643c16c376c285c3733923262c62fb7cf9a';
+
+/// See also [SentinelsNotifier].
+@ProviderFor(SentinelsNotifier)
+final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    SentinelsNotifier, List<Sentinel>>.internal(
+  SentinelsNotifier.new,
+  name: r'sentinelsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sentinelsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
+String _$sentinelTagsNotifierHash() =>
+    r'9e37bba106612e04f41ba2531c4d10a019088caf';
+
+/// See also [SentinelTagsNotifier].
+@ProviderFor(SentinelTagsNotifier)
+final sentinelTagsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    SentinelTagsNotifier, List<String>>.internal(
+  SentinelTagsNotifier.new,
+  name: r'sentinelTagsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sentinelTagsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$SentinelTagsNotifier = AutoDisposeAsyncNotifier<List<String>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

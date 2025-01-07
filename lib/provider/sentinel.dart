@@ -8,15 +8,31 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'sentinel.g.dart';
 
 @riverpod
-class SentinelTagsNotifier extends _$SentinelTagsNotifier {
+class DefaultSentinelNotifier extends _$DefaultSentinelNotifier {
   @override
-  Future<List<String>> build() async {
+  Future<Sentinel> build() async {
     final sentinels = await ref.watch(sentinelsNotifierProvider.future);
-    var tags = <String>[];
-    for (var sentinel in sentinels) {
-      tags.addAll(sentinel.tags);
-    }
-    return tags.toSet().toList();
+    return sentinels.where((sentinel) => sentinel.name == 'Athena').first;
+  }
+}
+
+@riverpod
+class SentinelNotifier extends _$SentinelNotifier {
+  @override
+  Future<Sentinel> build(int id) async {
+    final sentinel = await isar.sentinels.where().idEqualTo(id).findFirst();
+    if (sentinel != null) return sentinel;
+    return Sentinel()..name = 'Athena';
+  }
+
+  Future<Sentinel> generate(String prompt) async {
+    return SentinelApi().generate(prompt, model: 'gpt-4o-mini');
+  }
+
+  void select(Sentinel sentinel, {bool invalidate = true}) {
+    state = AsyncData(sentinel);
+    if (!invalidate) return;
+    ref.invalidate(chatNotifierProvider);
   }
 }
 
@@ -59,21 +75,14 @@ class SentinelsNotifier extends _$SentinelsNotifier {
 }
 
 @riverpod
-class SentinelNotifier extends _$SentinelNotifier {
+class SentinelTagsNotifier extends _$SentinelTagsNotifier {
   @override
-  Future<Sentinel> build(int id) async {
-    final sentinel = await isar.sentinels.where().idEqualTo(id).findFirst();
-    if (sentinel != null) return sentinel;
-    return Sentinel()..name = 'Athena';
-  }
-
-  void select(Sentinel sentinel, {bool invalidate = true}) {
-    state = AsyncData(sentinel);
-    if (!invalidate) return;
-    ref.invalidate(chatNotifierProvider);
-  }
-
-  Future<Sentinel> generate(String prompt) async {
-    return SentinelApi().generate(prompt, model: 'gpt-4o-mini');
+  Future<List<String>> build() async {
+    final sentinels = await ref.watch(sentinelsNotifierProvider.future);
+    var tags = <String>[];
+    for (var sentinel in sentinels) {
+      tags.addAll(sentinel.tags);
+    }
+    return tags.toSet().toList();
   }
 }

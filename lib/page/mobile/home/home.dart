@@ -98,13 +98,16 @@ class _NewChat extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
+      onTap: () => handleTap(context, ref),
       child: button,
     );
   }
 
-  void handleTap(BuildContext context) async {
-    MobileChatRoute().push(context);
+  void handleTap(BuildContext context, WidgetRef ref) async {
+    var provider = defaultSentinelNotifierProvider;
+    var sentinel = await ref.read(provider.future);
+    if (!context.mounted) return;
+    MobileChatRoute(sentinel: sentinel).push(context);
   }
 }
 
