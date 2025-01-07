@@ -2,6 +2,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -146,31 +147,14 @@ class _ListTile extends ConsumerWidget {
   }
 
   Widget _buildDeleteButton(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    var textStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    return AOutlinedButton(
       onTap: () => showConfirmDialog(context),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: ShapeDecoration(
-          shape: StadiumBorder(),
-          color: Color(0xFFFF3D3A),
-          shadows: [
-            BoxShadow(
-              blurRadius: 16,
-              color: Color(0xFFCED2C7).withValues(alpha: 0.5),
-            )
-          ],
-        ),
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Delete',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
+      child: Center(child: Text('Delete', style: textStyle)),
     );
   }
 
