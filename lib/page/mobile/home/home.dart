@@ -4,7 +4,6 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -51,12 +50,17 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget build(BuildContext context) {
     var children = [
       _Welcome(),
-      SizedBox(height: 24),
+      SizedBox(height: 16),
       _NewChat(),
+      SizedBox(height: 16),
       _Title('Chat history', onTap: () => navigateChatList(context)),
+      SizedBox(height: 8),
       SizedBox(height: 52, child: _Recent()),
+      SizedBox(height: 24),
       _Title('Shortcut'),
+      SizedBox(height: 8),
       SizedBox(height: 160, child: _ShortcutListView()),
+      SizedBox(height: 24),
       _Title('Sentinel', onTap: () => navigateSentinelList(context)),
       SizedBox(height: 52, child: _Sentinel()),
     ];
@@ -85,14 +89,18 @@ class _NewChat extends ConsumerWidget {
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    const shapeDecoration = ShapeDecoration(
+    var boxShadow = BoxShadow(
+      blurRadius: 16,
+      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+    );
+    var shapeDecoration = ShapeDecoration(
       color: Color(0xffffffff),
+      shadows: [boxShadow],
       shape: StadiumBorder(),
     );
-    final mediaQuery = MediaQuery.of(context);
     final button = Container(
       decoration: shapeDecoration,
-      margin: EdgeInsets.fromLTRB(16, 0, 16, mediaQuery.padding.bottom),
+      margin: EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
       child: Center(child: Text('New Chat', style: textStyle)),
     );
@@ -310,19 +318,30 @@ class _Title extends StatelessWidget {
   Widget build(BuildContext context) {
     const textStyle = TextStyle(
       color: Color(0xffffffff),
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-      height: 1.2,
+      fontSize: 24,
+      fontWeight: FontWeight.w500,
     );
-    final body = Row(
-      children: [
-        Expanded(child: Text(title, style: textStyle)),
-        AIconButton(icon: HugeIcons.strokeRoundedArrowRight02, onTap: onTap),
-      ],
-    );
+    var children = [
+      Expanded(child: Text(title, style: textStyle)),
+      _buildMoreButton(),
+    ];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: body,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(children: children),
+    );
+  }
+
+  Widget _buildMoreButton() {
+    var container = Container(
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      height: 42,
+      width: 42,
+      child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: container,
     );
   }
 }
@@ -332,28 +351,9 @@ class _Welcome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const circleAvatar = CircleAvatar(
-      backgroundImage: AssetImage('asset/image/avatar.png'),
-      radius: 32,
-    );
-    final gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: circleAvatar,
-    );
-    const textStyle = TextStyle(
-      color: Color(0xffffffff),
-      fontSize: 32,
-      fontWeight: FontWeight.w700,
-      height: 1.2,
-    );
-    final children = [
-      Expanded(child: Text('Good ${getPeriod()}, Cals', style: textStyle)),
-      gestureDetector,
-    ];
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+      children: [_buildText(), _buildAvatar(context)],
     );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -376,5 +376,43 @@ class _Welcome extends StatelessWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) {
       return const SettingPage();
     }));
+  }
+
+  Widget _buildAvatar(BuildContext context) {
+    var circleAvatar = Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.5),
+      ),
+      padding: EdgeInsets.all(4),
+      child: CircleAvatar(
+        backgroundImage: AssetImage('asset/image/avatar.png'),
+        radius: 28,
+      ),
+    );
+    final gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(context),
+      child: circleAvatar,
+    );
+    return gestureDetector;
+  }
+
+  Widget _buildText() {
+    const welcomeTextStyle = TextStyle(
+      color: Color(0xFFA7BA88),
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+    );
+    const nameTextStyle = TextStyle(
+      color: Color(0xffffffff),
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+    );
+    var textChildren = [
+      TextSpan(text: 'Good ${getPeriod()}, ', style: welcomeTextStyle),
+      TextSpan(text: 'Cals', style: nameTextStyle),
+    ];
+    return Expanded(child: Text.rich(TextSpan(children: textChildren)));
   }
 }
