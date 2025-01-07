@@ -8,119 +8,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 
-class MessageTile extends StatefulWidget {
+class MessageTile extends StatelessWidget {
   final Message message;
   final Sentinel? sentinel;
 
   const MessageTile({super.key, required this.message, this.sentinel});
 
   @override
-  State<MessageTile> createState() => _MessageTileState();
-}
-
-class _MessageTileState extends State<MessageTile> {
-  double opacity = 0.0;
-  @override
   Widget build(BuildContext context) {
-    Widget child;
-    if (widget.message.role == 'user') {
-      child = _UserMessage(content: widget.message.content);
-    } else {
-      child = _AssistantMessage(message: widget.message);
-    }
-    return MouseRegion(
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: child,
-    );
-  }
-
-  void copy(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final primaryContainer = colorScheme.primaryContainer;
-    final onPrimaryContainer = colorScheme.onPrimaryContainer;
-    await Clipboard.setData(ClipboardData(text: widget.message.content));
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: primaryContainer,
-        behavior: SnackBarBehavior.floating,
-        content: Text('已复制', style: TextStyle(color: onPrimaryContainer)),
-        width: 75,
-      ),
-    );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() {
-      opacity = 1.0;
-    });
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() {
-      opacity = 0.0;
-    });
-  }
-}
-
-class _UserMessage extends StatelessWidget {
-  final String content;
-  const _UserMessage({required this.content});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipOval(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.95),
-              ),
-              height: 36,
-              width: 36,
-              child: Text(
-                'CA',
-                style: const TextStyle(fontSize: 14, height: 1),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              alignment: Alignment.centerLeft,
-              constraints: BoxConstraints(minHeight: 36),
-              child: Text(
-                content,
-                style: TextStyle(color: Color(0xFFCACACA)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-            height: 24,
-            width: 24,
-            padding: const EdgeInsets.all(6),
-            child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void handleTap() {
-    Clipboard.setData(ClipboardData(text: content));
+    if (message.role == 'user') return _UserMessage(message: message);
+    return _AssistantMessage(message: message, sentinel: sentinel);
   }
 }
 
@@ -131,57 +28,25 @@ class _AssistantMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var children = [
+      _buildAvatar(),
+      const SizedBox(width: 12),
+      _buildContent(),
+      const SizedBox(width: 12),
+      _Copy(onTap: handleCopy),
+    ];
+    var row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      color: Colors.white.withValues(alpha: 0.95),
+    );
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: Colors.white.withValues(alpha: 0.95),
-      ),
+      decoration: boxDecoration,
       padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipOval(
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF282F32),
-                  ),
-                  height: 36,
-                  width: 36,
-                  child: Builder(builder: (context) {
-                    if (sentinel?.avatar.isNotEmpty == true) {
-                      return Text(
-                        sentinel!.avatar,
-                        style: const TextStyle(
-                            fontSize: 24, height: 1, color: Colors.white),
-                      );
-                    }
-                    return Image.asset(
-                      'asset/image/launcher_icon_ios_512x512.jpg',
-                      filterQuality: FilterQuality.medium,
-                      height: 36,
-                    );
-                  }),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  alignment: Alignment.centerLeft,
-                  constraints: const BoxConstraints(minHeight: 36),
-                  child: _Markdown(message: message),
-                ),
-              ),
-              const SizedBox(width: 12),
-              _Copy(onTap: handleCopy),
-            ],
-          ),
-        ],
-      ),
+      child: row,
     );
   }
 
@@ -189,7 +54,39 @@ class _AssistantMessage extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: message.content));
   }
 
-  void handleRefresh() {}
+  Widget _buildAvatar() {
+    if (sentinel?.avatar.isNotEmpty == true) {
+      const textStyle = TextStyle(fontSize: 24, height: 1, color: Colors.white);
+      var boxDecoration = BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF282F32),
+      );
+      return Container(
+        alignment: Alignment.center,
+        decoration: boxDecoration,
+        height: 36,
+        width: 36,
+        child: Text(sentinel!.avatar, style: textStyle),
+      );
+    }
+    var image = Image.asset(
+      'asset/image/launcher_icon_ios_512x512.jpg',
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
+      height: 36,
+      width: 36,
+    );
+    return ClipOval(child: image);
+  }
+
+  Widget _buildContent() {
+    var container = Container(
+      alignment: Alignment.centerLeft,
+      constraints: const BoxConstraints(minHeight: 36),
+      child: _Markdown(message: message),
+    );
+    return Expanded(child: container);
+  }
 }
 
 class _CodeElementBuilder extends MarkdownElementBuilder {
@@ -206,32 +103,38 @@ class _CodeElementBuilder extends MarkdownElementBuilder {
     TextStyle? parentStyle,
   ) {
     final multipleLines = element.textContent.split('\n').length > 1;
+    var children = [
+      _buildContent(context, element),
+      if (multipleLines) _buildCopyButton(element),
+    ];
+    return Stack(children: children);
+  }
+
+  Widget _buildContent(BuildContext context, md.Element element) {
+    final multipleLines = element.textContent.split('\n').length > 1;
     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
     if (multipleLines) {
       padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     }
     final width = multipleLines ? double.infinity : null;
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            color: Theme.of(context).colorScheme.surfaceContainer,
-          ),
-          padding: padding,
-          width: width,
-          child: Text(
-            element.textContent.trim(),
-            style: GoogleFonts.firaCode(fontSize: 12),
-          ),
-        ),
-        if (multipleLines)
-          Positioned(
-            right: 12,
-            top: 12,
-            child: CopyButton(onTap: () => handleTap(element.textContent)),
-          ),
-      ],
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(4),
+      color: Theme.of(context).colorScheme.surfaceContainer,
+    );
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
+      width: width,
+      child: Text(element.textContent.trim(), style: textStyle),
+    );
+  }
+
+  Widget _buildCopyButton(md.Element element) {
+    return Positioned(
+      right: 12,
+      top: 12,
+      child: CopyButton(onTap: () => handleTap(element.textContent)),
     );
   }
 }
@@ -249,18 +152,9 @@ class _CopyState extends State<_Copy> {
   @override
   Widget build(BuildContext context) {
     final color = Colors.black.withValues(alpha: 0.25);
-    Widget icon = HugeIcon(
-      color: color,
-      icon: HugeIcons.strokeRoundedCopy01,
-      size: 16.0,
-    );
-    if (copied) {
-      icon = HugeIcon(
-        color: color,
-        icon: HugeIcons.strokeRoundedTick01,
-        size: 16.0,
-      );
-    }
+    var iconData = HugeIcons.strokeRoundedCopy01;
+    if (copied) iconData = HugeIcons.strokeRoundedTick01;
+    var icon = HugeIcon(color: color, icon: iconData, size: 16.0);
     const duration = Duration(milliseconds: 200);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -304,6 +198,73 @@ class _Markdown extends StatelessWidget {
       builders: builders,
       data: message.content,
       extensionSet: supportLatex ? extensions : null,
+    );
+  }
+}
+
+class _UserMessage extends StatelessWidget {
+  final Message message;
+  const _UserMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      _buildAvatar(),
+      const SizedBox(width: 8),
+      _buildContent(),
+      const SizedBox(width: 8),
+      _buildRefreshButton(),
+    ];
+    var row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: row,
+    );
+  }
+
+  void handleTap() {
+    Clipboard.setData(ClipboardData(text: message.content));
+  }
+
+  Widget _buildAvatar() {
+    const textStyle = TextStyle(fontSize: 14, height: 1);
+    var boxDecoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: 0.95),
+    );
+    return Container(
+      alignment: Alignment.center,
+      decoration: boxDecoration,
+      height: 36,
+      width: 36,
+      child: Text('CA', style: textStyle),
+    );
+  }
+
+  Widget _buildContent() {
+    var textStyle = TextStyle(color: Color(0xFFCACACA));
+    var container = Container(
+      alignment: Alignment.centerLeft,
+      constraints: BoxConstraints(minHeight: 36),
+      child: Text(message.content, style: textStyle),
+    );
+    return Expanded(child: container);
+  }
+
+  Widget _buildRefreshButton() {
+    var boxDecoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+    );
+    return Container(
+      decoration: boxDecoration,
+      height: 24,
+      padding: const EdgeInsets.all(6),
+      width: 24,
+      child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
     );
   }
 }
