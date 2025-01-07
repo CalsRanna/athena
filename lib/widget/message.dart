@@ -10,13 +10,21 @@ import 'package:markdown/markdown.dart' as md;
 
 class MessageTile extends StatelessWidget {
   final Message message;
+  final void Function()? onRefresh;
   final Sentinel? sentinel;
 
-  const MessageTile({super.key, required this.message, this.sentinel});
+  const MessageTile({
+    super.key,
+    required this.message,
+    this.onRefresh,
+    this.sentinel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (message.role == 'user') return _UserMessage(message: message);
+    if (message.role == 'user') {
+      return _UserMessage(message: message, onRefresh: onRefresh);
+    }
     return _AssistantMessage(message: message, sentinel: sentinel);
   }
 }
@@ -204,7 +212,8 @@ class _Markdown extends StatelessWidget {
 
 class _UserMessage extends StatelessWidget {
   final Message message;
-  const _UserMessage({required this.message});
+  final void Function()? onRefresh;
+  const _UserMessage({required this.message, this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +222,7 @@ class _UserMessage extends StatelessWidget {
       const SizedBox(width: 8),
       _buildContent(),
       const SizedBox(width: 8),
-      _buildRefreshButton(),
+      _buildRefreshButton(context),
     ];
     var row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,17 +263,22 @@ class _UserMessage extends StatelessWidget {
     return Expanded(child: container);
   }
 
-  Widget _buildRefreshButton() {
+  Widget _buildRefreshButton(BuildContext context) {
     var boxDecoration = BoxDecoration(
       shape: BoxShape.circle,
       color: Colors.white,
     );
-    return Container(
+    var container = Container(
       decoration: boxDecoration,
       height: 24,
       padding: const EdgeInsets.all(6),
       width: 24,
       child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onRefresh,
+      child: container,
     );
   }
 }

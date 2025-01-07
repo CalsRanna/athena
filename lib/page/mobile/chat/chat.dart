@@ -51,75 +51,6 @@ class _ActionButton extends ConsumerWidget {
   }
 }
 
-class _MobileChatPageState extends State<MobileChatPage> {
-  final controller = TextEditingController();
-  int? id;
-
-  @override
-  Widget build(BuildContext context) {
-    final inputChildren = [
-      Expanded(child: _Input(controller: controller, onSubmitted: sendMessage)),
-      const SizedBox(width: 16),
-      _SendButton(onTap: sendMessage),
-    ];
-    final mediaQuery = MediaQuery.of(context);
-    final input = Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, mediaQuery.padding.bottom + 16),
-      child: Row(children: inputChildren),
-    );
-    var columnChildren = [
-      if (id == null)
-        Expanded(child: _SentinelPlaceholder(sentinel: widget.sentinel)),
-      if (id != null) Expanded(child: _MessageListView(chatId: id!)),
-      input,
-    ];
-    var chatTitle = _ChatTitle(chatId: id);
-    return AScaffold(
-      appBar: AAppBar(action: _ActionButton(), title: chatTitle),
-      body: Column(children: columnChildren),
-    );
-  }
-
-  Future<void> destroyChat(WidgetRef ref) async {
-    if (widget.chat?.id == null) return;
-    final notifier = ref.read(chatsNotifierProvider.notifier);
-    await notifier.destroy(widget.chat!.id);
-    if (!mounted) return;
-    AutoRouter.of(context).maybePop();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    id = widget.chat?.id;
-  }
-
-  Future<void> sendMessage(WidgetRef ref) async {
-    final text = controller.text;
-    if (text.isEmpty) return;
-    controller.clear();
-    if (id == null) {
-      var provider = chatNotifierProvider(0, sentinelId: widget.sentinel?.id);
-      var chatId = await ref.read(provider.notifier).create();
-      setState(() {
-        id = chatId;
-      });
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      var provider = chatNotifierProvider(id!, sentinelId: widget.sentinel?.id);
-      var notifier = ref.read(provider.notifier);
-      notifier.send(text);
-      setState(() {});
-    });
-  }
-}
-
 class _ChatTitle extends ConsumerWidget {
   final int? chatId;
   const _ChatTitle({this.chatId});
@@ -190,23 +121,105 @@ class _MessageListView extends ConsumerWidget {
     var provider = messagesNotifierProvider(chatId);
     var state = ref.watch(provider);
     return switch (state) {
-      AsyncData(:final value) => _buildData(value),
+      AsyncData(:final value) => _buildData(ref, value),
       AsyncLoading() => const Center(child: CircularProgressIndicator()),
       _ => const SizedBox(),
     };
   }
 
-  Widget _buildData(List<Message> messages) {
+  Widget _buildData(WidgetRef ref, List<Message> messages) {
     if (messages.isEmpty) return const SizedBox();
     final reversedMessages = messages.reversed.toList();
     return ListView.separated(
       controller: ScrollController(),
-      itemBuilder: (_, index) => MessageTile(message: reversedMessages[index]),
+      itemBuilder: (_, index) => _itemBuilder(ref, reversedMessages[index]),
       itemCount: messages.length,
       padding: EdgeInsets.symmetric(horizontal: 16),
       reverse: true,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
     );
+  }
+
+  Widget _itemBuilder(WidgetRef ref, Message message) {
+    return MessageTile(
+      message: message,
+      onRefresh: () => _refresh(ref, message),
+    );
+  }
+
+  Future<void> _refresh(WidgetRef ref, Message message) async {
+    final provider = chatNotifierProvider(chatId);
+    final notifier = ref.read(provider.notifier);
+    await notifier.regenerate(message);
+  }
+}
+
+class _MobileChatPageState extends State<MobileChatPage> {
+  final controller = TextEditingController();
+  int? id;
+
+  @override
+  Widget build(BuildContext context) {
+    final inputChildren = [
+      Expanded(child: _Input(controller: controller, onSubmitted: sendMessage)),
+      const SizedBox(width: 16),
+      _SendButton(onTap: sendMessage),
+    ];
+    final mediaQuery = MediaQuery.of(context);
+    final input = Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, mediaQuery.padding.bottom + 16),
+      child: Row(children: inputChildren),
+    );
+    var columnChildren = [
+      if (id == null)
+        Expanded(child: _SentinelPlaceholder(sentinel: widget.sentinel)),
+      if (id != null) Expanded(child: _MessageListView(chatId: id!)),
+      input,
+    ];
+    var chatTitle = _ChatTitle(chatId: id);
+    return AScaffold(
+      appBar: AAppBar(action: _ActionButton(), title: chatTitle),
+      body: Column(children: columnChildren),
+    );
+  }
+
+  Future<void> destroyChat(WidgetRef ref) async {
+    if (widget.chat?.id == null) return;
+    final notifier = ref.read(chatsNotifierProvider.notifier);
+    await notifier.destroy(widget.chat!.id);
+    if (!mounted) return;
+    AutoRouter.of(context).maybePop();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    id = widget.chat?.id;
+  }
+
+  Future<void> sendMessage(WidgetRef ref) async {
+    final text = controller.text;
+    if (text.isEmpty) return;
+    controller.clear();
+    if (id == null) {
+      var provider = chatNotifierProvider(0, sentinelId: widget.sentinel?.id);
+      var chatId = await ref.read(provider.notifier).create();
+      setState(() {
+        id = chatId;
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var provider = chatNotifierProvider(id!, sentinelId: widget.sentinel?.id);
+      var notifier = ref.read(provider.notifier);
+      notifier.send(text);
+      setState(() {});
+    });
   }
 }
 

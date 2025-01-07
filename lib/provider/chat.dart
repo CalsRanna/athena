@@ -40,12 +40,10 @@ class ChatNotifier extends _$ChatNotifier {
   }
 
   Future<void> regenerate(Message message) async {
-    // final messages = await ref.read(messagesNotifierProvider.future);
-    // final index = messages.indexWhere((item) => item.id == message.id);
-    // final userMessage = messages.elementAt(index - 1);
-    // final notifier = ref.read(messagesNotifierProvider.notifier);
-    // await notifier.destroy(message);
-    // send(userMessage.content);
+    var provider = messagesNotifierProvider(id);
+    final notifier = ref.read(provider.notifier);
+    await notifier.destroy(message);
+    send(message.content);
   }
 
   Future<void> replace(Chat chat) async {
@@ -220,10 +218,10 @@ class MessagesNotifier extends _$MessagesNotifier {
     final messages = await future;
     final index = messages.indexWhere((item) => item.id == message.id);
     List<Message> removed = [];
-    for (var i = index - 1; i < messages.length; i++) {
+    for (var i = index; i < messages.length; i++) {
       removed.add(messages.elementAt(i));
     }
-    messages.removeRange(index - 1, messages.length);
+    messages.removeRange(index, messages.length);
     state = AsyncData([...messages]);
     await future;
     isar.writeTxn(() async {
