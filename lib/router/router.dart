@@ -30,6 +30,7 @@ class AppRouter extends RootStackRouter {
       AutoRoute(page: MobileChatListRoute.page),
       AutoRoute(page: MobileSentinelListRoute.page),
       AutoRoute(page: MobileSentinelFormRoute.page),
+      AutoRoute(page: MobileModelListRoute.page),
       AutoRoute(page: MobileModelFormRoute.page),
     ];
   }
