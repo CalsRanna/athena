@@ -85,9 +85,7 @@ class MobileSentinelListPage extends ConsumerWidget {
       crossAxisSpacing: 8,
       mainAxisSpacing: 8,
       itemCount: sentinels.length,
-      itemBuilder: (context, index) {
-        return _Tile(sentinel: sentinels[index]);
-      },
+      itemBuilder: (context, index) => _Tile(sentinel: sentinels[index]),
       padding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
@@ -98,36 +96,36 @@ class _Tile extends StatelessWidget {
   final Sentinel sentinel;
   @override
   Widget build(BuildContext context) {
+    const nameTextStyle = TextStyle(
+      color: Colors.black,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    const descriptionTextStyle = TextStyle(
+      color: Color(0xFF616161),
+      fontSize: 12,
+    );
+    var children = [
+      Text(sentinel.name, style: nameTextStyle),
+      Text(sentinel.description, style: descriptionTextStyle),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(24),
+      color: Colors.white,
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      padding: EdgeInsets.all(12),
+      child: column,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _showBottomSheet,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: Colors.white,
-        ),
-        padding: EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sentinel.name,
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              sentinel.description,
-              style: const TextStyle(
-                color: Color(0xFF616161),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: container,
     );
   }
 
@@ -142,11 +140,7 @@ class _ActionDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      APrimaryButton(
-        child: Center(child: Text('Start Chat')),
-        onTap: () => navigateChatPage(context),
-      ),
+    var editWidgets = [
       const SizedBox(height: 12),
       _OutlinedButton(
         text: 'Edit',
@@ -154,6 +148,13 @@ class _ActionDialog extends StatelessWidget {
       ),
       const SizedBox(height: 12),
       _OutlinedButton(text: 'Delete'),
+    ];
+    var children = [
+      APrimaryButton(
+        child: Center(child: Text('Start Chat')),
+        onTap: () => navigateChatPage(context),
+      ),
+      if (sentinel.name != 'Athena') ...editWidgets,
       SizedBox(height: MediaQuery.paddingOf(context).bottom),
     ];
     return Padding(
