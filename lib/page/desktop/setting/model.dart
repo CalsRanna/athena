@@ -73,7 +73,7 @@ class _AddDialogState extends State<_AddDialog> {
     var container = ProviderScope.containerOf(context);
     var provider = modelsNotifierProvider;
     var notifier = container.read(provider.notifier);
-    notifier.addModel(model);
+    notifier.storeModel(model);
   }
 }
 

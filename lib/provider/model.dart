@@ -20,11 +20,18 @@ class ModelsNotifier extends _$ModelsNotifier {
     return _sort(remoteModels);
   }
 
-  Future<void> addModel(Model model) async {
+  Future<void> storeModel(Model model) async {
     var models = await future;
     if (models.any((m) => m.value == model.value)) {
       throw Exception('Model already exist');
     }
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateModel(Model model) async {
     await isar.writeTxn(() async {
       await isar.models.put(model);
     });
