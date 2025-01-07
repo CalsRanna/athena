@@ -2,7 +2,8 @@ import 'package:athena/main.dart';
 import 'package:flutter/material.dart';
 
 class ADialog {
-  static void confirm(String title, {void Function()? onConfirmed}) {
+  static void confirm(String title,
+      {void Function(BuildContext)? onConfirmed}) {
     show(_ConfirmDialog(title: title, onConfirmed: onConfirmed));
   }
 
@@ -35,7 +36,7 @@ class ADialog {
 }
 
 class _ConfirmDialog extends StatelessWidget {
-  final void Function()? onConfirmed;
+  final void Function(BuildContext)? onConfirmed;
   final String title;
   const _ConfirmDialog({this.onConfirmed, required this.title});
 
@@ -64,8 +65,8 @@ class _ConfirmDialog extends StatelessWidget {
     Navigator.of(globalKey.currentContext!).pop();
   }
 
-  void confirmDialog() {
-    onConfirmed?.call();
+  void confirmDialog(BuildContext context) {
+    onConfirmed?.call(context);
   }
 
   Widget _buildCancelButton(BuildContext context) {
@@ -108,7 +109,7 @@ class _ConfirmDialog extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: confirmDialog,
+      onTap: () => confirmDialog(context),
       child: Container(
         alignment: Alignment.center,
         decoration: shapeDecoration,

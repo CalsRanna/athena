@@ -147,7 +147,10 @@ class _ActionDialog extends StatelessWidget {
         onTap: () => navigateSentinelFormPage(context),
       ),
       const SizedBox(height: 12),
-      _OutlinedButton(text: 'Delete'),
+      _OutlinedButton(
+        onTap: () => _showDeleteConfirmDialog(context),
+        text: 'Delete',
+      ),
     ];
     var children = [
       APrimaryButton(
@@ -161,6 +164,23 @@ class _ActionDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
+  }
+
+  void _showDeleteConfirmDialog(BuildContext context) {
+    ADialog.dismiss();
+    ADialog.confirm(
+      'Are you sure you want to delete this sentinel?',
+      onConfirmed: _confirmDelete,
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    var container = ProviderScope.containerOf(context);
+    var provider = sentinelsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    notifier.destroy(sentinel);
+    ADialog.dismiss();
+    ADialog.success('Sentinel deleted successfully');
   }
 
   void navigateChatPage(BuildContext context) {

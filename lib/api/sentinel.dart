@@ -84,9 +84,9 @@ W - Workflow (工作流):
       model: ChatCompletionModel.modelId(model),
       messages: wrappedMessages,
     );
-    var response = await client.createChatCompletion(request: request);
-    final content = response.choices.first.message.content;
     try {
+      var response = await client.createChatCompletion(request: request);
+      final content = response.choices.first.message.content;
       final formatted = jsonDecode(
           content.toString().replaceAll('```json', '').replaceAll('```', ''));
       return Sentinel()

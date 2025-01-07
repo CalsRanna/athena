@@ -132,7 +132,7 @@ class _ListTile extends ConsumerWidget {
     ADialog.dismiss();
     ADialog.confirm(
       'Are you sure you want to delete this chat?',
-      onConfirmed: () => confirmDelete(context),
+      onConfirmed: confirmDelete,
     );
   }
 
