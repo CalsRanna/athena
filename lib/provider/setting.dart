@@ -1,5 +1,4 @@
 import 'package:athena/api/chat.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/util/proxy.dart';
@@ -20,23 +19,7 @@ class SettingNotifier extends _$SettingNotifier {
 
   Future<String> connect() async {
     var previousState = await future;
-    try {
-      var message = Message()
-        ..role = 'user'
-        ..content = 'Hi';
-      var tokens = ChatApi().getCompletion(
-        messages: [message],
-        model: previousState.model,
-      );
-      var result = '';
-      await for (final token in tokens) {
-        result += token;
-      }
-      if (result.isEmpty) return 'Failed';
-      return 'Succeed';
-    } catch (error) {
-      return 'Failed';
-    }
+    return await ChatApi().connect(previousState.model);
   }
 
   Future<void> toggleLatex() async {
