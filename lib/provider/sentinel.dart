@@ -22,7 +22,7 @@ class SentinelNotifier extends _$SentinelNotifier {
   Future<Sentinel> build(int id) async {
     final sentinel = await isar.sentinels.where().idEqualTo(id).findFirst();
     if (sentinel != null) return sentinel;
-    return Sentinel()..name = 'Athena';
+    return await ref.watch(defaultSentinelNotifierProvider.future);
   }
 
   Future<Sentinel> generate(String prompt) async {
