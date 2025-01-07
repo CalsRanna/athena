@@ -111,7 +111,7 @@ class _ListTile extends ConsumerWidget {
   }
 
   void navigateChat(BuildContext context) {
-    ChatRoute(chat: chat).push(context);
+    MobileChatRoute(chat: chat).push(context);
   }
 
   void openBottomSheet(BuildContext context) {

@@ -11,13 +11,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class ChatPage extends StatefulWidget {
+class MobileChatPage extends StatefulWidget {
   final Chat? chat;
   final Sentinel? sentinel;
-  const ChatPage({super.key, this.chat, this.sentinel});
+  const MobileChatPage({super.key, this.chat, this.sentinel});
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  State<MobileChatPage> createState() => _MobileChatPageState();
 }
 
 class _ActionButton extends ConsumerWidget {
@@ -51,7 +51,7 @@ class _ActionButton extends ConsumerWidget {
   }
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
   int? id;
 

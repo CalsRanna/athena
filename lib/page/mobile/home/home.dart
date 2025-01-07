@@ -42,7 +42,7 @@ class _ChatTile extends StatelessWidget {
   }
 
   void handlePressed(BuildContext context) async {
-    ChatRoute(chat: chat).push(context);
+    MobileChatRoute(chat: chat).push(context);
   }
 }
 
@@ -104,7 +104,7 @@ class _NewChat extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context) async {
-    ChatRoute().push(context);
+    MobileChatRoute().push(context);
   }
 }
 
@@ -215,7 +215,7 @@ class _SentinelTile extends StatelessWidget {
   }
 
   void navigateChatPage(BuildContext context) {
-    ChatRoute(sentinel: sentinel).push(context);
+    MobileChatRoute(sentinel: sentinel).push(context);
   }
 }
 

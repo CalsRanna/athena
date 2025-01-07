@@ -9,6 +9,7 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class MobileSentinelFormPage extends StatefulWidget {
@@ -31,17 +32,17 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       const SizedBox(height: 12),
       AInput(controller: promptController, minLines: 8),
       const SizedBox(height: 32),
-      const AFormTileLabel(title: 'Name'),
+      _buildNameLabel(),
       const SizedBox(height: 12),
       AInput(controller: nameController),
       const SizedBox(height: 16),
-      const AFormTileLabel(title: 'Description'),
+      _buildDescriptionLabel(),
       const SizedBox(height: 12),
       AInput(controller: descriptionController, minLines: 4),
       const SizedBox(height: 16),
-      _buildGenerateButton(),
-      const SizedBox(height: 12),
       _buildStoreButton(),
+      const SizedBox(height: 12),
+      _buildGenerateButton(),
     ];
     var bottom = MediaQuery.paddingOf(context).bottom;
     var listView = ListView(
@@ -77,6 +78,34 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
   }
 
+  Future<void> generateSentinelDescription() async {
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var container = ProviderScope.containerOf(context);
+      var provider = sentinelNotifierProvider(0);
+      var notifier = container.read(provider.notifier);
+      var sentinel = await notifier.generate(promptController.text);
+      descriptionController.text = sentinel.description;
+      ADialog.dismiss();
+    }
+  }
+
+  Future<void> generateSentinelName() async {
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var container = ProviderScope.containerOf(context);
+      var provider = sentinelNotifierProvider(0);
+      var notifier = container.read(provider.notifier);
+      var sentinel = await notifier.generate(promptController.text);
+      nameController.text = sentinel.name;
+      ADialog.dismiss();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -92,6 +121,25 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     _update();
   }
 
+  Widget _buildDescriptionLabel() {
+    const icon = Icon(
+      HugeIcons.strokeRoundedAiBeautify,
+      color: Colors.white,
+      size: 16,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: generateSentinelDescription,
+      child: icon,
+    );
+    var children = [
+      const AFormTileLabel(title: 'Description'),
+      const SizedBox(width: 8),
+      gestureDetector,
+    ];
+    return Row(children: children);
+  }
+
   Widget _buildGenerateButton() {
     var textStyle = TextStyle(
       color: Colors.white,
@@ -102,6 +150,25 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       onTap: generateSentinel,
       child: Center(child: Text('Generate', style: textStyle)),
     );
+  }
+
+  Widget _buildNameLabel() {
+    const icon = Icon(
+      HugeIcons.strokeRoundedAiBeautify,
+      color: Colors.white,
+      size: 16,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: generateSentinelName,
+      child: icon,
+    );
+    var children = [
+      const AFormTileLabel(title: 'Name'),
+      const SizedBox(width: 8),
+      gestureDetector,
+    ];
+    return Row(children: children);
   }
 
   Widget _buildStoreButton() {
