@@ -7,9 +7,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopLeftBar extends StatelessWidget {
+  final void Function()? onDestroyed;
   final void Function(Chat)? onSelected;
   final Chat? selectedChat;
-  const DesktopLeftBar({super.key, this.onSelected, this.selectedChat});
+  const DesktopLeftBar(
+      {super.key, this.onDestroyed, this.onSelected, this.selectedChat});
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +20,7 @@ class DesktopLeftBar extends StatelessWidget {
       SizedBox(height: 12),
       Expanded(
         child: _ChatListView(
+          onDestroyed: onDestroyed,
           onSelected: onSelected,
           selectedChat: selectedChat,
         ),
@@ -40,9 +43,10 @@ class DesktopLeftBar extends StatelessWidget {
 }
 
 class _ChatListView extends ConsumerWidget {
+  final void Function()? onDestroyed;
   final void Function(Chat)? onSelected;
   final Chat? selectedChat;
-  const _ChatListView({this.onSelected, this.selectedChat});
+  const _ChatListView({this.onDestroyed, this.onSelected, this.selectedChat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,6 +72,7 @@ class _ChatListView extends ConsumerWidget {
     return _ChatTile(
       active: active,
       chat: chat,
+      onDestroyed: onDestroyed,
       onTap: () => selectChat(chat),
     );
   }
@@ -80,8 +85,14 @@ class _ChatListView extends ConsumerWidget {
 class _ChatTile extends ConsumerStatefulWidget {
   final bool active;
   final Chat chat;
+  final void Function()? onDestroyed;
   final void Function()? onTap;
-  const _ChatTile({this.active = false, required this.chat, this.onTap});
+  const _ChatTile({
+    this.active = false,
+    required this.chat,
+    this.onDestroyed,
+    this.onTap,
+  });
 
   @override
   ConsumerState<_ChatTile> createState() => _ChatTileState();
@@ -143,6 +154,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
 
   void removeEntry() {
     entry?.remove();
+    widget.onDestroyed?.call();
   }
 }
 

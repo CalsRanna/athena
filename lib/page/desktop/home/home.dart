@@ -22,7 +22,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     var children = [
-      DesktopLeftBar(onSelected: selectChat, selectedChat: chat),
+      DesktopLeftBar(
+        onDestroyed: destroyChat,
+        onSelected: selectChat,
+        selectedChat: chat,
+      ),
       Expanded(child: WorkSpace(chat: chat, onSubmitted: submit)),
     ];
     return AScaffold(
@@ -32,6 +36,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   void createChat() {
+    setState(() {
+      chat = null;
+    });
+  }
+
+  void destroyChat() {
     setState(() {
       chat = null;
     });
