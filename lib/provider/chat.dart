@@ -39,11 +39,17 @@ class ChatNotifier extends _$ChatNotifier {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
-  Future<void> regenerate(Message message) async {
-    var provider = messagesNotifierProvider(id);
-    final notifier = ref.read(provider.notifier);
-    await notifier.destroy(message);
-    send(message.content);
+  Future<int> create() async {
+    var previousState = await future;
+    var chat = previousState.copyWith(
+      sentinelId: sentinelId,
+      updatedAt: DateTime.now(),
+    );
+    await isar.writeTxn(() async {
+      chat.id = await isar.chats.put(chat);
+    });
+    state = AsyncData(chat.copyWith(id: chat.id));
+    return chat.id;
   }
 
   Future<void> replace(Chat chat) async {
@@ -56,6 +62,13 @@ class ChatNotifier extends _$ChatNotifier {
     final notifier = ref.read(provider.notifier);
     notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
     await future;
+  }
+
+  Future<void> resend(Message message) async {
+    var provider = messagesNotifierProvider(id);
+    final notifier = ref.read(provider.notifier);
+    await notifier.destroy(message);
+    send(message.content);
   }
 
   Future<void> send(String message) async {
@@ -83,19 +96,6 @@ class ChatNotifier extends _$ChatNotifier {
     }
     streamingNotifier.close();
     await _generateTitle(message, model);
-  }
-
-  Future<int> create() async {
-    var previousState = await future;
-    var chat = previousState.copyWith(
-      sentinelId: sentinelId,
-      updatedAt: DateTime.now(),
-    );
-    await isar.writeTxn(() async {
-      chat.id = await isar.chats.put(chat);
-    });
-    state = AsyncData(chat.copyWith(id: chat.id));
-    return chat.id;
   }
 
   Future<void> store({String? title}) async {
@@ -172,14 +172,6 @@ class ChatsNotifier extends _$ChatsNotifier {
 }
 
 @riverpod
-class RecentChatsNotifier extends _$RecentChatsNotifier {
-  @override
-  Future<List<Chat>> build() async {
-    return await isar.chats.where().sortByUpdatedAtDesc().limit(5).findAll();
-  }
-}
-
-@riverpod
 class MessagesNotifier extends _$MessagesNotifier {
   /// **IMPORTANT** Only called for appending error message
   ///
@@ -251,6 +243,14 @@ class MessagesNotifier extends _$MessagesNotifier {
       messages.removeLast();
     }
     state = AsyncData([...messages, message]);
+  }
+}
+
+@riverpod
+class RecentChatsNotifier extends _$RecentChatsNotifier {
+  @override
+  Future<List<Chat>> build() async {
+    return await isar.chats.where().sortByUpdatedAtDesc().limit(5).findAll();
   }
 }
 

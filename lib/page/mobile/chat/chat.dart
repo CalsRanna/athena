@@ -143,14 +143,14 @@ class _MessageListView extends ConsumerWidget {
   Widget _itemBuilder(WidgetRef ref, Message message) {
     return MessageTile(
       message: message,
-      onRefresh: () => _refresh(ref, message),
+      onResend: () => _resend(ref, message),
     );
   }
 
-  Future<void> _refresh(WidgetRef ref, Message message) async {
+  Future<void> _resend(WidgetRef ref, Message message) async {
     final provider = chatNotifierProvider(chatId);
     final notifier = ref.read(provider.notifier);
-    await notifier.regenerate(message);
+    await notifier.resend(message);
   }
 }
 

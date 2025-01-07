@@ -105,7 +105,7 @@ class _AssistantMessage extends StatelessWidget {
 
   void handleRefresh(WidgetRef ref) {
     final notifier = ref.read(chatNotifierProvider(0).notifier);
-    notifier.regenerate(message);
+    notifier.resend(message);
   }
 }
 
