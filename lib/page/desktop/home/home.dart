@@ -1,11 +1,13 @@
-import 'package:athena/page/desktop/home/component/left_bar.dart';
 import 'package:athena/page/desktop/home/component/indicator.dart';
+import 'package:athena/page/desktop/home/component/left_bar.dart';
 import 'package:athena/page/desktop/home/component/workspace.dart';
+import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
 class DesktopHomePage extends StatefulWidget {
@@ -19,14 +21,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Chat? chat;
   @override
   Widget build(BuildContext context) {
+    var children = [
+      DesktopLeftBar(onSelected: selectChat, selectedChat: chat),
+      Expanded(child: WorkSpace(chat: chat, onSubmitted: submit)),
+    ];
     return AScaffold(
       appBar: AAppBar(onCreated: createChat, title: DesktopChatIndicator()),
-      body: Row(
-        children: [
-          DesktopLeftBar(onSelected: selectChat, selectedChat: chat),
-          Expanded(child: WorkSpace(chat: chat)),
-        ],
-      ),
+      body: Row(children: children),
     );
   }
 
@@ -39,6 +40,23 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   void selectChat(Chat chat) {
     setState(() {
       this.chat = chat;
+    });
+  }
+
+  Future<void> submit(String text) async {
+    var container = ProviderScope.containerOf(context);
+    var provider = chatNotifierProvider(chat?.id ?? 0);
+    var notifier = container.read(provider.notifier);
+    if (chat == null) {
+      var chatId = await notifier.create();
+      setState(() {
+        chat = Chat()..id = chatId;
+      });
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      var provider = chatNotifierProvider(chat!.id);
+      var notifier = container.read(provider.notifier);
+      notifier.send(text);
     });
   }
 }

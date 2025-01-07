@@ -5,13 +5,18 @@ import 'package:flutter/material.dart';
 
 class WorkSpace extends StatelessWidget {
   final Chat? chat;
-  const WorkSpace({super.key, this.chat});
+  final void Function(String)? onSubmitted;
+  const WorkSpace({super.key, this.chat, this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {
+    var children = [
+      Expanded(child: MessageList(chat: chat)),
+      Input(onSubmitted: onSubmitted)
+    ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: [Expanded(child: MessageList(chat: chat)), Input()],
+      children: children,
     );
     var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
     return Container(

@@ -9,70 +9,76 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class Input extends StatelessWidget {
-  const Input({super.key});
+  final void Function(String)? onSubmitted;
+  const Input({super.key, this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var children = [
+      _buildToolbar(),
+      const SizedBox(height: 12),
+      _buildInput(),
+    ];
+    return Container(
+      decoration: BoxDecoration(border: Border(top: borderSide)),
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildInput() {
+    var children = [
+      Expanded(child: _Input(onSubmitted: onSubmitted)),
+      const SizedBox(width: 8),
+      _buildSendButton(),
+    ];
+    return Row(children: children);
+  }
+
+  Widget _buildSendButton() {
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(55),
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          colors: [
+            Color(0xFFEAEAEA).withValues(alpha: 0.17),
+            Colors.transparent,
+          ],
+          end: Alignment.centerRight,
         ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _ModelSelector(),
-              const SizedBox(width: 8),
-              Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
-              const SizedBox(width: 8),
-              Icon(HugeIcons.strokeRoundedTemperature,
-                  color: Color(0xFF616161)),
-              const SizedBox(width: 8),
-              Icon(HugeIcons.strokeRoundedGift, color: Color(0xFF616161)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Expanded(child: _Input()),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(55),
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    colors: [
-                      Color(0xFFEAEAEA).withValues(alpha: 0.17),
-                      Colors.transparent,
-                    ],
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                height: 55,
-                padding: EdgeInsets.all(1),
-                width: 55,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(55),
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        blurRadius: 16,
-                        color: Color(0xFFCED2E7).withValues(alpha: 0.5),
-                      )
-                    ],
-                  ),
-                  child: Icon(HugeIcons.strokeRoundedSent),
-                ),
-              ),
-            ],
-          ),
-        ],
+      height: 55,
+      padding: EdgeInsets.all(1),
+      width: 55,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(55),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 16,
+              color: Color(0xFFCED2E7).withValues(alpha: 0.5),
+            )
+          ],
+        ),
+        child: Icon(HugeIcons.strokeRoundedSent),
       ),
     );
+  }
+
+  Row _buildToolbar() {
+    var children = [
+      _ModelSelector(),
+      const SizedBox(width: 8),
+      Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
+      const SizedBox(width: 8),
+      Icon(HugeIcons.strokeRoundedTemperature, color: Color(0xFF616161)),
+      const SizedBox(width: 8),
+      Icon(HugeIcons.strokeRoundedGift, color: Color(0xFF616161)),
+    ];
+    return Row(children: children);
   }
 }
 
@@ -95,7 +101,8 @@ class _Dialog extends StatelessWidget {
 }
 
 class _Input extends StatefulWidget {
-  const _Input();
+  final void Function(String)? onSubmitted;
+  const _Input({this.onSubmitted});
 
   @override
   State<_Input> createState() => _InputState();
@@ -108,7 +115,6 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
-      ref.watch(chatNotifierProvider(0));
       return Container(
         decoration: ShapeDecoration(
           color: Color(0xFFADADAD).withValues(alpha: 0.6),
@@ -155,15 +161,14 @@ class _InputState extends State<_Input> {
     }
   }
 
-  void send(WidgetRef ref) {
+  Future<void> send(WidgetRef ref) async {
     final text = controller.text.trim();
     if (text.isEmpty) return;
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
     controller.clear();
     FocusScope.of(context).unfocus();
-    final notifier = ref.read(chatNotifierProvider(0).notifier);
-    notifier.send(text);
+    widget.onSubmitted?.call(text);
   }
 
   bool _isEnterKey(KeyEvent event) {
