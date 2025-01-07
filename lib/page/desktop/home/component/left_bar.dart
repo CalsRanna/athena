@@ -7,20 +7,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopLeftBar extends StatelessWidget {
-  const DesktopLeftBar({super.key});
+  final void Function(Chat)? onSelected;
+  final Chat? selectedChat;
+  const DesktopLeftBar({super.key, this.onSelected, this.selectedChat});
 
   @override
   Widget build(BuildContext context) {
-    const children = [
+    var children = [
       _Search(),
       SizedBox(height: 12),
-      Expanded(child: _ChatListView()),
+      Expanded(
+        child: _ChatListView(
+          onSelected: onSelected,
+          selectedChat: selectedChat,
+        ),
+      ),
       SizedBox(height: 12),
       _Sentinel(),
       _Shortcut(),
       _Setting(),
     ];
-    const column = Column(
+    var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
@@ -33,7 +40,9 @@ class DesktopLeftBar extends StatelessWidget {
 }
 
 class _ChatListView extends ConsumerWidget {
-  const _ChatListView();
+  final void Function(Chat)? onSelected;
+  final Chat? selectedChat;
+  const _ChatListView({this.onSelected, this.selectedChat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,24 +57,31 @@ class _ChatListView extends ConsumerWidget {
   Widget _buildData(WidgetRef ref, List<Chat> chats) {
     if (chats.isEmpty) return const SizedBox();
     return ListView.separated(
-      itemBuilder: (context, index) => _itemBuilder(ref, chats[index]),
+      itemBuilder: (context, index) => _itemBuilder(chats[index]),
       itemCount: chats.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
   }
 
-  Widget _itemBuilder(WidgetRef ref, Chat chat) {
-    final currentChat = ref.watch(chatNotifierProvider(0)).value;
-    final active = currentChat?.id == chat.id;
-    return _ChatTile(active: active, chat: chat);
+  Widget _itemBuilder(Chat chat) {
+    final active = selectedChat?.id == chat.id;
+    return _ChatTile(
+      active: active,
+      chat: chat,
+      onTap: () => selectChat(chat),
+    );
+  }
+
+  void selectChat(Chat chat) {
+    onSelected?.call(chat);
   }
 }
 
 class _ChatTile extends ConsumerStatefulWidget {
   final bool active;
   final Chat chat;
-
-  const _ChatTile({this.active = false, required this.chat});
+  final void Function()? onTap;
+  const _ChatTile({this.active = false, required this.chat, this.onTap});
 
   @override
   ConsumerState<_ChatTile> createState() => _ChatTileState();
@@ -122,8 +138,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
   }
 
   void handleTap(WidgetRef ref) {
-    final notifier = ref.read(chatNotifierProvider(0).notifier);
-    notifier.replace(widget.chat);
+    widget.onTap?.call();
   }
 
   void removeEntry() {

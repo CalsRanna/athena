@@ -13,26 +13,32 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 
-class MessageList extends StatelessWidget {
-  const MessageList({super.key});
+class MessageList extends ConsumerWidget {
+  final Chat? chat;
+  const MessageList({super.key, this.chat});
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      final messages = ref.watch(messagesNotifierProvider(0)).value;
-      if (messages == null) return const DesktopSentinelPlaceholder();
-      if (messages.isEmpty == true) return const DesktopSentinelPlaceholder();
-      return ListView.separated(
-        itemBuilder: (context, index) {
-          final message = messages.reversed.elementAt(index);
-          return _MessageTile(message: message);
-        },
-        itemCount: messages.length,
-        reverse: true,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-      );
-    });
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = messagesNotifierProvider(chat?.id ?? 0);
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(List<Message> messages) {
+    if (messages.isEmpty == true) return const DesktopSentinelPlaceholder();
+    return ListView.separated(
+      itemBuilder: (context, index) {
+        final message = messages.reversed.elementAt(index);
+        return _MessageTile(message: message);
+      },
+      itemCount: messages.length,
+      reverse: true,
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+    );
   }
 }
 

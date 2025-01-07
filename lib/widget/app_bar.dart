@@ -1,23 +1,28 @@
 import 'dart:io';
 
-import 'package:athena/provider/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:window_manager/window_manager.dart';
 
 class AAppBar extends StatelessWidget {
   final Widget? action;
   final Widget? leading;
+  final void Function()? onCreated;
   final Widget? title;
-  const AAppBar({super.key, this.action, this.leading, this.title});
+  const AAppBar(
+      {super.key, this.action, this.leading, this.onCreated, this.title});
 
   @override
   Widget build(BuildContext context) {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) return _MobileAppBar(action: action, title: title);
-    return _DesktopAppBar(action: action, leading: leading, title: title);
+    return _DesktopAppBar(
+      action: action,
+      leading: leading,
+      onCreated: onCreated,
+      title: title,
+    );
   }
 }
 
@@ -61,20 +66,17 @@ class _ButtonsState extends State<_Buttons> {
   }
 }
 
-class _CreateButton extends ConsumerWidget {
-  const _CreateButton();
+class _CreateButton extends StatelessWidget {
+  final void Function()? onTap;
+  const _CreateButton({this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: Color(0xFF616161),
     );
-    return IconButton(onPressed: () => handleTap(ref), icon: icon);
-  }
-
-  void handleTap(WidgetRef ref) {
-    ref.invalidate(chatNotifierProvider);
+    return IconButton(onPressed: onTap, icon: icon);
   }
 }
 
@@ -113,8 +115,9 @@ class _CloseButton extends StatelessWidget {
 class _DesktopAppBar extends StatelessWidget {
   final Widget? action;
   final Widget? leading;
+  final void Function()? onCreated;
   final Widget? title;
-  const _DesktopAppBar({this.action, this.leading, this.title});
+  const _DesktopAppBar({this.action, this.leading, this.onCreated, this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +129,11 @@ class _DesktopAppBar extends StatelessWidget {
           SizedBox(
             height: 50,
             width: 200,
-            child: const Row(children: [
+            child: Row(children: [
               SizedBox(width: 16),
               _Buttons(),
               Spacer(),
-              _CreateButton(),
+              _CreateButton(onTap: onCreated),
             ]),
           ),
           Expanded(
