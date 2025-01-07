@@ -62,7 +62,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
       SizedBox(height: 160, child: _ShortcutListView()),
       SizedBox(height: 24),
       _Title('Sentinel', onTap: () => navigateSentinelList(context)),
-      SizedBox(height: 52, child: _Sentinel()),
+      SizedBox(height: 8),
+      SizedBox(height: 52, child: _SentinelListView()),
     ];
     var body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,8 +156,8 @@ class _RecentChatListView extends ConsumerWidget {
   }
 }
 
-class _Sentinel extends ConsumerWidget {
-  const _Sentinel();
+class _SentinelListView extends ConsumerWidget {
+  const _SentinelListView();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
