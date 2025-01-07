@@ -3,6 +3,7 @@ import 'package:athena/page/mobile/setting/url.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,11 +43,22 @@ class _Connect extends StatelessWidget {
       icon: HugeIcons.strokeRoundedLink01,
       color: Color(0xffffffff),
     );
-    return const ListTile(
+    return ListTile(
+      onTap: () => connect(context),
       title: Text('Connect'),
       titleTextStyle: TextStyle(fontSize: 16, color: Color(0xffffffff)),
       trailing: hugeIcon,
     );
+  }
+
+  Future<void> connect(BuildContext context) async {
+    ADialog.loading();
+    var container = ProviderScope.containerOf(context);
+    var provider = settingNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    var message = await notifier.connect();
+    ADialog.dismiss();
+    ADialog.success(message);
   }
 }
 
