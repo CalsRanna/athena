@@ -26,7 +26,6 @@ class DesktopLeftBar extends StatelessWidget {
       Expanded(child: chatListView),
       SizedBox(height: 12),
       _Sentinel(),
-      _Shortcut(),
       _Setting(),
     ];
     var column = Column(
@@ -227,15 +226,6 @@ class _Setting extends StatelessWidget {
 
   void handleTap(BuildContext context) {
     const DesktopSettingAccountRoute().push(context);
-  }
-}
-
-class _Shortcut extends StatelessWidget {
-  const _Shortcut();
-
-  @override
-  Widget build(BuildContext context) {
-    return _Tile(icon: HugeIcons.strokeRoundedCommand, title: 'Shortcut');
   }
 }
 
