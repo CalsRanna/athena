@@ -26,6 +26,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       DesktopLeftBar(
         onDestroyed: destroyChat,
         onSelected: selectChat,
+        onSentinelChanged: changeSentinel,
         selectedChat: chat,
       ),
       Expanded(child: WorkSpace(chat: chat, onSubmitted: submit)),
@@ -49,6 +50,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     setState(() {
       chat = null;
     });
+  }
+
+  void changeSentinel(Sentinel sentinel) {
+    var container = ProviderScope.containerOf(context);
+    var provider = chatNotifierProvider(chat?.id ?? 0);
+    var notifier = container.read(provider.notifier);
+    notifier.updateSentinel(sentinel);
+    if (chat == null) {
+      setState(() {
+        chat = Chat()..sentinelId = sentinel.id;
+      });
+    } else {
+      setState(() {
+        chat = chat!.copyWith(sentinelId: sentinel.id);
+      });
+    }
   }
 
   void selectChat(Chat chat) {

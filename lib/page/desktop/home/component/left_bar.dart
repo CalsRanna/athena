@@ -9,9 +9,15 @@ import 'package:hugeicons/hugeicons.dart';
 class DesktopLeftBar extends StatelessWidget {
   final void Function()? onDestroyed;
   final void Function(Chat)? onSelected;
+  final void Function(Sentinel)? onSentinelChanged;
   final Chat? selectedChat;
-  const DesktopLeftBar(
-      {super.key, this.onDestroyed, this.onSelected, this.selectedChat});
+  const DesktopLeftBar({
+    super.key,
+    this.onDestroyed,
+    this.onSelected,
+    this.onSentinelChanged,
+    this.selectedChat,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +31,7 @@ class DesktopLeftBar extends StatelessWidget {
       SizedBox(height: 12),
       Expanded(child: chatListView),
       SizedBox(height: 12),
-      _Sentinel(),
+      _Sentinel(onChanged: onSentinelChanged),
       _Setting(),
     ];
     var column = Column(
@@ -196,7 +202,8 @@ class _Search extends StatelessWidget {
 }
 
 class _Sentinel extends StatelessWidget {
-  const _Sentinel();
+  final void Function(Sentinel)? onChanged;
+  const _Sentinel({this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -207,8 +214,11 @@ class _Sentinel extends StatelessWidget {
     );
   }
 
-  void handleTap(BuildContext context) {
-    const DesktopSentinelGridRoute().push(context);
+  Future<void> handleTap(BuildContext context) async {
+    var sentinel =
+        await const DesktopSentinelGridRoute().push<Sentinel>(context);
+    if (sentinel == null) return;
+    onChanged?.call(sentinel);
   }
 }
 

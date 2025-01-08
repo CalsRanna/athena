@@ -64,6 +64,12 @@ class ChatNotifier extends _$ChatNotifier {
     await future;
   }
 
+  Future<void> updateSentinel(Sentinel sentinel) async {
+    var previousState = await future;
+    final chat = previousState.copyWith(sentinelId: sentinel.id);
+    state = AsyncData(chat);
+  }
+
   Future<void> resend(Message message) async {
     var provider = messagesNotifierProvider(id);
     final notifier = ref.read(provider.notifier);
