@@ -9,8 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopMessageInput extends StatelessWidget {
+  final void Function(Model)? onModelChanged;
   final void Function(String)? onSubmitted;
-  const DesktopMessageInput({super.key, this.onSubmitted});
+  const DesktopMessageInput({super.key, this.onModelChanged, this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +71,7 @@ class DesktopMessageInput extends StatelessWidget {
 
   Row _buildToolbar() {
     var children = [
-      _ModelSelector(),
+      _ModelSelector(onSelected: onModelChanged),
       const SizedBox(width: 8),
       Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
       const SizedBox(width: 8),
@@ -83,7 +84,7 @@ class DesktopMessageInput extends StatelessWidget {
 }
 
 class _Dialog extends StatelessWidget {
-  final void Function()? onTap;
+  final void Function(Model)? onTap;
   const _Dialog({this.onTap});
 
   @override
@@ -189,7 +190,7 @@ class _InputState extends State<_Input> {
 }
 
 class _List extends StatelessWidget {
-  final void Function()? onTap;
+  final void Function(Model)? onTap;
   final List<Model> models;
   const _List({this.onTap, required this.models});
 
@@ -203,12 +204,15 @@ class _List extends StatelessWidget {
   }
 
   List<Widget> getChildren(BuildContext context) {
-    return models.map((model) => _Tile(model, onTap: onTap)).toList();
+    return models
+        .map((model) => _Tile(model, onTap: () => onTap?.call(model)))
+        .toList();
   }
 }
 
 class _ModelSelector extends StatefulWidget {
-  const _ModelSelector();
+  final void Function(Model)? onSelected;
+  const _ModelSelector({this.onSelected});
 
   @override
   State<_ModelSelector> createState() => _ModelSelectorState();
@@ -244,7 +248,7 @@ class _ModelSelectorState extends State<_ModelSelector> {
               link: link,
               offset: const Offset(0, -12),
               targetAnchor: Alignment.topLeft,
-              child: _Dialog(onTap: removeEntry),
+              child: _Dialog(onTap: changeModel),
             ),
           ),
         ),
@@ -255,6 +259,11 @@ class _ModelSelectorState extends State<_ModelSelector> {
 
   void removeEntry() {
     entry?.remove();
+  }
+
+  void changeModel(Model model) {
+    entry?.remove();
+    widget.onSelected?.call(model);
   }
 }
 
@@ -271,8 +280,6 @@ class _Tile extends StatelessWidget {
   }
 
   void handleTap(WidgetRef ref) {
-    final notifier = ref.read(chatNotifierProvider(0).notifier);
-    notifier.updateModel(model.value);
     onTap?.call();
   }
 }
