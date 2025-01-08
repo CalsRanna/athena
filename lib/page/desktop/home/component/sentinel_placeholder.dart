@@ -4,12 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopSentinelPlaceholder extends ConsumerWidget {
-  const DesktopSentinelPlaceholder({super.key});
+  final Sentinel? sentinel;
+  const DesktopSentinelPlaceholder({super.key, this.sentinel});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sentinel = ref.watch(sentinelNotifierProvider(0)).valueOrNull;
-    if (sentinel == null) return const SizedBox();
+    if (sentinel != null) return _buildData(sentinel!);
+    var provider = sentinelNotifierProvider(0);
+    var state = ref.watch(provider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(Sentinel sentinel) {
     var nameTextStyle = TextStyle(
       color: Colors.white,
       fontSize: 28,
