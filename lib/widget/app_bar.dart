@@ -1,247 +1,26 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:window_manager/window_manager.dart';
 
 class AAppBar extends StatelessWidget {
   final Widget? action;
   final Widget? leading;
   final void Function()? onCreated;
   final Widget? title;
-  const AAppBar(
-      {super.key, this.action, this.leading, this.onCreated, this.title});
+  const AAppBar({
+    super.key,
+    this.action,
+    this.leading,
+    this.onCreated,
+    this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) return _MobileAppBar(action: action, title: title);
-    return _DesktopAppBar(
-      action: action,
-      leading: leading,
-      onCreated: onCreated,
-      title: title,
-    );
-  }
-}
-
-class _Buttons extends StatefulWidget {
-  const _Buttons();
-
-  @override
-  State<_Buttons> createState() => _ButtonsState();
-}
-
-class _ButtonsState extends State<_Buttons> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: Row(
-        children: [
-          _CloseButton(hover: hover),
-          const SizedBox(width: 8),
-          _MinimumButton(hover: hover),
-          const SizedBox(width: 8),
-          _FullScreenButton(hover: hover),
-        ],
-      ),
-    );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() {
-      hover = false;
-    });
-  }
-}
-
-class _CreateButton extends StatelessWidget {
-  final void Function()? onTap;
-  const _CreateButton({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedPencilEdit02,
-      color: Color(0xFF616161),
-    );
-    return IconButton(onPressed: onTap, icon: icon);
-  }
-}
-
-class _CloseButton extends StatelessWidget {
-  final bool hover;
-
-  const _CloseButton({this.hover = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = HugeIcon(
-      color: Theme.of(context).colorScheme.onSurface,
-      icon: HugeIcons.strokeRoundedCancel01,
-      size: 10.0,
-    );
-    const placeholder = SizedBox(height: 10, width: 10);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.red,
-          shape: BoxShape.circle,
-        ),
-        padding: const EdgeInsets.all(2),
-        child: hover ? icon : placeholder,
-      ),
-    );
-  }
-
-  void handleTap() {
-    windowManager.close();
-  }
-}
-
-class _DesktopAppBar extends StatelessWidget {
-  final Widget? action;
-  final Widget? leading;
-  final void Function()? onCreated;
-  final Widget? title;
-  const _DesktopAppBar({this.action, this.leading, this.onCreated, this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onPanStart: handlePanStart,
-      child: Row(
-        children: [
-          SizedBox(
-            height: 50,
-            width: 200,
-            child: Row(children: [
-              SizedBox(width: 16),
-              _Buttons(),
-              Spacer(),
-              _CreateButton(onTap: onCreated),
-            ]),
-          ),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom:
-                      BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                  left: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-              ),
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Row(
-                children: [
-                  leading ?? const SizedBox(),
-                  title ?? const SizedBox(),
-                  const Spacer(),
-                  action ?? const SizedBox(),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  void handlePanStart(DragStartDetails details) {
-    windowManager.startDragging();
-  }
-}
-
-class _FullScreenButton extends StatefulWidget {
-  final bool hover;
-
-  const _FullScreenButton({this.hover = false});
-
-  @override
-  State<_FullScreenButton> createState() => _FullScreenButtonState();
-}
-
-class _FullScreenButtonState extends State<_FullScreenButton> {
-  bool fullScreen = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface;
-    final child = HugeIcon(
-      color: color,
-      icon: HugeIcons.strokeRoundedArrowExpand02,
-      size: 10,
-    );
-    const placeholder = SizedBox(height: 10, width: 10);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.green,
-          shape: BoxShape.circle,
-        ),
-        padding: const EdgeInsets.all(2),
-        child: widget.hover ? child : placeholder,
-      ),
-    );
-  }
-
-  void handleTap() {
-    windowManager.setFullScreen(!fullScreen);
-    setState(() {
-      fullScreen = !fullScreen;
-    });
-  }
-}
-
-class _MinimumButton extends StatelessWidget {
-  final bool hover;
-
-  const _MinimumButton({this.hover = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface;
-    final icon = HugeIcon(
-      color: color,
-      icon: HugeIcons.strokeRoundedRemove01,
-      size: 10,
-    );
-    const placeholder = SizedBox(height: 10, width: 10);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.orange,
-          shape: BoxShape.circle,
-        ),
-        padding: const EdgeInsets.all(2),
-        child: hover ? icon : placeholder,
-      ),
-    );
-  }
-
-  void handleTap() {
-    windowManager.minimize();
+    return const SizedBox();
   }
 }
 
