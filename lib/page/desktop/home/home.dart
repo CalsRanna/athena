@@ -7,12 +7,14 @@ import 'package:athena/page/desktop/home/component/sentinel_tile.dart';
 import 'package:athena/page/desktop/home/component/setting_tile.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 
 @RoutePage()
 class DesktopHomePage extends StatefulWidget {
@@ -31,50 +33,47 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     var children = [_buildLeftBar(), Expanded(child: _buildRightWorkspace())];
     var appBar = AAppBar(
       onCreated: createChat,
-      title: DesktopChatIndicator(chat: chat),
+      title: DesktopChatIndicator(model: model, sentinel: sentinel),
     );
     return AScaffold(appBar: appBar, body: Row(children: children));
   }
 
-  void changeChat(Chat chat) {
+  Future<void> changeChat(Chat chat) async {
+    var model = await isar.models.filter().valueEqualTo(chat.model).findFirst();
+    var sentinel =
+        await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
     setState(() {
       this.chat = chat;
-    });
-  }
-
-  void changeSentinel(Sentinel sentinel) {
-    var container = ProviderScope.containerOf(context);
-    var provider = chatNotifierProvider(chat?.id ?? 0);
-    var notifier = container.read(provider.notifier);
-    notifier.updateSentinel(sentinel);
-    if (chat == null) {
-      setState(() {
-        chat = Chat()..sentinelId = sentinel.id;
-        this.sentinel = sentinel;
-      });
-    } else {
-      setState(() {
-        chat = chat!.copyWith(sentinelId: sentinel.id);
-        this.sentinel = sentinel;
-      });
-    }
-  }
-
-  void createChat() {
-    setState(() {
-      chat = null;
-    });
-  }
-
-  void destroyChat() {
-    setState(() {
-      chat = null;
+      this.model = model;
+      this.sentinel = sentinel;
     });
   }
 
   void changeModel(Model model) {
     setState(() {
       this.model = model;
+    });
+  }
+
+  void changeSentinel(Sentinel sentinel) {
+    setState(() {
+      this.sentinel = sentinel;
+    });
+  }
+
+  void createChat() {
+    setState(() {
+      chat = null;
+      model = null;
+      sentinel = null;
+    });
+  }
+
+  void destroyChat() {
+    setState(() {
+      chat = null;
+      model = null;
+      sentinel = null;
     });
   }
 

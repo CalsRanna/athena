@@ -6,27 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopChatIndicator extends StatelessWidget {
-  final Chat? chat;
-  const DesktopChatIndicator({super.key, this.chat});
+  final Model? model;
+  final Sentinel? sentinel;
+  const DesktopChatIndicator({super.key, this.model, this.sentinel});
 
   @override
   Widget build(BuildContext context) {
     var children = [
-      _SentinelIndicator(chat: chat),
+      _SentinelIndicator(sentinel: sentinel),
       SizedBox(width: 8),
-      _ModelIndicator(chat: chat),
+      _ModelIndicator(model: model),
     ];
     return Row(children: children);
   }
 }
 
 class _ModelIndicator extends ConsumerWidget {
-  final Chat? chat;
-  const _ModelIndicator({this.chat});
+  final Model? model;
+  const _ModelIndicator({this.model});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = modelNotifierProvider(chat?.model ?? '');
+    if (model != null) return _buildData(model!);
+    var provider = modelNotifierProvider('');
     var state = ref.watch(provider);
     return switch (state) {
       AsyncData(:final value) => _buildData(value),
@@ -70,14 +72,15 @@ class _ModelIndicator extends ConsumerWidget {
 }
 
 class _SentinelIndicator extends ConsumerWidget {
-  final Chat? chat;
-  const _SentinelIndicator({this.chat});
+  final Sentinel? sentinel;
+  const _SentinelIndicator({this.sentinel});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = sentinelNotifierProvider(chat?.sentinelId ?? 0);
-    var sentinel = ref.watch(provider);
-    return switch (sentinel) {
+    if (sentinel != null) return _buildData(sentinel!);
+    var provider = sentinelNotifierProvider(0);
+    var state = ref.watch(provider);
+    return switch (state) {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
