@@ -1,7 +1,7 @@
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/indicator.dart';
-import 'package:athena/page/desktop/home/component/input.dart';
-import 'package:athena/page/desktop/home/component/message.dart';
+import 'package:athena/page/desktop/home/component/message_input.dart';
+import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/search.dart';
 import 'package:athena/page/desktop/home/component/sentinel_tile.dart';
 import 'package:athena/page/desktop/home/component/setting_tile.dart';
@@ -114,8 +114,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Widget _buildRightWorkspace() {
     var children = [
-      Expanded(child: MessageList(chat: chat)),
-      Input(onSubmitted: submit)
+      Expanded(child: DesktopMessageList(chat: chat)),
+      DesktopMessageInput(onSubmitted: submit)
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.center,
