@@ -2,9 +2,11 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSentinelGridPage extends StatelessWidget {
@@ -13,10 +15,40 @@ class DesktopSentinelGridPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
+      Row(
+        children: [
+          Stack(
+            children: [
+              Container(
+                height: 50,
+                width: 120,
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => popPage(context),
+                  child: Icon(
+                    HugeIcons.strokeRoundedArrowTurnBackward,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+              const Positioned(left: 16, top: 18, child: MacWindowButton())
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+              child: Text('Sentinel', style: TextStyle(color: Colors.white))),
+        ],
+      ),
       SizedBox(height: 52, child: _TagListView()),
       Expanded(child: _SentinelGridView()),
     ];
     return AScaffold(appBar: AAppBar(), body: Column(children: children));
+  }
+
+  void popPage(BuildContext context) {
+    AutoRouter.of(context).maybePop();
   }
 }
 
