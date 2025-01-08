@@ -76,20 +76,34 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
   }
 }
 
-class _Dialog extends StatelessWidget {
+class _Dialog extends ConsumerWidget {
   final void Function(Model)? onTap;
   const _Dialog({this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return ACard(
-      child: Consumer(builder: (context, ref, child) {
-        final state = ref.watch(modelsNotifierProvider);
-        return switch (state) {
-          AsyncData(:final value) => _List(onTap: onTap, models: value),
-          _ => const SizedBox(),
-        };
-      }),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(modelsNotifierProvider);
+    var child = switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+    return ACard(child: child);
+  }
+
+  Widget _buildData(List<Model> models) {
+    if (models.isEmpty) return const SizedBox();
+    var children = models.map((model) => _itemBuilder(model)).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  Widget _itemBuilder(Model model) {
+    return ATile(
+      onTap: () => onTap?.call(model),
+      title: model.name,
+      width: 160,
     );
   }
 }
@@ -173,27 +187,6 @@ class _InputState extends State<_Input> {
       LogicalKeyboardKey.metaRight,
     ];
     return modifierKeys.contains(event.logicalKey);
-  }
-}
-
-class _List extends StatelessWidget {
-  final void Function(Model)? onTap;
-  final List<Model> models;
-  const _List({this.onTap, required this.models});
-
-  @override
-  Widget build(BuildContext context) {
-    if (models.isEmpty) return const SizedBox();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: getChildren(context),
-    );
-  }
-
-  List<Widget> getChildren(BuildContext context) {
-    return models
-        .map((model) => _Tile(model, onTap: () => onTap?.call(model)))
-        .toList();
   }
 }
 
@@ -306,23 +299,6 @@ class _SendButton extends ConsumerWidget {
   void handleTap(WidgetRef ref) {
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
-    onTap?.call();
-  }
-}
-
-class _Tile extends StatelessWidget {
-  final void Function()? onTap;
-  final Model model;
-  const _Tile(this.model, {this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      return ATile(onTap: () => handleTap(ref), title: model.name, width: 160);
-    });
-  }
-
-  void handleTap(WidgetRef ref) {
     onTap?.call();
   }
 }
