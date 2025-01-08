@@ -4,6 +4,7 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
+import 'package:athena/schema/model.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -77,20 +78,20 @@ class ChatNotifier extends _$ChatNotifier {
     send(message.content);
   }
 
-  Future<void> send(String message) async {
+  Future<void> send(String message, {Model? model, Sentinel? sentinel}) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var messagesProvider = messagesNotifierProvider(id);
     final messagesNotifier = ref.read(messagesProvider.notifier);
     await messagesNotifier.store(message);
-    final prompt = await _getPrompt();
+    final prompt = await _getPrompt(sentinel: sentinel);
     final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesProvider.future);
-    final model = await _getModel();
+    final modelValue = await _getModel(model: model);
     try {
       final stream = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
-        model: model,
+        model: modelValue,
       );
       await for (final token in stream) {
         await messagesNotifier.streaming(token);
@@ -101,7 +102,7 @@ class ChatNotifier extends _$ChatNotifier {
       messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
-    await _generateTitle(message, model);
+    await _generateTitle(message, modelValue);
   }
 
   Future<void> store({String? title}) async {
@@ -145,18 +146,21 @@ class ChatNotifier extends _$ChatNotifier {
     }
   }
 
-  Future<String> _getModel() async {
+  Future<String> _getModel({Model? model}) async {
+    if (model != null) return model.value;
     final chat = await future;
-    final model = chat.model;
-    if (model.isNotEmpty) return model;
-    final models = await ref.read(modelsNotifierProvider.future);
-    return models.first.value;
+    var provider = modelNotifierProvider(chat.model);
+    final chatRelatedModel = await ref.watch(provider.future);
+    return chatRelatedModel.value;
   }
 
-  Future<String> _getPrompt() async {
-    var provider = sentinelNotifierProvider(sentinelId ?? 0);
-    final sentinel = await ref.read(provider.future);
-    return sentinel.prompt;
+  Future<String> _getPrompt({Sentinel? sentinel}) async {
+    if (sentinel != null) return sentinel.prompt;
+    var chat = await future;
+    var sentinelId = chat.sentinelId;
+    var provider = sentinelNotifierProvider(sentinelId);
+    final chatRelatedSentinel = await ref.read(provider.future);
+    return chatRelatedSentinel.prompt;
   }
 }
 
