@@ -72,6 +72,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     });
   }
 
+  void changeModel(Model model) {
+    setState(() {
+      this.model = model;
+    });
+  }
+
   Future<void> submit(String text) async {
     var container = ProviderScope.containerOf(context);
     var provider = chatNotifierProvider(chat?.id ?? 0);
@@ -115,7 +121,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Widget _buildRightWorkspace() {
     var children = [
       Expanded(child: DesktopMessageList(chat: chat)),
-      DesktopMessageInput(onSubmitted: submit)
+      DesktopMessageInput(onModelChanged: changeModel, onSubmitted: submit)
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.center,
