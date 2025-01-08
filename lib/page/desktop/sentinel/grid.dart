@@ -93,7 +93,7 @@ class _SentinelTile extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context) {
-    AutoRouter.of(context).maybePop(sentinel);
+    AutoRouter.of(context).maybePop<Sentinel>(sentinel);
   }
 }
 

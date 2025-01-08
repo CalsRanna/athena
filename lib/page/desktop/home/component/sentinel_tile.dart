@@ -1,9 +1,10 @@
 import 'package:athena/router/router.gr.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopSentinelTile extends StatelessWidget {
-  final void Function(DesktopSentinelTile)? onChanged;
+  final void Function(Sentinel)? onChanged;
   const DesktopSentinelTile({super.key, this.onChanged});
 
   @override
@@ -17,7 +18,7 @@ class DesktopSentinelTile extends StatelessWidget {
 
   Future<void> handleTap(BuildContext context) async {
     const route = DesktopSentinelGridRoute();
-    var sentinel = await route.push<DesktopSentinelTile>(context);
+    var sentinel = await route.push<Sentinel>(context);
     if (sentinel == null) return;
     onChanged?.call(sentinel);
   }
