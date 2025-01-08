@@ -15,16 +15,15 @@ class DesktopLeftBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var chatListView = _ChatListView(
+      onDestroyed: onDestroyed,
+      onSelected: onSelected,
+      selectedChat: selectedChat,
+    );
     var children = [
       _Search(),
       SizedBox(height: 12),
-      Expanded(
-        child: _ChatListView(
-          onDestroyed: onDestroyed,
-          onSelected: onSelected,
-          selectedChat: selectedChat,
-        ),
-      ),
+      Expanded(child: chatListView),
       SizedBox(height: 12),
       _Sentinel(),
       _Shortcut(),
