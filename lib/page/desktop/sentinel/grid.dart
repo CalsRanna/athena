@@ -87,14 +87,13 @@ class _SentinelTile extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context, ref),
+      onTap: () => handleTap(context),
       child: container,
     );
   }
 
-  void handleTap(BuildContext context, WidgetRef ref) {
-    ref.read(sentinelNotifierProvider(0).notifier).select(sentinel);
-    AutoRouter.of(context).maybePop();
+  void handleTap(BuildContext context) {
+    AutoRouter.of(context).maybePop(sentinel);
   }
 }
 
