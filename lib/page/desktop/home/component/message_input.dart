@@ -8,9 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class Input extends StatelessWidget {
+class DesktopMessageInput extends StatelessWidget {
   final void Function(String)? onSubmitted;
-  const Input({super.key, this.onSubmitted});
+  const DesktopMessageInput({super.key, this.onSubmitted});
 
   @override
   Widget build(BuildContext context) {

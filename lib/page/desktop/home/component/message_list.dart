@@ -13,9 +13,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 
-class MessageList extends ConsumerWidget {
+class DesktopMessageList extends ConsumerWidget {
   final Chat? chat;
-  const MessageList({super.key, this.chat});
+  const DesktopMessageList({super.key, this.chat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
