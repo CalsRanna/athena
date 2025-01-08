@@ -8,13 +8,13 @@ import 'package:hugeicons/hugeicons.dart';
 
 class DesktopLeftBar extends StatelessWidget {
   final void Function()? onDestroyed;
-  final void Function(Chat)? onSelected;
+  final void Function(Chat)? onChatChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final Chat? selectedChat;
   const DesktopLeftBar({
     super.key,
     this.onDestroyed,
-    this.onSelected,
+    this.onChatChanged,
     this.onSentinelChanged,
     this.selectedChat,
   });
@@ -23,7 +23,7 @@ class DesktopLeftBar extends StatelessWidget {
   Widget build(BuildContext context) {
     var chatListView = _ChatListView(
       onDestroyed: onDestroyed,
-      onSelected: onSelected,
+      onSelected: onChatChanged,
       selectedChat: selectedChat,
     );
     var children = [

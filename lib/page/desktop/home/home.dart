@@ -3,6 +3,7 @@ import 'package:athena/page/desktop/home/component/left_bar.dart';
 import 'package:athena/page/desktop/home/component/workspace.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -19,17 +20,23 @@ class DesktopHomePage extends StatefulWidget {
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
   Chat? chat;
+  Model? model;
   Sentinel? sentinel;
   @override
   Widget build(BuildContext context) {
     var children = [
       DesktopLeftBar(
         onDestroyed: destroyChat,
-        onSelected: selectChat,
+        onChatChanged: changeChat,
         onSentinelChanged: changeSentinel,
         selectedChat: chat,
       ),
-      Expanded(child: WorkSpace(chat: chat, onSubmitted: submit)),
+      Expanded(
+        child: WorkSpace(
+          chat: chat,
+          onSubmitted: submit,
+        ),
+      ),
     ];
     return AScaffold(
       appBar: AAppBar(
@@ -60,15 +67,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (chat == null) {
       setState(() {
         chat = Chat()..sentinelId = sentinel.id;
+        this.sentinel = sentinel;
       });
     } else {
       setState(() {
         chat = chat!.copyWith(sentinelId: sentinel.id);
+        this.sentinel = sentinel;
       });
     }
   }
 
-  void selectChat(Chat chat) {
+  void changeChat(Chat chat) {
     setState(() {
       this.chat = chat;
     });
@@ -87,7 +96,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       var provider = chatNotifierProvider(chat!.id);
       var notifier = container.read(provider.notifier);
-      notifier.send(text);
+      notifier.send(text, model: model, sentinel: sentinel);
     });
   }
 }
