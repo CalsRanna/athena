@@ -17,7 +17,16 @@ class DesktopChatIndicator extends StatelessWidget {
       SizedBox(width: 8),
       _ModelIndicator(model: model),
     ];
-    return Row(children: children);
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var boxDecoration = BoxDecoration(
+      border: Border(bottom: borderSide, left: borderSide),
+    );
+    return Container(
+      decoration: boxDecoration,
+      height: 50,
+      padding: const EdgeInsets.only(left: 16),
+      child: Row(children: children),
+    );
   }
 }
 

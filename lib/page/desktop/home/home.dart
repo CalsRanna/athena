@@ -10,11 +10,12 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
-import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:isar/isar.dart';
 
 @RoutePage()
@@ -32,11 +33,31 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     var children = [_buildLeftBar(), Expanded(child: _buildRightWorkspace())];
-    var appBar = AAppBar(
-      onCreated: createChat,
-      title: DesktopChatIndicator(model: model, sentinel: sentinel),
+    return AScaffold(appBar: _buildAppBar(), body: Row(children: children));
+  }
+
+  Widget _buildAppBar() {
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: createChat,
+      child: Icon(HugeIcons.strokeRoundedPencilEdit02, color: Colors.white),
     );
-    return AScaffold(appBar: appBar, body: Row(children: children));
+    var container = Container(
+      alignment: Alignment.centerRight,
+      height: 50,
+      padding: EdgeInsets.only(right: 16),
+      width: 200,
+      child: gestureDetector,
+    );
+    var stackChildren = [
+      container,
+      const Positioned(left: 16, top: 18, child: MacWindowButton())
+    ];
+    var rowChildren = [
+      Stack(children: stackChildren),
+      Expanded(child: DesktopChatIndicator(model: model, sentinel: sentinel)),
+    ];
+    return Row(children: rowChildren);
   }
 
   Future<void> changeChat(Chat chat) async {
