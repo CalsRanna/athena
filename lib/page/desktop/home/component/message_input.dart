@@ -53,7 +53,7 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
   }
 
   Widget _buildInput() {
-    var input = _Input(controller: controller, onSubmitted: widget.onSubmitted);
+    var input = _Input(controller: controller, onSubmitted: sendMessage);
     var children = [
       Expanded(child: input),
       const SizedBox(width: 8),
@@ -110,7 +110,7 @@ class _Dialog extends ConsumerWidget {
 
 class _Input extends StatefulWidget {
   final TextEditingController controller;
-  final void Function(String)? onSubmitted;
+  final void Function()? onSubmitted;
   const _Input({required this.controller, this.onSubmitted});
 
   @override
@@ -164,13 +164,7 @@ class _InputState extends State<_Input> {
   }
 
   Future<void> send(WidgetRef ref) async {
-    final text = widget.controller.text.trim();
-    if (text.isEmpty) return;
-    final streaming = ref.read(streamingNotifierProvider);
-    if (streaming) return;
-    widget.controller.clear();
-    FocusScope.of(context).unfocus();
-    widget.onSubmitted?.call(text);
+    widget.onSubmitted?.call();
   }
 
   bool _isEnterKey(KeyEvent event) {
