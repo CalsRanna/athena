@@ -8,6 +8,20 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'model.g.dart';
 
 @riverpod
+class ModelNotifier extends _$ModelNotifier {
+  @override
+  Future<Model> build(String value) async {
+    var model = await isar.models.filter().valueEqualTo(value).findFirst();
+    if (model != null) return model;
+    var setting = await ref.watch(settingNotifierProvider.future);
+    model = await isar.models.filter().valueEqualTo(setting.model).findFirst();
+    if (model != null) return model;
+    var models = await ref.watch(modelsNotifierProvider.future);
+    return models.first;
+  }
+}
+
+@riverpod
 class ModelsNotifier extends _$ModelsNotifier {
   @override
   Future<List<Model>> build() async {
@@ -18,24 +32,6 @@ class ModelsNotifier extends _$ModelsNotifier {
       isar.models.putAll(remoteModels);
     });
     return _sort(remoteModels);
-  }
-
-  Future<void> storeModel(Model model) async {
-    var models = await future;
-    if (models.any((m) => m.value == model.value)) {
-      throw Exception('Model already exist');
-    }
-    await isar.writeTxn(() async {
-      await isar.models.put(model);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> updateModel(Model model) async {
-    await isar.writeTxn(() async {
-      await isar.models.put(model);
-    });
-    ref.invalidateSelf();
   }
 
   Future<void> deleteModel(Model model) async {
@@ -66,6 +62,24 @@ class ModelsNotifier extends _$ModelsNotifier {
     if (setting.model.isNotEmpty) return;
     final notifier = ref.read(settingNotifierProvider.notifier);
     notifier.updateModel(remoteModels.first.value);
+  }
+
+  Future<void> storeModel(Model model) async {
+    var models = await future;
+    if (models.any((m) => m.value == model.value)) {
+      throw Exception('Model already exist');
+    }
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateModel(Model model) async {
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
   }
 
   List<Model> _sort(List<Model> models) {
