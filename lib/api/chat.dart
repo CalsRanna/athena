@@ -80,6 +80,7 @@ class ChatApi {
     );
     var response = client.createChatCompletionStream(request: request);
     await for (final event in response) {
+      if (event.choices.isEmpty) continue;
       yield event.choices.first.delta.content ?? '';
     }
   }

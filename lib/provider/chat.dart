@@ -30,16 +30,6 @@ class ChatNotifier extends _$ChatNotifier {
       ..sentinelId = sentinelId ?? 0;
   }
 
-  Future<void> closeStreaming() async {
-    final previousState = await future;
-    final chat = previousState.copyWith(updatedAt: DateTime.now());
-    isar.writeTxn(() async {
-      await isar.chats.put(chat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-  }
-
   Future<int> create() async {
     var previousState = await future;
     var chat = previousState.copyWith(
@@ -63,12 +53,6 @@ class ChatNotifier extends _$ChatNotifier {
     final notifier = ref.read(provider.notifier);
     notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
     await future;
-  }
-
-  Future<void> updateSentinel(Sentinel sentinel) async {
-    var previousState = await future;
-    final chat = previousState.copyWith(sentinelId: sentinel.id);
-    state = AsyncData(chat);
   }
 
   Future<void> resend(Message message) async {
@@ -111,19 +95,12 @@ class ChatNotifier extends _$ChatNotifier {
       title: title,
       updatedAt: DateTime.now(),
     );
+    state = AsyncData(chat);
     await isar.writeTxn(() async {
       await isar.chats.put(chat);
     });
-    state = AsyncData(chat);
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
-  }
-
-  Future<void> streaming(String token) async {
-    final previousState = await future;
-    final title = (previousState.title) + token;
-    final chat = previousState.copyWith(title: title);
-    state = AsyncData(chat);
   }
 
   Future<void> updateModel(String model) async {
@@ -132,18 +109,25 @@ class ChatNotifier extends _$ChatNotifier {
     state = AsyncData(chat);
   }
 
+  Future<void> updateSentinel(Sentinel sentinel) async {
+    var previousState = await future;
+    final chat = previousState.copyWith(sentinelId: sentinel.id);
+    state = AsyncData(chat);
+  }
+
   Future<void> _generateTitle(String message, String model) async {
     final previousState = await future;
     if (previousState.title.isNotEmpty == true) return;
+    var title = '';
     try {
       final titleTokens = ChatApi().getTitle(message, model: model);
       await for (final token in titleTokens) {
-        streaming(token);
+        title += token;
       }
-      closeStreaming();
     } catch (error) {
-      store(title: '');
+      title = '';
     }
+    store(title: title);
   }
 
   Future<String> _getModel({Model? model}) async {
