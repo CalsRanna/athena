@@ -98,7 +98,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     List<Widget> children = [
       DesktopChatSearch(),
       Expanded(child: chatListView),
-      DesktopSentinelTile(),
+      DesktopSentinelTile(onChanged: changeSentinel),
       DesktopSettingTile()
     ];
     var column = Column(
