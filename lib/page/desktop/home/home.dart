@@ -1,5 +1,8 @@
+import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/indicator.dart';
-import 'package:athena/page/desktop/home/component/left_bar.dart';
+import 'package:athena/page/desktop/home/component/search.dart';
+import 'package:athena/page/desktop/home/component/sentinel_tile.dart';
+import 'package:athena/page/desktop/home/component/setting_tile.dart';
 import 'package:athena/page/desktop/home/component/workspace.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
@@ -25,12 +28,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     var children = [
-      DesktopLeftBar(
-        onDestroyed: destroyChat,
-        onChatChanged: changeChat,
-        onSentinelChanged: changeSentinel,
-        selectedChat: chat,
-      ),
+      _buildLeftBar(),
       Expanded(
         child: WorkSpace(
           chat: chat,
@@ -44,6 +42,29 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         title: DesktopChatIndicator(chat: chat),
       ),
       body: Row(children: children),
+    );
+  }
+
+  Widget _buildLeftBar() {
+    var chatListView = DesktopChatListView(
+      onDestroyed: destroyChat,
+      onSelected: changeChat,
+      selectedChat: chat,
+    );
+    List<Widget> children = [
+      DesktopChatSearch(),
+      Expanded(child: chatListView),
+      DesktopSentinelTile(),
+      DesktopSettingTile()
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      width: 200,
+      child: column,
     );
   }
 
