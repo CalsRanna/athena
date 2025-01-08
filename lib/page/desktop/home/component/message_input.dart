@@ -8,10 +8,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopMessageInput extends StatelessWidget {
+class DesktopMessageInput extends StatefulWidget {
   final void Function(Model)? onModelChanged;
   final void Function(String)? onSubmitted;
   const DesktopMessageInput({super.key, this.onModelChanged, this.onSubmitted});
+
+  @override
+  State<DesktopMessageInput> createState() => _DesktopMessageInputState();
+}
+
+class _DesktopMessageInputState extends State<DesktopMessageInput> {
+  final controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -28,50 +35,36 @@ class DesktopMessageInput extends StatelessWidget {
     );
   }
 
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  void sendMessage() {
+    var container = ProviderScope.containerOf(context);
+    final streaming = container.read(streamingNotifierProvider);
+    if (streaming) return;
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+    controller.clear();
+    FocusScope.of(context).unfocus();
+    widget.onSubmitted?.call(text);
+  }
+
   Widget _buildInput() {
+    var input = _Input(controller: controller, onSubmitted: widget.onSubmitted);
     var children = [
-      Expanded(child: _Input(onSubmitted: onSubmitted)),
+      Expanded(child: input),
       const SizedBox(width: 8),
-      _buildSendButton(),
+      _SendButton(onTap: sendMessage)
     ];
     return Row(children: children);
   }
 
-  Widget _buildSendButton() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(55),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          colors: [
-            Color(0xFFEAEAEA).withValues(alpha: 0.17),
-            Colors.transparent,
-          ],
-          end: Alignment.centerRight,
-        ),
-      ),
-      height: 55,
-      padding: EdgeInsets.all(1),
-      width: 55,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(55),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 16,
-              color: Color(0xFFCED2E7).withValues(alpha: 0.5),
-            )
-          ],
-        ),
-        child: Icon(HugeIcons.strokeRoundedSent),
-      ),
-    );
-  }
-
-  Row _buildToolbar() {
+  Widget _buildToolbar() {
     var children = [
-      _ModelSelector(onSelected: onModelChanged),
+      _ModelSelector(onSelected: widget.onModelChanged),
       const SizedBox(width: 8),
       Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
       const SizedBox(width: 8),
@@ -102,15 +95,15 @@ class _Dialog extends StatelessWidget {
 }
 
 class _Input extends StatefulWidget {
+  final TextEditingController controller;
   final void Function(String)? onSubmitted;
-  const _Input({this.onSubmitted});
+  const _Input({required this.controller, this.onSubmitted});
 
   @override
   State<_Input> createState() => _InputState();
 }
 
 class _InputState extends State<_Input> {
-  final controller = TextEditingController();
   bool shift = false;
 
   @override
@@ -126,7 +119,7 @@ class _InputState extends State<_Input> {
           focusNode: FocusNode(),
           onKeyEvent: (event) => handleKeyEvent(ref, event),
           child: TextField(
-            controller: controller,
+            controller: widget.controller,
             cursorHeight: 16,
             cursorColor: Color(0xFFF5F5F5),
             decoration: InputDecoration.collapsed(
@@ -147,12 +140,6 @@ class _InputState extends State<_Input> {
     });
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
   void handleKeyEvent(WidgetRef ref, KeyEvent event) {
     if (event is KeyDownEvent) {
       if (_isModifierKey(event)) shift = true;
@@ -163,11 +150,11 @@ class _InputState extends State<_Input> {
   }
 
   Future<void> send(WidgetRef ref) async {
-    final text = controller.text.trim();
+    final text = widget.controller.text.trim();
     if (text.isEmpty) return;
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
-    controller.clear();
+    widget.controller.clear();
     FocusScope.of(context).unfocus();
     widget.onSubmitted?.call(text);
   }
@@ -236,6 +223,11 @@ class _ModelSelectorState extends State<_ModelSelector> {
     );
   }
 
+  void changeModel(Model model) {
+    entry?.remove();
+    widget.onSelected?.call(model);
+  }
+
   void handleTap() {
     entry = OverlayEntry(builder: (context) {
       return GestureDetector(
@@ -260,10 +252,61 @@ class _ModelSelectorState extends State<_ModelSelector> {
   void removeEntry() {
     entry?.remove();
   }
+}
 
-  void changeModel(Model model) {
-    entry?.remove();
-    widget.onSelected?.call(model);
+class _SendButton extends ConsumerWidget {
+  final void Function()? onTap;
+  const _SendButton({this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var colors = [
+      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      Colors.transparent,
+    ];
+    var linearGradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      colors: colors,
+      end: Alignment.centerRight,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(55),
+      gradient: linearGradient,
+    );
+    var boxShadow = BoxShadow(
+      blurRadius: 16,
+      color: Color(0xFFCED2E7).withValues(alpha: 0.5),
+    );
+    var innerBoxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(55),
+      color: Colors.white,
+      boxShadow: [boxShadow],
+    );
+    var streaming = ref.watch(streamingNotifierProvider);
+    var iconData = HugeIcons.strokeRoundedSent;
+    if (streaming) iconData = HugeIcons.strokeRoundedStop;
+    var innerContainer = Container(
+      decoration: innerBoxDecoration,
+      child: Icon(iconData),
+    );
+    var outerContainer = Container(
+      decoration: boxDecoration,
+      height: 55,
+      padding: EdgeInsets.all(1),
+      width: 55,
+      child: innerContainer,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(ref),
+      child: outerContainer,
+    );
+  }
+
+  void handleTap(WidgetRef ref) {
+    final streaming = ref.read(streamingNotifierProvider);
+    if (streaming) return;
+    onTap?.call();
   }
 }
 
