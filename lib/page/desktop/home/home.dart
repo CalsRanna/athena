@@ -31,7 +31,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       Expanded(child: WorkSpace(chat: chat, onSubmitted: submit)),
     ];
     return AScaffold(
-      appBar: AAppBar(onCreated: createChat, title: DesktopChatIndicator()),
+      appBar: AAppBar(
+        onCreated: createChat,
+        title: DesktopChatIndicator(chat: chat),
+      ),
       body: Row(children: children),
     );
   }

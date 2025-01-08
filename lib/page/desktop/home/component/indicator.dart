@@ -1,31 +1,31 @@
-import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopChatIndicator extends StatelessWidget {
-  const DesktopChatIndicator({super.key});
+  final Chat? chat;
+  const DesktopChatIndicator({super.key, this.chat});
 
   @override
   Widget build(BuildContext context) {
     var children = [
-      _SentinelIndicator(),
+      _SentinelIndicator(chat: chat),
       SizedBox(width: 8),
-      _ModelIndicator(),
+      _ModelIndicator(chat: chat),
     ];
     return Row(children: children);
   }
 }
 
 class _ModelIndicator extends ConsumerWidget {
-  const _ModelIndicator();
+  final Chat? chat;
+  const _ModelIndicator({this.chat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chat = ref.watch(chatNotifierProvider(0)).valueOrNull;
-    if (chat == null) return const SizedBox();
     var text = Text(
-      chat.model,
+      chat?.model ?? '',
       style: TextStyle(color: Colors.white, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(
@@ -59,13 +59,22 @@ class _ModelIndicator extends ConsumerWidget {
 }
 
 class _SentinelIndicator extends ConsumerWidget {
-  const _SentinelIndicator();
+  final Chat? chat;
+  const _SentinelIndicator({this.chat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sentinel = ref.watch(sentinelNotifierProvider(0)).valueOrNull;
+    var provider = sentinelNotifierProvider(chat?.sentinelId ?? 0);
+    var sentinel = ref.watch(provider);
+    return switch (sentinel) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(Sentinel sentinel) {
     return Text(
-      sentinel?.name ?? 'Athena',
+      sentinel.name,
       style: const TextStyle(color: Colors.white, fontSize: 14),
     );
   }
