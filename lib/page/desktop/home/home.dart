@@ -19,6 +19,7 @@ class DesktopHomePage extends StatefulWidget {
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
   Chat? chat;
+  Sentinel? sentinel;
   @override
   Widget build(BuildContext context) {
     var children = [
