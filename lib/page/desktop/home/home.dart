@@ -1,5 +1,5 @@
 import 'package:athena/page/desktop/home/component/chat_list.dart';
-import 'package:athena/page/desktop/home/component/indicator.dart';
+import 'package:athena/page/desktop/home/component/chat_indicator.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
