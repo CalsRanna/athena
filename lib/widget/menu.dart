@@ -14,8 +14,8 @@ class ContextMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var children = [
-      ContextMenuOption(text: 'Rename', onTap: onTap),
-      ContextMenuOption(text: 'Delete', onTap: () => destroy(ref)),
+      DesktopContextMenuOption(text: 'Rename', onTap: onTap),
+      DesktopContextMenuOption(text: 'Delete', onTap: () => destroy(ref)),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,18 +31,68 @@ class ContextMenu extends ConsumerWidget {
   }
 }
 
-class ContextMenuOption extends StatefulWidget {
+class DesktopContextMenu extends StatelessWidget {
+  final Offset offset;
+  final void Function()? onBarrierTapped;
+  final double? width;
+  final List<Widget> children;
+  const DesktopContextMenu({
+    super.key,
+    required this.offset,
+    this.onBarrierTapped,
+    this.width,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      _buildBarrier(),
+      Positioned(left: offset.dx, top: offset.dy, child: _buildMenu(context)),
+    ];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onSecondaryTap: onBarrierTapped,
+      onTap: onBarrierTapped,
+      child: Stack(children: children),
+    );
+  }
+
+  Widget _buildBarrier() => const SizedBox.expand();
+
+  Widget _buildMenu(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final surface = colorScheme.surface;
+    final shadow = colorScheme.shadow.withValues(alpha: 0.1);
+    final boxShadow = BoxShadow(color: shadow, blurRadius: 12, spreadRadius: 4);
+    var boxDecoration = BoxDecoration(
+      color: surface,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [boxShadow],
+    );
+    return Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: width,
+      child: Column(children: children),
+    );
+  }
+}
+
+class DesktopContextMenuOption extends StatefulWidget {
   final void Function()? onTap;
   final String text;
 
-  const ContextMenuOption({super.key, this.onTap, required this.text});
+  const DesktopContextMenuOption({super.key, this.onTap, required this.text});
 
   @override
-  State<ContextMenuOption> createState() => _ContextMenuOptionState();
+  State<DesktopContextMenuOption> createState() =>
+      _DesktopContextMenuOptionState();
 }
 
-class _ContextMenuOptionState extends State<ContextMenuOption> {
+class _DesktopContextMenuOptionState extends State<DesktopContextMenuOption> {
   bool hover = false;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
