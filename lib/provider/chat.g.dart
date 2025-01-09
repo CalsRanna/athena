@@ -6,7 +6,7 @@ part of 'chat.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatNotifierHash() => r'9d3d61a02c9bc3ba68a23a725f60005f00c38535';
+String _$chatNotifierHash() => r'99b0a36bdbbce9bda410eba9fa28f9eabfba6690';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,12 +31,10 @@ class _SystemHash {
 
 abstract class _$ChatNotifier extends BuildlessAutoDisposeAsyncNotifier<Chat> {
   late final int id;
-  late final int? sentinelId;
 
   FutureOr<Chat> build(
-    int id, {
-    int? sentinelId,
-  });
+    int id,
+  );
 }
 
 /// See also [ChatNotifier].
@@ -50,12 +48,10 @@ class ChatNotifierFamily extends Family<AsyncValue<Chat>> {
 
   /// See also [ChatNotifier].
   ChatNotifierProvider call(
-    int id, {
-    int? sentinelId,
-  }) {
+    int id,
+  ) {
     return ChatNotifierProvider(
       id,
-      sentinelId: sentinelId,
     );
   }
 
@@ -65,7 +61,6 @@ class ChatNotifierFamily extends Family<AsyncValue<Chat>> {
   ) {
     return call(
       provider.id,
-      sentinelId: provider.sentinelId,
     );
   }
 
@@ -89,12 +84,9 @@ class ChatNotifierProvider
     extends AutoDisposeAsyncNotifierProviderImpl<ChatNotifier, Chat> {
   /// See also [ChatNotifier].
   ChatNotifierProvider(
-    int id, {
-    int? sentinelId,
-  }) : this._internal(
-          () => ChatNotifier()
-            ..id = id
-            ..sentinelId = sentinelId,
+    int id,
+  ) : this._internal(
+          () => ChatNotifier()..id = id,
           from: chatNotifierProvider,
           name: r'chatNotifierProvider',
           debugGetCreateSourceHash:
@@ -105,7 +97,6 @@ class ChatNotifierProvider
           allTransitiveDependencies:
               ChatNotifierFamily._allTransitiveDependencies,
           id: id,
-          sentinelId: sentinelId,
         );
 
   ChatNotifierProvider._internal(
@@ -116,11 +107,9 @@ class ChatNotifierProvider
     required super.debugGetCreateSourceHash,
     required super.from,
     required this.id,
-    required this.sentinelId,
   }) : super.internal();
 
   final int id;
-  final int? sentinelId;
 
   @override
   FutureOr<Chat> runNotifierBuild(
@@ -128,7 +117,6 @@ class ChatNotifierProvider
   ) {
     return notifier.build(
       id,
-      sentinelId: sentinelId,
     );
   }
 
@@ -137,16 +125,13 @@ class ChatNotifierProvider
     return ProviderOverride(
       origin: this,
       override: ChatNotifierProvider._internal(
-        () => create()
-          ..id = id
-          ..sentinelId = sentinelId,
+        () => create()..id = id,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
         id: id,
-        sentinelId: sentinelId,
       ),
     );
   }
@@ -158,16 +143,13 @@ class ChatNotifierProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ChatNotifierProvider &&
-        other.id == id &&
-        other.sentinelId == sentinelId;
+    return other is ChatNotifierProvider && other.id == id;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
     hash = _SystemHash.combine(hash, id.hashCode);
-    hash = _SystemHash.combine(hash, sentinelId.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -178,9 +160,6 @@ class ChatNotifierProvider
 mixin ChatNotifierRef on AutoDisposeAsyncNotifierProviderRef<Chat> {
   /// The parameter `id` of this provider.
   int get id;
-
-  /// The parameter `sentinelId` of this provider.
-  int? get sentinelId;
 }
 
 class _ChatNotifierProviderElement
@@ -190,8 +169,6 @@ class _ChatNotifierProviderElement
 
   @override
   int get id => (origin as ChatNotifierProvider).id;
-  @override
-  int? get sentinelId => (origin as ChatNotifierProvider).sentinelId;
 }
 
 String _$chatsNotifierHash() => r'3fb86ebd3f56224c4aacf44eed903a8824426e36';

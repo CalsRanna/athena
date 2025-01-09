@@ -13,27 +13,34 @@ part 'chat.g.dart';
 @riverpod
 class ChatNotifier extends _$ChatNotifier {
   @override
-  Future<Chat> build(int id, {int? sentinelId}) async {
+  Future<Chat> build(int id) async {
     final chat = await isar.chats.where().idEqualTo(id).findFirst();
     if (chat != null) return chat;
     final setting = await ref.watch(settingNotifierProvider.future);
     final model = setting.model;
+    final sentinel = await ref.watch(sentinelNotifierProvider(0).future);
+    final sentinelId = sentinel.id;
     if (model.isNotEmpty) {
       return Chat()
         ..model = model
-        ..sentinelId = sentinelId ?? 0;
+        ..sentinelId = sentinelId;
     }
     final models = await ref.watch(modelsNotifierProvider.future);
     final firstModel = models.first.value;
     return Chat()
       ..model = firstModel
-      ..sentinelId = sentinelId ?? 0;
+      ..sentinelId = sentinelId;
   }
 
-  Future<int> create() async {
+  Future<int> create({Model? model, Sentinel? sentinel}) async {
+    var modelProvider = modelNotifierProvider(model?.value ?? '');
+    var wrappedModel = await ref.read(modelProvider.future);
+    var sentinelProvider = sentinelNotifierProvider(sentinel?.id ?? 0);
+    var wrappedSentinel = await ref.read(sentinelProvider.future);
     var previousState = await future;
     var chat = previousState.copyWith(
-      sentinelId: sentinelId,
+      model: wrappedModel.value,
+      sentinelId: wrappedSentinel.id,
       updatedAt: DateTime.now(),
     );
     await isar.writeTxn(() async {
@@ -44,15 +51,15 @@ class ChatNotifier extends _$ChatNotifier {
   }
 
   Future<void> replace(Chat chat) async {
-    state = AsyncData(chat);
-    final sentinel =
-        await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
-    final athena =
-        await isar.sentinels.filter().nameEqualTo('Athena').findFirst();
-    var provider = sentinelNotifierProvider(sentinelId ?? 0);
-    final notifier = ref.read(provider.notifier);
-    notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
-    await future;
+    // state = AsyncData(chat);
+    // final sentinel =
+    //     await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
+    // final athena =
+    //     await isar.sentinels.filter().nameEqualTo('Athena').findFirst();
+    // var provider = sentinelNotifierProvider(sentinelId ?? 0);
+    // final notifier = ref.read(provider.notifier);
+    // notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
+    // await future;
   }
 
   Future<void> resend(Message message) async {
@@ -62,16 +69,16 @@ class ChatNotifier extends _$ChatNotifier {
     send(message.content);
   }
 
-  Future<void> send(String message, {Model? model, Sentinel? sentinel}) async {
+  Future<void> send(String message) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var messagesProvider = messagesNotifierProvider(id);
     final messagesNotifier = ref.read(messagesProvider.notifier);
     await messagesNotifier.store(message);
-    final prompt = await _getPrompt(sentinel: sentinel);
+    final prompt = await _getPrompt();
     final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesProvider.future);
-    final modelValue = await _getModel(model: model);
+    final modelValue = await _getModel();
     try {
       final stream = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
@@ -130,16 +137,14 @@ class ChatNotifier extends _$ChatNotifier {
     store(title: title);
   }
 
-  Future<String> _getModel({Model? model}) async {
-    if (model != null) return model.value;
+  Future<String> _getModel() async {
     final chat = await future;
     var provider = modelNotifierProvider(chat.model);
     final chatRelatedModel = await ref.watch(provider.future);
     return chatRelatedModel.value;
   }
 
-  Future<String> _getPrompt({Sentinel? sentinel}) async {
-    if (sentinel != null) return sentinel.prompt;
+  Future<String> _getPrompt() async {
     var chat = await future;
     var sentinelId = chat.sentinelId;
     var provider = sentinelNotifierProvider(sentinelId);

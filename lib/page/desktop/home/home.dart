@@ -100,19 +100,20 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> submit(String text) async {
-    var container = ProviderScope.containerOf(context);
-    var provider = chatNotifierProvider(chat?.id ?? 0);
-    var notifier = container.read(provider.notifier);
     if (chat == null) {
-      var chatId = await notifier.create();
+      var container = ProviderScope.containerOf(context);
+      var provider = chatNotifierProvider(chat?.id ?? 0);
+      var notifier = container.read(provider.notifier);
+      var chatId = await notifier.create(model: model, sentinel: sentinel);
       setState(() {
         chat = Chat()..id = chatId;
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      var container = ProviderScope.containerOf(context);
       var provider = chatNotifierProvider(chat!.id);
       var notifier = container.read(provider.notifier);
-      notifier.send(text, model: model, sentinel: sentinel);
+      notifier.send(text);
     });
   }
 
