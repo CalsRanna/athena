@@ -2,19 +2,27 @@ import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/card.dart';
+import 'package:athena/widget/button.dart';
+import 'package:athena/widget/form_tile_label.dart';
+import 'package:athena/widget/input.dart';
+import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/tag.dart';
+import 'package:athena/widget/window_button.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class SentinelFormPage extends StatefulWidget {
+@RoutePage()
+class DesktopSentinelFormPage extends StatefulWidget {
   final Sentinel? sentinel;
 
-  const SentinelFormPage({super.key, this.sentinel});
+  const DesktopSentinelFormPage({super.key, this.sentinel});
 
   @override
-  State<SentinelFormPage> createState() => _SentinelFormPageState();
+  State<DesktopSentinelFormPage> createState() =>
+      _DesktopSentinelFormPageState();
 }
 
 class _ActionButtons extends ConsumerWidget {
@@ -26,17 +34,17 @@ class _ActionButtons extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final error = colorScheme.error;
-    final style = ElevatedButton.styleFrom(foregroundColor: error);
-    final delete = ElevatedButton(
-      onPressed: () => handleDelete(ref),
-      style: style,
-      child: const Text('Delete'),
+    const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
+    final delete = ASecondaryButton(
+      onTap: () => handleDelete(ref),
+      child: Padding(
+        padding: edgeInsets,
+        child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+      ),
     );
-    final store = ElevatedButton(
-      onPressed: () => handleStore(ref),
-      child: const Text('Save'),
+    final store = APrimaryButton(
+      onTap: () => handleStore(ref),
+      child: Padding(padding: edgeInsets, child: const Text('Save')),
     );
     final children = [
       if (sentinel != null) delete,
@@ -82,43 +90,6 @@ class _Avatar extends StatelessWidget {
       child: _RefreshIcon(onTap: onRefresh),
     );
     return Stack(children: [container, icon]);
-  }
-}
-
-class _Input extends StatelessWidget {
-  final TextEditingController controller;
-  final Future<void> Function()? onRefresh;
-
-  const _Input({required this.controller, this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    final borderColor = onSurface.withValues(alpha: 0.2);
-    final decoration = BoxDecoration(
-      border: Border.all(color: borderColor),
-      borderRadius: BorderRadius.circular(8),
-    );
-    const inputDecoration = InputDecoration.collapsed(
-      hintText: 'Will generate after submit',
-    );
-    final textField = TextField(
-      controller: controller,
-      decoration: inputDecoration,
-    );
-    final refreshIcon = _RefreshIcon(onTap: onRefresh);
-    final children = [
-      Expanded(child: textField),
-      const SizedBox(width: 8),
-      refreshIcon,
-    ];
-    final row = Row(children: children);
-    return Container(
-      decoration: decoration,
-      padding: const EdgeInsets.all(12),
-      child: row,
-    );
   }
 }
 
@@ -194,7 +165,7 @@ class _RefreshIconState extends State<_RefreshIcon> {
   }
 }
 
-class _SentinelFormPageState extends State<SentinelFormPage> {
+class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
   String avatar = '';
   String name = '';
   String description = '';
@@ -207,55 +178,36 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
     final consumer = Consumer(builder: (context, ref, child) {
       return _Avatar(
         avatar: avatar,
         onRefresh: () => refresh(ref, key: 'avatar'),
       );
     });
-    final boxDecoration2 = BoxDecoration(
-      border: Border.all(color: onSurface.withValues(alpha: 0.2)),
-      borderRadius: BorderRadius.circular(8),
-    );
     const inputDecoration = InputDecoration.collapsed(
       hintText: 'Input Prompt Here',
     );
-    final textField = TextField(
+    final promptTextField = TextField(
       controller: promptController,
       decoration: inputDecoration,
-      maxLines: 6,
+      maxLines: null,
+      style: const TextStyle(color: Colors.white),
     );
-    final consumer2 = Consumer(builder: (context, ref, child) {
-      var children = [
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: _Loading(),
-          ),
-        const Text('Generate'),
-      ];
-      return TextButton(
-        onPressed: () => generate(ref),
-        child: Row(children: children),
-      );
-    });
     var actionButtons = _ActionButtons(
-      onDelete: delete,
+      onDelete: (_) => popPage(),
       sentinel: widget.sentinel,
       onStore: store,
     );
     var row = Row(
       children: [
-        const Expanded(child: Text('Description')),
+        const SizedBox(width: 160, child: AFormTileLabel(title: 'Description')),
         const SizedBox(width: 24),
         Expanded(
-          flex: 2,
           child: Consumer(builder: (context, ref, child) {
-            return _Input(
+            return AInput(
               controller: descriptionController,
-              onRefresh: () => refresh(ref, key: 'description'),
+              minLines: 4,
+              // onRefresh: () => refresh(ref, key: 'description'),
             );
           }),
         )
@@ -263,57 +215,122 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
     );
     var row2 = Row(
       children: [
-        const Expanded(child: Text('Name')),
+        const SizedBox(width: 160, child: AFormTileLabel(title: 'Name')),
         const SizedBox(width: 24),
         Expanded(
-          flex: 2,
           child: Consumer(builder: (context, ref, child) {
-            return _Input(
+            return AInput(
               controller: nameController,
-              onRefresh: () => refresh(ref, key: 'name'),
+              // onRefresh: () => refresh(ref, key: 'name'),
             );
           }),
         )
       ],
     );
-    var container = Container(
-      decoration: boxDecoration2,
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          textField,
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [consumer2],
-          ),
-        ],
-      ),
-    );
     var children2 = [
       consumer,
-      container,
-      const SizedBox(height: 12),
-      row2,
-      const SizedBox(height: 12),
-      row,
       const SizedBox(height: 12),
       Consumer(builder: (context, ref, child) {
         return _Tags(tags, onRefresh: () => refresh(ref, key: 'tags'));
       }),
       const SizedBox(height: 12),
+      row2,
+      const SizedBox(height: 12),
+      row,
+      const SizedBox(height: 12),
       actionButtons
     ];
-    var container2 = Column(children: children2);
-    final mediaQuery = MediaQuery.of(context);
-    final width = mediaQuery.size.width * 0.6;
-    return Dialog(child: ACard(width: width, child: container2));
+    var container2 = Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(children: children2),
+    );
+    return AScaffold(
+      body: Column(
+        children: [
+          _buildPageHeader(context),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        color: Color(0xFFADADAD).withValues(alpha: 0.6),
+                      ),
+                      height: double.infinity,
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(child: promptTextField),
+                          const SizedBox(height: 16),
+                          ATextButton(text: 'Generate', onTap: generate),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                      child: Stack(
+                    children: [
+                      container2,
+                      if (loading)
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            color: Color(0xFFADADAD).withValues(alpha: 0.5),
+                          ),
+                          child: Center(
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
+                          ),
+                        ),
+                    ],
+                  )),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  void delete(WidgetRef ref) async {
-    final notifier = ref.read(sentinelsNotifierProvider.notifier);
-    notifier.destroy(widget.sentinel!);
-    Navigator.of(context).pop();
+  Widget _buildPageHeader(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedArrowTurnBackward,
+      color: Colors.white,
+      size: 24,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: popPage,
+      child: icon,
+    );
+    var container = Container(
+      height: 50,
+      width: 120,
+      alignment: Alignment.centerRight,
+      child: gestureDetector,
+    );
+    var stackChildren = [
+      container,
+      const Positioned(left: 16, top: 18, child: MacWindowButton())
+    ];
+    var title = widget.sentinel?.name ?? 'New Sentinel';
+    var titleText = Text(title, style: TextStyle(color: Colors.white));
+    var rowChildren = [
+      Stack(children: stackChildren),
+      const SizedBox(width: 16),
+      Expanded(child: titleText),
+    ];
+    return Row(children: rowChildren);
+  }
+
+  void popPage() async {
+    AutoRouter.of(context).maybePop();
   }
 
   @override
@@ -322,13 +339,15 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
     super.dispose();
   }
 
-  void generate(WidgetRef ref) async {
+  void generate() async {
+    if (loading) return;
     if (promptController.text.isEmpty) return;
     setState(() {
       loading = true;
     });
+    var container = ProviderScope.containerOf(context);
     try {
-      final setting = await ref.read(settingNotifierProvider.future);
+      final setting = await container.read(settingNotifierProvider.future);
       var sentinelApi = SentinelApi();
       var text = promptController.text;
       var model = setting.model;
@@ -398,46 +417,6 @@ class _SentinelFormPageState extends State<SentinelFormPage> {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String text;
-
-  const _Tag(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    final boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(2),
-      color: onSurface.withValues(alpha: 0.05),
-    );
-    final textStyle = TextStyle(
-      color: onSurface.withValues(alpha: 0.15),
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-    );
-    final hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedCancel01,
-      color: onSurface.withValues(alpha: 0.25),
-      size: 12,
-    );
-    final children = [
-      Text(text, style: textStyle),
-      const SizedBox(width: 4),
-      hugeIcon
-    ];
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
-    return Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: row,
-    );
-  }
-}
-
 class _Tags extends StatelessWidget {
   final Future<void> Function()? onRefresh;
   final List<String> tags;
@@ -446,37 +425,11 @@ class _Tags extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withValues(alpha: 0.2);
-    final boxDecoration = BoxDecoration(
-      border: Border.all(color: onSurface),
-      borderRadius: BorderRadius.circular(8),
-    );
-    final wrap = Wrap(
+    return Wrap(
+      alignment: WrapAlignment.center,
       runSpacing: 8,
       spacing: 8,
-      children: tags.map((tag) => _Tag(tag)).toList(),
+      children: tags.map((tag) => ATag(text: tag)).toList(),
     );
-    final innerChildren = [
-      Expanded(child: wrap),
-      const SizedBox(width: 8),
-      _RefreshIcon(onTap: onRefresh),
-    ];
-    final row = Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: innerChildren,
-    );
-    final container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(12),
-      child: row,
-    );
-    final children = [
-      const Expanded(child: Text('Tags')),
-      const SizedBox(width: 24),
-      Expanded(flex: 2, child: container),
-    ];
-    return Row(children: children);
   }
 }

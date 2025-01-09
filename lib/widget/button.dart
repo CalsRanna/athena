@@ -29,7 +29,7 @@ class AIconButton extends StatelessWidget {
 class APrimaryButton extends StatelessWidget {
   final void Function()? onTap;
   final Widget child;
-  const APrimaryButton({super.key, required this.child, this.onTap});
+  const APrimaryButton({super.key, this.onTap, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +58,39 @@ class APrimaryButton extends StatelessWidget {
 class ASecondaryButton extends StatelessWidget {
   final void Function()? onTap;
   final Widget child;
-  const ASecondaryButton({super.key, required this.child, this.onTap});
+  const ASecondaryButton({super.key, this.onTap, required this.child});
 
   @override
   Widget build(BuildContext context) {
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(side: BorderSide(color: Color(0xFFC2C2C2))),
     );
+    const defaultTextStyle = TextStyle(color: Colors.white);
     var container = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      child: child,
+      child: DefaultTextStyle(style: defaultTextStyle, child: child),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: container,
+    );
+  }
+}
+
+class ATextButton extends StatelessWidget {
+  final void Function()? onTap;
+  final String text;
+  const ATextButton({super.key, this.onTap, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    const defaultTextStyle = TextStyle(color: Color(0xFFA7BA88));
+    var container = Container(
+      decoration: ShapeDecoration(shape: StadiumBorder()),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      child: DefaultTextStyle(style: defaultTextStyle, child: Text(text)),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
