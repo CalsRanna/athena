@@ -114,12 +114,22 @@ class ChatNotifier extends _$ChatNotifier {
     final previousState = await future;
     final chat = previousState.copyWith(model: model);
     state = AsyncData(chat);
+    await isar.writeTxn(() async {
+      await isar.chats.put(chat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<void> updateSentinel(Sentinel sentinel) async {
     var previousState = await future;
     final chat = previousState.copyWith(sentinelId: sentinel.id);
     state = AsyncData(chat);
+    await isar.writeTxn(() async {
+      await isar.chats.put(chat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<void> _generateTitle(String message, String model) async {
