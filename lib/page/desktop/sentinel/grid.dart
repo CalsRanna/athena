@@ -15,33 +15,15 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var leading = _buildLeading(context);
+    var titleText = Text('Sentinel', style: TextStyle(color: Colors.white));
+    var rowChildren = [
+      leading,
+      const SizedBox(width: 16),
+      Expanded(child: titleText),
+    ];
     var children = [
-      Row(
-        children: [
-          Stack(
-            children: [
-              Container(
-                height: 50,
-                width: 120,
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => popPage(context),
-                  child: Icon(
-                    HugeIcons.strokeRoundedArrowTurnBackward,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-              const Positioned(left: 16, top: 18, child: MacWindowButton())
-            ],
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-              child: Text('Sentinel', style: TextStyle(color: Colors.white))),
-        ],
-      ),
+      Row(children: rowChildren),
       SizedBox(height: 52, child: _TagListView()),
       Expanded(child: _SentinelGridView()),
     ];
@@ -50,6 +32,65 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   void popPage(BuildContext context) {
     AutoRouter.of(context).maybePop();
+  }
+
+  Widget _buildLeading(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedArrowTurnBackward,
+      color: Colors.white,
+      size: 24,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => popPage(context),
+      child: icon,
+    );
+    var container = Container(
+      height: 50,
+      width: 120,
+      alignment: Alignment.centerRight,
+      child: gestureDetector,
+    );
+    var stackChildren = [
+      container,
+      const Positioned(left: 16, top: 18, child: MacWindowButton())
+    ];
+    var stack = Stack(children: stackChildren);
+    return stack;
+  }
+}
+
+class _ContextMenu extends StatelessWidget {
+  final Offset offset;
+  final void Function()? onTap;
+  final Sentinel sentinel;
+  const _ContextMenu(
+      {required this.offset, this.onTap, required this.sentinel});
+
+  @override
+  Widget build(BuildContext context) {
+    var editOption = DesktopContextMenuOption(
+      text: 'Edit',
+      onTap: () => navigateSentinelFormPage(context, sentinel),
+    );
+    var deleteOption = DesktopContextMenuOption(
+      text: 'Delete',
+      onTap: () => destroySentinel(context),
+    );
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onTap,
+      children: [editOption, deleteOption],
+    );
+  }
+
+  void destroySentinel(BuildContext context) {
+    AutoRouter.of(context).maybePop<Sentinel>(sentinel);
+    onTap?.call();
+  }
+
+  void navigateSentinelFormPage(BuildContext context, Sentinel sentinel) {
+    onTap?.call();
   }
 }
 
@@ -132,9 +173,20 @@ class _SentinelTileState extends State<_SentinelTile> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: (details) => showContextMenu(context, details),
-      onTap: () => handleTap(context),
+      onTap: () => popPageWithResult(context),
       child: container,
     );
+  }
+
+  void popPageWithResult(BuildContext context) {
+    AutoRouter.of(context).maybePop<Sentinel>(widget.sentinel);
+  }
+
+  void removeEntry() {
+    if (entry != null) {
+      entry!.remove();
+      entry = null;
+    }
   }
 
   void showContextMenu(BuildContext context, TapUpDetails details) {
@@ -145,51 +197,6 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     entry = OverlayEntry(builder: (_) => contextMenu);
     Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    if (entry != null) {
-      entry!.remove();
-      entry = null;
-    }
-  }
-
-  void handleTap(BuildContext context) {
-    AutoRouter.of(context).maybePop<Sentinel>(widget.sentinel);
-  }
-}
-
-class _ContextMenu extends StatelessWidget {
-  final Offset offset;
-  final void Function()? onTap;
-  final Sentinel sentinel;
-  const _ContextMenu(
-      {required this.offset, this.onTap, required this.sentinel});
-
-  @override
-  Widget build(BuildContext context) {
-    var editOption = DesktopContextMenuOption(
-      text: 'Edit',
-      onTap: () => navigateSentinelFormPage(context, sentinel),
-    );
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: () => destroySentinel(context),
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
-  }
-
-  void destroySentinel(BuildContext context) {
-    AutoRouter.of(context).maybePop<Sentinel>(sentinel);
-    onTap?.call();
-  }
-
-  void navigateSentinelFormPage(BuildContext context, Sentinel sentinel) {
-    onTap?.call();
   }
 }
 
