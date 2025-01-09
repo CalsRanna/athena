@@ -1,10 +1,10 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tag.dart';
-import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,12 +16,15 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var appBar = AAppBar(
+      leading: DesktopPopButton(),
+      title: _buildPageHeader(context),
+    );
     var children = [
-      _buildPageHeader(context),
       SizedBox(height: 52, child: _TagListView()),
       Expanded(child: _SentinelGridView()),
     ];
-    return AScaffold(body: Column(children: children));
+    return AScaffold(appBar: appBar, body: Column(children: children));
   }
 
   void popPage(BuildContext context) {
@@ -29,33 +32,22 @@ class DesktopSentinelGridPage extends StatelessWidget {
   }
 
   Widget _buildPageHeader(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedArrowTurnBackward,
-      color: Colors.white,
-      size: 24,
-    );
-    var gestureDetector = GestureDetector(
+    var createButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => popPage(context),
-      child: icon,
+      onTap: () => navigateSentinelFormPage(context),
+      child: Icon(HugeIcons.strokeRoundedPencilEdit02, color: Colors.white),
     );
-    var container = Container(
-      height: 50,
-      width: 120,
-      alignment: Alignment.centerRight,
-      child: gestureDetector,
-    );
-    var stackChildren = [
-      container,
-      const Positioned(left: 16, top: 18, child: MacWindowButton())
-    ];
-    var titleText = Text('Sentinel', style: TextStyle(color: Colors.white));
     var rowChildren = [
-      Stack(children: stackChildren),
       const SizedBox(width: 16),
-      Expanded(child: titleText),
+      Text('Sentinel', style: TextStyle(color: Colors.white)),
+      const SizedBox(width: 16),
+      createButton,
     ];
     return Row(children: rowChildren);
+  }
+
+  void navigateSentinelFormPage(BuildContext context) {
+    DesktopSentinelFormRoute().push(context);
   }
 }
 

@@ -1,67 +1,46 @@
 import 'dart:io';
 
+import 'package:athena/widget/window_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class AAppBar extends StatelessWidget {
   final Widget? action;
   final Widget? leading;
-  final void Function()? onCreated;
   final Widget? title;
-  const AAppBar({
-    super.key,
-    this.action,
-    this.leading,
-    this.onCreated,
-    this.title,
-  });
+  const AAppBar({super.key, this.action, this.leading, this.title});
 
   @override
   Widget build(BuildContext context) {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) return _MobileAppBar(action: action, title: title);
-    return const SizedBox();
+    return _DesktopAppBar(leading: leading, title: title);
   }
 }
 
-class _MobileAppBar extends StatelessWidget {
-  final Widget? action;
-  final Widget? title;
-  const _MobileAppBar({this.action, this.title});
+class DesktopPopButton extends StatelessWidget {
+  const DesktopPopButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const leading = Align(alignment: Alignment.centerLeft, child: _PopButton());
-    const textStyle = TextStyle(
-      color: Color(0xffffffff),
-      fontSize: 20,
-      height: 1.2,
+    var icon = Icon(
+      HugeIcons.strokeRoundedArrowTurnBackward,
+      color: Colors.white,
     );
-    final wrappedTitle = DefaultTextStyle(
-      style: textStyle,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      child: title ?? const SizedBox(),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => handleTap(context),
+      child: icon,
     );
-    final center = Align(alignment: Alignment.center, child: wrappedTitle);
-    final trailing = Align(
-      alignment: Alignment.centerRight,
-      child: action ?? const SizedBox(),
-    );
-    final children = [
-      const Expanded(child: leading),
-      Expanded(flex: 2, child: center),
-      Expanded(child: trailing),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: children),
-    );
+  }
+
+  void handleTap(BuildContext context) {
+    Navigator.of(context).pop();
   }
 }
 
-class _PopButton extends StatelessWidget {
-  const _PopButton();
+class MobilePopButton extends StatelessWidget {
+  const MobilePopButton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -87,5 +66,63 @@ class _PopButton extends StatelessWidget {
 
   void handleTap(BuildContext context) {
     Navigator.of(context).pop();
+  }
+}
+
+class _DesktopAppBar extends StatelessWidget {
+  final Widget? leading;
+  final Widget? title;
+  const _DesktopAppBar({this.leading, this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    var rowChildren = [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        child: MacWindowButton(),
+      ),
+      leading ?? const SizedBox(),
+      Expanded(child: title ?? const SizedBox()),
+    ];
+    return Row(children: rowChildren);
+  }
+}
+
+class _MobileAppBar extends StatelessWidget {
+  final Widget? action;
+  final Widget? title;
+  const _MobileAppBar({this.action, this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    const leading = Align(
+      alignment: Alignment.centerLeft,
+      child: MobilePopButton(),
+    );
+    const textStyle = TextStyle(
+      color: Color(0xffffffff),
+      fontSize: 20,
+      height: 1.2,
+    );
+    final wrappedTitle = DefaultTextStyle(
+      style: textStyle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      child: title ?? const SizedBox(),
+    );
+    final center = Align(alignment: Alignment.center, child: wrappedTitle);
+    final trailing = Align(
+      alignment: Alignment.centerRight,
+      child: action ?? const SizedBox(),
+    );
+    final children = [
+      const Expanded(child: leading),
+      Expanded(flex: 2, child: center),
+      Expanded(child: trailing),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(children: children),
+    );
   }
 }
