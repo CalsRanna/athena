@@ -12,19 +12,19 @@ class AppRouter extends RootStackRouter {
   @override
   List<AutoRoute> get routes {
     var desktopSettingChildren = [
-      AutoRoute(page: DesktopSettingAccountRoute.page),
-      AutoRoute(page: DesktopSettingModelRoute.page),
-      AutoRoute(page: DesktopSettingApplicationRoute.page),
-      AutoRoute(page: DesktopSettingExperimentalRoute.page),
+      DesktopRoute(page: DesktopSettingAccountRoute.page),
+      DesktopRoute(page: DesktopSettingModelRoute.page),
+      DesktopRoute(page: DesktopSettingApplicationRoute.page),
+      DesktopRoute(page: DesktopSettingExperimentalRoute.page),
     ];
-    var desktopSettingRoute = AutoRoute(
+    var desktopSettingRoute = DesktopRoute(
       page: DesktopSettingRoute.page,
       children: desktopSettingChildren,
     );
     return [
-      AutoRoute(page: DesktopHomeRoute.page, initial: isDesktop),
+      DesktopRoute(page: DesktopHomeRoute.page, initial: isDesktop),
       desktopSettingRoute,
-      AutoRoute(page: DesktopSentinelGridRoute.page),
+      DesktopRoute(page: DesktopSentinelGridRoute.page),
       AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
       AutoRoute(page: MobileChatRoute.page),
       AutoRoute(page: MobileChatListRoute.page),
@@ -34,4 +34,9 @@ class AppRouter extends RootStackRouter {
       AutoRoute(page: MobileModelFormRoute.page),
     ];
   }
+}
+
+class DesktopRoute<R> extends CustomRoute<R> {
+  DesktopRoute({super.initial, required super.page, super.children})
+      : super(transitionsBuilder: TransitionsBuilders.noTransition);
 }
