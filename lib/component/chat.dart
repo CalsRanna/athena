@@ -1,4 +1,3 @@
-import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
@@ -27,9 +26,6 @@ class ChatTile extends ConsumerWidget {
   }
 
   void handlePressed(BuildContext context, WidgetRef ref) async {
-    final notifier = ref.read(chatNotifierProvider(chat.id).notifier);
-    await notifier.replace(chat);
-    if (!context.mounted) return;
     MobileChatRoute(chat: chat).push(context);
   }
 }

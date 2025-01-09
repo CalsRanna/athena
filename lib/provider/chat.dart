@@ -50,18 +50,6 @@ class ChatNotifier extends _$ChatNotifier {
     return chat.id;
   }
 
-  Future<void> replace(Chat chat) async {
-    // state = AsyncData(chat);
-    // final sentinel =
-    //     await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
-    // final athena =
-    //     await isar.sentinels.filter().nameEqualTo('Athena').findFirst();
-    // var provider = sentinelNotifierProvider(sentinelId ?? 0);
-    // final notifier = ref.read(provider.notifier);
-    // notifier.select(sentinel ?? athena ?? Sentinel(), invalidate: false);
-    // await future;
-  }
-
   Future<void> resend(Message message) async {
     var provider = messagesNotifierProvider(id);
     final notifier = ref.read(provider.notifier);
