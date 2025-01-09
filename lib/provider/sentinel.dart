@@ -44,8 +44,8 @@ class SentinelsNotifier extends _$SentinelsNotifier {
     if (sentinels.isNotEmpty) return sentinels;
     var defaultSentinel = Sentinel()
       ..name = 'Athena'
-      ..description = '一个友好且高效的聊天助手，随时为您提供信息和帮助'
-      ..prompt = '你是一个智能聊天助手';
+      ..description = '一个友好且高效的聊天助手，随时为您提供信息和帮助。'
+      ..prompt = '你是一个智能聊天助手。';
     await isar.writeTxn(() async {
       await isar.sentinels.put(defaultSentinel);
     });
