@@ -1,8 +1,9 @@
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/tag.dart';
 import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -15,26 +16,19 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var leading = _buildLeading(context);
-    var titleText = Text('Sentinel', style: TextStyle(color: Colors.white));
-    var rowChildren = [
-      leading,
-      const SizedBox(width: 16),
-      Expanded(child: titleText),
-    ];
     var children = [
-      Row(children: rowChildren),
+      _buildPageHeader(context),
       SizedBox(height: 52, child: _TagListView()),
       Expanded(child: _SentinelGridView()),
     ];
-    return AScaffold(appBar: AAppBar(), body: Column(children: children));
+    return AScaffold(body: Column(children: children));
   }
 
   void popPage(BuildContext context) {
     AutoRouter.of(context).maybePop();
   }
 
-  Widget _buildLeading(BuildContext context) {
+  Widget _buildPageHeader(BuildContext context) {
     var icon = Icon(
       HugeIcons.strokeRoundedArrowTurnBackward,
       color: Colors.white,
@@ -55,8 +49,13 @@ class DesktopSentinelGridPage extends StatelessWidget {
       container,
       const Positioned(left: 16, top: 18, child: MacWindowButton())
     ];
-    var stack = Stack(children: stackChildren);
-    return stack;
+    var titleText = Text('Sentinel', style: TextStyle(color: Colors.white));
+    var rowChildren = [
+      Stack(children: stackChildren),
+      const SizedBox(width: 16),
+      Expanded(child: titleText),
+    ];
+    return Row(children: rowChildren);
   }
 }
 
@@ -90,6 +89,7 @@ class _ContextMenu extends StatelessWidget {
   }
 
   void navigateSentinelFormPage(BuildContext context, Sentinel sentinel) {
+    DesktopSentinelFormRoute(sentinel: sentinel).push(context);
     onTap?.call();
   }
 }
@@ -200,48 +200,6 @@ class _SentinelTileState extends State<_SentinelTile> {
   }
 }
 
-class _Tag extends StatelessWidget {
-  final String text;
-  const _Tag({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    var innerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(44),
-      color: Color(0xFF161616),
-    );
-    var container = Container(
-      decoration: innerBoxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
-      child: Text(text, style: textStyle),
-    );
-    var colors = [
-      Color(0xFFEAEAEA).withValues(alpha: 0.17),
-      Colors.white.withValues(alpha: 0),
-    ];
-    var linearGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      colors: colors,
-      end: Alignment.bottomRight,
-    );
-    var outerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(44),
-      gradient: linearGradient,
-    );
-    return Container(
-      decoration: outerBoxDecoration,
-      padding: EdgeInsets.all(1),
-      child: container,
-    );
-  }
-}
-
 class _TagListView extends ConsumerWidget {
   const _TagListView();
 
@@ -258,7 +216,7 @@ class _TagListView extends ConsumerWidget {
   Widget _buildData(List<String> tags) {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
-      itemBuilder: (_, index) => _Tag(text: tags[index]),
+      itemBuilder: (_, index) => ATag(text: tags[index]),
       itemCount: tags.length,
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       separatorBuilder: (context, index) => const SizedBox(width: 12),
