@@ -55,14 +55,17 @@ class _ContextMenu extends StatelessWidget {
   final Offset offset;
   final void Function()? onTap;
   final Sentinel sentinel;
-  const _ContextMenu(
-      {required this.offset, this.onTap, required this.sentinel});
+  const _ContextMenu({
+    required this.offset,
+    this.onTap,
+    required this.sentinel,
+  });
 
   @override
   Widget build(BuildContext context) {
     var editOption = DesktopContextMenuOption(
       text: 'Edit',
-      onTap: () => navigateSentinelFormPage(context, sentinel),
+      onTap: () => navigateSentinelFormPage(context),
     );
     var deleteOption = DesktopContextMenuOption(
       text: 'Delete',
@@ -76,11 +79,14 @@ class _ContextMenu extends StatelessWidget {
   }
 
   void destroySentinel(BuildContext context) {
-    AutoRouter.of(context).maybePop<Sentinel>(sentinel);
+    var container = ProviderScope.containerOf(context);
+    var provider = sentinelsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    notifier.destroy(sentinel);
     onTap?.call();
   }
 
-  void navigateSentinelFormPage(BuildContext context, Sentinel sentinel) {
+  void navigateSentinelFormPage(BuildContext context) {
     DesktopSentinelFormRoute(sentinel: sentinel).push(context);
     onTap?.call();
   }
