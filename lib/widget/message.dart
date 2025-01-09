@@ -100,10 +100,12 @@ class _AssistantMessage extends StatelessWidget {
 class _CodeElementBuilder extends MarkdownElementBuilder {
   final bool expanded;
   final Function() onToggled;
+  final bool isThinkingComplete;
 
   _CodeElementBuilder({
     required this.expanded,
     required this.onToggled,
+    required this.isThinkingComplete,
   });
 
   void handleTap(String text) {
@@ -123,6 +125,7 @@ class _CodeElementBuilder extends MarkdownElementBuilder {
         text: element.textContent,
         expanded: expanded,
         onToggle: onToggled,
+        thinking: isThinkingComplete,
       );
     }
     final multipleLines = element.textContent.split('\n').length > 1;
@@ -214,11 +217,47 @@ class _Markdown extends StatefulWidget {
 
 class _MarkdownState extends State<_Markdown> {
   bool expanded = false;
+  bool thinking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkThinkingComplete();
+  }
+
+  @override
+  void didUpdateWidget(_Markdown oldWidget) {
+    if (oldWidget.message.content != widget.message.content) {
+      _checkThinkingComplete();
+    }
+    super.didUpdateWidget(oldWidget);
+  }
+
+  void _checkThinkingComplete() {
+    final content = widget.message.content;
+    final startMatch = RegExp(r'```thinking\n').firstMatch(content);
+    if (startMatch == null) {
+      setState(() {
+        thinking = false;
+      });
+      return;
+    }
+    final startIndex = startMatch.end;
+    final remainingContent = content.substring(startIndex);
+    final endMatch = RegExp(r'```').firstMatch(remainingContent);
+    setState(() {
+      thinking = endMatch == null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     Map<String, MarkdownElementBuilder> builders = {
-      'code': _CodeElementBuilder(expanded: expanded, onToggled: toggleExpanded)
+      'code': _CodeElementBuilder(
+        expanded: expanded,
+        onToggled: toggleExpanded,
+        isThinkingComplete: thinking,
+      ),
     };
     if (widget.supportLatex) builders['latex'] = LatexElementBuilder();
     List<md.BlockSyntax> blockSyntaxes = [LatexBlockSyntax()];
@@ -239,12 +278,17 @@ class _MarkdownState extends State<_Markdown> {
     });
   }
 
-  // Cause `code` use custom element builder to render, it's a function, not a
-  // widget, so we should always use different key to force rebuild.
   ValueKey _getKey() {
+    var thinkingKey = thinking ? 'incomplete' : 'complete';
     var expandedKey = expanded ? 'expanded' : 'collapsed';
     var supportLatexKey = widget.supportLatex ? 'support' : 'not-support';
-    return ValueKey('markdown-body-latex:$supportLatexKey-$expandedKey');
+    var parts = [
+      'markdown-body',
+      'thinking:$thinkingKey',
+      'expanded:$expandedKey',
+      'latex:$supportLatexKey',
+    ];
+    return ValueKey(parts.join('-'));
   }
 }
 
@@ -252,11 +296,13 @@ class _ThinkingProcess extends StatelessWidget {
   final String text;
   final bool expanded;
   final void Function() onToggle;
+  final bool thinking;
 
   const _ThinkingProcess({
     required this.text,
     required this.expanded,
     required this.onToggle,
+    required this.thinking,
   });
 
   @override
@@ -300,6 +346,17 @@ class _ThinkingProcess extends StatelessWidget {
       Icon(iconData, size: 16, color: Color(0xFF161616)),
       const SizedBox(width: 8),
       Text('Thinking Process', style: textStyle),
+      if (thinking) ...[
+        const SizedBox(width: 8),
+        const SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF161616)),
+          ),
+        ),
+      ],
     ];
     return Row(children: children);
   }
