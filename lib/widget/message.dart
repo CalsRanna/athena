@@ -98,6 +98,14 @@ class _AssistantMessage extends StatelessWidget {
 }
 
 class _CodeElementBuilder extends MarkdownElementBuilder {
+  final bool expanded;
+  final Function() onToggled;
+
+  _CodeElementBuilder({
+    required this.expanded,
+    required this.onToggled,
+  });
+
   void handleTap(String text) {
     final data = ClipboardData(text: text);
     Clipboard.setData(data);
@@ -110,6 +118,13 @@ class _CodeElementBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
+    if (element.attributes['class'] == 'language-thinking') {
+      return _ThinkingProcess(
+        text: element.textContent,
+        expanded: expanded,
+        onToggle: onToggled,
+      );
+    }
     final multipleLines = element.textContent.split('\n').length > 1;
     var children = [
       _buildContent(context, element),
@@ -120,21 +135,23 @@ class _CodeElementBuilder extends MarkdownElementBuilder {
 
   Widget _buildContent(BuildContext context, md.Element element) {
     final multipleLines = element.textContent.split('\n').length > 1;
+    var borderRadius = BorderRadius.circular(4);
     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
     if (multipleLines) {
+      borderRadius = BorderRadius.circular(8);
       padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     }
     final width = multipleLines ? double.infinity : null;
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(4),
-      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: borderRadius,
+      color: Color(0xFFEAECF0),
     );
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
     return Container(
       decoration: boxDecoration,
       padding: padding,
       width: width,
-      child: Text(element.textContent.trim(), style: textStyle),
+      child: Text(element.textContent, style: textStyle),
     );
   }
 
@@ -185,27 +202,94 @@ class _CopyState extends State<_Copy> {
   }
 }
 
-class _Markdown extends StatelessWidget {
+class _Markdown extends StatefulWidget {
   final Message message;
   final bool supportLatex = true;
 
   const _Markdown({required this.message});
 
   @override
+  State<_Markdown> createState() => _MarkdownState();
+}
+
+class _MarkdownState extends State<_Markdown> {
+  bool expanded = false;
+
+  void toggleExpanded() {
+    setState(() {
+      expanded = !expanded;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     Map<String, MarkdownElementBuilder> builders = {
-      'code': _CodeElementBuilder()
+      'code': _CodeElementBuilder(expanded: expanded, onToggled: toggleExpanded)
     };
-    if (supportLatex) builders['latex'] = LatexElementBuilder();
+    if (widget.supportLatex) builders['latex'] = LatexElementBuilder();
     List<md.BlockSyntax> blockSyntaxes = [LatexBlockSyntax()];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     final inlineSyntaxes = [LatexInlineSyntax()];
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     return MarkdownBody(
-      key: ValueKey('markdown-${supportLatex.toString()}'),
       builders: builders,
-      data: message.content,
-      extensionSet: supportLatex ? extensions : null,
+      data: widget.message.content,
+      extensionSet: widget.supportLatex ? extensions : null,
+    );
+  }
+}
+
+class _ThinkingProcess extends StatelessWidget {
+  final String text;
+  final bool expanded;
+  final void Function() onToggle;
+
+  const _ThinkingProcess({
+    required this.text,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: const Color(0xFFEAECF0),
+    );
+    return Container(
+      width: double.infinity,
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [_buildHeader(), _buildContent()],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (!expanded) return const SizedBox();
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(text, style: textStyle),
+    );
+  }
+
+  Widget _buildHeader() {
+    var iconData = HugeIcons.strokeRoundedArrowRight01;
+    if (expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
+    const textStyle = TextStyle(color: Color(0xFF161616), fontSize: 12);
+    var children = [
+      Icon(iconData, size: 16, color: Color(0xFF161616)),
+      const SizedBox(width: 8),
+      Text('Thinking Process', style: textStyle),
+    ];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onToggle,
+      child: Row(children: children),
     );
   }
 }
