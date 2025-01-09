@@ -1,6 +1,7 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
@@ -81,12 +82,19 @@ class _SentinelGridView extends ConsumerWidget {
   }
 }
 
-class _SentinelTile extends ConsumerWidget {
+class _SentinelTile extends StatefulWidget {
   final Sentinel sentinel;
   const _SentinelTile(this.sentinel);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<_SentinelTile> createState() => _SentinelTileState();
+}
+
+class _SentinelTileState extends State<_SentinelTile> {
+  OverlayEntry? entry;
+
+  @override
+  Widget build(BuildContext context) {
     const nameTextStyle = TextStyle(
       color: Colors.black,
       fontSize: 14,
@@ -99,10 +107,14 @@ class _SentinelTile extends ConsumerWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
+    var descriptionText = Text(
+      widget.sentinel.description,
+      style: descriptionTextStyle,
+    );
     var children = [
-      Text(sentinel.name, style: nameTextStyle),
+      Text(widget.sentinel.name, style: nameTextStyle),
       const SizedBox(height: 4),
-      Expanded(child: Text(sentinel.description, style: descriptionTextStyle)),
+      Expanded(child: descriptionText),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,13 +131,65 @@ class _SentinelTile extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onSecondaryTapUp: (details) => showContextMenu(context, details),
       onTap: () => handleTap(context),
       child: container,
     );
   }
 
+  void showContextMenu(BuildContext context, TapUpDetails details) {
+    var contextMenu = _ContextMenu(
+      offset: details.globalPosition,
+      onTap: removeEntry,
+      sentinel: widget.sentinel,
+    );
+    entry = OverlayEntry(builder: (_) => contextMenu);
+    Overlay.of(context).insert(entry!);
+  }
+
+  void removeEntry() {
+    if (entry != null) {
+      entry!.remove();
+      entry = null;
+    }
+  }
+
   void handleTap(BuildContext context) {
+    AutoRouter.of(context).maybePop<Sentinel>(widget.sentinel);
+  }
+}
+
+class _ContextMenu extends StatelessWidget {
+  final Offset offset;
+  final void Function()? onTap;
+  final Sentinel sentinel;
+  const _ContextMenu(
+      {required this.offset, this.onTap, required this.sentinel});
+
+  @override
+  Widget build(BuildContext context) {
+    var editOption = DesktopContextMenuOption(
+      text: 'Edit',
+      onTap: () => navigateSentinelFormPage(context, sentinel),
+    );
+    var deleteOption = DesktopContextMenuOption(
+      text: 'Delete',
+      onTap: () => destroySentinel(context),
+    );
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onTap,
+      children: [editOption, deleteOption],
+    );
+  }
+
+  void destroySentinel(BuildContext context) {
     AutoRouter.of(context).maybePop<Sentinel>(sentinel);
+    onTap?.call();
+  }
+
+  void navigateSentinelFormPage(BuildContext context, Sentinel sentinel) {
+    onTap?.call();
   }
 }
 
