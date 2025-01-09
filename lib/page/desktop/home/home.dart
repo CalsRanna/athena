@@ -1,9 +1,9 @@
-import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/chat_indicator.dart';
+import 'package:athena/page/desktop/home/component/chat_list.dart';
+import 'package:athena/page/desktop/home/component/chat_search.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
-import 'package:athena/page/desktop/home/component/chat_search.dart';
 import 'package:athena/page/desktop/home/component/sentinel_tile.dart';
 import 'package:athena/page/desktop/home/component/setting_tile.dart';
 import 'package:athena/provider/chat.dart';
@@ -36,30 +36,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return AScaffold(appBar: _buildAppBar(), body: Row(children: children));
   }
 
-  Widget _buildAppBar() {
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: createChat,
-      child: Icon(HugeIcons.strokeRoundedPencilEdit02, color: Colors.white),
-    );
-    var container = Container(
-      alignment: Alignment.centerRight,
-      height: 50,
-      padding: EdgeInsets.only(right: 16),
-      width: 200,
-      child: gestureDetector,
-    );
-    var stackChildren = [
-      container,
-      const Positioned(left: 16, top: 18, child: MacWindowButton())
-    ];
-    var rowChildren = [
-      Stack(children: stackChildren),
-      Expanded(child: DesktopChatIndicator(model: model, sentinel: sentinel)),
-    ];
-    return Row(children: rowChildren);
-  }
-
   Future<void> changeChat(Chat chat) async {
     var model = await isar.models.filter().valueEqualTo(chat.model).findFirst();
     var sentinel =
@@ -75,12 +51,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     setState(() {
       this.model = model;
     });
+    if (chat == null) return;
+    var container = ProviderScope.containerOf(context);
+    var provider = chatNotifierProvider(chat!.id);
+    var notifier = container.read(provider.notifier);
+    notifier.updateModel(model.value);
   }
 
   void changeSentinel(Sentinel sentinel) {
     setState(() {
       this.sentinel = sentinel;
     });
+    if (chat == null) return;
+    var container = ProviderScope.containerOf(context);
+    var provider = chatNotifierProvider(chat!.id);
+    var notifier = container.read(provider.notifier);
+    notifier.updateSentinel(sentinel);
   }
 
   void createChat() {
@@ -115,6 +101,30 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       var notifier = container.read(provider.notifier);
       notifier.send(text);
     });
+  }
+
+  Widget _buildAppBar() {
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: createChat,
+      child: Icon(HugeIcons.strokeRoundedPencilEdit02, color: Colors.white),
+    );
+    var container = Container(
+      alignment: Alignment.centerRight,
+      height: 50,
+      padding: EdgeInsets.only(right: 16),
+      width: 200,
+      child: gestureDetector,
+    );
+    var stackChildren = [
+      container,
+      const Positioned(left: 16, top: 18, child: MacWindowButton())
+    ];
+    var rowChildren = [
+      Stack(children: stackChildren),
+      Expanded(child: DesktopChatIndicator(model: model, sentinel: sentinel)),
+    ];
+    return Row(children: rowChildren);
   }
 
   Widget _buildLeftBar() {
