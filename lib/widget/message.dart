@@ -261,19 +261,25 @@ class _ThinkingProcess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_buildHeader(), _buildContent()],
+    );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
       color: const Color(0xFFEAECF0),
     );
-    return Container(
-      width: double.infinity,
+    var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [_buildHeader(), _buildContent()],
-      ),
+      width: double.infinity,
+      child: column,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onToggle,
+      child: container,
     );
   }
 
@@ -295,11 +301,7 @@ class _ThinkingProcess extends StatelessWidget {
       const SizedBox(width: 8),
       Text('Thinking Process', style: textStyle),
     ];
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onToggle,
-      child: Row(children: children),
-    );
+    return Row(children: children);
   }
 }
 
