@@ -26,7 +26,9 @@ class MobileChatPage extends StatefulWidget {
 
 class _ActionButton extends ConsumerWidget {
   final int? chatId;
-  const _ActionButton({this.chatId});
+  final Model? model;
+  final void Function(Model)? onChanged;
+  const _ActionButton({this.chatId, this.model, this.onChanged});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,13 +53,17 @@ class _ActionButton extends ConsumerWidget {
   }
 
   void handleTap(WidgetRef ref) {
-    ADialog.show(_ActionDialog(chatId: chatId));
+    ADialog.show(
+      _ActionDialog(chatId: chatId, model: model, onChanged: onChanged),
+    );
   }
 }
 
 class _ActionDialog extends ConsumerWidget {
   final int? chatId;
-  const _ActionDialog({this.chatId});
+  final Model? model;
+  final void Function(Model)? onChanged;
+  const _ActionDialog({this.chatId, this.model, this.onChanged});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,10 +75,8 @@ class _ActionDialog extends ConsumerWidget {
     };
   }
 
-  void replaceModel(WidgetRef ref, Model model) {
-    var provider = chatNotifierProvider(chatId ?? 0);
-    var notifier = ref.read(provider.notifier);
-    notifier.updateModel(model.value);
+  void changeModel(Model model) {
+    onChanged?.call(model);
     ADialog.dismiss();
   }
 
@@ -90,9 +94,7 @@ class _ActionDialog extends ConsumerWidget {
   }
 
   Widget _itemBuilder(WidgetRef ref, Model model) {
-    var provider = chatNotifierProvider(chatId ?? 0);
-    var chat = ref.watch(provider).valueOrNull;
-    final selected = chat?.model == model.value;
+    final selected = this.model?.value == model.value;
     if (selected) {
       return APrimaryButton(
         onTap: _dismiss,
@@ -100,7 +102,7 @@ class _ActionDialog extends ConsumerWidget {
       );
     }
     return _OutlinedButton(
-      onTap: () => replaceModel(ref, model),
+      onTap: () => changeModel(model),
       text: model.name,
     );
   }
@@ -163,6 +165,7 @@ class _Input extends ConsumerWidget {
   void handleSubmitted(WidgetRef ref) {
     final streaming = ref.read(streamingNotifierProvider);
     if (streaming) return;
+    if (controller.text.isEmpty) return;
     onSubmitted?.call(ref);
   }
 }
@@ -212,6 +215,7 @@ class _MessageListView extends ConsumerWidget {
 class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
   int? id;
+  Model? model;
 
   @override
   Widget build(BuildContext context) {
@@ -231,19 +235,27 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (id != null) Expanded(child: _MessageListView(chatId: id!)),
       input,
     ];
+    var actionButton = _ActionButton(
+      chatId: id,
+      model: model,
+      onChanged: changeModel,
+    );
     var chatTitle = _ChatTitle(chatId: id);
     return AScaffold(
-      appBar: AAppBar(action: _ActionButton(chatId: id), title: chatTitle),
+      appBar: AAppBar(action: actionButton, title: chatTitle),
       body: Column(children: columnChildren),
     );
   }
 
-  Future<void> destroyChat(WidgetRef ref) async {
-    if (widget.chat?.id == null) return;
-    final notifier = ref.read(chatsNotifierProvider.notifier);
-    await notifier.destroy(widget.chat!.id);
-    if (!mounted) return;
-    AutoRouter.of(context).maybePop();
+  void changeModel(Model model) {
+    setState(() {
+      this.model = model;
+    });
+    if (id == null) return;
+    var container = ProviderScope.containerOf(context);
+    var provider = chatNotifierProvider(id!);
+    var notifier = container.read(provider.notifier);
+    notifier.updateModel(model.value);
   }
 
   @override
@@ -262,10 +274,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
-    var provider = chatNotifierProvider(widget.chat?.id ?? 0);
-    var notifier = ref.read(provider.notifier);
     if (id == null) {
-      var chatId = await notifier.create();
+      var provider = chatNotifierProvider(widget.chat?.id ?? 0);
+      var notifier = ref.read(provider.notifier);
+      var chatId = await notifier.create(sentinel: widget.sentinel);
       setState(() {
         id = chatId;
       });
