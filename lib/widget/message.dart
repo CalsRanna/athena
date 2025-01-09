@@ -215,12 +215,6 @@ class _Markdown extends StatefulWidget {
 class _MarkdownState extends State<_Markdown> {
   bool expanded = false;
 
-  void toggleExpanded() {
-    setState(() {
-      expanded = !expanded;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     Map<String, MarkdownElementBuilder> builders = {
@@ -232,10 +226,25 @@ class _MarkdownState extends State<_Markdown> {
     final inlineSyntaxes = [LatexInlineSyntax()];
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     return MarkdownBody(
+      key: _getKey(),
       builders: builders,
       data: widget.message.content,
       extensionSet: widget.supportLatex ? extensions : null,
     );
+  }
+
+  void toggleExpanded() {
+    setState(() {
+      expanded = !expanded;
+    });
+  }
+
+  // Cause `code` use custom element builder to render, it's a function, not a
+  // widget, so we should always use different key to force rebuild.
+  ValueKey _getKey() {
+    var expandedKey = expanded ? 'expanded' : 'collapsed';
+    var supportLatexKey = widget.supportLatex ? 'support' : 'not-support';
+    return ValueKey('markdown-body-latex:$supportLatexKey-$expandedKey');
   }
 }
 
