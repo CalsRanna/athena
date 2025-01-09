@@ -190,7 +190,7 @@ class _SentinelNotifierProviderElement
   int get id => (origin as SentinelNotifierProvider).id;
 }
 
-String _$sentinelsNotifierHash() => r'a064a643c16c376c285c3733923262c62fb7cf9a';
+String _$sentinelsNotifierHash() => r'091455422027ebd5114b743074fa20203f496c60';
 
 /// See also [SentinelsNotifier].
 @ProviderFor(SentinelsNotifier)
