@@ -283,7 +283,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      var provider = chatNotifierProvider(widget.chat!.id);
+      var provider = chatNotifierProvider(id!);
       var notifier = ref.read(provider.notifier);
       notifier.send(text);
     });
