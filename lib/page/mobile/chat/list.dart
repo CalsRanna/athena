@@ -159,27 +159,6 @@ class _ListTile extends ConsumerWidget {
   }
 
   Widget _buildRenameButton(BuildContext context) {
-    return Container(
-      alignment: Alignment.center,
-      decoration: ShapeDecoration(
-        shape: StadiumBorder(),
-        color: Colors.white,
-        shadows: [
-          BoxShadow(
-            blurRadius: 16,
-            color: Color(0xFFCED2C7).withValues(alpha: 0.5),
-          )
-        ],
-      ),
-      padding: EdgeInsets.all(16),
-      child: Text(
-        'Rename',
-        style: TextStyle(
-          color: Color(0xFF161616),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
+    return ASecondaryButton(child: Center(child: Text('Rename')), onTap: () {});
   }
 }
