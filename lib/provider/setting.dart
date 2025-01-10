@@ -66,4 +66,14 @@ class SettingNotifier extends _$SettingNotifier {
       await isar.settings.put(setting);
     });
   }
+
+  Future<void> store({String? key, String? url}) async {
+    final setting = await future;
+    if (key != null) setting.key = key;
+    if (url != null) setting.url = url;
+    await isar.writeTxn(() async {
+      await isar.settings.put(setting);
+    });
+    ref.invalidateSelf();
+  }
 }
