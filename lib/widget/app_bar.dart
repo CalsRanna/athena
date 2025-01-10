@@ -26,6 +26,7 @@ class DesktopPopButton extends StatelessWidget {
     var icon = Icon(
       HugeIcons.strokeRoundedArrowTurnBackward,
       color: Colors.white,
+      size: 24,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

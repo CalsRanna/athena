@@ -27,15 +27,24 @@ class DesktopSentinelGridPage extends StatelessWidget {
     return AScaffold(appBar: appBar, body: Column(children: children));
   }
 
+  void navigateSentinelFormPage(BuildContext context) {
+    DesktopSentinelFormRoute().push(context);
+  }
+
   void popPage(BuildContext context) {
     AutoRouter.of(context).maybePop();
   }
 
   Widget _buildPageHeader(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedPencilEdit02,
+      color: Colors.white,
+      size: 24,
+    );
     var createButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => navigateSentinelFormPage(context),
-      child: Icon(HugeIcons.strokeRoundedPencilEdit02, color: Colors.white),
+      child: icon,
     );
     var rowChildren = [
       const SizedBox(width: 16),
@@ -44,10 +53,6 @@ class DesktopSentinelGridPage extends StatelessWidget {
       createButton,
     ];
     return Row(children: rowChildren);
-  }
-
-  void navigateSentinelFormPage(BuildContext context) {
-    DesktopSentinelFormRoute().push(context);
   }
 }
 
