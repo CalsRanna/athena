@@ -349,21 +349,16 @@ class _ThinkingProcess extends StatelessWidget {
     var iconData = HugeIcons.strokeRoundedArrowRight01;
     if (expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
     const textStyle = TextStyle(color: Color(0xFF161616), fontSize: 12);
+    const indicator = CircularProgressIndicator(
+      color: Color(0xFF161616),
+      strokeWidth: 1,
+    );
     var children = [
       Icon(iconData, size: 16, color: Color(0xFF161616)),
       const SizedBox(width: 8),
       Text('Thinking Process', style: textStyle),
-      if (thinking) ...[
-        const SizedBox(width: 8),
-        const SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF161616)),
-          ),
-        ),
-      ],
+      const SizedBox(width: 8),
+      if (thinking) const SizedBox(width: 12, height: 12, child: indicator),
     ];
     return Row(children: children);
   }
