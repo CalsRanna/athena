@@ -3,6 +3,7 @@ import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
+import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,10 +53,11 @@ class _DesktopSettingAccountPageState
       const SizedBox(height: 12),
       _buildButtons(),
     ];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+    var body = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(children: children),
     );
+    return AScaffold(body: body);
   }
 
   Widget _buildKeyInput() {

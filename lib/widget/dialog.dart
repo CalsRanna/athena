@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena/main.dart';
 import 'package:flutter/material.dart';
 
@@ -14,11 +16,19 @@ class ADialog {
   }
 
   static void show(Widget child) {
-    showModalBottomSheet(
-      backgroundColor: Color(0xFF282F32),
-      builder: (_) => child,
-      context: globalKey.currentContext!,
-    );
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      showDialog(
+        barrierDismissible: false,
+        builder: (_) => child,
+        context: globalKey.currentContext!,
+      );
+    } else {
+      showModalBottomSheet(
+        backgroundColor: Color(0xFF282F32),
+        builder: (_) => child,
+        context: globalKey.currentContext!,
+      );
+    }
   }
 
   static void success(String message) {

@@ -1,8 +1,11 @@
+import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSettingPage extends StatefulWidget {
@@ -55,12 +58,28 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildPageHeader(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedPencilEdit02,
+      color: Colors.white,
+      size: 24,
+    );
+    var createButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: showModelFomDialog,
+      child: icon,
+    );
+    var title = 'Setting / ${_menus[index]}';
     var rowChildren = [
       const SizedBox(width: 16),
-      Text('Setting', style: TextStyle(color: Colors.white)),
+      Text(title, style: TextStyle(color: Colors.white)),
       const SizedBox(width: 16),
+      if (index == 1) createButton
     ];
     return Row(children: rowChildren);
+  }
+
+  void showModelFomDialog() {
+    ADialog.show(DesktopModelFormDialog());
   }
 
   Widget _itemBuilder(int index) {
