@@ -6,6 +6,7 @@ import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,10 +75,16 @@ class MobileModelListPage extends ConsumerWidget {
 
   Widget _buildData(List<Model> models) {
     if (models.isEmpty) return const SizedBox();
-    return ListView.builder(
-      itemBuilder: (context, index) => _Tile(model: models[index]),
-      itemCount: models.length,
-      padding: EdgeInsets.zero,
+    var children = models.map((model) => _Tile(model: model)).toList();
+    var wrap = Wrap(
+      alignment: WrapAlignment.start,
+      spacing: 12,
+      runSpacing: 12,
+      children: children,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: wrap,
     );
   }
 }
@@ -169,27 +176,14 @@ class _Tile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final setting = ref.watch(settingNotifierProvider).valueOrNull;
-    const color = Color(0xffffffff);
-    const selected = HugeIcon(
-      color: color,
-      icon: HugeIcons.strokeRoundedTick02,
+    var tag = ATag(
+      selected: setting?.model == model.value,
+      text: model.name,
     );
-    const textStyle = TextStyle(
-      color: color,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-    );
-    var children = [
-      Expanded(child: Text(model.name, style: textStyle)),
-      setting?.model == model.value ? selected : const SizedBox(),
-    ];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _showActionDialog(ref),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Row(children: children),
-      ),
+      child: tag,
     );
   }
 
