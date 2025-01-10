@@ -147,18 +147,16 @@ class _ListTile extends ConsumerWidget {
   }
 
   Widget _buildDeleteButton(BuildContext context) {
-    var textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return ASecondaryButton(
       onTap: () => showConfirmDialog(context),
-      child: Center(child: Text('Delete', style: textStyle)),
+      child: Center(child: Text('Delete')),
     );
   }
 
   Widget _buildRenameButton(BuildContext context) {
-    return ASecondaryButton(child: Center(child: Text('Rename')), onTap: () {});
+    return ASecondaryButton(
+      onTap: () {},
+      child: Center(child: Text('Rename')),
+    );
   }
 }
