@@ -218,6 +218,7 @@ class _Markdown extends StatefulWidget {
 class _MarkdownState extends State<_Markdown> {
   bool expanded = false;
   bool thinking = false;
+  String lastContent = '';
 
   @override
   void initState() {
@@ -227,9 +228,15 @@ class _MarkdownState extends State<_Markdown> {
 
   @override
   void didUpdateWidget(_Markdown oldWidget) {
-    if (oldWidget.message.content != widget.message.content) {
+    // Can not use `widget.message.content == oldWidget.message.content` cause
+    // the `content` was called by the instance of `Message`, which never change
+    // all the time.
+    // So we muse copy the value of `content` and use a fresh new variable to
+    // record it, and make a new memory address for it.
+    if (lastContent != widget.message.content) {
       _checkThinkingComplete();
     }
+    lastContent = widget.message.content;
     super.didUpdateWidget(oldWidget);
   }
 
