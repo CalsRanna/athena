@@ -2,12 +2,12 @@ import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tag.dart';
-import 'package:athena/widget/window_button.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -244,87 +244,63 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       padding: const EdgeInsets.all(16.0),
       child: Column(children: children2),
     );
+    var appBar = AAppBar(
+      leading: DesktopPopButton(),
+      title: _buildPageHeader(context),
+    );
     return AScaffold(
-      body: Column(
-        children: [
-          _buildPageHeader(context),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        color: Color(0xFFADADAD).withValues(alpha: 0.6),
-                      ),
-                      height: double.infinity,
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(child: promptTextField),
-                          const SizedBox(height: 16),
-                          ATextButton(text: 'Generate', onTap: generate),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                      child: Stack(
-                    children: [
-                      container2,
-                      if (loading)
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            color: Color(0xFFADADAD).withValues(alpha: 0.5),
-                          ),
-                          child: Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.white),
-                          ),
-                        ),
-                    ],
-                  )),
-                ],
+      appBar: appBar,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: Color(0xFFADADAD).withValues(alpha: 0.6),
+                ),
+                height: double.infinity,
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(child: promptTextField),
+                    const SizedBox(height: 16),
+                    ATextButton(text: 'Generate', onTap: generate),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+                child: Stack(
+              children: [
+                container2,
+                if (loading)
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: Color(0xFFADADAD).withValues(alpha: 0.5),
+                    ),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+              ],
+            )),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildPageHeader(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedArrowTurnBackward,
-      color: Colors.white,
-      size: 24,
-    );
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: popPage,
-      child: icon,
-    );
-    var container = Container(
-      height: 50,
-      width: 120,
-      alignment: Alignment.centerRight,
-      child: gestureDetector,
-    );
-    var stackChildren = [
-      container,
-      const Positioned(left: 16, top: 18, child: MacWindowButton())
-    ];
     var title = widget.sentinel?.name ?? 'New Sentinel';
-    var titleText = Text(title, style: TextStyle(color: Colors.white));
     var rowChildren = [
-      Stack(children: stackChildren),
       const SizedBox(width: 16),
-      Expanded(child: titleText),
+      Text(title, style: TextStyle(color: Colors.white)),
+      const SizedBox(width: 16),
     ];
     return Row(children: rowChildren);
   }
