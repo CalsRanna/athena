@@ -18,7 +18,7 @@ class DesktopSettingPage extends StatefulWidget {
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   int index = 0;
 
-  final _menus = ['Account', 'Model', 'Application', 'Experimental'];
+  final _menus = ['Account', 'Model'];
 
   @override
   Widget build(BuildContext context) {
@@ -37,8 +37,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var route = switch (index) {
       0 => const DesktopSettingAccountRoute(),
       1 => const DesktopSettingModelRoute(),
-      2 => const DesktopSettingApplicationRoute(),
-      3 => const DesktopSettingExperimentalRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -46,9 +44,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildLeftBar() {
-    var listView = ListView.builder(
+    var listView = ListView.separated(
       itemBuilder: (_, index) => _itemBuilder(index),
       itemCount: _menus.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -95,24 +94,29 @@ class _MenuTile extends StatelessWidget {
   final bool active;
   final String label;
   final void Function()? onTap;
-  const _MenuTile({this.active = false, required this.label, this.onTap});
+  const _MenuTile({required this.active, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     const duration = Duration(milliseconds: 200);
+    var textStyle = TextStyle(
+      color: active ? Color(0xFF161616) : Colors.white,
+      fontSize: 14,
+      height: 1.5,
+    );
     var animatedText = AnimatedDefaultTextStyle(
       duration: duration,
-      style: TextStyle(color: active ? Color(0xFF161616) : Colors.white),
+      style: textStyle,
       child: Text(label),
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: active ? Colors.white : null,
+      borderRadius: BorderRadius.circular(35),
+      color: active ? Color(0xFFE0E0E0) : Color(0xFF616161),
     );
     var animatedContainer = AnimatedContainer(
       decoration: boxDecoration,
       duration: duration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: animatedText,
     );
     return GestureDetector(
