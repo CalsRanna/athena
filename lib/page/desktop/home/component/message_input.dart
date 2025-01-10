@@ -124,9 +124,10 @@ class _InputState extends State<_Input> {
   Widget build(BuildContext context) {
     return Consumer(builder: (context, ref, child) {
       return Container(
-        decoration: ShapeDecoration(
+        decoration: BoxDecoration(
+          border: Border.all(color: Color(0xFF757575)),
+          borderRadius: BorderRadius.circular(24),
           color: Color(0xFFADADAD).withValues(alpha: 0.6),
-          shape: StadiumBorder(side: BorderSide(color: Color(0xFF757575))),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
         child: KeyboardListener(
@@ -141,11 +142,11 @@ class _InputState extends State<_Input> {
               hintStyle: TextStyle(
                 color: Color(0xFFC2C2C2),
                 fontSize: 14,
-                height: 1.7,
+                height: 1.5,
               ),
             ),
             style: const TextStyle(
-                color: Color(0xFFF5F5F5), fontSize: 14, height: 1.7),
+                color: Color(0xFFF5F5F5), fontSize: 14, height: 1.5),
             maxLines: 4,
             minLines: 1,
           ),
