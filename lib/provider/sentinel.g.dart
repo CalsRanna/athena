@@ -207,7 +207,7 @@ final sentinelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$SentinelsNotifier = AutoDisposeAsyncNotifier<List<Sentinel>>;
 String _$sentinelTagsNotifierHash() =>
-    r'9e37bba106612e04f41ba2531c4d10a019088caf';
+    r'c18e92cde8c21bafb05982350a696a496a43acfe';
 
 /// See also [SentinelTagsNotifier].
 @ProviderFor(SentinelTagsNotifier)

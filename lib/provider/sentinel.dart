@@ -83,6 +83,8 @@ class SentinelTagsNotifier extends _$SentinelTagsNotifier {
     for (var sentinel in sentinels) {
       tags.addAll(sentinel.tags);
     }
-    return tags.toSet().toList();
+    var sortedTags = tags.toSet().toList();
+    sortedTags.sort((a, b) => a.compareTo(b));
+    return sortedTags;
   }
 }
