@@ -5,10 +5,10 @@ import 'package:athena/provider/model.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/widget/app_bar.dart';
-import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/message.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,7 +70,7 @@ class _ActionDialog extends ConsumerWidget {
     var provider = modelsNotifierProvider;
     var state = ref.watch(provider);
     return switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
+      AsyncData(:final value) => _buildData(context, ref, value),
       _ => const SizedBox(),
     };
   }
@@ -80,30 +80,47 @@ class _ActionDialog extends ConsumerWidget {
     ADialog.dismiss();
   }
 
-  Widget _buildData(WidgetRef ref, List<Model> models) {
-    return ListView.separated(
-      itemBuilder: (_, index) => _itemBuilder(ref, models[index]),
-      itemCount: models.length,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+  Widget _buildData(BuildContext context, WidgetRef ref, List<Model> models) {
+    if (models.isEmpty) return const SizedBox();
+    var children = models.map(_itemBuilder).toList();
+    var wrap = Wrap(
+      alignment: WrapAlignment.start,
+      spacing: 12,
+      runSpacing: 12,
+      children: children,
+    );
+    var bottom = MediaQuery.paddingOf(context).bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(12, 12, 12, bottom + 12),
+      width: double.infinity,
+      child: wrap,
     );
   }
 
-  void _dismiss() {
-    ADialog.dismiss();
-  }
-
-  Widget _itemBuilder(WidgetRef ref, Model model) {
-    final selected = this.model?.value == model.value;
-    if (selected) {
-      return APrimaryButton(
-        onTap: _dismiss,
-        child: Center(child: Text(model.name)),
-      );
-    }
-    return _OutlinedButton(
+  Widget _itemBuilder(Model model) {
+    return _ModelTile(
+      model: model,
+      modelOfChat: this.model,
       onTap: () => changeModel(model),
-      text: model.name,
+    );
+  }
+}
+
+class _ModelTile extends ConsumerWidget {
+  final Model model;
+  final Model? modelOfChat;
+  final void Function()? onTap;
+  const _ModelTile({required this.model, this.modelOfChat, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    var provider = modelNotifierProvider(modelOfChat?.value ?? '');
+    var realModelOfChat = ref.watch(provider).valueOrNull;
+    var selected = realModelOfChat?.value == model.value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: ATag(selected: selected, text: model.name),
     );
   }
 }
@@ -287,25 +304,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
       var notifier = ref.read(provider.notifier);
       notifier.send(text);
     });
-  }
-}
-
-class _OutlinedButton extends StatelessWidget {
-  final void Function()? onTap;
-  final String text;
-  const _OutlinedButton({this.onTap, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    return ASecondaryButton(
-      onTap: onTap,
-      child: Center(child: Text(text, style: textStyle)),
-    );
   }
 }
 
