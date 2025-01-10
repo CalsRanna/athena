@@ -21,7 +21,7 @@ class DesktopSentinelGridPage extends StatelessWidget {
       title: _buildPageHeader(context),
     );
     var children = [
-      SizedBox(height: 52, child: _TagListView()),
+      _TagListView(),
       Expanded(child: _SentinelGridView()),
     ];
     return AScaffold(appBar: appBar, body: Column(children: children));
@@ -217,12 +217,16 @@ class _TagListView extends ConsumerWidget {
   }
 
   Widget _buildData(List<String> tags) {
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemBuilder: (_, index) => ATag(text: tags[index]),
-      itemCount: tags.length,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      separatorBuilder: (context, index) => const SizedBox(width: 12),
+    var children = tags.map((tag) => ATag(text: tag)).toList();
+    var wrap = Wrap(
+      alignment: WrapAlignment.start,
+      spacing: 12,
+      runSpacing: 12,
+      children: children,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: wrap,
     );
   }
 }
