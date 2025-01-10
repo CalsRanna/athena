@@ -14,7 +14,10 @@ class SettingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leading = SizedBox(width: 200, child: Text(label));
+    final leading = SizedBox(
+      width: 200,
+      child: Text(label, style: TextStyle(color: Colors.white)),
+    );
     final expanded = Expanded(child: child);
     var children = [
       Row(children: [leading, expanded]),
@@ -32,8 +35,6 @@ class SettingTile extends StatelessWidget {
 
   Widget _buildSubtitle(BuildContext context) {
     if (subtitle == null) return const SizedBox();
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.4);
-    return Text(subtitle!, style: TextStyle(color: color, fontSize: 10));
+    return Text(subtitle!, style: TextStyle(color: Colors.white, fontSize: 10));
   }
 }

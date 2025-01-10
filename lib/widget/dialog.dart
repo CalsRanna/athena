@@ -2,8 +2,10 @@ import 'package:athena/main.dart';
 import 'package:flutter/material.dart';
 
 class ADialog {
-  static void confirm(String title,
-      {void Function(BuildContext)? onConfirmed}) {
+  static void confirm(
+    String title, {
+    void Function(BuildContext)? onConfirmed,
+  }) {
     show(_ConfirmDialog(title: title, onConfirmed: onConfirmed));
   }
 
@@ -24,14 +26,35 @@ class ADialog {
   }
 
   static void loading() {
+    var indicator = CircularProgressIndicator(color: Colors.white);
     showDialog(
       context: globalKey.currentContext!,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(
-          color: Colors.white,
-        ),
-      ),
+      builder: (context) => Center(child: indicator),
     );
+  }
+
+  static void message(String message) {
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: Color(0xFF282F32),
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      margin: EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Text(message, style: TextStyle(color: Colors.white)),
+    );
+    var unconstrainedBox = UnconstrainedBox(
+      alignment: Alignment.centerLeft,
+      child: container,
+    );
+    var snackBar = SnackBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      padding: EdgeInsets.zero,
+      content: unconstrainedBox,
+    );
+    ScaffoldMessenger.of(globalKey.currentContext!).showSnackBar(snackBar);
   }
 }
 
