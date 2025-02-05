@@ -132,7 +132,7 @@ class ChatNotifier extends _$ChatNotifier {
     } catch (error) {
       title = '';
     }
-    store(title: title);
+    store(title: title.trim());
   }
 
   Future<String> _getModel() async {
