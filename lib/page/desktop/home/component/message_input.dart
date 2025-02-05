@@ -69,8 +69,6 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
       Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
       const SizedBox(width: 8),
       Icon(HugeIcons.strokeRoundedTemperature, color: Color(0xFF616161)),
-      const SizedBox(width: 8),
-      Icon(HugeIcons.strokeRoundedGift, color: Color(0xFF616161)),
     ];
     return Row(children: children);
   }
