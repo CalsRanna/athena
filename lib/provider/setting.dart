@@ -41,6 +41,7 @@ class SettingNotifier extends _$SettingNotifier {
   }
 
   Future<void> updateKey(String key) async {
+    ProxyConfig.instance.key = key;
     final setting = await future;
     setting.key = key;
     state = AsyncData(setting);
@@ -59,6 +60,7 @@ class SettingNotifier extends _$SettingNotifier {
   }
 
   Future<void> updateUrl(String url) async {
+    ProxyConfig.instance.url = url;
     final setting = await future;
     setting.url = url;
     state = AsyncData(setting);

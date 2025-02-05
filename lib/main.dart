@@ -4,6 +4,7 @@ import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
+import 'package:athena/util/proxy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,9 +17,11 @@ final globalKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await IsarInitializer.ensureInitialized();
+  final setting = await isar.settings.where().findFirst();
+  ProxyConfig.instance.key = setting?.key ?? '';
+  ProxyConfig.instance.url = setting?.url ?? '';
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    final setting = await isar.settings.where().findFirst();
     var size = Size(960, 720);
     if (setting != null) {
       var width = setting.width;
