@@ -25,8 +25,8 @@ class SentinelNotifier extends _$SentinelNotifier {
     return await ref.watch(defaultSentinelNotifierProvider.future);
   }
 
-  Future<Sentinel> generate(String prompt) async {
-    return SentinelApi().generate(prompt, model: 'gpt-4o-mini');
+  Future<Sentinel> generate(String prompt, {required String model}) async {
+    return SentinelApi().generate(prompt, model: model);
   }
 
   void select(Sentinel sentinel, {bool invalidate = true}) {

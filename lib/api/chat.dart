@@ -30,7 +30,7 @@ class ChatApi {
 
   Stream<String> getCompletion({
     required List<Message> messages,
-    String model = 'gpt-4o',
+    required String model,
   }) async* {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
     var client = OpenAIClient(
