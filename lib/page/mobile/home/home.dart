@@ -63,7 +63,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       SizedBox(height: 24),
       _Title('Sentinel', onTap: () => navigateSentinelList(context)),
       SizedBox(height: 8),
-      SizedBox(height: 52, child: _SentinelListView()),
+      SizedBox(height: 156, child: _SentinelListView()),
     ];
     var body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,12 +171,31 @@ class _SentinelListView extends ConsumerWidget {
 
   Widget _buildData(List<Sentinel> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
-    return ListView.separated(
-      itemBuilder: (_, index) => _SentinelTile(sentinels[index]),
-      itemCount: sentinels.length,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      separatorBuilder: (context, index) => const SizedBox(width: 12),
+    List<Widget> children1 = [];
+    List<Widget> children2 = [];
+    List<Widget> children3 = [];
+    for (var i = 0; i < sentinels.length; i++) {
+      var tile = _SentinelTile(sentinels[i]);
+      if (i % 3 == 0) children1.add(tile);
+      if (i % 3 == 1) children2.add(tile);
+      if (i % 3 == 2) children3.add(tile);
+    }
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 12,
+      children: [
+        Row(spacing: 12, children: children1),
+        Row(spacing: 12, children: children2),
+        Row(spacing: 12, children: children3),
+      ],
+    );
+    return SizedBox(
+      height: 120,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        child: column,
+      ),
     );
   }
 }
