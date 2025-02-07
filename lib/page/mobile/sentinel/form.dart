@@ -1,4 +1,5 @@
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -71,7 +72,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       var container = ProviderScope.containerOf(context);
       var provider = sentinelNotifierProvider(0);
       var notifier = container.read(provider.notifier);
-      var sentinel = await notifier.generate(promptController.text);
+      var setting = await container.read(settingNotifierProvider.future);
+      var sentinel = await notifier.generate(
+        promptController.text,
+        model: setting.model,
+      );
       nameController.text = sentinel.name;
       descriptionController.text = sentinel.description;
       ADialog.dismiss();
@@ -86,7 +91,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       var container = ProviderScope.containerOf(context);
       var provider = sentinelNotifierProvider(0);
       var notifier = container.read(provider.notifier);
-      var sentinel = await notifier.generate(promptController.text);
+      var setting = await container.read(settingNotifierProvider.future);
+      var sentinel = await notifier.generate(
+        promptController.text,
+        model: setting.model,
+      );
       descriptionController.text = sentinel.description;
       ADialog.dismiss();
     }
@@ -100,7 +109,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       var container = ProviderScope.containerOf(context);
       var provider = sentinelNotifierProvider(0);
       var notifier = container.read(provider.notifier);
-      var sentinel = await notifier.generate(promptController.text);
+      var setting = await container.read(settingNotifierProvider.future);
+      var sentinel = await notifier.generate(
+        promptController.text,
+        model: setting.model,
+      );
       nameController.text = sentinel.name;
       ADialog.dismiss();
     }
