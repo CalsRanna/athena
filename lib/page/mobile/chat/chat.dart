@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
@@ -13,6 +14,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:isar/isar.dart';
 
 @RoutePage()
 class MobileChatPage extends StatefulWidget {
@@ -285,6 +287,15 @@ class _MobileChatPageState extends State<MobileChatPage> {
   void initState() {
     super.initState();
     id = widget.chat?.id;
+    _initModel();
+  }
+
+  Future<void> _initModel() async {
+    var value = widget.chat?.model ?? '';
+    var model = await isar.models.filter().valueEqualTo(value).findFirst();
+    setState(() {
+      this.model = model;
+    });
   }
 
   Future<void> sendMessage(WidgetRef ref) async {
