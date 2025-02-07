@@ -64,11 +64,16 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
 
   Widget _buildToolbar() {
     var children = [
+      Icon(
+        HugeIcons.strokeRoundedArtificialIntelligence03,
+        color: Color(0xFF616161),
+      ),
+      const SizedBox(width: 12),
       _ModelSelector(onSelected: widget.onModelChanged),
-      const SizedBox(width: 8),
-      Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
-      const SizedBox(width: 8),
+      const SizedBox(width: 12),
       Icon(HugeIcons.strokeRoundedTemperature, color: Color(0xFF616161)),
+      const SizedBox(width: 12),
+      Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
     ];
     return Row(children: children);
   }
