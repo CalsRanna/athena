@@ -1,12 +1,9 @@
-import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:markdown/markdown.dart' as md;
 
 class MessageTile extends StatelessWidget {
   final Message message;
@@ -41,7 +38,7 @@ class _AssistantMessage extends StatelessWidget {
       const SizedBox(width: 12),
       _buildContent(),
       const SizedBox(width: 12),
-      _Copy(onTap: handleCopy),
+      _CopyButton(onTap: handleCopy),
     ];
     var row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,97 +89,33 @@ class _AssistantMessage extends StatelessWidget {
       alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
       child: _Markdown(message: message),
+      // child: Text(message.content),
     );
     return Expanded(child: container);
   }
 }
 
-class _CodeElementBuilder extends MarkdownElementBuilder {
-  final bool expanded;
-  final Function() onToggled;
-  final bool isThinkingComplete;
-
-  _CodeElementBuilder({
-    required this.expanded,
-    required this.onToggled,
-    required this.isThinkingComplete,
-  });
-
-  void handleTap(String text) {
-    final data = ClipboardData(text: text);
-    Clipboard.setData(data);
-  }
-
-  @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    if (element.attributes['class'] == 'language-thinking') {
-      return _ThinkingProcess(
-        text: element.textContent,
-        expanded: expanded,
-        onToggle: onToggled,
-        thinking: isThinkingComplete,
-      );
-    }
-    final multipleLines = element.textContent.split('\n').length > 1;
-    var children = [
-      _buildContent(context, element),
-      if (multipleLines) _buildCopyButton(element),
-    ];
-    return Stack(children: children);
-  }
-
-  Widget _buildContent(BuildContext context, md.Element element) {
-    final multipleLines = element.textContent.split('\n').length > 1;
-    var borderRadius = BorderRadius.circular(4);
-    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    if (multipleLines) {
-      borderRadius = BorderRadius.circular(8);
-      padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    }
-    final width = multipleLines ? double.infinity : null;
-    var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
-      color: Color(0xFFEAECF0),
-    );
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      width: width,
-      child: Text(element.textContent, style: textStyle),
-    );
-  }
-
-  Widget _buildCopyButton(md.Element element) {
-    return Positioned(
-      right: 12,
-      top: 12,
-      child: CopyButton(onTap: () => handleTap(element.textContent)),
-    );
-  }
-}
-
-class _Copy extends StatefulWidget {
+class _CopyButton extends StatefulWidget {
   final void Function()? onTap;
-  const _Copy({this.onTap});
+  final double? size;
+  const _CopyButton({this.onTap, this.size});
 
   @override
-  State<_Copy> createState() => _CopyState();
+  State<_CopyButton> createState() => _CopyButtonState();
 }
 
-class _CopyState extends State<_Copy> {
+class _CopyButtonState extends State<_CopyButton> {
   bool copied = false;
   @override
   Widget build(BuildContext context) {
     final color = Colors.black.withValues(alpha: 0.25);
     var iconData = HugeIcons.strokeRoundedCopy01;
     if (copied) iconData = HugeIcons.strokeRoundedTick01;
-    var icon = HugeIcon(color: color, icon: iconData, size: 16.0);
+    var icon = HugeIcon(
+      color: color,
+      icon: iconData,
+      size: widget.size ?? 16.0,
+    );
     const duration = Duration(milliseconds: 200);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -205,162 +138,63 @@ class _CopyState extends State<_Copy> {
   }
 }
 
-class _Markdown extends StatefulWidget {
+class _Markdown extends StatelessWidget {
   final Message message;
   final bool supportLatex = true;
 
   const _Markdown({required this.message});
 
   @override
-  State<_Markdown> createState() => _MarkdownState();
-}
-
-class _MarkdownState extends State<_Markdown> {
-  bool expanded = false;
-  bool thinking = false;
-  String lastContent = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _checkThinkingComplete();
-  }
-
-  @override
-  void didUpdateWidget(_Markdown oldWidget) {
-    // Can not use `widget.message.content == oldWidget.message.content` cause
-    // the `content` was called by the instance of `Message`, which never change
-    // all the time.
-    // So we muse copy the value of `content` and use a fresh new variable to
-    // record it, and make a new memory address for it.
-    if (lastContent != widget.message.content) {
-      _checkThinkingComplete();
-    }
-    lastContent = widget.message.content;
-    super.didUpdateWidget(oldWidget);
-  }
-
-  void _checkThinkingComplete() {
-    final content = widget.message.content;
-    final startMatch = RegExp(r'```thinking\n').firstMatch(content);
-    if (startMatch == null) {
-      setState(() {
-        thinking = false;
-      });
-      return;
-    }
-    final startIndex = startMatch.end;
-    final remainingContent = content.substring(startIndex);
-    final endMatch = RegExp(r'```').firstMatch(remainingContent);
-    setState(() {
-      thinking = endMatch == null;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    Map<String, MarkdownElementBuilder> builders = {
-      'code': _CodeElementBuilder(
-        expanded: expanded,
-        onToggled: toggleExpanded,
-        isThinkingComplete: thinking,
-      ),
-    };
-    if (widget.supportLatex) builders['latex'] = LatexElementBuilder();
-    List<md.BlockSyntax> blockSyntaxes = [LatexBlockSyntax()];
-    blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
-    final inlineSyntaxes = [LatexInlineSyntax()];
-    final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    return MarkdownBody(
-      key: _getKey(),
-      builders: builders,
-      data: widget.message.content,
-      extensionSet: widget.supportLatex ? extensions : null,
+    return GptMarkdown(
+      message.content,
+      codeBuilder: _buildCode,
+      highlightBuilder: _buildHighlight,
     );
   }
 
-  void toggleExpanded() {
-    setState(() {
-      expanded = !expanded;
-    });
+  void handleTap(String text) {
+    final data = ClipboardData(text: text);
+    Clipboard.setData(data);
   }
 
-  ValueKey _getKey() {
-    var thinkingKey = thinking ? 'incomplete' : 'complete';
-    var expandedKey = expanded ? 'expanded' : 'collapsed';
-    var supportLatexKey = widget.supportLatex ? 'support' : 'not-support';
-    var parts = [
-      'markdown-body',
-      'thinking:$thinkingKey',
-      'expanded:$expandedKey',
-      'latex:$supportLatexKey',
-    ];
-    return ValueKey(parts.join('-'));
-  }
-}
-
-class _ThinkingProcess extends StatelessWidget {
-  final String text;
-  final bool expanded;
-  final void Function() onToggle;
-  final bool thinking;
-
-  const _ThinkingProcess({
-    required this.text,
-    required this.expanded,
-    required this.onToggle,
-    required this.thinking,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    var column = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildHeader(), _buildContent()],
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: const Color(0xFFEAECF0),
-    );
+  Widget _buildCode(
+    BuildContext context,
+    String name,
+    String code,
+    bool closed,
+  ) {
+    var borderRadius = BorderRadius.circular(8);
+    var color = Color(0xFFEAECF0);
+    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
     var container = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: padding,
       width: double.infinity,
-      child: column,
+      child: Text(code, style: textStyle),
     );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onToggle,
-      child: container,
-    );
+    var copyButton = _buildCopyButton(code);
+    return Stack(children: [container, copyButton]);
   }
 
-  Widget _buildContent() {
-    if (!expanded) return const SizedBox();
+  Widget _buildCopyButton(String code) {
+    var button = _CopyButton(onTap: () => handleTap(code), size: 12);
+    return Positioned(right: 12, top: 12, child: button);
+  }
+
+  Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
+    var borderRadius = BorderRadius.circular(4);
+    var color = Color(0xFFEAECF0);
+    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
       child: Text(text, style: textStyle),
     );
-  }
-
-  Widget _buildHeader() {
-    var iconData = HugeIcons.strokeRoundedArrowRight01;
-    if (expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
-    const textStyle = TextStyle(color: Color(0xFF161616), fontSize: 12);
-    const indicator = CircularProgressIndicator(
-      color: Color(0xFF161616),
-      strokeWidth: 1,
-    );
-    var children = [
-      Icon(iconData, size: 16, color: Color(0xFF161616)),
-      const SizedBox(width: 8),
-      Text('Thinking Process', style: textStyle),
-      const SizedBox(width: 8),
-      if (thinking) const SizedBox(width: 12, height: 12, child: indicator),
-    ];
-    return Row(children: children);
   }
 }
 

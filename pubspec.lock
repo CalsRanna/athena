@@ -303,10 +303,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_markdown
-      sha256: "255b00afa1a7bad19727da6a7780cf3db6c3c12e68d302d85e0ff1fdf173db9e"
+      sha256: b3ff1ef5fb3924ee02b4d38b974ffae3969d50603e68787684ee9dd45f6f144a
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.4+3"
+    version: "0.7.6+1"
   flutter_markdown_latex:
     dependency: "direct main"
     description:
@@ -392,6 +392,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.2.1"
+  gpt_markdown:
+    dependency: "direct main"
+    description:
+      name: gpt_markdown
+      sha256: "812a4a8f020dfe244ad02dd12c8e63fec6897ba25f96f86bbeb8e4377d69f9b3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.7"
   graphs:
     dependency: transitive
     description:
