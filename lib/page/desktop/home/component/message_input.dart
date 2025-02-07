@@ -101,7 +101,7 @@ class _Dialog extends ConsumerWidget {
     return ATile(
       onTap: () => onTap?.call(model),
       title: model.name,
-      width: 160,
+      width: 320,
     );
   }
 }

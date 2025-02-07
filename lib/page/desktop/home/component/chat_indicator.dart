@@ -47,7 +47,7 @@ class _ModelIndicator extends ConsumerWidget {
 
   Widget _buildData(Model model) {
     var text = Text(
-      model.value,
+      model.name,
       style: TextStyle(color: Colors.white, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(
