@@ -120,6 +120,17 @@ class ChatNotifier extends _$ChatNotifier {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
+  Future<void> updateTitle(String title) async {
+    final previousState = await future;
+    final chat = previousState.copyWith(title: title);
+    state = AsyncData(chat);
+    await isar.writeTxn(() async {
+      await isar.chats.put(chat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+  }
+
   Future<void> _generateTitle(String message, String model) async {
     final previousState = await future;
     if (previousState.title.isNotEmpty == true) return;

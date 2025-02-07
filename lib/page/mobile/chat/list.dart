@@ -103,16 +103,22 @@ class _ListTile extends ConsumerWidget {
     );
   }
 
-  String _getContent(WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat.id);
-    var messages = ref.watch(provider).valueOrNull;
-    if (messages == null) return '';
-    if (messages.isEmpty) return '';
-    return messages.last.content.replaceAll('\n', ' ');
+  void confirmDelete(BuildContext context) {
+    var container = ProviderScope.containerOf(context);
+    var provider = chatsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    notifier.destroy(chat.id);
+    ADialog.dismiss();
+    ADialog.success('Chat deleted successfully');
   }
 
   void navigateChat(BuildContext context) {
     MobileChatRoute(chat: chat).push(context);
+  }
+
+  void navigateChatRename(BuildContext context) {
+    ADialog.dismiss();
+    MobileChatRenameRoute(chat: chat).push(context);
   }
 
   void openBottomSheet(BuildContext context) {
@@ -137,15 +143,6 @@ class _ListTile extends ConsumerWidget {
     );
   }
 
-  void confirmDelete(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = chatsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.destroy(chat.id);
-    ADialog.dismiss();
-    ADialog.success('Chat deleted successfully');
-  }
-
   Widget _buildDeleteButton(BuildContext context) {
     return ASecondaryButton(
       onTap: () => showConfirmDialog(context),
@@ -155,8 +152,16 @@ class _ListTile extends ConsumerWidget {
 
   Widget _buildRenameButton(BuildContext context) {
     return ASecondaryButton(
-      onTap: () {},
+      onTap: () => navigateChatRename(context),
       child: Center(child: Text('Rename')),
     );
+  }
+
+  String _getContent(WidgetRef ref) {
+    var provider = messagesNotifierProvider(chat.id);
+    var messages = ref.watch(provider).valueOrNull;
+    if (messages == null) return '';
+    if (messages.isEmpty) return '';
+    return messages.last.content.replaceAll('\n', ' ');
   }
 }
