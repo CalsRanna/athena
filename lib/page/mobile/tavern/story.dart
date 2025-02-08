@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:athena/api/tavern.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
+import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
@@ -17,13 +19,13 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:isar/isar.dart';
 
 @RoutePage()
-class MobileChatPage extends StatefulWidget {
+class MobileStoryPage extends StatefulWidget {
   final Chat? chat;
   final Sentinel? sentinel;
-  const MobileChatPage({super.key, this.chat, this.sentinel});
+  const MobileStoryPage({super.key, this.chat, this.sentinel});
 
   @override
-  State<MobileChatPage> createState() => _MobileChatPageState();
+  State<MobileStoryPage> createState() => _MobileStoryPageState();
 }
 
 class _ActionButton extends ConsumerWidget {
@@ -136,7 +138,7 @@ class _ChatTitle extends ConsumerWidget {
     var provider = chatNotifierProvider(chatId ?? 0);
     var chat = ref.watch(provider).valueOrNull;
     var title = chat?.title ?? '';
-    if (title.isEmpty) title = '新的对话';
+    if (title.isEmpty) title = '新的游戏';
     return Text(title);
   }
 }
@@ -236,7 +238,7 @@ class _MessageListView extends ConsumerWidget {
   }
 }
 
-class _MobileChatPageState extends State<MobileChatPage> {
+class _MobileStoryPageState extends State<MobileStoryPage> {
   final controller = TextEditingController();
   int? id;
   Model? model;
@@ -293,6 +295,18 @@ class _MobileChatPageState extends State<MobileChatPage> {
     super.initState();
     id = widget.chat?.id;
     _initModel();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      var container = ProviderScope.containerOf(context);
+      var value = widget.chat?.model ?? '';
+      var model = await isar.models.filter().valueEqualTo(value).findFirst();
+      var provider = settingNotifierProvider;
+      var setting = await container.read(provider.future);
+      var modelValue = model?.value ?? setting.model;
+      var stream = TavernApi().getTitle(model: modelValue);
+      await for (var token in stream) {
+        print(token);
+      }
+    });
   }
 
   Future<void> _initModel() async {
@@ -397,5 +411,34 @@ class _SentinelPlaceholder extends ConsumerWidget {
       children: children,
     );
     return Padding(padding: const EdgeInsets.all(16.0), child: column);
+  }
+}
+
+class _Toolbar extends StatelessWidget {
+  const _Toolbar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Spacer(),
+
+        // Row(
+        //   spacing: 4,
+        //   children: [
+        //     Expanded(
+        //         child: APrimaryButton(child: Center(child: Text('1')))),
+        //     Expanded(
+        //         child: APrimaryButton(child: Center(child: Text('2')))),
+        //     Expanded(
+        //         child: APrimaryButton(child: Center(child: Text('3')))),
+        //     AIconButton(
+        //       icon: HugeIcons.strokeRoundedBubbleChat,
+        //       padding: EdgeInsets.all(12),
+        //     )
+        //   ],
+        // ),
+      ],
+    );
   }
 }

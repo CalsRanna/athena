@@ -13,8 +13,8 @@ class AAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    if (!isDesktop) return _MobileAppBar(action: action, title: title);
-    return _DesktopAppBar(leading: leading, title: title);
+    if (isDesktop) return _DesktopAppBar(leading: leading, title: title);
+    return _MobileAppBar(action: action, leading: leading, title: title);
   }
 }
 
@@ -91,12 +91,13 @@ class _DesktopAppBar extends StatelessWidget {
 
 class _MobileAppBar extends StatelessWidget {
   final Widget? action;
+  final Widget? leading;
   final Widget? title;
-  const _MobileAppBar({this.action, this.title});
+  const _MobileAppBar({this.action, this.leading, this.title});
 
   @override
   Widget build(BuildContext context) {
-    const leading = Align(
+    const defaultLeading = Align(
       alignment: Alignment.centerLeft,
       child: MobilePopButton(),
     );
@@ -117,7 +118,7 @@ class _MobileAppBar extends StatelessWidget {
       child: action ?? const SizedBox(),
     );
     final children = [
-      const Expanded(child: leading),
+      Expanded(child: leading ?? defaultLeading),
       Expanded(flex: 2, child: center),
       Expanded(child: trailing),
     ];

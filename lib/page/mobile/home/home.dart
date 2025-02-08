@@ -256,11 +256,15 @@ class _ShortcutListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icons = [
+      HugeIcons.strokeRoundedColors,
       HugeIcons.strokeRoundedTranslate,
       HugeIcons.strokeRoundedNaturalFood,
       HugeIcons.strokeRoundedCode,
     ];
     final shortcuts = [
+      Shortcut()
+        ..name = 'Tavern'
+        ..description = 'Host a world and make unique choice',
       Shortcut()
         ..name = 'Translate'
         ..description = 'Translate input into selected language',
@@ -273,57 +277,71 @@ class _ShortcutListView extends StatelessWidget {
             'Give you a code suggestion about variables, functions, etc',
     ];
     return ListView.separated(
-      itemBuilder: (_, index) =>
-          _ShortcutTile(icon: icons[index], shortcut: shortcuts[index]),
+      itemBuilder: (_, index) => _ShortcutTile(
+        icon: icons[index],
+        onTap: () => navigate(context, shortcuts[index]),
+        shortcut: shortcuts[index],
+      ),
       itemCount: shortcuts.length,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       scrollDirection: Axis.horizontal,
       separatorBuilder: (context, index) => const SizedBox(width: 12),
     );
   }
+
+  void navigate(BuildContext context, Shortcut shortcut) {
+    if (shortcut.name == 'Tavern') {
+      MobileTavernRoute().push(context);
+    }
+  }
 }
 
 class _ShortcutTile extends StatelessWidget {
   final IconData icon;
+  final void Function()? onTap;
   final Shortcut shortcut;
 
-  const _ShortcutTile({required this.icon, required this.shortcut});
+  const _ShortcutTile({required this.icon, this.onTap, required this.shortcut});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: Color(0xFF616161),
-      ),
-      padding: EdgeInsets.all(12),
-      height: 160,
-      width: 160,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(height: 4),
-          Text(
-            shortcut.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              shortcut.description,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: Color(0xFF616161),
+        ),
+        padding: EdgeInsets.all(12),
+        height: 160,
+        width: 160,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Colors.white),
+            const SizedBox(height: 4),
+            Text(
+              shortcut.name,
               style: const TextStyle(
-                color: Color(0xFFE0E0E0),
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Expanded(
+              child: Text(
+                shortcut.description,
+                style: const TextStyle(
+                  color: Color(0xFFE0E0E0),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

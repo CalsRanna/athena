@@ -4,7 +4,8 @@ import 'package:hugeicons/hugeicons.dart';
 class AIconButton extends StatelessWidget {
   final IconData icon;
   final void Function()? onTap;
-  const AIconButton({super.key, required this.icon, this.onTap});
+  final EdgeInsets? padding;
+  const AIconButton({super.key, required this.icon, this.onTap, this.padding});
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +16,7 @@ class AIconButton extends StatelessWidget {
     );
     final button = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.all(8),
+      padding: padding ?? const EdgeInsets.all(8),
       child: hugeIcon,
     );
     return GestureDetector(
