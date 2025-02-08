@@ -146,8 +146,13 @@ class _Markdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
+    var replacedContent = message.content.replaceAll(RegExp(r'>'), '☞');
+    // 不能解析 <think></think>，会吃掉<think>及开头的第一段
+    // return MarkdownBody(data: message.content);
     return GptMarkdown(
-      message.content,
+      // message.content,
+      replacedContent,
       codeBuilder: _buildCode,
       highlightBuilder: _buildHighlight,
     );
