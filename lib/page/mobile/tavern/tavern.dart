@@ -159,32 +159,3 @@ class MobileTavernPage extends StatelessWidget {
     // }
   }
 }
-
-class _Toolbar extends StatelessWidget {
-  const _Toolbar({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Spacer(),
-
-        // Row(
-        //   spacing: 4,
-        //   children: [
-        //     Expanded(
-        //         child: APrimaryButton(child: Center(child: Text('1')))),
-        //     Expanded(
-        //         child: APrimaryButton(child: Center(child: Text('2')))),
-        //     Expanded(
-        //         child: APrimaryButton(child: Center(child: Text('3')))),
-        //     AIconButton(
-        //       icon: HugeIcons.strokeRoundedBubbleChat,
-        //       padding: EdgeInsets.all(12),
-        //     )
-        //   ],
-        // ),
-      ],
-    );
-  }
-}
