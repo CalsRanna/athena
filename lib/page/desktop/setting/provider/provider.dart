@@ -159,7 +159,11 @@ class _DesktopSettingModelPageState
         Row(
           children: [
             SizedBox(width: 120, child: Text('API URL')),
-            Expanded(child: AInput(controller: TextEditingController()))
+            Expanded(
+                child: AInput(
+              controller: TextEditingController(),
+              placeholder: 'https://openrouter.ai/api/v1',
+            ))
           ],
         ),
         const SizedBox(height: 12),
