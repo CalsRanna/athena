@@ -1,11 +1,9 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 class DesktopChatIndicator extends StatelessWidget {
   final Model? model;
@@ -19,36 +17,11 @@ class DesktopChatIndicator extends StatelessWidget {
       SizedBox(width: 8),
       _ModelIndicator(model: model),
       const Spacer(),
-      const _SettingButton(),
-      const SizedBox(width: 16),
     ];
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
-    var boxDecoration = BoxDecoration(
-      border: Border(bottom: borderSide, left: borderSide),
-    );
     return Container(
-      decoration: boxDecoration,
-      height: 50,
       padding: const EdgeInsets.only(left: 16),
       child: Row(children: children),
     );
-  }
-}
-
-class _SettingButton extends StatelessWidget {
-  const _SettingButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: const Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white),
-    );
-  }
-
-  void handleTap(BuildContext context) {
-    DesktopSettingAccountRoute().push(context);
   }
 }
 

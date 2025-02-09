@@ -26,7 +26,7 @@ class DesktopPopButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var icon = Icon(
-      HugeIcons.strokeRoundedArrowTurnBackward,
+      HugeIcons.strokeRoundedCancel01,
       color: Colors.white,
       size: 24,
     );
@@ -80,16 +80,23 @@ class _DesktopAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var leadingChildren = [
+      MacWindowButton(),
+      Expanded(child: leading ?? const SizedBox()),
+      SizedBox(width: 16),
+    ];
     var rowChildren = [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        child: MacWindowButton(),
-      ),
-      leading ?? const SizedBox(),
+      SizedBox(width: 200, child: Row(children: leadingChildren)),
       Expanded(child: title ?? const SizedBox()),
       action ?? const SizedBox(),
+      const SizedBox(width: 16),
     ];
-    return Row(children: rowChildren);
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
+    return Container(
+      decoration: boxDecoration,
+      child: Row(children: rowChildren),
+    );
   }
 }
 

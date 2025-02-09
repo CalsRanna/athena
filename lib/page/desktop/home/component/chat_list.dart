@@ -30,7 +30,7 @@ class DesktopChatListView extends ConsumerWidget {
     return ListView.separated(
       itemBuilder: (context, index) => _itemBuilder(chats[index]),
       itemCount: chats.length,
-      padding: EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.all(12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
   }

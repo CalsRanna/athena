@@ -1,10 +1,10 @@
 import 'package:athena/page/desktop/home/component/chat_indicator.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
-import 'package:athena/page/desktop/home/component/chat_search.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
@@ -83,6 +83,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     });
   }
 
+  void navigateSetting(BuildContext context) {
+    DesktopSettingAccountRoute().push(context);
+  }
+
   Future<void> submit(String text) async {
     if (chat == null) {
       var container = ProviderScope.containerOf(context);
@@ -107,23 +111,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       color: Colors.white,
       size: 24,
     );
-    var gestureDetector = GestureDetector(
+    var chatCreateButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: createChat,
       child: icon,
     );
-    var leadingChildren = [
-      // Calculated by the width of MacWindowButton
-      const SizedBox(width: 54),
-      const SizedBox(width: 16),
-      gestureDetector,
-      const SizedBox(width: 16),
-    ];
     return AAppBar(
-      leading: Row(children: leadingChildren),
+      action: _buildSettingButton(),
+      leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
       title: DesktopChatIndicator(model: model, sentinel: sentinel),
     );
-    // return Row(children: rowChildren);
   }
 
   Widget _buildLeftBar() {
@@ -132,18 +129,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onSelected: changeChat,
       selectedChat: chat,
     );
-    List<Widget> children = [
-      DesktopChatSearch(),
-      Expanded(child: chatListView),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: boxDecoration,
       width: 200,
-      child: column,
+      child: chatListView,
     );
   }
 
@@ -156,14 +147,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       Expanded(child: Stack(children: stackChildren)),
       DesktopMessageInput(onModelChanged: changeModel, onSubmitted: submit)
     ];
-    var column = Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: children,
     );
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
-    return Container(
-      decoration: BoxDecoration(border: Border(left: borderSide)),
-      child: column,
+  }
+
+  Widget _buildSettingButton() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => navigateSetting(context),
+      child: const Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white),
     );
   }
 }

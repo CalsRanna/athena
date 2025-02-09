@@ -37,11 +37,11 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
   Widget build(BuildContext context) {
     var children = [
       Expanded(child: _buildPromptInput()),
-      const SizedBox(width: 16),
+      const SizedBox(width: 32),
       Expanded(child: _buildInformationInput()),
     ];
     var padding = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Row(children: children),
     );
     return AScaffold(body: padding);
@@ -150,7 +150,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
     var children = [
       _buildAvatarInput(),
       const SizedBox(height: 12),
-      _buildTagsInput(),
+      Expanded(child: _buildTagsInput()),
       const SizedBox(height: 12),
       _buildNameInput(),
       const SizedBox(height: 12),
@@ -216,11 +216,25 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
   }
 
   Widget _buildTagsInput() {
-    return Wrap(
+    var border = Border.all(color: Colors.white.withValues(alpha: 0.2));
+    var boxDecoration = BoxDecoration(
+      border: border,
+      borderRadius: BorderRadius.circular(24),
+    );
+    var wrap = Wrap(
       alignment: WrapAlignment.center,
       runSpacing: 8,
       spacing: 8,
       children: tags.map((tag) => ATag(text: tag)).toList(),
+    );
+    var placeholder = Text(
+      'Tags will be generated here',
+      style: TextStyle(color: Colors.white),
+    );
+    return Container(
+      decoration: boxDecoration,
+      width: double.infinity,
+      child: tags.isEmpty ? Center(child: placeholder) : wrap,
     );
   }
 }

@@ -90,6 +90,55 @@ class DesktopContextMenuOption extends StatefulWidget {
       _DesktopContextMenuOptionState();
 }
 
+class DesktopMenuTile extends StatelessWidget {
+  final bool active;
+  final String label;
+  final void Function()? onTap;
+  final Widget? trailing;
+  const DesktopMenuTile({
+    super.key,
+    required this.active,
+    required this.label,
+    this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const duration = Duration(milliseconds: 200);
+    var textStyle = TextStyle(
+      color: active ? Color(0xFF161616) : Colors.white,
+      fontSize: 14,
+      height: 1.5,
+    );
+    var animatedText = AnimatedDefaultTextStyle(
+      duration: duration,
+      style: textStyle,
+      child: Text(label),
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(35),
+      color: active ? Color(0xFFE0E0E0) : Color(0xFF616161),
+    );
+    var animatedContainer = AnimatedContainer(
+      decoration: boxDecoration,
+      duration: duration,
+      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(child: animatedText),
+          trailing ?? const SizedBox(),
+        ],
+      ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: animatedContainer,
+    );
+  }
+}
+
 class _DesktopContextMenuOptionState extends State<DesktopContextMenuOption> {
   bool hover = false;
 
