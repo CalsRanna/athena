@@ -5,7 +5,6 @@ import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/page/desktop/home/component/sentinel_tile.dart';
-import 'package:athena/page/desktop/home/component/setting_tile.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -138,7 +137,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       DesktopChatSearch(),
       Expanded(child: chatListView),
       DesktopSentinelTile(onChanged: changeSentinel),
-      DesktopSettingTile()
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

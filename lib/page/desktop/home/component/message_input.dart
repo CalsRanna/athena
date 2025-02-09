@@ -64,18 +64,15 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
 
   Widget _buildToolbar() {
     var children = [
-      Icon(
-        HugeIcons.strokeRoundedArtificialIntelligence03,
-        color: Color(0xFF616161),
-      ),
-      const SizedBox(width: 12),
+      Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
       _ModelSelector(onSelected: widget.onModelChanged),
-      const SizedBox(width: 12),
-      Icon(HugeIcons.strokeRoundedTemperature, color: Color(0xFF616161)),
-      const SizedBox(width: 12),
-      Icon(HugeIcons.strokeRoundedImage01, color: Color(0xFF616161)),
+      Icon(HugeIcons.strokeRoundedTemperature),
+      Icon(HugeIcons.strokeRoundedImage01),
     ];
-    return Row(children: children);
+    return IconTheme.merge(
+      data: IconThemeData(color: Color(0xFF616161)),
+      child: Row(spacing: 12, children: children),
+    );
   }
 }
 
