@@ -1,14 +1,12 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSentinelGridPage extends StatelessWidget {
@@ -16,43 +14,15 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var appBar = AAppBar(
-      leading: DesktopPopButton(),
-      title: _buildPageHeader(context),
-    );
     var children = [
       _TagListView(),
       Expanded(child: _SentinelGridView()),
     ];
-    return AScaffold(appBar: appBar, body: Column(children: children));
-  }
-
-  void navigateSentinelFormPage(BuildContext context) {
-    DesktopSentinelFormRoute().push(context);
-  }
-
-  void popPage(BuildContext context) {
-    AutoRouter.of(context).maybePop();
-  }
-
-  Widget _buildPageHeader(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedPencilEdit02,
-      color: Colors.white,
-      size: 24,
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
-    var createButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => navigateSentinelFormPage(context),
-      child: icon,
-    );
-    var rowChildren = [
-      const SizedBox(width: 16),
-      Text('Sentinel', style: TextStyle(color: Colors.white)),
-      const SizedBox(width: 16),
-      createButton,
-    ];
-    return Row(children: rowChildren);
+    return AScaffold(body: column);
   }
 }
 

@@ -22,7 +22,7 @@ void main() async {
   ProxyConfig.instance.url = setting?.url ?? '';
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    var size = Size(960, 720);
+    var size = Size(1080, 720);
     if (setting != null) {
       var width = setting.width;
       var height = setting.height;

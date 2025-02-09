@@ -89,7 +89,6 @@ class _AssistantMessage extends StatelessWidget {
       alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
       child: _Markdown(message: message),
-      // child: Text(message.content),
     );
     return Expanded(child: container);
   }
@@ -146,13 +145,15 @@ class _Markdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
-    var replacedContent = message.content.replaceAll(RegExp(r'>'), '☞');
     // 不能解析 <think></think>，会吃掉<think>及开头的第一段
-    // return MarkdownBody(data: message.content);
+    // return MarkdownBody(
+    //   builders: {},
+    //   data: message.content,
+    // );
     return GptMarkdown(
+      // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
+      message.content.replaceAll(RegExp(r'>'), '☞'),
       // message.content,
-      replacedContent,
       codeBuilder: _buildCode,
       highlightBuilder: _buildHighlight,
     );
@@ -222,7 +223,7 @@ class _UserMessage extends StatelessWidget {
       children: children,
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: row,
     );
   }
@@ -263,9 +264,7 @@ class _UserMessage extends StatelessWidget {
     );
     var container = Container(
       decoration: boxDecoration,
-      height: 24,
       padding: const EdgeInsets.all(6),
-      width: 24,
       child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
     );
     return GestureDetector(

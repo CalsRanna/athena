@@ -13,6 +13,8 @@ class AppRouter extends RootStackRouter {
   List<AutoRoute> get routes {
     var desktopSettingChildren = [
       DesktopRoute(page: DesktopSettingAccountRoute.page),
+      DesktopRoute(page: DesktopSentinelGridRoute.page),
+      DesktopRoute(page: DesktopSentinelFormRoute.page),
       DesktopRoute(page: DesktopSettingModelRoute.page),
     ];
     var desktopSettingRoute = DesktopRoute(
@@ -22,8 +24,6 @@ class AppRouter extends RootStackRouter {
     return [
       DesktopRoute(page: DesktopHomeRoute.page, initial: isDesktop),
       desktopSettingRoute,
-      DesktopRoute(page: DesktopSentinelGridRoute.page),
-      DesktopRoute(page: DesktopSentinelFormRoute.page),
       AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
       AutoRoute(page: MobileChatRoute.page),
       AutoRoute(page: MobileChatListRoute.page),
