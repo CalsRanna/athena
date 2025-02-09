@@ -68,6 +68,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
       final setting = ref.watch(settingNotifierProvider).value;
       final darkMode = setting?.darkMode ?? false;
       return MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         routerConfig: router.config(),
         theme: ThemeData(
           brightness: darkMode ? Brightness.dark : Brightness.light,

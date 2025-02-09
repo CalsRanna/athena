@@ -13,7 +13,9 @@ class AAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    if (isDesktop) return _DesktopAppBar(leading: leading, title: title);
+    if (isDesktop) {
+      return _DesktopAppBar(action: action, leading: leading, title: title);
+    }
     return _MobileAppBar(action: action, leading: leading, title: title);
   }
 }
@@ -71,9 +73,10 @@ class MobilePopButton extends StatelessWidget {
 }
 
 class _DesktopAppBar extends StatelessWidget {
+  final Widget? action;
   final Widget? leading;
   final Widget? title;
-  const _DesktopAppBar({this.leading, this.title});
+  const _DesktopAppBar({this.action, this.leading, this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +87,7 @@ class _DesktopAppBar extends StatelessWidget {
       ),
       leading ?? const SizedBox(),
       Expanded(child: title ?? const SizedBox()),
+      action ?? const SizedBox(),
     ];
     return Row(children: rowChildren);
   }
