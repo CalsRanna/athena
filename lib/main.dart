@@ -73,6 +73,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
         theme: ThemeData(
           brightness: darkMode ? Brightness.dark : Brightness.light,
           fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+          scaffoldBackgroundColor: Color(0xFF282828),
           useMaterial3: true,
         ),
       );

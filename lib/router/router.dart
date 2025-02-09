@@ -40,5 +40,9 @@ class AppRouter extends RootStackRouter {
 
 class DesktopRoute<R> extends CustomRoute<R> {
   DesktopRoute({super.initial, required super.page, super.children})
-      : super(transitionsBuilder: TransitionsBuilders.noTransition);
+      : super(
+          transitionsBuilder: TransitionsBuilders.noTransition,
+          durationInMilliseconds: 0,
+          reverseDurationInMilliseconds: 0,
+        );
 }
