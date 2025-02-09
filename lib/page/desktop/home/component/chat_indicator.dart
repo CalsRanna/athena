@@ -78,8 +78,20 @@ class _ModelIndicator extends ConsumerWidget {
     );
     var innerContainer = Container(
       decoration: innerBoxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      child: text,
+      padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
+      child: Row(
+        children: [
+          ClipOval(
+            child: Image.asset(
+              'asset/image/open_router_logo.png',
+              fit: BoxFit.cover,
+              height: 16,
+            ),
+          ),
+          const SizedBox(width: 8),
+          text,
+        ],
+      ),
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),

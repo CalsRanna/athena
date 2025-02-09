@@ -2,7 +2,6 @@ import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -36,10 +35,6 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    var appBar = AAppBar(
-      leading: DesktopPopButton(),
-      title: _buildPageHeader(context),
-    );
     var children = [
       Expanded(child: _buildPromptInput()),
       const SizedBox(width: 16),
@@ -49,7 +44,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Row(children: children),
     );
-    return AScaffold(appBar: appBar, body: padding);
+    return AScaffold(body: padding);
   }
 
   @override
@@ -187,16 +182,6 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       Expanded(child: AInput(controller: nameController))
     ];
     return Row(children: children);
-  }
-
-  Widget _buildPageHeader(BuildContext context) {
-    var title = widget.sentinel?.name ?? 'New Sentinel';
-    var rowChildren = [
-      const SizedBox(width: 16),
-      Text(title, style: TextStyle(color: Colors.white)),
-      const SizedBox(width: 16),
-    ];
-    return Row(children: rowChildren);
   }
 
   Widget _buildPromptInput() {

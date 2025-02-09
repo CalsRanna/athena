@@ -9,10 +9,10 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:athena/page/desktop/home/home.dart' as _i1;
-import 'package:athena/page/desktop/sentinel/form.dart' as _i2;
-import 'package:athena/page/desktop/sentinel/grid.dart' as _i3;
 import 'package:athena/page/desktop/setting/account.dart' as _i4;
 import 'package:athena/page/desktop/setting/model.dart' as _i5;
+import 'package:athena/page/desktop/setting/sentinel/form.dart' as _i2;
+import 'package:athena/page/desktop/setting/sentinel/grid.dart' as _i3;
 import 'package:athena/page/desktop/setting/setting.dart' as _i6;
 import 'package:athena/page/mobile/chat/chat.dart' as _i8;
 import 'package:athena/page/mobile/chat/list.dart' as _i7;

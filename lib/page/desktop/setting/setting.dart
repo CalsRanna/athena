@@ -18,7 +18,7 @@ class DesktopSettingPage extends StatefulWidget {
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   int index = 0;
 
-  final _menus = ['Account', 'Model'];
+  final _menus = ['Account', 'Sentinel', 'Provider', 'Common', 'About'];
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +36,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     });
     var route = switch (index) {
       0 => const DesktopSettingAccountRoute(),
-      1 => const DesktopSettingModelRoute(),
+      1 => const DesktopSentinelGridRoute(),
+      2 => const DesktopSettingModelRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -72,12 +73,16 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       const SizedBox(width: 16),
       Text(title, style: TextStyle(color: Colors.white)),
       const SizedBox(width: 16),
-      if (index == 1) createButton
+      if (index == 1 || index == 2) createButton
     ];
     return Row(children: rowChildren);
   }
 
   void showModelFomDialog() {
+    if (index == 1) {
+      DesktopSentinelFormRoute().push(context);
+      return;
+    }
     ADialog.show(DesktopModelFormDialog());
   }
 
