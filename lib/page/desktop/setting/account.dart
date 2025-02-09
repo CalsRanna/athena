@@ -54,7 +54,7 @@ class _DesktopSettingAccountPageState
       _buildButtons(),
     ];
     var body = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Column(children: children),
     );
     return AScaffold(body: body);

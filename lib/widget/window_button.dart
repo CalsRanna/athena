@@ -28,10 +28,14 @@ class _MacWindowButtonState extends State<MacWindowButton> {
       const SizedBox(width: 8),
       fullScreenButton,
     ];
-    return MouseRegion(
+    var mouseRegion = MouseRegion(
       onEnter: handleEnter,
       onExit: handleExit,
       child: Row(children: children),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      child: mouseRegion,
     );
   }
 

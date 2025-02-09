@@ -30,7 +30,7 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
     ];
     return Container(
       decoration: BoxDecoration(border: Border(top: borderSide)),
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Column(children: children),
     );
   }

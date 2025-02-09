@@ -16,13 +16,18 @@ class DesktopSentinelGridPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var children = [
       _TagListView(),
+      const SizedBox(height: 12),
       Expanded(child: _SentinelGridView()),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AScaffold(body: column);
+    return AScaffold(
+        body: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: column,
+    ));
   }
 }
 
@@ -88,7 +93,6 @@ class _SentinelGridView extends ConsumerWidget {
       mainAxisSpacing: 12,
     );
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
       gridDelegate: delegate,
       itemCount: sentinels.length,
       itemBuilder: (context, index) => _SentinelTile(sentinels[index]),
@@ -164,7 +168,7 @@ class _SentinelTileState extends State<_SentinelTile> {
 
   void showContextMenu(BuildContext context, TapUpDetails details) {
     var contextMenu = _ContextMenu(
-      offset: details.globalPosition,
+      offset: details.globalPosition - Offset(200, 50),
       onTap: removeEntry,
       sentinel: widget.sentinel,
     );
@@ -188,15 +192,11 @@ class _TagListView extends ConsumerWidget {
 
   Widget _buildData(List<String> tags) {
     var children = tags.map((tag) => ATag(text: tag)).toList();
-    var wrap = Wrap(
+    return Wrap(
       alignment: WrapAlignment.start,
       spacing: 12,
       runSpacing: 12,
       children: children,
-    );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: wrap,
     );
   }
 }
