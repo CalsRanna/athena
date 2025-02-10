@@ -256,15 +256,11 @@ class _ShortcutListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icons = [
-      HugeIcons.strokeRoundedColors,
       HugeIcons.strokeRoundedTranslate,
       HugeIcons.strokeRoundedNaturalFood,
       HugeIcons.strokeRoundedCode,
     ];
     final shortcuts = [
-      Shortcut()
-        ..name = 'Tavern'
-        ..description = 'Host a world and make unique choice',
       Shortcut()
         ..name = 'Translate'
         ..description = 'Translate input into selected language',
@@ -289,11 +285,7 @@ class _ShortcutListView extends StatelessWidget {
     );
   }
 
-  void navigate(BuildContext context, Shortcut shortcut) {
-    if (shortcut.name == 'Tavern') {
-      MobileTavernRoute().push(context);
-    }
-  }
+  void navigate(BuildContext context, Shortcut shortcut) {}
 }
 
 class _ShortcutTile extends StatelessWidget {

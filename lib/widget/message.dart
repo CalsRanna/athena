@@ -1,8 +1,8 @@
+import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class MessageTile extends StatelessWidget {
@@ -37,8 +37,7 @@ class _AssistantMessage extends StatelessWidget {
       _buildAvatar(),
       const SizedBox(width: 12),
       _buildContent(),
-      const SizedBox(width: 12),
-      _CopyButton(onTap: handleCopy),
+      const SizedBox(width: 48),
     ];
     var row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,10 +47,14 @@ class _AssistantMessage extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       color: Colors.white.withValues(alpha: 0.95),
     );
+    var stackChildren = [
+      row,
+      Positioned(right: 0, child: CopyButton(onTap: handleCopy)),
+    ];
     return Container(
       decoration: boxDecoration,
       padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
-      child: row,
+      child: Stack(children: stackChildren),
     );
   }
 
@@ -88,119 +91,9 @@ class _AssistantMessage extends StatelessWidget {
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
-      child: _Markdown(message: message),
+      child: AMarkdown(content: message.content),
     );
     return Expanded(child: container);
-  }
-}
-
-class _CopyButton extends StatefulWidget {
-  final void Function()? onTap;
-  final double? size;
-  const _CopyButton({this.onTap, this.size});
-
-  @override
-  State<_CopyButton> createState() => _CopyButtonState();
-}
-
-class _CopyButtonState extends State<_CopyButton> {
-  bool copied = false;
-  @override
-  Widget build(BuildContext context) {
-    final color = Colors.black.withValues(alpha: 0.25);
-    var iconData = HugeIcons.strokeRoundedCopy01;
-    if (copied) iconData = HugeIcons.strokeRoundedTick01;
-    var icon = HugeIcon(
-      color: color,
-      icon: iconData,
-      size: widget.size ?? 16.0,
-    );
-    const duration = Duration(milliseconds: 200);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: AnimatedSwitcher(duration: duration, child: icon),
-    );
-  }
-
-  void handleTap() async {
-    if (copied) return;
-    widget.onTap?.call();
-    setState(() {
-      copied = true;
-    });
-    await Future.delayed(const Duration(seconds: 3));
-    if (!mounted) return;
-    setState(() {
-      copied = false;
-    });
-  }
-}
-
-class _Markdown extends StatelessWidget {
-  final Message message;
-  final bool supportLatex = true;
-
-  const _Markdown({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    // 不能解析 <think></think>，会吃掉<think>及开头的第一段
-    // return MarkdownBody(
-    //   builders: {},
-    //   data: message.content,
-    // );
-    return GptMarkdown(
-      // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
-      message.content.replaceAll(RegExp(r'>'), '☞'),
-      // message.content,
-      codeBuilder: _buildCode,
-      highlightBuilder: _buildHighlight,
-    );
-  }
-
-  void handleTap(String text) {
-    final data = ClipboardData(text: text);
-    Clipboard.setData(data);
-  }
-
-  Widget _buildCode(
-    BuildContext context,
-    String name,
-    String code,
-    bool closed,
-  ) {
-    var borderRadius = BorderRadius.circular(8);
-    var color = Color(0xFFEAECF0);
-    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var container = Container(
-      decoration: boxDecoration,
-      padding: padding,
-      width: double.infinity,
-      child: Text(code, style: textStyle),
-    );
-    var copyButton = _buildCopyButton(code);
-    return Stack(children: [container, copyButton]);
-  }
-
-  Widget _buildCopyButton(String code) {
-    var button = _CopyButton(onTap: () => handleTap(code), size: 12);
-    return Positioned(right: 12, top: 12, child: button);
-  }
-
-  Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
-    var borderRadius = BorderRadius.circular(4);
-    var color = Color(0xFFEAECF0);
-    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      child: Text(text, style: textStyle),
-    );
   }
 }
 
