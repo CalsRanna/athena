@@ -1,5 +1,6 @@
-import 'package:athena/provider/model.dart';
+import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -7,17 +8,19 @@ import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DesktopModelFormDialog extends StatefulWidget {
+class DesktopProviderFormDialog extends StatefulWidget {
   final Model? model;
-  const DesktopModelFormDialog({super.key, this.model});
+  const DesktopProviderFormDialog({super.key, this.model});
 
   @override
-  State<DesktopModelFormDialog> createState() => _DesktopModelFormDialogState();
+  State<DesktopProviderFormDialog> createState() =>
+      _DesktopProviderFormDialogState();
 }
 
-class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
+class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
+  final keyController = TextEditingController();
   final nameController = TextEditingController();
-  final valueController = TextEditingController();
+  final urlController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +31,9 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     var children = [
       _buildNameInput(),
       const SizedBox(height: 12),
-      _buildValueInput(),
+      _buildKeyInput(),
+      const SizedBox(height: 12),
+      _buildUrlInput(),
       const SizedBox(height: 12),
       _buildButtons()
     ];
@@ -54,8 +59,9 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
 
   @override
   void dispose() {
+    keyController.dispose();
     nameController.dispose();
-    valueController.dispose();
+    urlController.dispose();
     super.dispose();
   }
 
@@ -63,24 +69,26 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   void initState() {
     super.initState();
     nameController.text = widget.model?.name ?? '';
-    valueController.text = widget.model?.value ?? '';
+    urlController.text = widget.model?.value ?? '';
   }
 
-  Future<void> storeModel() async {
+  Future<void> storeProvider() async {
     var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
+    var provider = providerNotifierProvider;
     var notifier = container.read(provider.notifier);
     if (widget.model == null) {
-      var newModel = Model()
+      var newProvider = schema.Provider()
+        ..enabled = false
+        ..key = keyController.text
         ..name = nameController.text
-        ..value = valueController.text;
-      await notifier.storeModel(newModel);
+        ..url = urlController.text;
+      await notifier.store(newProvider);
     } else {
-      var copiedModel = widget.model!.copyWith(
+      var copiedProvider = widget.model!.copyWith(
         name: nameController.text,
-        value: valueController.text,
+        value: urlController.text,
       );
-      await notifier.updateModel(copiedModel);
+      // await notifier.updateModel(copiedProvider);
     }
     ADialog.dismiss();
   }
@@ -92,7 +100,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       child: Padding(padding: edgeInsets, child: Text('Cancel')),
     );
     var storeButton = APrimaryButton(
-      onTap: storeModel,
+      onTap: storeProvider,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
     var children = [
@@ -115,11 +123,20 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     return Row(children: children);
   }
 
-  Widget _buildValueInput() {
+  Widget _buildUrlInput() {
     var children = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Value')),
+      SizedBox(width: 120, child: AFormTileLabel(title: 'API Url')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: valueController))
+      Expanded(child: AInput(controller: urlController))
+    ];
+    return Row(children: children);
+  }
+
+  Widget _buildKeyInput() {
+    var children = [
+      SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
+      const SizedBox(width: 12),
+      Expanded(child: AInput(controller: urlController))
     ];
     return Row(children: children);
   }

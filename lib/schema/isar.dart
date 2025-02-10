@@ -1,5 +1,6 @@
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
@@ -13,6 +14,7 @@ class IsarInitializer {
       ChatSchema,
       MessageSchema,
       ModelSchema,
+      ProviderSchema,
       SentinelSchema,
       SettingSchema,
     ];
