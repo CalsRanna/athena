@@ -2,7 +2,6 @@ import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart'
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
-import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/widget/button.dart';
@@ -12,6 +11,7 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/switch.dart';
+import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,14 +88,16 @@ class _DesktopSettingModelPageState
     return AScaffold(body: row);
   }
 
+  void changeProvider(int index) {
+    setState(() {
+      this.index = index;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _initState();
-  }
-
-  void navigateProvider() {
-    DesktopSettingProviderSiliconFlowRoute().push(context);
   }
 
   void removeEntry() {
@@ -115,6 +117,15 @@ class _DesktopSettingModelPageState
     Overlay.of(context).insert(entry!);
   }
 
+  Future<void> toggleProvider(bool value) async {
+    var provider = providerNotifierProvider;
+    var providers = await ref.watch(provider.future);
+    if (providers.isEmpty) return;
+    var notifier = ref.read(provider.notifier);
+    var copiedProvider = providers[index].copyWith(enabled: value);
+    return notifier.updateProvider(copiedProvider);
+  }
+
   Future<void> updateModel(Model model) async {
     setState(() {
       this.model = model.value;
@@ -123,6 +134,57 @@ class _DesktopSettingModelPageState
     var provider = settingNotifierProvider;
     var notifier = container.read(provider.notifier);
     await notifier.updateModel(model.value);
+  }
+
+  Widget _buildModelTile(Model model) {
+    var nameTextStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var nameText = Text(model.name, style: nameTextStyle);
+    var nameChildren = [
+      nameText,
+      SizedBox(width: 8),
+      ATag.extraSmall(text: model.value)
+    ];
+    var descriptionTextStyle = TextStyle(
+      color: Color(0xFFE0E0E0),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var descriptionText = Text(
+      'Published at 2024/12/31',
+      style: descriptionTextStyle,
+    );
+    var informationChildren = [
+      Row(children: nameChildren),
+      const SizedBox(height: 8),
+      descriptionText,
+    ];
+    var informationWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: informationChildren,
+    );
+    var rowChildren = [
+      Expanded(child: informationWidget),
+      ASwitch(onChanged: (_) => toggleModel(model), value: model.enabled)
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: rowChildren),
+    );
+  }
+
+  Future<void> toggleModel(Model model) async {
+    var provider = providerNotifierProvider;
+    var providers = ref.watch(provider).valueOrNull;
+    if (providers == null) return;
+    var modelProvider = modelsForNotifierProvider(providers[index].id);
+    var notifier = ref.read(modelProvider.notifier);
+    await notifier.toggleModel(model);
   }
 
   Widget _buildProviderEnabledIndicator(bool enabled) {
@@ -171,7 +233,7 @@ class _DesktopSettingModelPageState
       SizedBox(width: 4),
       Icon(HugeIcons.strokeRoundedLinkSquare02, color: Colors.white),
       Spacer(),
-      ASwitch(value: providers[index].enabled, onChanged: (_) {})
+      ASwitch(value: providers[index].enabled, onChanged: toggleProvider)
     ];
     var keyChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
@@ -197,6 +259,10 @@ class _DesktopSettingModelPageState
       fontWeight: FontWeight.w500,
     );
     var modelText = Text('Models', style: modelTextStyle);
+    var modelProvider = modelsForNotifierProvider(providers[index].id);
+    var models = ref.watch(modelProvider).valueOrNull;
+    List<Widget> modelChildren = [];
+    if (models != null) modelChildren = models.map(_buildModelTile).toList();
     var tipTextStyle = TextStyle(
       color: Color(0xFFC2C2C2),
       fontSize: 12,
@@ -218,7 +284,7 @@ class _DesktopSettingModelPageState
       const SizedBox(height: 24),
       modelText,
       const SizedBox(height: 4),
-      // ...children,
+      ...modelChildren,
       const SizedBox(height: 12),
       tipText
     ];
@@ -241,6 +307,7 @@ class _DesktopSettingModelPageState
     return DesktopMenuTile(
       active: this.index == index,
       label: provider.name,
+      onTap: () => changeProvider(index),
       trailing: indicator,
     );
   }

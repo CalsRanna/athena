@@ -173,6 +173,152 @@ class _ModelNotifierProviderElement
   String get value => (origin as ModelNotifierProvider).value;
 }
 
+String _$modelsForNotifierHash() => r'eccf7bfcb9ca012292a40b317978be0b8dfb97a9';
+
+abstract class _$ModelsForNotifier
+    extends BuildlessAutoDisposeAsyncNotifier<List<Model>> {
+  late final int providerId;
+
+  FutureOr<List<Model>> build(
+    int providerId,
+  );
+}
+
+/// See also [ModelsForNotifier].
+@ProviderFor(ModelsForNotifier)
+const modelsForNotifierProvider = ModelsForNotifierFamily();
+
+/// See also [ModelsForNotifier].
+class ModelsForNotifierFamily extends Family<AsyncValue<List<Model>>> {
+  /// See also [ModelsForNotifier].
+  const ModelsForNotifierFamily();
+
+  /// See also [ModelsForNotifier].
+  ModelsForNotifierProvider call(
+    int providerId,
+  ) {
+    return ModelsForNotifierProvider(
+      providerId,
+    );
+  }
+
+  @override
+  ModelsForNotifierProvider getProviderOverride(
+    covariant ModelsForNotifierProvider provider,
+  ) {
+    return call(
+      provider.providerId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'modelsForNotifierProvider';
+}
+
+/// See also [ModelsForNotifier].
+class ModelsForNotifierProvider extends AutoDisposeAsyncNotifierProviderImpl<
+    ModelsForNotifier, List<Model>> {
+  /// See also [ModelsForNotifier].
+  ModelsForNotifierProvider(
+    int providerId,
+  ) : this._internal(
+          () => ModelsForNotifier()..providerId = providerId,
+          from: modelsForNotifierProvider,
+          name: r'modelsForNotifierProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$modelsForNotifierHash,
+          dependencies: ModelsForNotifierFamily._dependencies,
+          allTransitiveDependencies:
+              ModelsForNotifierFamily._allTransitiveDependencies,
+          providerId: providerId,
+        );
+
+  ModelsForNotifierProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.providerId,
+  }) : super.internal();
+
+  final int providerId;
+
+  @override
+  FutureOr<List<Model>> runNotifierBuild(
+    covariant ModelsForNotifier notifier,
+  ) {
+    return notifier.build(
+      providerId,
+    );
+  }
+
+  @override
+  Override overrideWith(ModelsForNotifier Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: ModelsForNotifierProvider._internal(
+        () => create()..providerId = providerId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        providerId: providerId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeAsyncNotifierProviderElement<ModelsForNotifier, List<Model>>
+      createElement() {
+    return _ModelsForNotifierProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ModelsForNotifierProvider && other.providerId == providerId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, providerId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ModelsForNotifierRef on AutoDisposeAsyncNotifierProviderRef<List<Model>> {
+  /// The parameter `providerId` of this provider.
+  int get providerId;
+}
+
+class _ModelsForNotifierProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<ModelsForNotifier,
+        List<Model>> with ModelsForNotifierRef {
+  _ModelsForNotifierProviderElement(super.provider);
+
+  @override
+  int get providerId => (origin as ModelsForNotifierProvider).providerId;
+}
+
 String _$modelsNotifierHash() => r'a7426ff9c75bc9f0b77eaf270009f5fdaa13bfa6';
 
 /// See also [ModelsNotifier].

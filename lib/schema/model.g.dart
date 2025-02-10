@@ -17,13 +17,23 @@ const ModelSchema = CollectionSchema(
   name: r'models',
   id: 6728634196192131898,
   properties: {
-    r'name': PropertySchema(
+    r'enabled': PropertySchema(
       id: 0,
+      name: r'enabled',
+      type: IsarType.bool,
+    ),
+    r'name': PropertySchema(
+      id: 1,
       name: r'name',
       type: IsarType.string,
     ),
+    r'provider_id': PropertySchema(
+      id: 2,
+      name: r'provider_id',
+      type: IsarType.long,
+    ),
     r'value': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'value',
       type: IsarType.string,
     )
@@ -59,8 +69,10 @@ void _modelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.name);
-  writer.writeString(offsets[1], object.value);
+  writer.writeBool(offsets[0], object.enabled);
+  writer.writeString(offsets[1], object.name);
+  writer.writeLong(offsets[2], object.providerId);
+  writer.writeString(offsets[3], object.value);
 }
 
 Model _modelDeserialize(
@@ -70,9 +82,11 @@ Model _modelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Model();
+  object.enabled = reader.readBool(offsets[0]);
   object.id = id;
-  object.name = reader.readString(offsets[0]);
-  object.value = reader.readString(offsets[1]);
+  object.name = reader.readString(offsets[1]);
+  object.providerId = reader.readLong(offsets[2]);
+  object.value = reader.readString(offsets[3]);
   return object;
 }
 
@@ -84,8 +98,12 @@ P _modelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 1:
+      return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readLong(offset)) as P;
+    case 3:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -180,6 +198,15 @@ extension ModelQueryWhere on QueryBuilder<Model, Model, QWhereClause> {
 }
 
 extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
+  QueryBuilder<Model, Model, QAfterFilterCondition> enabledEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'enabled',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -360,6 +387,59 @@ extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Model, Model, QAfterFilterCondition> providerIdEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'provider_id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> providerIdGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'provider_id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> providerIdLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'provider_id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> providerIdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'provider_id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterFilterCondition> valueEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -494,6 +574,18 @@ extension ModelQueryObject on QueryBuilder<Model, Model, QFilterCondition> {}
 extension ModelQueryLinks on QueryBuilder<Model, Model, QFilterCondition> {}
 
 extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
+  QueryBuilder<Model, Model, QAfterSortBy> sortByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> sortByEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -503,6 +595,18 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
   QueryBuilder<Model, Model, QAfterSortBy> sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> sortByProviderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'provider_id', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> sortByProviderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'provider_id', Sort.desc);
     });
   }
 
@@ -520,6 +624,18 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
 }
 
 extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
+  QueryBuilder<Model, Model, QAfterSortBy> thenByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> thenByEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -544,6 +660,18 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Model, Model, QAfterSortBy> thenByProviderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'provider_id', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> thenByProviderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'provider_id', Sort.desc);
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterSortBy> thenByValue() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'value', Sort.asc);
@@ -558,10 +686,22 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
 }
 
 extension ModelQueryWhereDistinct on QueryBuilder<Model, Model, QDistinct> {
+  QueryBuilder<Model, Model, QDistinct> distinctByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'enabled');
+    });
+  }
+
   QueryBuilder<Model, Model, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Model, Model, QDistinct> distinctByProviderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'provider_id');
     });
   }
 
@@ -580,9 +720,21 @@ extension ModelQueryProperty on QueryBuilder<Model, Model, QQueryProperty> {
     });
   }
 
+  QueryBuilder<Model, bool, QQueryOperations> enabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'enabled');
+    });
+  }
+
   QueryBuilder<Model, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<Model, int, QQueryOperations> providerIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'provider_id');
     });
   }
 

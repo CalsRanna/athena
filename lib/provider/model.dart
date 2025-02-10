@@ -22,6 +22,30 @@ class ModelNotifier extends _$ModelNotifier {
 }
 
 @riverpod
+class ModelsForNotifier extends _$ModelsForNotifier {
+  @override
+  //不能使用Provider作为参数，有冲突
+  Future<List<Model>> build(int providerId) async {
+    var builder = isar.models.filter().providerIdEqualTo(providerId);
+    final models = await builder.findAll();
+    return _sort(models);
+  }
+
+  Future<void> toggleModel(Model model) async {
+    var copiedModel = model.copyWith(enabled: !model.enabled);
+    await isar.writeTxn(() async {
+      await isar.models.put(copiedModel);
+    });
+    ref.invalidateSelf();
+  }
+
+  List<Model> _sort(List<Model> models) {
+    models.sort((a, b) => a.name.compareTo(b.name));
+    return models;
+  }
+}
+
+@riverpod
 class ModelsNotifier extends _$ModelsNotifier {
   @override
   Future<List<Model>> build() async {
