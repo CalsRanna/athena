@@ -15,20 +15,26 @@ class AMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Map<String, MarkdownElementBuilder> builders = {};
-    builders['code'] = _CodeElementBuilder();
-    builders['hr'] = _DividerElementBuilder();
+    builders['code'] = _CodeBuilder();
     if (supportLatex) builders['latex'] = LatexElementBuilder();
     List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
+    // blockSyntaxes.add(_HorizontalRuleSyntax());
     List<md.InlineSyntax> inlineSyntaxes = [];
     inlineSyntaxes.add(LatexInlineSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    // 不能解析 <think></think>，会吃掉<think>及开头的第一段
+    var borderSide = BorderSide(color: Color(0xFFC2C2C2), width: 1);
+    var markdownStyleSheet = MarkdownStyleSheet(
+      blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
+      horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
+    );
+    // 不能解析 <think></think>，会吃掉<think>及开头的第一段, 需要自定义BlockSyntax
     return MarkdownBody(
       builders: builders,
       data: content,
-      extensionSet: supportLatex ? extensions : null,
+      extensionSet: extensions,
+      styleSheet: markdownStyleSheet,
     );
     // return GptMarkdown(
     //   // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
@@ -84,8 +90,8 @@ class AMarkdown extends StatelessWidget {
   // }
 }
 
-class _CodeElementBuilder extends MarkdownElementBuilder {
-  _CodeElementBuilder();
+class _CodeBuilder extends MarkdownElementBuilder {
+  _CodeBuilder();
 
   void handleTap(String text) {
     final data = ClipboardData(text: text);
@@ -153,19 +159,5 @@ class _CodeElementBuilder extends MarkdownElementBuilder {
       padding: padding,
       child: Row(children: children),
     );
-  }
-}
-
-class _DividerElementBuilder extends MarkdownElementBuilder {
-  _DividerElementBuilder();
-
-  @override
-  Widget? visitElementAfterWithContext(
-    BuildContext context,
-    md.Element element,
-    TextStyle? preferredStyle,
-    TextStyle? parentStyle,
-  ) {
-    return const Divider();
   }
 }
