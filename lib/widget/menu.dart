@@ -93,12 +93,14 @@ class DesktopContextMenuOption extends StatefulWidget {
 class DesktopMenuTile extends StatelessWidget {
   final bool active;
   final String label;
+  final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
   final Widget? trailing;
   const DesktopMenuTile({
     super.key,
     required this.active,
     required this.label,
+    this.onSecondaryTap,
     this.onTap,
     this.trailing,
   });
@@ -133,6 +135,7 @@ class DesktopMenuTile extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onSecondaryTapUp: onSecondaryTap,
       onTap: onTap,
       child: animatedContainer,
     );

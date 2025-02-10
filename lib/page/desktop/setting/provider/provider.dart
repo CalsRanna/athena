@@ -26,47 +26,6 @@ class DesktopSettingProviderPage extends ConsumerStatefulWidget {
       _DesktopSettingModelPageState();
 }
 
-class _ContextMenu extends StatelessWidget {
-  final Offset offset;
-  final Model model;
-  final void Function()? onTap;
-  const _ContextMenu({
-    required this.offset,
-    required this.model,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    var editOption = DesktopContextMenuOption(
-      text: 'Edit',
-      onTap: () => navigateSentinelFormPage(context),
-    );
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: () => destroySentinel(context),
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
-  }
-
-  void destroySentinel(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.deleteModel(model);
-    onTap?.call();
-  }
-
-  void navigateSentinelFormPage(BuildContext context) {
-    ADialog.show(DesktopProviderFormDialog(model: model));
-    onTap?.call();
-  }
-}
-
 class _DesktopSettingModelPageState
     extends ConsumerState<DesktopSettingProviderPage> {
   OverlayEntry? entry;
@@ -107,14 +66,33 @@ class _DesktopSettingModelPageState
     }
   }
 
-  void showContextMenu(TapUpDetails details, Model model) {
-    var contextMenu = _ContextMenu(
+  void showModelContextMenu(TapUpDetails details, Model model) {
+    var contextMenu = _ModelContextMenu(
       offset: details.globalPosition - Offset(200, 50),
       onTap: removeEntry,
       model: model,
     );
     entry = OverlayEntry(builder: (_) => contextMenu);
     Overlay.of(context).insert(entry!);
+  }
+
+  void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
+    var contextMenu = _ProviderContextMenu(
+      offset: details.globalPosition - Offset(200, 50),
+      onTap: removeEntry,
+      provider: provider,
+    );
+    entry = OverlayEntry(builder: (_) => contextMenu);
+    Overlay.of(context).insert(entry!);
+  }
+
+  Future<void> toggleModel(Model model) async {
+    var provider = providerNotifierProvider;
+    var providers = ref.watch(provider).valueOrNull;
+    if (providers == null) return;
+    var modelProvider = modelsForNotifierProvider(providers[index].id);
+    var notifier = ref.read(modelProvider.notifier);
+    await notifier.toggleModel(model);
   }
 
   Future<void> toggleProvider(bool value) async {
@@ -176,15 +154,6 @@ class _DesktopSettingModelPageState
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(children: rowChildren),
     );
-  }
-
-  Future<void> toggleModel(Model model) async {
-    var provider = providerNotifierProvider;
-    var providers = ref.watch(provider).valueOrNull;
-    if (providers == null) return;
-    var modelProvider = modelsForNotifierProvider(providers[index].id);
-    var notifier = ref.read(modelProvider.notifier);
-    await notifier.toggleModel(model);
   }
 
   Widget _buildProviderEnabledIndicator(bool enabled) {
@@ -307,8 +276,87 @@ class _DesktopSettingModelPageState
     return DesktopMenuTile(
       active: this.index == index,
       label: provider.name,
+      onSecondaryTap: (details) => showProviderContextMenu(details, provider),
       onTap: () => changeProvider(index),
       trailing: indicator,
     );
+  }
+}
+
+class _ModelContextMenu extends StatelessWidget {
+  final Offset offset;
+  final Model model;
+  final void Function()? onTap;
+  const _ModelContextMenu({
+    required this.offset,
+    required this.model,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var editOption = DesktopContextMenuOption(
+      text: 'Edit',
+      onTap: () => navigateSentinelFormPage(context),
+    );
+    var deleteOption = DesktopContextMenuOption(
+      text: 'Delete',
+      onTap: () => destroySentinel(context),
+    );
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onTap,
+      children: [editOption, deleteOption],
+    );
+  }
+
+  void destroySentinel(BuildContext context) {
+    var container = ProviderScope.containerOf(context);
+    var provider = modelsNotifierProvider;
+    var notifier = container.read(provider.notifier);
+    notifier.deleteModel(model);
+    onTap?.call();
+  }
+
+  void navigateSentinelFormPage(BuildContext context) {
+    ADialog.show(DesktopProviderFormDialog(model: model));
+    onTap?.call();
+  }
+}
+
+class _ProviderContextMenu extends StatelessWidget {
+  final Offset offset;
+  final schema.Provider provider;
+  final void Function()? onTap;
+  const _ProviderContextMenu({
+    required this.offset,
+    required this.provider,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var deleteOption = DesktopContextMenuOption(
+      text: 'Delete',
+      onTap: () => destroySentinel(context),
+    );
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onTap,
+      children: [deleteOption],
+    );
+  }
+
+  void destroySentinel(BuildContext context) {
+    // var container = ProviderScope.containerOf(context);
+    // var provider = modelsNotifierProvider;
+    // var notifier = container.read(provider.notifier);
+    // notifier.deleteModel(model);
+    // onTap?.call();
+  }
+
+  void navigateSentinelFormPage(BuildContext context) {
+    // ADialog.show(DesktopProviderFormDialog(model: model));
+    // onTap?.call();
   }
 }
