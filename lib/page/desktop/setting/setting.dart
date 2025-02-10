@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
+import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
@@ -39,7 +39,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var route = switch (index) {
       0 => const DesktopSettingAccountRoute(),
       1 => const DesktopSentinelGridRoute(),
-      2 => const DesktopSettingProviderOpenRouterRoute(),
+      2 => const DesktopSettingProviderRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -51,7 +51,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       DesktopSentinelFormRoute().push(context);
       return;
     }
-    ADialog.show(DesktopModelFormDialog());
+    ADialog.show(DesktopProviderFormDialog());
   }
 
   Widget _buildCreateButton() {
