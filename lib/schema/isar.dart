@@ -1,7 +1,6 @@
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/setting.dart';
-import 'package:athena/schema/story.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -16,7 +15,6 @@ class IsarInitializer {
       ModelSchema,
       SentinelSchema,
       SettingSchema,
-      StorySchema,
     ];
     isar = await Isar.open(schemas, directory: directory.path);
   }
