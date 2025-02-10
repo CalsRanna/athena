@@ -1,16 +1,14 @@
 import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/setting.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
-import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSettingProviderPage extends ConsumerStatefulWidget {
@@ -69,13 +67,7 @@ class _DesktopSettingModelPageState
 
   @override
   Widget build(BuildContext context) {
-    var provider = modelsNotifierProvider;
-    var state = ref.watch(provider);
-    var body = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(width: double.infinity),
-    };
-    var children = [_buildProviderListView(), Expanded(child: body)];
+    var children = [_buildProviderListView(), Expanded(child: AutoRouter())];
     var row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
@@ -88,9 +80,14 @@ class _DesktopSettingModelPageState
     var listView = ListView(
       padding: const EdgeInsets.all(12),
       children: [
+        DesktopMenuTile(active: false, label: 'Deep Seek'),
+        SizedBox(height: 12),
+        DesktopMenuTile(active: false, label: 'Open Router'),
+        SizedBox(height: 12),
         DesktopMenuTile(
           active: true,
-          label: 'Open Router',
+          label: 'Silicon Flow',
+          onTap: navigateProvider,
           trailing: _buildProviderEnabledIndicator(),
         ),
       ],
@@ -100,6 +97,10 @@ class _DesktopSettingModelPageState
       width: 200,
       child: listView,
     );
+  }
+
+  void navigateProvider() {
+    DesktopSettingProviderSiliconFlowRoute().push(context);
   }
 
   @override
@@ -135,59 +136,6 @@ class _DesktopSettingModelPageState
     await notifier.updateModel(model.value);
   }
 
-  Widget _buildData(List<Model> models) {
-    var children = models.map(_itemBuilder).toList();
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: [
-        Row(
-          children: [
-            Text('Open Router'),
-            Icon(HugeIcons.strokeRoundedLinkSquare02, size: 12),
-            Spacer(),
-            Switch.adaptive(value: true, onChanged: (_) {})
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            SizedBox(width: 120, child: Text('API Key')),
-            Expanded(child: AInput(controller: TextEditingController()))
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            SizedBox(width: 120, child: Text('API URL')),
-            Expanded(
-                child: AInput(
-              controller: TextEditingController(),
-              placeholder: 'https://openrouter.ai/api/v1',
-            ))
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            SizedBox(width: 120, child: Text('Connect')),
-            Spacer(),
-            ASecondaryButton(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: Text('Check'),
-              ),
-            )
-          ],
-        ),
-        const SizedBox(height: 12),
-        Text('Models'),
-        const SizedBox(height: 12),
-        ...children,
-        Text('查看OpenRouter文档和模型获取更多详情')
-      ],
-    );
-  }
-
   Widget _buildProviderEnabledIndicator() {
     return Container(
       decoration: ShapeDecoration(color: Colors.green, shape: StadiumBorder()),
@@ -200,37 +148,5 @@ class _DesktopSettingModelPageState
     var provider = settingNotifierProvider;
     var setting = await ref.read(provider.future);
     model = setting.model;
-  }
-
-  Widget _itemBuilder(Model model) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: (details) => showContextMenu(details, model),
-      child: DefaultTextStyle.merge(
-        style: const TextStyle(color: Colors.white),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(model.name),
-                  SizedBox(width: 12),
-                  Text(model.value),
-                ],
-              ),
-              Text(r'发布于2024-06-20 输入$3.00/M 输出$15.00/M')
-            ],
-          ),
-        ),
-      ),
-    );
-    // return GestureDetector(
-    //   behavior: HitTestBehavior.opaque,
-    //   onSecondaryTapUp: (details) => showContextMenu(details, model),
-    //   onTap: () => updateModel(model),
-    //   child: ATag(selected: this.model == model.value, text: model.name),
-    // );
   }
 }
