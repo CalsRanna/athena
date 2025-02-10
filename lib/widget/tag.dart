@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
 class ATag extends StatelessWidget {
+  final EdgeInsets padding;
   final bool selected;
   final String text;
-  const ATag({super.key, this.selected = false, required this.text});
+
+  const ATag({super.key, this.selected = false, required this.text})
+      : padding = const EdgeInsets.symmetric(horizontal: 36, vertical: 13);
+  const ATag.extraSmall({super.key, this.selected = false, required this.text})
+      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 4);
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +30,7 @@ class ATag extends StatelessWidget {
     var innerContainer = AnimatedContainer(
       decoration: innerBoxDecoration,
       duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
+      padding: padding,
       child: animatedText,
     );
     var colors = [

@@ -3,7 +3,6 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
-import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,20 +13,7 @@ class DesktopSentinelGridPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      _TagListView(),
-      const SizedBox(height: 12),
-      Expanded(child: _SentinelGridView()),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    return AScaffold(
-        body: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      child: column,
-    ));
+    return AScaffold(body: _SentinelGridView());
   }
 }
 
@@ -96,6 +82,7 @@ class _SentinelGridView extends ConsumerWidget {
       gridDelegate: delegate,
       itemCount: sentinels.length,
       itemBuilder: (context, index) => _SentinelTile(sentinels[index]),
+      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
     );
   }
 }
@@ -174,29 +161,5 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     entry = OverlayEntry(builder: (_) => contextMenu);
     Overlay.of(context).insert(entry!);
-  }
-}
-
-class _TagListView extends ConsumerWidget {
-  const _TagListView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = sentinelTagsNotifierProvider;
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildData(List<String> tags) {
-    var children = tags.map((tag) => ATag(text: tag)).toList();
-    return Wrap(
-      alignment: WrapAlignment.start,
-      spacing: 12,
-      runSpacing: 12,
-      children: children,
-    );
   }
 }

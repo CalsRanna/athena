@@ -39,7 +39,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var route = switch (index) {
       0 => const DesktopSettingAccountRoute(),
       1 => const DesktopSentinelGridRoute(),
-      2 => const DesktopSettingProviderRoute(),
+      2 => const DesktopSettingProviderOpenRouterRoute(),
       _ => null,
     };
     if (route == null) return;
