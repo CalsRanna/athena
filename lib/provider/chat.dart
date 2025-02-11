@@ -63,7 +63,7 @@ class ChatNotifier extends _$ChatNotifier {
     final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesProvider.future);
     final model = await _getModel();
-    final provider = await _getProvider(model.id);
+    final provider = await _getProvider(model.providerId);
     try {
       final stream = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
@@ -152,7 +152,7 @@ class ChatNotifier extends _$ChatNotifier {
   Future<Model> _getModel() async {
     final chat = await future;
     var provider = modelNotifierProvider(chat.modelId);
-    return await ref.watch(provider.future);
+    return await ref.read(provider.future);
   }
 
   Future<String> _getPrompt() async {
@@ -163,9 +163,9 @@ class ChatNotifier extends _$ChatNotifier {
     return chatRelatedSentinel.prompt;
   }
 
-  Future<schema.Provider> _getProvider(int modelId) async {
-    var provider = providerNotifierProvider(modelId);
-    return await ref.watch(provider.future);
+  Future<schema.Provider> _getProvider(int providerId) async {
+    var provider = providerNotifierProvider(providerId);
+    return await ref.read(provider.future);
   }
 }
 
