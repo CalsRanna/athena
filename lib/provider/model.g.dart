@@ -173,7 +173,7 @@ class _ModelNotifierProviderElement
   String get value => (origin as ModelNotifierProvider).value;
 }
 
-String _$modelsForNotifierHash() => r'eccf7bfcb9ca012292a40b317978be0b8dfb97a9';
+String _$modelsForNotifierHash() => r'6f134bcb417df383275b6d2ed23ffee3e23c1ffe';
 
 abstract class _$ModelsForNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Model>> {

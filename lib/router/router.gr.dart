@@ -10,9 +10,9 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:athena/page/desktop/home/home.dart' as _i1;
 import 'package:athena/page/desktop/setting/account.dart' as _i4;
-import 'package:athena/page/desktop/setting/provider/provider.dart' as _i6;
+import 'package:athena/page/desktop/setting/provider.dart' as _i6;
 import 'package:athena/page/desktop/setting/sentinel/form.dart' as _i2;
-import 'package:athena/page/desktop/setting/sentinel/grid.dart' as _i3;
+import 'package:athena/page/desktop/setting/sentinel/sentinel.dart' as _i3;
 import 'package:athena/page/desktop/setting/setting.dart' as _i5;
 import 'package:athena/page/mobile/chat/chat.dart' as _i8;
 import 'package:athena/page/mobile/chat/list.dart' as _i7;
@@ -95,20 +95,20 @@ class DesktopSentinelFormRouteArgs {
 }
 
 /// generated route for
-/// [_i3.DesktopSentinelGridPage]
-class DesktopSentinelGridRoute extends _i15.PageRouteInfo<void> {
-  const DesktopSentinelGridRoute({List<_i15.PageRouteInfo>? children})
+/// [_i3.DesktopSentinelPage]
+class DesktopSentinelRoute extends _i15.PageRouteInfo<void> {
+  const DesktopSentinelRoute({List<_i15.PageRouteInfo>? children})
       : super(
-          DesktopSentinelGridRoute.name,
+          DesktopSentinelRoute.name,
           initialChildren: children,
         );
 
-  static const String name = 'DesktopSentinelGridRoute';
+  static const String name = 'DesktopSentinelRoute';
 
   static _i15.PageInfo page = _i15.PageInfo(
     name,
     builder: (data) {
-      return const _i3.DesktopSentinelGridPage();
+      return const _i3.DesktopSentinelPage();
     },
   );
 }
