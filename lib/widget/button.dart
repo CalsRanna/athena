@@ -22,7 +22,7 @@ class AIconButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: button,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: button),
     );
   }
 }
@@ -51,15 +51,24 @@ class APrimaryButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: container,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
   }
 }
 
 class ASecondaryButton extends StatelessWidget {
   final void Function()? onTap;
+  final EdgeInsets padding;
   final Widget child;
-  const ASecondaryButton({super.key, this.onTap, required this.child});
+
+  const ASecondaryButton({super.key, this.onTap, required this.child})
+      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+
+  const ASecondaryButton.medium({super.key, this.onTap, required this.child})
+      : padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
+
+  const ASecondaryButton.small({super.key, this.onTap, required this.child})
+      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 8);
 
   @override
   Widget build(BuildContext context) {
@@ -69,13 +78,13 @@ class ASecondaryButton extends StatelessWidget {
     const defaultTextStyle = TextStyle(color: Colors.white);
     var container = Container(
       decoration: shapeDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      padding: padding,
       child: DefaultTextStyle(style: defaultTextStyle, child: child),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: container,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
   }
 }
@@ -96,7 +105,7 @@ class ATextButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: container,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
   }
 }

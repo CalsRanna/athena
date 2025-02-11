@@ -133,11 +133,15 @@ class DesktopMenuTile extends StatelessWidget {
         ],
       ),
     );
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: animatedContainer,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: onSecondaryTap,
       onTap: onTap,
-      child: animatedContainer,
+      child: mouseRegion,
     );
   }
 }

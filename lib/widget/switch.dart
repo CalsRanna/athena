@@ -7,27 +7,35 @@ class ASwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var outerShapeDecoration = ShapeDecoration(
+      color: value ? Color(0xFFA7BA88) : Color(0xFFC2C9D1),
+      shape: StadiumBorder(),
+    );
+    var innerBoxDecoration = BoxDecoration(
+      color: Colors.white,
+      shape: BoxShape.circle,
+    );
+    var container = Container(
+      decoration: innerBoxDecoration,
+      height: 16,
+      width: 16,
+    );
+    var animatedContainer = AnimatedContainer(
+      alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+      decoration: outerShapeDecoration,
+      duration: Duration(milliseconds: 100),
+      padding: EdgeInsets.all(2),
+      width: 36,
+      child: container,
+    );
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: animatedContainer,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged?.call(!value),
-      child: AnimatedContainer(
-        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-        decoration: ShapeDecoration(
-          color: value ? Color(0xFFA7BA88) : Color(0xFFC2C9D1),
-          shape: StadiumBorder(),
-        ),
-        duration: Duration(milliseconds: 100),
-        padding: EdgeInsets.all(2),
-        width: 36,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          height: 16,
-          width: 16,
-        ),
-      ),
+      child: mouseRegion,
     );
   }
 }

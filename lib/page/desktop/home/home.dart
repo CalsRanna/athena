@@ -133,6 +133,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
       decoration: boxDecoration,
+      height: double.infinity,
       width: 200,
       child: chatListView,
     );

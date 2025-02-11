@@ -31,6 +31,27 @@ class ModelsForNotifier extends _$ModelsForNotifier {
     return _sort(models);
   }
 
+  Future<void> storeModel(Model model) async {
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateModel(Model model) async {
+    await isar.writeTxn(() async {
+      await isar.models.put(model);
+    });
+    ref.invalidateSelf();
+  }
+
+  Future<void> deleteModel(Model model) async {
+    await isar.writeTxn(() async {
+      await isar.models.delete(model.id);
+    });
+    ref.invalidateSelf();
+  }
+
   Future<void> toggleModel(Model model) async {
     var copiedModel = model.copyWith(enabled: !model.enabled);
     await isar.writeTxn(() async {
