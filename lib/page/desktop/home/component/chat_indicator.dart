@@ -1,5 +1,4 @@
-import 'package:athena/provider/model.dart';
-import 'package:athena/provider/sentinel.dart';
+import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
@@ -14,13 +13,11 @@ class DesktopChatIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     var children = [
       _SentinelIndicator(sentinel: sentinel),
-      SizedBox(width: 8),
       _ModelIndicator(model: model),
-      const Spacer(),
     ];
     return Container(
       padding: const EdgeInsets.only(left: 16),
-      child: Row(children: children),
+      child: Row(spacing: 8, children: children),
     );
   }
 }
@@ -31,25 +28,11 @@ class _ModelIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (model != null) return _buildData(model!);
-    var provider = groupedEnabledModelsNotifierProvider;
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildFirstModel(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildFirstModel(Map<String, List<Model>> value) {
-    if (value.isEmpty) return const SizedBox();
-    var entry = value.entries.first;
-    var model = entry.value.first;
-    return _buildData(model);
-  }
-
-  Widget _buildData(Model model) {
+    if (model == null) return const SizedBox();
+    var provider = providerNotifierProvider(model!.providerId);
+    var value = ref.watch(provider).valueOrNull;
     var text = Text(
-      model.name,
+      '${model!.name} | ${value?.name ?? ""}',
       style: TextStyle(color: Colors.white, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(
@@ -58,20 +41,8 @@ class _ModelIndicator extends ConsumerWidget {
     );
     var innerContainer = Container(
       decoration: innerBoxDecoration,
-      padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
-      child: Row(
-        children: [
-          ClipOval(
-            child: Image.asset(
-              'asset/image/open_router_logo.png',
-              fit: BoxFit.cover,
-              height: 16,
-            ),
-          ),
-          const SizedBox(width: 8),
-          text,
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: text,
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),
@@ -94,25 +65,14 @@ class _ModelIndicator extends ConsumerWidget {
   }
 }
 
-class _SentinelIndicator extends ConsumerWidget {
+class _SentinelIndicator extends StatelessWidget {
   final Sentinel? sentinel;
   const _SentinelIndicator({this.sentinel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (sentinel != null) return _buildData(sentinel!);
-    var provider = sentinelNotifierProvider(0);
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildData(Sentinel sentinel) {
-    return Text(
-      sentinel.name,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-    );
+  Widget build(BuildContext context) {
+    if (sentinel == null) return const SizedBox();
+    const textStyle = TextStyle(color: Colors.white, fontSize: 14);
+    return Text(sentinel!.name, style: textStyle);
   }
 }
