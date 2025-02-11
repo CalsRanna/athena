@@ -55,7 +55,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
     var keyChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: urlController))
+      Expanded(child: AInput(controller: keyController))
     ];
     var urlChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API Url')),

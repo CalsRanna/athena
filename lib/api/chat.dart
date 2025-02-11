@@ -46,6 +46,8 @@ class ChatApi {
     var wrappedMessages = messages.map((message) {
       if (message.role == 'system') {
         return ChatCompletionMessage.system(content: message.content);
+      } else if (message.role == 'assistant') {
+        return ChatCompletionMessage.assistant(content: message.content);
       } else {
         return ChatCompletionMessage.user(
           content: ChatCompletionUserMessageContent.string(message.content),

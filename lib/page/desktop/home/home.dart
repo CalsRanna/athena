@@ -12,6 +12,7 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -35,12 +36,18 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   @override
   void initState() {
     super.initState();
-    _iniState();
-  }
-
-  Future<void> _iniState() async {
+    _initChat();
     _initModel();
     _initSentinel();
+  }
+
+  Future<void> _initChat() async {
+    var provider = chatsNotifierProvider;
+    var chats = await ref.read(provider.future);
+    if (chats.isEmpty) return;
+    setState(() {
+      chat = chats.first;
+    });
   }
 
   Future<void> _initModel() async {
@@ -53,7 +60,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     setState(() {
       model = models.first;
     });
-    print(model);
   }
 
   Future<void> _initSentinel() async {
@@ -72,6 +78,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> changeChat(Chat chat) async {
+    var streaming = ref.read(streamingNotifierProvider);
+    if (streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
     var model = await isar.models.filter().idEqualTo(chat.modelId).findFirst();
     var sentinel =
         await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
@@ -83,6 +93,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   void changeModel(Model model) {
+    var streaming = ref.read(streamingNotifierProvider);
+    if (streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
     setState(() {
       this.model = model;
     });
@@ -94,6 +108,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   void changeSentinel(Sentinel sentinel) {
+    var streaming = ref.read(streamingNotifierProvider);
+    if (streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
     setState(() {
       this.sentinel = sentinel;
     });
@@ -104,20 +122,24 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     notifier.updateSentinel(sentinel);
   }
 
-  void createChat() {
+  Future<void> createChat() async {
+    var streaming = ref.read(streamingNotifierProvider);
+    if (streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
     setState(() {
       chat = null;
-      model = null;
-      sentinel = null;
     });
+    _initModel();
+    _initSentinel();
   }
 
   void destroyChat() {
     setState(() {
       chat = null;
-      model = null;
-      sentinel = null;
     });
+    _initModel();
+    _initSentinel();
   }
 
   void navigateSetting(BuildContext context) {
