@@ -54,9 +54,9 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       Expanded(child: AInput(controller: valueController))
     ];
     var nameChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Id')),
+      SizedBox(width: 120, child: AFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: valueController))
+      Expanded(child: AInput(controller: nameController))
     ];
     var children = [
       Row(children: titleChildren),
