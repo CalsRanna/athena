@@ -41,6 +41,7 @@ class _ModelIndicator extends ConsumerWidget {
   }
 
   Widget _buildFirstModel(Map<String, List<Model>> value) {
+    if (value.isEmpty) return const SizedBox();
     var entry = value.entries.first;
     var model = entry.value.first;
     return _buildData(model);
