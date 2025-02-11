@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:athena/schema/chat.dart';
-import 'package:athena/util/proxy.dart';
+import 'package:athena/schema/model.dart' as schema;
+import 'package:athena/schema/provider.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class SentinelApi {
@@ -60,11 +62,15 @@ W - Workflow (工作流):
   "avatar": "📜"
 }
 ''';
-  Future<Sentinel> generate(String prompt, {required String model}) async {
+  Future<Sentinel> generate(
+    String prompt, {
+    required Provider provider,
+    required schema.Model model,
+  }) async {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
     var client = OpenAIClient(
-      apiKey: ProxyConfig.instance.key,
-      baseUrl: ProxyConfig.instance.url,
+      apiKey: provider.key,
+      baseUrl: provider.url,
       headers: headers,
     );
     var messages = [
@@ -81,7 +87,7 @@ W - Workflow (工作流):
       }
     }).toList();
     var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model),
+      model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
     );
     try {

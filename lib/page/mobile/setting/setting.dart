@@ -52,13 +52,13 @@ class _Connect extends StatelessWidget {
   }
 
   Future<void> connect(BuildContext context) async {
-    ADialog.loading();
-    var container = ProviderScope.containerOf(context);
-    var provider = settingNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    var message = await notifier.connect();
-    ADialog.dismiss();
-    ADialog.success(message);
+    // ADialog.loading();
+    // var container = ProviderScope.containerOf(context);
+    // var provider = settingNotifierProvider;
+    // var notifier = container.read(provider.notifier);
+    // var message = await notifier.connect();
+    // ADialog.dismiss();
+    // ADialog.success(message);
   }
 }
 

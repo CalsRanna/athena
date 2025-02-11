@@ -6,7 +6,7 @@ part of 'model.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$modelNotifierHash() => r'69431644ac75ce147949604714669fca428dad92';
+String _$modelNotifierHash() => r'9d0db6371e4fde7da996f158b53a70e0fa909861';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,10 +31,10 @@ class _SystemHash {
 
 abstract class _$ModelNotifier
     extends BuildlessAutoDisposeAsyncNotifier<Model> {
-  late final String value;
+  late final int id;
 
   FutureOr<Model> build(
-    String value,
+    int id,
   );
 }
 
@@ -49,10 +49,10 @@ class ModelNotifierFamily extends Family<AsyncValue<Model>> {
 
   /// See also [ModelNotifier].
   ModelNotifierProvider call(
-    String value,
+    int id,
   ) {
     return ModelNotifierProvider(
-      value,
+      id,
     );
   }
 
@@ -61,7 +61,7 @@ class ModelNotifierFamily extends Family<AsyncValue<Model>> {
     covariant ModelNotifierProvider provider,
   ) {
     return call(
-      provider.value,
+      provider.id,
     );
   }
 
@@ -85,9 +85,9 @@ class ModelNotifierProvider
     extends AutoDisposeAsyncNotifierProviderImpl<ModelNotifier, Model> {
   /// See also [ModelNotifier].
   ModelNotifierProvider(
-    String value,
+    int id,
   ) : this._internal(
-          () => ModelNotifier()..value = value,
+          () => ModelNotifier()..id = id,
           from: modelNotifierProvider,
           name: r'modelNotifierProvider',
           debugGetCreateSourceHash:
@@ -97,7 +97,7 @@ class ModelNotifierProvider
           dependencies: ModelNotifierFamily._dependencies,
           allTransitiveDependencies:
               ModelNotifierFamily._allTransitiveDependencies,
-          value: value,
+          id: id,
         );
 
   ModelNotifierProvider._internal(
@@ -107,17 +107,17 @@ class ModelNotifierProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.value,
+    required this.id,
   }) : super.internal();
 
-  final String value;
+  final int id;
 
   @override
   FutureOr<Model> runNotifierBuild(
     covariant ModelNotifier notifier,
   ) {
     return notifier.build(
-      value,
+      id,
     );
   }
 
@@ -126,13 +126,13 @@ class ModelNotifierProvider
     return ProviderOverride(
       origin: this,
       override: ModelNotifierProvider._internal(
-        () => create()..value = value,
+        () => create()..id = id,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        value: value,
+        id: id,
       ),
     );
   }
@@ -145,13 +145,13 @@ class ModelNotifierProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ModelNotifierProvider && other.value == value;
+    return other is ModelNotifierProvider && other.id == id;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, value.hashCode);
+    hash = _SystemHash.combine(hash, id.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -160,8 +160,8 @@ class ModelNotifierProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin ModelNotifierRef on AutoDisposeAsyncNotifierProviderRef<Model> {
-  /// The parameter `value` of this provider.
-  String get value;
+  /// The parameter `id` of this provider.
+  int get id;
 }
 
 class _ModelNotifierProviderElement
@@ -170,7 +170,157 @@ class _ModelNotifierProviderElement
   _ModelNotifierProviderElement(super.provider);
 
   @override
-  String get value => (origin as ModelNotifierProvider).value;
+  int get id => (origin as ModelNotifierProvider).id;
+}
+
+String _$enabledModelsForNotifierHash() =>
+    r'5f56ce6418bf68c457c218de7bbfe124a84cbc59';
+
+abstract class _$EnabledModelsForNotifier
+    extends BuildlessAutoDisposeAsyncNotifier<List<Model>> {
+  late final int providerId;
+
+  FutureOr<List<Model>> build(
+    int providerId,
+  );
+}
+
+/// See also [EnabledModelsForNotifier].
+@ProviderFor(EnabledModelsForNotifier)
+const enabledModelsForNotifierProvider = EnabledModelsForNotifierFamily();
+
+/// See also [EnabledModelsForNotifier].
+class EnabledModelsForNotifierFamily extends Family<AsyncValue<List<Model>>> {
+  /// See also [EnabledModelsForNotifier].
+  const EnabledModelsForNotifierFamily();
+
+  /// See also [EnabledModelsForNotifier].
+  EnabledModelsForNotifierProvider call(
+    int providerId,
+  ) {
+    return EnabledModelsForNotifierProvider(
+      providerId,
+    );
+  }
+
+  @override
+  EnabledModelsForNotifierProvider getProviderOverride(
+    covariant EnabledModelsForNotifierProvider provider,
+  ) {
+    return call(
+      provider.providerId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'enabledModelsForNotifierProvider';
+}
+
+/// See also [EnabledModelsForNotifier].
+class EnabledModelsForNotifierProvider
+    extends AutoDisposeAsyncNotifierProviderImpl<EnabledModelsForNotifier,
+        List<Model>> {
+  /// See also [EnabledModelsForNotifier].
+  EnabledModelsForNotifierProvider(
+    int providerId,
+  ) : this._internal(
+          () => EnabledModelsForNotifier()..providerId = providerId,
+          from: enabledModelsForNotifierProvider,
+          name: r'enabledModelsForNotifierProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$enabledModelsForNotifierHash,
+          dependencies: EnabledModelsForNotifierFamily._dependencies,
+          allTransitiveDependencies:
+              EnabledModelsForNotifierFamily._allTransitiveDependencies,
+          providerId: providerId,
+        );
+
+  EnabledModelsForNotifierProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.providerId,
+  }) : super.internal();
+
+  final int providerId;
+
+  @override
+  FutureOr<List<Model>> runNotifierBuild(
+    covariant EnabledModelsForNotifier notifier,
+  ) {
+    return notifier.build(
+      providerId,
+    );
+  }
+
+  @override
+  Override overrideWith(EnabledModelsForNotifier Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: EnabledModelsForNotifierProvider._internal(
+        () => create()..providerId = providerId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        providerId: providerId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeAsyncNotifierProviderElement<EnabledModelsForNotifier, List<Model>>
+      createElement() {
+    return _EnabledModelsForNotifierProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is EnabledModelsForNotifierProvider &&
+        other.providerId == providerId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, providerId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin EnabledModelsForNotifierRef
+    on AutoDisposeAsyncNotifierProviderRef<List<Model>> {
+  /// The parameter `providerId` of this provider.
+  int get providerId;
+}
+
+class _EnabledModelsForNotifierProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<EnabledModelsForNotifier,
+        List<Model>> with EnabledModelsForNotifierRef {
+  _EnabledModelsForNotifierProviderElement(super.provider);
+
+  @override
+  int get providerId => (origin as EnabledModelsForNotifierProvider).providerId;
 }
 
 String _$modelsForNotifierHash() => r'6f134bcb417df383275b6d2ed23ffee3e23c1ffe';
@@ -319,21 +469,23 @@ class _ModelsForNotifierProviderElement
   int get providerId => (origin as ModelsForNotifierProvider).providerId;
 }
 
-String _$modelsNotifierHash() => r'a7426ff9c75bc9f0b77eaf270009f5fdaa13bfa6';
+String _$groupedEnabledModelsNotifierHash() =>
+    r'd39a0b61d4f640af2b6d638a8f990852828b7db2';
 
-/// See also [ModelsNotifier].
-@ProviderFor(ModelsNotifier)
-final modelsNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<ModelsNotifier, List<Model>>.internal(
-  ModelsNotifier.new,
-  name: r'modelsNotifierProvider',
+/// See also [GroupedEnabledModelsNotifier].
+@ProviderFor(GroupedEnabledModelsNotifier)
+final groupedEnabledModelsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    GroupedEnabledModelsNotifier, Map<String, List<Model>>>.internal(
+  GroupedEnabledModelsNotifier.new,
+  name: r'groupedEnabledModelsNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$modelsNotifierHash,
+      : _$groupedEnabledModelsNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$ModelsNotifier = AutoDisposeAsyncNotifier<List<Model>>;
+typedef _$GroupedEnabledModelsNotifier
+    = AutoDisposeAsyncNotifier<Map<String, List<Model>>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

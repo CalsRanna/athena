@@ -1,5 +1,5 @@
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 

@@ -8,6 +8,7 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -35,7 +36,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> changeChat(Chat chat) async {
-    var model = await isar.models.filter().valueEqualTo(chat.model).findFirst();
+    var model = await isar.models.filter().idEqualTo(chat.modelId).findFirst();
     var sentinel =
         await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
     setState(() {
@@ -53,7 +54,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     var container = ProviderScope.containerOf(context);
     var provider = chatNotifierProvider(chat!.id);
     var notifier = container.read(provider.notifier);
-    notifier.updateModel(model.value);
+    notifier.updateModel(model);
   }
 
   void changeSentinel(Sentinel sentinel) {

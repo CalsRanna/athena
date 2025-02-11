@@ -103,7 +103,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
 
   Future<void> storeProvider() async {
     var container = ProviderScope.containerOf(context);
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var notifier = container.read(provider.notifier);
     var newProvider = schema.Provider()
       ..enabled = false

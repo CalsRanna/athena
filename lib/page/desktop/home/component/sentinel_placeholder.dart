@@ -1,5 +1,5 @@
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

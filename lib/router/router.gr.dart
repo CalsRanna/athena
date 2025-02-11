@@ -22,8 +22,9 @@ import 'package:athena/page/mobile/sentinel/form.dart' as _i13;
 import 'package:athena/page/mobile/sentinel/list.dart' as _i14;
 import 'package:athena/page/mobile/setting/model/form.dart' as _i11;
 import 'package:athena/page/mobile/setting/model/list.dart' as _i12;
-import 'package:athena/schema/chat.dart' as _i17;
-import 'package:athena/schema/model.dart' as _i18;
+import 'package:athena/schema/chat.dart' as _i18;
+import 'package:athena/schema/model.dart' as _i19;
+import 'package:athena/schema/sentinel.dart' as _i17;
 import 'package:auto_route/auto_route.dart' as _i15;
 import 'package:flutter/material.dart' as _i16;
 
@@ -194,7 +195,7 @@ class MobileChatListRoute extends _i15.PageRouteInfo<void> {
 class MobileChatRoute extends _i15.PageRouteInfo<MobileChatRouteArgs> {
   MobileChatRoute({
     _i16.Key? key,
-    _i17.Chat? chat,
+    _i18.Chat? chat,
     _i17.Sentinel? sentinel,
     List<_i15.PageRouteInfo>? children,
   }) : super(
@@ -232,7 +233,7 @@ class MobileChatRouteArgs {
 
   final _i16.Key? key;
 
-  final _i17.Chat? chat;
+  final _i18.Chat? chat;
 
   final _i17.Sentinel? sentinel;
 
@@ -248,7 +249,7 @@ class MobileChatRenameRoute
     extends _i15.PageRouteInfo<MobileChatRenameRouteArgs> {
   MobileChatRenameRoute({
     _i16.Key? key,
-    required _i17.Chat chat,
+    required _i18.Chat chat,
     List<_i15.PageRouteInfo>? children,
   }) : super(
           MobileChatRenameRoute.name,
@@ -281,7 +282,7 @@ class MobileChatRenameRouteArgs {
 
   final _i16.Key? key;
 
-  final _i17.Chat chat;
+  final _i18.Chat chat;
 
   @override
   String toString() {
@@ -314,7 +315,7 @@ class MobileModelFormRoute
     extends _i15.PageRouteInfo<MobileModelFormRouteArgs> {
   MobileModelFormRoute({
     _i16.Key? key,
-    _i18.Model? model,
+    _i19.Model? model,
     List<_i15.PageRouteInfo>? children,
   }) : super(
           MobileModelFormRoute.name,
@@ -348,7 +349,7 @@ class MobileModelFormRouteArgs {
 
   final _i16.Key? key;
 
-  final _i18.Model? model;
+  final _i19.Model? model;
 
   @override
   String toString() {

@@ -23,7 +23,7 @@ final defaultSentinelNotifierProvider = AutoDisposeAsyncNotifierProvider<
 );
 
 typedef _$DefaultSentinelNotifier = AutoDisposeAsyncNotifier<Sentinel>;
-String _$sentinelNotifierHash() => r'11899d1cf341ed0635b84fe25863cab6c36ba14f';
+String _$sentinelNotifierHash() => r'1da630efd8f69d69fd296e8dfb4837dab170600d';
 
 /// Copied from Dart SDK
 class _SystemHash {

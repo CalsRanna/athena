@@ -1,22 +1,26 @@
 import 'dart:async';
 
 import 'package:athena/schema/chat.dart';
-import 'package:athena/util/proxy.dart';
+import 'package:athena/schema/model.dart' as schema;
+import 'package:athena/schema/provider.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class ChatApi {
-  Future<String> connect(String model) async {
+  Future<String> connect({
+    required Provider provider,
+    required schema.Model model,
+  }) async {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
     var client = OpenAIClient(
-      apiKey: ProxyConfig.instance.key,
-      baseUrl: ProxyConfig.instance.url,
+      apiKey: provider.key,
+      baseUrl: provider.url,
       headers: headers,
     );
     var message = ChatCompletionMessage.user(
       content: ChatCompletionUserMessageContent.string('Hi'),
     );
     var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model),
+      model: ChatCompletionModel.modelId(model.value),
       messages: [message],
     );
     try {
@@ -30,12 +34,13 @@ class ChatApi {
 
   Stream<String> getCompletion({
     required List<Message> messages,
-    required String model,
+    required Provider provider,
+    required schema.Model model,
   }) async* {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
     var client = OpenAIClient(
-      apiKey: ProxyConfig.instance.key,
-      baseUrl: ProxyConfig.instance.url,
+      apiKey: provider.key,
+      baseUrl: provider.url,
       headers: headers,
     );
     var wrappedMessages = messages.map((message) {
@@ -48,7 +53,7 @@ class ChatApi {
       }
     }).toList();
     var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model),
+      model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
     );
     var response = client.createChatCompletionStream(request: request);
@@ -58,11 +63,15 @@ class ChatApi {
     }
   }
 
-  Stream<String> getTitle(String value, {required String model}) async* {
+  Stream<String> getTitle(
+    String value, {
+    required Provider provider,
+    required schema.Model model,
+  }) async* {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
     var client = OpenAIClient(
-      apiKey: ProxyConfig.instance.key,
-      baseUrl: ProxyConfig.instance.url,
+      apiKey: provider.key,
+      baseUrl: provider.url,
       headers: headers,
     );
     const String prompt = '请用最简短的语言总结出「」中内容的主题。不要解释、不要标点符号、'
@@ -75,7 +84,7 @@ class ChatApi {
       ),
     ];
     var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model),
+      model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
     );
     var response = client.createChatCompletionStream(request: request);
