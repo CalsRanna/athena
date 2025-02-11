@@ -46,14 +46,22 @@ class ChatNotifier extends _$ChatNotifier {
     return chat.id;
   }
 
-  Future<void> resend(Message message) async {
-    var provider = messagesNotifierProvider(id);
-    final notifier = ref.read(provider.notifier);
+  Future<void> resend(
+    Message message, {
+    required Model model,
+    required Sentinel sentinel,
+  }) async {
+    var messageProvider = messagesNotifierProvider(id);
+    final notifier = ref.read(messageProvider.notifier);
     await notifier.destroy(message);
-    send(message.content);
+    send(message.content, model: model, sentinel: sentinel);
   }
 
-  Future<void> send(String message) async {
+  Future<void> send(
+    String message, {
+    required Model model,
+    required Sentinel sentinel,
+  }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var messagesProvider = messagesNotifierProvider(id);
@@ -62,8 +70,7 @@ class ChatNotifier extends _$ChatNotifier {
     final prompt = await _getPrompt();
     final system = {'role': 'system', 'content': prompt};
     final histories = await ref.read(messagesProvider.future);
-    final model = await _getModel();
-    final provider = await _getProvider(model.providerId);
+    var provider = await _getProvider(model.providerId);
     try {
       final stream = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],

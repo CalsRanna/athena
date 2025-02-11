@@ -1,12 +1,21 @@
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopMessageList extends ConsumerWidget {
   final Chat? chat;
-  const DesktopMessageList({super.key, this.chat});
+  final Model model;
+  final Sentinel sentinel;
+  const DesktopMessageList({
+    super.key,
+    this.chat,
+    required this.model,
+    required this.sentinel,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,6 +49,6 @@ class DesktopMessageList extends ConsumerWidget {
   Future<void> _resend(WidgetRef ref, Message message) async {
     final provider = chatNotifierProvider(chat?.id ?? 0);
     final notifier = ref.read(provider.notifier);
-    await notifier.resend(message);
+    await notifier.resend(message, model: model, sentinel: sentinel);
   }
 }

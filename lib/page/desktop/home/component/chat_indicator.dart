@@ -32,12 +32,18 @@ class _ModelIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (model != null) return _buildData(model!);
-    var provider = modelNotifierProvider(0);
+    var provider = groupedEnabledModelsNotifierProvider;
     var state = ref.watch(provider);
     return switch (state) {
-      AsyncData(:final value) => _buildData(value),
+      AsyncData(:final value) => _buildFirstModel(value),
       _ => const SizedBox(),
     };
+  }
+
+  Widget _buildFirstModel(Map<String, List<Model>> value) {
+    var entry = value.entries.first;
+    var model = entry.value.first;
+    return _buildData(model);
   }
 
   Widget _buildData(Model model) {
