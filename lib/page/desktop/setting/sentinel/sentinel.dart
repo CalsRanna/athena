@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
-class DesktopSentinelGridPage extends StatelessWidget {
-  const DesktopSentinelGridPage({super.key});
+class DesktopSentinelPage extends StatelessWidget {
+  const DesktopSentinelPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -137,13 +137,8 @@ class _SentinelTileState extends State<_SentinelTile> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: (details) => showContextMenu(context, details),
-      onTap: () => popPageWithResult(context),
       child: container,
     );
-  }
-
-  void popPageWithResult(BuildContext context) {
-    AutoRouter.of(context).maybePop<Sentinel>(widget.sentinel);
   }
 
   void removeEntry() {
