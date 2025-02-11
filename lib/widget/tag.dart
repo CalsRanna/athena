@@ -7,7 +7,7 @@ class ATag extends StatelessWidget {
 
   const ATag({super.key, this.selected = false, required this.text})
       : padding = const EdgeInsets.symmetric(horizontal: 36, vertical: 13);
-  const ATag.extraSmall({super.key, this.selected = false, required this.text})
+  const ATag.small({super.key, this.selected = false, required this.text})
       : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 4);
 
   @override

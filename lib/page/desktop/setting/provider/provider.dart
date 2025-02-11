@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
+import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
@@ -23,16 +23,16 @@ class DesktopSettingProviderPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<DesktopSettingProviderPage> createState() =>
-      _DesktopSettingModelPageState();
+      _DesktopSettingProviderPageState();
 }
 
-class _DesktopSettingModelPageState
+class _DesktopSettingProviderPageState
     extends ConsumerState<DesktopSettingProviderPage> {
   OverlayEntry? entry;
   String model = '';
   int index = 0;
   final keyController = TextEditingController();
-  final nameController = TextEditingController();
+  final urlController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +47,15 @@ class _DesktopSettingModelPageState
     return AScaffold(body: row);
   }
 
-  void changeProvider(int index) {
+  Future<void> changeProvider(int index) async {
     setState(() {
       this.index = index;
     });
+    var provider = providerNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
+    keyController.text = providers[index].key;
+    urlController.text = providers[index].url;
   }
 
   @override
@@ -66,13 +71,18 @@ class _DesktopSettingModelPageState
     }
   }
 
-  void showModelContextMenu(TapUpDetails details, Model model) {
+  Future<void> showModelContextMenu(TapUpDetails details, Model model) async {
+    var provider = providerNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
     var contextMenu = _ModelContextMenu(
       offset: details.globalPosition - Offset(200, 50),
       onTap: removeEntry,
       model: model,
+      provider: providers[index],
     );
     entry = OverlayEntry(builder: (_) => contextMenu);
+    if (!mounted) return;
     Overlay.of(context).insert(entry!);
   }
 
@@ -114,55 +124,19 @@ class _DesktopSettingModelPageState
     await notifier.updateModel(model.value);
   }
 
-  Widget _buildModelTile(Model model) {
-    var nameTextStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    var nameText = Text(model.name, style: nameTextStyle);
-    var nameChildren = [
-      nameText,
-      SizedBox(width: 8),
-      ATag.extraSmall(text: model.value)
-    ];
-    var descriptionTextStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var descriptionText = Text(
-      'Published at 2024/12/31',
-      style: descriptionTextStyle,
-    );
-    var informationChildren = [
-      Row(children: nameChildren),
-      const SizedBox(height: 8),
-      descriptionText,
-    ];
-    var informationWidget = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: informationChildren,
-    );
-    var rowChildren = [
-      Expanded(child: informationWidget),
-      ASwitch(onChanged: (_) => toggleModel(model), value: model.enabled)
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(children: rowChildren),
-    );
-  }
-
-  Widget _buildProviderEnabledIndicator(bool enabled) {
-    if (!enabled) return const SizedBox();
-    return Container(
-      decoration: ShapeDecoration(color: Colors.green, shape: StadiumBorder()),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Text('ON', style: TextStyle(color: Colors.white, fontSize: 12)),
-    );
+  List<Widget> _buildModelListView(List<Model>? models) {
+    if (models == null) return [const SizedBox()];
+    if (models.isEmpty) return [const SizedBox()];
+    List<Widget> children = [];
+    for (var model in models) {
+      var child = _ModelTile(
+        onSecondaryTap: (details) => showModelContextMenu(details, model),
+        onToggled: () => toggleModel(model),
+        model: model,
+      );
+      children.add(child);
+    }
+    return children;
   }
 
   Widget _buildProviderListView() {
@@ -172,7 +146,7 @@ class _DesktopSettingModelPageState
     var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
     var listView = ListView.separated(
       padding: const EdgeInsets.all(12),
-      itemBuilder: (context, index) => _itemBuilder(providers[index], index),
+      itemBuilder: (context, index) => _buildProviderTile(providers, index),
       itemCount: providers.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
@@ -183,6 +157,17 @@ class _DesktopSettingModelPageState
       decoration: BoxDecoration(border: Border(right: borderSide)),
       width: 200,
       child: providers.isNotEmpty ? listView : placeholder,
+    );
+  }
+
+  Widget _buildProviderTile(List<schema.Provider> providers, int index) {
+    var provider = providers[index];
+    return DesktopMenuTile(
+      active: this.index == index,
+      label: provider.name,
+      onSecondaryTap: (details) => showProviderContextMenu(details, provider),
+      onTap: () => changeProvider(index),
+      trailing: _ProviderEnabledIndicator(provider: provider),
     );
   }
 
@@ -206,17 +191,13 @@ class _DesktopSettingModelPageState
     ];
     var keyChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
-      Expanded(child: AInput(controller: TextEditingController()))
+      Expanded(child: AInput(controller: keyController, onBlur: updateKey))
     ];
-    var urlInput = AInput(controller: TextEditingController());
     var urlChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API URL')),
-      Expanded(child: urlInput)
+      Expanded(child: AInput(controller: urlController, onBlur: updateUrl))
     ];
-    const edgeInsets = EdgeInsets.symmetric(horizontal: 12.0);
-    var checkButton = ASecondaryButton(
-      child: Padding(padding: edgeInsets, child: Text('Check')),
-    );
+    var checkButton = ASecondaryButton.small(child: Text('Check'));
     var checkChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'Connect')),
       Spacer(),
@@ -228,10 +209,14 @@ class _DesktopSettingModelPageState
       fontWeight: FontWeight.w500,
     );
     var modelText = Text('Models', style: modelTextStyle);
+    var addModelButton = ASecondaryButton.small(
+      onTap: showModelFormDialog,
+      child: Text('Add Model'),
+    );
+    var addModelChildren = [modelText, const Spacer(), addModelButton];
     var modelProvider = modelsForNotifierProvider(providers[index].id);
     var models = ref.watch(modelProvider).valueOrNull;
-    List<Widget> modelChildren = [];
-    if (models != null) modelChildren = models.map(_buildModelTile).toList();
+    var modelChildren = _buildModelListView(models);
     var tipTextStyle = TextStyle(
       color: Color(0xFFC2C2C2),
       fontSize: 12,
@@ -251,7 +236,7 @@ class _DesktopSettingModelPageState
       const SizedBox(height: 12),
       Row(children: checkChildren),
       const SizedBox(height: 24),
-      modelText,
+      Row(children: addModelChildren),
       const SizedBox(height: 4),
       ...modelChildren,
       const SizedBox(height: 12),
@@ -263,23 +248,43 @@ class _DesktopSettingModelPageState
     );
   }
 
+  Future<void> showModelFormDialog() async {
+    var provider = providerNotifierProvider;
+    var providers = await ref.read(provider.future);
+    ADialog.show(DesktopModelFormDialog(provider: providers[index]));
+  }
+
+  Future<void> updateKey() async {
+    var provider = providerNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
+    var copiedProvider = providers[index].copyWith(key: keyController.text);
+    var notifier = ref.read(provider.notifier);
+    await notifier.updateProvider(copiedProvider);
+  }
+
+  Future<void> updateUrl() async {
+    var provider = providerNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
+    var copiedProvider = providers[index].copyWith(url: urlController.text);
+    var notifier = ref.read(provider.notifier);
+    await notifier.updateProvider(copiedProvider);
+  }
+
   Future<void> _initState() async {
     var provider = providerNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     keyController.text = providers[index].key;
-    nameController.text = providers[index].name;
+    urlController.text = providers[index].url;
   }
 
-  Widget _itemBuilder(schema.Provider provider, int index) {
-    var indicator = _buildProviderEnabledIndicator(provider.enabled);
-    return DesktopMenuTile(
-      active: this.index == index,
-      label: provider.name,
-      onSecondaryTap: (details) => showProviderContextMenu(details, provider),
-      onTap: () => changeProvider(index),
-      trailing: indicator,
-    );
+  @override
+  void dispose() {
+    keyController.dispose();
+    urlController.dispose();
+    super.dispose();
   }
 }
 
@@ -287,21 +292,23 @@ class _ModelContextMenu extends StatelessWidget {
   final Offset offset;
   final Model model;
   final void Function()? onTap;
+  final schema.Provider provider;
   const _ModelContextMenu({
     required this.offset,
     required this.model,
     this.onTap,
+    required this.provider,
   });
 
   @override
   Widget build(BuildContext context) {
     var editOption = DesktopContextMenuOption(
       text: 'Edit',
-      onTap: () => navigateSentinelFormPage(context),
+      onTap: () => showModelFormDialog(context),
     );
     var deleteOption = DesktopContextMenuOption(
       text: 'Delete',
-      onTap: () => destroySentinel(context),
+      onTap: () => destroyModel(context),
     );
     return DesktopContextMenu(
       offset: offset,
@@ -310,17 +317,78 @@ class _ModelContextMenu extends StatelessWidget {
     );
   }
 
-  void destroySentinel(BuildContext context) {
+  void destroyModel(BuildContext context) {
     var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
+    var modelsProvider = modelsForNotifierProvider(provider.id);
+    var notifier = container.read(modelsProvider.notifier);
     notifier.deleteModel(model);
     onTap?.call();
   }
 
-  void navigateSentinelFormPage(BuildContext context) {
-    ADialog.show(DesktopProviderFormDialog(model: model));
+  void showModelFormDialog(BuildContext context) {
+    ADialog.show(DesktopModelFormDialog(provider: provider, model: model));
     onTap?.call();
+  }
+}
+
+class _ModelTile extends StatelessWidget {
+  final void Function(TapUpDetails)? onSecondaryTap;
+  final void Function()? onToggled;
+  final Model model;
+  const _ModelTile({this.onSecondaryTap, this.onToggled, required this.model});
+
+  @override
+  Widget build(BuildContext context) {
+    var nameTextStyle = TextStyle(
+      color: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var nameText = Text(model.name, style: nameTextStyle);
+    var nameChildren = [
+      nameText,
+      SizedBox(width: 8),
+      ATag.small(text: model.value)
+    ];
+    var descriptionTextStyle = TextStyle(
+      color: Color(0xFFE0E0E0),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var descriptionText = Text(
+      'Published at 2024/12/31',
+      style: descriptionTextStyle,
+    );
+    var informationChildren = [
+      Row(children: nameChildren),
+      const SizedBox(height: 4),
+      descriptionText,
+    ];
+    var informationWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: informationChildren,
+    );
+    var rowChildren = [
+      Expanded(child: informationWidget),
+      ASwitch(onChanged: handleChange, value: model.enabled)
+    ];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onSecondaryTapUp: onSecondaryTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(children: rowChildren),
+        ),
+      ),
+    );
+  }
+
+  void handleChange(bool value) {
+    onToggled?.call();
   }
 }
 
@@ -358,5 +426,20 @@ class _ProviderContextMenu extends StatelessWidget {
   void navigateSentinelFormPage(BuildContext context) {
     // ADialog.show(DesktopProviderFormDialog(model: model));
     // onTap?.call();
+  }
+}
+
+class _ProviderEnabledIndicator extends StatelessWidget {
+  final schema.Provider provider;
+  const _ProviderEnabledIndicator({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!provider.enabled) return const SizedBox();
+    return Container(
+      decoration: ShapeDecoration(color: Colors.green, shape: StadiumBorder()),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Text('ON', style: TextStyle(color: Colors.white, fontSize: 12)),
+    );
   }
 }

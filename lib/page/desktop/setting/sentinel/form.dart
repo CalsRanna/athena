@@ -232,6 +232,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       style: TextStyle(color: Colors.white),
     );
     return Container(
+      alignment: Alignment.center,
       decoration: boxDecoration,
       width: double.infinity,
       child: tags.isEmpty ? Center(child: placeholder) : wrap,

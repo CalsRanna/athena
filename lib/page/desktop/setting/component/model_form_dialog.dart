@@ -1,4 +1,5 @@
-import 'package:athena/provider/provider.dart';
+import 'package:athena/provider/model.dart';
+import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -8,18 +9,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopProviderFormDialog extends StatefulWidget {
-  const DesktopProviderFormDialog({super.key});
+class DesktopModelFormDialog extends StatefulWidget {
+  final Model? model;
+  final schema.Provider provider;
+  const DesktopModelFormDialog({super.key, required this.provider, this.model});
 
   @override
-  State<DesktopProviderFormDialog> createState() =>
-      _DesktopProviderFormDialogState();
+  State<DesktopModelFormDialog> createState() => _DesktopModelFormDialogState();
 }
 
-class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
-  final keyController = TextEditingController();
+class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   final nameController = TextEditingController();
-  final urlController = TextEditingController();
+  final valueController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -43,33 +44,26 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       child: icon,
     );
     var titleChildren = [
-      Text('Add Provider', style: titleTextStyle),
+      Text('Add Model', style: titleTextStyle),
       Spacer(),
       closeButton,
     ];
+    var valueChildren = [
+      SizedBox(width: 120, child: AFormTileLabel(title: 'Id')),
+      const SizedBox(width: 12),
+      Expanded(child: AInput(controller: valueController))
+    ];
     var nameChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Name')),
+      SizedBox(width: 120, child: AFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: nameController))
-    ];
-    var keyChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
-      const SizedBox(width: 12),
-      Expanded(child: AInput(controller: urlController))
-    ];
-    var urlChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Url')),
-      const SizedBox(width: 12),
-      Expanded(child: AInput(controller: urlController))
+      Expanded(child: AInput(controller: valueController))
     ];
     var children = [
       Row(children: titleChildren),
       const SizedBox(height: 24),
+      Row(children: valueChildren),
+      const SizedBox(height: 12),
       Row(children: nameChildren),
-      const SizedBox(height: 12),
-      Row(children: keyChildren),
-      const SizedBox(height: 12),
-      Row(children: urlChildren),
       const SizedBox(height: 12),
       _buildButtons()
     ];
@@ -95,22 +89,36 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
 
   @override
   void dispose() {
-    keyController.dispose();
+    valueController.dispose();
     nameController.dispose();
-    urlController.dispose();
     super.dispose();
   }
 
-  Future<void> storeProvider() async {
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.model?.name ?? '';
+    valueController.text = widget.model?.value ?? '';
+  }
+
+  Future<void> storeModel() async {
     var container = ProviderScope.containerOf(context);
-    var provider = providerNotifierProvider;
+    var provider = modelsForNotifierProvider(widget.provider.id);
     var notifier = container.read(provider.notifier);
-    var newProvider = schema.Provider()
-      ..enabled = false
-      ..key = keyController.text
-      ..name = nameController.text
-      ..url = urlController.text;
-    await notifier.store(newProvider);
+    if (widget.model == null) {
+      var newModel = Model()
+        ..enabled = false
+        ..name = nameController.text
+        ..value = valueController.text
+        ..providerId = widget.provider.id;
+      await notifier.storeModel(newModel);
+    } else {
+      var copiedModel = widget.model!.copyWith(
+        name: nameController.text,
+        value: valueController.text,
+      );
+      await notifier.updateModel(copiedModel);
+    }
     ADialog.dismiss();
   }
 
@@ -121,7 +129,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       child: Padding(padding: edgeInsets, child: Text('Cancel')),
     );
     var storeButton = APrimaryButton(
-      onTap: storeProvider,
+      onTap: storeModel,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
     var children = [
