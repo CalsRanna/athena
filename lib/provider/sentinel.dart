@@ -1,7 +1,9 @@
 import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/isar.dart';
+import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -25,8 +27,10 @@ class SentinelNotifier extends _$SentinelNotifier {
     return await ref.watch(defaultSentinelNotifierProvider.future);
   }
 
-  Future<Sentinel> generate(String prompt, {required String model}) async {
-    return SentinelApi().generate(prompt, model: model);
+  Future<Sentinel> generate(String prompt, {required Model model}) async {
+    var provider = providerNotifierProvider(model.id);
+    var aiProvider = await ref.watch(provider.future);
+    return SentinelApi().generate(prompt, model: model, provider: aiProvider);
   }
 
   void select(Sentinel sentinel, {bool invalidate = true}) {

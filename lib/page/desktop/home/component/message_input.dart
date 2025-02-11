@@ -82,17 +82,34 @@ class _Dialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(modelsNotifierProvider);
+    final state = ref.watch(groupedEnabledModelsNotifierProvider);
     var child = switch (state) {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
     return ACard(child: child);
+    // return ACard(child: SizedBox());
   }
 
-  Widget _buildData(List<Model> models) {
+  Widget _buildData(Map<String, List<Model>> models) {
     if (models.isEmpty) return const SizedBox();
-    var children = models.map((model) => _itemBuilder(model)).toList();
+    var titleTextStyle = TextStyle(
+      color: Colors.black.withValues(alpha: 0.5),
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    List<Widget> children = [];
+    for (var entry in models.entries) {
+      var title = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(entry.key, style: titleTextStyle),
+      );
+      children.add(title);
+      var modelWidgets =
+          entry.value.map((model) => _itemBuilder(model)).toList();
+      children.addAll(modelWidgets);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,

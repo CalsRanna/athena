@@ -100,11 +100,11 @@ class _DesktopSettingAccountPageState
     var container = ProviderScope.containerOf(context);
     var provider = settingNotifierProvider;
     var notifier = container.read(provider.notifier);
-    var message = await notifier.connect();
+    // var message = await notifier.connect();
     setState(() {
       loading = false;
     });
-    ADialog.message(message);
+    // ADialog.message(message);
   }
 
   void storeSetting() {

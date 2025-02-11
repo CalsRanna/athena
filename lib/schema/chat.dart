@@ -6,10 +6,10 @@ part 'chat.g.dart';
 @Name('chats')
 class Chat {
   Id id = Isar.autoIncrement;
-  String model = '';
+  String title = '';
+  int modelId = 0;
   @Name('sentinel_id')
   int sentinelId = 0;
-  String title = '';
   @Name('created_at')
   DateTime createdAt = DateTime.now();
   @Name('updated_at')
@@ -17,17 +17,17 @@ class Chat {
 
   Chat copyWith({
     int? id,
-    String? model,
     String? title,
+    int? modelId,
     int? sentinelId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return Chat()
       ..id = id ?? this.id
-      ..model = model ?? this.model
-      ..sentinelId = sentinelId ?? this.sentinelId
       ..title = title ?? this.title
+      ..modelId = modelId ?? this.modelId
+      ..sentinelId = sentinelId ?? this.sentinelId
       ..createdAt = createdAt ?? this.createdAt
       ..updatedAt = updatedAt ?? this.updatedAt;
   }
@@ -60,35 +60,5 @@ class Message {
   @override
   String toString() {
     return toJson().toString();
-  }
-}
-
-@collection
-@Name('sentinels')
-class Sentinel {
-  Id id = Isar.autoIncrement;
-  String avatar = '';
-  String name = '';
-  String description = '';
-  String prompt = '';
-  List<String> tags = [];
-
-  Sentinel();
-
-  Sentinel copyWith({
-    int? id,
-    String? avatar,
-    String? name,
-    String? description,
-    String? prompt,
-    List<String>? tags,
-  }) {
-    return Sentinel()
-      ..id = id ?? this.id
-      ..avatar = avatar ?? this.avatar
-      ..name = name ?? this.name
-      ..description = description ?? this.description
-      ..prompt = prompt ?? this.prompt
-      ..tags = tags ?? this.tags;
   }
 }

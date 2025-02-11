@@ -1,7 +1,7 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,7 +32,7 @@ class _ModelIndicator extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (model != null) return _buildData(model!);
-    var provider = modelNotifierProvider('');
+    var provider = modelNotifierProvider(0);
     var state = ref.watch(provider);
     return switch (state) {
       AsyncData(:final value) => _buildData(value),

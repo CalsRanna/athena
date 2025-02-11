@@ -1,6 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';

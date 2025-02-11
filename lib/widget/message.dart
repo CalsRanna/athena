@@ -1,5 +1,6 @@
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

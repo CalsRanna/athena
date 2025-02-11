@@ -5,6 +5,7 @@ import 'package:athena/provider/model.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/message.dart';
@@ -69,12 +70,13 @@ class _ActionDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = modelsNotifierProvider;
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(context, ref, value),
-      _ => const SizedBox(),
-    };
+    // var provider = modelsNotifierProvider;
+    // var state = ref.watch(provider);
+    // return switch (state) {
+    //   AsyncData(:final value) => _buildData(context, ref, value),
+    //   _ => const SizedBox(),
+    // };
+    return SizedBox();
   }
 
   void changeModel(Model model) {
@@ -116,9 +118,7 @@ class _ModelTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = modelNotifierProvider(modelOfChat?.value ?? '');
-    var realModelOfChat = ref.watch(provider).valueOrNull;
-    var selected = realModelOfChat?.value == model.value;
+    var selected = modelOfChat?.id == model.id;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -279,7 +279,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var container = ProviderScope.containerOf(context);
     var provider = chatNotifierProvider(id!);
     var notifier = container.read(provider.notifier);
-    notifier.updateModel(model.value);
+    notifier.updateModel(model);
   }
 
   @override
@@ -296,8 +296,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> _initModel() async {
-    var value = widget.chat?.model ?? '';
-    var model = await isar.models.filter().valueEqualTo(value).findFirst();
+    var model = await isar.models
+        .filter()
+        .idEqualTo(widget.chat?.modelId ?? 0)
+        .findFirst();
     setState(() {
       this.model = model;
     });

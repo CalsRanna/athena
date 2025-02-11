@@ -34,6 +34,7 @@ class _ATileState extends State<ATile> {
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
       child: MouseRegion(
+        cursor: SystemMouseCursors.click,
         onEnter: handleEnter,
         onExit: handleExit,
         child: Container(

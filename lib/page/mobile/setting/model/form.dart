@@ -81,28 +81,28 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   }
 
   Future<void> _store() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    var model = Model()
-      ..name = nameController.text
-      ..value = valueController.text;
-    await notifier.storeModel(model);
-    if (!mounted) return;
-    AutoRouter.of(context).maybePop();
+    // var container = ProviderScope.containerOf(context);
+    // var provider = modelsNotifierProvider;
+    // var notifier = container.read(provider.notifier);
+    // var model = Model()
+    //   ..name = nameController.text
+    //   ..value = valueController.text;
+    // await notifier.storeModel(model);
+    // if (!mounted) return;
+    // AutoRouter.of(context).maybePop();
   }
 
   Future<void> _update() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    var model = widget.model!.copyWith(
-      name: nameController.text,
-      value: valueController.text,
-    );
-    await notifier.updateModel(model);
-    if (!mounted) return;
-    AutoRouter.of(context).maybePop();
+    // var container = ProviderScope.containerOf(context);
+    // var provider = modelsNotifierProvider;
+    // var notifier = container.read(provider.notifier);
+    // var model = widget.model!.copyWith(
+    //   name: nameController.text,
+    //   value: valueController.text,
+    // );
+    // await notifier.updateModel(model);
+    // if (!mounted) return;
+    // AutoRouter.of(context).maybePop();
   }
 
   String? _validate() {

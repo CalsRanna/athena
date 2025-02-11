@@ -51,7 +51,7 @@ class _DesktopSettingProviderPageState
     setState(() {
       this.index = index;
     });
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     keyController.text = providers[index].key;
@@ -72,7 +72,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> showModelContextMenu(TapUpDetails details, Model model) async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var contextMenu = _ModelContextMenu(
@@ -97,7 +97,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> toggleModel(Model model) async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = ref.watch(provider).valueOrNull;
     if (providers == null) return;
     var modelProvider = modelsForNotifierProvider(providers[index].id);
@@ -106,7 +106,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> toggleProvider(bool value) async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.watch(provider.future);
     if (providers.isEmpty) return;
     var notifier = ref.read(provider.notifier);
@@ -140,7 +140,7 @@ class _DesktopSettingProviderPageState
   }
 
   Widget _buildProviderListView() {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = ref.watch(provider).valueOrNull;
     if (providers == null) return const SizedBox();
     var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
@@ -172,7 +172,7 @@ class _DesktopSettingProviderPageState
   }
 
   Widget _buildProviderView() {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = ref.watch(provider).valueOrNull;
     if (providers == null) return const SizedBox();
     if (providers.isEmpty) return const SizedBox();
@@ -249,13 +249,13 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> showModelFormDialog() async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     ADialog.show(DesktopModelFormDialog(provider: providers[index]));
   }
 
   Future<void> updateKey() async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(key: keyController.text);
@@ -264,7 +264,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> updateUrl() async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(url: urlController.text);
@@ -273,7 +273,7 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> _initState() async {
-    var provider = providerNotifierProvider;
+    var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     keyController.text = providers[index].key;

@@ -18,12 +18,13 @@ class MobileModelListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = modelsNotifierProvider;
-    var state = ref.watch(provider);
-    var listView = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+    // var provider = modelsNotifierProvider;
+    // var state = ref.watch(provider);
+    // var listView = switch (state) {
+    //   AsyncData(:final value) => _buildData(value),
+    //   _ => const SizedBox(),
+    // };
+    var listView = SizedBox();
     return AScaffold(
       appBar: const AAppBar(title: Text('Model')),
       body: Stack(children: [listView, _buildCreateButton(context)]),
@@ -132,12 +133,12 @@ class _ActionDialog extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = modelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.deleteModel(model);
-    ADialog.dismiss();
-    ADialog.success('Model deleted successfully');
+    // var container = ProviderScope.containerOf(context);
+    // var provider = modelsNotifierProvider;
+    // var notifier = container.read(provider.notifier);
+    // notifier.deleteModel(model);
+    // ADialog.dismiss();
+    // ADialog.success('Model deleted successfully');
   }
 
   void _showDeleteConfirmDialog(BuildContext context) {

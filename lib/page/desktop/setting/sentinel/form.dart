@@ -1,7 +1,7 @@
 import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/provider/setting.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -24,8 +24,6 @@ class DesktopSentinelFormPage extends StatefulWidget {
 
 class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
   String avatar = '';
-  String name = '';
-  String description = '';
   List<String> tags = [];
 
   final promptController = TextEditingController();
@@ -65,11 +63,11 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       var sentinelApi = SentinelApi();
       var text = promptController.text;
       var model = setting.model;
-      final sentinel = await sentinelApi.generate(text, model: model);
-      nameController.text = sentinel.name;
-      descriptionController.text = sentinel.description;
-      avatar = sentinel.avatar;
-      tags = sentinel.tags;
+      // final sentinel = await sentinelApi.generate(text, model: model);
+      // nameController.text = sentinel.name;
+      // descriptionController.text = sentinel.description;
+      // avatar = sentinel.avatar;
+      // tags = sentinel.tags;
       loading = false;
       setState(() {});
     } catch (error) {
