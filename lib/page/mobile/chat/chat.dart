@@ -232,7 +232,7 @@ class _MessageListView extends ConsumerWidget {
   Future<void> _resend(WidgetRef ref, Message message) async {
     final provider = chatNotifierProvider(chatId);
     final notifier = ref.read(provider.notifier);
-    await notifier.resend(message);
+    // await notifier.resend(message);
   }
 }
 
@@ -320,7 +320,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       var provider = chatNotifierProvider(id!);
       var notifier = ref.read(provider.notifier);
-      notifier.send(text);
+      // notifier.send(text);
     });
   }
 }
