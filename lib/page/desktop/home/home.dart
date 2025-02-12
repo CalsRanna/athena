@@ -125,7 +125,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
         this.chat = chat;
       });
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       var text = controller.text.trim();
       if (text.isEmpty) return;
       viewModel.sendMessage(
@@ -135,6 +135,16 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
         sentinel: sentinel!,
       );
       controller.clear();
+      if (chat!.title.isEmpty || chat!.title == 'New Chat') {
+        var title = await viewModel.generateChatTitle(
+          text,
+          chat: chat!,
+          model: model!,
+        );
+        setState(() {
+          chat = chat!.copyWith(title: title);
+        });
+      }
     });
   }
 

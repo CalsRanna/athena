@@ -7,12 +7,12 @@ import 'package:athena/view_model/view_model.dart';
 import 'package:isar/isar.dart';
 
 class SentinelViewModel extends ViewModel {
-  SentinelViewModel(super.ref);
+  SentinelViewModel();
 
-  Future<Sentinel?> generateSentinel(
-    String prompt, {
-    required Model model,
-  }) async {
+  Future<Sentinel?> generateSentinel(String prompt) async {
+    var models = await isar.models.filter().enabledEqualTo(true).findAll();
+    if (models.isEmpty) return null;
+    var model = models.last;
     var builder = isar.providers.where().idEqualTo(model.providerId);
     var provider = await builder.findFirst();
     if (provider == null) return null;

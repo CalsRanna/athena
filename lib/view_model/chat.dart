@@ -10,10 +10,12 @@ import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 
 class ChatViewModel extends ViewModel {
-  ChatViewModel(super.ref);
+  final WidgetRef ref;
+  ChatViewModel(this.ref);
 
   bool get streaming => ref.read(streamingNotifierProvider);
 
@@ -32,6 +34,7 @@ class ChatViewModel extends ViewModel {
       chat.id = await isar.chats.put(chat);
     });
     ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
     return chat;
   }
 
@@ -42,6 +45,39 @@ class ChatViewModel extends ViewModel {
     });
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
+  }
+
+  Future<String?> generateChatTitle(
+    String text, {
+    required Chat chat,
+    required Model model,
+  }) async {
+    var provider = providerNotifierProvider(model.providerId);
+    var aiProvider = await ref.read(provider.future);
+    if (chat.title.isNotEmpty && chat.title != 'New Chat') return null;
+    var title = '';
+    try {
+      final titleTokens = ChatApi().getTitle(
+        text,
+        model: model,
+        provider: aiProvider,
+      );
+      await for (final token in titleTokens) {
+        title += token;
+      }
+    } catch (error) {
+      title = '';
+    }
+    var copiedChat = chat.copyWith(
+      title: title.trim(),
+      updatedAt: DateTime.now(),
+    );
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+    return title;
   }
 
   Future<Chat?> getFirstChat() async {
@@ -172,28 +208,5 @@ class ChatViewModel extends ViewModel {
       messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
-    if (chat.title.isNotEmpty && chat.title != 'New Chat') return;
-    var title = '';
-    try {
-      final titleTokens = ChatApi().getTitle(
-        text,
-        model: model,
-        provider: aiProvider,
-      );
-      await for (final token in titleTokens) {
-        title += token;
-      }
-    } catch (error) {
-      title = '';
-    }
-    var copiedChat = chat.copyWith(
-      title: title.trim(),
-      updatedAt: DateTime.now(),
-    );
-    await isar.writeTxn(() async {
-      await isar.chats.put(copiedChat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
   }
 }

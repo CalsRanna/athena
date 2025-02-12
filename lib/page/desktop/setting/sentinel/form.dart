@@ -1,7 +1,6 @@
-import 'package:athena/api/sentinel.dart';
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -58,13 +57,18 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       loading = true;
     });
     try {
-      // final sentinel = await sentinelApi.generate(text, model: model);
-      // nameController.text = sentinel.name;
-      // descriptionController.text = sentinel.description;
-      // avatar = sentinel.avatar;
-      // tags = sentinel.tags;
-      // loading = false;
-      // setState(() {});
+      final sentinel =
+          await SentinelViewModel().generateSentinel(promptController.text);
+      if (sentinel == null) {
+        loading = false;
+        return;
+      }
+      nameController.text = sentinel.name;
+      descriptionController.text = sentinel.description;
+      avatar = sentinel.avatar;
+      tags = sentinel.tags;
+      loading = false;
+      setState(() {});
     } catch (error) {
       loading = false;
       setState(() {});
@@ -150,22 +154,8 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       _buildDescriptionInput(),
       const SizedBox(height: 12),
       _buildButtons(),
-      const SizedBox(height: 12),
-      if (loading) _buildLoadingIndicator(),
     ];
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildLoadingIndicator() {
-    var children = [
-      CircularProgressIndicator(color: Colors.white),
-      const SizedBox(width: 12),
-      Text('Generating...', style: TextStyle(color: Colors.white)),
-    ];
-    return Row(children: children);
+    return Column(children: children);
   }
 
   Widget _buildNameInput() {
@@ -191,10 +181,23 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       maxLines: null,
       style: const TextStyle(color: Colors.white),
     );
+    var sizedBox = SizedBox(
+      height: 16,
+      width: 16,
+      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+    );
+    var generateChildren = [
+      if (loading) sizedBox,
+      ATextButton(text: 'Generate', onTap: generate),
+    ];
+    var generateButton = Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: generateChildren,
+    );
     var children = [
       Expanded(child: promptTextField),
       const SizedBox(height: 16),
-      ATextButton(text: 'Generate', onTap: generate),
+      generateButton,
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.end,

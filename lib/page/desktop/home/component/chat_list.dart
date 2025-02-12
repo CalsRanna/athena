@@ -47,6 +47,7 @@ class DesktopChatListView extends ConsumerWidget {
       active: active,
       chat: chat,
       onDestroyed: onDestroyed,
+      onRenamed: () {},
       onTap: () => selectChat(chat),
     );
   }
@@ -60,11 +61,13 @@ class _ChatTile extends StatefulWidget {
   final bool active;
   final Chat chat;
   final void Function()? onDestroyed;
+  final void Function()? onRenamed;
   final void Function()? onTap;
   const _ChatTile({
     this.active = false,
     required this.chat,
     this.onDestroyed,
+    this.onRenamed,
     this.onTap,
   });
 
@@ -111,6 +114,7 @@ class _ChatTileState extends State<_ChatTile> {
     var contextMenu = DesktopChatContextMenu(
       chat: widget.chat,
       onDestroyed: handleDestroy,
+      onRenamed: handleRename,
     );
     var children = [
       const SizedBox.expand(),
@@ -118,15 +122,24 @@ class _ChatTileState extends State<_ChatTile> {
     ];
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: handleDestroy,
+      onTap: removeEntry,
       child: Stack(children: children),
     );
     entry = OverlayEntry(builder: (context) => gestureDetector);
     Overlay.of(context).insert(entry!);
   }
 
+  void removeEntry() {
+    entry?.remove();
+  }
+
   void handleDestroy() {
     entry?.remove();
     widget.onDestroyed?.call();
+  }
+
+  void handleRename() {
+    entry?.remove();
+    widget.onRenamed?.call();
   }
 }

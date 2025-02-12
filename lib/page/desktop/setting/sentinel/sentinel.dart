@@ -106,16 +106,7 @@ class _SentinelTileState extends State<_SentinelTile> {
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    const descriptionTextStyle = TextStyle(
-      color: Color(0xFF616161),
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var descriptionText = Text(
-      widget.sentinel.description,
-      style: descriptionTextStyle,
-    );
+    var descriptionText = LayoutBuilder(builder: _buildDescriptionText);
     var children = [
       Text(widget.sentinel.name, style: nameTextStyle),
       const SizedBox(height: 4),
@@ -138,6 +129,25 @@ class _SentinelTileState extends State<_SentinelTile> {
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: (details) => showContextMenu(context, details),
       child: container,
+    );
+  }
+
+  Widget _buildDescriptionText(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    const descriptionTextStyle = TextStyle(
+      color: Color(0xFF616161),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var maxLines = constraints.maxHeight ~/ 18;
+    return Text(
+      widget.sentinel.description,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+      style: descriptionTextStyle,
     );
   }
 
