@@ -3,14 +3,10 @@ import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/model.dart';
-import 'package:athena/provider/sentinel.dart';
-import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -18,7 +14,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:isar/isar.dart';
 
 @RoutePage()
 class DesktopHomePage extends ConsumerStatefulWidget {
@@ -33,43 +28,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Model? model;
   Sentinel? sentinel;
 
-  @override
-  void initState() {
-    super.initState();
-    _initChat();
-    _initModel();
-    _initSentinel();
-  }
-
-  Future<void> _initChat() async {
-    var provider = chatsNotifierProvider;
-    var chats = await ref.read(provider.future);
-    if (chats.isEmpty) return;
-    setState(() {
-      chat = chats.first;
-    });
-  }
-
-  Future<void> _initModel() async {
-    var provider = groupedEnabledModelsNotifierProvider;
-    var result = await ref.read(provider.future);
-    if (result.isEmpty) return;
-    var entry = result.entries.first;
-    var models = entry.value;
-    if (models.isEmpty) return;
-    setState(() {
-      model = models.first;
-    });
-  }
-
-  Future<void> _initSentinel() async {
-    var provider = sentinelsNotifierProvider;
-    var sentinels = await ref.read(provider.future);
-    if (sentinels.isEmpty) return;
-    setState(() {
-      sentinel = sentinels.first;
-    });
-  }
+  late final viewModel = ChatViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -78,13 +37,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> changeChat(Chat chat) async {
-    var streaming = ref.read(streamingNotifierProvider);
-    if (streaming) {
+    if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
     }
-    var model = await isar.models.filter().idEqualTo(chat.modelId).findFirst();
-    var sentinel =
-        await isar.sentinels.filter().idEqualTo(chat.sentinelId).findFirst();
+    var model = await viewModel.getModel(chat.modelId);
+    var sentinel = await viewModel.getSentinel(chat.sentinelId);
     setState(() {
       this.chat = chat;
       this.model = model;
@@ -92,39 +49,37 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
-  void changeModel(Model model) {
-    var streaming = ref.read(streamingNotifierProvider);
-    if (streaming) {
+  Future<void> changeModel(Model model) async {
+    if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
     }
     setState(() {
       this.model = model;
     });
-    if (chat == null) return;
-    var container = ProviderScope.containerOf(context);
-    var provider = chatNotifierProvider(chat!.id);
-    var notifier = container.read(provider.notifier);
-    notifier.updateModel(model);
+    if (this.chat == null) return;
+    var chat = await viewModel.selectModel(model, chat: this.chat!);
+    setState(() {
+      this.chat = chat;
+    });
   }
 
   void changeSentinel(Sentinel sentinel) {
-    var streaming = ref.read(streamingNotifierProvider);
-    if (streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
-    }
-    setState(() {
-      this.sentinel = sentinel;
-    });
-    if (chat == null) return;
-    var container = ProviderScope.containerOf(context);
-    var provider = chatNotifierProvider(chat!.id);
-    var notifier = container.read(provider.notifier);
-    notifier.updateSentinel(sentinel);
+    // var streaming = ref.read(streamingNotifierProvider);
+    // if (streaming) {
+    //   return ADialog.message('Please wait for the current chat to finish.');
+    // }
+    // setState(() {
+    //   this.sentinel = sentinel;
+    // });
+    // if (chat == null) return;
+    // var container = ProviderScope.containerOf(context);
+    // var provider = chatNotifierProvider(chat!.id);
+    // var notifier = container.read(provider.notifier);
+    // notifier.updateSentinel(sentinel);
   }
 
   Future<void> createChat() async {
-    var streaming = ref.read(streamingNotifierProvider);
-    if (streaming) {
+    if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
     }
     setState(() {
@@ -134,34 +89,34 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     _initSentinel();
   }
 
-  void destroyChat() {
-    setState(() {
-      chat = null;
-    });
+  Future<void> destroyChat() async {
+    await viewModel.destroyChat(chat!);
+    _initChat();
     _initModel();
     _initSentinel();
   }
 
-  void navigateSetting(BuildContext context) {
-    DesktopSettingAccountRoute().push(context);
+  @override
+  void initState() {
+    super.initState();
+    _initState();
   }
 
-  Future<void> submit(String text) async {
+  Future<void> sendMessage(String text) async {
     if (model == null || sentinel == null) return;
     if (chat == null) {
-      var container = ProviderScope.containerOf(context);
-      var provider = chatNotifierProvider(chat?.id ?? 0);
-      var notifier = container.read(provider.notifier);
-      var chatId = await notifier.create(model: model!, sentinel: sentinel!);
+      var chat = await viewModel.createChat(model: model!, sentinel: sentinel!);
       setState(() {
-        chat = Chat()..id = chatId;
+        this.chat = chat;
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      var container = ProviderScope.containerOf(context);
-      var provider = chatNotifierProvider(chat!.id);
-      var notifier = container.read(provider.notifier);
-      notifier.send(text, model: model!, sentinel: sentinel!);
+      viewModel.sendMessage(
+        text,
+        chat: chat!,
+        model: model!,
+        sentinel: sentinel!,
+      );
     });
   }
 
@@ -207,7 +162,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     ];
     var children = [
       Expanded(child: Stack(children: stackChildren)),
-      DesktopMessageInput(onModelChanged: changeModel, onSubmitted: submit)
+      DesktopMessageInput(onModelChanged: changeModel, onSubmitted: sendMessage)
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -218,8 +173,44 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Widget _buildSettingButton() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => navigateSetting(context),
+      onTap: () => viewModel.navigateSettingPage(context),
       child: const Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white),
     );
+  }
+
+  Future<void> _initChat() async {
+    var chat = await viewModel.getFirstChat();
+    setState(() {
+      this.chat = chat;
+    });
+  }
+
+  Future<void> _initModel() async {
+    var model = await viewModel.getFirstEnabledModel();
+    setState(() {
+      this.model = model;
+    });
+  }
+
+  Future<void> _initSentinel() async {
+    var sentinel = await viewModel.getFirstSentinel();
+    setState(() {
+      this.sentinel = sentinel;
+    });
+  }
+
+  Future<void> _initState() async {
+    await _initChat();
+    if (chat != null) {
+      var model = await viewModel.getModel(chat!.modelId);
+      var sentinel = await viewModel.getSentinel(chat!.sentinelId);
+      setState(() {
+        this.model = model;
+        this.sentinel = sentinel;
+      });
+    } else {
+      _initModel();
+      _initSentinel();
+    }
   }
 }

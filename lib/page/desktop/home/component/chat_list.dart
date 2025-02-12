@@ -1,6 +1,6 @@
+import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/widget/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -108,14 +108,17 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
 
   void handleSecondaryTap(BuildContext context, TapUpDetails details) {
     final position = details.globalPosition;
-    var contextMenu = ContextMenu(chat: widget.chat, onTap: removeEntry);
+    var contextMenu = DesktopChatContextMenu(
+      chat: widget.chat,
+      onDestroyed: handleDestroy,
+    );
     var children = [
       const SizedBox.expand(),
       Positioned(left: position.dx, top: position.dy, child: contextMenu),
     ];
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: removeEntry,
+      onTap: handleDestroy,
       child: Stack(children: children),
     );
     entry = OverlayEntry(builder: (context) => gestureDetector);
@@ -126,7 +129,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
     widget.onTap?.call();
   }
 
-  void removeEntry() {
+  void handleDestroy() {
     entry?.remove();
     widget.onDestroyed?.call();
   }
