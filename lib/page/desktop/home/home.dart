@@ -147,11 +147,12 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> submit(String text) async {
+    if (model == null || sentinel == null) return;
     if (chat == null) {
       var container = ProviderScope.containerOf(context);
       var provider = chatNotifierProvider(chat?.id ?? 0);
       var notifier = container.read(provider.notifier);
-      var chatId = await notifier.create(model: model, sentinel: sentinel);
+      var chatId = await notifier.create(model: model!, sentinel: sentinel!);
       setState(() {
         chat = Chat()..id = chatId;
       });

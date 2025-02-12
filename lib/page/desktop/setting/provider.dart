@@ -103,6 +103,7 @@ class _DesktopSettingProviderPageState
     var modelProvider = modelsForNotifierProvider(providers[index].id);
     var notifier = ref.read(modelProvider.notifier);
     await notifier.toggleModel(model);
+    ref.invalidate(groupedEnabledModelsNotifierProvider);
   }
 
   Future<void> toggleProvider(bool value) async {

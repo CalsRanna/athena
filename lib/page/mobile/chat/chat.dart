@@ -309,14 +309,14 @@ class _MobileChatPageState extends State<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
-    if (id == null) {
-      var provider = chatNotifierProvider(widget.chat?.id ?? 0);
-      var notifier = ref.read(provider.notifier);
-      var chatId = await notifier.create(sentinel: widget.sentinel);
-      setState(() {
-        id = chatId;
-      });
-    }
+    // if (id == null) {
+    //   var provider = chatNotifierProvider(widget.chat?.id ?? 0);
+    //   var notifier = ref.read(provider.notifier);
+    //   var chatId = await notifier.create(sentinel: widget.sentinel);
+    //   setState(() {
+    //     id = chatId;
+    //   });
+    // }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       var provider = chatNotifierProvider(id!);
       var notifier = ref.read(provider.notifier);
