@@ -19,6 +19,10 @@ class DesktopSettingPage extends StatefulWidget {
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   int index = 0;
 
+  final _icons = [
+    HugeIcons.strokeRoundedPowerService,
+    HugeIcons.strokeRoundedArtificialIntelligence03,
+  ];
   final _menus = ['Provider', 'Sentinel'];
 
   @override
@@ -92,6 +96,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     return DesktopMenuTile(
       active: this.index == index,
       label: _menus[index],
+      leading: Icon(_icons[index]),
       onTap: () => changeMenu(index),
     );
   }
