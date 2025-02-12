@@ -28,21 +28,17 @@ class ChatNotifier extends _$ChatNotifier {
       ..sentinelId = sentinel.id;
   }
 
-  Future<int> create({Model? model, Sentinel? sentinel}) async {
-    var modelProvider = modelNotifierProvider(model?.id ?? 0);
-    var wrappedModel = await ref.read(modelProvider.future);
-    var sentinelProvider = sentinelNotifierProvider(sentinel?.id ?? 0);
-    var wrappedSentinel = await ref.read(sentinelProvider.future);
-    var previousState = await future;
-    var chat = previousState.copyWith(
-      modelId: wrappedModel.id,
-      sentinelId: wrappedSentinel.id,
-      updatedAt: DateTime.now(),
-    );
+  Future<int> create({required Model model, required Sentinel sentinel}) async {
+    var chat = Chat()
+      ..modelId = model.id
+      ..sentinelId = sentinel.id
+      ..createdAt = DateTime.now()
+      ..updatedAt = DateTime.now();
     await isar.writeTxn(() async {
       chat.id = await isar.chats.put(chat);
     });
     state = AsyncData(chat.copyWith(id: chat.id));
+    ref.invalidate(chatsNotifierProvider);
     return chat.id;
   }
 
