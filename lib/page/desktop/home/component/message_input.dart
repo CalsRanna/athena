@@ -1,6 +1,8 @@
-import 'package:athena/page/desktop/home/component/model_select_dialog.dart';
+import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,49 +11,41 @@ import 'package:hugeicons/hugeicons.dart';
 class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function(Model)? onModelChanged;
+  final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
   const DesktopMessageInput({
     super.key,
     required this.controller,
     this.onModelChanged,
+    this.onSentinelChanged,
     this.onSubmitted,
   });
 
   @override
   Widget build(BuildContext context) {
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
-    var children = [
-      _buildToolbar(),
-      const SizedBox(height: 12),
-      _buildInput(),
+    var toolbarChildren = [
+      DesktopSentinelSelector(onSelected: onSentinelChanged),
+      DesktopModelSelector(onSelected: onModelChanged),
+      Icon(HugeIcons.strokeRoundedTemperature),
+      Icon(HugeIcons.strokeRoundedImage01),
     ];
-    return Container(
-      decoration: BoxDecoration(border: Border(top: borderSide)),
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      child: Column(children: children),
+    var toolbar = IconTheme.merge(
+      data: IconThemeData(color: Color(0xFF616161)),
+      child: Row(spacing: 12, children: toolbarChildren),
     );
-  }
-
-  Widget _buildInput() {
     var input = _Input(controller: controller, onSubmitted: onSubmitted);
-    var children = [
+    var inputChildren = [
       Expanded(child: input),
       const SizedBox(width: 8),
       _SendButton(onTap: onSubmitted)
     ];
-    return Row(children: children);
-  }
-
-  Widget _buildToolbar() {
-    var children = [
-      Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
-      _ModelSelector(onSelected: onModelChanged),
-      Icon(HugeIcons.strokeRoundedTemperature),
-      Icon(HugeIcons.strokeRoundedImage01),
-    ];
-    return IconTheme.merge(
-      data: IconThemeData(color: Color(0xFF616161)),
-      child: Row(spacing: 12, children: children),
+    var inputRow = Row(children: inputChildren);
+    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var children = [toolbar, const SizedBox(height: 12), inputRow];
+    return Container(
+      decoration: BoxDecoration(border: Border(top: borderSide)),
+      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: Column(children: children),
     );
   }
 }
@@ -133,65 +127,6 @@ class _InputState extends State<_Input> {
       LogicalKeyboardKey.metaRight,
     ];
     return modifierKeys.contains(event.logicalKey);
-  }
-}
-
-class _ModelSelector extends StatefulWidget {
-  final void Function(Model)? onSelected;
-  const _ModelSelector({this.onSelected});
-
-  @override
-  State<_ModelSelector> createState() => _ModelSelectorState();
-}
-
-class _ModelSelectorState extends State<_ModelSelector> {
-  OverlayEntry? entry;
-  final link = LayerLink();
-  @override
-  Widget build(BuildContext context) {
-    var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedAiBrain01,
-      color: Color(0xFF616161),
-      size: 24,
-    );
-    var compositedTransformTarget = CompositedTransformTarget(
-      link: link,
-      child: hugeIcon,
-    );
-    return GestureDetector(
-      onTap: handleTap,
-      child: compositedTransformTarget,
-    );
-  }
-
-  void changeModel(Model model) {
-    entry?.remove();
-    widget.onSelected?.call(model);
-  }
-
-  void handleTap() {
-    entry = OverlayEntry(builder: _buildOverlayEntry);
-    Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    entry?.remove();
-  }
-
-  Widget _buildOverlayEntry(BuildContext context) {
-    var compositedTransformFollower = CompositedTransformFollower(
-      followerAnchor: Alignment.bottomLeft,
-      link: link,
-      offset: const Offset(0, -12),
-      targetAnchor: Alignment.topLeft,
-      child: ModelSelectDialog(onTap: changeModel),
-    );
-    var unconstrainedBox = UnconstrainedBox(child: compositedTransformFollower);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: removeEntry,
-      child: SizedBox.expand(child: unconstrainedBox),
-    );
   }
 }
 

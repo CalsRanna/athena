@@ -63,19 +63,18 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
-  void changeSentinel(Sentinel sentinel) {
-    // var streaming = ref.read(streamingNotifierProvider);
-    // if (streaming) {
-    //   return ADialog.message('Please wait for the current chat to finish.');
-    // }
-    // setState(() {
-    //   this.sentinel = sentinel;
-    // });
-    // if (chat == null) return;
-    // var container = ProviderScope.containerOf(context);
-    // var provider = chatNotifierProvider(chat!.id);
-    // var notifier = container.read(provider.notifier);
-    // notifier.updateSentinel(sentinel);
+  Future<void> changeSentinel(Sentinel sentinel) async {
+    if (viewModel.streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
+    setState(() {
+      this.sentinel = sentinel;
+    });
+    if (this.chat == null) return;
+    var chat = await viewModel.selectSentinel(sentinel, chat: this.chat!);
+    setState(() {
+      this.chat = chat;
+    });
   }
 
   Future<void> createChat() async {
@@ -181,6 +180,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var desktopMessageInput = DesktopMessageInput(
       controller: controller,
       onModelChanged: changeModel,
+      onSentinelChanged: changeSentinel,
       onSubmitted: sendMessage,
     );
     return Column(

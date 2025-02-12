@@ -148,12 +148,6 @@ class ChatNotifier extends _$ChatNotifier {
     store(title: title.trim());
   }
 
-  Future<Model> _getModel() async {
-    final chat = await future;
-    var provider = modelNotifierProvider(chat.modelId);
-    return await ref.read(provider.future);
-  }
-
   Future<String> _getPrompt() async {
     var chat = await future;
     var sentinelId = chat.sentinelId;

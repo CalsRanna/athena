@@ -76,9 +76,49 @@ class ChatViewModel extends ViewModel {
     DesktopSettingAccountRoute().push(context);
   }
 
+  Future<void> resendMessage(
+    Message message, {
+    required Chat chat,
+    required Model model,
+    required Sentinel sentinel,
+  }) async {
+    var builder = isar.messages.filter().chatIdEqualTo(chat.id);
+    final messages = await builder.findAll();
+    final index = messages.indexWhere((item) => item.id == message.id);
+    List<Message> removed = [];
+    for (var i = index; i < messages.length; i++) {
+      removed.add(messages.elementAt(i));
+    }
+    messages.removeRange(index, messages.length);
+    isar.writeTxn(() async {
+      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
+    });
+    ref.invalidate(messagesNotifierProvider(chat.id));
+    await sendMessage(
+      message.content,
+      chat: chat,
+      model: model,
+      sentinel: sentinel,
+    );
+  }
+
   Future<Chat> selectModel(Model model, {required Chat chat}) async {
     var copiedChat = chat.copyWith(
       modelId: model.id,
+      updatedAt: DateTime.now(),
+    );
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+    return chat;
+  }
+
+  Future<Chat> selectSentinel(Sentinel sentinel, {required Chat chat}) async {
+    var copiedChat = chat.copyWith(
+      sentinelId: sentinel.id,
       updatedAt: DateTime.now(),
     );
     await isar.writeTxn(() async {
@@ -154,31 +194,5 @@ class ChatViewModel extends ViewModel {
     });
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
-  }
-
-  Future<void> resendMessage(
-    Message message, {
-    required Chat chat,
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
-    final messages =
-        await isar.messages.filter().chatIdEqualTo(chat.id).findAll();
-    final index = messages.indexWhere((item) => item.id == message.id);
-    List<Message> removed = [];
-    for (var i = index; i < messages.length; i++) {
-      removed.add(messages.elementAt(i));
-    }
-    messages.removeRange(index, messages.length);
-    isar.writeTxn(() async {
-      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
-    });
-    ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(
-      message.content,
-      chat: chat,
-      model: model,
-      sentinel: sentinel,
-    );
   }
 }

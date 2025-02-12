@@ -1,13 +1,39 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/widget/card.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
-class ModelSelectDialog extends ConsumerWidget {
+class DesktopModelSelector extends StatelessWidget {
+  final void Function(Model)? onSelected;
+  const DesktopModelSelector({super.key, this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    var hugeIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedAiBrain01,
+      color: Color(0xFF616161),
+      size: 24,
+    );
+    return GestureDetector(onTap: openDialog, child: hugeIcon);
+  }
+
+  void changeModel(Model model) {
+    ADialog.dismiss();
+    onSelected?.call(model);
+  }
+
+  void openDialog() {
+    ADialog.show(_ModelSelectDialog(onTap: changeModel));
+  }
+}
+
+class _ModelSelectDialog extends ConsumerWidget {
   final void Function(Model)? onTap;
-  const ModelSelectDialog({super.key, this.onTap});
+  const _ModelSelectDialog({this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,7 +42,7 @@ class ModelSelectDialog extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return ACard(child: child);
+    return UnconstrainedBox(child: ACard(child: child));
   }
 
   Widget _buildData(Map<String, List<Model>> models) {
@@ -48,7 +74,7 @@ class ModelSelectDialog extends ConsumerWidget {
     return ATile(
       onTap: () => onTap?.call(model),
       title: model.name,
-      width: 320,
+      width: 480,
     );
   }
 }
