@@ -1,36 +1,32 @@
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopMessageList extends ConsumerWidget {
-  final Chat? chat;
-  final Model model;
-  final Sentinel sentinel;
+  final Chat chat;
+  final void Function(Message message) onResend;
   const DesktopMessageList({
     super.key,
-    this.chat,
-    required this.model,
-    required this.sentinel,
+    required this.chat,
+    required this.onResend,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat?.id ?? 0);
+    var provider = messagesNotifierProvider(chat.id);
     var state = ref.watch(provider);
     return switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
+      AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
   }
 
-  Widget _buildData(WidgetRef ref, List<Message> messages) {
+  Widget _buildData(List<Message> messages) {
     if (messages.isEmpty == true) return const SizedBox();
     return ListView.separated(
-      itemBuilder: (_, index) => _itemBuilder(ref, messages, index),
+      itemBuilder: (_, index) => _itemBuilder(messages, index),
       itemCount: messages.length,
       reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -38,17 +34,11 @@ class DesktopMessageList extends ConsumerWidget {
     );
   }
 
-  Widget _itemBuilder(WidgetRef ref, List<Message> messages, int index) {
+  Widget _itemBuilder(List<Message> messages, int index) {
     final message = messages.reversed.elementAt(index);
-    return MessageTile(
+    return MessageListTile(
       message: message,
-      onResend: () => _resend(ref, message),
+      onResend: () => onResend.call(message),
     );
-  }
-
-  Future<void> _resend(WidgetRef ref, Message message) async {
-    final provider = chatNotifierProvider(chat?.id ?? 0);
-    final notifier = ref.read(provider.notifier);
-    await notifier.resend(message, model: model, sentinel: sentinel);
   }
 }

@@ -155,4 +155,30 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
   }
+
+  Future<void> resendMessage(
+    Message message, {
+    required Chat chat,
+    required Model model,
+    required Sentinel sentinel,
+  }) async {
+    final messages =
+        await isar.messages.filter().chatIdEqualTo(chat.id).findAll();
+    final index = messages.indexWhere((item) => item.id == message.id);
+    List<Message> removed = [];
+    for (var i = index; i < messages.length; i++) {
+      removed.add(messages.elementAt(i));
+    }
+    messages.removeRange(index, messages.length);
+    isar.writeTxn(() async {
+      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
+    });
+    ref.invalidate(messagesNotifierProvider(chat.id));
+    await sendMessage(
+      message.content,
+      chat: chat,
+      model: model,
+      sentinel: sentinel,
+    );
+  }
 }

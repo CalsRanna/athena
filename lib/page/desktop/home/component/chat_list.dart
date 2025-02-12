@@ -56,7 +56,7 @@ class DesktopChatListView extends ConsumerWidget {
   }
 }
 
-class _ChatTile extends ConsumerStatefulWidget {
+class _ChatTile extends StatefulWidget {
   final bool active;
   final Chat chat;
   final void Function()? onDestroyed;
@@ -69,10 +69,10 @@ class _ChatTile extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ChatTile> createState() => _ChatTileState();
+  State<_ChatTile> createState() => _ChatTileState();
 }
 
-class _ChatTileState extends ConsumerState<_ChatTile> {
+class _ChatTileState extends State<_ChatTile> {
   OverlayEntry? entry;
 
   @override
@@ -100,7 +100,7 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(ref),
+      onTap: widget.onTap,
       onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
       child: container,
     );
@@ -123,10 +123,6 @@ class _ChatTileState extends ConsumerState<_ChatTile> {
     );
     entry = OverlayEntry(builder: (context) => gestureDetector);
     Overlay.of(context).insert(entry!);
-  }
-
-  void handleTap(WidgetRef ref) {
-    widget.onTap?.call();
   }
 
   void handleDestroy() {
