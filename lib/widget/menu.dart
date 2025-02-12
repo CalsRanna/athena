@@ -63,6 +63,7 @@ class DesktopContextMenuOption extends StatefulWidget {
 class DesktopMenuTile extends StatelessWidget {
   final bool active;
   final String label;
+  final Widget? leading;
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
   final Widget? trailing;
@@ -70,6 +71,7 @@ class DesktopMenuTile extends StatelessWidget {
     super.key,
     required this.active,
     required this.label,
+    this.leading,
     this.onSecondaryTap,
     this.onTap,
     this.trailing,
@@ -92,16 +94,25 @@ class DesktopMenuTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(35),
       color: active ? Color(0xFFE0E0E0) : Color(0xFF616161),
     );
+    var iconThemeData = IconThemeData(
+      color: active ? Color(0xFF161616) : Colors.white,
+      size: 16,
+    );
+    var iconTheme = IconTheme(
+      data: iconThemeData,
+      child: leading ?? const SizedBox(),
+    );
+    var children = [
+      iconTheme,
+      if (leading != null) const SizedBox(width: 4),
+      Expanded(child: animatedText),
+      trailing ?? const SizedBox(),
+    ];
     var animatedContainer = AnimatedContainer(
       decoration: boxDecoration,
       duration: duration,
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(child: animatedText),
-          trailing ?? const SizedBox(),
-        ],
-      ),
+      child: Row(children: children),
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,

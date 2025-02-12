@@ -58,18 +58,13 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       loading = true;
     });
     try {
-      var container = ProviderScope.containerOf(context);
-      final setting = await container.read(settingNotifierProvider.future);
-      var sentinelApi = SentinelApi();
-      var text = promptController.text;
-      var model = setting.model;
       // final sentinel = await sentinelApi.generate(text, model: model);
       // nameController.text = sentinel.name;
       // descriptionController.text = sentinel.description;
       // avatar = sentinel.avatar;
       // tags = sentinel.tags;
-      loading = false;
-      setState(() {});
+      // loading = false;
+      // setState(() {});
     } catch (error) {
       loading = false;
       setState(() {});
