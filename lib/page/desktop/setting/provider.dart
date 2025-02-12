@@ -132,6 +132,7 @@ class _DesktopSettingProviderPageState
     for (var model in models) {
       var child = _ModelTile(
         onSecondaryTap: (details) => showModelContextMenu(details, model),
+        onTap: () => toggleModel(model),
         onToggled: () => toggleModel(model),
         model: model,
       );
@@ -334,9 +335,15 @@ class _ModelContextMenu extends StatelessWidget {
 
 class _ModelTile extends StatelessWidget {
   final void Function(TapUpDetails)? onSecondaryTap;
+  final void Function()? onTap;
   final void Function()? onToggled;
   final Model model;
-  const _ModelTile({this.onSecondaryTap, this.onToggled, required this.model});
+  const _ModelTile({
+    this.onSecondaryTap,
+    this.onTap,
+    this.onToggled,
+    required this.model,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -375,16 +382,19 @@ class _ModelTile extends StatelessWidget {
       Expanded(child: informationWidget),
       ASwitch(onChanged: handleChange, value: model.enabled)
     ];
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: rowChildren),
+    );
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: padding,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: onSecondaryTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(children: rowChildren),
-        ),
-      ),
+      onTap: onTap,
+      child: mouseRegion,
     );
   }
 

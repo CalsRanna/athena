@@ -137,7 +137,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
 
   Widget _buildDescriptionInput() {
     var children = [
-      const SizedBox(width: 160, child: AFormTileLabel(title: 'Description')),
+      const SizedBox(width: 100, child: AFormTileLabel(title: 'Description')),
       const SizedBox(width: 24),
       Expanded(child: AInput(controller: descriptionController, minLines: 4))
     ];
@@ -175,7 +175,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
 
   Widget _buildNameInput() {
     var children = [
-      const SizedBox(width: 160, child: AFormTileLabel(title: 'Name')),
+      const SizedBox(width: 100, child: AFormTileLabel(title: 'Name')),
       const SizedBox(width: 24),
       Expanded(child: AInput(controller: nameController))
     ];
