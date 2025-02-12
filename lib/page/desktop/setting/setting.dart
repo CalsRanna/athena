@@ -19,7 +19,7 @@ class DesktopSettingPage extends StatefulWidget {
 class _DesktopSettingPageState extends State<DesktopSettingPage> {
   int index = 0;
 
-  final _menus = ['Account', 'Sentinel', 'Provider', 'Common', 'About'];
+  final _menus = ['Provider', 'Sentinel'];
 
   @override
   Widget build(BuildContext context) {
@@ -37,16 +37,15 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       this.index = index;
     });
     var route = switch (index) {
-      0 => const DesktopSettingAccountRoute(),
+      0 => const DesktopSettingProviderRoute(),
       1 => const DesktopSentinelRoute(),
-      2 => const DesktopSettingProviderRoute(),
       _ => null,
     };
     if (route == null) return;
     AutoRouter.of(context).replace(route);
   }
 
-  void showModelFomDialog() {
+  void showDialog() {
     if (index == 1) {
       DesktopSentinelFormRoute().push(context);
       return;
@@ -55,7 +54,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildCreateButton() {
-    if (index != 1 && index != 2) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: Colors.white,
@@ -63,7 +61,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     );
     var createButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: showModelFomDialog,
+      onTap: showDialog,
       child: icon,
     );
     return Align(alignment: Alignment.centerRight, child: createButton);

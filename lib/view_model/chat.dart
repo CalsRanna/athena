@@ -24,6 +24,7 @@ class ChatViewModel extends ViewModel {
     var timestamp = DateTime.now();
     var chat = Chat()
       ..modelId = model.id
+      ..title = 'New Chat'
       ..sentinelId = sentinel.id
       ..createdAt = timestamp
       ..updatedAt = timestamp;
@@ -73,7 +74,7 @@ class ChatViewModel extends ViewModel {
   }
 
   void navigateSettingPage(BuildContext context) {
-    DesktopSettingAccountRoute().push(context);
+    DesktopSettingProviderRoute().push(context);
   }
 
   Future<void> resendMessage(
@@ -171,7 +172,7 @@ class ChatViewModel extends ViewModel {
       messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
-    if (chat.title.isNotEmpty) return;
+    if (chat.title.isNotEmpty && chat.title != 'New Chat') return;
     var title = '';
     try {
       final titleTokens = ChatApi().getTitle(

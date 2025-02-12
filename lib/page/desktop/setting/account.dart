@@ -94,16 +94,16 @@ class _DesktopSettingAccountPageState
   }
 
   Future<void> connect() async {
-    setState(() {
-      loading = true;
-    });
-    var container = ProviderScope.containerOf(context);
-    var provider = settingNotifierProvider;
-    var notifier = container.read(provider.notifier);
+    // setState(() {
+    //   loading = true;
+    // });
+    // var container = ProviderScope.containerOf(context);
+    // var provider = settingNotifierProvider;
+    // var notifier = container.read(provider.notifier);
     // var message = await notifier.connect();
-    setState(() {
-      loading = false;
-    });
+    // setState(() {
+    //   loading = false;
+    // });
     // ADialog.message(message);
   }
 
