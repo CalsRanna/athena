@@ -223,7 +223,7 @@ class _MessageListView extends ConsumerWidget {
   }
 
   Widget _itemBuilder(WidgetRef ref, Message message) {
-    return MessageTile(
+    return MessageListTile(
       message: message,
       onResend: () => _resend(ref, message),
     );

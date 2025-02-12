@@ -27,7 +27,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Chat? chat;
   Model? model;
   Sentinel? sentinel;
-
+  final controller = TextEditingController();
   late final viewModel = ChatViewModel(ref);
 
   @override
@@ -97,12 +97,28 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     _initState();
   }
 
-  Future<void> sendMessage(String text) async {
+  Future<void> resendMessage(Message message) async {
+    if (model == null || sentinel == null) return;
+    await viewModel.resendMessage(
+      message,
+      chat: chat!,
+      model: model!,
+      sentinel: sentinel!,
+    );
+  }
+
+  Future<void> sendMessage() async {
     if (model == null || sentinel == null) return;
     if (chat == null) {
       var chat = await viewModel.createChat(model: model!, sentinel: sentinel!);
@@ -111,12 +127,15 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      var text = controller.text.trim();
+      if (text.isEmpty) return;
       viewModel.sendMessage(
         text,
         chat: chat!,
         model: model!,
         sentinel: sentinel!,
       );
+      controller.clear();
     });
   }
 
@@ -155,18 +174,18 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Widget _buildRightWorkspace() {
-    var stackChildren = [
-      if (chat == null) DesktopSentinelPlaceholder(sentinel: sentinel),
-      if (model != null && sentinel != null)
-        DesktopMessageList(chat: chat, model: model!, sentinel: sentinel!),
-    ];
-    var children = [
-      Expanded(child: Stack(children: stackChildren)),
-      DesktopMessageInput(onModelChanged: changeModel, onSubmitted: sendMessage)
-    ];
+    Widget workspace = DesktopSentinelPlaceholder(sentinel: sentinel);
+    if (chat != null) {
+      workspace = DesktopMessageList(chat: chat!, onResend: resendMessage);
+    }
+    var desktopMessageInput = DesktopMessageInput(
+      controller: controller,
+      onModelChanged: changeModel,
+      onSubmitted: sendMessage,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: children,
+      children: [Expanded(child: workspace), desktopMessageInput],
     );
   }
 

@@ -1,24 +1,21 @@
+import 'package:athena/page/desktop/home/component/model_select_dialog.dart';
 import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
-import 'package:athena/widget/card.dart';
-import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopMessageInput extends StatefulWidget {
+class DesktopMessageInput extends StatelessWidget {
+  final TextEditingController controller;
   final void Function(Model)? onModelChanged;
-  final void Function(String)? onSubmitted;
-  const DesktopMessageInput({super.key, this.onModelChanged, this.onSubmitted});
-
-  @override
-  State<DesktopMessageInput> createState() => _DesktopMessageInputState();
-}
-
-class _DesktopMessageInputState extends State<DesktopMessageInput> {
-  final controller = TextEditingController();
+  final void Function()? onSubmitted;
+  const DesktopMessageInput({
+    super.key,
+    required this.controller,
+    this.onModelChanged,
+    this.onSubmitted,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,29 +32,12 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
     );
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  void sendMessage() {
-    var container = ProviderScope.containerOf(context);
-    final streaming = container.read(streamingNotifierProvider);
-    if (streaming) return;
-    final text = controller.text.trim();
-    if (text.isEmpty) return;
-    controller.clear();
-    FocusScope.of(context).unfocus();
-    widget.onSubmitted?.call(text);
-  }
-
   Widget _buildInput() {
-    var input = _Input(controller: controller, onSubmitted: sendMessage);
+    var input = _Input(controller: controller, onSubmitted: onSubmitted);
     var children = [
       Expanded(child: input),
       const SizedBox(width: 8),
-      _SendButton(onTap: sendMessage)
+      _SendButton(onTap: onSubmitted)
     ];
     return Row(children: children);
   }
@@ -65,62 +45,13 @@ class _DesktopMessageInputState extends State<DesktopMessageInput> {
   Widget _buildToolbar() {
     var children = [
       Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
-      _ModelSelector(onSelected: widget.onModelChanged),
+      _ModelSelector(onSelected: onModelChanged),
       Icon(HugeIcons.strokeRoundedTemperature),
       Icon(HugeIcons.strokeRoundedImage01),
     ];
     return IconTheme.merge(
       data: IconThemeData(color: Color(0xFF616161)),
       child: Row(spacing: 12, children: children),
-    );
-  }
-}
-
-class _Dialog extends ConsumerWidget {
-  final void Function(Model)? onTap;
-  const _Dialog({this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(groupedEnabledModelsNotifierProvider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-    return ACard(child: child);
-    // return ACard(child: SizedBox());
-  }
-
-  Widget _buildData(Map<String, List<Model>> models) {
-    if (models.isEmpty) return const SizedBox();
-    var titleTextStyle = TextStyle(
-      color: Colors.black.withValues(alpha: 0.5),
-      decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-    );
-    List<Widget> children = [];
-    for (var entry in models.entries) {
-      var title = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text(entry.key, style: titleTextStyle),
-      );
-      children.add(title);
-      var modelWidgets =
-          entry.value.map((model) => _itemBuilder(model)).toList();
-      children.addAll(modelWidgets);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-  }
-
-  Widget _itemBuilder(Model model) {
-    return ATile(
-      onTap: () => onTap?.call(model),
-      title: model.name,
-      width: 320,
     );
   }
 }
@@ -139,50 +70,53 @@ class _InputState extends State<_Input> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      return Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Color(0xFF757575)),
-          borderRadius: BorderRadius.circular(24),
-          color: Color(0xFFADADAD).withValues(alpha: 0.6),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-        child: KeyboardListener(
-          focusNode: FocusNode(),
-          onKeyEvent: (event) => handleKeyEvent(ref, event),
-          child: TextField(
-            controller: widget.controller,
-            cursorHeight: 16,
-            cursorColor: Color(0xFFF5F5F5),
-            decoration: InputDecoration.collapsed(
-              hintText: 'Ask me anything',
-              hintStyle: TextStyle(
-                color: Color(0xFFC2C2C2),
-                fontSize: 14,
-                height: 1.5,
-              ),
-            ),
-            style: const TextStyle(
-                color: Color(0xFFF5F5F5), fontSize: 14, height: 1.5),
-            maxLines: 4,
-            minLines: 1,
-          ),
-        ),
-      );
-    });
+    var boxDecoration = BoxDecoration(
+      border: Border.all(color: Color(0xFF757575)),
+      borderRadius: BorderRadius.circular(24),
+      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+    );
+    var hintTextStyle = TextStyle(
+      color: Color(0xFFC2C2C2),
+      fontSize: 14,
+      height: 1.5,
+    );
+    var inputDecoration = InputDecoration.collapsed(
+      hintText: 'Ask me anything',
+      hintStyle: hintTextStyle,
+    );
+    const inputTextStyle = TextStyle(
+      color: Color(0xFFF5F5F5),
+      fontSize: 14,
+      height: 1.5,
+    );
+    var textField = TextField(
+      controller: widget.controller,
+      cursorHeight: 16,
+      cursorColor: Color(0xFFF5F5F5),
+      decoration: inputDecoration,
+      style: inputTextStyle,
+      maxLines: 4,
+      minLines: 1,
+    );
+    var keyboardListener = KeyboardListener(
+      focusNode: FocusNode(),
+      onKeyEvent: handleKeyEvent,
+      child: textField,
+    );
+    return Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
+      child: keyboardListener,
+    );
   }
 
-  void handleKeyEvent(WidgetRef ref, KeyEvent event) {
+  void handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
       if (_isModifierKey(event)) shift = true;
-      if (_isEnterKey(event) && !shift) send(ref);
+      if (_isEnterKey(event) && !shift) widget.onSubmitted?.call();
     } else if (event is KeyUpEvent) {
       if (_isModifierKey(event)) shift = false;
     }
-  }
-
-  Future<void> send(WidgetRef ref) async {
-    widget.onSubmitted?.call();
   }
 
   bool _isEnterKey(KeyEvent event) {
@@ -215,16 +149,18 @@ class _ModelSelectorState extends State<_ModelSelector> {
   final link = LayerLink();
   @override
   Widget build(BuildContext context) {
+    var hugeIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedAiBrain01,
+      color: Color(0xFF616161),
+      size: 24,
+    );
+    var compositedTransformTarget = CompositedTransformTarget(
+      link: link,
+      child: hugeIcon,
+    );
     return GestureDetector(
       onTap: handleTap,
-      child: CompositedTransformTarget(
-        link: link,
-        child: HugeIcon(
-          icon: HugeIcons.strokeRoundedAiBrain01,
-          color: Color(0xFF616161),
-          size: 24,
-        ),
-      ),
+      child: compositedTransformTarget,
     );
   }
 
@@ -234,28 +170,28 @@ class _ModelSelectorState extends State<_ModelSelector> {
   }
 
   void handleTap() {
-    entry = OverlayEntry(builder: (context) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: removeEntry,
-        child: SizedBox.expand(
-          child: UnconstrainedBox(
-            child: CompositedTransformFollower(
-              followerAnchor: Alignment.bottomLeft,
-              link: link,
-              offset: const Offset(0, -12),
-              targetAnchor: Alignment.topLeft,
-              child: _Dialog(onTap: changeModel),
-            ),
-          ),
-        ),
-      );
-    });
+    entry = OverlayEntry(builder: _buildOverlayEntry);
     Overlay.of(context).insert(entry!);
   }
 
   void removeEntry() {
     entry?.remove();
+  }
+
+  Widget _buildOverlayEntry(BuildContext context) {
+    var compositedTransformFollower = CompositedTransformFollower(
+      followerAnchor: Alignment.bottomLeft,
+      link: link,
+      offset: const Offset(0, -12),
+      targetAnchor: Alignment.topLeft,
+      child: ModelSelectDialog(onTap: changeModel),
+    );
+    var unconstrainedBox = UnconstrainedBox(child: compositedTransformFollower);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: removeEntry,
+      child: SizedBox.expand(child: unconstrainedBox),
+    );
   }
 }
 
@@ -303,14 +239,8 @@ class _SendButton extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(ref),
+      onTap: onTap,
       child: outerContainer,
     );
-  }
-
-  void handleTap(WidgetRef ref) {
-    final streaming = ref.read(streamingNotifierProvider);
-    if (streaming) return;
-    onTap?.call();
   }
 }

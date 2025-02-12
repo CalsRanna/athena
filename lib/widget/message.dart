@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class MessageTile extends StatelessWidget {
+class MessageListTile extends StatelessWidget {
   final Message message;
   final void Function()? onResend;
   final Sentinel? sentinel;
 
-  const MessageTile({
+  const MessageListTile({
     super.key,
     required this.message,
     this.onResend,
@@ -21,16 +21,16 @@ class MessageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (message.role == 'user') {
-      return _UserMessage(message: message, onResend: onResend);
+      return _UserMessageListTile(message: message, onResend: onResend);
     }
-    return _AssistantMessage(message: message, sentinel: sentinel);
+    return _AssistantMessageListTile(message: message, sentinel: sentinel);
   }
 }
 
-class _AssistantMessage extends StatelessWidget {
+class _AssistantMessageListTile extends StatelessWidget {
   final Message message;
   final Sentinel? sentinel;
-  const _AssistantMessage({required this.message, this.sentinel});
+  const _AssistantMessageListTile({required this.message, this.sentinel});
 
   @override
   Widget build(BuildContext context) {
@@ -98,10 +98,10 @@ class _AssistantMessage extends StatelessWidget {
   }
 }
 
-class _UserMessage extends StatelessWidget {
+class _UserMessageListTile extends StatelessWidget {
   final Message message;
   final void Function()? onResend;
-  const _UserMessage({required this.message, this.onResend});
+  const _UserMessageListTile({required this.message, this.onResend});
 
   @override
   Widget build(BuildContext context) {
