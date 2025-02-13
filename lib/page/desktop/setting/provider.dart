@@ -1,4 +1,5 @@
 import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
+import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
@@ -58,6 +59,22 @@ class _DesktopSettingProviderPageState
     urlController.text = providers[index].url;
   }
 
+  Future<void> destroyProvider(schema.Provider provider) async {
+    entry?.remove();
+    var notifier = ref.read(providersNotifierProvider.notifier);
+    await notifier.destroy(provider);
+    setState(() {
+      index = 0;
+    });
+  }
+
+  @override
+  void dispose() {
+    keyController.dispose();
+    urlController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -86,14 +103,27 @@ class _DesktopSettingProviderPageState
     Overlay.of(context).insert(entry!);
   }
 
+  Future<void> showModelFormDialog() async {
+    var provider = providersNotifierProvider;
+    var providers = await ref.read(provider.future);
+    ADialog.show(DesktopModelFormDialog(provider: providers[index]));
+  }
+
   void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
     var contextMenu = _ProviderContextMenu(
       offset: details.globalPosition - Offset(200, 50),
+      onDestroyed: () => destroyProvider(provider),
+      onEdited: () => showProviderFormDialog(provider),
       onTap: removeEntry,
       provider: provider,
     );
     entry = OverlayEntry(builder: (_) => contextMenu);
     Overlay.of(context).insert(entry!);
+  }
+
+  void showProviderFormDialog(schema.Provider provider) async {
+    entry?.remove();
+    ADialog.show(DesktopProviderFormDialog(provider: provider));
   }
 
   Future<void> toggleModel(Model model) async {
@@ -115,6 +145,15 @@ class _DesktopSettingProviderPageState
     return notifier.updateProvider(copiedProvider);
   }
 
+  Future<void> updateKey() async {
+    var provider = providersNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
+    var copiedProvider = providers[index].copyWith(key: keyController.text);
+    var notifier = ref.read(provider.notifier);
+    await notifier.updateProvider(copiedProvider);
+  }
+
   Future<void> updateModel(Model model) async {
     setState(() {
       this.model = model.value;
@@ -123,6 +162,15 @@ class _DesktopSettingProviderPageState
     var provider = settingNotifierProvider;
     var notifier = container.read(provider.notifier);
     await notifier.updateModel(model.value);
+  }
+
+  Future<void> updateUrl() async {
+    var provider = providersNotifierProvider;
+    var providers = await ref.read(provider.future);
+    if (providers.isEmpty) return;
+    var copiedProvider = providers[index].copyWith(url: urlController.text);
+    var notifier = ref.read(provider.notifier);
+    await notifier.updateProvider(copiedProvider);
   }
 
   List<Widget> _buildModelListView(List<Model>? models) {
@@ -250,43 +298,12 @@ class _DesktopSettingProviderPageState
     );
   }
 
-  Future<void> showModelFormDialog() async {
-    var provider = providersNotifierProvider;
-    var providers = await ref.read(provider.future);
-    ADialog.show(DesktopModelFormDialog(provider: providers[index]));
-  }
-
-  Future<void> updateKey() async {
-    var provider = providersNotifierProvider;
-    var providers = await ref.read(provider.future);
-    if (providers.isEmpty) return;
-    var copiedProvider = providers[index].copyWith(key: keyController.text);
-    var notifier = ref.read(provider.notifier);
-    await notifier.updateProvider(copiedProvider);
-  }
-
-  Future<void> updateUrl() async {
-    var provider = providersNotifierProvider;
-    var providers = await ref.read(provider.future);
-    if (providers.isEmpty) return;
-    var copiedProvider = providers[index].copyWith(url: urlController.text);
-    var notifier = ref.read(provider.notifier);
-    await notifier.updateProvider(copiedProvider);
-  }
-
   Future<void> _initState() async {
     var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     keyController.text = providers[index].key;
     urlController.text = providers[index].url;
-  }
-
-  @override
-  void dispose() {
-    keyController.dispose();
-    urlController.dispose();
-    super.dispose();
   }
 }
 
@@ -405,38 +422,30 @@ class _ModelTile extends StatelessWidget {
 
 class _ProviderContextMenu extends StatelessWidget {
   final Offset offset;
-  final schema.Provider provider;
+  final void Function()? onDestroyed;
+  final void Function()? onEdited;
   final void Function()? onTap;
+  final schema.Provider provider;
   const _ProviderContextMenu({
     required this.offset,
-    required this.provider,
+    this.onDestroyed,
+    this.onEdited,
     this.onTap,
+    required this.provider,
   });
 
   @override
   Widget build(BuildContext context) {
+    var editOption = DesktopContextMenuOption(text: 'Edit', onTap: onEdited);
     var deleteOption = DesktopContextMenuOption(
       text: 'Delete',
-      onTap: () => destroySentinel(context),
+      onTap: onDestroyed,
     );
     return DesktopContextMenu(
       offset: offset,
       onBarrierTapped: onTap,
-      children: [deleteOption],
+      children: [editOption, deleteOption],
     );
-  }
-
-  void destroySentinel(BuildContext context) {
-    // var container = ProviderScope.containerOf(context);
-    // var provider = modelsNotifierProvider;
-    // var notifier = container.read(provider.notifier);
-    // notifier.deleteModel(model);
-    // onTap?.call();
-  }
-
-  void navigateSentinelFormPage(BuildContext context) {
-    // ADialog.show(DesktopProviderFormDialog(model: model));
-    // onTap?.call();
   }
 }
 
