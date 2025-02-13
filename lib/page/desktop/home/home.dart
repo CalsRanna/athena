@@ -88,8 +88,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     _initSentinel();
   }
 
-  Future<void> destroyChat() async {
-    await viewModel.destroyChat(chat!);
+  Future<void> destroyChat(Chat chat) async {
+    await viewModel.destroyChat(chat);
     _initChat();
     _initModel();
     _initSentinel();
@@ -136,14 +136,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       );
       controller.clear();
       if (chat!.title.isEmpty || chat!.title == 'New Chat') {
-        var title = await viewModel.generateChatTitle(
-          text,
-          chat: chat!,
-          model: model!,
-        );
-        setState(() {
-          chat = chat!.copyWith(title: title);
-        });
+        viewModel.renameChat(chat!);
       }
     });
   }
@@ -166,9 +159,17 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     );
   }
 
+  Future<void> renameChat(Chat chat) async {
+    setState(() {
+      chat.title = '';
+    });
+    viewModel.renameChat(chat);
+  }
+
   Widget _buildLeftBar() {
     var chatListView = DesktopChatListView(
       onDestroyed: destroyChat,
+      onRenamed: renameChat,
       onSelected: changeChat,
       selectedChat: chat,
     );

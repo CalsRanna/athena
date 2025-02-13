@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopChatListView extends ConsumerWidget {
-  final void Function()? onDestroyed;
+  final void Function(Chat)? onDestroyed;
+  final void Function(Chat)? onRenamed;
   final void Function(Chat)? onSelected;
   final Chat? selectedChat;
   const DesktopChatListView({
     super.key,
     this.onDestroyed,
+    this.onRenamed,
     this.onSelected,
     this.selectedChat,
   });
@@ -46,8 +48,8 @@ class DesktopChatListView extends ConsumerWidget {
     return _ChatTile(
       active: active,
       chat: chat,
-      onDestroyed: onDestroyed,
-      onRenamed: () {},
+      onDestroyed: () => onDestroyed?.call(chat),
+      onRenamed: () => onRenamed?.call(chat),
       onTap: () => selectChat(chat),
     );
   }
