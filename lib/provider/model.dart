@@ -104,7 +104,6 @@ class EnabledModelsForNotifier extends _$EnabledModelsForNotifier {
   //不能使用Provider作为参数，有冲突
   Future<List<Model>> build(int providerId) async {
     var builder = isar.models.filter().providerIdEqualTo(providerId);
-    builder = builder.enabledEqualTo(true);
     final models = await builder.findAll();
     return _sort(models);
   }
@@ -161,14 +160,6 @@ class ModelsForNotifier extends _$ModelsForNotifier {
   Future<void> storeModel(Model model) async {
     await isar.writeTxn(() async {
       await isar.models.put(model);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> toggleModel(Model model) async {
-    var copiedModel = model.copyWith(enabled: !model.enabled);
-    await isar.writeTxn(() async {
-      await isar.models.put(copiedModel);
     });
     ref.invalidateSelf();
   }

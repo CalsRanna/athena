@@ -171,7 +171,7 @@ class _ChatNotifierProviderElement
   int get id => (origin as ChatNotifierProvider).id;
 }
 
-String _$chatsNotifierHash() => r'3fb86ebd3f56224c4aacf44eed903a8824426e36';
+String _$chatsNotifierHash() => r'47b239dcc0483592ab8e1e6c2ef6be314789a2ef';
 
 /// See also [ChatsNotifier].
 @ProviderFor(ChatsNotifier)
