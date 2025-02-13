@@ -17,23 +17,18 @@ const ModelSchema = CollectionSchema(
   name: r'models',
   id: 6728634196192131898,
   properties: {
-    r'enabled': PropertySchema(
-      id: 0,
-      name: r'enabled',
-      type: IsarType.bool,
-    ),
     r'name': PropertySchema(
-      id: 1,
+      id: 0,
       name: r'name',
       type: IsarType.string,
     ),
     r'provider_id': PropertySchema(
-      id: 2,
+      id: 1,
       name: r'provider_id',
       type: IsarType.long,
     ),
     r'value': PropertySchema(
-      id: 3,
+      id: 2,
       name: r'value',
       type: IsarType.string,
     )
@@ -69,10 +64,9 @@ void _modelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.enabled);
-  writer.writeString(offsets[1], object.name);
-  writer.writeLong(offsets[2], object.providerId);
-  writer.writeString(offsets[3], object.value);
+  writer.writeString(offsets[0], object.name);
+  writer.writeLong(offsets[1], object.providerId);
+  writer.writeString(offsets[2], object.value);
 }
 
 Model _modelDeserialize(
@@ -82,11 +76,10 @@ Model _modelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Model();
-  object.enabled = reader.readBool(offsets[0]);
   object.id = id;
-  object.name = reader.readString(offsets[1]);
-  object.providerId = reader.readLong(offsets[2]);
-  object.value = reader.readString(offsets[3]);
+  object.name = reader.readString(offsets[0]);
+  object.providerId = reader.readLong(offsets[1]);
+  object.value = reader.readString(offsets[2]);
   return object;
 }
 
@@ -98,12 +91,10 @@ P _modelDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readBool(offset)) as P;
-    case 1:
       return (reader.readString(offset)) as P;
-    case 2:
+    case 1:
       return (reader.readLong(offset)) as P;
-    case 3:
+    case 2:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -198,15 +189,6 @@ extension ModelQueryWhere on QueryBuilder<Model, Model, QWhereClause> {
 }
 
 extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
-  QueryBuilder<Model, Model, QAfterFilterCondition> enabledEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'enabled',
-        value: value,
-      ));
-    });
-  }
-
   QueryBuilder<Model, Model, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -574,18 +556,6 @@ extension ModelQueryObject on QueryBuilder<Model, Model, QFilterCondition> {}
 extension ModelQueryLinks on QueryBuilder<Model, Model, QFilterCondition> {}
 
 extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
-  QueryBuilder<Model, Model, QAfterSortBy> sortByEnabled() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'enabled', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> sortByEnabledDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'enabled', Sort.desc);
-    });
-  }
-
   QueryBuilder<Model, Model, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -624,18 +594,6 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
 }
 
 extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
-  QueryBuilder<Model, Model, QAfterSortBy> thenByEnabled() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'enabled', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> thenByEnabledDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'enabled', Sort.desc);
-    });
-  }
-
   QueryBuilder<Model, Model, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -686,12 +644,6 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
 }
 
 extension ModelQueryWhereDistinct on QueryBuilder<Model, Model, QDistinct> {
-  QueryBuilder<Model, Model, QDistinct> distinctByEnabled() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'enabled');
-    });
-  }
-
   QueryBuilder<Model, Model, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -717,12 +669,6 @@ extension ModelQueryProperty on QueryBuilder<Model, Model, QQueryProperty> {
   QueryBuilder<Model, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
-    });
-  }
-
-  QueryBuilder<Model, bool, QQueryOperations> enabledProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'enabled');
     });
   }
 

@@ -107,7 +107,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     var notifier = container.read(provider.notifier);
     if (widget.model == null) {
       var newModel = Model()
-        ..enabled = true
         ..name = nameController.text
         ..value = valueController.text
         ..providerId = widget.provider.id;

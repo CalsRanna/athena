@@ -126,16 +126,6 @@ class _DesktopSettingProviderPageState
     ADialog.show(DesktopProviderFormDialog(provider: provider));
   }
 
-  Future<void> toggleModel(Model model) async {
-    var provider = providersNotifierProvider;
-    var providers = ref.watch(provider).valueOrNull;
-    if (providers == null) return;
-    var modelProvider = modelsForNotifierProvider(providers[index].id);
-    var notifier = ref.read(modelProvider.notifier);
-    await notifier.toggleModel(model);
-    ref.invalidate(groupedEnabledModelsNotifierProvider);
-  }
-
   Future<void> toggleProvider(bool value) async {
     var provider = providersNotifierProvider;
     var providers = await ref.watch(provider.future);
@@ -180,8 +170,6 @@ class _DesktopSettingProviderPageState
     for (var model in models) {
       var child = _ModelTile(
         onSecondaryTap: (details) => showModelContextMenu(details, model),
-        onTap: () => toggleModel(model),
-        onToggled: () => toggleModel(model),
         model: model,
       );
       children.add(child);
@@ -352,15 +340,8 @@ class _ModelContextMenu extends StatelessWidget {
 
 class _ModelTile extends StatelessWidget {
   final void Function(TapUpDetails)? onSecondaryTap;
-  final void Function()? onTap;
-  final void Function()? onToggled;
   final Model model;
-  const _ModelTile({
-    this.onSecondaryTap,
-    this.onTap,
-    this.onToggled,
-    required this.model,
-  });
+  const _ModelTile({this.onSecondaryTap, required this.model});
 
   @override
   Widget build(BuildContext context) {
@@ -395,13 +376,9 @@ class _ModelTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
-    var rowChildren = [
-      Expanded(child: informationWidget),
-      ASwitch(onChanged: handleChange, value: model.enabled)
-    ];
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(children: rowChildren),
+      child: informationWidget,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -410,13 +387,8 @@ class _ModelTile extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: onSecondaryTap,
-      onTap: onTap,
       child: mouseRegion,
     );
-  }
-
-  void handleChange(bool value) {
-    onToggled?.call();
   }
 }
 

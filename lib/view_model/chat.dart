@@ -56,7 +56,7 @@ class ChatViewModel extends ViewModel {
 
   Future<Model> getFirstEnabledModel() async {
     var model = await ref.read(chatModelNotifierProvider.future);
-    if (model.enabled) return model;
+    if (model.id != 0) return model;
     var result = await ref.read(groupedEnabledModelsNotifierProvider.future);
     if (result.isEmpty) return Model();
     var entry = result.entries.first;
