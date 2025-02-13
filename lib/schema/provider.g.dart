@@ -22,18 +22,23 @@ const ProviderSchema = CollectionSchema(
       name: r'enabled',
       type: IsarType.bool,
     ),
-    r'key': PropertySchema(
+    r'is_preset': PropertySchema(
       id: 1,
+      name: r'is_preset',
+      type: IsarType.bool,
+    ),
+    r'key': PropertySchema(
+      id: 2,
       name: r'key',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'name',
       type: IsarType.string,
     ),
     r'url': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'url',
       type: IsarType.string,
     )
@@ -71,9 +76,10 @@ void _providerSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeBool(offsets[0], object.enabled);
-  writer.writeString(offsets[1], object.key);
-  writer.writeString(offsets[2], object.name);
-  writer.writeString(offsets[3], object.url);
+  writer.writeBool(offsets[1], object.isPreset);
+  writer.writeString(offsets[2], object.key);
+  writer.writeString(offsets[3], object.name);
+  writer.writeString(offsets[4], object.url);
 }
 
 Provider _providerDeserialize(
@@ -85,9 +91,10 @@ Provider _providerDeserialize(
   final object = Provider();
   object.enabled = reader.readBool(offsets[0]);
   object.id = id;
-  object.key = reader.readString(offsets[1]);
-  object.name = reader.readString(offsets[2]);
-  object.url = reader.readString(offsets[3]);
+  object.isPreset = reader.readBool(offsets[1]);
+  object.key = reader.readString(offsets[2]);
+  object.name = reader.readString(offsets[3]);
+  object.url = reader.readString(offsets[4]);
   return object;
 }
 
@@ -101,10 +108,12 @@ P _providerDeserializeProp<P>(
     case 0:
       return (reader.readBool(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -258,6 +267,16 @@ extension ProviderQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Provider, Provider, QAfterFilterCondition> isPresetEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'is_preset',
+        value: value,
       ));
     });
   }
@@ -672,6 +691,18 @@ extension ProviderQuerySortBy on QueryBuilder<Provider, Provider, QSortBy> {
     });
   }
 
+  QueryBuilder<Provider, Provider, QAfterSortBy> sortByIsPreset() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'is_preset', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Provider, Provider, QAfterSortBy> sortByIsPresetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'is_preset', Sort.desc);
+    });
+  }
+
   QueryBuilder<Provider, Provider, QAfterSortBy> sortByKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'key', Sort.asc);
@@ -735,6 +766,18 @@ extension ProviderQuerySortThenBy
     });
   }
 
+  QueryBuilder<Provider, Provider, QAfterSortBy> thenByIsPreset() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'is_preset', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Provider, Provider, QAfterSortBy> thenByIsPresetDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'is_preset', Sort.desc);
+    });
+  }
+
   QueryBuilder<Provider, Provider, QAfterSortBy> thenByKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'key', Sort.asc);
@@ -780,6 +823,12 @@ extension ProviderQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Provider, Provider, QDistinct> distinctByIsPreset() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'is_preset');
+    });
+  }
+
   QueryBuilder<Provider, Provider, QDistinct> distinctByKey(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -813,6 +862,12 @@ extension ProviderQueryProperty
   QueryBuilder<Provider, bool, QQueryOperations> enabledProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'enabled');
+    });
+  }
+
+  QueryBuilder<Provider, bool, QQueryOperations> isPresetProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'is_preset');
     });
   }
 

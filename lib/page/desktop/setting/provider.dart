@@ -110,6 +110,7 @@ class _DesktopSettingProviderPageState
   }
 
   void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
+    if (provider.isPreset) return;
     var contextMenu = _ProviderContextMenu(
       offset: details.globalPosition - Offset(200, 50),
       onDestroyed: () => destroyProvider(provider),
@@ -188,13 +189,10 @@ class _DesktopSettingProviderPageState
       itemCount: providers.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
-    var placeholder = Center(
-      child: Text('No providers', style: TextStyle(color: Colors.white)),
-    );
     return Container(
       decoration: BoxDecoration(border: Border(right: borderSide)),
       width: 200,
-      child: providers.isNotEmpty ? listView : placeholder,
+      child: listView,
     );
   }
 
@@ -277,8 +275,8 @@ class _DesktopSettingProviderPageState
       Row(children: addModelChildren),
       const SizedBox(height: 4),
       ...modelChildren,
-      const SizedBox(height: 12),
-      tipText
+      if (providers[index].isPreset) const SizedBox(height: 12),
+      if (providers[index].isPreset) tipText
     ];
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -357,20 +355,33 @@ class _ModelTile extends StatelessWidget {
       SizedBox(width: 8),
       ATag.small(text: model.value)
     ];
-    var descriptionTextStyle = TextStyle(
+    var subtitleTextStyle = TextStyle(
       color: Color(0xFFE0E0E0),
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var descriptionText = Text(
-      'Published at 2024/12/31',
-      style: descriptionTextStyle,
+    var releasedAtText = Text(
+      'Released at ${model.releasedAt}',
+      style: subtitleTextStyle,
     );
+    var inputPriceText = Text(
+      'input ${model.inputPrice}',
+      style: subtitleTextStyle,
+    );
+    var outputPriceText = Text(
+      'input ${model.outputPrice}',
+      style: subtitleTextStyle,
+    );
+    var children = [
+      if (model.releasedAt.isNotEmpty) releasedAtText,
+      if (model.inputPrice.isNotEmpty) inputPriceText,
+      if (model.outputPrice.isNotEmpty) outputPriceText,
+    ];
     var informationChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 4),
-      descriptionText,
+      Row(spacing: 4, children: children),
     ];
     var informationWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
