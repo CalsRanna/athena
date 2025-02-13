@@ -1,5 +1,7 @@
+import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,10 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class DesktopMessageList extends ConsumerWidget {
   final Chat chat;
   final void Function(Message message) onResend;
+  final Sentinel sentinel;
   const DesktopMessageList({
     super.key,
     required this.chat,
     required this.onResend,
+    required this.sentinel,
   });
 
   @override
@@ -24,7 +28,9 @@ class DesktopMessageList extends ConsumerWidget {
   }
 
   Widget _buildData(List<Message> messages) {
-    if (messages.isEmpty == true) return const SizedBox();
+    if (messages.isEmpty == true) {
+      return DesktopSentinelPlaceholder(sentinel: sentinel);
+    }
     return ListView.separated(
       itemBuilder: (_, index) => _itemBuilder(messages, index),
       itemCount: messages.length,
