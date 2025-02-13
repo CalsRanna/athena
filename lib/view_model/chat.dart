@@ -81,25 +81,32 @@ class ChatViewModel extends ViewModel {
     return sentinel ?? Sentinel();
   }
 
+  Future<void> initChats() async {
+    var count = await isar.chats.count();
+    if (count > 0) return;
+    await createChat();
+  }
+
   void navigateSettingPage(BuildContext context) {
     DesktopSettingProviderRoute().push(context);
   }
 
   Future<void> renameChat(Chat chat) async {
+    var messages = await ref.read(messagesNotifierProvider(chat.id).future);
+    if (messages.isEmpty) return;
     var model = await ref.read(chatNamingModelNotifierProvider.future);
     var provider = providerNotifierProvider(model.providerId);
     var aiProvider = await ref.read(provider.future);
-    var messages = await ref.read(messagesNotifierProvider(chat.id).future);
     var notifier = ref.read(chatsNotifierProvider.notifier);
     var title = '';
     notifier.updateChatTitle(title, chat: chat);
     try {
-      final titleTokens = ChatApi().getTitle(
+      final response = ChatApi().getTitle(
         messages.first.content,
         model: model,
         provider: aiProvider,
       );
-      await for (final token in titleTokens) {
+      await for (final token in response) {
         title += token;
         title = title.replaceAll(' ', '').replaceAll('\n', '');
         notifier.updateChatTitle(title, chat: chat);
@@ -195,12 +202,12 @@ class ChatViewModel extends ViewModel {
     var aiProvider = await ref.read(provider.future);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     try {
-      final stream = ChatApi().getCompletion(
+      final response = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
         model: model,
         provider: aiProvider,
       );
-      await for (final token in stream) {
+      await for (final token in response) {
         await messagesNotifier.streaming(token);
       }
       await messagesNotifier.closeStreaming();

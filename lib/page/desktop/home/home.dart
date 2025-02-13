@@ -214,6 +214,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> _initState() async {
+    await viewModel.initChats();
     _initChat();
     _initModel();
     _initSentinel();

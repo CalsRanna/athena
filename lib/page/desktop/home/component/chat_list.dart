@@ -28,13 +28,7 @@ class DesktopChatListView extends ConsumerWidget {
   }
 
   Widget _buildData(WidgetRef ref, List<Chat> chats) {
-    var textStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    if (chats.isEmpty) return Center(child: Text('No Chat', style: textStyle));
+    if (chats.isEmpty) return const SizedBox();
     return ListView.separated(
       itemBuilder: (context, index) => _itemBuilder(chats[index]),
       itemCount: chats.length,
