@@ -178,7 +178,7 @@ class _Tile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final setting = ref.watch(settingNotifierProvider).valueOrNull;
     var tag = ATag(
-      selected: setting?.model == model.value,
+      // selected: setting?.model == model.value,
       text: model.name,
     );
     return GestureDetector(

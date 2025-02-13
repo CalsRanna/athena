@@ -17,35 +17,35 @@ const SettingSchema = CollectionSchema(
   name: r'settings',
   id: -5221820136678325216,
   properties: {
-    r'dark_mode': PropertySchema(
+    r'chatModelId': PropertySchema(
       id: 0,
+      name: r'chatModelId',
+      type: IsarType.long,
+    ),
+    r'chatNamingModelId': PropertySchema(
+      id: 1,
+      name: r'chatNamingModelId',
+      type: IsarType.long,
+    ),
+    r'dark_mode': PropertySchema(
+      id: 2,
       name: r'dark_mode',
       type: IsarType.bool,
     ),
     r'height': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'height',
       type: IsarType.double,
     ),
-    r'key': PropertySchema(
-      id: 2,
-      name: r'key',
-      type: IsarType.string,
-    ),
     r'latex': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'latex',
       type: IsarType.bool,
     ),
-    r'model': PropertySchema(
-      id: 4,
-      name: r'model',
-      type: IsarType.string,
-    ),
-    r'url': PropertySchema(
+    r'sentinelMetadataGenerationModelId': PropertySchema(
       id: 5,
-      name: r'url',
-      type: IsarType.string,
+      name: r'sentinelMetadataGenerationModelId',
+      type: IsarType.long,
     ),
     r'width': PropertySchema(
       id: 6,
@@ -73,9 +73,6 @@ int _settingEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
-  bytesCount += 3 + object.key.length * 3;
-  bytesCount += 3 + object.model.length * 3;
-  bytesCount += 3 + object.url.length * 3;
   return bytesCount;
 }
 
@@ -85,12 +82,12 @@ void _settingSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.darkMode);
-  writer.writeDouble(offsets[1], object.height);
-  writer.writeString(offsets[2], object.key);
-  writer.writeBool(offsets[3], object.latex);
-  writer.writeString(offsets[4], object.model);
-  writer.writeString(offsets[5], object.url);
+  writer.writeLong(offsets[0], object.chatModelId);
+  writer.writeLong(offsets[1], object.chatNamingModelId);
+  writer.writeBool(offsets[2], object.darkMode);
+  writer.writeDouble(offsets[3], object.height);
+  writer.writeBool(offsets[4], object.latex);
+  writer.writeLong(offsets[5], object.sentinelMetadataGenerationModelId);
   writer.writeDouble(offsets[6], object.width);
 }
 
@@ -101,13 +98,13 @@ Setting _settingDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Setting();
-  object.darkMode = reader.readBool(offsets[0]);
-  object.height = reader.readDouble(offsets[1]);
+  object.chatModelId = reader.readLong(offsets[0]);
+  object.chatNamingModelId = reader.readLong(offsets[1]);
+  object.darkMode = reader.readBool(offsets[2]);
+  object.height = reader.readDouble(offsets[3]);
   object.id = id;
-  object.key = reader.readString(offsets[2]);
-  object.latex = reader.readBool(offsets[3]);
-  object.model = reader.readString(offsets[4]);
-  object.url = reader.readString(offsets[5]);
+  object.latex = reader.readBool(offsets[4]);
+  object.sentinelMetadataGenerationModelId = reader.readLong(offsets[5]);
   object.width = reader.readDouble(offsets[6]);
   return object;
 }
@@ -120,17 +117,17 @@ P _settingDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readBool(offset)) as P;
+    case 3:
+      return (reader.readDouble(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 6:
       return (reader.readDouble(offset)) as P;
     default:
@@ -227,6 +224,115 @@ extension SettingQueryWhere on QueryBuilder<Setting, Setting, QWhereClause> {
 
 extension SettingQueryFilter
     on QueryBuilder<Setting, Setting, QFilterCondition> {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> chatModelIdEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'chatModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> chatModelIdGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'chatModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> chatModelIdLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'chatModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> chatModelIdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'chatModelId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatNamingModelIdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'chatNamingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatNamingModelIdGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'chatNamingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatNamingModelIdLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'chatNamingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatNamingModelIdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'chatNamingModelId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> darkModeEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -351,136 +457,6 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'key',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'key',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'key',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'key',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> keyIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'key',
-        value: '',
-      ));
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterFilterCondition> latexEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
@@ -491,262 +467,58 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      sentinelMetadataGenerationModelIdEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'model',
+        property: r'sentinelMetadataGenerationModelId',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelGreaterThan(
-    String value, {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      sentinelMetadataGenerationModelIdGreaterThan(
+    int value, {
     bool include = false,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'model',
+        property: r'sentinelMetadataGenerationModelId',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelLessThan(
-    String value, {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      sentinelMetadataGenerationModelIdLessThan(
+    int value, {
     bool include = false,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'model',
+        property: r'sentinelMetadataGenerationModelId',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelBetween(
-    String lower,
-    String upper, {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      sentinelMetadataGenerationModelIdBetween(
+    int lower,
+    int upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'model',
+        property: r'sentinelMetadataGenerationModelId',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'model',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'model',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'model',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'model',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'model',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> modelIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'model',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'url',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlContains(
-      String value,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'url',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'url',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'url',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterFilterCondition> urlIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'url',
-        value: '',
       ));
     });
   }
@@ -821,6 +593,30 @@ extension SettingQueryLinks
     on QueryBuilder<Setting, Setting, QFilterCondition> {}
 
 extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByChatModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByChatModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatModelId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByChatNamingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatNamingModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByChatNamingModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatNamingModelId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -845,18 +641,6 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByKey() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'key', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByKeyDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'key', Sort.desc);
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByLatex() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'latex', Sort.asc);
@@ -869,27 +653,17 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByModel() {
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      sortBySentinelMetadataGenerationModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'model', Sort.asc);
+      return query.addSortBy(r'sentinelMetadataGenerationModelId', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByModelDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      sortBySentinelMetadataGenerationModelIdDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'model', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrl() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'url', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByUrlDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'url', Sort.desc);
+      return query.addSortBy(r'sentinelMetadataGenerationModelId', Sort.desc);
     });
   }
 
@@ -908,6 +682,30 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
 
 extension SettingQuerySortThenBy
     on QueryBuilder<Setting, Setting, QSortThenBy> {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatModelId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatNamingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatNamingModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatNamingModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatNamingModelId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -944,18 +742,6 @@ extension SettingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByKey() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'key', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByKeyDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'key', Sort.desc);
-    });
-  }
-
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByLatex() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'latex', Sort.asc);
@@ -968,27 +754,17 @@ extension SettingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByModel() {
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      thenBySentinelMetadataGenerationModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'model', Sort.asc);
+      return query.addSortBy(r'sentinelMetadataGenerationModelId', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByModelDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      thenBySentinelMetadataGenerationModelIdDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'model', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrl() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'url', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByUrlDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'url', Sort.desc);
+      return query.addSortBy(r'sentinelMetadataGenerationModelId', Sort.desc);
     });
   }
 
@@ -1007,6 +783,18 @@ extension SettingQuerySortThenBy
 
 extension SettingQueryWhereDistinct
     on QueryBuilder<Setting, Setting, QDistinct> {
+  QueryBuilder<Setting, Setting, QDistinct> distinctByChatModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'chatModelId');
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QDistinct> distinctByChatNamingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'chatNamingModelId');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dark_mode');
@@ -1019,30 +807,16 @@ extension SettingQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Setting, Setting, QDistinct> distinctByKey(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'key', caseSensitive: caseSensitive);
-    });
-  }
-
   QueryBuilder<Setting, Setting, QDistinct> distinctByLatex() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'latex');
     });
   }
 
-  QueryBuilder<Setting, Setting, QDistinct> distinctByModel(
-      {bool caseSensitive = true}) {
+  QueryBuilder<Setting, Setting, QDistinct>
+      distinctBySentinelMetadataGenerationModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'model', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<Setting, Setting, QDistinct> distinctByUrl(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'url', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'sentinelMetadataGenerationModelId');
     });
   }
 
@@ -1061,6 +835,18 @@ extension SettingQueryProperty
     });
   }
 
+  QueryBuilder<Setting, int, QQueryOperations> chatModelIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'chatModelId');
+    });
+  }
+
+  QueryBuilder<Setting, int, QQueryOperations> chatNamingModelIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'chatNamingModelId');
+    });
+  }
+
   QueryBuilder<Setting, bool, QQueryOperations> darkModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dark_mode');
@@ -1073,27 +859,16 @@ extension SettingQueryProperty
     });
   }
 
-  QueryBuilder<Setting, String, QQueryOperations> keyProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'key');
-    });
-  }
-
   QueryBuilder<Setting, bool, QQueryOperations> latexProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'latex');
     });
   }
 
-  QueryBuilder<Setting, String, QQueryOperations> modelProperty() {
+  QueryBuilder<Setting, int, QQueryOperations>
+      sentinelMetadataGenerationModelIdProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'model');
-    });
-  }
-
-  QueryBuilder<Setting, String, QQueryOperations> urlProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'url');
+      return query.addPropertyName(r'sentinelMetadataGenerationModelId');
     });
   }
 

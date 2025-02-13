@@ -1,4 +1,3 @@
-import 'package:athena/router/router.gr.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -14,9 +13,7 @@ class DesktopSettingTile extends StatelessWidget {
     );
   }
 
-  void handleTap(BuildContext context) {
-    const DesktopSettingAccountRoute().push(context);
-  }
+  void handleTap(BuildContext context) {}
 }
 
 class _Tile extends StatelessWidget {

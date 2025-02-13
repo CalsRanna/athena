@@ -33,7 +33,7 @@ class SettingNotifier extends _$SettingNotifier {
 
   Future<void> updateKey(String key) async {
     final setting = await future;
-    setting.key = key;
+    // setting.key = key;
     state = AsyncData(setting);
     await isar.writeTxn(() async {
       await isar.settings.put(setting);
@@ -42,7 +42,7 @@ class SettingNotifier extends _$SettingNotifier {
 
   Future<void> updateModel(String model) async {
     final setting = await future;
-    setting.model = model;
+    // setting.model = model;
     state = AsyncData(setting);
     await isar.writeTxn(() async {
       await isar.settings.put(setting);
@@ -51,7 +51,7 @@ class SettingNotifier extends _$SettingNotifier {
 
   Future<void> updateUrl(String url) async {
     final setting = await future;
-    setting.url = url;
+    // setting.url = url;
     state = AsyncData(setting);
     await isar.writeTxn(() async {
       await isar.settings.put(setting);
@@ -60,8 +60,8 @@ class SettingNotifier extends _$SettingNotifier {
 
   Future<void> store({String? key, String? url}) async {
     final setting = await future;
-    if (key != null) setting.key = key;
-    if (url != null) setting.url = url;
+    // if (key != null) setting.key = key;
+    // if (url != null) setting.url = url;
     await isar.writeTxn(() async {
       await isar.settings.put(setting);
     });

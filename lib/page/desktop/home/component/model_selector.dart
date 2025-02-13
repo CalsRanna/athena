@@ -27,13 +27,16 @@ class DesktopModelSelector extends StatelessWidget {
   }
 
   void openDialog() {
-    ADialog.show(_ModelSelectDialog(onTap: changeModel));
+    ADialog.show(
+      DesktopModelSelectDialog(onTap: changeModel),
+      barrierDismissible: true,
+    );
   }
 }
 
-class _ModelSelectDialog extends ConsumerWidget {
+class DesktopModelSelectDialog extends ConsumerWidget {
   final void Function(Model)? onTap;
-  const _ModelSelectDialog({this.onTap});
+  const DesktopModelSelectDialog({super.key, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

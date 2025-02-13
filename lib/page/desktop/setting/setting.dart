@@ -21,9 +21,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   final _icons = [
     HugeIcons.strokeRoundedPowerService,
+    HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedArtificialIntelligence03,
   ];
-  final _menus = ['Provider', 'Sentinel'];
+  final _menus = ['Provider', 'Default Model', 'Sentinel'];
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +43,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     });
     var route = switch (index) {
       0 => const DesktopSettingProviderRoute(),
-      1 => const DesktopSentinelRoute(),
+      1 => const DesktopSettingDefaultModelRoute(),
+      2 => const DesktopSettingSentinelRoute(),
       _ => null,
     };
     if (route == null) return;

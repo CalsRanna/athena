@@ -87,10 +87,10 @@ class _Key extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final setting = ref.watch(settingNotifierProvider).valueOrNull;
     if (setting == null) return const _SettingTile(title: 'API Key');
-    final key = setting.key.isNotEmpty ? setting.key : 'API Key Not Set Yet';
+    // final key = setting.key.isNotEmpty ? setting.key : 'API Key Not Set Yet';
     return _SettingTile(
       title: 'API Key',
-      trailing: key,
+      trailing: '',
       onTap: () => handleTap(context),
     );
   }
@@ -132,7 +132,7 @@ class _Model extends ConsumerWidget {
     return _SettingTile(
       onTap: () => handleTap(context),
       title: 'Default Model',
-      trailing: setting?.model ?? '',
+      trailing: '',
     );
   }
 
@@ -182,7 +182,7 @@ class _Url extends ConsumerWidget {
     }
     return _SettingTile(
       title: 'API Proxy Url (Optional)',
-      trailing: setting.url,
+      trailing: '',
       onTap: () => handleTap(context),
     );
   }

@@ -24,7 +24,7 @@ final enabledProvidersNotifierProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$EnabledProvidersNotifier
     = AutoDisposeAsyncNotifier<List<schema.Provider>>;
-String _$providersNotifierHash() => r'5b224b8367661b2b075bc925dd0791b97b452df3';
+String _$providersNotifierHash() => r'ccc5374012aec8f72b9c4fc1d6e084b19dcd2318';
 
 /// See also [ProvidersNotifier].
 @ProviderFor(ProvidersNotifier)

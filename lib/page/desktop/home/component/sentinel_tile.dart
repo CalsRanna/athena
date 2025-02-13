@@ -17,7 +17,7 @@ class DesktopSentinelTile extends StatelessWidget {
   }
 
   Future<void> handleTap(BuildContext context) async {
-    const route = DesktopSentinelRoute();
+    const route = DesktopSettingSentinelRoute();
     var sentinel = await route.push<Sentinel>(context);
     if (sentinel == null) return;
     onChanged?.call(sentinel);

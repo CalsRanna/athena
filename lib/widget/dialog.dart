@@ -15,10 +15,10 @@ class ADialog {
     Navigator.of(globalKey.currentContext!).pop();
   }
 
-  static void show(Widget child) {
+  static void show(Widget child, {bool barrierDismissible = false}) {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       showDialog(
-        barrierDismissible: false,
+        barrierDismissible: barrierDismissible,
         builder: (_) => child,
         context: globalKey.currentContext!,
       );

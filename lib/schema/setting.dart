@@ -9,9 +9,9 @@ class Setting {
   @Name('dark_mode')
   bool darkMode = false;
   double height = 720;
-  String model = '';
-  String key = '';
   bool latex = false;
-  String url = '';
   double width = 960;
+  int chatModelId = 0;
+  int chatNamingModelId = 0;
+  int sentinelMetadataGenerationModelId = 0;
 }
