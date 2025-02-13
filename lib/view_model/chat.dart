@@ -25,8 +25,8 @@ class ChatViewModel extends ViewModel {
   }) async {
     var timestamp = DateTime.now();
     var chat = Chat()
-      ..modelId = model.id
       ..title = 'New Chat'
+      ..modelId = model.id
       ..sentinelId = sentinel.id
       ..createdAt = timestamp
       ..updatedAt = timestamp;
@@ -200,8 +200,12 @@ class ChatViewModel extends ViewModel {
         await messagesNotifier.streaming(token);
       }
       await messagesNotifier.closeStreaming();
+      // Can not use the chat from params anymore cause the chat's title maybe
+      // changed in the meantime
+      var newChat = await isar.chats.filter().idEqualTo(chat.id).findFirst();
+      var copiedChat = (newChat ?? Chat()).copyWith(updatedAt: DateTime.now());
       await isar.writeTxn(() async {
-        await isar.chats.put(chat.copyWith(updatedAt: DateTime.now()));
+        await isar.chats.put(copiedChat);
       });
       ref.invalidate(chatsNotifierProvider);
       ref.invalidate(recentChatsNotifierProvider);

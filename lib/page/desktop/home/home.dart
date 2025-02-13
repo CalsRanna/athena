@@ -118,7 +118,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> sendMessage() async {
-    if (model == null || sentinel == null) return;
+    if (model == null || sentinel == null) {
+      ADialog.message('Pick a model and sentinel first');
+      return;
+    }
     if (chat == null) {
       var chat = await viewModel.createChat(model: model!, sentinel: sentinel!);
       setState(() {
@@ -128,16 +131,16 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       var text = controller.text.trim();
       if (text.isEmpty) return;
+      controller.clear();
+      if (chat!.title.isEmpty || chat!.title == 'New Chat') {
+        viewModel.renameChat(chat!);
+      }
       viewModel.sendMessage(
         text,
         chat: chat!,
         model: model!,
         sentinel: sentinel!,
       );
-      controller.clear();
-      if (chat!.title.isEmpty || chat!.title == 'New Chat') {
-        viewModel.renameChat(chat!);
-      }
     });
   }
 
