@@ -152,10 +152,7 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<Chat> selectModel(Model model, {required Chat chat}) async {
-    var copiedChat = chat.copyWith(
-      modelId: model.id,
-      updatedAt: DateTime.now(),
-    );
+    var copiedChat = chat.copyWith(modelId: model.id);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
     });
