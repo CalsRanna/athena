@@ -87,6 +87,7 @@ class ChatViewModel extends ViewModel {
     var provider = providerNotifierProvider(model.providerId);
     var aiProvider = await ref.read(provider.future);
     var messages = await ref.read(messagesNotifierProvider(chat.id).future);
+    var notifier = ref.read(chatsNotifierProvider.notifier);
     var title = '';
     try {
       final titleTokens = ChatApi().getTitle(
@@ -96,12 +97,14 @@ class ChatViewModel extends ViewModel {
       );
       await for (final token in titleTokens) {
         title += token;
+        title = title.replaceAll(' ', '').replaceAll('\n', '');
+        notifier.updateChatTitle(title, chat: chat);
       }
     } catch (error) {
       title = '';
     }
     var copiedChat = chat.copyWith(
-      title: title.trim(),
+      title: title,
       updatedAt: DateTime.now(),
     );
     await isar.writeTxn(() async {

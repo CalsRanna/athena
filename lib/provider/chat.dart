@@ -177,6 +177,15 @@ class ChatsNotifier extends _$ChatsNotifier {
     ref.invalidateSelf();
     ref.invalidate(recentChatsNotifierProvider);
   }
+
+  Future<void> updateChatTitle(String title, {required Chat chat}) async {
+    var newChat = chat.copyWith(title: title);
+    var chats = await future;
+    var index = chats.indexWhere((item) => item.id == chat.id);
+    if (index < 0) return;
+    chats[index] = newChat;
+    state = AsyncData(chats);
+  }
 }
 
 @riverpod
