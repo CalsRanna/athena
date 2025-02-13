@@ -47,35 +47,37 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
-  Future<Chat?> getFirstChat() async {
+  Future<Chat> getFirstChat() async {
     var chats = await ref.read(chatsNotifierProvider.future);
-    if (chats.isEmpty) return null;
+    if (chats.isEmpty) return Chat();
     return chats.first;
   }
 
-  Future<Model?> getFirstEnabledModel() async {
+  Future<Model> getFirstEnabledModel() async {
     var model = await ref.read(chatModelNotifierProvider.future);
     if (model.enabled) return model;
     var result = await ref.read(groupedEnabledModelsNotifierProvider.future);
-    if (result.isEmpty) return null;
+    if (result.isEmpty) return Model();
     var entry = result.entries.first;
     var models = entry.value;
-    if (models.isEmpty) return null;
+    if (models.isEmpty) return Model();
     return models.first;
   }
 
-  Future<Sentinel?> getFirstSentinel() async {
+  Future<Sentinel> getFirstSentinel() async {
     var sentinels = await ref.read(sentinelsNotifierProvider.future);
-    if (sentinels.isEmpty) return null;
+    if (sentinels.isEmpty) return Sentinel();
     return sentinels.first;
   }
 
-  Future<Model?> getModel(int id) async {
-    return await isar.models.filter().idEqualTo(id).findFirst();
+  Future<Model> getModel(int id) async {
+    var model = await isar.models.filter().idEqualTo(id).findFirst();
+    return model ?? Model();
   }
 
-  Future<Sentinel?> getSentinel(int id) async {
-    return await isar.sentinels.filter().idEqualTo(id).findFirst();
+  Future<Sentinel> getSentinel(int id) async {
+    var sentinel = await isar.sentinels.filter().idEqualTo(id).findFirst();
+    return sentinel ?? Sentinel();
   }
 
   void navigateSettingPage(BuildContext context) {

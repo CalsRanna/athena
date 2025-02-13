@@ -2,7 +2,6 @@ import 'package:athena/page/desktop/home/component/chat_indicator.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
-import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
@@ -24,9 +23,9 @@ class DesktopHomePage extends ConsumerStatefulWidget {
 }
 
 class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
-  Chat? chat;
-  Model? model;
-  Sentinel? sentinel;
+  var chat = Chat();
+  var model = Model();
+  var sentinel = Sentinel();
   final controller = TextEditingController();
   late final viewModel = ChatViewModel(ref);
 
@@ -56,8 +55,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     setState(() {
       this.model = model;
     });
-    if (this.chat == null) return;
-    var chat = await viewModel.selectModel(model, chat: this.chat!);
+    var chat = await viewModel.selectModel(model, chat: this.chat);
     setState(() {
       this.chat = chat;
     });
@@ -70,8 +68,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     setState(() {
       this.sentinel = sentinel;
     });
-    if (this.chat == null) return;
-    var chat = await viewModel.selectSentinel(sentinel, chat: this.chat!);
+    var chat = await viewModel.selectSentinel(sentinel, chat: this.chat);
     setState(() {
       this.chat = chat;
     });
@@ -81,11 +78,12 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
     }
-    setState(() {
-      chat = null;
-    });
     _initModel();
     _initSentinel();
+    var chat = await viewModel.createChat(model: model, sentinel: sentinel);
+    setState(() {
+      this.chat = chat;
+    });
   }
 
   Future<void> destroyChat(Chat chat) async {
@@ -108,38 +106,27 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> resendMessage(Message message) async {
-    if (model == null || sentinel == null) return;
     await viewModel.resendMessage(
       message,
-      chat: chat!,
-      model: model!,
-      sentinel: sentinel!,
+      chat: chat,
+      model: model,
+      sentinel: sentinel,
     );
   }
 
   Future<void> sendMessage() async {
-    if (model == null || sentinel == null) {
-      ADialog.message('Pick a model and sentinel first');
-      return;
-    }
-    if (chat == null) {
-      var chat = await viewModel.createChat(model: model!, sentinel: sentinel!);
-      setState(() {
-        this.chat = chat;
-      });
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       var text = controller.text.trim();
       if (text.isEmpty) return;
       controller.clear();
-      if (chat!.title.isEmpty || chat!.title == 'New Chat') {
-        viewModel.renameChat(chat!);
+      if (chat.title.isEmpty || chat.title == 'New Chat') {
+        viewModel.renameChat(chat);
       }
       viewModel.sendMessage(
         text,
-        chat: chat!,
-        model: model!,
-        sentinel: sentinel!,
+        chat: chat,
+        model: model,
+        sentinel: sentinel,
       );
     });
   }
@@ -187,10 +174,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Widget _buildRightWorkspace() {
-    Widget workspace = DesktopSentinelPlaceholder(sentinel: sentinel);
-    if (chat != null) {
-      workspace = DesktopMessageList(chat: chat!, onResend: resendMessage);
-    }
+    var workspace = DesktopMessageList(
+      chat: chat,
+      onResend: resendMessage,
+      sentinel: sentinel,
+    );
     var desktopMessageInput = DesktopMessageInput(
       controller: controller,
       onModelChanged: changeModel,
@@ -233,17 +221,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> _initState() async {
-    await _initChat();
-    if (chat != null) {
-      var model = await viewModel.getModel(chat!.modelId);
-      var sentinel = await viewModel.getSentinel(chat!.sentinelId);
-      setState(() {
-        this.model = model;
-        this.sentinel = sentinel;
-      });
-    } else {
-      _initModel();
-      _initSentinel();
-    }
+    _initChat();
+    _initModel();
+    _initSentinel();
   }
 }

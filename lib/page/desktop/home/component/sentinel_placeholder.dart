@@ -1,24 +1,12 @@
-import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DesktopSentinelPlaceholder extends ConsumerWidget {
-  final Sentinel? sentinel;
-  const DesktopSentinelPlaceholder({super.key, this.sentinel});
+class DesktopSentinelPlaceholder extends StatelessWidget {
+  final Sentinel sentinel;
+  const DesktopSentinelPlaceholder({super.key, required this.sentinel});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (sentinel != null) return _buildData(sentinel!);
-    var provider = sentinelNotifierProvider(0);
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildData(Sentinel sentinel) {
+  Widget build(BuildContext context) {
     var nameTextStyle = TextStyle(
       color: Colors.white,
       fontSize: 28,
