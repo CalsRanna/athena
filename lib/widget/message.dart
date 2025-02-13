@@ -143,10 +143,15 @@ class _UserMessageListTile extends StatelessWidget {
 
   Widget _buildContent() {
     var textStyle = TextStyle(color: Color(0xFFCACACA));
+    var selectableText = SelectableText(
+      contextMenuBuilder: (context, editableTextState) => const SizedBox(),
+      message.content,
+      style: textStyle,
+    );
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: BoxConstraints(minHeight: 36),
-      child: Text(message.content, style: textStyle),
+      child: selectableText,
     );
     return Expanded(child: container);
   }
