@@ -80,7 +80,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     }
     _initModel();
     _initSentinel();
-    var chat = await viewModel.createChat(model: model, sentinel: sentinel);
+    var chat = await viewModel.createChat();
     setState(() {
       this.chat = chat;
     });

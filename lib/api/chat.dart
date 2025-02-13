@@ -59,9 +59,9 @@ class ChatApi {
       messages: wrappedMessages,
     );
     var response = client.createChatCompletionStream(request: request);
-    await for (final event in response) {
-      if (event.choices.isEmpty) continue;
-      yield event.choices.first.delta.content ?? '';
+    await for (final chunk in response) {
+      if (chunk.choices.isEmpty) continue;
+      yield chunk.choices.first.delta.content ?? '';
     }
   }
 
@@ -76,9 +76,8 @@ class ChatApi {
       baseUrl: provider.url,
       headers: headers,
     );
-    const String prompt = '请用最简短的语言总结出「」中内容的主题。不要解释、不要标点符号、'
-        '不要语气助词、不要多余文本、长度不得大于10。只需要告诉我你总结的内容，不需要任何其他文'
-        '本。并自己判断是否使用英语总结更准确。如果是的话，就使用英语。';
+    const String prompt = '你是一名擅长会话的助理，你需要将用户的会话总结为 10 个字以内的'
+        '标题，标题语言与用户的首要语言一致，不要使用标点符号和其他特殊符号。';
     var wrappedMessages = [
       ChatCompletionMessage.system(content: prompt),
       ChatCompletionMessage.user(
@@ -90,9 +89,9 @@ class ChatApi {
       messages: wrappedMessages,
     );
     var response = client.createChatCompletionStream(request: request);
-    await for (final event in response) {
-      if (event.choices.isEmpty) continue;
-      yield event.choices.first.delta.content ?? '';
+    await for (final chunk in response) {
+      if (chunk.choices.isEmpty) continue;
+      yield chunk.choices.first.delta.content ?? '';
     }
   }
 }

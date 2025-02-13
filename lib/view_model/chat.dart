@@ -19,10 +19,9 @@ class ChatViewModel extends ViewModel {
 
   bool get streaming => ref.read(streamingNotifierProvider);
 
-  Future<Chat> createChat({
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
+  Future<Chat> createChat() async {
+    var model = await getFirstEnabledModel();
+    var sentinel = await getFirstSentinel();
     var timestamp = DateTime.now();
     var chat = Chat()
       ..title = 'New Chat'
@@ -39,6 +38,8 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<void> destroyChat(Chat chat) async {
+    var chats = await isar.chats.count();
+    if (chats <= 1) return;
     await isar.writeTxn(() async {
       await isar.chats.delete(chat.id);
       await isar.messages.filter().chatIdEqualTo(chat.id).deleteAll();
