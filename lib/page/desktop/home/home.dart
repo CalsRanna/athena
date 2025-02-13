@@ -149,17 +149,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     );
   }
 
-  Future<void> renameChat(Chat chat) async {
-    setState(() {
-      chat.title = '';
-    });
-    viewModel.renameChat(chat);
-  }
-
   Widget _buildLeftBar() {
     var chatListView = DesktopChatListView(
       onDestroyed: destroyChat,
-      onRenamed: renameChat,
+      onRenamed: viewModel.renameChat,
       onSelected: changeChat,
       selectedChat: chat,
     );

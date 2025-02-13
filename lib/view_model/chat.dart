@@ -91,6 +91,7 @@ class ChatViewModel extends ViewModel {
     var messages = await ref.read(messagesNotifierProvider(chat.id).future);
     var notifier = ref.read(chatsNotifierProvider.notifier);
     var title = '';
+    notifier.updateChatTitle(title, chat: chat);
     try {
       final titleTokens = ChatApi().getTitle(
         messages.first.content,
