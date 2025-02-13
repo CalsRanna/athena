@@ -47,39 +47,6 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
-  Future<String?> generateChatTitle(
-    String text, {
-    required Chat chat,
-    required Model model,
-  }) async {
-    var provider = providerNotifierProvider(model.providerId);
-    var aiProvider = await ref.read(provider.future);
-    if (chat.title.isNotEmpty && chat.title != 'New Chat') return null;
-    var title = '';
-    try {
-      final titleTokens = ChatApi().getTitle(
-        text,
-        model: model,
-        provider: aiProvider,
-      );
-      await for (final token in titleTokens) {
-        title += token;
-      }
-    } catch (error) {
-      title = '';
-    }
-    var copiedChat = chat.copyWith(
-      title: title.trim(),
-      updatedAt: DateTime.now(),
-    );
-    await isar.writeTxn(() async {
-      await isar.chats.put(copiedChat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-    return title;
-  }
-
   Future<Chat?> getFirstChat() async {
     var chats = await ref.read(chatsNotifierProvider.future);
     if (chats.isEmpty) return null;
@@ -87,6 +54,8 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<Model?> getFirstEnabledModel() async {
+    var model = await ref.read(chatModelNotifierProvider.future);
+    if (model.enabled) return model;
     var result = await ref.read(groupedEnabledModelsNotifierProvider.future);
     if (result.isEmpty) return null;
     var entry = result.entries.first;
@@ -111,6 +80,35 @@ class ChatViewModel extends ViewModel {
 
   void navigateSettingPage(BuildContext context) {
     DesktopSettingProviderRoute().push(context);
+  }
+
+  Future<void> renameChat(Chat chat) async {
+    var model = await ref.read(chatNamingModelNotifierProvider.future);
+    var provider = providerNotifierProvider(model.providerId);
+    var aiProvider = await ref.read(provider.future);
+    var messages = await ref.read(messagesNotifierProvider(chat.id).future);
+    var title = '';
+    try {
+      final titleTokens = ChatApi().getTitle(
+        messages.first.content,
+        model: model,
+        provider: aiProvider,
+      );
+      await for (final token in titleTokens) {
+        title += token;
+      }
+    } catch (error) {
+      title = '';
+    }
+    var copiedChat = chat.copyWith(
+      title: title.trim(),
+      updatedAt: DateTime.now(),
+    );
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<void> resendMessage(
