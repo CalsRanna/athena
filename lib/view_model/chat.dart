@@ -163,10 +163,7 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<Chat> selectSentinel(Sentinel sentinel, {required Chat chat}) async {
-    var copiedChat = chat.copyWith(
-      sentinelId: sentinel.id,
-      updatedAt: DateTime.now(),
-    );
+    var copiedChat = chat.copyWith(sentinelId: sentinel.id);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
     });
