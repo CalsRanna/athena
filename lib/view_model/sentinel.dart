@@ -1,24 +1,25 @@
 import 'package:athena/api/sentinel.dart';
+import 'package:athena/provider/model.dart';
 import 'package:athena/schema/isar.dart';
-import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/view_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 
 class SentinelViewModel extends ViewModel {
-  SentinelViewModel();
+  final WidgetRef ref;
+  SentinelViewModel(this.ref);
 
   Future<Sentinel?> generateSentinel(String prompt) async {
-    var models = await isar.models.filter().enabledEqualTo(true).findAll();
-    if (models.isEmpty) return null;
-    var model = models.last;
+    var provider = sentinelMetaGenerationModelNotifierProvider;
+    var model = await ref.read(provider.future);
     var builder = isar.providers.where().idEqualTo(model.providerId);
-    var provider = await builder.findFirst();
-    if (provider == null) return null;
+    var aiProvider = await builder.findFirst();
+    if (aiProvider == null) return null;
     return await SentinelApi().generate(
       prompt,
-      provider: provider,
+      provider: aiProvider,
       model: model,
     );
   }

@@ -11,17 +11,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
-class DesktopSentinelFormPage extends StatefulWidget {
+class DesktopSentinelFormPage extends ConsumerStatefulWidget {
   final Sentinel? sentinel;
 
   const DesktopSentinelFormPage({super.key, this.sentinel});
 
   @override
-  State<DesktopSentinelFormPage> createState() =>
+  ConsumerState<DesktopSentinelFormPage> createState() =>
       _DesktopSentinelFormPageState();
 }
 
-class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
+class _DesktopSentinelFormPageState
+    extends ConsumerState<DesktopSentinelFormPage> {
   String avatar = '';
   List<String> tags = [];
 
@@ -29,6 +30,8 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   bool loading = false;
+
+  late final viewModel = SentinelViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -57,8 +60,7 @@ class _DesktopSentinelFormPageState extends State<DesktopSentinelFormPage> {
       loading = true;
     });
     try {
-      final sentinel =
-          await SentinelViewModel().generateSentinel(promptController.text);
+      final sentinel = await viewModel.generateSentinel(promptController.text);
       if (sentinel == null) {
         loading = false;
         return;
