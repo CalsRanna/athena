@@ -119,15 +119,15 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       var text = controller.text.trim();
       if (text.isEmpty) return;
       controller.clear();
-      if (chat.title.isEmpty || chat.title == 'New Chat') {
-        viewModel.renameChat(chat);
-      }
-      viewModel.sendMessage(
+      await viewModel.sendMessage(
         text,
         chat: chat,
         model: model,
         sentinel: sentinel,
       );
+      if (chat.title.isEmpty || chat.title == 'New Chat') {
+        viewModel.renameChat(chat);
+      }
     });
   }
 

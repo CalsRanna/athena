@@ -99,7 +99,6 @@ class ChatViewModel extends ViewModel {
     var aiProvider = await ref.read(provider.future);
     var notifier = ref.read(chatsNotifierProvider.notifier);
     var title = '';
-    notifier.updateChatTitle(title, chat: chat);
     try {
       final response = ChatApi().getTitle(
         messages.first.content,
@@ -112,12 +111,10 @@ class ChatViewModel extends ViewModel {
         notifier.updateChatTitle(title, chat: chat);
       }
     } catch (error) {
-      title = '';
+      title = error.toString().replaceAll(' ', '').replaceAll('\n', '');
+      notifier.updateChatTitle(title, chat: chat);
     }
-    var copiedChat = chat.copyWith(
-      title: title,
-      updatedAt: DateTime.now(),
-    );
+    var copiedChat = chat.copyWith(title: title);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
     });
