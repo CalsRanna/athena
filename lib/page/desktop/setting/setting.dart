@@ -52,7 +52,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   void showDialog() {
-    if (index == 1) {
+    if (index == 2) {
       DesktopSentinelFormRoute().push(context);
       return;
     }
@@ -60,6 +60,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildCreateButton() {
+    if (index == 1) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: Colors.white,
