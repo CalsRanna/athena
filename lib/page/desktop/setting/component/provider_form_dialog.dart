@@ -9,7 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopProviderFormDialog extends StatefulWidget {
-  const DesktopProviderFormDialog({super.key});
+  final schema.Provider? provider;
+  const DesktopProviderFormDialog({super.key, this.provider});
 
   @override
   State<DesktopProviderFormDialog> createState() =>
@@ -17,9 +18,7 @@ class DesktopProviderFormDialog extends StatefulWidget {
 }
 
 class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
-  final keyController = TextEditingController();
   final nameController = TextEditingController();
-  final urlController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -52,24 +51,10 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       const SizedBox(width: 12),
       Expanded(child: AInput(controller: nameController))
     ];
-    var keyChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
-      const SizedBox(width: 12),
-      Expanded(child: AInput(controller: keyController))
-    ];
-    var urlChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Url')),
-      const SizedBox(width: 12),
-      Expanded(child: AInput(controller: urlController))
-    ];
     var children = [
       Row(children: titleChildren),
       const SizedBox(height: 24),
       Row(children: nameChildren),
-      const SizedBox(height: 12),
-      Row(children: keyChildren),
-      const SizedBox(height: 12),
-      Row(children: urlChildren),
       const SizedBox(height: 12),
       _buildButtons()
     ];
@@ -95,22 +80,29 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
 
   @override
   void dispose() {
-    keyController.dispose();
     nameController.dispose();
-    urlController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.provider?.name ?? '';
   }
 
   Future<void> storeProvider() async {
     var container = ProviderScope.containerOf(context);
     var provider = providersNotifierProvider;
     var notifier = container.read(provider.notifier);
-    var newProvider = schema.Provider()
-      ..enabled = false
-      ..key = keyController.text
-      ..name = nameController.text
-      ..url = urlController.text;
-    await notifier.store(newProvider);
+    if (widget.provider != null) {
+      var copiedProvider = widget.provider!.copyWith(name: nameController.text);
+      await notifier.updateProvider(copiedProvider);
+    } else {
+      var newProvider = schema.Provider()
+        ..enabled = true
+        ..name = nameController.text;
+      await notifier.storeProvider(newProvider);
+    }
     ADialog.dismiss();
   }
 

@@ -28,7 +28,7 @@ class ProvidersNotifier extends _$ProvidersNotifier {
     ref.invalidateSelf();
   }
 
-  Future<void> store(schema.Provider provider) async {
+  Future<void> storeProvider(schema.Provider provider) async {
     await isar.writeTxn(() async {
       await isar.providers.put(provider);
     });
