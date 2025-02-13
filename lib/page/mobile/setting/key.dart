@@ -61,6 +61,6 @@ class _APIKeyPageState extends ConsumerState<APIKeyPage> {
 
   Future<void> _initState() async {
     final setting = await ref.read(settingNotifierProvider.future);
-    controller.text = setting.key;
+    // controller.text = setting.key;
   }
 }

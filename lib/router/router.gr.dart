@@ -9,11 +9,11 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:athena/page/desktop/home/home.dart' as _i1;
-import 'package:athena/page/desktop/setting/account.dart' as _i4;
-import 'package:athena/page/desktop/setting/provider.dart' as _i6;
+import 'package:athena/page/desktop/setting/default_model.dart' as _i3;
+import 'package:athena/page/desktop/setting/provider.dart' as _i5;
 import 'package:athena/page/desktop/setting/sentinel/form.dart' as _i2;
-import 'package:athena/page/desktop/setting/sentinel/sentinel.dart' as _i3;
-import 'package:athena/page/desktop/setting/setting.dart' as _i5;
+import 'package:athena/page/desktop/setting/sentinel/sentinel.dart' as _i6;
+import 'package:athena/page/desktop/setting/setting.dart' as _i4;
 import 'package:athena/page/mobile/chat/chat.dart' as _i8;
 import 'package:athena/page/mobile/chat/list.dart' as _i7;
 import 'package:athena/page/mobile/chat/rename.dart' as _i9;
@@ -96,45 +96,26 @@ class DesktopSentinelFormRouteArgs {
 }
 
 /// generated route for
-/// [_i3.DesktopSentinelPage]
-class DesktopSentinelRoute extends _i15.PageRouteInfo<void> {
-  const DesktopSentinelRoute({List<_i15.PageRouteInfo>? children})
+/// [_i3.DesktopSettingDefaultModelPage]
+class DesktopSettingDefaultModelRoute extends _i15.PageRouteInfo<void> {
+  const DesktopSettingDefaultModelRoute({List<_i15.PageRouteInfo>? children})
       : super(
-          DesktopSentinelRoute.name,
+          DesktopSettingDefaultModelRoute.name,
           initialChildren: children,
         );
 
-  static const String name = 'DesktopSentinelRoute';
+  static const String name = 'DesktopSettingDefaultModelRoute';
 
   static _i15.PageInfo page = _i15.PageInfo(
     name,
     builder: (data) {
-      return const _i3.DesktopSentinelPage();
+      return const _i3.DesktopSettingDefaultModelPage();
     },
   );
 }
 
 /// generated route for
-/// [_i4.DesktopSettingAccountPage]
-class DesktopSettingAccountRoute extends _i15.PageRouteInfo<void> {
-  const DesktopSettingAccountRoute({List<_i15.PageRouteInfo>? children})
-      : super(
-          DesktopSettingAccountRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'DesktopSettingAccountRoute';
-
-  static _i15.PageInfo page = _i15.PageInfo(
-    name,
-    builder: (data) {
-      return const _i4.DesktopSettingAccountPage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i5.DesktopSettingPage]
+/// [_i4.DesktopSettingPage]
 class DesktopSettingRoute extends _i15.PageRouteInfo<void> {
   const DesktopSettingRoute({List<_i15.PageRouteInfo>? children})
       : super(
@@ -147,13 +128,13 @@ class DesktopSettingRoute extends _i15.PageRouteInfo<void> {
   static _i15.PageInfo page = _i15.PageInfo(
     name,
     builder: (data) {
-      return const _i5.DesktopSettingPage();
+      return const _i4.DesktopSettingPage();
     },
   );
 }
 
 /// generated route for
-/// [_i6.DesktopSettingProviderPage]
+/// [_i5.DesktopSettingProviderPage]
 class DesktopSettingProviderRoute extends _i15.PageRouteInfo<void> {
   const DesktopSettingProviderRoute({List<_i15.PageRouteInfo>? children})
       : super(
@@ -166,7 +147,26 @@ class DesktopSettingProviderRoute extends _i15.PageRouteInfo<void> {
   static _i15.PageInfo page = _i15.PageInfo(
     name,
     builder: (data) {
-      return const _i6.DesktopSettingProviderPage();
+      return const _i5.DesktopSettingProviderPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i6.DesktopSettingSentinelPage]
+class DesktopSettingSentinelRoute extends _i15.PageRouteInfo<void> {
+  const DesktopSettingSentinelRoute({List<_i15.PageRouteInfo>? children})
+      : super(
+          DesktopSettingSentinelRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DesktopSettingSentinelRoute';
+
+  static _i15.PageInfo page = _i15.PageInfo(
+    name,
+    builder: (data) {
+      return const _i6.DesktopSettingSentinelPage();
     },
   );
 }

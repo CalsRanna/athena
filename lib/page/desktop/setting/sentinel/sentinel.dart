@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
-class DesktopSentinelPage extends StatelessWidget {
-  const DesktopSentinelPage({super.key});
+class DesktopSettingSentinelPage extends StatelessWidget {
+  const DesktopSettingSentinelPage({super.key});
 
   @override
   Widget build(BuildContext context) {

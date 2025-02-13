@@ -1,4 +1,3 @@
-import 'package:athena/router/router.gr.dart';
 import 'package:flutter/material.dart';
 
 class ProfileTile extends StatefulWidget {
@@ -61,7 +60,5 @@ class _ProfileTileState extends State<ProfileTile> {
     );
   }
 
-  void handleTap(BuildContext context) {
-    const DesktopSettingAccountRoute().push(context);
-  }
+  void handleTap(BuildContext context) {}
 }

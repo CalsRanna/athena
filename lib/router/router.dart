@@ -12,10 +12,10 @@ class AppRouter extends RootStackRouter {
   @override
   List<AutoRoute> get routes {
     var desktopSettingChildren = [
-      DesktopRoute(page: DesktopSettingAccountRoute.page),
-      DesktopRoute(page: DesktopSentinelRoute.page),
-      DesktopRoute(page: DesktopSentinelFormRoute.page),
       DesktopRoute(page: DesktopSettingProviderRoute.page),
+      DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
+      DesktopRoute(page: DesktopSettingSentinelRoute.page),
+      DesktopRoute(page: DesktopSentinelFormRoute.page),
     ];
     var desktopSettingRoute = DesktopRoute(
       children: desktopSettingChildren,

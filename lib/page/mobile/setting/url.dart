@@ -62,6 +62,6 @@ class _APIUrlPageState extends ConsumerState<APIUrlPage> {
 
   Future<void> _initState() async {
     final setting = await ref.read(settingNotifierProvider.future);
-    controller.text = setting.url;
+    // controller.text = setting.url;
   }
 }

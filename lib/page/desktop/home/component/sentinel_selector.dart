@@ -27,7 +27,10 @@ class DesktopSentinelSelector extends StatelessWidget {
   }
 
   void openDialog() {
-    ADialog.show(_SentinelSelectDialog(onTap: changeModel));
+    ADialog.show(
+      _SentinelSelectDialog(onTap: changeModel),
+      barrierDismissible: true,
+    );
   }
 }
 
