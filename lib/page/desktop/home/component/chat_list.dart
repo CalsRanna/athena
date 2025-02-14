@@ -101,7 +101,7 @@ class _ChatTileState extends State<_ChatTile> {
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
       onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
-      child: container,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
   }
 

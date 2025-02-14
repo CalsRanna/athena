@@ -19,7 +19,10 @@ class DesktopModelSelector extends ConsumerWidget {
       color: Color(0xFF616161),
       size: 24,
     );
-    return GestureDetector(onTap: () => openDialog(ref), child: hugeIcon);
+    return GestureDetector(
+      onTap: () => openDialog(ref),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
+    );
   }
 
   void changeModel(Model model) {
