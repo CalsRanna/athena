@@ -121,9 +121,14 @@ class _ModelDropdown extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
       child: row,
     );
+    var fractionallySizedBox = FractionallySizedBox(
+      alignment: Alignment.centerLeft,
+      widthFactor: 0.5,
+      child: container,
+    );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: container,
+      child: fractionallySizedBox,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
