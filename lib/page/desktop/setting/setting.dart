@@ -83,7 +83,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     );
     var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
-    return Container(decoration: boxDecoration, width: 200, child: listView);
+    return Container(decoration: boxDecoration, width: 240, child: listView);
   }
 
   Widget _buildPageHeader(BuildContext context) {

@@ -108,7 +108,12 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     var descriptionText = LayoutBuilder(builder: _buildDescriptionText);
     var children = [
-      Text(widget.sentinel.name, style: nameTextStyle),
+      Text(
+        widget.sentinel.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: nameTextStyle,
+      ),
       const SizedBox(height: 4),
       Expanded(child: descriptionText),
     ];

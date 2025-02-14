@@ -48,7 +48,9 @@ class _SentinelSelectDialog extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return UnconstrainedBox(child: ACard(child: child));
+    return UnconstrainedBox(
+      child: ACard(borderRadius: BorderRadius.circular(24), child: child),
+    );
   }
 
   Widget _buildData(List<Sentinel> sentinels) {

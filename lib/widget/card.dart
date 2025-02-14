@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class ACard extends StatelessWidget {
+  final BorderRadius? borderRadius;
   final double? width;
   final Widget child;
-  const ACard({super.key, this.width, required this.child});
+  const ACard({super.key, this.borderRadius, this.width, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +15,7 @@ class ACard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: borderRadius ?? BorderRadius.circular(8),
         boxShadow: [boxShadow],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

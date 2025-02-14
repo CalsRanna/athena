@@ -168,7 +168,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     return Container(
       decoration: boxDecoration,
       height: double.infinity,
-      width: 200,
+      width: 240,
       child: chatListView,
     );
   }

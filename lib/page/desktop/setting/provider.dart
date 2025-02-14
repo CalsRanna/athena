@@ -200,7 +200,7 @@ class _DesktopSettingProviderPageState
     );
     return Container(
       decoration: BoxDecoration(border: Border(right: borderSide)),
-      width: 200,
+      width: 240,
       child: listView,
     );
   }
@@ -358,34 +358,17 @@ class _ModelTileState extends State<_ModelTile> {
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var nameText = Text(widget.model.name, style: nameTextStyle);
+    var nameText = Text(
+      widget.model.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: nameTextStyle,
+    );
     var nameChildren = [
-      nameText,
+      Flexible(child: nameText),
       SizedBox(width: 8),
       ATag.small(text: widget.model.value)
     ];
-    var subtitleTextStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var releasedAtText = Text(
-      'Released at ${widget.model.releasedAt}',
-      style: subtitleTextStyle,
-    );
-    var inputPriceText = Text(
-      'input ${widget.model.inputPrice}',
-      style: subtitleTextStyle,
-    );
-    var outputPriceText = Text(
-      'input ${widget.model.outputPrice}',
-      style: subtitleTextStyle,
-    );
-    var maxTokenText = Text(
-      '${widget.model.maxToken ~/ 1024}k',
-      style: subtitleTextStyle,
-    );
     var functionCallIcon = Icon(
       HugeIcons.strokeRoundedFunctionCircle,
       color: Color(0xFFE0E0E0),
@@ -401,11 +384,8 @@ class _ModelTileState extends State<_ModelTile> {
       color: Color(0xFFE0E0E0),
       size: 18,
     );
-    var children = [
-      if (widget.model.releasedAt.isNotEmpty) releasedAtText,
-      if (widget.model.inputPrice.isNotEmpty) inputPriceText,
-      if (widget.model.outputPrice.isNotEmpty) outputPriceText,
-      if (widget.model.maxToken > 0) maxTokenText,
+    var subtitleChildren = [
+      _buildSubtitle(),
       if (widget.model.supportFunctionCall) functionCallIcon,
       if (widget.model.supportThinking) thinkIcon,
       if (widget.model.supportVisualRecognition) visualRecognitionIcon,
@@ -413,7 +393,7 @@ class _ModelTileState extends State<_ModelTile> {
     var informationChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 4),
-      Row(spacing: 4, children: children),
+      Row(spacing: 8, children: subtitleChildren),
     ];
     var informationWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,21 +404,23 @@ class _ModelTileState extends State<_ModelTile> {
       color: Color(0xFFE0E0E0),
       size: 20,
     );
-    var row = Row(
-      children: [
-        Expanded(child: informationWidget),
-        if (hover) connectIcon,
-      ],
+    var paddedConnectIcon = Padding(
+      padding: const EdgeInsets.only(left: 8.0),
+      child: connectIcon,
     );
-    var padding = Padding(
+    var contentChildren = [
+      Expanded(child: informationWidget),
+      if (hover) paddedConnectIcon,
+    ];
+    var paddedContent = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: row,
+      child: Row(children: contentChildren),
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: handleEnter,
       onExit: handleExit,
-      child: padding,
+      child: paddedContent,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -454,6 +436,36 @@ class _ModelTileState extends State<_ModelTile> {
 
   void handleExit(PointerExitEvent event) {
     setState(() => hover = false);
+  }
+
+  Widget _buildSubtitle() {
+    var releasedAt = widget.model.releasedAt;
+    var inputPrice = widget.model.inputPrice;
+    var outputPrice = widget.model.outputPrice;
+    var maxToken = widget.model.maxToken;
+    var maxTokenString = '${widget.model.maxToken ~/ 1024}K';
+    if (maxToken > 1024 * 1024) {
+      maxTokenString = '${widget.model.maxToken ~/ (1024 * 1024)}M';
+    }
+    var parts = [
+      if (releasedAt.isNotEmpty) 'Released at ${widget.model.releasedAt}',
+      if (inputPrice.isNotEmpty) 'Input ${widget.model.inputPrice}',
+      if (outputPrice.isNotEmpty) 'Output ${widget.model.outputPrice}',
+      if (maxToken > 0) maxTokenString,
+    ];
+    var textStyle = TextStyle(
+      color: Color(0xFFE0E0E0),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var text = Text(
+      parts.join(' · '),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
+    return Flexible(child: text);
   }
 }
 
