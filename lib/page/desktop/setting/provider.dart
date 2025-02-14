@@ -242,12 +242,6 @@ class _DesktopSettingProviderPageState
       SizedBox(width: 120, child: AFormTileLabel(title: 'API URL')),
       Expanded(child: AInput(controller: urlController, onBlur: updateUrl))
     ];
-    var checkButton = ASecondaryButton.small(child: Text('Check'));
-    var checkChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Connect')),
-      Spacer(),
-      checkButton
-    ];
     var modelTextStyle = TextStyle(
       color: Colors.white,
       fontSize: 16,
@@ -278,8 +272,6 @@ class _DesktopSettingProviderPageState
       Row(children: keyChildren),
       const SizedBox(height: 12),
       Row(children: urlChildren),
-      const SizedBox(height: 12),
-      Row(children: checkChildren),
       const SizedBox(height: 24),
       Row(children: addModelChildren),
       const SizedBox(height: 4),
