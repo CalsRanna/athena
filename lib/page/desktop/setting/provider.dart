@@ -382,10 +382,33 @@ class _ModelTileState extends State<_ModelTile> {
       'input ${widget.model.outputPrice}',
       style: subtitleTextStyle,
     );
+    var maxTokenText = Text(
+      '${widget.model.maxToken ~/ 1024}k',
+      style: subtitleTextStyle,
+    );
+    var functionCallIcon = Icon(
+      HugeIcons.strokeRoundedFunctionCircle,
+      color: Color(0xFFE0E0E0),
+      size: 18,
+    );
+    var thinkIcon = Icon(
+      HugeIcons.strokeRoundedBrain02,
+      color: Color(0xFFE0E0E0),
+      size: 18,
+    );
+    var visualRecognitionIcon = Icon(
+      HugeIcons.strokeRoundedVision,
+      color: Color(0xFFE0E0E0),
+      size: 18,
+    );
     var children = [
       if (widget.model.releasedAt.isNotEmpty) releasedAtText,
       if (widget.model.inputPrice.isNotEmpty) inputPriceText,
       if (widget.model.outputPrice.isNotEmpty) outputPriceText,
+      if (widget.model.maxToken > 0) maxTokenText,
+      if (widget.model.supportFunctionCall) functionCallIcon,
+      if (widget.model.supportThinking) thinkIcon,
+      if (widget.model.supportVisualRecognition) visualRecognitionIcon,
     ];
     var informationChildren = [
       Row(children: nameChildren),
@@ -396,13 +419,16 @@ class _ModelTileState extends State<_ModelTile> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
-    var icon = Icon(
+    var connectIcon = Icon(
       HugeIcons.strokeRoundedConnect,
       color: Color(0xFFE0E0E0),
       size: 20,
     );
     var row = Row(
-      children: [Expanded(child: informationWidget), if (hover) icon],
+      children: [
+        Expanded(child: informationWidget),
+        if (hover) connectIcon,
+      ],
     );
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
