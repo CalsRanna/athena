@@ -33,7 +33,7 @@ class DesktopPopButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handleTap(context),
-      child: icon,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 

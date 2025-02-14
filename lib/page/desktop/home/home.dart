@@ -147,7 +147,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var chatCreateButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: createChat,
-      child: icon,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
     return AAppBar(
       action: _buildSettingButton(),
@@ -192,10 +192,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Widget _buildSettingButton() {
+    const icon = Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => viewModel.navigateSettingPage(context),
-      child: const Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 

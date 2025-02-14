@@ -18,7 +18,10 @@ class DesktopSentinelSelector extends StatelessWidget {
       color: Color(0xFF616161),
       size: 24,
     );
-    return GestureDetector(onTap: openDialog, child: hugeIcon);
+    return GestureDetector(
+      onTap: openDialog,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
+    );
   }
 
   void changeModel(Sentinel sentinel) {
