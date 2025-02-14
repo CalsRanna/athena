@@ -8,6 +8,7 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSettingDefaultModelPage extends ConsumerStatefulWidget {
@@ -105,10 +106,20 @@ class _ModelDropdown extends ConsumerWidget {
       color: Color(0xFFADADAD).withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(24),
     );
+    var icon = Icon(
+      HugeIcons.strokeRoundedFilterHorizontal,
+      color: Color(0xFFF5F5F5),
+      size: 20,
+    );
+    var children = [_buildText(ref), icon];
+    var row = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: children,
+    );
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: _buildText(ref),
+      child: row,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
