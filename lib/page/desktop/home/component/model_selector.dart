@@ -55,7 +55,7 @@ class DesktopModelSelectDialog extends ConsumerWidget {
       _ => const SizedBox(),
     };
     return UnconstrainedBox(
-      child: ACard(child: child),
+      child: ACard(borderRadius: BorderRadius.circular(24), child: child),
     );
   }
 
