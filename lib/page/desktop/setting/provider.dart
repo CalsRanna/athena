@@ -5,6 +5,7 @@ import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -15,6 +16,7 @@ import 'package:athena/widget/switch.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -57,6 +59,12 @@ class _DesktopSettingProviderPageState
     if (providers.isEmpty) return;
     keyController.text = providers[index].key;
     urlController.text = providers[index].url;
+  }
+
+  Future<void> checkConnection(Model model) async {
+    final viewModel = ModelViewModel(ref);
+    var result = await viewModel.checkConnection(model);
+    ADialog.message(result);
   }
 
   Future<void> destroyProvider(schema.Provider provider) async {
@@ -171,6 +179,7 @@ class _DesktopSettingProviderPageState
     for (var model in models) {
       var child = _ModelTile(
         onSecondaryTap: (details) => showModelContextMenu(details, model),
+        onTap: () => checkConnection(model),
         model: model,
       );
       children.add(child);
@@ -336,10 +345,18 @@ class _ModelContextMenu extends StatelessWidget {
   }
 }
 
-class _ModelTile extends StatelessWidget {
+class _ModelTile extends StatefulWidget {
   final void Function(TapUpDetails)? onSecondaryTap;
+  final void Function()? onTap;
   final Model model;
-  const _ModelTile({this.onSecondaryTap, required this.model});
+  const _ModelTile({this.onSecondaryTap, this.onTap, required this.model});
+
+  @override
+  _ModelTileState createState() => _ModelTileState();
+}
+
+class _ModelTileState extends State<_ModelTile> {
+  bool hover = false;
 
   @override
   Widget build(BuildContext context) {
@@ -349,11 +366,11 @@ class _ModelTile extends StatelessWidget {
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var nameText = Text(model.name, style: nameTextStyle);
+    var nameText = Text(widget.model.name, style: nameTextStyle);
     var nameChildren = [
       nameText,
       SizedBox(width: 8),
-      ATag.small(text: model.value)
+      ATag.small(text: widget.model.value)
     ];
     var subtitleTextStyle = TextStyle(
       color: Color(0xFFE0E0E0),
@@ -362,21 +379,21 @@ class _ModelTile extends StatelessWidget {
       height: 1.5,
     );
     var releasedAtText = Text(
-      'Released at ${model.releasedAt}',
+      'Released at ${widget.model.releasedAt}',
       style: subtitleTextStyle,
     );
     var inputPriceText = Text(
-      'input ${model.inputPrice}',
+      'input ${widget.model.inputPrice}',
       style: subtitleTextStyle,
     );
     var outputPriceText = Text(
-      'input ${model.outputPrice}',
+      'input ${widget.model.outputPrice}',
       style: subtitleTextStyle,
     );
     var children = [
-      if (model.releasedAt.isNotEmpty) releasedAtText,
-      if (model.inputPrice.isNotEmpty) inputPriceText,
-      if (model.outputPrice.isNotEmpty) outputPriceText,
+      if (widget.model.releasedAt.isNotEmpty) releasedAtText,
+      if (widget.model.inputPrice.isNotEmpty) inputPriceText,
+      if (widget.model.outputPrice.isNotEmpty) outputPriceText,
     ];
     var informationChildren = [
       Row(children: nameChildren),
@@ -387,19 +404,38 @@ class _ModelTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
+    var icon = Icon(
+      HugeIcons.strokeRoundedConnect,
+      color: Color(0xFFE0E0E0),
+      size: 20,
+    );
+    var row = Row(
+      children: [Expanded(child: informationWidget), if (hover) icon],
+    );
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: informationWidget,
+      child: row,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
+      onEnter: handleEnter,
+      onExit: handleExit,
       child: padding,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: onSecondaryTap,
+      onSecondaryTapUp: widget.onSecondaryTap,
+      onTap: widget.onTap,
       child: mouseRegion,
     );
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() => hover = true);
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() => hover = false);
   }
 }
 

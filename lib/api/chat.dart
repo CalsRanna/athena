@@ -25,10 +25,10 @@ class ChatApi {
     );
     try {
       var response = await client.createChatCompletion(request: request);
-      if (response.choices.isEmpty) return 'Failed';
-      return 'Succeed';
+      if (response.choices.isEmpty) return 'The response has no choices';
+      return 'The connection is successful';
     } catch (error) {
-      return 'Failed';
+      return error.toString();
     }
   }
 
