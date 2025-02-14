@@ -1,5 +1,6 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/card.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/tile.dart';
@@ -7,18 +8,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopModelSelector extends StatelessWidget {
+class DesktopModelSelector extends ConsumerWidget {
   final void Function(Model)? onSelected;
   const DesktopModelSelector({super.key, this.onSelected});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedAiBrain01,
       color: Color(0xFF616161),
       size: 24,
     );
-    return GestureDetector(onTap: openDialog, child: hugeIcon);
+    return GestureDetector(onTap: () => openDialog(ref), child: hugeIcon);
   }
 
   void changeModel(Model model) {
@@ -26,11 +27,16 @@ class DesktopModelSelector extends StatelessWidget {
     onSelected?.call(model);
   }
 
-  void openDialog() {
-    ADialog.show(
-      DesktopModelSelectDialog(onTap: changeModel),
-      barrierDismissible: true,
-    );
+  Future<void> openDialog(WidgetRef ref) async {
+    var hasModel = await ModelViewModel(ref).hasModel();
+    if (hasModel) {
+      ADialog.show(
+        DesktopModelSelectDialog(onTap: changeModel),
+        barrierDismissible: true,
+      );
+    } else {
+      ADialog.message('Your should enable a provider first');
+    }
   }
 }
 

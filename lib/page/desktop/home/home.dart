@@ -78,6 +78,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
     }
+    if (!await viewModel.hasModel()) {
+      ADialog.message('You should enable a provider first');
+      return;
+    }
+    _initChat();
     _initModel();
     _initSentinel();
     var chat = await viewModel.createChat();
@@ -115,20 +120,22 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> sendMessage() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      var text = controller.text.trim();
-      if (text.isEmpty) return;
-      controller.clear();
-      await viewModel.sendMessage(
-        text,
-        chat: chat,
-        model: model,
-        sentinel: sentinel,
-      );
-      if (chat.title.isEmpty || chat.title == 'New Chat') {
-        viewModel.renameChat(chat);
-      }
-    });
+    var text = controller.text.trim();
+    if (text.isEmpty) return;
+    if (model.id <= 0) {
+      ADialog.message('You should select a model first');
+      return;
+    }
+    controller.clear();
+    await viewModel.sendMessage(
+      text,
+      chat: chat,
+      model: model,
+      sentinel: sentinel,
+    );
+    if (chat.title.isEmpty || chat.title == 'New Chat') {
+      viewModel.renameChat(chat);
+    }
   }
 
   Widget _buildAppBar() {

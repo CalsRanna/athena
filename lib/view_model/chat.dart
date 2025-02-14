@@ -81,6 +81,11 @@ class ChatViewModel extends ViewModel {
     return sentinel ?? Sentinel();
   }
 
+  Future<bool> hasModel() async {
+    var models = await ref.read(groupedEnabledModelsNotifierProvider.future);
+    return models.isNotEmpty;
+  }
+
   Future<void> initChats() async {
     var count = await isar.chats.count();
     if (count > 0) return;
