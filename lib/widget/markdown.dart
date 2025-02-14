@@ -1,10 +1,12 @@
 import 'package:athena/component/button.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 
 class AMarkdown extends StatelessWidget {
   final String content;
@@ -34,6 +36,7 @@ class AMarkdown extends StatelessWidget {
       builders: builders,
       data: content,
       extensionSet: extensions,
+      onTapLink: (text, href, title) => launchUrl(Uri.parse(href ?? '')),
       styleSheet: markdownStyleSheet,
     );
     // return GptMarkdown(
@@ -45,10 +48,19 @@ class AMarkdown extends StatelessWidget {
     // );
   }
 
-  void handleTap(String text) {
-    final data = ClipboardData(text: text);
-    Clipboard.setData(data);
+  Future<void> openLink(String? url) async {
+    var uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      ADialog.message('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
   }
+
+  // void handleTap(String text) {
+  //   final data = ClipboardData(text: text);
+  //   Clipboard.setData(data);
+  // }
 
   // Widget _buildCode(
   //   BuildContext context,
