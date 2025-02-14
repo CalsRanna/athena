@@ -51,7 +51,9 @@ class DesktopModelSelectDialog extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return UnconstrainedBox(child: ACard(child: child));
+    return UnconstrainedBox(
+      child: ACard(child: child),
+    );
   }
 
   Widget _buildData(Map<String, List<Model>> models) {
@@ -73,9 +75,9 @@ class DesktopModelSelectDialog extends ConsumerWidget {
           entry.value.map((model) => _itemBuilder(model)).toList();
       children.addAll(modelWidgets);
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    return ConstrainedBox(
+      constraints: BoxConstraints.loose(Size(500, 600)),
+      child: ListView(shrinkWrap: true, children: children),
     );
   }
 

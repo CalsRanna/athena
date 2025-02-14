@@ -51,9 +51,9 @@ class _SentinelSelectDialog extends ConsumerWidget {
   Widget _buildData(List<Sentinel> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
     List<Widget> children = sentinels.map(_itemBuilder).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    return ConstrainedBox(
+      constraints: BoxConstraints.loose(Size(500, 600)),
+      child: ListView(shrinkWrap: true, children: children),
     );
   }
 
