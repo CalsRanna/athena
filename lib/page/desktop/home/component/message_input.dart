@@ -107,9 +107,9 @@ class _InputState extends State<_Input> {
   void handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
       if (_isModifierKey(event)) shift = true;
-      if (_isEnterKey(event) && !shift) widget.onSubmitted?.call();
     } else if (event is KeyUpEvent) {
       if (_isModifierKey(event)) shift = false;
+      if (_isEnterKey(event) && !shift) widget.onSubmitted?.call();
     }
   }
 
