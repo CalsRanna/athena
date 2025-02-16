@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.dart';
+import 'package:athena/router/router_config.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +41,11 @@ void main() async {
       await windowManager.focus();
     });
   } else {
+    var deviceInfoPlugin = DeviceInfoPlugin();
+    if (await deviceInfoPlugin.deviceInfo is IosDeviceInfo) {
+      var iosInfo = await deviceInfoPlugin.iosInfo;
+      isPad = iosInfo.model == 'iPad';
+    }
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
   runApp(const ProviderScope(child: AthenaApp()));
