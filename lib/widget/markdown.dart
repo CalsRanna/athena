@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:gpt_markdown/gpt_markdown.dart';
+// import 'package:gpt_markdown/gpt_markdown.dart' as gpt;
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -24,7 +24,8 @@ class AMarkdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (engine) {
       MarkdownEngine.flutter => _FlutterMarkdown(message: message),
-      MarkdownEngine.gpt => _GptMarkdown(message: message),
+      // MarkdownEngine.gpt => _GptMarkdown(message: message),
+      _ => const SizedBox(),
     };
   }
 }
@@ -73,86 +74,86 @@ class _FlutterMarkdown extends StatelessWidget {
   }
 }
 
-class _GptMarkdown extends StatelessWidget {
-  final Message message;
-  const _GptMarkdown({required this.message});
+// class _GptMarkdown extends StatelessWidget {
+//   final Message message;
+//   const _GptMarkdown({required this.message});
 
-  @override
-  Widget build(BuildContext context) {
-    return GptMarkdown(
-      message.content,
-      codeBuilder: _buildCode,
-      highlightBuilder: _buildHighlight,
-    );
-  }
+//   @override
+//   Widget build(BuildContext context) {
+//     return gpt.GptMarkdown(
+//       message.content,
+//       codeBuilder: _buildCode,
+//       highlightBuilder: _buildHighlight,
+//     );
+//   }
 
-  void handleTap(String text) {
-    final data = ClipboardData(text: text);
-    Clipboard.setData(data);
-  }
+//   void handleTap(String text) {
+//     final data = ClipboardData(text: text);
+//     Clipboard.setData(data);
+//   }
 
-  Widget _buildAttribute(String attribute, String code) {
-    var borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(8),
-      topRight: Radius.circular(8),
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
-      color: Color(0xFFE0E0E0),
-    );
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var children = [
-      Text(attribute.replaceAll('language-', ''), style: textStyle),
-      Spacer(),
-      CopyButton(onTap: () => handleTap(code)),
-    ];
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      child: Row(children: children),
-    );
-  }
+//   Widget _buildAttribute(String attribute, String code) {
+//     var borderRadius = BorderRadius.only(
+//       topLeft: Radius.circular(8),
+//       topRight: Radius.circular(8),
+//     );
+//     var boxDecoration = BoxDecoration(
+//       borderRadius: borderRadius,
+//       color: Color(0xFFE0E0E0),
+//     );
+//     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
+//     var children = [
+//       Text(attribute.replaceAll('language-', ''), style: textStyle),
+//       Spacer(),
+//       CopyButton(onTap: () => handleTap(code)),
+//     ];
+//     return Container(
+//       decoration: boxDecoration,
+//       padding: padding,
+//       child: Row(children: children),
+//     );
+//   }
 
-  Widget _buildCode(
-    BuildContext context,
-    String name,
-    String code,
-    bool closed,
-  ) {
-    var borderRadius = BorderRadius.circular(8);
-    var color = Color(0xFFEAECF0);
-    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var children = [
-      _buildAttribute(name, code),
-      Padding(padding: padding, child: Text(code, style: textStyle)),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    return Container(
-      decoration: boxDecoration,
-      width: double.infinity,
-      child: column,
-    );
-  }
+//   Widget _buildCode(
+//     BuildContext context,
+//     String name,
+//     String code,
+//     bool closed,
+//   ) {
+//     var borderRadius = BorderRadius.circular(8);
+//     var color = Color(0xFFEAECF0);
+//     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+//     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
+//     var children = [
+//       _buildAttribute(name, code),
+//       Padding(padding: padding, child: Text(code, style: textStyle)),
+//     ];
+//     var column = Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: children,
+//     );
+//     return Container(
+//       decoration: boxDecoration,
+//       width: double.infinity,
+//       child: column,
+//     );
+//   }
 
-  Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
-    var borderRadius = BorderRadius.circular(4);
-    var color = Color(0xFFEAECF0);
-    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      child: Text(text, style: textStyle),
-    );
-  }
-}
+//   Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
+//     var borderRadius = BorderRadius.circular(4);
+//     var color = Color(0xFFEAECF0);
+//     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+//     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
+//     return Container(
+//       decoration: boxDecoration,
+//       padding: padding,
+//       child: Text(text, style: textStyle),
+//     );
+//   }
+// }
 
 class _CodeBuilder extends MarkdownElementBuilder {
   _CodeBuilder();
