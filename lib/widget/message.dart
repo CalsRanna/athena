@@ -92,7 +92,7 @@ class _AssistantMessageListTile extends StatelessWidget {
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
-      child: AMarkdown(engine: MarkdownEngine.gpt, message: message),
+      child: AMarkdown(engine: MarkdownEngine.flutter, message: message),
     );
     return Expanded(child: container);
   }
