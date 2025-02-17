@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/router/router_config.dart';
 import 'package:auto_route/auto_route.dart';
 
 @AutoRouterConfig()
@@ -23,9 +22,9 @@ class AppRouter extends RootStackRouter {
       page: DesktopSettingRoute.page,
     );
     return [
-      DesktopRoute(page: DesktopHomeRoute.page, initial: isDesktop || isPad),
+      DesktopRoute(page: DesktopHomeRoute.page, initial: isDesktop),
       desktopSettingRoute,
-      AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop && !isPad),
+      AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
       AutoRoute(page: MobileChatRoute.page),
       AutoRoute(page: MobileChatListRoute.page),
       AutoRoute(page: MobileChatRenameRoute.page),
