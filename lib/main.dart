@@ -2,18 +2,14 @@ import 'dart:io';
 
 import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.dart';
-import 'package:athena/router/router_config.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
-
-final globalKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,13 +21,13 @@ void main() async {
     if (setting != null) {
       var width = setting.width;
       var height = setting.height;
-      if (width.isNaN) width = 960;
+      if (width.isNaN) width = 1080;
       if (height.isNaN) height = 720;
       size = Size(width, height);
     }
     final options = WindowOptions(
       center: true,
-      minimumSize: const Size(960, 720),
+      minimumSize: const Size(1080, 720),
       size: size,
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
@@ -41,15 +37,12 @@ void main() async {
       await windowManager.focus();
     });
   } else {
-    var deviceInfoPlugin = DeviceInfoPlugin();
-    if (await deviceInfoPlugin.deviceInfo is IosDeviceInfo) {
-      var iosInfo = await deviceInfoPlugin.iosInfo;
-      isPad = iosInfo.model == 'iPad';
-    }
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
   runApp(const ProviderScope(child: AthenaApp()));
 }
+
+final globalKey = GlobalKey<NavigatorState>();
 
 class AthenaApp extends StatefulWidget {
   const AthenaApp({super.key});
@@ -106,6 +99,23 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
         windowManager.show();
       });
     }
+  }
+
+  Future<void> moveWindow() async {
+    final size = await windowManager.getSize();
+    final setting = await isar.settings.where().findFirst();
+    if (setting == null) return;
+    setting.width = size.width;
+    setting.height = size.height;
+    await isar.writeTxn(() async {
+      await isar.settings.put(setting);
+    });
+  }
+
+  @override
+  void onWindowMoved() {
+    moveWindow();
+    super.onWindowMoved();
   }
 
   @override
