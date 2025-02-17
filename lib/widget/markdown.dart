@@ -1,24 +1,46 @@
 import 'package:athena/component/button.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 class AMarkdown extends StatelessWidget {
-  final String content;
-  final bool supportLatex = true;
+  final MarkdownEngine engine;
+  final Message message;
 
-  const AMarkdown({super.key, required this.content});
+  const AMarkdown({
+    super.key,
+    this.engine = MarkdownEngine.flutter,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (engine) {
+      MarkdownEngine.flutter => _FlutterMarkdown(message: message),
+      MarkdownEngine.gpt => _GptMarkdown(message: message),
+    };
+  }
+}
+
+enum MarkdownEngine { flutter, gpt }
+
+class _FlutterMarkdown extends StatelessWidget {
+  final Message message;
+
+  const _FlutterMarkdown({required this.message});
 
   @override
   Widget build(BuildContext context) {
     Map<String, MarkdownElementBuilder> builders = {};
     builders['code'] = _CodeBuilder();
-    if (supportLatex) builders['latex'] = LatexElementBuilder();
+    builders['latex'] = LatexElementBuilder();
     List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
@@ -34,18 +56,11 @@ class AMarkdown extends StatelessWidget {
     // 不能解析 <think></think>，会吃掉<think>及开头的第一段, 需要自定义BlockSyntax
     return MarkdownBody(
       builders: builders,
-      data: content,
+      data: message.content,
       extensionSet: extensions,
       onTapLink: (text, href, title) => launchUrl(Uri.parse(href ?? '')),
       styleSheet: markdownStyleSheet,
     );
-    // return GptMarkdown(
-    //   // 引用块解析的时候会报错，开发环境不会灰屏，但是生产环境会
-    //   message.content.replaceAll(RegExp(r'>'), '☞'),
-    //   // message.content,
-    //   codeBuilder: _buildCode,
-    //   highlightBuilder: _buildHighlight,
-    // );
   }
 
   Future<void> openLink(String? url) async {
@@ -56,50 +71,87 @@ class AMarkdown extends StatelessWidget {
     }
     launchUrl(uri);
   }
+}
 
-  // void handleTap(String text) {
-  //   final data = ClipboardData(text: text);
-  //   Clipboard.setData(data);
-  // }
+class _GptMarkdown extends StatelessWidget {
+  final Message message;
+  const _GptMarkdown({required this.message});
 
-  // Widget _buildCode(
-  //   BuildContext context,
-  //   String name,
-  //   String code,
-  //   bool closed,
-  // ) {
-  //   var borderRadius = BorderRadius.circular(8);
-  //   var color = Color(0xFFEAECF0);
-  //   var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-  //   var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-  //   var textStyle = GoogleFonts.firaCode(fontSize: 12);
-  //   var container = Container(
-  //     decoration: boxDecoration,
-  //     padding: padding,
-  //     width: double.infinity,
-  //     child: Text(code, style: textStyle),
-  //   );
-  //   var copyButton = _buildCopyButton(code);
-  //   return Stack(children: [container, copyButton]);
-  // }
+  @override
+  Widget build(BuildContext context) {
+    return GptMarkdown(
+      message.content,
+      codeBuilder: _buildCode,
+      highlightBuilder: _buildHighlight,
+    );
+  }
 
-  // Widget _buildCopyButton(String code) {
-  //   var button = _CopyButton(onTap: () => handleTap(code), size: 12);
-  //   return Positioned(right: 12, top: 12, child: button);
-  // }
+  void handleTap(String text) {
+    final data = ClipboardData(text: text);
+    Clipboard.setData(data);
+  }
 
-  // Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
-  //   var borderRadius = BorderRadius.circular(4);
-  //   var color = Color(0xFFEAECF0);
-  //   var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-  //   var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-  //   var textStyle = GoogleFonts.firaCode(fontSize: 12);
-  //   return Container(
-  //     decoration: boxDecoration,
-  //     padding: padding,
-  //     child: Text(text, style: textStyle),
-  //   );
-  // }
+  Widget _buildAttribute(String attribute, String code) {
+    var borderRadius = BorderRadius.only(
+      topLeft: Radius.circular(8),
+      topRight: Radius.circular(8),
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: borderRadius,
+      color: Color(0xFFE0E0E0),
+    );
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var children = [
+      Text(attribute.replaceAll('language-', ''), style: textStyle),
+      Spacer(),
+      CopyButton(onTap: () => handleTap(code)),
+    ];
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
+      child: Row(children: children),
+    );
+  }
+
+  Widget _buildCode(
+    BuildContext context,
+    String name,
+    String code,
+    bool closed,
+  ) {
+    var borderRadius = BorderRadius.circular(8);
+    var color = Color(0xFFEAECF0);
+    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var children = [
+      _buildAttribute(name, code),
+      Padding(padding: padding, child: Text(code, style: textStyle)),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return Container(
+      decoration: boxDecoration,
+      width: double.infinity,
+      child: column,
+    );
+  }
+
+  Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
+    var borderRadius = BorderRadius.circular(4);
+    var color = Color(0xFFEAECF0);
+    var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
+    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
+      child: Text(text, style: textStyle),
+    );
+  }
 }
 
 class _CodeBuilder extends MarkdownElementBuilder {
@@ -149,7 +201,7 @@ class _CodeBuilder extends MarkdownElementBuilder {
     );
   }
 
-  Container _buildAttribute(md.Element element) {
+  Widget _buildAttribute(md.Element element) {
     var borderRadius = BorderRadius.only(
       topLeft: Radius.circular(8),
       topRight: Radius.circular(8),

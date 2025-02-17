@@ -14,10 +14,10 @@ import 'package:window_manager/window_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await IsarInitializer.ensureInitialized();
-  final setting = await isar.settings.where().findFirst();
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
     var size = Size(1080, 720);
+    final setting = await isar.settings.where().findFirst();
     if (setting != null) {
       var width = setting.width;
       var height = setting.height;
@@ -36,9 +36,8 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
-  } else {
-    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   }
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   runApp(const ProviderScope(child: AthenaApp()));
 }
 
