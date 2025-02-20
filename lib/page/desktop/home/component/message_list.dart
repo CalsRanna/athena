@@ -8,11 +8,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopMessageList extends ConsumerWidget {
   final Chat chat;
+  final ScrollController? controller;
   final void Function(Message message) onResend;
   final Sentinel sentinel;
   const DesktopMessageList({
     super.key,
     required this.chat,
+    this.controller,
     required this.onResend,
     required this.sentinel,
   });
@@ -32,6 +34,7 @@ class DesktopMessageList extends ConsumerWidget {
       return DesktopSentinelPlaceholder(sentinel: sentinel);
     }
     return ListView.separated(
+      controller: controller,
       itemBuilder: (_, index) => _itemBuilder(messages, index),
       itemCount: messages.length,
       reverse: true,
