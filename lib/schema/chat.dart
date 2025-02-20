@@ -38,9 +38,14 @@ class Chat {
 class Message {
   Id id = Isar.autoIncrement;
   String content = '';
+  bool reasoning = false;
   @Name('reasoning_content')
   String reasoningContent = '';
   String role = 'user';
+  @Name('reasoning_started_at')
+  DateTime reasoningStartedAt = DateTime.now();
+  @Name('reasoning_updated_at')
+  DateTime reasoningUpdatedAt = DateTime.now();
   @Name('chat_id')
   int chatId = 0;
 

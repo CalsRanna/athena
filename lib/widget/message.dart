@@ -172,11 +172,23 @@ class _AssistantMessageListTileThinkingPartState
       color: Color(0xFFE0E0E0),
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var iconData = HugeIcons.strokeRoundedArrowRight01;
+    if (expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var startedAt = widget.message.reasoningStartedAt;
+    var updatedAt = widget.message.reasoningUpdatedAt;
+    var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
+    var durationText = 'Thought for ${duration.toStringAsFixed(1)} seconds';
+    var text = widget.message.reasoning ? 'Thinking' : durationText;
+    var children = [
+      Text(text, style: textStyle),
+      const Spacer(),
+      Icon(iconData, size: 16),
+    ];
     return Container(
       decoration: boxDecoration,
       padding: padding,
-      child: Row(children: [Text('Thought', style: textStyle)]),
+      child: Row(children: children),
     );
   }
 }

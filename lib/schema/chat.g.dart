@@ -829,13 +829,28 @@ const MessageSchema = CollectionSchema(
       name: r'content',
       type: IsarType.string,
     ),
-    r'reasoning_content': PropertySchema(
+    r'reasoning': PropertySchema(
       id: 2,
+      name: r'reasoning',
+      type: IsarType.bool,
+    ),
+    r'reasoning_content': PropertySchema(
+      id: 3,
       name: r'reasoning_content',
       type: IsarType.string,
     ),
+    r'reasoning_started_at': PropertySchema(
+      id: 4,
+      name: r'reasoning_started_at',
+      type: IsarType.dateTime,
+    ),
+    r'reasoning_updated_at': PropertySchema(
+      id: 5,
+      name: r'reasoning_updated_at',
+      type: IsarType.dateTime,
+    ),
     r'role': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'role',
       type: IsarType.string,
     )
@@ -874,8 +889,11 @@ void _messageSerialize(
 ) {
   writer.writeLong(offsets[0], object.chatId);
   writer.writeString(offsets[1], object.content);
-  writer.writeString(offsets[2], object.reasoningContent);
-  writer.writeString(offsets[3], object.role);
+  writer.writeBool(offsets[2], object.reasoning);
+  writer.writeString(offsets[3], object.reasoningContent);
+  writer.writeDateTime(offsets[4], object.reasoningStartedAt);
+  writer.writeDateTime(offsets[5], object.reasoningUpdatedAt);
+  writer.writeString(offsets[6], object.role);
 }
 
 Message _messageDeserialize(
@@ -888,8 +906,11 @@ Message _messageDeserialize(
   object.chatId = reader.readLong(offsets[0]);
   object.content = reader.readString(offsets[1]);
   object.id = id;
-  object.reasoningContent = reader.readString(offsets[2]);
-  object.role = reader.readString(offsets[3]);
+  object.reasoning = reader.readBool(offsets[2]);
+  object.reasoningContent = reader.readString(offsets[3]);
+  object.reasoningStartedAt = reader.readDateTime(offsets[4]);
+  object.reasoningUpdatedAt = reader.readDateTime(offsets[5]);
+  object.role = reader.readString(offsets[6]);
   return object;
 }
 
@@ -905,8 +926,14 @@ P _messageDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readDateTime(offset)) as P;
+    case 5:
+      return (reader.readDateTime(offset)) as P;
+    case 6:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1237,6 +1264,16 @@ extension MessageQueryFilter
     });
   }
 
+  QueryBuilder<Message, Message, QAfterFilterCondition> reasoningEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reasoning',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterFilterCondition> reasoningContentEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1368,6 +1405,118 @@ extension MessageQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'reasoning_content',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningStartedAtEqualTo(DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reasoning_started_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningStartedAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'reasoning_started_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningStartedAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'reasoning_started_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningStartedAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'reasoning_started_at',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningUpdatedAtEqualTo(DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reasoning_updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningUpdatedAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'reasoning_updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningUpdatedAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'reasoning_updated_at',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition>
+      reasoningUpdatedAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'reasoning_updated_at',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -1534,6 +1683,18 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoning() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningContent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning_content', Sort.asc);
@@ -1543,6 +1704,30 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
   QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningContentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning_content', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningStartedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_started_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningStartedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_started_at', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_updated_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReasoningUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_updated_at', Sort.desc);
     });
   }
 
@@ -1597,6 +1782,18 @@ extension MessageQuerySortThenBy
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoning() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningContent() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning_content', Sort.asc);
@@ -1606,6 +1803,30 @@ extension MessageQuerySortThenBy
   QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningContentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning_content', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningStartedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_started_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningStartedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_started_at', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_updated_at', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReasoningUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reasoning_updated_at', Sort.desc);
     });
   }
 
@@ -1637,11 +1858,29 @@ extension MessageQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Message, Message, QDistinct> distinctByReasoning() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reasoning');
+    });
+  }
+
   QueryBuilder<Message, Message, QDistinct> distinctByReasoningContent(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'reasoning_content',
           caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Message, Message, QDistinct> distinctByReasoningStartedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reasoning_started_at');
+    });
+  }
+
+  QueryBuilder<Message, Message, QDistinct> distinctByReasoningUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reasoning_updated_at');
     });
   }
 
@@ -1673,9 +1912,29 @@ extension MessageQueryProperty
     });
   }
 
+  QueryBuilder<Message, bool, QQueryOperations> reasoningProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reasoning');
+    });
+  }
+
   QueryBuilder<Message, String, QQueryOperations> reasoningContentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'reasoning_content');
+    });
+  }
+
+  QueryBuilder<Message, DateTime, QQueryOperations>
+      reasoningStartedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reasoning_started_at');
+    });
+  }
+
+  QueryBuilder<Message, DateTime, QQueryOperations>
+      reasoningUpdatedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reasoning_updated_at');
     });
   }
 
