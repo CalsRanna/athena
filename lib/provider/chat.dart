@@ -254,16 +254,14 @@ class MessagesNotifier extends _$MessagesNotifier {
       OverrodeChatCompletionStreamResponseDelta delta) async {
     final messages = await future;
     var message = messages.last;
-    if (message.role == 'user') message = Message();
+    if (message.role == 'user') message = Message()..role = 'assistant';
     message.chatId = chatId;
     message.content = '${message.content}${delta.content}';
-    message.role = 'assistant';
     var reasoningContent = delta.reasoningContent ?? '';
     message.reasoningContent = '${message.reasoningContent}$reasoningContent';
-    if (messages.last.role == 'assistant') {
-      messages.removeLast();
-    }
+    if (messages.last.role == 'assistant') messages.removeLast();
     state = AsyncData([...messages, message]);
+    await future;
   }
 }
 

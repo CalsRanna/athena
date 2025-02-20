@@ -64,8 +64,9 @@ class ChatApi {
     await for (final chunk in response) {
       if (chunk.response.choices.isEmpty) continue;
       var content = chunk.response.choices.first.delta.content ?? '';
-      var reasoningContent =
-          chunk.rawJson['choices'][0]['delta']['reasoning_content'];
+      var rawDelta = chunk.rawJson['choices'][0]['delta'];
+      var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
+      reasoningContent ??= rawDelta['reasoning']; // OpenRouter
       yield OverrodeChatCompletionStreamResponseDelta(
         content: content,
         reasoningContent: reasoningContent,

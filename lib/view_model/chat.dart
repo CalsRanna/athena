@@ -183,12 +183,12 @@ class ChatViewModel extends ViewModel {
   }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    final message = Message();
-    message.chatId = chat.id;
-    message.content = text;
-    message.role = 'user';
+    final userMessage = Message();
+    userMessage.chatId = chat.id;
+    userMessage.content = text;
+    userMessage.role = 'user';
     await isar.writeTxn(() async {
-      await isar.messages.put(message);
+      await isar.messages.put(userMessage);
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
     final system = {'role': 'system', 'content': sentinel.prompt};
@@ -203,6 +203,13 @@ class ChatViewModel extends ViewModel {
         model: model,
         provider: aiProvider,
       );
+      final assistantMessage = Message();
+      assistantMessage.chatId = chat.id;
+      assistantMessage.role = 'assistant';
+      await isar.writeTxn(() async {
+        await isar.messages.put(assistantMessage);
+      });
+      ref.invalidate(messagesNotifierProvider(chat.id));
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);
       }
