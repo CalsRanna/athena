@@ -38,6 +38,8 @@ class Chat {
 class Message {
   Id id = Isar.autoIncrement;
   String content = '';
+  @Name('reasoning_content')
+  String reasoningContent = '';
   String role = 'user';
   @Name('chat_id')
   int chatId = 0;
@@ -47,6 +49,7 @@ class Message {
   Map<String, dynamic> toJson() {
     return {
       'content': content,
+      'reasoning_content': reasoningContent,
       'role': role,
     };
   }
@@ -54,6 +57,7 @@ class Message {
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message()
       ..content = json['content']
+      ..reasoningContent = json['reasoning_content'] ?? ''
       ..role = json['role'];
   }
 

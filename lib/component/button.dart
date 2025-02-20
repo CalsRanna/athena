@@ -22,25 +22,26 @@ class _CopyButtonState extends State<CopyButton> {
       size: 12.0,
     );
     if (copied) {
-      child = Row(
-        children: [
-          HugeIcon(
-            color: color,
-            icon: HugeIcons.strokeRoundedTick01,
-            size: 12.0,
-          ),
-          const SizedBox(width: 4),
-          const Text('Copied!', style: TextStyle(fontSize: 12, height: 1))
-        ],
+      var hugeIcon = HugeIcon(
+        color: color,
+        icon: HugeIcons.strokeRoundedTick01,
+        size: 12.0,
       );
+      var children = [
+        hugeIcon,
+        const SizedBox(width: 4),
+        const Text('Copied', style: TextStyle(fontSize: 12, height: 1))
+      ];
+      child = Row(children: children);
     }
+    var animatedSwitcher = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child: child,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: handleTap,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: child,
-      ),
+      child: animatedSwitcher,
     );
   }
 

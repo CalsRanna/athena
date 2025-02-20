@@ -4,6 +4,7 @@ import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class MessageListTile extends StatelessWidget {
@@ -40,7 +41,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       _buildContent(),
       const SizedBox(width: 48),
     ];
-    var row = Row(
+    var message = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
@@ -49,7 +50,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       color: Colors.white.withValues(alpha: 0.95),
     );
     var stackChildren = [
-      row,
+      message,
       Positioned(right: 0, child: CopyButton(onTap: handleCopy)),
     ];
     return Container(
@@ -89,12 +90,84 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent() {
+    var children = [
+      _AssistantMessageListTileThinkingPart(message: message),
+      if (message.content.isNotEmpty) SizedBox(height: 8),
+      AMarkdown(engine: MarkdownEngine.flutter, message: message),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: const BoxConstraints(minHeight: 36),
-      child: AMarkdown(engine: MarkdownEngine.flutter, message: message),
+      child: column,
     );
     return Expanded(child: container);
+  }
+}
+
+class _AssistantMessageListTileThinkingPart extends StatefulWidget {
+  final Message message;
+  const _AssistantMessageListTileThinkingPart({required this.message});
+
+  @override
+  State<_AssistantMessageListTileThinkingPart> createState() =>
+      _AssistantMessageListTileThinkingPartState();
+}
+
+class _AssistantMessageListTileThinkingPartState
+    extends State<_AssistantMessageListTileThinkingPart> {
+  bool expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.message.reasoningContent.isEmpty) return const SizedBox();
+    var borderRadius = BorderRadius.circular(8);
+    var boxDecoration = BoxDecoration(
+      borderRadius: borderRadius,
+      color: Color(0xFFEDEDED),
+    );
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [_buildTitle(), _buildContent()],
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => expanded = !expanded),
+      child: Container(decoration: boxDecoration, child: column),
+    );
+  }
+
+  Widget _buildContent() {
+    if (!expanded) return const SizedBox();
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    return Padding(
+      padding: padding,
+      child: Text(widget.message.reasoningContent, style: textStyle),
+    );
+  }
+
+  Widget _buildTitle() {
+    var borderRadius = BorderRadius.only(
+      bottomLeft: expanded ? Radius.zero : Radius.circular(8),
+      bottomRight: expanded ? Radius.zero : Radius.circular(8),
+      topLeft: Radius.circular(8),
+      topRight: Radius.circular(8),
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: borderRadius,
+      color: Color(0xFFE0E0E0),
+    );
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
+      child: Row(children: [Text('Thought', style: textStyle)]),
+    );
   }
 }
 

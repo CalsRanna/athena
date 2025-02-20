@@ -203,8 +203,8 @@ class ChatViewModel extends ViewModel {
         model: model,
         provider: aiProvider,
       );
-      await for (final token in response) {
-        await messagesNotifier.streaming(token);
+      await for (final delta in response) {
+        await messagesNotifier.streaming(delta);
       }
       await messagesNotifier.closeStreaming();
       // Can not use the chat from params anymore cause the chat's title maybe

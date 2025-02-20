@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart' as schema;
 import 'package:athena/schema/provider.dart';
+import 'package:athena/vendor/openai_dart/client.dart';
+import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class ChatApi {
@@ -32,13 +34,13 @@ class ChatApi {
     }
   }
 
-  Stream<String> getCompletion({
+  Stream<OverrodeChatCompletionStreamResponseDelta> getCompletion({
     required List<Message> messages,
     required Provider provider,
     required schema.Model model,
   }) async* {
     var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
-    var client = OpenAIClient(
+    var client = OverrodeOpenAIClient(
       apiKey: provider.key,
       baseUrl: provider.url,
       headers: headers,
@@ -58,10 +60,16 @@ class ChatApi {
       model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
     );
-    var response = client.createChatCompletionStream(request: request);
+    var response = client.createOverrodeChatCompletionStream(request: request);
     await for (final chunk in response) {
-      if (chunk.choices.isEmpty) continue;
-      yield chunk.choices.first.delta.content ?? '';
+      if (chunk.response.choices.isEmpty) continue;
+      var content = chunk.response.choices.first.delta.content ?? '';
+      var reasoningContent =
+          chunk.rawJson['choices'][0]['delta']['reasoning_content'];
+      yield OverrodeChatCompletionStreamResponseDelta(
+        content: content,
+        reasoningContent: reasoningContent,
+      );
     }
   }
 
