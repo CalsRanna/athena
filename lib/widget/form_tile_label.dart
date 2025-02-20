@@ -8,9 +8,9 @@ class AFormTileLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(
+    var textStyle = TextStyle(
       color: Colors.white,
-      fontSize: 14,
+      fontSize: fontSize,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
