@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class ATile extends StatefulWidget {
   final double? height;
@@ -86,5 +87,56 @@ class _ATileState extends State<ATile> {
     setState(() {
       hover = false;
     });
+  }
+}
+
+class MobileSettingTile extends StatelessWidget {
+  final void Function()? onTap;
+  final String? subtitle;
+  final String title;
+  final String? trailing;
+  const MobileSettingTile({
+    super.key,
+    this.onTap,
+    this.subtitle,
+    required this.title,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const titleTextStyle = TextStyle(
+      fontSize: 16,
+      color: Color(0xFFFFFFFF),
+      fontWeight: FontWeight.w500,
+    );
+    const subtitleTextStyle = TextStyle(
+      fontSize: 12,
+      color: Color(0xFFE0E0E0),
+      fontWeight: FontWeight.w400,
+    );
+    var titleChildren = [
+      Text(title, style: titleTextStyle),
+      if (subtitle != null) Text(subtitle!, style: subtitleTextStyle)
+    ];
+    var titleColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: titleChildren,
+    );
+    final trailingText = Text(
+      trailing ?? '',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: subtitleTextStyle,
+      textAlign: TextAlign.end,
+    );
+    const hugeIcon = HugeIcon(
+      icon: HugeIcons.strokeRoundedArrowRight01,
+      color: Color(0xFFE0E0E0),
+      size: 16,
+    );
+    var tileChildren = [Expanded(child: titleColumn), trailingText, hugeIcon];
+    var tileRow = Row(children: tileChildren);
+    return ListTile(title: tileRow, onTap: onTap);
   }
 }
