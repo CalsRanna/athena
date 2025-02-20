@@ -27,6 +27,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   var model = Model();
   var sentinel = Sentinel();
   final controller = TextEditingController();
+  final scrollController = ScrollController();
   late final viewModel = ChatViewModel(ref);
 
   @override
@@ -101,6 +102,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   @override
   void dispose() {
     controller.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -127,6 +129,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       return;
     }
     controller.clear();
+    scrollController.animateTo(
+      0,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.linear,
+    );
     await viewModel.sendMessage(
       text,
       chat: chat,
@@ -176,6 +183,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Widget _buildRightWorkspace() {
     var workspace = DesktopMessageList(
       chat: chat,
+      controller: scrollController,
       onResend: resendMessage,
       sentinel: sentinel,
     );
