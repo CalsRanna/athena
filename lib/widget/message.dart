@@ -38,10 +38,11 @@ class _AssistantMessageListTile extends StatelessWidget {
     var children = [
       _buildAvatar(),
       const SizedBox(width: 12),
+      _buildLoading(),
       _buildContent(),
       const SizedBox(width: 48),
     ];
-    var message = Row(
+    var messageRow = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
@@ -50,7 +51,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       color: Colors.white.withValues(alpha: 0.95),
     );
     var stackChildren = [
-      message,
+      messageRow,
       Positioned(right: 0, child: CopyButton(onTap: handleCopy)),
     ];
     return Container(
@@ -105,6 +106,15 @@ class _AssistantMessageListTile extends StatelessWidget {
       child: column,
     );
     return Expanded(child: container);
+  }
+
+  Widget _buildLoading() {
+    var loading = message.content.isEmpty && message.reasoningContent.isEmpty;
+    if (!loading) return const SizedBox();
+    var indicator = CircularProgressIndicator(strokeWidth: 2);
+    var sizedBox = SizedBox(height: 16, width: 16, child: indicator);
+    var align = Align(alignment: Alignment.centerLeft, child: sizedBox);
+    return SizedBox.square(dimension: 36, child: align);
   }
 }
 
