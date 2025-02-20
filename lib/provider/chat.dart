@@ -7,6 +7,7 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -73,8 +74,8 @@ class ChatNotifier extends _$ChatNotifier {
         model: model,
         provider: provider,
       );
-      await for (final token in stream) {
-        await messagesNotifier.streaming(token);
+      await for (final delta in stream) {
+        await messagesNotifier.streaming(delta);
       }
       await messagesNotifier.closeStreaming();
       await store();
@@ -249,13 +250,16 @@ class MessagesNotifier extends _$MessagesNotifier {
     ref.invalidateSelf();
   }
 
-  Future<void> streaming(String token) async {
+  Future<void> streaming(
+      OverrodeChatCompletionStreamResponseDelta delta) async {
     final messages = await future;
     var message = messages.last;
     if (message.role == 'user') message = Message();
     message.chatId = chatId;
-    message.content = '${message.content}$token';
+    message.content = '${message.content}${delta.content}';
     message.role = 'assistant';
+    var reasoningContent = delta.reasoningContent ?? '';
+    message.reasoningContent = '${message.reasoningContent}$reasoningContent';
     if (messages.last.role == 'assistant') {
       messages.removeLast();
     }
