@@ -130,7 +130,9 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     }
     controller.clear();
     var duration = Duration(milliseconds: 300);
-    scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+    if (scrollController.hasClients) {
+      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+    }
     await viewModel.sendMessage(
       text,
       chat: chat,
