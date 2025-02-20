@@ -260,13 +260,11 @@ class MessagesNotifier extends _$MessagesNotifier {
     message.content = '${message.content}${delta.content}';
     var reasoningContent = delta.reasoningContent ?? '';
     message.reasoningContent = '${message.reasoningContent}$reasoningContent';
-    message.reasoning = delta.content.isEmpty && reasoningContent.isNotEmpty;
-    var updated = message.reasoningUpdatedAt != message.reasoningStartedAt;
-    var now = DateTime.now();
-    if (!message.reasoning && !updated) message.reasoningUpdatedAt = now;
+    var reasoning = delta.content.isEmpty && reasoningContent.isNotEmpty;
+    message.reasoning = reasoning;
+    if (reasoning) message.reasoningUpdatedAt = DateTime.now();
     if (messages.last.role == 'assistant') messages.removeLast();
     state = AsyncData([...messages, message]);
-    await future;
   }
 }
 
