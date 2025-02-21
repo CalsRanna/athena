@@ -4,6 +4,7 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class SettingPage extends ConsumerWidget {
   const SettingPage({super.key});
@@ -12,11 +13,13 @@ class SettingPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var children = [
       MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedPowerService, size: 24),
         onTap: () => navigateProvider(context),
         title: 'Provider',
         trailing: '',
       ),
       MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedAiBrain01, size: 24),
         onTap: () => navigateDefaultModel(context),
         title: 'Default Model',
         trailing: '',

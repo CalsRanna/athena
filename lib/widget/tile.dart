@@ -91,12 +91,14 @@ class _ATileState extends State<ATile> {
 }
 
 class MobileSettingTile extends StatelessWidget {
+  final Widget? leading;
   final void Function()? onTap;
   final String? subtitle;
   final String title;
   final String? trailing;
   const MobileSettingTile({
     super.key,
+    this.leading,
     this.onTap,
     this.subtitle,
     required this.title,
@@ -109,11 +111,13 @@ class MobileSettingTile extends StatelessWidget {
       fontSize: 16,
       color: Color(0xFFFFFFFF),
       fontWeight: FontWeight.w500,
+      height: 1.5,
     );
     const subtitleTextStyle = TextStyle(
       fontSize: 12,
       color: Color(0xFFE0E0E0),
       fontWeight: FontWeight.w400,
+      height: 1.5,
     );
     var titleChildren = [
       Text(title, style: titleTextStyle),
@@ -130,13 +134,17 @@ class MobileSettingTile extends StatelessWidget {
       style: subtitleTextStyle,
       textAlign: TextAlign.end,
     );
-    const hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedArrowRight01,
-      color: Color(0xFFE0E0E0),
-      size: 16,
+    var tileChildren = [
+      leading ?? const SizedBox(),
+      if (leading != null) const SizedBox(width: 12),
+      Expanded(child: titleColumn),
+      trailingText,
+      Icon(HugeIcons.strokeRoundedArrowRight01),
+    ];
+    var tileRow = IconTheme(
+      data: const IconThemeData(color: Color(0xFFE0E0E0), size: 16),
+      child: Row(children: tileChildren),
     );
-    var tileChildren = [Expanded(child: titleColumn), trailingText, hugeIcon];
-    var tileRow = Row(children: tileChildren);
     return ListTile(title: tileRow, onTap: onTap);
   }
 }

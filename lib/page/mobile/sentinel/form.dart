@@ -31,7 +31,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     var children = [
       const AFormTileLabel(title: 'Prompt'),
       const SizedBox(height: 12),
-      AInput(controller: promptController, minLines: 8),
+      AInput(controller: promptController, maxLines: 8, minLines: 8),
       const SizedBox(height: 32),
       _buildNameLabel(),
       const SizedBox(height: 12),
@@ -39,11 +39,15 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       const SizedBox(height: 16),
       _buildDescriptionLabel(),
       const SizedBox(height: 12),
-      AInput(controller: descriptionController, minLines: 4),
+      AInput(controller: descriptionController, maxLines: 4, minLines: 4),
       const SizedBox(height: 16),
-      _buildStoreButton(),
-      const SizedBox(height: 12),
-      _buildGenerateButton(),
+      Row(
+        children: [
+          Expanded(child: _buildStoreButton()),
+          const SizedBox(width: 8),
+          Expanded(child: _buildGenerateButton()),
+        ],
+      ),
     ];
     var bottom = MediaQuery.paddingOf(context).bottom;
     var listView = ListView(
@@ -155,11 +159,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   Widget _buildGenerateButton() {
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: Color(0xFF161616),
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return ASecondaryButton(
+    return APrimaryButton(
       onTap: generateSentinel,
       child: Center(child: Text('Generate', style: textStyle)),
     );

@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
 
 class AFormTileLabel extends StatelessWidget {
-  final double fontSize;
   final String title;
-  const AFormTileLabel({super.key, required this.title}) : fontSize = 14;
-  const AFormTileLabel.large({super.key, required this.title}) : fontSize = 24;
+  final double titleFontSize;
+  final Widget? trailing;
+
+  const AFormTileLabel({super.key, required this.title, this.trailing})
+      : titleFontSize = 14;
+
+  const AFormTileLabel.large({super.key, required this.title, this.trailing})
+      : titleFontSize = 24;
 
   @override
   Widget build(BuildContext context) {
-    var textStyle = TextStyle(
+    var titleTextStyle = TextStyle(
       color: Colors.white,
-      fontSize: fontSize,
+      fontSize: titleFontSize,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    return Text(title, style: textStyle);
+    var children = [
+      Text(title, style: titleTextStyle),
+      trailing ?? const SizedBox(),
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: children,
+    );
   }
 }

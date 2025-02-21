@@ -41,6 +41,6 @@ class MobileProviderListPage extends ConsumerWidget {
   }
 
   void navigateProvider(BuildContext context, schema.Provider provider) {
-    MobileProvideRoute(provider: provider).push(context);
+    MobileProviderFormRoute(provider: provider).push(context);
   }
 }

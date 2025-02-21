@@ -1,8 +1,11 @@
 import 'package:athena/provider/model.dart';
+import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/view_model/model.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -13,39 +16,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class MobileProvidePage extends ConsumerStatefulWidget {
+class MobileProviderFormPage extends ConsumerStatefulWidget {
   final schema.Provider provider;
-  const MobileProvidePage({super.key, required this.provider});
+  const MobileProviderFormPage({super.key, required this.provider});
 
   @override
-  ConsumerState<MobileProvidePage> createState() => _MobileProvidePageState();
+  ConsumerState<MobileProviderFormPage> createState() =>
+      _MobileProviderFormPageState();
 }
 
-class _MobileProvidePageState extends ConsumerState<MobileProvidePage> {
+class _MobileProviderFormPageState
+    extends ConsumerState<MobileProviderFormPage> {
   final keyController = TextEditingController();
   final urlController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    keyController.text = widget.provider.key;
-    urlController.text = widget.provider.url;
-  }
-
-  @override
-  void dispose() {
-    keyController.dispose();
-    urlController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return AScaffold(
-      appBar: AAppBar(
-        action: AIconButton(onTap: () {}, icon: HugeIcons.strokeRoundedAdd01),
-        title: Text(widget.provider.name),
-      ),
+      appBar: AAppBar(title: Text(widget.provider.name)),
       body: Column(
         children: [
           Expanded(
@@ -70,7 +58,10 @@ class _MobileProvidePageState extends ConsumerState<MobileProvidePage> {
                 SizedBox(height: 16),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AFormTileLabel.large(title: 'Models'),
+                  child: AFormTileLabel.large(
+                    title: 'Models',
+                    trailing: ATextButton(onTap: () {}, text: 'New'),
+                  ),
                 ),
                 SizedBox(height: 12),
                 _buildModelHorizontalList(),
@@ -83,35 +74,38 @@ class _MobileProvidePageState extends ConsumerState<MobileProvidePage> {
     );
   }
 
+  Future<void> checkConnection(Model model) async {
+    var viewModel = ModelViewModel(ref);
+    var message = await viewModel.checkConnection(model);
+    ADialog.message(message);
+  }
+
+  @override
+  void dispose() {
+    keyController.dispose();
+    urlController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    keyController.text = widget.provider.key;
+    urlController.text = widget.provider.url;
+  }
+
   Future<void> updateProvider() async {
     var viewModel = ProviderViewModel(ref);
     var provider = widget.provider.copyWith(
+      enabled: true,
       key: keyController.text,
       url: urlController.text,
     );
     viewModel.updateProvider(provider);
   }
 
-  Widget _buildSubmitButton() {
-    var textStyle = TextStyle(
-      color: Color(0xFF161616),
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    var button = APrimaryButton(
-      onTap: updateProvider,
-      child: Center(child: Text('Submit', style: textStyle)),
-    );
-    var padding = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: button,
-    );
-    return SafeArea(child: padding);
-  }
-
   Widget _buildModelHorizontalList() {
-    if (widget.provider == null) return const SizedBox();
-    var providerId = widget.provider!.id;
+    var providerId = widget.provider.id;
     var models = ref.watch(modelsForNotifierProvider(providerId)).valueOrNull;
     if (models == null) return const SizedBox();
     if (models.isEmpty) return const SizedBox();
@@ -120,7 +114,11 @@ class _MobileProvidePageState extends ConsumerState<MobileProvidePage> {
     List<Widget> children2 = [];
     List<Widget> children3 = [];
     for (var i = 0; i < models.length; i++) {
-      var tile = ATag(text: models[i].name);
+      var tile = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => checkConnection(models[i]),
+        child: ATag(text: models[i].name),
+      );
       if (i % 3 == 0) children1.add(tile);
       if (i % 3 == 1) children2.add(tile);
       if (i % 3 == 2) children3.add(tile);
@@ -142,5 +140,22 @@ class _MobileProvidePageState extends ConsumerState<MobileProvidePage> {
         child: column,
       ),
     );
+  }
+
+  Widget _buildSubmitButton() {
+    var textStyle = TextStyle(
+      color: Color(0xFF161616),
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    var button = APrimaryButton(
+      onTap: updateProvider,
+      child: Center(child: Text('Submit', style: textStyle)),
+    );
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: button,
+    );
+    return SafeArea(child: padding);
   }
 }
