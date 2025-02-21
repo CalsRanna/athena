@@ -9,14 +9,14 @@ class AIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hugeIcon = HugeIcon(icon: icon, color: const Color(0xff000000));
+    final hugeIcon = Icon(icon, color: const Color(0xff000000), size: 16);
     const boxDecoration = BoxDecoration(
       color: Color(0xffffffff),
       shape: BoxShape.circle,
     );
     final button = Container(
       decoration: boxDecoration,
-      padding: padding ?? const EdgeInsets.all(8),
+      padding: padding ?? const EdgeInsets.all(12),
       child: hugeIcon,
     );
     return GestureDetector(

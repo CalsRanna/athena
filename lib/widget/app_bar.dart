@@ -47,9 +47,10 @@ class MobilePopButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedArrowLeft01,
+    const hugeIcon = Icon(
+      HugeIcons.strokeRoundedArrowLeft02,
       color: Color(0xff000000),
+      size: 16,
     );
     const boxDecoration = BoxDecoration(
       color: Color(0xffffffff),
@@ -57,7 +58,7 @@ class MobilePopButton extends StatelessWidget {
     );
     final button = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       child: hugeIcon,
     );
     return GestureDetector(

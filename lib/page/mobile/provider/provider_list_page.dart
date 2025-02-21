@@ -1,6 +1,7 @@
 import 'package:athena/provider/provider.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class MobileProviderListPage extends ConsumerWidget {
@@ -19,7 +21,12 @@ class MobileProviderListPage extends ConsumerWidget {
     Widget body = const SizedBox();
     if (providers != null) body = _buildBody(providers);
     return AScaffold(
-      appBar: AAppBar(title: const Text('Provider')),
+      appBar: AAppBar(
+        action: AIconButton(
+            icon: HugeIcons.strokeRoundedAdd01,
+            onTap: () => MobileProviderNameRoute().push(context)),
+        title: const Text('Provider'),
+      ),
       body: body,
     );
   }

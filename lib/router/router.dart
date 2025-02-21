@@ -34,6 +34,7 @@ class AppRouter extends RootStackRouter {
       AutoRoute(page: MobileModelFormRoute.page),
       AutoRoute(page: MobileProviderListRoute.page),
       AutoRoute(page: MobileProviderFormRoute.page),
+      AutoRoute(page: MobileProviderNameRoute.page),
       AutoRoute(page: MobileDefaultModelFormRoute.page),
     ];
   }
