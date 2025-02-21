@@ -3,6 +3,7 @@ import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/view_model/view_model.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
@@ -30,6 +31,6 @@ class ProviderViewModel extends ViewModel {
       await isar.providers.put(provider);
     });
     ref.invalidate(providersNotifierProvider);
-    AutoRouter.of(globalKey.currentState!.context).maybePop();
+    ADialog.message('Provider updated');
   }
 }

@@ -13,7 +13,6 @@ import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class MobileProviderFormPage extends ConsumerStatefulWidget {
@@ -32,6 +31,19 @@ class _MobileProviderFormPageState
 
   @override
   Widget build(BuildContext context) {
+    var children = [
+      AFormTileLabel.large(title: 'API Key'),
+      SizedBox(height: 12),
+      AInput(controller: keyController),
+      SizedBox(height: 16),
+      AFormTileLabel.large(title: 'API Url'),
+      SizedBox(height: 12),
+      AInput(controller: urlController),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
     return AScaffold(
       appBar: AAppBar(title: Text(widget.provider.name)),
       body: Column(
@@ -42,18 +54,7 @@ class _MobileProviderFormPageState
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      AFormTileLabel.large(title: 'API Key'),
-                      SizedBox(height: 12),
-                      AInput(controller: keyController),
-                      SizedBox(height: 16),
-                      AFormTileLabel.large(title: 'API Url'),
-                      SizedBox(height: 12),
-                      AInput(controller: urlController),
-                    ],
-                  ),
+                  child: column,
                 ),
                 SizedBox(height: 16),
                 Padding(
@@ -65,6 +66,20 @@ class _MobileProviderFormPageState
                 ),
                 SizedBox(height: 12),
                 _buildModelHorizontalList(),
+                SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Tap a model to check connection',
+                    style: TextStyle(
+                      color: Color(0xFFE0E0E0),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           ),
@@ -150,7 +165,7 @@ class _MobileProviderFormPageState
     );
     var button = APrimaryButton(
       onTap: updateProvider,
-      child: Center(child: Text('Submit', style: textStyle)),
+      child: Center(child: Text('Update', style: textStyle)),
     );
     var padding = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
