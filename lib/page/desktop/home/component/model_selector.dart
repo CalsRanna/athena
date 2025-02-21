@@ -92,3 +92,57 @@ class DesktopModelSelectDialog extends ConsumerWidget {
     );
   }
 }
+
+class MobileModelSelectDialog extends ConsumerWidget {
+  final void Function(Model)? onTap;
+  const MobileModelSelectDialog({super.key, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(groupedEnabledModelsNotifierProvider);
+    return switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+  }
+
+  Widget _buildData(Map<String, List<Model>> models) {
+    if (models.isEmpty) return const SizedBox();
+    var titleTextStyle = TextStyle(
+      color: Color(0xFFE0E0E0),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    List<Widget> children = [];
+    for (var entry in models.entries) {
+      var title = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(entry.key, style: titleTextStyle),
+      );
+      children.add(title);
+      var modelWidgets =
+          entry.value.map((model) => _itemBuilder(model)).toList();
+      children.addAll(modelWidgets);
+    }
+    return ListView(shrinkWrap: true, children: children);
+  }
+
+  Widget _itemBuilder(Model model) {
+    var titleTextStyle = TextStyle(
+      color: Color(0xFFFFFFFF),
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Text(model.name, style: titleTextStyle),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap?.call(model),
+      child: padding,
+    );
+  }
+}

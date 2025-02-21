@@ -39,5 +39,7 @@ class SettingPage extends ConsumerWidget {
     MobileProviderListRoute().push(context);
   }
 
-  void navigateDefaultModel(BuildContext context) {}
+  void navigateDefaultModel(BuildContext context) {
+    MobileDefaultModelFormRoute().push(context);
+  }
 }
