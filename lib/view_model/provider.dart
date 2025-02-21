@@ -1,12 +1,9 @@
-import 'package:athena/main.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
 
 class ProviderViewModel extends ViewModel {
   final WidgetRef ref;
@@ -29,6 +26,15 @@ class ProviderViewModel extends ViewModel {
   Future<void> updateProvider(schema.Provider provider) async {
     await isar.writeTxn(() async {
       await isar.providers.put(provider);
+    });
+    ref.invalidate(providersNotifierProvider);
+    ADialog.message('Provider updated');
+  }
+
+  Future<void> toggleEnabled(schema.Provider provider) async {
+    var copiedProvider = provider.copyWith(enabled: !provider.enabled);
+    await isar.writeTxn(() async {
+      await isar.providers.put(copiedProvider);
     });
     ref.invalidate(providersNotifierProvider);
     ADialog.message('Provider updated');
