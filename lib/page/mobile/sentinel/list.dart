@@ -185,7 +185,7 @@ class _ActionDialog extends StatelessWidget {
 
   void navigateChatPage(BuildContext context) {
     ADialog.dismiss();
-    MobileChatRoute(sentinel: sentinel).push(context);
+    // MobileChatRoute().push(context);
   }
 
   void navigateSentinelFormPage(BuildContext context) {

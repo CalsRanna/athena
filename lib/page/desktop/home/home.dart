@@ -113,12 +113,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> resendMessage(Message message) async {
-    await viewModel.resendMessage(
-      message,
-      chat: chat,
-      model: model,
-      sentinel: sentinel,
-    );
+    await viewModel.resendMessage(message, chat: chat);
   }
 
   Future<void> sendMessage() async {
@@ -133,12 +128,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     if (scrollController.hasClients) {
       scrollController.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    await viewModel.sendMessage(
-      text,
-      chat: chat,
-      model: model,
-      sentinel: sentinel,
-    );
+    await viewModel.sendMessage(text, chat: chat);
     if (chat.title.isEmpty || chat.title == 'New Chat') {
       viewModel.renameChat(chat);
     }
