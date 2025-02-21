@@ -20,7 +20,7 @@ class AFormTileLabel extends StatelessWidget {
       height: 1.5,
     );
     var children = [
-      Text(title, style: titleTextStyle),
+      Expanded(child: Text(title, style: titleTextStyle)),
       trailing ?? const SizedBox(),
     ];
     return Row(
