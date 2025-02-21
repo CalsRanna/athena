@@ -54,8 +54,12 @@ class ADialog {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(message, style: TextStyle(color: Colors.white)),
     );
+    var alignment = Alignment.center;
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      alignment = Alignment.centerLeft;
+    }
     var unconstrainedBox = UnconstrainedBox(
-      alignment: Alignment.centerLeft,
+      alignment: alignment,
       child: container,
     );
     var snackBar = SnackBar(

@@ -96,7 +96,7 @@ class ATextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const defaultTextStyle = TextStyle(color: Color(0xFFA7BA88));
+    const defaultTextStyle = TextStyle(color: Color(0xFFFFFFFF));
     var container = Container(
       decoration: ShapeDecoration(shape: StadiumBorder()),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),

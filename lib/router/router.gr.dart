@@ -18,8 +18,8 @@ import 'package:athena/page/mobile/chat/chat.dart' as _i8;
 import 'package:athena/page/mobile/chat/list.dart' as _i7;
 import 'package:athena/page/mobile/chat/rename.dart' as _i9;
 import 'package:athena/page/mobile/home/home.dart' as _i10;
+import 'package:athena/page/mobile/provider/provider_form_page.dart' as _i13;
 import 'package:athena/page/mobile/provider/provider_list_page.dart' as _i14;
-import 'package:athena/page/mobile/provider/provider_page.dart' as _i13;
 import 'package:athena/page/mobile/sentinel/form.dart' as _i15;
 import 'package:athena/page/mobile/sentinel/list.dart' as _i16;
 import 'package:athena/page/mobile/setting/model/form.dart' as _i11;
@@ -380,28 +380,29 @@ class MobileModelListRoute extends _i17.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i13.MobileProvidePage]
-class MobileProvideRoute extends _i17.PageRouteInfo<MobileProvideRouteArgs> {
-  MobileProvideRoute({
+/// [_i13.MobileProviderFormPage]
+class MobileProviderFormRoute
+    extends _i17.PageRouteInfo<MobileProviderFormRouteArgs> {
+  MobileProviderFormRoute({
     _i18.Key? key,
     required _i22.Provider provider,
     List<_i17.PageRouteInfo>? children,
   }) : super(
-          MobileProvideRoute.name,
-          args: MobileProvideRouteArgs(
+          MobileProviderFormRoute.name,
+          args: MobileProviderFormRouteArgs(
             key: key,
             provider: provider,
           ),
           initialChildren: children,
         );
 
-  static const String name = 'MobileProvideRoute';
+  static const String name = 'MobileProviderFormRoute';
 
   static _i17.PageInfo page = _i17.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<MobileProvideRouteArgs>();
-      return _i13.MobileProvidePage(
+      final args = data.argsAs<MobileProviderFormRouteArgs>();
+      return _i13.MobileProviderFormPage(
         key: args.key,
         provider: args.provider,
       );
@@ -409,8 +410,8 @@ class MobileProvideRoute extends _i17.PageRouteInfo<MobileProvideRouteArgs> {
   );
 }
 
-class MobileProvideRouteArgs {
-  const MobileProvideRouteArgs({
+class MobileProviderFormRouteArgs {
+  const MobileProviderFormRouteArgs({
     this.key,
     required this.provider,
   });
@@ -421,7 +422,7 @@ class MobileProvideRouteArgs {
 
   @override
   String toString() {
-    return 'MobileProvideRouteArgs{key: $key, provider: $provider}';
+    return 'MobileProviderFormRouteArgs{key: $key, provider: $provider}';
   }
 }
 

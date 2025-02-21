@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class AInput extends StatefulWidget {
   final TextEditingController controller;
+  final int maxLines;
   final int minLines;
   final void Function()? onBlur;
   final void Function(KeyEvent)? onKeyEvent;
@@ -9,6 +10,7 @@ class AInput extends StatefulWidget {
   const AInput({
     super.key,
     required this.controller,
+    this.maxLines = 1,
     this.minLines = 1,
     this.onBlur,
     this.onKeyEvent,
@@ -64,7 +66,7 @@ class _AInputState extends State<AInput> {
       cursorColor: Color(0xFFF5F5F5),
       decoration: inputDecoration,
       style: inputTextStyle,
-      maxLines: 8,
+      maxLines: widget.maxLines,
       minLines: widget.minLines,
     );
     var keyboardListener = KeyboardListener(
