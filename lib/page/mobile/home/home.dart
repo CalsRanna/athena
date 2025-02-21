@@ -5,6 +5,7 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +53,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
     var children = [
       _Welcome(),
       SizedBox(height: 16),
-      _NewChat(),
+      _NewChatButton(),
       SizedBox(height: 16),
       _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 8),
@@ -82,8 +83,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 }
 
-class _NewChat extends ConsumerWidget {
-  const _NewChat();
+class _NewChatButton extends ConsumerWidget {
+  const _NewChatButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,10 +115,10 @@ class _NewChat extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context, WidgetRef ref) async {
-    var provider = defaultSentinelNotifierProvider;
-    var sentinel = await ref.read(provider.future);
+    var viewModel = ChatViewModel(ref);
+    var chat = await viewModel.createChat();
     if (!context.mounted) return;
-    MobileChatRoute(sentinel: sentinel).push(context);
+    MobileChatRoute(chat: chat).push(context);
   }
 }
 
@@ -247,7 +248,7 @@ class _SentinelTile extends StatelessWidget {
   }
 
   void navigateChatPage(BuildContext context) {
-    MobileChatRoute(sentinel: sentinel).push(context);
+    // MobileChatRoute(sentinel: sentinel).push(context);
   }
 }
 

@@ -127,12 +127,7 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
-  Future<void> resendMessage(
-    Message message, {
-    required Chat chat,
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
+  Future<void> resendMessage(Message message, {required Chat chat}) async {
     var builder = isar.messages.filter().chatIdEqualTo(chat.id);
     final messages = await builder.findAll();
     final index = messages.indexWhere((item) => item.id == message.id);
@@ -145,12 +140,7 @@ class ChatViewModel extends ViewModel {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(
-      message.content,
-      chat: chat,
-      model: model,
-      sentinel: sentinel,
-    );
+    await sendMessage(message.content, chat: chat);
   }
 
   Future<Chat> selectModel(Model model, {required Chat chat}) async {
@@ -175,14 +165,12 @@ class ChatViewModel extends ViewModel {
     return chat;
   }
 
-  Future<void> sendMessage(
-    String text, {
-    required Chat chat,
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
+  Future<void> sendMessage(String text, {required Chat chat}) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
+    var model = await ref.read(modelNotifierProvider(chat.modelId).future);
+    var sentinel =
+        await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
     final userMessage = Message();
     userMessage.chatId = chat.id;
     userMessage.content = text;
