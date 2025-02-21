@@ -365,8 +365,7 @@ class _Title extends StatelessWidget {
   Widget _buildMoreButton() {
     var container = Container(
       decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-      height: 42,
-      width: 42,
+      padding: EdgeInsets.all(12),
       child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),
     );
     return GestureDetector(
