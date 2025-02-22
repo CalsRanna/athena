@@ -1,5 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -12,18 +13,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class MobileSentinelFormPage extends StatefulWidget {
+class MobileSentinelFormPage extends ConsumerStatefulWidget {
   final Sentinel? sentinel;
   const MobileSentinelFormPage({super.key, this.sentinel});
 
   @override
-  State<MobileSentinelFormPage> createState() => _MobileSentinelFormPageState();
+  ConsumerState<MobileSentinelFormPage> createState() =>
+      _MobileSentinelFormPageState();
 }
 
-class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
+class _MobileSentinelFormPageState
+    extends ConsumerState<MobileSentinelFormPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final promptController = TextEditingController();
+
+  late final viewModel = SentinelViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -68,58 +73,49 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Future<void> generateSentinel() async {
-    // if (promptController.text.isEmpty) {
-    //   ADialog.success('Prompt is required');
-    // } else {
-    //   ADialog.loading();
-    //   var container = ProviderScope.containerOf(context);
-    //   var provider = sentinelNotifierProvider(0);
-    //   var notifier = container.read(provider.notifier);
-    //   var setting = await container.read(settingNotifierProvider.future);
-    //   var sentinel = await notifier.generate(
-    //     promptController.text,
-    //     model: setting.model,
-    //   );
-    //   nameController.text = sentinel.name;
-    //   descriptionController.text = sentinel.description;
-    //   ADialog.dismiss();
-    // }
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var sentinel = await viewModel.generateSentinel(promptController.text);
+      if (sentinel == null) {
+        ADialog.dismiss();
+        return;
+      }
+      nameController.text = sentinel.name;
+      descriptionController.text = sentinel.description;
+      ADialog.dismiss();
+    }
   }
 
   Future<void> generateSentinelDescription() async {
-    // if (promptController.text.isEmpty) {
-    //   ADialog.success('Prompt is required');
-    // } else {
-    //   ADialog.loading();
-    //   var container = ProviderScope.containerOf(context);
-    //   var provider = sentinelNotifierProvider(0);
-    //   var notifier = container.read(provider.notifier);
-    //   var setting = await container.read(settingNotifierProvider.future);
-    //   var sentinel = await notifier.generate(
-    //     promptController.text,
-    //     model: setting.model,
-    //   );
-    //   descriptionController.text = sentinel.description;
-    //   ADialog.dismiss();
-    // }
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var sentinel = await viewModel.generateSentinel(promptController.text);
+      if (sentinel == null) {
+        ADialog.dismiss();
+        return;
+      }
+      descriptionController.text = sentinel.description;
+      ADialog.dismiss();
+    }
   }
 
   Future<void> generateSentinelName() async {
-    // if (promptController.text.isEmpty) {
-    //   ADialog.success('Prompt is required');
-    // } else {
-    //   ADialog.loading();
-    //   var container = ProviderScope.containerOf(context);
-    //   var provider = sentinelNotifierProvider(0);
-    //   var notifier = container.read(provider.notifier);
-    //   var setting = await container.read(settingNotifierProvider.future);
-    //   var sentinel = await notifier.generate(
-    //     promptController.text,
-    //     model: setting.model,
-    //   );
-    //   nameController.text = sentinel.name;
-    //   ADialog.dismiss();
-    // }
+    if (promptController.text.isEmpty) {
+      ADialog.success('Prompt is required');
+    } else {
+      ADialog.loading();
+      var sentinel = await viewModel.generateSentinel(promptController.text);
+      if (sentinel == null) {
+        ADialog.dismiss();
+        return;
+      }
+      nameController.text = sentinel.name;
+      ADialog.dismiss();
+    }
   }
 
   @override
