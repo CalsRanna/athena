@@ -1,6 +1,7 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -134,12 +135,12 @@ class _Tile extends StatelessWidget {
   }
 }
 
-class _ActionDialog extends StatelessWidget {
+class _ActionDialog extends ConsumerWidget {
   final Sentinel sentinel;
   const _ActionDialog({required this.sentinel});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     var editWidgets = [
       const SizedBox(height: 12),
       _OutlinedButton(
@@ -155,7 +156,7 @@ class _ActionDialog extends StatelessWidget {
     var children = [
       APrimaryButton(
         child: Center(child: Text('Start Chat')),
-        onTap: () => navigateChatPage(context),
+        onTap: () => navigateChatPage(context, ref),
       ),
       if (sentinel.name != 'Athena') ...editWidgets,
       SizedBox(height: MediaQuery.paddingOf(context).bottom),
@@ -183,9 +184,12 @@ class _ActionDialog extends StatelessWidget {
     ADialog.success('Sentinel deleted successfully');
   }
 
-  void navigateChatPage(BuildContext context) {
+  Future<void> navigateChatPage(BuildContext context, WidgetRef ref) async {
     ADialog.dismiss();
-    // MobileChatRoute().push(context);
+    var viewModel = ChatViewModel(ref);
+    var chat = await viewModel.createChat(sentinel: sentinel);
+    if (!context.mounted) return;
+    MobileChatRoute(chat: chat).push(context);
   }
 
   void navigateSentinelFormPage(BuildContext context) {

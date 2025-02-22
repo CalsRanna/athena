@@ -202,12 +202,12 @@ class _SentinelListView extends ConsumerWidget {
   }
 }
 
-class _SentinelTile extends StatelessWidget {
+class _SentinelTile extends ConsumerWidget {
   final Sentinel sentinel;
   const _SentinelTile(this.sentinel);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const innerDecoration = ShapeDecoration(
       color: Color(0xff161616),
       shape: StadiumBorder(),
@@ -238,7 +238,7 @@ class _SentinelTile extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => navigateChatPage(context),
+      onTap: () => navigateChatPage(context, ref),
       child: Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(1),
@@ -247,8 +247,11 @@ class _SentinelTile extends StatelessWidget {
     );
   }
 
-  void navigateChatPage(BuildContext context) {
-    // MobileChatRoute(sentinel: sentinel).push(context);
+  void navigateChatPage(BuildContext context, WidgetRef ref) async {
+    var viewModel = ChatViewModel(ref);
+    var chat = await viewModel.createChat(sentinel: sentinel);
+    if (!context.mounted) return;
+    MobileChatRoute(chat: chat).push(context);
   }
 }
 
