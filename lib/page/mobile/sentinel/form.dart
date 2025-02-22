@@ -1,5 +1,4 @@
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -149,12 +148,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       onTap: generateSentinelDescription,
       child: icon,
     );
-    var children = [
-      const AFormTileLabel(title: 'Description'),
-      const SizedBox(width: 8),
-      gestureDetector,
-    ];
-    return Row(children: children);
+    return AFormTileLabel(title: 'Description', trailing: gestureDetector);
   }
 
   Widget _buildGenerateButton() {
@@ -180,12 +174,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       onTap: generateSentinelName,
       child: icon,
     );
-    var children = [
-      const AFormTileLabel(title: 'Name'),
-      const SizedBox(width: 8),
-      gestureDetector,
-    ];
-    return Row(children: children);
+    return AFormTileLabel(title: 'Name', trailing: gestureDetector);
   }
 
   Widget _buildStoreButton() {
