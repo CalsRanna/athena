@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/provider.dart';
+import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
@@ -70,7 +72,6 @@ class _MessageListView extends ConsumerWidget {
 
 class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   final controller = TextEditingController();
-  int? id;
   Model? model;
 
   late final viewModel = ChatViewModel(ref);
@@ -92,15 +93,32 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var columnChildren = [
       // if (id == null)
       //   Expanded(child: _SentinelPlaceholder(sentinel: widget.sentinel)),
-      if (id != null) Expanded(child: _MessageListView(chat: widget.chat)),
+      Expanded(child: _MessageListView(chat: widget.chat)),
       input,
     ];
     var actionButton = AIconButton(
       icon: HugeIcons.strokeRoundedMoreHorizontal,
       onTap: openModalSelector,
     );
+    var sentinel =
+        ref.watch(sentinelNotifierProvider(widget.chat.sentinelId)).value;
     return AScaffold(
-      appBar: AAppBar(action: actionButton, title: Text(title)),
+      appBar: AAppBar(
+        action: actionButton,
+        title: Column(
+          children: [
+            Text(title),
+            Row(
+              spacing: 8,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _SentinelIndicator(sentinel: sentinel),
+                _ModelIndicator(model: model),
+              ],
+            )
+          ],
+        ),
+      ),
       body: Column(children: columnChildren),
     );
   }
@@ -109,6 +127,9 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var viewModel = ChatViewModel(ref);
     viewModel.selectModel(model, chat: widget.chat);
     ADialog.dismiss();
+    setState(() {
+      this.model = model;
+    });
   }
 
   @override
@@ -120,7 +141,6 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   @override
   void initState() {
     super.initState();
-    id = widget.chat.id;
     _initModel();
   }
 
@@ -144,6 +164,61 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     setState(() {
       this.model = model;
     });
+  }
+}
+
+class _SentinelIndicator extends StatelessWidget {
+  final Sentinel? sentinel;
+  const _SentinelIndicator({this.sentinel});
+
+  @override
+  Widget build(BuildContext context) {
+    if (sentinel == null) return const SizedBox();
+    const textStyle = TextStyle(color: Colors.white, fontSize: 14);
+    return Text(sentinel!.name, style: textStyle);
+  }
+}
+
+class _ModelIndicator extends ConsumerWidget {
+  final Model? model;
+  const _ModelIndicator({this.model});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (model == null) return const SizedBox();
+    var provider = providerNotifierProvider(model!.providerId);
+    var value = ref.watch(provider).valueOrNull;
+    var text = Text(
+      '${model!.name} | ${value?.name ?? ""}',
+      style: TextStyle(color: Colors.white, fontSize: 14),
+    );
+    var innerBoxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(36),
+      color: Color(0xFF161616),
+    );
+    var innerContainer = Container(
+      decoration: innerBoxDecoration,
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: text,
+    );
+    var colors = [
+      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      Colors.white.withValues(alpha: 0),
+    ];
+    var linearGradient = LinearGradient(
+      begin: Alignment.topLeft,
+      colors: colors,
+      end: Alignment.bottomRight,
+    );
+    var outerBoxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(36),
+      gradient: linearGradient,
+    );
+    return Container(
+      decoration: outerBoxDecoration,
+      padding: EdgeInsets.all(1),
+      child: innerContainer,
+    );
   }
 }
 
