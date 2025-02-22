@@ -19,14 +19,14 @@ class ChatViewModel extends ViewModel {
 
   bool get streaming => ref.read(streamingNotifierProvider);
 
-  Future<Chat> createChat() async {
+  Future<Chat> createChat({Sentinel? sentinel}) async {
     var model = await getFirstEnabledModel();
-    var sentinel = await getFirstSentinel();
+    var firstSentinel = await getFirstSentinel();
     var timestamp = DateTime.now();
     var chat = Chat()
       ..title = 'New Chat'
       ..modelId = model.id
-      ..sentinelId = sentinel.id
+      ..sentinelId = sentinel?.id ?? firstSentinel.id
       ..createdAt = timestamp
       ..updatedAt = timestamp;
     await isar.writeTxn(() async {
