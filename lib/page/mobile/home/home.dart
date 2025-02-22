@@ -382,13 +382,9 @@ class _Welcome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final row = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildText(), _buildAvatar(context)],
-    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: row,
+      child: Row(children: [_buildText(), _buildAvatar(context)]),
     );
   }
 
