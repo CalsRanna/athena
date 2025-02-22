@@ -90,9 +90,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       padding: EdgeInsets.fromLTRB(16, 16, 16, mediaQuery.padding.bottom + 16),
       child: Row(children: inputChildren),
     );
+    var messages = ref.watch(messagesNotifierProvider(widget.chat.id)).value;
+    var sentinel =
+        ref.watch(sentinelNotifierProvider(widget.chat.sentinelId)).value;
     var columnChildren = [
-      // if (id == null)
-      //   Expanded(child: _SentinelPlaceholder(sentinel: widget.sentinel)),
+      if (messages != null && messages.isEmpty)
+        Expanded(child: _SentinelPlaceholder(sentinel: sentinel)),
       Expanded(child: _MessageListView(chat: widget.chat)),
       input,
     ];
@@ -100,8 +103,6 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       icon: HugeIcons.strokeRoundedMoreHorizontal,
       onTap: openModalSelector,
     );
-    var sentinel =
-        ref.watch(sentinelNotifierProvider(widget.chat.sentinelId)).value;
     return AScaffold(
       appBar: AAppBar(
         action: actionButton,
