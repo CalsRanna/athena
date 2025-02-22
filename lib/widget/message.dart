@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
@@ -40,7 +42,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       const SizedBox(width: 12),
       _buildLoading(),
       _buildContent(),
-      const SizedBox(width: 48),
+      _buildTrailingSpace(),
     ];
     var messageRow = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,6 +117,11 @@ class _AssistantMessageListTile extends StatelessWidget {
     var sizedBox = SizedBox(height: 16, width: 16, child: indicator);
     var align = Align(alignment: Alignment.centerLeft, child: sizedBox);
     return SizedBox.square(dimension: 36, child: align);
+  }
+
+  Widget _buildTrailingSpace() {
+    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -21,19 +23,7 @@ class _CopyButtonState extends State<CopyButton> {
       icon: HugeIcons.strokeRoundedCopy01,
       size: 12.0,
     );
-    if (copied) {
-      var hugeIcon = HugeIcon(
-        color: color,
-        icon: HugeIcons.strokeRoundedTick01,
-        size: 12.0,
-      );
-      var children = [
-        hugeIcon,
-        const SizedBox(width: 4),
-        const Text('Copied', style: TextStyle(fontSize: 12, height: 1))
-      ];
-      child = Row(children: children);
-    }
+    if (copied) child = _buildCopiedRow();
     var animatedSwitcher = AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
       child: child,
@@ -43,6 +33,24 @@ class _CopyButtonState extends State<CopyButton> {
       onTap: handleTap,
       child: animatedSwitcher,
     );
+  }
+
+  Widget _buildCopiedRow() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = colorScheme.onSurface.withValues(alpha: 0.4);
+    var hugeIcon = HugeIcon(
+      color: color,
+      icon: HugeIcons.strokeRoundedTick01,
+      size: 12.0,
+    );
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (!isDesktop) return hugeIcon;
+    var children = [
+      hugeIcon,
+      const SizedBox(width: 4),
+      const Text('Copied', style: TextStyle(fontSize: 12, height: 1))
+    ];
+    return Row(children: children);
   }
 
   void handleTap() async {
