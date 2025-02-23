@@ -37,6 +37,5 @@ class ProviderViewModel extends ViewModel {
       await isar.providers.put(copiedProvider);
     });
     ref.invalidate(providersNotifierProvider);
-    ADialog.message('Provider updated');
   }
 }
