@@ -1,9 +1,11 @@
 import 'package:athena/provider/model.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/view_model/model.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -13,6 +15,7 @@ import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class MobileProviderFormPage extends ConsumerStatefulWidget {
@@ -44,48 +47,27 @@ class _MobileProviderFormPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+    var labels = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: column,
+    );
+    var listViewChildren = [
+      labels,
+      SizedBox(height: 16),
+      _buildModelFormLabel(context),
+      SizedBox(height: 12),
+      _buildModelHorizontalList(),
+      SizedBox(height: 16),
+      _buildTip(),
+    ];
+    var listView = ListView(
+      padding: EdgeInsets.zero,
+      children: listViewChildren,
+    );
+    var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
     return AScaffold(
       appBar: AAppBar(title: Text(widget.provider.name)),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: column,
-                ),
-                SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: AFormTileLabel.large(
-                    title: 'Models',
-                    trailing: ATextButton(onTap: () {}, text: 'New'),
-                  ),
-                ),
-                SizedBox(height: 12),
-                _buildModelHorizontalList(),
-                SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Tap a model to check connection',
-                    style: TextStyle(
-                      color: Color(0xFFE0E0E0),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildSubmitButton()
-        ],
-      ),
+      body: Column(children: columnChildren),
     );
   }
 
@@ -95,6 +77,15 @@ class _MobileProviderFormPageState
     ADialog.message(message);
   }
 
+  void createModel(BuildContext context) {
+    MobileModelFormRoute(provider: widget.provider).push(context);
+  }
+
+  void destroyModel(Model model) {
+    ADialog.dismiss();
+    ModelViewModel(ref).destroyModel(model);
+  }
+
   @override
   void dispose() {
     keyController.dispose();
@@ -102,11 +93,37 @@ class _MobileProviderFormPageState
     super.dispose();
   }
 
+  void editModel(Model model) {
+    ADialog.dismiss();
+    MobileModelFormRoute(model: model).push(context);
+  }
+
   @override
   void initState() {
     super.initState();
     keyController.text = widget.provider.key;
     urlController.text = widget.provider.url;
+  }
+
+  void openBottomSheet(BuildContext context, Model model) {
+    var editTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      title: 'Edit',
+      onTap: () => editModel(model),
+    );
+    var deleteTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => destroyModel(model),
+    );
+    var children = [
+      const SizedBox(height: 16),
+      editTile,
+      deleteTile,
+      SafeArea(child: SizedBox()),
+    ];
+    var dialog = Column(mainAxisSize: MainAxisSize.min, children: children);
+    ADialog.show(dialog);
   }
 
   Future<void> updateProvider() async {
@@ -117,6 +134,21 @@ class _MobileProviderFormPageState
       url: urlController.text,
     );
     viewModel.updateProvider(provider);
+  }
+
+  Widget _buildModelFormLabel(BuildContext context) {
+    var newModelButton = ATextButton(
+      onTap: () => createModel(context),
+      text: 'New',
+    );
+    var label = AFormTileLabel.large(
+      title: 'Models',
+      trailing: newModelButton,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: label,
+    );
   }
 
   Widget _buildModelHorizontalList() {
@@ -131,6 +163,7 @@ class _MobileProviderFormPageState
     for (var i = 0; i < models.length; i++) {
       var tile = GestureDetector(
         behavior: HitTestBehavior.opaque,
+        onLongPress: () => openBottomSheet(context, models[i]),
         onTap: () => checkConnection(models[i]),
         child: ATag(text: models[i].name),
       );
@@ -172,5 +205,23 @@ class _MobileProviderFormPageState
       child: button,
     );
     return SafeArea(child: padding);
+  }
+
+  Widget _buildTip() {
+    var textStyle = TextStyle(
+      color: Color(0xFFE0E0E0),
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var text = Text(
+      'Tap a model to check connection',
+      style: textStyle,
+      textAlign: TextAlign.center,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: text,
+    );
   }
 }
