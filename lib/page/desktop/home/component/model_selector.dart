@@ -1,6 +1,7 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/view_model/model.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/card.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/tile.dart';
@@ -114,10 +115,10 @@ class MobileModelSelectDialog extends ConsumerWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    List<Widget> children = [];
+    List<Widget> children = [SizedBox(height: 16)];
     for (var entry in models.entries) {
       var title = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Text(entry.key, style: titleTextStyle),
       );
       children.add(title);
@@ -129,20 +130,6 @@ class MobileModelSelectDialog extends ConsumerWidget {
   }
 
   Widget _itemBuilder(Model model) {
-    var titleTextStyle = TextStyle(
-      color: Color(0xFFFFFFFF),
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    var padding = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Text(model.name, style: titleTextStyle),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onTap?.call(model),
-      child: padding,
-    );
+    return ABottomSheetTile(onTap: () => onTap?.call(model), title: model.name);
   }
 }
