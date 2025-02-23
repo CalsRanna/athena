@@ -31,8 +31,13 @@ class MobileChatPage extends ConsumerStatefulWidget {
 
 class _MessageListView extends ConsumerStatefulWidget {
   final Chat chat;
+  final Model? model;
   final void Function(String)? onChatTitleChanged;
-  const _MessageListView({required this.chat, this.onChatTitleChanged});
+  const _MessageListView({
+    required this.chat,
+    this.model,
+    this.onChatTitleChanged,
+  });
 
   @override
   ConsumerState<_MessageListView> createState() => _MessageListViewState();
@@ -79,12 +84,12 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   }
 
   Future<void> _resend(WidgetRef ref, Message message) async {
-    var viewModel = ChatViewModel(ref);
     var duration = Duration(milliseconds: 300);
     if (controller.hasClients) {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    viewModel.resendMessage(message, chat: widget.chat);
+    var viewModel = ChatViewModel(ref);
+    viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
     if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
       var title = await viewModel.renameChat(widget.chat);
       widget.onChatTitleChanged?.call(title);
@@ -121,6 +126,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       Expanded(
         child: _MessageListView(
           chat: widget.chat,
+          model: model,
           onChatTitleChanged: updateTitle,
         ),
       ),
@@ -130,23 +136,11 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       icon: HugeIcons.strokeRoundedMoreHorizontal,
       onTap: openModalSelector,
     );
+    var titleColumn = Column(
+      children: [Text(title), _ModelIndicator(model: model)],
+    );
     return AScaffold(
-      appBar: AAppBar(
-        action: actionButton,
-        title: Column(
-          children: [
-            Text(title),
-            Row(
-              spacing: 8,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _SentinelIndicator(sentinel: sentinel),
-                _ModelIndicator(model: model),
-              ],
-            )
-          ],
-        ),
-      ),
+      appBar: AAppBar(action: actionButton, title: titleColumn),
       body: Column(children: columnChildren),
     );
   }
@@ -196,23 +190,11 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   }
 
   Future<void> _initModel() async {
-    var model =
-        await isar.models.filter().idEqualTo(widget.chat.modelId).findFirst();
+    var builder = isar.models.filter().idEqualTo(widget.chat.modelId);
+    var model = await builder.findFirst();
     setState(() {
       this.model = model;
     });
-  }
-}
-
-class _SentinelIndicator extends StatelessWidget {
-  final Sentinel? sentinel;
-  const _SentinelIndicator({this.sentinel});
-
-  @override
-  Widget build(BuildContext context) {
-    if (sentinel == null) return const SizedBox();
-    const textStyle = TextStyle(color: Colors.white, fontSize: 14);
-    return Text(sentinel!.name, style: textStyle);
   }
 }
 

@@ -128,7 +128,11 @@ class ChatViewModel extends ViewModel {
     return title;
   }
 
-  Future<void> resendMessage(Message message, {required Chat chat}) async {
+  Future<void> resendMessage(
+    Message message, {
+    required Chat chat,
+    Model? model,
+  }) async {
     var builder = isar.messages.filter().chatIdEqualTo(chat.id);
     final messages = await builder.findAll();
     final index = messages.indexWhere((item) => item.id == message.id);
@@ -141,7 +145,7 @@ class ChatViewModel extends ViewModel {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(message.content, chat: chat);
+    await sendMessage(message.content, chat: chat, model: model);
   }
 
   Future<Chat> selectModel(Model model, {required Chat chat}) async {
@@ -166,10 +170,16 @@ class ChatViewModel extends ViewModel {
     return chat;
   }
 
-  Future<void> sendMessage(String text, {required Chat chat}) async {
+  Future<void> sendMessage(
+    String text, {
+    required Chat chat,
+    Model? model,
+  }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    var model = await ref.read(modelNotifierProvider(chat.modelId).future);
+    var defaultModel =
+        await ref.read(modelNotifierProvider(chat.modelId).future);
+    var realUsedModel = model ?? defaultModel;
     var sentinel =
         await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
     final userMessage = Message();
@@ -183,13 +193,13 @@ class ChatViewModel extends ViewModel {
     final system = {'role': 'system', 'content': sentinel.prompt};
     var messagesProvider = messagesNotifierProvider(chat.id);
     final histories = await ref.read(messagesProvider.future);
-    var provider = providerNotifierProvider(model.providerId);
+    var provider = providerNotifierProvider(realUsedModel.providerId);
     var aiProvider = await ref.read(provider.future);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     try {
       final response = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...histories],
-        model: model,
+        model: realUsedModel,
         provider: aiProvider,
       );
       final assistantMessage = Message();
