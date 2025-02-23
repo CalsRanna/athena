@@ -106,30 +106,21 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final inputChildren = [
-      Expanded(
-          child: _UserInput(controller: controller, onSubmitted: sendMessage)),
-      const SizedBox(width: 16),
-      _SendButton(onTap: sendMessage),
-    ];
-    final mediaQuery = MediaQuery.of(context);
-    final input = Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, mediaQuery.padding.bottom + 16),
-      child: Row(children: inputChildren),
-    );
+    var input = _buildInput();
     var messages = ref.watch(messagesNotifierProvider(widget.chat.id)).value;
     var sentinel =
         ref.watch(sentinelNotifierProvider(widget.chat.sentinelId)).value;
     var columnChildren = [
       if (messages != null && messages.isEmpty)
         Expanded(child: _SentinelPlaceholder(sentinel: sentinel)),
-      Expanded(
-        child: _MessageListView(
-          chat: widget.chat,
-          model: model,
-          onChatTitleChanged: updateTitle,
+      if (messages != null && messages.isNotEmpty)
+        Expanded(
+          child: _MessageListView(
+            chat: widget.chat,
+            model: model,
+            onChatTitleChanged: updateTitle,
+          ),
         ),
-      ),
       input,
     ];
     var actionButton = AIconButton(
@@ -143,6 +134,23 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       appBar: AAppBar(action: actionButton, title: titleColumn),
       body: Column(children: columnChildren),
     );
+  }
+
+  Widget _buildInput() {
+    var userInput = _UserInput(
+      controller: controller,
+      onSubmitted: sendMessage,
+    );
+    final inputChildren = [
+      Expanded(child: userInput),
+      const SizedBox(width: 16),
+      _SendButton(onTap: sendMessage),
+    ];
+    final row = Padding(
+      padding: EdgeInsets.all(16),
+      child: Row(children: inputChildren),
+    );
+    return SafeArea(top: false, child: row);
   }
 
   void updateTitle(String title) {
