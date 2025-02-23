@@ -229,18 +229,26 @@ class _UserMessageListTile extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    const textStyle = TextStyle(fontSize: 14, height: 1);
-    var boxDecoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: 0.95),
-    );
-    return Container(
-      alignment: Alignment.center,
-      decoration: boxDecoration,
+    // const textStyle = TextStyle(fontSize: 14, height: 1);
+    // var boxDecoration = BoxDecoration(
+    //   shape: BoxShape.circle,
+    //   color: Colors.white.withValues(alpha: 0.95),
+    // );
+    // return Container(
+    //   alignment: Alignment.center,
+    //   decoration: boxDecoration,
+    //   height: 36,
+    //   width: 36,
+    //   child: Text('CA', style: textStyle),
+    // );
+    var image = Image.asset(
+      'asset/image/avatar.png',
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
       height: 36,
       width: 36,
-      child: Text('CA', style: textStyle),
     );
+    return ClipOval(child: image);
   }
 
   Widget _buildContent() {
