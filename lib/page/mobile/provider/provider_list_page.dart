@@ -3,6 +3,7 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -62,52 +63,12 @@ class MobileProviderListPage extends ConsumerWidget {
   }
 }
 
-class _ProviderBottomSheet extends ConsumerWidget {
-  final schema.Provider provider;
-  const _ProviderBottomSheet(this.provider);
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var enableText = provider.enabled ? 'Disable' : 'Enable';
-    var toggleButton = ASecondaryButton(
-      onTap: () => toggleEnable(ref),
-      child: Center(child: Text(enableText)),
-    );
-    var deleteButton = ASecondaryButton(
-      onTap: () => destroyProvider(ref),
-      child: Center(child: Text('Delete')),
-    );
-    var children = [
-      toggleButton,
-      if (!provider.isPreset) const SizedBox(height: 12),
-      if (!provider.isPreset) deleteButton,
-    ];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: SafeArea(child: column),
-    );
-  }
-
-  void destroyProvider(WidgetRef ref) {
-    var viewModel = ProviderViewModel(ref);
-    viewModel.deleteProvider(provider);
-    ADialog.dismiss();
-  }
-
-  void toggleEnable(WidgetRef ref) {
-    var viewModel = ProviderViewModel(ref);
-    viewModel.toggleEnabled(provider);
-    ADialog.dismiss();
-  }
-}
-
-class _ProviderListTile extends StatelessWidget {
+class _ProviderListTile extends ConsumerWidget {
   final schema.Provider provider;
   const _ProviderListTile(this.provider);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const titleTextStyle = TextStyle(
       fontSize: 16,
       color: Color(0xFFFFFFFF),
@@ -137,7 +98,7 @@ class _ProviderListTile extends StatelessWidget {
       Expanded(child: titleColumn),
       GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => openBottomSheet(context),
+        onTap: () => openBottomSheet(context, ref),
         child: Icon(HugeIcons.strokeRoundedMoreHorizontal),
       ),
     ];
@@ -148,11 +109,40 @@ class _ProviderListTile extends StatelessWidget {
     return ListTile(title: tileRow, onTap: () => navigateProviderForm(context));
   }
 
+  void destroyProvider(WidgetRef ref) {
+    var viewModel = ProviderViewModel(ref);
+    viewModel.deleteProvider(provider);
+    ADialog.dismiss();
+  }
+
   void navigateProviderForm(BuildContext context) {
     MobileProviderFormRoute(provider: provider).push(context);
   }
 
-  void openBottomSheet(BuildContext context) {
-    ADialog.show(_ProviderBottomSheet(provider));
+  void openBottomSheet(BuildContext context, WidgetRef ref) {
+    var enableText = provider.enabled ? 'Disable' : 'Enable';
+    var enableTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedToggleOn),
+      title: enableText,
+      onTap: () => toggleEnable(ref),
+    );
+    var deleteTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => destroyProvider(ref),
+    );
+    var children = [enableTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    ADialog.show(SafeArea(child: padding));
+  }
+
+  void toggleEnable(WidgetRef ref) {
+    var viewModel = ProviderViewModel(ref);
+    viewModel.toggleEnabled(provider);
+    ADialog.dismiss();
   }
 }
