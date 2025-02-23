@@ -64,7 +64,7 @@ class _ListTile extends ConsumerWidget {
       height: 1.5,
     );
     var title = Text(
-      chat.title.isNotEmpty ? chat.title : '新的对话',
+      chat.title.isNotEmpty ? chat.title : 'New Chat',
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -163,6 +163,6 @@ class _ListTile extends ConsumerWidget {
     var messages = ref.watch(provider).valueOrNull;
     if (messages == null) return '';
     if (messages.isEmpty) return '';
-    return messages.last.content.replaceAll('\n', ' ');
+    return messages.last.content.replaceAll('\n', ' ').trim();
   }
 }
