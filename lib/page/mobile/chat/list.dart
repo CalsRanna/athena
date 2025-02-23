@@ -1,6 +1,7 @@
 import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -70,7 +71,7 @@ class _ListTile extends ConsumerWidget {
     );
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => openBottomSheet(context),
+      onTap: () => openBottomSheet(context, ref),
       child: Icon(HugeIcons.strokeRoundedMoreHorizontal, color: Colors.white),
     );
     var rowChildren = [Expanded(child: title), gestureDetector];
@@ -116,14 +117,14 @@ class _ListTile extends ConsumerWidget {
     MobileChatRoute(chat: chat).push(context);
   }
 
-  void navigateChatRename(BuildContext context) {
+  void navigateChatRename(BuildContext context, WidgetRef ref) {
     ADialog.dismiss();
-    MobileChatRenameRoute(chat: chat).push(context);
+    ChatViewModel(ref).renameChat(chat);
   }
 
-  void openBottomSheet(BuildContext context) {
+  void openBottomSheet(BuildContext context, WidgetRef ref) {
     var children = [
-      _buildRenameButton(context),
+      _buildRenameButton(context, ref),
       const SizedBox(height: 12),
       _buildDeleteButton(context),
       SizedBox(height: MediaQuery.paddingOf(context).bottom)
@@ -150,9 +151,9 @@ class _ListTile extends ConsumerWidget {
     );
   }
 
-  Widget _buildRenameButton(BuildContext context) {
+  Widget _buildRenameButton(BuildContext context, WidgetRef ref) {
     return ASecondaryButton(
-      onTap: () => navigateChatRename(context),
+      onTap: () => navigateChatRename(context, ref),
       child: Center(child: Text('Rename')),
     );
   }
