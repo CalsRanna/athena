@@ -33,7 +33,7 @@ class _MobileSentinelFormPageState
   @override
   Widget build(BuildContext context) {
     var children = [
-      const AFormTileLabel(title: 'Prompt'),
+      const AFormTileLabel.large(title: 'Prompt'),
       const SizedBox(height: 12),
       AInput(controller: promptController, maxLines: 8, minLines: 8),
       const SizedBox(height: 32),
@@ -44,7 +44,7 @@ class _MobileSentinelFormPageState
       _buildDescriptionLabel(),
       const SizedBox(height: 12),
       AInput(controller: descriptionController, maxLines: 4, minLines: 4),
-      const SizedBox(height: 16),
+      const SizedBox(height: 32),
       Row(
         children: [
           Expanded(child: _buildStoreButton()),
@@ -74,7 +74,7 @@ class _MobileSentinelFormPageState
 
   Future<void> generateSentinel() async {
     if (promptController.text.isEmpty) {
-      ADialog.success('Prompt is required');
+      ADialog.message('Prompt is required');
     } else {
       ADialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
@@ -90,7 +90,7 @@ class _MobileSentinelFormPageState
 
   Future<void> generateSentinelDescription() async {
     if (promptController.text.isEmpty) {
-      ADialog.success('Prompt is required');
+      ADialog.message('Prompt is required');
     } else {
       ADialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
@@ -105,7 +105,7 @@ class _MobileSentinelFormPageState
 
   Future<void> generateSentinelName() async {
     if (promptController.text.isEmpty) {
-      ADialog.success('Prompt is required');
+      ADialog.message('Prompt is required');
     } else {
       ADialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
@@ -144,7 +144,10 @@ class _MobileSentinelFormPageState
       onTap: generateSentinelDescription,
       child: icon,
     );
-    return AFormTileLabel(title: 'Description', trailing: gestureDetector);
+    return AFormTileLabel.large(
+      title: 'Description',
+      trailing: gestureDetector,
+    );
   }
 
   Widget _buildGenerateButton() {
@@ -170,7 +173,7 @@ class _MobileSentinelFormPageState
       onTap: generateSentinelName,
       child: icon,
     );
-    return AFormTileLabel(title: 'Name', trailing: gestureDetector);
+    return AFormTileLabel.large(title: 'Name', trailing: gestureDetector);
   }
 
   Widget _buildStoreButton() {
