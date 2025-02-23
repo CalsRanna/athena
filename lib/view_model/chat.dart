@@ -132,6 +132,7 @@ class ChatViewModel extends ViewModel {
     Message message, {
     required Chat chat,
     Model? model,
+    Sentinel? sentinel,
   }) async {
     var builder = isar.messages.filter().chatIdEqualTo(chat.id);
     final messages = await builder.findAll();
@@ -145,7 +146,12 @@ class ChatViewModel extends ViewModel {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(message.content, chat: chat, model: model);
+    await sendMessage(
+      message.content,
+      chat: chat,
+      model: model,
+      sentinel: sentinel,
+    );
   }
 
   Future<Chat> selectModel(Model model, {required Chat chat}) async {
@@ -174,14 +180,16 @@ class ChatViewModel extends ViewModel {
     String text, {
     required Chat chat,
     Model? model,
+    Sentinel? sentinel,
   }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var defaultModel =
         await ref.read(modelNotifierProvider(chat.modelId).future);
     var realUsedModel = model ?? defaultModel;
-    var sentinel =
+    var defaultSentinel =
         await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
+    var realSentinel = sentinel ?? defaultSentinel;
     final userMessage = Message();
     userMessage.chatId = chat.id;
     userMessage.content = text;
@@ -190,7 +198,7 @@ class ChatViewModel extends ViewModel {
       await isar.messages.put(userMessage);
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    final system = {'role': 'system', 'content': sentinel.prompt};
+    final system = {'role': 'system', 'content': realSentinel.prompt};
     var messagesProvider = messagesNotifierProvider(chat.id);
     final histories = await ref.read(messagesProvider.future);
     var provider = providerNotifierProvider(realUsedModel.providerId);

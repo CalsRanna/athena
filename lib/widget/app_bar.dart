@@ -87,7 +87,7 @@ class _DesktopAppBar extends StatelessWidget {
       SizedBox(width: 16),
     ];
     var rowChildren = [
-      SizedBox(width: 200, child: Row(children: leadingChildren)),
+      SizedBox(width: 240, child: Row(children: leadingChildren)),
       Expanded(child: title ?? const SizedBox()),
       action ?? const SizedBox(),
       const SizedBox(width: 16),
