@@ -121,8 +121,10 @@ class _ProviderListTile extends ConsumerWidget {
 
   void openBottomSheet(BuildContext context, WidgetRef ref) {
     var enableText = provider.enabled ? 'Disable' : 'Enable';
+    var enableIcon = HugeIcons.strokeRoundedToggleOff;
+    if (provider.enabled) enableIcon = HugeIcons.strokeRoundedToggleOn;
     var enableTile = ABottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedToggleOn),
+      leading: Icon(enableIcon),
       title: enableText,
       onTap: () => toggleEnable(ref),
     );
@@ -131,7 +133,7 @@ class _ProviderListTile extends ConsumerWidget {
       title: 'Delete',
       onTap: () => destroyProvider(ref),
     );
-    var children = [enableTile, deleteTile];
+    var children = [enableTile, if (!provider.isPreset) deleteTile];
     var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),

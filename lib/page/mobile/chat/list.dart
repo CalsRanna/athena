@@ -3,7 +3,7 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
-import 'package:athena/widget/button.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -104,13 +104,9 @@ class _ListTile extends ConsumerWidget {
     );
   }
 
-  void confirmDelete(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = chatsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.destroy(chat.id);
+  void destroyChat(BuildContext context, WidgetRef ref) {
     ADialog.dismiss();
-    ADialog.success('Chat deleted successfully');
+    ChatViewModel(ref).destroyChat(chat);
   }
 
   void navigateChat(BuildContext context) {
@@ -123,39 +119,23 @@ class _ListTile extends ConsumerWidget {
   }
 
   void openBottomSheet(BuildContext context, WidgetRef ref) {
-    var children = [
-      _buildRenameButton(context, ref),
-      const SizedBox(height: 12),
-      _buildDeleteButton(context),
-      SizedBox(height: MediaQuery.paddingOf(context).bottom)
-    ];
-    var dialog = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-    ADialog.show(dialog);
-  }
-
-  void showConfirmDialog(BuildContext context) {
-    ADialog.dismiss();
-    ADialog.confirm(
-      'Are you sure you want to delete this chat?',
-      onConfirmed: confirmDelete,
-    );
-  }
-
-  Widget _buildDeleteButton(BuildContext context) {
-    return ASecondaryButton(
-      onTap: () => showConfirmDialog(context),
-      child: Center(child: Text('Delete')),
-    );
-  }
-
-  Widget _buildRenameButton(BuildContext context, WidgetRef ref) {
-    return ASecondaryButton(
+    var editTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      title: 'Rename',
       onTap: () => navigateChatRename(context, ref),
-      child: Center(child: Text('Rename')),
     );
+    var deleteTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => destroyChat(context, ref),
+    );
+    var children = [editTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    ADialog.show(SafeArea(child: padding));
   }
 
   String _getContent(WidgetRef ref) {
