@@ -67,7 +67,7 @@ class _MobileProviderFormPageState
     var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
     return AScaffold(
       appBar: AAppBar(title: Text(widget.provider.name)),
-      body: Column(children: columnChildren),
+      body: SafeArea(top: false, child: Column(children: columnChildren)),
     );
   }
 
@@ -200,11 +200,7 @@ class _MobileProviderFormPageState
       onTap: updateProvider,
       child: Center(child: Text('Update', style: textStyle)),
     );
-    var padding = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: button,
-    );
-    return SafeArea(child: padding);
+    return Padding(padding: const EdgeInsets.all(16), child: button);
   }
 
   Widget _buildTip() {
