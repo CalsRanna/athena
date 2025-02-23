@@ -29,13 +29,27 @@ class MobileChatPage extends ConsumerStatefulWidget {
   ConsumerState<MobileChatPage> createState() => _MobileChatPageState();
 }
 
-class _MessageListView extends ConsumerWidget {
+class _MessageListView extends ConsumerStatefulWidget {
   final Chat chat;
-  const _MessageListView({required this.chat});
+  final void Function(String)? onChatTitleChanged;
+  const _MessageListView({required this.chat, this.onChatTitleChanged});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat.id);
+  ConsumerState<_MessageListView> createState() => _MessageListViewState();
+}
+
+class _MessageListViewState extends ConsumerState<_MessageListView> {
+  final controller = ScrollController();
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var provider = messagesNotifierProvider(widget.chat.id);
     var state = ref.watch(provider);
     return switch (state) {
       AsyncData(:final value) => _buildData(ref, value),
@@ -66,7 +80,15 @@ class _MessageListView extends ConsumerWidget {
 
   Future<void> _resend(WidgetRef ref, Message message) async {
     var viewModel = ChatViewModel(ref);
-    viewModel.resendMessage(message, chat: chat);
+    var duration = Duration(milliseconds: 300);
+    if (controller.hasClients) {
+      controller.animateTo(0, curve: Curves.linear, duration: duration);
+    }
+    viewModel.resendMessage(message, chat: widget.chat);
+    if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
+      var title = await viewModel.renameChat(widget.chat);
+      widget.onChatTitleChanged?.call(title);
+    }
   }
 }
 
@@ -96,7 +118,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var columnChildren = [
       if (messages != null && messages.isEmpty)
         Expanded(child: _SentinelPlaceholder(sentinel: sentinel)),
-      Expanded(child: _MessageListView(chat: widget.chat)),
+      Expanded(
+        child: _MessageListView(
+          chat: widget.chat,
+          onChatTitleChanged: updateTitle,
+        ),
+      ),
       input,
     ];
     var actionButton = AIconButton(
@@ -122,6 +149,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       ),
       body: Column(children: columnChildren),
     );
+  }
+
+  void updateTitle(String title) {
+    setState(() {
+      this.title = title;
+    });
   }
 
   void changeModel(Model model) {
@@ -154,8 +187,11 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     if (text.isEmpty) return;
     controller.clear();
     await viewModel.sendMessage(text, chat: widget.chat);
-    if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
-      viewModel.renameChat(widget.chat);
+    if (title.isEmpty || title == 'New Chat') {
+      var title = await viewModel.renameChat(widget.chat);
+      setState(() {
+        this.title = title;
+      });
     }
   }
 
