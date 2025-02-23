@@ -81,32 +81,42 @@ class _ProviderListTile extends ConsumerWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var nameChildren = [
+    var titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) const SizedBox(width: 8),
-      if (provider.enabled) ATag.small(text: 'On')
+      if (provider.enabled) ATag.small(text: 'On'),
     ];
-    var titleChildren = [
-      Row(children: nameChildren),
-      Text(provider.url, style: subtitleTextStyle)
+    var icon = Icon(
+      HugeIcons.strokeRoundedMoreHorizontal,
+      color: Color(0xFFE0E0E0),
+      size: 16,
+    );
+    var actionButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => openBottomSheet(context, ref),
+      child: icon,
+    );
+    var rowChildren = [
+      Expanded(child: Row(children: titleChildren)),
+      actionButton,
     ];
-    var titleColumn = Column(
+    var columnChildren = [
+      Row(children: rowChildren),
+      Text(provider.url, style: subtitleTextStyle),
+    ];
+    var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: titleChildren,
+      children: columnChildren,
     );
-    var tileChildren = [
-      Expanded(child: titleColumn),
-      GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => openBottomSheet(context, ref),
-        child: Icon(HugeIcons.strokeRoundedMoreHorizontal),
-      ),
-    ];
-    var tileRow = IconTheme(
-      data: const IconThemeData(color: Color(0xFFE0E0E0), size: 16),
-      child: Row(children: tileChildren),
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: column,
     );
-    return ListTile(title: tileRow, onTap: () => navigateProviderForm(context));
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => navigateProviderForm(context),
+      child: padding,
+    );
   }
 
   void destroyProvider(WidgetRef ref) {
