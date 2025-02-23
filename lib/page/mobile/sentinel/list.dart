@@ -2,8 +2,9 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
-import 'package:athena/widget/button.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -92,11 +93,11 @@ class MobileSentinelListPage extends ConsumerWidget {
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({required this.sentinel});
+class _Tile extends ConsumerWidget {
   final Sentinel sentinel;
+  const _Tile({required this.sentinel});
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, ref) {
     const nameTextStyle = TextStyle(
       color: Colors.black,
       fontSize: 14,
@@ -125,63 +126,20 @@ class _Tile extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _showBottomSheet,
+      onLongPress: () => openBottomSheet(context, ref),
+      onTap: () => navigateChatPage(context, ref),
       child: container,
     );
   }
 
-  void _showBottomSheet() {
-    ADialog.show(_ActionDialog(sentinel: sentinel));
-  }
-}
-
-class _ActionDialog extends ConsumerWidget {
-  final Sentinel sentinel;
-  const _ActionDialog({required this.sentinel});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var editWidgets = [
-      const SizedBox(height: 12),
-      _OutlinedButton(
-        text: 'Edit',
-        onTap: () => navigateSentinelFormPage(context),
-      ),
-      const SizedBox(height: 12),
-      _OutlinedButton(
-        onTap: () => _showDeleteConfirmDialog(context),
-        text: 'Delete',
-      ),
-    ];
-    var children = [
-      APrimaryButton(
-        child: Center(child: Text('Start Chat')),
-        onTap: () => navigateChatPage(context, ref),
-      ),
-      if (sentinel.name != 'Athena') ...editWidgets,
-      SizedBox(height: MediaQuery.paddingOf(context).bottom),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-
-  void _showDeleteConfirmDialog(BuildContext context) {
+  void destroySentinel(BuildContext context, WidgetRef ref) {
     ADialog.dismiss();
-    ADialog.confirm(
-      'Are you sure you want to delete this sentinel?',
-      onConfirmed: _confirmDelete,
-    );
+    SentinelViewModel(ref).destroySentinel(sentinel);
   }
 
-  void _confirmDelete(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = sentinelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.destroy(sentinel);
+  void editSentinel(BuildContext context) {
     ADialog.dismiss();
-    ADialog.success('Sentinel deleted successfully');
+    MobileSentinelFormRoute(sentinel: sentinel).push(context);
   }
 
   Future<void> navigateChatPage(BuildContext context, WidgetRef ref) async {
@@ -192,27 +150,24 @@ class _ActionDialog extends ConsumerWidget {
     MobileChatRoute(chat: chat).push(context);
   }
 
-  void navigateSentinelFormPage(BuildContext context) {
-    ADialog.dismiss();
-    MobileSentinelFormRoute(sentinel: sentinel).push(context);
-  }
-}
-
-class _OutlinedButton extends StatelessWidget {
-  final void Function()? onTap;
-  final String text;
-  const _OutlinedButton({this.onTap, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
+  void openBottomSheet(BuildContext context, WidgetRef ref) {
+    if (sentinel.name == 'Athena') return;
+    var editTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      title: 'Edit',
+      onTap: () => editSentinel(context),
     );
-    return ASecondaryButton(
-      onTap: onTap,
-      child: Center(child: Text(text, style: textStyle)),
+    var deleteTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => destroySentinel(context, ref),
     );
+    var children = [editTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    ADialog.show(SafeArea(child: padding));
   }
 }

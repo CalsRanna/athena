@@ -116,14 +116,13 @@ class _MobileProviderFormPageState
       title: 'Delete',
       onTap: () => destroyModel(model),
     );
-    var children = [
-      const SizedBox(height: 16),
-      editTile,
-      deleteTile,
-      SafeArea(child: SizedBox()),
-    ];
-    var dialog = Column(mainAxisSize: MainAxisSize.min, children: children);
-    ADialog.show(dialog);
+    var children = [editTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    ADialog.show(SafeArea(child: padding));
   }
 
   Future<void> updateProvider() async {
