@@ -32,7 +32,7 @@ class _MobileSentinelFormPageState
 
   @override
   Widget build(BuildContext context) {
-    var children = [
+    var listViewChildren = [
       const AFormTileLabel.large(title: 'Prompt'),
       const SizedBox(height: 12),
       AInput(controller: promptController, maxLines: 8, minLines: 8),
@@ -44,23 +44,31 @@ class _MobileSentinelFormPageState
       _buildDescriptionLabel(),
       const SizedBox(height: 12),
       AInput(controller: descriptionController, maxLines: 4, minLines: 4),
-      const SizedBox(height: 32),
-      Row(
-        children: [
-          Expanded(child: _buildStoreButton()),
-          const SizedBox(width: 8),
-          Expanded(child: _buildGenerateButton()),
-        ],
-      ),
     ];
-    var bottom = MediaQuery.paddingOf(context).bottom;
     var listView = ListView(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
-      children: children,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      children: listViewChildren,
     );
+    var columnChildren = [
+      Expanded(child: listView),
+      _buildButtons(),
+    ];
+    var column = Column(children: columnChildren);
     return AScaffold(
       appBar: AAppBar(title: Text(widget.sentinel?.name ?? 'New Sentinel')),
-      body: listView,
+      body: SafeArea(top: false, child: column),
+    );
+  }
+
+  Widget _buildButtons() {
+    var children = [
+      Expanded(child: _buildStoreButton()),
+      const SizedBox(width: 8),
+      Expanded(child: _buildGenerateButton()),
+    ];
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(children: children),
     );
   }
 
