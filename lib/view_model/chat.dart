@@ -234,10 +234,23 @@ class ChatViewModel extends ViewModel {
     var histories = await ref.read(messagesProvider.future);
     if (search['need_search'] == true) {
       var searchResult =
-          await SearchApi().search(search['keywords'].toString());
-      print(searchResult);
+          await SearchApi().search(search['keywords'].join(','));
       var lastMessage = histories.last;
-      lastMessage.content = '用户原始问题:${lastMessage.content}，搜索资料：$searchResult';
+      lastMessage.content = '''
+## 用户原始输入:
+${lastMessage.content}
+
+## 参考资料：
+$searchResult
+
+请根据参考资料回答问题，并严格遵守下面的标注规则。
+
+## 标注规则：
+- 请在适当的情况下在句子末尾引用上下文。
+- 请按照引用编号[number]的格式在答案中对应部分引用上下文。
+- 如果一句话源自多个上下文，请列出所有相关的引用编号，例如[1][2]，切记不要将引用集中在最后返回引用编号，而是在答案对应部分列出。
+- 在回答的最末尾按照顺序列出所有的引用上下文。
+''';
     }
     final system = {'role': 'system', 'content': realSentinel.prompt};
     var messagesNotifier = ref.read(messagesProvider.notifier);

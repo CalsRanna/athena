@@ -946,6 +946,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  tavily_dart:
+    dependency: "direct main"
+    description:
+      name: tavily_dart
+      sha256: c77e033ebf849ee71ba4e745e74cb798691abd7f71e4ad4ec1439de8416c7e8b
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0+1"
   term_glyph:
     dependency: transitive
     description:
