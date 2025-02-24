@@ -1,4 +1,5 @@
 import 'package:athena/api/chat.dart';
+import 'package:athena/api/search.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
@@ -207,12 +208,6 @@ class ChatViewModel extends ViewModel {
   }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    var defaultModel =
-        await ref.read(modelNotifierProvider(chat.modelId).future);
-    var realUsedModel = model ?? defaultModel;
-    var defaultSentinel =
-        await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
-    var realSentinel = sentinel ?? defaultSentinel;
     final userMessage = Message();
     userMessage.chatId = chat.id;
     userMessage.content = text;
@@ -221,11 +216,30 @@ class ChatViewModel extends ViewModel {
       await isar.messages.put(userMessage);
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    final system = {'role': 'system', 'content': realSentinel.prompt};
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    final histories = await ref.read(messagesProvider.future);
+    var defaultModel =
+        await ref.read(modelNotifierProvider(chat.modelId).future);
+    var realUsedModel = model ?? defaultModel;
     var provider = providerNotifierProvider(realUsedModel.providerId);
     var aiProvider = await ref.read(provider.future);
+    var defaultSentinel =
+        await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
+    var realSentinel = sentinel ?? defaultSentinel;
+    // Check if the message need search from internet
+    var search = await ChatApi().checkNeedSearchFromInternet(
+      text,
+      provider: aiProvider,
+      model: realUsedModel,
+    );
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var histories = await ref.read(messagesProvider.future);
+    if (search['need_search'] == true) {
+      var searchResult =
+          await SearchApi().search(search['keywords'].toString());
+      print(searchResult);
+      var lastMessage = histories.last;
+      lastMessage.content = '用户原始问题:${lastMessage.content}，搜索资料：$searchResult';
+    }
+    final system = {'role': 'system', 'content': realSentinel.prompt};
     var messagesNotifier = ref.read(messagesProvider.notifier);
     try {
       final response = ChatApi().getCompletion(

@@ -26,6 +26,7 @@ class DesktopMessageInput extends StatelessWidget {
     var toolbarChildren = [
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
+      Icon(HugeIcons.strokeRoundedInternet),
       Icon(HugeIcons.strokeRoundedTemperature),
       Icon(HugeIcons.strokeRoundedImage01),
     ];
