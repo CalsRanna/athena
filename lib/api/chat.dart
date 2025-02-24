@@ -57,9 +57,9 @@ class ChatApi {
       messages: wrappedMessages,
     );
     var response = await client.createChatCompletion(request: request);
-    var content = response.choices.first.message.content;
-    print(content);
-    return jsonDecode(content ?? '');
+    var content = response.choices.first.message.content ?? '';
+    content = content.replaceAll('```json', '').replaceAll('```', '');
+    return jsonDecode(content);
   }
 
   Future<String> connect({
