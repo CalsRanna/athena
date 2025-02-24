@@ -2,16 +2,16 @@ import 'package:athena/widget/card.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/widgets.dart';
 
-class DesktopChatContextMenu extends StatelessWidget {
+class DesktopMessageContextMenu extends StatelessWidget {
+  final void Function()? onCopied;
   final void Function()? onDestroyed;
-  final void Function()? onRenamed;
 
-  const DesktopChatContextMenu({super.key, this.onDestroyed, this.onRenamed});
+  const DesktopMessageContextMenu({super.key, this.onCopied, this.onDestroyed});
 
   @override
   Widget build(BuildContext context) {
     var children = [
-      DesktopContextMenuOption(text: 'Rename', onTap: onRenamed),
+      DesktopContextMenuOption(text: 'Copy', onTap: onCopied),
       DesktopContextMenuOption(text: 'Delete', onTap: onDestroyed),
     ];
     var column = Column(
