@@ -30,6 +30,16 @@ class SettingViewModel extends ViewModel {
     ref.invalidate(settingNotifierProvider);
   }
 
+  Future<void> updateChatSearchCheckModel(Model model) async {
+    var setting = await isar.settings.where().findFirst();
+    setting ??= Setting();
+    setting.chatSearchCheckModelId = model.id;
+    await isar.writeTxn(() async {
+      await isar.settings.put(setting!);
+    });
+    ref.invalidate(settingNotifierProvider);
+  }
+
   Future<void> updateSentinelMetaGenerationModel(Model model) async {
     var setting = await isar.settings.where().findFirst();
     setting ??= Setting();

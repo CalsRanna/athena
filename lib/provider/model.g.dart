@@ -39,6 +39,23 @@ final chatNamingModelNotifierProvider =
 );
 
 typedef _$ChatNamingModelNotifier = AutoDisposeAsyncNotifier<Model>;
+String _$chatSearchCheckModelNotifierHash() =>
+    r'33fb48b6c0db487e64244934337ce69f7fe0b767';
+
+/// See also [ChatSearchCheckModelNotifier].
+@ProviderFor(ChatSearchCheckModelNotifier)
+final chatSearchCheckModelNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    ChatSearchCheckModelNotifier, Model>.internal(
+  ChatSearchCheckModelNotifier.new,
+  name: r'chatSearchCheckModelNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$chatSearchCheckModelNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ChatSearchCheckModelNotifier = AutoDisposeAsyncNotifier<Model>;
 String _$enabledModelsForNotifierHash() =>
     r'1f309fad4fa1d7d3ef4a1107720bec15591500df';
 
