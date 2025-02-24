@@ -272,7 +272,7 @@ class ChatViewModel extends ViewModel {
 
   Future<SearchDecision> _getSearchDecision(String text) async {
     var searchCheckModel =
-        await ref.read(chatSearchCheckModelNotifierProvider.future);
+        await ref.read(chatSearchDecisionModelNotifierProvider.future);
     var searchCheckProvider = await ref
         .read(providerNotifierProvider(searchCheckModel.providerId).future);
     return await ChatApi().getSearchDecision(

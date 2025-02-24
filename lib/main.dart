@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:athena/provider/setting.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
@@ -60,20 +59,15 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer(builder: (context, ref, child) {
-      final setting = ref.watch(settingNotifierProvider).value;
-      final darkMode = setting?.darkMode ?? false;
-      return MaterialApp.router(
-        debugShowCheckedModeBanner: false,
-        routerConfig: router.config(),
-        theme: ThemeData(
-          brightness: darkMode ? Brightness.dark : Brightness.light,
-          fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
-          scaffoldBackgroundColor: Color(0xFF282828),
-          useMaterial3: true,
-        ),
-      );
-    });
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routerConfig: router.config(),
+      theme: ThemeData(
+        fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+        scaffoldBackgroundColor: Color(0xFF282828),
+        useMaterial3: true,
+      ),
+    );
   }
 
   @override

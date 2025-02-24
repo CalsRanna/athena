@@ -13,24 +13,6 @@ class SettingNotifier extends _$SettingNotifier {
     return setting ?? Setting();
   }
 
-  Future<void> toggleLatex() async {
-    final setting = await future;
-    setting.latex = !setting.latex;
-    state = AsyncData(setting);
-    await isar.writeTxn(() async {
-      await isar.settings.put(setting);
-    });
-  }
-
-  Future<void> toggleMode() async {
-    final setting = await future;
-    setting.darkMode = !setting.darkMode;
-    state = AsyncData(setting);
-    await isar.writeTxn(() async {
-      await isar.settings.put(setting);
-    });
-  }
-
   Future<void> updateKey(String key) async {
     final setting = await future;
     // setting.key = key;
