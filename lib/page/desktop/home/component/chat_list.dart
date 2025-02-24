@@ -108,7 +108,6 @@ class _ChatTileState extends State<_ChatTile> {
   void handleSecondaryTap(BuildContext context, TapUpDetails details) {
     final position = details.globalPosition;
     var contextMenu = DesktopChatContextMenu(
-      chat: widget.chat,
       onDestroyed: handleDestroy,
       onRenamed: handleRename,
     );
