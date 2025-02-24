@@ -48,6 +48,30 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
+  Future<void> destroyMessage(Message message) async {
+    var builder = isar.messages.filter().chatIdEqualTo(message.chatId);
+    final messages = await builder.findAll();
+    final index = messages.indexWhere((item) => item.id == message.id);
+    List<Message> removed = [];
+    for (var i = index; i < messages.length; i++) {
+      removed.add(messages.elementAt(i));
+    }
+    await isar.writeTxn(() async {
+      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
+    });
+    ref.invalidate(messagesNotifierProvider(message.chatId));
+  }
+
+  Future<void> editMessage(Message message) async {
+    await isar.writeTxn(() async {
+      await isar.messages.put(message);
+    });
+    ref.invalidate(messagesNotifierProvider(message.chatId));
+    var chat = await isar.chats.filter().idEqualTo(message.chatId).findFirst();
+    if (chat == null) return;
+    resendMessage(message, chat: chat);
+  }
+
   Future<Chat> getFirstChat() async {
     var chats = await ref.read(chatsNotifierProvider.future);
     if (chats.isEmpty) return Chat();
@@ -141,8 +165,7 @@ class ChatViewModel extends ViewModel {
     for (var i = index; i < messages.length; i++) {
       removed.add(messages.elementAt(i));
     }
-    messages.removeRange(index, messages.length);
-    isar.writeTxn(() async {
+    await isar.writeTxn(() async {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));

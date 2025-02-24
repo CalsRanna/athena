@@ -234,7 +234,7 @@ class MessagesNotifier extends _$MessagesNotifier {
     messages.removeRange(index, messages.length);
     state = AsyncData([...messages]);
     await future;
-    isar.writeTxn(() async {
+    await isar.writeTxn(() async {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
   }

@@ -14,7 +14,7 @@ part 'model.g.dart';
 //     final models = await isar.models.where().findAll();
 //     if (models.isNotEmpty) return _sort(models);
 //     final remoteModels = await ManagerApi().getModels();
-//     isar.writeTxn(() async {
+//     await isar.writeTxn(() async {
 //       isar.models.putAll(remoteModels);
 //     });
 //     return _sort(remoteModels);
@@ -38,7 +38,7 @@ part 'model.g.dart';
 //       final queryBuilder = isar.models.filter().valueEqualTo(model.value);
 //       final exist = await queryBuilder.findFirst();
 //       if (exist == null) {
-//         isar.writeTxn(() async {
+//         await isar.writeTxn(() async {
 //           isar.models.put(model);
 //         });
 //       }

@@ -51,19 +51,40 @@ class Message {
 
   Message();
 
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message()
+      ..content = json['content']
+      ..reasoningContent = json['reasoning_content'] ?? ''
+      ..role = json['role'];
+  }
+
+  Message copyWith({
+    int? id,
+    String? content,
+    bool? reasoning,
+    String? reasoningContent,
+    String? role,
+    DateTime? reasoningStartedAt,
+    DateTime? reasoningUpdatedAt,
+    int? chatId,
+  }) {
+    return Message()
+      ..id = id ?? this.id
+      ..content = content ?? this.content
+      ..reasoning = reasoning ?? this.reasoning
+      ..reasoningContent = reasoningContent ?? this.reasoningContent
+      ..role = role ?? this.role
+      ..reasoningStartedAt = reasoningStartedAt ?? this.reasoningStartedAt
+      ..reasoningUpdatedAt = reasoningUpdatedAt ?? this.reasoningUpdatedAt
+      ..chatId = chatId ?? this.chatId;
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'content': content,
       'reasoning_content': reasoningContent,
       'role': role,
     };
-  }
-
-  factory Message.fromJson(Map<String, dynamic> json) {
-    return Message()
-      ..content = json['content']
-      ..reasoningContent = json['reasoning_content'] ?? ''
-      ..role = json['role'];
   }
 
   @override

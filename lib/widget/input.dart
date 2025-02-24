@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 
 class AInput extends StatefulWidget {
+  final bool autoFocus;
   final TextEditingController controller;
   final int maxLines;
   final int minLines;
   final void Function()? onBlur;
-  final void Function(KeyEvent)? onKeyEvent;
+  final void Function(String)? onSubmitted;
   final String? placeholder;
   const AInput({
     super.key,
+    this.autoFocus = false,
     required this.controller,
     this.maxLines = 1,
     this.minLines = 1,
+    this.onSubmitted,
     this.onBlur,
-    this.onKeyEvent,
     this.placeholder,
   });
 
@@ -32,6 +34,9 @@ class _AInputState extends State<AInput> {
         widget.onBlur?.call();
       }
     });
+    if (widget.autoFocus) {
+      focusNode.requestFocus();
+    }
   }
 
   @override
@@ -65,19 +70,16 @@ class _AInputState extends State<AInput> {
       cursorHeight: 16,
       cursorColor: Color(0xFFF5F5F5),
       decoration: inputDecoration,
-      style: inputTextStyle,
+      focusNode: focusNode,
       maxLines: widget.maxLines,
       minLines: widget.minLines,
-    );
-    var keyboardListener = KeyboardListener(
-      focusNode: focusNode,
-      onKeyEvent: widget.onKeyEvent,
-      child: textField,
+      onSubmitted: widget.onSubmitted,
+      style: inputTextStyle,
     );
     return Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: keyboardListener,
+      child: textField,
     );
   }
 }
