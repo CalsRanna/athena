@@ -19,12 +19,12 @@ import 'package:athena/page/mobile/chat/list.dart' as _i7;
 import 'package:athena/page/mobile/default_model.dart/default_model_form_page.dart'
     as _i9;
 import 'package:athena/page/mobile/home/home.dart' as _i10;
+import 'package:athena/page/mobile/provider/model_form_page.dart' as _i11;
 import 'package:athena/page/mobile/provider/provider_form_page.dart' as _i12;
 import 'package:athena/page/mobile/provider/provider_list_page.dart' as _i13;
 import 'package:athena/page/mobile/provider/provider_name_page.dart' as _i14;
 import 'package:athena/page/mobile/sentinel/form.dart' as _i15;
 import 'package:athena/page/mobile/sentinel/list.dart' as _i16;
-import 'package:athena/page/model/model_form_page.dart' as _i11;
 import 'package:athena/schema/chat.dart' as _i20;
 import 'package:athena/schema/model.dart' as _i21;
 import 'package:athena/schema/provider.dart' as _i22;
