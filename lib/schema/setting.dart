@@ -13,5 +13,6 @@ class Setting {
   double width = 960;
   int chatModelId = 0;
   int chatNamingModelId = 0;
+  int chatSearchCheckModelId = 0;
   int sentinelMetadataGenerationModelId = 0;
 }

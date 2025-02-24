@@ -99,6 +99,18 @@ class ChatNamingModelNotifier extends _$ChatNamingModelNotifier {
 }
 
 @riverpod
+class ChatSearchCheckModelNotifier extends _$ChatSearchCheckModelNotifier {
+  @override
+  Future<Model> build() async {
+    var setting = await ref.watch(settingNotifierProvider.future);
+    var id = setting.chatSearchCheckModelId;
+    var builder = isar.models.filter().idEqualTo(id);
+    var model = await builder.findFirst();
+    return model ?? Model();
+  }
+}
+
+@riverpod
 class EnabledModelsForNotifier extends _$EnabledModelsForNotifier {
   @override
   //不能使用Provider作为参数，有冲突

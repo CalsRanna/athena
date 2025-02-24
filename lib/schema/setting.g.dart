@@ -27,28 +27,33 @@ const SettingSchema = CollectionSchema(
       name: r'chatNamingModelId',
       type: IsarType.long,
     ),
-    r'dark_mode': PropertySchema(
+    r'chatSearchCheckModelId': PropertySchema(
       id: 2,
+      name: r'chatSearchCheckModelId',
+      type: IsarType.long,
+    ),
+    r'dark_mode': PropertySchema(
+      id: 3,
       name: r'dark_mode',
       type: IsarType.bool,
     ),
     r'height': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'height',
       type: IsarType.double,
     ),
     r'latex': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'latex',
       type: IsarType.bool,
     ),
     r'sentinelMetadataGenerationModelId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'sentinelMetadataGenerationModelId',
       type: IsarType.long,
     ),
     r'width': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'width',
       type: IsarType.double,
     )
@@ -84,11 +89,12 @@ void _settingSerialize(
 ) {
   writer.writeLong(offsets[0], object.chatModelId);
   writer.writeLong(offsets[1], object.chatNamingModelId);
-  writer.writeBool(offsets[2], object.darkMode);
-  writer.writeDouble(offsets[3], object.height);
-  writer.writeBool(offsets[4], object.latex);
-  writer.writeLong(offsets[5], object.sentinelMetadataGenerationModelId);
-  writer.writeDouble(offsets[6], object.width);
+  writer.writeLong(offsets[2], object.chatSearchCheckModelId);
+  writer.writeBool(offsets[3], object.darkMode);
+  writer.writeDouble(offsets[4], object.height);
+  writer.writeBool(offsets[5], object.latex);
+  writer.writeLong(offsets[6], object.sentinelMetadataGenerationModelId);
+  writer.writeDouble(offsets[7], object.width);
 }
 
 Setting _settingDeserialize(
@@ -100,12 +106,13 @@ Setting _settingDeserialize(
   final object = Setting();
   object.chatModelId = reader.readLong(offsets[0]);
   object.chatNamingModelId = reader.readLong(offsets[1]);
-  object.darkMode = reader.readBool(offsets[2]);
-  object.height = reader.readDouble(offsets[3]);
+  object.chatSearchCheckModelId = reader.readLong(offsets[2]);
+  object.darkMode = reader.readBool(offsets[3]);
+  object.height = reader.readDouble(offsets[4]);
   object.id = id;
-  object.latex = reader.readBool(offsets[4]);
-  object.sentinelMetadataGenerationModelId = reader.readLong(offsets[5]);
-  object.width = reader.readDouble(offsets[6]);
+  object.latex = reader.readBool(offsets[5]);
+  object.sentinelMetadataGenerationModelId = reader.readLong(offsets[6]);
+  object.width = reader.readDouble(offsets[7]);
   return object;
 }
 
@@ -121,14 +128,16 @@ P _settingDeserializeProp<P>(
     case 1:
       return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readBool(offset)) as P;
-    case 3:
-      return (reader.readDouble(offset)) as P;
-    case 4:
-      return (reader.readBool(offset)) as P;
-    case 5:
       return (reader.readLong(offset)) as P;
+    case 3:
+      return (reader.readBool(offset)) as P;
+    case 4:
+      return (reader.readDouble(offset)) as P;
+    case 5:
+      return (reader.readBool(offset)) as P;
     case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -325,6 +334,62 @@ extension SettingQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'chatNamingModelId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatSearchCheckModelIdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'chatSearchCheckModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatSearchCheckModelIdGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'chatSearchCheckModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatSearchCheckModelIdLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'chatSearchCheckModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      chatSearchCheckModelIdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'chatSearchCheckModelId',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -617,6 +682,19 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByChatSearchCheckModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatSearchCheckModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      sortByChatSearchCheckModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatSearchCheckModelId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'dark_mode', Sort.asc);
@@ -703,6 +781,19 @@ extension SettingQuerySortThenBy
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatNamingModelIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'chatNamingModelId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByChatSearchCheckModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatSearchCheckModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy>
+      thenByChatSearchCheckModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'chatSearchCheckModelId', Sort.desc);
     });
   }
 
@@ -795,6 +886,12 @@ extension SettingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Setting, Setting, QDistinct> distinctByChatSearchCheckModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'chatSearchCheckModelId');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByDarkMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'dark_mode');
@@ -844,6 +941,13 @@ extension SettingQueryProperty
   QueryBuilder<Setting, int, QQueryOperations> chatNamingModelIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'chatNamingModelId');
+    });
+  }
+
+  QueryBuilder<Setting, int, QQueryOperations>
+      chatSearchCheckModelIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'chatSearchCheckModelId');
     });
   }
 
