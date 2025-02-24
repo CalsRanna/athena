@@ -9,6 +9,7 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -151,6 +152,7 @@ class _Tile extends ConsumerWidget {
   }
 
   void openBottomSheet(BuildContext context, WidgetRef ref) {
+    HapticFeedback.heavyImpact();
     if (sentinel.name == 'Athena') return;
     var editTile = ABottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
