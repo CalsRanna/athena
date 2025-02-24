@@ -211,7 +211,7 @@ class ChatViewModel extends ViewModel {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     _saveNewConversation(text, chat: chat);
-    var searchDecision = await _getSearchDecision(text);
+    var searchDecision = await _getSearchDecision(text, chat: chat);
     var formattedMessage = await _getFormattedMessage(
       text,
       decision: searchDecision,
@@ -270,13 +270,21 @@ class ChatViewModel extends ViewModel {
     return message;
   }
 
-  Future<SearchDecision> _getSearchDecision(String text) async {
+  Future<SearchDecision> _getSearchDecision(
+    String text, {
+    required Chat chat,
+  }) async {
     var searchCheckModel =
         await ref.read(chatSearchDecisionModelNotifierProvider.future);
     var searchCheckProvider = await ref
         .read(providerNotifierProvider(searchCheckModel.providerId).future);
+    var messages = await ref.read(messagesNotifierProvider(chat.id).future);
+    var userMessages = messages.where((message) => message.role == 'user');
+    if (userMessages.isEmpty) return SearchDecision();
+    var historyText = userMessages.map((message) => message.content).join('\n');
+    var fullText = '$historyText\n$text';
     return await ChatApi().getSearchDecision(
-      text,
+      fullText,
       provider: searchCheckProvider,
       model: searchCheckModel,
     );
