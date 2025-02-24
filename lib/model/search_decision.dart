@@ -1,13 +1,12 @@
 class SearchDecision {
-  final bool needSearch;
-  final List<String> keywords;
+  bool needSearch = false;
+  List<String> keywords = [];
 
-  SearchDecision({required this.needSearch, required this.keywords});
+  SearchDecision();
 
   factory SearchDecision.fromJson(Map<String, dynamic> json) {
-    return SearchDecision(
-      needSearch: json['need_search'],
-      keywords: List<String>.from(json['keywords']),
-    );
+    return SearchDecision()
+      ..needSearch = json['need_search']
+      ..keywords = List<String>.from(json['keywords']);
   }
 }
