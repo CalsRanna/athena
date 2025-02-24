@@ -255,6 +255,16 @@ class ChatViewModel extends ViewModel {
     streamingNotifier.close();
   }
 
+  Future<void> updateEnableSearch(bool enabled, {required Chat chat}) async {
+    var copiedChat = chat.copyWith(enableSearch: enabled);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+  }
+
   Future<Message> _getFormattedMessage(
     String text, {
     required SearchDecision decision,
@@ -274,6 +284,7 @@ class ChatViewModel extends ViewModel {
     String text, {
     required Chat chat,
   }) async {
+    if (!chat.enableSearch) return SearchDecision();
     var searchCheckModel =
         await ref.read(chatSearchDecisionModelNotifierProvider.future);
     var searchCheckProvider = await ref

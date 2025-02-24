@@ -22,23 +22,28 @@ const ChatSchema = CollectionSchema(
       name: r'created_at',
       type: IsarType.dateTime,
     ),
-    r'modelId': PropertySchema(
+    r'enableSearch': PropertySchema(
       id: 1,
+      name: r'enableSearch',
+      type: IsarType.bool,
+    ),
+    r'modelId': PropertySchema(
+      id: 2,
       name: r'modelId',
       type: IsarType.long,
     ),
     r'sentinel_id': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'sentinel_id',
       type: IsarType.long,
     ),
     r'title': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'title',
       type: IsarType.string,
     ),
     r'updated_at': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'updated_at',
       type: IsarType.dateTime,
     )
@@ -74,10 +79,11 @@ void _chatSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeLong(offsets[1], object.modelId);
-  writer.writeLong(offsets[2], object.sentinelId);
-  writer.writeString(offsets[3], object.title);
-  writer.writeDateTime(offsets[4], object.updatedAt);
+  writer.writeBool(offsets[1], object.enableSearch);
+  writer.writeLong(offsets[2], object.modelId);
+  writer.writeLong(offsets[3], object.sentinelId);
+  writer.writeString(offsets[4], object.title);
+  writer.writeDateTime(offsets[5], object.updatedAt);
 }
 
 Chat _chatDeserialize(
@@ -88,11 +94,12 @@ Chat _chatDeserialize(
 ) {
   final object = Chat();
   object.createdAt = reader.readDateTime(offsets[0]);
+  object.enableSearch = reader.readBool(offsets[1]);
   object.id = id;
-  object.modelId = reader.readLong(offsets[1]);
-  object.sentinelId = reader.readLong(offsets[2]);
-  object.title = reader.readString(offsets[3]);
-  object.updatedAt = reader.readDateTime(offsets[4]);
+  object.modelId = reader.readLong(offsets[2]);
+  object.sentinelId = reader.readLong(offsets[3]);
+  object.title = reader.readString(offsets[4]);
+  object.updatedAt = reader.readDateTime(offsets[5]);
   return object;
 }
 
@@ -106,12 +113,14 @@ P _chatDeserializeProp<P>(
     case 0:
       return (reader.readDateTime(offset)) as P;
     case 1:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 2:
       return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -255,6 +264,16 @@ extension ChatQueryFilter on QueryBuilder<Chat, Chat, QFilterCondition> {
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterFilterCondition> enableSearchEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'enableSearch',
+        value: value,
       ));
     });
   }
@@ -614,6 +633,18 @@ extension ChatQuerySortBy on QueryBuilder<Chat, Chat, QSortBy> {
     });
   }
 
+  QueryBuilder<Chat, Chat, QAfterSortBy> sortByEnableSearch() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enableSearch', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> sortByEnableSearchDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enableSearch', Sort.desc);
+    });
+  }
+
   QueryBuilder<Chat, Chat, QAfterSortBy> sortByModelId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'modelId', Sort.asc);
@@ -673,6 +704,18 @@ extension ChatQuerySortThenBy on QueryBuilder<Chat, Chat, QSortThenBy> {
   QueryBuilder<Chat, Chat, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'created_at', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> thenByEnableSearch() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enableSearch', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Chat, Chat, QAfterSortBy> thenByEnableSearchDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enableSearch', Sort.desc);
     });
   }
 
@@ -744,6 +787,12 @@ extension ChatQueryWhereDistinct on QueryBuilder<Chat, Chat, QDistinct> {
     });
   }
 
+  QueryBuilder<Chat, Chat, QDistinct> distinctByEnableSearch() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'enableSearch');
+    });
+  }
+
   QueryBuilder<Chat, Chat, QDistinct> distinctByModelId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'modelId');
@@ -780,6 +829,12 @@ extension ChatQueryProperty on QueryBuilder<Chat, Chat, QQueryProperty> {
   QueryBuilder<Chat, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'created_at');
+    });
+  }
+
+  QueryBuilder<Chat, bool, QQueryOperations> enableSearchProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'enableSearch');
     });
   }
 

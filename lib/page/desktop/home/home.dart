@@ -62,6 +62,17 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
+  Future<void> changeEnableSearch(bool enabled) async {
+    if (viewModel.streaming) {
+      return ADialog.message('Please wait for the current chat to finish.');
+    }
+    await viewModel.updateEnableSearch(enabled, chat: chat);
+    var updatedChat = chat.copyWith(enableSearch: enabled);
+    setState(() {
+      chat = updatedChat;
+    });
+  }
+
   Future<void> changeSentinel(Sentinel sentinel) async {
     if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
@@ -187,8 +198,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       sentinel: sentinel,
     );
     var desktopMessageInput = DesktopMessageInput(
+      chat: chat,
       controller: controller,
       onModelChanged: changeModel,
+      onSearchDecisionChanged: changeEnableSearch,
       onSentinelChanged: changeSentinel,
       onSubmitted: sendMessage,
     );

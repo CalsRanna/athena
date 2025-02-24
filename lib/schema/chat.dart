@@ -6,6 +6,7 @@ part 'chat.g.dart';
 @Name('chats')
 class Chat {
   Id id = Isar.autoIncrement;
+  bool enableSearch = false;
   String title = '';
   int modelId = 0;
   @Name('sentinel_id')
@@ -17,6 +18,7 @@ class Chat {
 
   Chat copyWith({
     int? id,
+    bool? enableSearch,
     String? title,
     int? modelId,
     int? sentinelId,
@@ -25,6 +27,7 @@ class Chat {
   }) {
     return Chat()
       ..id = id ?? this.id
+      ..enableSearch = enableSearch ?? this.enableSearch
       ..title = title ?? this.title
       ..modelId = modelId ?? this.modelId
       ..sentinelId = sentinelId ?? this.sentinelId
