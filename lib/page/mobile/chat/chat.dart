@@ -47,12 +47,6 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   final controller = ScrollController();
 
   @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     var provider = messagesNotifierProvider(widget.chat.id);
     var state = ref.watch(provider);
@@ -63,11 +57,30 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     };
   }
 
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> resendMessage(WidgetRef ref, Message message) async {
+    var duration = Duration(milliseconds: 300);
+    if (controller.hasClients) {
+      controller.animateTo(0, curve: Curves.linear, duration: duration);
+    }
+    var viewModel = ChatViewModel(ref);
+    viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
+    if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
+      var title = await viewModel.renameChat(widget.chat);
+      widget.onChatTitleChanged?.call(title);
+    }
+  }
+
   Widget _buildData(WidgetRef ref, List<Message> messages) {
     if (messages.isEmpty) return const SizedBox();
     final reversedMessages = messages.reversed.toList();
     return ListView.separated(
-      controller: ScrollController(),
+      controller: controller,
       itemBuilder: (_, index) => _itemBuilder(ref, reversedMessages[index]),
       itemCount: messages.length,
       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -79,21 +92,8 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   Widget _itemBuilder(WidgetRef ref, Message message) {
     return MessageListTile(
       message: message,
-      onResend: () => _resend(ref, message),
+      onResend: () => resendMessage(ref, message),
     );
-  }
-
-  Future<void> _resend(WidgetRef ref, Message message) async {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
-    var viewModel = ChatViewModel(ref);
-    viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
-    if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
-      var title = await viewModel.renameChat(widget.chat);
-      widget.onChatTitleChanged?.call(title);
-    }
   }
 }
 
@@ -136,29 +136,6 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     );
   }
 
-  Widget _buildInput() {
-    var userInput = _UserInput(
-      controller: controller,
-      onSubmitted: sendMessage,
-    );
-    final inputChildren = [
-      Expanded(child: userInput),
-      const SizedBox(width: 16),
-      _SendButton(onTap: sendMessage),
-    ];
-    final row = Padding(
-      padding: EdgeInsets.all(16),
-      child: Row(children: inputChildren),
-    );
-    return SafeArea(top: false, child: row);
-  }
-
-  void updateTitle(String title) {
-    setState(() {
-      this.title = title;
-    });
-  }
-
   void changeModel(Model model) {
     var viewModel = ChatViewModel(ref);
     viewModel.selectModel(model, chat: widget.chat);
@@ -188,13 +165,36 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
-    await viewModel.sendMessage(text, chat: widget.chat);
+    await viewModel.sendMessage(text, chat: widget.chat, model: model);
     if (title.isEmpty || title == 'New Chat') {
       var title = await viewModel.renameChat(widget.chat);
       setState(() {
         this.title = title;
       });
     }
+  }
+
+  void updateTitle(String title) {
+    setState(() {
+      this.title = title;
+    });
+  }
+
+  Widget _buildInput() {
+    var userInput = _UserInput(
+      controller: controller,
+      onSubmitted: sendMessage,
+    );
+    final inputChildren = [
+      Expanded(child: userInput),
+      const SizedBox(width: 16),
+      _SendButton(onTap: sendMessage),
+    ];
+    final row = Padding(
+      padding: EdgeInsets.all(16),
+      child: Row(children: inputChildren),
+    );
+    return SafeArea(top: false, child: row);
   }
 
   Future<void> _initModel() async {
