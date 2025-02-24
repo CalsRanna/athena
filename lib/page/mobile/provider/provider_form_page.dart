@@ -14,6 +14,7 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -106,6 +107,7 @@ class _MobileProviderFormPageState
   }
 
   void openBottomSheet(BuildContext context, Model model) {
+    HapticFeedback.heavyImpact();
     var editTile = ABottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',
