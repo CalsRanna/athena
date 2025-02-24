@@ -1,5 +1,7 @@
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
+import 'package:athena/model/search_decision.dart';
+import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
@@ -208,14 +210,16 @@ class ChatViewModel extends ViewModel {
   }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    final userMessage = Message();
-    userMessage.chatId = chat.id;
-    userMessage.content = text;
-    userMessage.role = 'user';
-    await isar.writeTxn(() async {
-      await isar.messages.put(userMessage);
-    });
-    ref.invalidate(messagesNotifierProvider(chat.id));
+    _saveNewConversation(text, chat: chat);
+    var searchDecision = await _getSearchDecision(text);
+    var formattedMessage = await _getFormattedMessage(
+      text,
+      decision: searchDecision,
+    );
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var histories = await ref.read(messagesProvider.future);
+    var wrappedMessages = histories.take(histories.length - 2).toList();
+    wrappedMessages.add(formattedMessage);
     var defaultModel =
         await ref.read(modelNotifierProvider(chat.modelId).future);
     var realUsedModel = model ?? defaultModel;
@@ -224,49 +228,14 @@ class ChatViewModel extends ViewModel {
     var defaultSentinel =
         await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
     var realSentinel = sentinel ?? defaultSentinel;
-    // Check if the message need search from internet
-    var search = await ChatApi().checkNeedSearchFromInternet(
-      text,
-      provider: aiProvider,
-      model: realUsedModel,
-    );
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    var histories = await ref.read(messagesProvider.future);
-    if (search['need_search'] == true) {
-      var searchResult =
-          await SearchApi().search(search['keywords'].join(','));
-      var lastMessage = histories.last;
-      lastMessage.content = '''
-## 用户原始输入:
-${lastMessage.content}
-
-## 参考资料：
-$searchResult
-
-请根据参考资料回答问题，并严格遵守下面的标注规则。
-
-## 标注规则：
-- 请在适当的情况下在句子末尾引用上下文。
-- 请按照引用编号[number]的格式在答案中对应部分引用上下文。
-- 如果一句话源自多个上下文，请列出所有相关的引用编号，例如[1][2]，切记不要将引用集中在最后返回引用编号，而是在答案对应部分列出。
-- 在回答的最末尾按照顺序列出所有的引用上下文。
-''';
-    }
-    final system = {'role': 'system', 'content': realSentinel.prompt};
     var messagesNotifier = ref.read(messagesProvider.notifier);
+    final system = {'role': 'system', 'content': realSentinel.prompt};
     try {
       final response = ChatApi().getCompletion(
-        messages: [Message.fromJson(system), ...histories],
+        messages: [Message.fromJson(system), ...wrappedMessages],
         model: realUsedModel,
         provider: aiProvider,
       );
-      final assistantMessage = Message();
-      assistantMessage.chatId = chat.id;
-      assistantMessage.role = 'assistant';
-      await isar.writeTxn(() async {
-        await isar.messages.put(assistantMessage);
-      });
-      ref.invalidate(messagesNotifierProvider(chat.id));
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);
       }
@@ -284,5 +253,46 @@ $searchResult
       messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
+  }
+
+  Future<Message> _getFormattedMessage(
+    String text, {
+    required SearchDecision decision,
+  }) async {
+    var message = Message()..content = text;
+    if (decision.needSearch) {
+      var query = decision.keywords.join(', ');
+      var searchResult = await SearchApi().search(query);
+      message.content = PresetPrompt.formatMessagePrompt
+          .replaceAll('{input}', text)
+          .replaceAll('{reference}', searchResult.toString());
+    }
+    return message;
+  }
+
+  Future<SearchDecision> _getSearchDecision(String text) async {
+    var searchCheckModel =
+        await ref.read(chatSearchCheckModelNotifierProvider.future);
+    var searchCheckProvider = await ref
+        .read(providerNotifierProvider(searchCheckModel.providerId).future);
+    return await ChatApi().getSearchDecision(
+      text,
+      provider: searchCheckProvider,
+      model: searchCheckModel,
+    );
+  }
+
+  Future<void> _saveNewConversation(String text, {required Chat chat}) async {
+    final userMessage = Message();
+    userMessage.chatId = chat.id;
+    userMessage.content = text;
+    userMessage.role = 'user';
+    final assistantMessage = Message();
+    assistantMessage.chatId = chat.id;
+    assistantMessage.role = 'assistant';
+    await isar.writeTxn(() async {
+      await isar.messages.putAll([userMessage, assistantMessage]);
+    });
+    ref.invalidate(messagesNotifierProvider(chat.id));
   }
 }
