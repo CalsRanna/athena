@@ -1,6 +1,8 @@
 import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/desktop/home/component/search_decision_toggle.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:flutter/material.dart';
@@ -9,14 +11,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopMessageInput extends StatelessWidget {
+  final Chat chat;
   final TextEditingController controller;
   final void Function(Model)? onModelChanged;
+  final void Function(bool)? onSearchDecisionChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
   const DesktopMessageInput({
     super.key,
+    required this.chat,
     required this.controller,
     this.onModelChanged,
+    this.onSearchDecisionChanged,
     this.onSentinelChanged,
     this.onSubmitted,
   });
@@ -26,7 +32,10 @@ class DesktopMessageInput extends StatelessWidget {
     var toolbarChildren = [
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
-      Icon(HugeIcons.strokeRoundedInternet),
+      DesktopChatSearchDecisionToggle(
+        chat: chat,
+        onTap: onSearchDecisionChanged,
+      ),
       Icon(HugeIcons.strokeRoundedTemperature),
       Icon(HugeIcons.strokeRoundedImage01),
     ];
