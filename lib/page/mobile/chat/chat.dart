@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
@@ -10,12 +11,14 @@ import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/message.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:isar/isar.dart';
@@ -57,10 +60,56 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     };
   }
 
+  void destroyMessage(Message message) {
+    var viewModel = ChatViewModel(ref);
+    viewModel.destroyMessage(message);
+    ADialog.dismiss();
+  }
+
   @override
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  void editMessage(Message message) {
+    var viewModel = ChatViewModel(ref);
+    viewModel.editMessage(message);
+  }
+
+  void openBottomSheet(Message message) {
+    HapticFeedback.heavyImpact();
+    var editTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      title: 'Edit',
+      onTap: () => openEditDialog(message),
+    );
+    var deleteTile = ABottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => destroyMessage(message),
+    );
+    var children = [editTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    ADialog.show(SafeArea(child: padding));
+  }
+
+  void openEditDialog(Message message) {
+    ADialog.dismiss();
+    var dialog = MobileEditMessageDialog(
+      message: message,
+      onSubmitted: editMessage,
+    );
+    showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      context: context,
+      builder: (_) => dialog,
+      isScrollControlled: true,
+    );
   }
 
   Future<void> resendMessage(WidgetRef ref, Message message) async {
@@ -92,6 +141,7 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   Widget _itemBuilder(WidgetRef ref, Message message) {
     return MessageListTile(
       message: message,
+      onLongPress: () => openBottomSheet(message),
       onResend: () => resendMessage(ref, message),
     );
   }

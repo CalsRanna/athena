@@ -187,7 +187,7 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$messagesNotifierHash() => r'0ffd91c920b1333d2bc68dc4370b86fbbac23e43';
+String _$messagesNotifierHash() => r'7698554722debe343d423b7be3eff5f8efc3beae';
 
 abstract class _$MessagesNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Message>> {

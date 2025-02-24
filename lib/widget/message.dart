@@ -11,20 +11,29 @@ import 'package:hugeicons/hugeicons.dart';
 
 class MessageListTile extends StatelessWidget {
   final Message message;
+  final void Function()? onLongPress;
+  final void Function(TapUpDetails)? onSecondaryTapUp;
   final void Function()? onResend;
   final Sentinel? sentinel;
 
   const MessageListTile({
     super.key,
     required this.message,
+    this.onLongPress,
     this.onResend,
+    this.onSecondaryTapUp,
     this.sentinel,
   });
 
   @override
   Widget build(BuildContext context) {
     if (message.role == 'user') {
-      return _UserMessageListTile(message: message, onResend: onResend);
+      return _UserMessageListTile(
+        message: message,
+        onLongPress: onLongPress,
+        onResend: onResend,
+        onSecondaryTapUp: onSecondaryTapUp,
+      );
     }
     return _AssistantMessageListTile(message: message, sentinel: sentinel);
   }
@@ -202,15 +211,22 @@ class _AssistantMessageListTileThinkingPartState
 
 class _UserMessageListTile extends StatelessWidget {
   final Message message;
+  final void Function()? onLongPress;
   final void Function()? onResend;
-  const _UserMessageListTile({required this.message, this.onResend});
+  final void Function(TapUpDetails)? onSecondaryTapUp;
+  const _UserMessageListTile({
+    required this.message,
+    this.onLongPress,
+    this.onResend,
+    this.onSecondaryTapUp,
+  });
 
   @override
   Widget build(BuildContext context) {
     var children = [
       _buildAvatar(),
       const SizedBox(width: 8),
-      _buildContent(),
+      _buildContent(context),
       const SizedBox(width: 8),
       _buildResendButton(context),
     ];
@@ -251,19 +267,20 @@ class _UserMessageListTile extends StatelessWidget {
     return ClipOval(child: image);
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
     var textStyle = TextStyle(color: Color(0xFFCACACA));
-    var selectableText = SelectableText(
-      contextMenuBuilder: (context, editableTextState) => const SizedBox(),
-      message.content,
-      style: textStyle,
-    );
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: BoxConstraints(minHeight: 36),
-      child: selectableText,
+      child: Text(message.content, style: textStyle),
     );
-    return Expanded(child: container);
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPress: onLongPress,
+      onSecondaryTapUp: onSecondaryTapUp,
+      child: container,
+    );
+    return Expanded(child: gestureDetector);
   }
 
   Widget _buildResendButton(BuildContext context) {
