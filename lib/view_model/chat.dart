@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
 import 'package:athena/model/search_decision.dart';
@@ -271,15 +273,19 @@ class ChatViewModel extends ViewModel {
     required SearchDecision decision,
   }) async {
     var message = Message()..content = text;
+    print(decision.needSearch);
+    print(decision.keywords);
     if (decision.needSearch) {
       var tool = await isar.tools.filter().nameEqualTo('Tavily').findFirst();
       if (tool == null) return message;
       if (tool.key.isEmpty) return message;
       var query = decision.keywords.join(', ');
       var searchResult = await SearchApi().search(query, tool: tool);
+      var reference = jsonEncode(searchResult);
+      print(reference);
       message.content = PresetPrompt.formatMessagePrompt
           .replaceAll('{input}', text)
-          .replaceAll('{reference}', searchResult.toString());
+          .replaceAll('{reference}', reference);
     }
     return message;
   }
