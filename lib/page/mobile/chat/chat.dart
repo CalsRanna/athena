@@ -61,6 +61,10 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   }
 
   void destroyMessage(Message message) {
+    var duration = Duration(milliseconds: 300);
+    if (controller.hasClients) {
+      controller.animateTo(0, curve: Curves.linear, duration: duration);
+    }
     var viewModel = ChatViewModel(ref);
     viewModel.destroyMessage(message);
     ADialog.dismiss();
@@ -73,6 +77,10 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   }
 
   void editMessage(Message message) {
+    var duration = Duration(milliseconds: 300);
+    if (controller.hasClients) {
+      controller.animateTo(0, curve: Curves.linear, duration: duration);
+    }
     var viewModel = ChatViewModel(ref);
     viewModel.editMessage(message);
   }

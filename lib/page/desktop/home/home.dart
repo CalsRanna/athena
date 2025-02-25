@@ -104,6 +104,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> destroyChat(Chat chat) async {
+    var duration = Duration(milliseconds: 300);
+    if (scrollController.hasClients) {
+      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+    }
     await viewModel.destroyChat(chat);
     _initChat();
     _initModel();
@@ -124,6 +128,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> resendMessage(Message message) async {
+    var duration = Duration(milliseconds: 300);
+    if (scrollController.hasClients) {
+      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+    }
     await viewModel.resendMessage(
       message,
       chat: chat,
