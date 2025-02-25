@@ -14,6 +14,7 @@ class AppRouter extends RootStackRouter {
     var desktopSettingChildren = [
       DesktopRoute(page: DesktopSettingProviderRoute.page),
       DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
+      DesktopRoute(page: DesktopSettingToolRoute.page),
       DesktopRoute(page: DesktopSettingSentinelRoute.page),
       DesktopRoute(page: DesktopSentinelFormRoute.page),
     ];

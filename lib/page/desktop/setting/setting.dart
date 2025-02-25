@@ -22,9 +22,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   final _icons = [
     HugeIcons.strokeRoundedPowerService,
     HugeIcons.strokeRoundedAiBrain01,
+    HugeIcons.strokeRoundedTools,
     HugeIcons.strokeRoundedArtificialIntelligence03,
   ];
-  final _menus = ['Provider', 'Default Model', 'Sentinel'];
+  final _menus = ['Provider', 'Default Model', 'Tool', 'Sentinel'];
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +45,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var route = switch (index) {
       0 => const DesktopSettingProviderRoute(),
       1 => const DesktopSettingDefaultModelRoute(),
-      2 => const DesktopSettingSentinelRoute(),
+      2 => const DesktopSettingToolRoute(),
+      3 => const DesktopSettingSentinelRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -52,7 +54,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   void showDialog() {
-    if (index == 2) {
+    if (index == 3) {
       DesktopSentinelFormRoute().push(context);
       return;
     }
@@ -60,7 +62,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildCreateButton() {
-    if (index == 1) return const SizedBox();
+    if (index == 1 || index == 2) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: Colors.white,
