@@ -4,6 +4,7 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/window_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:window_manager/window_manager.dart';
 
 class AAppBar extends StatelessWidget {
   final Widget? action;
@@ -93,13 +94,23 @@ class _DesktopAppBar extends StatelessWidget {
       action ?? const SizedBox(),
       const SizedBox(width: 16),
     ];
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
     var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
-    return Container(
+    var container = Container(
       decoration: boxDecoration,
       child: Row(children: rowChildren),
     );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: handlePanStart,
+      child: container,
+    );
+  }
+
+  void handlePanStart(DragStartDetails details) {
+    windowManager.startDragging();
   }
 }
 

@@ -8,7 +8,6 @@ import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/schema/tool.dart';
 import 'package:isar/isar.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 late Isar isar;
@@ -31,16 +30,14 @@ class IsarInitializer {
   }
 
   static Future<void> _migrate() async {
-    var package = await PackageInfo.fromPlatform();
-    var buildNumber = package.buildNumber;
     var builder = isar.migrations.filter().migrationEqualTo('202502140332');
     var migrated = (await builder.count()) > 0;
-    if (!migrated && int.parse(buildNumber) <= 75) {
+    if (!migrated) {
       await Migration202502140332.migrate();
     }
     builder = isar.migrations.filter().migrationEqualTo('202502251014');
     migrated = (await builder.count()) > 0;
-    if (!migrated && int.parse(buildNumber) <= 316) {
+    if (!migrated) {
       await Migration202502251014.migrate();
     }
   }
