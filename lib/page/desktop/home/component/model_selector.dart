@@ -1,5 +1,6 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/card.dart';
@@ -110,7 +111,7 @@ class MobileModelSelectDialog extends ConsumerWidget {
   Widget _buildData(Map<String, List<Model>> models) {
     if (models.isEmpty) return const SizedBox();
     var titleTextStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

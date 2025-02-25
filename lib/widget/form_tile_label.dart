@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class AFormTileLabel extends StatelessWidget {
@@ -14,7 +15,7 @@ class AFormTileLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var titleTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: titleFontSize,
       fontWeight: FontWeight.w500,
       height: 1.5,

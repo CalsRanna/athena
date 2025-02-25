@@ -1,6 +1,7 @@
 import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -29,13 +30,13 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       color: Color(0xFF282F32),
     );
     var titleTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     var closeButton = GestureDetector(

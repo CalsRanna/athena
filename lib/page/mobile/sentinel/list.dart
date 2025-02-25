@@ -1,6 +1,7 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
@@ -49,7 +50,7 @@ class MobileSentinelListPage extends ConsumerWidget {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ColorUtil.FFFFFFFF,
                         shape: BoxShape.circle,
                       ),
                       height: 24,
@@ -63,7 +64,7 @@ class MobileSentinelListPage extends ConsumerWidget {
                     const Text(
                       'Add a sentinel',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: ColorUtil.FFFFFFFF,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -118,7 +119,7 @@ class _Tile extends ConsumerWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
     );
     var container = Container(
       decoration: boxDecoration,

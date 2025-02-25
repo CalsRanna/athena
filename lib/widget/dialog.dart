@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:athena/main.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ADialog {
@@ -36,7 +37,7 @@ class ADialog {
   }
 
   static void loading() {
-    var indicator = CircularProgressIndicator(color: Colors.white);
+    var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
     showDialog(
       context: globalKey.currentContext!,
       builder: (context) => Center(child: indicator),
@@ -52,7 +53,7 @@ class ADialog {
       decoration: boxDecoration,
       margin: EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(message, style: TextStyle(color: Colors.white)),
+      child: Text(message, style: TextStyle(color: ColorUtil.FFFFFFFF)),
     );
     var alignment = Alignment.center;
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
@@ -83,7 +84,7 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
@@ -115,7 +116,7 @@ class _ConfirmDialog extends StatelessWidget {
       shape: StadiumBorder(),
     );
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -139,7 +140,7 @@ class _ConfirmDialog extends StatelessWidget {
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(
@@ -167,7 +168,7 @@ class _SuccessDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
@@ -194,7 +195,7 @@ class _SuccessDialog extends StatelessWidget {
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(

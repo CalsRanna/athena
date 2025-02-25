@@ -1,6 +1,7 @@
 import 'package:athena/provider/chat.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
@@ -40,7 +41,7 @@ class MobileChatListPage extends ConsumerWidget {
 
   Widget _separatorBuilder() {
     var divider = Divider(
-      color: Colors.white.withValues(alpha: 0.2),
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
       height: 1,
       thickness: 1,
     );
@@ -58,7 +59,7 @@ class _ListTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var titleTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 16,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -72,11 +73,12 @@ class _ListTile extends ConsumerWidget {
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => openBottomSheet(context, ref),
-      child: Icon(HugeIcons.strokeRoundedMoreHorizontal, color: Colors.white),
+      child: Icon(HugeIcons.strokeRoundedMoreHorizontal,
+          color: ColorUtil.FFFFFFFF),
     );
     var rowChildren = [Expanded(child: title), gestureDetector];
     var messageTextStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

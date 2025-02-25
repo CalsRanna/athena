@@ -1,4 +1,5 @@
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -42,11 +43,11 @@ class _MobileProviderNamePageState
     );
     var textField = TextField(
       controller: controller,
-      cursorColor: Color(0xFFFFFFFF),
+      cursorColor: ColorUtil.FFFFFFFF,
       decoration: const InputDecoration.collapsed(hintText: 'Name'),
       focusNode: focusNode,
       maxLines: null,
-      style: const TextStyle(color: Color(0xffffffff)),
+      style: const TextStyle(color: ColorUtil.FFFFFFFF),
     );
     return AScaffold(
       appBar: AAppBar(action: button, title: const Text('New Provider')),

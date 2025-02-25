@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ASwitch extends StatelessWidget {
@@ -12,7 +13,7 @@ class ASwitch extends StatelessWidget {
       shape: StadiumBorder(),
     );
     var innerBoxDecoration = BoxDecoration(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       shape: BoxShape.circle,
     );
     var container = Container(

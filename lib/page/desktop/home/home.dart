@@ -5,6 +5,7 @@ import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
@@ -166,7 +167,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Widget _buildAppBar() {
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     var chatCreateButton = GestureDetector(
@@ -188,7 +189,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       onSelected: changeChat,
       selectedChat: chat,
     );
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
       decoration: boxDecoration,
@@ -220,7 +222,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Widget _buildSettingButton() {
-    const icon = Icon(HugeIcons.strokeRoundedSettings01, color: Colors.white);
+    const icon =
+        Icon(HugeIcons.strokeRoundedSettings01, color: ColorUtil.FFFFFFFF);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => viewModel.navigateSettingPage(context),

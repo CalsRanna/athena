@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -81,7 +82,7 @@ class DesktopMenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     const duration = Duration(milliseconds: 200);
     var textStyle = TextStyle(
-      color: active ? Color(0xFF161616) : Colors.white,
+      color: active ? Color(0xFF161616) : ColorUtil.FFFFFFFF,
       fontSize: 14,
       height: 1.5,
     );
@@ -92,10 +93,10 @@ class DesktopMenuTile extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(35),
-      color: active ? Color(0xFFE0E0E0) : Color(0xFF616161),
+      color: active ? ColorUtil.FFE0E0E0 : Color(0xFF616161),
     );
     var iconThemeData = IconThemeData(
-      color: active ? Color(0xFF161616) : Colors.white,
+      color: active ? Color(0xFF161616) : ColorUtil.FFFFFFFF,
       size: 16,
     );
     var iconTheme = IconTheme(

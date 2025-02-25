@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -109,13 +110,13 @@ class MobileSettingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     const titleTextStyle = TextStyle(
       fontSize: 16,
-      color: Color(0xFFFFFFFF),
+      color: ColorUtil.FFFFFFFF,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
     const subtitleTextStyle = TextStyle(
       fontSize: 12,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
@@ -142,7 +143,7 @@ class MobileSettingTile extends StatelessWidget {
       Icon(HugeIcons.strokeRoundedArrowRight01),
     ];
     var tileRow = IconTheme(
-      data: const IconThemeData(color: Color(0xFFE0E0E0), size: 16),
+      data: const IconThemeData(color: ColorUtil.FFE0E0E0, size: 16),
       child: Row(children: tileChildren),
     );
     return ListTile(title: tileRow, onTap: onTap);

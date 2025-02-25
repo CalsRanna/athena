@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ABottomSheetTile extends StatelessWidget {
@@ -14,12 +15,12 @@ class ABottomSheetTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var iconThemeData = IconThemeData(color: Color(0xFFE0E0E0));
+    var iconThemeData = IconThemeData(color: ColorUtil.FFE0E0E0);
     var children = [
       IconTheme(data: iconThemeData, child: leading ?? const SizedBox()),
       if (leading != null) const SizedBox(width: 12),

@@ -1,4 +1,5 @@
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class DesktopSentinelPlaceholder extends StatelessWidget {
@@ -8,12 +9,12 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var nameTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );
     var descriptionTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
@@ -52,7 +53,7 @@ class _TagWrap extends StatelessWidget {
 
   Widget _buildTile(String tag) {
     var textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
@@ -67,7 +68,7 @@ class _TagWrap extends StatelessWidget {
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),
-      Colors.white.withValues(alpha: 0),
+      ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,

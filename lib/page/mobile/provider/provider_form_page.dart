@@ -2,6 +2,7 @@ import 'package:athena/provider/model.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
@@ -206,7 +207,7 @@ class _MobileProviderFormPageState
 
   Widget _buildTip() {
     var textStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

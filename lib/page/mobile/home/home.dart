@@ -5,6 +5,7 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -27,7 +28,7 @@ class _ChatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const shapeDecoration = ShapeDecoration(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       shape: StadiumBorder(),
     );
     final body = Container(
@@ -97,7 +98,7 @@ class _NewChatButton extends ConsumerWidget {
       color: Color(0xFFCED2C7).withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       shadows: [boxShadow],
       shape: StadiumBorder(),
     );
@@ -213,7 +214,7 @@ class _SentinelTile extends ConsumerWidget {
       shape: StadiumBorder(),
     );
     const textStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
@@ -316,12 +317,12 @@ class _ShortcutTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white),
+            Icon(icon, color: ColorUtil.FFFFFFFF),
             const SizedBox(height: 4),
             Text(
               shortcut.name,
               style: const TextStyle(
-                color: Colors.white,
+                color: ColorUtil.FFFFFFFF,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -331,7 +332,7 @@ class _ShortcutTile extends StatelessWidget {
               child: Text(
                 shortcut.description,
                 style: const TextStyle(
-                  color: Color(0xFFE0E0E0),
+                  color: ColorUtil.FFE0E0E0,
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
                 ),
@@ -352,7 +353,7 @@ class _Title extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const textStyle = TextStyle(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
@@ -368,7 +369,8 @@ class _Title extends StatelessWidget {
 
   Widget _buildMoreButton() {
     var container = Container(
-      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      decoration:
+          BoxDecoration(shape: BoxShape.circle, color: ColorUtil.FFFFFFFF),
       padding: EdgeInsets.all(12),
       child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),
     );
@@ -412,7 +414,7 @@ class _Welcome extends StatelessWidget {
     var circleAvatar = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.5),
+        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.5),
       ),
       padding: EdgeInsets.all(4),
       child: CircleAvatar(
@@ -435,7 +437,7 @@ class _Welcome extends StatelessWidget {
       fontWeight: FontWeight.w700,
     );
     const nameTextStyle = TextStyle(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );

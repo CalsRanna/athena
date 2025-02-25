@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class AInput extends StatefulWidget {
@@ -48,11 +49,11 @@ class _AInputState extends State<AInput> {
   @override
   Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(24),
     );
     var hintTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 14,
       height: 1.7,
     );

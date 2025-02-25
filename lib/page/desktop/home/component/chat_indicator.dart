@@ -1,6 +1,7 @@
 import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,7 +34,7 @@ class _ModelIndicator extends ConsumerWidget {
     var value = ref.watch(provider).valueOrNull;
     var text = Text(
       '${model!.name} | ${value?.name ?? ""}',
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
@@ -46,7 +47,7 @@ class _ModelIndicator extends ConsumerWidget {
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),
-      Colors.white.withValues(alpha: 0),
+      ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,
@@ -72,7 +73,7 @@ class _SentinelIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (sentinel == null) return const SizedBox();
-    const textStyle = TextStyle(color: Colors.white, fontSize: 14);
+    const textStyle = TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14);
     return Text(sentinel!.name, style: textStyle);
   }
 }

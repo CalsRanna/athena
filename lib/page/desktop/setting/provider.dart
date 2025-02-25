@@ -5,6 +5,7 @@ import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -191,7 +192,8 @@ class _DesktopSettingProviderPageState
     var provider = providersNotifierProvider;
     var providers = ref.watch(provider).valueOrNull;
     if (providers == null) return const SizedBox();
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var listView = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, index) => _buildProviderTile(providers, index),
@@ -222,7 +224,7 @@ class _DesktopSettingProviderPageState
     if (providers == null) return const SizedBox();
     if (providers.isEmpty) return const SizedBox();
     var nameTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -230,7 +232,7 @@ class _DesktopSettingProviderPageState
     var nameChildren = [
       nameText,
       SizedBox(width: 4),
-      Icon(HugeIcons.strokeRoundedLinkSquare02, color: Colors.white),
+      Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
       Spacer(),
       ASwitch(value: providers[index].enabled, onChanged: toggleProvider)
     ];
@@ -243,7 +245,7 @@ class _DesktopSettingProviderPageState
       Expanded(child: AInput(controller: urlController, onBlur: updateUrl))
     ];
     var modelTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 16,
       fontWeight: FontWeight.w500,
     );
@@ -257,7 +259,7 @@ class _DesktopSettingProviderPageState
     var models = ref.watch(modelProvider).valueOrNull;
     var modelChildren = _buildModelListView(models);
     var tipTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -353,7 +355,7 @@ class _ModelTileState extends State<_ModelTile> {
   @override
   Widget build(BuildContext context) {
     var nameTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 16,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -371,17 +373,17 @@ class _ModelTileState extends State<_ModelTile> {
     ];
     var functionCallIcon = Icon(
       HugeIcons.strokeRoundedFunctionCircle,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       size: 18,
     );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       size: 18,
     );
     var visualRecognitionIcon = Icon(
       HugeIcons.strokeRoundedVision,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       size: 18,
     );
     var subtitleChildren = [
@@ -401,7 +403,7 @@ class _ModelTileState extends State<_ModelTile> {
     );
     var connectIcon = Icon(
       HugeIcons.strokeRoundedConnect,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       size: 20,
     );
     var paddedConnectIcon = Padding(
@@ -454,7 +456,7 @@ class _ModelTileState extends State<_ModelTile> {
       if (maxToken > 0) maxTokenString,
     ];
     var textStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -508,7 +510,8 @@ class _ProviderEnabledIndicator extends StatelessWidget {
     return Container(
       decoration: ShapeDecoration(color: Colors.green, shape: StadiumBorder()),
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: Text('ON', style: TextStyle(color: Colors.white, fontSize: 12)),
+      child:
+          Text('ON', style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 12)),
     );
   }
 }

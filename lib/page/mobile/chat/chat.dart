@@ -9,6 +9,7 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
@@ -294,7 +295,7 @@ class _ModelIndicator extends ConsumerWidget {
     var value = ref.watch(provider).valueOrNull;
     var text = Text(
       '${model!.name} | ${value?.name ?? ""}',
-      style: TextStyle(color: Colors.white, fontSize: 14),
+      style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
@@ -307,7 +308,7 @@ class _ModelIndicator extends ConsumerWidget {
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),
-      Colors.white.withValues(alpha: 0),
+      ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,
@@ -339,7 +340,7 @@ class _SendButton extends ConsumerWidget {
       color: Color(0xFFCED2C7).withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       shape: StadiumBorder(),
       shadows: [boxShadow],
     );
@@ -375,12 +376,12 @@ class _SentinelPlaceholder extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const nameTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );
     const descriptionTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
@@ -410,7 +411,7 @@ class _UserInput extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const hintTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
@@ -425,7 +426,7 @@ class _UserInput extends ConsumerWidget {
     );
     final textField = TextField(
       controller: controller,
-      cursorColor: Colors.white,
+      cursorColor: ColorUtil.FFFFFFFF,
       decoration: inputDecoration,
       onSubmitted: (_) => handleSubmitted(ref),
       onTapOutside: (_) => handleTapOutside(context),
@@ -433,7 +434,7 @@ class _UserInput extends ConsumerWidget {
       textInputAction: TextInputAction.send,
     );
     var shapeDecoration = ShapeDecoration(
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       shape: StadiumBorder(),
     );
     return Container(
