@@ -11,6 +11,7 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/schema/tool.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -271,8 +272,11 @@ class ChatViewModel extends ViewModel {
   }) async {
     var message = Message()..content = text;
     if (decision.needSearch) {
+      var tool = await isar.tools.filter().nameEqualTo('Tavily').findFirst();
+      if (tool == null) return message;
+      if (tool.key.isEmpty) return message;
       var query = decision.keywords.join(', ');
-      var searchResult = await SearchApi().search(query);
+      var searchResult = await SearchApi().search(query, tool: tool);
       message.content = PresetPrompt.formatMessagePrompt
           .replaceAll('{input}', text)
           .replaceAll('{reference}', searchResult.toString());
