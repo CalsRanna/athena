@@ -24,8 +24,15 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedTools,
     HugeIcons.strokeRoundedArtificialIntelligence03,
+    HugeIcons.strokeRoundedInformationCircle,
   ];
-  final _menus = ['Provider', 'Default Model', 'Tool', 'Sentinel'];
+  final _menus = [
+    'Provider',
+    'Default Model',
+    'Tool',
+    'Sentinel',
+    'About Athena',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +54,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       1 => const DesktopSettingDefaultModelRoute(),
       2 => const DesktopSettingToolRoute(),
       3 => const DesktopSettingSentinelRoute(),
+      4 => const DesktopSettingAboutRoute(),
       _ => null,
     };
     if (route == null) return;
