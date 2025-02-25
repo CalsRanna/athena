@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
@@ -218,7 +219,9 @@ class ChatViewModel extends ViewModel {
     var formattedMessage = await _getFormattedMessage(text, decision: decision);
     var messagesProvider = messagesNotifierProvider(chat.id);
     var histories = await ref.read(messagesProvider.future);
-    var wrappedMessages = histories.take(histories.length - 2).toList();
+    List<Message> wrappedMessages = [];
+    var count = histories.length - 2;
+    if (count > 0) wrappedMessages = histories.take(count).toList();
     wrappedMessages.add(formattedMessage);
     var modelProvider = modelNotifierProvider(chat.modelId);
     var relatedModel = await ref.read(modelProvider.future);
