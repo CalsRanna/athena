@@ -64,11 +64,14 @@ class ADialog {
     );
     var snackBar = SnackBar(
       backgroundColor: Colors.transparent,
+      content: unconstrainedBox,
+      duration: Duration(seconds: 2),
       elevation: 0,
       padding: EdgeInsets.zero,
-      content: unconstrainedBox,
     );
-    ScaffoldMessenger.of(globalKey.currentContext!).showSnackBar(snackBar);
+    var messenger = ScaffoldMessenger.of(globalKey.currentContext!);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(snackBar);
   }
 }
 
