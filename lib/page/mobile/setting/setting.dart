@@ -24,6 +24,12 @@ class SettingPage extends ConsumerWidget {
         title: 'Default Model',
         trailing: '',
       ),
+      MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedTools, size: 24),
+        onTap: () => navigateToolList(context),
+        title: 'Tool',
+        trailing: '',
+      ),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,11 +41,15 @@ class SettingPage extends ConsumerWidget {
     );
   }
 
+  void navigateDefaultModel(BuildContext context) {
+    MobileDefaultModelFormRoute().push(context);
+  }
+
   void navigateProvider(BuildContext context) {
     MobileProviderListRoute().push(context);
   }
 
-  void navigateDefaultModel(BuildContext context) {
-    MobileDefaultModelFormRoute().push(context);
+  void navigateToolList(BuildContext context) {
+    MobileToolListRoute().push(context);
   }
 }
