@@ -161,6 +161,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 
   late final viewModel = ChatViewModel(ref);
   late String title = widget.chat.title;
+  late bool enableSearch = widget.chat.enableSearch;
 
   @override
   Widget build(BuildContext context) {
@@ -233,6 +234,15 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     }
   }
 
+  void updateEnableSearch() {
+    HapticFeedback.heavyImpact();
+    viewModel.updateEnableSearch(!enableSearch, chat: widget.chat);
+    setState(() {
+      enableSearch = !enableSearch;
+    });
+    ADialog.message(enableSearch ? 'Search Enabled' : 'Search Disabled');
+  }
+
   void updateTitle(String title) {
     setState(() {
       this.title = title;
@@ -244,10 +254,18 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       controller: controller,
       onSubmitted: sendMessage,
     );
+    var iconData = HugeIcons.strokeRoundedSent;
+    if (enableSearch) iconData = HugeIcons.strokeRoundedGlobalSearch;
+    var icon = HugeIcon(icon: iconData, color: Color(0xFF161616));
+    var sendButton = _SendButton(
+      icon: icon,
+      onLongPress: updateEnableSearch,
+      onTap: sendMessage,
+    );
     final inputChildren = [
       Expanded(child: userInput),
       const SizedBox(width: 16),
-      _SendButton(onTap: sendMessage),
+      sendButton,
     ];
     final row = Padding(
       padding: EdgeInsets.all(16),
@@ -309,8 +327,10 @@ class _ModelIndicator extends ConsumerWidget {
 }
 
 class _SendButton extends ConsumerWidget {
+  final Widget icon;
+  final void Function()? onLongPress;
   final void Function(WidgetRef)? onTap;
-  const _SendButton({this.onTap});
+  const _SendButton({required this.icon, this.onLongPress, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -327,17 +347,14 @@ class _SendButton extends ConsumerWidget {
     const loading = CircularProgressIndicator.adaptive(
       backgroundColor: Color(0xFF161616),
     );
-    const sendIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedSent,
-      color: Color(0xFF161616),
-    );
     var container = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: streaming ? loading : sendIcon,
+      child: streaming ? loading : icon,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      onLongPress: onLongPress,
       onTap: () => handleTap(context, ref),
       child: container,
     );
