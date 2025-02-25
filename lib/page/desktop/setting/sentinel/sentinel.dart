@@ -1,6 +1,7 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -123,7 +124,7 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
     );
     var container = Container(
       decoration: boxDecoration,

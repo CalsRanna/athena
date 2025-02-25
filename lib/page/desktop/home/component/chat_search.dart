@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -8,15 +9,15 @@ class DesktopChatSearch extends StatelessWidget {
   Widget build(BuildContext context) {
     var inputDecoration = InputDecoration.collapsed(
       hintText: 'Search',
-      hintStyle: TextStyle(color: Color(0xFFC2C2C2), fontSize: 14),
+      hintStyle: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 14),
     );
     var textField = TextField(
-      cursorColor: Colors.white,
+      cursorColor: ColorUtil.FFFFFFFF,
       decoration: inputDecoration,
       style: const TextStyle(fontSize: 14),
     );
     var hugeIcon = HugeIcon(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       icon: HugeIcons.strokeRoundedSearch01,
       size: 24,
     );
@@ -27,7 +28,7 @@ class DesktopChatSearch extends StatelessWidget {
     ];
     var boxDecoration = BoxDecoration(
       border: Border.all(color: Color(0xFF757575)),
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(56),
     );
     return Container(

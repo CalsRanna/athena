@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -59,7 +60,7 @@ class _AssistantMessageListTile extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: Colors.white.withValues(alpha: 0.95),
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
     );
     var stackChildren = [
       messageRow,
@@ -78,7 +79,8 @@ class _AssistantMessageListTile extends StatelessWidget {
 
   Widget _buildAvatar() {
     if (sentinel?.avatar.isNotEmpty == true) {
-      const textStyle = TextStyle(fontSize: 24, height: 1, color: Colors.white);
+      const textStyle =
+          TextStyle(fontSize: 24, height: 1, color: ColorUtil.FFFFFFFF);
       var boxDecoration = BoxDecoration(
         shape: BoxShape.circle,
         color: Color(0xFF282F32),
@@ -185,7 +187,7 @@ class _AssistantMessageListTileThinkingPartState
     );
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var iconData = HugeIcons.strokeRoundedArrowRight01;
@@ -248,7 +250,7 @@ class _UserMessageListTile extends StatelessWidget {
     // const textStyle = TextStyle(fontSize: 14, height: 1);
     // var boxDecoration = BoxDecoration(
     //   shape: BoxShape.circle,
-    //   color: Colors.white.withValues(alpha: 0.95),
+    //   color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
     // );
     // return Container(
     //   alignment: Alignment.center,
@@ -268,7 +270,7 @@ class _UserMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    var textStyle = TextStyle(color: Color(0xFFCACACA));
+    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: BoxConstraints(minHeight: 36),
@@ -286,7 +288,7 @@ class _UserMessageListTile extends StatelessWidget {
   Widget _buildResendButton(BuildContext context) {
     var boxDecoration = BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
     );
     var container = Container(
       decoration: boxDecoration,

@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ProfileTile extends StatefulWidget {
@@ -28,7 +29,7 @@ class _Name extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text('Cals Ranna', style: TextStyle(color: Colors.white));
+    return Text('Cals Ranna', style: TextStyle(color: ColorUtil.FFFFFFFF));
   }
 }
 

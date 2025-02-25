@@ -1,6 +1,7 @@
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/tool.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/tool.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -94,7 +95,7 @@ class _MobileToolFormPageState extends ConsumerState<MobileToolFormPage> {
 
   Widget _buildTip() {
     var textStyle = TextStyle(
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

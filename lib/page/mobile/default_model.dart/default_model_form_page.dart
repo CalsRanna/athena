@@ -2,6 +2,7 @@ import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/setting.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
@@ -27,7 +28,7 @@ class _MobileDefaultModelFormPageState
   @override
   Widget build(BuildContext context) {
     var titleTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -63,7 +64,7 @@ class _MobileDefaultModelFormPageState
       onChanged: viewModel.updateSentinelMetaGenerationModel,
     );
     var tipTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -125,7 +126,7 @@ class _ModelDropdown extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var boxDecoration = BoxDecoration(
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(24),
     );
     var icon = Icon(

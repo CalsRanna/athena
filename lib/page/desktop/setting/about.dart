@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/setting.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -22,7 +23,7 @@ class _DesktopSettingAboutPageState
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

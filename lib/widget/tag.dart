@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ATag extends StatelessWidget {
@@ -13,7 +14,7 @@ class ATag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: selected ? Color(0xFF161616) : Colors.white,
+      color: selected ? Color(0xFF161616) : ColorUtil.FFFFFFFF,
       fontSize: 12,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -25,7 +26,7 @@ class ATag extends StatelessWidget {
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(44),
-      color: selected ? Color(0xFFE0E0E0) : Color(0xFF161616),
+      color: selected ? ColorUtil.FFE0E0E0 : Color(0xFF161616),
     );
     var innerContainer = AnimatedContainer(
       decoration: innerBoxDecoration,
@@ -35,7 +36,7 @@ class ATag extends StatelessWidget {
     );
     var colors = [
       Color(0xFFEAEAEA).withValues(alpha: 0.17),
-      Colors.white.withValues(alpha: 0),
+      ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,

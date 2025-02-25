@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/window_button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -27,7 +28,7 @@ class DesktopPopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     return GestureDetector(
@@ -53,7 +54,7 @@ class MobilePopButton extends StatelessWidget {
       size: 16,
     );
     const boxDecoration = BoxDecoration(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       shape: BoxShape.circle,
     );
     final button = Container(
@@ -92,7 +93,8 @@ class _DesktopAppBar extends StatelessWidget {
       action ?? const SizedBox(),
       const SizedBox(width: 16),
     ];
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
     return Container(
       decoration: boxDecoration,
@@ -114,7 +116,7 @@ class _MobileAppBar extends StatelessWidget {
       child: MobilePopButton(),
     );
     const textStyle = TextStyle(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       height: 1.2,
     );

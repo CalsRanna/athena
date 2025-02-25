@@ -1,6 +1,7 @@
 import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -77,7 +78,7 @@ class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
-      color: widget.active ? Color(0xFF161616) : Colors.white,
+      color: widget.active ? Color(0xFF161616) : ColorUtil.FFFFFFFF,
       fontSize: 14,
       height: 1.5,
     );
@@ -89,7 +90,7 @@ class _ChatTileState extends State<_ChatTile> {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(35),
-      color: widget.active ? Color(0xFFE0E0E0) : Color(0xFF616161),
+      color: widget.active ? ColorUtil.FFE0E0E0 : Color(0xFF616161),
     );
     var container = AnimatedContainer(
       decoration: boxDecoration,

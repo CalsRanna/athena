@@ -1,5 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -172,7 +173,7 @@ class _DesktopSentinelFormPageState
   Widget _buildPromptInput() {
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
     );
     const inputDecoration = InputDecoration.collapsed(
       hintText: 'Input Prompt Here',
@@ -181,12 +182,13 @@ class _DesktopSentinelFormPageState
       controller: promptController,
       decoration: inputDecoration,
       maxLines: null,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: ColorUtil.FFFFFFFF),
     );
     var sizedBox = SizedBox(
       height: 16,
       width: 16,
-      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+      child:
+          CircularProgressIndicator(color: ColorUtil.FFFFFFFF, strokeWidth: 2),
     );
     var generateChildren = [
       if (loading) sizedBox,
@@ -214,7 +216,7 @@ class _DesktopSentinelFormPageState
   }
 
   Widget _buildTagsInput() {
-    var border = Border.all(color: Colors.white.withValues(alpha: 0.2));
+    var border = Border.all(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var boxDecoration = BoxDecoration(
       border: border,
       borderRadius: BorderRadius.circular(24),
@@ -227,7 +229,7 @@ class _DesktopSentinelFormPageState
     );
     var placeholder = Text(
       'Tags will be generated here',
-      style: TextStyle(color: Colors.white),
+      style: TextStyle(color: ColorUtil.FFFFFFFF),
     );
     return Container(
       alignment: Alignment.center,

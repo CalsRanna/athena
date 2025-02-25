@@ -1,5 +1,6 @@
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -33,11 +34,12 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      Icon(icon, color: Colors.white, size: 24),
+      Icon(icon, color: ColorUtil.FFFFFFFF, size: 24),
       const SizedBox(width: 12),
-      Expanded(child: Text(title, style: TextStyle(color: Colors.white))),
+      Expanded(child: Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF))),
       const SizedBox(width: 12),
-      Icon(HugeIcons.strokeRoundedArrowRight01, color: Colors.white, size: 16),
+      Icon(HugeIcons.strokeRoundedArrowRight01,
+          color: ColorUtil.FFFFFFFF, size: 16),
     ];
     var padding = Padding(
       padding: const EdgeInsets.all(8.0),

@@ -1,5 +1,6 @@
 import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
 import 'package:athena/router/router.gr.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/menu.dart';
@@ -73,7 +74,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     if (index == 1 || index == 2) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     var createButton = GestureDetector(
@@ -91,7 +92,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       padding: const EdgeInsets.all(12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(decoration: boxDecoration, width: 240, child: listView);
   }
@@ -100,7 +102,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var title = 'Setting / ${_menus[index]}';
     var rowChildren = [
       const SizedBox(width: 16),
-      Text(title, style: TextStyle(color: Colors.white)),
+      Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF)),
     ];
     return Row(children: rowChildren);
   }

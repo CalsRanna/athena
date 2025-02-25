@@ -1,6 +1,7 @@
 import 'package:athena/provider/provider.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
@@ -52,7 +53,7 @@ class MobileProviderListPage extends ConsumerWidget {
 
   Widget _buildSeparator() {
     var divider = Divider(
-      color: Color(0xFFFFFFFF).withValues(alpha: 0.2),
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
       height: 1,
       thickness: 1,
     );
@@ -71,13 +72,13 @@ class _ProviderListTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     const titleTextStyle = TextStyle(
       fontSize: 16,
-      color: Color(0xFFFFFFFF),
+      color: ColorUtil.FFFFFFFF,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
     const subtitleTextStyle = TextStyle(
       fontSize: 12,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
@@ -88,7 +89,7 @@ class _ProviderListTile extends ConsumerWidget {
     ];
     var icon = Icon(
       HugeIcons.strokeRoundedMoreHorizontal,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
       size: 16,
     );
     var actionButton = GestureDetector(

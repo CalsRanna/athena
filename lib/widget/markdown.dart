@@ -1,5 +1,6 @@
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -49,7 +50,7 @@ class _FlutterMarkdown extends StatelessWidget {
     List<md.InlineSyntax> inlineSyntaxes = [];
     inlineSyntaxes.add(LatexInlineSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    var borderSide = BorderSide(color: Color(0xFFC2C2C2), width: 1);
+    var borderSide = BorderSide(color: ColorUtil.FFC2C2C2, width: 1);
     var markdownStyleSheet = MarkdownStyleSheet(
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
       horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
@@ -99,7 +100,7 @@ class _FlutterMarkdown extends StatelessWidget {
 //     );
 //     var boxDecoration = BoxDecoration(
 //       borderRadius: borderRadius,
-//       color: Color(0xFFE0E0E0),
+//       color: ColorUtil.FFE0E0E0,
 //     );
 //     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -209,7 +210,7 @@ class _CodeBuilder extends MarkdownElementBuilder {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: Color(0xFFE0E0E0),
+      color: ColorUtil.FFE0E0E0,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var textStyle = GoogleFonts.firaCode(fontSize: 12);

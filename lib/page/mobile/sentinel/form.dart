@@ -1,5 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -144,7 +145,7 @@ class _MobileSentinelFormPageState
   Widget _buildDescriptionLabel() {
     const icon = Icon(
       HugeIcons.strokeRoundedAiBeautify,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 16,
     );
     var gestureDetector = GestureDetector(
@@ -173,7 +174,7 @@ class _MobileSentinelFormPageState
   Widget _buildNameLabel() {
     const icon = Icon(
       HugeIcons.strokeRoundedAiBeautify,
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       size: 16,
     );
     var gestureDetector = GestureDetector(

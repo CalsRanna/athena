@@ -1,5 +1,6 @@
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,7 +11,7 @@ class ChatTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const shapeDecoration = ShapeDecoration(
-      color: Color(0xffffffff),
+      color: ColorUtil.FFFFFFFF,
       shape: StadiumBorder(),
     );
     final body = Container(

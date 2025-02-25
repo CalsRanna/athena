@@ -5,6 +5,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,8 @@ class DesktopMessageInput extends StatelessWidget {
       _SendButton(onTap: onSubmitted)
     ];
     var inputRow = Row(children: inputChildren);
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var children = [toolbar, const SizedBox(height: 12), inputRow];
     return Container(
       decoration: BoxDecoration(border: Border(top: borderSide)),
@@ -77,10 +79,10 @@ class _InputState extends State<_Input> {
     var boxDecoration = BoxDecoration(
       border: Border.all(color: Color(0xFF757575)),
       borderRadius: BorderRadius.circular(24),
-      color: Color(0xFFADADAD).withValues(alpha: 0.6),
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
     );
     var hintTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 14,
       height: 1.5,
     );
@@ -165,7 +167,7 @@ class _SendButton extends ConsumerWidget {
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(55),
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       boxShadow: [boxShadow],
     );
     var streaming = ref.watch(streamingNotifierProvider);

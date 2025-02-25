@@ -1,5 +1,6 @@
 import 'package:athena/provider/tool.dart';
 import 'package:athena/schema/tool.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/tool.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -67,7 +68,8 @@ class _DesktopSettingToolPageState
     var provider = toolsNotifierProvider;
     var tools = ref.watch(provider).valueOrNull;
     if (tools == null) return const SizedBox();
-    var borderSide = BorderSide(color: Colors.white.withValues(alpha: 0.2));
+    var borderSide =
+        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
     var listView = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, index) => _buildToolTile(tools, index),
@@ -95,7 +97,7 @@ class _DesktopSettingToolPageState
     if (tools == null) return const SizedBox();
     if (tools.isEmpty) return const SizedBox();
     var nameTextStyle = TextStyle(
-      color: Colors.white,
+      color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -103,14 +105,14 @@ class _DesktopSettingToolPageState
     var nameChildren = [
       nameText,
       SizedBox(width: 4),
-      Icon(HugeIcons.strokeRoundedLinkSquare02, color: Colors.white),
+      Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
     ];
     var keyChildren = [
       SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
       Expanded(child: AInput(controller: keyController, onBlur: updateKey))
     ];
     var descriptionTextStyle = TextStyle(
-      color: Color(0xFFC2C2C2),
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
