@@ -213,14 +213,14 @@ class ChatViewModel extends ViewModel {
   }) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    _saveNewConversation(text, chat: chat);
+    await _saveNewConversation(text, chat: chat);
     var decision = await _getSearchDecision(text, chat: chat);
     var formattedMessage = await _getFormattedMessage(text, decision: decision);
     var messagesProvider = messagesNotifierProvider(chat.id);
-    var histories = await ref.read(messagesProvider.future);
+    var messages = await ref.read(messagesProvider.future);
     List<Message> wrappedMessages = [];
-    var count = histories.length - 2;
-    if (count > 0) wrappedMessages = histories.take(count).toList();
+    var count = messages.length - 2;
+    if (count > 0) wrappedMessages = messages.take(count).toList();
     wrappedMessages.add(formattedMessage);
     var modelProvider = modelNotifierProvider(chat.modelId);
     var relatedModel = await ref.read(modelProvider.future);
@@ -291,10 +291,10 @@ class ChatViewModel extends ViewModel {
     required Chat chat,
   }) async {
     if (!chat.enableSearch) return SearchDecision();
-    var searchCheckModel =
-        await ref.read(chatSearchDecisionModelNotifierProvider.future);
-    var searchCheckProvider = await ref
-        .read(providerNotifierProvider(searchCheckModel.providerId).future);
+    var searchDecisionModel = chatSearchDecisionModelNotifierProvider;
+    var model = await ref.read(searchDecisionModel.future);
+    var searchDecisionProvider = providerNotifierProvider(model.providerId);
+    var provider = await ref.read(searchDecisionProvider.future);
     var messages = await ref.read(messagesNotifierProvider(chat.id).future);
     var userMessages = messages.where((message) => message.role == 'user');
     if (userMessages.isEmpty) return SearchDecision();
@@ -302,8 +302,8 @@ class ChatViewModel extends ViewModel {
     var fullText = '$historyText\n$text';
     return await ChatApi().getSearchDecision(
       fullText,
-      provider: searchCheckProvider,
-      model: searchCheckModel,
+      provider: provider,
+      model: model,
     );
   }
 
