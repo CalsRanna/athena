@@ -182,11 +182,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       input,
     ];
     var actionButton = AIconButton(
-      icon: HugeIcons.strokeRoundedMoreHorizontal,
+      icon: HugeIcons.strokeRoundedAiBrain01,
       onTap: openModalSelector,
     );
+    var titleText = Text(title, textAlign: TextAlign.center);
     var titleColumn = Column(
-      children: [Text(title), _ModelIndicator(model: model)],
+      children: [titleText, _ModelIndicator(model: model)],
     );
     return AScaffold(
       appBar: AAppBar(action: actionButton, title: titleColumn),

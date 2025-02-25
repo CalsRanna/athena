@@ -33,6 +33,8 @@ class _MobileDefaultModelFormPageState
     );
     var chatTitle = Text('Default Chat Model', style: titleTextStyle);
     var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
+    var chatSearchDecisionTitle =
+        Text('Chat Search Decision Model', style: titleTextStyle);
     var generationTitle = Text(
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
@@ -47,6 +49,12 @@ class _MobileDefaultModelFormPageState
     var chatNamingDropdown = _ModelDropdown(
       model: chatNamingModel,
       onChanged: viewModel.updateChatNamingModel,
+    );
+    var chatSearchDecisionModel =
+        ref.watch(chatSearchDecisionModelNotifierProvider).valueOrNull;
+    var chatSearchDecisionDropdown = _ModelDropdown(
+      model: chatSearchDecisionModel,
+      onChanged: viewModel.updateChatSearchDecisionModel,
     );
     var provider = sentinelMetaGenerationModelNotifierProvider;
     var sentinelMetadataGenerationModel = ref.watch(provider).valueOrNull;
@@ -65,6 +73,10 @@ class _MobileDefaultModelFormPageState
       'Model designated for automatic chat renaming',
       style: tipTextStyle,
     );
+    var chatSearchDecisionTip = Text(
+      'Model designated for deciding whether user\'s input should search from internet or not',
+      style: tipTextStyle,
+    );
     var generationTip = Text(
       'Model designated for generating sentinel name, description, avatar, and tags',
       style: tipTextStyle,
@@ -81,6 +93,12 @@ class _MobileDefaultModelFormPageState
       chatNamingDropdown,
       const SizedBox(height: 12),
       namingTip,
+      const SizedBox(height: 16),
+      chatSearchDecisionTitle,
+      const SizedBox(height: 12),
+      chatSearchDecisionDropdown,
+      const SizedBox(height: 12),
+      chatSearchDecisionTip,
       const SizedBox(height: 16),
       generationTitle,
       const SizedBox(height: 12),
