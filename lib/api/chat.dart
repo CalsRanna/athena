@@ -23,7 +23,8 @@ class ChatApi {
       headers: headers,
     );
     var now = DateTime.now();
-    var prompt = PresetPrompt.searchCheck.replaceAll('{now}', now.toString());
+    var prompt =
+        PresetPrompt.searchDecision.replaceAll('{now}', now.toString());
     var wrappedMessages = [
       ChatCompletionMessage.system(content: prompt),
       ChatCompletionMessage.user(
