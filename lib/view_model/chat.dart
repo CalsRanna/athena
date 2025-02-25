@@ -214,30 +214,27 @@ class ChatViewModel extends ViewModel {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     _saveNewConversation(text, chat: chat);
-    var searchDecision = await _getSearchDecision(text, chat: chat);
-    var formattedMessage = await _getFormattedMessage(
-      text,
-      decision: searchDecision,
-    );
+    var decision = await _getSearchDecision(text, chat: chat);
+    var formattedMessage = await _getFormattedMessage(text, decision: decision);
     var messagesProvider = messagesNotifierProvider(chat.id);
     var histories = await ref.read(messagesProvider.future);
     var wrappedMessages = histories.take(histories.length - 2).toList();
     wrappedMessages.add(formattedMessage);
-    var defaultModel =
-        await ref.read(modelNotifierProvider(chat.modelId).future);
-    var realUsedModel = model ?? defaultModel;
-    var provider = providerNotifierProvider(realUsedModel.providerId);
-    var aiProvider = await ref.read(provider.future);
-    var defaultSentinel =
-        await ref.read(sentinelNotifierProvider(chat.sentinelId).future);
-    var realSentinel = sentinel ?? defaultSentinel;
+    var modelProvider = modelNotifierProvider(chat.modelId);
+    var relatedModel = await ref.read(modelProvider.future);
+    var realUsedModel = model ?? relatedModel;
+    var providerProvider = providerNotifierProvider(realUsedModel.providerId);
+    var provider = await ref.read(providerProvider.future);
+    var sentinelProvider = sentinelNotifierProvider(chat.sentinelId);
+    var relatedSentinel = await ref.read(sentinelProvider.future);
+    var realSentinel = sentinel ?? relatedSentinel;
     var messagesNotifier = ref.read(messagesProvider.notifier);
     final system = {'role': 'system', 'content': realSentinel.prompt};
     try {
       final response = ChatApi().getCompletion(
         messages: [Message.fromJson(system), ...wrappedMessages],
         model: realUsedModel,
-        provider: aiProvider,
+        provider: provider,
       );
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);
@@ -273,8 +270,6 @@ class ChatViewModel extends ViewModel {
     required SearchDecision decision,
   }) async {
     var message = Message()..content = text;
-    print(decision.needSearch);
-    print(decision.keywords);
     if (decision.needSearch) {
       var tool = await isar.tools.filter().nameEqualTo('Tavily').findFirst();
       if (tool == null) return message;
@@ -282,7 +277,6 @@ class ChatViewModel extends ViewModel {
       var query = decision.keywords.join(', ');
       var searchResult = await SearchApi().search(query, tool: tool);
       var reference = jsonEncode(searchResult);
-      print(reference);
       message.content = PresetPrompt.formatMessagePrompt
           .replaceAll('{input}', text)
           .replaceAll('{reference}', reference);
