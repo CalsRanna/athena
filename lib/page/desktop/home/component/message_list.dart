@@ -84,6 +84,7 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
       message: message,
       onResend: () => widget.onResend.call(message),
       onSecondaryTapUp: (details) => openContextMenu(details, message),
+      sentinel: widget.sentinel,
     );
   }
 }
