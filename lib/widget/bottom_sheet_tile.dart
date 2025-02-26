@@ -1,11 +1,11 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class ABottomSheetTile extends StatelessWidget {
+class AthenaBottomSheetTile extends StatelessWidget {
   final Widget? leading;
   final void Function()? onTap;
   final String title;
-  const ABottomSheetTile({
+  const AthenaBottomSheetTile({
     super.key,
     this.leading,
     this.onTap,

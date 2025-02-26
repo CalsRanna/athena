@@ -28,7 +28,7 @@ class ProviderViewModel extends ViewModel {
       await isar.providers.put(provider);
     });
     ref.invalidate(providersNotifierProvider);
-    ADialog.message('Provider updated');
+    AthenaDialog.message('Provider updated');
   }
 
   Future<void> toggleEnabled(schema.Provider provider) async {

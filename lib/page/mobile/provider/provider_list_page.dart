@@ -20,15 +20,15 @@ class MobileProviderListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var button = AIconButton(
+    var button = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAdd01,
       onTap: () => navigateProviderName(context),
     );
     var providers = ref.watch(providersNotifierProvider).valueOrNull;
     Widget body = const SizedBox();
     if (providers != null) body = _buildBody(providers);
-    return AScaffold(
-      appBar: AAppBar(action: button, title: const Text('Provider')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(action: button, title: const Text('Provider')),
       body: body,
     );
   }
@@ -85,7 +85,7 @@ class _ProviderListTile extends ConsumerWidget {
     var titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) const SizedBox(width: 8),
-      if (provider.enabled) ATag.small(text: 'On'),
+      if (provider.enabled) AthenaTag.small(text: 'On'),
     ];
     var icon = Icon(
       HugeIcons.strokeRoundedMoreHorizontal,
@@ -123,7 +123,7 @@ class _ProviderListTile extends ConsumerWidget {
   void destroyProvider(WidgetRef ref) {
     var viewModel = ProviderViewModel(ref);
     viewModel.deleteProvider(provider);
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   void navigateProviderForm(BuildContext context) {
@@ -134,12 +134,12 @@ class _ProviderListTile extends ConsumerWidget {
     var enableText = provider.enabled ? 'Disable' : 'Enable';
     var enableIcon = HugeIcons.strokeRoundedToggleOff;
     if (provider.enabled) enableIcon = HugeIcons.strokeRoundedToggleOn;
-    var enableTile = ABottomSheetTile(
+    var enableTile = AthenaBottomSheetTile(
       leading: Icon(enableIcon),
       title: enableText,
       onTap: () => toggleEnable(ref),
     );
-    var deleteTile = ABottomSheetTile(
+    var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
       onTap: () => destroyProvider(ref),
@@ -150,12 +150,12 @@ class _ProviderListTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
-    ADialog.show(SafeArea(child: padding));
+    AthenaDialog.show(SafeArea(child: padding));
   }
 
   void toggleEnable(WidgetRef ref) {
     var viewModel = ProviderViewModel(ref);
     viewModel.toggleEnabled(provider);
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 }

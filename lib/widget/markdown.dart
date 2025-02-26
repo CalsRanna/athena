@@ -11,27 +11,27 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
-class AMarkdown extends StatelessWidget {
-  final MarkdownEngine engine;
+class AthenaMarkdown extends StatelessWidget {
+  final AthenaMarkdownEngine engine;
   final Message message;
 
-  const AMarkdown({
+  const AthenaMarkdown({
     super.key,
-    this.engine = MarkdownEngine.flutter,
+    this.engine = AthenaMarkdownEngine.flutter,
     required this.message,
   });
 
   @override
   Widget build(BuildContext context) {
     return switch (engine) {
-      MarkdownEngine.flutter => _FlutterMarkdown(message: message),
+      AthenaMarkdownEngine.flutter => _FlutterMarkdown(message: message),
       // MarkdownEngine.gpt => _GptMarkdown(message: message),
       _ => const SizedBox(),
     };
   }
 }
 
-enum MarkdownEngine { flutter, gpt }
+enum AthenaMarkdownEngine { flutter, gpt }
 
 class _FlutterMarkdown extends StatelessWidget {
   final Message message;
@@ -68,7 +68,7 @@ class _FlutterMarkdown extends StatelessWidget {
   Future<void> openLink(String? url) async {
     var uri = Uri.parse(url ?? '');
     if (!(await canLaunchUrl(uri))) {
-      ADialog.message('The link is invalid');
+      AthenaDialog.message('The link is invalid');
       return;
     }
     launchUrl(uri);

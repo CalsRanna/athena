@@ -1,11 +1,16 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class AIconButton extends StatelessWidget {
+class AthenaIconButton extends StatelessWidget {
   final IconData icon;
   final void Function()? onTap;
   final EdgeInsets? padding;
-  const AIconButton({super.key, required this.icon, this.onTap, this.padding});
+  const AthenaIconButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.padding,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +32,10 @@ class AIconButton extends StatelessWidget {
   }
 }
 
-class APrimaryButton extends StatelessWidget {
+class AthenaPrimaryButton extends StatelessWidget {
   final void Function()? onTap;
   final Widget child;
-  const APrimaryButton({super.key, this.onTap, required this.child});
+  const AthenaPrimaryButton({super.key, this.onTap, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -56,18 +61,20 @@ class APrimaryButton extends StatelessWidget {
   }
 }
 
-class ASecondaryButton extends StatelessWidget {
+class AthenaSecondaryButton extends StatelessWidget {
   final void Function()? onTap;
   final EdgeInsets padding;
   final Widget child;
 
-  const ASecondaryButton({super.key, this.onTap, required this.child})
+  const AthenaSecondaryButton({super.key, this.onTap, required this.child})
       : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
 
-  const ASecondaryButton.medium({super.key, this.onTap, required this.child})
+  const AthenaSecondaryButton.medium(
+      {super.key, this.onTap, required this.child})
       : padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
 
-  const ASecondaryButton.small({super.key, this.onTap, required this.child})
+  const AthenaSecondaryButton.small(
+      {super.key, this.onTap, required this.child})
       : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 8);
 
   @override
@@ -89,10 +96,10 @@ class ASecondaryButton extends StatelessWidget {
   }
 }
 
-class ATextButton extends StatelessWidget {
+class AthenaTextButton extends StatelessWidget {
   final void Function()? onTap;
   final String text;
-  const ATextButton({super.key, this.onTap, required this.text});
+  const AthenaTextButton({super.key, this.onTap, required this.text});
 
   @override
   Widget build(BuildContext context) {

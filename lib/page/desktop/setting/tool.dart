@@ -31,7 +31,7 @@ class _DesktopSettingToolPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [_buildToolListView(), Expanded(child: _buildToolView())],
     );
-    return AScaffold(body: row);
+    return AthenaScaffold(body: row);
   }
 
   Future<void> changeTool(int index) async {
@@ -108,8 +108,8 @@ class _DesktopSettingToolPageState
       Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
     ];
     var keyChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
-      Expanded(child: AInput(controller: keyController, onBlur: updateKey))
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'API Key')),
+      Expanded(child: AthenaInput(controller: keyController, onBlur: updateKey))
     ];
     var descriptionTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,

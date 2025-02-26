@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class AScaffold extends StatelessWidget {
+class AthenaScaffold extends StatelessWidget {
   final Widget? appBar;
   final Widget? body;
-  const AScaffold({super.key, this.appBar, this.body});
+  const AthenaScaffold({super.key, this.appBar, this.body});
 
   @override
   Widget build(BuildContext context) {

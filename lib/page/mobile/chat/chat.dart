@@ -70,7 +70,7 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     }
     var viewModel = ChatViewModel(ref);
     viewModel.destroyMessage(message);
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   @override
@@ -90,12 +90,12 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
 
   void openBottomSheet(Message message) {
     HapticFeedback.heavyImpact();
-    var editTile = ABottomSheetTile(
+    var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',
       onTap: () => openEditDialog(message),
     );
-    var deleteTile = ABottomSheetTile(
+    var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
       onTap: () => destroyMessage(message),
@@ -106,11 +106,11 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
-    ADialog.show(SafeArea(child: padding));
+    AthenaDialog.show(SafeArea(child: padding));
   }
 
   void openEditDialog(Message message) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     var dialog = MobileEditMessageDialog(
       message: message,
       onSubmitted: editMessage,
@@ -187,7 +187,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
         ),
       input,
     ];
-    var actionButton = AIconButton(
+    var actionButton = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAiBrain01,
       onTap: openModalSelector,
     );
@@ -195,8 +195,8 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var titleColumn = Column(
       children: [titleText, _ModelIndicator(model: model)],
     );
-    return AScaffold(
-      appBar: AAppBar(action: actionButton, title: titleColumn),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(action: actionButton, title: titleColumn),
       body: Column(children: columnChildren),
     );
   }
@@ -204,7 +204,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   void changeModel(Model model) {
     var viewModel = ChatViewModel(ref);
     viewModel.updateModel(model, chat: widget.chat);
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     setState(() {
       this.model = model;
     });
@@ -223,7 +223,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   }
 
   void openModalSelector() {
-    ADialog.show(MobileModelSelectDialog(onTap: changeModel));
+    AthenaDialog.show(MobileModelSelectDialog(onTap: changeModel));
   }
 
   Future<void> sendMessage(WidgetRef ref) async {
@@ -245,7 +245,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     setState(() {
       enableSearch = !enableSearch;
     });
-    ADialog.message(enableSearch ? 'Search Enabled' : 'Search Disabled');
+    AthenaDialog.message(enableSearch ? 'Search Enabled' : 'Search Disabled');
   }
 
   void updateTitle(String title) {

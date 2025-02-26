@@ -25,12 +25,12 @@ class DesktopSentinelSelector extends StatelessWidget {
   }
 
   void changeModel(Sentinel sentinel) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     onSelected?.call(sentinel);
   }
 
   void openDialog() {
-    ADialog.show(
+    AthenaDialog.show(
       _SentinelSelectDialog(onTap: changeModel),
       barrierDismissible: true,
     );

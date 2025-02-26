@@ -37,13 +37,13 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   @override
   Widget build(BuildContext context) {
-    var appBar = AAppBar(
+    var appBar = AthenaAppBar(
       action: DesktopPopButton(),
       leading: _buildCreateButton(),
       title: _buildPageHeader(context),
     );
     var children = [_buildLeftBar(), const Expanded(child: AutoRouter())];
-    return AScaffold(appBar: appBar, body: Row(children: children));
+    return AthenaScaffold(appBar: appBar, body: Row(children: children));
   }
 
   void changeMenu(int index) {
@@ -67,7 +67,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       DesktopSentinelFormRoute().push(context);
       return;
     }
-    ADialog.show(DesktopProviderFormDialog());
+    AthenaDialog.show(DesktopProviderFormDialog());
   }
 
   Widget _buildCreateButton() {

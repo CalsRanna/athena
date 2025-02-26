@@ -120,7 +120,7 @@ class _AssistantMessageListTile extends StatelessWidget {
     var children = [
       _AssistantMessageListTileThinkingPart(message: message),
       if (message.content.isNotEmpty) SizedBox(height: 8),
-      AMarkdown(engine: MarkdownEngine.flutter, message: message),
+      AthenaMarkdown(engine: AthenaMarkdownEngine.flutter, message: message),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

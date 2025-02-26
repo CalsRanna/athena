@@ -48,7 +48,7 @@ class _DesktopSettingProviderPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AScaffold(body: row);
+    return AthenaScaffold(body: row);
   }
 
   Future<void> changeProvider(int index) async {
@@ -65,7 +65,7 @@ class _DesktopSettingProviderPageState
   Future<void> checkConnection(Model model) async {
     final viewModel = ModelViewModel(ref);
     var result = await viewModel.checkConnection(model);
-    ADialog.message(result);
+    AthenaDialog.message(result);
   }
 
   Future<void> destroyProvider(schema.Provider provider) async {
@@ -115,7 +115,7 @@ class _DesktopSettingProviderPageState
   Future<void> showModelFormDialog() async {
     var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
-    ADialog.show(DesktopModelFormDialog(provider: providers[index]));
+    AthenaDialog.show(DesktopModelFormDialog(provider: providers[index]));
   }
 
   void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
@@ -133,7 +133,7 @@ class _DesktopSettingProviderPageState
 
   void showProviderFormDialog(schema.Provider provider) async {
     entry?.remove();
-    ADialog.show(DesktopProviderFormDialog(provider: provider));
+    AthenaDialog.show(DesktopProviderFormDialog(provider: provider));
   }
 
   Future<void> toggleProvider(bool value) async {
@@ -234,15 +234,15 @@ class _DesktopSettingProviderPageState
       SizedBox(width: 4),
       Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
       Spacer(),
-      ASwitch(value: providers[index].enabled, onChanged: toggleProvider)
+      AthenaSwitch(value: providers[index].enabled, onChanged: toggleProvider)
     ];
     var keyChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API Key')),
-      Expanded(child: AInput(controller: keyController, onBlur: updateKey))
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'API Key')),
+      Expanded(child: AthenaInput(controller: keyController, onBlur: updateKey))
     ];
     var urlChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'API URL')),
-      Expanded(child: AInput(controller: urlController, onBlur: updateUrl))
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'API URL')),
+      Expanded(child: AthenaInput(controller: urlController, onBlur: updateUrl))
     ];
     var modelTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
@@ -250,7 +250,7 @@ class _DesktopSettingProviderPageState
       fontWeight: FontWeight.w500,
     );
     var modelText = Text('Models', style: modelTextStyle);
-    var addModelButton = ASecondaryButton.small(
+    var addModelButton = AthenaSecondaryButton.small(
       onTap: showModelFormDialog,
       child: Text('Add Model'),
     );
@@ -334,7 +334,7 @@ class _ModelContextMenu extends StatelessWidget {
   }
 
   void showModelFormDialog(BuildContext context) {
-    ADialog.show(DesktopModelFormDialog(provider: provider, model: model));
+    AthenaDialog.show(DesktopModelFormDialog(provider: provider, model: model));
     onTap?.call();
   }
 }
@@ -369,7 +369,7 @@ class _ModelTileState extends State<_ModelTile> {
     var nameChildren = [
       Flexible(child: nameText),
       SizedBox(width: 8),
-      ATag.small(text: widget.model.value)
+      AthenaTag.small(text: widget.model.value)
     ];
     var functionCallIcon = Icon(
       HugeIcons.strokeRoundedFunctionCircle,

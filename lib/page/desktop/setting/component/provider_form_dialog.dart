@@ -48,9 +48,9 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       closeButton,
     ];
     var nameChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Name')),
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: nameController))
+      Expanded(child: AthenaInput(controller: nameController))
     ];
     var children = [
       Row(children: titleChildren),
@@ -76,7 +76,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
   }
 
   void cancelDialog() {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   @override
@@ -104,16 +104,16 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
         ..name = nameController.text;
       await notifier.storeProvider(newProvider);
     }
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   Widget _buildButtons() {
     var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var cancelButton = ASecondaryButton(
+    var cancelButton = AthenaSecondaryButton(
       onTap: cancelDialog,
       child: Padding(padding: edgeInsets, child: Text('Cancel')),
     );
-    var storeButton = APrimaryButton(
+    var storeButton = AthenaPrimaryButton(
       onTap: storeProvider,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );

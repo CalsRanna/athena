@@ -35,8 +35,8 @@ class SettingPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AScaffold(
-      appBar: AAppBar(title: Text('Setting')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: Text('Setting')),
       body: SingleChildScrollView(child: column),
     );
   }

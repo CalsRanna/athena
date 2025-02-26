@@ -84,19 +84,19 @@ class DesktopModelSelector extends ConsumerWidget {
   }
 
   void changeModel(Model model) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     onSelected?.call(model);
   }
 
   Future<void> openDialog(WidgetRef ref) async {
     var hasModel = await ModelViewModel(ref).hasModel();
     if (hasModel) {
-      ADialog.show(
+      AthenaDialog.show(
         DesktopModelSelectDialog(onTap: changeModel),
         barrierDismissible: true,
       );
     } else {
-      ADialog.message('Your should enable a provider first');
+      AthenaDialog.message('Your should enable a provider first');
     }
   }
 }
@@ -137,7 +137,8 @@ class MobileModelSelectDialog extends ConsumerWidget {
   }
 
   Widget _itemBuilder(Model model) {
-    return ABottomSheetTile(onTap: () => onTap?.call(model), title: model.name);
+    return AthenaBottomSheetTile(
+        onTap: () => onTap?.call(model), title: model.name);
   }
 }
 

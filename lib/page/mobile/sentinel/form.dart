@@ -34,17 +34,17 @@ class _MobileSentinelFormPageState
   @override
   Widget build(BuildContext context) {
     var listViewChildren = [
-      const AFormTileLabel.large(title: 'Prompt'),
+      const AthenaFormTileLabel.large(title: 'Prompt'),
       const SizedBox(height: 12),
-      AInput(controller: promptController, maxLines: 8, minLines: 8),
+      AthenaInput(controller: promptController, maxLines: 8, minLines: 8),
       const SizedBox(height: 32),
       _buildNameLabel(),
       const SizedBox(height: 12),
-      AInput(controller: nameController),
+      AthenaInput(controller: nameController),
       const SizedBox(height: 16),
       _buildDescriptionLabel(),
       const SizedBox(height: 12),
-      AInput(controller: descriptionController, maxLines: 4, minLines: 4),
+      AthenaInput(controller: descriptionController, maxLines: 4, minLines: 4),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),
@@ -55,8 +55,9 @@ class _MobileSentinelFormPageState
       _buildButtons(),
     ];
     var column = Column(children: columnChildren);
-    return AScaffold(
-      appBar: AAppBar(title: Text(widget.sentinel?.name ?? 'New Sentinel')),
+    return AthenaScaffold(
+      appBar:
+          AthenaAppBar(title: Text(widget.sentinel?.name ?? 'New Sentinel')),
       body: SafeArea(top: false, child: column),
     );
   }
@@ -83,47 +84,47 @@ class _MobileSentinelFormPageState
 
   Future<void> generateSentinel() async {
     if (promptController.text.isEmpty) {
-      ADialog.message('Prompt is required');
+      AthenaDialog.message('Prompt is required');
     } else {
-      ADialog.loading();
+      AthenaDialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
       if (sentinel == null) {
-        ADialog.dismiss();
+        AthenaDialog.dismiss();
         return;
       }
       nameController.text = sentinel.name;
       descriptionController.text = sentinel.description;
-      ADialog.dismiss();
+      AthenaDialog.dismiss();
     }
   }
 
   Future<void> generateSentinelDescription() async {
     if (promptController.text.isEmpty) {
-      ADialog.message('Prompt is required');
+      AthenaDialog.message('Prompt is required');
     } else {
-      ADialog.loading();
+      AthenaDialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
       if (sentinel == null) {
-        ADialog.dismiss();
+        AthenaDialog.dismiss();
         return;
       }
       descriptionController.text = sentinel.description;
-      ADialog.dismiss();
+      AthenaDialog.dismiss();
     }
   }
 
   Future<void> generateSentinelName() async {
     if (promptController.text.isEmpty) {
-      ADialog.message('Prompt is required');
+      AthenaDialog.message('Prompt is required');
     } else {
-      ADialog.loading();
+      AthenaDialog.loading();
       var sentinel = await viewModel.generateSentinel(promptController.text);
       if (sentinel == null) {
-        ADialog.dismiss();
+        AthenaDialog.dismiss();
         return;
       }
       nameController.text = sentinel.name;
-      ADialog.dismiss();
+      AthenaDialog.dismiss();
     }
   }
 
@@ -137,7 +138,7 @@ class _MobileSentinelFormPageState
 
   Future<void> storeSentinel() async {
     var message = _validate();
-    if (message != null) return ADialog.success(message);
+    if (message != null) return AthenaDialog.success(message);
     if (widget.sentinel == null) return _store();
     _update();
   }
@@ -153,7 +154,7 @@ class _MobileSentinelFormPageState
       onTap: generateSentinelDescription,
       child: icon,
     );
-    return AFormTileLabel.large(
+    return AthenaFormTileLabel.large(
       title: 'Description',
       trailing: gestureDetector,
     );
@@ -165,7 +166,7 @@ class _MobileSentinelFormPageState
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return APrimaryButton(
+    return AthenaPrimaryButton(
       onTap: generateSentinel,
       child: Center(child: Text('Generate', style: textStyle)),
     );
@@ -182,7 +183,7 @@ class _MobileSentinelFormPageState
       onTap: generateSentinelName,
       child: icon,
     );
-    return AFormTileLabel.large(title: 'Name', trailing: gestureDetector);
+    return AthenaFormTileLabel.large(title: 'Name', trailing: gestureDetector);
   }
 
   Widget _buildStoreButton() {
@@ -191,7 +192,7 @@ class _MobileSentinelFormPageState
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    return APrimaryButton(
+    return AthenaPrimaryButton(
       onTap: storeSentinel,
       child: Center(child: Text('Store', style: textStyle)),
     );

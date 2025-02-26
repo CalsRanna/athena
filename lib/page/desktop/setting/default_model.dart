@@ -110,7 +110,7 @@ class _DesktopSettingDefaultModelPageState
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       children: listChildren,
     );
-    return AScaffold(body: listView);
+    return AthenaScaffold(body: listView);
   }
 }
 
@@ -157,12 +157,12 @@ class _ModelDropdown extends ConsumerWidget {
   }
 
   void handleTap(Model model) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     onChanged?.call(model);
   }
 
   void showModelSelectorDialog() {
-    ADialog.show(
+    AthenaDialog.show(
       DesktopModelSelectDialog(onTap: handleTap),
       barrierDismissible: true,
     );

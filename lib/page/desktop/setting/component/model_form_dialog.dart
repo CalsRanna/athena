@@ -50,14 +50,14 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       closeButton,
     ];
     var valueChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Id')),
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: valueController))
+      Expanded(child: AthenaInput(controller: valueController))
     ];
     var nameChildren = [
-      SizedBox(width: 120, child: AFormTileLabel(title: 'Name')),
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AInput(controller: nameController))
+      Expanded(child: AthenaInput(controller: nameController))
     ];
     var children = [
       Row(children: titleChildren),
@@ -85,7 +85,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   }
 
   void cancelDialog() {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   @override
@@ -119,16 +119,16 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       );
       await notifier.updateModel(copiedModel);
     }
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
   }
 
   Widget _buildButtons() {
     var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var cancelButton = ASecondaryButton(
+    var cancelButton = AthenaSecondaryButton(
       onTap: cancelDialog,
       child: Padding(padding: edgeInsets, child: Text('Cancel')),
     );
-    var storeButton = APrimaryButton(
+    var storeButton = AthenaPrimaryButton(
       onTap: storeModel,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );

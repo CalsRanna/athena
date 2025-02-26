@@ -1,7 +1,7 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class AInput extends StatefulWidget {
+class AthenaInput extends StatefulWidget {
   final bool autoFocus;
   final TextEditingController controller;
   final int maxLines;
@@ -9,7 +9,7 @@ class AInput extends StatefulWidget {
   final void Function()? onBlur;
   final void Function(String)? onSubmitted;
   final String? placeholder;
-  const AInput({
+  const AthenaInput({
     super.key,
     this.autoFocus = false,
     required this.controller,
@@ -21,10 +21,10 @@ class AInput extends StatefulWidget {
   });
 
   @override
-  State<AInput> createState() => _AInputState();
+  State<AthenaInput> createState() => _AthenaInputState();
 }
 
-class _AInputState extends State<AInput> {
+class _AthenaInputState extends State<AthenaInput> {
   final focusNode = FocusNode();
 
   @override
