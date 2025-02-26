@@ -39,18 +39,14 @@ class SentinelApi {
       model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
     );
-    try {
-      var response = await client.createChatCompletion(request: request);
-      final content = response.choices.first.message.content;
-      final formatted = jsonDecode(
-          content.toString().replaceAll('```json', '').replaceAll('```', ''));
-      return Sentinel()
-        ..name = formatted['name']
-        ..description = formatted['description']
-        ..tags = List<String>.from(formatted['tags'])
-        ..avatar = formatted['avatar'];
-    } catch (e) {
-      return Sentinel();
-    }
+    var response = await client.createChatCompletion(request: request);
+    final content = response.choices.first.message.content;
+    final formatted = jsonDecode(
+        content.toString().replaceAll('```json', '').replaceAll('```', ''));
+    return Sentinel()
+      ..name = formatted['name']
+      ..description = formatted['description']
+      ..tags = List<String>.from(formatted['tags'])
+      ..avatar = formatted['avatar'];
   }
 }
