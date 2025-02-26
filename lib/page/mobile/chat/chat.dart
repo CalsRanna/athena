@@ -366,9 +366,8 @@ class _SendButton extends ConsumerWidget {
   }
 
   void handleTap(BuildContext context, WidgetRef ref) {
-    FocusScope.of(context).unfocus();
-    final streaming = ref.read(streamingNotifierProvider);
-    if (streaming) return;
+    var viewModel = ChatViewModel(ref);
+    if (viewModel.streaming) return;
     onTap?.call(ref);
   }
 }
@@ -432,7 +431,7 @@ class _UserInput extends ConsumerWidget {
       controller: controller,
       cursorColor: ColorUtil.FFFFFFFF,
       decoration: inputDecoration,
-      onSubmitted: (_) => handleSubmitted(ref),
+      onSubmitted: (_) => handleSubmitted(context, ref),
       onTapOutside: (_) => handleTapOutside(context),
       style: textStyle,
       textInputAction: TextInputAction.send,
@@ -448,10 +447,11 @@ class _UserInput extends ConsumerWidget {
     );
   }
 
-  void handleSubmitted(WidgetRef ref) {
-    final streaming = ref.read(streamingNotifierProvider);
-    if (streaming) return;
-    if (controller.text.isEmpty) return;
+  void handleSubmitted(BuildContext context, WidgetRef ref) {
+    if (controller.text.trim().isEmpty) return;
+    FocusScope.of(context).unfocus();
+    var viewModel = ChatViewModel(ref);
+    if (viewModel.streaming) return;
     onSubmitted?.call(ref);
   }
 

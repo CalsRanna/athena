@@ -1,4 +1,3 @@
-import 'package:athena/api/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
@@ -6,7 +5,6 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -27,139 +25,6 @@ class ChatNotifier extends _$ChatNotifier {
     return Chat()
       ..modelId = model.id
       ..sentinelId = sentinel.id;
-  }
-
-  Future<int> create({required Model model, required Sentinel sentinel}) async {
-    var chat = Chat()
-      ..modelId = model.id
-      ..sentinelId = sentinel.id
-      ..createdAt = DateTime.now()
-      ..updatedAt = DateTime.now();
-    await isar.writeTxn(() async {
-      chat.id = await isar.chats.put(chat);
-    });
-    state = AsyncData(chat.copyWith(id: chat.id));
-    ref.invalidate(chatsNotifierProvider);
-    return chat.id;
-  }
-
-  Future<void> resend(
-    Message message, {
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
-    var messageProvider = messagesNotifierProvider(id);
-    final notifier = ref.read(messageProvider.notifier);
-    await notifier.destroy(message);
-    send(message.content, model: model, sentinel: sentinel);
-  }
-
-  Future<void> send(
-    String message, {
-    required Model model,
-    required Sentinel sentinel,
-  }) async {
-    final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
-    streamingNotifier.streaming();
-    var messagesProvider = messagesNotifierProvider(id);
-    final messagesNotifier = ref.read(messagesProvider.notifier);
-    await messagesNotifier.store(message);
-    final prompt = await _getPrompt();
-    final system = {'role': 'system', 'content': prompt};
-    final histories = await ref.read(messagesProvider.future);
-    var provider = await _getProvider(model.providerId);
-    try {
-      final stream = ChatApi().getCompletion(
-        messages: [Message.fromJson(system), ...histories],
-        model: model,
-        provider: provider,
-      );
-      await for (final delta in stream) {
-        await messagesNotifier.streaming(delta);
-      }
-      await messagesNotifier.closeStreaming();
-      await store();
-    } catch (error) {
-      messagesNotifier.append(error.toString());
-    }
-    streamingNotifier.close();
-    await _generateTitle(message, model: model);
-  }
-
-  Future<void> store({String? title}) async {
-    final previousState = await future;
-    final chat = previousState.copyWith(
-      title: title,
-      updatedAt: DateTime.now(),
-    );
-    state = AsyncData(chat);
-    await isar.writeTxn(() async {
-      await isar.chats.put(chat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-  }
-
-  Future<void> updateModel(Model model) async {
-    final previousState = await future;
-    final chat = previousState.copyWith(modelId: model.id);
-    state = AsyncData(chat);
-    await future;
-  }
-
-  Future<void> updateSentinel(Sentinel sentinel) async {
-    var previousState = await future;
-    final chat = previousState.copyWith(sentinelId: sentinel.id);
-    state = AsyncData(chat);
-    await isar.writeTxn(() async {
-      await isar.chats.put(chat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-  }
-
-  Future<void> updateTitle(String title) async {
-    final previousState = await future;
-    final chat = previousState.copyWith(title: title);
-    state = AsyncData(chat);
-    await isar.writeTxn(() async {
-      await isar.chats.put(chat);
-    });
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-  }
-
-  Future<void> _generateTitle(String message, {required Model model}) async {
-    final previousState = await future;
-    if (previousState.title.isNotEmpty == true) return;
-    var provider = await _getProvider(model.id);
-    var title = '';
-    try {
-      final titleTokens = ChatApi().getTitle(
-        message,
-        model: model,
-        provider: provider,
-      );
-      await for (final token in titleTokens) {
-        title += token;
-      }
-    } catch (error) {
-      title = '';
-    }
-    store(title: title.trim());
-  }
-
-  Future<String> _getPrompt() async {
-    var chat = await future;
-    var sentinelId = chat.sentinelId;
-    var provider = sentinelNotifierProvider(sentinelId);
-    final chatRelatedSentinel = await ref.read(provider.future);
-    return chatRelatedSentinel.prompt;
-  }
-
-  Future<schema.Provider> _getProvider(int providerId) async {
-    var provider = providerNotifierProvider(providerId);
-    return await ref.read(provider.future);
   }
 }
 
