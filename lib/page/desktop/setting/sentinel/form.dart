@@ -59,7 +59,7 @@ class _DesktopSentinelFormPageState
 
   void generate() async {
     if (loading) return;
-    if (promptController.text.isEmpty) {
+    if (promptController.text.trim().isEmpty) {
       AthenaDialog.message('Prompt is required');
       return;
     }
@@ -69,20 +69,18 @@ class _DesktopSentinelFormPageState
     try {
       final generatedSentinel =
           await viewModel.generateSentinel(promptController.text);
-      if (generatedSentinel == null) {
-        loading = false;
-        return;
-      }
       avatarController.text = generatedSentinel.avatar;
       nameController.text = generatedSentinel.name;
       descriptionController.text = generatedSentinel.description;
-      loading = false;
       setState(() {
+        loading = false;
         sentinel = generatedSentinel;
       });
     } catch (error) {
-      loading = false;
-      setState(() {});
+      setState(() {
+        loading = false;
+      });
+      AthenaDialog.message(error.toString());
     }
   }
 
