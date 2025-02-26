@@ -1,7 +1,7 @@
 import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/util/color_util.dart';
+import 'package:athena/widget/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -39,9 +39,8 @@ class DesktopChatListView extends ConsumerWidget {
   }
 
   Widget _itemBuilder(Chat chat) {
-    final active = selectedChat?.id == chat.id;
     return _ChatTile(
-      active: active,
+      active: selectedChat?.id == chat.id,
       chat: chat,
       onDestroyed: () => onDestroyed?.call(chat),
       onRenamed: () => onRenamed?.call(chat),
@@ -77,36 +76,15 @@ class _ChatTileState extends State<_ChatTile> {
 
   @override
   Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: widget.active ? ColorUtil.FF161616 : ColorUtil.FFFFFFFF,
-      fontSize: 14,
-      height: 1.5,
-    );
-    var text = AnimatedDefaultTextStyle(
-      duration: const Duration(milliseconds: 300),
-      overflow: TextOverflow.ellipsis,
-      style: textStyle,
-      child: Text(widget.chat.title),
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(35),
-      color: widget.active ? ColorUtil.FFE0E0E0 : ColorUtil.FF616161,
-    );
-    var container = AnimatedContainer(
-      decoration: boxDecoration,
-      duration: const Duration(milliseconds: 300),
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: text,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return DesktopMenuTile(
+      active: widget.active,
+      label: widget.chat.title,
       onTap: widget.onTap,
-      onSecondaryTapUp: (details) => handleSecondaryTap(context, details),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
+      onSecondaryTap: handleSecondaryTap,
     );
   }
 
-  void handleSecondaryTap(BuildContext context, TapUpDetails details) {
+  void handleSecondaryTap(TapUpDetails details) {
     final position = details.globalPosition;
     var contextMenu = DesktopChatContextMenu(
       onDestroyed: handleDestroy,
