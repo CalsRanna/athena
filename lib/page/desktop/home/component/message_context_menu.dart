@@ -1,12 +1,19 @@
-import 'package:athena/widget/card.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopMessageContextMenu extends StatelessWidget {
+  final Offset offset;
+  final void Function()? onBarrierTapped;
   final void Function()? onCopied;
   final void Function()? onDestroyed;
 
-  const DesktopMessageContextMenu({super.key, this.onCopied, this.onDestroyed});
+  const DesktopMessageContextMenu({
+    super.key,
+    required this.offset,
+    this.onBarrierTapped,
+    this.onCopied,
+    this.onDestroyed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,10 +21,10 @@ class DesktopMessageContextMenu extends StatelessWidget {
       DesktopContextMenuOption(text: 'Copy', onTap: onCopied),
       DesktopContextMenuOption(text: 'Delete', onTap: onDestroyed),
     ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onBarrierTapped,
       children: children,
     );
-    return ACard(child: column);
   }
 }

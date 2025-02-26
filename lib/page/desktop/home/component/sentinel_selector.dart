@@ -38,39 +38,6 @@ class DesktopSentinelSelector extends StatelessWidget {
   }
 }
 
-class _SentinelSelectDialog extends ConsumerWidget {
-  final void Function(Sentinel)? onTap;
-  const _SentinelSelectDialog({this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sentinelsNotifierProvider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-    return UnconstrainedBox(
-      child: ACard(borderRadius: BorderRadius.circular(24), child: child),
-    );
-  }
-
-  Widget _buildData(List<Sentinel> sentinels) {
-    if (sentinels.isEmpty) return const SizedBox();
-    List<Widget> children = sentinels.map(_itemBuilder).toList();
-    return ConstrainedBox(
-      constraints: BoxConstraints.loose(Size(500, 600)),
-      child: ListView(shrinkWrap: true, children: children),
-    );
-  }
-
-  Widget _itemBuilder(Sentinel sentinel) {
-    return _DesktopSentinelSelectDialogTile(
-      sentinel: sentinel,
-      onTap: () => onTap?.call(sentinel),
-    );
-  }
-}
-
 class _DesktopSentinelSelectDialogTile extends StatefulWidget {
   final Sentinel sentinel;
   final void Function()? onTap;
@@ -127,5 +94,38 @@ class _DesktopSentinelSelectDialogTileState
     setState(() {
       hover = false;
     });
+  }
+}
+
+class _SentinelSelectDialog extends ConsumerWidget {
+  final void Function(Sentinel)? onTap;
+  const _SentinelSelectDialog({this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(sentinelsNotifierProvider);
+    var child = switch (state) {
+      AsyncData(:final value) => _buildData(value),
+      _ => const SizedBox(),
+    };
+    return UnconstrainedBox(
+      child: ACard(borderRadius: BorderRadius.circular(24), child: child),
+    );
+  }
+
+  Widget _buildData(List<Sentinel> sentinels) {
+    if (sentinels.isEmpty) return const SizedBox();
+    List<Widget> children = sentinels.map(_itemBuilder).toList();
+    return ConstrainedBox(
+      constraints: BoxConstraints.loose(Size(500, 600)),
+      child: ListView(shrinkWrap: true, children: children),
+    );
+  }
+
+  Widget _itemBuilder(Sentinel sentinel) {
+    return _DesktopSentinelSelectDialogTile(
+      sentinel: sentinel,
+      onTap: () => onTap?.call(sentinel),
+    );
   }
 }

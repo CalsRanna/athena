@@ -28,6 +28,10 @@ class DesktopChatListView extends ConsumerWidget {
     };
   }
 
+  void selectChat(Chat chat) {
+    onSelected?.call(chat);
+  }
+
   Widget _buildData(WidgetRef ref, List<Chat> chats) {
     if (chats.isEmpty) return const SizedBox();
     return ListView.separated(
@@ -46,10 +50,6 @@ class DesktopChatListView extends ConsumerWidget {
       onRenamed: () => onRenamed?.call(chat),
       onTap: () => selectChat(chat),
     );
-  }
-
-  void selectChat(Chat chat) {
-    onSelected?.call(chat);
   }
 }
 
@@ -84,29 +84,6 @@ class _ChatTileState extends State<_ChatTile> {
     );
   }
 
-  void handleSecondaryTap(TapUpDetails details) {
-    final position = details.globalPosition;
-    var contextMenu = DesktopChatContextMenu(
-      onDestroyed: handleDestroy,
-      onRenamed: handleRename,
-    );
-    var children = [
-      const SizedBox.expand(),
-      Positioned(left: position.dx, top: position.dy, child: contextMenu),
-    ];
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: removeEntry,
-      child: Stack(children: children),
-    );
-    entry = OverlayEntry(builder: (context) => gestureDetector);
-    Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    entry?.remove();
-  }
-
   void handleDestroy() {
     entry?.remove();
     widget.onDestroyed?.call();
@@ -115,5 +92,20 @@ class _ChatTileState extends State<_ChatTile> {
   void handleRename() {
     entry?.remove();
     widget.onRenamed?.call();
+  }
+
+  void handleSecondaryTap(TapUpDetails details) {
+    var contextMenu = DesktopChatContextMenu(
+      offset: details.globalPosition,
+      onBarrierTapped: removeEntry,
+      onDestroyed: handleDestroy,
+      onRenamed: handleRename,
+    );
+    entry = OverlayEntry(builder: (context) => contextMenu);
+    Overlay.of(context).insert(entry!);
+  }
+
+  void removeEntry() {
+    entry?.remove();
   }
 }

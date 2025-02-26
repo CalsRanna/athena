@@ -39,6 +39,31 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
     };
   }
 
+  void copyMessage(Message message) {
+    entry?.remove();
+    Clipboard.setData(ClipboardData(text: message.content));
+  }
+
+  void destroyMessage(Message message) {
+    entry?.remove();
+    ChatViewModel(ref).destroyMessage(message);
+  }
+
+  void openContextMenu(TapUpDetails details, Message message) {
+    var contextMenu = DesktopMessageContextMenu(
+      offset: details.globalPosition,
+      onBarrierTapped: removeEntry,
+      onCopied: () => copyMessage(message),
+      onDestroyed: () => destroyMessage(message),
+    );
+    entry = OverlayEntry(builder: (context) => contextMenu);
+    Overlay.of(context).insert(entry!);
+  }
+
+  void removeEntry() {
+    entry?.remove();
+  }
+
   Widget _buildData(List<Message> messages) {
     if (messages.isEmpty == true) {
       return DesktopSentinelPlaceholder(sentinel: widget.sentinel);
@@ -60,38 +85,5 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
       onResend: () => widget.onResend.call(message),
       onSecondaryTapUp: (details) => openContextMenu(details, message),
     );
-  }
-
-  void openContextMenu(TapUpDetails details, Message message) {
-    final position = details.globalPosition;
-    var contextMenu = DesktopMessageContextMenu(
-      onCopied: () => copyMessage(message),
-      onDestroyed: () => destroyMessage(message),
-    );
-    var children = [
-      const SizedBox.expand(),
-      Positioned(left: position.dx, top: position.dy, child: contextMenu),
-    ];
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: removeEntry,
-      child: Stack(children: children),
-    );
-    entry = OverlayEntry(builder: (context) => gestureDetector);
-    Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    entry?.remove();
-  }
-
-  void copyMessage(Message message) {
-    entry?.remove();
-    Clipboard.setData(ClipboardData(text: message.content));
-  }
-
-  void destroyMessage(Message message) {
-    entry?.remove();
-    ChatViewModel(ref).destroyMessage(message);
   }
 }

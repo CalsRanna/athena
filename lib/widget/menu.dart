@@ -32,18 +32,13 @@ class DesktopContextMenu extends StatelessWidget {
   Widget _buildBarrier() => const SizedBox.expand();
 
   Widget _buildMenu(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final surface = colorScheme.surface;
-    final shadow = colorScheme.shadow.withValues(alpha: 0.1);
-    final boxShadow = BoxShadow(color: shadow, blurRadius: 12, spreadRadius: 4);
     var boxDecoration = BoxDecoration(
-      color: surface,
+      color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
-      boxShadow: [boxShadow],
     );
     return Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(8),
       width: width,
       child: Column(children: children),
     );
@@ -87,23 +82,20 @@ class _DesktopContextMenuOptionState extends State<DesktopContextMenuOption> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface;
-    final surfaceContainer = colorScheme.surfaceContainer;
     var textStyle = TextStyle(
-      color: onSurface,
+      color: ColorUtil.FFFFFFFF,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? surfaceContainer : null,
+      color: hover ? ColorUtil.FF616161 : null,
     );
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       width: 100,
       child: Text(widget.text, style: textStyle),
     );
