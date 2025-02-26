@@ -59,13 +59,9 @@ class ChatApi {
       model: ChatCompletionModel.modelId(model.value),
       messages: [message],
     );
-    try {
-      var response = await client.createChatCompletion(request: request);
-      if (response.choices.isEmpty) return 'The response has no choices';
-      return 'The connection is successful';
-    } catch (error) {
-      return error.toString();
-    }
+    var response = await client.createChatCompletion(request: request);
+    if (response.choices.isEmpty) return 'The response has no choices';
+    return 'The connection is successful';
   }
 
   Stream<OverrodeChatCompletionStreamResponseDelta> getCompletion({
