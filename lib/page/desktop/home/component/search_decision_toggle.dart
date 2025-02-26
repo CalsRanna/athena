@@ -1,4 +1,5 @@
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -13,12 +14,13 @@ class DesktopChatSearchDecisionToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var icon = HugeIcons.strokeRoundedNoInternet;
-    if (chat.enableSearch) icon = HugeIcons.strokeRoundedInternet;
+    var iconData = HugeIcons.strokeRoundedNoInternet;
+    if (chat.enableSearch) iconData = HugeIcons.strokeRoundedInternet;
+    var icon = Icon(iconData, color: ColorUtil.FFFFFFFF, size: 24);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => onTap?.call(!chat.enableSearch),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: Icon(icon)),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 }

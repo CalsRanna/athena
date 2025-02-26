@@ -41,7 +41,7 @@ class DesktopMessageInput extends StatelessWidget {
       Icon(HugeIcons.strokeRoundedImage01),
     ];
     var toolbar = IconTheme.merge(
-      data: IconThemeData(color: ColorUtil.FF616161),
+      data: IconThemeData(color: ColorUtil.FF616161, size: 24),
       child: Row(spacing: 12, children: toolbarChildren),
     );
     var input = _Input(controller: controller, onSubmitted: onSubmitted);

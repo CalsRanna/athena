@@ -1,7 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/widget/card.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +15,7 @@ class DesktopSentinelSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedArtificialIntelligence03,
-      color: ColorUtil.FF616161,
+      color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     return GestureDetector(
@@ -108,9 +107,16 @@ class _SentinelSelectDialog extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return UnconstrainedBox(
-      child: ACard(borderRadius: BorderRadius.circular(24), child: child),
+    var boxDecoration = BoxDecoration(
+      color: ColorUtil.FF282F32,
+      borderRadius: BorderRadius.circular(8),
     );
+    var container = Container(
+      decoration: boxDecoration,
+      padding: EdgeInsets.all(8),
+      child: child,
+    );
+    return UnconstrainedBox(child: container);
   }
 
   Widget _buildData(List<Sentinel> sentinels) {
