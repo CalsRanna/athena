@@ -83,48 +83,51 @@ class _MobileSentinelFormPageState
   }
 
   Future<void> generateSentinel() async {
-    if (promptController.text.isEmpty) {
+    if (promptController.text.trim().isEmpty) {
       AthenaDialog.message('Prompt is required');
-    } else {
-      AthenaDialog.loading();
+      return;
+    }
+    AthenaDialog.loading();
+    try {
       var sentinel = await viewModel.generateSentinel(promptController.text);
-      if (sentinel == null) {
-        AthenaDialog.dismiss();
-        return;
-      }
       nameController.text = sentinel.name;
       descriptionController.text = sentinel.description;
       AthenaDialog.dismiss();
+    } catch (error) {
+      AthenaDialog.dismiss();
+      AthenaDialog.message(error.toString());
     }
   }
 
   Future<void> generateSentinelDescription() async {
-    if (promptController.text.isEmpty) {
+    if (promptController.text.trim().isEmpty) {
       AthenaDialog.message('Prompt is required');
-    } else {
-      AthenaDialog.loading();
+      return;
+    }
+    AthenaDialog.loading();
+    try {
       var sentinel = await viewModel.generateSentinel(promptController.text);
-      if (sentinel == null) {
-        AthenaDialog.dismiss();
-        return;
-      }
       descriptionController.text = sentinel.description;
       AthenaDialog.dismiss();
+    } catch (error) {
+      AthenaDialog.dismiss();
+      AthenaDialog.message(error.toString());
     }
   }
 
   Future<void> generateSentinelName() async {
-    if (promptController.text.isEmpty) {
+    if (promptController.text.trim().isEmpty) {
       AthenaDialog.message('Prompt is required');
-    } else {
-      AthenaDialog.loading();
+      return;
+    }
+    AthenaDialog.loading();
+    try {
       var sentinel = await viewModel.generateSentinel(promptController.text);
-      if (sentinel == null) {
-        AthenaDialog.dismiss();
-        return;
-      }
       nameController.text = sentinel.name;
       AthenaDialog.dismiss();
+    } catch (error) {
+      AthenaDialog.dismiss();
+      AthenaDialog.message(error.toString());
     }
   }
 

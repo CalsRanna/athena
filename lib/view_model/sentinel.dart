@@ -19,12 +19,12 @@ class SentinelViewModel extends ViewModel {
     ref.invalidate(sentinelsNotifierProvider);
   }
 
-  Future<Sentinel?> generateSentinel(String prompt) async {
+  Future<Sentinel> generateSentinel(String prompt) async {
     var provider = sentinelMetaGenerationModelNotifierProvider;
     var model = await ref.read(provider.future);
     var builder = isar.providers.where().idEqualTo(model.providerId);
     var aiProvider = await builder.findFirst();
-    if (aiProvider == null) return null;
+    if (aiProvider == null) throw Exception('Model is not available');
     return await SentinelApi().generate(
       prompt,
       provider: aiProvider,

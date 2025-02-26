@@ -42,7 +42,8 @@ class SentinelApi {
     var response = await client.createChatCompletion(request: request);
     final content = response.choices.first.message.content;
     final formatted = jsonDecode(
-        content.toString().replaceAll('```json', '').replaceAll('```', ''));
+      content.toString().replaceAll('```json', '').replaceAll('```', ''),
+    );
     return Sentinel()
       ..name = formatted['name']
       ..description = formatted['description']
