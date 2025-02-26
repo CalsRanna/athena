@@ -17,8 +17,8 @@ class MobileToolListPage extends ConsumerWidget {
     var tools = ref.watch(toolsNotifierProvider).valueOrNull;
     Widget body = const SizedBox();
     if (tools != null) body = _buildBody(tools);
-    return AScaffold(
-      appBar: AAppBar(title: const Text('Tool')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: const Text('Tool')),
       body: body,
     );
   }

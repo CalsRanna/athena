@@ -14,7 +14,7 @@ class DesktopSettingSentinelPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AScaffold(body: _SentinelGridView());
+    return AthenaScaffold(body: _SentinelGridView());
   }
 }
 

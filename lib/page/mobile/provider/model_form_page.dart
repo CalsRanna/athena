@@ -31,21 +31,21 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
   @override
   Widget build(BuildContext context) {
     var listViewChildren = [
-      AFormTileLabel.large(title: 'Id'),
+      AthenaFormTileLabel.large(title: 'Id'),
       SizedBox(height: 12),
-      AInput(controller: valueController),
+      AthenaInput(controller: valueController),
       SizedBox(height: 16),
-      AFormTileLabel.large(title: 'Name'),
+      AthenaFormTileLabel.large(title: 'Name'),
       SizedBox(height: 12),
-      AInput(controller: nameController),
+      AthenaInput(controller: nameController),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
     var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
-    return AScaffold(
-      appBar: AAppBar(title: Text(widget.model?.name ?? 'New Model')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: Text(widget.model?.name ?? 'New Model')),
       body: SafeArea(top: false, child: Column(children: columnChildren)),
     );
   }
@@ -87,7 +87,7 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    var button = APrimaryButton(
+    var button = AthenaPrimaryButton(
       onTap: submitModel,
       child: Center(child: Text('Submit', style: textStyle)),
     );

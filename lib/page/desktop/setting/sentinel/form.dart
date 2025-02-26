@@ -45,7 +45,7 @@ class _DesktopSentinelFormPageState
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Row(children: children),
     );
-    return AScaffold(body: padding);
+    return AthenaScaffold(body: padding);
   }
 
   @override
@@ -60,7 +60,7 @@ class _DesktopSentinelFormPageState
   void generate() async {
     if (loading) return;
     if (promptController.text.isEmpty) {
-      ADialog.message('Prompt is required');
+      AthenaDialog.message('Prompt is required');
       return;
     }
     setState(() {
@@ -123,18 +123,18 @@ class _DesktopSentinelFormPageState
     );
     var generateChildren = [
       if (loading) SizedBox(height: 16, width: 16, child: indicator),
-      ATextButton(text: 'Generate', onTap: generate),
+      AthenaTextButton(text: 'Generate', onTap: generate),
     ];
     var generateButton = Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: generateChildren,
     );
     const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    final cancelButton = ASecondaryButton(
+    final cancelButton = AthenaSecondaryButton(
       onTap: popPage,
       child: Padding(padding: edgeInsets, child: const Text('Cancel')),
     );
-    final storeButton = APrimaryButton(
+    final storeButton = AthenaPrimaryButton(
       onTap: storeSentinel,
       child: Padding(padding: edgeInsets, child: const Text('Store')),
     );
@@ -155,20 +155,21 @@ class _DesktopSentinelFormPageState
       fontWeight: FontWeight.w500,
     );
     var avatarChildren = [
-      const SizedBox(width: 120, child: AFormTileLabel(title: 'Avatar')),
-      Expanded(child: AInput(controller: avatarController))
+      const SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
+      Expanded(child: AthenaInput(controller: avatarController))
     ];
     var nameChildren = [
-      const SizedBox(width: 120, child: AFormTileLabel(title: 'Name')),
-      Expanded(child: AInput(controller: nameController))
+      const SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
+      Expanded(child: AthenaInput(controller: nameController))
     ];
     var descriptionChildren = [
-      const SizedBox(width: 120, child: AFormTileLabel(title: 'Description')),
-      Expanded(child: AInput(controller: descriptionController))
+      const SizedBox(
+          width: 120, child: AthenaFormTileLabel(title: 'Description')),
+      Expanded(child: AthenaInput(controller: descriptionController))
     ];
     const promptLabel = SizedBox(
       width: 120,
-      child: AFormTileLabel(title: 'Prompt'),
+      child: AthenaFormTileLabel(title: 'Prompt'),
     );
     const promptEdgeInsets = EdgeInsets.symmetric(vertical: 16);
     var promptChildren = [

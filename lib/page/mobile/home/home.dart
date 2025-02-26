@@ -72,7 +72,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AScaffold(body: body);
+    return AthenaScaffold(body: body);
   }
 
   void navigateChatList(BuildContext context) {

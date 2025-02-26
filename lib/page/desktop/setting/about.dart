@@ -42,7 +42,7 @@ class _DesktopSettingAboutPageState
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
-    return AScaffold(body: Center(child: column));
+    return AthenaScaffold(body: Center(child: column));
   }
 
   @override

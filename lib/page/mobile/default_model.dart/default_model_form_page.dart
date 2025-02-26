@@ -111,8 +111,8 @@ class _MobileDefaultModelFormPageState
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: listChildren,
     );
-    return AScaffold(
-      appBar: AAppBar(title: Text('Default Model')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: Text('Default Model')),
       body: listView,
     );
   }
@@ -156,12 +156,12 @@ class _ModelDropdown extends ConsumerWidget {
   }
 
   void handleTap(Model model) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     onChanged?.call(model);
   }
 
   void showModelSelectorDialog() {
-    ADialog.show(
+    AthenaDialog.show(
       MobileModelSelectDialog(onTap: handleTap),
       barrierDismissible: true,
     );

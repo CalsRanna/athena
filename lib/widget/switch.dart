@@ -1,10 +1,10 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class ASwitch extends StatelessWidget {
+class AthenaSwitch extends StatelessWidget {
   final void Function(bool)? onChanged;
   final bool value;
-  const ASwitch({super.key, required this.onChanged, required this.value});
+  const AthenaSwitch({super.key, required this.onChanged, required this.value});
 
   @override
   Widget build(BuildContext context) {

@@ -27,8 +27,8 @@ class MobileSentinelListPage extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return AScaffold(
-      appBar: AAppBar(title: const Text('Sentinel')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: const Text('Sentinel')),
       body: Stack(
         children: [
           listView,
@@ -135,17 +135,17 @@ class _Tile extends ConsumerWidget {
   }
 
   void destroySentinel(BuildContext context, WidgetRef ref) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     SentinelViewModel(ref).destroySentinel(sentinel);
   }
 
   void editSentinel(BuildContext context) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     MobileSentinelFormRoute(sentinel: sentinel).push(context);
   }
 
   Future<void> navigateChatPage(BuildContext context, WidgetRef ref) async {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     var viewModel = ChatViewModel(ref);
     var chat = await viewModel.createChat(sentinel: sentinel);
     if (!context.mounted) return;
@@ -155,12 +155,12 @@ class _Tile extends ConsumerWidget {
   void openBottomSheet(BuildContext context, WidgetRef ref) {
     HapticFeedback.heavyImpact();
     if (sentinel.name == 'Athena') return;
-    var editTile = ABottomSheetTile(
+    var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',
       onTap: () => editSentinel(context),
     );
-    var deleteTile = ABottomSheetTile(
+    var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
       onTap: () => destroySentinel(context, ref),
@@ -171,6 +171,6 @@ class _Tile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
-    ADialog.show(SafeArea(child: padding));
+    AthenaDialog.show(SafeArea(child: padding));
   }
 }

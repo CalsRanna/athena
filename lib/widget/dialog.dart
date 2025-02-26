@@ -4,7 +4,7 @@ import 'package:athena/main.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class ADialog {
+class AthenaDialog {
   static void confirm(
     String title, {
     void Function(BuildContext)? onConfirmed,

@@ -37,13 +37,13 @@ class _MobileProviderFormPageState
   @override
   Widget build(BuildContext context) {
     var children = [
-      AFormTileLabel.large(title: 'API Key'),
+      AthenaFormTileLabel.large(title: 'API Key'),
       SizedBox(height: 12),
-      AInput(controller: keyController),
+      AthenaInput(controller: keyController),
       SizedBox(height: 16),
-      AFormTileLabel.large(title: 'API Url'),
+      AthenaFormTileLabel.large(title: 'API Url'),
       SizedBox(height: 12),
-      AInput(controller: urlController),
+      AthenaInput(controller: urlController),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,8 +67,8 @@ class _MobileProviderFormPageState
       children: listViewChildren,
     );
     var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
-    return AScaffold(
-      appBar: AAppBar(title: Text(widget.provider.name)),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: Text(widget.provider.name)),
       body: SafeArea(top: false, child: Column(children: columnChildren)),
     );
   }
@@ -76,7 +76,7 @@ class _MobileProviderFormPageState
   Future<void> checkConnection(Model model) async {
     var viewModel = ModelViewModel(ref);
     var message = await viewModel.checkConnection(model);
-    ADialog.message(message);
+    AthenaDialog.message(message);
   }
 
   void createModel(BuildContext context) {
@@ -84,7 +84,7 @@ class _MobileProviderFormPageState
   }
 
   void destroyModel(Model model) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     ModelViewModel(ref).destroyModel(model);
   }
 
@@ -96,7 +96,7 @@ class _MobileProviderFormPageState
   }
 
   void editModel(Model model) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     MobileModelFormRoute(model: model).push(context);
   }
 
@@ -109,12 +109,12 @@ class _MobileProviderFormPageState
 
   void openBottomSheet(BuildContext context, Model model) {
     HapticFeedback.heavyImpact();
-    var editTile = ABottomSheetTile(
+    var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',
       onTap: () => editModel(model),
     );
-    var deleteTile = ABottomSheetTile(
+    var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
       onTap: () => destroyModel(model),
@@ -125,7 +125,7 @@ class _MobileProviderFormPageState
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
-    ADialog.show(SafeArea(child: padding));
+    AthenaDialog.show(SafeArea(child: padding));
   }
 
   Future<void> updateProvider() async {
@@ -139,11 +139,11 @@ class _MobileProviderFormPageState
   }
 
   Widget _buildModelFormLabel(BuildContext context) {
-    var newModelButton = ATextButton(
+    var newModelButton = AthenaTextButton(
       onTap: () => createModel(context),
       text: 'New',
     );
-    var label = AFormTileLabel.large(
+    var label = AthenaFormTileLabel.large(
       title: 'Models',
       trailing: newModelButton,
     );
@@ -167,7 +167,7 @@ class _MobileProviderFormPageState
         behavior: HitTestBehavior.opaque,
         onLongPress: () => openBottomSheet(context, models[i]),
         onTap: () => checkConnection(models[i]),
-        child: ATag(text: models[i].name),
+        child: AthenaTag(text: models[i].name),
       );
       if (i % 3 == 0) children1.add(tile);
       if (i % 3 == 1) children2.add(tile);
@@ -198,7 +198,7 @@ class _MobileProviderFormPageState
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    var button = APrimaryButton(
+    var button = AthenaPrimaryButton(
       onTap: updateProvider,
       child: Center(child: Text('Update', style: textStyle)),
     );

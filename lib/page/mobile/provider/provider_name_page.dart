@@ -37,7 +37,7 @@ class _MobileProviderNamePageState
 
   @override
   Widget build(BuildContext context) {
-    final button = AIconButton(
+    final button = AthenaIconButton(
       icon: HugeIcons.strokeRoundedTick02,
       onTap: handleTap,
     );
@@ -49,8 +49,8 @@ class _MobileProviderNamePageState
       maxLines: null,
       style: const TextStyle(color: ColorUtil.FFFFFFFF),
     );
-    return AScaffold(
-      appBar: AAppBar(action: button, title: const Text('New Provider')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(action: button, title: const Text('New Provider')),
       body: Padding(padding: const EdgeInsets.all(16), child: textField),
     );
   }

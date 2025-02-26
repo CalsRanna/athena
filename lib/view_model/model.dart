@@ -13,15 +13,15 @@ class ModelViewModel extends ViewModel {
   ModelViewModel(this.ref);
 
   Future<String> checkConnection(Model model) async {
-    ADialog.loading();
+    AthenaDialog.loading();
     try {
       var provider = providerNotifierProvider(model.providerId);
       var aiProvider = await ref.read(provider.future);
       var result = await ChatApi().connect(provider: aiProvider, model: model);
-      ADialog.dismiss();
+      AthenaDialog.dismiss();
       return result;
     } catch (error) {
-      ADialog.dismiss();
+      AthenaDialog.dismiss();
       return error.toString();
     }
   }

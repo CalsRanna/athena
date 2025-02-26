@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:window_manager/window_manager.dart';
 
-class AAppBar extends StatelessWidget {
+class AthenaAppBar extends StatelessWidget {
   final Widget? action;
   final Widget? leading;
   final Widget? title;
-  const AAppBar({super.key, this.action, this.leading, this.title});
+  const AthenaAppBar({super.key, this.action, this.leading, this.title});
 
   @override
   Widget build(BuildContext context) {

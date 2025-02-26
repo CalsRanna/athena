@@ -1,14 +1,14 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class ATag extends StatelessWidget {
+class AthenaTag extends StatelessWidget {
   final EdgeInsets padding;
   final bool selected;
   final String text;
 
-  const ATag({super.key, this.selected = false, required this.text})
+  const AthenaTag({super.key, this.selected = false, required this.text})
       : padding = const EdgeInsets.symmetric(horizontal: 36, vertical: 13);
-  const ATag.small({super.key, this.selected = false, required this.text})
+  const AthenaTag.small({super.key, this.selected = false, required this.text})
       : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 4);
 
   @override

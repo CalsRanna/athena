@@ -1,16 +1,19 @@
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
-class AFormTileLabel extends StatelessWidget {
+class AthenaFormTileLabel extends StatelessWidget {
   final String title;
   final double titleFontSize;
   final Widget? trailing;
 
-  const AFormTileLabel({super.key, required this.title, this.trailing})
+  const AthenaFormTileLabel({super.key, required this.title, this.trailing})
       : titleFontSize = 14;
 
-  const AFormTileLabel.large({super.key, required this.title, this.trailing})
-      : titleFontSize = 24;
+  const AthenaFormTileLabel.large({
+    super.key,
+    required this.title,
+    this.trailing,
+  }) : titleFontSize = 24;
 
   @override
   Widget build(BuildContext context) {

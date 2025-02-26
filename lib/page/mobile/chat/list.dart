@@ -24,8 +24,8 @@ class MobileChatListPage extends ConsumerWidget {
       AsyncData(:final value) => _buildData(value),
       _ => const SizedBox(),
     };
-    return AScaffold(
-      appBar: AAppBar(title: const Text('Chat history')),
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: const Text('Chat history')),
       body: listView,
     );
   }
@@ -107,7 +107,7 @@ class _ListTile extends ConsumerWidget {
   }
 
   void destroyChat(BuildContext context, WidgetRef ref) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     ChatViewModel(ref).destroyChat(chat);
   }
 
@@ -116,17 +116,17 @@ class _ListTile extends ConsumerWidget {
   }
 
   void navigateChatRename(BuildContext context, WidgetRef ref) {
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     ChatViewModel(ref).renameChat(chat);
   }
 
   void openBottomSheet(BuildContext context, WidgetRef ref) {
-    var editTile = ABottomSheetTile(
+    var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Rename',
       onTap: () => navigateChatRename(context, ref),
     );
-    var deleteTile = ABottomSheetTile(
+    var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
       onTap: () => destroyChat(context, ref),
@@ -137,7 +137,7 @@ class _ListTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: column,
     );
-    ADialog.show(SafeArea(child: padding));
+    AthenaDialog.show(SafeArea(child: padding));
   }
 
   String _getContent(WidgetRef ref) {

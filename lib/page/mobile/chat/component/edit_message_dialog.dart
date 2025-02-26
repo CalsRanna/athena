@@ -27,10 +27,10 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
   Widget build(BuildContext context) {
     var barrier = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => ADialog.dismiss(),
+      onTap: () => AthenaDialog.dismiss(),
       child: Container(color: Colors.transparent),
     );
-    var input = AInput(
+    var input = AthenaInput(
       autoFocus: true,
       controller: controller,
       onSubmitted: editMessage,
@@ -54,7 +54,7 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
 
   void editMessage(String text) {
     if (text.trim().isEmpty) return;
-    ADialog.dismiss();
+    AthenaDialog.dismiss();
     var copiedMessage = widget.message.copyWith(content: text);
     widget.onSubmitted?.call(copiedMessage);
   }

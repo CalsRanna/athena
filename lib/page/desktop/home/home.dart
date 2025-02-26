@@ -34,12 +34,14 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     var children = [_buildLeftBar(), Expanded(child: _buildRightWorkspace())];
-    return AScaffold(appBar: _buildAppBar(), body: Row(children: children));
+    return AthenaScaffold(
+        appBar: _buildAppBar(), body: Row(children: children));
   }
 
   Future<void> changeChat(Chat chat) async {
     if (viewModel.streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
+      return AthenaDialog.message(
+          'Please wait for the current chat to finish.');
     }
     var model = await viewModel.getModel(chat.modelId);
     var sentinel = await viewModel.getSentinel(chat.sentinelId);
@@ -52,10 +54,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> createChat() async {
     if (viewModel.streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
+      return AthenaDialog.message(
+          'Please wait for the current chat to finish.');
     }
     if (!await viewModel.hasModel()) {
-      ADialog.message('You should enable a provider first');
+      AthenaDialog.message('You should enable a provider first');
       return;
     }
     _initChat();
@@ -108,7 +111,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var text = controller.text.trim();
     if (text.isEmpty) return;
     if (model.id <= 0) {
-      ADialog.message('You should select a model first');
+      AthenaDialog.message('You should select a model first');
       return;
     }
     controller.clear();
@@ -129,7 +132,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> updateEnableSearch(bool enabled) async {
     if (viewModel.streaming) {
-      ADialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
     var chat = await viewModel.updateEnableSearch(enabled, chat: this.chat);
@@ -140,7 +143,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> updateModel(Model model) async {
     if (viewModel.streaming) {
-      ADialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
     setState(() {
@@ -154,7 +157,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> updateSentinel(Sentinel sentinel) async {
     if (viewModel.streaming) {
-      ADialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
     setState(() {
@@ -177,7 +180,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       onTap: createChat,
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
-    return AAppBar(
+    return AthenaAppBar(
       action: _buildSettingButton(),
       leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
       title: DesktopChatIndicator(chat: chat),
