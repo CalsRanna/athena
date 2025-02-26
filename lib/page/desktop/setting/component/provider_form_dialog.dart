@@ -25,7 +25,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
   Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: Color(0xFF282F32),
+      color: ColorUtil.FF282F32,
     );
     var titleTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,

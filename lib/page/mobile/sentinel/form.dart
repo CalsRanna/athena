@@ -161,7 +161,7 @@ class _MobileSentinelFormPageState
 
   Widget _buildGenerateButton() {
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -187,7 +187,7 @@ class _MobileSentinelFormPageState
 
   Widget _buildStoreButton() {
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

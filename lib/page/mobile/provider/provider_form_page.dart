@@ -194,7 +194,7 @@ class _MobileProviderFormPageState
 
   Widget _buildSubmitButton() {
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

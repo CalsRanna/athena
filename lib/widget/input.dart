@@ -62,14 +62,14 @@ class _AInputState extends State<AInput> {
       hintStyle: hintTextStyle,
     );
     const inputTextStyle = TextStyle(
-      color: Color(0xFFF5F5F5),
+      color: ColorUtil.FFF5F5F5,
       fontSize: 14,
       height: 1.7,
     );
     var textField = TextField(
       controller: widget.controller,
       cursorHeight: 16,
-      cursorColor: Color(0xFFF5F5F5),
+      cursorColor: ColorUtil.FFF5F5F5,
       decoration: inputDecoration,
       focusNode: focusNode,
       maxLines: widget.maxLines,

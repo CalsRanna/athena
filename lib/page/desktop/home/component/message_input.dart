@@ -41,7 +41,7 @@ class DesktopMessageInput extends StatelessWidget {
       Icon(HugeIcons.strokeRoundedImage01),
     ];
     var toolbar = IconTheme.merge(
-      data: IconThemeData(color: Color(0xFF616161)),
+      data: IconThemeData(color: ColorUtil.FF616161),
       child: Row(spacing: 12, children: toolbarChildren),
     );
     var input = _Input(controller: controller, onSubmitted: onSubmitted);
@@ -77,7 +77,7 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
-      border: Border.all(color: Color(0xFF757575)),
+      border: Border.all(color: ColorUtil.FF757575),
       borderRadius: BorderRadius.circular(24),
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
     );
@@ -91,14 +91,14 @@ class _InputState extends State<_Input> {
       hintStyle: hintTextStyle,
     );
     const inputTextStyle = TextStyle(
-      color: Color(0xFFF5F5F5),
+      color: ColorUtil.FFF5F5F5,
       fontSize: 14,
       height: 1.5,
     );
     var textField = TextField(
       controller: widget.controller,
       cursorHeight: 16,
-      cursorColor: Color(0xFFF5F5F5),
+      cursorColor: ColorUtil.FFF5F5F5,
       decoration: inputDecoration,
       style: inputTextStyle,
       maxLines: 4,
@@ -149,7 +149,7 @@ class _SendButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var colors = [
-      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
       Colors.transparent,
     ];
     var linearGradient = LinearGradient(
@@ -163,7 +163,7 @@ class _SendButton extends ConsumerWidget {
     );
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2E7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(55),

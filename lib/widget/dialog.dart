@@ -25,7 +25,7 @@ class ADialog {
       );
     } else {
       showModalBottomSheet(
-        backgroundColor: Color(0xFF282F32),
+        backgroundColor: ColorUtil.FF282F32,
         builder: (_) => child,
         context: globalKey.currentContext!,
       );
@@ -47,7 +47,7 @@ class ADialog {
   static void message(String message) {
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: Color(0xFF282F32),
+      color: ColorUtil.FF282F32,
     );
     var container = Container(
       decoration: boxDecoration,
@@ -112,7 +112,7 @@ class _ConfirmDialog extends StatelessWidget {
 
   Widget _buildCancelButton(BuildContext context) {
     var shapeDecoration = ShapeDecoration(
-      color: Color(0xFF616161),
+      color: ColorUtil.FF616161,
       shape: StadiumBorder(),
     );
     var textStyle = TextStyle(
@@ -136,7 +136,7 @@ class _ConfirmDialog extends StatelessWidget {
   Widget _buildConfirmButton(BuildContext context) {
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
@@ -144,7 +144,7 @@ class _ConfirmDialog extends StatelessWidget {
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -191,7 +191,7 @@ class _SuccessDialog extends StatelessWidget {
   Widget _buildConfirmButton(BuildContext context) {
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
@@ -199,7 +199,7 @@ class _SuccessDialog extends StatelessWidget {
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

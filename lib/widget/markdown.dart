@@ -123,7 +123,7 @@ class _FlutterMarkdown extends StatelessWidget {
 //     bool closed,
 //   ) {
 //     var borderRadius = BorderRadius.circular(8);
-//     var color = Color(0xFFEAECF0);
+//     var color = ColorUtil.FFEAECF0;
 //     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
 //     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -144,7 +144,7 @@ class _FlutterMarkdown extends StatelessWidget {
 
 //   Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
 //     var borderRadius = BorderRadius.circular(4);
-//     var color = Color(0xFFEAECF0);
+//     var color = ColorUtil.FFEAECF0;
 //     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
 //     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -181,7 +181,7 @@ class _CodeBuilder extends MarkdownElementBuilder {
     final width = multipleLines ? double.infinity : null;
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: Color(0xFFEDEDED),
+      color: ColorUtil.FFEDEDED,
     );
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
     var contentText = Padding(

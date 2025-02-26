@@ -83,7 +83,7 @@ class _AssistantMessageListTile extends StatelessWidget {
           TextStyle(fontSize: 24, height: 1, color: ColorUtil.FFFFFFFF);
       var boxDecoration = BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFF282F32),
+        color: ColorUtil.FF282F32,
       );
       return Container(
         alignment: Alignment.center,
@@ -155,7 +155,7 @@ class _AssistantMessageListTileThinkingPartState
     var borderRadius = BorderRadius.circular(8);
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: Color(0xFFEDEDED),
+      color: ColorUtil.FFEDEDED,
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena/router/router.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/setting.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,7 +65,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
       routerConfig: router.config(),
       theme: ThemeData(
         fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
-        scaffoldBackgroundColor: Color(0xFF282828),
+        scaffoldBackgroundColor: ColorUtil.FF282828,
         useMaterial3: true,
       ),
     );

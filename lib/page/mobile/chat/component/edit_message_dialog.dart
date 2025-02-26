@@ -1,4 +1,5 @@
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +36,7 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
       onSubmitted: editMessage,
     );
     var container = Container(
-      color: Color(0xFF282F32),
+      color: ColorUtil.FF282F32,
       padding: const EdgeInsets.all(16.0),
       child: input,
     );

@@ -257,7 +257,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     );
     var iconData = HugeIcons.strokeRoundedSent;
     if (enableSearch) iconData = HugeIcons.strokeRoundedGlobalSearch;
-    var icon = HugeIcon(icon: iconData, color: Color(0xFF161616));
+    var icon = HugeIcon(icon: iconData, color: ColorUtil.FF161616);
     var sendButton = _SendButton(
       icon: icon,
       onLongPress: updateEnableSearch,
@@ -299,7 +299,7 @@ class _ModelIndicator extends ConsumerWidget {
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
     );
     var innerContainer = Container(
       decoration: innerBoxDecoration,
@@ -307,7 +307,7 @@ class _ModelIndicator extends ConsumerWidget {
       child: text,
     );
     var colors = [
-      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
       ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
@@ -337,7 +337,7 @@ class _SendButton extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFFFFFFF,
@@ -346,7 +346,7 @@ class _SendButton extends ConsumerWidget {
     );
     final streaming = ref.watch(streamingNotifierProvider);
     const loading = CircularProgressIndicator.adaptive(
-      backgroundColor: Color(0xFF161616),
+      backgroundColor: ColorUtil.FF161616,
     );
     var container = Container(
       decoration: shapeDecoration,
@@ -420,7 +420,7 @@ class _UserInput extends ConsumerWidget {
       hintStyle: hintTextStyle,
     );
     const textStyle = TextStyle(
-      color: Color(0xFFF5F5F5),
+      color: ColorUtil.FFF5F5F5,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

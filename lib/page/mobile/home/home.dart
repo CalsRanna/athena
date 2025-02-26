@@ -95,7 +95,7 @@ class _NewChatButton extends ConsumerWidget {
     );
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFFFFFFF,
@@ -210,7 +210,7 @@ class _SentinelTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const innerDecoration = ShapeDecoration(
-      color: Color(0xff161616),
+      color: ColorUtil.FF161616,
       shape: StadiumBorder(),
     );
     const textStyle = TextStyle(
@@ -225,7 +225,7 @@ class _SentinelTile extends ConsumerWidget {
       child: Text(sentinel.name, style: textStyle),
     );
     final colors = [
-      const Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
       Colors.transparent,
     ];
     final linearGradient = LinearGradient(
@@ -309,7 +309,7 @@ class _ShortcutTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          color: Color(0xFF616161),
+          color: ColorUtil.FF616161,
         ),
         padding: EdgeInsets.all(12),
         height: 160,
@@ -432,7 +432,7 @@ class _Welcome extends StatelessWidget {
 
   Widget _buildText() {
     const welcomeTextStyle = TextStyle(
-      color: Color(0xFFA7BA88),
+      color: ColorUtil.FFA7BA88,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );

@@ -39,7 +39,7 @@ class MobileSentinelListPage extends ConsumerWidget {
               onTap: () => navigateSentinelFormPage(context),
               child: Container(
                 decoration: ShapeDecoration(
-                  color: Color(0xFF161616),
+                  color: ColorUtil.FF161616,
                   shape: StadiumBorder(),
                 ),
                 padding: EdgeInsets.fromLTRB(8, 12, 12, 12),
@@ -106,7 +106,7 @@ class _Tile extends ConsumerWidget {
       fontWeight: FontWeight.w500,
     );
     const descriptionTextStyle = TextStyle(
-      color: Color(0xFF616161),
+      color: ColorUtil.FF616161,
       fontSize: 12,
     );
     var children = [
