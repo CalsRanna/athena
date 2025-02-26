@@ -80,7 +80,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var createButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: showDialog,
-      child: icon,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
     return Align(alignment: Alignment.centerRight, child: createButton);
   }
