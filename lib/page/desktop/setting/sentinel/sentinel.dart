@@ -18,11 +18,11 @@ class DesktopSettingSentinelPage extends StatelessWidget {
   }
 }
 
-class _ContextMenu extends StatelessWidget {
+class _SentinelContextMenu extends StatelessWidget {
   final Offset offset;
   final void Function()? onTap;
   final Sentinel sentinel;
-  const _ContextMenu({
+  const _SentinelContextMenu({
     required this.offset,
     this.onTap,
     required this.sentinel,
@@ -166,7 +166,7 @@ class _SentinelTileState extends State<_SentinelTile> {
 
   void showContextMenu(BuildContext context, TapUpDetails details) {
     if (widget.sentinel.name == 'Athena') return;
-    var contextMenu = _ContextMenu(
+    var contextMenu = _SentinelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onTap: removeEntry,
       sentinel: widget.sentinel,

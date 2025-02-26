@@ -55,7 +55,7 @@ class _AInputState extends State<AInput> {
     var hintTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,
       fontSize: 14,
-      height: 1.7,
+      height: 1.75,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: widget.placeholder,
