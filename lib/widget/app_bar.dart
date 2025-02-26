@@ -51,7 +51,7 @@ class MobilePopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     const hugeIcon = Icon(
       HugeIcons.strokeRoundedArrowLeft02,
-      color: Color(0xff000000),
+      color: ColorUtil.FF000000,
       size: 16,
     );
     const boxDecoration = BoxDecoration(

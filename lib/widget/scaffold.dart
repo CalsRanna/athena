@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class AScaffold extends StatelessWidget {
@@ -27,10 +28,13 @@ class _DesktopScaffold extends StatelessWidget {
       Expanded(child: body ?? const SizedBox()),
     ];
     var innerDecoratedBox = DecoratedBox(
-      decoration: BoxDecoration(color: Color(0xFF282828)),
+      decoration: BoxDecoration(color: ColorUtil.FF282828),
       child: Column(children: children),
     );
-    var colors = [Color(0xFF6ABEB9).withValues(alpha: 0.2), Colors.transparent];
+    var colors = [
+      ColorUtil.FF6ABEB9.withValues(alpha: 0.2),
+      Colors.transparent
+    ];
     var linearGradient = LinearGradient(
       begin: Alignment.topRight,
       colors: colors,
@@ -57,7 +61,7 @@ class _MobileScaffold extends StatelessWidget {
     ];
     final mediaQuery = MediaQuery.of(context);
     final container = Container(
-      decoration: const BoxDecoration(color: Color(0xFF282F32)),
+      decoration: const BoxDecoration(color: ColorUtil.FF282F32),
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );

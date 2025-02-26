@@ -143,7 +143,7 @@ class _SentinelTileState extends State<_SentinelTile> {
     BoxConstraints constraints,
   ) {
     const descriptionTextStyle = TextStyle(
-      color: Color(0xFF616161),
+      color: ColorUtil.FF616161,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

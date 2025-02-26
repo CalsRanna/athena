@@ -9,7 +9,7 @@ class AIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hugeIcon = Icon(icon, color: const Color(0xff000000), size: 16);
+    final hugeIcon = Icon(icon, color: ColorUtil.FF000000, size: 16);
     const boxDecoration = BoxDecoration(
       color: ColorUtil.FFFFFFFF,
       shape: BoxShape.circle,
@@ -36,7 +36,7 @@ class APrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: Color(0xFFCED2C7).withValues(alpha: 0.5),
+      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFFFFFFF,

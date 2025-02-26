@@ -59,7 +59,7 @@ class _TagWrap extends StatelessWidget {
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
     );
     var innerContainer = Container(
       decoration: innerBoxDecoration,
@@ -67,7 +67,7 @@ class _TagWrap extends StatelessWidget {
       child: Text(tag, style: textStyle),
     );
     var colors = [
-      Color(0xFFEAEAEA).withValues(alpha: 0.17),
+      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
       ColorUtil.FFFFFFFF.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(

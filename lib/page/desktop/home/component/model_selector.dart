@@ -18,7 +18,7 @@ class DesktopModelSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedAiBrain01,
-      color: Color(0xFF616161),
+      color: ColorUtil.FF616161,
       size: 24,
     );
     return GestureDetector(

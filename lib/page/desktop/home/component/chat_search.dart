@@ -27,7 +27,7 @@ class DesktopChatSearch extends StatelessWidget {
       Expanded(child: textField),
     ];
     var boxDecoration = BoxDecoration(
-      border: Border.all(color: Color(0xFF757575)),
+      border: Border.all(color: ColorUtil.FF757575),
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(56),
     );

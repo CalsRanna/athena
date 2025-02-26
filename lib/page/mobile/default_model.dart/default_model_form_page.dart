@@ -131,7 +131,7 @@ class _ModelDropdown extends ConsumerWidget {
     );
     var icon = Icon(
       HugeIcons.strokeRoundedFilterHorizontal,
-      color: Color(0xFFF5F5F5),
+      color: ColorUtil.FFF5F5F5,
       size: 20,
     );
     var children = [_buildText(ref), icon];
@@ -169,7 +169,7 @@ class _ModelDropdown extends ConsumerWidget {
 
   Widget _buildText(WidgetRef ref) {
     const textStyle = TextStyle(
-      color: Color(0xFFF5F5F5),
+      color: ColorUtil.FFF5F5F5,
       fontSize: 14,
       height: 1.7,
     );

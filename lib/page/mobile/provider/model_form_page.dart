@@ -1,5 +1,6 @@
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -82,7 +83,7 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
 
   Widget _buildSubmitButton() {
     var textStyle = TextStyle(
-      color: Color(0xFF161616),
+      color: ColorUtil.FF161616,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

@@ -9,7 +9,7 @@ class ASwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var outerShapeDecoration = ShapeDecoration(
-      color: value ? Color(0xFFA7BA88) : Color(0xFFC2C9D1),
+      color: value ? ColorUtil.FFA7BA88 : ColorUtil.FFC2C9D1,
       shape: StadiumBorder(),
     );
     var innerBoxDecoration = BoxDecoration(

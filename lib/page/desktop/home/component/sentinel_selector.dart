@@ -1,5 +1,6 @@
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/card.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/tile.dart';
@@ -15,7 +16,7 @@ class DesktopSentinelSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedArtificialIntelligence03,
-      color: Color(0xFF616161),
+      color: ColorUtil.FF616161,
       size: 24,
     );
     return GestureDetector(
