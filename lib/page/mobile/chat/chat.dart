@@ -203,7 +203,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 
   void changeModel(Model model) {
     var viewModel = ChatViewModel(ref);
-    viewModel.selectModel(model, chat: widget.chat);
+    viewModel.updateModel(model, chat: widget.chat);
     ADialog.dismiss();
     setState(() {
       this.model = model;

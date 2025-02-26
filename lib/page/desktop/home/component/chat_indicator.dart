@@ -1,20 +1,29 @@
+import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
+import 'package:athena/provider/sentinel.dart';
+import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
+import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 
-class DesktopChatIndicator extends StatelessWidget {
-  final Model? model;
-  final Sentinel? sentinel;
-  const DesktopChatIndicator({super.key, this.model, this.sentinel});
+class DesktopChatIndicator extends ConsumerWidget {
+  final Chat chat;
+  const DesktopChatIndicator({super.key, required this.chat});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    var model = ref.watch(modelNotifierProvider(chat.modelId)).value;
+    if (model == null) return const SizedBox();
+    var sentinel = ref.watch(sentinelNotifierProvider(chat.sentinelId)).value;
+    if (sentinel == null) return const SizedBox();
+    var provider = ref.watch(providerNotifierProvider(model.providerId)).value;
+    if (provider == null) return const SizedBox();
     var children = [
       _SentinelIndicator(sentinel: sentinel),
-      _ModelIndicator(model: model),
+      _ModelIndicator(model: model, provider: provider),
     ];
     return Container(
       padding: const EdgeInsets.only(left: 16),
@@ -23,17 +32,15 @@ class DesktopChatIndicator extends StatelessWidget {
   }
 }
 
-class _ModelIndicator extends ConsumerWidget {
-  final Model? model;
-  const _ModelIndicator({this.model});
+class _ModelIndicator extends StatelessWidget {
+  final Model model;
+  final Provider provider;
+  const _ModelIndicator({required this.model, required this.provider});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (model == null) return const SizedBox();
-    var provider = providerNotifierProvider(model!.providerId);
-    var value = ref.watch(provider).valueOrNull;
+  Widget build(BuildContext context) {
     var text = Text(
-      '${model!.name} | ${value?.name ?? ""}',
+      '${model.name} | ${provider.name}',
       style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
     );
     var innerBoxDecoration = BoxDecoration(

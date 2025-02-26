@@ -183,28 +183,6 @@ class ChatViewModel extends ViewModel {
     );
   }
 
-  Future<Chat> selectModel(Model model, {required Chat chat}) async {
-    var copiedChat = chat.copyWith(modelId: model.id);
-    await isar.writeTxn(() async {
-      await isar.chats.put(copiedChat);
-    });
-    ref.invalidate(chatNotifierProvider(chat.id));
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-    return chat;
-  }
-
-  Future<Chat> selectSentinel(Sentinel sentinel, {required Chat chat}) async {
-    var copiedChat = chat.copyWith(sentinelId: sentinel.id);
-    await isar.writeTxn(() async {
-      await isar.chats.put(copiedChat);
-    });
-    ref.invalidate(chatNotifierProvider(chat.id));
-    ref.invalidate(chatsNotifierProvider);
-    ref.invalidate(recentChatsNotifierProvider);
-    return chat;
-  }
-
   Future<void> sendMessage(
     String text, {
     required Chat chat,
@@ -257,7 +235,7 @@ class ChatViewModel extends ViewModel {
     streamingNotifier.close();
   }
 
-  Future<void> updateEnableSearch(bool enabled, {required Chat chat}) async {
+  Future<Chat> updateEnableSearch(bool enabled, {required Chat chat}) async {
     var copiedChat = chat.copyWith(enableSearch: enabled);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
@@ -265,6 +243,29 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(chatNotifierProvider(chat.id));
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
+    return copiedChat;
+  }
+
+  Future<Chat> updateModel(Model model, {required Chat chat}) async {
+    var copiedChat = chat.copyWith(modelId: model.id);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+    return copiedChat;
+  }
+
+  Future<Chat> updateSentinel(Sentinel sentinel, {required Chat chat}) async {
+    var copiedChat = chat.copyWith(sentinelId: sentinel.id);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+    return copiedChat;
   }
 
   Future<Message> _getFormattedMessage(

@@ -50,43 +50,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
-  Future<void> changeModel(Model model) async {
-    if (viewModel.streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
-    }
-    setState(() {
-      this.model = model;
-    });
-    var chat = await viewModel.selectModel(model, chat: this.chat);
-    setState(() {
-      this.chat = chat;
-    });
-  }
-
-  Future<void> changeEnableSearch(bool enabled) async {
-    if (viewModel.streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
-    }
-    await viewModel.updateEnableSearch(enabled, chat: chat);
-    var updatedChat = chat.copyWith(enableSearch: enabled);
-    setState(() {
-      chat = updatedChat;
-    });
-  }
-
-  Future<void> changeSentinel(Sentinel sentinel) async {
-    if (viewModel.streaming) {
-      return ADialog.message('Please wait for the current chat to finish.');
-    }
-    setState(() {
-      this.sentinel = sentinel;
-    });
-    var chat = await viewModel.selectSentinel(sentinel, chat: this.chat);
-    setState(() {
-      this.chat = chat;
-    });
-  }
-
   Future<void> createChat() async {
     if (viewModel.streaming) {
       return ADialog.message('Please wait for the current chat to finish.');
@@ -164,6 +127,45 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     }
   }
 
+  Future<void> updateEnableSearch(bool enabled) async {
+    if (viewModel.streaming) {
+      ADialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    var chat = await viewModel.updateEnableSearch(enabled, chat: this.chat);
+    setState(() {
+      this.chat = chat;
+    });
+  }
+
+  Future<void> updateModel(Model model) async {
+    if (viewModel.streaming) {
+      ADialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    setState(() {
+      this.model = model;
+    });
+    var chat = await viewModel.updateModel(model, chat: this.chat);
+    setState(() {
+      this.chat = chat;
+    });
+  }
+
+  Future<void> updateSentinel(Sentinel sentinel) async {
+    if (viewModel.streaming) {
+      ADialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    setState(() {
+      this.sentinel = sentinel;
+    });
+    var chat = await viewModel.updateSentinel(sentinel, chat: this.chat);
+    setState(() {
+      this.chat = chat;
+    });
+  }
+
   Widget _buildAppBar() {
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
@@ -178,7 +180,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     return AAppBar(
       action: _buildSettingButton(),
       leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
-      title: DesktopChatIndicator(model: model, sentinel: sentinel),
+      title: DesktopChatIndicator(chat: chat),
     );
   }
 
@@ -210,9 +212,9 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var desktopMessageInput = DesktopMessageInput(
       chat: chat,
       controller: controller,
-      onModelChanged: changeModel,
-      onSearchDecisionChanged: changeEnableSearch,
-      onSentinelChanged: changeSentinel,
+      onModelChanged: updateModel,
+      onSearchDecisionChanged: updateEnableSearch,
+      onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
     );
     return Column(
