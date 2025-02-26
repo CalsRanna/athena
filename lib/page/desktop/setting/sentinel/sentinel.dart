@@ -167,7 +167,7 @@ class _SentinelTileState extends State<_SentinelTile> {
   void showContextMenu(BuildContext context, TapUpDetails details) {
     if (widget.sentinel.name == 'Athena') return;
     var contextMenu = _ContextMenu(
-      offset: details.globalPosition - Offset(200, 50),
+      offset: details.globalPosition - Offset(240, 50),
       onTap: removeEntry,
       sentinel: widget.sentinel,
     );
