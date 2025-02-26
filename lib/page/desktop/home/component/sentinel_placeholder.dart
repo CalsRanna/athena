@@ -18,12 +18,17 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
+    var descriptionText = Text(
+      sentinel.description,
+      style: descriptionTextStyle,
+      textAlign: TextAlign.center,
+    );
     var children = [
       Text(sentinel.name, style: nameTextStyle),
       const SizedBox(height: 12),
       _TagWrap(sentinel: sentinel),
       const SizedBox(height: 12),
-      Text(sentinel.description, style: descriptionTextStyle),
+      descriptionText,
     ];
     var column = Column(
       mainAxisAlignment: MainAxisAlignment.center,
