@@ -1,12 +1,19 @@
-import 'package:athena/widget/card.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopChatContextMenu extends StatelessWidget {
+  final Offset offset;
+  final void Function()? onBarrierTapped;
   final void Function()? onDestroyed;
   final void Function()? onRenamed;
 
-  const DesktopChatContextMenu({super.key, this.onDestroyed, this.onRenamed});
+  const DesktopChatContextMenu({
+    super.key,
+    required this.offset,
+    this.onBarrierTapped,
+    this.onDestroyed,
+    this.onRenamed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -14,10 +21,10 @@ class DesktopChatContextMenu extends StatelessWidget {
       DesktopContextMenuOption(text: 'Rename', onTap: onRenamed),
       DesktopContextMenuOption(text: 'Delete', onTap: onDestroyed),
     ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return DesktopContextMenu(
+      offset: offset,
+      onBarrierTapped: onBarrierTapped,
       children: children,
     );
-    return ACard(child: column);
   }
 }
