@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class ACard extends StatelessWidget {
@@ -8,17 +9,13 @@ class ACard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final surface = colorScheme.surface;
-    final shadow = colorScheme.shadow.withValues(alpha: 0.1);
-    final boxShadow = BoxShadow(color: shadow, blurRadius: 12, spreadRadius: 4);
+    var boxDecoration = BoxDecoration(
+      color: ColorUtil.FF282F32,
+      borderRadius: borderRadius ?? BorderRadius.circular(8),
+    );
     return Container(
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
-        boxShadow: [boxShadow],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       width: width,
       child: child,
     );
