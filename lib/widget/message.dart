@@ -15,7 +15,7 @@ class MessageListTile extends StatelessWidget {
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
   final void Function()? onResend;
-  final Sentinel? sentinel;
+  final Sentinel sentinel;
 
   const MessageListTile({
     super.key,
@@ -23,7 +23,7 @@ class MessageListTile extends StatelessWidget {
     this.onLongPress,
     this.onResend,
     this.onSecondaryTapUp,
-    this.sentinel,
+    required this.sentinel,
   });
 
   @override
@@ -42,8 +42,11 @@ class MessageListTile extends StatelessWidget {
 
 class _AssistantMessageListTile extends StatelessWidget {
   final Message message;
-  final Sentinel? sentinel;
-  const _AssistantMessageListTile({required this.message, this.sentinel});
+  final Sentinel sentinel;
+  const _AssistantMessageListTile({
+    required this.message,
+    required this.sentinel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,9 +81,19 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    if (sentinel?.avatar.isNotEmpty == true) {
-      const textStyle =
-          TextStyle(fontSize: 24, height: 1, color: ColorUtil.FFFFFFFF);
+    if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
+      const textStyle = TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        fontSize: 20,
+        height: 1,
+      );
+      var text = Text(
+        sentinel.avatar,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
+        style: textStyle,
+        textAlign: TextAlign.center,
+      );
       var boxDecoration = BoxDecoration(
         shape: BoxShape.circle,
         color: ColorUtil.FF282F32,
@@ -90,7 +103,7 @@ class _AssistantMessageListTile extends StatelessWidget {
         decoration: boxDecoration,
         height: 36,
         width: 36,
-        child: Text(sentinel!.avatar, style: textStyle),
+        child: text,
       );
     }
     var image = Image.asset(

@@ -37,10 +37,12 @@ class _MessageListView extends ConsumerStatefulWidget {
   final Chat chat;
   final Model? model;
   final void Function(String)? onChatTitleChanged;
+  final Sentinel sentinel;
   const _MessageListView({
     required this.chat,
     this.model,
     this.onChatTitleChanged,
+    required this.sentinel,
   });
 
   @override
@@ -152,6 +154,7 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
       message: message,
       onLongPress: () => openBottomSheet(message),
       onResend: () => resendMessage(ref, message),
+      sentinel: widget.sentinel,
     );
   }
 }
@@ -179,6 +182,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
             chat: widget.chat,
             model: model,
             onChatTitleChanged: updateTitle,
+            sentinel: sentinel ?? Sentinel(),
           ),
         ),
       input,
