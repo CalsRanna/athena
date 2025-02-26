@@ -507,11 +507,23 @@ class _ProviderEnabledIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!provider.enabled) return const SizedBox();
+    var outerShapeDecoration = ShapeDecoration(
+      color: ColorUtil.FFFFFFFF,
+      shape: StadiumBorder(side: BorderSide(color: ColorUtil.FFA7BA88)),
+    );
+    var innerBoxDecoration = BoxDecoration(
+      color: ColorUtil.FFA7BA88,
+      shape: BoxShape.circle,
+    );
+    var innerContainer = Container(
+      decoration: innerBoxDecoration,
+      height: 8,
+      width: 8,
+    );
     return Container(
-      decoration: ShapeDecoration(color: Colors.green, shape: StadiumBorder()),
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child:
-          Text('ON', style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 12)),
+      decoration: outerShapeDecoration,
+      padding: EdgeInsets.all(2),
+      child: innerContainer,
     );
   }
 }
