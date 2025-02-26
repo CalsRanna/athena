@@ -102,7 +102,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var contextMenu = _ModelContextMenu(
-      offset: details.globalPosition - Offset(200, 50),
+      offset: details.globalPosition - Offset(240, 50),
       onTap: removeEntry,
       model: model,
       provider: providers[index],
@@ -121,7 +121,7 @@ class _DesktopSettingProviderPageState
   void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
     if (provider.isPreset) return;
     var contextMenu = _ProviderContextMenu(
-      offset: details.globalPosition - Offset(200, 50),
+      offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyProvider(provider),
       onEdited: () => showProviderFormDialog(provider),
       onTap: removeEntry,
