@@ -2,20 +2,30 @@ import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class AthenaTag extends StatelessWidget {
+  final double fontSize;
   final EdgeInsets padding;
   final bool selected;
   final String text;
 
-  const AthenaTag({super.key, this.selected = false, required this.text})
-      : padding = const EdgeInsets.symmetric(horizontal: 36, vertical: 13);
-  const AthenaTag.small({super.key, this.selected = false, required this.text})
-      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 4);
+  const AthenaTag({
+    super.key,
+    this.fontSize = 12,
+    this.selected = false,
+    required this.text,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 36, vertical: 13);
+
+  const AthenaTag.small({
+    super.key,
+    this.fontSize = 12,
+    this.selected = false,
+    required this.text,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 4);
 
   @override
   Widget build(BuildContext context) {
     var textStyle = TextStyle(
       color: selected ? ColorUtil.FF161616 : ColorUtil.FFFFFFFF,
-      fontSize: 12,
+      fontSize: fontSize,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );

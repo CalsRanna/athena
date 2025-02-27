@@ -209,12 +209,13 @@ class _DesktopSettingProviderPageState
 
   Widget _buildProviderTile(List<schema.Provider> providers, int index) {
     var provider = providers[index];
+    var tag = AthenaTag.small(fontSize: 6, text: 'ON');
     return DesktopMenuTile(
       active: this.index == index,
       label: provider.name,
       onSecondaryTap: (details) => showProviderContextMenu(details, provider),
       onTap: () => changeProvider(index),
-      trailing: _ProviderEnabledIndicator(provider: provider),
+      trailing: provider.enabled ? tag : null,
     );
   }
 
@@ -250,9 +251,9 @@ class _DesktopSettingProviderPageState
       fontWeight: FontWeight.w500,
     );
     var modelText = Text('Models', style: modelTextStyle);
-    var addModelButton = AthenaSecondaryButton.small(
+    var addModelButton = AthenaTextButton(
       onTap: showModelFormDialog,
-      child: Text('Add Model'),
+      text: 'New',
     );
     var addModelChildren = [modelText, const Spacer(), addModelButton];
     var modelProvider = modelsForNotifierProvider(providers[index].id);
@@ -496,34 +497,6 @@ class _ProviderContextMenu extends StatelessWidget {
       offset: offset,
       onBarrierTapped: onTap,
       children: [editOption, deleteOption],
-    );
-  }
-}
-
-class _ProviderEnabledIndicator extends StatelessWidget {
-  final schema.Provider provider;
-  const _ProviderEnabledIndicator({required this.provider});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!provider.enabled) return const SizedBox();
-    var outerShapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFFFFFFF,
-      shape: StadiumBorder(side: BorderSide(color: ColorUtil.FFA7BA88)),
-    );
-    var innerBoxDecoration = BoxDecoration(
-      color: ColorUtil.FFA7BA88,
-      shape: BoxShape.circle,
-    );
-    var innerContainer = Container(
-      decoration: innerBoxDecoration,
-      height: 8,
-      width: 8,
-    );
-    return Container(
-      decoration: outerShapeDecoration,
-      padding: EdgeInsets.all(2),
-      child: innerContainer,
     );
   }
 }
