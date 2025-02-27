@@ -246,6 +246,14 @@ class ChatViewModel extends ViewModel {
     return copiedChat;
   }
 
+  Future<void> updateExpanded(Message message) async {
+    var updatedMessage = message.copyWith(expanded: !message.expanded);
+    await isar.writeTxn(() async {
+      await isar.messages.put(updatedMessage);
+    });
+    ref.invalidate(messagesNotifierProvider(message.chatId));
+  }
+
   Future<Chat> updateModel(Model model, {required Chat chat}) async {
     var copiedChat = chat.copyWith(modelId: model.id);
     await isar.writeTxn(() async {

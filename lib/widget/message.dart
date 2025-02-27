@@ -4,9 +4,11 @@ import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -149,22 +151,13 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 }
 
-class _AssistantMessageListTileThinkingPart extends StatefulWidget {
+class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
   final Message message;
   const _AssistantMessageListTileThinkingPart({required this.message});
 
   @override
-  State<_AssistantMessageListTileThinkingPart> createState() =>
-      _AssistantMessageListTileThinkingPartState();
-}
-
-class _AssistantMessageListTileThinkingPartState
-    extends State<_AssistantMessageListTileThinkingPart> {
-  bool expanded = true;
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.message.reasoningContent.isEmpty) return const SizedBox();
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (message.reasoningContent.isEmpty) return const SizedBox();
     var borderRadius = BorderRadius.circular(8);
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
@@ -176,25 +169,29 @@ class _AssistantMessageListTileThinkingPartState
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => expanded = !expanded),
+      onTap: () => updateExpanded(ref),
       child: Container(decoration: boxDecoration, child: column),
     );
   }
 
+  void updateExpanded(WidgetRef ref) {
+    ChatViewModel(ref).updateExpanded(message);
+  }
+
   Widget _buildContent() {
-    if (!expanded) return const SizedBox();
+    if (!message.expanded) return const SizedBox();
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
     return Padding(
       padding: padding,
-      child: Text(widget.message.reasoningContent, style: textStyle),
+      child: Text(message.reasoningContent, style: textStyle),
     );
   }
 
   Widget _buildTitle() {
     var borderRadius = BorderRadius.only(
-      bottomLeft: expanded ? Radius.zero : Radius.circular(8),
-      bottomRight: expanded ? Radius.zero : Radius.circular(8),
+      bottomLeft: message.expanded ? Radius.zero : Radius.circular(8),
+      bottomRight: message.expanded ? Radius.zero : Radius.circular(8),
       topLeft: Radius.circular(8),
       topRight: Radius.circular(8),
     );
@@ -204,13 +201,13 @@ class _AssistantMessageListTileThinkingPartState
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var iconData = HugeIcons.strokeRoundedArrowRight01;
-    if (expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
+    if (message.expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var startedAt = widget.message.reasoningStartedAt;
-    var updatedAt = widget.message.reasoningUpdatedAt;
+    var startedAt = message.reasoningStartedAt;
+    var updatedAt = message.reasoningUpdatedAt;
     var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
     var durationText = 'Thought for ${duration.toStringAsFixed(1)} seconds';
-    var text = widget.message.reasoning ? 'Thinking' : durationText;
+    var text = message.reasoning ? 'Thinking' : durationText;
     var children = [
       Text(text, style: textStyle),
       const Spacer(),

@@ -884,30 +884,40 @@ const MessageSchema = CollectionSchema(
       name: r'content',
       type: IsarType.string,
     ),
-    r'reasoning': PropertySchema(
+    r'expanded': PropertySchema(
       id: 2,
+      name: r'expanded',
+      type: IsarType.bool,
+    ),
+    r'reasoning': PropertySchema(
+      id: 3,
       name: r'reasoning',
       type: IsarType.bool,
     ),
     r'reasoning_content': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'reasoning_content',
       type: IsarType.string,
     ),
     r'reasoning_started_at': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'reasoning_started_at',
       type: IsarType.dateTime,
     ),
     r'reasoning_updated_at': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'reasoning_updated_at',
       type: IsarType.dateTime,
     ),
     r'role': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'role',
       type: IsarType.string,
+    ),
+    r'searching': PropertySchema(
+      id: 8,
+      name: r'searching',
+      type: IsarType.bool,
     )
   },
   estimateSize: _messageEstimateSize,
@@ -944,11 +954,13 @@ void _messageSerialize(
 ) {
   writer.writeLong(offsets[0], object.chatId);
   writer.writeString(offsets[1], object.content);
-  writer.writeBool(offsets[2], object.reasoning);
-  writer.writeString(offsets[3], object.reasoningContent);
-  writer.writeDateTime(offsets[4], object.reasoningStartedAt);
-  writer.writeDateTime(offsets[5], object.reasoningUpdatedAt);
-  writer.writeString(offsets[6], object.role);
+  writer.writeBool(offsets[2], object.expanded);
+  writer.writeBool(offsets[3], object.reasoning);
+  writer.writeString(offsets[4], object.reasoningContent);
+  writer.writeDateTime(offsets[5], object.reasoningStartedAt);
+  writer.writeDateTime(offsets[6], object.reasoningUpdatedAt);
+  writer.writeString(offsets[7], object.role);
+  writer.writeBool(offsets[8], object.searching);
 }
 
 Message _messageDeserialize(
@@ -960,12 +972,14 @@ Message _messageDeserialize(
   final object = Message();
   object.chatId = reader.readLong(offsets[0]);
   object.content = reader.readString(offsets[1]);
+  object.expanded = reader.readBool(offsets[2]);
   object.id = id;
-  object.reasoning = reader.readBool(offsets[2]);
-  object.reasoningContent = reader.readString(offsets[3]);
-  object.reasoningStartedAt = reader.readDateTime(offsets[4]);
-  object.reasoningUpdatedAt = reader.readDateTime(offsets[5]);
-  object.role = reader.readString(offsets[6]);
+  object.reasoning = reader.readBool(offsets[3]);
+  object.reasoningContent = reader.readString(offsets[4]);
+  object.reasoningStartedAt = reader.readDateTime(offsets[5]);
+  object.reasoningUpdatedAt = reader.readDateTime(offsets[6]);
+  object.role = reader.readString(offsets[7]);
+  object.searching = reader.readBool(offsets[8]);
   return object;
 }
 
@@ -983,13 +997,17 @@ P _messageDeserializeProp<P>(
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 5:
       return (reader.readDateTime(offset)) as P;
     case 6:
+      return (reader.readDateTime(offset)) as P;
+    case 7:
       return (reader.readString(offset)) as P;
+    case 8:
+      return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1263,6 +1281,16 @@ extension MessageQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'content',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> expandedEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'expanded',
+        value: value,
       ));
     });
   }
@@ -1705,6 +1733,16 @@ extension MessageQueryFilter
       ));
     });
   }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> searchingEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'searching',
+        value: value,
+      ));
+    });
+  }
 }
 
 extension MessageQueryObject
@@ -1735,6 +1773,18 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
   QueryBuilder<Message, Message, QAfterSortBy> sortByContentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'content', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByExpanded() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expanded', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByExpandedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expanded', Sort.desc);
     });
   }
 
@@ -1797,6 +1847,18 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
       return query.addSortBy(r'role', Sort.desc);
     });
   }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortBySearching() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'searching', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortBySearchingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'searching', Sort.desc);
+    });
+  }
 }
 
 extension MessageQuerySortThenBy
@@ -1822,6 +1884,18 @@ extension MessageQuerySortThenBy
   QueryBuilder<Message, Message, QAfterSortBy> thenByContentDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'content', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByExpanded() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expanded', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByExpandedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expanded', Sort.desc);
     });
   }
 
@@ -1896,6 +1970,18 @@ extension MessageQuerySortThenBy
       return query.addSortBy(r'role', Sort.desc);
     });
   }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenBySearching() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'searching', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenBySearchingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'searching', Sort.desc);
+    });
+  }
 }
 
 extension MessageQueryWhereDistinct
@@ -1910,6 +1996,12 @@ extension MessageQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'content', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Message, Message, QDistinct> distinctByExpanded() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'expanded');
     });
   }
 
@@ -1945,6 +2037,12 @@ extension MessageQueryWhereDistinct
       return query.addDistinctBy(r'role', caseSensitive: caseSensitive);
     });
   }
+
+  QueryBuilder<Message, Message, QDistinct> distinctBySearching() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'searching');
+    });
+  }
 }
 
 extension MessageQueryProperty
@@ -1964,6 +2062,12 @@ extension MessageQueryProperty
   QueryBuilder<Message, String, QQueryOperations> contentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'content');
+    });
+  }
+
+  QueryBuilder<Message, bool, QQueryOperations> expandedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'expanded');
     });
   }
 
@@ -1996,6 +2100,12 @@ extension MessageQueryProperty
   QueryBuilder<Message, String, QQueryOperations> roleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'role');
+    });
+  }
+
+  QueryBuilder<Message, bool, QQueryOperations> searchingProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'searching');
     });
   }
 }

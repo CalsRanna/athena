@@ -41,14 +41,16 @@ class Chat {
 class Message {
   Id id = Isar.autoIncrement;
   String content = '';
+  bool expanded = true;
   bool reasoning = false;
   @Name('reasoning_content')
   String reasoningContent = '';
-  String role = 'user';
   @Name('reasoning_started_at')
   DateTime reasoningStartedAt = DateTime.now();
   @Name('reasoning_updated_at')
   DateTime reasoningUpdatedAt = DateTime.now();
+  String role = 'user';
+  bool searching = false;
   @Name('chat_id')
   int chatId = 0;
 
@@ -64,21 +66,25 @@ class Message {
   Message copyWith({
     int? id,
     String? content,
+    bool? expanded,
     bool? reasoning,
     String? reasoningContent,
-    String? role,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
+    String? role,
+    bool? searching,
     int? chatId,
   }) {
     return Message()
       ..id = id ?? this.id
       ..content = content ?? this.content
+      ..expanded = expanded ?? this.expanded
       ..reasoning = reasoning ?? this.reasoning
       ..reasoningContent = reasoningContent ?? this.reasoningContent
-      ..role = role ?? this.role
       ..reasoningStartedAt = reasoningStartedAt ?? this.reasoningStartedAt
       ..reasoningUpdatedAt = reasoningUpdatedAt ?? this.reasoningUpdatedAt
+      ..role = role ?? this.role
+      ..searching = searching ?? this.searching
       ..chatId = chatId ?? this.chatId;
   }
 

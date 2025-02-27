@@ -38,6 +38,7 @@ class DesktopMessageInput extends StatelessWidget {
         onTap: onSearchDecisionChanged,
       ),
       Icon(HugeIcons.strokeRoundedTemperature),
+      Icon(HugeIcons.strokeRoundedLimitation),
       Icon(HugeIcons.strokeRoundedImage01),
     ];
     var toolbar = IconTheme.merge(
