@@ -285,8 +285,7 @@ class ChatViewModel extends ViewModel {
       var tool = await isar.tools.filter().nameEqualTo('Tavily').findFirst();
       if (tool == null) return message;
       if (tool.key.isEmpty) return message;
-      var query = decision.keywords.join(', ');
-      var searchResult = await SearchApi().search(query, tool: tool);
+      var searchResult = await SearchApi().search(decision.query, tool: tool);
       var reference = jsonEncode(searchResult);
       message.content = PresetPrompt.formatMessagePrompt
           .replaceAll('{input}', text)
