@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena/component/button.dart';
@@ -5,12 +6,15 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/markdown.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MessageListTile extends StatelessWidget {
   final Message message;
@@ -123,6 +127,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       _AssistantMessageListTileThinkingPart(message: message),
       if (message.content.isNotEmpty) SizedBox(height: 8),
       AthenaMarkdown(engine: AthenaMarkdownEngine.flutter, message: message),
+      _AssistantMessageListTileReferencePart(message: message),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,6 +153,52 @@ class _AssistantMessageListTile extends StatelessWidget {
   Widget _buildTrailingSpace() {
     var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
     return SizedBox(width: isDesktop ? 48 : 24);
+  }
+}
+
+class _AssistantMessageListTileReferencePart extends StatelessWidget {
+  final Message message;
+  const _AssistantMessageListTileReferencePart({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.reference.isEmpty) return const SizedBox();
+    var references = jsonDecode(message.reference);
+    List<Widget> referenceWidgets = [];
+    for (var i = 0; i < references.length; i++) {
+      referenceWidgets.add(_buildReference(references[i], index: i));
+    }
+    const textStyle = TextStyle(fontWeight: FontWeight.w500);
+    var children = [Text('References:', style: textStyle), ...referenceWidgets];
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildReference(Map<String, dynamic> reference, {required int index}) {
+    var url = reference['url'];
+    var title = reference['title'];
+    var textSpan = TextSpan(
+      text: title,
+      style: const TextStyle(color: Colors.blue),
+      recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
+    );
+    var children = [TextSpan(text: '${index + 1}. '), textSpan];
+    return Text.rich(TextSpan(children: children));
+  }
+
+  Future<void> openLink(String? url) async {
+    var uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      AthenaDialog.message('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
   }
 }
 

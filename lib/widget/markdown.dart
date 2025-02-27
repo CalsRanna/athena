@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/util/color_util.dart';
@@ -25,13 +27,90 @@ class AthenaMarkdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (engine) {
       AthenaMarkdownEngine.flutter => _FlutterMarkdown(message: message),
-      // MarkdownEngine.gpt => _GptMarkdown(message: message),
       _ => const SizedBox(),
     };
   }
 }
 
 enum AthenaMarkdownEngine { flutter, gpt }
+
+class _CodeBuilder extends MarkdownElementBuilder {
+  _CodeBuilder();
+
+  void handleTap(String text) {
+    final data = ClipboardData(text: text);
+    Clipboard.setData(data);
+  }
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final multipleLines = element.textContent.split('\n').length > 1;
+    var borderRadius = BorderRadius.circular(4);
+    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
+    if (multipleLines) {
+      borderRadius = BorderRadius.circular(8);
+      padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    }
+    final width = multipleLines ? double.infinity : null;
+    var boxDecoration = BoxDecoration(
+      borderRadius: borderRadius,
+      color: ColorUtil.FFEDEDED,
+    );
+    var textStyle = GoogleFonts.firaCode(fontSize: 12, height: 1.5);
+    var contentText = Padding(
+      padding: padding,
+      child: Text(element.textContent, style: textStyle),
+    );
+    var children = [
+      if (element.attributes['class'] != null) _buildAttribute(element),
+      contentText,
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      width: width,
+      child: column,
+    );
+    if (multipleLines) return container;
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: container,
+    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+
+  Widget _buildAttribute(md.Element element) {
+    var borderRadius = BorderRadius.only(
+      topLeft: Radius.circular(8),
+      topRight: Radius.circular(8),
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: borderRadius,
+      color: ColorUtil.FFE0E0E0,
+    );
+    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var attribute = element.attributes['class'] ?? '';
+    var children = [
+      Text(attribute.replaceAll('language-', ''), style: textStyle),
+      Spacer(),
+      CopyButton(onTap: () => handleTap(element.textContent)),
+    ];
+    return Container(
+      decoration: boxDecoration,
+      padding: padding,
+      child: Row(children: children),
+    );
+  }
+}
 
 class _FlutterMarkdown extends StatelessWidget {
   final Message message;
@@ -43,26 +122,39 @@ class _FlutterMarkdown extends StatelessWidget {
     Map<String, MarkdownElementBuilder> builders = {};
     builders['code'] = _CodeBuilder();
     builders['latex'] = LatexElementBuilder();
+    builders['sup'] = _SupBuilder();
+    builders['reference'] = _ReferenceBuilder(onTap: openReference);
     List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
-    // blockSyntaxes.add(_HorizontalRuleSyntax());
     List<md.InlineSyntax> inlineSyntaxes = [];
+    inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
     inlineSyntaxes.add(LatexInlineSyntax());
+    inlineSyntaxes.add(_ReferenceSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     var borderSide = BorderSide(color: ColorUtil.FFC2C2C2, width: 1);
     var markdownStyleSheet = MarkdownStyleSheet(
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
       horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
     );
-    // 不能解析 <think></think>，会吃掉<think>及开头的第一段, 需要自定义BlockSyntax
     return MarkdownBody(
       builders: builders,
       data: message.content,
       extensionSet: extensions,
-      onTapLink: (text, href, title) => launchUrl(Uri.parse(href ?? '')),
+      onTapLink: (text, href, title) => openLink(href),
       styleSheet: markdownStyleSheet,
     );
+  }
+
+  void openReference(int index) {
+    try {
+      var references = jsonDecode(message.reference);
+      var reference = references[index - 1];
+      var url = reference['url'];
+      openLink(url);
+    } catch (error) {
+      AthenaDialog.message(error.toString());
+    }
   }
 
   Future<void> openLink(String? url) async {
@@ -72,6 +164,54 @@ class _FlutterMarkdown extends StatelessWidget {
       return;
     }
     launchUrl(uri);
+  }
+}
+
+class _ReferenceBuilder extends MarkdownElementBuilder {
+  final void Function(int)? onTap;
+  _ReferenceBuilder({this.onTap});
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    var boxDecoration = BoxDecoration(
+      color: ColorUtil.FFEDEDED,
+      shape: BoxShape.circle,
+    );
+    var text = Text(
+      element.textContent,
+      style: GoogleFonts.firaCode(fontSize: 10),
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.all(4),
+      child: text,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap?.call(int.parse(element.textContent)),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
+    );
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: gestureDetector,
+    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+}
+
+class _ReferenceSyntax extends md.InlineSyntax {
+  _ReferenceSyntax() : super(r'\[\[(\d+)\]\]');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('reference', match[1]!));
+    return true;
   }
 }
 
@@ -156,13 +296,8 @@ class _FlutterMarkdown extends StatelessWidget {
 //   }
 // }
 
-class _CodeBuilder extends MarkdownElementBuilder {
-  _CodeBuilder();
-
-  void handleTap(String text) {
-    final data = ClipboardData(text: text);
-    Clipboard.setData(data);
-  }
+class _SupBuilder extends MarkdownElementBuilder {
+  _SupBuilder();
 
   @override
   Widget? visitElementAfterWithContext(
@@ -171,59 +306,24 @@ class _CodeBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final multipleLines = element.textContent.split('\n').length > 1;
-    var borderRadius = BorderRadius.circular(4);
-    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    if (multipleLines) {
-      borderRadius = BorderRadius.circular(8);
-      padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    }
-    final width = multipleLines ? double.infinity : null;
     var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
       color: ColorUtil.FFEDEDED,
+      shape: BoxShape.circle,
     );
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var contentText = Padding(
-      padding: padding,
-      child: Text(element.textContent, style: textStyle),
+    var text = Text(
+      element.textContent,
+      style: GoogleFonts.firaCode(fontSize: 10),
     );
-    var children = [
-      if (element.attributes['class'] != null) _buildAttribute(element),
-      contentText,
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    return Container(
+    var container = Container(
       decoration: boxDecoration,
-      width: width,
-      child: column,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.all(4),
+      child: text,
     );
-  }
-
-  Widget _buildAttribute(md.Element element) {
-    var borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(8),
-      topRight: Radius.circular(8),
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: container,
     );
-    var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
-      color: ColorUtil.FFE0E0E0,
-    );
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
-    var attribute = element.attributes['class'] ?? '';
-    var children = [
-      Text(attribute.replaceAll('language-', ''), style: textStyle),
-      Spacer(),
-      CopyButton(onTap: () => handleTap(element.textContent)),
-    ];
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      child: Row(children: children),
-    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
   }
 }

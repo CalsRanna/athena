@@ -49,6 +49,7 @@ class Message {
   DateTime reasoningStartedAt = DateTime.now();
   @Name('reasoning_updated_at')
   DateTime reasoningUpdatedAt = DateTime.now();
+  String reference = '';
   String role = 'user';
   bool searching = false;
   @Name('chat_id')
@@ -73,6 +74,7 @@ class Message {
     DateTime? reasoningUpdatedAt,
     String? role,
     bool? searching,
+    String? reference,
     int? chatId,
   }) {
     return Message()
@@ -85,6 +87,7 @@ class Message {
       ..reasoningUpdatedAt = reasoningUpdatedAt ?? this.reasoningUpdatedAt
       ..role = role ?? this.role
       ..searching = searching ?? this.searching
+      ..reference = reference ?? this.reference
       ..chatId = chatId ?? this.chatId;
   }
 
