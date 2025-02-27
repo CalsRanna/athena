@@ -126,7 +126,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       sentinel: sentinel,
     );
     if (chat.title.isEmpty || chat.title == 'New Chat') {
-      viewModel.renameChat(chat);
+      var renamedChat = await viewModel.renameChat(chat);
+      setState(() {
+        chat = renamedChat;
+      });
     }
   }
 
