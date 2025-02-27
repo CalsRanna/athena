@@ -168,16 +168,33 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     for (var i = 0; i < references.length; i++) {
       referenceWidgets.add(_buildReference(references[i], index: i));
     }
-    const textStyle = TextStyle(fontWeight: FontWeight.w500);
-    var children = [Text('References:', style: textStyle), ...referenceWidgets];
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 12,
-        children: children,
-      ),
+    var children = [Text('References:'), ...referenceWidgets];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 4,
+      children: children,
     );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: ColorUtil.FFEDEDED,
+    );
+    var textStyle = GoogleFonts.firaCode(fontWeight: FontWeight.w500);
+    return Container(
+      decoration: boxDecoration,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      child: DefaultTextStyle.merge(style: textStyle, child: column),
+    );
+  }
+
+  Future<void> openLink(String? url) async {
+    var uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      AthenaDialog.message('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
   }
 
   Widget _buildReference(Map<String, dynamic> reference, {required int index}) {
@@ -190,15 +207,6 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     );
     var children = [TextSpan(text: '${index + 1}. '), textSpan];
     return Text.rich(TextSpan(children: children));
-  }
-
-  Future<void> openLink(String? url) async {
-    var uri = Uri.parse(url ?? '');
-    if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.message('The link is invalid');
-      return;
-    }
-    launchUrl(uri);
   }
 }
 
