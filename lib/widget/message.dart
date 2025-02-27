@@ -175,6 +175,7 @@ class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
   }
 
   void updateExpanded(WidgetRef ref) {
+    if (message.reasoning) return;
     ChatViewModel(ref).updateExpanded(message);
   }
 
