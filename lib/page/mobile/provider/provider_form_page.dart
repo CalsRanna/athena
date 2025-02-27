@@ -1,4 +1,4 @@
-import 'package:athena/provider/model.dart';
+import 'package:athena/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
@@ -12,7 +12,6 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
-import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,14 +52,19 @@ class _MobileProviderFormPageState
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: column,
     );
+    var modelListView = MobileModelListView(
+      onLongPress: openBottomSheet,
+      onTap: editModel,
+      provider: widget.provider,
+    );
     var listViewChildren = [
       labels,
       SizedBox(height: 16),
       _buildModelFormLabel(context),
       SizedBox(height: 12),
-      _buildModelHorizontalList(),
-      SizedBox(height: 16),
-      _buildTip(),
+      modelListView,
+      if (widget.provider.isPreset) SizedBox(height: 16),
+      if (widget.provider.isPreset) _buildTip(),
     ];
     var listView = ListView(
       padding: EdgeInsets.zero,
@@ -74,6 +78,7 @@ class _MobileProviderFormPageState
   }
 
   Future<void> checkConnection(Model model) async {
+    AthenaDialog.dismiss();
     var viewModel = ModelViewModel(ref);
     var message = await viewModel.checkConnection(model);
     AthenaDialog.message(message);
@@ -96,7 +101,6 @@ class _MobileProviderFormPageState
   }
 
   void editModel(Model model) {
-    AthenaDialog.dismiss();
     MobileModelFormRoute(model: model).push(context);
   }
 
@@ -107,12 +111,12 @@ class _MobileProviderFormPageState
     urlController.text = widget.provider.url;
   }
 
-  void openBottomSheet(BuildContext context, Model model) {
+  void openBottomSheet(Model model) {
     HapticFeedback.heavyImpact();
     var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
-      title: 'Edit',
-      onTap: () => editModel(model),
+      title: 'Connect',
+      onTap: () => checkConnection(model),
     );
     var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
@@ -153,45 +157,6 @@ class _MobileProviderFormPageState
     );
   }
 
-  Widget _buildModelHorizontalList() {
-    var providerId = widget.provider.id;
-    var models = ref.watch(modelsForNotifierProvider(providerId)).valueOrNull;
-    if (models == null) return const SizedBox();
-    if (models.isEmpty) return const SizedBox();
-
-    List<Widget> children1 = [];
-    List<Widget> children2 = [];
-    List<Widget> children3 = [];
-    for (var i = 0; i < models.length; i++) {
-      var tile = GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onLongPress: () => openBottomSheet(context, models[i]),
-        onTap: () => checkConnection(models[i]),
-        child: AthenaTag(text: models[i].name),
-      );
-      if (i % 3 == 0) children1.add(tile);
-      if (i % 3 == 1) children2.add(tile);
-      if (i % 3 == 2) children3.add(tile);
-    }
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 12,
-      children: [
-        Row(spacing: 12, children: children1),
-        Row(spacing: 12, children: children2),
-        Row(spacing: 12, children: children3),
-      ],
-    );
-    return SizedBox(
-      height: 164,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        child: column,
-      ),
-    );
-  }
-
   Widget _buildSubmitButton() {
     var textStyle = TextStyle(
       color: ColorUtil.FF161616,
@@ -206,20 +171,19 @@ class _MobileProviderFormPageState
   }
 
   Widget _buildTip() {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFE0E0E0,
+    var tipTextStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var text = Text(
-      'Tap a model to check connection',
-      style: textStyle,
-      textAlign: TextAlign.center,
+    var tipText = Text(
+      '查看${widget.provider.name}文档和模型获取更多详情',
+      style: tipTextStyle,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: text,
+      child: tipText,
     );
   }
 }
