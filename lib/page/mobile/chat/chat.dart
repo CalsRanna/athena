@@ -36,7 +36,7 @@ class MobileChatPage extends ConsumerStatefulWidget {
 class _MessageListView extends ConsumerStatefulWidget {
   final Chat chat;
   final Model? model;
-  final void Function(String)? onChatTitleChanged;
+  final void Function(Chat)? onChatTitleChanged;
   final Sentinel sentinel;
   const _MessageListView({
     required this.chat,
@@ -131,8 +131,8 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     var viewModel = ChatViewModel(ref);
     viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
     if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
-      var title = await viewModel.renameChat(widget.chat);
-      widget.onChatTitleChanged?.call(title);
+      var renamedChat = await viewModel.renameChat(widget.chat);
+      widget.onChatTitleChanged?.call(renamedChat);
     }
   }
 
@@ -232,9 +232,9 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     controller.clear();
     await viewModel.sendMessage(text, chat: widget.chat, model: model);
     if (title.isEmpty || title == 'New Chat') {
-      var title = await viewModel.renameChat(widget.chat);
+      var renameChat = await viewModel.renameChat(widget.chat);
       setState(() {
-        this.title = title;
+        title = renameChat.title;
       });
     }
   }
@@ -248,9 +248,9 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     AthenaDialog.message(enableSearch ? 'Search Enabled' : 'Search Disabled');
   }
 
-  void updateTitle(String title) {
+  void updateTitle(Chat chat) {
     setState(() {
-      this.title = title;
+      title = chat.title;
     });
   }
 

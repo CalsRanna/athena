@@ -126,9 +126,9 @@ class ChatViewModel extends ViewModel {
     DesktopSettingProviderRoute().push(context);
   }
 
-  Future<String> renameChat(Chat chat) async {
+  Future<Chat> renameChat(Chat chat) async {
     var messages = await ref.read(messagesNotifierProvider(chat.id).future);
-    if (messages.isEmpty) return 'New Chat';
+    if (messages.isEmpty) return chat.copyWith(title: 'New Chat');
     var model = await ref.read(chatNamingModelNotifierProvider.future);
     var provider = providerNotifierProvider(model.providerId);
     var aiProvider = await ref.read(provider.future);
@@ -155,7 +155,7 @@ class ChatViewModel extends ViewModel {
     });
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
-    return title;
+    return copiedChat;
   }
 
   Future<void> resendMessage(
