@@ -30,6 +30,12 @@ class SettingPage extends ConsumerWidget {
         title: 'Tool',
         trailing: '',
       ),
+      MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedInformationCircle, size: 24),
+        onTap: () => navigateAbout(context),
+        title: 'About',
+        trailing: '',
+      ),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,6 +45,10 @@ class SettingPage extends ConsumerWidget {
       appBar: AthenaAppBar(title: Text('Setting')),
       body: SingleChildScrollView(child: column),
     );
+  }
+
+  void navigateAbout(BuildContext context) {
+    MobileAboutRoute().push(context);
   }
 
   void navigateDefaultModel(BuildContext context) {
