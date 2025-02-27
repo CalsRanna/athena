@@ -909,13 +909,18 @@ const MessageSchema = CollectionSchema(
       name: r'reasoning_updated_at',
       type: IsarType.dateTime,
     ),
-    r'role': PropertySchema(
+    r'reference': PropertySchema(
       id: 7,
+      name: r'reference',
+      type: IsarType.string,
+    ),
+    r'role': PropertySchema(
+      id: 8,
       name: r'role',
       type: IsarType.string,
     ),
     r'searching': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'searching',
       type: IsarType.bool,
     )
@@ -942,6 +947,7 @@ int _messageEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.content.length * 3;
   bytesCount += 3 + object.reasoningContent.length * 3;
+  bytesCount += 3 + object.reference.length * 3;
   bytesCount += 3 + object.role.length * 3;
   return bytesCount;
 }
@@ -959,8 +965,9 @@ void _messageSerialize(
   writer.writeString(offsets[4], object.reasoningContent);
   writer.writeDateTime(offsets[5], object.reasoningStartedAt);
   writer.writeDateTime(offsets[6], object.reasoningUpdatedAt);
-  writer.writeString(offsets[7], object.role);
-  writer.writeBool(offsets[8], object.searching);
+  writer.writeString(offsets[7], object.reference);
+  writer.writeString(offsets[8], object.role);
+  writer.writeBool(offsets[9], object.searching);
 }
 
 Message _messageDeserialize(
@@ -978,8 +985,9 @@ Message _messageDeserialize(
   object.reasoningContent = reader.readString(offsets[4]);
   object.reasoningStartedAt = reader.readDateTime(offsets[5]);
   object.reasoningUpdatedAt = reader.readDateTime(offsets[6]);
-  object.role = reader.readString(offsets[7]);
-  object.searching = reader.readBool(offsets[8]);
+  object.reference = reader.readString(offsets[7]);
+  object.role = reader.readString(offsets[8]);
+  object.searching = reader.readBool(offsets[9]);
   return object;
 }
 
@@ -1007,6 +1015,8 @@ P _messageDeserializeProp<P>(
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1604,6 +1614,136 @@ extension MessageQueryFilter
     });
   }
 
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'reference',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'reference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'reference',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'reference',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> referenceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'reference',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterFilterCondition> roleEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1836,6 +1976,18 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByReferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reference', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> sortByRole() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'role', Sort.asc);
@@ -1959,6 +2111,18 @@ extension MessageQuerySortThenBy
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByReferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reference', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> thenByRole() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'role', Sort.asc);
@@ -2031,6 +2195,13 @@ extension MessageQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Message, Message, QDistinct> distinctByReference(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reference', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Message, Message, QDistinct> distinctByRole(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2094,6 +2265,12 @@ extension MessageQueryProperty
       reasoningUpdatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'reasoning_updated_at');
+    });
+  }
+
+  QueryBuilder<Message, String, QQueryOperations> referenceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reference');
     });
   }
 

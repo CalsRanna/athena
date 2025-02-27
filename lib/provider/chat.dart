@@ -80,13 +80,15 @@ class MessagesNotifier extends _$MessagesNotifier {
     return await isar.messages.filter().chatIdEqualTo(chatId).findAll();
   }
 
-  Future<void> closeStreaming() async {
+  Future<void> closeStreaming({String? reference}) async {
     final messages = await future;
     final message = messages.lastOrNull;
     if (message == null) return;
+    if (reference != null) message.reference = reference;
     await isar.writeTxn(() async {
       await isar.messages.put(message);
     });
+    ref.invalidateSelf();
   }
 
   Future<void> destroy(Message message) async {

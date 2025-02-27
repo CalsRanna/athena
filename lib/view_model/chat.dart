@@ -219,7 +219,8 @@ class ChatViewModel extends ViewModel {
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);
       }
-      await messagesNotifier.closeStreaming();
+      await messagesNotifier.closeStreaming(
+          reference: formattedMessage.reference);
       // Can not use the chat from params anymore cause the chat's title maybe
       // changed in the meantime
       var newChat = await isar.chats.filter().idEqualTo(chat.id).findFirst();
@@ -290,6 +291,7 @@ class ChatViewModel extends ViewModel {
       message.content = PresetPrompt.formatMessagePrompt
           .replaceAll('{input}', text)
           .replaceAll('{reference}', reference);
+      message.reference = reference;
     }
     return message;
   }
