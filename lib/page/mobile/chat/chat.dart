@@ -37,12 +37,10 @@ class _MessageListView extends ConsumerStatefulWidget {
   final Chat chat;
   final Model? model;
   final void Function(Chat)? onChatTitleChanged;
-  final Sentinel sentinel;
   const _MessageListView({
     required this.chat,
     this.model,
     this.onChatTitleChanged,
-    required this.sentinel,
   });
 
   @override
@@ -52,15 +50,27 @@ class _MessageListView extends ConsumerStatefulWidget {
 class _MessageListViewState extends ConsumerState<_MessageListView> {
   final controller = ScrollController();
 
+  late final viewModel = ChatViewModel(ref);
+
   @override
   Widget build(BuildContext context) {
-    var provider = messagesNotifierProvider(widget.chat.id);
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
-      AsyncLoading() => const Center(child: CircularProgressIndicator()),
-      _ => const SizedBox(),
-    };
+    var sentinelProvider = sentinelNotifierProvider(widget.chat.sentinelId);
+    var sentinel = ref.watch(sentinelProvider).value;
+    if (sentinel == null) return const SizedBox();
+    var messagesProvider = messagesNotifierProvider(widget.chat.id);
+    var messages = ref.watch(messagesProvider).value;
+    if (messages == null) return _SentinelPlaceholder(sentinel: sentinel);
+    if (messages.isEmpty) return _SentinelPlaceholder(sentinel: sentinel);
+    final reversedMessages = messages.reversed.toList();
+    return ListView.separated(
+      controller: controller,
+      itemBuilder: (_, index) =>
+          _itemBuilder(reversedMessages[index], sentinel),
+      itemCount: messages.length,
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      reverse: true,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+    );
   }
 
   void destroyMessage(Message message) {
@@ -68,7 +78,6 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     if (controller.hasClients) {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    var viewModel = ChatViewModel(ref);
     viewModel.destroyMessage(message);
     AthenaDialog.dismiss();
   }
@@ -84,7 +93,6 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     if (controller.hasClients) {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    var viewModel = ChatViewModel(ref);
     viewModel.editMessage(message);
   }
 
@@ -123,12 +131,11 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     );
   }
 
-  Future<void> resendMessage(WidgetRef ref, Message message) async {
+  Future<void> resendMessage(Message message) async {
     var duration = Duration(milliseconds: 300);
     if (controller.hasClients) {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    var viewModel = ChatViewModel(ref);
     viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
     if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
       var renamedChat = await viewModel.renameChat(widget.chat);
@@ -136,25 +143,12 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     }
   }
 
-  Widget _buildData(WidgetRef ref, List<Message> messages) {
-    if (messages.isEmpty) return const SizedBox();
-    final reversedMessages = messages.reversed.toList();
-    return ListView.separated(
-      controller: controller,
-      itemBuilder: (_, index) => _itemBuilder(ref, reversedMessages[index]),
-      itemCount: messages.length,
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      reverse: true,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-    );
-  }
-
-  Widget _itemBuilder(WidgetRef ref, Message message) {
+  Widget _itemBuilder(Message message, Sentinel sentinel) {
     return MessageListTile(
       message: message,
       onLongPress: () => openBottomSheet(message),
-      onResend: () => resendMessage(ref, message),
-      sentinel: widget.sentinel,
+      onResend: () => resendMessage(message),
+      sentinel: sentinel,
     );
   }
 }
@@ -169,24 +163,6 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    var input = _buildInput();
-    var messages = ref.watch(messagesNotifierProvider(widget.chat.id)).value;
-    var sentinel =
-        ref.watch(sentinelNotifierProvider(widget.chat.sentinelId)).value;
-    var columnChildren = [
-      if (messages != null && messages.isEmpty)
-        Expanded(child: _SentinelPlaceholder(sentinel: sentinel)),
-      if (messages != null && messages.isNotEmpty)
-        Expanded(
-          child: _MessageListView(
-            chat: widget.chat,
-            model: model,
-            onChatTitleChanged: updateTitle,
-            sentinel: sentinel ?? Sentinel(),
-          ),
-        ),
-      input,
-    ];
     var actionButton = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAiBrain01,
       onTap: openModalSelector,
@@ -195,9 +171,15 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var titleColumn = Column(
       children: [titleText, _ModelIndicator(model: model)],
     );
+    var messageListView = _MessageListView(
+      chat: widget.chat,
+      model: model,
+      onChatTitleChanged: updateTitle,
+    );
+    var input = _buildInput();
     return AthenaScaffold(
       appBar: AthenaAppBar(action: actionButton, title: titleColumn),
-      body: Column(children: columnChildren),
+      body: Column(children: [Expanded(child: messageListView), input]),
     );
   }
 
