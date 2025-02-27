@@ -1,12 +1,14 @@
 class SearchDecision {
+  String error = '';
   bool needSearch = false;
-  List<String> keywords = [];
+  String query = '';
 
   SearchDecision();
 
   factory SearchDecision.fromJson(Map<String, dynamic> json) {
     return SearchDecision()
+      ..error = json['error']
       ..needSearch = json['need_search']
-      ..keywords = List<String>.from(json['keywords']);
+      ..query = json['query'];
   }
 }
