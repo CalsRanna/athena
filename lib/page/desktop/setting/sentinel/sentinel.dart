@@ -2,6 +2,7 @@ import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/sentinel.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -9,16 +10,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
-class DesktopSettingSentinelPage extends StatelessWidget {
+class DesktopSettingSentinelPage extends ConsumerWidget {
   const DesktopSettingSentinelPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return AthenaScaffold(body: _SentinelGridView());
+  Widget build(BuildContext context, WidgetRef ref) {
+    var sentinels = ref.watch(sentinelsNotifierProvider).value;
+    if (sentinels == null) return const SizedBox();
+    const delegate = SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 4,
+      childAspectRatio: 2.0,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+    );
+    var gridView = GridView.builder(
+      gridDelegate: delegate,
+      itemCount: sentinels.length,
+      itemBuilder: (context, index) => _SentinelTile(sentinels[index]),
+      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+    );
+    return AthenaScaffold(body: gridView);
   }
 }
 
-class _SentinelContextMenu extends StatelessWidget {
+class _SentinelContextMenu extends ConsumerWidget {
   final Offset offset;
   final void Function()? onTap;
   final Sentinel sentinel;
@@ -29,14 +44,14 @@ class _SentinelContextMenu extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     var editOption = DesktopContextMenuOption(
       text: 'Edit',
       onTap: () => navigateSentinelFormPage(context),
     );
     var deleteOption = DesktopContextMenuOption(
       text: 'Delete',
-      onTap: () => destroySentinel(context),
+      onTap: () => destroySentinel(context, ref),
     );
     return DesktopContextMenu(
       offset: offset,
@@ -45,46 +60,14 @@ class _SentinelContextMenu extends StatelessWidget {
     );
   }
 
-  void destroySentinel(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var provider = sentinelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    notifier.destroy(sentinel);
+  void destroySentinel(BuildContext context, WidgetRef ref) {
+    SentinelViewModel(ref).destroySentinel(sentinel);
     onTap?.call();
   }
 
   void navigateSentinelFormPage(BuildContext context) {
     DesktopSentinelFormRoute(sentinel: sentinel).push(context);
     onTap?.call();
-  }
-}
-
-class _SentinelGridView extends ConsumerWidget {
-  const _SentinelGridView();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = sentinelsNotifierProvider;
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildData(List<Sentinel> sentinels) {
-    const delegate = SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 4,
-      childAspectRatio: 2.0,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-    );
-    return GridView.builder(
-      gridDelegate: delegate,
-      itemCount: sentinels.length,
-      itemBuilder: (context, index) => _SentinelTile(sentinels[index]),
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-    );
   }
 }
 

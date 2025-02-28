@@ -1,8 +1,4 @@
-import 'package:athena/api/sentinel.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/isar.dart';
-import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -26,18 +22,6 @@ class SentinelNotifier extends _$SentinelNotifier {
     if (sentinel != null) return sentinel;
     return await ref.watch(defaultSentinelNotifierProvider.future);
   }
-
-  Future<Sentinel> generate(String prompt, {required Model model}) async {
-    var provider = providerNotifierProvider(model.id);
-    var aiProvider = await ref.watch(provider.future);
-    return SentinelApi().generate(prompt, model: model, provider: aiProvider);
-  }
-
-  void select(Sentinel sentinel, {bool invalidate = true}) {
-    state = AsyncData(sentinel);
-    if (!invalidate) return;
-    ref.invalidate(chatNotifierProvider);
-  }
 }
 
 @riverpod
@@ -54,27 +38,6 @@ class SentinelsNotifier extends _$SentinelsNotifier {
       await isar.sentinels.put(defaultSentinel);
     });
     return [defaultSentinel];
-  }
-
-  Future<void> destroy(Sentinel sentinel) async {
-    await isar.writeTxn(() async {
-      await isar.sentinels.delete(sentinel.id);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> store(Sentinel sentinel) async {
-    await isar.writeTxn(() async {
-      await isar.sentinels.put(sentinel);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> updateSentinel(Sentinel sentinel) async {
-    await isar.writeTxn(() async {
-      await isar.sentinels.put(sentinel);
-    });
-    ref.invalidateSelf();
   }
 }
 

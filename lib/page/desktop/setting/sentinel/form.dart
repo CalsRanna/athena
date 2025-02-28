@@ -1,5 +1,4 @@
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
-import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/sentinel.dart';
@@ -104,13 +103,16 @@ class _DesktopSentinelFormPageState
   }
 
   void storeSentinel() async {
-    if (promptController.text.isEmpty) return;
-    var container = ProviderScope.containerOf(context);
-    final notifier = container.read(sentinelsNotifierProvider.notifier);
+    if (promptController.text.isEmpty) {
+      AthenaDialog.message('Prompt is required');
+      return;
+    }
     if (widget.sentinel != null) {
       sentinel.id = widget.sentinel!.id;
+      viewModel.updateSentinel(sentinel);
+    } else {
+      viewModel.storeSentinel(sentinel);
     }
-    notifier.store(sentinel);
     AutoRouter.of(context).maybePop();
   }
 
