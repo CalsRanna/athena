@@ -4,9 +4,10 @@ import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
+import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -18,7 +19,7 @@ import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
@@ -37,6 +38,8 @@ class _DesktopSettingProviderPageState
   int index = 0;
   final keyController = TextEditingController();
   final urlController = TextEditingController();
+
+  late final viewModel = ProviderViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -68,10 +71,9 @@ class _DesktopSettingProviderPageState
     AthenaDialog.message(result);
   }
 
-  Future<void> destroyProvider(schema.Provider provider) async {
+  Future<void> destroyProvider(Provider provider) async {
     entry?.remove();
-    var notifier = ref.read(providersNotifierProvider.notifier);
-    await notifier.destroy(provider);
+    await viewModel.destroyProvider(provider);
     setState(() {
       index = 0;
     });
@@ -118,7 +120,7 @@ class _DesktopSettingProviderPageState
     AthenaDialog.show(DesktopModelFormDialog(provider: providers[index]));
   }
 
-  void showProviderContextMenu(TapUpDetails details, schema.Provider provider) {
+  void showProviderContextMenu(TapUpDetails details, Provider provider) {
     if (provider.isPreset) return;
     var contextMenu = _ProviderContextMenu(
       offset: details.globalPosition - Offset(240, 50),
@@ -131,7 +133,7 @@ class _DesktopSettingProviderPageState
     Overlay.of(context).insert(entry!);
   }
 
-  void showProviderFormDialog(schema.Provider provider) async {
+  void showProviderFormDialog(Provider provider) async {
     entry?.remove();
     AthenaDialog.show(DesktopProviderFormDialog(provider: provider));
   }
@@ -140,9 +142,8 @@ class _DesktopSettingProviderPageState
     var provider = providersNotifierProvider;
     var providers = await ref.watch(provider.future);
     if (providers.isEmpty) return;
-    var notifier = ref.read(provider.notifier);
     var copiedProvider = providers[index].copyWith(enabled: value);
-    return notifier.updateProvider(copiedProvider);
+    return viewModel.updateProvider(copiedProvider);
   }
 
   Future<void> updateKey() async {
@@ -150,8 +151,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(key: keyController.text);
-    var notifier = ref.read(provider.notifier);
-    await notifier.updateProvider(copiedProvider);
+    await viewModel.updateProvider(copiedProvider);
   }
 
   Future<void> updateModel(Model model) async {
@@ -169,8 +169,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(url: urlController.text);
-    var notifier = ref.read(provider.notifier);
-    await notifier.updateProvider(copiedProvider);
+    await viewModel.updateProvider(copiedProvider);
   }
 
   List<Widget> _buildModelListView(List<Model>? models) {
@@ -207,7 +206,7 @@ class _DesktopSettingProviderPageState
     );
   }
 
-  Widget _buildProviderTile(List<schema.Provider> providers, int index) {
+  Widget _buildProviderTile(List<Provider> providers, int index) {
     var provider = providers[index];
     var tag = AthenaTag.small(fontSize: 6, text: 'ON');
     return DesktopMenuTile(
@@ -297,11 +296,11 @@ class _DesktopSettingProviderPageState
   }
 }
 
-class _ModelContextMenu extends StatelessWidget {
+class _ModelContextMenu extends ConsumerWidget {
   final Offset offset;
   final Model model;
   final void Function()? onTap;
-  final schema.Provider provider;
+  final Provider provider;
   const _ModelContextMenu({
     required this.offset,
     required this.model,
@@ -310,14 +309,14 @@ class _ModelContextMenu extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     var editOption = DesktopContextMenuOption(
       text: 'Edit',
       onTap: () => showModelFormDialog(context),
     );
     var deleteOption = DesktopContextMenuOption(
       text: 'Delete',
-      onTap: () => destroyModel(context),
+      onTap: () => destroyModel(context, ref),
     );
     return DesktopContextMenu(
       offset: offset,
@@ -326,11 +325,8 @@ class _ModelContextMenu extends StatelessWidget {
     );
   }
 
-  void destroyModel(BuildContext context) {
-    var container = ProviderScope.containerOf(context);
-    var modelsProvider = modelsForNotifierProvider(provider.id);
-    var notifier = container.read(modelsProvider.notifier);
-    notifier.deleteModel(model);
+  void destroyModel(BuildContext context, WidgetRef ref) {
+    ModelViewModel(ref).destroyModel(model);
     onTap?.call();
   }
 
@@ -477,7 +473,7 @@ class _ProviderContextMenu extends StatelessWidget {
   final void Function()? onDestroyed;
   final void Function()? onEdited;
   final void Function()? onTap;
-  final schema.Provider provider;
+  final Provider provider;
   const _ProviderContextMenu({
     required this.offset,
     this.onDestroyed,

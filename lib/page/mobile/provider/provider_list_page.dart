@@ -122,7 +122,7 @@ class _ProviderListTile extends ConsumerWidget {
 
   void destroyProvider(WidgetRef ref) {
     var viewModel = ProviderViewModel(ref);
-    viewModel.deleteProvider(provider);
+    viewModel.destroyProvider(provider);
     AthenaDialog.dismiss();
   }
 

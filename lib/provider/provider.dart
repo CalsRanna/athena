@@ -20,27 +20,6 @@ class ProvidersNotifier extends _$ProvidersNotifier {
   Future<List<schema.Provider>> build() async {
     return await isar.providers.where().findAll();
   }
-
-  Future<void> destroy(schema.Provider provider) async {
-    await isar.writeTxn(() async {
-      await isar.providers.delete(provider.id);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> storeProvider(schema.Provider provider) async {
-    await isar.writeTxn(() async {
-      await isar.providers.put(provider);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> updateProvider(schema.Provider provider) async {
-    await isar.writeTxn(() async {
-      await isar.providers.put(provider);
-    });
-    ref.invalidateSelf();
-  }
 }
 
 @riverpod
