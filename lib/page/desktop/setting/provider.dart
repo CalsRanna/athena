@@ -2,7 +2,6 @@ import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
 import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
-import 'package:athena/provider/setting.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
@@ -152,16 +151,6 @@ class _DesktopSettingProviderPageState
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(key: keyController.text);
     await viewModel.updateProvider(copiedProvider);
-  }
-
-  Future<void> updateModel(Model model) async {
-    setState(() {
-      this.model = model.value;
-    });
-    var container = ProviderScope.containerOf(context);
-    var provider = settingNotifierProvider;
-    var notifier = container.read(provider.notifier);
-    await notifier.updateModel(model.value);
   }
 
   Future<void> updateUrl() async {
