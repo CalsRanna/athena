@@ -1,25 +1,28 @@
-import 'package:athena/provider/provider.dart';
-import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopProviderFormDialog extends StatefulWidget {
-  final schema.Provider? provider;
+class DesktopProviderFormDialog extends ConsumerStatefulWidget {
+  final Provider? provider;
   const DesktopProviderFormDialog({super.key, this.provider});
 
   @override
-  State<DesktopProviderFormDialog> createState() =>
+  ConsumerState<DesktopProviderFormDialog> createState() =>
       _DesktopProviderFormDialogState();
 }
 
-class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
+class _DesktopProviderFormDialogState
+    extends ConsumerState<DesktopProviderFormDialog> {
   final nameController = TextEditingController();
+
+  late final viewModel = ProviderViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -92,17 +95,14 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
   }
 
   Future<void> storeProvider() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = providersNotifierProvider;
-    var notifier = container.read(provider.notifier);
     if (widget.provider != null) {
       var copiedProvider = widget.provider!.copyWith(name: nameController.text);
-      await notifier.updateProvider(copiedProvider);
+      await viewModel.updateProvider(copiedProvider);
     } else {
-      var newProvider = schema.Provider()
+      var newProvider = Provider()
         ..enabled = true
         ..name = nameController.text;
-      await notifier.storeProvider(newProvider);
+      await viewModel.storeProvider(newProvider);
     }
     AthenaDialog.dismiss();
   }

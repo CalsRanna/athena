@@ -1,27 +1,31 @@
-import 'package:athena/provider/model.dart';
 import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopModelFormDialog extends StatefulWidget {
+class DesktopModelFormDialog extends ConsumerStatefulWidget {
   final Model? model;
-  final schema.Provider provider;
+  final Provider provider;
   const DesktopModelFormDialog({super.key, required this.provider, this.model});
 
   @override
-  State<DesktopModelFormDialog> createState() => _DesktopModelFormDialogState();
+  ConsumerState<DesktopModelFormDialog> createState() =>
+      _DesktopModelFormDialogState();
 }
 
-class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
+class _DesktopModelFormDialogState
+    extends ConsumerState<DesktopModelFormDialog> {
   final nameController = TextEditingController();
   final valueController = TextEditingController();
+
+  late final viewModel = ModelViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -103,21 +107,18 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   }
 
   Future<void> storeModel() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = modelsForNotifierProvider(widget.provider.id);
-    var notifier = container.read(provider.notifier);
     if (widget.model == null) {
       var newModel = Model()
         ..name = nameController.text
         ..value = valueController.text
         ..providerId = widget.provider.id;
-      await notifier.storeModel(newModel);
+      await viewModel.storeModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
         name: nameController.text,
         value: valueController.text,
       );
-      await notifier.updateModel(copiedModel);
+      await viewModel.updateModel(copiedModel);
     }
     AthenaDialog.dismiss();
   }

@@ -16,7 +16,7 @@ class ProviderViewModel extends ViewModel {
     ref.invalidate(providersNotifierProvider);
   }
 
-  Future<void> deleteProvider(schema.Provider provider) async {
+  Future<void> destroyProvider(schema.Provider provider) async {
     await isar.writeTxn(() async {
       await isar.providers.delete(provider.id);
     });
