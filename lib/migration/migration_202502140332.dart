@@ -13,12 +13,12 @@ class Migration202502140332 {
       await isar.providers.clear();
       await isar.models.clear();
     });
-    for (var providerPreset in providerPresets) {
-      var provider = Provider.fromJson(providerPreset);
+    for (var preset in ProviderPreset.providers) {
+      var provider = Provider.fromJson(preset);
       await isar.writeTxn(() async {
         provider.id = await isar.providers.put(provider);
       });
-      var modelPresets = providerPreset['models'] as List<Map<String, dynamic>>;
+      var modelPresets = preset['models'] as List<Map<String, dynamic>>;
       for (var modelPreset in modelPresets) {
         var model = Model.fromJson(modelPreset);
         model.providerId = provider.id;
