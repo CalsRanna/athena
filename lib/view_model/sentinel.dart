@@ -31,4 +31,18 @@ class SentinelViewModel extends ViewModel {
       model: model,
     );
   }
+
+  Future<void> storeSentinel(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(sentinel);
+    });
+    ref.invalidate(sentinelsNotifierProvider);
+  }
+
+  Future<void> updateSentinel(Sentinel sentinel) async {
+    await isar.writeTxn(() async {
+      await isar.sentinels.put(sentinel);
+    });
+    ref.invalidate(sentinelsNotifierProvider);
+  }
 }

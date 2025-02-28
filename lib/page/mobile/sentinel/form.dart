@@ -1,4 +1,3 @@
-import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/sentinel.dart';
@@ -141,7 +140,7 @@ class _MobileSentinelFormPageState
 
   Future<void> storeSentinel() async {
     var message = _validate();
-    if (message != null) return AthenaDialog.success(message);
+    if (message != null) return AthenaDialog.message(message);
     if (widget.sentinel == null) return _store();
     _update();
   }
@@ -202,28 +201,22 @@ class _MobileSentinelFormPageState
   }
 
   Future<void> _store() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = sentinelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
     var sentinel = Sentinel()
       ..name = nameController.text
       ..description = descriptionController.text
       ..prompt = promptController.text;
-    await notifier.store(sentinel);
+    await viewModel.storeSentinel(sentinel);
     if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
 
   Future<void> _update() async {
-    var container = ProviderScope.containerOf(context);
-    var provider = sentinelsNotifierProvider;
-    var notifier = container.read(provider.notifier);
     var sentinel = widget.sentinel!.copyWith(
       name: nameController.text,
       description: descriptionController.text,
       prompt: promptController.text,
     );
-    await notifier.updateSentinel(sentinel);
+    await viewModel.updateSentinel(sentinel);
     if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
