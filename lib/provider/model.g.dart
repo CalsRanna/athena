@@ -58,7 +58,7 @@ final chatSearchDecisionModelNotifierProvider =
 
 typedef _$ChatSearchDecisionModelNotifier = AutoDisposeAsyncNotifier<Model>;
 String _$enabledModelsForNotifierHash() =>
-    r'1f309fad4fa1d7d3ef4a1107720bec15591500df';
+    r'5f36926b326aa2512486cc21ca44f6acec1dc17b';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -392,7 +392,7 @@ class _ModelNotifierProviderElement
   int get id => (origin as ModelNotifierProvider).id;
 }
 
-String _$modelsForNotifierHash() => r'86fddfc76830f83e9e6c83ace32dbecb1e568422';
+String _$modelsForNotifierHash() => r'f210bd2dd0ce6139deed295e29c3b20c764aff52';
 
 abstract class _$ModelsForNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Model>> {
