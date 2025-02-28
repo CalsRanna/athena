@@ -300,12 +300,14 @@ class ChatViewModel extends ViewModel {
     String text, {
     required Chat chat,
   }) async {
-    if (!chat.enableSearch) return SearchDecision();
+    var latestChat = await ref.read(chatNotifierProvider(chat.id).future);
+    if (!latestChat.enableSearch) return SearchDecision();
     var searchDecisionModel = chatSearchDecisionModelNotifierProvider;
     var model = await ref.read(searchDecisionModel.future);
     var searchDecisionProvider = providerNotifierProvider(model.providerId);
     var provider = await ref.read(searchDecisionProvider.future);
-    var messages = await ref.read(messagesNotifierProvider(chat.id).future);
+    var messagesProvider = messagesNotifierProvider(latestChat.id);
+    var messages = await ref.read(messagesProvider.future);
     var userMessages = messages.where((message) => message.role == 'user');
     if (userMessages.isEmpty) return SearchDecision();
     var historyText = userMessages.map((message) => message.content).join('\n');
