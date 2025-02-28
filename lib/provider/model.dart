@@ -7,73 +7,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'model.g.dart';
 
-// @riverpod
-// class ModelsNotifier extends _$ModelsNotifier {
-//   @override
-//   Future<List<Model>> build() async {
-//     final models = await isar.models.where().findAll();
-//     if (models.isNotEmpty) return _sort(models);
-//     final remoteModels = await ManagerApi().getModels();
-//     await isar.writeTxn(() async {
-//       isar.models.putAll(remoteModels);
-//     });
-//     return _sort(remoteModels);
-//   }
-
-//   Future<void> deleteModel(Model model) async {
-//     await isar.writeTxn(() async {
-//       await isar.models.delete(model.id);
-//     });
-//     ref.invalidateSelf();
-//     var setting = await ref.read(settingNotifierProvider.future);
-//     if (setting.model == model.value) {
-//       var notifier = ref.read(settingNotifierProvider.notifier);
-//       notifier.updateModel('');
-//     }
-//   }
-
-//   Future<void> getModels() async {
-//     final remoteModels = await ManagerApi().getModels();
-//     for (final model in remoteModels) {
-//       final queryBuilder = isar.models.filter().valueEqualTo(model.value);
-//       final exist = await queryBuilder.findFirst();
-//       if (exist == null) {
-//         await isar.writeTxn(() async {
-//           isar.models.put(model);
-//         });
-//       }
-//     }
-//     ref.invalidateSelf();
-//     final setting = await ref.read(settingNotifierProvider.future);
-//     if (setting.model.isNotEmpty) return;
-//     final notifier = ref.read(settingNotifierProvider.notifier);
-//     notifier.updateModel(remoteModels.first.value);
-//   }
-
-//   Future<void> storeModel(Model model) async {
-//     var models = await future;
-//     if (models.any((m) => m.value == model.value)) {
-//       throw Exception('Model already exist');
-//     }
-//     await isar.writeTxn(() async {
-//       await isar.models.put(model);
-//     });
-//     ref.invalidateSelf();
-//   }
-
-//   Future<void> updateModel(Model model) async {
-//     await isar.writeTxn(() async {
-//       await isar.models.put(model);
-//     });
-//     ref.invalidateSelf();
-//   }
-
-//   List<Model> _sort(List<Model> models) {
-//     models.sort((a, b) => a.name.compareTo(b.name));
-//     return models;
-//   }
-// }
-
 @riverpod
 class ChatModelNotifier extends _$ChatModelNotifier {
   @override
@@ -118,10 +51,6 @@ class EnabledModelsForNotifier extends _$EnabledModelsForNotifier {
   Future<List<Model>> build(int providerId) async {
     var builder = isar.models.filter().providerIdEqualTo(providerId);
     final models = await builder.findAll();
-    return _sort(models);
-  }
-
-  List<Model> _sort(List<Model> models) {
     models.sort((a, b) => a.name.compareTo(b.name));
     return models;
   }
@@ -160,31 +89,6 @@ class ModelsForNotifier extends _$ModelsForNotifier {
   Future<List<Model>> build(int providerId) async {
     var builder = isar.models.filter().providerIdEqualTo(providerId);
     final models = await builder.findAll();
-    return _sort(models);
-  }
-
-  Future<void> deleteModel(Model model) async {
-    await isar.writeTxn(() async {
-      await isar.models.delete(model.id);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> storeModel(Model model) async {
-    await isar.writeTxn(() async {
-      await isar.models.put(model);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> updateModel(Model model) async {
-    await isar.writeTxn(() async {
-      await isar.models.put(model);
-    });
-    ref.invalidateSelf();
-  }
-
-  List<Model> _sort(List<Model> models) {
     models.sort((a, b) => a.name.compareTo(b.name));
     return models;
   }
