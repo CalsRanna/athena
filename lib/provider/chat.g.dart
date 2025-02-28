@@ -171,7 +171,7 @@ class _ChatNotifierProviderElement
   int get id => (origin as ChatNotifierProvider).id;
 }
 
-String _$chatsNotifierHash() => r'47b239dcc0483592ab8e1e6c2ef6be314789a2ef';
+String _$chatsNotifierHash() => r'80e4bd0d7b0206ce3b4803779e56614c1cc89e3b';
 
 /// See also [ChatsNotifier].
 @ProviderFor(ChatsNotifier)
@@ -187,7 +187,7 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$messagesNotifierHash() => r'c1dd7886dfd94314ec63be13f63f914e5e242366';
+String _$messagesNotifierHash() => r'33bb3b3e9592f3efe517a27967fb30e142d78848';
 
 abstract class _$MessagesNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Message>> {
