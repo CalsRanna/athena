@@ -35,15 +35,6 @@ class ChatsNotifier extends _$ChatsNotifier {
     return await isar.chats.where().sortByUpdatedAtDesc().findAll();
   }
 
-  Future<void> destroy(int id) async {
-    await isar.writeTxn(() async {
-      await isar.chats.delete(id);
-      await isar.messages.filter().chatIdEqualTo(id).deleteAll();
-    });
-    ref.invalidateSelf();
-    ref.invalidate(recentChatsNotifierProvider);
-  }
-
   Future<void> updateChatTitle(String title, {required Chat chat}) async {
     var newChat = chat.copyWith(title: title);
     var chats = await future;
@@ -65,7 +56,14 @@ class MessagesNotifier extends _$MessagesNotifier {
     final messages = await future;
     final message = messages.lastOrNull;
     if (message?.role != 'assistant') {
-      await store(error, role: 'assistant');
+      final message = Message()
+        ..content = error
+        ..role = 'assistant'
+        ..chatId = chatId;
+      await isar.writeTxn(() async {
+        await isar.messages.put(message);
+      });
+      ref.invalidateSelf();
     } else {
       message!.content = '${message.content}\n$error';
       await isar.writeTxn(() async {
@@ -85,32 +83,6 @@ class MessagesNotifier extends _$MessagesNotifier {
     final message = messages.lastOrNull;
     if (message == null) return;
     if (reference != null) message.reference = reference;
-    await isar.writeTxn(() async {
-      await isar.messages.put(message);
-    });
-    ref.invalidateSelf();
-  }
-
-  Future<void> destroy(Message message) async {
-    final messages = await future;
-    final index = messages.indexWhere((item) => item.id == message.id);
-    List<Message> removed = [];
-    for (var i = index; i < messages.length; i++) {
-      removed.add(messages.elementAt(i));
-    }
-    messages.removeRange(index, messages.length);
-    state = AsyncData([...messages]);
-    await future;
-    await isar.writeTxn(() async {
-      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
-    });
-  }
-
-  Future<void> store(String content, {String role = 'user'}) async {
-    final message = Message();
-    message.chatId = chatId;
-    message.content = content;
-    message.role = role;
     await isar.writeTxn(() async {
       await isar.messages.put(message);
     });
