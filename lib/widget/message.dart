@@ -17,6 +17,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MessageListTile extends StatelessWidget {
+  final bool loading;
   final Message message;
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
@@ -25,6 +26,7 @@ class MessageListTile extends StatelessWidget {
 
   const MessageListTile({
     super.key,
+    this.loading = false,
     required this.message,
     this.onLongPress,
     this.onResend,
@@ -42,14 +44,20 @@ class MessageListTile extends StatelessWidget {
         onSecondaryTapUp: onSecondaryTapUp,
       );
     }
-    return _AssistantMessageListTile(message: message, sentinel: sentinel);
+    return _AssistantMessageListTile(
+      loading: loading,
+      message: message,
+      sentinel: sentinel,
+    );
   }
 }
 
 class _AssistantMessageListTile extends StatelessWidget {
+  final bool loading;
   final Message message;
   final Sentinel sentinel;
   const _AssistantMessageListTile({
+    this.loading = false,
     required this.message,
     required this.sentinel,
   });
@@ -59,7 +67,6 @@ class _AssistantMessageListTile extends StatelessWidget {
     var children = [
       _buildAvatar(),
       const SizedBox(width: 12),
-      _buildLoading(),
       _buildContent(),
       _buildTrailingSpace(),
     ];
@@ -128,6 +135,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       if (message.content.isNotEmpty) SizedBox(height: 8),
       AthenaMarkdown(engine: AthenaMarkdownEngine.flutter, message: message),
       _AssistantMessageListTileReferencePart(message: message),
+      _AssistantMessageListTileLoadingPart(loading: loading, message: message),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,18 +149,28 @@ class _AssistantMessageListTile extends StatelessWidget {
     return Expanded(child: container);
   }
 
-  Widget _buildLoading() {
-    var loading = message.content.isEmpty && message.reasoningContent.isEmpty;
-    if (!loading) return const SizedBox();
-    var indicator = CircularProgressIndicator(strokeWidth: 2);
-    var sizedBox = SizedBox(height: 16, width: 16, child: indicator);
-    var align = Align(alignment: Alignment.centerLeft, child: sizedBox);
-    return SizedBox.square(dimension: 36, child: align);
-  }
-
   Widget _buildTrailingSpace() {
     var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
     return SizedBox(width: isDesktop ? 48 : 24);
+  }
+}
+
+class _AssistantMessageListTileLoadingPart extends StatelessWidget {
+  final bool loading;
+  final Message message;
+  const _AssistantMessageListTileLoadingPart({
+    required this.loading,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (!loading) return const SizedBox();
+    if (message.content.isNotEmpty) return const SizedBox();
+    var indicator = CircularProgressIndicator(strokeWidth: 1);
+    var sizedBox = SizedBox(height: 12, width: 12, child: indicator);
+    var align = Align(alignment: Alignment.centerLeft, child: sizedBox);
+    return SizedBox.square(dimension: 28, child: align);
   }
 }
 

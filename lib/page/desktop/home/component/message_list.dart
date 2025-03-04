@@ -80,7 +80,9 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
 
   Widget _itemBuilder(List<Message> messages, int index) {
     final message = messages.reversed.elementAt(index);
+    var loading = ref.watch(streamingNotifierProvider);
     return MessageListTile(
+      loading: loading,
       message: message,
       onResend: () => widget.onResend.call(message),
       onSecondaryTapUp: (details) => openContextMenu(details, message),
