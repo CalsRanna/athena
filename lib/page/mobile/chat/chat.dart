@@ -144,7 +144,9 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
   }
 
   Widget _itemBuilder(Message message, Sentinel sentinel) {
+    var loading = ref.watch(streamingNotifierProvider);
     return MessageListTile(
+      loading: loading,
       message: message,
       onLongPress: () => openBottomSheet(message),
       onResend: () => resendMessage(message),
