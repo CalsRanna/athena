@@ -67,6 +67,26 @@ class DesktopMessageInput extends StatelessWidget {
   }
 }
 
+class _ChatConfigurationButton extends StatelessWidget {
+  final Chat chat;
+  final void Function()? onTap;
+  const _ChatConfigurationButton({required this.chat, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedSlidersHorizontal,
+      color: ColorUtil.FFFFFFFF,
+      size: 24,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
+    );
+  }
+}
+
 class _Input extends StatefulWidget {
   final TextEditingController controller;
   final void Function()? onSubmitted;
@@ -189,30 +209,14 @@ class _SendButton extends ConsumerWidget {
       width: 55,
       child: innerContainer,
     );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
       child: outerContainer,
     );
-  }
-}
-
-class _ChatConfigurationButton extends StatelessWidget {
-  final Chat chat;
-  final void Function()? onTap;
-  const _ChatConfigurationButton({required this.chat, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedSlidersHorizontal,
-      color: ColorUtil.FFFFFFFF,
-      size: 24,
-    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
+      child: mouseRegion,
     );
   }
 }
