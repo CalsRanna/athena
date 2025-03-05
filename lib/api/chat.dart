@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
@@ -65,6 +66,7 @@ class ChatApi {
   }
 
   Stream<OverrodeChatCompletionStreamResponseDelta> getCompletion({
+    required Chat chat,
     required List<Message> messages,
     required Provider provider,
     required schema.Model model,
@@ -75,7 +77,13 @@ class ChatApi {
       baseUrl: provider.url,
       headers: headers,
     );
-    var wrappedMessages = messages.map((message) {
+    var context = messages.length;
+    if (chat.context > 0) {
+      context = min(chat.context * 2, messages.length);
+    }
+    var start = max(0, messages.length - context);
+    var contextMessages = messages.sublist(start);
+    var wrappedMessages = contextMessages.map((message) {
       if (message.role == 'system') {
         return ChatCompletionMessage.system(content: message.content);
       } else if (message.role == 'assistant') {
@@ -89,6 +97,7 @@ class ChatApi {
     var request = CreateChatCompletionRequest(
       model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
+      temperature: chat.temperature,
     );
     var response = client.createOverrodeChatCompletionStream(request: request);
     await for (final chunk in response) {

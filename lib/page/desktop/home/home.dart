@@ -1,3 +1,4 @@
+import 'package:athena/page/desktop/home/component/chat_configuration_sheet.dart';
 import 'package:athena/page/desktop/home/component/chat_indicator.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
@@ -27,15 +28,23 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   var chat = Chat();
   var model = Model();
   var sentinel = Sentinel();
+  var showRightSheet = false;
+
   final controller = TextEditingController();
   final scrollController = ScrollController();
   late final viewModel = ChatViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
-    var children = [_buildLeftBar(), Expanded(child: _buildRightWorkspace())];
+    var children = [
+      _buildLeftBar(),
+      Expanded(child: _buildWorkspace()),
+      _buildRightSheet(),
+    ];
     return AthenaScaffold(
-        appBar: _buildAppBar(), body: Row(children: children));
+      appBar: _buildAppBar(),
+      body: Row(children: children),
+    );
   }
 
   Future<void> changeChat(Chat chat) async {
@@ -54,8 +63,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> createChat() async {
     if (viewModel.streaming) {
-      return AthenaDialog.message(
-          'Please wait for the current chat to finish.');
+      AthenaDialog.message('Please wait for the current chat to finish.');
+      return;
     }
     if (!await viewModel.hasModel()) {
       AthenaDialog.message('You should enable a provider first');
@@ -67,6 +76,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var chat = await viewModel.createChat();
     setState(() {
       this.chat = chat;
+      showRightSheet = false;
     });
   }
 
@@ -172,6 +182,12 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
+  void updateShowRightSheet() {
+    setState(() {
+      showRightSheet = !showRightSheet;
+    });
+  }
+
   Widget _buildAppBar() {
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
@@ -197,8 +213,9 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       onSelected: changeChat,
       selectedChat: chat,
     );
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
       decoration: boxDecoration,
@@ -208,7 +225,33 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     );
   }
 
-  Widget _buildRightWorkspace() {
+  Widget _buildRightSheet() {
+    if (!showRightSheet) return SizedBox();
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
+    var boxDecoration = BoxDecoration(border: Border(left: borderSide));
+    return Container(
+      decoration: boxDecoration,
+      height: double.infinity,
+      width: 240,
+      child: DesktopChatConfigurationSheet(chat: chat),
+    );
+  }
+
+  Widget _buildSettingButton() {
+    const icon = Icon(
+      HugeIcons.strokeRoundedSettings01,
+      color: ColorUtil.FFFFFFFF,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => viewModel.navigateSettingPage(context),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
+    );
+  }
+
+  Widget _buildWorkspace() {
     var workspace = DesktopMessageList(
       chat: chat,
       controller: scrollController,
@@ -218,6 +261,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var desktopMessageInput = DesktopMessageInput(
       chat: chat,
       controller: controller,
+      onChatConfigurationButtonTapped: updateShowRightSheet,
       onModelChanged: updateModel,
       onSearchDecisionChanged: updateEnableSearch,
       onSentinelChanged: updateSentinel,
@@ -226,16 +270,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [Expanded(child: workspace), desktopMessageInput],
-    );
-  }
-
-  Widget _buildSettingButton() {
-    const icon =
-        Icon(HugeIcons.strokeRoundedSettings01, color: ColorUtil.FFFFFFFF);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => viewModel.navigateSettingPage(context),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 

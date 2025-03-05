@@ -14,6 +14,7 @@ import 'package:hugeicons/hugeicons.dart';
 class DesktopMessageInput extends StatelessWidget {
   final Chat chat;
   final TextEditingController controller;
+  final void Function()? onChatConfigurationButtonTapped;
   final void Function(Model)? onModelChanged;
   final void Function(bool)? onSearchDecisionChanged;
   final void Function(Sentinel)? onSentinelChanged;
@@ -22,6 +23,7 @@ class DesktopMessageInput extends StatelessWidget {
     super.key,
     required this.chat,
     required this.controller,
+    this.onChatConfigurationButtonTapped,
     this.onModelChanged,
     this.onSearchDecisionChanged,
     this.onSentinelChanged,
@@ -33,12 +35,14 @@ class DesktopMessageInput extends StatelessWidget {
     var toolbarChildren = [
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
-      DesktopChatSearchDecisionToggle(
+      DesktopChatSearchDecisionButton(
         chat: chat,
         onTap: onSearchDecisionChanged,
       ),
-      Icon(HugeIcons.strokeRoundedTemperature),
-      Icon(HugeIcons.strokeRoundedLimitation),
+      _ChatConfigurationButton(
+        chat: chat,
+        onTap: onChatConfigurationButtonTapped,
+      ),
       Icon(HugeIcons.strokeRoundedImage01),
     ];
     var toolbar = IconTheme.merge(
@@ -189,6 +193,26 @@ class _SendButton extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: outerContainer,
+    );
+  }
+}
+
+class _ChatConfigurationButton extends StatelessWidget {
+  final Chat chat;
+  final void Function()? onTap;
+  const _ChatConfigurationButton({required this.chat, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    var icon = Icon(
+      HugeIcons.strokeRoundedSlidersHorizontal,
+      color: ColorUtil.FFFFFFFF,
+      size: 24,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 }

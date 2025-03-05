@@ -212,6 +212,7 @@ class ChatViewModel extends ViewModel {
     final system = {'role': 'system', 'content': realSentinel.prompt};
     try {
       final response = ChatApi().getCompletion(
+        chat: chat,
         messages: [Message.fromJson(system), ...wrappedMessages],
         model: realUsedModel,
         provider: provider,
@@ -234,6 +235,16 @@ class ChatViewModel extends ViewModel {
       messagesNotifier.append(error.toString());
     }
     streamingNotifier.close();
+  }
+
+  Future<void> updateContext(int context, {required Chat chat}) async {
+    var copiedChat = chat.copyWith(context: context);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<Chat> updateEnableSearch(bool enabled, {required Chat chat}) async {
@@ -275,6 +286,17 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
     return copiedChat;
+  }
+
+  Future<void> updateTemperature(double temperature,
+      {required Chat chat}) async {
+    var copiedChat = chat.copyWith(temperature: temperature);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatNotifierProvider(chat.id));
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
   }
 
   Future<Message> _getFormattedMessage(
