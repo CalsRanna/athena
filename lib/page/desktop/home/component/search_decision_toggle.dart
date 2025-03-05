@@ -3,10 +3,10 @@ import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopChatSearchDecisionToggle extends StatelessWidget {
+class DesktopChatSearchDecisionButton extends StatelessWidget {
   final Chat chat;
   final void Function(bool)? onTap;
-  const DesktopChatSearchDecisionToggle({
+  const DesktopChatSearchDecisionButton({
     super.key,
     required this.chat,
     this.onTap,
