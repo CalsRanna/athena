@@ -51,17 +51,16 @@ sequenceDiagram
     ViewModel->>Isar: 持久化存储
     ViewModel->>Provider: 状态更新
     Provider-->>UI: 驱动刷新
-
-    Note right of Provider: Riverpod职责边界
-    状态容器
-    UI状态同步
-    监听ViewModel更新
-    
-    Note left of ViewModel: 业务逻辑处理
-    API调用
-    数据持久化
-    状态预处理
 ```
+> Note right of Provider: Riverpod职责边界
+> - 状态容器
+> - UI状态同步
+> - 监听ViewModel更新
+> 
+> Note left of ViewModel: 业务逻辑处理
+> - API调用
+> - 数据持久化
+> - 状态预处理
 
 ## 🔧 开发指南
 
