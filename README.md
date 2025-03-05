@@ -46,11 +46,21 @@ sequenceDiagram
     participant API
     
     UI->>ViewModel: 用户输入
+    ViewModel->>API: 发送请求
+    API-->>ViewModel: 返回响应
+    ViewModel->>Isar: 持久化存储
     ViewModel->>Provider: 状态更新
-    Provider->>API: 发送请求
-    API-->>Provider: 返回响应
-    Provider->>Isar: 持久化存储
-    Isar-->>UI: 数据更新
+    Provider-->>UI: 驱动刷新
+
+    Note right of Provider: Riverpod职责边界
+    - 状态容器
+    - UI状态同步
+    - 监听ViewModel更新
+    
+    Note left of ViewModel: 业务逻辑处理
+    - API调用
+    - 数据持久化
+    - 状态预处理
 ```
 
 ## 🔧 开发指南
