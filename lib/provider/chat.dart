@@ -116,7 +116,7 @@ class MessagesNotifier extends _$MessagesNotifier {
 class RecentChatsNotifier extends _$RecentChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    return await isar.chats.where().sortByUpdatedAtDesc().limit(5).findAll();
+    return await isar.chats.where().sortByUpdatedAtDesc().limit(10).findAll();
   }
 }
 

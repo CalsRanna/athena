@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
@@ -44,12 +45,17 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<void> destroyChat(Chat chat) async {
-    var chats = await isar.chats.count();
-    if (chats <= 1) return;
     await isar.writeTxn(() async {
       await isar.chats.delete(chat.id);
       await isar.messages.filter().chatIdEqualTo(chat.id).deleteAll();
     });
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (isDesktop) {
+      var count = await isar.chats.count();
+      if (count == 0) {
+        await createChat();
+      }
+    }
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
   }
@@ -58,12 +64,12 @@ class ChatViewModel extends ViewModel {
     var builder = isar.messages.filter().chatIdEqualTo(message.chatId);
     final messages = await builder.findAll();
     final index = messages.indexWhere((item) => item.id == message.id);
-    List<Message> removed = [];
+    List<int> removed = [];
     for (var i = index; i < messages.length; i++) {
-      removed.add(messages.elementAt(i));
+      removed.add(messages.elementAt(i).id);
     }
     await isar.writeTxn(() async {
-      await isar.messages.deleteAll(removed.map((item) => item.id).toList());
+      await isar.messages.deleteAll(removed);
     });
     ref.invalidate(messagesNotifierProvider(message.chatId));
   }
@@ -80,7 +86,7 @@ class ChatViewModel extends ViewModel {
 
   Future<Chat> getFirstChat() async {
     var chats = await ref.read(chatsNotifierProvider.future);
-    if (chats.isEmpty) return Chat();
+    if (chats.isEmpty) return await createChat();
     return chats.first;
   }
 

@@ -14,7 +14,7 @@ class DesktopChatConfigurationSheet extends ConsumerStatefulWidget {
 
 class _DesktopChatConfigurationSheetState
     extends ConsumerState<DesktopChatConfigurationSheet> {
-  late var _context = widget.chat.context;
+  late var _context = widget.chat.context.toDouble();
   late var temperature = widget.chat.temperature;
 
   late final viewModel = ChatViewModel(ref);
@@ -34,6 +34,8 @@ class _DesktopChatConfigurationSheetState
     );
     var temperatureSlider = Slider(
       activeColor: ColorUtil.FFA7BA88,
+      inactiveColor: ColorUtil.FFFFFFFF,
+      label: temperature.toStringAsFixed(1),
       max: 2,
       onChanged: _updateTemperature,
       onChangeEnd: _storeTemperature,
@@ -41,14 +43,16 @@ class _DesktopChatConfigurationSheetState
       thumbColor: ColorUtil.FFA7BA88,
       value: temperature,
     );
-    var slider = Slider(
+    var contextSlider = Slider(
       activeColor: ColorUtil.FFA7BA88,
+      inactiveColor: ColorUtil.FFFFFFFF,
+      label: _context.toStringAsFixed(0),
       max: 20,
       onChanged: _updateContext,
       onChangeEnd: _storeContext,
       padding: EdgeInsets.symmetric(horizontal: 4),
       thumbColor: ColorUtil.FFA7BA88,
-      value: _context.toDouble(),
+      value: _context,
     );
     return ListView(
       padding: EdgeInsets.all(12),
@@ -61,7 +65,7 @@ class _DesktopChatConfigurationSheetState
         const SizedBox(height: 12),
         Text('Context', style: labelTextStyle),
         const SizedBox(height: 12),
-        slider,
+        contextSlider,
       ],
     );
   }
@@ -70,7 +74,7 @@ class _DesktopChatConfigurationSheetState
   void didUpdateWidget(covariant DesktopChatConfigurationSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
     setState(() {
-      _context = widget.chat.context;
+      _context = widget.chat.context.toDouble();
       temperature = widget.chat.temperature;
     });
   }
@@ -85,7 +89,7 @@ class _DesktopChatConfigurationSheetState
 
   void _updateContext(double value) {
     setState(() {
-      _context = value.toInt();
+      _context = value;
     });
   }
 
