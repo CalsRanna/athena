@@ -12,17 +12,24 @@ class ModelViewModel extends ViewModel {
 
   ModelViewModel(this.ref);
 
-  Future<String> checkConnection(Model model) async {
+  Future<void> checkConnection(Model model) async {
     AthenaDialog.loading();
     try {
       var provider = providerNotifierProvider(model.providerId);
       var aiProvider = await ref.read(provider.future);
-      var result = await ChatApi().connect(provider: aiProvider, model: model);
+      var response = await ChatApi().connect(
+        provider: aiProvider,
+        model: model,
+      );
       AthenaDialog.dismiss();
-      return result;
+      var message = 'Connection successful';
+      if (response.isEmpty) {
+        message = '$message, but response is empty';
+      }
+      AthenaDialog.message(message);
     } catch (error) {
       AthenaDialog.dismiss();
-      return error.toString();
+      AthenaDialog.message(error.toString());
     }
   }
 

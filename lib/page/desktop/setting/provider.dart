@@ -64,10 +64,9 @@ class _DesktopSettingProviderPageState
     urlController.text = providers[index].url;
   }
 
-  Future<void> checkConnection(Model model) async {
+  void checkConnection(Model model) {
     final viewModel = ModelViewModel(ref);
-    var result = await viewModel.checkConnection(model);
-    AthenaDialog.message(result);
+    viewModel.checkConnection(model);
   }
 
   Future<void> destroyProvider(Provider provider) async {

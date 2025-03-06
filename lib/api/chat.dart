@@ -61,8 +61,7 @@ class ChatApi {
       messages: [message],
     );
     var response = await client.createChatCompletion(request: request);
-    if (response.choices.isEmpty) return 'The response has no choices';
-    return 'The connection is successful';
+    return response.choices.first.message.content ?? '';
   }
 
   Stream<OverrodeChatCompletionStreamResponseDelta> getCompletion({
