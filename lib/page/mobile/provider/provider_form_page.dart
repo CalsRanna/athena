@@ -77,11 +77,10 @@ class _MobileProviderFormPageState
     );
   }
 
-  Future<void> checkConnection(Model model) async {
+  void checkConnection(Model model) {
     AthenaDialog.dismiss();
     var viewModel = ModelViewModel(ref);
-    var message = await viewModel.checkConnection(model);
-    AthenaDialog.message(message);
+    viewModel.checkConnection(model);
   }
 
   void createModel(BuildContext context) {
