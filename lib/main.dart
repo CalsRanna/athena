@@ -60,14 +60,19 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
 
   @override
   Widget build(BuildContext context) {
+    var sliderThemeData = SliderThemeData(
+      showValueIndicator: ShowValueIndicator.always,
+    );
+    var themeData = ThemeData(
+      fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+      scaffoldBackgroundColor: ColorUtil.FF282828,
+      sliderTheme: sliderThemeData,
+      useMaterial3: true,
+    );
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router.config(),
-      theme: ThemeData(
-        fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
-        scaffoldBackgroundColor: ColorUtil.FF282828,
-        useMaterial3: true,
-      ),
+      theme: themeData,
     );
   }
 

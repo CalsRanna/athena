@@ -49,8 +49,8 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Future<void> changeChat(Chat chat) async {
     if (viewModel.streaming) {
-      return AthenaDialog.message(
-          'Please wait for the current chat to finish.');
+      AthenaDialog.message('Please wait for the current chat to finish.');
+      return;
     }
     var model = await viewModel.getModel(chat.modelId);
     var sentinel = await viewModel.getSentinel(chat.sentinelId);
