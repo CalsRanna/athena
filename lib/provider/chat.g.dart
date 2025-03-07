@@ -335,7 +335,7 @@ class _MessagesNotifierProviderElement
 }
 
 String _$recentChatsNotifierHash() =>
-    r'b5cefaffdaaf577fb09e341d61e76c1264b9d501';
+    r'58c8ff704e9454b2ec9b6fb1f97e7a25d78c6bfb';
 
 /// See also [RecentChatsNotifier].
 @ProviderFor(RecentChatsNotifier)

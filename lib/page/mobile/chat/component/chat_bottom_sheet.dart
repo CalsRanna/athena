@@ -2,6 +2,7 @@ import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
@@ -64,7 +65,7 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
     );
     var chatConfigurationSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedSlidersHorizontal),
-      onTap: () {},
+      onTap: navigateChatConfiguration,
       title: 'Chat Configuration',
       trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
     );
@@ -79,6 +80,11 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
     return SafeArea(child: padding);
+  }
+
+  void navigateChatConfiguration() {
+    AthenaDialog.dismiss();
+    MobileChatConfigurationRoute(chat: widget.chat).push(context);
   }
 
   void openModelSelectorDialog() {
