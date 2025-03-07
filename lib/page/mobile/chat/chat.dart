@@ -1,9 +1,8 @@
 import 'dart:async';
 
-import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -166,13 +165,10 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   @override
   Widget build(BuildContext context) {
     var actionButton = AthenaIconButton(
-      icon: HugeIcons.strokeRoundedAiBrain01,
-      onTap: openModalSelector,
+      icon: HugeIcons.strokeRoundedMoreHorizontal,
+      onTap: openBottomSheet,
     );
     var titleText = Text(title, textAlign: TextAlign.center);
-    var titleColumn = Column(
-      children: [titleText, _ModelIndicator(model: model)],
-    );
     var messageListView = _MessageListView(
       chat: widget.chat,
       model: model,
@@ -180,18 +176,9 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     );
     var input = _buildInput();
     return AthenaScaffold(
-      appBar: AthenaAppBar(action: actionButton, title: titleColumn),
+      appBar: AthenaAppBar(action: actionButton, title: titleText),
       body: Column(children: [Expanded(child: messageListView), input]),
     );
-  }
-
-  void changeModel(Model model) {
-    var viewModel = ChatViewModel(ref);
-    viewModel.updateModel(model, chat: widget.chat);
-    AthenaDialog.dismiss();
-    setState(() {
-      this.model = model;
-    });
   }
 
   @override
@@ -206,8 +193,14 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     _initModel();
   }
 
-  void openModalSelector() {
-    AthenaDialog.show(MobileModelSelectDialog(onTap: changeModel));
+  void openBottomSheet() {
+    var mobileChatBottomSheet = MobileChatBottomSheet(
+      chat: widget.chat,
+      onEnableSearchChanged: updateEnableSearch,
+      onModelChanged: updateModel,
+      onSentinelChanged: updateSentinel,
+    );
+    AthenaDialog.show(mobileChatBottomSheet);
   }
 
   Future<void> sendMessage(WidgetRef ref) async {
@@ -223,13 +216,24 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     }
   }
 
-  void updateEnableSearch() {
-    HapticFeedback.heavyImpact();
-    viewModel.updateEnableSearch(!enableSearch, chat: widget.chat);
+  void updateEnableSearch(bool value) {
+    viewModel.updateEnableSearch(value, chat: widget.chat);
     setState(() {
-      enableSearch = !enableSearch;
+      enableSearch = value;
     });
-    AthenaDialog.message(enableSearch ? 'Search Enabled' : 'Search Disabled');
+  }
+
+  void updateModel(Model model) {
+    var viewModel = ChatViewModel(ref);
+    viewModel.updateModel(model, chat: widget.chat);
+    setState(() {
+      this.model = model;
+    });
+  }
+
+  void updateSentinel(Sentinel sentinel) {
+    var viewModel = ChatViewModel(ref);
+    viewModel.updateSentinel(sentinel, chat: widget.chat);
   }
 
   void updateTitle(Chat chat) {
@@ -243,14 +247,11 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       controller: controller,
       onSubmitted: sendMessage,
     );
-    var iconData = HugeIcons.strokeRoundedSent;
-    if (enableSearch) iconData = HugeIcons.strokeRoundedGlobalSearch;
-    var icon = HugeIcon(icon: iconData, color: ColorUtil.FF161616);
-    var sendButton = _SendButton(
-      icon: icon,
-      onLongPress: updateEnableSearch,
-      onTap: sendMessage,
+    var icon = HugeIcon(
+      icon: HugeIcons.strokeRoundedSent,
+      color: ColorUtil.FF161616,
     );
+    var sendButton = _SendButton(icon: icon, onTap: sendMessage);
     final inputChildren = [
       Expanded(child: userInput),
       const SizedBox(width: 16),
@@ -272,54 +273,10 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   }
 }
 
-class _ModelIndicator extends ConsumerWidget {
-  final Model? model;
-  const _ModelIndicator({this.model});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (model == null) return const SizedBox();
-    var provider = providerNotifierProvider(model!.providerId);
-    var value = ref.watch(provider).valueOrNull;
-    var text = Text(
-      '${model!.name} | ${value?.name ?? ""}',
-      style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
-    );
-    var innerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(36),
-      color: ColorUtil.FF161616,
-    );
-    var innerContainer = Container(
-      decoration: innerBoxDecoration,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      child: text,
-    );
-    var colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
-      ColorUtil.FFFFFFFF.withValues(alpha: 0),
-    ];
-    var linearGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      colors: colors,
-      end: Alignment.bottomRight,
-    );
-    var outerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(36),
-      gradient: linearGradient,
-    );
-    return Container(
-      decoration: outerBoxDecoration,
-      padding: EdgeInsets.all(1),
-      child: innerContainer,
-    );
-  }
-}
-
 class _SendButton extends ConsumerWidget {
   final Widget icon;
-  final void Function()? onLongPress;
   final void Function(WidgetRef)? onTap;
-  const _SendButton({required this.icon, this.onLongPress, this.onTap});
+  const _SendButton({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -343,7 +300,6 @@ class _SendButton extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onLongPress: onLongPress,
       onTap: () => handleTap(context, ref),
       child: container,
     );

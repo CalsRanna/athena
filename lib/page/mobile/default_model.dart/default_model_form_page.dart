@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';
