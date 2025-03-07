@@ -53,12 +53,12 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
       trailing: Text(model?.name ?? ''),
     );
     var athenaSwitch = AthenaSwitch(
-      onChanged: updateEnableSearch,
+      onChanged: _updateEnableSearch,
       value: widget.chat.enableSearch,
     );
     var searchDecisionSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedInternet),
-      onTap: () => updateEnableSearch(!widget.chat.enableSearch),
+      onTap: () => _updateEnableSearch(!widget.chat.enableSearch),
       title: 'Search Decision',
       trailing: athenaSwitch,
     );
@@ -93,7 +93,7 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
     AthenaDialog.show(dialog);
   }
 
-  void updateEnableSearch(bool value) {
+  void _updateEnableSearch(bool value) {
     widget.onEnableSearchChanged?.call(value);
     AthenaDialog.dismiss();
   }
