@@ -5,11 +5,13 @@ class AthenaBottomSheetTile extends StatelessWidget {
   final Widget? leading;
   final void Function()? onTap;
   final String title;
+  final Widget? trailing;
   const AthenaBottomSheetTile({
     super.key,
     this.leading,
     this.onTap,
     required this.title,
+    this.trailing,
   });
 
   @override
@@ -20,11 +22,28 @@ class AthenaBottomSheetTile extends StatelessWidget {
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var iconThemeData = IconThemeData(color: ColorUtil.FFE0E0E0);
+    var trailingTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var leadingIconThemeData = IconThemeData(color: ColorUtil.FFE0E0E0);
+    var trailingIconThemeData = IconThemeData(color: ColorUtil.FFFFFFFF);
+    var trailingIconTheme = IconTheme(
+      data: trailingIconThemeData,
+      child: trailing ?? const SizedBox(),
+    );
+    var defaultTrailing = DefaultTextStyle.merge(
+      style: trailingTextStyle,
+      child: trailingIconTheme,
+    );
     var children = [
-      IconTheme(data: iconThemeData, child: leading ?? const SizedBox()),
+      IconTheme(data: leadingIconThemeData, child: leading ?? const SizedBox()),
       if (leading != null) const SizedBox(width: 12),
-      Text(title, style: textStyle),
+      Expanded(child: Text(title, style: textStyle)),
+      if (trailing != null) const SizedBox(width: 12),
+      defaultTrailing,
     ];
     var container = Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
