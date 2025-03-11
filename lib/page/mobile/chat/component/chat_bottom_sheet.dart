@@ -69,17 +69,29 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
       title: 'Chat Configuration',
       trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
     );
+    var exportImageSheetTile = AthenaBottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedFileExport),
+      onTap: navigateImageExport,
+      title: 'Export Image',
+      trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
+    );
     var children = [
       sentinelSheetTile,
       modelSheetTile,
       searchDecisionSheetTile,
       chatConfigurationSheetTile,
+      exportImageSheetTile,
     ];
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
     return SafeArea(child: padding);
+  }
+
+  void navigateImageExport() {
+    AthenaDialog.dismiss();
+    MobileChatExportRoute(chat: widget.chat).push(context);
   }
 
   void navigateChatConfiguration() {
