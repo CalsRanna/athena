@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
@@ -16,7 +17,10 @@ import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/tool.dart';
 import 'package:athena/view_model/view_model.dart';
+import 'package:athena/widget/dialog.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 
@@ -130,6 +134,27 @@ class ChatViewModel extends ViewModel {
 
   void navigateSettingPage(BuildContext context) {
     DesktopSettingProviderRoute().push(context);
+  }
+
+  Future<void> exportImage({
+    required Chat chat,
+    required GlobalKey repaintBoundaryKey,
+  }) async {
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (!isDesktop) return;
+    var exportPath = await FilePicker.platform.saveFile(
+      fileName: '${chat.title}.png',
+    );
+    if (exportPath == null) return;
+    var boundary = repaintBoundaryKey.currentContext?.findRenderObject()
+        as RenderRepaintBoundary?;
+    if (boundary == null) return;
+    var image = await boundary.toImage();
+    var byteData = await image.toByteData(format: ImageByteFormat.png);
+    if (byteData == null) return;
+    var bytes = byteData.buffer.asUint8List();
+    await File(exportPath).writeAsBytes(bytes);
+    AthenaDialog.message('Image exported to $exportPath');
   }
 
   Future<Chat> renameChat(Chat chat) async {

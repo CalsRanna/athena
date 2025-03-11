@@ -1,6 +1,8 @@
 import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
+import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,9 +91,17 @@ class _ChatTileState extends State<_ChatTile> {
     widget.onDestroyed?.call();
   }
 
-  void handleRename() {
+  void renameChat() {
     entry?.remove();
     widget.onRenamed?.call();
+  }
+
+  Future<void> exportImage() async {
+    entry?.remove();
+    AthenaDialog.show(
+      DesktopImageExportDialog(chat: widget.chat),
+      barrierDismissible: true,
+    );
   }
 
   void handleSecondaryTap(TapUpDetails details) {
@@ -99,7 +109,8 @@ class _ChatTileState extends State<_ChatTile> {
       offset: details.globalPosition,
       onBarrierTapped: removeEntry,
       onDestroyed: handleDestroy,
-      onRenamed: handleRename,
+      onImageExported: exportImage,
+      onRenamed: renameChat,
     );
     entry = OverlayEntry(builder: (context) => contextMenu);
     Overlay.of(context).insert(entry!);

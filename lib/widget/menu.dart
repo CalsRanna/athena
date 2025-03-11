@@ -18,7 +18,7 @@ class DesktopContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      _buildBarrier(),
+      const SizedBox.expand(),
       Positioned(left: offset.dx, top: offset.dy, child: _buildMenu(context)),
     ];
     return GestureDetector(
@@ -29,19 +29,21 @@ class DesktopContextMenu extends StatelessWidget {
     );
   }
 
-  Widget _buildBarrier() => const SizedBox.expand();
-
   Widget _buildMenu(BuildContext context) {
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
     );
-    return Container(
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(8),
-      width: width,
-      child: Column(children: children),
+      child: column,
     );
+    return _DesktopContextMenuConfiguration(width: width, child: container);
   }
 }
 
@@ -92,11 +94,12 @@ class _DesktopContextMenuOptionState extends State<DesktopContextMenuOption> {
       borderRadius: BorderRadius.circular(8),
       color: hover ? ColorUtil.FF616161 : null,
     );
+    var width = _DesktopContextMenuConfiguration.widthOf(context);
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      width: 100,
+      width: width ?? 120,
       child: Text(widget.text, style: textStyle),
     );
     var mouseRegion = MouseRegion(
@@ -121,6 +124,27 @@ class _DesktopContextMenuOptionState extends State<DesktopContextMenuOption> {
     setState(() {
       hover = false;
     });
+  }
+}
+
+class _DesktopContextMenuConfiguration extends InheritedWidget {
+  final double? width;
+  const _DesktopContextMenuConfiguration({
+    this.width,
+    required super.child,
+  });
+
+  @override
+  bool updateShouldNotify(
+    covariant _DesktopContextMenuConfiguration oldWidget,
+  ) {
+    return oldWidget.width != width;
+  }
+
+  static double? widthOf(BuildContext context) {
+    var widget = context
+        .dependOnInheritedWidgetOfExactType<_DesktopContextMenuConfiguration>();
+    return widget?.width;
   }
 }
 
