@@ -90,6 +90,7 @@ class _DesktopSentinelFormPageState
       avatarController.addListener(_listenControllers);
       nameController.addListener(_listenControllers);
       descriptionController.addListener(_listenControllers);
+      promptController.addListener(_listenControllers);
 
       avatarController.text = widget.sentinel!.avatar;
       promptController.text = widget.sentinel!.prompt;
@@ -109,10 +110,11 @@ class _DesktopSentinelFormPageState
     }
     if (widget.sentinel != null) {
       sentinel.id = widget.sentinel!.id;
-      viewModel.updateSentinel(sentinel);
+      await viewModel.updateSentinel(sentinel);
     } else {
-      viewModel.storeSentinel(sentinel);
+      await viewModel.storeSentinel(sentinel);
     }
+    if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
 
