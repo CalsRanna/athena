@@ -38,9 +38,15 @@ class ChatApi {
     );
     var response = await client.createChatCompletion(request: request);
     var content = response.choices.first.message.content ?? '';
+    print(content);
     content = content.replaceAll('```json', '').replaceAll('```', '');
-    var json = jsonDecode(content);
-    return SearchDecision.fromJson(json);
+    try {
+      var json = jsonDecode(content);
+      return SearchDecision.fromJson(json);
+    } catch (error) {
+      print(error);
+      return SearchDecision();
+    }
   }
 
   Future<String> connect({

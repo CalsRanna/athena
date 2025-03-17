@@ -92,10 +92,10 @@ class DesktopImageExportDialog extends ConsumerWidget {
   }
 
   Future<void> exportImage(WidgetRef ref, GlobalKey key) async {
-    AthenaDialog.dismiss();
     AthenaDialog.loading();
     final viewModel = ChatViewModel(ref);
     await viewModel.exportImage(chat: chat, repaintBoundaryKey: key);
+    AthenaDialog.dismiss();
     AthenaDialog.dismiss();
   }
 }
