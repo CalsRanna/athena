@@ -13,7 +13,6 @@ dependencies:
 
   auto_route: ^9.2.2
   device_info_plus: ^11.3.0
-  image_gallery_saver: ^2.0.3
   file_picker: ^9.0.2
   flutter_markdown: ^0.7.6+1
   flutter_markdown_latex: ^0.3.4
@@ -25,6 +24,7 @@ dependencies:
   gpt_markdown: 1.0.9
   http: ^1.1.0
   hugeicons: ^0.0.7
+  image_gallery_saver_plus: ^4.0.1
   isar:
     version: ^3.1.8
     hosted: https://pub.isar-community.dev/

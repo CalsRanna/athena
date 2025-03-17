@@ -1,6 +1,8 @@
+import 'package:athena/page/mobile/chat/component/chat_configuration_dialog.dart';
 import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena/provider/model.dart';
+import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
@@ -16,15 +18,19 @@ import 'package:hugeicons/hugeicons.dart';
 
 class MobileChatBottomSheet extends ConsumerStatefulWidget {
   final Chat chat;
+  final void Function(int)? onContextChanged;
   final void Function(bool)? onEnableSearchChanged;
   final void Function(Model)? onModelChanged;
   final void Function(Sentinel)? onSentinelChanged;
+  final void Function(double)? onTemperatureChanged;
   const MobileChatBottomSheet({
     super.key,
     required this.chat,
+    this.onContextChanged,
     this.onEnableSearchChanged,
     this.onModelChanged,
     this.onSentinelChanged,
+    this.onTemperatureChanged,
   });
 
   @override
@@ -35,37 +41,50 @@ class MobileChatBottomSheet extends ConsumerStatefulWidget {
 class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
   late final viewModel = ChatViewModel(ref);
 
+  late int sentinelId = widget.chat.sentinelId;
+  late int modelId = widget.chat.modelId;
+  late bool enableSearch = widget.chat.enableSearch;
+  late double temperature = widget.chat.temperature;
+  late int contextToken = widget.chat.context;
+
   @override
   Widget build(BuildContext context) {
-    var sentinelProvider = sentinelNotifierProvider(widget.chat.sentinelId);
+    var sentinelProvider = sentinelNotifierProvider(sentinelId);
     var sentinel = ref.watch(sentinelProvider).value;
-    var modelProvider = modelNotifierProvider(widget.chat.modelId);
+    var modelProvider = modelNotifierProvider(modelId);
     var model = ref.watch(modelProvider).value;
+    var providerProvider = providerNotifierProvider(model?.providerId ?? 0);
+    var provider = ref.watch(providerProvider).value;
+    var modelName = model?.name ?? '';
+    var providerName = provider?.name ?? '';
+    var modelFullName =
+        '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
     var sentinelSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
       onTap: openSentinelSelectorDialog,
-      title: 'Sentinel Selector',
+      title: 'Sentinel',
       trailing: Text(sentinel?.name ?? ''),
     );
     var modelSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedAiBrain01),
       onTap: openModelSelectorDialog,
-      title: 'Model Selector',
-      trailing: Text(model?.name ?? ''),
+      title: 'Model',
+      trailing: Text(modelFullName),
     );
     var athenaSwitch = AthenaSwitch(
       onChanged: _updateEnableSearch,
-      value: widget.chat.enableSearch,
+      value: enableSearch,
     );
     var searchDecisionSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedInternet),
-      onTap: () => _updateEnableSearch(!widget.chat.enableSearch),
+      onTap: () => _updateEnableSearch(!enableSearch),
       title: 'Search Decision',
       trailing: athenaSwitch,
     );
     var chatConfigurationSheetTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedSlidersHorizontal),
-      onTap: navigateChatConfiguration,
+      // onTap: navigateChatConfiguration,
+      onTap: openConfigurationDialog,
       title: 'Chat Configuration',
       trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
     );
@@ -95,34 +114,64 @@ class _MobileChatBottomSheetState extends ConsumerState<MobileChatBottomSheet> {
   }
 
   void navigateChatConfiguration() {
-    AthenaDialog.dismiss();
     MobileChatConfigurationRoute(chat: widget.chat).push(context);
   }
 
   void openModelSelectorDialog() {
-    AthenaDialog.dismiss();
     var dialog = MobileModelSelectDialog(onTap: _updateModel);
     AthenaDialog.show(dialog);
   }
 
+  void openConfigurationDialog() {
+    var dialog = MobileChatConfigurationDialog(
+      chat: widget.chat,
+      contextToken: contextToken,
+      temperature: temperature,
+      onTemperatureChanged: _updateTemperature,
+      onContextChanged: _updateContextToken,
+    );
+    AthenaDialog.show(dialog);
+  }
+
+  void _updateContextToken(int value) {
+    widget.onContextChanged?.call(value);
+    setState(() {
+      contextToken = value;
+    });
+  }
+
+  void _updateTemperature(double value) {
+    widget.onTemperatureChanged?.call(value);
+    setState(() {
+      temperature = value;
+    });
+  }
+
   void openSentinelSelectorDialog() {
-    AthenaDialog.dismiss();
     var dialog = MobileSentinelSelectDialog(onTap: _updateSentinel);
     AthenaDialog.show(dialog);
   }
 
   void _updateEnableSearch(bool value) {
     widget.onEnableSearchChanged?.call(value);
-    AthenaDialog.dismiss();
+    setState(() {
+      enableSearch = value;
+    });
   }
 
   void _updateModel(Model model) {
     widget.onModelChanged?.call(model);
     AthenaDialog.dismiss();
+    setState(() {
+      modelId = model.id;
+    });
   }
 
   void _updateSentinel(Sentinel sentinel) {
     widget.onSentinelChanged?.call(sentinel);
     AthenaDialog.dismiss();
+    setState(() {
+      sentinelId = sentinel.id;
+    });
   }
 }

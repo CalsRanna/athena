@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:athena/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/model.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
@@ -21,7 +21,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:isar/isar.dart';
 
 @RoutePage()
 class MobileChatPage extends ConsumerStatefulWidget {
@@ -156,21 +155,28 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
 
 class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   final controller = TextEditingController();
-  Model? model;
 
   late final viewModel = ChatViewModel(ref);
   late String title = widget.chat.title;
-  late bool enableSearch = widget.chat.enableSearch;
+
+  late int _sentinelId = widget.chat.sentinelId;
+  late int _modelId = widget.chat.modelId;
+  late bool _enableSearch = widget.chat.enableSearch;
+  late double _temperature = widget.chat.temperature;
+  late int _context = widget.chat.context;
 
   @override
   Widget build(BuildContext context) {
+    var chat = ref.watch(chatNotifierProvider(widget.chat.id)).value;
+    if (chat == null) return const SizedBox();
+    var model = ref.watch(modelNotifierProvider(_modelId)).value;
     var actionButton = AthenaIconButton(
       icon: HugeIcons.strokeRoundedMoreHorizontal,
       onTap: openBottomSheet,
     );
     var titleText = Text(title, textAlign: TextAlign.center);
     var messageListView = _MessageListView(
-      chat: widget.chat,
+      chat: chat,
       model: model,
       onChatTitleChanged: updateTitle,
     );
@@ -190,15 +196,23 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
   @override
   void initState() {
     super.initState();
-    _initModel();
   }
 
   void openBottomSheet() {
+    var copiedModel = widget.chat.copyWith(
+      enableSearch: _enableSearch,
+      modelId: _modelId,
+      sentinelId: _sentinelId,
+      temperature: _temperature,
+      context: _context,
+    );
     var mobileChatBottomSheet = MobileChatBottomSheet(
-      chat: widget.chat,
+      chat: copiedModel,
+      onContextChanged: updateContext,
       onEnableSearchChanged: updateEnableSearch,
       onModelChanged: updateModel,
       onSentinelChanged: updateSentinel,
+      onTemperatureChanged: updateTemperature,
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
@@ -207,6 +221,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
+    var model = await ref.read(modelNotifierProvider(_modelId).future);
     await viewModel.sendMessage(text, chat: widget.chat, model: model);
     if (title.isEmpty || title == 'New Chat') {
       var renameChat = await viewModel.renameChat(widget.chat);
@@ -216,10 +231,17 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     }
   }
 
+  void updateContext(int value) {
+    viewModel.updateContext(value, chat: widget.chat);
+    setState(() {
+      _context = value;
+    });
+  }
+
   void updateEnableSearch(bool value) {
     viewModel.updateEnableSearch(value, chat: widget.chat);
     setState(() {
-      enableSearch = value;
+      _enableSearch = value;
     });
   }
 
@@ -227,13 +249,23 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var viewModel = ChatViewModel(ref);
     viewModel.updateModel(model, chat: widget.chat);
     setState(() {
-      this.model = model;
+      _modelId = model.id;
     });
   }
 
   void updateSentinel(Sentinel sentinel) {
     var viewModel = ChatViewModel(ref);
     viewModel.updateSentinel(sentinel, chat: widget.chat);
+    setState(() {
+      _sentinelId = sentinel.id;
+    });
+  }
+
+  void updateTemperature(double value) {
+    viewModel.updateTemperature(value, chat: widget.chat);
+    setState(() {
+      _temperature = value;
+    });
   }
 
   void updateTitle(Chat chat) {
@@ -262,14 +294,6 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       child: Row(children: inputChildren),
     );
     return SafeArea(top: false, child: row);
-  }
-
-  Future<void> _initModel() async {
-    var builder = isar.models.filter().idEqualTo(widget.chat.modelId);
-    var model = await builder.findFirst();
-    setState(() {
-      this.model = model;
-    });
   }
 }
 

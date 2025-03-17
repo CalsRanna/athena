@@ -22,6 +22,7 @@ class MobileSentinelSelectDialog extends ConsumerWidget {
     return ListView.builder(
       itemBuilder: (context, index) => _itemBuilder(sentinels[index]),
       itemCount: sentinels.length,
+      padding: EdgeInsets.symmetric(vertical: 16),
       shrinkWrap: true,
     );
   }
