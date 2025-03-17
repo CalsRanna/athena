@@ -23,7 +23,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:isar/isar.dart';
 
 class ChatViewModel extends ViewModel {
@@ -96,9 +96,9 @@ class ChatViewModel extends ViewModel {
   }) async {
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) {
-      var bytes = await _generateImageBytes(repaintBoundaryKey);
+      var bytes = await _generateImageBytes(repaintBoundaryKey, pixelRatio: 1);
       if (bytes == null) return;
-      await ImageGallerySaver.saveImage(bytes, quality: 100);
+      await ImageGallerySaverPlus.saveImage(bytes, quality: 100);
       AthenaDialog.message('Image exported successfully');
       return;
     }
@@ -333,11 +333,14 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
-  Future<Uint8List?> _generateImageBytes(GlobalKey repaintBoundaryKey) async {
+  Future<Uint8List?> _generateImageBytes(
+    GlobalKey repaintBoundaryKey, {
+    double pixelRatio = 4.0,
+  }) async {
     var boundary = repaintBoundaryKey.currentContext?.findRenderObject()
         as RenderRepaintBoundary?;
     if (boundary == null) return null;
-    var image = await boundary.toImage(pixelRatio: 4);
+    var image = await boundary.toImage(pixelRatio: pixelRatio);
     var byteData = await image.toByteData(format: ImageByteFormat.png);
     if (byteData == null) return null;
     return byteData.buffer.asUint8List();

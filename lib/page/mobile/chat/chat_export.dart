@@ -62,31 +62,22 @@ class MobileChatExportPage extends ConsumerWidget {
     if (messages.isEmpty == true) return const SizedBox();
     var repaintBoundaryKey = GlobalKey();
     var barrier = _buildBarrier(ref, repaintBoundaryKey);
+    var listView = _buildRenderListView(
+      messages,
+      repaintBoundaryKey: repaintBoundaryKey,
+    );
     var stackChildren = [
-      _buildRepaintBoundary(repaintBoundaryKey, messages),
-      Positioned.fill(child: _buildRenderListView(messages)),
+      Positioned.fill(child: listView),
       Positioned.fill(child: AbsorbPointer(child: const SizedBox())),
       Positioned(bottom: 0, left: 0, right: 0, child: barrier),
     ];
     return Stack(children: stackChildren);
   }
 
-  Widget _buildRenderListView(List<Message> messages) {
-    var emptySentinel = Sentinel();
-    var listView = ListView.separated(
-      itemBuilder: (_, index) =>
-          MessageListTile(message: messages[index], sentinel: emptySentinel),
-      itemCount: messages.length,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-    );
-    return Container(color: ColorUtil.FF282F32, child: listView);
-  }
-
-  Widget _buildRepaintBoundary(
-    GlobalKey repaintBoundaryKey,
-    List<Message> messages,
-  ) {
+  Widget _buildRenderListView(
+    List<Message> messages, {
+    required GlobalKey repaintBoundaryKey,
+  }) {
     List<Widget> children = [];
     var emptySentinel = Sentinel();
     for (var message in messages) {
@@ -101,26 +92,16 @@ class MobileChatExportPage extends ConsumerWidget {
     children.removeLast();
     var container = Container(
       decoration: BoxDecoration(color: ColorUtil.FF282F32),
-      padding: const EdgeInsets.all(64),
+      padding: const EdgeInsets.all(16),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
     var repaintBoundary = RepaintBoundary(
       key: repaintBoundaryKey,
       child: container,
     );
-    var verticalSingleChildScrollView = SingleChildScrollView(
+    return SingleChildScrollView(
       physics: NeverScrollableScrollPhysics(),
       child: repaintBoundary,
     );
-    var constrainedBox = ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 960, minWidth: 960),
-      child: verticalSingleChildScrollView,
-    );
-    var horizontalSingleChildScrollView = SingleChildScrollView(
-      physics: NeverScrollableScrollPhysics(),
-      scrollDirection: Axis.horizontal,
-      child: constrainedBox,
-    );
-    return horizontalSingleChildScrollView;
   }
 }
