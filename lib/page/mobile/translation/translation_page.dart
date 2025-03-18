@@ -127,6 +127,7 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
     );
     return AthenaPrimaryButton(
       onTap: () => openLanguageSelector(type),
+      showShadow: false,
       child: row,
     );
   }

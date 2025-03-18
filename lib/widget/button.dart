@@ -34,8 +34,14 @@ class AthenaIconButton extends StatelessWidget {
 
 class AthenaPrimaryButton extends StatelessWidget {
   final void Function()? onTap;
+  final bool showShadow;
   final Widget child;
-  const AthenaPrimaryButton({super.key, this.onTap, required this.child});
+  const AthenaPrimaryButton({
+    super.key,
+    this.onTap,
+    this.showShadow = true,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +52,7 @@ class AthenaPrimaryButton extends StatelessWidget {
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFFFFFFF,
       shape: StadiumBorder(),
-      shadows: [boxShadow],
+      shadows: showShadow ? [boxShadow] : null,
     );
     var container = Container(
       decoration: shapeDecoration,
