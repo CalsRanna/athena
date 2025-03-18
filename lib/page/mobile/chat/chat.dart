@@ -279,11 +279,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       controller: controller,
       onSubmitted: sendMessage,
     );
-    var icon = HugeIcon(
-      icon: HugeIcons.strokeRoundedSent,
-      color: ColorUtil.FF161616,
-    );
-    var sendButton = _SendButton(icon: icon, onTap: sendMessage);
+    var sendButton = _SendButton(onTap: sendMessage);
     final inputChildren = [
       Expanded(child: userInput),
       const SizedBox(width: 16),
@@ -298,9 +294,8 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 }
 
 class _SendButton extends ConsumerWidget {
-  final Widget icon;
   final void Function(WidgetRef)? onTap;
-  const _SendButton({required this.icon, this.onTap});
+  const _SendButton({this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -314,13 +309,13 @@ class _SendButton extends ConsumerWidget {
       shadows: [boxShadow],
     );
     final streaming = ref.watch(streamingNotifierProvider);
-    const loading = CircularProgressIndicator.adaptive(
-      backgroundColor: ColorUtil.FF161616,
-    );
+    var iconData = HugeIcons.strokeRoundedSent;
+    if (streaming) iconData = HugeIcons.strokeRoundedStop;
+    var icon = Icon(iconData, color: ColorUtil.FF161616);
     var container = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: streaming ? loading : icon,
+      child: icon,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
