@@ -10,6 +10,9 @@ part 'translation.g.dart';
 class TransitionsNotifier extends _$TransitionsNotifier {
   @override
   Future<List<Translation>> build() async {
+    await isar.writeTxn(() async {
+      await isar.translations.filter().targetTextIsEmpty().deleteAll();
+    });
     var translations = await isar.translations.where().findAll();
     return translations.reversed.toList();
   }
