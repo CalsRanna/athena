@@ -25,7 +25,7 @@ class ChatApi {
     );
     var now = DateTime.now();
     var prompt =
-        PresetPrompt.searchDecision.replaceAll('{now}', now.toString());
+        PresetPrompt.searchDecisionPrompt.replaceAll('{now}', now.toString());
     var wrappedMessages = [
       ChatCompletionMessage.system(content: prompt),
       ChatCompletionMessage.user(
@@ -38,13 +38,11 @@ class ChatApi {
     );
     var response = await client.createChatCompletion(request: request);
     var content = response.choices.first.message.content ?? '';
-    print(content);
     content = content.replaceAll('```json', '').replaceAll('```', '');
     try {
       var json = jsonDecode(content);
       return SearchDecision.fromJson(json);
     } catch (error) {
-      print(error);
       return SearchDecision();
     }
   }

@@ -268,7 +268,7 @@ class _ShortcutListView extends StatelessWidget {
     ];
     final shortcuts = [
       Shortcut()
-        ..name = 'Translate'
+        ..name = 'Translation'
         ..description = 'Translate input into selected language',
       Shortcut()
         ..name = 'Food'
@@ -291,7 +291,13 @@ class _ShortcutListView extends StatelessWidget {
     );
   }
 
-  void navigate(BuildContext context, Shortcut shortcut) {}
+  void navigate(BuildContext context, Shortcut shortcut) {
+    PageRouteInfo? route = switch (shortcut.name) {
+      'Translation' => MobileTranslationRoute(),
+      _ => null,
+    };
+    if (route != null) route.push(context);
+  }
 }
 
 class _ShortcutTile extends StatelessWidget {

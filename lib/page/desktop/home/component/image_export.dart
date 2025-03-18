@@ -5,7 +5,7 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/widget/message.dart';
+import 'package:athena/component/message_list_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

@@ -1,4 +1,4 @@
-class ProviderPreset {
+class PresetProvider {
   static const providers = [
     {
       'is_preset': true,

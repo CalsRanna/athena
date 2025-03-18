@@ -6,7 +6,7 @@ import 'package:athena/view_model/chat.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/widget/message.dart';
+import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';

@@ -4,7 +4,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/chat.dart';
-import 'package:athena/widget/message.dart';
+import 'package:athena/component/message_list_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -13,7 +13,7 @@ class Migration202502140332 {
       await isar.providers.clear();
       await isar.models.clear();
     });
-    for (var preset in ProviderPreset.providers) {
+    for (var preset in PresetProvider.providers) {
       var provider = Provider.fromJson(preset);
       await isar.writeTxn(() async {
         provider.id = await isar.providers.put(provider);
