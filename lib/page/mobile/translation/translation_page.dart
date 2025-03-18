@@ -122,14 +122,10 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
       ..sourceText = controller.text
       ..target = target
       ..targetText = '';
-    if (id == 0) {
-      var translationId = await viewModel.storeTranslation(translation);
-      setState(() {
-        id = translationId;
-      });
-    } else {
-      await viewModel.updateTranslation(translation.copyWith(id: id));
-    }
+    var translationId = await viewModel.storeTranslation(translation);
+    setState(() {
+      id = translationId;
+    });
     viewModel.translate(translation.copyWith(id: id));
   }
 
@@ -150,7 +146,7 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
     var children = [
       Text('History', style: titleTextStyle),
       const Spacer(),
-      AthenaTextButton(text: 'Clear')
+      AthenaTextButton(onTap: viewModel.destroyAllTranslations, text: 'Clear')
     ];
     return Row(children: children);
   }

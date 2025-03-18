@@ -8,12 +8,19 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/translation.dart';
 import 'package:athena/view_model/view_model.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class TranslationViewModel extends ViewModel {
   final WidgetRef ref;
 
   TranslationViewModel(this.ref);
+
+  Future<void> destroyAllTranslations() async {
+    var notifier = ref.read(transitionsNotifierProvider.notifier);
+    await notifier.destroyAllTranslations();
+    AthenaDialog.message('Clear translations successfully');
+  }
 
   Future<int> storeTranslation(Translation translation) async {
     var id = translation.id;
@@ -23,20 +30,18 @@ class TranslationViewModel extends ViewModel {
     return id;
   }
 
-  Future<void> updateTranslation(Translation translation) async {
-    await isar.writeTxn(() async {
-      await isar.translations.put(translation);
-    });
-    ref.invalidate(transitionsNotifierProvider);
-  }
-
   Future<void> translate(Translation translation) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    var modelProvider = modelNotifierProvider(13);
+    var modelProvider = translatingModelNotifierProvider;
     var model = await ref.read(modelProvider.future);
     var providerProvider = providerNotifierProvider(model.providerId);
     var provider = await ref.read(providerProvider.future);
+    if (provider.url.isEmpty) {
+      streamingNotifier.close();
+      AthenaDialog.message('You should set translating model first');
+      return;
+    }
     var prompt = PresetPrompt.translatePrompt
         .replaceAll('{source}', translation.source)
       ..replaceAll('{target}', translation.target);
@@ -44,6 +49,7 @@ class TranslationViewModel extends ViewModel {
     var user = {'role': 'user', 'content': translation.sourceText};
     var translationProvider = translationNotifierProvider(translation.id);
     var translationNotifier = ref.read(translationProvider.notifier);
+    translationNotifier.updateTargetText('');
     try {
       final response = ChatApi().getCompletion(
         chat: Chat(),
@@ -59,5 +65,6 @@ class TranslationViewModel extends ViewModel {
       translationNotifier.append(error.toString());
     }
     streamingNotifier.close();
+    ref.invalidate(transitionsNotifierProvider);
   }
 }

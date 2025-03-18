@@ -42,8 +42,13 @@ const SettingSchema = CollectionSchema(
       name: r'sentinelMetadataGenerationModelId',
       type: IsarType.long,
     ),
-    r'width': PropertySchema(
+    r'translatingModelId': PropertySchema(
       id: 5,
+      name: r'translatingModelId',
+      type: IsarType.long,
+    ),
+    r'width': PropertySchema(
+      id: 6,
       name: r'width',
       type: IsarType.double,
     )
@@ -82,7 +87,8 @@ void _settingSerialize(
   writer.writeLong(offsets[2], object.chatSearchDecisionModelId);
   writer.writeDouble(offsets[3], object.height);
   writer.writeLong(offsets[4], object.sentinelMetadataGenerationModelId);
-  writer.writeDouble(offsets[5], object.width);
+  writer.writeLong(offsets[5], object.translatingModelId);
+  writer.writeDouble(offsets[6], object.width);
 }
 
 Setting _settingDeserialize(
@@ -98,7 +104,8 @@ Setting _settingDeserialize(
   object.height = reader.readDouble(offsets[3]);
   object.id = id;
   object.sentinelMetadataGenerationModelId = reader.readLong(offsets[4]);
-  object.width = reader.readDouble(offsets[5]);
+  object.translatingModelId = reader.readLong(offsets[5]);
+  object.width = reader.readDouble(offsets[6]);
   return object;
 }
 
@@ -120,6 +127,8 @@ P _settingDeserializeProp<P>(
     case 4:
       return (reader.readLong(offset)) as P;
     case 5:
+      return (reader.readLong(offset)) as P;
+    case 6:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -550,6 +559,62 @@ extension SettingQueryFilter
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      translatingModelIdEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'translatingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      translatingModelIdGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'translatingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      translatingModelIdLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'translatingModelId',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterFilterCondition>
+      translatingModelIdBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'translatingModelId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterFilterCondition> widthEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -684,6 +749,18 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTranslatingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'translatingModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTranslatingModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'translatingModelId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> sortByWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'width', Sort.asc);
@@ -775,6 +852,18 @@ extension SettingQuerySortThenBy
     });
   }
 
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTranslatingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'translatingModelId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTranslatingModelIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'translatingModelId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Setting, Setting, QAfterSortBy> thenByWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'width', Sort.asc);
@@ -822,6 +911,12 @@ extension SettingQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Setting, Setting, QDistinct> distinctByTranslatingModelId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'translatingModelId');
+    });
+  }
+
   QueryBuilder<Setting, Setting, QDistinct> distinctByWidth() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'width');
@@ -866,6 +961,12 @@ extension SettingQueryProperty
       sentinelMetadataGenerationModelIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sentinelMetadataGenerationModelId');
+    });
+  }
+
+  QueryBuilder<Setting, int, QQueryOperations> translatingModelIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'translatingModelId');
     });
   }
 

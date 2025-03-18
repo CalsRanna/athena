@@ -13,6 +13,13 @@ class TransitionsNotifier extends _$TransitionsNotifier {
     var translations = await isar.translations.where().findAll();
     return translations.reversed.toList();
   }
+
+  Future<void> destroyAllTranslations() async {
+    await isar.writeTxn(() async {
+      await isar.translations.where().deleteAll();
+    });
+    ref.invalidateSelf();
+  }
 }
 
 @riverpod
@@ -23,6 +30,9 @@ class TranslationNotifier extends _$TranslationNotifier {
       targetText: '${translation.targetText}$content',
     );
     state = AsyncValue.data(copiedTranslation);
+    await isar.writeTxn(() async {
+      await isar.translations.put(copiedTranslation);
+    });
   }
 
   @override
@@ -38,7 +48,6 @@ class TranslationNotifier extends _$TranslationNotifier {
     await isar.writeTxn(() async {
       await isar.translations.put(translation);
     });
-    ref.invalidate(transitionsNotifierProvider);
   }
 
   Future<void> streaming(
@@ -48,6 +57,12 @@ class TranslationNotifier extends _$TranslationNotifier {
     var copiedTranslation = translation.copyWith(
       targetText: '${translation.targetText}${delta.content}',
     );
+    state = AsyncValue.data(copiedTranslation);
+  }
+
+  Future<void> updateTargetText(String targetText) async {
+    var translation = await future;
+    var copiedTranslation = translation.copyWith(targetText: targetText);
     state = AsyncValue.data(copiedTranslation);
   }
 }
