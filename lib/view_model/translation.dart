@@ -27,6 +27,7 @@ class TranslationViewModel extends ViewModel {
     await isar.writeTxn(() async {
       await isar.translations.put(translation);
     });
+    ref.invalidate(transitionsNotifierProvider);
   }
 
   Future<void> translate(Translation translation) async {
