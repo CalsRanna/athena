@@ -263,13 +263,17 @@ class _ShortcutListView extends StatelessWidget {
   Widget build(BuildContext context) {
     final icons = [
       HugeIcons.strokeRoundedTranslate,
-      HugeIcons.strokeRoundedNaturalFood,
+      HugeIcons.strokeRoundedAiBrowser,
+      HugeIcons.strokeRoundedCookBook,
       HugeIcons.strokeRoundedCode,
     ];
     final shortcuts = [
       Shortcut()
         ..name = 'Translation'
         ..description = 'Translate input into selected language',
+      Shortcut()
+        ..name = 'Summary'
+        ..description = 'Summary the content in the internet link',
       Shortcut()
         ..name = 'Food'
         ..description = 'Give you a recipe suggestion of healthy food',
@@ -294,6 +298,7 @@ class _ShortcutListView extends StatelessWidget {
   void navigate(BuildContext context, Shortcut shortcut) {
     PageRouteInfo? route = switch (shortcut.name) {
       'Translation' => MobileTranslationRoute(),
+      'Summary' => MobileSummaryRoute(),
       _ => null,
     };
     if (route != null) route.push(context);

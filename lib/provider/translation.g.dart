@@ -7,7 +7,7 @@ part of 'translation.dart';
 // **************************************************************************
 
 String _$transitionsNotifierHash() =>
-    r'ab6e92a260d4bed03046a1aa6a4892edd12d02a9';
+    r'46a1526e61146745e95bb5cca15e297532bb90cb';
 
 /// See also [TransitionsNotifier].
 @ProviderFor(TransitionsNotifier)
@@ -24,7 +24,7 @@ final transitionsNotifierProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$TransitionsNotifier = AutoDisposeAsyncNotifier<List<Translation>>;
 String _$translationNotifierHash() =>
-    r'770e97b91fb8b2b53f26a529f234bc225cc192fc';
+    r'418a39e1b5c1b17dce81918bfcef9cdd82a5e38d';
 
 /// Copied from Dart SDK
 class _SystemHash {

@@ -32,6 +32,8 @@ class AppRouter extends RootStackRouter {
       AutoRoute(page: MobileChatExportRoute.page),
       AutoRoute(page: MobileChatListRoute.page),
       AutoRoute(page: MobileTranslationRoute.page),
+      AutoRoute(page: MobileSummaryRoute.page),
+      AutoRoute(page: MobileSummaryDetailRoute.page),
       AutoRoute(page: MobileSentinelListRoute.page),
       AutoRoute(page: MobileSentinelFormRoute.page),
       AutoRoute(page: MobileProviderListRoute.page),

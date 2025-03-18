@@ -60,6 +60,8 @@ ERROR_03: 模糊请求（需用户澄清时间范围）
 致，不要使用标点符号和其他特殊符号。
 ''';
 
+  static const String summaryPrompt = '使用中文总结用户输入的这个网页中的内容。';
+
   static const String translatePrompt = '''
 **Role (角色):**  
 你是一个精通多国语言的专业翻译 AI。
