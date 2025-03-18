@@ -75,6 +75,7 @@ class _AthenaInputState extends State<AthenaInput> {
       maxLines: widget.maxLines,
       minLines: widget.minLines,
       onSubmitted: widget.onSubmitted,
+      onTapOutside: handleTapOutside,
       style: inputTextStyle,
     );
     return Container(
@@ -82,5 +83,11 @@ class _AthenaInputState extends State<AthenaInput> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
       child: textField,
     );
+  }
+
+  void handleTapOutside(PointerDownEvent event) {
+    if (focusNode.hasFocus) {
+      focusNode.unfocus();
+    }
   }
 }

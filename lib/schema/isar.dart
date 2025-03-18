@@ -8,6 +8,7 @@ import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/schema/tool.dart';
+import 'package:athena/schema/translation.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -25,6 +26,7 @@ class IsarInitializer {
       SentinelSchema,
       SettingSchema,
       ToolSchema,
+      TranslationSchema,
     ];
     isar = await Isar.open(schemas, directory: directory.path);
     await _migrate();

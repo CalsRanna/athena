@@ -1,1 +1,1 @@
-class SentinelPreset {}
+class PresetSentinel {}

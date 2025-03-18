@@ -32,18 +32,19 @@ import 'package:athena/page/mobile/sentinel/form.dart' as _i20;
 import 'package:athena/page/mobile/sentinel/list.dart' as _i21;
 import 'package:athena/page/mobile/tool/tool_form_page.dart' as _i22;
 import 'package:athena/page/mobile/tool/tool_list_page.dart' as _i23;
-import 'package:athena/schema/chat.dart' as _i27;
-import 'package:athena/schema/model.dart' as _i28;
-import 'package:athena/schema/provider.dart' as _i29;
-import 'package:athena/schema/sentinel.dart' as _i26;
-import 'package:athena/schema/tool.dart' as _i30;
-import 'package:auto_route/auto_route.dart' as _i24;
-import 'package:flutter/material.dart' as _i25;
+import 'package:athena/page/mobile/translation/translation_page.dart' as _i24;
+import 'package:athena/schema/chat.dart' as _i28;
+import 'package:athena/schema/model.dart' as _i29;
+import 'package:athena/schema/provider.dart' as _i30;
+import 'package:athena/schema/sentinel.dart' as _i27;
+import 'package:athena/schema/tool.dart' as _i31;
+import 'package:auto_route/auto_route.dart' as _i25;
+import 'package:flutter/material.dart' as _i26;
 
 /// generated route for
 /// [_i1.DesktopHomePage]
-class DesktopHomeRoute extends _i24.PageRouteInfo<void> {
-  const DesktopHomeRoute({List<_i24.PageRouteInfo>? children})
+class DesktopHomeRoute extends _i25.PageRouteInfo<void> {
+  const DesktopHomeRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopHomeRoute.name,
           initialChildren: children,
@@ -51,7 +52,7 @@ class DesktopHomeRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopHomeRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i1.DesktopHomePage();
@@ -62,11 +63,11 @@ class DesktopHomeRoute extends _i24.PageRouteInfo<void> {
 /// generated route for
 /// [_i2.DesktopSentinelFormPage]
 class DesktopSentinelFormRoute
-    extends _i24.PageRouteInfo<DesktopSentinelFormRouteArgs> {
+    extends _i25.PageRouteInfo<DesktopSentinelFormRouteArgs> {
   DesktopSentinelFormRoute({
-    _i25.Key? key,
-    _i26.Sentinel? sentinel,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    _i27.Sentinel? sentinel,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           DesktopSentinelFormRoute.name,
           args: DesktopSentinelFormRouteArgs(
@@ -78,7 +79,7 @@ class DesktopSentinelFormRoute
 
   static const String name = 'DesktopSentinelFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<DesktopSentinelFormRouteArgs>(
@@ -97,9 +98,9 @@ class DesktopSentinelFormRouteArgs {
     this.sentinel,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i26.Sentinel? sentinel;
+  final _i27.Sentinel? sentinel;
 
   @override
   String toString() {
@@ -109,8 +110,8 @@ class DesktopSentinelFormRouteArgs {
 
 /// generated route for
 /// [_i3.DesktopSettingAboutPage]
-class DesktopSettingAboutRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingAboutRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingAboutRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingAboutRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingAboutRoute.name,
           initialChildren: children,
@@ -118,7 +119,7 @@ class DesktopSettingAboutRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingAboutRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i3.DesktopSettingAboutPage();
@@ -128,8 +129,8 @@ class DesktopSettingAboutRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i4.DesktopSettingDefaultModelPage]
-class DesktopSettingDefaultModelRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingDefaultModelRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingDefaultModelRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingDefaultModelRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingDefaultModelRoute.name,
           initialChildren: children,
@@ -137,7 +138,7 @@ class DesktopSettingDefaultModelRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingDefaultModelRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i4.DesktopSettingDefaultModelPage();
@@ -147,8 +148,8 @@ class DesktopSettingDefaultModelRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i5.DesktopSettingPage]
-class DesktopSettingRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingRoute.name,
           initialChildren: children,
@@ -156,7 +157,7 @@ class DesktopSettingRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i5.DesktopSettingPage();
@@ -166,8 +167,8 @@ class DesktopSettingRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i6.DesktopSettingProviderPage]
-class DesktopSettingProviderRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingProviderRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingProviderRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingProviderRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingProviderRoute.name,
           initialChildren: children,
@@ -175,7 +176,7 @@ class DesktopSettingProviderRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingProviderRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i6.DesktopSettingProviderPage();
@@ -185,8 +186,8 @@ class DesktopSettingProviderRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i7.DesktopSettingSentinelPage]
-class DesktopSettingSentinelRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingSentinelRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingSentinelRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingSentinelRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingSentinelRoute.name,
           initialChildren: children,
@@ -194,7 +195,7 @@ class DesktopSettingSentinelRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingSentinelRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i7.DesktopSettingSentinelPage();
@@ -204,8 +205,8 @@ class DesktopSettingSentinelRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i8.DesktopSettingToolPage]
-class DesktopSettingToolRoute extends _i24.PageRouteInfo<void> {
-  const DesktopSettingToolRoute({List<_i24.PageRouteInfo>? children})
+class DesktopSettingToolRoute extends _i25.PageRouteInfo<void> {
+  const DesktopSettingToolRoute({List<_i25.PageRouteInfo>? children})
       : super(
           DesktopSettingToolRoute.name,
           initialChildren: children,
@@ -213,7 +214,7 @@ class DesktopSettingToolRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'DesktopSettingToolRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i8.DesktopSettingToolPage();
@@ -223,8 +224,8 @@ class DesktopSettingToolRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i9.MobileAboutPage]
-class MobileAboutRoute extends _i24.PageRouteInfo<void> {
-  const MobileAboutRoute({List<_i24.PageRouteInfo>? children})
+class MobileAboutRoute extends _i25.PageRouteInfo<void> {
+  const MobileAboutRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileAboutRoute.name,
           initialChildren: children,
@@ -232,7 +233,7 @@ class MobileAboutRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileAboutRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i9.MobileAboutPage();
@@ -243,11 +244,11 @@ class MobileAboutRoute extends _i24.PageRouteInfo<void> {
 /// generated route for
 /// [_i10.MobileChatConfigurationPage]
 class MobileChatConfigurationRoute
-    extends _i24.PageRouteInfo<MobileChatConfigurationRouteArgs> {
+    extends _i25.PageRouteInfo<MobileChatConfigurationRouteArgs> {
   MobileChatConfigurationRoute({
-    _i25.Key? key,
-    required _i27.Chat chat,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    required _i28.Chat chat,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileChatConfigurationRoute.name,
           args: MobileChatConfigurationRouteArgs(
@@ -259,7 +260,7 @@ class MobileChatConfigurationRoute
 
   static const String name = 'MobileChatConfigurationRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileChatConfigurationRouteArgs>();
@@ -277,9 +278,9 @@ class MobileChatConfigurationRouteArgs {
     required this.chat,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i27.Chat chat;
+  final _i28.Chat chat;
 
   @override
   String toString() {
@@ -290,11 +291,11 @@ class MobileChatConfigurationRouteArgs {
 /// generated route for
 /// [_i11.MobileChatExportPage]
 class MobileChatExportRoute
-    extends _i24.PageRouteInfo<MobileChatExportRouteArgs> {
+    extends _i25.PageRouteInfo<MobileChatExportRouteArgs> {
   MobileChatExportRoute({
-    _i25.Key? key,
-    required _i27.Chat chat,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    required _i28.Chat chat,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileChatExportRoute.name,
           args: MobileChatExportRouteArgs(
@@ -306,7 +307,7 @@ class MobileChatExportRoute
 
   static const String name = 'MobileChatExportRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileChatExportRouteArgs>();
@@ -324,9 +325,9 @@ class MobileChatExportRouteArgs {
     required this.chat,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i27.Chat chat;
+  final _i28.Chat chat;
 
   @override
   String toString() {
@@ -336,8 +337,8 @@ class MobileChatExportRouteArgs {
 
 /// generated route for
 /// [_i12.MobileChatListPage]
-class MobileChatListRoute extends _i24.PageRouteInfo<void> {
-  const MobileChatListRoute({List<_i24.PageRouteInfo>? children})
+class MobileChatListRoute extends _i25.PageRouteInfo<void> {
+  const MobileChatListRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileChatListRoute.name,
           initialChildren: children,
@@ -345,7 +346,7 @@ class MobileChatListRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileChatListRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i12.MobileChatListPage();
@@ -355,11 +356,11 @@ class MobileChatListRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i13.MobileChatPage]
-class MobileChatRoute extends _i24.PageRouteInfo<MobileChatRouteArgs> {
+class MobileChatRoute extends _i25.PageRouteInfo<MobileChatRouteArgs> {
   MobileChatRoute({
-    _i25.Key? key,
-    required _i27.Chat chat,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    required _i28.Chat chat,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileChatRoute.name,
           args: MobileChatRouteArgs(
@@ -371,7 +372,7 @@ class MobileChatRoute extends _i24.PageRouteInfo<MobileChatRouteArgs> {
 
   static const String name = 'MobileChatRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileChatRouteArgs>();
@@ -389,9 +390,9 @@ class MobileChatRouteArgs {
     required this.chat,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i27.Chat chat;
+  final _i28.Chat chat;
 
   @override
   String toString() {
@@ -401,8 +402,8 @@ class MobileChatRouteArgs {
 
 /// generated route for
 /// [_i14.MobileDefaultModelFormPage]
-class MobileDefaultModelFormRoute extends _i24.PageRouteInfo<void> {
-  const MobileDefaultModelFormRoute({List<_i24.PageRouteInfo>? children})
+class MobileDefaultModelFormRoute extends _i25.PageRouteInfo<void> {
+  const MobileDefaultModelFormRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileDefaultModelFormRoute.name,
           initialChildren: children,
@@ -410,7 +411,7 @@ class MobileDefaultModelFormRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileDefaultModelFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i14.MobileDefaultModelFormPage();
@@ -420,8 +421,8 @@ class MobileDefaultModelFormRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i15.MobileHomePage]
-class MobileHomeRoute extends _i24.PageRouteInfo<void> {
-  const MobileHomeRoute({List<_i24.PageRouteInfo>? children})
+class MobileHomeRoute extends _i25.PageRouteInfo<void> {
+  const MobileHomeRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileHomeRoute.name,
           initialChildren: children,
@@ -429,7 +430,7 @@ class MobileHomeRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileHomeRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i15.MobileHomePage();
@@ -440,12 +441,12 @@ class MobileHomeRoute extends _i24.PageRouteInfo<void> {
 /// generated route for
 /// [_i16.MobileModelFormPage]
 class MobileModelFormRoute
-    extends _i24.PageRouteInfo<MobileModelFormRouteArgs> {
+    extends _i25.PageRouteInfo<MobileModelFormRouteArgs> {
   MobileModelFormRoute({
-    _i25.Key? key,
-    _i28.Model? model,
-    _i29.Provider? provider,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    _i29.Model? model,
+    _i30.Provider? provider,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileModelFormRoute.name,
           args: MobileModelFormRouteArgs(
@@ -458,7 +459,7 @@ class MobileModelFormRoute
 
   static const String name = 'MobileModelFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileModelFormRouteArgs>(
@@ -479,11 +480,11 @@ class MobileModelFormRouteArgs {
     this.provider,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i28.Model? model;
+  final _i29.Model? model;
 
-  final _i29.Provider? provider;
+  final _i30.Provider? provider;
 
   @override
   String toString() {
@@ -494,11 +495,11 @@ class MobileModelFormRouteArgs {
 /// generated route for
 /// [_i17.MobileProviderFormPage]
 class MobileProviderFormRoute
-    extends _i24.PageRouteInfo<MobileProviderFormRouteArgs> {
+    extends _i25.PageRouteInfo<MobileProviderFormRouteArgs> {
   MobileProviderFormRoute({
-    _i25.Key? key,
-    required _i29.Provider provider,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    required _i30.Provider provider,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileProviderFormRoute.name,
           args: MobileProviderFormRouteArgs(
@@ -510,7 +511,7 @@ class MobileProviderFormRoute
 
   static const String name = 'MobileProviderFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileProviderFormRouteArgs>();
@@ -528,9 +529,9 @@ class MobileProviderFormRouteArgs {
     required this.provider,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i29.Provider provider;
+  final _i30.Provider provider;
 
   @override
   String toString() {
@@ -540,8 +541,8 @@ class MobileProviderFormRouteArgs {
 
 /// generated route for
 /// [_i18.MobileProviderListPage]
-class MobileProviderListRoute extends _i24.PageRouteInfo<void> {
-  const MobileProviderListRoute({List<_i24.PageRouteInfo>? children})
+class MobileProviderListRoute extends _i25.PageRouteInfo<void> {
+  const MobileProviderListRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileProviderListRoute.name,
           initialChildren: children,
@@ -549,7 +550,7 @@ class MobileProviderListRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileProviderListRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i18.MobileProviderListPage();
@@ -559,8 +560,8 @@ class MobileProviderListRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i19.MobileProviderNamePage]
-class MobileProviderNameRoute extends _i24.PageRouteInfo<void> {
-  const MobileProviderNameRoute({List<_i24.PageRouteInfo>? children})
+class MobileProviderNameRoute extends _i25.PageRouteInfo<void> {
+  const MobileProviderNameRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileProviderNameRoute.name,
           initialChildren: children,
@@ -568,7 +569,7 @@ class MobileProviderNameRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileProviderNameRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i19.MobileProviderNamePage();
@@ -579,11 +580,11 @@ class MobileProviderNameRoute extends _i24.PageRouteInfo<void> {
 /// generated route for
 /// [_i20.MobileSentinelFormPage]
 class MobileSentinelFormRoute
-    extends _i24.PageRouteInfo<MobileSentinelFormRouteArgs> {
+    extends _i25.PageRouteInfo<MobileSentinelFormRouteArgs> {
   MobileSentinelFormRoute({
-    _i25.Key? key,
-    _i26.Sentinel? sentinel,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    _i27.Sentinel? sentinel,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileSentinelFormRoute.name,
           args: MobileSentinelFormRouteArgs(
@@ -595,7 +596,7 @@ class MobileSentinelFormRoute
 
   static const String name = 'MobileSentinelFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileSentinelFormRouteArgs>(
@@ -614,9 +615,9 @@ class MobileSentinelFormRouteArgs {
     this.sentinel,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i26.Sentinel? sentinel;
+  final _i27.Sentinel? sentinel;
 
   @override
   String toString() {
@@ -626,8 +627,8 @@ class MobileSentinelFormRouteArgs {
 
 /// generated route for
 /// [_i21.MobileSentinelListPage]
-class MobileSentinelListRoute extends _i24.PageRouteInfo<void> {
-  const MobileSentinelListRoute({List<_i24.PageRouteInfo>? children})
+class MobileSentinelListRoute extends _i25.PageRouteInfo<void> {
+  const MobileSentinelListRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileSentinelListRoute.name,
           initialChildren: children,
@@ -635,7 +636,7 @@ class MobileSentinelListRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileSentinelListRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i21.MobileSentinelListPage();
@@ -645,11 +646,11 @@ class MobileSentinelListRoute extends _i24.PageRouteInfo<void> {
 
 /// generated route for
 /// [_i22.MobileToolFormPage]
-class MobileToolFormRoute extends _i24.PageRouteInfo<MobileToolFormRouteArgs> {
+class MobileToolFormRoute extends _i25.PageRouteInfo<MobileToolFormRouteArgs> {
   MobileToolFormRoute({
-    _i25.Key? key,
-    required _i30.Tool tool,
-    List<_i24.PageRouteInfo>? children,
+    _i26.Key? key,
+    required _i31.Tool tool,
+    List<_i25.PageRouteInfo>? children,
   }) : super(
           MobileToolFormRoute.name,
           args: MobileToolFormRouteArgs(
@@ -661,7 +662,7 @@ class MobileToolFormRoute extends _i24.PageRouteInfo<MobileToolFormRouteArgs> {
 
   static const String name = 'MobileToolFormRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       final args = data.argsAs<MobileToolFormRouteArgs>();
@@ -679,9 +680,9 @@ class MobileToolFormRouteArgs {
     required this.tool,
   });
 
-  final _i25.Key? key;
+  final _i26.Key? key;
 
-  final _i30.Tool tool;
+  final _i31.Tool tool;
 
   @override
   String toString() {
@@ -691,8 +692,8 @@ class MobileToolFormRouteArgs {
 
 /// generated route for
 /// [_i23.MobileToolListPage]
-class MobileToolListRoute extends _i24.PageRouteInfo<void> {
-  const MobileToolListRoute({List<_i24.PageRouteInfo>? children})
+class MobileToolListRoute extends _i25.PageRouteInfo<void> {
+  const MobileToolListRoute({List<_i25.PageRouteInfo>? children})
       : super(
           MobileToolListRoute.name,
           initialChildren: children,
@@ -700,10 +701,29 @@ class MobileToolListRoute extends _i24.PageRouteInfo<void> {
 
   static const String name = 'MobileToolListRoute';
 
-  static _i24.PageInfo page = _i24.PageInfo(
+  static _i25.PageInfo page = _i25.PageInfo(
     name,
     builder: (data) {
       return const _i23.MobileToolListPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i24.MobileTranslationPage]
+class MobileTranslationRoute extends _i25.PageRouteInfo<void> {
+  const MobileTranslationRoute({List<_i25.PageRouteInfo>? children})
+      : super(
+          MobileTranslationRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'MobileTranslationRoute';
+
+  static _i25.PageInfo page = _i25.PageInfo(
+    name,
+    builder: (data) {
+      return const _i24.MobileTranslationPage();
     },
   );
 }

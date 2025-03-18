@@ -19,7 +19,7 @@ class SentinelApi {
       baseUrl: provider.url,
       headers: headers,
     );
-    var system = PresetPrompt.metadataGeneration;
+    var system = PresetPrompt.metadataGenerationPrompt;
     var messages = [
       Message.fromJson({'role': 'system', 'content': system}),
       Message.fromJson({'role': 'user', 'content': prompt}),
