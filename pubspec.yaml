@@ -23,7 +23,7 @@ dependencies:
   google_fonts: ^6.2.1
   gpt_markdown: 1.0.9
   http: ^1.1.0
-  hugeicons: ^0.0.7
+  hugeicons: ^0.0.10
   image_gallery_saver_plus: ^4.0.1
   isar:
     version: ^3.1.8
