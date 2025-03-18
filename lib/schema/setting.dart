@@ -12,4 +12,5 @@ class Setting {
   int chatNamingModelId = 0;
   int chatSearchDecisionModelId = 0;
   int sentinelMetadataGenerationModelId = 0;
+  int translatingModelId = 0;
 }

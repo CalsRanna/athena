@@ -6,8 +6,25 @@ part of 'translation.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$transitionsNotifierHash() =>
+    r'ab6e92a260d4bed03046a1aa6a4892edd12d02a9';
+
+/// See also [TransitionsNotifier].
+@ProviderFor(TransitionsNotifier)
+final transitionsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    TransitionsNotifier, List<Translation>>.internal(
+  TransitionsNotifier.new,
+  name: r'transitionsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$transitionsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$TransitionsNotifier = AutoDisposeAsyncNotifier<List<Translation>>;
 String _$translationNotifierHash() =>
-    r'e698323a34eae225df8fe7bcd8096b3b21921039';
+    r'770e97b91fb8b2b53f26a529f234bc225cc192fc';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -174,23 +191,5 @@ class _TranslationNotifierProviderElement
   @override
   int get id => (origin as TranslationNotifierProvider).id;
 }
-
-String _$transitionsNotifierHash() =>
-    r'49993af922310d9260777d753d00d8c52881567d';
-
-/// See also [TransitionsNotifier].
-@ProviderFor(TransitionsNotifier)
-final transitionsNotifierProvider = AutoDisposeAsyncNotifierProvider<
-    TransitionsNotifier, List<Translation>>.internal(
-  TransitionsNotifier.new,
-  name: r'transitionsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$transitionsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$TransitionsNotifier = AutoDisposeAsyncNotifier<List<Translation>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -106,3 +106,15 @@ class SentinelMetaGenerationModelNotifier
     return model ?? Model();
   }
 }
+
+@riverpod
+class TranslatingModelNotifier extends _$TranslatingModelNotifier {
+  @override
+  Future<Model> build() async {
+    var setting = await ref.watch(settingNotifierProvider.future);
+    var id = setting.translatingModelId;
+    var builder = isar.models.filter().idEqualTo(id);
+    var model = await builder.findFirst();
+    return model ?? Model();
+  }
+}
