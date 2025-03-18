@@ -9,6 +9,7 @@ class AthenaInput extends StatefulWidget {
   final void Function()? onBlur;
   final void Function(String)? onSubmitted;
   final String? placeholder;
+  final double? radius;
   const AthenaInput({
     super.key,
     this.autoFocus = false,
@@ -18,6 +19,7 @@ class AthenaInput extends StatefulWidget {
     this.onSubmitted,
     this.onBlur,
     this.placeholder,
+    this.radius,
   });
 
   @override
@@ -50,7 +52,7 @@ class _AthenaInputState extends State<AthenaInput> {
   Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(widget.radius ?? 24),
     );
     var hintTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,
