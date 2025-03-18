@@ -44,7 +44,7 @@ class TranslationViewModel extends ViewModel {
     }
     var prompt = PresetPrompt.translatePrompt
         .replaceAll('{source}', translation.source)
-      ..replaceAll('{target}', translation.target);
+        .replaceAll('{target}', translation.target);
     final system = {'role': 'system', 'content': prompt};
     var user = {'role': 'user', 'content': translation.sourceText};
     var translationProvider = translationNotifierProvider(translation.id);
