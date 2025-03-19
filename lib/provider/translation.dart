@@ -29,7 +29,7 @@ class TranslationNotifier extends _$TranslationNotifier {
     var copiedTranslation = translation.copyWith(
       targetText: '${translation.targetText}$content',
     );
-    state = AsyncValue.data(copiedTranslation);
+    state = AsyncData(copiedTranslation);
     await isar.writeTxn(() async {
       await isar.translations.put(copiedTranslation);
     });
@@ -45,10 +45,20 @@ class TranslationNotifier extends _$TranslationNotifier {
 
   Future<void> closeStreaming() async {
     var translation = await future;
-    if (translation.targetText.isEmpty) return;
-    await isar.writeTxn(() async {
-      await isar.translations.put(translation);
-    });
+    var targetText = translation.targetText.trim();
+    var copiedTranslation = translation.copyWith(
+      targetText: targetText,
+    );
+    state = AsyncData(copiedTranslation);
+    if (targetText.isEmpty) {
+      await isar.writeTxn(() async {
+        await isar.translations.delete(translation.id);
+      });
+    } else {
+      await isar.writeTxn(() async {
+        await isar.translations.put(copiedTranslation);
+      });
+    }
   }
 
   Future<void> streaming(ChatCompletionStreamResponseDelta delta) async {
@@ -56,12 +66,12 @@ class TranslationNotifier extends _$TranslationNotifier {
     var copiedTranslation = translation.copyWith(
       targetText: '${translation.targetText}${delta.content}',
     );
-    state = AsyncValue.data(copiedTranslation);
+    state = AsyncData(copiedTranslation);
   }
 
   Future<void> updateTargetText(String targetText) async {
     var translation = await future;
     var copiedTranslation = translation.copyWith(targetText: targetText);
-    state = AsyncValue.data(copiedTranslation);
+    state = AsyncData(copiedTranslation);
   }
 }

@@ -13,7 +13,7 @@ class SummaryNotifier extends _$SummaryNotifier {
     var copiedSummary = summary.copyWith(
       content: '${summary.content}$content',
     );
-    state = AsyncValue.data(copiedSummary);
+    state = AsyncData(copiedSummary);
     await isar.writeTxn(() async {
       await isar.summaries.put(copiedSummary);
     });
@@ -38,13 +38,13 @@ class SummaryNotifier extends _$SummaryNotifier {
     var copiedSummary = summary.copyWith(
       content: '${summary.content}${delta.content}',
     );
-    state = AsyncValue.data(copiedSummary);
+    state = AsyncData(copiedSummary);
   }
 
   Future<void> updateContent(String content) async {
     var summary = await future;
     var copiedSummary = summary.copyWith(content: content);
-    state = AsyncValue.data(copiedSummary);
+    state = AsyncData(copiedSummary);
   }
 }
 
