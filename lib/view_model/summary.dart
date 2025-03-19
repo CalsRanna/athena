@@ -1,17 +1,16 @@
-import 'package:athena/api/chat.dart';
+import 'package:athena/api/summary.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/summary.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/summary.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart';
 import 'package:isar/isar.dart';
+import 'package:openai_dart/openai_dart.dart';
 
 class SummaryViewModel extends ViewModel {
   final WidgetRef ref;
@@ -28,16 +27,12 @@ class SummaryViewModel extends ViewModel {
   }
 
   Future<void> parse(Summary summary) async {
-    var uri = Uri.parse(summary.link);
-    var response = await get(uri);
-    var body = response.body;
-    var plainBody = body
-        .replaceAll(RegExp(r'<script[^>]*>[\s\S]*?</script>'), '') // 移除脚本
-        .replaceAll(RegExp(r'<style[^>]*>[\s\S]*?</style>'), '') // 移除样式
-        .replaceAll(RegExp(r'<[^>]+>'), ' ') // 移除常规标签
-        .replaceAll(RegExp(r'\s{2,}'), ' ') // 合并空白
-        .trim();
-    var copiedSummary = summary.copyWith(html: plainBody);
+    var document = await SummaryApi().parseDocument(summary.link);
+    var copiedSummary = summary.copyWith(
+      html: document['html'],
+      icon: document['icon'],
+      title: document['title'],
+    );
     await isar.writeTxn(() async {
       await isar.summaries.put(copiedSummary);
     });
@@ -46,9 +41,6 @@ class SummaryViewModel extends ViewModel {
   }
 
   Future<void> summarize(Summary summary) async {
-    var summaryProvider = summaryNotifierProvider(summary.id);
-    var summaryNotifier = ref.read(summaryProvider.notifier);
-    summaryNotifier.updateContent('');
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var modelProvider = translatingModelNotifierProvider;
@@ -60,14 +52,21 @@ class SummaryViewModel extends ViewModel {
       AthenaDialog.message('You should set translating model first');
       return;
     }
+    var summaryProvider = summaryNotifierProvider(summary.id);
+    var summaryNotifier = ref.read(summaryProvider.notifier);
+    await summaryNotifier.updateContent('');
     var latestSummary = await ref.read(summaryProvider.future);
-    var prompt = PresetPrompt.summaryPrompt;
-    final system = {'role': 'system', 'content': prompt};
-    var user = {'role': 'user', 'content': latestSummary.html};
     try {
-      final response = ChatApi().getCompletion(
-        chat: Chat(),
-        messages: [Message.fromJson(system), Message.fromJson(user)],
+      var prompt = PresetPrompt.summaryPrompt;
+      var userMessageContent = ChatCompletionUserMessageContent.string(
+        latestSummary.html,
+      );
+      var messages = [
+        ChatCompletionMessage.system(content: prompt),
+        ChatCompletionMessage.user(content: userMessageContent)
+      ];
+      var response = SummaryApi().summarize(
+        messages: messages,
         model: model,
         provider: provider,
       );

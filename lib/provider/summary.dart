@@ -1,7 +1,7 @@
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/summary.dart';
-import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:isar/isar.dart';
+import 'package:openai_dart/openai_dart.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'summary.g.dart';
@@ -33,9 +33,7 @@ class SummaryNotifier extends _$SummaryNotifier {
     });
   }
 
-  Future<void> streaming(
-    OverrodeChatCompletionStreamResponseDelta delta,
-  ) async {
+  Future<void> streaming(ChatCompletionStreamResponseDelta delta) async {
     var summary = await future;
     var copiedSummary = summary.copyWith(
       content: '${summary.content}${delta.content}',
