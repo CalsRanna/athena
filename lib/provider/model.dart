@@ -108,11 +108,11 @@ class SentinelMetaGenerationModelNotifier
 }
 
 @riverpod
-class TranslatingModelNotifier extends _$TranslatingModelNotifier {
+class ShortcutModelNotifier extends _$ShortcutModelNotifier {
   @override
   Future<Model> build() async {
     var setting = await ref.watch(settingNotifierProvider.future);
-    var id = setting.translatingModelId;
+    var id = setting.shortModelId;
     var builder = isar.models.filter().idEqualTo(id);
     var model = await builder.findFirst();
     return model ?? Model();
