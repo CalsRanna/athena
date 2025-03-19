@@ -1,7 +1,7 @@
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/translation.dart';
-import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:isar/isar.dart';
+import 'package:openai_dart/openai_dart.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'translation.g.dart';
@@ -10,9 +10,6 @@ part 'translation.g.dart';
 class TransitionsNotifier extends _$TransitionsNotifier {
   @override
   Future<List<Translation>> build() async {
-    await isar.writeTxn(() async {
-      await isar.translations.filter().targetTextIsEmpty().deleteAll();
-    });
     var translations = await isar.translations.where().findAll();
     return translations.reversed.toList();
   }
@@ -48,14 +45,13 @@ class TranslationNotifier extends _$TranslationNotifier {
 
   Future<void> closeStreaming() async {
     var translation = await future;
+    if (translation.targetText.isEmpty) return;
     await isar.writeTxn(() async {
       await isar.translations.put(translation);
     });
   }
 
-  Future<void> streaming(
-    OverrodeChatCompletionStreamResponseDelta delta,
-  ) async {
+  Future<void> streaming(ChatCompletionStreamResponseDelta delta) async {
     var translation = await future;
     var copiedTranslation = translation.copyWith(
       targetText: '${translation.targetText}${delta.content}',

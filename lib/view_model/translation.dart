@@ -1,15 +1,15 @@
-import 'package:athena/api/chat.dart';
+import 'package:athena/api/translation.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/translation.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/translation.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:openai_dart/openai_dart.dart';
 
 class TranslationViewModel extends ViewModel {
   final WidgetRef ref;
@@ -42,18 +42,22 @@ class TranslationViewModel extends ViewModel {
       AthenaDialog.message('You should set translating model first');
       return;
     }
-    var prompt = PresetPrompt.translatePrompt
-        .replaceAll('{source}', translation.source)
-        .replaceAll('{target}', translation.target);
-    final system = {'role': 'system', 'content': prompt};
-    var user = {'role': 'user', 'content': translation.sourceText};
     var translationProvider = translationNotifierProvider(translation.id);
     var translationNotifier = ref.read(translationProvider.notifier);
     translationNotifier.updateTargetText('');
     try {
-      final response = ChatApi().getCompletion(
-        chat: Chat(),
-        messages: [Message.fromJson(system), Message.fromJson(user)],
+      var prompt = PresetPrompt.translatePrompt
+          .replaceAll('{source}', translation.source)
+          .replaceAll('{target}', translation.target);
+      var userMessageContent = ChatCompletionUserMessageContent.string(
+        translation.sourceText,
+      );
+      var messages = [
+        ChatCompletionMessage.system(content: prompt),
+        ChatCompletionMessage.user(content: userMessageContent)
+      ];
+      var response = TranslationApi().translate(
+        messages: messages,
         model: model,
         provider: provider,
       );
