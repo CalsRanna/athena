@@ -1,5 +1,6 @@
 import 'package:athena/schema/summary.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -23,7 +24,7 @@ class MobileSummaryListTile extends StatelessWidget {
     );
     var titleText = Text(
       summary.title,
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: titleTextStyle,
     );
@@ -35,56 +36,58 @@ class MobileSummaryListTile extends StatelessWidget {
     );
     var linkText = Text(
       summary.link,
-      maxLines: 1,
+      maxLines: 2,
       overflow: TextOverflow.ellipsis,
       style: linkTextStyle,
     );
-    var contentTextStyle = TextStyle(
-      color: ColorUtil.FFA7BA88,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    var content = summary.content.isNotEmpty ? summary.content : summary.html;
-    content = content.replaceAll('\n', '');
-    content = content.replaceAll(' ', '');
-    var contentText = Text(
-      content,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: contentTextStyle,
-    );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [titleText, linkText, contentText],
+      children: [titleText, linkText],
     );
     var rowChildren = [
       _buildLogo(),
       SizedBox(width: 20),
       Expanded(child: column),
     ];
+    var row = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: rowChildren,
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Row(children: rowChildren),
+      child: row,
     );
   }
 
   Widget _buildLogo() {
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FFADADAD,
-    );
     var icon = Icon(
       HugeIcons.strokeRoundedAiBrowser,
       color: ColorUtil.FFFFFFFF,
       size: 32,
     );
+    Widget child = icon;
+    if (summary.icon.isNotEmpty) {
+      child = UnconstrainedBox(
+        child: CachedNetworkImage(
+          imageUrl: summary.icon,
+          errorWidget: (_, __, ___) => icon,
+          fit: BoxFit.cover,
+          height: 32,
+          placeholder: (_, __) => icon,
+          width: 32,
+        ),
+      );
+    }
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: ColorUtil.FFADADAD,
+    );
     return Container(
       decoration: boxDecoration,
       height: 80,
       width: 80,
-      child: icon,
+      child: child,
     );
   }
 }

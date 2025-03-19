@@ -44,7 +44,7 @@ class TranslationViewModel extends ViewModel {
     }
     var translationProvider = translationNotifierProvider(translation.id);
     var translationNotifier = ref.read(translationProvider.notifier);
-    translationNotifier.updateTargetText('');
+    await translationNotifier.updateTargetText('');
     try {
       var prompt = PresetPrompt.translatePrompt
           .replaceAll('{source}', translation.source)
