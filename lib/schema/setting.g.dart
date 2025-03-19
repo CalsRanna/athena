@@ -42,9 +42,9 @@ const SettingSchema = CollectionSchema(
       name: r'sentinelMetadataGenerationModelId',
       type: IsarType.long,
     ),
-    r'translatingModelId': PropertySchema(
+    r'shortModelId': PropertySchema(
       id: 5,
-      name: r'translatingModelId',
+      name: r'shortModelId',
       type: IsarType.long,
     ),
     r'width': PropertySchema(
@@ -87,7 +87,7 @@ void _settingSerialize(
   writer.writeLong(offsets[2], object.chatSearchDecisionModelId);
   writer.writeDouble(offsets[3], object.height);
   writer.writeLong(offsets[4], object.sentinelMetadataGenerationModelId);
-  writer.writeLong(offsets[5], object.translatingModelId);
+  writer.writeLong(offsets[5], object.shortModelId);
   writer.writeDouble(offsets[6], object.width);
 }
 
@@ -104,7 +104,7 @@ Setting _settingDeserialize(
   object.height = reader.readDouble(offsets[3]);
   object.id = id;
   object.sentinelMetadataGenerationModelId = reader.readLong(offsets[4]);
-  object.translatingModelId = reader.readLong(offsets[5]);
+  object.shortModelId = reader.readLong(offsets[5]);
   object.width = reader.readDouble(offsets[6]);
   return object;
 }
@@ -559,46 +559,43 @@ extension SettingQueryFilter
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      translatingModelIdEqualTo(int value) {
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> shortModelIdEqualTo(
+      int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'translatingModelId',
+        property: r'shortModelId',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      translatingModelIdGreaterThan(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> shortModelIdGreaterThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'translatingModelId',
+        property: r'shortModelId',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      translatingModelIdLessThan(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> shortModelIdLessThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'translatingModelId',
+        property: r'shortModelId',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterFilterCondition>
-      translatingModelIdBetween(
+  QueryBuilder<Setting, Setting, QAfterFilterCondition> shortModelIdBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -606,7 +603,7 @@ extension SettingQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'translatingModelId',
+        property: r'shortModelId',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -749,15 +746,15 @@ extension SettingQuerySortBy on QueryBuilder<Setting, Setting, QSortBy> {
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTranslatingModelId() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByShortModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'translatingModelId', Sort.asc);
+      return query.addSortBy(r'shortModelId', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> sortByTranslatingModelIdDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> sortByShortModelIdDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'translatingModelId', Sort.desc);
+      return query.addSortBy(r'shortModelId', Sort.desc);
     });
   }
 
@@ -852,15 +849,15 @@ extension SettingQuerySortThenBy
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTranslatingModelId() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByShortModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'translatingModelId', Sort.asc);
+      return query.addSortBy(r'shortModelId', Sort.asc);
     });
   }
 
-  QueryBuilder<Setting, Setting, QAfterSortBy> thenByTranslatingModelIdDesc() {
+  QueryBuilder<Setting, Setting, QAfterSortBy> thenByShortModelIdDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'translatingModelId', Sort.desc);
+      return query.addSortBy(r'shortModelId', Sort.desc);
     });
   }
 
@@ -911,9 +908,9 @@ extension SettingQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Setting, Setting, QDistinct> distinctByTranslatingModelId() {
+  QueryBuilder<Setting, Setting, QDistinct> distinctByShortModelId() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'translatingModelId');
+      return query.addDistinctBy(r'shortModelId');
     });
   }
 
@@ -964,9 +961,9 @@ extension SettingQueryProperty
     });
   }
 
-  QueryBuilder<Setting, int, QQueryOperations> translatingModelIdProperty() {
+  QueryBuilder<Setting, int, QQueryOperations> shortModelIdProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'translatingModelId');
+      return query.addPropertyName(r'shortModelId');
     });
   }
 

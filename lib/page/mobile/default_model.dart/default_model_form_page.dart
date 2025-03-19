@@ -40,7 +40,7 @@ class _MobileDefaultModelFormPageState
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
     );
-    var translatingTitle = Text('Translating Model', style: titleTextStyle);
+    var shortcutTitle = Text('Shortcut Model', style: titleTextStyle);
     var chatModel = ref.watch(chatModelNotifierProvider).value;
     var chatDropdown = _ModelDropdown(
       model: chatModel,
@@ -63,10 +63,10 @@ class _MobileDefaultModelFormPageState
       model: sentinelMetadataGenerationModel,
       onChanged: viewModel.updateSentinelMetaGenerationModel,
     );
-    var translatingModel = ref.watch(translatingModelNotifierProvider).value;
-    var translatingDropdown = _ModelDropdown(
-      model: translatingModel,
-      onChanged: viewModel.updateTranslatingModel,
+    var shortcutModel = ref.watch(shortcutModelNotifierProvider).value;
+    var shortcutDropdown = _ModelDropdown(
+      model: shortcutModel,
+      onChanged: viewModel.updateShortcutModel,
     );
     var tipTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,
@@ -87,8 +87,8 @@ class _MobileDefaultModelFormPageState
       'Model designated for generating sentinel name, description, avatar, and tags',
       style: tipTextStyle,
     );
-    var translatingTip = Text(
-      'Model designated for translation shortcut',
+    var shortcutTip = Text(
+      'Model designated for all shortcuts',
       style: tipTextStyle,
     );
     var listChildren = [
@@ -116,11 +116,11 @@ class _MobileDefaultModelFormPageState
       const SizedBox(height: 12),
       generationTip,
       const SizedBox(height: 16),
-      translatingTitle,
+      shortcutTitle,
       const SizedBox(height: 12),
-      translatingDropdown,
+      shortcutDropdown,
       const SizedBox(height: 12),
-      translatingTip,
+      shortcutTip,
       SafeArea(top: false, child: const SizedBox())
     ];
     var listView = ListView(

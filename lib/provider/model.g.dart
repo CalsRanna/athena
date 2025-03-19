@@ -556,22 +556,22 @@ final sentinelMetaGenerationModelNotifierProvider =
 );
 
 typedef _$SentinelMetaGenerationModelNotifier = AutoDisposeAsyncNotifier<Model>;
-String _$translatingModelNotifierHash() =>
-    r'adfeb1f1cf2db3448533a03c739c7b720d82b53b';
+String _$shortcutModelNotifierHash() =>
+    r'a7101f7d6c30d5e5248b446296c159a80c0ba5ae';
 
-/// See also [TranslatingModelNotifier].
-@ProviderFor(TranslatingModelNotifier)
-final translatingModelNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<TranslatingModelNotifier, Model>.internal(
-  TranslatingModelNotifier.new,
-  name: r'translatingModelNotifierProvider',
+/// See also [ShortcutModelNotifier].
+@ProviderFor(ShortcutModelNotifier)
+final shortcutModelNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<ShortcutModelNotifier, Model>.internal(
+  ShortcutModelNotifier.new,
+  name: r'shortcutModelNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$translatingModelNotifierHash,
+      : _$shortcutModelNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$TranslatingModelNotifier = AutoDisposeAsyncNotifier<Model>;
+typedef _$ShortcutModelNotifier = AutoDisposeAsyncNotifier<Model>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

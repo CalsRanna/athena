@@ -43,13 +43,13 @@ class SummaryViewModel extends ViewModel {
   Future<void> summarize(Summary summary) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    var modelProvider = translatingModelNotifierProvider;
+    var modelProvider = shortcutModelNotifierProvider;
     var model = await ref.read(modelProvider.future);
     var providerProvider = providerNotifierProvider(model.providerId);
     var provider = await ref.read(providerProvider.future);
     if (provider.url.isEmpty) {
       streamingNotifier.close();
-      AthenaDialog.message('You should set translating model first');
+      AthenaDialog.message('You should set shortcut model first');
       return;
     }
     var summaryProvider = summaryNotifierProvider(summary.id);

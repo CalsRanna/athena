@@ -50,10 +50,10 @@ class SettingViewModel extends ViewModel {
     ref.invalidate(settingNotifierProvider);
   }
 
-  Future<void> updateTranslatingModel(Model model) async {
+  Future<void> updateShortcutModel(Model model) async {
     var setting = await isar.settings.where().findFirst();
     setting ??= Setting();
-    setting.translatingModelId = model.id;
+    setting.shortModelId = model.id;
     await isar.writeTxn(() async {
       await isar.settings.put(setting!);
     });
