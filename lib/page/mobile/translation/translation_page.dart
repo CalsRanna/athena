@@ -56,7 +56,7 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
       Row(children: rowChildren),
       const SizedBox(height: 16),
       sourceTextInput,
-      const SizedBox(height: 12),
+      const SizedBox(height: 4),
       _buildTargetText(),
       const SizedBox(height: 16),
       AthenaDivider(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2)),
@@ -112,7 +112,9 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
     setState(() {
       id = translationId;
     });
-    viewModel.translate(translation.copyWith(id: id));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      viewModel.translate(translation.copyWith(id: id));
+    });
   }
 
   Widget _buildLanguageButton(String language, {required String type}) {
@@ -136,8 +138,10 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
     if (id == 0) return const SizedBox();
     var provider = translationNotifierProvider(id);
     var translation = ref.watch(provider).value;
-    if (translation == null) return const SizedBox();
-    return TranslationListTile(showSourceText: false, translation: translation);
+    return TranslationListTile(
+      showSourceText: false,
+      translation: translation ?? Translation(),
+    );
   }
 
   Widget _buildTitle() {
@@ -158,9 +162,9 @@ class _MobileTranslationPageState extends ConsumerState<MobileTranslationPage> {
     var streaming = ref.watch(streamingNotifierProvider);
     var indicator = CircularProgressIndicator(strokeWidth: 2);
     var children = [
-      if (streaming) SizedBox(width: 16, height: 16, child: indicator),
-      if (streaming) SizedBox(width: 8),
       Text('Translate'),
+      if (streaming) SizedBox(width: 8),
+      if (streaming) SizedBox(width: 16, height: 16, child: indicator),
     ];
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.center,

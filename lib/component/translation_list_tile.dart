@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:athena/component/button.dart';
 import 'package:athena/schema/translation.dart';
 import 'package:athena/util/color_util.dart';
@@ -47,7 +45,6 @@ class _SourceText extends StatelessWidget {
     return Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      constraints: BoxConstraints(minHeight: 36),
       padding: EdgeInsets.all(16),
       child: Text(text, style: textStyle),
     );
@@ -60,9 +57,15 @@ class _TargetText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var textStyle = TextStyle(
+      color: ColorUtil.FF161616,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
     var children = [
-      _buildContent(),
-      _buildTrailingSpace(),
+      Expanded(child: Text(text, style: textStyle)),
+      SizedBox(width: 16),
     ];
     var messageRow = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +77,7 @@ class _TargetText extends StatelessWidget {
     );
     var stackChildren = [
       messageRow,
-      Positioned(right: 0, child: CopyButton(onTap: handleCopy)),
+      Positioned(right: 0, child: CopyButton(onTap: copyTargetText)),
     ];
     return Container(
       decoration: boxDecoration,
@@ -83,21 +86,7 @@ class _TargetText extends StatelessWidget {
     );
   }
 
-  void handleCopy() {
+  void copyTargetText() {
     Clipboard.setData(ClipboardData(text: text));
-  }
-
-  Widget _buildContent() {
-    var container = Container(
-      alignment: Alignment.centerLeft,
-      constraints: const BoxConstraints(minHeight: 36),
-      child: Text(text),
-    );
-    return Expanded(child: container);
-  }
-
-  Widget _buildTrailingSpace() {
-    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
-    return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
