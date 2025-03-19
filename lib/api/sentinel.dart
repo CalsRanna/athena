@@ -13,7 +13,10 @@ class SentinelApi {
     required Provider provider,
     required schema.Model model,
   }) async {
-    var headers = {'HTTP-Referer': 'athena.cals.xyz', 'X-Title': 'Athena'};
+    var headers = {
+      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+      'X-Title': 'Athena',
+    };
     var client = OpenAIClient(
       apiKey: provider.key,
       baseUrl: provider.url,
