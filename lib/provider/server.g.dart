@@ -1,12 +1,28 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'summary.dart';
+part of 'server.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$summaryNotifierHash() => r'ffbb20dad376162dfb0860ea1124cf4a33b22ff9';
+String _$serversNotifierHash() => r'04b9133abd26fb60eecb4e849b02fd8142c7478b';
+
+/// See also [ServersNotifier].
+@ProviderFor(ServersNotifier)
+final serversNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<ServersNotifier, List<Server>>.internal(
+  ServersNotifier.new,
+  name: r'serversNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$serversNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ServersNotifier = AutoDisposeAsyncNotifier<List<Server>>;
+String _$serverNotifierHash() => r'33712914d636dde2424c910ac8c074daae8d8097';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,36 +45,36 @@ class _SystemHash {
   }
 }
 
-abstract class _$SummaryNotifier
-    extends BuildlessAutoDisposeAsyncNotifier<Summary> {
+abstract class _$ServerNotifier
+    extends BuildlessAutoDisposeAsyncNotifier<Server> {
   late final int id;
 
-  FutureOr<Summary> build(
+  FutureOr<Server> build(
     int id,
   );
 }
 
-/// See also [SummaryNotifier].
-@ProviderFor(SummaryNotifier)
-const summaryNotifierProvider = SummaryNotifierFamily();
+/// See also [ServerNotifier].
+@ProviderFor(ServerNotifier)
+const serverNotifierProvider = ServerNotifierFamily();
 
-/// See also [SummaryNotifier].
-class SummaryNotifierFamily extends Family<AsyncValue<Summary>> {
-  /// See also [SummaryNotifier].
-  const SummaryNotifierFamily();
+/// See also [ServerNotifier].
+class ServerNotifierFamily extends Family<AsyncValue<Server>> {
+  /// See also [ServerNotifier].
+  const ServerNotifierFamily();
 
-  /// See also [SummaryNotifier].
-  SummaryNotifierProvider call(
+  /// See also [ServerNotifier].
+  ServerNotifierProvider call(
     int id,
   ) {
-    return SummaryNotifierProvider(
+    return ServerNotifierProvider(
       id,
     );
   }
 
   @override
-  SummaryNotifierProvider getProviderOverride(
-    covariant SummaryNotifierProvider provider,
+  ServerNotifierProvider getProviderOverride(
+    covariant ServerNotifierProvider provider,
   ) {
     return call(
       provider.id,
@@ -77,30 +93,30 @@ class SummaryNotifierFamily extends Family<AsyncValue<Summary>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'summaryNotifierProvider';
+  String? get name => r'serverNotifierProvider';
 }
 
-/// See also [SummaryNotifier].
-class SummaryNotifierProvider
-    extends AutoDisposeAsyncNotifierProviderImpl<SummaryNotifier, Summary> {
-  /// See also [SummaryNotifier].
-  SummaryNotifierProvider(
+/// See also [ServerNotifier].
+class ServerNotifierProvider
+    extends AutoDisposeAsyncNotifierProviderImpl<ServerNotifier, Server> {
+  /// See also [ServerNotifier].
+  ServerNotifierProvider(
     int id,
   ) : this._internal(
-          () => SummaryNotifier()..id = id,
-          from: summaryNotifierProvider,
-          name: r'summaryNotifierProvider',
+          () => ServerNotifier()..id = id,
+          from: serverNotifierProvider,
+          name: r'serverNotifierProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$summaryNotifierHash,
-          dependencies: SummaryNotifierFamily._dependencies,
+                  : _$serverNotifierHash,
+          dependencies: ServerNotifierFamily._dependencies,
           allTransitiveDependencies:
-              SummaryNotifierFamily._allTransitiveDependencies,
+              ServerNotifierFamily._allTransitiveDependencies,
           id: id,
         );
 
-  SummaryNotifierProvider._internal(
+  ServerNotifierProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -113,8 +129,8 @@ class SummaryNotifierProvider
   final int id;
 
   @override
-  FutureOr<Summary> runNotifierBuild(
-    covariant SummaryNotifier notifier,
+  FutureOr<Server> runNotifierBuild(
+    covariant ServerNotifier notifier,
   ) {
     return notifier.build(
       id,
@@ -122,10 +138,10 @@ class SummaryNotifierProvider
   }
 
   @override
-  Override overrideWith(SummaryNotifier Function() create) {
+  Override overrideWith(ServerNotifier Function() create) {
     return ProviderOverride(
       origin: this,
-      override: SummaryNotifierProvider._internal(
+      override: ServerNotifierProvider._internal(
         () => create()..id = id,
         from: from,
         name: null,
@@ -138,14 +154,14 @@ class SummaryNotifierProvider
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<SummaryNotifier, Summary>
+  AutoDisposeAsyncNotifierProviderElement<ServerNotifier, Server>
       createElement() {
-    return _SummaryNotifierProviderElement(this);
+    return _ServerNotifierProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is SummaryNotifierProvider && other.id == id;
+    return other is ServerNotifierProvider && other.id == id;
   }
 
   @override
@@ -159,35 +175,35 @@ class SummaryNotifierProvider
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin SummaryNotifierRef on AutoDisposeAsyncNotifierProviderRef<Summary> {
+mixin ServerNotifierRef on AutoDisposeAsyncNotifierProviderRef<Server> {
   /// The parameter `id` of this provider.
   int get id;
 }
 
-class _SummaryNotifierProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<SummaryNotifier, Summary>
-    with SummaryNotifierRef {
-  _SummaryNotifierProviderElement(super.provider);
+class _ServerNotifierProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<ServerNotifier, Server>
+    with ServerNotifierRef {
+  _ServerNotifierProviderElement(super.provider);
 
   @override
-  int get id => (origin as SummaryNotifierProvider).id;
+  int get id => (origin as ServerNotifierProvider).id;
 }
 
-String _$summariesNotifierHash() => r'289f940116833e239afe0f311aefe7d0609e69d5';
+String _$toolsNotifierHash() => r'26f81a4b0c1b9f67b4472647aa946ceb6b388310';
 
-/// See also [SummariesNotifier].
-@ProviderFor(SummariesNotifier)
-final summariesNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<SummariesNotifier, List<Summary>>.internal(
-  SummariesNotifier.new,
-  name: r'summariesNotifierProvider',
+/// See also [ToolsNotifier].
+@ProviderFor(ToolsNotifier)
+final toolsNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<ToolsNotifier, List<McpTool>>.internal(
+  ToolsNotifier.new,
+  name: r'toolsNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$summariesNotifierHash,
+      : _$toolsNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$SummariesNotifier = AutoDisposeAsyncNotifier<List<Summary>>;
+typedef _$ToolsNotifier = AutoDisposeAsyncNotifier<List<McpTool>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

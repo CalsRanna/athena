@@ -1,3 +1,4 @@
+import 'package:athena/page/desktop/home/component/mcp_tool_indicator.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/search_decision_toggle.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
@@ -43,7 +44,9 @@ class DesktopMessageInput extends StatelessWidget {
         chat: chat,
         onTap: onChatConfigurationButtonTapped,
       ),
-      Icon(HugeIcons.strokeRoundedImage01),
+      // Icon(HugeIcons.strokeRoundedImage01),
+      const Spacer(),
+      DesktopMcpToolIndicator(),
     ];
     var toolbar = IconTheme.merge(
       data: IconThemeData(color: ColorUtil.FF616161, size: 24),
