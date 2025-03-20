@@ -21,6 +21,7 @@ class DesktopChatIndicator extends ConsumerWidget {
     if (sentinel == null) return const SizedBox();
     var provider = ref.watch(providerNotifierProvider(model.providerId)).value;
     if (provider == null) return const SizedBox();
+    if (provider.name.isEmpty) return const SizedBox();
     var children = [
       _SentinelIndicator(sentinel: sentinel),
       _ModelIndicator(model: model, provider: provider),

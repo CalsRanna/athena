@@ -11,6 +11,7 @@ import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/provider/server.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -25,6 +26,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:isar/isar.dart';
+import 'package:openai_dart/openai_dart.dart' hide Model;
 
 class ChatViewModel extends ViewModel {
   final WidgetRef ref;
@@ -244,12 +246,29 @@ class ChatViewModel extends ViewModel {
     var realSentinel = sentinel ?? relatedSentinel;
     var messagesNotifier = ref.read(messagesProvider.notifier);
     final system = {'role': 'system', 'content': realSentinel.prompt};
+    List<ChatCompletionTool> tools = [];
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (isDesktop) {
+      var mcpTools = await ref.read(toolsNotifierProvider.future);
+      for (var mcpTool in mcpTools) {
+        var tool = ChatCompletionTool(
+          type: ChatCompletionToolType.function,
+          function: FunctionObject(
+            name: mcpTool.name,
+            description: mcpTool.description,
+            parameters: mcpTool.inputSchema.toJson(),
+          ),
+        );
+        tools.add(tool);
+      }
+    }
     try {
       final response = ChatApi().getCompletion(
         chat: chat,
         messages: [Message.fromJson(system), ...wrappedMessages],
         model: realUsedModel,
         provider: provider,
+        tools: tools,
       );
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);

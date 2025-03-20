@@ -14,8 +14,8 @@ import 'package:athena/page/desktop/setting/default_model.dart' as _i4;
 import 'package:athena/page/desktop/setting/provider.dart' as _i6;
 import 'package:athena/page/desktop/setting/sentinel/form.dart' as _i2;
 import 'package:athena/page/desktop/setting/sentinel/sentinel.dart' as _i7;
+import 'package:athena/page/desktop/setting/server.dart' as _i8;
 import 'package:athena/page/desktop/setting/setting.dart' as _i5;
-import 'package:athena/page/desktop/setting/tool.dart' as _i8;
 import 'package:athena/page/mobile/about/about_page.dart' as _i9;
 import 'package:athena/page/mobile/chat/chat.dart' as _i13;
 import 'package:athena/page/mobile/chat/chat_configuration.dart' as _i10;
@@ -207,20 +207,20 @@ class DesktopSettingSentinelRoute extends _i27.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i8.DesktopSettingToolPage]
-class DesktopSettingToolRoute extends _i27.PageRouteInfo<void> {
-  const DesktopSettingToolRoute({List<_i27.PageRouteInfo>? children})
+/// [_i8.DesktopSettingServerPage]
+class DesktopSettingServerRoute extends _i27.PageRouteInfo<void> {
+  const DesktopSettingServerRoute({List<_i27.PageRouteInfo>? children})
       : super(
-          DesktopSettingToolRoute.name,
+          DesktopSettingServerRoute.name,
           initialChildren: children,
         );
 
-  static const String name = 'DesktopSettingToolRoute';
+  static const String name = 'DesktopSettingServerRoute';
 
   static _i27.PageInfo page = _i27.PageInfo(
     name,
     builder: (data) {
-      return const _i8.DesktopSettingToolPage();
+      return const _i8.DesktopSettingServerPage();
     },
   );
 }

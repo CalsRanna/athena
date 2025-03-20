@@ -35,6 +35,9 @@ dependencies:
     hosted: https://pub.isar-community.dev/
   logger: ^2.0.2+1
   markdown: ^7.2.2
+  mcp_dart:
+    git:
+      url: git@github.com:CalsRanna/mcp_dart.git
   openai_dart: ^0.4.5
   package_info_plus: ^8.2.1
   path_provider: ^2.0.15

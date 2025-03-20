@@ -1,4 +1,5 @@
 import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
+import 'package:athena/page/desktop/setting/component/server_form_dialog.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/app_bar.dart';
@@ -22,16 +23,16 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   final _icons = [
     HugeIcons.strokeRoundedPowerService,
-    HugeIcons.strokeRoundedAiBrain01,
-    HugeIcons.strokeRoundedTools,
     HugeIcons.strokeRoundedArtificialIntelligence03,
+    HugeIcons.strokeRoundedTools,
+    HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedInformationCircle,
   ];
   final _menus = [
     'Provider',
-    'Default Model',
-    'Tool',
     'Sentinel',
+    'MCP Server',
+    'Default Model',
     'About Athena',
   ];
 
@@ -52,9 +53,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     });
     var route = switch (index) {
       0 => const DesktopSettingProviderRoute(),
-      1 => const DesktopSettingDefaultModelRoute(),
-      2 => const DesktopSettingToolRoute(),
-      3 => const DesktopSettingSentinelRoute(),
+      1 => const DesktopSettingSentinelRoute(),
+      2 => const DesktopSettingServerRoute(),
+      3 => const DesktopSettingDefaultModelRoute(),
       4 => const DesktopSettingAboutRoute(),
       _ => null,
     };
@@ -63,15 +64,22 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   void showDialog() {
-    if (index == 3) {
+    if (index == 0) {
+      AthenaDialog.show(DesktopProviderFormDialog());
+      return;
+    }
+    if (index == 1) {
       DesktopSentinelFormRoute().push(context);
       return;
     }
-    AthenaDialog.show(DesktopProviderFormDialog());
+    if (index == 2) {
+      AthenaDialog.show(DesktopServerFormDialog());
+      return;
+    }
   }
 
   Widget _buildCreateButton() {
-    if (index == 1 || index == 2) return const SizedBox();
+    if (index > 2) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: ColorUtil.FFFFFFFF,

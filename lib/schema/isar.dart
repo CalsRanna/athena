@@ -6,6 +6,7 @@ import 'package:athena/schema/migration.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/sentinel.dart';
+import 'package:athena/schema/server.dart';
 import 'package:athena/schema/setting.dart';
 import 'package:athena/schema/summary.dart';
 import 'package:athena/schema/tool.dart';
@@ -25,6 +26,7 @@ class IsarInitializer {
       ModelSchema,
       ProviderSchema,
       SentinelSchema,
+      ServerSchema,
       SettingSchema,
       SummarySchema,
       ToolSchema,

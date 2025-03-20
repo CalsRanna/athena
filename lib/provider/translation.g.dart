@@ -24,7 +24,7 @@ final transitionsNotifierProvider = AutoDisposeAsyncNotifierProvider<
 
 typedef _$TransitionsNotifier = AutoDisposeAsyncNotifier<List<Translation>>;
 String _$translationNotifierHash() =>
-    r'075f54d6f81627fccac733c2c5d2cbf91e980ff5';
+    r'ba2e662f104f75f1576e834363d02dd72542ea9d';
 
 /// Copied from Dart SDK
 class _SystemHash {
