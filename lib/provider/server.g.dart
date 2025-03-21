@@ -188,22 +188,5 @@ class _ServerNotifierProviderElement
   @override
   int get id => (origin as ServerNotifierProvider).id;
 }
-
-String _$toolsNotifierHash() => r'26f81a4b0c1b9f67b4472647aa946ceb6b388310';
-
-/// See also [ToolsNotifier].
-@ProviderFor(ToolsNotifier)
-final toolsNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<ToolsNotifier, List<McpTool>>.internal(
-  ToolsNotifier.new,
-  name: r'toolsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$toolsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$ToolsNotifier = AutoDisposeAsyncNotifier<List<McpTool>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

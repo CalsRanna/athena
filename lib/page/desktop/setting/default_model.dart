@@ -130,11 +130,8 @@ class _ModelDropdown extends ConsumerWidget {
       color: ColorUtil.FFF5F5F5,
       size: 20,
     );
-    var children = [_buildText(ref), icon];
-    var row = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: children,
-    );
+    var children = [Expanded(child: _buildText(ref)), icon];
+    var row = Row(children: children);
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
@@ -181,6 +178,11 @@ class _ModelDropdown extends ConsumerWidget {
     var aiProvider = ref.watch(provider).valueOrNull;
     var providerName = aiProvider?.name ?? '';
     if (providerName.isEmpty) return Text(modelName, style: textStyle);
-    return Text('$modelName | $providerName', style: textStyle);
+    return Text(
+      '$modelName | $providerName',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
   }
 }
