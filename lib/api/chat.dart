@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:athena/model/mcp_tool_call.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart' as schema;
 import 'package:athena/schema/provider.dart';
+import 'package:athena/schema/server.dart';
+import 'package:athena/util/mcp_util.dart';
 import 'package:athena/vendor/openai_dart/client.dart';
 import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -42,6 +45,7 @@ class ChatApi {
     required Provider provider,
     required schema.Model model,
     List<ChatCompletionTool>? tools,
+    List<Server>? servers,
   }) async* {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',
@@ -76,14 +80,14 @@ class ChatApi {
       tools: tools,
     );
     var response = client.createOverrodeChatCompletionStream(request: request);
-    Map<int, _ToolCall> toolCalls = {};
+    Map<int, McpToolCall> toolCalls = {};
     await for (final chunk in response) {
       if (chunk.response.choices.isEmpty) continue;
       if (chunk.response.choices.first.delta.toolCalls != null) {
         if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
         var toolCallChunk = chunk.response.choices.first.delta.toolCalls!.first;
         if (!toolCalls.containsKey(toolCallChunk.index)) {
-          toolCalls[toolCallChunk.index] = _ToolCall();
+          toolCalls[toolCallChunk.index] = McpToolCall();
         }
         toolCalls[toolCallChunk.index]!.process(toolCallChunk);
         continue;
@@ -97,7 +101,32 @@ class ChatApi {
         reasoningContent: reasoningContent,
       );
     }
-    print(toolCalls);
+    for (var entry in toolCalls.entries) {
+      var toolCall = entry.value;
+      yield OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call
+$toolCall
+```
+''');
+      var server = await McpUtil().getServer(toolCall, servers: servers ?? []);
+      if (server == null) {
+        yield OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call_error
+No server found for tool call
+```
+''');
+      } else {
+        var result = await McpUtil().callTool(toolCall, server);
+        yield OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call_result
+$result
+```
+''');
+      }
+    }
   }
 
   Future<SearchDecision> getSearchDecision(
@@ -167,31 +196,5 @@ class ChatApi {
       if (chunk.choices.isEmpty) continue;
       yield chunk.choices.first.delta.content ?? '';
     }
-  }
-}
-
-class _ToolCall {
-  StringBuffer name = StringBuffer();
-  StringBuffer arguments = StringBuffer();
-
-  void process(ChatCompletionStreamMessageToolCallChunk chunk) {
-    if (chunk.function?.name != null) {
-      name.write(chunk.function!.name!);
-    }
-    if (chunk.function?.arguments != null) {
-      arguments.write(chunk.function!.arguments!);
-    }
-  }
-
-  Map<String, String> toJson() {
-    return {
-      'name': name.toString(),
-      'arguments': arguments.toString(),
-    };
-  }
-
-  @override
-  String toString() {
-    return toJson().toString();
   }
 }

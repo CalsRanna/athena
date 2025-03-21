@@ -1,4 +1,4 @@
-import 'package:athena/provider/server.dart';
+import 'package:athena/provider/mcp.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +9,7 @@ class DesktopMcpToolIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var provider = toolsNotifierProvider;
+    var provider = mcpToolsNotifierProvider;
     var state = ref.watch(provider);
     return switch (state) {
       AsyncData(:final value) => _buildData(value),

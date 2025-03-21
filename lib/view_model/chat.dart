@@ -8,6 +8,7 @@ import 'package:athena/api/search.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
+import 'package:athena/provider/mcp.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
@@ -246,12 +247,13 @@ class ChatViewModel extends ViewModel {
     var realSentinel = sentinel ?? relatedSentinel;
     var messagesNotifier = ref.read(messagesProvider.notifier);
     final system = {'role': 'system', 'content': realSentinel.prompt};
-    List<ChatCompletionTool> tools = [];
+    var servers = await ref.read(serversNotifierProvider.future);
+    List<ChatCompletionTool> completionTools = [];
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (isDesktop) {
-      var mcpTools = await ref.read(toolsNotifierProvider.future);
+      var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
       for (var mcpTool in mcpTools) {
-        var tool = ChatCompletionTool(
+        var completionTool = ChatCompletionTool(
           type: ChatCompletionToolType.function,
           function: FunctionObject(
             name: mcpTool.name,
@@ -259,7 +261,7 @@ class ChatViewModel extends ViewModel {
             parameters: mcpTool.inputSchema.toJson(),
           ),
         );
-        tools.add(tool);
+        completionTools.add(completionTool);
       }
     }
     try {
@@ -268,7 +270,8 @@ class ChatViewModel extends ViewModel {
         messages: [Message.fromJson(system), ...wrappedMessages],
         model: realUsedModel,
         provider: provider,
-        tools: tools,
+        tools: completionTools.isNotEmpty ? completionTools : null,
+        servers: servers,
       );
       await for (final delta in response) {
         await messagesNotifier.streaming(delta);
