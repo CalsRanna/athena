@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
@@ -39,11 +38,9 @@ class ChatApi {
 
   Stream<OverrodeCreateChatCompletionStreamResponse> getCompletion({
     required Chat chat,
-    required List<Message> messages,
+    required List<ChatCompletionMessage> messages,
     required Provider provider,
     required schema.Model model,
-    ChatCompletionMessage? toolCallingMessage,
-    ChatCompletionMessage? toolMessage,
     List<ChatCompletionTool>? tools,
     List<Server>? servers,
   }) async* {
@@ -56,32 +53,32 @@ class ChatApi {
       baseUrl: provider.url,
       headers: headers,
     );
-    var context = messages.length;
-    if (chat.context > 0) {
-      context = min(chat.context * 2, messages.length);
-    }
-    var start = max(0, messages.length - context);
-    var contextMessages = messages.sublist(start);
-    var wrappedMessages = contextMessages.map((message) {
-      if (message.role == 'system') {
-        return ChatCompletionMessage.system(content: message.content);
-      } else if (message.role == 'assistant') {
-        return ChatCompletionMessage.assistant(content: message.content);
-      } else {
-        return ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(message.content),
-        );
-      }
-    }).toList();
-    if (toolCallingMessage != null) {
-      wrappedMessages.add(toolCallingMessage);
-    }
-    if (toolMessage != null) {
-      wrappedMessages.add(toolMessage);
-    }
+    // var context = messages.length;
+    // if (chat.context > 0) {
+    //   context = min(chat.context * 2, messages.length);
+    // }
+    // var start = max(0, messages.length - context);
+    // var contextMessages = messages.sublist(start);
+    // var wrappedMessages = contextMessages.map((message) {
+    //   if (message.role == 'system') {
+    //     return ChatCompletionMessage.system(content: message.content);
+    //   } else if (message.role == 'assistant') {
+    //     return ChatCompletionMessage.assistant(content: message.content);
+    //   } else {
+    //     return ChatCompletionMessage.user(
+    //       content: ChatCompletionUserMessageContent.string(message.content),
+    //     );
+    //   }
+    // }).toList();
+    // if (toolCallingMessage != null) {
+    //   wrappedMessages.add(toolCallingMessage);
+    // }
+    // if (toolMessage != null) {
+    //   wrappedMessages.add(toolMessage);
+    // }
     var request = CreateChatCompletionRequest(
       model: ChatCompletionModel.modelId(model.value),
-      messages: wrappedMessages,
+      messages: messages,
       temperature: chat.temperature,
       tools: tools,
     );
