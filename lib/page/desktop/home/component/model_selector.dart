@@ -122,6 +122,28 @@ class _DesktopModelSelectDialogTileState
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
+
+    var functionCallIcon = Icon(
+      HugeIcons.strokeRoundedFunctionCircle,
+      color: ColorUtil.FFE0E0E0,
+      size: 18,
+    );
+    var thinkIcon = Icon(
+      HugeIcons.strokeRoundedBrain02,
+      color: ColorUtil.FFE0E0E0,
+      size: 18,
+    );
+    var visualRecognitionIcon = Icon(
+      HugeIcons.strokeRoundedVision,
+      color: ColorUtil.FFE0E0E0,
+      size: 18,
+    );
+    var children = [
+      Flexible(child: Text(widget.model.name, style: textStyle)),
+      if (widget.model.supportFunctionCall) functionCallIcon,
+      if (widget.model.supportThinking) thinkIcon,
+      if (widget.model.supportVisualRecognition) visualRecognitionIcon,
+    ];
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
       color: hover ? ColorUtil.FF616161 : null,
@@ -131,7 +153,7 @@ class _DesktopModelSelectDialogTileState
       decoration: boxDecoration,
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Text(widget.model.name, style: textStyle),
+      child: Row(spacing: 8, children: children),
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
