@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
+import 'package:athena/model/mcp_tool_call.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
@@ -19,9 +20,13 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/tool.dart';
+import 'package:athena/util/mcp_util.dart';
+import 'package:athena/vendor/mcp/message.dart';
+import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -273,8 +278,106 @@ class ChatViewModel extends ViewModel {
         tools: completionTools.isNotEmpty ? completionTools : null,
         servers: servers,
       );
-      await for (final delta in response) {
+      Map<int, McpToolCall> toolCalls = {};
+      await for (final chunk in response) {
+        if (chunk.response.choices.isEmpty) continue;
+        if (chunk.response.choices.first.delta.toolCalls != null) {
+          if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
+          var toolCallChunk =
+              chunk.response.choices.first.delta.toolCalls!.first;
+          if (!toolCalls.containsKey(toolCallChunk.index)) {
+            toolCalls[toolCallChunk.index] = McpToolCall();
+          }
+          toolCalls[toolCallChunk.index]!.process(toolCallChunk);
+          continue;
+        }
+        var content = chunk.response.choices.first.delta.content ?? '';
+        var rawDelta = chunk.rawJson['choices'][0]['delta'];
+        var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
+        reasoningContent ??= rawDelta['reasoning']; // OpenRouter
+        var delta = OverrodeChatCompletionStreamResponseDelta(
+          content: content,
+          reasoningContent: reasoningContent,
+        );
         await messagesNotifier.streaming(delta);
+      }
+      for (var entry in toolCalls.entries) {
+        var toolCall = entry.value;
+        var delta = OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call
+${JsonEncoder.withIndent('  ').convert(toolCall)}
+```
+''');
+        await messagesNotifier.streaming(delta);
+        var server = await McpUtil().getServer(toolCall, servers: servers);
+        McpJsonRpcResponse? result;
+        if (server == null) {
+          delta = OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call_error
+No server found for tool call
+```
+''');
+        } else {
+          result = await McpUtil().callTool(toolCall, server);
+          delta = OverrodeChatCompletionStreamResponseDelta(content: '''
+\n
+```tool_call_result
+${JsonEncoder.withIndent('  ').convert(result)}
+```
+''');
+        }
+        await messagesNotifier.streaming(delta);
+        if (result == null) continue;
+        var toolCallingMessage = ChatCompletionMessage.assistant(
+          toolCalls: [
+            ChatCompletionMessageToolCall(
+              id: toolCall.id.toString(),
+              type: ChatCompletionMessageToolCallType.function,
+              function: ChatCompletionMessageFunctionCall(
+                name: toolCall.name.toString(),
+                arguments: toolCall.arguments.toString(),
+              ),
+            ),
+          ],
+        );
+        var toolMessage = ChatCompletionMessage.tool(
+          content: result.toString(),
+          toolCallId: toolCall.id.toString(),
+        );
+        var secondResponse = ChatApi().getCompletion(
+          chat: chat,
+          messages: [Message.fromJson(system), ...wrappedMessages],
+          model: realUsedModel,
+          provider: provider,
+          toolCallingMessage: toolCallingMessage,
+          toolMessage: toolMessage,
+          tools: completionTools.isNotEmpty ? completionTools : null,
+          servers: servers,
+        );
+        await for (final chunk in secondResponse) {
+          if (chunk.response.choices.isEmpty) continue;
+          if (chunk.response.choices.first.delta.toolCalls != null) {
+            if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
+            var toolCallChunk =
+                chunk.response.choices.first.delta.toolCalls!.first;
+            if (!toolCalls.containsKey(toolCallChunk.index)) {
+              toolCalls[toolCallChunk.index] = McpToolCall();
+            }
+            toolCalls[toolCallChunk.index]!.process(toolCallChunk);
+            continue;
+          }
+          var content = chunk.response.choices.first.delta.content ?? '';
+          var rawDelta = chunk.rawJson['choices'][0]['delta'];
+          var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
+          reasoningContent ??= rawDelta['reasoning']; // OpenRouter
+          var delta = OverrodeChatCompletionStreamResponseDelta(
+            content: content,
+            reasoningContent: reasoningContent,
+          );
+          await messagesNotifier.streaming(delta);
+        }
       }
       await messagesNotifier.closeStreaming(
           reference: formattedMessage.reference);

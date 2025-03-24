@@ -32,12 +32,21 @@ class OverrodeOpenAIClient extends OpenAIClient {
     yield* streamResponse.stream
         .transform(const _OpenAIStreamTransformer())
         .map((final string) {
-      var rawJson = json.decode(string);
-      var response = CreateChatCompletionStreamResponse.fromJson(rawJson);
-      return OverrodeCreateChatCompletionStreamResponse(
-        rawJson: rawJson,
-        response: response,
-      );
+      try {
+        var rawJson = json.decode(string);
+        var response = CreateChatCompletionStreamResponse.fromJson(rawJson);
+        return OverrodeCreateChatCompletionStreamResponse(
+          rawJson: rawJson,
+          response: response,
+        );
+      } catch (e) {
+        var uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+        throw OpenAIClientException(
+          message: string,
+          method: g.HttpMethod.post,
+          uri: uri,
+        );
+      }
     });
   }
 }

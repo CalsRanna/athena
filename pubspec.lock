@@ -286,22 +286,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
-  dio:
-    dependency: transitive
-    description:
-      name: dio
-      sha256: "253a18bbd4851fecba42f7343a1df3a9a4c1d31a2c1b37e221086b4fa8c8dbc9"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.8.0+1"
-  dio_web_adapter:
-    dependency: transitive
-    description:
-      name: dio_web_adapter
-      sha256: "7586e476d70caecaf1686d21eee7247ea43ef5c345eab9e0cc3583ff13378d78"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   expressions:
     dependency: transitive
     description:
@@ -741,15 +725,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.5.3"
-  mcp_dart:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "3ed3547ac9c87ddd1aef59749d8753fa024b3633"
-      url: "git@github.com:CalsRanna/mcp_dart.git"
-    source: git
-    version: "0.0.1"
   meta:
     dependency: transitive
     description:
@@ -919,21 +894,13 @@ packages:
     source: hosted
     version: "6.0.1"
   process:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: process
       sha256: "107d8be718f120bbba9dcd1e95e3bd325b1b4a4f07db64154635ba03f2567a0d"
       url: "https://pub.dev"
     source: hosted
     version: "5.0.3"
-  process_run:
-    dependency: transitive
-    description:
-      name: process_run
-      sha256: "6ec839cdd3e6de4685318e7686cd4abb523c3d3a55af0e8d32a12ae19bc66622"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.4"
   provider:
     dependency: transitive
     description:

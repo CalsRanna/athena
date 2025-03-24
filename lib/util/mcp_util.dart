@@ -2,7 +2,10 @@ import 'dart:convert';
 
 import 'package:athena/model/mcp_tool_call.dart';
 import 'package:athena/schema/server.dart';
-import 'package:mcp_dart/mcp_dart.dart';
+import 'package:athena/vendor/mcp/client/stdio_client.dart';
+import 'package:athena/vendor/mcp/message.dart';
+import 'package:athena/vendor/mcp/server/server_option.dart';
+import 'package:athena/vendor/mcp/tool.dart';
 
 class McpUtil {
   Future<List<McpTool>> getMcpTools(List<Server> servers) async {

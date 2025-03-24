@@ -1,8 +1,8 @@
 import 'package:athena/provider/mcp.dart';
+import 'package:athena/vendor/mcp/tool.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mcp_dart/mcp_dart.dart';
 
 class DesktopMcpToolIndicator extends ConsumerWidget {
   const DesktopMcpToolIndicator({super.key});
