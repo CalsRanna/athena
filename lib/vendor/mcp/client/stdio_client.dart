@@ -17,14 +17,14 @@ class McpStdioClient {
   McpStdioClient({required this.option});
 
   Future<McpJsonRpcResponse> callTool(
-    String tool, {
+    McpTool tool, {
     Map<String, dynamic>? arguments,
   }) async {
     final message = McpJsonRpcRequest(
       method: McpMethod.callTool.value,
-      params: {'name': tool, 'arguments': arguments},
+      params: {'name': tool.name, 'arguments': arguments},
     );
-    return request(message);
+    return _request(message);
   }
 
   Future<void> dispose() async {
@@ -38,7 +38,7 @@ class McpStdioClient {
 
   Future<List<McpTool>> listTools() async {
     final message = McpJsonRpcRequest(method: McpMethod.listTools.value);
-    var response = await request(message);
+    var response = await _request(message);
     var result = response.result['tools'] as List;
     return result
         .map((item) => McpTool.fromJson(item as Map<String, dynamic>))
@@ -50,19 +50,20 @@ class McpStdioClient {
     await ProcessUtil.writeNotification(_process, notification);
   }
 
-  Future<McpJsonRpcResponse> request(McpJsonRpcRequest request) async {
+  Future<McpJsonRpcResponse> _request(McpJsonRpcRequest request) async {
     LoggerUtil.logger.d('RpcJsonRequest: $request');
     final completer = Completer<McpJsonRpcResponse>();
     _requests[request.id] = completer;
     try {
       await ProcessUtil.writeRequest(_process, request);
-      return await completer.future.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          _requests.remove(request.id);
-          throw TimeoutException('Request timed out: ${request.id}');
-        },
-      );
+      return completer.future;
+      // return await completer.future.timeout(
+      //   const Duration(seconds: 30),
+      //   onTimeout: () {
+      //     _requests.remove(request.id);
+      //     throw TimeoutException('Request timed out: ${request.id}');
+      //   },
+      // );
     } catch (e) {
       _requests.remove(request.id);
       rethrow;
@@ -71,7 +72,7 @@ class McpStdioClient {
 
   Future<McpJsonRpcResponse> ping() async {
     final message = McpJsonRpcRequest(method: McpMethod.ping.value);
-    return request(message);
+    return _request(message);
   }
 
   Future<void> _initialize() async {
@@ -88,7 +89,7 @@ class McpStdioClient {
       params: params,
     );
     try {
-      await request(initializeRequest);
+      await _request(initializeRequest);
       final notification = McpJsonRpcNotification(
         method: McpMethod.notificationsInitialized.value,
       );

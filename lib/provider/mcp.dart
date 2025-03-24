@@ -10,6 +10,6 @@ class McpToolsNotifier extends _$McpToolsNotifier {
   @override
   Future<List<McpTool>> build() async {
     var servers = await ref.watch(serversNotifierProvider.future);
-    return McpUtil().getMcpTools(servers);
+    return McpUtil.getMcpTools(servers);
   }
 }
