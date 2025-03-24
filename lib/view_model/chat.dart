@@ -6,8 +6,8 @@ import 'dart:ui';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
-import 'package:athena/vendor/mcp/tool/mcp_tool_call.dart';
 import 'package:athena/model/search_decision.dart';
+import 'package:athena/model/tool_call.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/mcp.dart';
@@ -23,7 +23,9 @@ import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/tool.dart';
 import 'package:athena/util/mcp_util.dart';
 import 'package:athena/vendor/mcp/message.dart';
+import 'package:athena/vendor/mcp/tool/tool.dart';
 import 'package:athena/vendor/openai_dart/delta.dart';
+import 'package:athena/vendor/openai_dart/response.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:file_picker/file_picker.dart';
@@ -237,12 +239,6 @@ class ChatViewModel extends ViewModel {
     await _saveNewConversation(text, chat: chat);
     var decision = await _getSearchDecision(text, chat: chat);
     var formattedMessage = await _getFormattedMessage(text, decision: decision);
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    var messages = await ref.read(messagesProvider.future);
-    List<Message> wrappedMessages = [];
-    var count = messages.length - 2;
-    if (count > 0) wrappedMessages = messages.take(count).toList();
-    wrappedMessages.add(formattedMessage);
     var modelProvider = modelNotifierProvider(chat.modelId);
     var relatedModel = await ref.read(modelProvider.future);
     var realUsedModel = model ?? relatedModel;
@@ -251,139 +247,48 @@ class ChatViewModel extends ViewModel {
     var sentinelProvider = sentinelNotifierProvider(chat.sentinelId);
     var relatedSentinel = await ref.read(sentinelProvider.future);
     var realSentinel = sentinel ?? relatedSentinel;
+    var messagesProvider = messagesNotifierProvider(chat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var servers = await ref.read(serversNotifierProvider.future);
-    List<ChatCompletionTool> completionTools = [];
-    // var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    // if (isDesktop) {
-    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
-    for (var mcpTool in mcpTools) {
-      var completionTool = ChatCompletionTool(
-        type: ChatCompletionToolType.function,
-        function: FunctionObject(
-          name: mcpTool.name,
-          description: mcpTool.description,
-          parameters: mcpTool.inputSchema.toJson(),
-        ),
-      );
-      completionTools.add(completionTool);
-    }
-    // }
-    var systemMessage =
-        ChatCompletionMessage.system(content: realSentinel.prompt);
-    var context = messages.length;
-    if (chat.context > 0) {
-      context = min(chat.context * 2, messages.length);
-    }
-    var start = max(0, messages.length - context);
-    var histories = messages.sublist(start);
-    var historyMessages = histories.map((message) {
-      if (message.role == 'assistant') {
-        return ChatCompletionMessage.assistant(content: message.content);
-      } else {
-        return ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(message.content),
-        );
-      }
-    }).toList();
-    var response = ChatApi().getCompletion(
-      chat: chat,
-      messages: [systemMessage, ...historyMessages],
-      model: realUsedModel,
-      provider: provider,
-      tools: completionTools.isNotEmpty ? completionTools : null,
-      servers: servers,
+    var completionTools = await _getChatCompletionTools();
+    var systemMessage = ChatCompletionMessage.system(
+      content: realSentinel.prompt,
     );
-    Map<int, McpToolCall> toolCalls = {};
-    await for (final chunk in response) {
-      if (chunk.response.choices.isEmpty) continue;
-      if (chunk.response.choices.first.delta.toolCalls != null) {
-        if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
-        var toolCallChunk = chunk.response.choices.first.delta.toolCalls!.first;
-        if (!toolCalls.containsKey(toolCallChunk.index)) {
-          toolCalls[toolCallChunk.index] = McpToolCall();
-        }
-        toolCalls[toolCallChunk.index]!.process(toolCallChunk);
-        continue;
-      }
-      var content = chunk.response.choices.first.delta.content ?? '';
-      var rawDelta = chunk.rawJson['choices'][0]['delta'];
-      var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
-      reasoningContent ??= rawDelta['reasoning']; // OpenRouter
-      var delta = OverrodeChatCompletionStreamResponseDelta(
-        content: content,
-        reasoningContent: reasoningContent,
+    var historyMessages = await _getHistoryMessages(chat);
+    Map<int, ToolCall> toolCalls = {};
+    try {
+      var response = ChatApi().getCompletion(
+        chat: chat,
+        messages: [systemMessage, ...historyMessages],
+        model: realUsedModel,
+        provider: provider,
+        servers: servers,
+        tools: completionTools.isNotEmpty ? completionTools : null,
       );
-      await messagesNotifier.streaming(delta);
+      var broadcast = response.asBroadcastStream();
+      _streamingAssistantMessage(chat, broadcast);
+      toolCalls = await _getToolCalls(broadcast);
+    } catch (error) {
+      messagesNotifier.append(error.toString());
     }
-    do {
+    while (toolCalls.isNotEmpty) {
       var entries = [...toolCalls.entries];
       toolCalls.clear();
+      for (var entry in entries) {
+        var toolCall = entry.value;
+        await _streamingToolCallMessage(chat, toolCall);
+        var result = await _streamingToolMessage(chat, toolCall);
+        if (result == null) continue;
+        var toolCallMessage = ChatCompletionMessage.assistant(
+          toolCalls: [_getChatCompletionMessageToolCall(toolCall)],
+        );
+        var toolMessage = ChatCompletionMessage.tool(
+          content: result.toString(),
+          toolCallId: toolCall.id.toString(),
+        );
+        historyMessages.addAll([toolCallMessage, toolMessage]);
+      }
       try {
-        for (var entry in entries) {
-          var toolCall = entry.value;
-          var delta = OverrodeChatCompletionStreamResponseDelta(
-            content: '\n\nCalling ${toolCall.name}\n',
-          );
-          await messagesNotifier.streaming(delta);
-          delta = OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```${toolCall.id}
-${JsonEncoder.withIndent('  ').convert(toolCall)}
-```
-''');
-          await messagesNotifier.streaming(delta);
-          delta = OverrodeChatCompletionStreamResponseDelta(
-            content: '\n\nGet result from ${toolCall.name}\n',
-          );
-          await messagesNotifier.streaming(delta);
-          var server = await McpUtil.getServer(toolCall, servers: servers);
-          McpJsonRpcResponse? result;
-          if (server == null) {
-            delta = OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```tool_call_error
-No server found for tool call
-```
-''');
-          } else {
-            var tool = mcpTools
-                .where((mcpTool) => mcpTool.name == toolCall.name.toString())
-                .first;
-            Map<String, dynamic> arguments;
-            try {
-              arguments = jsonDecode(toolCall.arguments.toString());
-            } catch (e) {
-              arguments = {};
-            }
-            result = await McpUtil.callTool(tool, server, arguments: arguments);
-            delta = OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```${result.id}
-${JsonEncoder.withIndent('  ').convert(result)}
-```
-''');
-          }
-          await messagesNotifier.streaming(delta);
-          if (result == null) continue;
-          var toolCallingMessage = ChatCompletionMessage.assistant(
-            toolCalls: [
-              ChatCompletionMessageToolCall(
-                id: toolCall.id.toString(),
-                type: ChatCompletionMessageToolCallType.function,
-                function: ChatCompletionMessageFunctionCall(
-                  name: toolCall.name.toString(),
-                  arguments: toolCall.arguments.toString(),
-                ),
-              ),
-            ],
-          );
-          var toolMessage = ChatCompletionMessage.tool(
-            content: result.toString(),
-            toolCallId: toolCall.id.toString(),
-          );
-          historyMessages.addAll([toolCallingMessage, toolMessage]);
-        }
         var responseWithToolCall = ChatApi().getCompletion(
           chat: chat,
           messages: [systemMessage, ...historyMessages],
@@ -392,47 +297,24 @@ ${JsonEncoder.withIndent('  ').convert(result)}
           tools: completionTools.isNotEmpty ? completionTools : null,
           servers: servers,
         );
-        await for (final chunk in responseWithToolCall) {
-          if (chunk.response.choices.isEmpty) continue;
-          if (chunk.response.choices.first.delta.toolCalls != null) {
-            if (chunk.response.choices.first.delta.toolCalls!.isEmpty) {
-              continue;
-            }
-            var toolCallChunk =
-                chunk.response.choices.first.delta.toolCalls!.first;
-            if (!toolCalls.containsKey(toolCallChunk.index)) {
-              toolCalls[toolCallChunk.index] = McpToolCall();
-            }
-            toolCalls[toolCallChunk.index]!.process(toolCallChunk);
-            continue;
-          }
-          var content = chunk.response.choices.first.delta.content ?? '';
-          var rawDelta = chunk.rawJson['choices'][0]['delta'];
-          var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
-          reasoningContent ??= rawDelta['reasoning']; // OpenRouter
-          var delta = OverrodeChatCompletionStreamResponseDelta(
-            content: content,
-            reasoningContent: reasoningContent,
-          );
-          await messagesNotifier.streaming(delta);
-        }
-        await messagesNotifier.closeStreaming(
-            reference: formattedMessage.reference);
-        // Can not use the chat from params anymore cause the chat's title maybe
-        // changed in the meantime
-        var newChat = await isar.chats.filter().idEqualTo(chat.id).findFirst();
-        var copiedChat =
-            (newChat ?? Chat()).copyWith(updatedAt: DateTime.now());
-        await isar.writeTxn(() async {
-          await isar.chats.put(copiedChat);
-        });
-        ref.invalidate(chatsNotifierProvider);
-        ref.invalidate(recentChatsNotifierProvider);
+        var broadcastWithToolCall = responseWithToolCall.asBroadcastStream();
+        _streamingAssistantMessage(chat, broadcastWithToolCall);
+        toolCalls = await _getToolCalls(broadcastWithToolCall);
       } catch (error) {
         messagesNotifier.append(error.toString());
       }
-    } while (toolCalls.isNotEmpty);
-
+    }
+    await messagesNotifier.closeStreaming(
+        reference: formattedMessage.reference);
+    // Can not use the chat from params anymore cause the chat's title maybe
+    // changed in the meantime
+    var newChat = await isar.chats.filter().idEqualTo(chat.id).findFirst();
+    var copiedChat = (newChat ?? Chat()).copyWith(updatedAt: DateTime.now());
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
     streamingNotifier.close();
   }
 
@@ -511,6 +393,40 @@ ${JsonEncoder.withIndent('  ').convert(result)}
     return byteData.buffer.asUint8List();
   }
 
+  ChatCompletionMessageToolCall _getChatCompletionMessageToolCall(
+    ToolCall toolCall,
+  ) {
+    var chatCompletionMessageFunctionCall = ChatCompletionMessageFunctionCall(
+      name: toolCall.name.toString(),
+      arguments: toolCall.arguments.toString(),
+    );
+    return ChatCompletionMessageToolCall(
+      id: toolCall.id.toString(),
+      type: ChatCompletionMessageToolCallType.function,
+      function: chatCompletionMessageFunctionCall,
+    );
+  }
+
+  Future<List<ChatCompletionTool>> _getChatCompletionTools() async {
+    List<ChatCompletionTool> completionTools = [];
+    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
+    for (var mcpTool in mcpTools) {
+      var function = FunctionObject(
+        name: mcpTool.name,
+        description: mcpTool.description,
+        parameters: mcpTool.inputSchema.toJson(),
+      );
+      var completionTool = ChatCompletionTool(
+        type: ChatCompletionToolType.function,
+        function: function,
+      );
+      completionTools.add(completionTool);
+    }
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (!isDesktop) return [];
+    return completionTools;
+  }
+
   Future<Message> _getFormattedMessage(
     String text, {
     required SearchDecision decision,
@@ -528,6 +444,45 @@ ${JsonEncoder.withIndent('  ').convert(result)}
       message.reference = reference;
     }
     return message;
+  }
+
+  Future<List<ChatCompletionMessage>> _getHistoryMessages(Chat chat) async {
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messages = await ref.read(messagesProvider.future);
+    var context = messages.length;
+    if (chat.context > 0) {
+      context = min(chat.context * 2, messages.length);
+    }
+    var start = max(0, messages.length - context);
+    var histories = messages.sublist(start).where((message) {
+      return message.content.isNotEmpty;
+    });
+    return histories.map((message) {
+      if (message.role == 'assistant') {
+        return ChatCompletionMessage.assistant(content: message.content);
+      } else {
+        return ChatCompletionMessage.user(
+          content: ChatCompletionUserMessageContent.string(message.content),
+        );
+      }
+    }).toList();
+  }
+
+  Future<McpTool> _getMcpTool(ToolCall toolCall) async {
+    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
+    return mcpTools
+        .where((mcpTool) => mcpTool.name == toolCall.name.toString())
+        .first;
+  }
+
+  Map<String, dynamic> _getMcpToolArguments(ToolCall toolCall) {
+    Map<String, dynamic> arguments;
+    try {
+      arguments = jsonDecode(toolCall.arguments.toString());
+    } catch (e) {
+      arguments = {};
+    }
+    return arguments;
   }
 
   Future<SearchDecision> _getSearchDecision(
@@ -553,6 +508,25 @@ ${JsonEncoder.withIndent('  ').convert(result)}
     );
   }
 
+  Future<Map<int, ToolCall>> _getToolCalls(
+    Stream<OverrodeCreateChatCompletionStreamResponse> response,
+  ) async {
+    Map<int, ToolCall> toolCalls = {};
+    await for (final chunk in response) {
+      if (chunk.response.choices.isEmpty) continue;
+      if (chunk.response.choices.first.delta.toolCalls != null) {
+        if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
+        var toolCallChunk = chunk.response.choices.first.delta.toolCalls!.first;
+        if (!toolCalls.containsKey(toolCallChunk.index)) {
+          toolCalls[toolCallChunk.index] = ToolCall();
+        }
+        toolCalls[toolCallChunk.index]!.process(toolCallChunk);
+        continue;
+      }
+    }
+    return toolCalls;
+  }
+
   Future<void> _saveNewConversation(String text, {required Chat chat}) async {
     final userMessage = Message();
     userMessage.chatId = chat.id;
@@ -565,5 +539,65 @@ ${JsonEncoder.withIndent('  ').convert(result)}
       await isar.messages.putAll([userMessage, assistantMessage]);
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
+  }
+
+  Future<void> _streamingAssistantMessage(
+    Chat chat,
+    Stream<OverrodeCreateChatCompletionStreamResponse> response,
+  ) async {
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    await for (final chunk in response) {
+      if (chunk.response.choices.isEmpty) continue;
+      var content = chunk.response.choices.first.delta.content ?? '';
+      var rawDelta = chunk.rawJson['choices'][0]['delta'];
+      var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
+      reasoningContent ??= rawDelta['reasoning']; // OpenRouter
+      var delta = OverrodeChatCompletionStreamResponseDelta(
+        content: content,
+        reasoningContent: reasoningContent,
+      );
+      await messagesNotifier.streaming(delta);
+    }
+  }
+
+  Future<void> _streamingToolCallMessage(Chat chat, ToolCall toolCall) async {
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    var content = '\n\nCalling ${toolCall.name}\n';
+    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    await messagesNotifier.streaming(delta);
+    var json = JsonEncoder.withIndent('  ').convert(toolCall);
+    content = '\n```${toolCall.id}\n$json\n```\n';
+    delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    await messagesNotifier.streaming(delta);
+  }
+
+  Future<McpJsonRpcResponse?> _streamingToolMessage(
+    Chat chat,
+    ToolCall toolCall,
+  ) async {
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    var content = '\n\nGet result from ${toolCall.name}\n';
+    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    await messagesNotifier.streaming(delta);
+    var serversProvider = serversNotifierProvider;
+    var servers = await ref.read(serversProvider.future);
+    var server = await McpUtil.getServer(toolCall, servers: servers);
+    McpJsonRpcResponse? result;
+    if (server == null) {
+      content = '\n```tool_call_error\nNo server found for tool call\n```\n';
+      delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    } else {
+      var tool = await _getMcpTool(toolCall);
+      var arguments = _getMcpToolArguments(toolCall);
+      result = await McpUtil.callTool(tool, server, arguments: arguments);
+      var json = JsonEncoder.withIndent('  ').convert(result);
+      content = '\n```${result.id}\n$json\n```\n';
+      delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    }
+    await messagesNotifier.streaming(delta);
+    return result;
   }
 }

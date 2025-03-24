@@ -1,6 +1,6 @@
 import 'package:openai_dart/openai_dart.dart';
 
-class McpToolCall {
+class ToolCall {
   StringBuffer id = StringBuffer();
   StringBuffer name = StringBuffer();
   StringBuffer arguments = StringBuffer();

@@ -40,7 +40,8 @@ class OverrodeOpenAIClient extends OpenAIClient {
           response: response,
         );
       } catch (e) {
-        var uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+        var baseUrl = this.baseUrl ?? 'https://api.openai.com/v1';
+        var uri = Uri.parse('$baseUrl/chat/completions');
         throw OpenAIClientException(
           message: string,
           method: g.HttpMethod.post,
