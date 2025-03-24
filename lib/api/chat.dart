@@ -2,16 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:athena/model/mcp_tool_call.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart' as schema;
 import 'package:athena/schema/provider.dart';
 import 'package:athena/schema/server.dart';
-import 'package:athena/util/mcp_util.dart';
 import 'package:athena/vendor/openai_dart/client.dart';
-import 'package:athena/vendor/openai_dart/delta.dart';
+import 'package:athena/vendor/openai_dart/response.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class ChatApi {
@@ -39,11 +37,13 @@ class ChatApi {
     return response.choices.first.message.content ?? '';
   }
 
-  Stream<OverrodeChatCompletionStreamResponseDelta> getCompletion({
+  Stream<OverrodeCreateChatCompletionStreamResponse> getCompletion({
     required Chat chat,
     required List<Message> messages,
     required Provider provider,
     required schema.Model model,
+    ChatCompletionMessage? toolCallingMessage,
+    ChatCompletionMessage? toolMessage,
     List<ChatCompletionTool>? tools,
     List<Server>? servers,
   }) async* {
@@ -73,60 +73,19 @@ class ChatApi {
         );
       }
     }).toList();
+    if (toolCallingMessage != null) {
+      wrappedMessages.add(toolCallingMessage);
+    }
+    if (toolMessage != null) {
+      wrappedMessages.add(toolMessage);
+    }
     var request = CreateChatCompletionRequest(
       model: ChatCompletionModel.modelId(model.value),
       messages: wrappedMessages,
       temperature: chat.temperature,
       tools: tools,
     );
-    var response = client.createOverrodeChatCompletionStream(request: request);
-    Map<int, McpToolCall> toolCalls = {};
-    await for (final chunk in response) {
-      if (chunk.response.choices.isEmpty) continue;
-      if (chunk.response.choices.first.delta.toolCalls != null) {
-        if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
-        var toolCallChunk = chunk.response.choices.first.delta.toolCalls!.first;
-        if (!toolCalls.containsKey(toolCallChunk.index)) {
-          toolCalls[toolCallChunk.index] = McpToolCall();
-        }
-        toolCalls[toolCallChunk.index]!.process(toolCallChunk);
-        continue;
-      }
-      var content = chunk.response.choices.first.delta.content ?? '';
-      var rawDelta = chunk.rawJson['choices'][0]['delta'];
-      var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
-      reasoningContent ??= rawDelta['reasoning']; // OpenRouter
-      yield OverrodeChatCompletionStreamResponseDelta(
-        content: content,
-        reasoningContent: reasoningContent,
-      );
-    }
-    for (var entry in toolCalls.entries) {
-      var toolCall = entry.value;
-      yield OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```tool_call
-$toolCall
-```
-''');
-      var server = await McpUtil().getServer(toolCall, servers: servers ?? []);
-      if (server == null) {
-        yield OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```tool_call_error
-No server found for tool call
-```
-''');
-      } else {
-        var result = await McpUtil().callTool(toolCall, server);
-        yield OverrodeChatCompletionStreamResponseDelta(content: '''
-\n
-```tool_call_result
-$result
-```
-''');
-      }
-    }
+    yield* client.createOverrodeChatCompletionStream(request: request);
   }
 
   Future<SearchDecision> getSearchDecision(
