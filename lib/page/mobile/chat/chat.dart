@@ -134,7 +134,7 @@ class _MessageListViewState extends ConsumerState<_MessageListView> {
     if (controller.hasClients) {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    viewModel.resendMessage(message, chat: widget.chat, model: widget.model);
+    viewModel.resendMessage(message, chat: widget.chat);
     if (widget.chat.title.isEmpty || widget.chat.title == 'New Chat') {
       var renamedChat = await viewModel.renameChat(widget.chat);
       widget.onChatTitleChanged?.call(renamedChat);
@@ -221,8 +221,7 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
-    var model = await ref.read(modelNotifierProvider(_modelId).future);
-    await viewModel.sendMessage(text, chat: widget.chat, model: model);
+    await viewModel.sendMessage(text, chat: widget.chat);
     if (title.isEmpty || title == 'New Chat') {
       var renameChat = await viewModel.renameChat(widget.chat);
       setState(() {
