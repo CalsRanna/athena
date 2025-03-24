@@ -5,7 +5,7 @@ import 'dart:ui';
 
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
-import 'package:athena/model/mcp_tool_call.dart';
+import 'package:athena/vendor/mcp/tool/mcp_tool_call.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';

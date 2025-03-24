@@ -1,6 +1,6 @@
 import 'package:athena/provider/server.dart';
 import 'package:athena/util/mcp_util.dart';
-import 'package:athena/vendor/mcp/tool.dart';
+import 'package:athena/vendor/mcp/tool/tool.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'mcp.g.dart';

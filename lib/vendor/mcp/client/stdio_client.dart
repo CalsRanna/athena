@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:athena/vendor/mcp/message.dart';
 import 'package:athena/vendor/mcp/method.dart';
 import 'package:athena/vendor/mcp/server/server_option.dart';
-import 'package:athena/vendor/mcp/tool.dart';
+import 'package:athena/vendor/mcp/tool/tool.dart';
 import 'package:athena/vendor/mcp/util/logger_util.dart';
 import 'package:athena/vendor/mcp/util/process_util.dart';
 
