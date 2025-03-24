@@ -1,4 +1,4 @@
-import 'package:athena/vendor/mcp/tool/mcp_tool_call.dart';
+import 'package:athena/model/tool_call.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/vendor/mcp/client/stdio_client.dart';
 import 'package:athena/vendor/mcp/message.dart';
@@ -28,7 +28,7 @@ class McpUtil {
   }
 
   static Future<Server?> getServer(
-    McpToolCall toolCall, {
+    ToolCall toolCall, {
     required List<Server> servers,
   }) async {
     Server? matchedServer;

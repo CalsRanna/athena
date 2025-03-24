@@ -41,8 +41,8 @@ class ChatApi {
     required List<ChatCompletionMessage> messages,
     required Provider provider,
     required schema.Model model,
-    List<ChatCompletionTool>? tools,
     List<Server>? servers,
+    List<ChatCompletionTool>? tools,
   }) async* {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',
