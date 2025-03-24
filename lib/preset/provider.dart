@@ -12,7 +12,6 @@ class PresetProvider {
           'released_at': '2025-01-20',
           'input_price': r'$0.55/M',
           'output_price': r'$2.21/M',
-          'support_function_call': true,
           'support_thinking': true,
           'max_token': 65536
         },
@@ -123,7 +122,6 @@ class PresetProvider {
           'released_at': '2025-01-27',
           'input_price': r'¥0.004/K',
           'output_price': r'¥0.016/K',
-          'support_function_call': true,
           'support_thinking': true,
           'max_token': 65536
         },
@@ -133,7 +131,6 @@ class PresetProvider {
           'released_at': '2025-01-27',
           'input_price': r'¥0.002/K',
           'output_price': r'¥0.008/K',
-          'support_function_call': true,
           'max_token': 65536
         },
         {
@@ -152,6 +149,7 @@ class PresetProvider {
           'released_at': '2025-03-05',
           'input_price': r'¥0.0016/K',
           'output_price': r'¥0.004/K',
+          'support_function_call': true,
           'support_thinking': true,
           'max_token': 131072
         }
@@ -169,6 +167,7 @@ class PresetProvider {
           'released_at': '2025-01-20',
           'input_price': r'$0.55/M',
           'output_price': r'$2.21/M',
+          'support_function_call': true,
           'support_thinking': true,
           'max_token': 65536
         },
