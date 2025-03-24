@@ -1,35 +1,34 @@
+import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
 
-class DesktopChatIndicator extends ConsumerWidget {
+class DesktopModelIndicator extends ConsumerWidget {
   final Chat chat;
-  const DesktopChatIndicator({super.key, required this.chat});
+  const DesktopModelIndicator({super.key, required this.chat});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var model = ref.watch(modelNotifierProvider(chat.modelId)).value;
+    var chatProvider = chatNotifierProvider(chat.id);
+    var latestChat = ref.watch(chatProvider).value;
+    if (latestChat == null) return const SizedBox();
+    var modelProvider = modelNotifierProvider(latestChat.modelId);
+    var model = ref.watch(modelProvider).value;
     if (model == null) return const SizedBox();
-    var sentinel = ref.watch(sentinelNotifierProvider(chat.sentinelId)).value;
+    var sentinelProvider = sentinelNotifierProvider(latestChat.sentinelId);
+    var sentinel = ref.watch(sentinelProvider).value;
     if (sentinel == null) return const SizedBox();
-    var provider = ref.watch(providerNotifierProvider(model.providerId)).value;
+    var providerProvider = providerNotifierProvider(model.providerId);
+    var provider = ref.watch(providerProvider).value;
     if (provider == null) return const SizedBox();
     if (provider.name.isEmpty) return const SizedBox();
-    var children = [
-      _SentinelIndicator(sentinel: sentinel),
-      _ModelIndicator(model: model, provider: provider),
-    ];
-    return Container(
-      padding: const EdgeInsets.only(left: 16),
-      child: Row(spacing: 8, children: children),
-    );
+    return _ModelIndicator(model: model, provider: provider);
   }
 }
 
@@ -71,17 +70,5 @@ class _ModelIndicator extends StatelessWidget {
       padding: EdgeInsets.all(1),
       child: innerContainer,
     );
-  }
-}
-
-class _SentinelIndicator extends StatelessWidget {
-  final Sentinel? sentinel;
-  const _SentinelIndicator({this.sentinel});
-
-  @override
-  Widget build(BuildContext context) {
-    if (sentinel == null) return const SizedBox();
-    const textStyle = TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14);
-    return Text(sentinel!.name, style: textStyle);
   }
 }

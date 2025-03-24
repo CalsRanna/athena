@@ -1,8 +1,9 @@
 import 'package:athena/page/desktop/home/component/chat_configuration_sheet.dart';
-import 'package:athena/page/desktop/home/component/chat_indicator.dart';
+import 'package:athena/page/desktop/home/component/model_indicator.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
+import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
@@ -192,7 +193,14 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     return AthenaAppBar(
       action: _buildSettingButton(),
       leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
-      title: DesktopChatIndicator(chat: chat),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        spacing: 8,
+        children: [
+          DesktopSentinelIndicator(chat: chat),
+          DesktopModelIndicator(chat: chat)
+        ],
+      ),
     );
   }
 
