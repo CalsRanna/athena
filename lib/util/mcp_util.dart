@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:athena/vendor/mcp/tool/mcp_tool_call.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/vendor/mcp/client/stdio_client.dart';
@@ -10,7 +8,7 @@ import 'package:athena/vendor/mcp/tool/tool.dart';
 class McpUtil {
   static Map<String, McpStdioClient> clients = {};
 
-  Future<List<McpTool>> getMcpTools(List<Server> servers) async {
+  static Future<List<McpTool>> getMcpTools(List<Server> servers) async {
     List<McpTool> combinedTools = [];
     for (var server in servers) {
       if (!clients.containsKey(server.name)) {
@@ -29,7 +27,7 @@ class McpUtil {
     return combinedTools;
   }
 
-  Future<Server?> getServer(
+  static Future<Server?> getServer(
     McpToolCall toolCall, {
     required List<Server> servers,
   }) async {
@@ -55,10 +53,11 @@ class McpUtil {
     return matchedServer;
   }
 
-  Future<McpJsonRpcResponse> callTool(
-    McpToolCall toolCall,
-    Server server,
-  ) async {
+  static Future<McpJsonRpcResponse> callTool(
+    McpTool tool,
+    Server server, {
+    Map<String, dynamic>? arguments,
+  }) async {
     if (!clients.containsKey(server.name)) {
       var json = {
         'command': server.command,
@@ -69,13 +68,6 @@ class McpUtil {
       await clients[server.name]!.initialize();
     }
     var client = clients[server.name]!;
-    var tool = toolCall.name.toString();
-    Map<String, dynamic> arguments;
-    try {
-      arguments = jsonDecode(toolCall.arguments.toString());
-    } catch (e) {
-      arguments = {};
-    }
     return client.callTool(tool, arguments: arguments);
   }
 }

@@ -254,21 +254,21 @@ class ChatViewModel extends ViewModel {
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var servers = await ref.read(serversNotifierProvider.future);
     List<ChatCompletionTool> completionTools = [];
-    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    if (isDesktop) {
-      var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
-      for (var mcpTool in mcpTools) {
-        var completionTool = ChatCompletionTool(
-          type: ChatCompletionToolType.function,
-          function: FunctionObject(
-            name: mcpTool.name,
-            description: mcpTool.description,
-            parameters: mcpTool.inputSchema.toJson(),
-          ),
-        );
-        completionTools.add(completionTool);
-      }
+    // var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    // if (isDesktop) {
+    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
+    for (var mcpTool in mcpTools) {
+      var completionTool = ChatCompletionTool(
+        type: ChatCompletionToolType.function,
+        function: FunctionObject(
+          name: mcpTool.name,
+          description: mcpTool.description,
+          parameters: mcpTool.inputSchema.toJson(),
+        ),
+      );
+      completionTools.add(completionTool);
     }
+    // }
     var systemMessage =
         ChatCompletionMessage.system(content: realSentinel.prompt);
     var context = messages.length;
@@ -323,7 +323,7 @@ class ChatViewModel extends ViewModel {
         for (var entry in entries) {
           var toolCall = entry.value;
           var delta = OverrodeChatCompletionStreamResponseDelta(
-            content: '\nCalling ${toolCall.name}\n',
+            content: '\n\nCalling ${toolCall.name}\n',
           );
           await messagesNotifier.streaming(delta);
           delta = OverrodeChatCompletionStreamResponseDelta(content: '''
@@ -333,22 +333,30 @@ ${JsonEncoder.withIndent('  ').convert(toolCall)}
 ```
 ''');
           await messagesNotifier.streaming(delta);
-          await Future.delayed(Duration(seconds: 1));
           delta = OverrodeChatCompletionStreamResponseDelta(
-            content: '\nGet result from ${toolCall.name}\n',
+            content: '\n\nGet result from ${toolCall.name}\n',
           );
           await messagesNotifier.streaming(delta);
-          var server = await McpUtil().getServer(toolCall, servers: servers);
+          var server = await McpUtil.getServer(toolCall, servers: servers);
           McpJsonRpcResponse? result;
           if (server == null) {
             delta = OverrodeChatCompletionStreamResponseDelta(content: '''
 \n
-```tool_call_result
+```tool_call_error
 No server found for tool call
 ```
 ''');
           } else {
-            result = await McpUtil().callTool(toolCall, server);
+            var tool = mcpTools
+                .where((mcpTool) => mcpTool.name == toolCall.name.toString())
+                .first;
+            Map<String, dynamic> arguments;
+            try {
+              arguments = jsonDecode(toolCall.arguments.toString());
+            } catch (e) {
+              arguments = {};
+            }
+            result = await McpUtil.callTool(tool, server, arguments: arguments);
             delta = OverrodeChatCompletionStreamResponseDelta(content: '''
 \n
 ```${result.id}
