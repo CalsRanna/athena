@@ -203,12 +203,7 @@ class ChatViewModel extends ViewModel {
     return copiedChat;
   }
 
-  Future<void> resendMessage(
-    Message message, {
-    required Chat chat,
-    Model? model,
-    Sentinel? sentinel,
-  }) async {
+  Future<void> resendMessage(Message message, {required Chat chat}) async {
     var builder = isar.messages.filter().chatIdEqualTo(chat.id);
     final messages = await builder.findAll();
     final index = messages.indexWhere((item) => item.id == message.id);
@@ -220,53 +215,43 @@ class ChatViewModel extends ViewModel {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(
-      message.content,
-      chat: chat,
-      model: model,
-      sentinel: sentinel,
-    );
+    await sendMessage(message.content, chat: chat);
   }
 
-  Future<void> sendMessage(
-    String text, {
-    required Chat chat,
-    Model? model,
-    Sentinel? sentinel,
-  }) async {
+  Future<void> sendMessage(String text, {required Chat chat}) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
-    await _saveNewConversation(text, chat: chat);
-    var decision = await _getSearchDecision(text, chat: chat);
+    var chatProvider = chatNotifierProvider(chat.id);
+    var latestChat = await ref.read(chatProvider.future);
+    await _saveNewConversation(text, chat: latestChat);
+    var decision = await _getSearchDecision(text, chat: latestChat);
     var formattedMessage = await _getFormattedMessage(text, decision: decision);
-    var modelProvider = modelNotifierProvider(chat.modelId);
-    var relatedModel = await ref.read(modelProvider.future);
-    var realUsedModel = model ?? relatedModel;
-    var providerProvider = providerNotifierProvider(realUsedModel.providerId);
+    var modelProvider = modelNotifierProvider(latestChat.modelId);
+    var model = await ref.read(modelProvider.future);
+    var providerProvider = providerNotifierProvider(model.providerId);
     var provider = await ref.read(providerProvider.future);
-    var sentinelProvider = sentinelNotifierProvider(chat.sentinelId);
-    var relatedSentinel = await ref.read(sentinelProvider.future);
-    var realSentinel = sentinel ?? relatedSentinel;
-    var messagesProvider = messagesNotifierProvider(chat.id);
+    var sentinelProvider = sentinelNotifierProvider(latestChat.sentinelId);
+    var sentinel = await ref.read(sentinelProvider.future);
+    var messagesProvider = messagesNotifierProvider(latestChat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var servers = await ref.read(serversNotifierProvider.future);
     var completionTools = await _getChatCompletionTools();
     var systemMessage = ChatCompletionMessage.system(
-      content: realSentinel.prompt,
+      content: sentinel.prompt,
     );
-    var historyMessages = await _getHistoryMessages(chat);
+    var historyMessages = await _getHistoryMessages(latestChat);
     Map<int, ToolCall> toolCalls = {};
     try {
       var response = ChatApi().getCompletion(
-        chat: chat,
+        chat: latestChat,
         messages: [systemMessage, ...historyMessages],
-        model: realUsedModel,
+        model: model,
         provider: provider,
         servers: servers,
         tools: completionTools.isNotEmpty ? completionTools : null,
       );
       var broadcast = response.asBroadcastStream();
-      _streamingAssistantMessage(chat, broadcast);
+      _streamingAssistantMessage(latestChat, broadcast);
       toolCalls = await _getToolCalls(broadcast);
     } catch (error) {
       messagesNotifier.append(error.toString());
@@ -276,8 +261,8 @@ class ChatViewModel extends ViewModel {
       toolCalls.clear();
       for (var entry in entries) {
         var toolCall = entry.value;
-        await _streamingToolCallMessage(chat, toolCall);
-        var result = await _streamingToolMessage(chat, toolCall);
+        await _streamingToolCallMessage(latestChat, toolCall);
+        var result = await _streamingToolMessage(latestChat, toolCall);
         if (result == null) continue;
         var toolCallMessage = ChatCompletionMessage.assistant(
           toolCalls: [_getChatCompletionMessageToolCall(toolCall)],
@@ -290,15 +275,15 @@ class ChatViewModel extends ViewModel {
       }
       try {
         var responseWithToolCall = ChatApi().getCompletion(
-          chat: chat,
+          chat: latestChat,
           messages: [systemMessage, ...historyMessages],
-          model: realUsedModel,
+          model: model,
           provider: provider,
           tools: completionTools.isNotEmpty ? completionTools : null,
           servers: servers,
         );
         var broadcastWithToolCall = responseWithToolCall.asBroadcastStream();
-        _streamingAssistantMessage(chat, broadcastWithToolCall);
+        _streamingAssistantMessage(latestChat, broadcastWithToolCall);
         toolCalls = await _getToolCalls(broadcastWithToolCall);
       } catch (error) {
         messagesNotifier.append(error.toString());
@@ -308,7 +293,8 @@ class ChatViewModel extends ViewModel {
         reference: formattedMessage.reference);
     // Can not use the chat from params anymore cause the chat's title maybe
     // changed in the meantime
-    var newChat = await isar.chats.filter().idEqualTo(chat.id).findFirst();
+    var newChat =
+        await isar.chats.filter().idEqualTo(latestChat.id).findFirst();
     var copiedChat = (newChat ?? Chat()).copyWith(updatedAt: DateTime.now());
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
