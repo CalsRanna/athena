@@ -1,6 +1,7 @@
 import 'package:athena/migration/migration_202502140332.dart';
 import 'package:athena/migration/migration_202502251014.dart';
 import 'package:athena/migration/migration_202503051715.dart';
+import 'package:athena/migration/migration_202503241424.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/migration.dart';
 import 'package:athena/schema/model.dart';
@@ -51,6 +52,11 @@ class IsarInitializer {
     migrated = (await builder.count()) > 0;
     if (!migrated) {
       await Migration202503051715.migrate();
+    }
+    builder = isar.migrations.filter().migrationEqualTo('202503241424');
+    migrated = (await builder.count()) > 0;
+    if (!migrated) {
+      await Migration202503241424.migrate();
     }
   }
 }
