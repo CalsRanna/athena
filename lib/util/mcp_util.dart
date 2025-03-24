@@ -8,19 +8,23 @@ import 'package:athena/vendor/mcp/server/server_option.dart';
 import 'package:athena/vendor/mcp/tool/tool.dart';
 
 class McpUtil {
+  static Map<String, McpStdioClient> clients = {};
+
   Future<List<McpTool>> getMcpTools(List<Server> servers) async {
     List<McpTool> combinedTools = [];
     for (var server in servers) {
-      var json = {
-        'command': server.command,
-        'args': server.arguments.split(' '),
-      };
-      var option = McpServerOption.fromJson(json);
-      var client = McpStdioClient(option: option);
-      await client.initialize();
+      if (!clients.containsKey(server.name)) {
+        var json = {
+          'command': server.command,
+          'args': server.arguments.split(' '),
+        };
+        var option = McpServerOption.fromJson(json);
+        clients[server.name] = McpStdioClient(option: option);
+        await clients[server.name]!.initialize();
+      }
+      var client = clients[server.name]!;
       var tools = await client.listTools();
       combinedTools.addAll(tools);
-      client.dispose();
     }
     return combinedTools;
   }
@@ -31,13 +35,16 @@ class McpUtil {
   }) async {
     Server? matchedServer;
     for (var server in servers) {
-      var json = {
-        'command': server.command,
-        'args': server.arguments.split(' '),
-      };
-      var option = McpServerOption.fromJson(json);
-      var client = McpStdioClient(option: option);
-      await client.initialize();
+      if (!clients.containsKey(server.name)) {
+        var json = {
+          'command': server.command,
+          'args': server.arguments.split(' '),
+        };
+        var option = McpServerOption.fromJson(json);
+        clients[server.name] = McpStdioClient(option: option);
+        await clients[server.name]!.initialize();
+      }
+      var client = clients[server.name]!;
       var tools = await client.listTools();
       var toolNames = tools.map((tool) => tool.name);
       if (toolNames.contains(toolCall.name.toString())) {
@@ -52,15 +59,23 @@ class McpUtil {
     McpToolCall toolCall,
     Server server,
   ) async {
-    var json = {
-      'command': server.command,
-      'args': server.arguments.split(' '),
-    };
-    var option = McpServerOption.fromJson(json);
-    var client = McpStdioClient(option: option);
-    await client.initialize();
+    if (!clients.containsKey(server.name)) {
+      var json = {
+        'command': server.command,
+        'args': server.arguments.split(' '),
+      };
+      var option = McpServerOption.fromJson(json);
+      clients[server.name] = McpStdioClient(option: option);
+      await clients[server.name]!.initialize();
+    }
+    var client = clients[server.name]!;
     var tool = toolCall.name.toString();
-    var arguments = jsonDecode(toolCall.arguments.toString());
+    Map<String, dynamic> arguments;
+    try {
+      arguments = jsonDecode(toolCall.arguments.toString());
+    } catch (e) {
+      arguments = {};
+    }
     return client.callTool(tool, arguments: arguments);
   }
 }
