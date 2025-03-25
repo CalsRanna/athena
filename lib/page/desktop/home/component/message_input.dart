@@ -1,3 +1,4 @@
+import 'package:athena/page/desktop/home/component/information_indicator.dart';
 import 'package:athena/page/desktop/home/component/mcp_tool_indicator.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/search_decision_toggle.dart';
@@ -45,6 +46,7 @@ class DesktopMessageInput extends StatelessWidget {
         onTap: onChatConfigurationButtonTapped,
       ),
       // Icon(HugeIcons.strokeRoundedImage01),
+      DesktopInformationIndicator(),
       const Spacer(),
       DesktopMcpToolIndicator(),
     ];

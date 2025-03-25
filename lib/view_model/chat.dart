@@ -236,9 +236,7 @@ class ChatViewModel extends ViewModel {
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var servers = await ref.read(serversNotifierProvider.future);
     var completionTools = await _getChatCompletionTools();
-    var systemMessage = ChatCompletionMessage.system(
-      content: sentinel.prompt,
-    );
+    var systemMessage = ChatCompletionMessage.system(content: sentinel.prompt);
     var historyMessages = await _getHistoryMessages(latestChat);
     Map<int, ToolCall> toolCalls = {};
     try {

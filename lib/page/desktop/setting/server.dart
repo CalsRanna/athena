@@ -2,6 +2,8 @@ import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/server.dart';
+import 'package:athena/widget/button.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
@@ -23,8 +25,11 @@ class DesktopSettingServerPage extends ConsumerStatefulWidget {
 class _DesktopSettingServerPageState
     extends ConsumerState<DesktopSettingServerPage> {
   int index = 0;
+  String result = '';
   final commandController = TextEditingController();
   final argumentsController = TextEditingController();
+
+  late final viewModel = ServerViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +43,23 @@ class _DesktopSettingServerPageState
   Future<void> changeServer(int index) async {
     setState(() {
       this.index = index;
+      result = '';
     });
     var provider = serversNotifierProvider;
     var servers = await ref.read(provider.future);
     if (servers.isEmpty) return;
     commandController.text = servers[index].command;
     argumentsController.text = servers[index].arguments;
+  }
+
+  Future<void> debug() async {
+    if (commandController.text.isEmpty) return;
+    AthenaDialog.loading();
+    var result = await viewModel.debugCommand(commandController.text);
+    setState(() {
+      this.result = result;
+    });
+    AthenaDialog.dismiss();
   }
 
   @override
@@ -66,7 +82,7 @@ class _DesktopSettingServerPageState
     var copiedServer = servers[index].copyWith(
       arguments: argumentsController.text,
     );
-    ServerViewModel(ref).updateServer(copiedServer);
+    viewModel.updateServer(copiedServer);
   }
 
   Future<void> updateCommand() async {
@@ -74,7 +90,7 @@ class _DesktopSettingServerPageState
     var servers = await ref.read(provider.future);
     if (servers.isEmpty) return;
     var copiedServer = servers[index].copyWith(command: commandController.text);
-    ServerViewModel(ref).updateServer(copiedServer);
+    viewModel.updateServer(copiedServer);
   }
 
   Widget _buildServerListView() {
@@ -146,6 +162,20 @@ class _DesktopSettingServerPageState
       servers[index].description,
       style: descriptionTextStyle,
     );
+    var debugTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+    );
+    var debugText = Text('Debug command', style: debugTextStyle);
+    var debugButton = AthenaTextButton(onTap: debug, text: 'Debug');
+    var debugChildren = [debugText, const Spacer(), debugButton];
+    var resultTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
     var listChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 12),
@@ -153,7 +183,10 @@ class _DesktopSettingServerPageState
       const SizedBox(height: 12),
       Row(children: argumentsChildren),
       if (servers[index].description.isNotEmpty) const SizedBox(height: 12),
-      if (servers[index].description.isNotEmpty) descriptionText
+      if (servers[index].description.isNotEmpty) descriptionText,
+      const SizedBox(height: 12),
+      Row(children: debugChildren),
+      Text(result, style: resultTextStyle),
     ];
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),

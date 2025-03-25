@@ -6,7 +6,7 @@ part of 'mcp.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$mcpToolsNotifierHash() => r'b8f1cf128ea83e66089594648cc19d239c8031ec';
+String _$mcpToolsNotifierHash() => r'0ecaa06483c034a939a78ab83746b2e5cfd00a1e';
 
 /// See also [McpToolsNotifier].
 @ProviderFor(McpToolsNotifier)
