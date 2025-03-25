@@ -7,6 +7,21 @@ import 'package:athena/vendor/mcp/util/logger_util.dart';
 import 'package:process/process.dart';
 
 class ProcessUtil {
+  static String get defaultPath {
+    var originalPath = Platform.environment['PATH'] ?? '';
+    var presetPaths = [
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/System/Cryptexes/App/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin',
+      '/Library/Apple/usr/bin'
+    ];
+    return '${presetPaths.join(':')}:$originalPath';
+  }
+
   static void kill(Process process) {
     process.kill();
   }
@@ -25,9 +40,28 @@ class ProcessUtil {
     stream.listen(onData, onError: (error) => LoggerUtil.logger.e(error));
   }
 
+  static Future<ProcessResult> run(String command) async {
+    var environment = Map<String, String>.from(Platform.environment);
+    environment['PATH'] = defaultPath;
+    return LocalProcessManager().run(
+      command.split(' '),
+      environment: environment,
+      includeParentEnvironment: true,
+      runInShell: true,
+    );
+  }
+
   static Future<Process> start(McpServerOption option) async {
     var command = [option.command, ...option.args];
-    return LocalProcessManager().start(command, environment: option.env);
+    var environment = Map<String, String>.from(Platform.environment);
+    environment['PATH'] = defaultPath;
+    environment.addAll(option.env);
+    return LocalProcessManager().start(
+      command,
+      environment: environment,
+      includeParentEnvironment: true,
+      runInShell: true,
+    );
   }
 
   static Future<void> writeNotification(
