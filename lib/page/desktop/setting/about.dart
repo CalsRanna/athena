@@ -1,5 +1,8 @@
+import 'package:athena/provider/setting.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/server.dart';
 import 'package:athena/view_model/setting.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -33,22 +36,60 @@ class _DesktopSettingAboutPageState
       height: 120,
       width: 120,
     );
+    var developerMode = ref.watch(developerModeNotifierProvider);
     var children = [
       ClipOval(child: image),
       SizedBox(height: 24),
       Text(version, style: textStyle),
+      if (developerMode) const SizedBox(height: 24),
+      if (developerMode)
+        TextButton(onPressed: emptyServers, child: Text('Empty Servers')),
     ];
     var column = Column(
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
-    return AthenaScaffold(body: Center(child: column));
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: openDeveloperMode,
+      child: column,
+    );
+    return AthenaScaffold(body: Center(child: gestureDetector));
+  }
+
+  void emptyServers() {
+    ServerViewModel(ref).emptyServers();
   }
 
   @override
   void initState() {
     super.initState();
     _initState();
+  }
+
+  void openDeveloperMode() {
+    var developerMode = ref.read(developerModeNotifierProvider);
+    if (developerMode) return;
+    var cancelButton = TextButton(
+      onPressed: () => AthenaDialog.dismiss(),
+      child: Text('Cancel'),
+    );
+    var openButton = TextButton(
+      onPressed: () {
+        AthenaDialog.dismiss();
+        viewModel.openDeveloperMode();
+      },
+      child: Text('Open'),
+    );
+    var alertDialog = AlertDialog(
+      title: Text('Developer Mode'),
+      content: Text('Are you sure you want to open developer mode?'),
+      actions: [cancelButton, openButton],
+    );
+    showDialog(
+      context: context,
+      builder: (context) => alertDialog,
+    );
   }
 
   Future<void> _initState() async {

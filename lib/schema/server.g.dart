@@ -32,13 +32,18 @@ const ServerSchema = CollectionSchema(
       name: r'description',
       type: IsarType.string,
     ),
-    r'environments': PropertySchema(
+    r'enabled': PropertySchema(
       id: 3,
+      name: r'enabled',
+      type: IsarType.bool,
+    ),
+    r'environments': PropertySchema(
+      id: 4,
       name: r'environments',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'name',
       type: IsarType.string,
     )
@@ -80,8 +85,9 @@ void _serverSerialize(
   writer.writeString(offsets[0], object.arguments);
   writer.writeString(offsets[1], object.command);
   writer.writeString(offsets[2], object.description);
-  writer.writeString(offsets[3], object.environments);
-  writer.writeString(offsets[4], object.name);
+  writer.writeBool(offsets[3], object.enabled);
+  writer.writeString(offsets[4], object.environments);
+  writer.writeString(offsets[5], object.name);
 }
 
 Server _serverDeserialize(
@@ -94,9 +100,10 @@ Server _serverDeserialize(
   object.arguments = reader.readString(offsets[0]);
   object.command = reader.readString(offsets[1]);
   object.description = reader.readString(offsets[2]);
-  object.environments = reader.readString(offsets[3]);
+  object.enabled = reader.readBool(offsets[3]);
+  object.environments = reader.readString(offsets[4]);
   object.id = id;
-  object.name = reader.readString(offsets[4]);
+  object.name = reader.readString(offsets[5]);
   return object;
 }
 
@@ -114,8 +121,10 @@ P _serverDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -600,6 +609,16 @@ extension ServerQueryFilter on QueryBuilder<Server, Server, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Server, Server, QAfterFilterCondition> enabledEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'enabled',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Server, Server, QAfterFilterCondition> environmentsEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -953,6 +972,18 @@ extension ServerQuerySortBy on QueryBuilder<Server, Server, QSortBy> {
     });
   }
 
+  QueryBuilder<Server, Server, QAfterSortBy> sortByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterSortBy> sortByEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Server, Server, QAfterSortBy> sortByEnvironments() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'environments', Sort.asc);
@@ -1015,6 +1046,18 @@ extension ServerQuerySortThenBy on QueryBuilder<Server, Server, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Server, Server, QAfterSortBy> thenByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterSortBy> thenByEnabledDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'enabled', Sort.desc);
+    });
+  }
+
   QueryBuilder<Server, Server, QAfterSortBy> thenByEnvironments() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'environments', Sort.asc);
@@ -1074,6 +1117,12 @@ extension ServerQueryWhereDistinct on QueryBuilder<Server, Server, QDistinct> {
     });
   }
 
+  QueryBuilder<Server, Server, QDistinct> distinctByEnabled() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'enabled');
+    });
+  }
+
   QueryBuilder<Server, Server, QDistinct> distinctByEnvironments(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1111,6 +1160,12 @@ extension ServerQueryProperty on QueryBuilder<Server, Server, QQueryProperty> {
   QueryBuilder<Server, String, QQueryOperations> descriptionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'description');
+    });
+  }
+
+  QueryBuilder<Server, bool, QQueryOperations> enabledProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'enabled');
     });
   }
 
