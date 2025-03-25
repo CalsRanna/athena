@@ -9,6 +9,7 @@ class Server {
   String arguments = ''; //List<String>.join(' ')
   String command = '';
   String description = '';
+  bool enabled = false;
   String environments = ''; //json.encode(Map<String, String>)
   String name = '';
 
@@ -19,6 +20,7 @@ class Server {
     String? arguments,
     String? command,
     String? description,
+    bool? enabled,
     String? environments,
     String? name,
   }) {
@@ -27,6 +29,7 @@ class Server {
       ..arguments = arguments ?? this.arguments
       ..command = command ?? this.command
       ..description = description ?? this.description
+      ..enabled = enabled ?? this.enabled
       ..environments = environments ?? this.environments
       ..name = name ?? this.name;
   }

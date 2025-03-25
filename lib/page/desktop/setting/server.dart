@@ -8,6 +8,7 @@ import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -75,6 +76,14 @@ class _DesktopSettingServerPageState
     _initState();
   }
 
+  Future<void> toggleServer(bool value) async {
+    var provider = serversNotifierProvider;
+    var servers = await ref.watch(provider.future);
+    if (servers.isEmpty) return;
+    var copiedServer = servers[index].copyWith(enabled: value);
+    return viewModel.updateServer(copiedServer);
+  }
+
   Future<void> updateArguments() async {
     var provider = serversNotifierProvider;
     var servers = await ref.read(provider.future);
@@ -135,6 +144,8 @@ class _DesktopSettingServerPageState
       nameText,
       SizedBox(width: 4),
       Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
+      Spacer(),
+      AthenaSwitch(value: servers[index].enabled, onChanged: toggleServer),
     ];
     var commandInput = AthenaInput(
       controller: commandController,

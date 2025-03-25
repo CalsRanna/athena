@@ -11,6 +11,13 @@ class ServerViewModel extends ViewModel {
 
   ServerViewModel(this.ref);
 
+  Future<void> emptyServers() async {
+    await isar.writeTxn(() async {
+      await isar.servers.clear();
+    });
+    ref.invalidate(serversNotifierProvider);
+  }
+
   Future<void> destroyServer(Server server) async {
     await isar.writeTxn(() async {
       await isar.servers.delete(server.id);

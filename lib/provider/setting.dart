@@ -5,6 +5,16 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'setting.g.dart';
 
+@Riverpod(keepAlive: true)
+class DeveloperModeNotifier extends _$DeveloperModeNotifier {
+  @override
+  bool build() => false;
+
+  void open() {
+    state = true;
+  }
+}
+
 @riverpod
 class SettingNotifier extends _$SettingNotifier {
   @override

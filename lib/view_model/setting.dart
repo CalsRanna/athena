@@ -59,4 +59,10 @@ class SettingViewModel extends ViewModel {
     });
     ref.invalidate(settingNotifierProvider);
   }
+
+  void openDeveloperMode() {
+    var provider = developerModeNotifierProvider;
+    var notifier = ref.read(provider.notifier);
+    notifier.open();
+  }
 }
