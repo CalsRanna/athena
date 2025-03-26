@@ -40,7 +40,15 @@ class McpJsonRpcRequest {
   final Map<String, dynamic>? params;
 
   McpJsonRpcRequest({this.jsonrpc = '2.0', required this.method, this.params})
-    : id = DateTime.now().millisecondsSinceEpoch.toString();
+      : id = DateTime.now().millisecondsSinceEpoch.toString();
+
+  factory McpJsonRpcRequest.fromJson(Map<String, dynamic> json) {
+    return McpJsonRpcRequest(
+      jsonrpc: json['jsonrpc']?.toString() ?? '2.0',
+      method: json['method']?.toString() ?? '',
+      params: json['params'] as Map<String, dynamic>?,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> json = {};
