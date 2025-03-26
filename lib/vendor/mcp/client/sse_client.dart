@@ -3,70 +3,154 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena/vendor/mcp/message.dart';
+import 'package:athena/vendor/mcp/method.dart';
 import 'package:athena/vendor/mcp/server/server_option.dart';
+import 'package:athena/vendor/mcp/tool/tool.dart';
 import 'package:athena/vendor/mcp/util/logger_util.dart';
+import 'package:http/http.dart';
 
 class McpSseClient {
   final McpServerOption option;
-  final _pendingRequests = <String, Completer<McpJsonRpcResponse>>{};
-  StreamSubscription? _sseSubscription;
+  String? _endpoint;
+  final _requests = <String, Completer<McpJsonRpcResponse>>{};
+  late final StreamSubscription _subscription;
 
-  String? _messageEndpoint;
   McpSseClient({required this.option});
 
+  Future<McpJsonRpcResponse> callTool(
+    McpTool tool, {
+    Map<String, dynamic>? arguments,
+  }) async {
+    final message = McpJsonRpcRequest(
+      method: McpMethod.callTool.value,
+      params: {'name': tool.name, 'arguments': arguments},
+    );
+    return _request(message);
+  }
+
   Future<void> dispose() async {
-    await _sseSubscription?.cancel();
+    await _subscription.cancel();
   }
 
   Future<void> initialize() async {
-    try {
-      LoggerUtil.logger.d('开始 SSE 连接: ${option.command}');
+    await _setup();
+    await _initialize();
+    _ping();
+  }
 
+  Future<List<McpTool>> listTools() async {
+    final message = McpJsonRpcRequest(method: McpMethod.listTools.value);
+    var response = await _request(message);
+    var result = response.result['tools'] as List;
+    return result
+        .map((item) => McpTool.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  void _handleMessage(McpJsonRpcResponse message) {
+    if (_requests.containsKey(message.id)) {
+      final completer = _requests.remove(message.id);
+      completer?.complete(message);
+    }
+  }
+
+  Future<void> _initialize() async {
+    var params = {
+      'protocolVersion': '2024-11-05',
+      'capabilities': {
+        'roots': {'listChanged': true},
+        'sampling': {},
+      },
+      'clientInfo': {'name': 'McpStdioClient', 'version': '1.0.0'},
+    };
+    final initializeRequest = McpJsonRpcRequest(
+      method: McpMethod.initialize.value,
+      params: params,
+    );
+    try {
+      await _request(initializeRequest);
+      final notification = McpJsonRpcNotification(
+        method: McpMethod.notificationsInitialized.value,
+      );
+      await _notify(notification);
+    } catch (e) {
+      LoggerUtil.logger.e(e);
+      rethrow;
+    }
+  }
+
+  Future<void> _notify(McpJsonRpcNotification notification) async {
+    LoggerUtil.logger.d('RpcJsonNotification: $notification');
+    await _writeRequest(notification.toJson());
+  }
+
+  void _onData(String line) {
+    if (line.startsWith('event: endpoint')) {
+      return;
+    }
+    if (line.startsWith('data: ')) {
+      final data = line.substring(6);
+      if (_endpoint == null) {
+        final baseUrl = Uri.parse(option.command).replace(path: '').toString();
+        _endpoint = data.startsWith("http") ? data : baseUrl + data;
+        LoggerUtil.logger.d('JsonRpcResponse: $_endpoint');
+        return;
+      }
+      try {
+        final jsonData = jsonDecode(data);
+        final message = McpJsonRpcResponse.fromJson(jsonData);
+        _handleMessage(message);
+      } catch (e, stack) {
+        LoggerUtil.logger.e('Unknown error: $e\n$stack');
+      }
+    }
+  }
+
+  Future<McpJsonRpcResponse> _ping() async {
+    final message = McpJsonRpcRequest(method: McpMethod.ping.value);
+    return _request(message);
+  }
+
+  Future<McpJsonRpcResponse> _request(McpJsonRpcRequest message) async {
+    final completer = Completer<McpJsonRpcResponse>();
+    _requests[message.id] = completer;
+
+    try {
+      await _writeRequest(message.toJson());
+      return completer.future;
+      // return await completer.future.timeout(
+      //   const Duration(seconds: 30),
+      //   onTimeout: () {
+      //     _requests.remove(message.id);
+      //     throw TimeoutException('请求超时: ${message.id}');
+      //   },
+      // );
+    } catch (e) {
+      _requests.remove(message.id);
+      rethrow;
+    }
+  }
+
+  Future<void> _setup() async {
+    try {
       final client = HttpClient();
-      final request = await client.getUrl(Uri.parse(option.command));
+      var uri = Uri.parse(option.command);
+      LoggerUtil.logger.d('Start: ${option.command}');
+      final request = await client.getUrl(uri);
       request.headers.set('Accept', 'text/event-stream');
       request.headers.set('Cache-Control', 'no-cache');
       request.headers.set('Connection', 'keep-alive');
-
       final response = await request.close();
-
       if (response.statusCode != 200) {
-        throw Exception('SSE 连接失败: ${response.statusCode}');
+        LoggerUtil.logger.d('Start error: ${response.statusCode}');
+        throw Exception('Start error: ${response.statusCode}');
       }
 
-      _sseSubscription = response
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-        (String line) {
-          if (line.startsWith('event: endpoint')) {
-            return;
-          }
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6);
-            if (_messageEndpoint == null) {
-              final baseUrl =
-                  Uri.parse(option.command).replace(path: '').toString();
-              _messageEndpoint =
-                  data.startsWith("http") ? data : baseUrl + data;
-              LoggerUtil.logger.d('收到消息端点: $_messageEndpoint');
-            } else {
-              try {
-                final jsonData = jsonDecode(data);
-                final message = McpJsonRpcResponse.fromJson(jsonData);
-                _handleMessage(message);
-              } catch (e, stack) {
-                LoggerUtil.logger.d('解析服务器消息失败: $e\n$stack');
-              }
-            }
-          }
-        },
-        onError: (error) {
-          LoggerUtil.logger.d('SSE 连接错误: $error');
-        },
-        onDone: () {
-          LoggerUtil.logger.d('SSE 连接已关闭');
-        },
+      const lineSplitter = LineSplitter();
+      var stream = response.transform(utf8.decoder).transform(lineSplitter);
+      _subscription = stream.listen(
+        _onData,
+        onError: (error) => LoggerUtil.logger.e(error),
       );
     } catch (e, stack) {
       LoggerUtil.logger.d('SSE 连接失败: $e\n$stack');
@@ -74,102 +158,18 @@ class McpSseClient {
     }
   }
 
-  Future<McpJsonRpcResponse> request(McpJsonRpcRequest message) async {
-    final completer = Completer<McpJsonRpcResponse>();
-    _pendingRequests[message.id] = completer;
-
+  Future<void> _writeRequest(Map<String, dynamic> data) async {
+    if (_endpoint == null) {
+      LoggerUtil.logger.e('Endpoint is not set');
+      throw StateError('Endpoint is not set');
+    }
     try {
-      await _sendHttpPost(message.toJson());
-      return await completer.future.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          _pendingRequests.remove(message.id);
-          throw TimeoutException('请求超时: ${message.id}');
-        },
-      );
+      var uri = Uri.parse(_endpoint!);
+      var headers = {'Content-Type': 'application/json'};
+      await post(uri, body: data, headers: headers);
     } catch (e) {
-      _pendingRequests.remove(message.id);
+      LoggerUtil.logger.e('Http error: $e');
       rethrow;
     }
-  }
-
-  Future<McpJsonRpcResponse> sendInitialize() async {
-    final initMessage = McpJsonRpcRequest(
-      method: 'initialize',
-      params: {
-        'protocolVersion': '2024-11-05',
-        'capabilities': {
-          'roots': {'listChanged': true},
-          'sampling': {},
-        },
-        'clientInfo': {'name': 'DartMCPClient', 'version': '1.0.0'},
-      },
-    );
-
-    LoggerUtil.logger.d('初始化请求: ${jsonEncode(initMessage.toString())}');
-
-    final initResponse = await request(initMessage);
-    LoggerUtil.logger.d('初始化请求响应: $initResponse');
-
-    final notifyMessage = McpJsonRpcNotification(
-      method: 'initialized',
-      params: {},
-    );
-
-    await _sendHttpPost(notifyMessage.toJson());
-    return initResponse;
-  }
-
-  Future<McpJsonRpcResponse> sendPing() async {
-    final message = McpJsonRpcRequest(method: 'ping');
-    return request(message);
-  }
-
-  Future<McpJsonRpcResponse> sendToolCall({
-    required String name,
-    required Map<String, dynamic> arguments,
-    String? id,
-  }) async {
-    final message = McpJsonRpcRequest(
-      method: 'tools/call',
-      params: {
-        'name': name,
-        'arguments': arguments,
-        '_meta': {'progressToken': 0},
-      },
-    );
-
-    return request(message);
-  }
-
-  Future<McpJsonRpcResponse> sendToolList() async {
-    final message = McpJsonRpcRequest(method: 'tools/list');
-    return request(message);
-  }
-
-  void _handleMessage(McpJsonRpcResponse message) {
-    if (_pendingRequests.containsKey(message.id)) {
-      final completer = _pendingRequests.remove(message.id);
-      completer?.complete(message);
-    }
-  }
-
-  Future<void> _sendHttpPost(Map<String, dynamic> data) async {
-    // if (_messageEndpoint == null) {
-    //   throw StateError('消息端点尚未初始化 ${jsonEncode(data)}');
-    // }
-
-    // await _writeLock.synchronized(() async {
-    //   try {
-    //     await Dio().post(
-    //       _messageEndpoint!,
-    //       data: jsonEncode(data),
-    //       options: Options(headers: {'Content-Type': 'application/json'}),
-    //     );
-    //   } catch (e) {
-    //     LoggerUtil.logger.d('发送 HTTP POST 失败: $e');
-    //     rethrow;
-    //   }
-    // });
   }
 }
