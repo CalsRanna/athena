@@ -34,6 +34,7 @@ class McpStdioClient {
   Future<void> initialize() async {
     await _setup();
     await _initialize();
+    _ping();
   }
 
   Future<List<McpTool>> listTools() async {
@@ -43,36 +44,6 @@ class McpStdioClient {
     return result
         .map((item) => McpTool.fromJson(item as Map<String, dynamic>))
         .toList();
-  }
-
-  Future<void> notify(McpJsonRpcNotification notification) async {
-    LoggerUtil.logger.d('RpcJsonNotification: $notification');
-    await ProcessUtil.writeNotification(_process, notification);
-  }
-
-  Future<McpJsonRpcResponse> _request(McpJsonRpcRequest request) async {
-    LoggerUtil.logger.d('RpcJsonRequest: $request');
-    final completer = Completer<McpJsonRpcResponse>();
-    _requests[request.id] = completer;
-    try {
-      await ProcessUtil.writeRequest(_process, request);
-      return completer.future;
-      // return await completer.future.timeout(
-      //   const Duration(seconds: 30),
-      //   onTimeout: () {
-      //     _requests.remove(request.id);
-      //     throw TimeoutException('Request timed out: ${request.id}');
-      //   },
-      // );
-    } catch (e) {
-      _requests.remove(request.id);
-      rethrow;
-    }
-  }
-
-  Future<McpJsonRpcResponse> ping() async {
-    final message = McpJsonRpcRequest(method: McpMethod.ping.value);
-    return _request(message);
   }
 
   Future<void> _initialize() async {
@@ -93,9 +64,39 @@ class McpStdioClient {
       final notification = McpJsonRpcNotification(
         method: McpMethod.notificationsInitialized.value,
       );
-      await notify(notification);
+      await _notify(notification);
     } catch (e) {
       LoggerUtil.logger.e(e);
+      rethrow;
+    }
+  }
+
+  Future<void> _notify(McpJsonRpcNotification notification) async {
+    LoggerUtil.logger.d('RpcJsonNotification: $notification');
+    await ProcessUtil.writeNotification(_process, notification);
+  }
+
+  Future<McpJsonRpcResponse> _ping() async {
+    final message = McpJsonRpcRequest(method: McpMethod.ping.value);
+    return _request(message);
+  }
+
+  Future<McpJsonRpcResponse> _request(McpJsonRpcRequest request) async {
+    LoggerUtil.logger.d('RpcJsonRequest: $request');
+    final completer = Completer<McpJsonRpcResponse>();
+    _requests[request.id] = completer;
+    try {
+      await ProcessUtil.writeRequest(_process, request);
+      return completer.future;
+      // return await completer.future.timeout(
+      //   const Duration(seconds: 30),
+      //   onTimeout: () {
+      //     _requests.remove(request.id);
+      //     throw TimeoutException('Request timed out: ${request.id}');
+      //   },
+      // );
+    } catch (e) {
+      _requests.remove(request.id);
       rethrow;
     }
   }
@@ -119,7 +120,7 @@ class McpStdioClient {
         LoggerUtil.logger.e('Stderr: $error');
       });
     } catch (e, stack) {
-      LoggerUtil.logger.d('启动进程失败: $e\n$stack');
+      LoggerUtil.logger.d('Start error: $e\n$stack');
       rethrow;
     }
   }
