@@ -32,6 +32,11 @@ class _DesktopChatConfigurationSheetState
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
+    var temperatureChildren = [
+      Text('Temperature', style: labelTextStyle),
+      const Spacer(),
+      Text(temperature.toStringAsFixed(1), style: labelTextStyle),
+    ];
     var temperatureSlider = Slider(
       activeColor: ColorUtil.FFA7BA88,
       inactiveColor: ColorUtil.FFFFFFFF,
@@ -43,6 +48,11 @@ class _DesktopChatConfigurationSheetState
       thumbColor: ColorUtil.FFA7BA88,
       value: temperature,
     );
+    var contextChildren = [
+      Text('Context', style: labelTextStyle),
+      const Spacer(),
+      Text(_context.toStringAsFixed(0), style: labelTextStyle),
+    ];
     var contextSlider = Slider(
       activeColor: ColorUtil.FFA7BA88,
       inactiveColor: ColorUtil.FFFFFFFF,
@@ -59,11 +69,11 @@ class _DesktopChatConfigurationSheetState
       children: [
         Text('Model Configuration', style: moduleTextStyle),
         const SizedBox(height: 12),
-        Text('Temperature', style: labelTextStyle),
+        Row(children: temperatureChildren),
         const SizedBox(height: 12),
         temperatureSlider,
         const SizedBox(height: 12),
-        Text('Context', style: labelTextStyle),
+        Row(children: contextChildren),
         const SizedBox(height: 12),
         contextSlider,
       ],
