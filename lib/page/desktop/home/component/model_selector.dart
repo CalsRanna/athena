@@ -122,7 +122,6 @@ class _DesktopModelSelectDialogTileState
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
-
     var functionCallIcon = Icon(
       HugeIcons.strokeRoundedFunctionCircle,
       color: ColorUtil.FFE0E0E0,

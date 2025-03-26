@@ -235,7 +235,7 @@ class ChatViewModel extends ViewModel {
     var messagesProvider = messagesNotifierProvider(latestChat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var servers = await ref.read(serversNotifierProvider.future);
-    var completionTools = await _getChatCompletionTools();
+    var completionTools = await _getChatCompletionTools(model);
     var systemMessage = ChatCompletionMessage.system(content: sentinel.prompt);
     var historyMessages = await _getHistoryMessages(latestChat);
     Map<int, ToolCall> toolCalls = {};
@@ -391,7 +391,8 @@ class ChatViewModel extends ViewModel {
     );
   }
 
-  Future<List<ChatCompletionTool>> _getChatCompletionTools() async {
+  Future<List<ChatCompletionTool>> _getChatCompletionTools(Model model) async {
+    if (!model.supportFunctionCall) return [];
     List<ChatCompletionTool> completionTools = [];
     var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
     for (var mcpTool in mcpTools) {
