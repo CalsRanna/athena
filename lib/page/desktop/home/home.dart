@@ -261,7 +261,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       controller: controller,
       onChatConfigurationButtonTapped: updateShowRightSheet,
       onModelChanged: updateModel,
-      onSearchDecisionChanged: updateEnableSearch,
       onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
     );

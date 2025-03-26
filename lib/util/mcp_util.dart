@@ -13,6 +13,7 @@ class McpUtil {
   static Future<List<McpTool>> getMcpTools(List<Server> servers) async {
     List<McpTool> combinedTools = [];
     for (var server in servers) {
+      if (!server.enabled) continue;
       if (!clients.containsKey(server.name)) {
         var environments = server.environments;
         if (environments.isEmpty) environments = '{}';

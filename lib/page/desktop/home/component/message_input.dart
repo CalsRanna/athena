@@ -1,8 +1,6 @@
-import 'package:athena/page/desktop/home/component/information_indicator.dart';
-import 'package:athena/page/desktop/home/component/mcp_tool_indicator.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
-import 'package:athena/page/desktop/home/component/search_decision_toggle.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
+import 'package:athena/page/desktop/home/component/server_selector.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
@@ -18,7 +16,6 @@ class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function()? onChatConfigurationButtonTapped;
   final void Function(Model)? onModelChanged;
-  final void Function(bool)? onSearchDecisionChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
   const DesktopMessageInput({
@@ -27,7 +24,6 @@ class DesktopMessageInput extends StatelessWidget {
     required this.controller,
     this.onChatConfigurationButtonTapped,
     this.onModelChanged,
-    this.onSearchDecisionChanged,
     this.onSentinelChanged,
     this.onSubmitted,
   });
@@ -37,18 +33,12 @@ class DesktopMessageInput extends StatelessWidget {
     var toolbarChildren = [
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
-      DesktopChatSearchDecisionButton(
-        chat: chat,
-        onTap: onSearchDecisionChanged,
-      ),
+      DesktopServerSelector(),
       _ChatConfigurationButton(
         chat: chat,
         onTap: onChatConfigurationButtonTapped,
       ),
       // Icon(HugeIcons.strokeRoundedImage01),
-      DesktopInformationIndicator(),
-      const Spacer(),
-      DesktopMcpToolIndicator(),
     ];
     var toolbar = IconTheme.merge(
       data: IconThemeData(color: ColorUtil.FF616161, size: 24),

@@ -22,6 +22,23 @@ final serversNotifierProvider =
 );
 
 typedef _$ServersNotifier = AutoDisposeAsyncNotifier<List<Server>>;
+String _$enabledServersNotifierHash() =>
+    r'95440c189340e5d561c7c7618ebf64db530e112a';
+
+/// See also [EnabledServersNotifier].
+@ProviderFor(EnabledServersNotifier)
+final enabledServersNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    EnabledServersNotifier, List<Server>>.internal(
+  EnabledServersNotifier.new,
+  name: r'enabledServersNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$enabledServersNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$EnabledServersNotifier = AutoDisposeAsyncNotifier<List<Server>>;
 String _$serverNotifierHash() => r'33712914d636dde2424c910ac8c074daae8d8097';
 
 /// Copied from Dart SDK

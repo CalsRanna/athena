@@ -6,10 +6,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'server.g.dart';
 
 @riverpod
-class ServersNotifier extends _$ServersNotifier {
+class EnabledServersNotifier extends _$EnabledServersNotifier {
   @override
   Future<List<Server>> build() async {
-    return isar.servers.where().findAll();
+    var servers = await ref.watch(serversNotifierProvider.future);
+    return servers.where((server) => server.enabled).toList();
   }
 }
 
@@ -21,5 +22,13 @@ class ServerNotifier extends _$ServerNotifier {
     var server = await builder.findFirst();
     if (server == null) throw Exception('Server not found');
     return server;
+  }
+}
+
+@riverpod
+class ServersNotifier extends _$ServersNotifier {
+  @override
+  Future<List<Server>> build() async {
+    return isar.servers.where().findAll();
   }
 }
