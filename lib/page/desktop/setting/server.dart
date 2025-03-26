@@ -9,6 +9,7 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/switch.dart';
+import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ class _DesktopSettingServerPageState
   String result = '';
   final commandController = TextEditingController();
   final argumentsController = TextEditingController();
+  final environmentsController = TextEditingController();
 
   late final viewModel = ServerViewModel(ref);
 
@@ -51,6 +53,7 @@ class _DesktopSettingServerPageState
     if (servers.isEmpty) return;
     commandController.text = servers[index].command;
     argumentsController.text = servers[index].arguments;
+    environmentsController.text = servers[index].environments;
   }
 
   Future<void> debug() async {
@@ -67,6 +70,7 @@ class _DesktopSettingServerPageState
   void dispose() {
     commandController.dispose();
     argumentsController.dispose();
+    environmentsController.dispose();
     super.dispose();
   }
 
@@ -102,30 +106,52 @@ class _DesktopSettingServerPageState
     viewModel.updateServer(copiedServer);
   }
 
+  Future<void> updateEnvironments() async {
+    var provider = serversNotifierProvider;
+    var servers = await ref.read(provider.future);
+    if (servers.isEmpty) return;
+    var copiedServer = servers[index].copyWith(
+      environments: environmentsController.text,
+    );
+    viewModel.updateServer(copiedServer);
+  }
+
   Widget _buildServerListView() {
     var provider = serversNotifierProvider;
     var servers = ref.watch(provider).value;
     if (servers == null) return const SizedBox();
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
-    var listView = ListView.separated(
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
+    Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, index) => _buildServerTile(servers, index),
       itemCount: servers.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
+    if (servers.isEmpty) {
+      var textStyle = TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        decoration: TextDecoration.none,
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+      );
+      child = Center(child: Text('No MCP Servers', style: textStyle));
+    }
     return Container(
       decoration: BoxDecoration(border: Border(right: borderSide)),
       width: 240,
-      child: listView,
+      child: child,
     );
   }
 
   Widget _buildServerTile(List<Server> servers, int index) {
+    var tag = AthenaTag.small(fontSize: 6, text: 'ON');
     return DesktopMenuTile(
       active: this.index == index,
       label: servers[index].name,
       onTap: () => changeServer(index),
+      trailing: servers[index].enabled ? tag : null,
     );
   }
 
@@ -163,6 +189,14 @@ class _DesktopSettingServerPageState
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Arguments')),
       Expanded(child: argumentsInput)
     ];
+    var environmentsInput = AthenaInput(
+      controller: environmentsController,
+      onBlur: updateEnvironments,
+    );
+    var environmentsChildren = [
+      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Environments')),
+      Expanded(child: environmentsInput)
+    ];
     var descriptionTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,
       fontSize: 12,
@@ -193,6 +227,8 @@ class _DesktopSettingServerPageState
       Row(children: commandChildren),
       const SizedBox(height: 12),
       Row(children: argumentsChildren),
+      const SizedBox(height: 12),
+      Row(children: environmentsChildren),
       if (servers[index].description.isNotEmpty) const SizedBox(height: 12),
       if (servers[index].description.isNotEmpty) descriptionText,
       const SizedBox(height: 12),
@@ -211,5 +247,6 @@ class _DesktopSettingServerPageState
     if (servers.isEmpty) return;
     commandController.text = servers[index].command;
     argumentsController.text = servers[index].arguments;
+    environmentsController.text = servers[index].environments;
   }
 }

@@ -8,6 +8,7 @@ import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:hugeicons/hugeicons.dart';
 
 class DesktopModelIndicator extends ConsumerWidget {
   final Chat chat;
@@ -43,6 +44,21 @@ class _ModelIndicator extends StatelessWidget {
       '${model.name} | ${provider.name}',
       style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
     );
+    var functionCallIcon = Icon(
+      HugeIcons.strokeRoundedFunctionCircle,
+      color: ColorUtil.FFE0E0E0,
+      size: 14,
+    );
+    var thinkIcon = Icon(
+      HugeIcons.strokeRoundedBrain02,
+      color: ColorUtil.FFE0E0E0,
+      size: 14,
+    );
+    var visualRecognitionIcon = Icon(
+      HugeIcons.strokeRoundedVision,
+      color: ColorUtil.FFE0E0E0,
+      size: 14,
+    );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
       color: ColorUtil.FF161616,
@@ -50,7 +66,15 @@ class _ModelIndicator extends StatelessWidget {
     var innerContainer = Container(
       decoration: innerBoxDecoration,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-      child: text,
+      child: Row(
+        spacing: 8,
+        children: [
+          text,
+          if (model.supportFunctionCall) functionCallIcon,
+          if (model.supportThinking) thinkIcon,
+          if (model.supportVisualRecognition) visualRecognitionIcon,
+        ],
+      ),
     );
     var colors = [
       ColorUtil.FFEAEAEA.withValues(alpha: 0.17),

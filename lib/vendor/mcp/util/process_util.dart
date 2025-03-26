@@ -26,12 +26,9 @@ class ProcessUtil {
     process.kill();
   }
 
-  static void listenStderr(Process process) {
+  static void listenStderr(Process process, void Function(String) onData) {
     var stream = process.stderr.transform(utf8.decoder);
-    stream.listen(
-      (error) => LoggerUtil.logger.e(error),
-      onError: (error) => LoggerUtil.logger.e(error),
-    );
+    stream.listen(onData, onError: (error) => LoggerUtil.logger.e(error));
   }
 
   static void listenStdout(Process process, void Function(String) onData) {
@@ -56,6 +53,7 @@ class ProcessUtil {
     var environment = Map<String, String>.from(Platform.environment);
     environment['PATH'] = defaultPath;
     environment.addAll(option.env);
+    LoggerUtil.logger.d('Environments: $environment');
     return LocalProcessManager().start(
       command,
       environment: environment,

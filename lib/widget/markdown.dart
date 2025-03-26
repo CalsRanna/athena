@@ -99,9 +99,15 @@ class _CodeBuilder extends MarkdownElementBuilder {
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
     var attribute = element.attributes['class'] ?? '';
+    var text = Text(
+      attribute.replaceAll('language-', ''),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
     var children = [
-      Text(attribute.replaceAll('language-', ''), style: textStyle),
-      Spacer(),
+      Expanded(child: text),
+      const SizedBox(width: 12),
       CopyButton(onTap: () => handleTap(element.textContent)),
     ];
     return Container(

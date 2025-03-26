@@ -115,7 +115,9 @@ class McpStdioClient {
           LoggerUtil.logger.e('Unknown error: $e\n$stack');
         }
       });
-      ProcessUtil.listenStderr(_process);
+      ProcessUtil.listenStderr(_process, (error) {
+        LoggerUtil.logger.e('Stderr: $error');
+      });
     } catch (e, stack) {
       LoggerUtil.logger.d('启动进程失败: $e\n$stack');
       rethrow;
