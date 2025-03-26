@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena/model/tool_call.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/vendor/mcp/client/stdio_client.dart';
@@ -12,9 +14,12 @@ class McpUtil {
     List<McpTool> combinedTools = [];
     for (var server in servers) {
       if (!clients.containsKey(server.name)) {
+        var environments = server.environments;
+        if (environments.isEmpty) environments = '{}';
         var json = {
           'command': server.command,
           'args': server.arguments.split(' '),
+          'env': jsonDecode(environments)
         };
         var option = McpServerOption.fromJson(json);
         clients[server.name] = McpStdioClient(option: option);
