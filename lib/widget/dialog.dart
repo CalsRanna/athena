@@ -19,6 +19,7 @@ class AthenaDialog {
   static void loading() {
     var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
     showDialog(
+      barrierDismissible: false,
       context: globalKey.currentContext!,
       builder: (context) => Center(child: indicator),
     );

@@ -3,14 +3,12 @@ import 'package:flutter/widgets.dart';
 
 class DesktopMessageContextMenu extends StatelessWidget {
   final Offset offset;
-  final void Function()? onBarrierTapped;
   final void Function()? onCopied;
   final void Function()? onDestroyed;
 
   const DesktopMessageContextMenu({
     super.key,
     required this.offset,
-    this.onBarrierTapped,
     this.onCopied,
     this.onDestroyed,
   });
@@ -21,10 +19,6 @@ class DesktopMessageContextMenu extends StatelessWidget {
       DesktopContextMenuTile(text: 'Copy', onTap: onCopied),
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
     ];
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onBarrierTapped,
-      children: children,
-    );
+    return DesktopContextMenu(offset: offset, children: children);
   }
 }

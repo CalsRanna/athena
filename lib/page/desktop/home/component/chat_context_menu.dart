@@ -3,18 +3,16 @@ import 'package:flutter/widgets.dart';
 
 class DesktopChatContextMenu extends StatelessWidget {
   final Offset offset;
-  final void Function()? onBarrierTapped;
   final void Function()? onDestroyed;
-  final void Function()? onImageExported;
+  final void Function()? onExportedImage;
   final void Function()? onRenamed;
   final double? width;
 
   const DesktopChatContextMenu({
     super.key,
     required this.offset,
-    this.onBarrierTapped,
     this.onDestroyed,
-    this.onImageExported,
+    this.onExportedImage,
     this.onRenamed,
     this.width,
   });
@@ -24,11 +22,10 @@ class DesktopChatContextMenu extends StatelessWidget {
     var children = [
       DesktopContextMenuTile(text: 'Rename', onTap: onRenamed),
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
-      DesktopContextMenuTile(text: 'Export Image', onTap: onImageExported),
+      DesktopContextMenuTile(text: 'Export Image', onTap: onExportedImage),
     ];
     return DesktopContextMenu(
       offset: offset,
-      onBarrierTapped: onBarrierTapped,
       width: 140,
       children: children,
     );

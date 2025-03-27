@@ -1,10 +1,11 @@
+import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/view_model/chat.dart';
-import 'package:athena/component/message_list_tile.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,8 +28,7 @@ class DesktopMessageList extends ConsumerStatefulWidget {
 }
 
 class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
-  OverlayEntry? entry;
-
+  late final viewModel = ChatViewModel(ref);
   @override
   Widget build(BuildContext context) {
     var provider = messagesNotifierProvider(widget.chat.id);
@@ -40,28 +40,20 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
   }
 
   void copyMessage(Message message) {
-    entry?.remove();
     Clipboard.setData(ClipboardData(text: message.content));
   }
 
   void destroyMessage(Message message) {
-    entry?.remove();
-    ChatViewModel(ref).destroyMessage(message);
+    viewModel.destroyMessage(message);
   }
 
   void openContextMenu(TapUpDetails details, Message message) {
     var contextMenu = DesktopMessageContextMenu(
       offset: details.globalPosition,
-      onBarrierTapped: removeEntry,
       onCopied: () => copyMessage(message),
       onDestroyed: () => destroyMessage(message),
     );
-    entry = OverlayEntry(builder: (context) => contextMenu);
-    Overlay.of(context).insert(entry!);
-  }
-
-  void removeEntry() {
-    entry?.remove();
+    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
   Widget _buildData(List<Message> messages) {

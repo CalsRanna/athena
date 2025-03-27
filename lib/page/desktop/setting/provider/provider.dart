@@ -10,6 +10,7 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/view_model/provider.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -34,13 +35,13 @@ class DesktopSettingProviderPage extends ConsumerStatefulWidget {
 
 class _DesktopSettingProviderPageState
     extends ConsumerState<DesktopSettingProviderPage> {
-  OverlayEntry? entry;
   String model = '';
   int index = 0;
   final keyController = TextEditingController();
   final urlController = TextEditingController();
 
-  late final viewModel = ProviderViewModel(ref);
+  late final modelViewModel = ModelViewModel(ref);
+  late final providerViewModel = ProviderViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
@@ -71,9 +72,12 @@ class _DesktopSettingProviderPageState
     viewModel.checkConnection(model);
   }
 
+  void createModel(Provider provider) {
+    AthenaDialog.show(DesktopModelFormDialog(provider: provider));
+  }
+
   Future<void> destroyProvider(Provider provider) async {
-    entry?.remove();
-    await viewModel.destroyProvider(provider);
+    await providerViewModel.destroyProvider(provider);
     setState(() {
       index = 0;
     });
@@ -86,55 +90,40 @@ class _DesktopSettingProviderPageState
     super.dispose();
   }
 
+  Future<void> editModel(Model model) async {
+    var providerProvider = providerNotifierProvider(model.providerId);
+    var provider = await ref.read(providerProvider.future);
+    AthenaDialog.show(DesktopModelFormDialog(provider: provider, model: model));
+  }
+
   @override
   void initState() {
     super.initState();
     _initState();
   }
 
-  void removeEntry() {
-    if (entry != null) {
-      entry!.remove();
-      entry = null;
-    }
-  }
-
-  Future<void> showModelContextMenu(TapUpDetails details, Model model) async {
-    var provider = providersNotifierProvider;
-    var providers = await ref.read(provider.future);
-    if (providers.isEmpty) return;
+  Future<void> openModelContextMenu(TapUpDetails details, Model model) async {
     var contextMenu = DesktopModelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
-      onTap: removeEntry,
-      model: model,
-      provider: providers[index],
+      onDestroyed: () => modelViewModel.destroyModel(model),
+      onEdited: () => editModel(model),
     );
-    entry = OverlayEntry(builder: (_) => contextMenu);
     if (!mounted) return;
-    Overlay.of(context).insert(entry!);
+    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  Future<void> showModelFormDialog() async {
-    var provider = providersNotifierProvider;
-    var providers = await ref.read(provider.future);
-    AthenaDialog.show(DesktopModelFormDialog(provider: providers[index]));
-  }
-
-  void showProviderContextMenu(TapUpDetails details, Provider provider) {
+  void openProviderContextMenu(TapUpDetails details, Provider provider) {
     if (provider.isPreset) return;
     var contextMenu = DesktopProviderContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyProvider(provider),
-      onEdited: () => showProviderFormDialog(provider),
-      onTap: removeEntry,
-      provider: provider,
+      onEdited: () => openProviderFormDialog(provider),
     );
-    entry = OverlayEntry(builder: (_) => contextMenu);
-    Overlay.of(context).insert(entry!);
+    if (!mounted) return;
+    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  void showProviderFormDialog(Provider provider) async {
-    entry?.remove();
+  void openProviderFormDialog(Provider provider) async {
     AthenaDialog.show(DesktopProviderFormDialog(provider: provider));
   }
 
@@ -143,7 +132,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.watch(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(enabled: value);
-    return viewModel.updateProvider(copiedProvider);
+    return providerViewModel.updateProvider(copiedProvider);
   }
 
   Future<void> updateKey() async {
@@ -151,7 +140,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(key: keyController.text);
-    await viewModel.updateProvider(copiedProvider);
+    await providerViewModel.updateProvider(copiedProvider);
   }
 
   Future<void> updateUrl() async {
@@ -159,7 +148,7 @@ class _DesktopSettingProviderPageState
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
     var copiedProvider = providers[index].copyWith(url: urlController.text);
-    await viewModel.updateProvider(copiedProvider);
+    await providerViewModel.updateProvider(copiedProvider);
   }
 
   List<Widget> _buildModelListView(List<Model>? models) {
@@ -168,9 +157,9 @@ class _DesktopSettingProviderPageState
     List<Widget> children = [];
     for (var model in models) {
       var child = _ModelTile(
-        onSecondaryTap: (details) => showModelContextMenu(details, model),
-        onTap: () => checkConnection(model),
         model: model,
+        onSecondaryTap: (details) => openModelContextMenu(details, model),
+        onTap: () => checkConnection(model),
       );
       children.add(child);
     }
@@ -202,7 +191,7 @@ class _DesktopSettingProviderPageState
     return DesktopMenuTile(
       active: this.index == index,
       label: provider.name,
-      onSecondaryTap: (details) => showProviderContextMenu(details, provider),
+      onSecondaryTap: (details) => openProviderContextMenu(details, provider),
       onTap: () => changeProvider(index),
       trailing: provider.enabled ? tag : null,
     );
@@ -241,7 +230,7 @@ class _DesktopSettingProviderPageState
     );
     var modelText = Text('Models', style: modelTextStyle);
     var addModelButton = AthenaTextButton(
-      onTap: showModelFormDialog,
+      onTap: () => createModel(providers[index]),
       text: 'New',
     );
     var addModelChildren = [modelText, const Spacer(), addModelButton];
@@ -287,10 +276,10 @@ class _DesktopSettingProviderPageState
 }
 
 class _ModelTile extends StatefulWidget {
+  final Model model;
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
-  final Model model;
-  const _ModelTile({this.onSecondaryTap, this.onTap, required this.model});
+  const _ModelTile({required this.model, this.onSecondaryTap, this.onTap});
 
   @override
   _ModelTileState createState() => _ModelTileState();
