@@ -179,7 +179,7 @@ class _SentinelSelectDialog extends ConsumerWidget {
     List<Widget> children =
         servers.map((server) => _itemBuilder(ref, server)).toList();
     return ConstrainedBox(
-      constraints: BoxConstraints.loose(Size(500, 600)),
+      constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
   }

@@ -57,7 +57,7 @@ class _DesktopInformationDialog extends StatelessWidget {
       child: listView,
     );
     var constrainedBox = ConstrainedBox(
-      constraints: BoxConstraints.loose(Size(500, 600)),
+      constraints: BoxConstraints.loose(Size(520, 640)),
       child: defaultTextStyle,
     );
     var boxDecoration = BoxDecoration(

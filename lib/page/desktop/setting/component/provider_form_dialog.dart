@@ -45,8 +45,9 @@ class _DesktopProviderFormDialogState
       onTap: cancelDialog,
       child: icon,
     );
+    var text = widget.provider == null ? 'Add Provider' : 'Edit Provider';
     var titleChildren = [
-      Text('Add Provider', style: titleTextStyle),
+      Text(text, style: titleTextStyle),
       Spacer(),
       closeButton,
     ];
@@ -69,7 +70,7 @@ class _DesktopProviderFormDialogState
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
-      width: 480,
+      width: 520,
       child: column,
     );
     return Dialog(
