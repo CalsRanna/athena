@@ -1,5 +1,6 @@
 import 'package:athena/page/desktop/home/component/chat_configuration_sheet.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
+import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/model_indicator.dart';
@@ -97,6 +98,13 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     controller.dispose();
     scrollController.dispose();
     super.dispose();
+  }
+
+  void exportImage(Chat chat) {
+    AthenaDialog.show(
+      DesktopImageExportDialog(chat: chat),
+      barrierDismissible: true,
+    );
   }
 
   @override
@@ -211,6 +219,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   Widget _buildLeftBar() {
     var chatListView = DesktopChatListView(
       onDestroyed: destroyChat,
+      onExportedImage: exportImage,
       onRenamed: viewModel.renameChat,
       onSelected: changeChat,
       selectedChat: chat,

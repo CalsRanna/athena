@@ -4,13 +4,11 @@ import 'package:flutter/services.dart';
 
 class DesktopContextMenu extends StatelessWidget {
   final Offset offset;
-  final void Function()? onBarrierTapped;
   final double width;
   final List<Widget> children;
   const DesktopContextMenu({
     super.key,
     required this.offset,
-    this.onBarrierTapped,
     this.width = 120,
     required this.children,
   });
@@ -23,10 +21,14 @@ class DesktopContextMenu extends StatelessWidget {
     ];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTap: onBarrierTapped,
-      onTap: onBarrierTapped,
+      onSecondaryTap: dismissContextMenu,
+      onTap: dismissContextMenu,
       child: Stack(children: children),
     );
+  }
+
+  void dismissContextMenu() {
+    DesktopContextMenuManager.instance.dismiss();
   }
 
   Widget _buildMenu(BuildContext context) {
@@ -110,9 +112,14 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
+      onTap: handleTap,
       child: mouseRegion,
     );
+  }
+
+  void handleTap() {
+    DesktopContextMenuManager.instance.dismiss();
+    widget.onTap?.call();
   }
 
   void handleEnter(PointerEnterEvent _) {
@@ -125,5 +132,20 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
     setState(() {
       hover = false;
     });
+  }
+}
+
+class DesktopContextMenuManager {
+  OverlayEntry? _entry;
+  static DesktopContextMenuManager instance = DesktopContextMenuManager();
+  void show(BuildContext context, Widget contextMenu) {
+    if (_entry != null) _entry!.remove();
+    _entry = OverlayEntry(builder: (_) => contextMenu);
+    Overlay.of(context).insert(_entry!);
+  }
+
+  void dismiss() {
+    _entry?.remove();
+    _entry = null;
   }
 }

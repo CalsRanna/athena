@@ -54,9 +54,7 @@ class AthenaApp extends StatefulWidget {
 
 class _AthenaAppState extends State<AthenaApp> with WindowListener {
   final SystemTray tray = SystemTray();
-  final router = AppRouter(
-    navigatorKey: globalKey,
-  );
+  final router = AppRouter(navigatorKey: globalKey);
 
   @override
   Widget build(BuildContext context) {

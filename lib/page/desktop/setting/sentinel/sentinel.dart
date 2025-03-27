@@ -1,7 +1,10 @@
 import 'package:athena/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena/provider/sentinel.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/sentinel.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -31,19 +34,12 @@ class DesktopSettingSentinelPage extends ConsumerWidget {
   }
 }
 
-class _SentinelTile extends StatefulWidget {
+class _SentinelTile extends ConsumerWidget {
   final Sentinel sentinel;
   const _SentinelTile(this.sentinel);
 
   @override
-  State<_SentinelTile> createState() => _SentinelTileState();
-}
-
-class _SentinelTileState extends State<_SentinelTile> {
-  OverlayEntry? entry;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     const nameTextStyle = TextStyle(
       color: Colors.black,
       fontSize: 14,
@@ -53,7 +49,7 @@ class _SentinelTileState extends State<_SentinelTile> {
     var descriptionText = LayoutBuilder(builder: _buildDescriptionText);
     var children = [
       Text(
-        widget.sentinel.name,
+        sentinel.name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: nameTextStyle,
@@ -76,9 +72,31 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: (details) => showContextMenu(context, details),
+      onSecondaryTapUp: (details) => openContextMenu(context, ref, details),
       child: container,
     );
+  }
+
+  void destroySentinel(BuildContext context, WidgetRef ref) {
+    SentinelViewModel(ref).destroySentinel(sentinel);
+  }
+
+  void navigateSentinelFormPage(BuildContext context) {
+    DesktopSentinelFormRoute(sentinel: sentinel).push(context);
+  }
+
+  void openContextMenu(
+    BuildContext context,
+    WidgetRef ref,
+    TapUpDetails details,
+  ) {
+    if (sentinel.name == 'Athena') return;
+    var contextMenu = DesktopSentinelContextMenu(
+      offset: details.globalPosition - Offset(240, 50),
+      onDestroyed: () => destroySentinel(context, ref),
+      onEdited: () => navigateSentinelFormPage(context),
+    );
+    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
   Widget _buildDescriptionText(
@@ -93,28 +111,10 @@ class _SentinelTileState extends State<_SentinelTile> {
     );
     var maxLines = constraints.maxHeight ~/ 18;
     return Text(
-      widget.sentinel.description,
+      sentinel.description,
       maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
       style: descriptionTextStyle,
     );
-  }
-
-  void removeEntry() {
-    if (entry != null) {
-      entry!.remove();
-      entry = null;
-    }
-  }
-
-  void showContextMenu(BuildContext context, TapUpDetails details) {
-    if (widget.sentinel.name == 'Athena') return;
-    var contextMenu = DesktopSentinelContextMenu(
-      offset: details.globalPosition - Offset(240, 50),
-      onTap: removeEntry,
-      sentinel: widget.sentinel,
-    );
-    entry = OverlayEntry(builder: (_) => contextMenu);
-    Overlay.of(context).insert(entry!);
   }
 }

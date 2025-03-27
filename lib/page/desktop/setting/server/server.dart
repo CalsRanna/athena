@@ -5,6 +5,7 @@ import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/server.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
@@ -28,7 +29,6 @@ class DesktopSettingServerPage extends ConsumerStatefulWidget {
 
 class _DesktopSettingServerPageState
     extends ConsumerState<DesktopSettingServerPage> {
-  OverlayEntry? entry;
   int index = 0;
   String result = '';
   final commandController = TextEditingController();
@@ -70,7 +70,6 @@ class _DesktopSettingServerPageState
   }
 
   Future<void> destroyServer(Server server) async {
-    entry?.remove();
     await viewModel.destroyServer(server);
     setState(() {
       index = 0;
@@ -91,28 +90,17 @@ class _DesktopSettingServerPageState
     _initState();
   }
 
-  void removeEntry() {
-    if (entry != null) {
-      entry!.remove();
-      entry = null;
-    }
+  void openServerFormDialog(Server server) async {
+    AthenaDialog.show(DesktopServerFormDialog(server: server));
   }
 
   void showServerContextMenu(TapUpDetails details, Server server) {
     var contextMenu = DesktopServerContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyServer(server),
-      onEdited: () => showServerFormDialog(server),
-      onTap: removeEntry,
-      server: server,
+      onEdited: () => openServerFormDialog(server),
     );
-    entry = OverlayEntry(builder: (_) => contextMenu);
-    Overlay.of(context).insert(entry!);
-  }
-
-  void showServerFormDialog(Server server) async {
-    entry?.remove();
-    AthenaDialog.show(DesktopServerFormDialog(server: server));
+    DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
   Future<void> toggleServer(bool value) async {
