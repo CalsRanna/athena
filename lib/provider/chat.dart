@@ -92,6 +92,8 @@ class MessagesNotifier extends _$MessagesNotifier {
   Future<void> streaming(
     OverrodeChatCompletionStreamResponseDelta delta,
   ) async {
+    var streaming = ref.read(streamingNotifierProvider);
+    if (!streaming) return;
     final messages = await future;
     var message = messages.last;
     if (message.role == 'user') message = Message()..role = 'assistant';

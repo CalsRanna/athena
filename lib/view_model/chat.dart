@@ -302,6 +302,14 @@ class ChatViewModel extends ViewModel {
     streamingNotifier.close();
   }
 
+  Future<void> terminateStreaming(Chat chat) async {
+    var streamingNotifier = ref.read(streamingNotifierProvider.notifier);
+    streamingNotifier.close();
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    await messagesNotifier.closeStreaming();
+  }
+
   Future<void> updateContext(int context, {required Chat chat}) async {
     var copiedChat = chat.copyWith(context: context);
     await isar.writeTxn(() async {

@@ -1,8 +1,8 @@
 import 'package:athena/page/desktop/home/component/chat_configuration_sheet.dart';
-import 'package:athena/page/desktop/home/component/model_indicator.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
+import 'package:athena/page/desktop/home/component/model_indicator.dart';
 import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart';
@@ -134,6 +134,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     }
   }
 
+  Future<void> terminateStreaming() async {
+    viewModel.terminateStreaming(chat);
+  }
+
   Future<void> updateEnableSearch(bool enabled) async {
     if (viewModel.streaming) {
       AthenaDialog.message('Please wait for the current chat to finish.');
@@ -263,6 +267,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       onModelChanged: updateModel,
       onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
+      onTerminated: terminateStreaming,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

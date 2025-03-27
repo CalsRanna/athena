@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena/provider/chat.dart';
@@ -14,7 +15,6 @@ import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -230,6 +230,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     }
   }
 
+  void terminateStreaming(WidgetRef ref) {
+    var viewModel = ChatViewModel(ref);
+    viewModel.terminateStreaming(widget.chat);
+    setState(() {});
+  }
+
   void updateContext(int value) {
     viewModel.updateContext(value, chat: widget.chat);
     setState(() {
@@ -278,7 +284,10 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
       controller: controller,
       onSubmitted: sendMessage,
     );
-    var sendButton = _SendButton(onTap: sendMessage);
+    var sendButton = _SendButton(
+      onSubmitted: sendMessage,
+      onTerminated: terminateStreaming,
+    );
     final inputChildren = [
       Expanded(child: userInput),
       const SizedBox(width: 16),
@@ -293,8 +302,9 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
 }
 
 class _SendButton extends ConsumerWidget {
-  final void Function(WidgetRef)? onTap;
-  const _SendButton({this.onTap});
+  final void Function(WidgetRef)? onSubmitted;
+  final void Function(WidgetRef)? onTerminated;
+  const _SendButton({this.onSubmitted, this.onTerminated});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -325,8 +335,11 @@ class _SendButton extends ConsumerWidget {
 
   void handleTap(BuildContext context, WidgetRef ref) {
     var viewModel = ChatViewModel(ref);
-    if (viewModel.streaming) return;
-    onTap?.call(ref);
+    if (!viewModel.streaming) {
+      onSubmitted?.call(ref);
+      return;
+    }
+    onTerminated?.call(ref);
   }
 }
 
