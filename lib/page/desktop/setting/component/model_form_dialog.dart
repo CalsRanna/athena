@@ -3,12 +3,12 @@ import 'package:athena/schema/provider.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/checkbox.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
-import 'package:hugeicons/hugeicons.dart';
 
 class DesktopModelFormDialog extends ConsumerStatefulWidget {
   final Model? model;
@@ -24,68 +24,73 @@ class _DesktopModelFormDialogState
     extends ConsumerState<DesktopModelFormDialog> {
   final nameController = TextEditingController();
   final valueController = TextEditingController();
+  final inputController = TextEditingController();
+  final outputController = TextEditingController();
+  var supportFunctionCall = false;
+  var supportThinking = false;
+  var supportVisualRecognition = false;
 
   late final viewModel = ModelViewModel(ref);
 
   @override
   Widget build(BuildContext context) {
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FF282F32,
-    );
     var titleTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
-      color: ColorUtil.FFFFFFFF,
-      size: 24,
-    );
-    var closeButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: cancelDialog,
-      child: icon,
-    );
-    var titleChildren = [
-      Text('Add Model', style: titleTextStyle),
-      Spacer(),
-      closeButton,
-    ];
+    var text = widget.model == null ? 'Add Model' : 'Edit Model';
     var valueChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Id')),
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
       Expanded(child: AthenaInput(controller: valueController))
     ];
     var nameChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
       Expanded(child: AthenaInput(controller: nameController))
     ];
+    var inputChildren = [
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Input Price')),
+      const SizedBox(width: 12),
+      Expanded(child: AthenaInput(controller: inputController))
+    ];
+    var outputChildren = [
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Output Price')),
+      const SizedBox(width: 12),
+      Expanded(child: AthenaInput(controller: outputController))
+    ];
     var children = [
-      Row(children: titleChildren),
+      Text(text, style: titleTextStyle),
       const SizedBox(height: 24),
       Row(children: valueChildren),
       const SizedBox(height: 12),
       Row(children: nameChildren),
       const SizedBox(height: 12),
+      Row(children: inputChildren),
+      const SizedBox(height: 12),
+      Row(children: outputChildren),
+      const SizedBox(height: 12),
+      _buildFeatures(),
+      const SizedBox(height: 12),
       _buildButtons()
     ];
     var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: children,
+    );
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: ColorUtil.FF282F32,
     );
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
-      width: 480,
+      width: 520,
       child: column,
     );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: container,
-    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   void cancelDialog() {
@@ -96,6 +101,8 @@ class _DesktopModelFormDialogState
   void dispose() {
     valueController.dispose();
     nameController.dispose();
+    inputController.dispose();
+    outputController.dispose();
     super.dispose();
   }
 
@@ -104,6 +111,11 @@ class _DesktopModelFormDialogState
     super.initState();
     nameController.text = widget.model?.name ?? '';
     valueController.text = widget.model?.value ?? '';
+    inputController.text = widget.model?.inputPrice ?? '';
+    outputController.text = widget.model?.outputPrice ?? '';
+    supportFunctionCall = widget.model?.supportFunctionCall ?? false;
+    supportThinking = widget.model?.supportThinking ?? false;
+    supportVisualRecognition = widget.model?.supportVisualRecognition ?? false;
   }
 
   Future<void> storeModel() async {
@@ -111,16 +123,44 @@ class _DesktopModelFormDialogState
       var newModel = Model()
         ..name = nameController.text
         ..value = valueController.text
+        ..inputPrice = inputController.text
+        ..outputPrice = outputController.text
+        ..supportFunctionCall = supportFunctionCall
+        ..supportThinking = supportThinking
+        ..supportVisualRecognition = supportVisualRecognition
         ..providerId = widget.provider.id;
       await viewModel.storeModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
         name: nameController.text,
         value: valueController.text,
+        inputPrice: inputController.text,
+        outputPrice: outputController.text,
+        supportFunctionCall: supportFunctionCall,
+        supportThinking: supportThinking,
+        supportVisualRecognition: supportVisualRecognition,
       );
       await viewModel.updateModel(copiedModel);
     }
     AthenaDialog.dismiss();
+  }
+
+  void updateSupportFunctionCall(bool value) {
+    setState(() {
+      supportFunctionCall = value;
+    });
+  }
+
+  void updateSupportThinking(bool value) {
+    setState(() {
+      supportThinking = value;
+    });
+  }
+
+  void updateSupportVisualRecognition(bool value) {
+    setState(() {
+      supportVisualRecognition = value;
+    });
   }
 
   Widget _buildButtons() {
@@ -142,5 +182,42 @@ class _DesktopModelFormDialogState
       mainAxisAlignment: MainAxisAlignment.end,
       children: children,
     );
+  }
+
+  Widget _buildFeatures() {
+    var functionCallCheckbox = AthenaCheckbox(
+      value: supportFunctionCall,
+      onChanged: updateSupportFunctionCall,
+    );
+    var thinkingCheckbox = AthenaCheckbox(
+      value: supportThinking,
+      onChanged: updateSupportThinking,
+    );
+    var visualRecognitionCheckbox = AthenaCheckbox(
+      value: supportVisualRecognition,
+      onChanged: updateSupportVisualRecognition,
+    );
+    var titleTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var children = [
+      SizedBox(width: 100, child: Text('Features', style: titleTextStyle)),
+      const SizedBox(width: 12),
+      functionCallCheckbox,
+      const SizedBox(width: 12),
+      Text('函数调用', style: titleTextStyle),
+      const SizedBox(width: 12),
+      thinkingCheckbox,
+      const SizedBox(width: 12),
+      Text('推理模型', style: titleTextStyle),
+      const SizedBox(width: 12),
+      visualRecognitionCheckbox,
+      const SizedBox(width: 12),
+      Text('图像识别', style: titleTextStyle),
+    ];
+    return Row(children: children);
   }
 }

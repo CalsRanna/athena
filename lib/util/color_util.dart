@@ -17,6 +17,7 @@ class ColorUtil {
   static const FFC2C9D1 = Color(0xFFC2C9D1);
   static const FFCACACA = Color(0xFFCACACA);
   static const FFCED2C7 = Color(0xFFCED2C7);
+  static const FFD0D5DD = Color(0xFFD0D5DD);
   static const FFE0E0E0 = Color(0xFFE0E0E0);
   static const FFEAEAEA = Color(0xFFEAEAEA);
   static const FFEAECF0 = Color(0xFFEAECF0);

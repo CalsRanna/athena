@@ -39,7 +39,7 @@ class DesktopModelSelectDialog extends ConsumerWidget {
       children.addAll(entry.value.map(_itemBuilder));
     }
     return ConstrainedBox(
-      constraints: BoxConstraints.loose(Size(500, 600)),
+      constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
   }

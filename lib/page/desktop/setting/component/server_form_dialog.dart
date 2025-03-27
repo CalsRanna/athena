@@ -45,8 +45,9 @@ class _DesktopProviderFormDialogState
       onTap: cancelDialog,
       child: icon,
     );
+    var text = widget.server == null ? 'Add MCP Server' : 'Edit MCP Server';
     var titleChildren = [
-      Text('Add Server', style: titleTextStyle),
+      Text(text, style: titleTextStyle),
       Spacer(),
       closeButton,
     ];
@@ -69,7 +70,7 @@ class _DesktopProviderFormDialogState
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
-      width: 480,
+      width: 520,
       child: column,
     );
     return Dialog(
