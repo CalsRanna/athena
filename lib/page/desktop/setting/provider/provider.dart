@@ -1,4 +1,6 @@
+import 'package:athena/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena/page/desktop/setting/provider/component/model_form_dialog.dart';
+import 'package:athena/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
@@ -101,7 +103,7 @@ class _DesktopSettingProviderPageState
     var provider = providersNotifierProvider;
     var providers = await ref.read(provider.future);
     if (providers.isEmpty) return;
-    var contextMenu = _ModelContextMenu(
+    var contextMenu = DesktopModelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onTap: removeEntry,
       model: model,
@@ -120,7 +122,7 @@ class _DesktopSettingProviderPageState
 
   void showProviderContextMenu(TapUpDetails details, Provider provider) {
     if (provider.isPreset) return;
-    var contextMenu = _ProviderContextMenu(
+    var contextMenu = DesktopProviderContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyProvider(provider),
       onEdited: () => showProviderFormDialog(provider),
@@ -284,46 +286,6 @@ class _DesktopSettingProviderPageState
   }
 }
 
-class _ModelContextMenu extends ConsumerWidget {
-  final Offset offset;
-  final Model model;
-  final void Function()? onTap;
-  final Provider provider;
-  const _ModelContextMenu({
-    required this.offset,
-    required this.model,
-    this.onTap,
-    required this.provider,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var editOption = DesktopContextMenuOption(
-      text: 'Edit',
-      onTap: () => showModelFormDialog(context),
-    );
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: () => destroyModel(context, ref),
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
-  }
-
-  void destroyModel(BuildContext context, WidgetRef ref) {
-    ModelViewModel(ref).destroyModel(model);
-    onTap?.call();
-  }
-
-  void showModelFormDialog(BuildContext context) {
-    AthenaDialog.show(DesktopModelFormDialog(provider: provider, model: model));
-    onTap?.call();
-  }
-}
-
 class _ModelTile extends StatefulWidget {
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
@@ -453,34 +415,5 @@ class _ModelTileState extends State<_ModelTile> {
       style: textStyle,
     );
     return Flexible(child: text);
-  }
-}
-
-class _ProviderContextMenu extends StatelessWidget {
-  final Offset offset;
-  final void Function()? onDestroyed;
-  final void Function()? onEdited;
-  final void Function()? onTap;
-  final Provider provider;
-  const _ProviderContextMenu({
-    required this.offset,
-    this.onDestroyed,
-    this.onEdited,
-    this.onTap,
-    required this.provider,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    var editOption = DesktopContextMenuOption(text: 'Edit', onTap: onEdited);
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: onDestroyed,
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
   }
 }

@@ -1,4 +1,4 @@
-import 'package:athena/widget/menu.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopChatContextMenu extends StatelessWidget {
@@ -22,9 +22,9 @@ class DesktopChatContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      DesktopContextMenuOption(text: 'Rename', onTap: onRenamed),
-      DesktopContextMenuOption(text: 'Delete', onTap: onDestroyed),
-      DesktopContextMenuOption(text: 'Export Image', onTap: onImageExported),
+      DesktopContextMenuTile(text: 'Rename', onTap: onRenamed),
+      DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
+      DesktopContextMenuTile(text: 'Export Image', onTap: onImageExported),
     ];
     return DesktopContextMenu(
       offset: offset,

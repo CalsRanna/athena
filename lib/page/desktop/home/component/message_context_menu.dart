@@ -1,4 +1,4 @@
-import 'package:athena/widget/menu.dart';
+import 'package:athena/widget/context_menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopMessageContextMenu extends StatelessWidget {
@@ -18,8 +18,8 @@ class DesktopMessageContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      DesktopContextMenuOption(text: 'Copy', onTap: onCopied),
-      DesktopContextMenuOption(text: 'Delete', onTap: onDestroyed),
+      DesktopContextMenuTile(text: 'Copy', onTap: onCopied),
+      DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
     ];
     return DesktopContextMenu(
       offset: offset,

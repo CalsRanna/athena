@@ -1,9 +1,7 @@
+import 'package:athena/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/sentinel.dart';
-import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -30,44 +28,6 @@ class DesktopSettingSentinelPage extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
     );
     return AthenaScaffold(body: gridView);
-  }
-}
-
-class _SentinelContextMenu extends ConsumerWidget {
-  final Offset offset;
-  final void Function()? onTap;
-  final Sentinel sentinel;
-  const _SentinelContextMenu({
-    required this.offset,
-    this.onTap,
-    required this.sentinel,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var editOption = DesktopContextMenuOption(
-      text: 'Edit',
-      onTap: () => navigateSentinelFormPage(context),
-    );
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: () => destroySentinel(context, ref),
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
-  }
-
-  void destroySentinel(BuildContext context, WidgetRef ref) {
-    SentinelViewModel(ref).destroySentinel(sentinel);
-    onTap?.call();
-  }
-
-  void navigateSentinelFormPage(BuildContext context) {
-    DesktopSentinelFormRoute(sentinel: sentinel).push(context);
-    onTap?.call();
   }
 }
 
@@ -149,7 +109,7 @@ class _SentinelTileState extends State<_SentinelTile> {
 
   void showContextMenu(BuildContext context, TapUpDetails details) {
     if (widget.sentinel.name == 'Athena') return;
-    var contextMenu = _SentinelContextMenu(
+    var contextMenu = DesktopSentinelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onTap: removeEntry,
       sentinel: widget.sentinel,
