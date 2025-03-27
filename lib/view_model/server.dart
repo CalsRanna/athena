@@ -1,6 +1,7 @@
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/server.dart';
+import 'package:athena/util/mcp_util.dart';
 import 'package:athena/vendor/mcp/util/process_util.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
@@ -40,8 +41,9 @@ class ServerViewModel extends ViewModel {
     AthenaDialog.message('Server updated');
   }
 
-  Future<String> debugCommand(String command) async {
+  Future<String> debugCommand(Server server) async {
     try {
+      var command = server.command;
       var output = 'which $command: ';
       var result = await ProcessUtil.run('which $command');
       var stdout = result.stdout.toString().trim();
@@ -54,6 +56,10 @@ class ServerViewModel extends ViewModel {
       if (stdout.isNotEmpty) output += '\n$stdout';
       stderr = result.stderr.toString().trim();
       if (stderr.isNotEmpty) output += '\n$stderr';
+      var tools = await McpUtil.getMcpTools([server]);
+      for (var tool in tools) {
+        output += '\n\n${tool.name}\n${tool.description}';
+      }
       return output;
     } catch (error) {
       return error.toString();
