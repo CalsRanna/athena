@@ -21,18 +21,12 @@ class DesktopServerSelector extends ConsumerWidget {
       color: ColorUtil.FFFFFFFF,
       size: 24,
     );
-    var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 8,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
     var provider = enabledServersNotifierProvider;
     var state = ref.watch(provider);
     var child = switch (state) {
       AsyncData(:final value) => _buildData(value),
       AsyncLoading() => _buildLoading(),
-      AsyncError() => Text('0', style: textStyle),
+      AsyncError() => _buildError(),
       _ => const SizedBox(),
     };
     var badge = Badge(
@@ -53,10 +47,7 @@ class DesktopServerSelector extends ConsumerWidget {
   }
 
   void openDialog() {
-    AthenaDialog.show(
-      _SentinelSelectDialog(),
-      barrierDismissible: true,
-    );
+    AthenaDialog.show(_SentinelSelectDialog(), barrierDismissible: true);
   }
 
   Widget _buildData(List<Server> servers) {
@@ -69,15 +60,22 @@ class DesktopServerSelector extends ConsumerWidget {
     return Text(servers.length.toString(), style: textStyle);
   }
 
-  Widget _buildLoading() {
-    return SizedBox(
-      width: 8,
-      height: 8,
-      child: CircularProgressIndicator(
-        strokeWidth: 1,
-        color: ColorUtil.FFFFFFFF,
-      ),
+  Widget _buildError() {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 8,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
     );
+    return Text('0', style: textStyle);
+  }
+
+  Widget _buildLoading() {
+    var circularProgressIndicator = CircularProgressIndicator(
+      color: ColorUtil.FFFFFFFF,
+      strokeWidth: 1,
+    );
+    return SizedBox(width: 8, height: 8, child: circularProgressIndicator);
   }
 }
 
@@ -107,19 +105,20 @@ class _DesktopServerSelectDialogTileState
       borderRadius: BorderRadius.circular(8),
       color: hover ? ColorUtil.FF616161 : null,
     );
+    var enabledSwitch = AthenaSwitch(
+      onChanged: (value) => widget.onTap?.call(),
+      value: widget.server.enabled,
+    );
+    var children = [
+      Expanded(child: Text(widget.server.name, style: textStyle)),
+      enabledSwitch
+    ];
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(child: Text(widget.server.name, style: textStyle)),
-          AthenaSwitch(
-              onChanged: (value) => widget.onTap?.call(),
-              value: widget.server.enabled)
-        ],
-      ),
+      child: Row(children: children),
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -169,6 +168,12 @@ class _SentinelSelectDialog extends ConsumerWidget {
     return UnconstrainedBox(child: container);
   }
 
+  void toggleServer(WidgetRef ref, Server server) {
+    var viewModel = ServerViewModel(ref);
+    var copiedServer = server.copyWith(enabled: !server.enabled);
+    viewModel.updateServer(copiedServer);
+  }
+
   Widget _buildData(WidgetRef ref, List<Server> servers) {
     if (servers.isEmpty) return const SizedBox();
     List<Widget> children =
@@ -184,11 +189,5 @@ class _SentinelSelectDialog extends ConsumerWidget {
       server: server,
       onTap: () => toggleServer(ref, server),
     );
-  }
-
-  void toggleServer(WidgetRef ref, Server server) {
-    var viewModel = ServerViewModel(ref);
-    var copiedServer = server.copyWith(enabled: !server.enabled);
-    viewModel.updateServer(copiedServer);
   }
 }
