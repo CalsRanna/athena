@@ -1,5 +1,5 @@
-import 'package:athena/page/desktop/setting/component/model_form_dialog.dart';
-import 'package:athena/page/desktop/setting/component/provider_form_dialog.dart';
+import 'package:athena/page/desktop/setting/provider/component/model_form_dialog.dart';
+import 'package:athena/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/schema/model.dart';

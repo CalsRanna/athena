@@ -6,22 +6,6 @@ part of 'server.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$serversNotifierHash() => r'04b9133abd26fb60eecb4e849b02fd8142c7478b';
-
-/// See also [ServersNotifier].
-@ProviderFor(ServersNotifier)
-final serversNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<ServersNotifier, List<Server>>.internal(
-  ServersNotifier.new,
-  name: r'serversNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$serversNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$ServersNotifier = AutoDisposeAsyncNotifier<List<Server>>;
 String _$enabledServersNotifierHash() =>
     r'95440c189340e5d561c7c7618ebf64db530e112a';
 
@@ -205,5 +189,22 @@ class _ServerNotifierProviderElement
   @override
   int get id => (origin as ServerNotifierProvider).id;
 }
+
+String _$serversNotifierHash() => r'04b9133abd26fb60eecb4e849b02fd8142c7478b';
+
+/// See also [ServersNotifier].
+@ProviderFor(ServersNotifier)
+final serversNotifierProvider =
+    AutoDisposeAsyncNotifierProvider<ServersNotifier, List<Server>>.internal(
+  ServersNotifier.new,
+  name: r'serversNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$serversNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$ServersNotifier = AutoDisposeAsyncNotifier<List<Server>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
