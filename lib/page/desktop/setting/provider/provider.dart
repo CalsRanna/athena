@@ -288,6 +288,17 @@ class _ModelTile extends StatefulWidget {
 class _ModelTileState extends State<_ModelTile> {
   bool hover = false;
 
+  bool get _showSubtitle {
+    var visible = widget.model.releasedAt.isNotEmpty;
+    visible |= widget.model.inputPrice.isNotEmpty;
+    visible |= widget.model.outputPrice.isNotEmpty;
+    visible |= widget.model.maxToken > 0;
+    visible |= widget.model.supportFunctionCall;
+    visible |= widget.model.supportThinking;
+    visible |= widget.model.supportVisualRecognition;
+    return visible;
+  }
+
   @override
   Widget build(BuildContext context) {
     var nameTextStyle = TextStyle(
@@ -330,8 +341,8 @@ class _ModelTileState extends State<_ModelTile> {
     ];
     var informationChildren = [
       Row(children: nameChildren),
-      const SizedBox(height: 4),
-      Row(spacing: 8, children: subtitleChildren),
+      if (_showSubtitle) const SizedBox(height: 4),
+      if (_showSubtitle) Row(spacing: 8, children: subtitleChildren),
     ];
     var informationWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
