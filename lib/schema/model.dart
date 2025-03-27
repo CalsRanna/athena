@@ -55,7 +55,15 @@ class Model {
   }) {
     return Model()
       ..id = id ?? this.id
+      ..inputPrice = inputPrice ?? this.inputPrice
+      ..maxToken = maxToken ?? this.maxToken
       ..name = name ?? this.name
+      ..outputPrice = outputPrice ?? this.outputPrice
+      ..releasedAt = releasedAt ?? this.releasedAt
+      ..supportFunctionCall = supportFunctionCall ?? this.supportFunctionCall
+      ..supportThinking = supportThinking ?? this.supportThinking
+      ..supportVisualRecognition =
+          supportVisualRecognition ?? this.supportVisualRecognition
       ..value = value ?? this.value
       ..providerId = providerId ?? this.providerId;
   }
