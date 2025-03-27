@@ -5,8 +5,10 @@ import 'package:athena/vendor/mcp/message.dart';
 import 'package:athena/vendor/mcp/server/server_option.dart';
 import 'package:athena/vendor/mcp/util/logger_util.dart';
 import 'package:process/process.dart';
+import 'package:synchronized/synchronized.dart';
 
 class ProcessUtil {
+  static final _lock = Lock();
   static String get defaultPath {
     var originalPath = Platform.environment['PATH'] ?? '';
     var presetPaths = [
@@ -66,15 +68,19 @@ class ProcessUtil {
     Process process,
     McpJsonRpcNotification notification,
   ) async {
-    process.stdin.writeln(jsonEncode(notification.toJson()));
-    await process.stdin.flush();
+    await _lock.synchronized(() async {
+      process.stdin.writeln(jsonEncode(notification.toJson()));
+      await process.stdin.flush();
+    });
   }
 
   static Future<void> writeRequest(
     Process process,
     McpJsonRpcRequest request,
   ) async {
-    process.stdin.writeln(jsonEncode(request.toJson()));
-    await process.stdin.flush();
+    await _lock.synchronized(() async {
+      process.stdin.writeln(jsonEncode(request.toJson()));
+      await process.stdin.flush();
+    });
   }
 }
