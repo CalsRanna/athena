@@ -1,4 +1,5 @@
-import 'package:athena/page/desktop/setting/server/server_form_dialog.dart';
+import 'package:athena/page/desktop/setting/server/component/server_context_menu.dart';
+import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
@@ -98,7 +99,7 @@ class _DesktopSettingServerPageState
   }
 
   void showServerContextMenu(TapUpDetails details, Server server) {
-    var contextMenu = _ServerContextMenu(
+    var contextMenu = DesktopServerContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyServer(server),
       onEdited: () => showServerFormDialog(server),
@@ -284,34 +285,5 @@ class _DesktopSettingServerPageState
     commandController.text = servers[index].command;
     argumentsController.text = servers[index].arguments;
     environmentsController.text = servers[index].environments;
-  }
-}
-
-class _ServerContextMenu extends StatelessWidget {
-  final Offset offset;
-  final void Function()? onDestroyed;
-  final void Function()? onEdited;
-  final void Function()? onTap;
-  final Server server;
-  const _ServerContextMenu({
-    required this.offset,
-    this.onDestroyed,
-    this.onEdited,
-    this.onTap,
-    required this.server,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    var editOption = DesktopContextMenuOption(text: 'Edit', onTap: onEdited);
-    var deleteOption = DesktopContextMenuOption(
-      text: 'Delete',
-      onTap: onDestroyed,
-    );
-    return DesktopContextMenu(
-      offset: offset,
-      onBarrierTapped: onTap,
-      children: [editOption, deleteOption],
-    );
   }
 }
