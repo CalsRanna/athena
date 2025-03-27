@@ -1,4 +1,4 @@
-import 'package:athena/page/desktop/setting/component/server_form_dialog.dart';
+import 'package:athena/page/desktop/setting/server/server_form_dialog.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
