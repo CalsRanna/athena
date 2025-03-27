@@ -16,6 +16,54 @@ class AthenaDialog {
     Navigator.of(globalKey.currentContext!).pop();
   }
 
+  static void loading() {
+    var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
+    showDialog(
+      context: globalKey.currentContext!,
+      builder: (context) => Center(child: indicator),
+    );
+  }
+
+  static void message(String message) {
+    var text = Text(message, style: TextStyle(color: ColorUtil.FFFFFFFF));
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: ColorUtil.FF282F32,
+    );
+    var screenWidth = MediaQuery.sizeOf(globalKey.currentContext!).width;
+    var container = Container(
+      constraints: BoxConstraints(maxWidth: screenWidth - 32),
+      decoration: boxDecoration,
+      margin: EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: text,
+    );
+    var alignment = Alignment.center;
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      alignment = Alignment.centerLeft;
+    }
+    var unconstrainedBox = UnconstrainedBox(
+      alignment: alignment,
+      child: container,
+    );
+    var snackBar = SnackBar(
+      backgroundColor: Colors.transparent,
+      content: unconstrainedBox,
+      elevation: 0,
+      padding: EdgeInsets.zero,
+    );
+    var isWindow = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    if (!isWindow) {
+      snackBar = SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: text,
+      );
+    }
+    var messenger = ScaffoldMessenger.of(globalKey.currentContext!);
+    messenger.removeCurrentSnackBar();
+    messenger.showSnackBar(snackBar);
+  }
+
   static void show(Widget child, {bool barrierDismissible = false}) {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       showDialog(
@@ -34,45 +82,6 @@ class AthenaDialog {
 
   static void success(String message) {
     show(_SuccessDialog(message: message));
-  }
-
-  static void loading() {
-    var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
-    showDialog(
-      context: globalKey.currentContext!,
-      builder: (context) => Center(child: indicator),
-    );
-  }
-
-  static void message(String message) {
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FF282F32,
-    );
-    var container = Container(
-      decoration: boxDecoration,
-      margin: EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(message, style: TextStyle(color: ColorUtil.FFFFFFFF)),
-    );
-    var alignment = Alignment.center;
-    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      alignment = Alignment.centerLeft;
-    }
-    var unconstrainedBox = UnconstrainedBox(
-      alignment: alignment,
-      child: container,
-    );
-    var snackBar = SnackBar(
-      backgroundColor: Colors.transparent,
-      content: unconstrainedBox,
-      duration: Duration(seconds: 2),
-      elevation: 0,
-      padding: EdgeInsets.zero,
-    );
-    var messenger = ScaffoldMessenger.of(globalKey.currentContext!);
-    messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(snackBar);
   }
 }
 
