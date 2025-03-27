@@ -61,8 +61,17 @@ class _DesktopSettingServerPageState
 
   Future<void> debug() async {
     if (commandController.text.isEmpty) return;
+    var provider = serversNotifierProvider;
+    var servers = await ref.read(provider.future);
+    if (servers.isEmpty) return;
     AthenaDialog.loading();
-    var result = await viewModel.debugCommand(commandController.text);
+    var server = Server()
+      ..arguments = argumentsController.text
+      ..command = commandController.text
+      ..enabled = true
+      ..environments = environmentsController.text
+      ..name = servers[index].name;
+    var result = await viewModel.debugCommand(server);
     setState(() {
       this.result = result;
     });
@@ -73,6 +82,7 @@ class _DesktopSettingServerPageState
     await viewModel.destroyServer(server);
     setState(() {
       index = 0;
+      result = '';
     });
   }
 
