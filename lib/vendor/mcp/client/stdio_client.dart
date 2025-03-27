@@ -34,7 +34,7 @@ class McpStdioClient {
   Future<void> initialize() async {
     await _setup();
     await _initialize();
-    _ping();
+    await _ping();
   }
 
   Future<List<McpTool>> listTools() async {
