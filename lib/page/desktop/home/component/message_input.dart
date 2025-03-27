@@ -18,6 +18,7 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(Model)? onModelChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
+  final void Function()? onTerminated;
   const DesktopMessageInput({
     super.key,
     required this.chat,
@@ -26,6 +27,7 @@ class DesktopMessageInput extends StatelessWidget {
     this.onModelChanged,
     this.onSentinelChanged,
     this.onSubmitted,
+    this.onTerminated,
   });
 
   @override
@@ -48,11 +50,12 @@ class DesktopMessageInput extends StatelessWidget {
     var inputChildren = [
       Expanded(child: input),
       const SizedBox(width: 8),
-      _SendButton(onTap: onSubmitted)
+      _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated)
     ];
     var inputRow = Row(children: inputChildren);
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
     var children = [toolbar, const SizedBox(height: 12), inputRow];
     return Container(
       decoration: BoxDecoration(border: Border(top: borderSide)),
@@ -163,8 +166,9 @@ class _InputState extends State<_Input> {
 }
 
 class _SendButton extends ConsumerWidget {
-  final void Function()? onTap;
-  const _SendButton({this.onTap});
+  final void Function()? onSubmitted;
+  final void Function()? onTerminated;
+  const _SendButton({this.onSubmitted, this.onTerminated});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -210,8 +214,16 @@ class _SendButton extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: () => handleTap(streaming),
       child: mouseRegion,
     );
+  }
+
+  void handleTap(bool streaming) {
+    if (!streaming) {
+      onSubmitted?.call();
+      return;
+    }
+    onTerminated?.call();
   }
 }
