@@ -47,6 +47,7 @@ dependencies:
   system_tray: ^2.0.2
   tavily_dart: ^0.1.0+1
   url_launcher: ^6.3.1
+  visibility_detector: ^0.4.0+2
   window_manager: ^0.4.3
 
 dev_dependencies:

@@ -1,5 +1,5 @@
 import 'package:athena/model/shortcut.dart';
-import 'package:athena/page/mobile/setting/setting.dart';
+import 'package:athena/page/mobile/home/component/welcome.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
@@ -52,7 +52,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   @override
   Widget build(BuildContext context) {
     var children = [
-      _Welcome(),
+      MobileHomeWelcome(),
       SizedBox(height: 16),
       _NewChatButton(),
       SizedBox(height: 16),
@@ -390,72 +390,5 @@ class _Title extends StatelessWidget {
       onTap: onTap,
       child: container,
     );
-  }
-}
-
-class _Welcome extends StatelessWidget {
-  const _Welcome();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(children: [_buildText(), _buildAvatar(context)]),
-    );
-  }
-
-  String getPeriod() {
-    final now = DateTime.now();
-    if (now.hour < 12) {
-      return 'morning';
-    } else if (now.hour < 18) {
-      return 'afternoon';
-    } else {
-      return 'evening';
-    }
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
-      return const SettingPage();
-    }));
-  }
-
-  Widget _buildAvatar(BuildContext context) {
-    var circleAvatar = Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.5),
-      ),
-      padding: EdgeInsets.all(4),
-      child: CircleAvatar(
-        backgroundImage: AssetImage('asset/image/avatar.png'),
-        radius: 28,
-      ),
-    );
-    final gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: circleAvatar,
-    );
-    return gestureDetector;
-  }
-
-  Widget _buildText() {
-    const welcomeTextStyle = TextStyle(
-      color: ColorUtil.FFA7BA88,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-    );
-    const nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-    );
-    var textChildren = [
-      TextSpan(text: 'Good ${getPeriod()}, ', style: welcomeTextStyle),
-      TextSpan(text: 'Cals', style: nameTextStyle),
-    ];
-    return Expanded(child: Text.rich(TextSpan(children: textChildren)));
   }
 }
