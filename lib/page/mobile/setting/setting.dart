@@ -21,7 +21,7 @@ class SettingPage extends ConsumerWidget {
       MobileSettingTile(
         leading:
             Icon(HugeIcons.strokeRoundedArtificialIntelligence03, size: 24),
-        onTap: () => navigateProvider(context),
+        onTap: () => navigateSentinel(context),
         title: 'Sentinel',
         trailing: '',
       ),
