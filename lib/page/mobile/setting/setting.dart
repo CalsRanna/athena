@@ -19,21 +19,28 @@ class SettingPage extends ConsumerWidget {
         trailing: '',
       ),
       MobileSettingTile(
+        leading:
+            Icon(HugeIcons.strokeRoundedArtificialIntelligence03, size: 24),
+        onTap: () => navigateProvider(context),
+        title: 'Sentinel',
+        trailing: '',
+      ),
+      MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedTools, size: 24),
+        onTap: () => navigateToolList(context),
+        title: 'Built-in Tools',
+        trailing: '',
+      ),
+      MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedAiBrain01, size: 24),
         onTap: () => navigateDefaultModel(context),
         title: 'Default Model',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(HugeIcons.strokeRoundedTools, size: 24),
-        onTap: () => navigateToolList(context),
-        title: 'Tool',
-        trailing: '',
-      ),
-      MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedInformationCircle, size: 24),
         onTap: () => navigateAbout(context),
-        title: 'About',
+        title: 'About Athena',
         trailing: '',
       ),
     ];
@@ -57,6 +64,10 @@ class SettingPage extends ConsumerWidget {
 
   void navigateProvider(BuildContext context) {
     MobileProviderListRoute().push(context);
+  }
+
+  void navigateSentinel(BuildContext context) {
+    MobileSentinelListRoute().push(context);
   }
 
   void navigateToolList(BuildContext context) {
