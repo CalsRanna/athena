@@ -77,22 +77,10 @@ class _ListTile extends ConsumerWidget {
           color: ColorUtil.FFFFFFFF),
     );
     var rowChildren = [Expanded(child: title), gestureDetector];
-    var messageTextStyle = TextStyle(
-      color: ColorUtil.FFE0E0E0,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var message = Text(
-      _getContent(ref),
-      style: messageTextStyle,
-      maxLines: 4,
-      overflow: TextOverflow.ellipsis,
-    );
     var columnChildren = [
       Row(children: rowChildren),
       const SizedBox(height: 8),
-      message,
+      _buildMessage(ref),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,11 +128,23 @@ class _ListTile extends ConsumerWidget {
     AthenaDialog.show(SafeArea(child: padding));
   }
 
-  String _getContent(WidgetRef ref) {
+  Widget _buildMessage(WidgetRef ref) {
     var provider = messagesNotifierProvider(chat.id);
     var messages = ref.watch(provider).valueOrNull;
-    if (messages == null) return '';
-    if (messages.isEmpty) return '';
-    return messages.last.content.replaceAll('\n', ' ').trim();
+    if (messages == null) return const SizedBox(height: 72);
+    if (messages.isEmpty) return const SizedBox(height: 72);
+    var content = messages.last.content.replaceAll('\n', ' ').trim();
+    var messageTextStyle = TextStyle(
+      color: ColorUtil.FFE0E0E0,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    return Text(
+      content,
+      style: messageTextStyle,
+      maxLines: 4,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 }
