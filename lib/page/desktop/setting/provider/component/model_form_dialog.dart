@@ -197,26 +197,35 @@ class _DesktopModelFormDialogState
       value: supportVisualRecognition,
       onChanged: updateSupportVisualRecognition,
     );
-    var titleTextStyle = TextStyle(
+    var textStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
+    var functionCallCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: functionCallCheckbox,
+      onTap: () => updateSupportFunctionCall(!supportFunctionCall),
+      trailing: Text('函数调用', style: textStyle),
+    );
+    var thinkingCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: thinkingCheckbox,
+      onTap: () => updateSupportThinking(!supportThinking),
+      trailing: Text('推理模型', style: textStyle),
+    );
+    var visualRecognitionCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: visualRecognitionCheckbox,
+      onTap: () => updateSupportVisualRecognition(!supportVisualRecognition),
+      trailing: Text('图像识别', style: textStyle),
+    );
     var children = [
-      SizedBox(width: 100, child: Text('Features', style: titleTextStyle)),
+      SizedBox(width: 100, child: Text('Features', style: textStyle)),
       const SizedBox(width: 12),
-      functionCallCheckbox,
+      functionCallCheckboxGroup,
       const SizedBox(width: 12),
-      Text('函数调用', style: titleTextStyle),
+      thinkingCheckboxGroup,
       const SizedBox(width: 12),
-      thinkingCheckbox,
-      const SizedBox(width: 12),
-      Text('推理模型', style: titleTextStyle),
-      const SizedBox(width: 12),
-      visualRecognitionCheckbox,
-      const SizedBox(width: 12),
-      Text('图像识别', style: titleTextStyle),
+      visualRecognitionCheckboxGroup,
     ];
     return Row(children: children);
   }

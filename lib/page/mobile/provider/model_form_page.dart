@@ -148,24 +148,33 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
       value: supportVisualRecognition,
       onChanged: updateSupportVisualRecognition,
     );
-    var titleTextStyle = TextStyle(
+    var trailingTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
+    var functionCallCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: functionCallCheckbox,
+      onTap: () => updateSupportFunctionCall(!supportFunctionCall),
+      trailing: Text('函数调用', style: trailingTextStyle),
+    );
+    var thinkingCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: thinkingCheckbox,
+      onTap: () => updateSupportThinking(!supportThinking),
+      trailing: Text('推理模型', style: trailingTextStyle),
+    );
+    var visualRecognitionCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: visualRecognitionCheckbox,
+      onTap: () => updateSupportVisualRecognition(!supportVisualRecognition),
+      trailing: Text('图像识别', style: trailingTextStyle),
+    );
     var children = [
-      functionCallCheckbox,
+      functionCallCheckboxGroup,
       const SizedBox(width: 12),
-      Text('函数调用', style: titleTextStyle),
+      thinkingCheckboxGroup,
       const SizedBox(width: 12),
-      thinkingCheckbox,
-      const SizedBox(width: 12),
-      Text('推理模型', style: titleTextStyle),
-      const SizedBox(width: 12),
-      visualRecognitionCheckbox,
-      const SizedBox(width: 12),
-      Text('图像识别', style: titleTextStyle),
+      visualRecognitionCheckboxGroup,
     ];
     return Row(children: children);
   }

@@ -15,6 +15,36 @@ class AthenaCheckbox extends StatefulWidget {
   State<AthenaCheckbox> createState() => _AthenaCheckboxState();
 }
 
+class AthenaCheckboxGroup extends StatelessWidget {
+  final Widget checkbox;
+  final Function()? onTap;
+  final Widget? trailing;
+  const AthenaCheckboxGroup({
+    super.key,
+    required this.checkbox,
+    this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      checkbox,
+      if (trailing != null) const SizedBox(width: 12),
+      if (trailing != null) trailing!,
+    ];
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Row(children: children),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: mouseRegion,
+    );
+  }
+}
+
 class _AthenaCheckboxState extends State<AthenaCheckbox> {
   @override
   Widget build(BuildContext context) {
