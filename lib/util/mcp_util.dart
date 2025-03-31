@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:athena/model/tool_call.dart';
 import 'package:athena/schema/server.dart';
+import 'package:athena/util/logger_util.dart';
 import 'package:athena/vendor/mcp/client/stdio_client.dart';
 import 'package:athena/vendor/mcp/message.dart';
 import 'package:athena/vendor/mcp/server/server_option.dart';
@@ -24,11 +25,21 @@ class McpUtil {
         };
         var option = McpServerOption.fromJson(json);
         clients[server.name] = McpStdioClient(option: option);
-        await clients[server.name]!.initialize();
+        try {
+          await clients[server.name]!.initialize();
+        } on Exception catch (error) {
+          LoggerUtil.logger.e('Failed to initialize client: $error');
+          continue;
+        }
       }
       var client = clients[server.name]!;
-      var tools = await client.listTools();
-      combinedTools.addAll(tools);
+      try {
+        var tools = await client.listTools();
+        combinedTools.addAll(tools);
+      } on Exception catch (error) {
+        LoggerUtil.logger.e('Failed to list tools: $error');
+        continue;
+      }
     }
     return combinedTools;
   }

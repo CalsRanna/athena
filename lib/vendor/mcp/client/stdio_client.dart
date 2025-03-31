@@ -59,16 +59,11 @@ class McpStdioClient {
       method: McpMethod.initialize.value,
       params: params,
     );
-    try {
-      await _request(initializeRequest);
-      final notification = McpJsonRpcNotification(
-        method: McpMethod.notificationsInitialized.value,
-      );
-      await _notify(notification);
-    } catch (e) {
-      LoggerUtil.logger.e(e);
-      rethrow;
-    }
+    await _request(initializeRequest);
+    final notification = McpJsonRpcNotification(
+      method: McpMethod.notificationsInitialized.value,
+    );
+    await _notify(notification);
   }
 
   Future<void> _notify(McpJsonRpcNotification notification) async {
@@ -87,14 +82,14 @@ class McpStdioClient {
     _requests[request.id] = completer;
     try {
       await ProcessUtil.writeRequest(_process, request);
-      return completer.future;
-      // return await completer.future.timeout(
-      //   const Duration(seconds: 30),
-      //   onTimeout: () {
-      //     _requests.remove(request.id);
-      //     throw TimeoutException('Request timed out: ${request.id}');
-      //   },
-      // );
+      // return completer.future;
+      return await completer.future.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          _requests.remove(request.id);
+          throw TimeoutException('Request timed out: ${request.id}');
+        },
+      );
     } catch (e) {
       _requests.remove(request.id);
       rethrow;
@@ -102,26 +97,17 @@ class McpStdioClient {
   }
 
   Future<void> _setup() async {
-    try {
-      _process = await ProcessUtil.start(option);
-      var command = [option.command, ...option.args];
-      LoggerUtil.logger.d('Start: ${command.join(" ")}');
-      ProcessUtil.listenStdout(_process, (text) {
-        try {
-          final response = McpJsonRpcResponse.fromJson(jsonDecode(text));
-          LoggerUtil.logger.d('JsonRpcResponse: $response');
-          final request = _requests.remove(response.id);
-          request?.complete(response);
-        } catch (e, stack) {
-          LoggerUtil.logger.e('Unknown error: $e\n$stack');
-        }
-      });
-      ProcessUtil.listenStderr(_process, (error) {
-        LoggerUtil.logger.e('Stderr: $error');
-      });
-    } catch (e, stack) {
-      LoggerUtil.logger.d('Start error: $e\n$stack');
-      rethrow;
-    }
+    _process = await ProcessUtil.start(option);
+    var command = [option.command, ...option.args];
+    LoggerUtil.logger.d('Start: ${command.join(" ")}');
+    ProcessUtil.listenStdout(_process, (text) {
+      final response = McpJsonRpcResponse.fromJson(jsonDecode(text));
+      LoggerUtil.logger.d('JsonRpcResponse: $response');
+      final request = _requests.remove(response.id);
+      request?.complete(response);
+    });
+    ProcessUtil.listenStderr(_process, (error) {
+      throw Exception(error);
+    });
   }
 }
