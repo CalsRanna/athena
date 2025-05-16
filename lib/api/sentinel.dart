@@ -51,6 +51,7 @@ class SentinelApi {
       ..name = formatted['name']
       ..description = formatted['description']
       ..tags = List<String>.from(formatted['tags'])
-      ..avatar = formatted['avatar'];
+      ..avatar = formatted['avatar']
+      ..prompt = prompt;
   }
 }
