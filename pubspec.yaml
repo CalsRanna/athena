@@ -2,7 +2,7 @@ name: athena
 description: A new Flutter project.
 publish_to: "none"
 
-version: 2.0.4+436
+version: 2.0.5+440
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
