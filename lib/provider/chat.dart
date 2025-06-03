@@ -101,9 +101,8 @@ class MessagesNotifier extends _$MessagesNotifier {
     message.content = '${message.content}${delta.content}';
     var reasoningContent = delta.reasoningContent ?? '';
     message.reasoningContent = '${message.reasoningContent}$reasoningContent';
-    var reasoning = delta.content.isEmpty && reasoningContent.isNotEmpty;
-    message.reasoning = reasoning;
-    if (reasoning) {
+    message.reasoning = message.content.isEmpty;
+    if (message.reasoning) {
       message.expanded = true;
       message.reasoningUpdatedAt = DateTime.now();
     } else {

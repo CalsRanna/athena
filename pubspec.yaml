@@ -50,6 +50,9 @@ dependencies:
   visibility_detector: ^0.4.0+2
   window_manager: ^0.4.3
 
+dependency_overrides:
+  flutter_math_fork: ^0.7.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
