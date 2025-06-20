@@ -1,4 +1,5 @@
 import 'package:athena/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
@@ -69,7 +70,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       return;
     }
     if (index == 1) {
-      DesktopSentinelFormRoute().push(context);
+      AthenaDialog.show(DesktopSentinelFormDialog());
       return;
     }
     if (index == 2) {
