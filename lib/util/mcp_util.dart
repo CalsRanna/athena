@@ -21,7 +21,7 @@ class McpUtil {
         var json = {
           'command': server.command,
           'args': server.arguments.split(' '),
-          'env': jsonDecode(environments)
+          'env': jsonDecode(environments.replaceAll(r'\', r'\\'))
         };
         var option = McpServerOption.fromJson(json);
         clients[server.name] = McpStdioClient(option: option);
