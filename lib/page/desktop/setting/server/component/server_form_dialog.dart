@@ -15,10 +15,10 @@ class DesktopServerFormDialog extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<DesktopServerFormDialog> createState() =>
-      _DesktopProviderFormDialogState();
+      _DesktopServerFormDialogState();
 }
 
-class _DesktopProviderFormDialogState
+class _DesktopServerFormDialogState
     extends ConsumerState<DesktopServerFormDialog> {
   final nameController = TextEditingController();
 
@@ -95,7 +95,7 @@ class _DesktopProviderFormDialogState
     nameController.text = widget.server?.name ?? '';
   }
 
-  Future<void> storeProvider() async {
+  Future<void> storeServer() async {
     if (widget.server != null) {
       var copiedServer = widget.server!.copyWith(name: nameController.text);
       await viewModel.updateServer(copiedServer);
@@ -113,7 +113,7 @@ class _DesktopProviderFormDialogState
       child: Padding(padding: edgeInsets, child: Text('Cancel')),
     );
     var storeButton = AthenaPrimaryButton(
-      onTap: storeProvider,
+      onTap: storeServer,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
     var children = [
