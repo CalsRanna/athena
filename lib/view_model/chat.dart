@@ -20,14 +20,14 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
-import 'package:athena/schema/tool.dart';
+import 'package:athena/schema/tool.dart' hide Tool;
 import 'package:athena/util/mcp_util.dart';
 import 'package:athena/vendor/mcp/message.dart';
-import 'package:athena/vendor/mcp/tool/tool.dart';
 import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:athena/vendor/openai_dart/response.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:dart_mcp/client.dart' hide Schema;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -407,12 +407,14 @@ class ChatViewModel extends ViewModel {
   Future<List<ChatCompletionTool>> _getChatCompletionTools(Model model) async {
     if (!model.supportFunctionCall) return [];
     List<ChatCompletionTool> completionTools = [];
-    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
-    for (var mcpTool in mcpTools) {
+    var tools = await ref.read(mcpToolsNotifierProvider.future);
+    for (var tool in tools) {
+      var parameters = tool.inputSchema.properties;
+
       var function = FunctionObject(
-        name: mcpTool.name,
-        description: mcpTool.description,
-        parameters: mcpTool.inputSchema.toJson(),
+        name: tool.name,
+        description: tool.description,
+        parameters: parameters,
       );
       var completionTool = ChatCompletionTool(
         type: ChatCompletionToolType.function,
@@ -466,11 +468,9 @@ class ChatViewModel extends ViewModel {
     }).toList();
   }
 
-  Future<McpTool> _getMcpTool(ToolCall toolCall) async {
-    var mcpTools = await ref.read(mcpToolsNotifierProvider.future);
-    return mcpTools
-        .where((mcpTool) => mcpTool.name == toolCall.name.toString())
-        .first;
+  Future<Tool> _getMcpTool(ToolCall toolCall) async {
+    var tools = await ref.read(mcpToolsNotifierProvider.future);
+    return tools.where((tool) => tool.name == toolCall.name.toString()).first;
   }
 
   Map<String, dynamic> _getMcpToolArguments(ToolCall toolCall) {
@@ -590,10 +590,21 @@ class ChatViewModel extends ViewModel {
     } else {
       var tool = await _getMcpTool(toolCall);
       var arguments = _getMcpToolArguments(toolCall);
-      result = await McpUtil.callTool(tool, server, arguments: arguments);
-      var json = JsonEncoder.withIndent('  ').convert(result);
-      content = '\n```${result.id}\n$json\n```\n';
-      delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+      var connections = await ref.read(mcpConnectionsNotifierProvider.future);
+      var connection = connections[server.name];
+      if (connection == null) {
+        content = '\n```tool_call_error\nNo connection found for server\n```\n';
+        delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+      } else {
+        var request = CallToolRequest(
+          name: tool.name,
+          arguments: arguments,
+        );
+        var toolCallResult = await connection.callTool(request);
+        var json = JsonEncoder.withIndent('  ').convert(toolCallResult.content);
+        content = '\n```${toolCallResult.meta}\n$json\n```\n';
+        delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+      }
     }
     await messagesNotifier.streaming(delta);
     return result;

@@ -1,3 +1,4 @@
+import 'package:athena/provider/mcp.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/server.dart';
@@ -5,6 +6,7 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/server.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/switch.dart';
+import 'package:dart_mcp/client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +23,7 @@ class DesktopServerSelector extends ConsumerWidget {
       color: ColorUtil.FFFFFFFF,
       size: 24,
     );
-    var provider = enabledServersNotifierProvider;
+    var provider = mcpConnectionsNotifierProvider;
     var state = ref.watch(provider);
     var child = switch (state) {
       AsyncData(:final value) => _buildData(value),
@@ -50,14 +52,14 @@ class DesktopServerSelector extends ConsumerWidget {
     AthenaDialog.show(_SentinelSelectDialog(), barrierDismissible: true);
   }
 
-  Widget _buildData(List<Server> servers) {
+  Widget _buildData(Map<String, ServerConnection> connections) {
     var textStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 8,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    return Text(servers.length.toString(), style: textStyle);
+    return Text(connections.length.toString(), style: textStyle);
   }
 
   Widget _buildError() {
