@@ -5,6 +5,7 @@ import 'package:athena/schema/model.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/setting.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -23,18 +24,62 @@ class DesktopSettingDefaultModelPage extends ConsumerStatefulWidget {
 class _DesktopSettingDefaultModelPageState
     extends ConsumerState<DesktopSettingDefaultModelPage> {
   late final viewModel = SettingViewModel(ref);
+  int index = 0;
 
   @override
   Widget build(BuildContext context) {
+    var children = [
+      _buildDefaultModelListView(),
+      Expanded(child: _buildDefaultModelView()),
+    ];
+    return AthenaScaffold(body: Row(children: children));
+  }
+
+  Future<void> changeDefaultModel(int index) async {
+    setState(() {
+      this.index = index;
+    });
+  }
+
+  Widget _buildDefaultModelListView() {
+    var models = [
+      'Chat',
+      'Topic Naming',
+      'Sentinel Metadata Generation',
+    ];
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
+    Widget child = ListView.separated(
+      padding: const EdgeInsets.all(12),
+      itemBuilder: (context, index) => _buildDefaultModelTile(models, index),
+      itemCount: models.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+    );
+    return Container(
+      decoration: BoxDecoration(border: Border(right: borderSide)),
+      width: 240,
+      child: child,
+    );
+  }
+
+  Widget _buildDefaultModelTile(List<String> models, int index) {
+    var model = models[index];
+    return DesktopMenuTile(
+      active: this.index == index,
+      label: model,
+      onTap: () => changeDefaultModel(index),
+    );
+  }
+
+  Widget _buildDefaultModelView() {
     var titleTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var chatTitle = Text('Default Chat Model', style: titleTextStyle);
-    var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
-    var chatSearchDecisionTitle =
-        Text('Chat Search Decision Model', style: titleTextStyle);
+    var chatTitle = Text('Chat Model', style: titleTextStyle);
+    var namingTitle = Text('Topic Naming Model', style: titleTextStyle);
     var generationTitle = Text(
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
@@ -50,12 +95,6 @@ class _DesktopSettingDefaultModelPageState
       model: chatNamingModel,
       onChanged: viewModel.updateChatNamingModel,
     );
-    var chatSearchDecisionModel =
-        ref.watch(chatSearchDecisionModelNotifierProvider).valueOrNull;
-    var chatSearchDecisionDropdown = _ModelDropdown(
-      model: chatSearchDecisionModel,
-      onChanged: viewModel.updateChatSearchDecisionModel,
-    );
     var provider = sentinelMetaGenerationModelNotifierProvider;
     var sentinelMetadataGenerationModel = ref.watch(provider).valueOrNull;
     var sentinelMetadataGenerationDropdown = _ModelDropdown(
@@ -70,47 +109,49 @@ class _DesktopSettingDefaultModelPageState
     );
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
     var namingTip = Text(
-      'Model designated for automatic chat renaming',
-      style: tipTextStyle,
-    );
-    var chatSearchDecisionTip = Text(
-      'Model designated for deciding whether user\'s input should search from internet or not',
+      'Model designated for automatic naming topic',
       style: tipTextStyle,
     );
     var generationTip = Text(
       'Model designated for generating sentinel name, description, avatar, and tags',
       style: tipTextStyle,
     );
-    var listChildren = [
-      chatTitle,
-      const SizedBox(height: 12),
-      chatDropdown,
-      const SizedBox(height: 12),
-      chatTip,
-      const SizedBox(height: 24),
-      namingTitle,
-      const SizedBox(height: 12),
-      chatNamingDropdown,
-      const SizedBox(height: 12),
-      namingTip,
-      const SizedBox(height: 24),
-      chatSearchDecisionTitle,
-      const SizedBox(height: 12),
-      chatSearchDecisionDropdown,
-      const SizedBox(height: 12),
-      chatSearchDecisionTip,
-      const SizedBox(height: 24),
-      generationTitle,
-      const SizedBox(height: 12),
-      sentinelMetadataGenerationDropdown,
-      const SizedBox(height: 12),
-      generationTip,
-    ];
-    var listView = ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: listChildren,
-    );
-    return AthenaScaffold(body: listView);
+    var edgeInsets = EdgeInsets.symmetric(horizontal: 32, vertical: 12);
+    return switch (index) {
+      0 => ListView(
+          padding: edgeInsets,
+          children: [
+            chatTitle,
+            const SizedBox(height: 12),
+            chatDropdown,
+            const SizedBox(height: 12),
+            chatTip,
+          ],
+        ),
+      1 => ListView(
+          padding: edgeInsets,
+          children: [
+            namingTitle,
+            const SizedBox(height: 12),
+            chatNamingDropdown,
+            const SizedBox(height: 12),
+            namingTip,
+            const SizedBox(height: 24),
+          ],
+        ),
+      2 => ListView(
+          padding: edgeInsets,
+          children: [
+            generationTitle,
+            const SizedBox(height: 12),
+            sentinelMetadataGenerationDropdown,
+            const SizedBox(height: 12),
+            generationTip,
+            const SizedBox(height: 24),
+          ],
+        ),
+      _ => const SizedBox(),
+    };
   }
 }
 
