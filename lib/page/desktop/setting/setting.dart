@@ -24,16 +24,16 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   final _icons = [
     HugeIcons.strokeRoundedPowerService,
+    HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedArtificialIntelligence03,
     HugeIcons.strokeRoundedTools,
-    HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedInformationCircle,
   ];
   final _menus = [
     'Provider',
+    'Default Model',
     'Sentinel',
     'MCP Server',
-    'Default Model',
     'About Athena',
   ];
 
@@ -54,9 +54,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     });
     var route = switch (index) {
       0 => const DesktopSettingProviderRoute(),
-      1 => const DesktopSettingSentinelRoute(),
+      1 => const DesktopSettingDefaultModelRoute(),
       2 => const DesktopSettingServerRoute(),
-      3 => const DesktopSettingDefaultModelRoute(),
+      3 => const DesktopSettingSentinelRoute(),
       4 => const DesktopSettingAboutRoute(),
       _ => null,
     };
@@ -69,18 +69,18 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       AthenaDialog.show(DesktopProviderFormDialog());
       return;
     }
-    if (index == 1) {
-      AthenaDialog.show(DesktopSentinelFormDialog());
-      return;
-    }
     if (index == 2) {
       AthenaDialog.show(DesktopServerFormDialog());
+      return;
+    }
+    if (index == 3) {
+      AthenaDialog.show(DesktopSentinelFormDialog());
       return;
     }
   }
 
   Widget _buildCreateButton() {
-    if (index > 2) return const SizedBox();
+    if (![0, 2, 3].contains(index)) return const SizedBox();
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: ColorUtil.FFFFFFFF,
