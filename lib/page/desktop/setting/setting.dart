@@ -70,11 +70,11 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       return;
     }
     if (index == 2) {
-      AthenaDialog.show(DesktopServerFormDialog());
+      AthenaDialog.show(DesktopSentinelFormDialog());
       return;
     }
     if (index == 3) {
-      AthenaDialog.show(DesktopSentinelFormDialog());
+      AthenaDialog.show(DesktopServerFormDialog());
       return;
     }
   }
