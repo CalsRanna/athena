@@ -1,3 +1,4 @@
+import 'package:athena/provider/mcp.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/server.dart';
@@ -38,6 +39,7 @@ class ServerViewModel extends ViewModel {
       await isar.servers.put(server);
     });
     ref.invalidate(serversNotifierProvider);
+    ref.read(mcpConnectionsNotifierProvider.notifier).toggleServer(server);
     AthenaDialog.message('Server updated');
   }
 
