@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:athena/page/desktop/setting/server/component/server_context_menu.dart';
 import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/logger_util.dart';
+import 'package:athena/util/mcp_client_extension.dart';
 import 'package:athena/view_model/server.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/context_menu.dart';
@@ -14,9 +19,9 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/switch.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:dart_mcp/client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class DesktopSettingServerPage extends ConsumerStatefulWidget {
@@ -59,25 +64,6 @@ class _DesktopSettingServerPageState
     environmentsController.text = servers[index].environments;
   }
 
-  Future<void> debug() async {
-    if (commandController.text.isEmpty) return;
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
-    if (servers.isEmpty) return;
-    AthenaDialog.loading();
-    var server = Server()
-      ..arguments = argumentsController.text
-      ..command = commandController.text
-      ..enabled = true
-      ..environments = environmentsController.text
-      ..name = servers[index].name;
-    var result = await viewModel.debugCommand(server);
-    setState(() {
-      this.result = result;
-    });
-    AthenaDialog.dismiss();
-  }
-
   Future<void> destroyServer(Server server) async {
     await viewModel.destroyServer(server);
     setState(() {
@@ -98,6 +84,49 @@ class _DesktopSettingServerPageState
   void initState() {
     super.initState();
     _initState();
+  }
+
+  Future<void> listTools() async {
+    AthenaDialog.loading();
+    var provider = serversNotifierProvider;
+    var servers = await ref.read(provider.future);
+    if (servers.isEmpty) return;
+    var server = servers[index];
+    var implementation = Implementation(name: server.name, version: '1.0.0');
+    var client = MCPClient(implementation);
+    var connection = await client.connectStdioServerWithEnvironment(
+      server.command,
+      server.arguments.split(' '),
+      environment: _mergeDefaultPath(server),
+    );
+    connection.onLog.listen((event) {
+      LoggerUtil.logger.d(event);
+    });
+
+    connection.done.then((_) {
+      LoggerUtil.logger.w('Connection to ${server.name} has been closed.');
+    });
+
+    await connection.initialize(
+      InitializeRequest(
+        protocolVersion: ProtocolVersion.latestSupported,
+        capabilities: ClientCapabilities(),
+        clientInfo: implementation,
+      ),
+    );
+    connection.notifyInitialized();
+    var result = await connection.listTools();
+    await connection.shutdown();
+    setState(() {
+      this.result = result.tools.map((tool) {
+        var json = {
+          'name': tool.name,
+          'description': tool.description,
+        };
+        return JsonEncoder.withIndent('  ').convert(json);
+      }).join('\n\n');
+    });
+    AthenaDialog.dismiss();
   }
 
   void openServerFormDialog(Server server) async {
@@ -203,8 +232,6 @@ class _DesktopSettingServerPageState
     var nameText = Text(servers[index].name, style: nameTextStyle);
     var nameChildren = [
       nameText,
-      SizedBox(width: 4),
-      Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
       Spacer(),
       AthenaSwitch(value: servers[index].enabled, onChanged: toggleServer),
     ];
@@ -242,18 +269,19 @@ class _DesktopSettingServerPageState
       servers[index].description,
       style: descriptionTextStyle,
     );
-    var debugTextStyle = TextStyle(
+    var toolsTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 16,
       fontWeight: FontWeight.w500,
     );
-    var debugText = Text('Debug command', style: debugTextStyle);
-    var debugButton = AthenaTextButton(onTap: debug, text: 'Debug');
-    var debugChildren = [debugText, const Spacer(), debugButton];
+    var toolsText = Text('Tools', style: toolsTextStyle);
+    var listToolsButton =
+        AthenaTextButton(onTap: listTools, text: 'List tools');
+    var toolsChildren = [toolsText, const Spacer(), listToolsButton];
     var resultTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var listChildren = [
@@ -267,7 +295,7 @@ class _DesktopSettingServerPageState
       if (servers[index].description.isNotEmpty) const SizedBox(height: 12),
       if (servers[index].description.isNotEmpty) descriptionText,
       const SizedBox(height: 12),
-      Row(children: debugChildren),
+      Row(children: toolsChildren),
       Text(result, style: resultTextStyle),
     ];
     return ListView(
@@ -283,5 +311,25 @@ class _DesktopSettingServerPageState
     commandController.text = servers[index].command;
     argumentsController.text = servers[index].arguments;
     environmentsController.text = servers[index].environments;
+  }
+
+  Map<String, String> _mergeDefaultPath(Server server) {
+    var originalPath = Platform.environment['PATH'] ?? '';
+    var presetPaths = [
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/System/Cryptexes/App/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin',
+      '/Library/Apple/usr/bin'
+    ];
+    Map<String, String> environment = {};
+    if (server.environments.isNotEmpty) {
+      environment = Map<String, String>.from(jsonDecode(server.environments));
+    }
+    environment['PATH'] = '${presetPaths.join(':')}:$originalPath';
+    return environment;
   }
 }
