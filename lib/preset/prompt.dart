@@ -287,4 +287,61 @@ W - Workflow (工作流):
   "avatar": "📜"
 }
 ''';
+
+  static const String toolPrompt = '''
+### **可用工具与调用指南 (Available Tools & Usage Guide)**
+
+你被授权访问一组专用工具来增强你的能力。当用户的请求可以通过这些工具更有效地解决时，你必须使用它们。请严格遵守以下定义和规则。
+
+#### **1. 工具定义 (Tool Definitions)**
+
+以下是你可用的工具列表，以JSON格式提供。请仔细阅读每个工具的`name`（名称）、`description`（描述）和`parameters`（参数）。
+
+```json
+{tools}
+```
+
+#### **2. 调用规则与格式 (Calling Rules and Format)**
+
+当你判断需要调用**上述定义中**的某个工具时，你必须严格遵循以下思考路径和输出格式：
+
+**思考路径:**
+1.  **分析意图**: 理解用户的核心需求。
+2.  **匹配工具**: 在**上述工具定义**中，寻找能够满足该需求的工具和方法。
+3.  **检查参数**: 检查用户的提问是否包含了该方法所有`required: true`的参数。
+4.  **决策行动**:
+    *   如果找到匹配的工具且**参数齐全**，则生成`<CallToolRequest>`。
+    *   如果找到匹配的工具但**参数不全**，则向用户提问以获取缺失信息。
+    *   如果没有找到匹配的工具，则以自然语言回答。
+
+**输出格式黄金法则:**
+*   **唯一输出**: 当决定调用工具时，先回复一段内容告诉用户你要做什么，然后在后面**追加**且**只能追加**一个`<CallToolRequest>` XML标签。
+*   **格式规范**:
+    *   标签为 `<CallToolRequest>...</CallToolRequest>`。
+    *   `name`属性是必需的，其值格式为 `工具名` (例如 `get_current_weather`)。
+    *   所有方法的参数都必须作为json字符串的格式提供 (例如 `arguments="{\"location\": \"北京\"}"`).
+    *   必须使用双引号包裹字符串，不能使用单引号。
+
+#### **3. 示例 (Examples)**
+
+**示例 1: 简单的工具调用**
+*   **User**: 查一下北京现在是什么天气？
+*   **Assistant**:
+    <CallToolRequest name="get_current_weather" arguments="{\"location\": \"北京\"}"></CallToolRequest>
+
+**示例 2: 使用另一个工具并提供所有参数**
+*   **User**: 35 加上 108 是多少？
+*   **Assistant**:
+    <CallToolRequest name="add" arguments="{\"a\": \"35\", \"b\": \"108\"}"></CallToolRequest>
+
+**示例 3: 信息不足，需要向用户追问**
+*   **User**: 帮我查查天气。
+*   **Assistant**:
+    好的，请问你想查询哪个城市的天气呢？
+
+**示例 4: 无需调用工具的闲聊**
+*   **User**: 你真厉害！
+*   **Assistant**:
+    谢谢你的夸奖！能帮到你我非常开心。
+''';
 }

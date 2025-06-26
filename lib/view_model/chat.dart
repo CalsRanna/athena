@@ -7,14 +7,12 @@ import 'dart:ui';
 import 'package:athena/api/chat.dart';
 import 'package:athena/api/search.dart';
 import 'package:athena/model/search_decision.dart';
-import 'package:athena/model/tool_call.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/provider/mcp.dart';
 import 'package:athena/provider/model.dart';
 import 'package:athena/provider/provider.dart';
 import 'package:athena/provider/sentinel.dart';
-import 'package:athena/provider/server.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
@@ -232,65 +230,55 @@ class ChatViewModel extends ViewModel {
     var sentinel = await ref.read(sentinelProvider.future);
     var messagesProvider = messagesNotifierProvider(latestChat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
-    var servers = await ref.read(serversNotifierProvider.future);
-    List<ChatCompletionTool> completionTools = [];
-    try {
-      completionTools = await _getChatCompletionTools(model);
-    } on Exception catch (error) {
-      messagesNotifier.append(error.toString());
+    var tools = await ref.read(mcpToolsNotifierProvider.future);
+    List<Tool> availableTools = [];
+    for (var tool in tools.values) {
+      availableTools.addAll(tool);
     }
-    var systemMessage = ChatCompletionMessage.system(content: sentinel.prompt);
+    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    if (!isDesktop) availableTools = [];
+    var toolPrompt = PresetPrompt.toolPrompt
+        .replaceAll('{tools}', jsonEncode(availableTools));
+    var systemPrompt = '${sentinel.prompt}\n\n$toolPrompt';
+    var systemMessage = ChatCompletionMessage.system(content: systemPrompt);
     var historyMessages = await _getHistoryMessages(latestChat);
-    Map<int, ToolCall> toolCalls = {};
+    CallToolRequest? callToolRequest;
     try {
       var response = ChatApi().getCompletion(
         chat: latestChat,
         messages: [systemMessage, ...historyMessages],
         model: model,
         provider: provider,
-        servers: servers,
-        tools: completionTools.isNotEmpty ? completionTools : null,
       );
       var broadcast = response.asBroadcastStream();
       _streamingAssistantMessage(latestChat, broadcast);
-      toolCalls = await _getToolCalls(broadcast);
+      callToolRequest = await _getCallToolRequest(broadcast);
     } catch (error) {
       messagesNotifier.append(error.toString());
     }
-    while (toolCalls.isNotEmpty) {
-      var entries = [...toolCalls.entries];
-      toolCalls.clear();
-      for (var entry in entries) {
-        var toolCall = entry.value;
-        var result = await _streamingToolMessage(latestChat, toolCall);
-        if (result == null) continue;
-        var toolCallMessage = ChatCompletionMessage.assistant(
-          toolCalls: [_getChatCompletionMessageToolCall(toolCall)],
-        );
-        var toolMessage = ChatCompletionMessage.tool(
-          content: result.toString(),
-          toolCallId: toolCall.id.toString(),
-        );
-        historyMessages.addAll([toolCallMessage, toolMessage]);
-      }
+    while (callToolRequest != null) {
+      var result = await _streamingToolMessage(latestChat, callToolRequest);
+      var content = result != null ? result.content.toString() : '工具没有返回任何内容';
+      var toolMessage = ChatCompletionMessage.user(
+          content: ChatCompletionUserMessageContent.string(content));
+      historyMessages.add(toolMessage);
       try {
-        var responseWithToolCall = ChatApi().getCompletion(
+        var nextRoundChat = ChatApi().getCompletion(
           chat: latestChat,
           messages: [systemMessage, ...historyMessages],
           model: model,
           provider: provider,
-          tools: completionTools.isNotEmpty ? completionTools : null,
-          servers: servers,
         );
-        var broadcastWithToolCall = responseWithToolCall.asBroadcastStream();
+        var broadcastWithToolCall = nextRoundChat.asBroadcastStream();
         _streamingAssistantMessage(latestChat, broadcastWithToolCall);
-        toolCalls = await _getToolCalls(broadcastWithToolCall);
+        callToolRequest = await _getCallToolRequest(broadcastWithToolCall);
       } catch (error) {
         messagesNotifier.append(error.toString());
       }
     }
     await messagesNotifier.closeStreaming(
-        reference: formattedMessage.reference);
+      reference: formattedMessage.reference,
+    );
     // Can not use the chat from params anymore cause the chat's title maybe
     // changed in the meantime
     var newChat =
@@ -387,42 +375,27 @@ class ChatViewModel extends ViewModel {
     return byteData.buffer.asUint8List();
   }
 
-  ChatCompletionMessageToolCall _getChatCompletionMessageToolCall(
-    ToolCall toolCall,
-  ) {
-    var chatCompletionMessageFunctionCall = ChatCompletionMessageFunctionCall(
-      name: toolCall.name.toString(),
-      arguments: toolCall.arguments.toString(),
-    );
-    return ChatCompletionMessageToolCall(
-      id: toolCall.id.toString(),
-      type: ChatCompletionMessageToolCallType.function,
-      function: chatCompletionMessageFunctionCall,
-    );
-  }
-
-  Future<List<ChatCompletionTool>> _getChatCompletionTools(Model model) async {
-    if (!model.supportFunctionCall) return [];
-    List<ChatCompletionTool> completionTools = [];
-    var tools = await ref.read(mcpToolsNotifierProvider.future);
-    for (var serverName in tools.keys) {
-      var availableTools = tools[serverName];
-      for (var tool in availableTools ?? <Tool>[]) {
-        var function = FunctionObject(
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.inputSchema as Map<String, dynamic>,
-        );
-        var completionTool = ChatCompletionTool(
-          type: ChatCompletionToolType.function,
-          function: function,
-        );
-        completionTools.add(completionTool);
-      }
+  Future<CallToolRequest?> _getCallToolRequest(
+    Stream<OverrodeCreateChatCompletionStreamResponse> response,
+  ) async {
+    var buffer = StringBuffer();
+    await for (final chunk in response) {
+      if (chunk.response.choices.isEmpty) continue;
+      var content = chunk.response.choices.first.delta.content ?? '';
+      buffer.write(content);
     }
-    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    if (!isDesktop) return [];
-    return completionTools;
+    var content = buffer.toString();
+    var regex = RegExp(
+      r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    var matched = regex.firstMatch(content);
+    if (matched == null) return null;
+    var name = matched.namedGroup('name');
+    var argumentsString = matched.namedGroup('arguments');
+    if (name == null || argumentsString == null) return null;
+    return CallToolRequest(name: name, arguments: jsonDecode(argumentsString));
   }
 
   Future<Message> _getFormattedMessage(
@@ -489,25 +462,6 @@ class ChatViewModel extends ViewModel {
     );
   }
 
-  Future<Map<int, ToolCall>> _getToolCalls(
-    Stream<OverrodeCreateChatCompletionStreamResponse> response,
-  ) async {
-    Map<int, ToolCall> toolCalls = {};
-    await for (final chunk in response) {
-      if (chunk.response.choices.isEmpty) continue;
-      if (chunk.response.choices.first.delta.toolCalls != null) {
-        if (chunk.response.choices.first.delta.toolCalls!.isEmpty) continue;
-        var toolCallChunk = chunk.response.choices.first.delta.toolCalls!.first;
-        if (!toolCalls.containsKey(toolCallChunk.index)) {
-          toolCalls[toolCallChunk.index] = ToolCall();
-        }
-        toolCalls[toolCallChunk.index]!.process(toolCallChunk);
-        continue;
-      }
-    }
-    return toolCalls;
-  }
-
   Future<void> _saveNewConversation(String text, {required Chat chat}) async {
     final userMessage = Message();
     userMessage.chatId = chat.id;
@@ -543,29 +497,22 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<CallToolResult?> _streamingToolMessage(
-    Chat chat,
-    ToolCall toolCall,
-  ) async {
+      Chat chat, CallToolRequest request) async {
     var messagesProvider = messagesNotifierProvider(chat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
     var connection = await ref
         .read(mcpToolsNotifierProvider.notifier)
-        .getConnectionByToolCall(toolCall);
+        .getConnectionByCallToolRequest(request);
     if (connection == null) {
       var content =
-          '\n```${toolCall.name}\nNo connection found for tool call\n```\n';
+          '\n```${request.name}\nNo connection found for tool call\n```\n';
       var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
       await messagesNotifier.streaming(delta);
       return null;
     }
-    var result = await connection.callTool(
-      CallToolRequest(
-        name: toolCall.name.toString(),
-        arguments: jsonDecode(toolCall.arguments.toString()),
-      ),
-    );
+    var result = await connection.callTool(request);
     var json = JsonEncoder.withIndent('  ').convert(result.content);
-    var content = '\n```${toolCall.name}\n$json\n```\n';
+    var content = '\n```${request.name}\n$json\n```\n';
     var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
     await messagesNotifier.streaming(delta);
     return result;

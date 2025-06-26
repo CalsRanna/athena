@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:athena/model/tool_call.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/logger_util.dart';
@@ -9,32 +8,6 @@ import 'package:dart_mcp/client.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'mcp.g.dart';
-
-@riverpod
-class McpToolsNotifier extends _$McpToolsNotifier {
-  @override
-  Future<Map<String, List<Tool>>> build() async {
-    var connections = await ref.read(mcpConnectionsNotifierProvider.future);
-    var tools = <String, List<Tool>>{};
-    for (var serverName in connections.keys) {
-      var connection = connections[serverName];
-      if (connection == null) continue;
-      var result = await connection.listTools();
-      tools[serverName] = result.tools;
-    }
-    return tools;
-  }
-
-  Future<ServerConnection?> getConnectionByToolCall(ToolCall toolCall) async {
-    var tools = await future;
-    var serverName = tools.entries
-        .firstWhere((entry) =>
-            entry.value.any((tool) => tool.name == toolCall.name.toString()))
-        .key;
-    var connections = await ref.read(mcpConnectionsNotifierProvider.future);
-    return connections[serverName];
-  }
-}
 
 @riverpod
 class McpConnectionsNotifier extends _$McpConnectionsNotifier {
@@ -73,6 +46,14 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       connections[server.name] = connection;
     }
     return connections;
+  }
+
+  Future<void> removeServer(String serverName) async {
+    var connections = await future;
+    if (connections.containsKey(serverName)) {
+      connections.remove(serverName);
+      state = AsyncData(Map.from(connections));
+    }
   }
 
   Future<void> toggleServer(Server server) async {
@@ -114,12 +95,32 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       state = AsyncData(Map.from(connections));
     }
   }
+}
 
-  Future<void> removeServer(String serverName) async {
-    var connections = await future;
-    if (connections.containsKey(serverName)) {
-      connections.remove(serverName);
-      state = AsyncData(Map.from(connections));
+@riverpod
+class McpToolsNotifier extends _$McpToolsNotifier {
+  @override
+  Future<Map<String, List<Tool>>> build() async {
+    var connections = await ref.read(mcpConnectionsNotifierProvider.future);
+    var tools = <String, List<Tool>>{};
+    for (var serverName in connections.keys) {
+      var connection = connections[serverName];
+      if (connection == null) continue;
+      var result = await connection.listTools();
+      tools[serverName] = result.tools;
     }
+    return tools;
+  }
+
+  Future<ServerConnection?> getConnectionByCallToolRequest(
+    CallToolRequest request,
+  ) async {
+    var tools = await future;
+    var serverName = tools.entries
+        .firstWhere(
+            (entry) => entry.value.any((tool) => tool.name == request.name))
+        .key;
+    var connections = await ref.read(mcpConnectionsNotifierProvider.future);
+    return connections[serverName];
   }
 }

@@ -6,7 +6,6 @@ import 'package:athena/preset/prompt.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart' as schema;
 import 'package:athena/schema/provider.dart';
-import 'package:athena/schema/server.dart';
 import 'package:athena/vendor/openai_dart/client.dart';
 import 'package:athena/vendor/openai_dart/response.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -41,8 +40,6 @@ class ChatApi {
     required List<ChatCompletionMessage> messages,
     required Provider provider,
     required schema.Model model,
-    List<Server>? servers,
-    List<ChatCompletionTool>? tools,
   }) async* {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',
@@ -57,7 +54,6 @@ class ChatApi {
       model: ChatCompletionModel.modelId(model.value),
       messages: messages,
       temperature: chat.temperature,
-      tools: tools,
     );
     yield* client.createOverrodeChatCompletionStream(request: request);
   }
