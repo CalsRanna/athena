@@ -21,8 +21,6 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/tool.dart' hide Tool;
-import 'package:athena/util/mcp_util.dart';
-import 'package:athena/vendor/mcp/message.dart';
 import 'package:athena/vendor/openai_dart/delta.dart';
 import 'package:athena/vendor/openai_dart/response.dart';
 import 'package:athena/view_model/view_model.dart';
@@ -408,19 +406,20 @@ class ChatViewModel extends ViewModel {
     if (!model.supportFunctionCall) return [];
     List<ChatCompletionTool> completionTools = [];
     var tools = await ref.read(mcpToolsNotifierProvider.future);
-    for (var tool in tools) {
-      var parameters = tool.inputSchema.properties;
-
-      var function = FunctionObject(
-        name: tool.name,
-        description: tool.description,
-        parameters: parameters,
-      );
-      var completionTool = ChatCompletionTool(
-        type: ChatCompletionToolType.function,
-        function: function,
-      );
-      completionTools.add(completionTool);
+    for (var serverName in tools.keys) {
+      var availableTools = tools[serverName];
+      for (var tool in availableTools ?? <Tool>[]) {
+        var function = FunctionObject(
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema as Map<String, dynamic>,
+        );
+        var completionTool = ChatCompletionTool(
+          type: ChatCompletionToolType.function,
+          function: function,
+        );
+        completionTools.add(completionTool);
+      }
     }
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) return [];
@@ -466,21 +465,6 @@ class ChatViewModel extends ViewModel {
         );
       }
     }).toList();
-  }
-
-  Future<Tool> _getMcpTool(ToolCall toolCall) async {
-    var tools = await ref.read(mcpToolsNotifierProvider.future);
-    return tools.where((tool) => tool.name == toolCall.name.toString()).first;
-  }
-
-  Map<String, dynamic> _getMcpToolArguments(ToolCall toolCall) {
-    Map<String, dynamic> arguments;
-    try {
-      arguments = jsonDecode(toolCall.arguments.toString());
-    } catch (e) {
-      arguments = {};
-    }
-    return arguments;
   }
 
   Future<SearchDecision> _getSearchDecision(
@@ -571,7 +555,7 @@ class ChatViewModel extends ViewModel {
     await messagesNotifier.streaming(delta);
   }
 
-  Future<McpJsonRpcResponse?> _streamingToolMessage(
+  Future<CallToolResult?> _streamingToolMessage(
     Chat chat,
     ToolCall toolCall,
   ) async {
@@ -580,32 +564,25 @@ class ChatViewModel extends ViewModel {
     var content = '\n\nGet result from ${toolCall.name}\n';
     var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
     await messagesNotifier.streaming(delta);
-    var serversProvider = serversNotifierProvider;
-    var servers = await ref.read(serversProvider.future);
-    var server = await McpUtil.getServer(toolCall, servers: servers);
-    McpJsonRpcResponse? result;
-    if (server == null) {
-      content = '\n```tool_call_error\nNo server found for tool call\n```\n';
+    var connection = await ref
+        .read(mcpToolsNotifierProvider.notifier)
+        .getConnectionByToolCall(toolCall);
+    if (connection == null) {
+      content =
+          '\n```tool_call_error\nNo connection found for tool call\n```\n';
       delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    } else {
-      var tool = await _getMcpTool(toolCall);
-      var arguments = _getMcpToolArguments(toolCall);
-      var connections = await ref.read(mcpConnectionsNotifierProvider.future);
-      var connection = connections[server.name];
-      if (connection == null) {
-        content = '\n```tool_call_error\nNo connection found for server\n```\n';
-        delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-      } else {
-        var request = CallToolRequest(
-          name: tool.name,
-          arguments: arguments,
-        );
-        var toolCallResult = await connection.callTool(request);
-        var json = JsonEncoder.withIndent('  ').convert(toolCallResult.content);
-        content = '\n```${toolCallResult.meta}\n$json\n```\n';
-        delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-      }
+      await messagesNotifier.streaming(delta);
+      return null;
     }
+    var result = await connection.callTool(
+      CallToolRequest(
+        name: toolCall.name.toString(),
+        arguments: jsonDecode(toolCall.arguments.toString()),
+      ),
+    );
+    var json = JsonEncoder.withIndent('  ').convert(result.content);
+    content = '\n```${toolCall.id}\n$json\n```\n';
+    delta = OverrodeChatCompletionStreamResponseDelta(content: content);
     await messagesNotifier.streaming(delta);
     return result;
   }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena/util/color_util.dart';
-import 'package:athena/vendor/mcp/util/process_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -98,11 +97,12 @@ class _DesktopInformationDialog extends StatelessWidget {
   }
 
   Widget _buildProcessPath() {
-    var path = ProcessUtil.defaultPath;
+    // var path = ProcessUtil.defaultPath;
     var children = [
       SizedBox(width: 100, child: Text('Process Path')),
       SizedBox(width: 16),
-      Expanded(child: Text(path)),
+      // Expanded(child: Text(path)),
+      Expanded(child: Text('Not implemented')),
     ];
     return Row(
       children: children,
