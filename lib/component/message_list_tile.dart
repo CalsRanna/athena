@@ -166,7 +166,6 @@ class _AssistantMessageListTileLoadingPart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!loading) return const SizedBox();
-    if (message.content.isNotEmpty) return const SizedBox();
     var indicator = CircularProgressIndicator(strokeWidth: 1);
     var sizedBox = SizedBox(height: 12, width: 12, child: indicator);
     var align = Align(alignment: Alignment.centerLeft, child: sizedBox);

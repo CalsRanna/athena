@@ -73,6 +73,7 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
   Widget _itemBuilder(List<Message> messages, int index) {
     final message = messages.reversed.elementAt(index);
     var loading = ref.watch(streamingNotifierProvider);
+    if (index > 0) loading = false;
     return MessageListTile(
       loading: loading,
       message: message,
