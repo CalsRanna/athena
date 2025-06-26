@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
 
   auto_route: ^9.2.2
+  async: ^2.13.0
   cached_network_image: ^3.3.1
   dart_mcp: ^0.2.2
   device_info_plus: ^11.3.0
@@ -44,6 +45,7 @@ dependencies:
   path_provider: ^2.0.15
   process: ^5.0.3
   riverpod_annotation: ^2.3.5
+  stream_channel: ^2.1.4
   synchronized: ^3.3.1
   system_tray: ^2.0.2
   tavily_dart: ^0.1.0+1

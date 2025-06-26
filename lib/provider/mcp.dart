@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:athena/model/tool_call.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
 import 'package:athena/util/logger_util.dart';
+import 'package:athena/util/mcp_client_extension.dart';
 import 'package:dart_mcp/client.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -43,9 +46,10 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
     for (var server in servers) {
       var implementation = Implementation(name: server.name, version: '1.0.0');
       var client = MCPClient(implementation);
-      var connection = await client.connectStdioServer(
+      var connection = await client.connectStdioServerWithEnvironment(
         server.command,
         server.arguments.split(' '),
+        environment: Map<String, String>.from(jsonDecode(server.environments)),
       );
       connection.onLog.listen((event) {
         LoggerUtil.logger.d(event);
@@ -75,9 +79,10 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
     if (server.enabled) {
       var implementation = Implementation(name: server.name, version: '1.0.0');
       var client = MCPClient(implementation);
-      var connection = await client.connectStdioServer(
+      var connection = await client.connectStdioServerWithEnvironment(
         server.command,
         server.arguments.split(' '),
+        environment: Map<String, String>.from(jsonDecode(server.environments)),
       );
       connection.onLog.listen((event) {
         LoggerUtil.logger.d(event);
