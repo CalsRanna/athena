@@ -34,6 +34,52 @@ class AthenaMarkdown extends StatelessWidget {
 
 enum AthenaMarkdownEngine { flutter, gpt }
 
+class _CallToolRequestBuilder extends MarkdownElementBuilder {
+  _CallToolRequestBuilder();
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    var boxDecoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(8),
+      color: ColorUtil.FFE0E0E0,
+    );
+    var text = Text(
+      'Call tool: ${element.textContent}',
+      style: GoogleFonts.firaCode(fontSize: 12),
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: double.infinity,
+      child: text,
+    );
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: container,
+    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+}
+
+class _CallToolRequestSyntax extends md.InlineSyntax {
+  _CallToolRequestSyntax()
+      : super(
+          r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
+        );
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('call_tool_request', match[1]!));
+    return true;
+  }
+}
+
 class _CodeBuilder extends MarkdownElementBuilder {
   _CodeBuilder();
 
@@ -130,6 +176,7 @@ class _FlutterMarkdown extends StatelessWidget {
     builders['latex'] = LatexElementBuilder();
     builders['sup'] = _SupBuilder();
     builders['reference'] = _ReferenceBuilder(onTap: openReference);
+    builders['call_tool_request'] = _CallToolRequestBuilder();
     List<md.BlockSyntax> blockSyntaxes = [];
     blockSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.blockSyntaxes);
     blockSyntaxes.add(LatexBlockSyntax());
@@ -137,6 +184,7 @@ class _FlutterMarkdown extends StatelessWidget {
     inlineSyntaxes.addAll(md.ExtensionSet.gitHubFlavored.inlineSyntaxes);
     inlineSyntaxes.add(LatexInlineSyntax());
     inlineSyntaxes.add(_ReferenceSyntax());
+    inlineSyntaxes.add(_CallToolRequestSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     var borderSide = BorderSide(color: ColorUtil.FFC2C2C2, width: 1);
     var markdownStyleSheet = MarkdownStyleSheet(
@@ -152,6 +200,15 @@ class _FlutterMarkdown extends StatelessWidget {
     );
   }
 
+  Future<void> openLink(String? url) async {
+    var uri = Uri.parse(url ?? '');
+    if (!(await canLaunchUrl(uri))) {
+      AthenaDialog.message('The link is invalid');
+      return;
+    }
+    launchUrl(uri);
+  }
+
   void openReference(int index) {
     try {
       var references = jsonDecode(message.reference);
@@ -161,15 +218,6 @@ class _FlutterMarkdown extends StatelessWidget {
     } catch (error) {
       AthenaDialog.message(error.toString());
     }
-  }
-
-  Future<void> openLink(String? url) async {
-    var uri = Uri.parse(url ?? '');
-    if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.message('The link is invalid');
-      return;
-    }
-    launchUrl(uri);
   }
 }
 
