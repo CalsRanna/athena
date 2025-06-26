@@ -6,12 +6,12 @@ part of 'mcp.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$mcpToolsNotifierHash() => r'ceb9151d54cf555bdcea74c50919bd7633771f0e';
+String _$mcpToolsNotifierHash() => r'e0b0cfeccfc7504d09bfc1ee4e813cc3be92292c';
 
 /// See also [McpToolsNotifier].
 @ProviderFor(McpToolsNotifier)
-final mcpToolsNotifierProvider =
-    AutoDisposeAsyncNotifierProvider<McpToolsNotifier, List<Tool>>.internal(
+final mcpToolsNotifierProvider = AutoDisposeAsyncNotifierProvider<
+    McpToolsNotifier, Map<String, List<Tool>>>.internal(
   McpToolsNotifier.new,
   name: r'mcpToolsNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -21,9 +21,9 @@ final mcpToolsNotifierProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$McpToolsNotifier = AutoDisposeAsyncNotifier<List<Tool>>;
+typedef _$McpToolsNotifier = AutoDisposeAsyncNotifier<Map<String, List<Tool>>>;
 String _$mcpConnectionsNotifierHash() =>
-    r'0c6dd74d3b283b2671e2af8c482a1e2107ea3ee0';
+    r'a7382841341bd5de8cbda580f981459e57b8baee';
 
 /// See also [McpConnectionsNotifier].
 @ProviderFor(McpConnectionsNotifier)
