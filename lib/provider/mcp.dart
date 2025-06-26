@@ -109,7 +109,10 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin',
       '/Library/Apple/usr/bin'
     ];
-    var environment = Map<String, String>.from(jsonDecode(server.environments));
+    Map<String, String> environment = {};
+    if (server.environments.isNotEmpty) {
+      environment = Map<String, String>.from(jsonDecode(server.environments));
+    }
     environment['PATH'] = '${presetPaths.join(':')}:$originalPath';
     return environment;
   }
