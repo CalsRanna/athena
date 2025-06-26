@@ -230,15 +230,15 @@ class ChatViewModel extends ViewModel {
     var sentinel = await ref.read(sentinelProvider.future);
     var messagesProvider = messagesNotifierProvider(latestChat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
-    var tools = await ref.read(mcpToolsNotifierProvider.future);
-    List<Tool> availableTools = [];
-    for (var tool in tools.values) {
-      availableTools.addAll(tool);
+    var groupedMcpTools = await ref.read(mcpToolsNotifierProvider.future);
+    List<Tool> tools = [];
+    for (var tool in groupedMcpTools.values) {
+      tools.addAll(tool);
     }
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-    if (!isDesktop) availableTools = [];
-    var toolPrompt = PresetPrompt.toolPrompt
-        .replaceAll('{tools}', jsonEncode(availableTools));
+    if (!isDesktop) tools = [];
+    var toolPrompt =
+        PresetPrompt.toolPrompt.replaceAll('{tools}', jsonEncode(tools));
     var systemPrompt = '${sentinel.prompt}\n\n$toolPrompt';
     var systemMessage = ChatCompletionMessage.system(content: systemPrompt);
     var historyMessages = await _getHistoryMessages(latestChat);
@@ -257,21 +257,22 @@ class ChatViewModel extends ViewModel {
       messagesNotifier.append(error.toString());
     }
     while (callToolRequest != null) {
-      var result = await _streamingToolMessage(latestChat, callToolRequest);
+      var result = await _getCallToolResult(latestChat, callToolRequest);
       var content = result != null ? result.content.toString() : '工具没有返回任何内容';
       var toolMessage = ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(content));
+        content: ChatCompletionUserMessageContent.string(content),
+      );
       historyMessages.add(toolMessage);
       try {
-        var nextRoundChat = ChatApi().getCompletion(
+        var nextRoundResponse = ChatApi().getCompletion(
           chat: latestChat,
           messages: [systemMessage, ...historyMessages],
           model: model,
           provider: provider,
         );
-        var broadcastWithToolCall = nextRoundChat.asBroadcastStream();
-        _streamingAssistantMessage(latestChat, broadcastWithToolCall);
-        callToolRequest = await _getCallToolRequest(broadcastWithToolCall);
+        var nextRoundBroadcast = nextRoundResponse.asBroadcastStream();
+        _streamingAssistantMessage(latestChat, nextRoundBroadcast);
+        callToolRequest = await _getCallToolRequest(nextRoundBroadcast);
       } catch (error) {
         messagesNotifier.append(error.toString());
       }
@@ -398,6 +399,28 @@ class ChatViewModel extends ViewModel {
     return CallToolRequest(name: name, arguments: jsonDecode(argumentsString));
   }
 
+  Future<CallToolResult?> _getCallToolResult(
+      Chat chat, CallToolRequest request) async {
+    var messagesProvider = messagesNotifierProvider(chat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    var connection = await ref
+        .read(mcpToolsNotifierProvider.notifier)
+        .getConnectionByCallToolRequest(request);
+    if (connection == null) {
+      var content =
+          '\n```${request.name}\nNo connection found for tool call\n```\n';
+      var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+      await messagesNotifier.streaming(delta);
+      return null;
+    }
+    var result = await connection.callTool(request);
+    var json = JsonEncoder.withIndent('  ').convert(result.content);
+    var content = '\n```${request.name}\n$json\n```\n';
+    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    await messagesNotifier.streaming(delta);
+    return result;
+  }
+
   Future<Message> _getFormattedMessage(
     String text, {
     required SearchDecision decision,
@@ -494,27 +517,5 @@ class ChatViewModel extends ViewModel {
       );
       await messagesNotifier.streaming(delta);
     }
-  }
-
-  Future<CallToolResult?> _streamingToolMessage(
-      Chat chat, CallToolRequest request) async {
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    var messagesNotifier = ref.read(messagesProvider.notifier);
-    var connection = await ref
-        .read(mcpToolsNotifierProvider.notifier)
-        .getConnectionByCallToolRequest(request);
-    if (connection == null) {
-      var content =
-          '\n```${request.name}\nNo connection found for tool call\n```\n';
-      var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-      await messagesNotifier.streaming(delta);
-      return null;
-    }
-    var result = await connection.callTool(request);
-    var json = JsonEncoder.withIndent('  ').convert(result.content);
-    var content = '\n```${request.name}\n$json\n```\n';
-    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    await messagesNotifier.streaming(delta);
-    return result;
   }
 }
