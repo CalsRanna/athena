@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/server.dart';
@@ -22,7 +23,7 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       var connection = await client.connectStdioServerWithEnvironment(
         server.command,
         server.arguments.split(' '),
-        environment: Map<String, String>.from(jsonDecode(server.environments)),
+        environment: _mergeDefaultPath(server),
       );
       connection.onLog.listen((event) {
         LoggerUtil.logger.d(event);
@@ -63,7 +64,7 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       var connection = await client.connectStdioServerWithEnvironment(
         server.command,
         server.arguments.split(' '),
-        environment: Map<String, String>.from(jsonDecode(server.environments)),
+        environment: _mergeDefaultPath(server),
       );
       connection.onLog.listen((event) {
         LoggerUtil.logger.d(event);
@@ -94,6 +95,23 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       connections.remove(server.name);
       state = AsyncData(Map.from(connections));
     }
+  }
+
+  Map<String, String> _mergeDefaultPath(Server server) {
+    var originalPath = Platform.environment['PATH'] ?? '';
+    var presetPaths = [
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/System/Cryptexes/App/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin',
+      '/Library/Apple/usr/bin'
+    ];
+    var environment = Map<String, String>.from(jsonDecode(server.environments));
+    environment['PATH'] = '${presetPaths.join(':')}:$originalPath';
+    return environment;
   }
 }
 
