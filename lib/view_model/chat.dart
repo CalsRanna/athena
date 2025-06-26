@@ -262,7 +262,6 @@ class ChatViewModel extends ViewModel {
       toolCalls.clear();
       for (var entry in entries) {
         var toolCall = entry.value;
-        await _streamingToolCallMessage(latestChat, toolCall);
         var result = await _streamingToolMessage(latestChat, toolCall);
         if (result == null) continue;
         var toolCallMessage = ChatCompletionMessage.assistant(
@@ -543,34 +542,19 @@ class ChatViewModel extends ViewModel {
     }
   }
 
-  Future<void> _streamingToolCallMessage(Chat chat, ToolCall toolCall) async {
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    var messagesNotifier = ref.read(messagesProvider.notifier);
-    var content = '\n\nCalling ${toolCall.name}\n';
-    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    await messagesNotifier.streaming(delta);
-    var json = JsonEncoder.withIndent('  ').convert(toolCall);
-    content = '\n```${toolCall.id}\n$json\n```\n';
-    delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    await messagesNotifier.streaming(delta);
-  }
-
   Future<CallToolResult?> _streamingToolMessage(
     Chat chat,
     ToolCall toolCall,
   ) async {
     var messagesProvider = messagesNotifierProvider(chat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
-    var content = '\n\nGet result from ${toolCall.name}\n';
-    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    await messagesNotifier.streaming(delta);
     var connection = await ref
         .read(mcpToolsNotifierProvider.notifier)
         .getConnectionByToolCall(toolCall);
     if (connection == null) {
-      content =
-          '\n```tool_call_error\nNo connection found for tool call\n```\n';
-      delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+      var content =
+          '\n```${toolCall.name}\nNo connection found for tool call\n```\n';
+      var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
       await messagesNotifier.streaming(delta);
       return null;
     }
@@ -581,8 +565,8 @@ class ChatViewModel extends ViewModel {
       ),
     );
     var json = JsonEncoder.withIndent('  ').convert(result.content);
-    content = '\n```${toolCall.id}\n$json\n```\n';
-    delta = OverrodeChatCompletionStreamResponseDelta(content: content);
+    var content = '\n```${toolCall.name}\n$json\n```\n';
+    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
     await messagesNotifier.streaming(delta);
     return result;
   }
