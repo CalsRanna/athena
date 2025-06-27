@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena/page/desktop/setting/server/component/server_context_menu.dart';
 import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
 import 'package:athena/provider/server.dart';
@@ -15,6 +17,7 @@ import 'package:athena/widget/switch.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 @RoutePage()
@@ -240,15 +243,18 @@ class _DesktopSettingServerPageState
       fontWeight: FontWeight.w500,
     );
     var toolsText = Text('Tools', style: toolsTextStyle);
-    var listToolsButton =
-        AthenaTextButton(onTap: listTools, text: 'List tools');
-    var toolsChildren = [toolsText, const Spacer(), listToolsButton];
-    var resultTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
+    var listToolsButton = AthenaTextButton(
+      onTap: listTools,
+      text: 'List tools',
     );
+    var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
+    var tools = jsonDecode(result);
+    var toolsChildren = <Widget>[];
+    for (var tool in tools) {
+      toolsChildren.add(
+        _ToolListTile(description: tool['description'], name: tool['name']),
+      );
+    }
     var listChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 12),
@@ -260,13 +266,14 @@ class _DesktopSettingServerPageState
       if (servers[index].description.isNotEmpty) const SizedBox(height: 12),
       if (servers[index].description.isNotEmpty) descriptionText,
       const SizedBox(height: 12),
-      Row(children: toolsChildren),
-      Text(result, style: resultTextStyle),
+      Row(children: listToolsChildren),
+      ...toolsChildren,
     ];
-    return ListView(
+    var sliverPadding = SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: listChildren,
+      sliver: SliverList(delegate: SliverChildListDelegate(listChildren)),
     );
+    return CustomScrollView(slivers: [sliverPadding]);
   }
 
   Future<void> _initState() async {
@@ -277,5 +284,82 @@ class _DesktopSettingServerPageState
     argumentsController.text = servers[index].arguments;
     environmentsController.text = servers[index].environments;
     result = servers[index].tools;
+  }
+}
+
+class _ToolListTile extends StatefulWidget {
+  final String description;
+  final String name;
+  const _ToolListTile({required this.description, required this.name});
+
+  @override
+  _ToolListTileState createState() => _ToolListTileState();
+}
+
+class _ToolListTileState extends State<_ToolListTile> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    var nameTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+      height: 1.5,
+    );
+    var nameText = Text(
+      widget.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: nameTextStyle,
+    );
+    var nameChildren = [
+      Flexible(child: nameText),
+      SizedBox(width: 8),
+      // AthenaTag.small(text: widget.model.value)
+    ];
+    var subtitleChildren = [
+      _buildSubtitle(),
+    ];
+    var informationChildren = [
+      Row(children: nameChildren),
+      const SizedBox(height: 4),
+      Row(spacing: 8, children: subtitleChildren),
+    ];
+    var informationWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: informationChildren,
+    );
+    var contentChildren = [
+      Expanded(child: informationWidget),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: contentChildren),
+    );
+  }
+
+  void handleEnter(PointerEnterEvent event) {
+    setState(() => hover = true);
+  }
+
+  void handleExit(PointerExitEvent event) {
+    setState(() => hover = false);
+  }
+
+  Widget _buildSubtitle() {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFE0E0E0,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var text = Text(
+      widget.description,
+      // maxLines: 1,
+      // overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
+    return Flexible(child: text);
   }
 }
