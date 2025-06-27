@@ -1,15 +1,29 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:athena/provider/mcp.dart';
 import 'package:athena/provider/server.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/server.dart';
+import 'package:athena/util/logger_util.dart';
+import 'package:athena/util/mcp_client_extension.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:dart_mcp/client.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ServerViewModel extends ViewModel {
   final WidgetRef ref;
 
   ServerViewModel(this.ref);
+
+  Future<void> destroyServer(Server server) async {
+    await isar.writeTxn(() async {
+      await isar.servers.delete(server.id);
+    });
+    ref.invalidate(serversNotifierProvider);
+  }
 
   Future<void> emptyServers() async {
     await isar.writeTxn(() async {
@@ -18,11 +32,46 @@ class ServerViewModel extends ViewModel {
     ref.invalidate(serversNotifierProvider);
   }
 
-  Future<void> destroyServer(Server server) async {
-    await isar.writeTxn(() async {
-      await isar.servers.delete(server.id);
+  Future<String> refreshTools(BuildContext context, Server server) async {
+    AthenaDialog.loading();
+    var implementation = Implementation(name: server.name, version: '1.0.0');
+    var client = MCPClient(implementation);
+    var connection = await client.connectStdioServerWithEnvironment(
+      server.command,
+      server.arguments.split(' '),
+      environment: _mergeDefaultPath(server),
+    );
+    connection.onLog.listen((event) {
+      LoggerUtil.logger.d(event);
     });
-    ref.invalidate(serversNotifierProvider);
+
+    connection.done.then((_) {
+      LoggerUtil.logger.w('Connection to ${server.name} has been closed.');
+    });
+
+    await connection.initialize(
+      InitializeRequest(
+        protocolVersion: ProtocolVersion.latestSupported,
+        capabilities: ClientCapabilities(),
+        clientInfo: implementation,
+      ),
+    );
+    connection.notifyInitialized();
+    var result = await connection.listTools();
+    await connection.shutdown();
+    var briefTools = result.tools.map((tool) {
+      return {
+        'name': tool.name,
+        'description': tool.description,
+      };
+    }).toList();
+    var toolString = jsonEncode(briefTools);
+    var updatedServer = server.copyWith(tools: toolString);
+    await isar.writeTxn(() async {
+      await isar.servers.put(updatedServer);
+    });
+    AthenaDialog.dismiss();
+    return toolString;
   }
 
   Future<void> storeServer(Server server) async {
@@ -41,29 +90,23 @@ class ServerViewModel extends ViewModel {
     AthenaDialog.message('Server updated');
   }
 
-  Future<String> debugCommand(Server server) async {
-    // try {
-    //   var command = server.command;
-    //   var output = 'which $command: ';
-    //   var result = await ProcessUtil.run('which $command');
-    //   var stdout = result.stdout.toString().trim();
-    //   if (stdout.isNotEmpty) output += '\n$stdout';
-    //   var stderr = result.stderr.toString().trim();
-    //   if (stderr.isNotEmpty) output += '\n$stderr';
-    //   output += '\n\n$command --version: ';
-    //   result = await ProcessUtil.run('$command --version');
-    //   stdout = result.stdout.toString().trim();
-    //   if (stdout.isNotEmpty) output += '\n$stdout';
-    //   stderr = result.stderr.toString().trim();
-    //   if (stderr.isNotEmpty) output += '\n$stderr';
-    //   var tools = await McpUtil.getMcpTools([server]);
-    //   for (var tool in tools) {
-    //     output += '\n\n${tool.name}\n${tool.description}';
-    //   }
-    //   return output;
-    // } catch (error) {
-    //   return error.toString();
-    // }
-    return '';
+  Map<String, String> _mergeDefaultPath(Server server) {
+    var originalPath = Platform.environment['PATH'] ?? '';
+    var presetPaths = [
+      '/opt/homebrew/bin',
+      '/opt/homebrew/sbin',
+      '/usr/local/bin',
+      '/System/Cryptexes/App/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin',
+      '/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin',
+      '/Library/Apple/usr/bin'
+    ];
+    Map<String, String> environment = {};
+    if (server.environments.isNotEmpty) {
+      environment = Map<String, String>.from(jsonDecode(server.environments));
+    }
+    environment['PATH'] = '${presetPaths.join(':')}:$originalPath';
+    return environment;
   }
 }

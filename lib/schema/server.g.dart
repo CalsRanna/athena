@@ -46,6 +46,11 @@ const ServerSchema = CollectionSchema(
       id: 5,
       name: r'name',
       type: IsarType.string,
+    ),
+    r'tools': PropertySchema(
+      id: 6,
+      name: r'tools',
+      type: IsarType.string,
     )
   },
   estimateSize: _serverEstimateSize,
@@ -73,6 +78,7 @@ int _serverEstimateSize(
   bytesCount += 3 + object.description.length * 3;
   bytesCount += 3 + object.environments.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  bytesCount += 3 + object.tools.length * 3;
   return bytesCount;
 }
 
@@ -88,6 +94,7 @@ void _serverSerialize(
   writer.writeBool(offsets[3], object.enabled);
   writer.writeString(offsets[4], object.environments);
   writer.writeString(offsets[5], object.name);
+  writer.writeString(offsets[6], object.tools);
 }
 
 Server _serverDeserialize(
@@ -104,6 +111,7 @@ Server _serverDeserialize(
   object.environments = reader.readString(offsets[4]);
   object.id = id;
   object.name = reader.readString(offsets[5]);
+  object.tools = reader.readString(offsets[6]);
   return object;
 }
 
@@ -125,6 +133,8 @@ P _serverDeserializeProp<P>(
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
+      return (reader.readString(offset)) as P;
+    case 6:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -929,6 +939,136 @@ extension ServerQueryFilter on QueryBuilder<Server, Server, QFilterCondition> {
       ));
     });
   }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'tools',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'tools',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'tools',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'tools',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterFilterCondition> toolsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'tools',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension ServerQueryObject on QueryBuilder<Server, Server, QFilterCondition> {}
@@ -1005,6 +1145,18 @@ extension ServerQuerySortBy on QueryBuilder<Server, Server, QSortBy> {
   QueryBuilder<Server, Server, QAfterSortBy> sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterSortBy> sortByTools() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tools', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterSortBy> sortByToolsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tools', Sort.desc);
     });
   }
 }
@@ -1093,6 +1245,18 @@ extension ServerQuerySortThenBy on QueryBuilder<Server, Server, QSortThenBy> {
       return query.addSortBy(r'name', Sort.desc);
     });
   }
+
+  QueryBuilder<Server, Server, QAfterSortBy> thenByTools() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tools', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Server, Server, QAfterSortBy> thenByToolsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'tools', Sort.desc);
+    });
+  }
 }
 
 extension ServerQueryWhereDistinct on QueryBuilder<Server, Server, QDistinct> {
@@ -1134,6 +1298,13 @@ extension ServerQueryWhereDistinct on QueryBuilder<Server, Server, QDistinct> {
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Server, Server, QDistinct> distinctByTools(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'tools', caseSensitive: caseSensitive);
     });
   }
 }
@@ -1178,6 +1349,12 @@ extension ServerQueryProperty on QueryBuilder<Server, Server, QQueryProperty> {
   QueryBuilder<Server, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<Server, String, QQueryOperations> toolsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'tools');
     });
   }
 }
