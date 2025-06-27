@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_string_escapes
+
 class PresetPrompt {
   static const String searchDecisionPrompt = '''
 # 角色定义

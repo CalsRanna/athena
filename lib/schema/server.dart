@@ -12,6 +12,7 @@ class Server {
   bool enabled = false;
   String environments = ''; //json.encode(Map<String, String>)
   String name = '';
+  String tools = '';
 
   Server();
 
@@ -23,6 +24,7 @@ class Server {
     bool? enabled,
     String? environments,
     String? name,
+    String? tools,
   }) {
     return Server()
       ..id = id ?? this.id
@@ -31,6 +33,7 @@ class Server {
       ..description = description ?? this.description
       ..enabled = enabled ?? this.enabled
       ..environments = environments ?? this.environments
-      ..name = name ?? this.name;
+      ..name = name ?? this.name
+      ..tools = tools ?? this.tools;
   }
 }
