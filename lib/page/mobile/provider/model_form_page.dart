@@ -28,9 +28,8 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
   final valueController = TextEditingController();
   final inputController = TextEditingController();
   final outputController = TextEditingController();
-  var supportFunctionCall = false;
-  var supportThinking = false;
-  var supportVisualRecognition = false;
+  var supportReasoning = false;
+  var supportVisual = false;
 
   late final viewModel = ModelViewModel(ref);
 
@@ -84,9 +83,8 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
     valueController.text = widget.model?.value ?? '';
     inputController.text = widget.model?.inputPrice ?? '';
     outputController.text = widget.model?.outputPrice ?? '';
-    supportFunctionCall = widget.model?.supportFunctionCall ?? false;
-    supportThinking = widget.model?.supportThinking ?? false;
-    supportVisualRecognition = widget.model?.supportVisualRecognition ?? false;
+    supportReasoning = widget.model?.supportReasoning ?? false;
+    supportVisual = widget.model?.supportVisual ?? false;
   }
 
   Future<void> submitModel() async {
@@ -96,9 +94,8 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
         ..value = valueController.text
         ..inputPrice = inputController.text
         ..outputPrice = outputController.text
-        ..supportFunctionCall = supportFunctionCall
-        ..supportThinking = supportThinking
-        ..supportVisualRecognition = supportVisualRecognition
+        ..supportReasoning = supportReasoning
+        ..supportVisual = supportVisual
         ..providerId = widget.provider!.id;
       await viewModel.storeModel(newModel);
     } else {
@@ -107,9 +104,8 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
         value: valueController.text,
         inputPrice: inputController.text,
         outputPrice: outputController.text,
-        supportFunctionCall: supportFunctionCall,
-        supportThinking: supportThinking,
-        supportVisualRecognition: supportVisualRecognition,
+        supportReasoning: supportReasoning,
+        supportVisual: supportVisual,
       );
       await viewModel.updateModel(copiedModel);
     }
@@ -117,36 +113,26 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
     AutoRouter.of(context).maybePop();
   }
 
-  void updateSupportFunctionCall(bool value) {
+  void updateSupportReasoning(bool value) {
     setState(() {
-      supportFunctionCall = value;
+      supportReasoning = value;
     });
   }
 
-  void updateSupportThinking(bool value) {
+  void updateSupportVisual(bool value) {
     setState(() {
-      supportThinking = value;
-    });
-  }
-
-  void updateSupportVisualRecognition(bool value) {
-    setState(() {
-      supportVisualRecognition = value;
+      supportVisual = value;
     });
   }
 
   Widget _buildFeatures() {
-    var functionCallCheckbox = AthenaCheckbox(
-      value: supportFunctionCall,
-      onChanged: updateSupportFunctionCall,
+    var reasoningCheckbox = AthenaCheckbox(
+      value: supportReasoning,
+      onChanged: updateSupportReasoning,
     );
-    var thinkingCheckbox = AthenaCheckbox(
-      value: supportThinking,
-      onChanged: updateSupportThinking,
-    );
-    var visualRecognitionCheckbox = AthenaCheckbox(
-      value: supportVisualRecognition,
-      onChanged: updateSupportVisualRecognition,
+    var visualCheckbox = AthenaCheckbox(
+      value: supportVisual,
+      onChanged: updateSupportVisual,
     );
     var trailingTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
@@ -154,27 +140,20 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var functionCallCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: functionCallCheckbox,
-      onTap: () => updateSupportFunctionCall(!supportFunctionCall),
-      trailing: Text('函数调用', style: trailingTextStyle),
+    var reasoningCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: reasoningCheckbox,
+      onTap: () => updateSupportReasoning(!supportReasoning),
+      trailing: Text('Reasoning', style: trailingTextStyle),
     );
-    var thinkingCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: thinkingCheckbox,
-      onTap: () => updateSupportThinking(!supportThinking),
-      trailing: Text('推理模型', style: trailingTextStyle),
-    );
-    var visualRecognitionCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: visualRecognitionCheckbox,
-      onTap: () => updateSupportVisualRecognition(!supportVisualRecognition),
-      trailing: Text('图像识别', style: trailingTextStyle),
+    var visualCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: visualCheckbox,
+      onTap: () => updateSupportVisual(!supportVisual),
+      trailing: Text('Visual', style: trailingTextStyle),
     );
     var children = [
-      functionCallCheckboxGroup,
+      reasoningCheckboxGroup,
       const SizedBox(width: 12),
-      thinkingCheckboxGroup,
-      const SizedBox(width: 12),
-      visualRecognitionCheckboxGroup,
+      visualCheckboxGroup,
     ];
     return Row(children: children);
   }

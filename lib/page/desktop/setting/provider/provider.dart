@@ -156,7 +156,7 @@ class _DesktopSettingProviderPageState
     if (models.isEmpty) return [const SizedBox()];
     List<Widget> children = [];
     for (var model in models) {
-      var child = _ModelTile(
+      var child = _ModelListTile(
         model: model,
         onSecondaryTap: (details) => openModelContextMenu(details, model),
         onTap: () => checkConnection(model),
@@ -210,8 +210,6 @@ class _DesktopSettingProviderPageState
     var nameText = Text(providers[index].name, style: nameTextStyle);
     var nameChildren = [
       nameText,
-      SizedBox(width: 4),
-      Icon(HugeIcons.strokeRoundedLinkSquare02, color: ColorUtil.FFFFFFFF),
       Spacer(),
       AthenaSwitch(value: providers[index].enabled, onChanged: toggleProvider)
     ];
@@ -237,16 +235,6 @@ class _DesktopSettingProviderPageState
     var modelProvider = modelsForNotifierProvider(providers[index].id);
     var models = ref.watch(modelProvider).valueOrNull;
     var modelChildren = _buildModelListView(models);
-    var tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var tipText = Text(
-      '查看${providers[index].name}文档和模型获取更多详情',
-      style: tipTextStyle,
-    );
     var listChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 12),
@@ -257,8 +245,6 @@ class _DesktopSettingProviderPageState
       Row(children: addModelChildren),
       const SizedBox(height: 4),
       ...modelChildren,
-      if (providers[index].isPreset) const SizedBox(height: 12),
-      if (providers[index].isPreset) tipText
     ];
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -275,27 +261,26 @@ class _DesktopSettingProviderPageState
   }
 }
 
-class _ModelTile extends StatefulWidget {
+class _ModelListTile extends StatefulWidget {
   final Model model;
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
-  const _ModelTile({required this.model, this.onSecondaryTap, this.onTap});
+  const _ModelListTile({required this.model, this.onSecondaryTap, this.onTap});
 
   @override
-  _ModelTileState createState() => _ModelTileState();
+  _ModelListTileState createState() => _ModelListTileState();
 }
 
-class _ModelTileState extends State<_ModelTile> {
+class _ModelListTileState extends State<_ModelListTile> {
   bool hover = false;
 
   bool get _showSubtitle {
     var visible = widget.model.releasedAt.isNotEmpty;
+    visible |= widget.model.context.isNotEmpty;
     visible |= widget.model.inputPrice.isNotEmpty;
     visible |= widget.model.outputPrice.isNotEmpty;
-    visible |= widget.model.maxToken > 0;
-    visible |= widget.model.supportFunctionCall;
-    visible |= widget.model.supportThinking;
-    visible |= widget.model.supportVisualRecognition;
+    visible |= widget.model.supportReasoning;
+    visible |= widget.model.supportVisual;
     return visible;
   }
 
@@ -318,26 +303,20 @@ class _ModelTileState extends State<_ModelTile> {
       SizedBox(width: 8),
       AthenaTag.small(text: widget.model.value)
     ];
-    var functionCallIcon = Icon(
-      HugeIcons.strokeRoundedFunctionCircle,
-      color: ColorUtil.FFE0E0E0,
-      size: 18,
-    );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
       color: ColorUtil.FFE0E0E0,
       size: 18,
     );
-    var visualRecognitionIcon = Icon(
+    var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
       color: ColorUtil.FFE0E0E0,
       size: 18,
     );
     var subtitleChildren = [
       _buildSubtitle(),
-      if (widget.model.supportFunctionCall) functionCallIcon,
-      if (widget.model.supportThinking) thinkIcon,
-      if (widget.model.supportVisualRecognition) visualRecognitionIcon,
+      if (widget.model.supportReasoning) thinkIcon,
+      if (widget.model.supportVisual) visualIcon,
     ];
     var informationChildren = [
       Row(children: nameChildren),
@@ -389,18 +368,14 @@ class _ModelTileState extends State<_ModelTile> {
 
   Widget _buildSubtitle() {
     var releasedAt = widget.model.releasedAt;
+    var context = widget.model.context;
     var inputPrice = widget.model.inputPrice;
     var outputPrice = widget.model.outputPrice;
-    var maxToken = widget.model.maxToken;
-    var maxTokenString = '${widget.model.maxToken ~/ 1024}K';
-    if (maxToken > 1024 * 1024) {
-      maxTokenString = '${widget.model.maxToken ~/ (1024 * 1024)}M';
-    }
     var parts = [
-      if (releasedAt.isNotEmpty) 'Released at ${widget.model.releasedAt}',
-      if (inputPrice.isNotEmpty) 'Input ${widget.model.inputPrice}',
-      if (outputPrice.isNotEmpty) 'Output ${widget.model.outputPrice}',
-      if (maxToken > 0) maxTokenString,
+      if (releasedAt.isNotEmpty) releasedAt,
+      if (context.isNotEmpty) context,
+      if (inputPrice.isNotEmpty) inputPrice,
+      if (outputPrice.isNotEmpty) outputPrice,
     ];
     var textStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,

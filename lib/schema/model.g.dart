@@ -17,15 +17,15 @@ const ModelSchema = CollectionSchema(
   name: r'models',
   id: 6728634196192131898,
   properties: {
-    r'input_price': PropertySchema(
+    r'context': PropertySchema(
       id: 0,
-      name: r'input_price',
+      name: r'context',
       type: IsarType.string,
     ),
-    r'max_token': PropertySchema(
+    r'input_price': PropertySchema(
       id: 1,
-      name: r'max_token',
-      type: IsarType.long,
+      name: r'input_price',
+      type: IsarType.string,
     ),
     r'name': PropertySchema(
       id: 2,
@@ -47,23 +47,18 @@ const ModelSchema = CollectionSchema(
       name: r'released_at',
       type: IsarType.string,
     ),
-    r'support_function_call': PropertySchema(
+    r'support_reasoning': PropertySchema(
       id: 6,
-      name: r'support_function_call',
+      name: r'support_reasoning',
       type: IsarType.bool,
     ),
-    r'support_thinking': PropertySchema(
+    r'support_visual': PropertySchema(
       id: 7,
-      name: r'support_thinking',
-      type: IsarType.bool,
-    ),
-    r'support_visual_recognition': PropertySchema(
-      id: 8,
-      name: r'support_visual_recognition',
+      name: r'support_visual',
       type: IsarType.bool,
     ),
     r'value': PropertySchema(
-      id: 9,
+      id: 8,
       name: r'value',
       type: IsarType.string,
     )
@@ -88,6 +83,7 @@ int _modelEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.context.length * 3;
   bytesCount += 3 + object.inputPrice.length * 3;
   bytesCount += 3 + object.name.length * 3;
   bytesCount += 3 + object.outputPrice.length * 3;
@@ -102,16 +98,15 @@ void _modelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.inputPrice);
-  writer.writeLong(offsets[1], object.maxToken);
+  writer.writeString(offsets[0], object.context);
+  writer.writeString(offsets[1], object.inputPrice);
   writer.writeString(offsets[2], object.name);
   writer.writeString(offsets[3], object.outputPrice);
   writer.writeLong(offsets[4], object.providerId);
   writer.writeString(offsets[5], object.releasedAt);
-  writer.writeBool(offsets[6], object.supportFunctionCall);
-  writer.writeBool(offsets[7], object.supportThinking);
-  writer.writeBool(offsets[8], object.supportVisualRecognition);
-  writer.writeString(offsets[9], object.value);
+  writer.writeBool(offsets[6], object.supportReasoning);
+  writer.writeBool(offsets[7], object.supportVisual);
+  writer.writeString(offsets[8], object.value);
 }
 
 Model _modelDeserialize(
@@ -121,17 +116,16 @@ Model _modelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Model();
+  object.context = reader.readString(offsets[0]);
   object.id = id;
-  object.inputPrice = reader.readString(offsets[0]);
-  object.maxToken = reader.readLong(offsets[1]);
+  object.inputPrice = reader.readString(offsets[1]);
   object.name = reader.readString(offsets[2]);
   object.outputPrice = reader.readString(offsets[3]);
   object.providerId = reader.readLong(offsets[4]);
   object.releasedAt = reader.readString(offsets[5]);
-  object.supportFunctionCall = reader.readBool(offsets[6]);
-  object.supportThinking = reader.readBool(offsets[7]);
-  object.supportVisualRecognition = reader.readBool(offsets[8]);
-  object.value = reader.readString(offsets[9]);
+  object.supportReasoning = reader.readBool(offsets[6]);
+  object.supportVisual = reader.readBool(offsets[7]);
+  object.value = reader.readString(offsets[8]);
   return object;
 }
 
@@ -145,7 +139,7 @@ P _modelDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
@@ -159,8 +153,6 @@ P _modelDeserializeProp<P>(
     case 7:
       return (reader.readBool(offset)) as P;
     case 8:
-      return (reader.readBool(offset)) as P;
-    case 9:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -255,6 +247,136 @@ extension ModelQueryWhere on QueryBuilder<Model, Model, QWhereClause> {
 }
 
 extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'context',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'context',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'context',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'context',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterFilterCondition> contextIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'context',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -433,58 +555,6 @@ extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'input_price',
         value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterFilterCondition> maxTokenEqualTo(int value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'max_token',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterFilterCondition> maxTokenGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'max_token',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterFilterCondition> maxTokenLessThan(
-    int value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'max_token',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterFilterCondition> maxTokenBetween(
-    int lower,
-    int upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'max_token',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
       ));
     });
   }
@@ -930,31 +1000,21 @@ extension ModelQueryFilter on QueryBuilder<Model, Model, QFilterCondition> {
     });
   }
 
-  QueryBuilder<Model, Model, QAfterFilterCondition> supportFunctionCallEqualTo(
+  QueryBuilder<Model, Model, QAfterFilterCondition> supportReasoningEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'support_function_call',
+        property: r'support_reasoning',
         value: value,
       ));
     });
   }
 
-  QueryBuilder<Model, Model, QAfterFilterCondition> supportThinkingEqualTo(
+  QueryBuilder<Model, Model, QAfterFilterCondition> supportVisualEqualTo(
       bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'support_thinking',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterFilterCondition>
-      supportVisualRecognitionEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'support_visual_recognition',
+        property: r'support_visual',
         value: value,
       ));
     });
@@ -1094,6 +1154,18 @@ extension ModelQueryObject on QueryBuilder<Model, Model, QFilterCondition> {}
 extension ModelQueryLinks on QueryBuilder<Model, Model, QFilterCondition> {}
 
 extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
+  QueryBuilder<Model, Model, QAfterSortBy> sortByContext() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'context', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> sortByContextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'context', Sort.desc);
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterSortBy> sortByInputPrice() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'input_price', Sort.asc);
@@ -1103,18 +1175,6 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
   QueryBuilder<Model, Model, QAfterSortBy> sortByInputPriceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'input_price', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> sortByMaxToken() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'max_token', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> sortByMaxTokenDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'max_token', Sort.desc);
     });
   }
 
@@ -1166,40 +1226,27 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportFunctionCall() {
+  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportReasoning() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_function_call', Sort.asc);
+      return query.addSortBy(r'support_reasoning', Sort.asc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportFunctionCallDesc() {
+  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportReasoningDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_function_call', Sort.desc);
+      return query.addSortBy(r'support_reasoning', Sort.desc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportThinking() {
+  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportVisual() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_thinking', Sort.asc);
+      return query.addSortBy(r'support_visual', Sort.asc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportThinkingDesc() {
+  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportVisualDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_thinking', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> sortBySupportVisualRecognition() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_visual_recognition', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy>
-      sortBySupportVisualRecognitionDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_visual_recognition', Sort.desc);
+      return query.addSortBy(r'support_visual', Sort.desc);
     });
   }
 
@@ -1217,6 +1264,18 @@ extension ModelQuerySortBy on QueryBuilder<Model, Model, QSortBy> {
 }
 
 extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
+  QueryBuilder<Model, Model, QAfterSortBy> thenByContext() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'context', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Model, Model, QAfterSortBy> thenByContextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'context', Sort.desc);
+    });
+  }
+
   QueryBuilder<Model, Model, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1238,18 +1297,6 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
   QueryBuilder<Model, Model, QAfterSortBy> thenByInputPriceDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'input_price', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> thenByMaxToken() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'max_token', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> thenByMaxTokenDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'max_token', Sort.desc);
     });
   }
 
@@ -1301,40 +1348,27 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportFunctionCall() {
+  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportReasoning() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_function_call', Sort.asc);
+      return query.addSortBy(r'support_reasoning', Sort.asc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportFunctionCallDesc() {
+  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportReasoningDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_function_call', Sort.desc);
+      return query.addSortBy(r'support_reasoning', Sort.desc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportThinking() {
+  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportVisual() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_thinking', Sort.asc);
+      return query.addSortBy(r'support_visual', Sort.asc);
     });
   }
 
-  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportThinkingDesc() {
+  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportVisualDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_thinking', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy> thenBySupportVisualRecognition() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_visual_recognition', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Model, Model, QAfterSortBy>
-      thenBySupportVisualRecognitionDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'support_visual_recognition', Sort.desc);
+      return query.addSortBy(r'support_visual', Sort.desc);
     });
   }
 
@@ -1352,16 +1386,17 @@ extension ModelQuerySortThenBy on QueryBuilder<Model, Model, QSortThenBy> {
 }
 
 extension ModelQueryWhereDistinct on QueryBuilder<Model, Model, QDistinct> {
+  QueryBuilder<Model, Model, QDistinct> distinctByContext(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'context', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Model, Model, QDistinct> distinctByInputPrice(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'input_price', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<Model, Model, QDistinct> distinctByMaxToken() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'max_token');
     });
   }
 
@@ -1392,21 +1427,15 @@ extension ModelQueryWhereDistinct on QueryBuilder<Model, Model, QDistinct> {
     });
   }
 
-  QueryBuilder<Model, Model, QDistinct> distinctBySupportFunctionCall() {
+  QueryBuilder<Model, Model, QDistinct> distinctBySupportReasoning() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'support_function_call');
+      return query.addDistinctBy(r'support_reasoning');
     });
   }
 
-  QueryBuilder<Model, Model, QDistinct> distinctBySupportThinking() {
+  QueryBuilder<Model, Model, QDistinct> distinctBySupportVisual() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'support_thinking');
-    });
-  }
-
-  QueryBuilder<Model, Model, QDistinct> distinctBySupportVisualRecognition() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'support_visual_recognition');
+      return query.addDistinctBy(r'support_visual');
     });
   }
 
@@ -1425,15 +1454,15 @@ extension ModelQueryProperty on QueryBuilder<Model, Model, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Model, String, QQueryOperations> inputPriceProperty() {
+  QueryBuilder<Model, String, QQueryOperations> contextProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'input_price');
+      return query.addPropertyName(r'context');
     });
   }
 
-  QueryBuilder<Model, int, QQueryOperations> maxTokenProperty() {
+  QueryBuilder<Model, String, QQueryOperations> inputPriceProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'max_token');
+      return query.addPropertyName(r'input_price');
     });
   }
 
@@ -1461,22 +1490,15 @@ extension ModelQueryProperty on QueryBuilder<Model, Model, QQueryProperty> {
     });
   }
 
-  QueryBuilder<Model, bool, QQueryOperations> supportFunctionCallProperty() {
+  QueryBuilder<Model, bool, QQueryOperations> supportReasoningProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'support_function_call');
+      return query.addPropertyName(r'support_reasoning');
     });
   }
 
-  QueryBuilder<Model, bool, QQueryOperations> supportThinkingProperty() {
+  QueryBuilder<Model, bool, QQueryOperations> supportVisualProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'support_thinking');
-    });
-  }
-
-  QueryBuilder<Model, bool, QQueryOperations>
-      supportVisualRecognitionProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'support_visual_recognition');
+      return query.addPropertyName(r'support_visual');
     });
   }
 
