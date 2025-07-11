@@ -22,13 +22,14 @@ class DesktopModelFormDialog extends ConsumerStatefulWidget {
 
 class _DesktopModelFormDialogState
     extends ConsumerState<DesktopModelFormDialog> {
-  final nameController = TextEditingController();
   final valueController = TextEditingController();
+  final nameController = TextEditingController();
+  final releasedAtController = TextEditingController();
+  final contextController = TextEditingController();
   final inputController = TextEditingController();
   final outputController = TextEditingController();
-  var supportFunctionCall = false;
-  var supportThinking = false;
-  var supportVisualRecognition = false;
+  var supportReasoning = false;
+  var supportVisual = false;
 
   late final viewModel = ModelViewModel(ref);
 
@@ -50,6 +51,16 @@ class _DesktopModelFormDialogState
       const SizedBox(width: 12),
       Expanded(child: AthenaInput(controller: nameController))
     ];
+    var releasedAtChildren = [
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Released At')),
+      const SizedBox(width: 12),
+      Expanded(child: AthenaInput(controller: releasedAtController))
+    ];
+    var contextChildren = [
+      SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Context')),
+      const SizedBox(width: 12),
+      Expanded(child: AthenaInput(controller: contextController))
+    ];
     var inputChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Input Price')),
       const SizedBox(width: 12),
@@ -66,12 +77,16 @@ class _DesktopModelFormDialogState
       Row(children: valueChildren),
       const SizedBox(height: 12),
       Row(children: nameChildren),
+      Divider(color: ColorUtil.FFFFFFFF, height: 48, thickness: 1),
+      Row(children: releasedAtChildren),
+      const SizedBox(height: 12),
+      Row(children: contextChildren),
       const SizedBox(height: 12),
       Row(children: inputChildren),
       const SizedBox(height: 12),
       Row(children: outputChildren),
       const SizedBox(height: 12),
-      _buildFeatures(),
+      _buildSupports(),
       const SizedBox(height: 12),
       _buildButtons()
     ];
@@ -101,6 +116,8 @@ class _DesktopModelFormDialogState
   void dispose() {
     valueController.dispose();
     nameController.dispose();
+    releasedAtController.dispose();
+    contextController.dispose();
     inputController.dispose();
     outputController.dispose();
     super.dispose();
@@ -109,57 +126,54 @@ class _DesktopModelFormDialogState
   @override
   void initState() {
     super.initState();
-    nameController.text = widget.model?.name ?? '';
     valueController.text = widget.model?.value ?? '';
+    nameController.text = widget.model?.name ?? '';
+    releasedAtController.text = widget.model?.releasedAt ?? '';
+    contextController.text = widget.model?.context ?? '';
     inputController.text = widget.model?.inputPrice ?? '';
     outputController.text = widget.model?.outputPrice ?? '';
-    supportFunctionCall = widget.model?.supportFunctionCall ?? false;
-    supportThinking = widget.model?.supportThinking ?? false;
-    supportVisualRecognition = widget.model?.supportVisualRecognition ?? false;
+    supportReasoning = widget.model?.supportReasoning ?? false;
+    supportVisual = widget.model?.supportVisual ?? false;
   }
 
   Future<void> storeModel() async {
     if (widget.model == null) {
       var newModel = Model()
-        ..name = nameController.text
-        ..value = valueController.text
+        ..context = contextController.text
         ..inputPrice = inputController.text
+        ..name = nameController.text
         ..outputPrice = outputController.text
-        ..supportFunctionCall = supportFunctionCall
-        ..supportThinking = supportThinking
-        ..supportVisualRecognition = supportVisualRecognition
+        ..releasedAt = releasedAtController.text
+        ..supportReasoning = supportReasoning
+        ..supportVisual = supportVisual
+        ..value = valueController.text
         ..providerId = widget.provider.id;
       await viewModel.storeModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
-        name: nameController.text,
-        value: valueController.text,
+        context: contextController.text,
         inputPrice: inputController.text,
+        name: nameController.text,
         outputPrice: outputController.text,
-        supportFunctionCall: supportFunctionCall,
-        supportThinking: supportThinking,
-        supportVisualRecognition: supportVisualRecognition,
+        releasedAt: releasedAtController.text,
+        supportReasoning: supportReasoning,
+        supportVisual: supportVisual,
+        value: valueController.text,
       );
       await viewModel.updateModel(copiedModel);
     }
     AthenaDialog.dismiss();
   }
 
-  void updateSupportFunctionCall(bool value) {
+  void updateSupportReasoning(bool value) {
     setState(() {
-      supportFunctionCall = value;
+      supportReasoning = value;
     });
   }
 
-  void updateSupportThinking(bool value) {
+  void updateSupportVisual(bool value) {
     setState(() {
-      supportThinking = value;
-    });
-  }
-
-  void updateSupportVisualRecognition(bool value) {
-    setState(() {
-      supportVisualRecognition = value;
+      supportVisual = value;
     });
   }
 
@@ -184,18 +198,14 @@ class _DesktopModelFormDialogState
     );
   }
 
-  Widget _buildFeatures() {
-    var functionCallCheckbox = AthenaCheckbox(
-      value: supportFunctionCall,
-      onChanged: updateSupportFunctionCall,
+  Widget _buildSupports() {
+    var reasoningCheckbox = AthenaCheckbox(
+      value: supportReasoning,
+      onChanged: updateSupportReasoning,
     );
-    var thinkingCheckbox = AthenaCheckbox(
-      value: supportThinking,
-      onChanged: updateSupportThinking,
-    );
-    var visualRecognitionCheckbox = AthenaCheckbox(
-      value: supportVisualRecognition,
-      onChanged: updateSupportVisualRecognition,
+    var visualCheckbox = AthenaCheckbox(
+      value: supportVisual,
+      onChanged: updateSupportVisual,
     );
     var textStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
@@ -203,30 +213,25 @@ class _DesktopModelFormDialogState
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    var functionCallCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: functionCallCheckbox,
-      onTap: () => updateSupportFunctionCall(!supportFunctionCall),
-      trailing: Text('函数调用', style: textStyle),
+    var reasoningCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: reasoningCheckbox,
+      onTap: () => updateSupportReasoning(!supportReasoning),
+      trailing: Text('Reasoning', style: textStyle),
     );
-    var thinkingCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: thinkingCheckbox,
-      onTap: () => updateSupportThinking(!supportThinking),
-      trailing: Text('推理模型', style: textStyle),
+    var visualCheckboxGroup = AthenaCheckboxGroup(
+      checkbox: visualCheckbox,
+      onTap: () => updateSupportVisual(!supportVisual),
+      trailing: Text('Visual', style: textStyle),
     );
-    var visualRecognitionCheckboxGroup = AthenaCheckboxGroup(
-      checkbox: visualRecognitionCheckbox,
-      onTap: () => updateSupportVisualRecognition(!supportVisualRecognition),
-      trailing: Text('图像识别', style: textStyle),
-    );
+    var wrapChildren = [reasoningCheckboxGroup, visualCheckboxGroup];
     var children = [
       SizedBox(width: 100, child: Text('Features', style: textStyle)),
       const SizedBox(width: 12),
-      functionCallCheckboxGroup,
-      const SizedBox(width: 12),
-      thinkingCheckboxGroup,
-      const SizedBox(width: 12),
-      visualRecognitionCheckboxGroup,
+      Expanded(child: Wrap(runSpacing: 12, spacing: 12, children: wrapChildren))
     ];
-    return Row(children: children);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
   }
 }

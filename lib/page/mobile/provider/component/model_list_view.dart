@@ -69,26 +69,20 @@ class _ModelTile extends StatelessWidget {
       SizedBox(width: 8),
       AthenaTag.small(text: model.value)
     ];
-    var functionCallIcon = Icon(
-      HugeIcons.strokeRoundedFunctionCircle,
-      color: ColorUtil.FFE0E0E0,
-      size: 18,
-    );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
       color: ColorUtil.FFE0E0E0,
       size: 18,
     );
-    var visualRecognitionIcon = Icon(
+    var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
       color: ColorUtil.FFE0E0E0,
       size: 18,
     );
     var subtitleChildren = [
       _buildSubtitle(),
-      if (model.supportFunctionCall) functionCallIcon,
-      if (model.supportThinking) thinkIcon,
-      if (model.supportVisualRecognition) visualRecognitionIcon,
+      if (model.supportReasoning) thinkIcon,
+      if (model.supportVisual) visualIcon,
     ];
     var informationChildren = [
       Row(children: nameChildren),
@@ -112,19 +106,13 @@ class _ModelTile extends StatelessWidget {
   }
 
   Widget _buildSubtitle() {
-    var releasedAt = model.releasedAt;
+    var context = model.context;
     var inputPrice = model.inputPrice;
     var outputPrice = model.outputPrice;
-    var maxToken = model.maxToken;
-    var maxTokenString = '${model.maxToken ~/ 1024}K';
-    if (maxToken > 1024 * 1024) {
-      maxTokenString = '${model.maxToken ~/ (1024 * 1024)}M';
-    }
     var parts = [
-      if (releasedAt.isNotEmpty) 'Released at ${model.releasedAt}',
-      if (inputPrice.isNotEmpty) 'Input ${model.inputPrice}',
-      if (outputPrice.isNotEmpty) 'Output ${model.outputPrice}',
-      if (maxToken > 0) maxTokenString,
+      if (context.isNotEmpty) '$context context',
+      if (inputPrice.isNotEmpty) '$inputPrice input tokens',
+      if (outputPrice.isNotEmpty) '$outputPrice output tokens',
     ];
     var textStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,

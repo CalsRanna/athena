@@ -6,21 +6,18 @@ part 'model.g.dart';
 @Name('models')
 class Model {
   Id id = Isar.autoIncrement;
+  String context = '';
   @Name('input_price')
   String inputPrice = '';
-  @Name('max_token')
-  int maxToken = 0;
   String name = '';
   @Name('output_price')
   String outputPrice = '';
   @Name('released_at')
   String releasedAt = '';
-  @Name('support_function_call')
-  bool supportFunctionCall = false;
-  @Name('support_thinking')
-  bool supportThinking = false;
-  @Name('support_visual_recognition')
-  bool supportVisualRecognition = false;
+  @Name('support_reasoning')
+  bool supportReasoning = false;
+  @Name('support_visual')
+  bool supportVisual = false;
   String value = '';
   @Name('provider_id')
   int providerId = 0;
@@ -28,42 +25,38 @@ class Model {
   Model();
 
   Model.fromJson(Map<String, dynamic> json) {
+    context = json['context'] ?? '';
     inputPrice = json['input_price'] ?? '';
-    maxToken = json['max_token'] ?? 0;
     name = json['name'] ?? '';
     outputPrice = json['output_price'] ?? '';
     releasedAt = json['released_at'] ?? '';
-    supportFunctionCall = json['support_function_call'] ?? false;
-    supportThinking = json['support_thinking'] ?? false;
-    supportVisualRecognition = json['support_visual_recognition'] ?? false;
+    supportReasoning = json['support_reasoning'] ?? false;
+    supportVisual = json['support_visual'] ?? false;
     value = json['value'] ?? '';
     providerId = json['provider_id'] ?? 0;
   }
 
   Model copyWith({
     int? id,
+    String? context,
     String? inputPrice,
-    int? maxToken,
     String? name,
     String? outputPrice,
     String? releasedAt,
-    bool? supportFunctionCall,
-    bool? supportThinking,
-    bool? supportVisualRecognition,
+    bool? supportReasoning,
+    bool? supportVisual,
     String? value,
     int? providerId,
   }) {
     return Model()
       ..id = id ?? this.id
+      ..context = context ?? this.context
       ..inputPrice = inputPrice ?? this.inputPrice
-      ..maxToken = maxToken ?? this.maxToken
       ..name = name ?? this.name
       ..outputPrice = outputPrice ?? this.outputPrice
       ..releasedAt = releasedAt ?? this.releasedAt
-      ..supportFunctionCall = supportFunctionCall ?? this.supportFunctionCall
-      ..supportThinking = supportThinking ?? this.supportThinking
-      ..supportVisualRecognition =
-          supportVisualRecognition ?? this.supportVisualRecognition
+      ..supportReasoning = supportReasoning ?? this.supportReasoning
+      ..supportVisual = supportVisual ?? this.supportVisual
       ..value = value ?? this.value
       ..providerId = providerId ?? this.providerId;
   }

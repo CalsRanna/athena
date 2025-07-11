@@ -35,7 +35,7 @@ class AthenaCheckboxGroup extends StatelessWidget {
     ];
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: Row(children: children),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

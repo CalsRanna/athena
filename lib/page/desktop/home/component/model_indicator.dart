@@ -44,17 +44,12 @@ class _ModelIndicator extends StatelessWidget {
       '${model.name} | ${provider.name}',
       style: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14),
     );
-    var functionCallIcon = Icon(
-      HugeIcons.strokeRoundedFunctionCircle,
-      color: ColorUtil.FFE0E0E0,
-      size: 14,
-    );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
       color: ColorUtil.FFE0E0E0,
       size: 14,
     );
-    var visualRecognitionIcon = Icon(
+    var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
       color: ColorUtil.FFE0E0E0,
       size: 14,
@@ -70,9 +65,8 @@ class _ModelIndicator extends StatelessWidget {
         spacing: 8,
         children: [
           text,
-          if (model.supportFunctionCall) functionCallIcon,
-          if (model.supportThinking) thinkIcon,
-          if (model.supportVisualRecognition) visualRecognitionIcon,
+          if (model.supportReasoning) thinkIcon,
+          if (model.supportVisual) visualIcon,
         ],
       ),
     );
