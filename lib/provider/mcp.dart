@@ -30,7 +30,7 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       });
 
       connection.done.then((_) {
-        LoggerUtil.logger.w('Connection to ${server.name} has been closed.');
+        LoggerUtil.logger.d('Connection to ${server.name} has been closed.');
         ref
             .read(mcpConnectionsNotifierProvider.notifier)
             .removeServer(server.name);
@@ -71,7 +71,7 @@ class McpConnectionsNotifier extends _$McpConnectionsNotifier {
       });
 
       connection.done.then((_) {
-        LoggerUtil.logger.w('Connection to ${server.name} has been closed.');
+        LoggerUtil.logger.d('Connection to ${server.name} has been closed.');
         ref
             .read(mcpConnectionsNotifierProvider.notifier)
             .removeServer(server.name);
