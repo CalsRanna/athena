@@ -46,7 +46,7 @@ class ServerViewModel extends ViewModel {
     });
 
     connection.done.then((_) {
-      LoggerUtil.logger.w('Connection to ${server.name} has been closed.');
+      LoggerUtil.logger.d('Connection to ${server.name} has been closed.');
     });
 
     await connection.initialize(
