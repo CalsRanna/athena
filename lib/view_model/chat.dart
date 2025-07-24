@@ -33,6 +33,11 @@ import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:isar/isar.dart';
 import 'package:openai_dart/openai_dart.dart' hide Model;
 
+class CallToolRequestException implements Exception {
+  final String message;
+  const CallToolRequestException(this.message);
+}
+
 class ChatViewModel extends ViewModel {
   final WidgetRef ref;
   ChatViewModel(this.ref);
@@ -257,12 +262,10 @@ class ChatViewModel extends ViewModel {
       messagesNotifier.append(error.toString());
     }
     while (callToolRequest != null) {
+      await _appendToolRequestMessage(latestChat, callToolRequest);
       var result = await _getCallToolResult(latestChat, callToolRequest);
-      var content = result != null ? result.content.toString() : '工具没有返回任何内容';
-      var toolMessage = ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(content),
-      );
-      historyMessages.add(toolMessage);
+      await _appendCallToolResultMessage(latestChat, callToolRequest, result);
+      historyMessages = await _getHistoryMessages(latestChat);
       try {
         var nextRoundResponse = ChatApi().getCompletion(
           chat: latestChat,
@@ -363,6 +366,41 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(recentChatsNotifierProvider);
   }
 
+  Future<void> _appendCallToolResultMessage(
+    Chat latestChat,
+    CallToolRequest callToolRequest,
+    CallToolResult? callToolResult,
+  ) async {
+    var message = Message()
+      ..content = JsonEncoder.withIndent('  ').convert(callToolResult?.content)
+      ..expanded = false
+      ..role = 'tool'
+      ..chatId = latestChat.id;
+    await isar.writeTxn(() async {
+      await isar.messages.put(message);
+    });
+  }
+
+  Future<void> _appendToolRequestMessage(
+    Chat latestChat,
+    CallToolRequest callToolRequest,
+  ) async {
+    var messagesProvider = messagesNotifierProvider(latestChat.id);
+    var messagesNotifier = ref.read(messagesProvider.notifier);
+    var latestMessages = await ref.read(messagesProvider.future);
+    var latestMessage = latestMessages.last;
+    var regex = RegExp(
+      r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    latestMessage.content = latestMessage.content.replaceAll(regex, '');
+    await isar.writeTxn(() async {
+      await isar.messages.put(latestMessage);
+    });
+    await messagesNotifier.syncState(latestMessages);
+  }
+
   Future<Uint8List?> _generateImageBytes(
     GlobalKey repaintBoundaryKey, {
     double pixelRatio = 4.0,
@@ -396,28 +434,35 @@ class ChatViewModel extends ViewModel {
     var name = matched.namedGroup('name');
     var argumentsString = matched.namedGroup('arguments');
     if (name == null || argumentsString == null) return null;
-    return CallToolRequest(name: name, arguments: jsonDecode(argumentsString));
+    try {
+      var arguments = jsonDecode(argumentsString);
+      return CallToolRequest(name: name, arguments: arguments);
+    } catch (e) {
+      return CallToolRequest(name: 'InvalidCallToolRequest', arguments: {
+        'error': 'Arguments $argumentsString is not a valid JSON',
+      });
+    }
   }
 
   Future<CallToolResult?> _getCallToolResult(
-      Chat chat, CallToolRequest request) async {
-    var messagesProvider = messagesNotifierProvider(chat.id);
-    var messagesNotifier = ref.read(messagesProvider.notifier);
+    Chat chat,
+    CallToolRequest request,
+  ) async {
+    if (request.name == 'InvalidCallToolRequest') {
+      return CallToolResult(content: [
+        Content.fromMap({
+          'type': 'error',
+          'error': request.arguments?['error'],
+        })
+      ]);
+    }
     var connection = await ref
         .read(mcpToolsNotifierProvider.notifier)
         .getConnectionByCallToolRequest(request);
     if (connection == null) {
-      var content =
-          '\n```${request.name}\nNo connection found for tool call\n```\n';
-      var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-      await messagesNotifier.streaming(delta);
       return null;
     }
     var result = await connection.callTool(request);
-    var json = JsonEncoder.withIndent('  ').convert(result.content);
-    var content = '\n```${request.name}\n$json\n```\n';
-    var delta = OverrodeChatCompletionStreamResponseDelta(content: content);
-    await messagesNotifier.streaming(delta);
     return result;
   }
 

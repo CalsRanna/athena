@@ -248,7 +248,7 @@ class _DesktopSettingServerPageState
       text: 'List tools',
     );
     var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
-    var tools = jsonDecode(result);
+    var tools = jsonDecode(result.isEmpty ? '[]' : result);
     var toolsChildren = <Widget>[];
     for (var tool in tools) {
       toolsChildren.add(
