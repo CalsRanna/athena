@@ -44,11 +44,75 @@ class MessageListTile extends StatelessWidget {
         onSecondaryTapUp: onSecondaryTapUp,
       );
     }
+    if (message.role == 'tool') {
+      return _ToolMessageListTile(
+        message: message,
+        sentinel: sentinel,
+      );
+    }
     return _AssistantMessageListTile(
       loading: loading,
       message: message,
       sentinel: sentinel,
     );
+  }
+}
+
+class _ToolMessageListTile extends StatelessWidget {
+  final Message message;
+  final Sentinel sentinel;
+  const _ToolMessageListTile({
+    required this.message,
+    required this.sentinel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      _buildAvatar(),
+      const SizedBox(width: 12),
+      _buildContent(),
+      _buildTrailingSpace(),
+    ];
+    var messageRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return Container(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
+      child: messageRow,
+    );
+  }
+
+  Widget _buildAvatar() {
+    var hugeIcon = Icon(
+      HugeIcons.strokeRoundedTools,
+      color: ColorUtil.FFFFFFFF,
+      size: 20,
+    );
+    var boxDecoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: ColorUtil.FFCACACA,
+    );
+    return Container(
+      alignment: Alignment.center,
+      decoration: boxDecoration,
+      height: 36,
+      width: 36,
+      child: hugeIcon,
+    );
+  }
+
+  Widget _buildContent() {
+    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
+    var text = Text(message.content, style: textStyle);
+    return Expanded(child: text);
+  }
+
+  Widget _buildTrailingSpace() {
+    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
 

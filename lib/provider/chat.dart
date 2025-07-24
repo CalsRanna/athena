@@ -96,7 +96,7 @@ class MessagesNotifier extends _$MessagesNotifier {
     if (!streaming) return;
     final messages = await future;
     var message = messages.last;
-    if (message.role == 'user') message = Message()..role = 'assistant';
+    if (message.role != 'assistant') message = Message()..role = 'assistant';
     message.chatId = chatId;
     message.content = '${message.content}${delta.content}';
     var reasoningContent = delta.reasoningContent ?? '';
@@ -110,6 +110,16 @@ class MessagesNotifier extends _$MessagesNotifier {
     }
     if (messages.last.role == 'assistant') messages.removeLast();
     state = AsyncData([...messages, message]);
+  }
+
+  Future<void> syncState(List<Message> messages) async {
+    ref.invalidateSelf();
+  }
+
+  Future<void> appendMessage(Message message) async {
+    var copiedMessage = message.copyWith(chatId: chatId);
+    final messages = await future;
+    state = AsyncData([...messages, copiedMessage]);
   }
 }
 
