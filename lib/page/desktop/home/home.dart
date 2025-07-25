@@ -1,4 +1,3 @@
-import 'package:athena/page/desktop/home/component/chat_configuration_sheet.dart';
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
@@ -30,7 +29,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   var chat = Chat();
   var model = Model();
   var sentinel = Sentinel();
-  var showRightSheet = false;
 
   final controller = TextEditingController();
   final scrollController = ScrollController();
@@ -41,7 +39,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var children = [
       _buildLeftBar(),
       Expanded(child: _buildWorkspace()),
-      _buildRightSheet(),
     ];
     return AthenaScaffold(
       appBar: _buildAppBar(),
@@ -78,7 +75,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var chat = await viewModel.createChat();
     setState(() {
       this.chat = chat;
-      showRightSheet = false;
     });
   }
 
@@ -146,6 +142,17 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     viewModel.terminateStreaming(chat);
   }
 
+  Future<void> updateContext(int context) async {
+    if (viewModel.streaming) {
+      AthenaDialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    var chat = await viewModel.updateContext(context, chat: this.chat);
+    setState(() {
+      this.chat = chat;
+    });
+  }
+
   Future<void> updateEnableSearch(bool enabled) async {
     if (viewModel.streaming) {
       AthenaDialog.message('Please wait for the current chat to finish.');
@@ -185,9 +192,14 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
-  void updateShowRightSheet() {
+  Future<void> updateTemperature(double temperature) async {
+    if (viewModel.streaming) {
+      AthenaDialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    var chat = await viewModel.updateTemperature(temperature, chat: this.chat);
     setState(() {
-      showRightSheet = !showRightSheet;
+      this.chat = chat;
     });
   }
 
@@ -236,20 +248,6 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     );
   }
 
-  Widget _buildRightSheet() {
-    if (!showRightSheet) return SizedBox();
-    var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
-    );
-    var boxDecoration = BoxDecoration(border: Border(left: borderSide));
-    return Container(
-      decoration: boxDecoration,
-      height: double.infinity,
-      width: 240,
-      child: DesktopChatConfigurationSheet(chat: chat),
-    );
-  }
-
   Widget _buildSettingButton() {
     const icon = Icon(
       HugeIcons.strokeRoundedSettings01,
@@ -272,10 +270,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var desktopMessageInput = DesktopMessageInput(
       chat: chat,
       controller: controller,
-      onChatConfigurationButtonTapped: updateShowRightSheet,
+      onContextChange: updateContext,
       onModelChanged: updateModel,
       onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
+      onTemperatureChange: updateTemperature,
       onTerminated: terminateStreaming,
     );
     return Column(
