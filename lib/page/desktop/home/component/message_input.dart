@@ -1,3 +1,4 @@
+import 'package:athena/page/desktop/home/component/configuration_button.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
 import 'package:athena/page/desktop/home/component/server_selector.dart';
@@ -14,19 +15,21 @@ import 'package:hugeicons/hugeicons.dart';
 class DesktopMessageInput extends StatelessWidget {
   final Chat chat;
   final TextEditingController controller;
-  final void Function()? onChatConfigurationButtonTapped;
+  final void Function(int)? onContextChange;
   final void Function(Model)? onModelChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
+  final void Function(double)? onTemperatureChange;
   final void Function()? onTerminated;
   const DesktopMessageInput({
     super.key,
     required this.chat,
     required this.controller,
-    this.onChatConfigurationButtonTapped,
+    this.onContextChange,
     this.onModelChanged,
     this.onSentinelChanged,
     this.onSubmitted,
+    this.onTemperatureChange,
     this.onTerminated,
   });
 
@@ -36,9 +39,10 @@ class DesktopMessageInput extends StatelessWidget {
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
       DesktopServerSelector(),
-      _ChatConfigurationButton(
+      DesktopConfigurationButton(
         chat: chat,
-        onTap: onChatConfigurationButtonTapped,
+        onContextChange: onContextChange,
+        onTemperatureChange: onTemperatureChange,
       ),
       // Icon(HugeIcons.strokeRoundedImage01),
     ];
@@ -61,26 +65,6 @@ class DesktopMessageInput extends StatelessWidget {
       decoration: BoxDecoration(border: Border(top: borderSide)),
       padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Column(children: children),
-    );
-  }
-}
-
-class _ChatConfigurationButton extends StatelessWidget {
-  final Chat chat;
-  final void Function()? onTap;
-  const _ChatConfigurationButton({required this.chat, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    var icon = Icon(
-      HugeIcons.strokeRoundedSlidersHorizontal,
-      color: ColorUtil.FFFFFFFF,
-      size: 24,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
   }
 }

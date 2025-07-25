@@ -242,8 +242,10 @@ class ChatViewModel extends ViewModel {
     }
     var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
     if (!isDesktop) tools = [];
-    var toolPrompt =
-        PresetPrompt.toolPrompt.replaceAll('{tools}', jsonEncode(tools));
+    var toolPrompt = PresetPrompt.toolPrompt.replaceAll(
+      '{tools}',
+      jsonEncode(tools),
+    );
     var systemPrompt = '${sentinel.prompt}\n\n$toolPrompt';
     var systemMessage = ChatCompletionMessage.system(content: systemPrompt);
     var historyMessages = await _getHistoryMessages(latestChat);
@@ -285,8 +287,10 @@ class ChatViewModel extends ViewModel {
     );
     // Can not use the chat from params anymore cause the chat's title maybe
     // changed in the meantime
-    var newChat =
-        await isar.chats.filter().idEqualTo(latestChat.id).findFirst();
+    var newChat = await isar.chats
+        .filter()
+        .idEqualTo(latestChat.id)
+        .findFirst();
     var copiedChat = (newChat ?? Chat()).copyWith(updatedAt: DateTime.now());
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
@@ -304,7 +308,7 @@ class ChatViewModel extends ViewModel {
     await messagesNotifier.closeStreaming();
   }
 
-  Future<void> updateContext(int context, {required Chat chat}) async {
+  Future<Chat> updateContext(int context, {required Chat chat}) async {
     var copiedChat = chat.copyWith(context: context);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
@@ -312,6 +316,7 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(chatNotifierProvider(chat.id));
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
+    return copiedChat;
   }
 
   Future<Chat> updateEnableSearch(bool enabled, {required Chat chat}) async {
@@ -355,8 +360,10 @@ class ChatViewModel extends ViewModel {
     return copiedChat;
   }
 
-  Future<void> updateTemperature(double temperature,
-      {required Chat chat}) async {
+  Future<Chat> updateTemperature(
+    double temperature, {
+    required Chat chat,
+  }) async {
     var copiedChat = chat.copyWith(temperature: temperature);
     await isar.writeTxn(() async {
       await isar.chats.put(copiedChat);
@@ -364,6 +371,7 @@ class ChatViewModel extends ViewModel {
     ref.invalidate(chatNotifierProvider(chat.id));
     ref.invalidate(chatsNotifierProvider);
     ref.invalidate(recentChatsNotifierProvider);
+    return copiedChat;
   }
 
   Future<void> _appendCallToolResultMessage(
@@ -405,8 +413,9 @@ class ChatViewModel extends ViewModel {
     GlobalKey repaintBoundaryKey, {
     double pixelRatio = 4.0,
   }) async {
-    var boundary = repaintBoundaryKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
+    var boundary =
+        repaintBoundaryKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
     if (boundary == null) return null;
     var image = await boundary.toImage(pixelRatio: pixelRatio);
     var byteData = await image.toByteData(format: ImageByteFormat.png);
@@ -438,9 +447,10 @@ class ChatViewModel extends ViewModel {
       var arguments = jsonDecode(argumentsString);
       return CallToolRequest(name: name, arguments: arguments);
     } catch (e) {
-      return CallToolRequest(name: 'InvalidCallToolRequest', arguments: {
-        'error': 'Arguments $argumentsString is not a valid JSON',
-      });
+      return CallToolRequest(
+        name: 'InvalidCallToolRequest',
+        arguments: {'error': 'Arguments $argumentsString is not a valid JSON'},
+      );
     }
   }
 
@@ -449,12 +459,14 @@ class ChatViewModel extends ViewModel {
     CallToolRequest request,
   ) async {
     if (request.name == 'InvalidCallToolRequest') {
-      return CallToolResult(content: [
-        Content.fromMap({
-          'type': 'error',
-          'error': request.arguments?['error'],
-        })
-      ]);
+      return CallToolResult(
+        content: [
+          Content.fromMap({
+            'type': 'error',
+            'error': request.arguments?['error'],
+          }),
+        ],
+      );
     }
     var connection = await ref
         .read(mcpToolsNotifierProvider.notifier)
