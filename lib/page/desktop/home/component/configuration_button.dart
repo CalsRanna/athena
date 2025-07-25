@@ -64,7 +64,7 @@ class _DesktopConfigurationDialog extends StatelessWidget {
       _DesktopConfigurationDialogTile(
         help:
             'The number of previous turns to include in the conversation\'s '
-            'context. Set to O for no limit.',
+            'context. Set to 0 for no limit.',
         title: 'Context',
         child: contextSlider,
       ),
@@ -255,15 +255,7 @@ class _DesktopConfigurationDialogTileState
               spacing: 4,
               children: [
                 Flexible(child: Text(widget.title, style: textStyle)),
-                if (widget.help != null)
-                  Tooltip(
-                    message: widget.help,
-                    child: Icon(
-                      HugeIcons.strokeRoundedHelpCircle,
-                      color: ColorUtil.FFFFFFFF,
-                      size: 14,
-                    ),
-                  ),
+                if (widget.help != null) _buildTooltip(),
               ],
             ),
           ),
@@ -278,6 +270,25 @@ class _DesktopConfigurationDialogTileState
       child: container,
     );
     return Material(color: Colors.transparent, child: mouseRegion);
+  }
+
+  Widget _buildTooltip() {
+    var icon = Icon(
+      HugeIcons.strokeRoundedHelpCircle,
+      color: ColorUtil.FFFFFFFF,
+      size: 14,
+    );
+    return Tooltip(
+      constraints: BoxConstraints(maxWidth: 300),
+      decoration: BoxDecoration(
+        color: ColorUtil.FF282F32,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      message: widget.help,
+      padding: EdgeInsets.all(8),
+      preferBelow: false,
+      child: icon,
+    );
   }
 
   void handleEnter(PointerEnterEvent event) {
