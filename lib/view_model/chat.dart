@@ -445,6 +445,7 @@ class ChatViewModel extends ViewModel {
     var name = matched.namedGroup('name');
     var argumentsString = matched.namedGroup('arguments');
     if (name == null || argumentsString == null) return null;
+    argumentsString = argumentsString.replaceAll('\\', '');
     try {
       var arguments = jsonDecode(argumentsString);
       return CallToolRequest(name: name, arguments: arguments);
