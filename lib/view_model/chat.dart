@@ -247,6 +247,7 @@ class ChatViewModel extends ViewModel {
       jsonEncode(tools),
     );
     var systemPrompt = '${sentinel.prompt}\n\n$toolPrompt';
+    if (tools.isEmpty) systemPrompt = sentinel.prompt;
     var systemMessage = ChatCompletionMessage.system(content: systemPrompt);
     var historyMessages = await _getHistoryMessages(latestChat);
     CallToolRequest? callToolRequest;
@@ -260,6 +261,7 @@ class ChatViewModel extends ViewModel {
       var broadcast = response.asBroadcastStream();
       _streamingAssistantMessage(latestChat, broadcast);
       callToolRequest = await _getCallToolRequest(broadcast);
+      if (tools.isEmpty) callToolRequest = null;
     } catch (error) {
       messagesNotifier.append(error.toString());
     }
