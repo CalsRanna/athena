@@ -358,6 +358,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var image = Image.file(
       File(images[index]),
       fit: BoxFit.cover,
+      height: double.infinity,
       width: double.infinity,
     );
     var icon = Icon(
