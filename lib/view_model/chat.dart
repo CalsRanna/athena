@@ -216,17 +216,20 @@ class ChatViewModel extends ViewModel {
       await isar.messages.deleteAll(removed.map((item) => item.id).toList());
     });
     ref.invalidate(messagesNotifierProvider(chat.id));
-    await sendMessage(message.content, chat: chat);
+    await sendMessage(message, chat: chat);
   }
 
-  Future<void> sendMessage(String text, {required Chat chat}) async {
+  Future<void> sendMessage(Message message, {required Chat chat}) async {
     final streamingNotifier = ref.read(streamingNotifierProvider.notifier);
     streamingNotifier.streaming();
     var chatProvider = chatNotifierProvider(chat.id);
     var latestChat = await ref.read(chatProvider.future);
-    await _saveNewConversation(text, chat: latestChat);
-    var decision = await _getSearchDecision(text, chat: latestChat);
-    var formattedMessage = await _getFormattedMessage(text, decision: decision);
+    await _saveNewConversation(message, chat: latestChat);
+    var decision = await _getSearchDecision(message, chat: latestChat);
+    var formattedMessage = await _getFormattedMessage(
+      message,
+      decision: decision,
+    );
     var modelProvider = modelNotifierProvider(latestChat.modelId);
     var model = await ref.read(modelProvider.future);
     var providerProvider = providerNotifierProvider(model.providerId);
@@ -482,22 +485,22 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<Message> _getFormattedMessage(
-    String text, {
+    Message message, {
     required SearchDecision decision,
   }) async {
-    var message = Message()..content = text;
+    var formattedMessage = Message()..content = message.content;
     if (decision.needSearch) {
       var tool = await isar.tools.filter().nameEqualTo('Tavily').findFirst();
-      if (tool == null) return message;
-      if (tool.key.isEmpty) return message;
+      if (tool == null) return formattedMessage;
+      if (tool.key.isEmpty) return formattedMessage;
       var searchResult = await SearchApi().search(decision.query, tool: tool);
       var reference = jsonEncode(searchResult);
-      message.content = PresetPrompt.formatMessagePrompt
-          .replaceAll('{input}', text)
+      formattedMessage.content = PresetPrompt.formatMessagePrompt
+          .replaceAll('{input}', message.content)
           .replaceAll('{reference}', reference);
-      message.reference = reference;
+      formattedMessage.reference = reference;
     }
-    return message;
+    return formattedMessage;
   }
 
   Future<List<ChatCompletionMessage>> _getHistoryMessages(Chat chat) async {
@@ -515,15 +518,27 @@ class ChatViewModel extends ViewModel {
       if (message.role == 'assistant') {
         return ChatCompletionMessage.assistant(content: message.content);
       } else {
-        return ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(message.content),
+        var imageUrls = message.imageUrls.split(',');
+        var imageParts = imageUrls.map((base64) {
+          var url = 'data:image/png;base64,$base64';
+          var imageUrl = ChatCompletionMessageImageUrl(url: url);
+          return ChatCompletionMessageContentPart.image(imageUrl: imageUrl);
+        }).toList();
+        if (message.imageUrls.isEmpty) imageParts = [];
+        var textPart = ChatCompletionMessageContentPart.text(
+          text: message.content,
         );
+        var content = ChatCompletionUserMessageContent.parts([
+          ...imageParts,
+          textPart,
+        ]);
+        return ChatCompletionMessage.user(content: content);
       }
     }).toList();
   }
 
   Future<SearchDecision> _getSearchDecision(
-    String text, {
+    Message message, {
     required Chat chat,
   }) async {
     var latestChat = await ref.read(chatNotifierProvider(chat.id).future);
@@ -537,7 +552,7 @@ class ChatViewModel extends ViewModel {
     var userMessages = messages.where((message) => message.role == 'user');
     if (userMessages.isEmpty) return SearchDecision();
     var historyText = userMessages.map((message) => message.content).join('\n');
-    var fullText = '$historyText\n$text';
+    var fullText = '$historyText\n${message.content}';
     return await ChatApi().getSearchDecision(
       fullText,
       provider: provider,
@@ -545,10 +560,14 @@ class ChatViewModel extends ViewModel {
     );
   }
 
-  Future<void> _saveNewConversation(String text, {required Chat chat}) async {
+  Future<void> _saveNewConversation(
+    Message message, {
+    required Chat chat,
+  }) async {
     final userMessage = Message();
     userMessage.chatId = chat.id;
-    userMessage.content = text;
+    userMessage.content = message.content;
+    userMessage.imageUrls = message.imageUrls;
     userMessage.role = 'user';
     final assistantMessage = Message();
     assistantMessage.chatId = chat.id;

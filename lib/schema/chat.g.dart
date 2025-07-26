@@ -1093,38 +1093,43 @@ const MessageSchema = CollectionSchema(
       name: r'expanded',
       type: IsarType.bool,
     ),
-    r'reasoning': PropertySchema(
+    r'imageUrls': PropertySchema(
       id: 3,
+      name: r'imageUrls',
+      type: IsarType.string,
+    ),
+    r'reasoning': PropertySchema(
+      id: 4,
       name: r'reasoning',
       type: IsarType.bool,
     ),
     r'reasoning_content': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'reasoning_content',
       type: IsarType.string,
     ),
     r'reasoning_started_at': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'reasoning_started_at',
       type: IsarType.dateTime,
     ),
     r'reasoning_updated_at': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'reasoning_updated_at',
       type: IsarType.dateTime,
     ),
     r'reference': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'reference',
       type: IsarType.string,
     ),
     r'role': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'role',
       type: IsarType.string,
     ),
     r'searching': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'searching',
       type: IsarType.bool,
     )
@@ -1150,6 +1155,7 @@ int _messageEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.content.length * 3;
+  bytesCount += 3 + object.imageUrls.length * 3;
   bytesCount += 3 + object.reasoningContent.length * 3;
   bytesCount += 3 + object.reference.length * 3;
   bytesCount += 3 + object.role.length * 3;
@@ -1165,13 +1171,14 @@ void _messageSerialize(
   writer.writeLong(offsets[0], object.chatId);
   writer.writeString(offsets[1], object.content);
   writer.writeBool(offsets[2], object.expanded);
-  writer.writeBool(offsets[3], object.reasoning);
-  writer.writeString(offsets[4], object.reasoningContent);
-  writer.writeDateTime(offsets[5], object.reasoningStartedAt);
-  writer.writeDateTime(offsets[6], object.reasoningUpdatedAt);
-  writer.writeString(offsets[7], object.reference);
-  writer.writeString(offsets[8], object.role);
-  writer.writeBool(offsets[9], object.searching);
+  writer.writeString(offsets[3], object.imageUrls);
+  writer.writeBool(offsets[4], object.reasoning);
+  writer.writeString(offsets[5], object.reasoningContent);
+  writer.writeDateTime(offsets[6], object.reasoningStartedAt);
+  writer.writeDateTime(offsets[7], object.reasoningUpdatedAt);
+  writer.writeString(offsets[8], object.reference);
+  writer.writeString(offsets[9], object.role);
+  writer.writeBool(offsets[10], object.searching);
 }
 
 Message _messageDeserialize(
@@ -1185,13 +1192,14 @@ Message _messageDeserialize(
   object.content = reader.readString(offsets[1]);
   object.expanded = reader.readBool(offsets[2]);
   object.id = id;
-  object.reasoning = reader.readBool(offsets[3]);
-  object.reasoningContent = reader.readString(offsets[4]);
-  object.reasoningStartedAt = reader.readDateTime(offsets[5]);
-  object.reasoningUpdatedAt = reader.readDateTime(offsets[6]);
-  object.reference = reader.readString(offsets[7]);
-  object.role = reader.readString(offsets[8]);
-  object.searching = reader.readBool(offsets[9]);
+  object.imageUrls = reader.readString(offsets[3]);
+  object.reasoning = reader.readBool(offsets[4]);
+  object.reasoningContent = reader.readString(offsets[5]);
+  object.reasoningStartedAt = reader.readDateTime(offsets[6]);
+  object.reasoningUpdatedAt = reader.readDateTime(offsets[7]);
+  object.reference = reader.readString(offsets[8]);
+  object.role = reader.readString(offsets[9]);
+  object.searching = reader.readBool(offsets[10]);
   return object;
 }
 
@@ -1209,18 +1217,20 @@ P _messageDeserializeProp<P>(
     case 2:
       return (reader.readBool(offset)) as P;
     case 3:
-      return (reader.readBool(offset)) as P;
-    case 4:
       return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readBool(offset)) as P;
     case 5:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 6:
       return (reader.readDateTime(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 8:
       return (reader.readString(offset)) as P;
     case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1557,6 +1567,136 @@ extension MessageQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'imageUrls',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'imageUrls',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'imageUrls',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'imageUrls',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterFilterCondition> imageUrlsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'imageUrls',
+        value: '',
       ));
     });
   }
@@ -2132,6 +2272,18 @@ extension MessageQuerySortBy on QueryBuilder<Message, Message, QSortBy> {
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> sortByImageUrls() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrls', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> sortByImageUrlsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrls', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> sortByReasoning() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning', Sort.asc);
@@ -2267,6 +2419,18 @@ extension MessageQuerySortThenBy
     });
   }
 
+  QueryBuilder<Message, Message, QAfterSortBy> thenByImageUrls() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrls', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Message, Message, QAfterSortBy> thenByImageUrlsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'imageUrls', Sort.desc);
+    });
+  }
+
   QueryBuilder<Message, Message, QAfterSortBy> thenByReasoning() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'reasoning', Sort.asc);
@@ -2373,6 +2537,13 @@ extension MessageQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Message, Message, QDistinct> distinctByImageUrls(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'imageUrls', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Message, Message, QDistinct> distinctByReasoning() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'reasoning');
@@ -2443,6 +2614,12 @@ extension MessageQueryProperty
   QueryBuilder<Message, bool, QQueryOperations> expandedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'expanded');
+    });
+  }
+
+  QueryBuilder<Message, String, QQueryOperations> imageUrlsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'imageUrls');
     });
   }
 

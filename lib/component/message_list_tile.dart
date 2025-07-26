@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena/component/button.dart';
+import 'package:athena/page/desktop/home/component/base64_image.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
@@ -45,74 +46,13 @@ class MessageListTile extends StatelessWidget {
       );
     }
     if (message.role == 'tool') {
-      return _ToolMessageListTile(
-        message: message,
-        sentinel: sentinel,
-      );
+      return _ToolMessageListTile(message: message, sentinel: sentinel);
     }
     return _AssistantMessageListTile(
       loading: loading,
       message: message,
       sentinel: sentinel,
     );
-  }
-}
-
-class _ToolMessageListTile extends StatelessWidget {
-  final Message message;
-  final Sentinel sentinel;
-  const _ToolMessageListTile({
-    required this.message,
-    required this.sentinel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    var children = [
-      _buildAvatar(),
-      const SizedBox(width: 12),
-      _buildContent(),
-      _buildTrailingSpace(),
-    ];
-    var messageRow = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
-      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
-      child: messageRow,
-    );
-  }
-
-  Widget _buildAvatar() {
-    var hugeIcon = Icon(
-      HugeIcons.strokeRoundedTools,
-      color: ColorUtil.FFFFFFFF,
-      size: 20,
-    );
-    var boxDecoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: ColorUtil.FFCACACA,
-    );
-    return Container(
-      alignment: Alignment.center,
-      decoration: boxDecoration,
-      height: 36,
-      width: 36,
-      child: hugeIcon,
-    );
-  }
-
-  Widget _buildContent() {
-    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
-    var text = Text(message.content, style: textStyle);
-    return Expanded(child: text);
-  }
-
-  Widget _buildTrailingSpace() {
-    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
-    return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
 
@@ -362,6 +302,61 @@ class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
   }
 }
 
+class _ToolMessageListTile extends StatelessWidget {
+  final Message message;
+  final Sentinel sentinel;
+  const _ToolMessageListTile({required this.message, required this.sentinel});
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      _buildAvatar(),
+      const SizedBox(width: 12),
+      _buildContent(),
+      _buildTrailingSpace(),
+    ];
+    var messageRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    return Container(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
+      child: messageRow,
+    );
+  }
+
+  Widget _buildAvatar() {
+    var hugeIcon = Icon(
+      HugeIcons.strokeRoundedTools,
+      color: ColorUtil.FFFFFFFF,
+      size: 20,
+    );
+    var boxDecoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: ColorUtil.FFCACACA,
+    );
+    return Container(
+      alignment: Alignment.center,
+      decoration: boxDecoration,
+      height: 36,
+      width: 36,
+      child: hugeIcon,
+    );
+  }
+
+  Widget _buildContent() {
+    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
+    var text = Text(message.content, style: textStyle);
+    return Expanded(child: text);
+  }
+
+  Widget _buildTrailingSpace() {
+    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    return SizedBox(width: isDesktop ? 48 : 24);
+  }
+}
+
 class _UserMessageListTile extends StatelessWidget {
   final Message message;
   final void Function()? onLongPress;
@@ -398,18 +393,6 @@ class _UserMessageListTile extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    // const textStyle = TextStyle(fontSize: 14, height: 1);
-    // var boxDecoration = BoxDecoration(
-    //   shape: BoxShape.circle,
-    //   color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
-    // );
-    // return Container(
-    //   alignment: Alignment.center,
-    //   decoration: boxDecoration,
-    //   height: 36,
-    //   width: 36,
-    //   child: Text('CA', style: textStyle),
-    // );
     var image = Image.asset(
       'asset/image/avatar.png',
       fit: BoxFit.cover,
@@ -422,10 +405,34 @@ class _UserMessageListTile extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     var textStyle = TextStyle(color: ColorUtil.FFCACACA);
+    var text = Text(message.content, style: textStyle);
+    var images = message.imageUrls.split(',');
+    const delegate = SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 9,
+    );
+    var gridView = GridView.builder(
+      gridDelegate: delegate,
+      itemBuilder: (context, index) => DesktopBase64Image(
+        base64: images[index],
+        fit: BoxFit.cover,
+        width: double.infinity,
+      ),
+      itemCount: images.length,
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+    );
+    var children = [
+      text,
+      if (message.imageUrls.isNotEmpty && images.isNotEmpty) gridView,
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
     var container = Container(
       alignment: Alignment.centerLeft,
       constraints: BoxConstraints(minHeight: 36),
-      child: Text(message.content, style: textStyle),
+      child: column,
     );
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,

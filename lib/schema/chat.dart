@@ -48,6 +48,7 @@ class Message {
   Id id = Isar.autoIncrement;
   String content = '';
   bool expanded = true;
+  String imageUrls = '';
   bool reasoning = false;
   @Name('reasoning_content')
   String reasoningContent = '';
