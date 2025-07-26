@@ -183,7 +183,12 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     var input = _buildInput();
     return AthenaScaffold(
       appBar: AthenaAppBar(action: actionButton, title: titleText),
-      body: Column(children: [Expanded(child: messageListView), input]),
+      body: Column(
+        children: [
+          Expanded(child: messageListView),
+          input,
+        ],
+      ),
     );
   }
 
@@ -221,7 +226,8 @@ class _MobileChatPageState extends ConsumerState<MobileChatPage> {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
-    await viewModel.sendMessage(text, chat: widget.chat);
+    var message = Message()..content = text;
+    await viewModel.sendMessage(message, chat: widget.chat);
     if (title.isEmpty || title == 'New Chat') {
       var renameChat = await viewModel.renameChat(widget.chat);
       setState(() {

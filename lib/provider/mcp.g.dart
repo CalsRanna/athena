@@ -7,7 +7,7 @@ part of 'mcp.dart';
 // **************************************************************************
 
 String _$mcpConnectionsNotifierHash() =>
-    r'63da05ef0eb485bece6b2b127443e157085bf284';
+    r'bad6c17136897eaf5311004d10ec88ad8e004810';
 
 /// See also [McpConnectionsNotifier].
 @ProviderFor(McpConnectionsNotifier)

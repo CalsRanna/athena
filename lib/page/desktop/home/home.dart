@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:athena/page/desktop/home/component/chat_list.dart';
 import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
@@ -29,6 +32,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   var chat = Chat();
   var model = Model();
   var sentinel = Sentinel();
+  var images = <String>[];
 
   final controller = TextEditingController();
   final scrollController = ScrollController();
@@ -36,10 +40,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      _buildLeftBar(),
-      Expanded(child: _buildWorkspace()),
-    ];
+    var children = [_buildLeftBar(), Expanded(child: _buildWorkspace())];
     return AthenaScaffold(
       appBar: _buildAppBar(),
       body: Row(children: children),
@@ -57,6 +58,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       this.chat = chat;
       this.model = model;
       this.sentinel = sentinel;
+      images = [];
     });
   }
 
@@ -87,6 +89,12 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     _initChat();
     _initModel();
     _initSentinel();
+  }
+
+  Future<void> destroyImage(int index) async {
+    setState(() {
+      images.removeAt(index);
+    });
   }
 
   @override
@@ -129,7 +137,18 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     if (scrollController.hasClients) {
       scrollController.animateTo(0, curve: Curves.linear, duration: duration);
     }
-    await viewModel.sendMessage(text, chat: chat);
+    var imageUrls = <String>[];
+    for (var image in images) {
+      var bytes = await File(image).readAsBytes();
+      imageUrls.add(base64Encode(bytes));
+    }
+    var message = Message()
+      ..content = text
+      ..imageUrls = imageUrls.join(',');
+    setState(() {
+      images = [];
+    });
+    await viewModel.sendMessage(message, chat: chat);
     if (chat.title.isEmpty || chat.title == 'New Chat') {
       var renamedChat = await viewModel.renameChat(chat);
       setState(() {
@@ -161,6 +180,16 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var chat = await viewModel.updateEnableSearch(enabled, chat: this.chat);
     setState(() {
       this.chat = chat;
+    });
+  }
+
+  Future<void> updateImage(List<String> images) async {
+    if (viewModel.streaming) {
+      AthenaDialog.message('Please wait for the current chat to finish.');
+      return;
+    }
+    setState(() {
+      this.images = images;
     });
   }
 
@@ -222,7 +251,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
         spacing: 8,
         children: [
           DesktopSentinelIndicator(chat: chat),
-          DesktopModelIndicator(chat: chat)
+          DesktopModelIndicator(chat: chat),
         ],
       ),
     );
@@ -267,10 +296,20 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
       onResend: resendMessage,
       sentinel: sentinel,
     );
+    var imageList = Container(
+      height: 64,
+      padding: EdgeInsets.symmetric(horizontal: 32),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        itemBuilder: _itemBuilder,
+      ),
+    );
     var desktopMessageInput = DesktopMessageInput(
       chat: chat,
       controller: controller,
       onContextChange: updateContext,
+      onImageSelected: updateImage,
       onModelChanged: updateModel,
       onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
@@ -279,7 +318,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
-      children: [Expanded(child: workspace), desktopMessageInput],
+      children: [
+        Expanded(child: workspace),
+        if (images.isNotEmpty) imageList,
+        desktopMessageInput,
+      ],
     );
   }
 
@@ -309,5 +352,37 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     _initChat();
     _initModel();
     _initSentinel();
+  }
+
+  Widget _itemBuilder(context, index) {
+    var image = Image.file(
+      File(images[index]),
+      fit: BoxFit.cover,
+      width: double.infinity,
+    );
+    var icon = Icon(
+      HugeIcons.strokeRoundedCancel01,
+      color: ColorUtil.FFFFFFFF,
+      size: 12,
+    );
+    var decoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: ColorUtil.FF282F32,
+    );
+    var container = Container(
+      decoration: decoration,
+      padding: EdgeInsets.all(2),
+      child: icon,
+    );
+    var gestureDetector = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => destroyImage(index),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
+    );
+    var children = [
+      image,
+      Positioned(right: 2, top: 2, child: gestureDetector),
+    ];
+    return AspectRatio(aspectRatio: 1, child: Stack(children: children));
   }
 }

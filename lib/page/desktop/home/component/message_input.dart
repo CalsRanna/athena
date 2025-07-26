@@ -1,4 +1,5 @@
 import 'package:athena/page/desktop/home/component/configuration_button.dart';
+import 'package:athena/page/desktop/home/component/image_selector.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
 import 'package:athena/page/desktop/home/component/server_selector.dart';
@@ -16,6 +17,7 @@ class DesktopMessageInput extends StatelessWidget {
   final Chat chat;
   final TextEditingController controller;
   final void Function(int)? onContextChange;
+  final void Function(List<String>)? onImageSelected;
   final void Function(Model)? onModelChanged;
   final void Function(Sentinel)? onSentinelChanged;
   final void Function()? onSubmitted;
@@ -26,6 +28,7 @@ class DesktopMessageInput extends StatelessWidget {
     required this.chat,
     required this.controller,
     this.onContextChange,
+    this.onImageSelected,
     this.onModelChanged,
     this.onSentinelChanged,
     this.onSubmitted,
@@ -44,6 +47,7 @@ class DesktopMessageInput extends StatelessWidget {
         onContextChange: onContextChange,
         onTemperatureChange: onTemperatureChange,
       ),
+      DesktopImageSelector(onSelected: onImageSelected),
       // Icon(HugeIcons.strokeRoundedImage01),
     ];
     var toolbar = IconTheme.merge(
@@ -54,7 +58,7 @@ class DesktopMessageInput extends StatelessWidget {
     var inputChildren = [
       Expanded(child: input),
       const SizedBox(width: 8),
-      _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated)
+      _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated),
     ];
     var inputRow = Row(children: inputChildren);
     var borderSide = BorderSide(
