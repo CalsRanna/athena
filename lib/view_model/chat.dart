@@ -520,7 +520,7 @@ class ChatViewModel extends ViewModel {
       } else {
         var imageUrls = message.imageUrls.split(',');
         var imageParts = imageUrls.map((base64) {
-          var url = 'data:image/png;base64,$base64';
+          var url = 'data:image/jpeg;base64,$base64';
           var imageUrl = ChatCompletionMessageImageUrl(url: url);
           return ChatCompletionMessageContentPart.image(imageUrl: imageUrl);
         }).toList();
