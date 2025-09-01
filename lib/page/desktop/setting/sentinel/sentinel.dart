@@ -40,7 +40,7 @@ class _DesktopSettingSentinelPageState
   Widget build(BuildContext context) {
     var children = [
       _buildSentinelListView(),
-      Expanded(child: _buildSentinelView())
+      Expanded(child: _buildSentinelView()),
     ];
     return AthenaScaffold(body: Row(children: children));
   }
@@ -60,18 +60,23 @@ class _DesktopSettingSentinelPageState
   }
 
   Future<void> destroySentinel(Sentinel sentinel) async {
-    await viewModel.destroySentinel(sentinel);
-    setState(() {
-      index = 0;
-    });
-    var provider = sentinelsNotifierProvider;
-    var sentinels = await ref.read(provider.future);
-    if (sentinels.isEmpty) return;
-    nameController.text = sentinels[index].name;
-    avatarController.text = sentinels[index].avatar;
-    descriptionController.text = sentinels[index].description;
-    tagsController.text = sentinels[index].tags.join(', ');
-    promptController.text = sentinels[index].prompt;
+    var result = await AthenaDialog.confirm(
+      'Do you want to delete this sentinel?',
+    );
+    if (result == true) {
+      await viewModel.destroySentinel(sentinel);
+      setState(() {
+        index = 0;
+      });
+      var provider = sentinelsNotifierProvider;
+      var sentinels = await ref.read(provider.future);
+      if (sentinels.isEmpty) return;
+      nameController.text = sentinels[index].name;
+      avatarController.text = sentinels[index].avatar;
+      descriptionController.text = sentinels[index].description;
+      tagsController.text = sentinels[index].tags.join(', ');
+      promptController.text = sentinels[index].prompt;
+    }
   }
 
   @override
@@ -94,8 +99,9 @@ class _DesktopSettingSentinelPageState
       loading = true;
     });
     try {
-      final generatedSentinel =
-          await viewModel.generateSentinel(promptController.text);
+      final generatedSentinel = await viewModel.generateSentinel(
+        promptController.text,
+      );
       if (nameController.text != 'Athena') {
         nameController.text = generatedSentinel.name;
         avatarController.text = generatedSentinel.avatar;
@@ -170,11 +176,7 @@ class _DesktopSettingSentinelPageState
       onTap: storeSentinel,
       child: Padding(padding: edgeInsets, child: const Text('Store')),
     );
-    final children = [
-      generateButton,
-      const SizedBox(width: 12),
-      storeButton,
-    ];
+    final children = [generateButton, const SizedBox(width: 12), storeButton];
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 
@@ -230,17 +232,17 @@ class _DesktopSettingSentinelPageState
     var avatarInput = AthenaInput(controller: avatarController);
     var avatarChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
-      Expanded(child: avatarInput)
+      Expanded(child: avatarInput),
     ];
     var descriptionInput = AthenaInput(controller: descriptionController);
     var descriptionChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
-      Expanded(child: descriptionInput)
+      Expanded(child: descriptionInput),
     ];
     var tagsInput = AthenaInput(controller: tagsController);
     var tagsChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Tags')),
-      Expanded(child: tagsInput)
+      Expanded(child: tagsInput),
     ];
     var promptInput = AthenaInput(
       controller: promptController,
@@ -254,7 +256,7 @@ class _DesktopSettingSentinelPageState
     );
     var promptChildren = [
       Padding(padding: edgeInsets, child: promptLabel),
-      Expanded(child: promptInput)
+      Expanded(child: promptInput),
     ];
     var listChildren = [
       Text(nameController.text, style: nameTextStyle),

@@ -77,10 +77,15 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> destroyProvider(Provider provider) async {
-    await providerViewModel.destroyProvider(provider);
-    setState(() {
-      index = 0;
-    });
+    var result = await AthenaDialog.confirm(
+      'Do you want to delete this provider?',
+    );
+    if (result == true) {
+      await providerViewModel.destroyProvider(provider);
+      setState(() {
+        index = 0;
+      });
+    }
   }
 
   @override
@@ -170,8 +175,9 @@ class _DesktopSettingProviderPageState
     var provider = providersNotifierProvider;
     var providers = ref.watch(provider).valueOrNull;
     if (providers == null) return const SizedBox();
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
     var listView = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, index) => _buildProviderTile(providers, index),
@@ -211,15 +217,19 @@ class _DesktopSettingProviderPageState
     var nameChildren = [
       nameText,
       Spacer(),
-      AthenaSwitch(value: providers[index].enabled, onChanged: toggleProvider)
+      AthenaSwitch(value: providers[index].enabled, onChanged: toggleProvider),
     ];
     var keyChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'API Key')),
-      Expanded(child: AthenaInput(controller: keyController, onBlur: updateKey))
+      Expanded(
+        child: AthenaInput(controller: keyController, onBlur: updateKey),
+      ),
     ];
     var urlChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'API URL')),
-      Expanded(child: AthenaInput(controller: urlController, onBlur: updateUrl))
+      Expanded(
+        child: AthenaInput(controller: urlController, onBlur: updateUrl),
+      ),
     ];
     var modelTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
@@ -301,7 +311,7 @@ class _ModelListTileState extends State<_ModelListTile> {
     var nameChildren = [
       Flexible(child: nameText),
       SizedBox(width: 8),
-      AthenaTag.small(text: widget.model.value)
+      AthenaTag.small(text: widget.model.value),
     ];
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
