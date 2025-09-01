@@ -41,9 +41,13 @@ class _DesktopSettingServerPageState
 
   @override
   Widget build(BuildContext context) {
+    var children = [
+      _buildServerListView(),
+      Expanded(child: _buildServerView()),
+    ];
     var row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildServerListView(), Expanded(child: _buildServerView())],
+      children: children,
     );
     return AthenaScaffold(body: row);
   }
@@ -62,11 +66,16 @@ class _DesktopSettingServerPageState
   }
 
   Future<void> destroyServer(Server server) async {
-    await viewModel.destroyServer(server);
-    setState(() {
-      index = 0;
-      result = '';
-    });
+    var confirmResult = await AthenaDialog.confirm(
+      'Do you want to delete this server?',
+    );
+    if (confirmResult == true) {
+      await viewModel.destroyServer(server);
+      setState(() {
+        index = 0;
+        result = '';
+      });
+    }
   }
 
   @override
@@ -209,7 +218,7 @@ class _DesktopSettingServerPageState
     );
     var commandChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Command')),
-      Expanded(child: commandInput)
+      Expanded(child: commandInput),
     ];
     var argumentsInput = AthenaInput(
       controller: argumentsController,
@@ -217,7 +226,7 @@ class _DesktopSettingServerPageState
     );
     var argumentsChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Arguments')),
-      Expanded(child: argumentsInput)
+      Expanded(child: argumentsInput),
     ];
     var environmentsInput = AthenaInput(
       controller: environmentsController,
@@ -225,7 +234,7 @@ class _DesktopSettingServerPageState
     );
     var environmentsChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Environments')),
-      Expanded(child: environmentsInput)
+      Expanded(child: environmentsInput),
     ];
     var descriptionTextStyle = TextStyle(
       color: ColorUtil.FFC2C2C2,
@@ -318,9 +327,7 @@ class _ToolListTileState extends State<_ToolListTile> {
       SizedBox(width: 8),
       // AthenaTag.small(text: widget.model.value)
     ];
-    var subtitleChildren = [
-      _buildSubtitle(),
-    ];
+    var subtitleChildren = [_buildSubtitle()];
     var informationChildren = [
       Row(children: nameChildren),
       const SizedBox(height: 4),
@@ -330,9 +337,7 @@ class _ToolListTileState extends State<_ToolListTile> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
-    var contentChildren = [
-      Expanded(child: informationWidget),
-    ];
+    var contentChildren = [Expanded(child: informationWidget)];
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(children: contentChildren),
