@@ -2,14 +2,23 @@ import 'dart:io';
 
 import 'package:athena/main.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/widget/button.dart';
 import 'package:flutter/material.dart';
 
 class AthenaDialog {
-  static void confirm(
-    String title, {
-    void Function(BuildContext)? onConfirmed,
-  }) {
-    show(_ConfirmDialog(title: title, onConfirmed: onConfirmed));
+  static Future<bool?> confirm(String text) async {
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      return showDialog<bool>(
+        builder: (_) => _DesktopConfirmDialog(text: text),
+        context: globalKey.currentContext!,
+      );
+    } else {
+      return showModalBottomSheet<bool>(
+        backgroundColor: ColorUtil.FF282F32,
+        builder: (_) => _ConfirmDialog(text: text),
+        context: globalKey.currentContext!,
+      );
+    }
   }
 
   static void dismiss() {
@@ -55,10 +64,7 @@ class AthenaDialog {
     );
     var isWindow = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
     if (!isWindow) {
-      snackBar = SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: text,
-      );
+      snackBar = SnackBar(behavior: SnackBarBehavior.floating, content: text);
     }
     var messenger = ScaffoldMessenger.of(globalKey.currentContext!);
     messenger.removeCurrentSnackBar();
@@ -87,9 +93,8 @@ class AthenaDialog {
 }
 
 class _ConfirmDialog extends StatelessWidget {
-  final void Function(BuildContext)? onConfirmed;
-  final String title;
-  const _ConfirmDialog({this.onConfirmed, required this.title});
+  final String text;
+  const _ConfirmDialog({required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -99,12 +104,12 @@ class _ConfirmDialog extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
     var children = [
-      Text(title, style: textStyle),
+      Text(text, style: textStyle),
       const SizedBox(height: 24),
       _buildConfirmButton(context),
       const SizedBox(height: 12),
       _buildCancelButton(context),
-      SizedBox(height: MediaQuery.paddingOf(context).bottom)
+      SizedBox(height: MediaQuery.paddingOf(context).bottom),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -113,11 +118,11 @@ class _ConfirmDialog extends StatelessWidget {
   }
 
   void cancelDialog() {
-    Navigator.of(globalKey.currentContext!).pop();
+    Navigator.of(globalKey.currentContext!).pop(false);
   }
 
   void confirmDialog(BuildContext context) {
-    onConfirmed?.call(context);
+    Navigator.of(globalKey.currentContext!).pop(true);
   }
 
   Widget _buildCancelButton(BuildContext context) {
@@ -171,6 +176,56 @@ class _ConfirmDialog extends StatelessWidget {
   }
 }
 
+class _DesktopConfirmDialog extends StatelessWidget {
+  final String text;
+  const _DesktopConfirmDialog({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 24,
+      fontWeight: FontWeight.w500,
+    );
+    var children = [
+      Text(text, style: textStyle),
+      const SizedBox(height: 24),
+      _buildButtons(context),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: children,
+    );
+    var boxDecoration = BoxDecoration(
+      color: ColorUtil.FF282F32,
+      borderRadius: BorderRadius.circular(8),
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      padding: EdgeInsets.all(24),
+      child: column,
+    );
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: UnconstrainedBox(child: container),
+    );
+  }
+
+  Widget _buildButtons(BuildContext context) {
+    var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
+    var cancelButton = AthenaSecondaryButton(
+      onTap: () => Navigator.of(context).maybePop(false),
+      child: Padding(padding: edgeInsets, child: Text('Cancel')),
+    );
+    var storeButton = AthenaPrimaryButton(
+      onTap: () => Navigator.of(context).maybePop(true),
+      child: Padding(padding: edgeInsets, child: Text('Confirm')),
+    );
+    var children = [cancelButton, const SizedBox(width: 12), storeButton];
+    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
+  }
+}
+
 class _SuccessDialog extends StatelessWidget {
   final String message;
   const _SuccessDialog({required this.message});
@@ -186,7 +241,7 @@ class _SuccessDialog extends StatelessWidget {
       Text(message, style: textStyle),
       const SizedBox(height: 24),
       _buildConfirmButton(context),
-      SizedBox(height: MediaQuery.paddingOf(context).bottom)
+      SizedBox(height: MediaQuery.paddingOf(context).bottom),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
