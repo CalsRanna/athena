@@ -6,8 +6,8 @@ import 'package:athena/preset/prompt.dart';
 import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/model.dart' as schema;
 import 'package:athena/schema/provider.dart';
-import 'package:athena/vendor/openai_dart/client.dart';
-import 'package:athena/vendor/openai_dart/response.dart';
+import 'package:athena/vendor/enhanced_openai_dart/client.dart';
+import 'package:athena/vendor/enhanced_openai_dart/response.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class ChatApi {
@@ -35,7 +35,7 @@ class ChatApi {
     return response.choices.first.message.content ?? '';
   }
 
-  Stream<OverrodeCreateChatCompletionStreamResponse> getCompletion({
+  Stream<EnhancedCreateChatCompletionStreamResponse> getCompletion({
     required Chat chat,
     required List<ChatCompletionMessage> messages,
     required Provider provider,
@@ -45,7 +45,7 @@ class ChatApi {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',
       'X-Title': 'Athena',
     };
-    var client = OverrodeOpenAIClient(
+    var client = EnhancedOpenAIClient(
       apiKey: provider.key,
       baseUrl: provider.url,
       headers: headers,
@@ -73,8 +73,10 @@ class ChatApi {
       headers: headers,
     );
     var now = DateTime.now();
-    var prompt =
-        PresetPrompt.searchDecisionPrompt.replaceAll('{now}', now.toString());
+    var prompt = PresetPrompt.searchDecisionPrompt.replaceAll(
+      '{now}',
+      now.toString(),
+    );
     var wrappedMessages = [
       ChatCompletionMessage.system(content: prompt),
       ChatCompletionMessage.user(

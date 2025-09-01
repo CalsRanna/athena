@@ -1,10 +1,10 @@
 import 'package:openai_dart/openai_dart.dart';
 
-class OverrodeCreateChatCompletionStreamResponse {
+class EnhancedCreateChatCompletionStreamResponse {
   final Map<String, dynamic> rawJson;
   final CreateChatCompletionStreamResponse response;
 
-  OverrodeCreateChatCompletionStreamResponse({
+  EnhancedCreateChatCompletionStreamResponse({
     required this.rawJson,
     required this.response,
   });
