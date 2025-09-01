@@ -81,14 +81,17 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   }
 
   Future<void> destroyChat(Chat chat) async {
-    var duration = Duration(milliseconds: 300);
-    if (scrollController.hasClients) {
-      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+    var result = await AthenaDialog.confirm('Do you want to delete this chat?');
+    if (result == true) {
+      var duration = Duration(milliseconds: 300);
+      if (scrollController.hasClients) {
+        scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+      }
+      await viewModel.destroyChat(chat);
+      _initChat();
+      _initModel();
+      _initSentinel();
     }
-    await viewModel.destroyChat(chat);
-    _initChat();
-    _initModel();
-    _initSentinel();
   }
 
   Future<void> destroyImage(int index) async {
