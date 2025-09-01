@@ -5,7 +5,7 @@ import 'package:athena/schema/chat.dart';
 import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/provider.dart' as schema;
-import 'package:athena/vendor/openai_dart/delta.dart';
+import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:isar/isar.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -90,7 +90,7 @@ class MessagesNotifier extends _$MessagesNotifier {
   }
 
   Future<void> streaming(
-    OverrodeChatCompletionStreamResponseDelta delta,
+    EnhancedChatCompletionStreamResponseDelta delta,
   ) async {
     var streaming = ref.read(streamingNotifierProvider);
     if (!streaming) return;

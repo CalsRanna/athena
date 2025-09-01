@@ -19,8 +19,8 @@ import 'package:athena/schema/isar.dart';
 import 'package:athena/schema/model.dart';
 import 'package:athena/schema/sentinel.dart';
 import 'package:athena/schema/tool.dart' hide Tool;
-import 'package:athena/vendor/openai_dart/delta.dart';
-import 'package:athena/vendor/openai_dart/response.dart';
+import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
+import 'package:athena/vendor/enhanced_openai_dart/response.dart';
 import 'package:athena/view_model/view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:dart_mcp/client.dart' hide Schema;
@@ -429,7 +429,7 @@ class ChatViewModel extends ViewModel {
   }
 
   Future<CallToolRequest?> _getCallToolRequest(
-    Stream<OverrodeCreateChatCompletionStreamResponse> response,
+    Stream<EnhancedCreateChatCompletionStreamResponse> response,
   ) async {
     var buffer = StringBuffer();
     await for (final chunk in response) {
@@ -580,7 +580,7 @@ class ChatViewModel extends ViewModel {
 
   Future<void> _streamingAssistantMessage(
     Chat chat,
-    Stream<OverrodeCreateChatCompletionStreamResponse> response,
+    Stream<EnhancedCreateChatCompletionStreamResponse> response,
   ) async {
     var messagesProvider = messagesNotifierProvider(chat.id);
     var messagesNotifier = ref.read(messagesProvider.notifier);
@@ -590,7 +590,7 @@ class ChatViewModel extends ViewModel {
       var rawDelta = chunk.rawJson['choices'][0]['delta'];
       var reasoningContent = rawDelta['reasoning_content']; // DeepSeek
       reasoningContent ??= rawDelta['reasoning']; // OpenRouter
-      var delta = OverrodeChatCompletionStreamResponseDelta(
+      var delta = EnhancedChatCompletionStreamResponseDelta(
         content: content,
         reasoningContent: reasoningContent,
       );

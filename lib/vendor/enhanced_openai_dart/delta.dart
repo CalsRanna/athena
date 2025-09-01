@@ -1,8 +1,8 @@
-class OverrodeChatCompletionStreamResponseDelta {
+class EnhancedChatCompletionStreamResponseDelta {
   final String content;
   final String? reasoningContent;
 
-  OverrodeChatCompletionStreamResponseDelta({
+  EnhancedChatCompletionStreamResponseDelta({
     required this.content,
     this.reasoningContent,
   });
