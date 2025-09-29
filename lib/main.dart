@@ -59,7 +59,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   Widget build(BuildContext context) {
     var sliderThemeData = SliderThemeData(
-      showValueIndicator: ShowValueIndicator.always,
+      showValueIndicator: ShowValueIndicator.onDrag,
     );
     var themeData = ThemeData(
       fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
