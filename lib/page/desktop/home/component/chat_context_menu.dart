@@ -5,29 +5,44 @@ import 'package:flutter/widgets.dart';
 class DesktopChatContextMenu extends StatelessWidget {
   final Chat chat;
   final Offset offset;
+  final void Function()? onAutoRenamed;
   final void Function()? onDestroyed;
   final void Function()? onExportedImage;
+  final void Function()? onManualRenamed;
   final void Function()? onPinned;
-  final void Function()? onRenamed;
   final double? width;
 
   const DesktopChatContextMenu({
     super.key,
     required this.chat,
     required this.offset,
+    this.onAutoRenamed,
     this.onDestroyed,
     this.onExportedImage,
+    this.onManualRenamed,
     this.onPinned,
-    this.onRenamed,
     this.width,
   });
 
   @override
   Widget build(BuildContext context) {
     var pinText = chat.pinned ? 'Unpin' : 'Pin';
+    var renameSubmenu = DesktopContextMenuTileWithSubmenu(
+      text: 'Rename',
+      submenuItems: [
+        DesktopContextMenuSubItem(
+          text: 'Auto Rename',
+          onTap: onAutoRenamed,
+        ),
+        DesktopContextMenuSubItem(
+          text: 'Manual Rename',
+          onTap: onManualRenamed,
+        ),
+      ],
+    );
     var children = [
       DesktopContextMenuTile(text: pinText, onTap: onPinned),
-      DesktopContextMenuTile(text: 'Rename', onTap: onRenamed),
+      renameSubmenu,
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
       DesktopContextMenuTile(text: 'Export Image', onTap: onExportedImage),
     ];

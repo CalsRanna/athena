@@ -204,6 +204,16 @@ class ChatViewModel extends ViewModel {
     return copiedChat;
   }
 
+  Future<void> renameChatManually(Chat chat, String title) async {
+    if (title.isEmpty) return;
+    var copiedChat = chat.copyWith(title: title);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+  }
+
   Future<void> resendMessage(Message message, {required Chat chat}) async {
     var builder = isar.messages.filter().chatIdEqualTo(chat.id);
     final messages = await builder.findAll();

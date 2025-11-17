@@ -9,6 +9,7 @@ import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:hugeicons/hugeicons.dart';
 
 class DesktopModelFormDialog extends ConsumerStatefulWidget {
   final Model? model;
@@ -40,7 +41,22 @@ class _DesktopModelFormDialogState
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
+    var icon = Icon(
+      HugeIcons.strokeRoundedCancel01,
+      color: ColorUtil.FFFFFFFF,
+      size: 24,
+    );
+    var closeButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: cancelDialog,
+      child: icon,
+    );
     var text = widget.model == null ? 'Add Model' : 'Edit Model';
+    var titleChildren = [
+      Text(text, style: titleTextStyle),
+      Spacer(),
+      closeButton,
+    ];
     var valueChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
@@ -72,7 +88,7 @@ class _DesktopModelFormDialogState
       Expanded(child: AthenaInput(controller: outputController))
     ];
     var children = [
-      Text(text, style: titleTextStyle),
+      Row(children: titleChildren),
       const SizedBox(height: 24),
       Row(children: valueChildren),
       const SizedBox(height: 12),

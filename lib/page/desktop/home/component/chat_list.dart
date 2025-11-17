@@ -9,18 +9,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopChatListView extends ConsumerWidget {
+  final void Function(Chat)? onAutoRenamed;
   final void Function(Chat)? onDestroyed;
   final void Function(Chat)? onExportedImage;
+  final void Function(Chat)? onManualRenamed;
   final void Function(Chat)? onPinned;
-  final void Function(Chat)? onRenamed;
   final void Function(Chat)? onSelected;
   final Chat? selectedChat;
   const DesktopChatListView({
     super.key,
+    this.onAutoRenamed,
     this.onDestroyed,
     this.onExportedImage,
+    this.onManualRenamed,
     this.onPinned,
-    this.onRenamed,
     this.onSelected,
     this.selectedChat,
   });
@@ -53,10 +55,11 @@ class DesktopChatListView extends ConsumerWidget {
     return _ChatTile(
       active: selectedChat?.id == chat.id,
       chat: chat,
+      onAutoRenamed: () => onAutoRenamed?.call(chat),
       onDestroyed: () => onDestroyed?.call(chat),
       onExportedImage: () => onExportedImage?.call(chat),
+      onManualRenamed: () => onManualRenamed?.call(chat),
       onPinned: () => onPinned?.call(chat),
-      onRenamed: () => onRenamed?.call(chat),
       onSelected: () => selectChat(chat),
     );
   }
@@ -65,18 +68,20 @@ class DesktopChatListView extends ConsumerWidget {
 class _ChatTile extends StatefulWidget {
   final bool active;
   final Chat chat;
+  final void Function()? onAutoRenamed;
   final void Function()? onDestroyed;
   final void Function()? onExportedImage;
+  final void Function()? onManualRenamed;
   final void Function()? onPinned;
-  final void Function()? onRenamed;
   final void Function()? onSelected;
   const _ChatTile({
     this.active = false,
     required this.chat,
+    this.onAutoRenamed,
     this.onDestroyed,
     this.onExportedImage,
+    this.onManualRenamed,
     this.onPinned,
-    this.onRenamed,
     this.onSelected,
   });
 
@@ -108,10 +113,11 @@ class _ChatTileState extends State<_ChatTile> {
     var contextMenu = DesktopChatContextMenu(
       chat: widget.chat,
       offset: details.globalPosition,
+      onAutoRenamed: widget.onAutoRenamed,
       onDestroyed: widget.onDestroyed,
       onExportedImage: widget.onExportedImage,
+      onManualRenamed: widget.onManualRenamed,
       onPinned: widget.onPinned,
-      onRenamed: widget.onRenamed,
     );
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
