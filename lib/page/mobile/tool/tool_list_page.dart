@@ -1,29 +1,31 @@
-import 'package:athena/provider/tool.dart';
+import 'package:athena/entity/tool_entity.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/tool.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/tool_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class MobileToolListPage extends ConsumerWidget {
+class MobileToolListPage extends StatelessWidget {
   const MobileToolListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var tools = ref.watch(toolsNotifierProvider).valueOrNull;
-    Widget body = const SizedBox();
-    if (tools != null) body = _buildBody(tools);
-    return AthenaScaffold(
-      appBar: AthenaAppBar(title: const Text('Tool')),
-      body: body,
-    );
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var toolViewModel = GetIt.instance<ToolViewModel>();
+      var tools = toolViewModel.tools.value;
+      return AthenaScaffold(
+        appBar: AthenaAppBar(title: const Text('Tool')),
+        body: _buildBody(tools),
+      );
+    });
   }
 
-  Widget _buildBody(List<Tool> tools) {
+  Widget _buildBody(List<ToolEntity> tools) {
     if (tools.isEmpty) return const SizedBox();
     return ListView.separated(
       itemCount: tools.length,
@@ -46,12 +48,12 @@ class MobileToolListPage extends ConsumerWidget {
   }
 }
 
-class _ToolListTile extends ConsumerWidget {
-  final Tool tool;
+class _ToolListTile extends StatelessWidget {
+  final ToolEntity tool;
   const _ToolListTile(this.tool);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const titleTextStyle = TextStyle(
       fontSize: 16,
       color: ColorUtil.FFFFFFFF,
@@ -87,6 +89,6 @@ class _ToolListTile extends ConsumerWidget {
   }
 
   void navigateProviderForm(BuildContext context) {
-    MobileToolFormRoute(tool: tool).push(context);
+    MobileToolFormRoute(tool: tool).push<void>(context);
   }
 }

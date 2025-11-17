@@ -1,21 +1,21 @@
 import 'package:athena/component/message_list_tile.dart';
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/sentinel.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopMessageList extends ConsumerStatefulWidget {
-  final Chat chat;
+class DesktopMessageList extends StatefulWidget {
+  final ChatEntity chat;
   final ScrollController? controller;
-  final void Function(Message message) onResend;
-  final Sentinel sentinel;
+  final void Function(MessageEntity message) onResend;
+  final SentinelEntity sentinel;
   const DesktopMessageList({
     super.key,
     required this.chat,
@@ -25,35 +25,46 @@ class DesktopMessageList extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DesktopMessageList> createState() => _DesktopMessageListState();
+  State<DesktopMessageList> createState() => _DesktopMessageListState();
 }
 
-class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
-  late final viewModel = ChatViewModel(ref);
+class _DesktopMessageListState extends State<DesktopMessageList> {
+  late final ChatViewModel chatViewModel;
+
   @override
-  Widget build(BuildContext context) {
-    var provider = messagesNotifierProvider(widget.chat.id);
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  void initState() {
+    super.initState();
+    chatViewModel = GetIt.instance<ChatViewModel>();
   }
 
-  void copyMessage(Message message) {
+  @override
+  void dispose() {
+    chatViewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var messages = chatViewModel.messages.value;
+      return _buildData(messages);
+    });
+  }
+
+  void copyMessage(MessageEntity message) {
     Clipboard.setData(ClipboardData(text: message.content));
   }
 
-  Future<void> destroyMessage(Message message) async {
+  Future<void> destroyMessage(MessageEntity message) async {
     var result = await AthenaDialog.confirm(
       'Do you want to delete this message?',
     );
     if (result == true) {
-      viewModel.destroyMessage(message);
+      await chatViewModel.deleteMessage(message);
     }
   }
 
-  void openContextMenu(TapUpDetails details, Message message) {
+  void openContextMenu(TapUpDetails details, MessageEntity message) {
     var contextMenu = DesktopMessageContextMenu(
       offset: details.globalPosition,
       onCopied: () => copyMessage(message),
@@ -62,7 +73,7 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  Widget _buildData(List<Message> messages) {
+  Widget _buildData(List<MessageEntity> messages) {
     if (messages.isEmpty == true) {
       return DesktopSentinelPlaceholder(sentinel: widget.sentinel);
     }
@@ -76,16 +87,18 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
     );
   }
 
-  Widget _itemBuilder(List<Message> messages, int index) {
+  Widget _itemBuilder(List<MessageEntity> messages, int index) {
     final message = messages.reversed.elementAt(index);
-    var loading = ref.watch(streamingNotifierProvider);
-    if (index > 0) loading = false;
-    return MessageListTile(
-      loading: loading,
-      message: message,
-      onResend: () => widget.onResend.call(message),
-      onSecondaryTapUp: (details) => openContextMenu(details, message),
-      sentinel: widget.sentinel,
-    );
+    return Watch((context) {
+      var loading = chatViewModel.isStreaming.value;
+      if (index > 0) loading = false;
+      return MessageListTile(
+        loading: loading,
+        message: message,
+        onResend: () => widget.onResend.call(message),
+        onSecondaryTapUp: (details) => openContextMenu(details, message),
+        sentinel: widget.sentinel,
+      );
+    });
   }
 }

@@ -1,9 +1,9 @@
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
-import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/sentinel.dart';
+import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
@@ -13,19 +13,20 @@ import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class DesktopSettingSentinelPage extends ConsumerStatefulWidget {
+class DesktopSettingSentinelPage extends StatefulWidget {
   const DesktopSettingSentinelPage({super.key});
 
   @override
-  ConsumerState<DesktopSettingSentinelPage> createState() =>
+  State<DesktopSettingSentinelPage> createState() =>
       _DesktopSettingSentinelPageState();
 }
 
 class _DesktopSettingSentinelPageState
-    extends ConsumerState<DesktopSettingSentinelPage> {
+    extends State<DesktopSettingSentinelPage> {
   int index = 0;
   bool loading = false;
   final nameController = TextEditingController();
@@ -34,7 +35,7 @@ class _DesktopSettingSentinelPageState
   final tagsController = TextEditingController();
   final promptController = TextEditingController();
 
-  late final viewModel = SentinelViewModel(ref);
+  late final viewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -49,8 +50,7 @@ class _DesktopSettingSentinelPageState
     setState(() {
       this.index = index;
     });
-    var provider = sentinelsNotifierProvider;
-    var sentinels = await ref.read(provider.future);
+    var sentinels = viewModel.sentinels.value;
     if (sentinels.isEmpty) return;
     nameController.text = sentinels[index].name;
     avatarController.text = sentinels[index].avatar;
@@ -59,17 +59,16 @@ class _DesktopSettingSentinelPageState
     promptController.text = sentinels[index].prompt;
   }
 
-  Future<void> destroySentinel(Sentinel sentinel) async {
+  Future<void> destroySentinel(SentinelEntity sentinel) async {
     var result = await AthenaDialog.confirm(
       'Do you want to delete this sentinel?',
     );
     if (result == true) {
-      await viewModel.destroySentinel(sentinel);
+      await viewModel.deleteSentinel(sentinel);
       setState(() {
         index = 0;
       });
-      var provider = sentinelsNotifierProvider;
-      var sentinels = await ref.read(provider.future);
+      var sentinels = viewModel.sentinels.value;
       if (sentinels.isEmpty) return;
       nameController.text = sentinels[index].name;
       avatarController.text = sentinels[index].avatar;
@@ -99,15 +98,26 @@ class _DesktopSettingSentinelPageState
       loading = true;
     });
     try {
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      await modelViewModel.loadEnabledModels();
+      if (modelViewModel.enabledModels.value.isEmpty) {
+        setState(() {
+          loading = false;
+        });
+        AthenaDialog.message('No enabled models found');
+        return;
+      }
+      var modelId = modelViewModel.enabledModels.value.first.id!;
       final generatedSentinel = await viewModel.generateSentinel(
         promptController.text,
+        modelId: modelId,
       );
-      if (nameController.text != 'Athena') {
+      if (generatedSentinel != null && nameController.text != 'Athena') {
         nameController.text = generatedSentinel.name;
         avatarController.text = generatedSentinel.avatar;
+        descriptionController.text = generatedSentinel.description;
+        tagsController.text = generatedSentinel.tags.join(', ');
       }
-      descriptionController.text = generatedSentinel.description;
-      tagsController.text = generatedSentinel.tags.join(', ');
       setState(() {
         loading = false;
       });
@@ -125,11 +135,11 @@ class _DesktopSettingSentinelPageState
     _initState();
   }
 
-  void openSentinelFormDialog(Sentinel sentinel) async {
+  void openSentinelFormDialog(SentinelEntity sentinel) async {
     AthenaDialog.show(DesktopSentinelFormDialog(sentinel: sentinel));
   }
 
-  void showSentinelContextMenu(TapUpDetails details, Sentinel sentinel) {
+  void showSentinelContextMenu(TapUpDetails details, SentinelEntity sentinel) {
     if (sentinel.name == 'Athena') return;
     var contextMenu = DesktopSentinelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
@@ -144,8 +154,7 @@ class _DesktopSettingSentinelPageState
       AthenaDialog.message('Prompt is required');
       return;
     }
-    var provider = sentinelsNotifierProvider;
-    var sentinels = await ref.read(provider.future);
+    var sentinels = viewModel.sentinels.value;
     if (sentinels.isEmpty) return;
     var copiedSentinel = sentinels[index].copyWith(
       avatar: avatarController.text,
@@ -181,35 +190,35 @@ class _DesktopSettingSentinelPageState
   }
 
   Widget _buildSentinelListView() {
-    var provider = sentinelsNotifierProvider;
-    var sentinels = ref.watch(provider).value;
-    if (sentinels == null) return const SizedBox();
-    var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
-    );
-    Widget child = ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemBuilder: (context, index) => _buildSentinelTile(sentinels, index),
-      itemCount: sentinels.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-    );
-    if (sentinels.isEmpty) {
-      var textStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
-        decoration: TextDecoration.none,
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
+    return Watch((context) {
+      var sentinels = viewModel.sentinels.value;
+      var borderSide = BorderSide(
+        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
       );
-      child = Center(child: Text('No Sentinels', style: textStyle));
-    }
-    return Container(
-      decoration: BoxDecoration(border: Border(right: borderSide)),
-      width: 240,
-      child: child,
-    );
+      Widget child = ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemBuilder: (context, index) => _buildSentinelTile(sentinels, index),
+        itemCount: sentinels.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+      );
+      if (sentinels.isEmpty) {
+        var textStyle = TextStyle(
+          color: ColorUtil.FFFFFFFF,
+          decoration: TextDecoration.none,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        );
+        child = Center(child: Text('No Sentinels', style: textStyle));
+      }
+      return Container(
+        decoration: BoxDecoration(border: Border(right: borderSide)),
+        width: 240,
+        child: child,
+      );
+    });
   }
 
-  Widget _buildSentinelTile(List<Sentinel> sentinels, int index) {
+  Widget _buildSentinelTile(List<SentinelEntity> sentinels, int index) {
     var sentinel = sentinels[index];
     return DesktopMenuTile(
       active: this.index == index,
@@ -220,69 +229,68 @@ class _DesktopSettingSentinelPageState
   }
 
   Widget _buildSentinelView() {
-    var provider = sentinelsNotifierProvider;
-    var sentinels = ref.watch(provider).valueOrNull;
-    if (sentinels == null) return const SizedBox();
-    if (sentinels.isEmpty) return const SizedBox();
-    var nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var avatarInput = AthenaInput(controller: avatarController);
-    var avatarChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
-      Expanded(child: avatarInput),
-    ];
-    var descriptionInput = AthenaInput(controller: descriptionController);
-    var descriptionChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
-      Expanded(child: descriptionInput),
-    ];
-    var tagsInput = AthenaInput(controller: tagsController);
-    var tagsChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Tags')),
-      Expanded(child: tagsInput),
-    ];
-    var promptInput = AthenaInput(
-      controller: promptController,
-      maxLines: 20,
-      minLines: 20,
-    );
-    const edgeInsets = EdgeInsets.symmetric(vertical: 16);
-    var promptLabel = SizedBox(
-      width: 120,
-      child: AthenaFormTileLabel(title: 'Prompt'),
-    );
-    var promptChildren = [
-      Padding(padding: edgeInsets, child: promptLabel),
-      Expanded(child: promptInput),
-    ];
-    var listChildren = [
-      Text(nameController.text, style: nameTextStyle),
-      const SizedBox(height: 12),
-      if (nameController.text != 'Athena') Row(children: avatarChildren),
-      if (nameController.text != 'Athena') const SizedBox(height: 12),
-      Row(children: descriptionChildren),
-      const SizedBox(height: 12),
-      Row(children: tagsChildren),
-      const SizedBox(height: 12),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: promptChildren,
-      ),
-      const SizedBox(height: 12),
-      _buildButtons(),
-    ];
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: listChildren,
-    );
+    return Watch((context) {
+      var sentinels = viewModel.sentinels.value;
+      if (sentinels.isEmpty) return const SizedBox();
+      var nameTextStyle = TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+      );
+      var avatarInput = AthenaInput(controller: avatarController);
+      var avatarChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
+        Expanded(child: avatarInput),
+      ];
+      var descriptionInput = AthenaInput(controller: descriptionController);
+      var descriptionChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
+        Expanded(child: descriptionInput),
+      ];
+      var tagsInput = AthenaInput(controller: tagsController);
+      var tagsChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Tags')),
+        Expanded(child: tagsInput),
+      ];
+      var promptInput = AthenaInput(
+        controller: promptController,
+        maxLines: 20,
+        minLines: 20,
+      );
+      const edgeInsets = EdgeInsets.symmetric(vertical: 16);
+      var promptLabel = SizedBox(
+        width: 120,
+        child: AthenaFormTileLabel(title: 'Prompt'),
+      );
+      var promptChildren = [
+        Padding(padding: edgeInsets, child: promptLabel),
+        Expanded(child: promptInput),
+      ];
+      var listChildren = [
+        Text(nameController.text, style: nameTextStyle),
+        const SizedBox(height: 12),
+        if (nameController.text != 'Athena') Row(children: avatarChildren),
+        if (nameController.text != 'Athena') const SizedBox(height: 12),
+        Row(children: descriptionChildren),
+        const SizedBox(height: 12),
+        Row(children: tagsChildren),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: promptChildren,
+        ),
+        const SizedBox(height: 12),
+        _buildButtons(),
+      ];
+      return ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        children: listChildren,
+      );
+    });
   }
 
   Future<void> _initState() async {
-    var provider = sentinelsNotifierProvider;
-    var sentinels = await ref.read(provider.future);
+    var sentinels = viewModel.sentinels.value;
     if (sentinels.isEmpty) return;
     nameController.text = sentinels[index].name;
     avatarController.text = sentinels[index].avatar;

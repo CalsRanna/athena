@@ -1,21 +1,22 @@
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopChatListView extends ConsumerWidget {
-  final void Function(Chat)? onAutoRenamed;
-  final void Function(Chat)? onDestroyed;
-  final void Function(Chat)? onExportedImage;
-  final void Function(Chat)? onManualRenamed;
-  final void Function(Chat)? onPinned;
-  final void Function(Chat)? onSelected;
-  final Chat? selectedChat;
+class DesktopChatListView extends StatelessWidget {
+  final void Function(ChatEntity)? onAutoRenamed;
+  final void Function(ChatEntity)? onDestroyed;
+  final void Function(ChatEntity)? onExportedImage;
+  final void Function(ChatEntity)? onManualRenamed;
+  final void Function(ChatEntity)? onPinned;
+  final void Function(ChatEntity)? onSelected;
+  final ChatEntity? selectedChat;
   const DesktopChatListView({
     super.key,
     this.onAutoRenamed,
@@ -28,20 +29,19 @@ class DesktopChatListView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = chatsNotifierProvider;
-    var state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
+    return Watch((context) {
+      var chats = chatViewModel.chats.value;
+      return _buildData(chats);
+    });
   }
 
-  void selectChat(Chat chat) {
+  void selectChat(ChatEntity chat) {
     onSelected?.call(chat);
   }
 
-  Widget _buildData(WidgetRef ref, List<Chat> chats) {
+  Widget _buildData(List<ChatEntity> chats) {
     if (chats.isEmpty) return const SizedBox();
     return ListView.separated(
       itemBuilder: (context, index) => _itemBuilder(chats[index]),
@@ -51,7 +51,7 @@ class DesktopChatListView extends ConsumerWidget {
     );
   }
 
-  Widget _itemBuilder(Chat chat) {
+  Widget _itemBuilder(ChatEntity chat) {
     return _ChatTile(
       active: selectedChat?.id == chat.id,
       chat: chat,
@@ -67,7 +67,7 @@ class DesktopChatListView extends ConsumerWidget {
 
 class _ChatTile extends StatefulWidget {
   final bool active;
-  final Chat chat;
+  final ChatEntity chat;
   final void Function()? onAutoRenamed;
   final void Function()? onDestroyed;
   final void Function()? onExportedImage;

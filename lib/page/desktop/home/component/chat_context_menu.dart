@@ -1,9 +1,9 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:flutter/widgets.dart';
 
 class DesktopChatContextMenu extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   final Offset offset;
   final void Function()? onAutoRenamed;
   final void Function()? onDestroyed;
@@ -30,10 +30,7 @@ class DesktopChatContextMenu extends StatelessWidget {
     var renameSubmenu = DesktopContextMenuTileWithSubmenu(
       text: 'Rename',
       submenuItems: [
-        DesktopContextMenuSubItem(
-          text: 'Auto Rename',
-          onTap: onAutoRenamed,
-        ),
+        DesktopContextMenuSubItem(text: 'Auto Rename', onTap: onAutoRenamed),
         DesktopContextMenuSubItem(
           text: 'Manual Rename',
           onTap: onManualRenamed,
@@ -46,10 +43,6 @@ class DesktopChatContextMenu extends StatelessWidget {
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
       DesktopContextMenuTile(text: 'Export Image', onTap: onExportedImage),
     ];
-    return DesktopContextMenu(
-      offset: offset,
-      width: 140,
-      children: children,
-    );
+    return DesktopContextMenu(offset: offset, width: 140, children: children);
   }
 }

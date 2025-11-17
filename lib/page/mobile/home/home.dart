@@ -1,17 +1,17 @@
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/model/shortcut.dart';
 import 'package:athena/page/mobile/home/component/welcome.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/sentinel.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileHomePage extends StatefulWidget {
@@ -22,7 +22,7 @@ class MobileHomePage extends StatefulWidget {
 }
 
 class _ChatTile extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   const _ChatTile(this.chat);
 
   @override
@@ -84,11 +84,11 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 }
 
-class _NewChatButton extends ConsumerWidget {
+class _NewChatButton extends StatelessWidget {
   const _NewChatButton();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const textStyle = TextStyle(
       fontSize: 20,
       fontWeight: FontWeight.w500,
@@ -110,29 +110,34 @@ class _NewChatButton extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context, ref),
+      onTap: () => handleTap(context),
       child: button,
     );
   }
 
-  void handleTap(BuildContext context, WidgetRef ref) async {
-    var viewModel = ChatViewModel(ref);
+  void handleTap(BuildContext context) async {
+    var viewModel = GetIt.instance<ChatViewModel>();
     var chat = await viewModel.createChat();
     if (!context.mounted) return;
-    MobileChatRoute(chat: chat).push(context);
+    if (chat != null) {
+      MobileChatRoute(chat: chat).push(context);
+    }
   }
 }
 
-class _RecentChatListView extends ConsumerWidget {
+class _RecentChatListView extends StatelessWidget {
   const _RecentChatListView();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(recentChatsNotifierProvider);
-    return state.when(data: data, error: error, loading: loading);
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var chatViewModel = GetIt.instance<ChatViewModel>();
+      var recentChats = chatViewModel.recentChats.value;
+      return data(recentChats);
+    });
   }
 
-  Widget data(List<Chat> chats) {
+  Widget data(List<ChatEntity> chats) {
     if (chats.isEmpty) return const SizedBox();
     return ListView.builder(
       scrollDirection: Axis.horizontal,
@@ -141,11 +146,7 @@ class _RecentChatListView extends ConsumerWidget {
     );
   }
 
-  Widget error(Object error, StackTrace stackTrace) {
-    return const SizedBox();
-  }
-
-  Widget itemBuilder(List<Chat> chats, int index) {
+  Widget itemBuilder(List<ChatEntity> chats, int index) {
     const left = 16.0;
     final right = index == chats.length - 1 ? 16.0 : 0.0;
     return Padding(
@@ -153,26 +154,21 @@ class _RecentChatListView extends ConsumerWidget {
       child: _ChatTile(chats[index]),
     );
   }
-
-  Widget loading() {
-    return const SizedBox();
-  }
 }
 
-class _SentinelListView extends ConsumerWidget {
+class _SentinelListView extends StatelessWidget {
   const _SentinelListView();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = sentinelsNotifierProvider;
-    final state = ref.watch(provider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var sentinelViewModel = GetIt.instance<SentinelViewModel>();
+      var sentinels = sentinelViewModel.sentinels.value;
+      return _buildData(sentinels);
+    });
   }
 
-  Widget _buildData(List<Sentinel> sentinels) {
+  Widget _buildData(List<SentinelEntity> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
     List<Widget> children1 = [];
     List<Widget> children2 = [];
@@ -203,12 +199,12 @@ class _SentinelListView extends ConsumerWidget {
   }
 }
 
-class _SentinelTile extends ConsumerWidget {
-  final Sentinel sentinel;
+class _SentinelTile extends StatelessWidget {
+  final SentinelEntity sentinel;
   const _SentinelTile(this.sentinel);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const innerDecoration = ShapeDecoration(
       color: ColorUtil.FF161616,
       shape: StadiumBorder(),
@@ -239,7 +235,7 @@ class _SentinelTile extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => navigateChatPage(context, ref),
+      onTap: () => navigateChatPage(context),
       child: Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(1),
@@ -248,11 +244,13 @@ class _SentinelTile extends ConsumerWidget {
     );
   }
 
-  void navigateChatPage(BuildContext context, WidgetRef ref) async {
-    var viewModel = ChatViewModel(ref);
+  void navigateChatPage(BuildContext context) async {
+    var viewModel = GetIt.instance<ChatViewModel>();
     var chat = await viewModel.createChat(sentinel: sentinel);
     if (!context.mounted) return;
-    MobileChatRoute(chat: chat).push(context);
+    if (chat != null) {
+      MobileChatRoute(chat: chat).push(context);
+    }
   }
 }
 

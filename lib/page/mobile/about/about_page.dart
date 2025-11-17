@@ -1,22 +1,22 @@
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/setting.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 @RoutePage()
-class MobileAboutPage extends ConsumerStatefulWidget {
+class MobileAboutPage extends StatefulWidget {
   const MobileAboutPage({super.key});
 
   @override
-  ConsumerState<MobileAboutPage> createState() => _MobilAboutPageState();
+  State<MobileAboutPage> createState() => _MobilAboutPageState();
 }
 
-class _MobilAboutPageState extends ConsumerState<MobileAboutPage> {
-  late final viewModel = SettingViewModel(ref);
+class _MobilAboutPageState extends State<MobileAboutPage> {
+  late final viewModel = GetIt.instance<SettingViewModel>();
   String version = '';
 
   @override

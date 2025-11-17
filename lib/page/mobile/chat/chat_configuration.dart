@@ -1,29 +1,29 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 
 @RoutePage()
-class MobileChatConfigurationPage extends ConsumerStatefulWidget {
-  final Chat chat;
+class MobileChatConfigurationPage extends StatefulWidget {
+  final ChatEntity chat;
   const MobileChatConfigurationPage({super.key, required this.chat});
 
   @override
-  ConsumerState<MobileChatConfigurationPage> createState() =>
+  State<MobileChatConfigurationPage> createState() =>
       _MobileChatConfigurationPageState();
 }
 
 class _MobileChatConfigurationPageState
-    extends ConsumerState<MobileChatConfigurationPage> {
+    extends State<MobileChatConfigurationPage> {
   late var _context = widget.chat.context.toDouble();
   late var temperature = widget.chat.temperature;
 
-  late final viewModel = ChatViewModel(ref);
+  late final viewModel = GetIt.instance<ChatViewModel>();
 
   @override
   Widget build(BuildContext context) {

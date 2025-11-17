@@ -1,4 +1,4 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopConfigurationButton extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const DesktopConfigurationButton({
@@ -41,7 +41,7 @@ class DesktopConfigurationButton extends StatelessWidget {
 }
 
 class _DesktopConfigurationDialog extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const _DesktopConfigurationDialog({

@@ -1,30 +1,43 @@
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
-import 'package:athena/provider/model.dart';
-import 'package:athena/provider/provider.dart';
-import 'package:athena/schema/model.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/setting.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class DesktopSettingDefaultModelPage extends ConsumerStatefulWidget {
+class DesktopSettingDefaultModelPage extends StatefulWidget {
   const DesktopSettingDefaultModelPage({super.key});
 
   @override
-  ConsumerState<DesktopSettingDefaultModelPage> createState() =>
+  State<DesktopSettingDefaultModelPage> createState() =>
       _DesktopSettingDefaultModelPageState();
 }
 
 class _DesktopSettingDefaultModelPageState
-    extends ConsumerState<DesktopSettingDefaultModelPage> {
-  late final viewModel = SettingViewModel(ref);
+    extends State<DesktopSettingDefaultModelPage> {
+  late final SettingViewModel settingViewModel;
   int index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    settingViewModel = GetIt.instance<SettingViewModel>();
+  }
+
+  @override
+  void dispose() {
+    settingViewModel.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,84 +97,89 @@ class _DesktopSettingDefaultModelPageState
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
     );
-    var chatModel = ref.watch(chatModelNotifierProvider).valueOrNull;
-    var chatDropdown = _ModelDropdown(
-      model: chatModel,
-      onChanged: viewModel.updateChatModel,
-    );
-    var chatNamingModel =
-        ref.watch(chatNamingModelNotifierProvider).valueOrNull;
-    var chatNamingDropdown = _ModelDropdown(
-      model: chatNamingModel,
-      onChanged: viewModel.updateChatNamingModel,
-    );
-    var provider = sentinelMetaGenerationModelNotifierProvider;
-    var sentinelMetadataGenerationModel = ref.watch(provider).valueOrNull;
-    var sentinelMetadataGenerationDropdown = _ModelDropdown(
-      model: sentinelMetadataGenerationModel,
-      onChanged: viewModel.updateSentinelMetaGenerationModel,
-    );
-    var tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var chatTip = Text('Model designated for new chat', style: tipTextStyle);
-    var namingTip = Text(
-      'Model designated for automatic naming topic',
-      style: tipTextStyle,
-    );
-    var generationTip = Text(
-      'Model designated for generating sentinel name, description, avatar, and tags',
-      style: tipTextStyle,
-    );
-    var edgeInsets = EdgeInsets.symmetric(horizontal: 32, vertical: 12);
-    return switch (index) {
-      0 => ListView(
-          padding: edgeInsets,
-          children: [
-            chatTitle,
-            const SizedBox(height: 12),
-            chatDropdown,
-            const SizedBox(height: 12),
-            chatTip,
-          ],
-        ),
-      1 => ListView(
-          padding: edgeInsets,
-          children: [
-            namingTitle,
-            const SizedBox(height: 12),
-            chatNamingDropdown,
-            const SizedBox(height: 12),
-            namingTip,
-            const SizedBox(height: 24),
-          ],
-        ),
-      2 => ListView(
-          padding: edgeInsets,
-          children: [
-            generationTitle,
-            const SizedBox(height: 12),
-            sentinelMetadataGenerationDropdown,
-            const SizedBox(height: 12),
-            generationTip,
-            const SizedBox(height: 24),
-          ],
-        ),
-      _ => const SizedBox(),
-    };
+
+    return Watch((context) {
+      var chatModel = settingViewModel.chatModelId.value;
+      var chatNamingModel = settingViewModel.chatNamingModelId.value;
+      var sentinelMetadataGenerationModel =
+          settingViewModel.sentinelMetadataGenerationModelId.value;
+
+      var chatDropdown = _ModelDropdown(
+        model: chatModel,
+        onChanged: settingViewModel.updateChatModelId,
+      );
+      var chatNamingDropdown = _ModelDropdown(
+        model: chatNamingModel,
+        onChanged: settingViewModel.updateChatNamingModelId,
+      );
+      var sentinelMetadataGenerationDropdown = _ModelDropdown(
+        model: sentinelMetadataGenerationModel,
+        onChanged: settingViewModel.updateSentinelMetadataGenerationModelId,
+      );
+
+      var tipTextStyle = TextStyle(
+        color: ColorUtil.FFC2C2C2,
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+      );
+      var chatTip =
+          Text('Model designated for new chat', style: tipTextStyle);
+      var namingTip = Text(
+        'Model designated for automatic naming topic',
+        style: tipTextStyle,
+      );
+      var generationTip = Text(
+        'Model designated for generating sentinel name, description, avatar, and tags',
+        style: tipTextStyle,
+      );
+      var edgeInsets = EdgeInsets.symmetric(horizontal: 32, vertical: 12);
+      return switch (index) {
+        0 => ListView(
+            padding: edgeInsets,
+            children: [
+              chatTitle,
+              const SizedBox(height: 12),
+              chatDropdown,
+              const SizedBox(height: 12),
+              chatTip,
+            ],
+          ),
+        1 => ListView(
+            padding: edgeInsets,
+            children: [
+              namingTitle,
+              const SizedBox(height: 12),
+              chatNamingDropdown,
+              const SizedBox(height: 12),
+              namingTip,
+              const SizedBox(height: 24),
+            ],
+          ),
+        2 => ListView(
+            padding: edgeInsets,
+            children: [
+              generationTitle,
+              const SizedBox(height: 12),
+              sentinelMetadataGenerationDropdown,
+              const SizedBox(height: 12),
+              generationTip,
+              const SizedBox(height: 24),
+            ],
+          ),
+        _ => const SizedBox(),
+      };
+    });
   }
 }
 
-class _ModelDropdown extends ConsumerWidget {
-  final Model? model;
-  final void Function(Model)? onChanged;
+class _ModelDropdown extends StatelessWidget {
+  final int? model;
+  final void Function(int)? onChanged;
   const _ModelDropdown({this.model, this.onChanged});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(24),
@@ -171,7 +189,7 @@ class _ModelDropdown extends ConsumerWidget {
       color: ColorUtil.FFF5F5F5,
       size: 20,
     );
-    var children = [Expanded(child: _buildText(ref)), icon];
+    var children = [Expanded(child: _buildText()), icon];
     var row = Row(children: children);
     var container = Container(
       decoration: boxDecoration,
@@ -189,9 +207,9 @@ class _ModelDropdown extends ConsumerWidget {
     );
   }
 
-  void handleTap(Model model) {
+  void handleTap(ModelEntity model) {
     AthenaDialog.dismiss();
-    onChanged?.call(model);
+    onChanged?.call(model.id!);
   }
 
   void showModelSelectorDialog() {
@@ -201,24 +219,34 @@ class _ModelDropdown extends ConsumerWidget {
     );
   }
 
-  Widget _buildText(WidgetRef ref) {
+  Widget _buildText() {
     const textStyle = TextStyle(
       color: ColorUtil.FFF5F5F5,
       fontSize: 14,
       height: 1.7,
     );
-    if (model == null) return Text('No Model', style: textStyle);
-    if (model!.name.isEmpty) return Text('No Model', style: textStyle);
-    var modelName = model!.name;
-    var provider = providerNotifierProvider(model!.providerId);
-    var aiProvider = ref.watch(provider).valueOrNull;
-    var providerName = aiProvider?.name ?? '';
-    if (providerName.isEmpty) return Text(modelName, style: textStyle);
-    return Text(
-      '$modelName | $providerName',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: textStyle,
-    );
+    if (model == null || model == 0) return Text('No Model', style: textStyle);
+
+    final modelViewModel = GetIt.instance<ModelViewModel>();
+    final providerViewModel = GetIt.instance<AIProviderViewModel>();
+    return Watch((context) {
+      final modelEntity = modelViewModel.models.value
+          .where((m) => m.id == model)
+          .firstOrNull;
+      if (modelEntity == null) return Text('No Model', style: textStyle);
+
+      var modelName = modelEntity.name;
+      final aiProvider = providerViewModel.providers.value
+          .where((p) => p.id == modelEntity.providerId)
+          .firstOrNull;
+      var providerName = aiProvider?.name ?? '';
+      if (providerName.isEmpty) return Text(modelName, style: textStyle);
+      return Text(
+        '$modelName | $providerName',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: textStyle,
+      );
+    });
   }
 }

@@ -1,11 +1,11 @@
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopSentinelTile extends StatelessWidget {
-  final void Function(Sentinel)? onChanged;
+  final void Function(SentinelEntity)? onChanged;
   const DesktopSentinelTile({super.key, this.onChanged});
 
   @override
@@ -19,7 +19,7 @@ class DesktopSentinelTile extends StatelessWidget {
 
   Future<void> handleTap(BuildContext context) async {
     const route = DesktopSettingSentinelRoute();
-    var sentinel = await route.push<Sentinel>(context);
+    var sentinel = await route.push<SentinelEntity>(context);
     if (sentinel == null) return;
     onChanged?.call(sentinel);
   }
@@ -36,10 +36,15 @@ class _Tile extends StatelessWidget {
     var children = [
       Icon(icon, color: ColorUtil.FFFFFFFF, size: 24),
       const SizedBox(width: 12),
-      Expanded(child: Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF))),
+      Expanded(
+        child: Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF)),
+      ),
       const SizedBox(width: 12),
-      Icon(HugeIcons.strokeRoundedArrowRight01,
-          color: ColorUtil.FFFFFFFF, size: 16),
+      Icon(
+        HugeIcons.strokeRoundedArrowRight01,
+        color: ColorUtil.FFFFFFFF,
+        size: 16,
+      ),
     ];
     var padding = Padding(
       padding: const EdgeInsets.all(8.0),

@@ -1,5 +1,5 @@
 import 'package:athena/component/button.dart';
-import 'package:athena/schema/translation.dart';
+import 'package:athena/entity/translation_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 class TranslationListTile extends StatelessWidget {
   final bool showSourceText;
   final bool showTargetText;
-  final Translation translation;
+  final TranslationEntity translation;
   const TranslationListTile({
     super.key,
     required this.translation,

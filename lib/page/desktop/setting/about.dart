@@ -1,27 +1,43 @@
-import 'package:athena/provider/setting.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/server.dart';
-import 'package:athena/view_model/setting.dart';
+import 'package:athena/view_model/server_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class DesktopSettingAboutPage extends ConsumerStatefulWidget {
+class DesktopSettingAboutPage extends StatefulWidget {
   const DesktopSettingAboutPage({super.key});
 
   @override
-  ConsumerState<DesktopSettingAboutPage> createState() =>
+  State<DesktopSettingAboutPage> createState() =>
       _DesktopSettingAboutPageState();
 }
 
-class _DesktopSettingAboutPageState
-    extends ConsumerState<DesktopSettingAboutPage> {
-  late final viewModel = SettingViewModel(ref);
+class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
+  late final SettingViewModel settingViewModel;
+  late final ServerViewModel serverViewModel;
+
   String version = '';
+  final developerMode = signal(false);
+
+  @override
+  void initState() {
+    super.initState();
+    settingViewModel = GetIt.instance<SettingViewModel>();
+    serverViewModel = GetIt.instance<ServerViewModel>();
+    _initState();
+  }
+
+  @override
+  void dispose() {
+    developerMode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,40 +52,38 @@ class _DesktopSettingAboutPageState
       height: 120,
       width: 120,
     );
-    var developerMode = ref.watch(developerModeNotifierProvider);
-    var children = [
-      ClipOval(child: image),
-      SizedBox(height: 24),
-      Text(version, style: textStyle),
-      if (developerMode) const SizedBox(height: 24),
-      if (developerMode)
-        TextButton(onPressed: emptyServers, child: Text('Empty Servers')),
-    ];
-    var column = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
+
+    return AthenaScaffold(
+      body: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: openDeveloperMode,
+          child: Watch((context) {
+            var children = [
+              ClipOval(child: image),
+              SizedBox(height: 24),
+              Text(version, style: textStyle),
+              if (developerMode.value) const SizedBox(height: 24),
+              if (developerMode.value)
+                TextButton(
+                  onPressed: emptyServers,
+                  child: Text('Empty Servers'),
+                ),
+            ];
+            return Column(mainAxisSize: MainAxisSize.min, children: children);
+          }),
+        ),
+      ),
     );
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: openDeveloperMode,
-      child: column,
-    );
-    return AthenaScaffold(body: Center(child: gestureDetector));
   }
 
   void emptyServers() {
-    ServerViewModel(ref).emptyServers();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initState();
+    serverViewModel.emptyServers();
   }
 
   void openDeveloperMode() {
-    var developerMode = ref.read(developerModeNotifierProvider);
-    if (developerMode) return;
+    if (developerMode.value) return;
+
     var cancelButton = TextButton(
       onPressed: () => AthenaDialog.dismiss(),
       child: Text('Cancel'),
@@ -77,7 +91,7 @@ class _DesktopSettingAboutPageState
     var openButton = TextButton(
       onPressed: () {
         AthenaDialog.dismiss();
-        viewModel.openDeveloperMode();
+        developerMode.value = true;
       },
       child: Text('Open'),
     );
@@ -86,10 +100,7 @@ class _DesktopSettingAboutPageState
       content: Text('Are you sure you want to open developer mode?'),
       actions: [cancelButton, openButton],
     );
-    showDialog(
-      context: context,
-      builder: (context) => alertDialog,
-    );
+    showDialog(context: context, builder: (context) => alertDialog);
   }
 
   Future<void> _initState() async {

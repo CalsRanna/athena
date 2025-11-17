@@ -1,7 +1,7 @@
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/model.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/checkbox.dart';
@@ -10,20 +10,19 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 
 @RoutePage()
-class MobileModelFormPage extends ConsumerStatefulWidget {
-  final Model? model;
-  final Provider? provider;
+class MobileModelFormPage extends StatefulWidget {
+  final ModelEntity? model;
+  final AIProviderEntity? provider;
   const MobileModelFormPage({super.key, this.model, this.provider});
 
   @override
-  ConsumerState<MobileModelFormPage> createState() =>
-      _MobileModelFormPageState();
+  State<MobileModelFormPage> createState() => _MobileModelFormPageState();
 }
 
-class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
+class _MobileModelFormPageState extends State<MobileModelFormPage> {
   final nameController = TextEditingController();
   final valueController = TextEditingController();
   final inputController = TextEditingController();
@@ -31,7 +30,7 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
   var supportReasoning = false;
   var supportVisual = false;
 
-  late final viewModel = ModelViewModel(ref);
+  late final viewModel = GetIt.instance<ModelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -80,32 +79,37 @@ class _MobileModelFormPageState extends ConsumerState<MobileModelFormPage> {
   void initState() {
     super.initState();
     nameController.text = widget.model?.name ?? '';
-    valueController.text = widget.model?.value ?? '';
-    inputController.text = widget.model?.inputPrice ?? '';
-    outputController.text = widget.model?.outputPrice ?? '';
-    supportReasoning = widget.model?.supportReasoning ?? false;
-    supportVisual = widget.model?.supportVisual ?? false;
+    valueController.text = widget.model?.modelId ?? '';
+    inputController.text = widget.model?.inputPrice.toString() ?? '';
+    outputController.text = widget.model?.outputPrice.toString() ?? '';
+    supportReasoning = widget.model?.reasoning ?? false;
+    supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> submitModel() async {
     if (widget.model == null) {
-      var newModel = Model()
-        ..name = nameController.text
-        ..value = valueController.text
-        ..inputPrice = inputController.text
-        ..outputPrice = outputController.text
-        ..supportReasoning = supportReasoning
-        ..supportVisual = supportVisual
-        ..providerId = widget.provider!.id;
-      await viewModel.storeModel(newModel);
+      var newModel = ModelEntity(
+        id: 0,
+        name: nameController.text,
+        modelId: valueController.text,
+        providerId: widget.provider!.id ?? 0,
+        contextWindow: 0,
+        inputPrice: double.tryParse(inputController.text) ?? 0.0,
+        outputPrice: double.tryParse(outputController.text) ?? 0.0,
+        releasedAt: null,
+        reasoning: supportReasoning,
+        vision: supportVisual,
+        createdAt: DateTime.now(),
+      );
+      await viewModel.createModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
         name: nameController.text,
-        value: valueController.text,
-        inputPrice: inputController.text,
-        outputPrice: outputController.text,
-        supportReasoning: supportReasoning,
-        supportVisual: supportVisual,
+        modelId: valueController.text,
+        inputPrice: double.tryParse(inputController.text) ?? 0.0,
+        outputPrice: double.tryParse(outputController.text) ?? 0.0,
+        reasoning: supportReasoning,
+        vision: supportVisual,
       );
       await viewModel.updateModel(copiedModel);
     }

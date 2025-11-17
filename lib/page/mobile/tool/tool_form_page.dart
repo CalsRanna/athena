@@ -1,8 +1,8 @@
+import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/tool_entity.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/tool.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/tool.dart';
+import 'package:athena/view_model/tool_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -11,18 +11,18 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 
 @RoutePage()
-class MobileToolFormPage extends ConsumerStatefulWidget {
-  final Tool tool;
+class MobileToolFormPage extends StatefulWidget {
+  final ToolEntity tool;
   const MobileToolFormPage({super.key, required this.tool});
 
   @override
-  ConsumerState<MobileToolFormPage> createState() => _MobileToolFormPageState();
+  State<MobileToolFormPage> createState() => _MobileToolFormPageState();
 }
 
-class _MobileToolFormPageState extends ConsumerState<MobileToolFormPage> {
+class _MobileToolFormPageState extends State<MobileToolFormPage> {
   final keyController = TextEditingController();
 
   @override
@@ -62,7 +62,7 @@ class _MobileToolFormPageState extends ConsumerState<MobileToolFormPage> {
     super.dispose();
   }
 
-  void editModel(Model model) {
+  void editModel(ModelEntity model) {
     AthenaDialog.dismiss();
     MobileModelFormRoute(model: model).push(context);
   }
@@ -74,9 +74,9 @@ class _MobileToolFormPageState extends ConsumerState<MobileToolFormPage> {
   }
 
   Future<void> updateTool() async {
-    var viewModel = ToolViewModel(ref);
+    var viewModel = GetIt.instance<ToolViewModel>();
     var copiedTool = widget.tool.copyWith(key: keyController.text);
-    viewModel.updateKey(copiedTool);
+    await viewModel.updateTool(copiedTool);
     AthenaDialog.message('Update successfully');
   }
 

@@ -1,38 +1,47 @@
-import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/component/message_list_tile.dart';
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/component/message_list_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopImageExportDialog extends ConsumerWidget {
-  final Chat chat;
+class DesktopImageExportDialog extends StatelessWidget {
+  final ChatEntity chat;
   const DesktopImageExportDialog({super.key, required this.chat});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat.id);
-    var state = ref.watch(provider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
     );
-    var container = Container(decoration: boxDecoration, child: child);
-    return UnconstrainedBox(child: container);
+
+    return Watch((context) {
+      var messages = chatViewModel.messages.value;
+      var child = _buildData(messages);
+      var container = Container(decoration: boxDecoration, child: child);
+      return UnconstrainedBox(child: container);
+    });
   }
 
-  Widget _buildData(WidgetRef ref, List<Message> messages) {
+  Widget _buildData(List<MessageEntity> messages) {
     if (messages.isEmpty == true) return const SizedBox();
     List<Widget> children = [];
-    var emptySentinel = Sentinel();
+    var emptySentinel = SentinelEntity(
+      id: 0,
+      name: '',
+      prompt: '',
+      avatar: '',
+      description: '',
+      tags: [],
+      
+    );
     for (var message in messages) {
       var expandedMessage = message.copyWith(expanded: true);
       var messageListTile = MessageListTile(
@@ -71,7 +80,7 @@ class DesktopImageExportDialog extends ConsumerWidget {
       child: Text('Export'),
     );
     var exportButton = AthenaPrimaryButton(
-      onTap: () => exportImage(ref, repaintBoundaryKey),
+      onTap: () => exportImage(repaintBoundaryKey),
       child: padding,
     );
     var barrier = Container(
@@ -91,10 +100,10 @@ class DesktopImageExportDialog extends ConsumerWidget {
     );
   }
 
-  Future<void> exportImage(WidgetRef ref, GlobalKey key) async {
+  Future<void> exportImage(GlobalKey key) async {
     AthenaDialog.loading();
-    final viewModel = ChatViewModel(ref);
-    await viewModel.exportImage(chat: chat, repaintBoundaryKey: key);
+    final chatViewModel = GetIt.instance<ChatViewModel>();
+    await chatViewModel.exportImage(chat: chat, repaintBoundaryKey: key);
     AthenaDialog.dismiss();
     AthenaDialog.dismiss();
   }

@@ -1,14 +1,14 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
 
 class MobileEditMessageDialog extends StatefulWidget {
-  final Message message;
+  final MessageEntity message;
 
   /// Message from this callback will be a copied message with new content
-  final void Function(Message)? onSubmitted;
+  final void Function(MessageEntity)? onSubmitted;
   const MobileEditMessageDialog({
     super.key,
     required this.message,

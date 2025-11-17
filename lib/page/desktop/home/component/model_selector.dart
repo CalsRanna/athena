@@ -1,37 +1,38 @@
-import 'package:athena/provider/model.dart';
-import 'package:athena/schema/model.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/model.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopModelSelectDialog extends ConsumerWidget {
-  final void Function(Model)? onTap;
+class DesktopModelSelectDialog extends StatelessWidget {
+  final void Function(ModelEntity)? onTap;
   const DesktopModelSelectDialog({super.key, this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(groupedEnabledModelsNotifierProvider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    final modelViewModel = GetIt.instance<ModelViewModel>();
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
     );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(8),
-      child: child,
-    );
-    return UnconstrainedBox(child: container);
+
+    return Watch((context) {
+      var models = modelViewModel.groupedEnabledModels.value;
+      var child = _buildData(models);
+      var container = Container(
+        decoration: boxDecoration,
+        padding: EdgeInsets.all(8),
+        child: child,
+      );
+      return UnconstrainedBox(child: container);
+    });
   }
 
-  Widget _buildData(Map<String, List<Model>> models) {
+  Widget _buildData(Map<String, List<ModelEntity>> models) {
     if (models.isEmpty) return const SizedBox();
     List<Widget> children = [];
     for (var entry in models.entries) {
@@ -57,7 +58,7 @@ class DesktopModelSelectDialog extends ConsumerWidget {
     );
   }
 
-  Widget _itemBuilder(Model model) {
+  Widget _itemBuilder(ModelEntity model) {
     return _DesktopModelSelectDialogTile(
       model: model,
       onTap: () => onTap?.call(model),
@@ -65,30 +66,31 @@ class DesktopModelSelectDialog extends ConsumerWidget {
   }
 }
 
-class DesktopModelSelector extends ConsumerWidget {
-  final void Function(Model)? onSelected;
+class DesktopModelSelector extends StatelessWidget {
+  final void Function(ModelEntity)? onSelected;
   const DesktopModelSelector({super.key, this.onSelected});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedAiBrain01,
       color: ColorUtil.FFFFFFFF,
       size: 24,
     );
     return GestureDetector(
-      onTap: () => openDialog(ref),
+      onTap: openDialog,
       child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
     );
   }
 
-  void changeModel(Model model) {
+  void changeModel(ModelEntity model) {
     AthenaDialog.dismiss();
     onSelected?.call(model);
   }
 
-  Future<void> openDialog(WidgetRef ref) async {
-    var hasModel = await ModelViewModel(ref).hasModel();
+  Future<void> openDialog() async {
+    final modelViewModel = GetIt.instance<ModelViewModel>();
+    var hasModel = modelViewModel.enabledModels.value.isNotEmpty;
     if (hasModel) {
       AthenaDialog.show(
         DesktopModelSelectDialog(onTap: changeModel),
@@ -101,7 +103,7 @@ class DesktopModelSelector extends ConsumerWidget {
 }
 
 class _DesktopModelSelectDialogTile extends StatefulWidget {
-  final Model model;
+  final ModelEntity model;
   final void Function()? onTap;
   const _DesktopModelSelectDialogTile({required this.model, this.onTap});
 
@@ -134,8 +136,8 @@ class _DesktopModelSelectDialogTileState
     );
     var children = [
       Flexible(child: Text(widget.model.name, style: textStyle)),
-      if (widget.model.supportReasoning) thinkIcon,
-      if (widget.model.supportVisual) visualIcon,
+      if (widget.model.reasoning) thinkIcon,
+      if (widget.model.vision) visualIcon,
     ];
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),

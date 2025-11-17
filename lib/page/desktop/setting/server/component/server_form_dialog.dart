@@ -1,28 +1,28 @@
-import 'package:athena/schema/server.dart';
+import 'package:athena/entity/server_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/server.dart';
+import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopServerFormDialog extends ConsumerStatefulWidget {
-  final Server? server;
+class DesktopServerFormDialog extends StatefulWidget {
+  final ServerEntity? server;
   const DesktopServerFormDialog({super.key, this.server});
 
   @override
-  ConsumerState<DesktopServerFormDialog> createState() =>
+  State<DesktopServerFormDialog> createState() =>
       _DesktopServerFormDialogState();
 }
 
 class _DesktopServerFormDialogState
-    extends ConsumerState<DesktopServerFormDialog> {
+    extends State<DesktopServerFormDialog> {
   final nameController = TextEditingController();
 
-  late final viewModel = ServerViewModel(ref);
+  late final viewModel = GetIt.instance<ServerViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -100,8 +100,16 @@ class _DesktopServerFormDialogState
       var copiedServer = widget.server!.copyWith(name: nameController.text);
       await viewModel.updateServer(copiedServer);
     } else {
-      var newServer = Server()..name = nameController.text;
-      await viewModel.storeServer(newServer);
+      var newServer = ServerEntity(
+        id: 0,
+        name: nameController.text,
+        enabled: true,
+        command: '',
+        arguments: [],
+        environmentVariables: {},
+        
+      );
+      await viewModel.createServer(newServer);
     }
     AthenaDialog.dismiss();
   }

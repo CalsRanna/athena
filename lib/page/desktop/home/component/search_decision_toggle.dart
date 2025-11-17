@@ -1,10 +1,10 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopChatSearchDecisionButton extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   final void Function(bool)? onTap;
   const DesktopChatSearchDecisionButton({
     super.key,

@@ -1,8 +1,8 @@
-import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -10,33 +10,35 @@ import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class MobileChatExportPage extends ConsumerWidget {
-  final Chat chat;
+class MobileChatExportPage extends StatelessWidget {
+  final ChatEntity chat;
   const MobileChatExportPage({super.key, required this.chat});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var provider = messagesNotifierProvider(chat.id);
-    var state = ref.watch(provider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
-      _ => const SizedBox(),
-    };
-    var appBar = AthenaAppBar(title: Text('Export Image'));
-    return AthenaScaffold(appBar: appBar, body: child);
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var chatViewModel = GetIt.instance<ChatViewModel>();
+      var messages = chatViewModel.messages.value
+          .where((m) => m.chatId == chat.id)
+          .toList();
+
+      var appBar = AthenaAppBar(title: Text('Export Image'));
+      return AthenaScaffold(appBar: appBar, body: _buildData(messages));
+    });
   }
 
-  Future<void> exportImage(WidgetRef ref, GlobalKey key) async {
+  Future<void> exportImage(GlobalKey key) async {
     AthenaDialog.loading();
-    final viewModel = ChatViewModel(ref);
+    final viewModel = GetIt.instance<ChatViewModel>();
     await viewModel.exportImage(chat: chat, repaintBoundaryKey: key);
     AthenaDialog.dismiss();
   }
 
-  Widget _buildBarrier(WidgetRef ref, GlobalKey repaintBoundaryKey) {
+  Widget _buildBarrier(GlobalKey repaintBoundaryKey) {
     var linearGradient = LinearGradient(
       begin: Alignment.topCenter,
       colors: [Colors.transparent, ColorUtil.FF282F32],
@@ -47,7 +49,7 @@ class MobileChatExportPage extends ConsumerWidget {
       child: Text('Export'),
     );
     var exportButton = AthenaPrimaryButton(
-      onTap: () => exportImage(ref, repaintBoundaryKey),
+      onTap: () => exportImage(repaintBoundaryKey),
       child: padding,
     );
     return Container(
@@ -58,10 +60,10 @@ class MobileChatExportPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildData(WidgetRef ref, List<Message> messages) {
+  Widget _buildData(List<MessageEntity> messages) {
     if (messages.isEmpty == true) return const SizedBox();
     var repaintBoundaryKey = GlobalKey();
-    var barrier = _buildBarrier(ref, repaintBoundaryKey);
+    var barrier = _buildBarrier(repaintBoundaryKey);
     var listView = _buildRenderListView(
       messages,
       repaintBoundaryKey: repaintBoundaryKey,
@@ -75,15 +77,21 @@ class MobileChatExportPage extends ConsumerWidget {
   }
 
   Widget _buildRenderListView(
-    List<Message> messages, {
+    List<MessageEntity> messages, {
     required GlobalKey repaintBoundaryKey,
   }) {
     List<Widget> children = [];
-    var emptySentinel = Sentinel();
+    var emptySentinel = SentinelEntity(
+      id: 0,
+      name: '',
+      avatar: '',
+      description: '',
+      tags: [],
+      prompt: '',
+    );
     for (var message in messages) {
-      var expandedMessage = message.copyWith(expanded: true);
       var messageListTile = MessageListTile(
-        message: expandedMessage,
+        message: message.copyWith(expanded: true),
         sentinel: emptySentinel,
       );
       children.add(messageListTile);

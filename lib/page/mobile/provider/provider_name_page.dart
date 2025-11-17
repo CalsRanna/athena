@@ -1,25 +1,24 @@
-import 'package:athena/schema/provider.dart' as schema;
+import 'package:athena/entity/ai_provider_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/provider.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class MobileProviderNamePage extends ConsumerStatefulWidget {
+class MobileProviderNamePage extends StatefulWidget {
   const MobileProviderNamePage({super.key});
 
   @override
-  ConsumerState<MobileProviderNamePage> createState() =>
+  State<MobileProviderNamePage> createState() =>
       _MobileProviderNamePageState();
 }
 
-class _MobileProviderNamePageState
-    extends ConsumerState<MobileProviderNamePage> {
+class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
   final controller = TextEditingController();
   final focusNode = FocusNode();
 
@@ -57,11 +56,17 @@ class _MobileProviderNamePageState
 
   Future<void> handleTap() async {
     if (controller.text.isEmpty) return;
-    var viewModel = ProviderViewModel(ref);
-    var provider = schema.Provider()
-      ..enabled = true
-      ..name = controller.text;
-    viewModel.storeProvider(provider);
+    var viewModel = GetIt.instance<AIProviderViewModel>();
+    var provider = AIProviderEntity(
+      id: 0,
+      enabled: true,
+      name: controller.text,
+      baseUrl: '',
+      apiKey: '',
+      createdAt: DateTime.now(),
+    );
+    await viewModel.createProvider(provider);
+    if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
 }
