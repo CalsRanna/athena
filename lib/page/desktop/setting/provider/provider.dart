@@ -76,6 +76,15 @@ class _DesktopSettingProviderPageState
     AthenaDialog.show(DesktopModelFormDialog(provider: provider));
   }
 
+  Future<void> destroyModel(Model model) async {
+    var result = await AthenaDialog.confirm(
+      'Do you want to delete this model?',
+    );
+    if (result == true) {
+      await modelViewModel.destroyModel(model);
+    }
+  }
+
   Future<void> destroyProvider(Provider provider) async {
     var result = await AthenaDialog.confirm(
       'Do you want to delete this provider?',
@@ -110,7 +119,7 @@ class _DesktopSettingProviderPageState
   Future<void> openModelContextMenu(TapUpDetails details, Model model) async {
     var contextMenu = DesktopModelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
-      onDestroyed: () => modelViewModel.destroyModel(model),
+      onDestroyed: () => destroyModel(model),
       onEdited: () => editModel(model),
     );
     if (!mounted) return;

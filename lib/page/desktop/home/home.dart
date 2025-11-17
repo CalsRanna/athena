@@ -80,6 +80,10 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     });
   }
 
+  Future<void> autoRenameChat(Chat chat) async {
+    await viewModel.renameChat(chat);
+  }
+
   Future<void> destroyChat(Chat chat) async {
     var result = await AthenaDialog.confirm('Do you want to delete this chat?');
     if (result == true) {
@@ -118,6 +122,13 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
   void initState() {
     super.initState();
     _initState();
+  }
+
+  Future<void> manualRenameChat(Chat chat) async {
+    var title = await AthenaDialog.input('Rename Chat', initialValue: chat.title);
+    if (title != null && title.isNotEmpty) {
+      await viewModel.renameChatManually(chat, title);
+    }
   }
 
   Future<void> resendMessage(Message message) async {
@@ -262,10 +273,11 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
 
   Widget _buildLeftBar() {
     var chatListView = DesktopChatListView(
+      onAutoRenamed: autoRenameChat,
       onDestroyed: destroyChat,
       onExportedImage: exportImage,
+      onManualRenamed: manualRenameChat,
       onPinned: viewModel.togglePinChat,
-      onRenamed: viewModel.renameChat,
       onSelected: changeChat,
       selectedChat: chat,
     );

@@ -43,8 +43,13 @@ class _DesktopMessageListState extends ConsumerState<DesktopMessageList> {
     Clipboard.setData(ClipboardData(text: message.content));
   }
 
-  void destroyMessage(Message message) {
-    viewModel.destroyMessage(message);
+  Future<void> destroyMessage(Message message) async {
+    var result = await AthenaDialog.confirm(
+      'Do you want to delete this message?',
+    );
+    if (result == true) {
+      viewModel.destroyMessage(message);
+    }
   }
 
   void openContextMenu(TapUpDetails details, Message message) {
