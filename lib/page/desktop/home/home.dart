@@ -264,6 +264,7 @@ class _DesktopHomePageState extends ConsumerState<DesktopHomePage> {
     var chatListView = DesktopChatListView(
       onDestroyed: destroyChat,
       onExportedImage: exportImage,
+      onPinned: viewModel.togglePinChat,
       onRenamed: viewModel.renameChat,
       onSelected: changeChat,
       selectedChat: chat,

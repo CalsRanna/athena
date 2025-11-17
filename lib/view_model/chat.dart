@@ -313,6 +313,15 @@ class ChatViewModel extends ViewModel {
     await messagesNotifier.closeStreaming();
   }
 
+  Future<void> togglePinChat(Chat chat) async {
+    var copiedChat = chat.copyWith(pinned: !chat.pinned);
+    await isar.writeTxn(() async {
+      await isar.chats.put(copiedChat);
+    });
+    ref.invalidate(chatsNotifierProvider);
+    ref.invalidate(recentChatsNotifierProvider);
+  }
+
   Future<Chat> updateContext(int context, {required Chat chat}) async {
     var copiedChat = chat.copyWith(context: context);
     await isar.writeTxn(() async {
