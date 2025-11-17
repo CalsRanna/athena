@@ -11,6 +11,7 @@ class Chat {
   double temperature = 1.0;
   String title = '';
   int modelId = 0;
+  bool pinned = false;
   @Name('sentinel_id')
   int sentinelId = 0;
   @Name('created_at')
@@ -25,6 +26,7 @@ class Chat {
     double? temperature,
     String? title,
     int? modelId,
+    bool? pinned,
     int? sentinelId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -36,6 +38,7 @@ class Chat {
       ..temperature = temperature ?? this.temperature
       ..title = title ?? this.title
       ..modelId = modelId ?? this.modelId
+      ..pinned = pinned ?? this.pinned
       ..sentinelId = sentinelId ?? this.sentinelId
       ..createdAt = createdAt ?? this.createdAt
       ..updatedAt = updatedAt ?? this.updatedAt;

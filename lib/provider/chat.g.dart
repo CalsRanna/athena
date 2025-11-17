@@ -155,8 +155,6 @@ class ChatNotifierProvider
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 mixin ChatNotifierRef on AutoDisposeAsyncNotifierProviderRef<Chat> {
   /// The parameter `id` of this provider.
   int get id;
@@ -171,7 +169,7 @@ class _ChatNotifierProviderElement
   int get id => (origin as ChatNotifierProvider).id;
 }
 
-String _$chatsNotifierHash() => r'80e4bd0d7b0206ce3b4803779e56614c1cc89e3b';
+String _$chatsNotifierHash() => r'2f222318537073c89a64a84f6f65b78cba555f67';
 
 /// See also [ChatsNotifier].
 @ProviderFor(ChatsNotifier)
@@ -187,7 +185,7 @@ final chatsNotifierProvider =
 );
 
 typedef _$ChatsNotifier = AutoDisposeAsyncNotifier<List<Chat>>;
-String _$messagesNotifierHash() => r'b7f4defd7a47795b527feda15b35f6a7cbaf9350';
+String _$messagesNotifierHash() => r'809f70796fa74ac49313df84a236045909223077';
 
 abstract class _$MessagesNotifier
     extends BuildlessAutoDisposeAsyncNotifier<List<Message>> {
@@ -317,8 +315,6 @@ class MessagesNotifierProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
 mixin MessagesNotifierRef
     on AutoDisposeAsyncNotifierProviderRef<List<Message>> {
   /// The parameter `chatId` of this provider.
@@ -335,7 +331,7 @@ class _MessagesNotifierProviderElement
 }
 
 String _$recentChatsNotifierHash() =>
-    r'58c8ff704e9454b2ec9b6fb1f97e7a25d78c6bfb';
+    r'3ccb1e1339652a379063674e2dcea644725c5f47';
 
 /// See also [RecentChatsNotifier].
 @ProviderFor(RecentChatsNotifier)
@@ -368,4 +364,4 @@ final streamingNotifierProvider =
 
 typedef _$StreamingNotifier = AutoDisposeNotifier<bool>;
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

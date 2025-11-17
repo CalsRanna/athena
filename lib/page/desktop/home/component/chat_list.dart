@@ -1,14 +1,17 @@
 import 'package:athena/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena/provider/chat.dart';
 import 'package:athena/schema/chat.dart';
+import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class DesktopChatListView extends ConsumerWidget {
   final void Function(Chat)? onDestroyed;
   final void Function(Chat)? onExportedImage;
+  final void Function(Chat)? onPinned;
   final void Function(Chat)? onRenamed;
   final void Function(Chat)? onSelected;
   final Chat? selectedChat;
@@ -16,6 +19,7 @@ class DesktopChatListView extends ConsumerWidget {
     super.key,
     this.onDestroyed,
     this.onExportedImage,
+    this.onPinned,
     this.onRenamed,
     this.onSelected,
     this.selectedChat,
@@ -51,6 +55,7 @@ class DesktopChatListView extends ConsumerWidget {
       chat: chat,
       onDestroyed: () => onDestroyed?.call(chat),
       onExportedImage: () => onExportedImage?.call(chat),
+      onPinned: () => onPinned?.call(chat),
       onRenamed: () => onRenamed?.call(chat),
       onSelected: () => selectChat(chat),
     );
@@ -62,6 +67,7 @@ class _ChatTile extends StatefulWidget {
   final Chat chat;
   final void Function()? onDestroyed;
   final void Function()? onExportedImage;
+  final void Function()? onPinned;
   final void Function()? onRenamed;
   final void Function()? onSelected;
   const _ChatTile({
@@ -69,6 +75,7 @@ class _ChatTile extends StatefulWidget {
     required this.chat,
     this.onDestroyed,
     this.onExportedImage,
+    this.onPinned,
     this.onRenamed,
     this.onSelected,
   });
@@ -80,9 +87,18 @@ class _ChatTile extends StatefulWidget {
 class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
+    Widget? trailing;
+    if (widget.chat.pinned) {
+      trailing = Icon(
+        HugeIcons.strokeRoundedPinLocation03,
+        color: ColorUtil.FFFFFFFF,
+        size: 16,
+      );
+    }
     return DesktopMenuTile(
       active: widget.active,
       label: widget.chat.title,
+      trailing: trailing,
       onTap: widget.onSelected,
       onSecondaryTap: openContextMenu,
     );
@@ -90,9 +106,11 @@ class _ChatTileState extends State<_ChatTile> {
 
   void openContextMenu(TapUpDetails details) {
     var contextMenu = DesktopChatContextMenu(
+      chat: widget.chat,
       offset: details.globalPosition,
       onDestroyed: widget.onDestroyed,
       onExportedImage: widget.onExportedImage,
+      onPinned: widget.onPinned,
       onRenamed: widget.onRenamed,
     );
     DesktopContextMenuManager.instance.show(context, contextMenu);

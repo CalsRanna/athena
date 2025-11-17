@@ -32,7 +32,15 @@ class ChatNotifier extends _$ChatNotifier {
 class ChatsNotifier extends _$ChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    return await isar.chats.where().sortByUpdatedAtDesc().findAll();
+    var chats = await isar.chats.where().sortByUpdatedAtDesc().findAll();
+    // 先按置顶状态排序，再按更新时间排序
+    chats.sort((a, b) {
+      if (a.pinned == b.pinned) {
+        return b.updatedAt.compareTo(a.updatedAt);
+      }
+      return a.pinned ? -1 : 1;
+    });
+    return chats;
   }
 
   Future<void> updateChatTitle(String title, {required Chat chat}) async {
@@ -127,7 +135,15 @@ class MessagesNotifier extends _$MessagesNotifier {
 class RecentChatsNotifier extends _$RecentChatsNotifier {
   @override
   Future<List<Chat>> build() async {
-    return await isar.chats.where().sortByUpdatedAtDesc().limit(10).findAll();
+    var chats = await isar.chats.where().sortByUpdatedAtDesc().limit(10).findAll();
+    // 先按置顶状态排序，再按更新时间排序
+    chats.sort((a, b) {
+      if (a.pinned == b.pinned) {
+        return b.updatedAt.compareTo(a.updatedAt);
+      }
+      return a.pinned ? -1 : 1;
+    });
+    return chats;
   }
 }
 
