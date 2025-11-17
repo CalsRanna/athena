@@ -1,10 +1,10 @@
+import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/model.dart';
-import 'package:athena/view_model/provider.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
@@ -15,21 +15,19 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class MobileProviderFormPage extends ConsumerStatefulWidget {
-  final schema.Provider provider;
+class MobileProviderFormPage extends StatefulWidget {
+  final AIProviderEntity provider;
   const MobileProviderFormPage({super.key, required this.provider});
 
   @override
-  ConsumerState<MobileProviderFormPage> createState() =>
-      _MobileProviderFormPageState();
+  State<MobileProviderFormPage> createState() => _MobileProviderFormPageState();
 }
 
-class _MobileProviderFormPageState
-    extends ConsumerState<MobileProviderFormPage> {
+class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   final keyController = TextEditingController();
   final urlController = TextEditingController();
 
@@ -77,19 +75,31 @@ class _MobileProviderFormPageState
     );
   }
 
-  void checkConnection(Model model) {
+  Future<void> checkConnection(ModelEntity model) async {
     AthenaDialog.dismiss();
-    var viewModel = ModelViewModel(ref);
-    viewModel.checkConnection(model);
+    AthenaDialog.loading();
+    var viewModel = GetIt.instance<ModelViewModel>();
+    try {
+      var result = await viewModel.checkConnection(model);
+      AthenaDialog.dismiss();
+      if (result != null) {
+        AthenaDialog.message('Connection successful: $result');
+      } else {
+        AthenaDialog.message('Connection failed');
+      }
+    } catch (e) {
+      AthenaDialog.dismiss();
+      AthenaDialog.message('Connection error: $e');
+    }
   }
 
   void createModel(BuildContext context) {
     MobileModelFormRoute(provider: widget.provider).push(context);
   }
 
-  void destroyModel(Model model) {
+  void destroyModel(ModelEntity model) {
     AthenaDialog.dismiss();
-    ModelViewModel(ref).destroyModel(model);
+    GetIt.instance<ModelViewModel>().deleteModel(model);
   }
 
   @override
@@ -99,18 +109,18 @@ class _MobileProviderFormPageState
     super.dispose();
   }
 
-  void editModel(Model model) {
+  void editModel(ModelEntity model) {
     MobileModelFormRoute(model: model).push(context);
   }
 
   @override
   void initState() {
     super.initState();
-    keyController.text = widget.provider.key;
-    urlController.text = widget.provider.url;
+    keyController.text = widget.provider.apiKey;
+    urlController.text = widget.provider.baseUrl;
   }
 
-  void openBottomSheet(Model model) {
+  void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
     var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
@@ -132,13 +142,13 @@ class _MobileProviderFormPageState
   }
 
   Future<void> updateProvider() async {
-    var viewModel = ProviderViewModel(ref);
+    var viewModel = GetIt.instance<AIProviderViewModel>();
     var provider = widget.provider.copyWith(
       enabled: true,
-      key: keyController.text,
-      url: urlController.text,
+      apiKey: keyController.text,
+      baseUrl: urlController.text,
     );
-    viewModel.updateProvider(provider);
+    await viewModel.updateProvider(provider);
   }
 
   Widget _buildModelFormLabel(BuildContext context) {

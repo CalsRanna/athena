@@ -1,8 +1,7 @@
-import 'package:athena/provider/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/provider.dart' as schema;
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/provider.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
@@ -11,37 +10,35 @@ import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class MobileProviderListPage extends ConsumerWidget {
+class MobileProviderListPage extends StatelessWidget {
   const MobileProviderListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     var button = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAdd01,
       onTap: () => navigateProviderName(context),
     );
-    var providers = ref.watch(providersNotifierProvider).valueOrNull;
-    Widget body = const SizedBox();
-    if (providers != null) body = _buildBody(providers);
-    return AthenaScaffold(
-      appBar: AthenaAppBar(action: button, title: const Text('Provider')),
-      body: body,
-    );
-  }
-
-  void navigateProvider(BuildContext context, schema.Provider provider) {
-    MobileProviderFormRoute(provider: provider).push(context);
+    return Watch((context) {
+      var providerViewModel = GetIt.instance<AIProviderViewModel>();
+      var providers = providerViewModel.providers.value;
+      return AthenaScaffold(
+        appBar: AthenaAppBar(action: button, title: const Text('Provider')),
+        body: _buildBody(providers),
+      );
+    });
   }
 
   void navigateProviderName(BuildContext context) {
     MobileProviderNameRoute().push(context);
   }
 
-  Widget _buildBody(List<schema.Provider> providers) {
+  Widget _buildBody(List<AIProviderEntity> providers) {
     if (providers.isEmpty) return const SizedBox();
     return ListView.separated(
       itemCount: providers.length,
@@ -64,12 +61,12 @@ class MobileProviderListPage extends ConsumerWidget {
   }
 }
 
-class _ProviderListTile extends ConsumerWidget {
-  final schema.Provider provider;
+class _ProviderListTile extends StatelessWidget {
+  final AIProviderEntity provider;
   const _ProviderListTile(this.provider);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     const titleTextStyle = TextStyle(
       fontSize: 16,
       color: ColorUtil.FFFFFFFF,
@@ -94,7 +91,7 @@ class _ProviderListTile extends ConsumerWidget {
     );
     var actionButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => openBottomSheet(context, ref),
+      onTap: () => openBottomSheet(context),
       child: icon,
     );
     var rowChildren = [
@@ -103,7 +100,7 @@ class _ProviderListTile extends ConsumerWidget {
     ];
     var columnChildren = [
       Row(children: rowChildren),
-      Text(provider.url, style: subtitleTextStyle),
+      Text(provider.baseUrl, style: subtitleTextStyle),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,9 +117,9 @@ class _ProviderListTile extends ConsumerWidget {
     );
   }
 
-  void destroyProvider(WidgetRef ref) {
-    var viewModel = ProviderViewModel(ref);
-    viewModel.destroyProvider(provider);
+  void destroyProvider() {
+    var viewModel = GetIt.instance<AIProviderViewModel>();
+    viewModel.deleteProvider(provider);
     AthenaDialog.dismiss();
   }
 
@@ -130,19 +127,19 @@ class _ProviderListTile extends ConsumerWidget {
     MobileProviderFormRoute(provider: provider).push(context);
   }
 
-  void openBottomSheet(BuildContext context, WidgetRef ref) {
+  void openBottomSheet(BuildContext context) {
     var enableText = provider.enabled ? 'Disable' : 'Enable';
     var enableIcon = HugeIcons.strokeRoundedToggleOff;
     if (provider.enabled) enableIcon = HugeIcons.strokeRoundedToggleOn;
     var enableTile = AthenaBottomSheetTile(
       leading: Icon(enableIcon),
       title: enableText,
-      onTap: () => toggleEnable(ref),
+      onTap: () => toggleEnable(),
     );
     var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
-      onTap: () => destroyProvider(ref),
+      onTap: () => destroyProvider(),
     );
     var children = [enableTile, if (!provider.isPreset) deleteTile];
     var column = Column(mainAxisSize: MainAxisSize.min, children: children);
@@ -153,9 +150,10 @@ class _ProviderListTile extends ConsumerWidget {
     AthenaDialog.show(SafeArea(child: padding));
   }
 
-  void toggleEnable(WidgetRef ref) {
-    var viewModel = ProviderViewModel(ref);
-    viewModel.toggleEnabled(provider);
+  void toggleEnable() {
+    var viewModel = GetIt.instance<AIProviderViewModel>();
+    var updatedProvider = provider.copyWith(enabled: !provider.enabled);
+    viewModel.updateProvider(updatedProvider);
     AthenaDialog.dismiss();
   }
 }

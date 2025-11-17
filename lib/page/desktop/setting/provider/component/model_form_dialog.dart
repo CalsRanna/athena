@@ -1,28 +1,28 @@
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/model.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/checkbox.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopModelFormDialog extends ConsumerStatefulWidget {
-  final Model? model;
-  final Provider provider;
+class DesktopModelFormDialog extends StatefulWidget {
+  final ModelEntity? model;
+  final AIProviderEntity provider;
   const DesktopModelFormDialog({super.key, required this.provider, this.model});
 
   @override
-  ConsumerState<DesktopModelFormDialog> createState() =>
+  State<DesktopModelFormDialog> createState() =>
       _DesktopModelFormDialogState();
 }
 
 class _DesktopModelFormDialogState
-    extends ConsumerState<DesktopModelFormDialog> {
+    extends State<DesktopModelFormDialog> {
   final valueController = TextEditingController();
   final nameController = TextEditingController();
   final releasedAtController = TextEditingController();
@@ -32,7 +32,7 @@ class _DesktopModelFormDialogState
   var supportReasoning = false;
   var supportVisual = false;
 
-  late final viewModel = ModelViewModel(ref);
+  late final viewModel = GetIt.instance<ModelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -142,39 +142,42 @@ class _DesktopModelFormDialogState
   @override
   void initState() {
     super.initState();
-    valueController.text = widget.model?.value ?? '';
+    valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
-    releasedAtController.text = widget.model?.releasedAt ?? '';
-    contextController.text = widget.model?.context ?? '';
-    inputController.text = widget.model?.inputPrice ?? '';
-    outputController.text = widget.model?.outputPrice ?? '';
-    supportReasoning = widget.model?.supportReasoning ?? false;
-    supportVisual = widget.model?.supportVisual ?? false;
+    releasedAtController.text = widget.model?.releasedAt?.toIso8601String() ?? '';
+    contextController.text = widget.model?.contextWindow.toString() ?? '';
+    inputController.text = widget.model?.inputPrice.toString() ?? '';
+    outputController.text = widget.model?.outputPrice.toString() ?? '';
+    supportReasoning = widget.model?.reasoning ?? false;
+    supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> storeModel() async {
     if (widget.model == null) {
-      var newModel = Model()
-        ..context = contextController.text
-        ..inputPrice = inputController.text
-        ..name = nameController.text
-        ..outputPrice = outputController.text
-        ..releasedAt = releasedAtController.text
-        ..supportReasoning = supportReasoning
-        ..supportVisual = supportVisual
-        ..value = valueController.text
-        ..providerId = widget.provider.id;
-      await viewModel.storeModel(newModel);
+      var newModel = ModelEntity(
+        id: 0,
+        modelId: valueController.text,
+        name: nameController.text,
+        providerId: widget.provider.id!,
+        contextWindow: int.tryParse(contextController.text) ?? 0,
+        inputPrice: double.tryParse(inputController.text) ?? 0.0,
+        outputPrice: double.tryParse(outputController.text) ?? 0.0,
+        releasedAt: DateTime.tryParse(releasedAtController.text),
+        reasoning: supportReasoning,
+        vision: supportVisual,
+        createdAt: DateTime.now(),
+      );
+      await viewModel.createModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
-        context: contextController.text,
-        inputPrice: inputController.text,
+        modelId: valueController.text,
         name: nameController.text,
-        outputPrice: outputController.text,
-        releasedAt: releasedAtController.text,
-        supportReasoning: supportReasoning,
-        supportVisual: supportVisual,
-        value: valueController.text,
+        contextWindow: int.tryParse(contextController.text) ?? widget.model!.contextWindow,
+        inputPrice: double.tryParse(inputController.text) ?? widget.model!.inputPrice,
+        outputPrice: double.tryParse(outputController.text) ?? widget.model!.outputPrice,
+        releasedAt: DateTime.tryParse(releasedAtController.text),
+        reasoning: supportReasoning,
+        vision: supportVisual,
       );
       await viewModel.updateModel(copiedModel);
     }

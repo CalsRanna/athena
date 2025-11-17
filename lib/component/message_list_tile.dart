@@ -2,28 +2,28 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena/component/button.dart';
+import 'package:athena/entity/message_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/base64_image.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/markdown.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MessageListTile extends StatelessWidget {
   final bool loading;
-  final Message message;
+  final MessageEntity message;
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
   final void Function()? onResend;
-  final Sentinel sentinel;
+  final SentinelEntity sentinel;
 
   const MessageListTile({
     super.key,
@@ -58,8 +58,8 @@ class MessageListTile extends StatelessWidget {
 
 class _AssistantMessageListTile extends StatelessWidget {
   final bool loading;
-  final Message message;
-  final Sentinel sentinel;
+  final MessageEntity message;
+  final SentinelEntity sentinel;
   const _AssistantMessageListTile({
     this.loading = false,
     required this.message,
@@ -161,7 +161,7 @@ class _AssistantMessageListTile extends StatelessWidget {
 
 class _AssistantMessageListTileLoadingPart extends StatelessWidget {
   final bool loading;
-  final Message message;
+  final MessageEntity message;
   const _AssistantMessageListTileLoadingPart({
     required this.loading,
     required this.message,
@@ -178,35 +178,39 @@ class _AssistantMessageListTileLoadingPart extends StatelessWidget {
 }
 
 class _AssistantMessageListTileReferencePart extends StatelessWidget {
-  final Message message;
+  final MessageEntity message;
   const _AssistantMessageListTileReferencePart({required this.message});
 
   @override
   Widget build(BuildContext context) {
     if (message.reference.isEmpty) return const SizedBox();
-    var references = jsonDecode(message.reference);
-    List<Widget> referenceWidgets = [];
-    for (var i = 0; i < references.length; i++) {
-      referenceWidgets.add(_buildReference(references[i], index: i));
+    try {
+      var references = jsonDecode(message.reference);
+      List<Widget> referenceWidgets = [];
+      for (var i = 0; i < references.length; i++) {
+        referenceWidgets.add(_buildReference(references[i], index: i));
+      }
+      var children = [Text('References:'), ...referenceWidgets];
+      var column = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 4,
+        children: children,
+      );
+      var boxDecoration = BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: ColorUtil.FFEDEDED,
+      );
+      var textStyle = GoogleFonts.firaCode(fontWeight: FontWeight.w500);
+      return Container(
+        decoration: boxDecoration,
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        child: DefaultTextStyle.merge(style: textStyle, child: column),
+      );
+    } catch (e) {
+      return const SizedBox();
     }
-    var children = [Text('References:'), ...referenceWidgets];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: 4,
-      children: children,
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FFEDEDED,
-    );
-    var textStyle = GoogleFonts.firaCode(fontWeight: FontWeight.w500);
-    return Container(
-      decoration: boxDecoration,
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      width: double.infinity,
-      child: DefaultTextStyle.merge(style: textStyle, child: column),
-    );
   }
 
   Future<void> openLink(String? url) async {
@@ -231,12 +235,12 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
   }
 }
 
-class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
-  final Message message;
+class _AssistantMessageListTileThinkingPart extends StatelessWidget {
+  final MessageEntity message;
   const _AssistantMessageListTileThinkingPart({required this.message});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     if (message.reasoningContent.isEmpty) return const SizedBox();
     var borderRadius = BorderRadius.circular(8);
     var boxDecoration = BoxDecoration(
@@ -249,14 +253,14 @@ class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => updateExpanded(ref),
+      onTap: updateExpanded,
       child: Container(decoration: boxDecoration, child: column),
     );
   }
 
-  void updateExpanded(WidgetRef ref) {
+  void updateExpanded() {
     if (message.reasoning) return;
-    ChatViewModel(ref).updateExpanded(message);
+    GetIt.instance<ChatViewModel>().updateExpanded(message);
   }
 
   Widget _buildContent() {
@@ -303,8 +307,8 @@ class _AssistantMessageListTileThinkingPart extends ConsumerWidget {
 }
 
 class _ToolMessageListTile extends StatelessWidget {
-  final Message message;
-  final Sentinel sentinel;
+  final MessageEntity message;
+  final SentinelEntity sentinel;
   const _ToolMessageListTile({required this.message, required this.sentinel});
 
   @override
@@ -358,7 +362,7 @@ class _ToolMessageListTile extends StatelessWidget {
 }
 
 class _UserMessageListTile extends StatelessWidget {
-  final Message message;
+  final MessageEntity message;
   final void Function()? onLongPress;
   final void Function()? onResend;
   final void Function(TapUpDetails)? onSecondaryTapUp;
@@ -406,7 +410,7 @@ class _UserMessageListTile extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     var textStyle = TextStyle(color: ColorUtil.FFCACACA);
     var text = Text(message.content, style: textStyle);
-    var images = message.imageUrls.split(',');
+    var images = message.imageUrls;
     const delegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 9,
     );
@@ -423,7 +427,7 @@ class _UserMessageListTile extends StatelessWidget {
     );
     var children = [
       text,
-      if (message.imageUrls.isNotEmpty && images.isNotEmpty) gridView,
+      if (images.isNotEmpty) gridView,
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

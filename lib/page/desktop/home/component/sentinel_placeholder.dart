@@ -1,9 +1,9 @@
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class DesktopSentinelPlaceholder extends StatelessWidget {
-  final Sentinel sentinel;
+  final SentinelEntity sentinel;
   const DesktopSentinelPlaceholder({super.key, required this.sentinel});
 
   @override
@@ -42,7 +42,7 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
 }
 
 class _TagWrap extends StatelessWidget {
-  final Sentinel sentinel;
+  final SentinelEntity sentinel;
 
   const _TagWrap({required this.sentinel});
 

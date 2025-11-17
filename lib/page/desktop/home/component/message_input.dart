@@ -1,25 +1,26 @@
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/configuration_button.dart';
 import 'package:athena/page/desktop/home/component/image_selector.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
 import 'package:athena/page/desktop/home/component/server_selector.dart';
-import 'package:athena/provider/chat.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/sentinel.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageInput extends StatelessWidget {
-  final Chat chat;
+  final ChatEntity chat;
   final TextEditingController controller;
   final void Function(int)? onContextChange;
   final void Function(List<String>)? onImageSelected;
-  final void Function(Model)? onModelChanged;
-  final void Function(Sentinel)? onSentinelChanged;
+  final void Function(ModelEntity)? onModelChanged;
+  final void Function(SentinelEntity)? onSentinelChanged;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
   final void Function()? onTerminated;
@@ -153,13 +154,14 @@ class _InputState extends State<_Input> {
   }
 }
 
-class _SendButton extends ConsumerWidget {
+class _SendButton extends StatelessWidget {
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
   const _SendButton({this.onSubmitted, this.onTerminated});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
     var colors = [
       ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
       Colors.transparent,
@@ -182,29 +184,32 @@ class _SendButton extends ConsumerWidget {
       color: ColorUtil.FFFFFFFF,
       boxShadow: [boxShadow],
     );
-    var streaming = ref.watch(streamingNotifierProvider);
-    var iconData = HugeIcons.strokeRoundedSent;
-    if (streaming) iconData = HugeIcons.strokeRoundedStop;
-    var innerContainer = Container(
-      decoration: innerBoxDecoration,
-      child: Icon(iconData),
-    );
-    var outerContainer = Container(
-      decoration: boxDecoration,
-      height: 55,
-      padding: EdgeInsets.all(1),
-      width: 55,
-      child: innerContainer,
-    );
-    var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: outerContainer,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(streaming),
-      child: mouseRegion,
-    );
+
+    return Watch((context) {
+      var streaming = chatViewModel.isStreaming.value;
+      var iconData = HugeIcons.strokeRoundedSent;
+      if (streaming) iconData = HugeIcons.strokeRoundedStop;
+      var innerContainer = Container(
+        decoration: innerBoxDecoration,
+        child: Icon(iconData),
+      );
+      var outerContainer = Container(
+        decoration: boxDecoration,
+        height: 55,
+        padding: EdgeInsets.all(1),
+        width: 55,
+        child: innerContainer,
+      );
+      var mouseRegion = MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: outerContainer,
+      );
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => handleTap(streaming),
+        child: mouseRegion,
+      );
+    });
   }
 
   void handleTap(bool streaming) {

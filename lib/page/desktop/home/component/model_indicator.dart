@@ -1,41 +1,48 @@
-import 'package:athena/provider/chat.dart';
-import 'package:athena/provider/model.dart';
-import 'package:athena/provider/provider.dart';
-import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/chat.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopModelIndicator extends ConsumerWidget {
-  final Chat chat;
+class DesktopModelIndicator extends StatelessWidget {
+  final ChatEntity chat;
   const DesktopModelIndicator({super.key, required this.chat});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var chatProvider = chatNotifierProvider(chat.id);
-    var latestChat = ref.watch(chatProvider).value;
-    if (latestChat == null) return const SizedBox();
-    var modelProvider = modelNotifierProvider(latestChat.modelId);
-    var model = ref.watch(modelProvider).value;
-    if (model == null) return const SizedBox();
-    var sentinelProvider = sentinelNotifierProvider(latestChat.sentinelId);
-    var sentinel = ref.watch(sentinelProvider).value;
-    if (sentinel == null) return const SizedBox();
-    var providerProvider = providerNotifierProvider(model.providerId);
-    var provider = ref.watch(providerProvider).value;
-    if (provider == null) return const SizedBox();
-    if (provider.name.isEmpty) return const SizedBox();
-    return _ModelIndicator(model: model, provider: provider);
+  Widget build(BuildContext context) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
+    final modelViewModel = GetIt.instance<ModelViewModel>();
+    final providerViewModel = GetIt.instance<AIProviderViewModel>();
+
+    return Watch((context) {
+      var currentChat = chatViewModel.currentChat.value;
+      if (currentChat == null || currentChat.id != chat.id) return const SizedBox();
+
+      var model = modelViewModel.models.value
+          .where((m) => m.id == currentChat.modelId)
+          .firstOrNull;
+      if (model == null) return const SizedBox();
+
+      var provider = providerViewModel.providers.value
+          .where((p) => p.id == model.providerId)
+          .firstOrNull;
+      if (provider == null) return const SizedBox();
+      if (provider.name.isEmpty) return const SizedBox();
+
+      return _ModelIndicator(model: model, provider: provider);
+    });
   }
 }
 
 class _ModelIndicator extends StatelessWidget {
-  final Model model;
-  final Provider provider;
+  final ModelEntity model;
+  final AIProviderEntity provider;
   const _ModelIndicator({required this.model, required this.provider});
 
   @override
@@ -65,8 +72,8 @@ class _ModelIndicator extends StatelessWidget {
         spacing: 8,
         children: [
           text,
-          if (model.supportReasoning) thinkIcon,
-          if (model.supportVisual) visualIcon,
+          if (model.reasoning) thinkIcon,
+          if (model.vision) visualIcon,
         ],
       ),
     );

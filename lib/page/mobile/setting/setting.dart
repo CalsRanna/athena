@@ -3,14 +3,13 @@ import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class SettingPage extends ConsumerWidget {
+class SettingPage extends StatelessWidget {
   const SettingPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     var children = [
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedPowerService, size: 24),

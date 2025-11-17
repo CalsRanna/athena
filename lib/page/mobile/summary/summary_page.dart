@@ -1,9 +1,8 @@
+import 'package:athena/entity/summary_entity.dart';
 import 'package:athena/page/mobile/summary/component/summary_list_tile.dart';
-import 'package:athena/provider/summary.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/schema/summary.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/summary.dart';
+import 'package:athena/view_model/summary_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -11,19 +10,20 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class MobileSummaryPage extends ConsumerStatefulWidget {
+class MobileSummaryPage extends StatefulWidget {
   const MobileSummaryPage({super.key});
 
   @override
-  ConsumerState<MobileSummaryPage> createState() => _MobileSummaryPageState();
+  State<MobileSummaryPage> createState() => _MobileSummaryPageState();
 }
 
-class _MobileSummaryPageState extends ConsumerState<MobileSummaryPage> {
+class _MobileSummaryPageState extends State<MobileSummaryPage> {
   final controller = TextEditingController();
-  late final viewModel = SummaryViewModel(ref);
+  late final viewModel = GetIt.instance<SummaryViewModel>();
 
   @override
   void dispose() {
@@ -54,22 +54,26 @@ class _MobileSummaryPageState extends ConsumerState<MobileSummaryPage> {
   }
 
   List<Widget> _buildSummaryListView() {
-    var summaries = ref.watch(summariesNotifierProvider).value;
-    if (summaries == null) return [];
-    List<Widget> children = [];
-    for (var summary in summaries) {
-      var mobileSummaryListTile = MobileSummaryListTile(
-        onTap: () => navigateSummaryDetailPage(summary),
-        summary: summary,
-      );
-      children.add(mobileSummaryListTile);
-      children.add(const SizedBox(height: 4));
-    }
-    if (children.isNotEmpty) children.removeLast();
-    return children;
+    return [
+      Watch((context) {
+        var summaries = viewModel.summaries.value;
+        if (summaries.isEmpty) return const SizedBox();
+        List<Widget> children = [];
+        for (var summary in summaries) {
+          var mobileSummaryListTile = MobileSummaryListTile(
+            onTap: () => navigateSummaryDetailPage(summary),
+            summary: summary,
+          );
+          children.add(mobileSummaryListTile);
+          children.add(const SizedBox(height: 4));
+        }
+        if (children.isNotEmpty) children.removeLast();
+        return Column(children: children);
+      })
+    ];
   }
 
-  void navigateSummaryDetailPage(Summary summary) {
+  void navigateSummaryDetailPage(SummaryEntity summary) {
     MobileSummaryDetailRoute(summary: summary).push(context);
   }
 
@@ -78,15 +82,19 @@ class _MobileSummaryPageState extends ConsumerState<MobileSummaryPage> {
       AthenaDialog.message('Link can not be empty');
       return;
     }
-    var id = await viewModel.storeSummary(link);
-    var summary = Summary()
-      ..id = id
-      ..link = link;
+    var id = await viewModel.createSummary(link);
+    var summary = SummaryEntity(
+      id: id,
+      link: link,
+      title: '',
+      content: '',
+      icon: '',
+      createdAt: DateTime.now(),
+    );
     if (!mounted) return;
     MobileSummaryDetailRoute(summary: summary).push(context);
     controller.text = '';
     await viewModel.parse(summary);
-    viewModel.summarize(summary);
   }
 
   Widget _buildTitle() {
@@ -98,7 +106,7 @@ class _MobileSummaryPageState extends ConsumerState<MobileSummaryPage> {
     var children = [
       Text('History', style: titleTextStyle),
       const Spacer(),
-      AthenaTextButton(onTap: viewModel.destroyAllSummaries, text: 'Clear')
+      AthenaTextButton(onTap: viewModel.deleteAllSummaries, text: 'Clear')
     ];
     return Row(children: children);
   }

@@ -1,16 +1,17 @@
-import 'package:athena/provider/model.dart';
-import 'package:athena/schema/model.dart';
-import 'package:athena/schema/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class MobileModelListView extends ConsumerWidget {
-  final void Function(Model)? onLongPress;
-  final void Function(Model)? onTap;
-  final Provider provider;
+class MobileModelListView extends StatelessWidget {
+  final void Function(ModelEntity)? onLongPress;
+  final void Function(ModelEntity)? onTap;
+  final AIProviderEntity provider;
   const MobileModelListView({
     super.key,
     this.onLongPress,
@@ -19,31 +20,34 @@ class MobileModelListView extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var modelsProvider = modelsForNotifierProvider(provider.id);
-    var models = ref.watch(modelsProvider).valueOrNull;
-    if (models == null) return const SizedBox();
-    if (models.isEmpty) return const SizedBox();
-    List<Widget> children = [];
-    for (var model in models) {
-      var mobileModelTile = _ModelTile(
-        model: model,
-        onLongPress: () => onLongPress?.call(model),
-        onTap: () => onTap?.call(model),
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      var models = modelViewModel.models.value
+          .where((m) => m.providerId == provider.id)
+          .toList();
+      if (models.isEmpty) return const SizedBox();
+      List<Widget> children = [];
+      for (var model in models) {
+        var mobileModelTile = _ModelTile(
+          model: model,
+          onLongPress: () => onLongPress?.call(model),
+          onTap: () => onTap?.call(model),
+        );
+        children.add(mobileModelTile);
+      }
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(children: children),
       );
-      children.add(mobileModelTile);
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(children: children),
-    );
+    });
   }
 }
 
 class _ModelTile extends StatelessWidget {
   final void Function()? onLongPress;
   final void Function()? onTap;
-  final Model model;
+  final ModelEntity model;
   const _ModelTile({
     this.onLongPress,
     this.onTap,
@@ -67,7 +71,7 @@ class _ModelTile extends StatelessWidget {
     var nameChildren = [
       Flexible(child: nameText),
       SizedBox(width: 8),
-      AthenaTag.small(text: model.value)
+      AthenaTag.small(text: model.modelId)
     ];
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
@@ -81,8 +85,8 @@ class _ModelTile extends StatelessWidget {
     );
     var subtitleChildren = [
       _buildSubtitle(),
-      if (model.supportReasoning) thinkIcon,
-      if (model.supportVisual) visualIcon,
+      if (model.reasoning) thinkIcon,
+      if (model.vision) visualIcon,
     ];
     var informationChildren = [
       Row(children: nameChildren),
@@ -106,13 +110,13 @@ class _ModelTile extends StatelessWidget {
   }
 
   Widget _buildSubtitle() {
-    var context = model.context;
+    var context = model.contextWindow;
     var inputPrice = model.inputPrice;
     var outputPrice = model.outputPrice;
     var parts = [
-      if (context.isNotEmpty) '$context context',
-      if (inputPrice.isNotEmpty) '$inputPrice input tokens',
-      if (outputPrice.isNotEmpty) '$outputPrice output tokens',
+      if (context > 0) '$context context',
+      if (inputPrice > 0) '${inputPrice.toStringAsFixed(2)} input tokens',
+      if (outputPrice > 0) '${outputPrice.toStringAsFixed(2)} output tokens',
     ];
     var textStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,

@@ -1,28 +1,28 @@
-import 'package:athena/schema/provider.dart';
+import 'package:athena/entity/ai_provider_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/provider.dart';
+import 'package:athena/view_model/ai_provider_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopProviderFormDialog extends ConsumerStatefulWidget {
-  final Provider? provider;
+class DesktopProviderFormDialog extends StatefulWidget {
+  final AIProviderEntity? provider;
   const DesktopProviderFormDialog({super.key, this.provider});
 
   @override
-  ConsumerState<DesktopProviderFormDialog> createState() =>
+  State<DesktopProviderFormDialog> createState() =>
       _DesktopProviderFormDialogState();
 }
 
 class _DesktopProviderFormDialogState
-    extends ConsumerState<DesktopProviderFormDialog> {
+    extends State<DesktopProviderFormDialog> {
   final nameController = TextEditingController();
 
-  late final viewModel = ProviderViewModel(ref);
+  late final viewModel = GetIt.instance<AIProviderViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -100,10 +100,15 @@ class _DesktopProviderFormDialogState
       var copiedProvider = widget.provider!.copyWith(name: nameController.text);
       await viewModel.updateProvider(copiedProvider);
     } else {
-      var newProvider = Provider()
-        ..enabled = true
-        ..name = nameController.text;
-      await viewModel.storeProvider(newProvider);
+      var newProvider = AIProviderEntity(
+        id: 0,
+        enabled: true,
+        name: nameController.text,
+        baseUrl: '',
+        apiKey: '',
+        createdAt: DateTime.now(),
+      );
+      await viewModel.createProvider(newProvider);
     }
     AthenaDialog.dismiss();
   }

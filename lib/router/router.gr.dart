@@ -8,6 +8,12 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:athena/entity/ai_provider_entity.dart' as _i30;
+import 'package:athena/entity/chat_entity.dart' as _i28;
+import 'package:athena/entity/model_entity.dart' as _i29;
+import 'package:athena/entity/sentinel_entity.dart' as _i31;
+import 'package:athena/entity/summary_entity.dart' as _i32;
+import 'package:athena/entity/tool_entity.dart' as _i33;
 import 'package:athena/page/desktop/home/home.dart' as _i1;
 import 'package:athena/page/desktop/setting/about.dart' as _i2;
 import 'package:athena/page/desktop/setting/default_model.dart' as _i3;
@@ -34,12 +40,6 @@ import 'package:athena/page/mobile/summary/summary_page.dart' as _i22;
 import 'package:athena/page/mobile/tool/tool_form_page.dart' as _i23;
 import 'package:athena/page/mobile/tool/tool_list_page.dart' as _i24;
 import 'package:athena/page/mobile/translation/translation_page.dart' as _i25;
-import 'package:athena/schema/chat.dart' as _i28;
-import 'package:athena/schema/model.dart' as _i29;
-import 'package:athena/schema/provider.dart' as _i30;
-import 'package:athena/schema/sentinel.dart' as _i31;
-import 'package:athena/schema/summary.dart' as _i32;
-import 'package:athena/schema/tool.dart' as _i33;
 import 'package:auto_route/auto_route.dart' as _i26;
 import 'package:flutter/material.dart' as _i27;
 
@@ -201,7 +201,7 @@ class MobileChatConfigurationRoute
     extends _i26.PageRouteInfo<MobileChatConfigurationRouteArgs> {
   MobileChatConfigurationRoute({
     _i27.Key? key,
-    required _i28.Chat chat,
+    required _i28.ChatEntity chat,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileChatConfigurationRoute.name,
@@ -234,7 +234,7 @@ class MobileChatConfigurationRouteArgs {
 
   final _i27.Key? key;
 
-  final _i28.Chat chat;
+  final _i28.ChatEntity chat;
 
   @override
   String toString() {
@@ -248,7 +248,7 @@ class MobileChatExportRoute
     extends _i26.PageRouteInfo<MobileChatExportRouteArgs> {
   MobileChatExportRoute({
     _i27.Key? key,
-    required _i28.Chat chat,
+    required _i28.ChatEntity chat,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileChatExportRoute.name,
@@ -281,7 +281,7 @@ class MobileChatExportRouteArgs {
 
   final _i27.Key? key;
 
-  final _i28.Chat chat;
+  final _i28.ChatEntity chat;
 
   @override
   String toString() {
@@ -313,7 +313,7 @@ class MobileChatListRoute extends _i26.PageRouteInfo<void> {
 class MobileChatRoute extends _i26.PageRouteInfo<MobileChatRouteArgs> {
   MobileChatRoute({
     _i27.Key? key,
-    required _i28.Chat chat,
+    required _i28.ChatEntity chat,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileChatRoute.name,
@@ -346,7 +346,7 @@ class MobileChatRouteArgs {
 
   final _i27.Key? key;
 
-  final _i28.Chat chat;
+  final _i28.ChatEntity chat;
 
   @override
   String toString() {
@@ -398,8 +398,8 @@ class MobileModelFormRoute
     extends _i26.PageRouteInfo<MobileModelFormRouteArgs> {
   MobileModelFormRoute({
     _i27.Key? key,
-    _i29.Model? model,
-    _i30.Provider? provider,
+    _i29.ModelEntity? model,
+    _i30.AIProviderEntity? provider,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileModelFormRoute.name,
@@ -436,9 +436,9 @@ class MobileModelFormRouteArgs {
 
   final _i27.Key? key;
 
-  final _i29.Model? model;
+  final _i29.ModelEntity? model;
 
-  final _i30.Provider? provider;
+  final _i30.AIProviderEntity? provider;
 
   @override
   String toString() {
@@ -452,7 +452,7 @@ class MobileProviderFormRoute
     extends _i26.PageRouteInfo<MobileProviderFormRouteArgs> {
   MobileProviderFormRoute({
     _i27.Key? key,
-    required _i30.Provider provider,
+    required _i30.AIProviderEntity provider,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileProviderFormRoute.name,
@@ -485,7 +485,7 @@ class MobileProviderFormRouteArgs {
 
   final _i27.Key? key;
 
-  final _i30.Provider provider;
+  final _i30.AIProviderEntity provider;
 
   @override
   String toString() {
@@ -537,7 +537,7 @@ class MobileSentinelFormRoute
     extends _i26.PageRouteInfo<MobileSentinelFormRouteArgs> {
   MobileSentinelFormRoute({
     _i27.Key? key,
-    _i31.Sentinel? sentinel,
+    _i31.SentinelEntity? sentinel,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileSentinelFormRoute.name,
@@ -571,7 +571,7 @@ class MobileSentinelFormRouteArgs {
 
   final _i27.Key? key;
 
-  final _i31.Sentinel? sentinel;
+  final _i31.SentinelEntity? sentinel;
 
   @override
   String toString() {
@@ -604,7 +604,7 @@ class MobileSummaryDetailRoute
     extends _i26.PageRouteInfo<MobileSummaryDetailRouteArgs> {
   MobileSummaryDetailRoute({
     _i27.Key? key,
-    required _i32.Summary summary,
+    required _i32.SummaryEntity summary,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileSummaryDetailRoute.name,
@@ -637,7 +637,7 @@ class MobileSummaryDetailRouteArgs {
 
   final _i27.Key? key;
 
-  final _i32.Summary summary;
+  final _i32.SummaryEntity summary;
 
   @override
   String toString() {
@@ -669,7 +669,7 @@ class MobileSummaryRoute extends _i26.PageRouteInfo<void> {
 class MobileToolFormRoute extends _i26.PageRouteInfo<MobileToolFormRouteArgs> {
   MobileToolFormRoute({
     _i27.Key? key,
-    required _i33.Tool tool,
+    required _i33.ToolEntity tool,
     List<_i26.PageRouteInfo>? children,
   }) : super(
           MobileToolFormRoute.name,
@@ -702,7 +702,7 @@ class MobileToolFormRouteArgs {
 
   final _i27.Key? key;
 
-  final _i33.Tool tool;
+  final _i33.ToolEntity tool;
 
   @override
   String toString() {

@@ -1,28 +1,28 @@
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/sentinel.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-class DesktopSentinelFormDialog extends ConsumerStatefulWidget {
-  final Sentinel? sentinel;
+class DesktopSentinelFormDialog extends StatefulWidget {
+  final SentinelEntity? sentinel;
   const DesktopSentinelFormDialog({super.key, this.sentinel});
 
   @override
-  ConsumerState<DesktopSentinelFormDialog> createState() =>
+  State<DesktopSentinelFormDialog> createState() =>
       _DesktopSentinelFormDialogState();
 }
 
 class _DesktopSentinelFormDialogState
-    extends ConsumerState<DesktopSentinelFormDialog> {
+    extends State<DesktopSentinelFormDialog> {
   final nameController = TextEditingController();
 
-  late final viewModel = SentinelViewModel(ref);
+  late final viewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -100,8 +100,16 @@ class _DesktopSentinelFormDialogState
       var copiedSentinel = widget.sentinel!.copyWith(name: nameController.text);
       await viewModel.updateSentinel(copiedSentinel);
     } else {
-      var newSentinel = Sentinel()..name = nameController.text;
-      await viewModel.storeSentinel(newSentinel);
+      var newSentinel = SentinelEntity(
+        id: 0,
+        name: nameController.text,
+        prompt: '',
+        avatar: '',
+        description: '',
+        tags: [],
+        
+      );
+      await viewModel.createSentinel(newSentinel);
     }
     AthenaDialog.dismiss();
   }

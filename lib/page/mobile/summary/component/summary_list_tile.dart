@@ -1,4 +1,4 @@
-import 'package:athena/schema/summary.dart';
+import 'package:athena/entity/summary_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +6,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 class MobileSummaryListTile extends StatelessWidget {
   final void Function()? onTap;
-  final Summary summary;
+  final SummaryEntity summary;
 
   const MobileSummaryListTile({
     super.key,

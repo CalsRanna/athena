@@ -1,34 +1,41 @@
 import 'dart:io';
 
+import 'package:athena/database/database.dart';
+import 'package:athena/di.dart';
 import 'package:athena/router/router.dart';
-import 'package:athena/schema/isar.dart';
-import 'package:athena/schema/setting.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:isar/isar.dart';
+import 'package:get_it/get_it.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await IsarInitializer.ensureInitialized();
+
+  // 初始化新的 Database (Laconic)
+  await Database.instance.ensureInitialized();
+
+  // 初始化 DI
+  DI.ensureInitialized();
+
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
     await windowManager.ensureInitialized();
-    var size = Size(1080, 720);
-    final setting = await isar.settings.where().findFirst();
-    if (setting != null) {
-      var width = setting.width;
-      var height = setting.height;
-      if (width.isNaN) width = 1080;
-      if (height.isNaN) height = 720;
-      size = Size(width, height);
-    }
+
+    // 从新的 SettingViewModel 读取窗口配置
+    final settingViewModel = GetIt.instance<SettingViewModel>();
+    await settingViewModel.loadSettings();
+
+    var width = settingViewModel.windowWidth.value;
+    var height = settingViewModel.windowHeight.value;
+    if (width.isNaN || width == 0) width = 1080;
+    if (height.isNaN || height == 0) height = 720;
+
     final options = WindowOptions(
       center: true,
       minimumSize: const Size(1080, 720),
-      size: size,
+      size: Size(width, height),
       titleBarStyle: TitleBarStyle.hidden,
       windowButtonVisibility: false,
     );
@@ -38,7 +45,7 @@ void main() async {
     });
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
-  runApp(const ProviderScope(child: AthenaApp()));
+  runApp(const AthenaApp());
 }
 
 final globalKey = GlobalKey<NavigatorState>();
@@ -55,6 +62,7 @@ class AthenaApp extends StatefulWidget {
 class _AthenaAppState extends State<AthenaApp> with WindowListener {
   final SystemTray tray = SystemTray();
   final router = AppRouter(navigatorKey: globalKey);
+  late final settingViewModel = GetIt.instance<SettingViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -98,37 +106,20 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
     }
   }
 
-  Future<void> moveWindow() async {
+  Future<void> saveWindowSize() async {
     final size = await windowManager.getSize();
-    final setting = await isar.settings.where().findFirst();
-    if (setting == null) return;
-    setting.width = size.width;
-    setting.height = size.height;
-    await isar.writeTxn(() async {
-      await isar.settings.put(setting);
-    });
+    await settingViewModel.updateWindowSize(size.width, size.height);
   }
 
   @override
   void onWindowMoved() {
-    moveWindow();
+    saveWindowSize();
     super.onWindowMoved();
   }
 
   @override
   void onWindowResized() {
-    resizeWindow();
+    saveWindowSize();
     super.onWindowResized();
-  }
-
-  Future<void> resizeWindow() async {
-    final size = await windowManager.getSize();
-    final setting = await isar.settings.where().findFirst();
-    if (setting == null) return;
-    setting.width = size.width;
-    setting.height = size.height;
-    await isar.writeTxn(() async {
-      await isar.settings.put(setting);
-    });
   }
 }

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena/component/button.dart';
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 class AthenaMarkdown extends StatelessWidget {
   final AthenaMarkdownEngine engine;
-  final Message message;
+  final MessageEntity message;
 
   const AthenaMarkdown({
     super.key,
@@ -165,7 +165,7 @@ class _CodeBuilder extends MarkdownElementBuilder {
 }
 
 class _FlutterMarkdown extends StatelessWidget {
-  final Message message;
+  final MessageEntity message;
 
   const _FlutterMarkdown({required this.message});
 
@@ -270,7 +270,7 @@ class _ReferenceSyntax extends md.InlineSyntax {
 }
 
 // class _GptMarkdown extends StatelessWidget {
-//   final Message message;
+//   final MessageEntity message;
 //   const _GptMarkdown({required this.message});
 
 //   @override

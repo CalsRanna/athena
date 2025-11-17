@@ -1,24 +1,25 @@
-import 'package:athena/provider/model.dart';
-import 'package:athena/schema/model.dart';
+import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class MobileModelSelectDialog extends ConsumerWidget {
-  final void Function(Model)? onTap;
+class MobileModelSelectDialog extends StatelessWidget {
+  final void Function(ModelEntity)? onTap;
   const MobileModelSelectDialog({super.key, this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(groupedEnabledModelsNotifierProvider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      var groupedModels = modelViewModel.groupedEnabledModels.value;
+      return _buildData(groupedModels);
+    });
   }
 
-  Widget _buildData(Map<String, List<Model>> models) {
+  Widget _buildData(Map<String, List<ModelEntity>> models) {
     if (models.isEmpty) return const SizedBox();
     var titleTextStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,
@@ -39,7 +40,7 @@ class MobileModelSelectDialog extends ConsumerWidget {
     return ListView(shrinkWrap: true, children: children);
   }
 
-  Widget _itemBuilder(Model model) {
+  Widget _itemBuilder(ModelEntity model) {
     return AthenaBottomSheetTile(
       onTap: () => onTap?.call(model),
       title: model.name,

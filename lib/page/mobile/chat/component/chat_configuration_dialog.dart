@@ -1,12 +1,12 @@
-import 'package:athena/schema/chat.dart';
+import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat.dart';
+import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 
-class MobileChatConfigurationDialog extends ConsumerStatefulWidget {
-  final Chat chat;
+class MobileChatConfigurationDialog extends StatefulWidget {
+  final ChatEntity chat;
   final int contextToken;
   final double temperature;
   final void Function(int)? onContextChanged;
@@ -21,16 +21,16 @@ class MobileChatConfigurationDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<MobileChatConfigurationDialog> createState() =>
+  State<MobileChatConfigurationDialog> createState() =>
       _MobileConfigurationDialogState();
 }
 
 class _MobileConfigurationDialogState
-    extends ConsumerState<MobileChatConfigurationDialog> {
+    extends State<MobileChatConfigurationDialog> {
   late double _context = widget.contextToken.toDouble();
   late double _temperature = widget.temperature;
 
-  late final viewModel = ChatViewModel(ref);
+  late final viewModel = GetIt.instance<ChatViewModel>();
 
   @override
   Widget build(BuildContext context) {

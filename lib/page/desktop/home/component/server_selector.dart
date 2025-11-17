@@ -1,49 +1,74 @@
-import 'package:athena/provider/mcp.dart';
-import 'package:athena/provider/server.dart';
-import 'package:athena/schema/sentinel.dart';
-import 'package:athena/schema/server.dart';
+import 'package:athena/entity/sentinel_entity.dart';
+import 'package:athena/entity/server_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/server.dart';
+import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/switch.dart';
-import 'package:dart_mcp/client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class DesktopServerSelector extends ConsumerWidget {
-  final void Function(Sentinel)? onSelected;
+class DesktopServerSelector extends StatelessWidget {
+  final void Function(SentinelEntity)? onSelected;
   const DesktopServerSelector({super.key, this.onSelected});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedTools,
-      color: ColorUtil.FFFFFFFF,
-      size: 24,
-    );
-    var provider = mcpConnectionsNotifierProvider;
-    var state = ref.watch(provider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      AsyncLoading() => _buildLoading(),
-      AsyncError() => _buildError(),
-      _ => const SizedBox(),
-    };
-    var badge = Badge(
-      backgroundColor: ColorUtil.FF616161,
-      label: child,
-      child: hugeIcon,
-    );
-    var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: badge,
-    );
-    return GestureDetector(onTap: openDialog, child: mouseRegion);
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var serverViewModel = GetIt.instance<ServerViewModel>();
+      var enabledCount = serverViewModel.servers.value
+          .where((s) => s.enabled)
+          .length;
+
+      var hugeIcon = HugeIcon(
+        icon: HugeIcons.strokeRoundedTools,
+        color: ColorUtil.FFFFFFFF,
+        size: 24,
+      );
+
+      // 显示启用的服务器数量badge
+      Widget iconWithBadge = hugeIcon;
+      if (enabledCount > 0) {
+        iconWithBadge = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            hugeIcon,
+            Positioned(
+              right: -6,
+              top: -6,
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: ColorUtil.FF161616,
+                  shape: BoxShape.circle,
+                ),
+                constraints: BoxConstraints(minWidth: 16, minHeight: 16),
+                child: Text(
+                  '$enabledCount',
+                  style: TextStyle(
+                    color: ColorUtil.FFFFFFFF,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+
+      var mouseRegion = MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: iconWithBadge,
+      );
+      return GestureDetector(onTap: openDialog, child: mouseRegion);
+    });
   }
 
-  void changeModel(Sentinel sentinel) {
+  void changeModel(SentinelEntity sentinel) {
     AthenaDialog.dismiss();
     onSelected?.call(sentinel);
   }
@@ -51,38 +76,10 @@ class DesktopServerSelector extends ConsumerWidget {
   void openDialog() {
     AthenaDialog.show(_SentinelSelectDialog(), barrierDismissible: true);
   }
-
-  Widget _buildData(Map<String, ServerConnection> connections) {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 8,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    return Text(connections.length.toString(), style: textStyle);
-  }
-
-  Widget _buildError() {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 8,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
-    );
-    return Text('0', style: textStyle);
-  }
-
-  Widget _buildLoading() {
-    var circularProgressIndicator = CircularProgressIndicator(
-      color: ColorUtil.FFFFFFFF,
-      strokeWidth: 1,
-    );
-    return SizedBox(width: 8, height: 8, child: circularProgressIndicator);
-  }
 }
 
 class _DesktopServerSelectDialogTile extends StatefulWidget {
-  final Server server;
+  final ServerEntity server;
   final void Function()? onTap;
   const _DesktopServerSelectDialogTile({required this.server, this.onTap});
 
@@ -113,7 +110,7 @@ class _DesktopServerSelectDialogTileState
     );
     var children = [
       Expanded(child: Text(widget.server.name, style: textStyle)),
-      enabledSwitch
+      enabledSwitch,
     ];
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,
@@ -148,48 +145,50 @@ class _DesktopServerSelectDialogTileState
   }
 }
 
-class _SentinelSelectDialog extends ConsumerWidget {
+class _SentinelSelectDialog extends StatelessWidget {
   const _SentinelSelectDialog();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(serversNotifierProvider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(ref, value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    final serverViewModel = GetIt.instance<ServerViewModel>();
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
     );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(8),
-      child: child,
-    );
-    return UnconstrainedBox(child: container);
+
+    return Watch((context) {
+      var servers = serverViewModel.servers.value;
+      var child = _buildData(servers);
+      var container = Container(
+        decoration: boxDecoration,
+        padding: EdgeInsets.all(8),
+        child: child,
+      );
+      return UnconstrainedBox(child: container);
+    });
   }
 
-  void toggleServer(WidgetRef ref, Server server) {
-    var viewModel = ServerViewModel(ref);
+  void toggleServer(ServerEntity server) {
+    final serverViewModel = GetIt.instance<ServerViewModel>();
     var copiedServer = server.copyWith(enabled: !server.enabled);
-    viewModel.updateServer(copiedServer);
+    serverViewModel.updateServer(copiedServer);
   }
 
-  Widget _buildData(WidgetRef ref, List<Server> servers) {
+  Widget _buildData(List<ServerEntity> servers) {
     if (servers.isEmpty) return const SizedBox();
-    List<Widget> children =
-        servers.map((server) => _itemBuilder(ref, server)).toList();
+    List<Widget> children = servers
+        .map((server) => _itemBuilder(server))
+        .toList();
     return ConstrainedBox(
       constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
   }
 
-  Widget _itemBuilder(WidgetRef ref, Server server) {
+  Widget _itemBuilder(ServerEntity server) {
     return _DesktopServerSelectDialogTile(
       server: server,
-      onTap: () => toggleServer(ref, server),
+      onTap: () => toggleServer(server),
     );
   }
 }

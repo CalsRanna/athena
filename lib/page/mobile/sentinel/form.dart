@@ -1,6 +1,7 @@
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/sentinel.dart';
+import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -9,26 +10,25 @@ import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
-class MobileSentinelFormPage extends ConsumerStatefulWidget {
-  final Sentinel? sentinel;
+class MobileSentinelFormPage extends StatefulWidget {
+  final SentinelEntity? sentinel;
   const MobileSentinelFormPage({super.key, this.sentinel});
 
   @override
-  ConsumerState<MobileSentinelFormPage> createState() =>
+  State<MobileSentinelFormPage> createState() =>
       _MobileSentinelFormPageState();
 }
 
-class _MobileSentinelFormPageState
-    extends ConsumerState<MobileSentinelFormPage> {
+class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final promptController = TextEditingController();
 
-  late final viewModel = SentinelViewModel(ref);
+  late final viewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -88,9 +88,22 @@ class _MobileSentinelFormPageState
     }
     AthenaDialog.loading();
     try {
-      var sentinel = await viewModel.generateSentinel(promptController.text);
-      nameController.text = sentinel.name;
-      descriptionController.text = sentinel.description;
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      await modelViewModel.loadEnabledModels();
+      if (modelViewModel.enabledModels.value.isEmpty) {
+        AthenaDialog.dismiss();
+        AthenaDialog.message('No enabled models found');
+        return;
+      }
+      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var sentinel = await viewModel.generateSentinel(
+        promptController.text,
+        modelId: modelId,
+      );
+      if (sentinel != null) {
+        nameController.text = sentinel.name;
+        descriptionController.text = sentinel.description;
+      }
       AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
@@ -105,8 +118,21 @@ class _MobileSentinelFormPageState
     }
     AthenaDialog.loading();
     try {
-      var sentinel = await viewModel.generateSentinel(promptController.text);
-      descriptionController.text = sentinel.description;
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      await modelViewModel.loadEnabledModels();
+      if (modelViewModel.enabledModels.value.isEmpty) {
+        AthenaDialog.dismiss();
+        AthenaDialog.message('No enabled models found');
+        return;
+      }
+      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var sentinel = await viewModel.generateSentinel(
+        promptController.text,
+        modelId: modelId,
+      );
+      if (sentinel != null) {
+        descriptionController.text = sentinel.description;
+      }
       AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
@@ -121,8 +147,21 @@ class _MobileSentinelFormPageState
     }
     AthenaDialog.loading();
     try {
-      var sentinel = await viewModel.generateSentinel(promptController.text);
-      nameController.text = sentinel.name;
+      var modelViewModel = GetIt.instance<ModelViewModel>();
+      await modelViewModel.loadEnabledModels();
+      if (modelViewModel.enabledModels.value.isEmpty) {
+        AthenaDialog.dismiss();
+        AthenaDialog.message('No enabled models found');
+        return;
+      }
+      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var sentinel = await viewModel.generateSentinel(
+        promptController.text,
+        modelId: modelId,
+      );
+      if (sentinel != null) {
+        nameController.text = sentinel.name;
+      }
       AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
@@ -201,11 +240,16 @@ class _MobileSentinelFormPageState
   }
 
   Future<void> _store() async {
-    var sentinel = Sentinel()
-      ..name = nameController.text
-      ..description = descriptionController.text
-      ..prompt = promptController.text;
-    await viewModel.storeSentinel(sentinel);
+    var sentinel = SentinelEntity(
+      id: 0,
+      name: nameController.text,
+      avatar: '',
+      description: descriptionController.text,
+      tags: [],
+      prompt: promptController.text,
+      
+    );
+    await viewModel.createSentinel(sentinel);
     if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }

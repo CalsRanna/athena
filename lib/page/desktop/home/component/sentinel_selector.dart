@@ -1,14 +1,15 @@
-import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopSentinelSelector extends StatelessWidget {
-  final void Function(Sentinel)? onSelected;
+  final void Function(SentinelEntity)? onSelected;
   const DesktopSentinelSelector({super.key, this.onSelected});
 
   @override
@@ -24,7 +25,7 @@ class DesktopSentinelSelector extends StatelessWidget {
     );
   }
 
-  void changeModel(Sentinel sentinel) {
+  void changeModel(SentinelEntity sentinel) {
     AthenaDialog.dismiss();
     onSelected?.call(sentinel);
   }
@@ -38,7 +39,7 @@ class DesktopSentinelSelector extends StatelessWidget {
 }
 
 class _DesktopSentinelSelectDialogTile extends StatefulWidget {
-  final Sentinel sentinel;
+  final SentinelEntity sentinel;
   final void Function()? onTap;
   const _DesktopSentinelSelectDialogTile({required this.sentinel, this.onTap});
 
@@ -96,30 +97,31 @@ class _DesktopSentinelSelectDialogTileState
   }
 }
 
-class _SentinelSelectDialog extends ConsumerWidget {
-  final void Function(Sentinel)? onTap;
+class _SentinelSelectDialog extends StatelessWidget {
+  final void Function(SentinelEntity)? onTap;
   const _SentinelSelectDialog({this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sentinelsNotifierProvider);
-    var child = switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    final sentinelViewModel = GetIt.instance<SentinelViewModel>();
     var boxDecoration = BoxDecoration(
       color: ColorUtil.FF282F32,
       borderRadius: BorderRadius.circular(8),
     );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(8),
-      child: child,
-    );
-    return UnconstrainedBox(child: container);
+
+    return Watch((context) {
+      var sentinels = sentinelViewModel.sentinels.value;
+      var child = _buildData(sentinels);
+      var container = Container(
+        decoration: boxDecoration,
+        padding: EdgeInsets.all(8),
+        child: child,
+      );
+      return UnconstrainedBox(child: container);
+    });
   }
 
-  Widget _buildData(List<Sentinel> sentinels) {
+  Widget _buildData(List<SentinelEntity> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
     List<Widget> children = sentinels.map(_itemBuilder).toList();
     return ConstrainedBox(
@@ -128,7 +130,7 @@ class _SentinelSelectDialog extends ConsumerWidget {
     );
   }
 
-  Widget _itemBuilder(Sentinel sentinel) {
+  Widget _itemBuilder(SentinelEntity sentinel) {
     return _DesktopSentinelSelectDialogTile(
       sentinel: sentinel,
       onTap: () => onTap?.call(sentinel),

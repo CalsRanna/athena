@@ -1,11 +1,10 @@
 import 'dart:convert';
 
+import 'package:athena/entity/server_entity.dart';
 import 'package:athena/page/desktop/setting/server/component/server_context_menu.dart';
 import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
-import 'package:athena/provider/server.dart';
-import 'package:athena/schema/server.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/server.dart';
+import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
@@ -18,26 +17,26 @@ import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class DesktopSettingServerPage extends ConsumerStatefulWidget {
+class DesktopSettingServerPage extends StatefulWidget {
   const DesktopSettingServerPage({super.key});
 
   @override
-  ConsumerState<DesktopSettingServerPage> createState() =>
+  State<DesktopSettingServerPage> createState() =>
       _DesktopSettingServerPageState();
 }
 
-class _DesktopSettingServerPageState
-    extends ConsumerState<DesktopSettingServerPage> {
+class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
   int index = 0;
   String result = '';
   final commandController = TextEditingController();
   final argumentsController = TextEditingController();
   final environmentsController = TextEditingController();
 
-  late final viewModel = ServerViewModel(ref);
+  late final viewModel = GetIt.instance<ServerViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -56,21 +55,42 @@ class _DesktopSettingServerPageState
     setState(() {
       this.index = index;
     });
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
     commandController.text = servers[index].command;
-    argumentsController.text = servers[index].arguments;
-    environmentsController.text = servers[index].environments;
-    result = servers[index].tools;
+    argumentsController.text = servers[index].arguments.join(' ');
+    environmentsController.text = servers[index].environmentVariables.entries
+        .map((e) => '${e.key}=${e.value}')
+        .join('\n');
+
+    // 获取工具列表
+    await fetchTools();
   }
 
-  Future<void> destroyServer(Server server) async {
+  Future<void> fetchTools() async {
+    var servers = viewModel.servers.value;
+    if (servers.isEmpty || index >= servers.length) return;
+
+    var server = servers[index];
+    var updated = await viewModel.fetchServerTools(server);
+
+    if (updated != null && updated.tools.isNotEmpty) {
+      setState(() {
+        result = 'Tools:\n${updated.tools.join('\n')}';
+      });
+    } else {
+      setState(() {
+        result = viewModel.error.value ?? 'No tools found';
+      });
+    }
+  }
+
+  Future<void> destroyServer(ServerEntity server) async {
     var confirmResult = await AthenaDialog.confirm(
       'Do you want to delete this server?',
     );
     if (confirmResult == true) {
-      await viewModel.destroyServer(server);
+      await viewModel.deleteServer(server);
       setState(() {
         index = 0;
         result = '';
@@ -94,23 +114,15 @@ class _DesktopSettingServerPageState
 
   Future<void> listTools() async {
     AthenaDialog.loading();
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
-    if (servers.isEmpty) return;
-    var server = servers[index];
-    if (!mounted) return;
-    var result = await viewModel.refreshTools(context, server);
-    setState(() {
-      this.result = result;
-    });
+    await fetchTools();
     AthenaDialog.dismiss();
   }
 
-  void openServerFormDialog(Server server) async {
+  void openServerFormDialog(ServerEntity server) async {
     AthenaDialog.show(DesktopServerFormDialog(server: server));
   }
 
-  void showServerContextMenu(TapUpDetails details, Server server) {
+  void showServerContextMenu(TapUpDetails details, ServerEntity server) {
     var contextMenu = DesktopServerContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyServer(server),
@@ -120,71 +132,74 @@ class _DesktopSettingServerPageState
   }
 
   Future<void> toggleServer(bool value) async {
-    var provider = serversNotifierProvider;
-    var servers = await ref.watch(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
     var copiedServer = servers[index].copyWith(enabled: value);
     return viewModel.updateServer(copiedServer);
   }
 
   Future<void> updateArguments() async {
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    var copiedServer = servers[index].copyWith(
-      arguments: argumentsController.text,
-    );
+    var args = argumentsController.text
+        .split(' ')
+        .where((s) => s.isNotEmpty)
+        .toList();
+    var copiedServer = servers[index].copyWith(arguments: args);
     viewModel.updateServer(copiedServer);
   }
 
   Future<void> updateCommand() async {
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
     var copiedServer = servers[index].copyWith(command: commandController.text);
     viewModel.updateServer(copiedServer);
   }
 
   Future<void> updateEnvironments() async {
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    var copiedServer = servers[index].copyWith(
-      environments: environmentsController.text,
-    );
+    var envMap = <String, String>{};
+    for (var line in environmentsController.text.split('\n')) {
+      var parts = line.split('=');
+      if (parts.length == 2) {
+        envMap[parts[0].trim()] = parts[1].trim();
+      }
+    }
+    var copiedServer = servers[index].copyWith(environmentVariables: envMap);
     viewModel.updateServer(copiedServer);
   }
 
   Widget _buildServerListView() {
-    var provider = serversNotifierProvider;
-    var servers = ref.watch(provider).value;
-    if (servers == null) return const SizedBox();
-    var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
-    );
-    Widget child = ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemBuilder: (context, index) => _buildServerTile(servers, index),
-      itemCount: servers.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-    );
-    if (servers.isEmpty) {
-      var textStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
-        decoration: TextDecoration.none,
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
+    return Watch((context) {
+      var servers = viewModel.servers.value;
+      var borderSide = BorderSide(
+        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
       );
-      child = Center(child: Text('No MCP Servers', style: textStyle));
-    }
-    return Container(
-      decoration: BoxDecoration(border: Border(right: borderSide)),
-      width: 240,
-      child: child,
-    );
+      Widget child = ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemBuilder: (context, index) => _buildServerTile(servers, index),
+        itemCount: servers.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+      );
+      if (servers.isEmpty) {
+        var textStyle = TextStyle(
+          color: ColorUtil.FFFFFFFF,
+          decoration: TextDecoration.none,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        );
+        child = Center(child: Text('No MCP Servers', style: textStyle));
+      }
+      return Container(
+        decoration: BoxDecoration(border: Border(right: borderSide)),
+        width: 240,
+        child: child,
+      );
+    });
   }
 
-  Widget _buildServerTile(List<Server> servers, int index) {
+  Widget _buildServerTile(List<ServerEntity> servers, int index) {
     var tag = AthenaTag.small(fontSize: 6, text: 'ON');
     var server = servers[index];
     return DesktopMenuTile(
@@ -197,102 +212,112 @@ class _DesktopSettingServerPageState
   }
 
   Widget _buildServerView() {
-    var provider = serversNotifierProvider;
-    var servers = ref.watch(provider).valueOrNull;
-    if (servers == null) return const SizedBox();
-    if (servers.isEmpty) return const SizedBox();
-    var nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var nameText = Text(servers[index].name, style: nameTextStyle);
-    var nameChildren = [
-      nameText,
-      Spacer(),
-      AthenaSwitch(value: servers[index].enabled, onChanged: toggleServer),
-    ];
-    var commandInput = AthenaInput(
-      controller: commandController,
-      onBlur: updateCommand,
-    );
-    var commandChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Command')),
-      Expanded(child: commandInput),
-    ];
-    var argumentsInput = AthenaInput(
-      controller: argumentsController,
-      onBlur: updateArguments,
-    );
-    var argumentsChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Arguments')),
-      Expanded(child: argumentsInput),
-    ];
-    var environmentsInput = AthenaInput(
-      controller: environmentsController,
-      onBlur: updateEnvironments,
-    );
-    var environmentsChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Environments')),
-      Expanded(child: environmentsInput),
-    ];
-    var descriptionTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    var descriptionText = Text(
-      servers[index].description,
-      style: descriptionTextStyle,
-    );
-    var toolsTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
-    );
-    var toolsText = Text('Tools', style: toolsTextStyle);
-    var listToolsButton = AthenaTextButton(
-      onTap: listTools,
-      text: 'List tools',
-    );
-    var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
-    var tools = jsonDecode(result.isEmpty ? '[]' : result);
-    var toolsChildren = <Widget>[];
-    for (var tool in tools) {
-      toolsChildren.add(
-        _ToolListTile(description: tool['description'], name: tool['name']),
+    return Watch((context) {
+      var servers = viewModel.servers.value;
+      if (servers.isEmpty) return const SizedBox();
+      var nameTextStyle = TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
       );
-    }
-    var listChildren = [
-      Row(children: nameChildren),
-      const SizedBox(height: 12),
-      Row(children: commandChildren),
-      const SizedBox(height: 12),
-      Row(children: argumentsChildren),
-      const SizedBox(height: 12),
-      Row(children: environmentsChildren),
-      if (servers[index].description.isNotEmpty) const SizedBox(height: 12),
-      if (servers[index].description.isNotEmpty) descriptionText,
-      const SizedBox(height: 12),
-      Row(children: listToolsChildren),
-      ...toolsChildren,
-    ];
-    var sliverPadding = SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      sliver: SliverList(delegate: SliverChildListDelegate(listChildren)),
-    );
-    return CustomScrollView(slivers: [sliverPadding]);
+      var nameText = Text(servers[index].name, style: nameTextStyle);
+      var nameChildren = [
+        nameText,
+        Spacer(),
+        AthenaSwitch(value: servers[index].enabled, onChanged: toggleServer),
+      ];
+      var commandInput = AthenaInput(
+        controller: commandController,
+        onBlur: updateCommand,
+      );
+      var commandChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Command')),
+        Expanded(child: commandInput),
+      ];
+      var argumentsInput = AthenaInput(
+        controller: argumentsController,
+        onBlur: updateArguments,
+      );
+      var argumentsChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Arguments')),
+        Expanded(child: argumentsInput),
+      ];
+      var environmentsInput = AthenaInput(
+        controller: environmentsController,
+        onBlur: updateEnvironments,
+      );
+      var environmentsChildren = [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Environments')),
+        Expanded(child: environmentsInput),
+      ];
+      var descriptionTextStyle = TextStyle(
+        color: ColorUtil.FFC2C2C2,
+        fontSize: 12,
+        fontWeight: FontWeight.w400,
+        height: 1.5,
+      );
+      var description = servers.isNotEmpty && index < servers.length
+          ? servers[index].description
+          : '';
+      var descriptionText = Text(
+        description,
+        style: descriptionTextStyle,
+      );
+      var toolsTextStyle = TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      );
+      var toolsText = Text('Tools', style: toolsTextStyle);
+      var listToolsButton = AthenaTextButton(
+        onTap: listTools,
+        text: 'List tools',
+      );
+      var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
+      var tools = jsonDecode(result.isEmpty ? '[]' : result);
+      var toolsChildren = <Widget>[];
+      for (var tool in tools) {
+        toolsChildren.add(
+          _ToolListTile(description: tool['description'], name: tool['name']),
+        );
+      }
+      var listChildren = [
+        Row(children: nameChildren),
+        const SizedBox(height: 12),
+        Row(children: commandChildren),
+        const SizedBox(height: 12),
+        Row(children: argumentsChildren),
+        const SizedBox(height: 12),
+        Row(children: environmentsChildren),
+        if (description.isNotEmpty) const SizedBox(height: 12),
+        if (description.isNotEmpty) descriptionText,
+        const SizedBox(height: 12),
+        Row(children: listToolsChildren),
+        ...toolsChildren,
+      ];
+      var sliverPadding = SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        sliver: SliverList(delegate: SliverChildListDelegate(listChildren)),
+      );
+      return CustomScrollView(slivers: [sliverPadding]);
+    });
   }
 
   Future<void> _initState() async {
-    var provider = serversNotifierProvider;
-    var servers = await ref.read(provider.future);
+    var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
     commandController.text = servers[index].command;
-    argumentsController.text = servers[index].arguments;
-    environmentsController.text = servers[index].environments;
-    result = servers[index].tools;
+    argumentsController.text = servers[index].arguments.join(' ');
+    environmentsController.text = servers[index].environmentVariables.entries
+        .map((e) => '${e.key}=${e.value}')
+        .join('\n');
+
+    // 如果服务器有工具列表,显示它们
+    if (servers[index].tools.isNotEmpty) {
+      setState(() {
+        result = 'Tools:\n${servers[index].tools.join('\n')}';
+      });
+    }
   }
 }
 

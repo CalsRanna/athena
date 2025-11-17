@@ -1,23 +1,24 @@
-import 'package:athena/provider/sentinel.dart';
-import 'package:athena/schema/sentinel.dart';
+import 'package:athena/entity/sentinel_entity.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
-class MobileSentinelSelectDialog extends ConsumerWidget {
-  final void Function(Sentinel)? onTap;
+class MobileSentinelSelectDialog extends StatelessWidget {
+  final void Function(SentinelEntity)? onTap;
   const MobileSentinelSelectDialog({super.key, this.onTap});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(sentinelsNotifierProvider);
-    return switch (state) {
-      AsyncData(:final value) => _buildData(value),
-      _ => const SizedBox(),
-    };
+  Widget build(BuildContext context) {
+    return Watch((context) {
+      var sentinelViewModel = GetIt.instance<SentinelViewModel>();
+      var sentinels = sentinelViewModel.sentinels.value;
+      return _buildData(sentinels);
+    });
   }
 
-  Widget _buildData(List<Sentinel> sentinels) {
+  Widget _buildData(List<SentinelEntity> sentinels) {
     if (sentinels.isEmpty) return const SizedBox();
     return ListView.builder(
       itemBuilder: (context, index) => _itemBuilder(sentinels[index]),
@@ -27,7 +28,7 @@ class MobileSentinelSelectDialog extends ConsumerWidget {
     );
   }
 
-  Widget _itemBuilder(Sentinel sentinel) {
+  Widget _itemBuilder(SentinelEntity sentinel) {
     return AthenaBottomSheetTile(
       onTap: () => onTap?.call(sentinel),
       title: sentinel.name,
