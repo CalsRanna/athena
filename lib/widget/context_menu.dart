@@ -60,9 +60,7 @@ class DesktopContextMenuConfiguration extends InheritedWidget {
   });
 
   @override
-  bool updateShouldNotify(
-    covariant DesktopContextMenuConfiguration oldWidget,
-  ) {
+  bool updateShouldNotify(covariant DesktopContextMenuConfiguration oldWidget) {
     return oldWidget.width != width;
   }
 
@@ -141,11 +139,7 @@ class DesktopContextMenuSubItem extends StatefulWidget {
   final String text;
   final void Function()? onTap;
 
-  const DesktopContextMenuSubItem({
-    super.key,
-    required this.text,
-    this.onTap,
-  });
+  const DesktopContextMenuSubItem({super.key, required this.text, this.onTap});
 
   @override
   State<DesktopContextMenuSubItem> createState() =>
@@ -302,7 +296,7 @@ class _DesktopContextMenuTileWithSubmenuState
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(8),
-      width: width,
+      width: 168,
       child: column,
     );
 
@@ -310,7 +304,7 @@ class _DesktopContextMenuTileWithSubmenuState
       builder: (context) => Stack(
         children: [
           Positioned(
-            left: offset.dx + width + 4,
+            left: offset.dx + width + 8,
             top: offset.dy,
             child: Material(
               color: Colors.transparent,
