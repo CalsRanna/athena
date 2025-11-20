@@ -22,7 +22,7 @@ class MessageRepository {
     }
   }
 
-  Future<int> createMessage(MessageEntity message) async {
+  Future<int> storeMessage(MessageEntity message) async {
     var laconic = Database.instance.laconic;
     var json = message.toJson();
     json.remove('id');
