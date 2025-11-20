@@ -53,6 +53,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
 
   @override
+  void initState() {
+    super.initState();
+    chatViewModel.loadChats();
+    sentinelViewModel.loadSentinels();
+  }
+
+  @override
   Widget build(BuildContext context) {
     var children = [
       MobileHomeWelcome(),
@@ -61,7 +68,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       SizedBox(height: 16),
       _Title('Chat history', onTap: () => navigateChatList(context)),
       SizedBox(height: 8),
-      SizedBox(height: 52, child: _RecentChatListView()),
+      SizedBox(height: 52, child: Watch((_) => _buildRecentChatListView())),
       SizedBox(height: 24),
       _Title('Shortcut'),
       SizedBox(height: 8),
@@ -76,6 +83,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
       children: children,
     );
     return AthenaScaffold(body: body);
+  }
+
+  Widget _buildRecentChatListView() {
+    return _RecentChatListView(chats: chatViewModel.recentChats.value);
   }
 
   void navigateChatList(BuildContext context) {
@@ -126,18 +137,11 @@ class _NewChatButton extends StatelessWidget {
 }
 
 class _RecentChatListView extends StatelessWidget {
-  const _RecentChatListView();
+  final List<ChatEntity> chats;
+  const _RecentChatListView({required this.chats});
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      var chatViewModel = GetIt.instance<ChatViewModel>();
-      var recentChats = chatViewModel.recentChats.value;
-      return data(recentChats);
-    });
-  }
-
-  Widget data(List<ChatEntity> chats) {
     if (chats.isEmpty) return const SizedBox();
     return ListView.builder(
       scrollDirection: Axis.horizontal,

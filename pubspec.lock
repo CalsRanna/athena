@@ -603,12 +603,11 @@ packages:
   laconic:
     dependency: "direct main"
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "5f24844fe2a3ccbe8981877c1f70b96d50b5500f"
-      url: "git@github.com:CalsRanna/laconic.git"
-    source: git
-    version: "1.0.0+29"
+      name: laconic
+      sha256: "9496aefe3bf4a68d65511bae1973e831693e91dd1c363531336dc3e3861cbb1e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0+36"
   leak_tracker:
     dependency: transitive
     description:
