@@ -288,6 +288,7 @@ class _ShortcutListView extends StatelessWidget {
       HugeIcons.strokeRoundedAiBrowser,
       HugeIcons.strokeRoundedCookBook,
       HugeIcons.strokeRoundedCode,
+      HugeIcons.strokeRoundedGame,
     ];
     final shortcuts = [
       Shortcut()
@@ -303,6 +304,9 @@ class _ShortcutListView extends StatelessWidget {
         ..name = 'Code'
         ..description =
             'Give you a code suggestion about variables, functions, etc',
+      Shortcut()
+        ..name = 'TRPG'
+        ..description = 'Play an unique tabletop role-playing game.',
     ];
     return ListView.separated(
       itemBuilder: (_, index) => _ShortcutTile(
@@ -321,6 +325,7 @@ class _ShortcutListView extends StatelessWidget {
     PageRouteInfo? route = switch (shortcut.name) {
       'Translation' => MobileTranslationRoute(),
       'Summary' => MobileSummaryRoute(),
+      'TRPG' => MobileTRPGRoute(),
       _ => null,
     };
     if (route != null) route.push(context);
