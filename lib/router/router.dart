@@ -33,6 +33,7 @@ class AppRouter extends RootStackRouter {
       AutoRoute(page: MobileTranslationRoute.page),
       AutoRoute(page: MobileSummaryRoute.page),
       AutoRoute(page: MobileSummaryDetailRoute.page),
+      AutoRoute(page: MobileTRPGRoute.page),
       AutoRoute(page: MobileSentinelListRoute.page),
       AutoRoute(page: MobileSentinelFormRoute.page),
       AutoRoute(page: MobileProviderListRoute.page),
@@ -49,9 +50,9 @@ class AppRouter extends RootStackRouter {
 
 class DesktopRoute<R> extends CustomRoute<R> {
   DesktopRoute({super.initial, required super.page, super.children})
-      : super(
-          transitionsBuilder: TransitionsBuilders.noTransition,
-          durationInMilliseconds: 0,
-          reverseDurationInMilliseconds: 0,
-        );
+    : super(
+        transitionsBuilder: TransitionsBuilders.noTransition,
+        durationInMilliseconds: 0,
+        reverseDurationInMilliseconds: 0,
+      );
 }

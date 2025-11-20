@@ -7,6 +7,7 @@ import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/summary_view_model.dart';
 import 'package:athena/view_model/tool_view_model.dart';
 import 'package:athena/view_model/translation_view_model.dart';
+import 'package:athena/view_model/trpg_view_model.dart';
 import 'package:get_it/get_it.dart';
 
 class DI {
@@ -21,5 +22,6 @@ class DI {
     getIt.registerLazySingleton(() => SettingViewModel());
     getIt.registerLazySingleton(() => TranslationViewModel());
     getIt.registerLazySingleton(() => SummaryViewModel());
+    getIt.registerLazySingleton(() => TRPGViewModel());
   }
 }
