@@ -163,14 +163,11 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var chatMessages = await _messageRepository.getMessagesByChatId(
-        message.chatId,
-      );
-      var index = chatMessages.indexWhere((m) => m.id == message.id);
+      var index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         // 删除从该消息开始的所有后续消息
-        for (var i = index; i < chatMessages.length; i++) {
-          await _messageRepository.deleteMessage(chatMessages[i].id!);
+        for (var i = index; i < messages.length; i++) {
+          await _messageRepository.deleteMessage(messages[i].id!);
         }
         // 重新加载消息
         messages.value = await _messageRepository.getMessagesByChatId(
@@ -458,8 +455,8 @@ class ChatViewModel {
 
     try {
       // 1. 保存用户消息
-      var userId = await _messageRepository.createMessage(message);
-      var userMessage = message.copyWith(id: userId);
+      var id = await _messageRepository.storeMessage(message);
+      var userMessage = message.copyWith(id: id);
       messages.value = [...messages.value, userMessage];
 
       // 2. 获取model和provider
@@ -482,7 +479,8 @@ class ChatViewModel {
       // 4. 构建历史消息上下文
       var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
       var contextLimit = chat.context * 2; // 每轮对话包含user和assistant两条消息
-      var contextMessages = chatMessages.length > contextLimit
+      var contextMessages =
+          chatMessages.length > contextLimit && chat.context > 0
           ? chatMessages.sublist(chatMessages.length - contextLimit)
           : chatMessages;
 
@@ -494,21 +492,23 @@ class ChatViewModel {
         );
       }
 
-      for (var msg in contextMessages) {
-        if (msg.role == 'system') {
+      for (var contextMessage in contextMessages) {
+        if (contextMessage.role == 'system') {
           wrappedMessages.add(
-            ChatCompletionMessage.system(content: msg.content),
+            ChatCompletionMessage.system(content: contextMessage.content),
           );
-        } else if (msg.role == 'assistant') {
+        } else if (contextMessage.role == 'assistant') {
           wrappedMessages.add(
-            ChatCompletionMessage.assistant(content: msg.content),
+            ChatCompletionMessage.assistant(content: contextMessage.content),
           );
         } else {
           // Handle images
-          if (msg.imageUrls.isNotEmpty) {
-            var imageList = msg.imageUrls.split(',');
+          if (contextMessage.imageUrls.isNotEmpty) {
+            var imageList = contextMessage.imageUrls.split(',');
             var contentParts = <ChatCompletionMessageContentPart>[
-              ChatCompletionMessageContentPart.text(text: msg.content),
+              ChatCompletionMessageContentPart.text(
+                text: contextMessage.content,
+              ),
             ];
             for (var imageUrl in imageList) {
               contentParts.add(
@@ -527,7 +527,9 @@ class ChatViewModel {
           } else {
             wrappedMessages.add(
               ChatCompletionMessage.user(
-                content: ChatCompletionUserMessageContent.string(msg.content),
+                content: ChatCompletionUserMessageContent.string(
+                  contextMessage.content,
+                ),
               ),
             );
           }
@@ -540,9 +542,7 @@ class ChatViewModel {
         role: 'assistant',
         content: '',
       );
-      var assistantId = await _messageRepository.createMessage(
-        assistantMessage,
-      );
+      var assistantId = await _messageRepository.storeMessage(assistantMessage);
       assistantMessage = assistantMessage.copyWith(id: assistantId);
       messages.value = [...messages.value, assistantMessage];
 

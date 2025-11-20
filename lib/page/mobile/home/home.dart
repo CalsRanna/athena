@@ -63,30 +63,50 @@ class _MobileHomePageState extends State<MobileHomePage> {
   Widget build(BuildContext context) {
     var children = [
       MobileHomeWelcome(),
-      SizedBox(height: 16),
       _NewChatButton(),
-      SizedBox(height: 16),
-      _Title('Chat history', onTap: () => navigateChatList(context)),
-      SizedBox(height: 8),
-      SizedBox(height: 52, child: Watch((_) => _buildRecentChatListView())),
-      SizedBox(height: 24),
-      _Title('Shortcut'),
-      SizedBox(height: 8),
-      SizedBox(height: 160, child: _ShortcutListView()),
-      SizedBox(height: 24),
-      _Title('Sentinel', onTap: () => navigateSentinelList(context)),
-      SizedBox(height: 8),
-      SizedBox(height: 156, child: _SentinelListView()),
+      _buildRecentChatListView(),
+      _buildShortcutListView(),
+      _buildSentinelListView(),
     ];
-    var body = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
+    var body = Column(spacing: 24, children: children);
     return AthenaScaffold(body: body);
   }
 
+  Widget _buildSentinelListView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
+      children: [
+        _Title('Sentinel', onTap: () => navigateSentinelList(context)),
+        SizedBox(height: 156, child: _SentinelListView()),
+      ],
+    );
+  }
+
+  Widget _buildShortcutListView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
+      children: [
+        _Title('Shortcut'),
+        SizedBox(height: 160, child: _ShortcutListView()),
+      ],
+    );
+  }
+
   Widget _buildRecentChatListView() {
-    return _RecentChatListView(chats: chatViewModel.recentChats.value);
+    return Column(
+      spacing: 8,
+      children: [
+        _Title('Chat history', onTap: () => navigateChatList(context)),
+        SizedBox(
+          height: 52,
+          child: Watch(
+            (_) => _RecentChatListView(chats: chatViewModel.recentChats.value),
+          ),
+        ),
+      ],
+    );
   }
 
   void navigateChatList(BuildContext context) {

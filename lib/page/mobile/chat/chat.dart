@@ -53,6 +53,12 @@ class _MessageListViewState extends State<_MessageListView> {
   late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
 
   @override
+  void initState() {
+    super.initState();
+    viewModel.loadMessages(widget.chat.id!);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Watch((context) {
       var sentinel = sentinelViewModel.sentinels.value
@@ -143,7 +149,7 @@ class _MessageListViewState extends State<_MessageListView> {
       controller.animateTo(0, curve: Curves.linear, duration: duration);
     }
     await viewModel.deleteMessage(message);
-    await viewModel.loadMessages(widget.chat.id!);
+    await viewModel.sendMessage(message, chat: widget.chat);
   }
 
   Widget _itemBuilder(MessageEntity message, SentinelEntity sentinel) {
