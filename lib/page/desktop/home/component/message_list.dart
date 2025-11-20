@@ -38,12 +38,6 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   }
 
   @override
-  void dispose() {
-    chatViewModel.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Watch((context) {
       var messages = chatViewModel.messages.value;

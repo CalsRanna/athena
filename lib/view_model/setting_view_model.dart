@@ -1,3 +1,7 @@
+import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
+import 'package:athena/repository/model_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:signals/signals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,130 +18,137 @@ class SettingViewModel {
   final chatSearchDecisionModelId = signal(0);
   final sentinelMetadataGenerationModelId = signal(0);
   final shortModelId = signal(0);
-
-  final isLoading = signal(false);
-  final error = signal<String?>(null);
+  final chatModel = signal<ModelEntity?>(null);
+  final chatNamingModel = signal<ModelEntity?>(null);
+  final chatSearchDecisionModel = signal<ModelEntity?>(null);
+  final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
+  final shortModel = signal<ModelEntity?>(null);
+  final chatModelProvider = signal<ProviderEntity?>(null);
+  final chatNamingModelProvider = signal<ProviderEntity?>(null);
+  final chatSearchDecisionModelProvider = signal<ProviderEntity?>(null);
+  final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
+  final shortModelProvider = signal<ProviderEntity?>(null);
 
   // SharedPreferences keys
   static const String _keyWindowHeight = 'window_height';
   static const String _keyWindowWidth = 'window_width';
   static const String _keyChatModelId = 'chat_model_id';
   static const String _keyChatNamingModelId = 'chat_naming_model_id';
-  static const String _keyChatSearchDecisionModelId = 'chat_search_decision_model_id';
-  static const String _keySentinelMetadataGenerationModelId = 'sentinel_metadata_generation_model_id';
+  static const String _keyChatSearchDecisionModelId =
+      'chat_search_decision_model_id';
+  static const String _keySentinelMetadataGenerationModelId =
+      'sentinel_metadata_generation_model_id';
   static const String _keyShortModelId = 'short_model_id';
 
+  final _modelRepository = ModelRepository();
+  final _providerRepository = ProviderRepository();
+
   /// 加载所有设置
-  Future<void> loadSettings() async {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      windowHeight.value = prefs.getDouble(_keyWindowHeight) ?? 720.0;
-      windowWidth.value = prefs.getDouble(_keyWindowWidth) ?? 960.0;
-      chatModelId.value = prefs.getInt(_keyChatModelId) ?? 0;
-      chatNamingModelId.value = prefs.getInt(_keyChatNamingModelId) ?? 0;
-      chatSearchDecisionModelId.value = prefs.getInt(_keyChatSearchDecisionModelId) ?? 0;
-      sentinelMetadataGenerationModelId.value = prefs.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
-      shortModelId.value = prefs.getInt(_keyShortModelId) ?? 0;
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
+  Future<void> initSignals() async {
+    final instance = await SharedPreferences.getInstance();
+    windowHeight.value = instance.getDouble(_keyWindowHeight) ?? 720.0;
+    windowWidth.value = instance.getDouble(_keyWindowWidth) ?? 960.0;
+    chatModelId.value = instance.getInt(_keyChatModelId) ?? 0;
+    chatNamingModelId.value = instance.getInt(_keyChatNamingModelId) ?? 0;
+    chatSearchDecisionModelId.value =
+        instance.getInt(_keyChatSearchDecisionModelId) ?? 0;
+    sentinelMetadataGenerationModelId.value =
+        instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
+    shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
+    chatModel.value = await _modelRepository.getModelById(chatModelId.value);
+    chatNamingModel.value = await _modelRepository.getModelById(
+      chatNamingModelId.value,
+    );
+    chatSearchDecisionModel.value = await _modelRepository.getModelById(
+      chatSearchDecisionModelId.value,
+    );
+    sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
+      sentinelMetadataGenerationModelId.value,
+    );
+    shortModel.value = await _modelRepository.getModelById(shortModelId.value);
+    chatModelProvider.value = await _providerRepository.getProviderById(
+      chatModelId.value,
+    );
+    chatNamingModelProvider.value = await _providerRepository.getProviderById(
+      chatNamingModelId.value,
+    );
+    chatSearchDecisionModelProvider.value = await _providerRepository
+        .getProviderById(chatSearchDecisionModelId.value);
+    sentinelMetadataGenerationModelProvider.value = await _providerRepository
+        .getProviderById(sentinelMetadataGenerationModelId.value);
+    shortModelProvider.value = await _providerRepository.getProviderById(
+      shortModelId.value,
+    );
   }
 
   /// 更新窗口尺寸
   Future<void> updateWindowSize(double height, double width) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble(_keyWindowHeight, height);
-      await prefs.setDouble(_keyWindowWidth, width);
+    final instance = await SharedPreferences.getInstance();
+    await instance.setDouble(_keyWindowHeight, height);
+    await instance.setDouble(_keyWindowWidth, width);
 
-      windowHeight.value = height;
-      windowWidth.value = width;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    windowHeight.value = height;
+    windowWidth.value = width;
   }
 
   /// 更新聊天模型 ID
   Future<void> updateChatModelId(int modelId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyChatModelId, modelId);
-      chatModelId.value = modelId;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyChatModelId, modelId);
+    chatModelId.value = modelId;
+    chatModel.value = await _modelRepository.getModelById(modelId);
+    chatModelProvider.value = await _providerRepository.getProviderById(
+      modelId,
+    );
   }
 
   /// 更新聊天命名模型 ID
   Future<void> updateChatNamingModelId(int modelId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyChatNamingModelId, modelId);
-      chatNamingModelId.value = modelId;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyChatNamingModelId, modelId);
+    chatNamingModelId.value = modelId;
+    chatNamingModel.value = await _modelRepository.getModelById(modelId);
+    chatNamingModelProvider.value = await _providerRepository.getProviderById(
+      modelId,
+    );
   }
 
   /// 更新搜索决策模型 ID
   Future<void> updateChatSearchDecisionModelId(int modelId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyChatSearchDecisionModelId, modelId);
-      chatSearchDecisionModelId.value = modelId;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyChatSearchDecisionModelId, modelId);
+    chatSearchDecisionModelId.value = modelId;
+    chatSearchDecisionModelProvider.value = await _providerRepository
+        .getProviderById(modelId);
   }
 
   /// 更新 Sentinel 元数据生成模型 ID
   Future<void> updateSentinelMetadataGenerationModelId(int modelId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keySentinelMetadataGenerationModelId, modelId);
-      sentinelMetadataGenerationModelId.value = modelId;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keySentinelMetadataGenerationModelId, modelId);
+    sentinelMetadataGenerationModelId.value = modelId;
+    sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
+      modelId,
+    );
+    sentinelMetadataGenerationModelProvider.value = await _providerRepository
+        .getProviderById(modelId);
   }
 
   /// 更新短模型 ID
   Future<void> updateShortModelId(int modelId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyShortModelId, modelId);
-      shortModelId.value = modelId;
-    } catch (e) {
-      error.value = e.toString();
-    }
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyShortModelId, modelId);
+    shortModelId.value = modelId;
+    shortModel.value = await _modelRepository.getModelById(modelId);
+    shortModelProvider.value = await _providerRepository.getProviderById(
+      modelId,
+    );
   }
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      await loadSettings(); // 重新加载默认值
-    } catch (e) {
-      error.value = e.toString();
-    }
-  }
-
-  void dispose() {
-    windowHeight.dispose();
-    windowWidth.dispose();
-    chatModelId.dispose();
-    chatNamingModelId.dispose();
-    chatSearchDecisionModelId.dispose();
-    sentinelMetadataGenerationModelId.dispose();
-    shortModelId.dispose();
-    isLoading.dispose();
-    error.dispose();
+    final instance = await SharedPreferences.getInstance();
+    await instance.clear();
+    await initSignals(); // 重新加载默认值
   }
 }

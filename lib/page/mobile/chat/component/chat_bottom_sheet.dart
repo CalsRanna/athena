@@ -5,7 +5,7 @@ import 'package:athena/page/mobile/chat/component/chat_configuration_dialog.dart
 import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena/router/router.gr.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -42,7 +42,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final chatViewModel = GetIt.instance<ChatViewModel>();
   late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
-  late final providerViewModel = GetIt.instance<AIProviderViewModel>();
+  late final providerViewModel = GetIt.instance<ProviderViewModel>();
 
   late int sentinelId = widget.chat.sentinelId;
   late int modelId = widget.chat.modelId;
@@ -56,8 +56,9 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var sentinel = sentinelViewModel.sentinels.value
           .where((s) => s.id == sentinelId)
           .firstOrNull;
-      var model =
-          modelViewModel.models.value.where((m) => m.id == modelId).firstOrNull;
+      var model = modelViewModel.models.value
+          .where((m) => m.id == modelId)
+          .firstOrNull;
       var provider = providerViewModel.providers.value
           .where((p) => p.id == (model?.providerId ?? 0))
           .firstOrNull;
@@ -125,7 +126,10 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openModelSelectorDialog() {
-    var dialog = MobileModelSelectDialog(onTap: _updateModel);
+    var dialog = MobileModelSelectDialog(
+      groupedModels: modelViewModel.groupedEnabledModels.value,
+      onTap: _updateModel,
+    );
     AthenaDialog.show(dialog);
   }
 

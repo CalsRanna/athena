@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
-import 'package:athena/repository/ai_provider_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
@@ -24,7 +24,7 @@ class ChatViewModel {
   final ChatRepository _chatRepository = ChatRepository();
   final MessageRepository _messageRepository = MessageRepository();
   final SentinelRepository _sentinelRepository = SentinelRepository();
-  final AIProviderRepository _providerRepository = AIProviderRepository();
+  final ProviderRepository _providerRepository = ProviderRepository();
   final ModelRepository _modelRepository = ModelRepository();
   final ChatService _chatService = ChatService();
 
@@ -146,7 +146,8 @@ class ChatViewModel {
       }
 
       // 如果是桌面端且没有聊天了,创建新聊天
-      var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+      var isDesktop =
+          Platform.isMacOS || Platform.isLinux || Platform.isWindows;
       if (isDesktop && chats.value.isEmpty) {
         await createChat();
       }
@@ -162,7 +163,9 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var chatMessages = await _messageRepository.getMessagesByChatId(message.chatId);
+      var chatMessages = await _messageRepository.getMessagesByChatId(
+        message.chatId,
+      );
       var index = chatMessages.indexWhere((m) => m.id == message.id);
       if (index >= 0) {
         // 删除从该消息开始的所有后续消息
@@ -170,7 +173,9 @@ class ChatViewModel {
           await _messageRepository.deleteMessage(chatMessages[i].id!);
         }
         // 重新加载消息
-        messages.value = await _messageRepository.getMessagesByChatId(message.chatId);
+        messages.value = await _messageRepository.getMessagesByChatId(
+          message.chatId,
+        );
       }
     } catch (e) {
       error.value = e.toString();
@@ -284,7 +289,10 @@ class ChatViewModel {
   }
 
   /// 更新聊天的模型
-  Future<ChatEntity?> updateModel(ModelEntity model, {required ChatEntity chat}) async {
+  Future<ChatEntity?> updateModel(
+    ModelEntity model, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
       var updated = chat.copyWith(modelId: model.id);
@@ -370,7 +378,10 @@ class ChatViewModel {
   }
 
   /// 更新上下文轮数
-  Future<ChatEntity?> updateContext(int context, {required ChatEntity chat}) async {
+  Future<ChatEntity?> updateContext(
+    int context, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
       var updated = chat.copyWith(context: context);
@@ -436,7 +447,10 @@ class ChatViewModel {
   /// - 搜索集成 (需要 SearchService)
   /// - MCP 工具调用 (需要 MCP 架构完善)
   /// - 错误重试机制
-  Future<void> sendMessage(MessageEntity message, {required ChatEntity chat}) async {
+  Future<void> sendMessage(
+    MessageEntity message, {
+    required ChatEntity chat,
+  }) async {
     if (isStreaming.value) return;
 
     isStreaming.value = true;
@@ -454,7 +468,9 @@ class ChatViewModel {
         error.value = 'Model not found';
         return;
       }
-      var provider = await _providerRepository.getProviderById(model.providerId);
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
       if (provider == null) {
         error.value = 'Provider not found';
         return;
@@ -497,7 +513,9 @@ class ChatViewModel {
             for (var imageUrl in imageList) {
               contentParts.add(
                 ChatCompletionMessageContentPart.image(
-                  imageUrl: ChatCompletionMessageImageUrl(url: 'data:image/jpeg;base64,$imageUrl'),
+                  imageUrl: ChatCompletionMessageImageUrl(
+                    url: 'data:image/jpeg;base64,$imageUrl',
+                  ),
                 ),
               );
             }
@@ -522,7 +540,9 @@ class ChatViewModel {
         role: 'assistant',
         content: '',
       );
-      var assistantId = await _messageRepository.createMessage(assistantMessage);
+      var assistantId = await _messageRepository.createMessage(
+        assistantMessage,
+      );
       assistantMessage = assistantMessage.copyWith(id: assistantId);
       messages.value = [...messages.value, assistantMessage];
 
@@ -543,7 +563,8 @@ class ChatViewModel {
         var choice = chunk.response.choices.first;
 
         // Handle reasoning content from rawJson
-        var reasoningContent = chunk.rawJson['choices']?[0]?['delta']?['reasoning_content'];
+        var reasoningContent =
+            chunk.rawJson['choices']?[0]?['delta']?['reasoning_content'];
         if (reasoningContent != null) {
           reasoningBuffer.write(reasoningContent);
           assistantMessage = assistantMessage.copyWith(
@@ -576,7 +597,6 @@ class ChatViewModel {
       var updatedChat = chat.copyWith(updatedAt: DateTime.now());
       await _chatRepository.updateChat(updatedChat);
       await loadChats();
-
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -597,7 +617,9 @@ class ChatViewModel {
       // 获取model和provider
       var model = await _modelRepository.getModelById(chat.modelId);
       if (model == null) return null;
-      var provider = await _providerRepository.getProviderById(model.providerId);
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
       if (provider == null) return null;
 
       // 获取标题流
@@ -659,8 +681,9 @@ class ChatViewModel {
   }) async {
     try {
       // 获取RenderRepaintBoundary
-      final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      final boundary =
+          repaintBoundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) {
         error.value = 'Failed to get render boundary';
         return;
@@ -680,7 +703,8 @@ class ChatViewModel {
       if (Platform.isAndroid || Platform.isIOS) {
         // 移动端保存到Documents文件夹
         final directory = await getApplicationDocumentsDirectory();
-        final filePath = '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final filePath =
+            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
         final file = File(filePath);
         await file.writeAsBytes(pngBytes);
       } else {
@@ -690,26 +714,13 @@ class ChatViewModel {
           error.value = 'Failed to get downloads directory';
           return;
         }
-        final filePath = '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final filePath =
+            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
         final file = File(filePath);
         await file.writeAsBytes(pngBytes);
       }
     } catch (e) {
       error.value = e.toString();
     }
-  }
-
-  void dispose() {
-    chats.dispose();
-    currentChat.dispose();
-    messages.dispose();
-    isLoading.dispose();
-    isStreaming.dispose();
-    error.dispose();
-    currentModel.dispose();
-    currentSentinel.dispose();
-    pendingImages.dispose();
-    recentChats.dispose();
-    pinnedChats.dispose();
   }
 }

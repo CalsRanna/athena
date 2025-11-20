@@ -335,8 +335,6 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var chatViewModel = GetIt.instance<ChatViewModel>();
-
     return Watch((context) {
       var boxShadow = BoxShadow(
         blurRadius: 16,

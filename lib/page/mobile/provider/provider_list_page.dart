@@ -1,7 +1,7 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
@@ -15,30 +15,42 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
-class MobileProviderListPage extends StatelessWidget {
+class MobileProviderListPage extends StatefulWidget {
   const MobileProviderListPage({super.key});
+
+  @override
+  State<MobileProviderListPage> createState() => _MobileProviderListPageState();
+}
+
+class _MobileProviderListPageState extends State<MobileProviderListPage> {
+  final viewModel = GetIt.instance.get<ProviderViewModel>();
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel.initSignals();
+  }
 
   @override
   Widget build(BuildContext context) {
     var button = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAdd01,
-      onTap: () => navigateProviderName(context),
+      onTap: () => navigateProviderNamePage(context),
     );
     return Watch((context) {
-      var providerViewModel = GetIt.instance<AIProviderViewModel>();
-      var providers = providerViewModel.providers.value;
       return AthenaScaffold(
         appBar: AthenaAppBar(action: button, title: const Text('Provider')),
-        body: _buildBody(providers),
+        body: Watch((_) => _buildBody()),
       );
     });
   }
 
-  void navigateProviderName(BuildContext context) {
+  void navigateProviderNamePage(BuildContext context) {
     MobileProviderNameRoute().push(context);
   }
 
-  Widget _buildBody(List<AIProviderEntity> providers) {
+  Widget _buildBody() {
+    var providers = viewModel.providers.value;
     if (providers.isEmpty) return const SizedBox();
     return ListView.separated(
       itemCount: providers.length,
@@ -62,7 +74,7 @@ class MobileProviderListPage extends StatelessWidget {
 }
 
 class _ProviderListTile extends StatelessWidget {
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const _ProviderListTile(this.provider);
 
   @override
@@ -118,7 +130,7 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void destroyProvider() {
-    var viewModel = GetIt.instance<AIProviderViewModel>();
+    var viewModel = GetIt.instance<ProviderViewModel>();
     viewModel.deleteProvider(provider);
     AthenaDialog.dismiss();
   }
@@ -151,7 +163,7 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void toggleEnable() {
-    var viewModel = GetIt.instance<AIProviderViewModel>();
+    var viewModel = GetIt.instance<ProviderViewModel>();
     var updatedProvider = provider.copyWith(enabled: !provider.enabled);
     viewModel.updateProvider(updatedProvider);
     AthenaDialog.dismiss();

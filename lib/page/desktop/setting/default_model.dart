@@ -1,7 +1,7 @@
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
@@ -34,12 +34,6 @@ class _DesktopSettingDefaultModelPageState
   }
 
   @override
-  void dispose() {
-    settingViewModel.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     var children = [
       _buildDefaultModelListView(),
@@ -55,11 +49,7 @@ class _DesktopSettingDefaultModelPageState
   }
 
   Widget _buildDefaultModelListView() {
-    var models = [
-      'Chat',
-      'Topic Naming',
-      'Sentinel Metadata Generation',
-    ];
+    var models = ['Chat', 'Topic Naming', 'Sentinel Metadata Generation'];
     var borderSide = BorderSide(
       color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
     );
@@ -123,8 +113,7 @@ class _DesktopSettingDefaultModelPageState
         fontWeight: FontWeight.w400,
         height: 1.5,
       );
-      var chatTip =
-          Text('Model designated for new chat', style: tipTextStyle);
+      var chatTip = Text('Model designated for new chat', style: tipTextStyle);
       var namingTip = Text(
         'Model designated for automatic naming topic',
         style: tipTextStyle,
@@ -136,37 +125,37 @@ class _DesktopSettingDefaultModelPageState
       var edgeInsets = EdgeInsets.symmetric(horizontal: 32, vertical: 12);
       return switch (index) {
         0 => ListView(
-            padding: edgeInsets,
-            children: [
-              chatTitle,
-              const SizedBox(height: 12),
-              chatDropdown,
-              const SizedBox(height: 12),
-              chatTip,
-            ],
-          ),
+          padding: edgeInsets,
+          children: [
+            chatTitle,
+            const SizedBox(height: 12),
+            chatDropdown,
+            const SizedBox(height: 12),
+            chatTip,
+          ],
+        ),
         1 => ListView(
-            padding: edgeInsets,
-            children: [
-              namingTitle,
-              const SizedBox(height: 12),
-              chatNamingDropdown,
-              const SizedBox(height: 12),
-              namingTip,
-              const SizedBox(height: 24),
-            ],
-          ),
+          padding: edgeInsets,
+          children: [
+            namingTitle,
+            const SizedBox(height: 12),
+            chatNamingDropdown,
+            const SizedBox(height: 12),
+            namingTip,
+            const SizedBox(height: 24),
+          ],
+        ),
         2 => ListView(
-            padding: edgeInsets,
-            children: [
-              generationTitle,
-              const SizedBox(height: 12),
-              sentinelMetadataGenerationDropdown,
-              const SizedBox(height: 12),
-              generationTip,
-              const SizedBox(height: 24),
-            ],
-          ),
+          padding: edgeInsets,
+          children: [
+            generationTitle,
+            const SizedBox(height: 12),
+            sentinelMetadataGenerationDropdown,
+            const SizedBox(height: 12),
+            generationTip,
+            const SizedBox(height: 24),
+          ],
+        ),
         _ => const SizedBox(),
       };
     });
@@ -228,7 +217,7 @@ class _ModelDropdown extends StatelessWidget {
     if (model == null || model == 0) return Text('No Model', style: textStyle);
 
     final modelViewModel = GetIt.instance<ModelViewModel>();
-    final providerViewModel = GetIt.instance<AIProviderViewModel>();
+    final providerViewModel = GetIt.instance<ProviderViewModel>();
     return Watch((context) {
       final modelEntity = modelViewModel.models.value
           .where((m) => m.id == model)

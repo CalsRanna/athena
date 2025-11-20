@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -12,7 +12,7 @@ class SentinelService {
   /// 基于用户输入的 prompt 生成 Sentinel 元数据
   Future<SentinelEntity> generate(
     String prompt, {
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) async {
     var headers = {
@@ -26,16 +26,8 @@ class SentinelService {
     );
     var system = PresetPrompt.metadataGenerationPrompt;
     var messages = [
-      MessageEntity(
-        chatId: 0,
-        role: 'system',
-        content: system,
-      ),
-      MessageEntity(
-        chatId: 0,
-        role: 'user',
-        content: prompt,
-      ),
+      MessageEntity(chatId: 0, role: 'system', content: system),
+      MessageEntity(chatId: 0, role: 'user', content: prompt),
     ];
     var wrappedMessages = messages.map((message) {
       if (message.role == 'system') {

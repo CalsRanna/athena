@@ -1,4 +1,4 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -11,7 +11,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 class MobileModelListView extends StatelessWidget {
   final void Function(ModelEntity)? onLongPress;
   final void Function(ModelEntity)? onTap;
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const MobileModelListView({
     super.key,
     this.onLongPress,
@@ -48,11 +48,7 @@ class _ModelTile extends StatelessWidget {
   final void Function()? onLongPress;
   final void Function()? onTap;
   final ModelEntity model;
-  const _ModelTile({
-    this.onLongPress,
-    this.onTap,
-    required this.model,
-  });
+  const _ModelTile({this.onLongPress, this.onTap, required this.model});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +67,7 @@ class _ModelTile extends StatelessWidget {
     var nameChildren = [
       Flexible(child: nameText),
       SizedBox(width: 8),
-      AthenaTag.small(text: model.modelId)
+      AthenaTag.small(text: model.modelId),
     ];
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,

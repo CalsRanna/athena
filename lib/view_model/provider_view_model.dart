@@ -1,13 +1,13 @@
-import 'package:athena/entity/ai_provider_entity.dart';
-import 'package:athena/repository/ai_provider_repository.dart';
+import 'package:athena/entity/provider_entity.dart';
+import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:signals/signals.dart';
 
-class AIProviderViewModel {
-  // ViewModel 内部直接持有 Repository
-  final AIProviderRepository _providerRepository = AIProviderRepository();
+class ProviderViewModel {
+  final _repository = ProviderRepository();
 
   // Signals 状态
-  final providers = listSignal<AIProviderEntity>([]);
+  final providers = listSignal<ProviderEntity>([]);
   final isLoading = signal(false);
   final error = signal<String?>(null);
 
@@ -16,12 +16,11 @@ class AIProviderViewModel {
     return providers.value.where((p) => p.enabled).toList();
   });
 
-  // 业务方法
-  Future<void> loadProviders() async {
+  Future<void> initSignals() async {
     isLoading.value = true;
     error.value = null;
     try {
-      providers.value = await _providerRepository.getAllProviders();
+      providers.value = await _repository.getAllProviders();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -29,46 +28,46 @@ class AIProviderViewModel {
     }
   }
 
-  Future<AIProviderEntity?> getProviderById(int id) async {
+  Future<ProviderEntity?> getProviderById(int id) async {
     try {
-      return await _providerRepository.getProviderById(id);
+      return await _repository.getProviderById(id);
     } catch (e) {
       error.value = e.toString();
       return null;
     }
   }
 
-  Future<List<AIProviderEntity>> getEnabledProviders() async {
+  Future<List<ProviderEntity>> getEnabledProviders() async {
     try {
-      return await _providerRepository.getEnabledProviders();
+      return await _repository.getEnabledProviders();
     } catch (e) {
       error.value = e.toString();
       return [];
     }
   }
 
-  Future<void> createProvider(AIProviderEntity provider) async {
+  Future<void> storeProvider(ProviderEntity provider) async {
     isLoading.value = true;
     error.value = null;
     try {
-      var id = await _providerRepository.createProvider(provider);
+      var id = await _repository.storeProvider(provider);
       var created = provider.copyWith(id: id);
       providers.value = [...providers.value, created];
     } catch (e) {
-      error.value = e.toString();
+      AthenaDialog.success(e.toString());
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> updateProvider(AIProviderEntity provider) async {
+  Future<void> updateProvider(ProviderEntity provider) async {
     isLoading.value = true;
     error.value = null;
     try {
-      await _providerRepository.updateProvider(provider);
+      await _repository.updateProvider(provider);
       var index = providers.value.indexWhere((p) => p.id == provider.id);
       if (index >= 0) {
-        var updated = List<AIProviderEntity>.from(providers.value);
+        var updated = List<ProviderEntity>.from(providers.value);
         updated[index] = provider;
         providers.value = updated;
       }
@@ -79,13 +78,14 @@ class AIProviderViewModel {
     }
   }
 
-  Future<void> deleteProvider(AIProviderEntity provider) async {
+  Future<void> deleteProvider(ProviderEntity provider) async {
     isLoading.value = true;
     error.value = null;
     try {
-      await _providerRepository.deleteProvider(provider.id!);
-      providers.value =
-          providers.value.where((p) => p.id != provider.id).toList();
+      await _repository.deleteProvider(provider.id!);
+      providers.value = providers.value
+          .where((p) => p.id != provider.id)
+          .toList();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -93,26 +93,19 @@ class AIProviderViewModel {
     }
   }
 
-  Future<void> toggleEnabled(AIProviderEntity provider) async {
+  Future<void> toggleEnabled(ProviderEntity provider) async {
     error.value = null;
     try {
       var updated = provider.copyWith(enabled: !provider.enabled);
-      await _providerRepository.updateProvider(updated);
+      await _repository.updateProvider(updated);
       var index = providers.value.indexWhere((p) => p.id == provider.id);
       if (index >= 0) {
-        var updatedList = List<AIProviderEntity>.from(providers.value);
+        var updatedList = List<ProviderEntity>.from(providers.value);
         updatedList[index] = updated;
         providers.value = updatedList;
       }
     } catch (e) {
       error.value = e.toString();
     }
-  }
-
-  void dispose() {
-    providers.dispose();
-    isLoading.dispose();
-    error.dispose();
-    enabledProviders.dispose();
   }
 }

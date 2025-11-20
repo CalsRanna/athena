@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:html_parser_plus/html_parser_plus.dart';
 import 'package:http/http.dart';
@@ -29,7 +29,7 @@ class SummaryService {
   Stream<ChatCompletionStreamResponseDelta> summarize({
     required List<ChatCompletionMessage> messages,
     required ModelEntity model,
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
   }) async* {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',

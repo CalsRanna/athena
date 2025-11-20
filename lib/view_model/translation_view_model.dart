@@ -1,7 +1,7 @@
 import 'package:athena/entity/translation_entity.dart';
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
-import 'package:athena/repository/ai_provider_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -10,7 +10,7 @@ import 'package:signals/signals.dart';
 /// TranslationViewModel 负责翻译功能的业务逻辑
 class TranslationViewModel {
   final TranslationService _service = TranslationService();
-  final AIProviderRepository _providerRepository = AIProviderRepository();
+  final ProviderRepository _providerRepository = ProviderRepository();
   final ModelRepository _modelRepository = ModelRepository();
 
   // Signals 状态
@@ -23,7 +23,11 @@ class TranslationViewModel {
   final translations = listSignal<TranslationEntity>([]);
 
   /// 创建翻译记录
-  Future<int> createTranslation(String source, String sourceText, String target) async {
+  Future<int> createTranslation(
+    String source,
+    String sourceText,
+    String target,
+  ) async {
     var translationEntity = TranslationEntity(
       id: DateTime.now().millisecondsSinceEpoch,
       source: source,
@@ -40,7 +44,7 @@ class TranslationViewModel {
   /// UI 层需要处理流式响应并调用 appendTranslatedText() 更新状态
   Stream<ChatCompletionStreamResponseDelta> translate({
     required List<ChatCompletionMessage> messages,
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) {
     streaming.value = true;
@@ -101,7 +105,8 @@ class TranslationViewModel {
       var model = models.first;
 
       // 构建翻译消息
-      var prompt = '请将以下${translation.source}文本翻译成${translation.target}:\n\n${translation.sourceText}';
+      var prompt =
+          '请将以下${translation.source}文本翻译成${translation.target}:\n\n${translation.sourceText}';
       var messages = [
         ChatCompletionMessage.user(
           content: ChatCompletionUserMessageContent.string(prompt),
@@ -133,21 +138,10 @@ class TranslationViewModel {
         updatedList[index] = updated;
         translations.value = updatedList;
       }
-
     } catch (e) {
       error.value = e.toString();
     } finally {
       streaming.value = false;
     }
-  }
-
-  void dispose() {
-    sourceText.dispose();
-    translatedText.dispose();
-    sourceLanguage.dispose();
-    targetLanguage.dispose();
-    streaming.dispose();
-    error.dispose();
-    translations.dispose();
   }
 }

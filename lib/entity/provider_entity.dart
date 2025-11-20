@@ -1,4 +1,4 @@
-class AIProviderEntity {
+class ProviderEntity {
   final int? id;
   final String name;
   final String baseUrl;
@@ -7,7 +7,7 @@ class AIProviderEntity {
   final bool isPreset;
   final DateTime createdAt;
 
-  AIProviderEntity({
+  ProviderEntity({
     this.id,
     required this.name,
     required this.baseUrl,
@@ -17,8 +17,8 @@ class AIProviderEntity {
     required this.createdAt,
   });
 
-  factory AIProviderEntity.fromJson(Map<String, dynamic> json) {
-    return AIProviderEntity(
+  factory ProviderEntity.fromJson(Map<String, dynamic> json) {
+    return ProviderEntity(
       id: json['id'] as int?,
       name: json['name'] as String,
       baseUrl: json['base_url'] as String,
@@ -41,7 +41,7 @@ class AIProviderEntity {
     };
   }
 
-  AIProviderEntity copyWith({
+  ProviderEntity copyWith({
     int? id,
     String? name,
     String? baseUrl,
@@ -50,7 +50,7 @@ class AIProviderEntity {
     bool? isPreset,
     DateTime? createdAt,
   }) {
-    return AIProviderEntity(
+    return ProviderEntity(
       id: id ?? this.id,
       name: name ?? this.name,
       baseUrl: baseUrl ?? this.baseUrl,

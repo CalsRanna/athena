@@ -1,4 +1,4 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -15,7 +15,7 @@ import 'package:get_it/get_it.dart';
 @RoutePage()
 class MobileModelFormPage extends StatefulWidget {
   final ModelEntity? model;
-  final AIProviderEntity? provider;
+  final ProviderEntity? provider;
   const MobileModelFormPage({super.key, this.model, this.provider});
 
   @override

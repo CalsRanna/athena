@@ -1,6 +1,6 @@
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/repository/ai_provider_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:signals/signals.dart';
@@ -8,7 +8,7 @@ import 'package:signals/signals.dart';
 class SentinelViewModel {
   // ViewModel 内部直接持有 Service/Repository
   final SentinelRepository _sentinelRepository = SentinelRepository();
-  final AIProviderRepository _providerRepository = AIProviderRepository();
+  final ProviderRepository _providerRepository = ProviderRepository();
   final ModelRepository _modelRepository = ModelRepository();
   final SentinelService _sentinelService = SentinelService();
 
@@ -20,9 +20,7 @@ class SentinelViewModel {
 
   // Computed signals
   late final defaultSentinel = computed(() {
-    return sentinels.value
-            .where((s) => s.name == 'Athena')
-            .firstOrNull ??
+    return sentinels.value.where((s) => s.name == 'Athena').firstOrNull ??
         SentinelEntity(
           name: 'Athena',
           description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
@@ -56,7 +54,9 @@ class SentinelViewModel {
           prompt: '你是一个智能聊天助手。',
           tags: [],
         );
-        var id = await _sentinelRepository.createSentinel(defaultSentinelEntity);
+        var id = await _sentinelRepository.createSentinel(
+          defaultSentinelEntity,
+        );
         defaultSentinelEntity = defaultSentinelEntity.copyWith(id: id);
         loadedSentinels = [defaultSentinelEntity];
       }
@@ -99,7 +99,9 @@ class SentinelViewModel {
         return null;
       }
 
-      var provider = await _providerRepository.getProviderById(model.providerId);
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
       if (provider == null) {
         error.value = 'Provider not found';
         return null;
@@ -158,21 +160,13 @@ class SentinelViewModel {
     error.value = null;
     try {
       await _sentinelRepository.deleteSentinel(sentinel.id!);
-      sentinels.value =
-          sentinels.value.where((s) => s.id != sentinel.id).toList();
+      sentinels.value = sentinels.value
+          .where((s) => s.id != sentinel.id)
+          .toList();
     } catch (e) {
       error.value = e.toString();
     } finally {
       isLoading.value = false;
     }
-  }
-
-  void dispose() {
-    sentinels.dispose();
-    isLoading.dispose();
-    isGenerating.dispose();
-    error.dispose();
-    defaultSentinel.dispose();
-    tags.dispose();
   }
 }

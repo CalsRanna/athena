@@ -49,6 +49,9 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _MobileHomePageState extends State<MobileHomePage> {
+  final chatViewModel = GetIt.instance<ChatViewModel>();
+  final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+
   @override
   Widget build(BuildContext context) {
     var children = [
@@ -89,10 +92,7 @@ class _NewChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
+    const textStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.w500);
     var boxShadow = BoxShadow(
       blurRadius: 16,
       color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
@@ -378,8 +378,10 @@ class _Title extends StatelessWidget {
 
   Widget _buildMoreButton() {
     var container = Container(
-      decoration:
-          BoxDecoration(shape: BoxShape.circle, color: ColorUtil.FFFFFFFF),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: ColorUtil.FFFFFFFF,
+      ),
       padding: EdgeInsets.all(12),
       child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),
     );

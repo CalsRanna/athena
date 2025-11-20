@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:openai_dart/openai_dart.dart';
 
@@ -9,7 +9,7 @@ class TranslationService {
   Stream<ChatCompletionStreamResponseDelta> translate({
     required List<ChatCompletionMessage> messages,
     required ModelEntity model,
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
   }) async* {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/athena',

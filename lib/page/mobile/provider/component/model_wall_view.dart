@@ -1,4 +1,4 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/tag.dart';
@@ -9,7 +9,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 class MobileModelWallView extends StatelessWidget {
   final void Function(ModelEntity)? onLongPress;
   final void Function(ModelEntity)? onTap;
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const MobileModelWallView({
     super.key,
     this.onLongPress,

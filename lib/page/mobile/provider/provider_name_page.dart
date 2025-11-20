@@ -1,6 +1,6 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -14,8 +14,7 @@ class MobileProviderNamePage extends StatefulWidget {
   const MobileProviderNamePage({super.key});
 
   @override
-  State<MobileProviderNamePage> createState() =>
-      _MobileProviderNamePageState();
+  State<MobileProviderNamePage> createState() => _MobileProviderNamePageState();
 }
 
 class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
@@ -56,8 +55,8 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
 
   Future<void> handleTap() async {
     if (controller.text.isEmpty) return;
-    var viewModel = GetIt.instance<AIProviderViewModel>();
-    var provider = AIProviderEntity(
+    var viewModel = GetIt.instance<ProviderViewModel>();
+    var provider = ProviderEntity(
       id: 0,
       enabled: true,
       name: controller.text,
@@ -65,7 +64,7 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
       apiKey: '',
       createdAt: DateTime.now(),
     );
-    await viewModel.createProvider(provider);
+    await viewModel.storeProvider(provider);
     if (!mounted) return;
     AutoRouter.of(context).maybePop();
   }
