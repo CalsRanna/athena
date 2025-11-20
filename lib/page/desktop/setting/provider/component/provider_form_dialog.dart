@@ -1,6 +1,6 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
@@ -10,7 +10,7 @@ import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopProviderFormDialog extends StatefulWidget {
-  final AIProviderEntity? provider;
+  final ProviderEntity? provider;
   const DesktopProviderFormDialog({super.key, this.provider});
 
   @override
@@ -18,11 +18,10 @@ class DesktopProviderFormDialog extends StatefulWidget {
       _DesktopProviderFormDialogState();
 }
 
-class _DesktopProviderFormDialogState
-    extends State<DesktopProviderFormDialog> {
+class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
   final nameController = TextEditingController();
 
-  late final viewModel = GetIt.instance<AIProviderViewModel>();
+  late final viewModel = GetIt.instance<ProviderViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -54,29 +53,23 @@ class _DesktopProviderFormDialogState
     var nameChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: nameController))
+      Expanded(child: AthenaInput(controller: nameController)),
     ];
     var children = [
       Row(children: titleChildren),
       const SizedBox(height: 24),
       Row(children: nameChildren),
       const SizedBox(height: 12),
-      _buildButtons()
+      _buildButtons(),
     ];
-    var column = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
       width: 520,
       child: column,
     );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: container,
-    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   void cancelDialog() {
@@ -100,7 +93,7 @@ class _DesktopProviderFormDialogState
       var copiedProvider = widget.provider!.copyWith(name: nameController.text);
       await viewModel.updateProvider(copiedProvider);
     } else {
-      var newProvider = AIProviderEntity(
+      var newProvider = ProviderEntity(
         id: 0,
         enabled: true,
         name: nameController.text,
@@ -108,7 +101,7 @@ class _DesktopProviderFormDialogState
         apiKey: '',
         createdAt: DateTime.now(),
       );
-      await viewModel.createProvider(newProvider);
+      await viewModel.storeProvider(newProvider);
     }
     AthenaDialog.dismiss();
   }
@@ -123,14 +116,7 @@ class _DesktopProviderFormDialogState
       onTap: storeProvider,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
-    var children = [
-      cancelButton,
-      const SizedBox(width: 12),
-      storeButton,
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: children,
-    );
+    var children = [cancelButton, const SizedBox(width: 12), storeButton];
+    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 }

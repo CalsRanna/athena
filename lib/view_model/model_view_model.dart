@@ -1,13 +1,13 @@
 import 'package:athena/entity/model_entity.dart';
-import 'package:athena/repository/ai_provider_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:signals/signals.dart';
 
 class ModelViewModel {
   // ViewModel 内部直接持有 Service/Repository
-  final ModelRepository _modelRepository = ModelRepository();
-  final AIProviderRepository _providerRepository = AIProviderRepository();
+  final ModelRepository _repository = ModelRepository();
+  final ProviderRepository _providerRepository = ProviderRepository();
   final ChatService _chatService = ChatService();
 
   // Signals 状态
@@ -28,7 +28,9 @@ class ModelViewModel {
       Map<String, List<ModelEntity>> grouped = {};
 
       for (var provider in enabledProviders) {
-        final providerModels = await _modelRepository.getModelsByProviderId(provider.id!);
+        final providerModels = await _repository.getModelsByProviderId(
+          provider.id!,
+        );
         if (providerModels.isNotEmpty) {
           result.addAll(providerModels);
           providerModels.sort((a, b) => a.name.compareTo(b.name));
@@ -44,11 +46,12 @@ class ModelViewModel {
     }
   }
 
-  Future<void> loadModels() async {
+  Future<void> initSignals() async {
     isLoading.value = true;
     error.value = null;
     try {
-      models.value = await _modelRepository.getAllModels();
+      models.value = await _repository.getAllModels();
+      await loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -58,7 +61,7 @@ class ModelViewModel {
 
   Future<ModelEntity?> getModelById(int id) async {
     try {
-      return await _modelRepository.getModelById(id);
+      return await _repository.getModelById(id);
     } catch (e) {
       error.value = e.toString();
       return null;
@@ -67,8 +70,7 @@ class ModelViewModel {
 
   Future<List<ModelEntity>> getModelsByProviderId(int providerId) async {
     try {
-      var providerModels =
-          await _modelRepository.getModelsByProviderId(providerId);
+      var providerModels = await _repository.getModelsByProviderId(providerId);
       providerModels.sort((a, b) => a.name.compareTo(b.name));
       return providerModels;
     } catch (e) {
@@ -77,16 +79,14 @@ class ModelViewModel {
     }
   }
 
-  Future<List<ModelEntity>> getEnabledModelsByProviderId(
-      int providerId) async {
+  Future<List<ModelEntity>> getEnabledModelsByProviderId(int providerId) async {
     try {
       // 只需检查 provider 是否 enabled，所有该 provider 下的 models 都视为 enabled
       var provider = await _providerRepository.getProviderById(providerId);
       if (provider == null || !provider.enabled) {
         return [];
       }
-      var providerModels =
-          await _modelRepository.getModelsByProviderId(providerId);
+      var providerModels = await _repository.getModelsByProviderId(providerId);
       providerModels.sort((a, b) => a.name.compareTo(b.name));
       return providerModels;
     } catch (e) {
@@ -113,7 +113,7 @@ class ModelViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var id = await _modelRepository.createModel(model);
+      var id = await _repository.createModel(model);
       var created = model.copyWith(id: id);
       models.value = [...models.value, created];
     } catch (e) {
@@ -127,7 +127,7 @@ class ModelViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      await _modelRepository.updateModel(model);
+      await _repository.updateModel(model);
       var index = models.value.indexWhere((m) => m.id == model.id);
       if (index >= 0) {
         var updated = List<ModelEntity>.from(models.value);
@@ -145,7 +145,7 @@ class ModelViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      await _modelRepository.deleteModel(model.id!);
+      await _repository.deleteModel(model.id!);
       models.value = models.value.where((m) => m.id != model.id).toList();
     } catch (e) {
       error.value = e.toString();
@@ -154,30 +154,22 @@ class ModelViewModel {
     }
   }
 
-  Future<String?> checkConnection(ModelEntity model) async {
+  Future<String> checkConnection(ModelEntity model) async {
     try {
-      var provider = await _providerRepository.getProviderById(model.providerId);
-      if (provider == null) {
-        return 'Provider not found';
-      }
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
+      if (provider == null) return 'Connection failed: provider not found';
       var response = await _chatService.connect(
-        provider: provider,
         model: model,
+        provider: provider,
       );
       if (response.isEmpty) {
-        return 'Connection successful, but response is empty';
+        return 'Connection succeed, but response is empty'; // Success
       }
-      return null; // Success
+      return 'Connection succeed, and response is: $response'; // Success
     } catch (e) {
-      return e.toString();
+      return 'Connection failed: ${e.toString()}';
     }
-  }
-
-  void dispose() {
-    models.dispose();
-    isLoading.dispose();
-    error.dispose();
-    enabledModels.dispose();
-    groupedEnabledModels.dispose();
   }
 }

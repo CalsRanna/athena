@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/model/search_decision.dart';
@@ -14,7 +14,7 @@ import 'package:openai_dart/openai_dart.dart';
 class ChatService {
   /// 测试连接
   Future<String> connect({
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) async {
     var headers = {
@@ -41,7 +41,7 @@ class ChatService {
   Stream<EnhancedCreateChatCompletionStreamResponse> getCompletion({
     required ChatEntity chat,
     required List<ChatCompletionMessage> messages,
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
     var headers = {
@@ -64,7 +64,7 @@ class ChatService {
   /// 获取搜索决策
   Future<SearchDecision> getSearchDecision(
     String message, {
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) async {
     var headers = {
@@ -105,7 +105,7 @@ class ChatService {
   /// 获取聊天标题流
   Stream<String> getTitle(
     String value, {
-    required AIProviderEntity provider,
+    required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
     var headers = {

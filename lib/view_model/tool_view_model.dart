@@ -81,10 +81,4 @@ class ToolViewModel {
       isLoading.value = false;
     }
   }
-
-  void dispose() {
-    tools.dispose();
-    isLoading.dispose();
-    error.dispose();
-  }
 }

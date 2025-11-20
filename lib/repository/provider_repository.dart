@@ -1,30 +1,32 @@
 import 'package:athena/database/database.dart';
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 
-class AIProviderRepository {
-  Future<List<AIProviderEntity>> getAllProviders() async {
+class ProviderRepository {
+  Future<List<ProviderEntity>> getAllProviders() async {
     var laconic = Database.instance.laconic;
     var results = await laconic.table('providers').get();
-    return results.map((r) => AIProviderEntity.fromJson(r.toMap())).toList();
+    return results
+        .map((result) => ProviderEntity.fromJson(result.toMap()))
+        .toList();
   }
 
-  Future<AIProviderEntity?> getProviderById(int id) async {
+  Future<ProviderEntity?> getProviderById(int id) async {
     var laconic = Database.instance.laconic;
     try {
       var result = await laconic.table('providers').where('id', id).first();
-      return AIProviderEntity.fromJson(result.toMap());
+      return ProviderEntity.fromJson(result.toMap());
     } catch (e) {
       return null;
     }
   }
 
-  Future<List<AIProviderEntity>> getEnabledProviders() async {
+  Future<List<ProviderEntity>> getEnabledProviders() async {
     var laconic = Database.instance.laconic;
     var results = await laconic.table('providers').where('enabled', 1).get();
-    return results.map((r) => AIProviderEntity.fromJson(r.toMap())).toList();
+    return results.map((r) => ProviderEntity.fromJson(r.toMap())).toList();
   }
 
-  Future<int> createProvider(AIProviderEntity provider) async {
+  Future<int> storeProvider(ProviderEntity provider) async {
     var laconic = Database.instance.laconic;
     var json = provider.toJson();
     json.remove('id');
@@ -34,7 +36,7 @@ class AIProviderRepository {
     return result.first['id'] as int;
   }
 
-  Future<void> updateProvider(AIProviderEntity provider) async {
+  Future<void> updateProvider(ProviderEntity provider) async {
     if (provider.id == null) return;
     var laconic = Database.instance.laconic;
     var json = provider.toJson();

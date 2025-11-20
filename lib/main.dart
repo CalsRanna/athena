@@ -8,6 +8,7 @@ import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:signals/signals.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -25,7 +26,7 @@ void main() async {
 
     // 从新的 SettingViewModel 读取窗口配置
     final settingViewModel = GetIt.instance<SettingViewModel>();
-    await settingViewModel.loadSettings();
+    await settingViewModel.initSignals();
 
     var width = settingViewModel.windowWidth.value;
     var height = settingViewModel.windowHeight.value;
@@ -45,6 +46,7 @@ void main() async {
     });
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+  SignalsObserver.instance = null;
   runApp(const AthenaApp());
 }
 

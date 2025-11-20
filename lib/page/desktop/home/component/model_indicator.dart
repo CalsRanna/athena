@@ -1,8 +1,8 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:flutter/material.dart';
@@ -18,11 +18,13 @@ class DesktopModelIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final modelViewModel = GetIt.instance<ModelViewModel>();
-    final providerViewModel = GetIt.instance<AIProviderViewModel>();
+    final providerViewModel = GetIt.instance<ProviderViewModel>();
 
     return Watch((context) {
       var currentChat = chatViewModel.currentChat.value;
-      if (currentChat == null || currentChat.id != chat.id) return const SizedBox();
+      if (currentChat == null || currentChat.id != chat.id) {
+        return const SizedBox();
+      }
 
       var model = modelViewModel.models.value
           .where((m) => m.id == currentChat.modelId)
@@ -42,7 +44,7 @@ class DesktopModelIndicator extends StatelessWidget {
 
 class _ModelIndicator extends StatelessWidget {
   final ModelEntity model;
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const _ModelIndicator({required this.model, required this.provider});
 
   @override

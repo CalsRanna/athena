@@ -1,9 +1,9 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
@@ -20,7 +20,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 @RoutePage()
 class MobileProviderFormPage extends StatefulWidget {
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const MobileProviderFormPage({super.key, required this.provider});
 
   @override
@@ -82,11 +82,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     try {
       var result = await viewModel.checkConnection(model);
       AthenaDialog.dismiss();
-      if (result != null) {
-        AthenaDialog.message('Connection successful: $result');
-      } else {
-        AthenaDialog.message('Connection failed');
-      }
+      AthenaDialog.message(result);
     } catch (e) {
       AthenaDialog.dismiss();
       AthenaDialog.message('Connection error: $e');
@@ -142,7 +138,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Future<void> updateProvider() async {
-    var viewModel = GetIt.instance<AIProviderViewModel>();
+    var viewModel = GetIt.instance<ProviderViewModel>();
     var provider = widget.provider.copyWith(
       enabled: true,
       apiKey: keyController.text,

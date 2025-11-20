@@ -1,4 +1,4 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -13,16 +13,14 @@ import 'package:hugeicons/hugeicons.dart';
 
 class DesktopModelFormDialog extends StatefulWidget {
   final ModelEntity? model;
-  final AIProviderEntity provider;
+  final ProviderEntity provider;
   const DesktopModelFormDialog({super.key, required this.provider, this.model});
 
   @override
-  State<DesktopModelFormDialog> createState() =>
-      _DesktopModelFormDialogState();
+  State<DesktopModelFormDialog> createState() => _DesktopModelFormDialogState();
 }
 
-class _DesktopModelFormDialogState
-    extends State<DesktopModelFormDialog> {
+class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   final valueController = TextEditingController();
   final nameController = TextEditingController();
   final releasedAtController = TextEditingController();
@@ -60,32 +58,32 @@ class _DesktopModelFormDialogState
     var valueChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: valueController))
+      Expanded(child: AthenaInput(controller: valueController)),
     ];
     var nameChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: nameController))
+      Expanded(child: AthenaInput(controller: nameController)),
     ];
     var releasedAtChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Released At')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: releasedAtController))
+      Expanded(child: AthenaInput(controller: releasedAtController)),
     ];
     var contextChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Context')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: contextController))
+      Expanded(child: AthenaInput(controller: contextController)),
     ];
     var inputChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Input Price')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: inputController))
+      Expanded(child: AthenaInput(controller: inputController)),
     ];
     var outputChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Output Price')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: outputController))
+      Expanded(child: AthenaInput(controller: outputController)),
     ];
     var children = [
       Row(children: titleChildren),
@@ -104,7 +102,7 @@ class _DesktopModelFormDialogState
       const SizedBox(height: 12),
       _buildSupports(),
       const SizedBox(height: 12),
-      _buildButtons()
+      _buildButtons(),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,7 +142,8 @@ class _DesktopModelFormDialogState
     super.initState();
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
-    releasedAtController.text = widget.model?.releasedAt?.toIso8601String() ?? '';
+    releasedAtController.text =
+        widget.model?.releasedAt?.toIso8601String() ?? '';
     contextController.text = widget.model?.contextWindow.toString() ?? '';
     inputController.text = widget.model?.inputPrice.toString() ?? '';
     outputController.text = widget.model?.outputPrice.toString() ?? '';
@@ -172,9 +171,12 @@ class _DesktopModelFormDialogState
       var copiedModel = widget.model!.copyWith(
         modelId: valueController.text,
         name: nameController.text,
-        contextWindow: int.tryParse(contextController.text) ?? widget.model!.contextWindow,
-        inputPrice: double.tryParse(inputController.text) ?? widget.model!.inputPrice,
-        outputPrice: double.tryParse(outputController.text) ?? widget.model!.outputPrice,
+        contextWindow:
+            int.tryParse(contextController.text) ?? widget.model!.contextWindow,
+        inputPrice:
+            double.tryParse(inputController.text) ?? widget.model!.inputPrice,
+        outputPrice:
+            double.tryParse(outputController.text) ?? widget.model!.outputPrice,
         releasedAt: DateTime.tryParse(releasedAtController.text),
         reasoning: supportReasoning,
         vision: supportVisual,
@@ -206,15 +208,8 @@ class _DesktopModelFormDialogState
       onTap: storeModel,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
-    var children = [
-      cancelButton,
-      const SizedBox(width: 12),
-      storeButton,
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: children,
-    );
+    var children = [cancelButton, const SizedBox(width: 12), storeButton];
+    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 
   Widget _buildSupports() {
@@ -246,7 +241,9 @@ class _DesktopModelFormDialogState
     var children = [
       SizedBox(width: 100, child: Text('Features', style: textStyle)),
       const SizedBox(width: 12),
-      Expanded(child: Wrap(runSpacing: 12, spacing: 12, children: wrapChildren))
+      Expanded(
+        child: Wrap(runSpacing: 12, spacing: 12, children: wrapChildren),
+      ),
     ];
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

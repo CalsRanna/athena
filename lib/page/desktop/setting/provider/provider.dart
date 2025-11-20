@@ -1,11 +1,11 @@
-import 'package:athena/entity/ai_provider_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/context_menu.dart';
@@ -35,7 +35,7 @@ class DesktopSettingProviderPage extends StatefulWidget {
 class _DesktopSettingProviderPageState
     extends State<DesktopSettingProviderPage> {
   late final ModelViewModel modelViewModel;
-  late final AIProviderViewModel providerViewModel;
+  late final ProviderViewModel providerViewModel;
 
   String model = '';
   int index = 0;
@@ -46,7 +46,7 @@ class _DesktopSettingProviderPageState
   void initState() {
     super.initState();
     modelViewModel = GetIt.instance<ModelViewModel>();
-    providerViewModel = GetIt.instance<AIProviderViewModel>();
+    providerViewModel = GetIt.instance<ProviderViewModel>();
     _initState();
   }
 
@@ -54,8 +54,6 @@ class _DesktopSettingProviderPageState
   void dispose() {
     keyController.dispose();
     urlController.dispose();
-    modelViewModel.dispose();
-    providerViewModel.dispose();
     super.dispose();
   }
 
@@ -86,7 +84,7 @@ class _DesktopSettingProviderPageState
     modelViewModel.checkConnection(model);
   }
 
-  void createModel(AIProviderEntity provider) {
+  void createModel(ProviderEntity provider) {
     AthenaDialog.show(DesktopModelFormDialog(provider: provider));
   }
 
@@ -99,7 +97,7 @@ class _DesktopSettingProviderPageState
     }
   }
 
-  Future<void> destroyProvider(AIProviderEntity provider) async {
+  Future<void> destroyProvider(ProviderEntity provider) async {
     var result = await AthenaDialog.confirm(
       'Do you want to delete this provider?',
     );
@@ -132,10 +130,7 @@ class _DesktopSettingProviderPageState
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  void openProviderContextMenu(
-    TapUpDetails details,
-    AIProviderEntity provider,
-  ) {
+  void openProviderContextMenu(TapUpDetails details, ProviderEntity provider) {
     if (provider.isPreset) return;
     var contextMenu = DesktopProviderContextMenu(
       offset: details.globalPosition - Offset(240, 50),
@@ -146,7 +141,7 @@ class _DesktopSettingProviderPageState
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  void openProviderFormDialog(AIProviderEntity provider) async {
+  void openProviderFormDialog(ProviderEntity provider) async {
     AthenaDialog.show(DesktopProviderFormDialog(provider: provider));
   }
 
@@ -207,7 +202,7 @@ class _DesktopSettingProviderPageState
     });
   }
 
-  Widget _buildProviderTile(List<AIProviderEntity> providers, int index) {
+  Widget _buildProviderTile(List<ProviderEntity> providers, int index) {
     var provider = providers[index];
     var tag = AthenaTag.small(fontSize: 6, text: 'ON');
     return DesktopMenuTile(
@@ -287,8 +282,8 @@ class _DesktopSettingProviderPageState
   }
 
   Future<void> _initState() async {
-    await providerViewModel.loadProviders();
-    await modelViewModel.loadModels();
+    await providerViewModel.initSignals();
+    await modelViewModel.initSignals();
     var providers = providerViewModel.providers.value;
     if (providers.isEmpty) return;
     keyController.text = providers[index].apiKey;

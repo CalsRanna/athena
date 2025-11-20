@@ -1,7 +1,7 @@
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/ai_provider_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
@@ -24,7 +24,8 @@ class MobileDefaultModelFormPage extends StatefulWidget {
 
 class _MobileDefaultModelFormPageState
     extends State<MobileDefaultModelFormPage> {
-  late final viewModel = GetIt.instance<SettingViewModel>();
+  final settingViewModel = GetIt.instance<SettingViewModel>();
+  final modelViewModel = GetIt.instance<ModelViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -36,39 +37,46 @@ class _MobileDefaultModelFormPageState
       );
       var chatTitle = Text('Default Chat Model', style: titleTextStyle);
       var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
-      var chatSearchDecisionTitle =
-          Text('Chat Search Decision Model', style: titleTextStyle);
+      var chatSearchDecisionTitle = Text(
+        'Chat Search Decision Model',
+        style: titleTextStyle,
+      );
       var generationTitle = Text(
         'Sentinel Metadata Generation Model',
         style: titleTextStyle,
       );
       var shortcutTitle = Text('Shortcut Model', style: titleTextStyle);
 
-      var chatModel = viewModel.chatModelId.value;
       var chatDropdown = _ModelDropdown(
-        model: chatModel,
-        onChanged: viewModel.updateChatModelId,
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.chatModel.value,
+        onChanged: settingViewModel.updateChatModelId,
+        provider: settingViewModel.chatModelProvider.value,
       );
-      var chatNamingModel = viewModel.chatNamingModelId.value;
       var chatNamingDropdown = _ModelDropdown(
-        model: chatNamingModel,
-        onChanged: viewModel.updateChatNamingModelId,
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.chatNamingModel.value,
+        onChanged: settingViewModel.updateChatNamingModelId,
+        provider: settingViewModel.chatNamingModelProvider.value,
       );
-      var chatSearchDecisionModel = viewModel.chatSearchDecisionModelId.value;
       var chatSearchDecisionDropdown = _ModelDropdown(
-        model: chatSearchDecisionModel,
-        onChanged: viewModel.updateChatSearchDecisionModelId,
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.chatSearchDecisionModel.value,
+        onChanged: settingViewModel.updateChatSearchDecisionModelId,
+        provider: settingViewModel.chatSearchDecisionModelProvider.value,
       );
-      var sentinelMetadataGenerationModel =
-          viewModel.sentinelMetadataGenerationModelId.value;
       var sentinelMetadataGenerationDropdown = _ModelDropdown(
-        model: sentinelMetadataGenerationModel,
-        onChanged: viewModel.updateSentinelMetadataGenerationModelId,
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.sentinelMetadataGenerationModel.value,
+        onChanged: settingViewModel.updateSentinelMetadataGenerationModelId,
+        provider:
+            settingViewModel.sentinelMetadataGenerationModelProvider.value,
       );
-      var shortcutModel = viewModel.shortModelId.value;
       var shortcutDropdown = _ModelDropdown(
-        model: shortcutModel,
-        onChanged: viewModel.updateShortModelId,
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.shortModel.value,
+        onChanged: settingViewModel.updateShortModelId,
+        provider: settingViewModel.shortModelProvider.value,
       );
       var tipTextStyle = TextStyle(
         color: ColorUtil.FFC2C2C2,
@@ -123,7 +131,7 @@ class _MobileDefaultModelFormPageState
         shortcutDropdown,
         const SizedBox(height: 12),
         shortcutTip,
-        SafeArea(top: false, child: const SizedBox())
+        SafeArea(top: false, child: const SizedBox()),
       ];
       var listView = ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -135,45 +143,57 @@ class _MobileDefaultModelFormPageState
       );
     });
   }
+
+  @override
+  void initState() {
+    super.initState();
+    settingViewModel.initSignals();
+    modelViewModel.initSignals();
+  }
 }
 
 class _ModelDropdown extends StatelessWidget {
-  final int? model;
+  final Map<String, List<ModelEntity>>? groupedModels;
+  final ModelEntity? model;
   final void Function(int)? onChanged;
-  const _ModelDropdown({this.model, this.onChanged});
+  final ProviderEntity? provider;
+  const _ModelDropdown({
+    this.groupedModels,
+    this.model,
+    this.onChanged,
+    this.provider,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      var boxDecoration = BoxDecoration(
-        color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(24),
-      );
-      var icon = Icon(
-        HugeIcons.strokeRoundedFilterHorizontal,
-        color: ColorUtil.FFF5F5F5,
-        size: 20,
-      );
-      var children = [_buildText(), icon];
-      var row = Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: children,
-      );
-      var container = Container(
-        decoration: boxDecoration,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-        child: row,
-      );
-      var mouseRegion = MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: container,
-      );
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: showModelSelectorDialog,
-        child: mouseRegion,
-      );
-    });
+    var boxDecoration = BoxDecoration(
+      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(24),
+    );
+    var icon = Icon(
+      HugeIcons.strokeRoundedFilterHorizontal,
+      color: ColorUtil.FFF5F5F5,
+      size: 20,
+    );
+    var children = [_buildText(), icon];
+    var row = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: children,
+    );
+    var container = Container(
+      decoration: boxDecoration,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
+      child: row,
+    );
+    var mouseRegion = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: container,
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: showModelSelectorDialog,
+      child: mouseRegion,
+    );
   }
 
   void handleTap(ModelEntity model) {
@@ -182,8 +202,9 @@ class _ModelDropdown extends StatelessWidget {
   }
 
   void showModelSelectorDialog() {
+    if (groupedModels == null) return;
     AthenaDialog.show(
-      MobileModelSelectDialog(onTap: handleTap),
+      MobileModelSelectDialog(groupedModels: groupedModels!, onTap: handleTap),
       barrierDismissible: true,
     );
   }
@@ -195,22 +216,8 @@ class _ModelDropdown extends StatelessWidget {
         fontSize: 14,
         height: 1.7,
       );
-      if (model == null || model == 0) return Text('No Model', style: textStyle);
-
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      var providerViewModel = GetIt.instance<AIProviderViewModel>();
-      var modelEntity = modelViewModel.models.value
-          .where((m) => m.id == model)
-          .firstOrNull;
-      if (modelEntity == null) return Text('No Model', style: textStyle);
-
-      var modelName = modelEntity.name;
-      var aiProvider = providerViewModel.providers.value
-          .where((p) => p.id == modelEntity.providerId)
-          .firstOrNull;
-      var providerName = aiProvider?.name ?? '';
-      if (providerName.isEmpty) return Text(modelName, style: textStyle);
-      return Text('$modelName | $providerName', style: textStyle);
+      if (model == null) return Text('No Model', style: textStyle);
+      return Text('${model?.name} | ${provider?.name}', style: textStyle);
     });
   }
 }

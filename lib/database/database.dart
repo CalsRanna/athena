@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:athena/database/migration/migration_202501170001_init.dart';
 import 'package:athena/database/migration/migration_202501170002_add_server_fields.dart';
+import 'package:athena/database/migration/migration_202501200001_fix_providers_models_schema.dart';
+import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -27,6 +29,7 @@ class Database {
   Future<void> ensureInitialized() async {
     var directory = await getApplicationSupportDirectory();
     var path = join(directory.path, 'athena.db');
+    LoggerUtil.logger.i('Database path: $path');
     var file = File(path);
     var exists = await file.exists();
     if (!exists) {
@@ -34,7 +37,12 @@ class Database {
     }
 
     var config = SqliteConfig(path);
-    laconic = Laconic.sqlite(config);
+    laconic = Laconic.sqlite(
+      config,
+      listen: (query) {
+        LoggerUtil.logger.d(query.sql);
+      },
+    );
 
     await _migrate();
   }
@@ -48,5 +56,6 @@ class Database {
     // 按顺序执行迁移
     await Migration202501170001Init().migrate();
     await Migration202501170002AddServerFields().migrate();
+    await Migration202501200001FixProvidersModelsSchema().migrate();
   }
 }

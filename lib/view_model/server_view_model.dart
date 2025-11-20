@@ -127,10 +127,7 @@ class ServerViewModel {
       }
 
       // 更新 server entity
-      var updated = server.copyWith(
-        description: description,
-        tools: tools,
-      );
+      var updated = server.copyWith(description: description, tools: tools);
 
       await _serverRepository.updateServer(updated);
 
@@ -152,12 +149,5 @@ class ServerViewModel {
     } finally {
       isLoading.value = false;
     }
-  }
-
-  void dispose() {
-    _mcpService.dispose();
-    servers.dispose();
-    isLoading.dispose();
-    error.dispose();
   }
 }
