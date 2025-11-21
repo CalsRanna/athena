@@ -29,24 +29,46 @@ class _MobileDefaultModelFormPageState
 
   @override
   Widget build(BuildContext context) {
+    var titleTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
+    var chatTitle = Text('Default Chat Model', style: titleTextStyle);
+    var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
+    var chatSearchDecisionTitle = Text(
+      'Chat Search Decision Model',
+      style: titleTextStyle,
+    );
+    var generationTitle = Text(
+      'Sentinel Metadata Generation Model',
+      style: titleTextStyle,
+    );
+    var shortcutTitle = Text('Shortcut Model', style: titleTextStyle);
+    var tipTextStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var chatTip = Text('Model designated for new chat', style: tipTextStyle);
+    var namingTip = Text(
+      'Model designated for automatic chat renaming',
+      style: tipTextStyle,
+    );
+    var chatSearchDecisionTip = Text(
+      'Model designated for deciding whether user\'s input should search from internet or not',
+      style: tipTextStyle,
+    );
+    var generationTip = Text(
+      'Model designated for generating sentinel name, description, avatar, and tags',
+      style: tipTextStyle,
+    );
+    var shortcutTip = Text(
+      'Model designated for all shortcuts',
+      style: tipTextStyle,
+    );
     return Watch((context) {
-      var titleTextStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
-        fontSize: 20,
-        fontWeight: FontWeight.w500,
-      );
-      var chatTitle = Text('Default Chat Model', style: titleTextStyle);
-      var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
-      var chatSearchDecisionTitle = Text(
-        'Chat Search Decision Model',
-        style: titleTextStyle,
-      );
-      var generationTitle = Text(
-        'Sentinel Metadata Generation Model',
-        style: titleTextStyle,
-      );
-      var shortcutTitle = Text('Shortcut Model', style: titleTextStyle);
-
       var chatDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
         model: settingViewModel.chatModel.value,
@@ -77,29 +99,6 @@ class _MobileDefaultModelFormPageState
         model: settingViewModel.shortModel.value,
         onChanged: settingViewModel.updateShortModelId,
         provider: settingViewModel.shortModelProvider.value,
-      );
-      var tipTextStyle = TextStyle(
-        color: ColorUtil.FFC2C2C2,
-        fontSize: 12,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-      );
-      var chatTip = Text('Model designated for new chat', style: tipTextStyle);
-      var namingTip = Text(
-        'Model designated for automatic chat renaming',
-        style: tipTextStyle,
-      );
-      var chatSearchDecisionTip = Text(
-        'Model designated for deciding whether user\'s input should search from internet or not',
-        style: tipTextStyle,
-      );
-      var generationTip = Text(
-        'Model designated for generating sentinel name, description, avatar, and tags',
-        style: tipTextStyle,
-      );
-      var shortcutTip = Text(
-        'Model designated for all shortcuts',
-        style: tipTextStyle,
       );
       var listChildren = [
         chatTitle,

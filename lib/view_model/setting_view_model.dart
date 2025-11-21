@@ -2,16 +2,26 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
-import 'package:signals/signals.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:signals/signals.dart';
 
 /// SettingViewModel 使用 SharedPreferences 管理应用设置
 /// 不依赖数据库，所有设置都存储在本地偏好设置中
 class SettingViewModel {
+  // SharedPreferences keys
+  static const String _keyWindowHeight = 'window_height';
+  static const String _keyWindowWidth = 'window_width';
+
+  static const String _keyChatModelId = 'chat_model_id';
+  static const String _keyChatNamingModelId = 'chat_naming_model_id';
+  static const String _keyChatSearchDecisionModelId =
+      'chat_search_decision_model_id';
+  static const String _keySentinelMetadataGenerationModelId =
+      'sentinel_metadata_generation_model_id';
+  static const String _keyShortModelId = 'short_model_id';
   // Window 尺寸
   final windowHeight = signal(720.0);
   final windowWidth = signal(960.0);
-
   // 模型 ID 设置
   final chatModelId = signal(0);
   final chatNamingModelId = signal(0);
@@ -21,6 +31,7 @@ class SettingViewModel {
   final chatModel = signal<ModelEntity?>(null);
   final chatNamingModel = signal<ModelEntity?>(null);
   final chatSearchDecisionModel = signal<ModelEntity?>(null);
+
   final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
   final shortModel = signal<ModelEntity?>(null);
   final chatModelProvider = signal<ProviderEntity?>(null);
@@ -29,19 +40,15 @@ class SettingViewModel {
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
 
-  // SharedPreferences keys
-  static const String _keyWindowHeight = 'window_height';
-  static const String _keyWindowWidth = 'window_width';
-  static const String _keyChatModelId = 'chat_model_id';
-  static const String _keyChatNamingModelId = 'chat_naming_model_id';
-  static const String _keyChatSearchDecisionModelId =
-      'chat_search_decision_model_id';
-  static const String _keySentinelMetadataGenerationModelId =
-      'sentinel_metadata_generation_model_id';
-  static const String _keyShortModelId = 'short_model_id';
-
   final _modelRepository = ModelRepository();
   final _providerRepository = ProviderRepository();
+
+  /// 清除所有设置（恢复默认）
+  Future<void> clearAllSettings() async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.clear();
+    await initSignals(); // 重新加载默认值
+  }
 
   /// 加载所有设置
   Future<void> initSignals() async {
@@ -79,16 +86,6 @@ class SettingViewModel {
     shortModelProvider.value = await _providerRepository.getProviderById(
       shortModelId.value,
     );
-  }
-
-  /// 更新窗口尺寸
-  Future<void> updateWindowSize(double height, double width) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setDouble(_keyWindowHeight, height);
-    await instance.setDouble(_keyWindowWidth, width);
-
-    windowHeight.value = height;
-    windowWidth.value = width;
   }
 
   /// 更新聊天模型 ID
@@ -145,10 +142,13 @@ class SettingViewModel {
     );
   }
 
-  /// 清除所有设置（恢复默认）
-  Future<void> clearAllSettings() async {
+  /// 更新窗口尺寸
+  Future<void> updateWindowSize(double height, double width) async {
     final instance = await SharedPreferences.getInstance();
-    await instance.clear();
-    await initSignals(); // 重新加载默认值
+    await instance.setDouble(_keyWindowHeight, height);
+    await instance.setDouble(_keyWindowWidth, width);
+
+    windowHeight.value = height;
+    windowWidth.value = width;
   }
 }

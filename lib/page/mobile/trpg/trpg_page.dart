@@ -89,7 +89,6 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  // ==================== 初始化界面 ====================
   Widget _buildInitView() {
     return SingleChildScrollView(
       padding: EdgeInsets.all(24),
@@ -286,7 +285,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                   ),
                 )
               : Text(
-                  '开始冒险',
+                  'START GAME',
                   style: TextStyle(
                     color: ColorUtil.FF282828,
                     fontSize: 18,
@@ -314,10 +313,8 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
 
     setState(() => _isCreatingGame = true);
 
-    // 立即切换到游戏界面
     pageState.value = TRPGPageState.playing;
 
-    // 异步创建游戏和生成开场
     viewModel
         .createNewGame(
           gameStyle: selectedGameStyle!,
@@ -333,7 +330,6 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     return Column(
       children: [
         Expanded(child: _buildMessageList()),
-        _buildSuggestionsPanel(),
         _buildInputPanel(),
       ],
     );
@@ -342,7 +338,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
   Widget _buildMessageList() {
     return Watch((_) {
       final messages = viewModel.messages.value;
-      final streamingContent = viewModel.streamingContent.value;
+      final streamingMessage = viewModel.streamingMessage.value;
       final isStreaming = viewModel.isStreaming.value;
 
       final reversedMessages = messages.reversed.toList();
@@ -353,13 +349,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         reverse: true,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
-          if (isStreaming && index == 0) {
-            return _buildDMMessageBubble(streamingContent, true);
+          if (isStreaming && index == 0 && streamingMessage != null) {
+            return _buildDMMessageBubble(streamingMessage, true);
           }
           final messageIndex = isStreaming ? index - 1 : index;
           final message = reversedMessages[messageIndex];
           if (message.role == 'dm') {
-            return _buildDMMessageBubble(message.content, false);
+            return _buildDMMessageBubble(message, false);
           }
           return _buildPlayerMessageBubble(message);
         },
@@ -367,39 +363,59 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     });
   }
 
-  Widget _buildDMMessageBubble(String content, bool isStreaming) {
+  Widget _buildDMMessageBubble(TRPGMessageEntity message, bool isStreaming) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (content.isNotEmpty)
-                  AthenaMarkdown(
-                    message: MessageEntity(
-                      chatId: 0,
-                      role: 'assistant',
-                      content: content,
-                    ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (message.content.isNotEmpty)
+                      AthenaMarkdown(
+                        message: MessageEntity(
+                          chatId: 0,
+                          role: 'assistant',
+                          content: message.content,
+                        ),
+                      ),
+                    if (isStreaming)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: message.content.isEmpty ? 0 : 8,
+                        ),
+                        child: SizedBox(
+                          height: 12,
+                          width: 12,
+                          child: CircularProgressIndicator(strokeWidth: 1),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (message.suggestions.isNotEmpty && !isStreaming)
+                SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: message.suggestions.length,
+                    separatorBuilder: (_, __) => SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      return _buildSuggestionButton(message.suggestions[index]);
+                    },
                   ),
-                if (isStreaming)
-                  Padding(
-                    padding: EdgeInsets.only(top: content.isEmpty ? 0 : 8),
-                    child: SizedBox(
-                      height: 12,
-                      width: 12,
-                      child: CircularProgressIndicator(strokeWidth: 1),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ],
@@ -454,28 +470,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     await viewModel.sendPlayerAction(message.content);
   }
 
-  Widget _buildSuggestionsPanel() {
-    return Watch((_) {
-      final suggestions = viewModel.suggestedActions.value;
-
-      if (suggestions.isEmpty) return SizedBox.shrink();
-
-      return SizedBox(
-        height: 50,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          itemCount: suggestions.length,
-          separatorBuilder: (_, __) => SizedBox(width: 8),
-          itemBuilder: (context, index) {
-            return _buildSuggestionButton(suggestions[index]);
-          },
-        ),
-      );
-    });
-  }
-
-  Widget _buildSuggestionButton(suggestion) {
+  Widget _buildSuggestionButton(String suggestion) {
     // 内层容器：深色背景
     final innerContainer = Container(
       alignment: Alignment.center,
@@ -484,20 +479,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         shape: StadiumBorder(),
       ),
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 6,
-        children: [
-          Text(suggestion.emoji, style: TextStyle(fontSize: 16)),
-          Text(
-            suggestion.text,
-            style: TextStyle(
-              color: ColorUtil.FFFFFFFF,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+      child: Text(
+        suggestion,
+        style: TextStyle(
+          color: ColorUtil.FFFFFFFF,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
 
@@ -519,7 +507,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        inputController.text = suggestion.text;
+        inputController.text = suggestion;
         _handleSendMessage();
       },
       child: Container(
