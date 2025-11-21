@@ -28,25 +28,15 @@ class TRPGViewModel {
   final messages = listSignal<TRPGMessageEntity>([]);
   final isStreaming = signal(false);
   final isGeneratingSuggestions = signal(false);
-  final currentHP = signal(100);
-  final maxHP = signal(100);
-  final currentMP = signal(50);
-  final maxMP = signal(50);
-  final inventory = listSignal<String>([]);
-  final currentQuest = signal('');
-  final currentScene = signal('');
   final currentSuggestions = listSignal<String>([]); // 当前显示的建议列表
+  final showInputPanel = signal(false); // 控制输入面板显示
   final error = signal<String?>(null);
 
   // 当前流式响应的消息实体
   final streamingMessage = signal<TRPGMessageEntity?>(null);
 
   /// 创建新游戏
-  Future<TRPGGameEntity?> createNewGame({
-    required String gameStyle,
-    required String characterClass,
-    required String gameMode,
-  }) async {
+  Future<TRPGGameEntity?> createNewGame() async {
     try {
       // 获取默认模型
       var model = await _getDefaultModel();
@@ -58,10 +48,6 @@ class TRPGViewModel {
       // 创建游戏实体
       var now = DateTime.now();
       var game = TRPGGameEntity(
-        title: '$gameStyle - $characterClass',
-        gameStyle: gameStyle,
-        characterClass: characterClass,
-        gameMode: gameMode,
         modelId: model.id!,
         createdAt: now,
         updatedAt: now,
@@ -71,27 +57,11 @@ class TRPGViewModel {
       game = game.copyWith(id: gameId);
       currentGame.value = game;
 
-      // 初始化状态
-      currentHP.value = 100;
-      maxHP.value = 100;
-      currentMP.value = 50;
-      maxMP.value = 50;
-      inventory.value = [];
-      currentQuest.value = '';
-      currentScene.value = '';
+      // 初始化消息列表
       messages.value = [];
 
       // 发送初始化消息
-      var initMessage =
-          '''
-1. 剧本风格：$gameStyle
-2. 角色设定：$characterClass
-3. 游戏基调：$gameMode
-
-请开始游戏！
-''';
-
-      await sendPlayerAction(initMessage);
+      await sendPlayerAction('开始游戏');
       return game;
     } catch (e) {
       error.value = '创建游戏失败：$e';
@@ -115,21 +85,22 @@ class TRPGViewModel {
   /// 删除消息（用于重试）
   Future<void> deleteMessage(TRPGMessageEntity message) async {
     try {
-      if (message.id != null) {
-        await _messageRepository.deleteMessage(message.id!);
-      }
-      messages.remove(message);
-      // 删除该消息后的所有消息
+      // 先找到消息的索引
       var messageIndex = messages.value.indexOf(message);
-      if (messageIndex >= 0) {
-        var toRemove = messages.value.skip(messageIndex).toList();
-        for (var msg in toRemove) {
-          if (msg.id != null) {
-            await _messageRepository.deleteMessage(msg.id!);
-          }
+      if (messageIndex < 0) return;
+
+      // 获取要删除的所有消息（包括选中的消息及之后的所有消息）
+      var toRemove = messages.value.skip(messageIndex).toList();
+
+      // 从数据库中删除这些消息
+      for (var msg in toRemove) {
+        if (msg.id != null) {
+          await _messageRepository.deleteMessage(msg.id!);
         }
-        messages.value = messages.value.take(messageIndex).toList();
       }
+
+      // 更新内存中的消息列表（只保留索引之前的消息）
+      messages.value = messages.value.take(messageIndex).toList();
     } catch (e) {
       error.value = '删除消息失败：$e';
     }
@@ -146,24 +117,6 @@ class TRPGViewModel {
 
       currentGame.value = game;
 
-      // 加载游戏状态
-      currentHP.value = game.currentHP;
-      maxHP.value = game.maxHP;
-      currentMP.value = game.currentMP;
-      maxMP.value = game.maxMP;
-      currentQuest.value = game.currentQuest;
-      currentScene.value = game.currentScene;
-
-      // 解析背包
-      if (game.inventory.isNotEmpty) {
-        inventory.value = game.inventory
-            .split(',')
-            .map((e) => e.trim())
-            .toList();
-      } else {
-        inventory.value = [];
-      }
-
       // 加载消息历史
       var loadedMessages = await _messageRepository.getMessagesByGameId(gameId);
       messages.value = loadedMessages;
@@ -178,8 +131,9 @@ class TRPGViewModel {
     if (game == null) return;
 
     try {
-      // 清空当前的建议
+      // 清空当前的建议并隐藏输入框
       currentSuggestions.value = [];
+      showInputPanel.value = false;
 
       // 创建玩家消息
       var playerMessage = TRPGMessageEntity(
@@ -203,16 +157,16 @@ class TRPGViewModel {
       );
       if (provider == null) return;
 
-      // 流式获取 DM 响应
-      isStreaming.value = true;
-
-      // 初始化 streaming message
+      // 初始化 streaming message（必须在 isStreaming 之前设置）
       streamingMessage.value = TRPGMessageEntity(
         gameId: game.id!,
         role: 'dm',
         content: '',
         createdAt: DateTime.now(),
       );
+
+      // 流式获取 DM 响应
+      isStreaming.value = true;
 
       var stream = _service.getDMResponse(
         messages: chatMessages,
@@ -247,7 +201,7 @@ class TRPGViewModel {
       await _messageRepository.createMessage(dmMessage);
       messages.add(dmMessage);
 
-      // 更新当前显示的建议列表
+      // 更新当前显示的建议列表（输入框仍然隐藏，等待用户选择）
       currentSuggestions.value = suggestions;
 
       // 所有操作完成后才结束 streaming 状态

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
@@ -42,16 +43,17 @@ class TRPGService {
       var response = await client.createChatCompletion(request: request);
       var content = response.choices.first.message.content ?? '';
 
-      var suggestions = content
-          .split('\n')
-          .map((line) => line.trim())
-          .where((line) => line.isNotEmpty)
-          // 移除可能的序号和符号前缀（1. 2. - * 等）
-          .map((line) => line.replaceFirst(RegExp(r'^[\d\-\*\.]+\s*'), ''))
-          .where((line) => line.isNotEmpty)
-          .toList();
+      // 清理可能的 markdown 代码块标记
+      content = content.replaceAll('```json', '').replaceAll('```', '').trim();
 
-      return suggestions;
+      // 解析 JSON 数组
+      try {
+        var jsonArray = jsonDecode(content) as List;
+        return jsonArray.map((item) => item.toString()).toList();
+      } catch (e) {
+        // 如果 JSON 解析失败，返回空列表
+        return [];
+      }
     } catch (error) {
       // 生成失败时静默返回空列表
       return [];
