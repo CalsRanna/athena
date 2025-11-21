@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/trpg_game_entity.dart';
 import 'package:athena/entity/trpg_message_entity.dart';
-import 'package:athena/model/action_suggestion.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
@@ -35,11 +35,11 @@ class TRPGViewModel {
   final inventory = listSignal<String>([]);
   final currentQuest = signal('');
   final currentScene = signal('');
-  final suggestedActions = listSignal<ActionSuggestion>([]);
+  final currentSuggestions = listSignal<String>([]); // 当前显示的建议列表
   final error = signal<String?>(null);
 
-  // 当前流式响应内容
-  final streamingContent = signal('');
+  // 当前流式响应的消息实体
+  final streamingMessage = signal<TRPGMessageEntity?>(null);
 
   /// 创建新游戏
   Future<TRPGGameEntity?> createNewGame({
@@ -99,6 +99,42 @@ class TRPGViewModel {
     }
   }
 
+  /// 删除游戏
+  Future<void> deleteGame(int gameId) async {
+    try {
+      await _gameRepository.deleteGame(gameId);
+      if (currentGame.value?.id == gameId) {
+        currentGame.value = null;
+        messages.value = [];
+      }
+    } catch (e) {
+      error.value = '删除游戏失败：$e';
+    }
+  }
+
+  /// 删除消息（用于重试）
+  Future<void> deleteMessage(TRPGMessageEntity message) async {
+    try {
+      if (message.id != null) {
+        await _messageRepository.deleteMessage(message.id!);
+      }
+      messages.remove(message);
+      // 删除该消息后的所有消息
+      var messageIndex = messages.value.indexOf(message);
+      if (messageIndex >= 0) {
+        var toRemove = messages.value.skip(messageIndex).toList();
+        for (var msg in toRemove) {
+          if (msg.id != null) {
+            await _messageRepository.deleteMessage(msg.id!);
+          }
+        }
+        messages.value = messages.value.take(messageIndex).toList();
+      }
+    } catch (e) {
+      error.value = '删除消息失败：$e';
+    }
+  }
+
   /// 加载游戏存档
   Future<void> loadGame(int gameId) async {
     try {
@@ -142,8 +178,8 @@ class TRPGViewModel {
     if (game == null) return;
 
     try {
-      // 清空之前的建议
-      suggestedActions.value = [];
+      // 清空当前的建议
+      currentSuggestions.value = [];
 
       // 创建玩家消息
       var playerMessage = TRPGMessageEntity(
@@ -169,7 +205,14 @@ class TRPGViewModel {
 
       // 流式获取 DM 响应
       isStreaming.value = true;
-      streamingContent.value = '';
+
+      // 初始化 streaming message
+      streamingMessage.value = TRPGMessageEntity(
+        gameId: game.id!,
+        role: 'dm',
+        content: '',
+        createdAt: DateTime.now(),
+      );
 
       var stream = _service.getDMResponse(
         messages: chatMessages,
@@ -181,75 +224,39 @@ class TRPGViewModel {
       await for (var chunk in stream) {
         var delta = chunk.response.choices.first.delta.content ?? '';
         fullContent += delta;
-        streamingContent.value = fullContent;
+        streamingMessage.value = streamingMessage.value!.copyWith(
+          content: fullContent,
+        );
       }
 
-      // 保存 DM 消息
+      // 生成行动建议（此时仍然保持 streaming 状态）
+      var suggestions = await _generateActionSuggestions(
+        dmMessage: fullContent,
+        model: model,
+        provider: provider,
+      );
+
+      // 保存 DM 消息（带 suggestions）
       var dmMessage = TRPGMessageEntity(
         gameId: game.id!,
         role: 'dm',
         content: fullContent,
+        suggestions: suggestions,
         createdAt: DateTime.now(),
       );
       await _messageRepository.createMessage(dmMessage);
       messages.add(dmMessage);
 
+      // 更新当前显示的建议列表
+      currentSuggestions.value = suggestions;
+
+      // 所有操作完成后才结束 streaming 状态
       isStreaming.value = false;
-      streamingContent.value = '';
-
-      // 解析并更新状态
-      await _updateGameStatus(fullContent);
-
-      // 生成行动建议
-      await generateActionSuggestions();
+      streamingMessage.value = null;
     } catch (e) {
       error.value = '发送消息失败：$e';
       isStreaming.value = false;
-      streamingContent.value = '';
-    }
-  }
-
-  /// 生成行动建议
-  Future<void> generateActionSuggestions() async {
-    var game = currentGame.value;
-    if (game == null) return;
-
-    // 获取最新的 DM 消息
-    var dmMessages = messages.value.where((m) => m.role == 'dm').toList();
-    if (dmMessages.isEmpty) return;
-
-    var lastDMMessage = dmMessages.last;
-
-    try {
-      isGeneratingSuggestions.value = true;
-
-      var model = await _modelRepository.getModelById(game.modelId);
-      if (model == null) return;
-
-      var provider = await _providerRepository.getProviderById(
-        model.providerId,
-      );
-      if (provider == null) return;
-
-      var suggestions = await _service.generateSuggestions(
-        dmMessage: lastDMMessage.content,
-        characterProfile: game.characterClass, // 使用角色职业作为profile
-        currentHP: currentHP.value,
-        maxHP: maxHP.value,
-        currentMP: currentMP.value,
-        maxMP: maxMP.value,
-        inventory: inventory.value.join(', '),
-        currentQuest: currentQuest.value,
-        provider: provider,
-        model: model,
-      );
-
-      suggestedActions.value = suggestions;
-    } catch (e) {
-      // 静默失败
-      suggestedActions.value = [];
-    } finally {
-      isGeneratingSuggestions.value = false;
+      streamingMessage.value = null;
     }
   }
 
@@ -277,96 +284,33 @@ class TRPGViewModel {
     return result;
   }
 
-  /// 更新游戏状态
-  Future<void> _updateGameStatus(String response) async {
-    var game = currentGame.value;
-    if (game == null) return;
+  /// 生成行动建议（私有方法）
+  Future<List<String>> _generateActionSuggestions({
+    required String dmMessage,
+    required ModelEntity model,
+    required ProviderEntity provider,
+  }) async {
+    try {
+      isGeneratingSuggestions.value = true;
 
-    var status = _service.parseStatus(response);
+      var suggestions = await _service.getSuggestions(
+        dmMessage: dmMessage,
+        provider: provider,
+        model: model,
+      );
 
-    // 更新本地状态
-    if (status.containsKey('current_hp')) {
-      currentHP.value = status['current_hp'];
+      return suggestions;
+    } catch (e) {
+      // 静默失败
+      return [];
+    } finally {
+      isGeneratingSuggestions.value = false;
     }
-    if (status.containsKey('max_hp')) {
-      maxHP.value = status['max_hp'];
-    }
-    if (status.containsKey('current_mp')) {
-      currentMP.value = status['current_mp'];
-    }
-    if (status.containsKey('max_mp')) {
-      maxMP.value = status['max_mp'];
-    }
-    if (status.containsKey('inventory')) {
-      var inv = status['inventory'] as String;
-      inventory.value = inv
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-    }
-    if (status.containsKey('current_quest')) {
-      currentQuest.value = status['current_quest'];
-    }
-    if (status.containsKey('current_scene')) {
-      currentScene.value = status['current_scene'];
-    }
-
-    // 更新数据库
-    var updatedGame = game.copyWith(
-      currentHP: currentHP.value,
-      maxHP: maxHP.value,
-      currentMP: currentMP.value,
-      maxMP: maxMP.value,
-      inventory: inventory.value.join(', '),
-      currentQuest: currentQuest.value,
-      currentScene: currentScene.value,
-      updatedAt: DateTime.now(),
-    );
-
-    await _gameRepository.updateGame(updatedGame);
-    currentGame.value = updatedGame;
   }
 
   /// 获取默认模型
   Future<ModelEntity?> _getDefaultModel() async {
     var models = await _modelRepository.getAllModels();
     return models.isNotEmpty ? models.first : null;
-  }
-
-  /// 删除游戏
-  Future<void> deleteGame(int gameId) async {
-    try {
-      await _gameRepository.deleteGame(gameId);
-      if (currentGame.value?.id == gameId) {
-        currentGame.value = null;
-        messages.value = [];
-      }
-    } catch (e) {
-      error.value = '删除游戏失败：$e';
-    }
-  }
-
-  /// 删除消息（用于重试）
-  Future<void> deleteMessage(TRPGMessageEntity message) async {
-    try {
-      if (message.id != null) {
-        await _messageRepository.deleteMessage(message.id!);
-      }
-      messages.remove(message);
-      // 删除该消息后的所有消息
-      var messageIndex = messages.value.indexOf(message);
-      if (messageIndex >= 0) {
-        var toRemove = messages.value.skip(messageIndex).toList();
-        for (var msg in toRemove) {
-          if (msg.id != null) {
-            await _messageRepository.deleteMessage(msg.id!);
-          }
-        }
-        messages.value = messages.value.take(messageIndex).toList();
-      }
-    } catch (e) {
-      error.value = '删除消息失败：$e';
-    }
   }
 }
