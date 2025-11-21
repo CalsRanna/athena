@@ -27,10 +27,11 @@ class TRPGMessageEntity {
             jsonDecode(json['suggestions'] as String),
           );
         } catch (e) {
-          // 如果解析失败,尝试按逗号分割
+          // 如果解析失败,尝试按逗号分割,并过滤空字符串
           suggestionsList = (json['suggestions'] as String)
               .split(',')
               .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
               .toList();
         }
       } else if (json['suggestions'] is List) {

@@ -10,6 +10,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
 import 'package:athena/service/trpg_service.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
@@ -209,6 +210,7 @@ class TRPGViewModel {
       streamingMessage.value = null;
     } catch (e) {
       error.value = '发送消息失败：$e';
+      AthenaDialog.message(e.toString());
       isStreaming.value = false;
       streamingMessage.value = null;
     }

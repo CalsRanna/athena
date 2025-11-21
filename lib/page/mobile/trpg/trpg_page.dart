@@ -166,14 +166,17 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
             ],
           ),
         ),
-        if (message.suggestions.isNotEmpty && !isStreaming)
+        if (!isStreaming)
           SizedBox(
             height: 50,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: message.suggestions.length,
+              itemCount: message.suggestions.length + 1,
               separatorBuilder: (_, __) => SizedBox(width: 8),
               itemBuilder: (context, index) {
+                if (index == message.suggestions.length) {
+                  return _buildSomethingElseButton();
+                }
                 return _buildSuggestionButton(message.suggestions[index]);
               },
             ),
@@ -197,6 +200,15 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
       onTap: () {
         inputController.text = suggestion;
         _handleSendMessage();
+      },
+    );
+  }
+
+  Widget _buildSomethingElseButton() {
+    return _buildActionButton(
+      text: 'Something else...',
+      onTap: () {
+        viewModel.showInputPanel.value = true;
       },
     );
   }
