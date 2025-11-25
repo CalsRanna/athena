@@ -53,7 +53,7 @@ class ChatViewModel {
   // 业务方法
 
   /// 加载所有聊天会话
-  Future<void> loadChats() async {
+  Future<void> getChats() async {
     isLoading.value = true;
     error.value = null;
     try {
@@ -185,7 +185,7 @@ class ChatViewModel {
   Future<void> initChats() async {
     var chatCount = chats.value.length;
     if (chatCount == 0) {
-      await loadChats();
+      await getChats();
       chatCount = chats.value.length;
     }
     if (chatCount == 0) {
@@ -236,7 +236,7 @@ class ChatViewModel {
   /// 获取第一个聊天
   Future<ChatEntity?> getFirstChat() async {
     if (chats.value.isEmpty) {
-      await loadChats();
+      await getChats();
     }
     if (chats.value.isEmpty) {
       return await createChat();
@@ -279,7 +279,7 @@ class ChatViewModel {
       await _chatRepository.updateChat(updated);
 
       // 重新加载聊天列表以应用排序
-      await loadChats();
+      await getChats();
     } catch (e) {
       error.value = e.toString();
     }
@@ -596,7 +596,7 @@ class ChatViewModel {
       // 9. 更新chat的updatedAt
       var updatedChat = chat.copyWith(updatedAt: DateTime.now());
       await _chatRepository.updateChat(updatedChat);
-      await loadChats();
+      await getChats();
     } catch (e) {
       error.value = e.toString();
     } finally {

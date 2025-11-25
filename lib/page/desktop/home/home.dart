@@ -408,7 +408,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> _initSentinel() async {
     var sentinelViewModel = GetIt.instance<SentinelViewModel>();
-    await sentinelViewModel.loadSentinels();
+    await sentinelViewModel.getSentinels();
     if (sentinelViewModel.sentinels.value.isNotEmpty) {
       setState(() {
         sentinel = sentinelViewModel.sentinels.value.first;
