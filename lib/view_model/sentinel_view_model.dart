@@ -40,7 +40,7 @@ class SentinelViewModel {
   });
 
   // 业务方法
-  Future<void> loadSentinels() async {
+  Future<void> getSentinels() async {
     isLoading.value = true;
     error.value = null;
     try {
@@ -80,7 +80,7 @@ class SentinelViewModel {
 
   Future<SentinelEntity> getFirstSentinel() async {
     if (sentinels.value.isEmpty) {
-      await loadSentinels();
+      await getSentinels();
     }
     return sentinels.value.firstOrNull ?? defaultSentinel.value;
   }

@@ -49,14 +49,14 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _MobileHomePageState extends State<MobileHomePage> {
-  final chatViewModel = GetIt.instance<ChatViewModel>();
-  final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  final chatViewModel = GetIt.instance.get<ChatViewModel>();
+  final sentinelViewModel = GetIt.instance.get<SentinelViewModel>();
 
   @override
   void initState() {
     super.initState();
-    chatViewModel.loadChats();
-    sentinelViewModel.loadSentinels();
+    chatViewModel.getChats();
+    sentinelViewModel.getSentinels();
   }
 
   @override
