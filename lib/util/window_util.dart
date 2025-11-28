@@ -10,6 +10,7 @@ class WindowUtil {
     var instance = SharedPreferenceUtil.instance;
     var height = await instance.getWindowHeight();
     var width = await instance.getWindowWidth();
+    await windowManager.ensureInitialized();
     final options = WindowOptions(
       center: true,
       minimumSize: const Size(1080, 720),

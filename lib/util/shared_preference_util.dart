@@ -42,7 +42,7 @@ class SharedPreferenceUtil {
   }
 
   Future<double> getWindowWidth() async {
-    return (await _preferences).getDouble(_keyWindowWidth) ?? 960.0;
+    return (await _preferences).getDouble(_keyWindowWidth) ?? 1080.0;
   }
 
   Future<void> setChatModelId(int modelId) async {
