@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class ToolEntity {
   final int? id;
   final String name;
@@ -13,10 +15,10 @@ class ToolEntity {
 
   factory ToolEntity.fromJson(Map<String, dynamic> json) {
     return ToolEntity(
-      id: json['id'] as int?,
-      name: json['name'] as String? ?? '',
-      key: json['key'] as String? ?? '',
-      description: json['description'] as String? ?? '',
+      id: json.getIntOrNull('id'),
+      name: json.getString('name'),
+      key: json.getString('key'),
+      description: json.getString('description'),
     );
   }
 

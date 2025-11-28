@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class TRPGGameEntity {
   final int? id;
   final int modelId;
@@ -13,14 +15,10 @@ class TRPGGameEntity {
 
   factory TRPGGameEntity.fromJson(Map<String, dynamic> json) {
     return TRPGGameEntity(
-      id: json['id'] as int?,
-      modelId: json['model_id'] as int? ?? 0,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        json['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      ),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-        json['updated_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      ),
+      id: json.getIntOrNull('id'),
+      modelId: json.getInt('model_id'),
+      createdAt: json.getDateTime('created_at'),
+      updatedAt: json.getDateTime('updated_at'),
     );
   }
 

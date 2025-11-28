@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class ChatEntity {
   final int? id;
   final String title;
@@ -25,20 +27,16 @@ class ChatEntity {
 
   factory ChatEntity.fromJson(Map<String, dynamic> json) {
     return ChatEntity(
-      id: json['id'] as int?,
-      title: json['title'] as String? ?? '',
-      modelId: json['model_id'] as int? ?? 0,
-      sentinelId: json['sentinel_id'] as int? ?? 0,
-      temperature: (json['temperature'] as num?)?.toDouble() ?? 1.0,
-      context: json['context'] as int? ?? 0,
-      enableSearch: (json['enable_search'] as int?) == 1,
-      pinned: (json['pinned'] as int?) == 1,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(
-        json['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      ),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(
-        json['updated_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      ),
+      id: json.getIntOrNull('id'),
+      title: json.getString('title'),
+      modelId: json.getInt('model_id'),
+      sentinelId: json.getInt('sentinel_id'),
+      temperature: json.getDouble('temperature', defaultValue: 1.0),
+      context: json.getInt('context'),
+      enableSearch: json.getBool('enable_search'),
+      pinned: json.getBool('pinned'),
+      createdAt: json.getDateTime('created_at'),
+      updatedAt: json.getDateTime('updated_at'),
     );
   }
 

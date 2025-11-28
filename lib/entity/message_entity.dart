@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class MessageEntity {
   final int? id;
   final int chatId;
@@ -25,31 +27,23 @@ class MessageEntity {
     this.searching = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
-  }) : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
-       reasoningUpdatedAt = reasoningUpdatedAt ?? DateTime.now();
+  })  : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
+        reasoningUpdatedAt = reasoningUpdatedAt ?? DateTime.now();
 
   factory MessageEntity.fromJson(Map<String, dynamic> json) {
     return MessageEntity(
-      id: json['id'] as int?,
-      chatId: json['chat_id'] as int? ?? 0,
-      role: json['role'] as String? ?? 'user',
-      content: json['content'] as String? ?? '',
-      reasoningContent: json['reasoning_content'] as String? ?? '',
-      reasoning: (json['reasoning'] as int?) == 1,
-      expanded: (json['expanded'] as int?) == 1,
-      imageUrls: json['image_urls'] as String? ?? '',
-      reference: json['reference'] as String? ?? '',
-      searching: (json['searching'] as int?) == 1,
-      reasoningStartedAt: json['reasoning_started_at'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(
-              json['reasoning_started_at'] as int,
-            )
-          : DateTime.now(),
-      reasoningUpdatedAt: json['reasoning_updated_at'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(
-              json['reasoning_updated_at'] as int,
-            )
-          : DateTime.now(),
+      id: json.getIntOrNull('id'),
+      chatId: json.getInt('chat_id'),
+      role: json.getString('role', defaultValue: 'user'),
+      content: json.getString('content'),
+      reasoningContent: json.getString('reasoning_content'),
+      reasoning: json.getBool('reasoning'),
+      expanded: json.getBool('expanded', defaultValue: true),
+      imageUrls: json.getString('image_urls'),
+      reference: json.getString('reference'),
+      searching: json.getBool('searching'),
+      reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
+      reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
     );
   }
 
