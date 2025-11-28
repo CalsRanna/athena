@@ -70,4 +70,48 @@ class ModelRepository {
     }).toList();
     await laconic.table('models').insert(jsonList);
   }
+
+  Future<ModelEntity?> getModelByNameAndProviderId(
+    String name,
+    int providerId,
+  ) async {
+    var laconic = Database.instance.laconic;
+    try {
+      var result = await laconic
+          .table('models')
+          .where('name', name)
+          .where('provider_id', providerId)
+          .first();
+      return ModelEntity.fromJson(result.toMap());
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 导入 models：同名同 provider 更新，否则插入
+  Future<void> importModels(List<ModelEntity> models) async {
+    if (models.isEmpty) return;
+
+    var toInsert = <ModelEntity>[];
+
+    for (var model in models) {
+      var existing = await getModelByNameAndProviderId(
+        model.name,
+        model.providerId,
+      );
+      if (existing != null) {
+        // 同名同 provider 存在，更新
+        var updated = model.copyWith(id: existing.id);
+        await updateModel(updated);
+      } else {
+        // 不存在，加入批量插入列表
+        toInsert.add(model);
+      }
+    }
+
+    // 批量插入新的
+    if (toInsert.isNotEmpty) {
+      await batchCreateModels(toInsert);
+    }
+  }
 }
