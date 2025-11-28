@@ -80,34 +80,36 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     super.initState();
     nameController.text = widget.model?.name ?? '';
     valueController.text = widget.model?.modelId ?? '';
-    inputController.text = widget.model?.inputPrice.toString() ?? '';
-    outputController.text = widget.model?.outputPrice.toString() ?? '';
+    inputController.text = widget.model?.inputPrice ?? '';
+    outputController.text = widget.model?.outputPrice ?? '';
     supportReasoning = widget.model?.reasoning ?? false;
     supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> submitModel() async {
     if (widget.model == null) {
+      var now = DateTime.now();
       var newModel = ModelEntity(
         id: 0,
         name: nameController.text,
         modelId: valueController.text,
         providerId: widget.provider!.id ?? 0,
-        contextWindow: 0,
-        inputPrice: double.tryParse(inputController.text) ?? 0.0,
-        outputPrice: double.tryParse(outputController.text) ?? 0.0,
-        releasedAt: null,
+        contextWindow: '',
+        inputPrice: inputController.text,
+        outputPrice: outputController.text,
+        releasedAt: '',
         reasoning: supportReasoning,
         vision: supportVisual,
-        createdAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
       await viewModel.createModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
         name: nameController.text,
         modelId: valueController.text,
-        inputPrice: double.tryParse(inputController.text) ?? 0.0,
-        outputPrice: double.tryParse(outputController.text) ?? 0.0,
+        inputPrice: inputController.text,
+        outputPrice: outputController.text,
         reasoning: supportReasoning,
         vision: supportVisual,
       );

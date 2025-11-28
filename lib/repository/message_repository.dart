@@ -1,5 +1,5 @@
 import 'package:athena/database/database.dart';
-import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
 
 class MessageRepository {
   Future<List<MessageEntity>> getMessagesByChatId(int chatId) async {

@@ -106,8 +106,8 @@ class _DesktopSentinelFormDialogState
         prompt: '',
         avatar: '',
         description: '',
-        tags: [],
-        
+        tags: '',
+
       );
       await viewModel.createSentinel(newSentinel);
     }

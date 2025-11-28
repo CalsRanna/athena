@@ -52,7 +52,7 @@ class _TagWrap extends StatelessWidget {
       alignment: WrapAlignment.center,
       runSpacing: 12,
       spacing: 12,
-      children: sentinel.tags.map(_buildTile).toList(),
+      children: sentinel.tagList.map(_buildTile).toList(),
     );
   }
 

@@ -1,12 +1,10 @@
-import 'dart:convert';
-
 class SentinelEntity {
   final int? id;
   final String name;
   final String avatar;
   final String description;
   final String prompt;
-  final List<String> tags;
+  final String tags;
 
   SentinelEntity({
     this.id,
@@ -14,32 +12,17 @@ class SentinelEntity {
     this.avatar = '',
     this.description = '',
     this.prompt = '',
-    this.tags = const [],
+    this.tags = '',
   });
 
   factory SentinelEntity.fromJson(Map<String, dynamic> json) {
-    List<String> tagsList = [];
-    if (json['tags'] != null) {
-      if (json['tags'] is String) {
-        // 如果是JSON字符串,解析它
-        try {
-          tagsList = List<String>.from(jsonDecode(json['tags'] as String));
-        } catch (e) {
-          // 如果解析失败,尝试按逗号分割
-          tagsList = (json['tags'] as String).split(',').map((e) => e.trim()).toList();
-        }
-      } else if (json['tags'] is List) {
-        tagsList = List<String>.from(json['tags']);
-      }
-    }
-
     return SentinelEntity(
       id: json['id'] as int?,
       name: json['name'] as String? ?? '',
       avatar: json['avatar'] as String? ?? '',
       description: json['description'] as String? ?? '',
       prompt: json['prompt'] as String? ?? '',
-      tags: tagsList,
+      tags: json['tags'] as String? ?? '',
     );
   }
 
@@ -50,8 +33,14 @@ class SentinelEntity {
       'avatar': avatar,
       'description': description,
       'prompt': prompt,
-      'tags': jsonEncode(tags), // 存储为JSON字符串
+      'tags': tags,
     };
+  }
+
+  /// 将 tags 字符串转换为列表，用于页面渲染
+  List<String> get tagList {
+    if (tags.isEmpty) return [];
+    return tags.split(',').map((e) => e.trim()).toList();
   }
 
   SentinelEntity copyWith({
@@ -60,7 +49,7 @@ class SentinelEntity {
     String? avatar,
     String? description,
     String? prompt,
-    List<String>? tags,
+    String? tags,
   }) {
     return SentinelEntity(
       id: id ?? this.id,

@@ -142,42 +142,40 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     super.initState();
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
-    releasedAtController.text =
-        widget.model?.releasedAt?.toIso8601String() ?? '';
-    contextController.text = widget.model?.contextWindow.toString() ?? '';
-    inputController.text = widget.model?.inputPrice.toString() ?? '';
-    outputController.text = widget.model?.outputPrice.toString() ?? '';
+    releasedAtController.text = widget.model?.releasedAt ?? '';
+    contextController.text = widget.model?.contextWindow ?? '';
+    inputController.text = widget.model?.inputPrice ?? '';
+    outputController.text = widget.model?.outputPrice ?? '';
     supportReasoning = widget.model?.reasoning ?? false;
     supportVisual = widget.model?.vision ?? false;
   }
 
   Future<void> storeModel() async {
     if (widget.model == null) {
+      var now = DateTime.now();
       var newModel = ModelEntity(
         id: 0,
         modelId: valueController.text,
         name: nameController.text,
         providerId: widget.provider.id!,
-        contextWindow: int.tryParse(contextController.text) ?? 0,
-        inputPrice: double.tryParse(inputController.text) ?? 0.0,
-        outputPrice: double.tryParse(outputController.text) ?? 0.0,
-        releasedAt: DateTime.tryParse(releasedAtController.text),
+        contextWindow: contextController.text,
+        inputPrice: inputController.text,
+        outputPrice: outputController.text,
+        releasedAt: releasedAtController.text,
         reasoning: supportReasoning,
         vision: supportVisual,
-        createdAt: DateTime.now(),
+        createdAt: now,
+        updatedAt: now,
       );
       await viewModel.createModel(newModel);
     } else {
       var copiedModel = widget.model!.copyWith(
         modelId: valueController.text,
         name: nameController.text,
-        contextWindow:
-            int.tryParse(contextController.text) ?? widget.model!.contextWindow,
-        inputPrice:
-            double.tryParse(inputController.text) ?? widget.model!.inputPrice,
-        outputPrice:
-            double.tryParse(outputController.text) ?? widget.model!.outputPrice,
-        releasedAt: DateTime.tryParse(releasedAtController.text),
+        contextWindow: contextController.text,
+        inputPrice: inputController.text,
+        outputPrice: outputController.text,
+        releasedAt: releasedAtController.text,
         reasoning: supportReasoning,
         vision: supportVisual,
       );

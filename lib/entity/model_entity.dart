@@ -3,26 +3,28 @@ class ModelEntity {
   final String name;
   final String modelId;
   final int providerId;
-  final int contextWindow;
-  final double inputPrice;
-  final double outputPrice;
-  final DateTime? releasedAt;
+  final String contextWindow;
+  final String inputPrice;
+  final String outputPrice;
+  final String releasedAt;
   final bool reasoning;
   final bool vision;
   final DateTime createdAt;
+  final DateTime updatedAt;
 
   ModelEntity({
     this.id,
     required this.name,
     required this.modelId,
     required this.providerId,
-    this.contextWindow = 0,
-    this.inputPrice = 0.0,
-    this.outputPrice = 0.0,
-    this.releasedAt,
+    this.contextWindow = '',
+    this.inputPrice = '',
+    this.outputPrice = '',
+    this.releasedAt = '',
     this.reasoning = false,
     this.vision = false,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   factory ModelEntity.fromJson(Map<String, dynamic> json) {
@@ -31,15 +33,14 @@ class ModelEntity {
       name: json['name'] as String,
       modelId: json['model_id'] as String,
       providerId: json['provider_id'] as int,
-      contextWindow: json['context_window'] as int? ?? 0,
-      inputPrice: (json['input_price'] as num?)?.toDouble() ?? 0.0,
-      outputPrice: (json['output_price'] as num?)?.toDouble() ?? 0.0,
-      releasedAt: json['released_at'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['released_at'] as int)
-          : null,
-      reasoning: (json['reasoning'] as int?) == 1,
-      vision: (json['vision'] as int?) == 1,
+      contextWindow: json['context_window'] as String? ?? '',
+      inputPrice: json['input_price'] as String? ?? '',
+      outputPrice: json['output_price'] as String? ?? '',
+      releasedAt: json['released_at'] as String? ?? '',
+      reasoning: (json['reasoning'] as bool?) ?? false,
+      vision: (json['vision'] as bool?) ?? false,
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int),
     );
   }
 
@@ -52,10 +53,11 @@ class ModelEntity {
       'context_window': contextWindow,
       'input_price': inputPrice,
       'output_price': outputPrice,
-      if (releasedAt != null) 'released_at': releasedAt!.millisecondsSinceEpoch,
-      'reasoning': reasoning ? 1 : 0,
-      'vision': vision ? 1 : 0,
+      'released_at': releasedAt,
+      'reasoning': reasoning,
+      'vision': vision,
       'created_at': createdAt.millisecondsSinceEpoch,
+      'updated_at': updatedAt.millisecondsSinceEpoch,
     };
   }
 
@@ -64,13 +66,14 @@ class ModelEntity {
     String? name,
     String? modelId,
     int? providerId,
-    int? contextWindow,
-    double? inputPrice,
-    double? outputPrice,
-    DateTime? releasedAt,
+    String? contextWindow,
+    String? inputPrice,
+    String? outputPrice,
+    String? releasedAt,
     bool? reasoning,
     bool? vision,
     DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return ModelEntity(
       id: id ?? this.id,
@@ -84,6 +87,7 @@ class ModelEntity {
       reasoning: reasoning ?? this.reasoning,
       vision: vision ?? this.vision,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

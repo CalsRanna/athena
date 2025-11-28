@@ -1,5 +1,6 @@
 import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';

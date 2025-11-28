@@ -86,7 +86,7 @@ class MobileChatExportPage extends StatelessWidget {
       name: '',
       avatar: '',
       description: '',
-      tags: [],
+      tags: '',
       prompt: '',
     );
     for (var message in messages) {

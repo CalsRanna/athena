@@ -179,9 +179,9 @@ class SettingViewModel {
 
     final exportData = {
       'export_time': DateTime.now().toIso8601String(),
-      'providers': providers.map((p) => _providerToExportJson(p)).toList(),
-      'models': models.map((m) => _modelToExportJson(m)).toList(),
-      'sentinels': sentinels.map((s) => _sentinelToExportJson(s)).toList(),
+      'providers': providers.map((p) => p.toJson()).toList(),
+      'models': models.map((m) => m.toJson()).toList(),
+      'sentinels': sentinels.map((s) => s.toJson()).toList(),
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
@@ -210,7 +210,7 @@ class SettingViewModel {
     if (data['providers'] != null) {
       final providersList = data['providers'] as List;
       final providers = providersList
-          .map((json) => _providerFromExportJson(json as Map<String, dynamic>))
+          .map((json) => ProviderEntity.fromJson(json as Map<String, dynamic>))
           .toList();
       await _providerRepository.importProviders(providers);
     }
@@ -219,7 +219,7 @@ class SettingViewModel {
     if (data['models'] != null) {
       final modelsList = data['models'] as List;
       final models = modelsList
-          .map((json) => _modelFromExportJson(json as Map<String, dynamic>))
+          .map((json) => ModelEntity.fromJson(json as Map<String, dynamic>))
           .toList();
       await _modelRepository.importModels(models);
     }
@@ -228,100 +228,12 @@ class SettingViewModel {
     if (data['sentinels'] != null) {
       final sentinelsList = data['sentinels'] as List;
       final sentinels = sentinelsList
-          .map((json) => _sentinelFromExportJson(json as Map<String, dynamic>))
+          .map((json) => SentinelEntity.fromJson(json as Map<String, dynamic>))
           .toList();
       await _sentinelRepository.importSentinels(sentinels);
     }
 
     return true;
-  }
-
-  Map<String, dynamic> _providerToExportJson(ProviderEntity provider) {
-    return {
-      'id': provider.id,
-      'enabled': provider.enabled,
-      'is_preset': provider.isPreset,
-      'key': provider.apiKey,
-      'name': provider.name,
-      'url': provider.baseUrl,
-    };
-  }
-
-  ProviderEntity _providerFromExportJson(Map<String, dynamic> json) {
-    return ProviderEntity(
-      name: json['name'] as String,
-      baseUrl: json['url'] as String,
-      apiKey: json['key'] as String,
-      enabled: json['enabled'] as bool? ?? false,
-      isPreset: json['is_preset'] as bool? ?? false,
-      createdAt: DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> _modelToExportJson(ModelEntity model) {
-    return {
-      'id': model.id,
-      'context': '${model.contextWindow} context',
-      'input_price': '${model.inputPrice}',
-      'name': model.name,
-      'output_price': '${model.outputPrice}',
-      'released_at': model.releasedAt?.toIso8601String() ?? '',
-      'support_reasoning': model.reasoning,
-      'support_visual': model.vision,
-      'value': model.modelId,
-      'provider_id': model.providerId,
-    };
-  }
-
-  ModelEntity _modelFromExportJson(Map<String, dynamic> json) {
-    return ModelEntity(
-      name: json['name'] as String,
-      modelId: json['value'] as String,
-      providerId: json['provider_id'] as int,
-      contextWindow: _parseContextWindow(json['context'] as String?),
-      inputPrice: 0.0,
-      outputPrice: 0.0,
-      releasedAt: null,
-      reasoning: json['support_reasoning'] as bool? ?? false,
-      vision: json['support_visual'] as bool? ?? false,
-      createdAt: DateTime.now(),
-    );
-  }
-
-  int _parseContextWindow(String? context) {
-    if (context == null || context.isEmpty) return 0;
-    final match = RegExp(r'([\d,]+)').firstMatch(context);
-    if (match == null) return 0;
-    return int.tryParse(match.group(1)!.replaceAll(',', '')) ?? 0;
-  }
-
-  Map<String, dynamic> _sentinelToExportJson(SentinelEntity sentinel) {
-    return {
-      'id': sentinel.id,
-      'avatar': sentinel.avatar,
-      'name': sentinel.name,
-      'description': sentinel.description,
-      'prompt': sentinel.prompt,
-      'tags': sentinel.tags.join(', '),
-    };
-  }
-
-  SentinelEntity _sentinelFromExportJson(Map<String, dynamic> json) {
-    final tagsRaw = json['tags'];
-    List<String> tags = [];
-    if (tagsRaw is String && tagsRaw.isNotEmpty) {
-      tags = tagsRaw.split(',').map((e) => e.trim()).toList();
-    } else if (tagsRaw is List) {
-      tags = tagsRaw.cast<String>();
-    }
-
-    return SentinelEntity(
-      name: json['name'] as String? ?? '',
-      avatar: json['avatar'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? '',
-      tags: tags,
-    );
   }
 
   Future<bool> resetData() async {

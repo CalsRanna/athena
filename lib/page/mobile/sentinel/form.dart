@@ -245,9 +245,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       name: nameController.text,
       avatar: '',
       description: descriptionController.text,
-      tags: [],
+      tags: '',
       prompt: promptController.text,
-      
+
     );
     await viewModel.createSentinel(sentinel);
     if (!mounted) return;
