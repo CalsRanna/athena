@@ -6,10 +6,7 @@ class Migration202501170001Init {
   Future<void> migrate() async {
     var laconic = Database.instance.laconic;
 
-    var count = await laconic
-        .table('migrations')
-        .where('name', name)
-        .count();
+    var count = await laconic.table('migrations').where('name', name).count();
     if (count > 0) return;
 
     // 创建 chats 表
