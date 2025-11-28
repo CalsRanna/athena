@@ -182,7 +182,6 @@ class SettingViewModel {
     final servers = await _serverRepository.getAllServers();
 
     final exportData = {
-      'export_time': DateTime.now().toIso8601String(),
       'providers': providers.map((p) => p.toJson()).toList(),
       'models': models.map((m) => m.toJson()).toList(),
       'sentinels': sentinels.map((s) => s.toJson()).toList(),
