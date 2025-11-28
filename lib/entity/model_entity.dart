@@ -37,11 +37,18 @@ class ModelEntity {
       inputPrice: json['input_price'] as String? ?? '',
       outputPrice: json['output_price'] as String? ?? '',
       releasedAt: json['released_at'] as String? ?? '',
-      reasoning: (json['reasoning'] as bool?) ?? false,
-      vision: (json['vision'] as bool?) ?? false,
+      reasoning: _parseBool(json['reasoning']),
+      vision: _parseBool(json['vision']),
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int),
     );
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    return false;
   }
 
   Map<String, dynamic> toJson() {
@@ -54,8 +61,8 @@ class ModelEntity {
       'input_price': inputPrice,
       'output_price': outputPrice,
       'released_at': releasedAt,
-      'reasoning': reasoning,
-      'vision': vision,
+      'reasoning': reasoning ? 1 : 0,
+      'vision': vision ? 1 : 0,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
