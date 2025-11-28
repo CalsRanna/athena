@@ -34,7 +34,7 @@ class Database {
   Future<void> ensureInitialized() async {
     var directory = await getApplicationSupportDirectory();
     var path = join(directory.path, 'athena.db');
-    LoggerUtil.logger.i('Database path: $path');
+    LoggerUtil.i('Database path: $path');
     var file = File(path);
     var exists = await file.exists();
     if (!exists) {
@@ -45,7 +45,7 @@ class Database {
     laconic = Laconic.sqlite(
       config,
       listen: (query) {
-        LoggerUtil.logger.d(query.sql);
+        LoggerUtil.d(query.sql);
       },
     );
 
