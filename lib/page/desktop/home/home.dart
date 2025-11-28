@@ -11,6 +11,7 @@ import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/model_indicator.dart';
 import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -338,7 +339,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        AutoRouter.of(context).pushNamed('/desktop-setting');
+        DesktopSettingRoute().push(context);
       },
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );

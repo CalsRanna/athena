@@ -59,4 +59,15 @@ class ModelRepository {
     var laconic = Database.instance.laconic;
     return await laconic.table('models').count();
   }
+
+  Future<void> batchCreateModels(List<ModelEntity> models) async {
+    if (models.isEmpty) return;
+    var laconic = Database.instance.laconic;
+    var jsonList = models.map((m) {
+      var json = m.toJson();
+      json.remove('id');
+      return json;
+    }).toList();
+    await laconic.table('models').insert(jsonList);
+  }
 }

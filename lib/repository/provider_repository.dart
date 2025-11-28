@@ -53,4 +53,15 @@ class ProviderRepository {
     var laconic = Database.instance.laconic;
     return await laconic.table('providers').count();
   }
+
+  Future<void> batchStoreProviders(List<ProviderEntity> providers) async {
+    if (providers.isEmpty) return;
+    var laconic = Database.instance.laconic;
+    var jsonList = providers.map((p) {
+      var json = p.toJson();
+      json.remove('id');
+      return json;
+    }).toList();
+    await laconic.table('providers').insert(jsonList);
+  }
 }

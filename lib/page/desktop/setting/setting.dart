@@ -27,6 +27,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     HugeIcons.strokeRoundedArtificialIntelligence03,
     HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedTools,
+    HugeIcons.strokeRoundedSettings03,
     HugeIcons.strokeRoundedInformationCircle,
   ];
   final _menus = [
@@ -34,6 +35,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     'Sentinel',
     'Default Model',
     'MCP Server',
+    'Advanced',
     'About Athena',
   ];
 
@@ -45,7 +47,10 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       title: _buildPageHeader(context),
     );
     var children = [_buildLeftBar(), const Expanded(child: AutoRouter())];
-    return AthenaScaffold(appBar: appBar, body: Row(children: children));
+    return AthenaScaffold(
+      appBar: appBar,
+      body: Row(children: children),
+    );
   }
 
   void changeMenu(int index) {
@@ -57,7 +62,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       1 => const DesktopSettingSentinelRoute(),
       2 => const DesktopSettingDefaultModelRoute(),
       3 => const DesktopSettingServerRoute(),
-      4 => const DesktopSettingAboutRoute(),
+      4 => const DesktopSettingAdvancedRoute(),
+      5 => const DesktopSettingAboutRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -101,8 +107,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       padding: const EdgeInsets.all(12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
-    var borderSide =
-        BorderSide(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2));
+    var borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(decoration: boxDecoration, width: 240, child: listView);
   }

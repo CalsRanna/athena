@@ -45,4 +45,15 @@ class SentinelRepository {
     var laconic = Database.instance.laconic;
     return await laconic.table('sentinels').count();
   }
+
+  Future<void> batchCreateSentinels(List<SentinelEntity> sentinels) async {
+    if (sentinels.isEmpty) return;
+    var laconic = Database.instance.laconic;
+    var jsonList = sentinels.map((s) {
+      var json = s.toJson();
+      json.remove('id');
+      return json;
+    }).toList();
+    await laconic.table('sentinels').insert(jsonList);
+  }
 }
