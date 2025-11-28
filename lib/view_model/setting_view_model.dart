@@ -5,9 +5,11 @@ import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
+import 'package:athena/entity/server_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/repository/server_repository.dart';
 import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -52,6 +54,7 @@ class SettingViewModel {
   final _modelRepository = ModelRepository();
   final _providerRepository = ProviderRepository();
   final _sentinelRepository = SentinelRepository();
+  final _serverRepository = ServerRepository();
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
@@ -176,12 +179,14 @@ class SettingViewModel {
     final providers = await _providerRepository.getAllProviders();
     final models = await _modelRepository.getAllModels();
     final sentinels = await _sentinelRepository.getAllSentinels();
+    final servers = await _serverRepository.getAllServers();
 
     final exportData = {
       'export_time': DateTime.now().toIso8601String(),
       'providers': providers.map((p) => p.toJson()).toList(),
       'models': models.map((m) => m.toJson()).toList(),
       'sentinels': sentinels.map((s) => s.toJson()).toList(),
+      'servers': servers.map((s) => s.toJson()).toList(),
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
@@ -231,6 +236,15 @@ class SettingViewModel {
           .map((json) => SentinelEntity.fromJson(json as Map<String, dynamic>))
           .toList();
       await _sentinelRepository.importSentinels(sentinels);
+    }
+
+    // 导入 servers：同名更新，不同名插入
+    if (data['servers'] != null) {
+      final serversList = data['servers'] as List;
+      final servers = serversList
+          .map((json) => ServerEntity.fromJson(json as Map<String, dynamic>))
+          .toList();
+      await _serverRepository.importServers(servers);
     }
 
     return true;
