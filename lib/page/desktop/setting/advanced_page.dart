@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -20,11 +21,19 @@ class _DesktopSettingAdvancedPageState
 
   @override
   Widget build(BuildContext context) {
+    var titleTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
+    var databaseTitle = Text('Database', style: titleTextStyle);
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
         children: [
+          databaseTitle,
           Row(
             spacing: 16,
             children: [

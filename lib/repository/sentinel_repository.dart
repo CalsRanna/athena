@@ -56,4 +56,38 @@ class SentinelRepository {
     }).toList();
     await laconic.table('sentinels').insert(jsonList);
   }
+
+  Future<SentinelEntity?> getSentinelByName(String name) async {
+    var laconic = Database.instance.laconic;
+    try {
+      var result = await laconic.table('sentinels').where('name', name).first();
+      return SentinelEntity.fromJson(result.toMap());
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// 导入 sentinels：同名更新，不同名插入
+  Future<void> importSentinels(List<SentinelEntity> sentinels) async {
+    if (sentinels.isEmpty) return;
+
+    var toInsert = <SentinelEntity>[];
+
+    for (var sentinel in sentinels) {
+      var existing = await getSentinelByName(sentinel.name);
+      if (existing != null) {
+        // 同名存在，更新
+        var updated = sentinel.copyWith(id: existing.id);
+        await updateSentinel(updated);
+      } else {
+        // 不存在，加入批量插入列表
+        toInsert.add(sentinel);
+      }
+    }
+
+    // 批量插入新的
+    if (toInsert.isNotEmpty) {
+      await batchCreateSentinels(toInsert);
+    }
+  }
 }

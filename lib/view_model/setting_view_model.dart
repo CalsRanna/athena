@@ -206,31 +206,31 @@ class SettingViewModel {
     final jsonString = await file.readAsString();
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // 导入 providers
+    // 导入 providers：同名更新，不同名插入
     if (data['providers'] != null) {
       final providersList = data['providers'] as List;
       final providers = providersList
           .map((json) => _providerFromExportJson(json as Map<String, dynamic>))
           .toList();
-      await _providerRepository.batchStoreProviders(providers);
+      await _providerRepository.importProviders(providers);
     }
 
-    // 导入 models
+    // 导入 models：同名同 provider 更新，否则插入
     if (data['models'] != null) {
       final modelsList = data['models'] as List;
       final models = modelsList
           .map((json) => _modelFromExportJson(json as Map<String, dynamic>))
           .toList();
-      await _modelRepository.batchCreateModels(models);
+      await _modelRepository.importModels(models);
     }
 
-    // 导入 sentinels
+    // 导入 sentinels：同名更新，不同名插入
     if (data['sentinels'] != null) {
       final sentinelsList = data['sentinels'] as List;
       final sentinels = sentinelsList
           .map((json) => _sentinelFromExportJson(json as Map<String, dynamic>))
           .toList();
-      await _sentinelRepository.batchCreateSentinels(sentinels);
+      await _sentinelRepository.importSentinels(sentinels);
     }
 
     return true;
