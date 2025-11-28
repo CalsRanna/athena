@@ -18,6 +18,7 @@ class AthenaRouter extends RootStackRouter {
       DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
       DesktopRoute(page: DesktopSettingServerRoute.page),
       DesktopRoute(page: DesktopSettingSentinelRoute.page),
+      DesktopRoute(page: DesktopSettingAdvancedRoute.page),
       DesktopRoute(page: DesktopSettingAboutRoute.page),
     ];
     var desktopSettingRoute = DesktopRoute(
