@@ -23,10 +23,17 @@ class ProviderEntity {
       name: json['name'] as String,
       baseUrl: json['base_url'] as String,
       apiKey: json['api_key'] as String,
-      enabled: json['enabled'] as bool,
-      isPreset: json['is_preset'] as bool,
+      enabled: _parseBool(json['enabled']),
+      isPreset: _parseBool(json['is_preset']),
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
     );
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    return false;
   }
 
   Map<String, dynamic> toJson() {
@@ -35,8 +42,8 @@ class ProviderEntity {
       'name': name,
       'base_url': baseUrl,
       'api_key': apiKey,
-      'enabled': enabled,
-      'is_preset': isPreset,
+      'enabled': enabled ? 1 : 0,
+      'is_preset': isPreset ? 1 : 0,
       'created_at': createdAt.millisecondsSinceEpoch,
     };
   }
