@@ -29,7 +29,9 @@ class ServerEntity {
       name: json.getString('name'),
       command: json.getString('command'),
       arguments: json.getList<String>('arguments'),
-      environmentVariables: json.getMap<String, String>('environment_variables'),
+      environmentVariables: json.getMap<String, String>(
+        'environment_variables',
+      ),
       enabled: json.getBool('enabled', defaultValue: true),
       description: json.getString('description'),
       tools: json.getList<String>('tools'),
