@@ -6,7 +6,10 @@ import 'package:athena/database/migration/migration_202501200001_fix_providers_m
 import 'package:athena/database/migration/migration_202501200002_add_trpg_tables.dart';
 import 'package:athena/database/migration/migration_202501210001_add_suggestions_to_trpg_messages.dart';
 import 'package:athena/database/migration/migration_202501210002_simplify_trpg_games.dart';
+import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
+import 'package:athena/preset/provider.dart';
 import 'package:athena/preset/sentinel.dart';
 import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
@@ -50,7 +53,7 @@ class Database {
     );
 
     await _migrate();
-    await _ensureDefaultSentinel();
+    await _preset();
   }
 
   Future<void> _migrate() async {
@@ -68,7 +71,62 @@ class Database {
     await Migration202501210002SimplifyTrpgGames().migrate();
   }
 
-  Future<void> _ensureDefaultSentinel() async {
+  Future<void> _preset() async {
+    await _presetSentinel();
+    await _presetProviders();
+  }
+
+  Future<void> _presetProviders() async {
+    var providerCount = await laconic.table('providers').count();
+    if (providerCount > 0) return;
+
+    var now = DateTime.now();
+    var providers = PresetProvider.providers;
+
+    for (var providerData in providers) {
+      var provider = ProviderEntity(
+        name: providerData['name'] as String,
+        baseUrl: providerData['base_url'] as String,
+        apiKey: providerData['api_key'] as String,
+        enabled: false,
+        isPreset: providerData['is_preset'] as bool,
+        createdAt: now,
+      );
+
+      var providerJson = provider.toJson();
+      providerJson.remove('id');
+      var providerId = await laconic
+          .table('providers')
+          .insertGetId(providerJson);
+
+      var models = providerData['models'] as List<Map<String, dynamic>>;
+      var modelJsonList = <Map<String, dynamic>>[];
+
+      for (var modelData in models) {
+        var model = ModelEntity(
+          name: modelData['name'] as String,
+          modelId: modelData['model_id'] as String,
+          providerId: providerId,
+          contextWindow: modelData['context_window'] as int,
+          inputPrice: (modelData['input_price'] as num).toDouble(),
+          outputPrice: (modelData['output_price'] as num).toDouble(),
+          reasoning: modelData['reasoning'] as bool,
+          vision: modelData['vision'] as bool,
+          createdAt: now,
+        );
+
+        var modelJson = model.toJson();
+        modelJson.remove('id');
+        modelJsonList.add(modelJson);
+      }
+
+      if (modelJsonList.isNotEmpty) {
+        await laconic.table('models').insert(modelJsonList);
+      }
+    }
+  }
+
+  Future<void> _presetSentinel() async {
     var count = await laconic.table('sentinels').count();
 
     if (count == 0) {
