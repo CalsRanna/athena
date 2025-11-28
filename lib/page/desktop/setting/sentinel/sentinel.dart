@@ -55,7 +55,7 @@ class _DesktopSettingSentinelPageState
     nameController.text = sentinels[index].name;
     avatarController.text = sentinels[index].avatar;
     descriptionController.text = sentinels[index].description;
-    tagsController.text = sentinels[index].tags.join(', ');
+    tagsController.text = sentinels[index].tags;
     promptController.text = sentinels[index].prompt;
   }
 
@@ -73,7 +73,7 @@ class _DesktopSettingSentinelPageState
       nameController.text = sentinels[index].name;
       avatarController.text = sentinels[index].avatar;
       descriptionController.text = sentinels[index].description;
-      tagsController.text = sentinels[index].tags.join(', ');
+      tagsController.text = sentinels[index].tags;
       promptController.text = sentinels[index].prompt;
     }
   }
@@ -116,7 +116,7 @@ class _DesktopSettingSentinelPageState
         nameController.text = generatedSentinel.name;
         avatarController.text = generatedSentinel.avatar;
         descriptionController.text = generatedSentinel.description;
-        tagsController.text = generatedSentinel.tags.join(', ');
+        tagsController.text = generatedSentinel.tags;
       }
       setState(() {
         loading = false;
@@ -161,7 +161,7 @@ class _DesktopSettingSentinelPageState
       description: descriptionController.text,
       name: nameController.text,
       prompt: promptController.text,
-      tags: tagsController.text.split(', '),
+      tags: tagsController.text,
     );
     await viewModel.updateSentinel(copiedSentinel);
     AthenaDialog.message('Sentinel updated');
@@ -295,7 +295,7 @@ class _DesktopSettingSentinelPageState
     nameController.text = sentinels[index].name;
     avatarController.text = sentinels[index].avatar;
     descriptionController.text = sentinels[index].description;
-    tagsController.text = sentinels[index].tags.join(', ');
+    tagsController.text = sentinels[index].tags;
     promptController.text = sentinels[index].prompt;
     setState(() {});
   }

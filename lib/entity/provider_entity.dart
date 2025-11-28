@@ -23,8 +23,8 @@ class ProviderEntity {
       name: json['name'] as String,
       baseUrl: json['base_url'] as String,
       apiKey: json['api_key'] as String,
-      enabled: (json['enabled'] as int?) == 1,
-      isPreset: (json['is_preset'] as int?) == 1,
+      enabled: json['enabled'] as bool,
+      isPreset: json['is_preset'] as bool,
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
     );
   }
@@ -35,8 +35,8 @@ class ProviderEntity {
       'name': name,
       'base_url': baseUrl,
       'api_key': apiKey,
-      'enabled': enabled ? 1 : 0,
-      'is_preset': isPreset ? 1 : 0,
+      'enabled': enabled,
+      'is_preset': isPreset,
       'created_at': createdAt.millisecondsSinceEpoch,
     };
   }

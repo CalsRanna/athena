@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/preset/prompt.dart';
@@ -49,10 +49,11 @@ class SentinelService {
     final formatted = jsonDecode(
       content.toString().replaceAll('```json', '').replaceAll('```', ''),
     );
+    final tagsList = List<String>.from(formatted['tags'] ?? []);
     return SentinelEntity(
       name: formatted['name'] ?? '',
       description: formatted['description'] ?? '',
-      tags: List<String>.from(formatted['tags'] ?? []),
+      tags: tagsList.join(', '),
       avatar: formatted['avatar'] ?? '',
       prompt: prompt,
     );

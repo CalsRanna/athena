@@ -25,14 +25,14 @@ class SentinelViewModel {
           name: 'Athena',
           description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
           prompt: '你是一个智能聊天助手。',
-          tags: [],
+          tags: '',
         );
   });
 
   late final tags = computed(() {
     var allTags = <String>[];
     for (var sentinel in sentinels.value) {
-      allTags.addAll(sentinel.tags);
+      allTags.addAll(sentinel.tagList);
     }
     var sortedTags = allTags.toSet().toList();
     sortedTags.sort((a, b) => a.compareTo(b));
@@ -52,7 +52,7 @@ class SentinelViewModel {
           name: 'Athena',
           description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
           prompt: '你是一个智能聊天助手。',
-          tags: [],
+          tags: '',
         );
         var id = await _sentinelRepository.createSentinel(
           defaultSentinelEntity,

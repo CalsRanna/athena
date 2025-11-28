@@ -110,9 +110,9 @@ class _ModelTile extends StatelessWidget {
     var inputPrice = model.inputPrice;
     var outputPrice = model.outputPrice;
     var parts = [
-      if (context > 0) '$context context',
-      if (inputPrice > 0) '${inputPrice.toStringAsFixed(2)} input tokens',
-      if (outputPrice > 0) '${outputPrice.toStringAsFixed(2)} output tokens',
+      if (context.isNotEmpty) context,
+      if (inputPrice.isNotEmpty) inputPrice,
+      if (outputPrice.isNotEmpty) outputPrice,
     ];
     var textStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,

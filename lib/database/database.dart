@@ -107,12 +107,14 @@ class Database {
           name: modelData['name'] as String,
           modelId: modelData['model_id'] as String,
           providerId: providerId,
-          contextWindow: modelData['context_window'] as int,
-          inputPrice: (modelData['input_price'] as num).toDouble(),
-          outputPrice: (modelData['output_price'] as num).toDouble(),
+          contextWindow: modelData['context_window'] as String,
+          inputPrice: modelData['input_price'] as String,
+          outputPrice: modelData['output_price'] as String,
+          releasedAt: modelData['released_at'] as String,
           reasoning: modelData['reasoning'] as bool,
           vision: modelData['vision'] as bool,
           createdAt: now,
+          updatedAt: now,
         );
 
         var modelJson = model.toJson();
@@ -131,17 +133,13 @@ class Database {
 
     if (count == 0) {
       var preset = PresetSentinel.defaultPresetSentinel;
-      var tags = (preset['tags'] as String)
-          .split(',')
-          .map((e) => e.trim())
-          .toList();
 
       var sentinel = SentinelEntity(
         name: preset['name'] as String,
         avatar: preset['avatar'] as String,
         description: preset['description'] as String,
         prompt: preset['prompt'] as String,
-        tags: tags,
+        tags: preset['tags'] as String,
       );
 
       var json = sentinel.toJson();

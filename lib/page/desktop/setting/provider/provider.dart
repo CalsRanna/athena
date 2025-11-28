@@ -305,10 +305,10 @@ class _ModelListTileState extends State<_ModelListTile> {
   bool hover = false;
 
   bool get _showSubtitle {
-    var visible = widget.model.releasedAt != null;
-    visible |= widget.model.contextWindow > 0;
-    visible |= widget.model.inputPrice > 0;
-    visible |= widget.model.outputPrice > 0;
+    var visible = widget.model.releasedAt.isNotEmpty;
+    visible |= widget.model.contextWindow.isNotEmpty;
+    visible |= widget.model.inputPrice.isNotEmpty;
+    visible |= widget.model.outputPrice.isNotEmpty;
     visible |= widget.model.reasoning;
     visible |= widget.model.vision;
     return visible;
@@ -402,10 +402,10 @@ class _ModelListTileState extends State<_ModelListTile> {
     var inputPrice = widget.model.inputPrice;
     var outputPrice = widget.model.outputPrice;
     var parts = <String>[
-      if (releasedAt != null) releasedAt.toString().split(' ')[0],
-      if (context > 0) '${context}K',
-      if (inputPrice > 0) '\$${inputPrice.toStringAsFixed(2)}',
-      if (outputPrice > 0) '\$${outputPrice.toStringAsFixed(2)}',
+      if (releasedAt.isNotEmpty) releasedAt,
+      if (context.isNotEmpty) context,
+      if (inputPrice.isNotEmpty) inputPrice,
+      if (outputPrice.isNotEmpty) outputPrice,
     ];
     var textStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/provider_repository.dart';

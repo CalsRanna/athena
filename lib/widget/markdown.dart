@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena/component/button.dart';
-import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -69,9 +69,9 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
 
 class _CallToolRequestSyntax extends md.InlineSyntax {
   _CallToolRequestSyntax()
-      : super(
-          r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
-        );
+    : super(
+        r'<CallToolRequest\s+name="(?<name>[^"]+)"\s+arguments="(?<arguments>\{.*\})"\s*><\/CallToolRequest>',
+      );
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {

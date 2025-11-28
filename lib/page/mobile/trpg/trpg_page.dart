@@ -1,4 +1,4 @@
-import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/trpg_message_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/trpg_view_model.dart';
