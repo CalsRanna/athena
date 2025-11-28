@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class ModelEntity {
   final int? id;
   final String name;
@@ -29,26 +31,19 @@ class ModelEntity {
 
   factory ModelEntity.fromJson(Map<String, dynamic> json) {
     return ModelEntity(
-      id: json['id'] as int?,
-      name: json['name'] as String,
-      modelId: json['model_id'] as String,
-      providerId: json['provider_id'] as int,
-      contextWindow: json['context_window'] as String? ?? '',
-      inputPrice: json['input_price'] as String? ?? '',
-      outputPrice: json['output_price'] as String? ?? '',
-      releasedAt: json['released_at'] as String? ?? '',
-      reasoning: _parseBool(json['reasoning']),
-      vision: _parseBool(json['vision']),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
-      updatedAt: DateTime.fromMillisecondsSinceEpoch(json['updated_at'] as int),
+      id: json.getIntOrNull('id'),
+      name: json.getString('name'),
+      modelId: json.getString('model_id'),
+      providerId: json.getInt('provider_id'),
+      contextWindow: json.getString('context_window'),
+      inputPrice: json.getString('input_price'),
+      outputPrice: json.getString('output_price'),
+      releasedAt: json.getString('released_at'),
+      reasoning: json.getBool('reasoning'),
+      vision: json.getBool('vision'),
+      createdAt: json.getDateTime('created_at'),
+      updatedAt: json.getDateTime('updated_at'),
     );
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value == null) return false;
-    if (value is bool) return value;
-    if (value is int) return value != 0;
-    return false;
   }
 
   Map<String, dynamic> toJson() {

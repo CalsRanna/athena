@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class SummaryEntity {
   final int id;
   final String link;
@@ -17,12 +19,12 @@ class SummaryEntity {
 
   factory SummaryEntity.fromJson(Map<String, dynamic> json) {
     return SummaryEntity(
-      id: json['id'] as int,
-      link: json['link'] as String,
-      title: json['title'] as String? ?? '',
-      content: json['content'] as String? ?? '',
-      icon: json['icon'] as String? ?? '',
-      createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
+      id: json.getInt('id'),
+      link: json.getString('link'),
+      title: json.getString('title'),
+      content: json.getString('content'),
+      icon: json.getString('icon'),
+      createdAt: json.getDateTime('created_at'),
     );
   }
 

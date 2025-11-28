@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:athena/extension/json_map_extension.dart';
+
 class ServerEntity {
   final int? id;
   final String name;
@@ -22,55 +24,15 @@ class ServerEntity {
   });
 
   factory ServerEntity.fromJson(Map<String, dynamic> json) {
-    List<String> argsList = [];
-    if (json['arguments'] != null) {
-      if (json['arguments'] is String) {
-        try {
-          argsList = List<String>.from(jsonDecode(json['arguments'] as String));
-        } catch (e) {
-          argsList = [];
-        }
-      } else if (json['arguments'] is List) {
-        argsList = List<String>.from(json['arguments']);
-      }
-    }
-
-    Map<String, String> envMap = {};
-    if (json['environment_variables'] != null) {
-      if (json['environment_variables'] is String) {
-        try {
-          var decoded = jsonDecode(json['environment_variables'] as String);
-          envMap = Map<String, String>.from(decoded);
-        } catch (e) {
-          envMap = {};
-        }
-      } else if (json['environment_variables'] is Map) {
-        envMap = Map<String, String>.from(json['environment_variables']);
-      }
-    }
-
-    List<String> toolsList = [];
-    if (json['tools'] != null) {
-      if (json['tools'] is String) {
-        try {
-          toolsList = List<String>.from(jsonDecode(json['tools'] as String));
-        } catch (e) {
-          toolsList = [];
-        }
-      } else if (json['tools'] is List) {
-        toolsList = List<String>.from(json['tools']);
-      }
-    }
-
     return ServerEntity(
-      id: json['id'] as int?,
-      name: json['name'] as String? ?? '',
-      command: json['command'] as String? ?? '',
-      arguments: argsList,
-      environmentVariables: envMap,
-      enabled: (json['enabled'] as int?) == 1,
-      description: json['description'] as String? ?? '',
-      tools: toolsList,
+      id: json.getIntOrNull('id'),
+      name: json.getString('name'),
+      command: json.getString('command'),
+      arguments: json.getList<String>('arguments'),
+      environmentVariables: json.getMap<String, String>('environment_variables'),
+      enabled: json.getBool('enabled', defaultValue: true),
+      description: json.getString('description'),
+      tools: json.getList<String>('tools'),
     );
   }
 

@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class TranslationEntity {
   final int id;
   final String source;
@@ -17,12 +19,12 @@ class TranslationEntity {
 
   factory TranslationEntity.fromJson(Map<String, dynamic> json) {
     return TranslationEntity(
-      id: json['id'] as int,
-      source: json['source'] as String,
-      sourceText: json['source_text'] as String,
-      target: json['target'] as String,
-      targetText: json['target_text'] as String,
-      createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
+      id: json.getInt('id'),
+      source: json.getString('source'),
+      sourceText: json.getString('source_text'),
+      target: json.getString('target'),
+      targetText: json.getString('target_text'),
+      createdAt: json.getDateTime('created_at'),
     );
   }
 

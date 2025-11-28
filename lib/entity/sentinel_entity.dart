@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class SentinelEntity {
   final int? id;
   final String name;
@@ -17,12 +19,12 @@ class SentinelEntity {
 
   factory SentinelEntity.fromJson(Map<String, dynamic> json) {
     return SentinelEntity(
-      id: json['id'] as int?,
-      name: json['name'] as String? ?? '',
-      avatar: json['avatar'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? '',
-      tags: json['tags'] as String? ?? '',
+      id: json.getIntOrNull('id'),
+      name: json.getString('name'),
+      avatar: json.getString('avatar'),
+      description: json.getString('description'),
+      prompt: json.getString('prompt'),
+      tags: json.getString('tags'),
     );
   }
 

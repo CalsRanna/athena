@@ -1,3 +1,5 @@
+import 'package:athena/extension/json_map_extension.dart';
+
 class ProviderEntity {
   final int? id;
   final String name;
@@ -19,21 +21,14 @@ class ProviderEntity {
 
   factory ProviderEntity.fromJson(Map<String, dynamic> json) {
     return ProviderEntity(
-      id: json['id'] as int?,
-      name: json['name'] as String,
-      baseUrl: json['base_url'] as String,
-      apiKey: json['api_key'] as String,
-      enabled: _parseBool(json['enabled']),
-      isPreset: _parseBool(json['is_preset']),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(json['created_at'] as int),
+      id: json.getIntOrNull('id'),
+      name: json.getString('name'),
+      baseUrl: json.getString('base_url'),
+      apiKey: json.getString('api_key'),
+      enabled: json.getBool('enabled'),
+      isPreset: json.getBool('is_preset'),
+      createdAt: json.getDateTime('created_at'),
     );
-  }
-
-  static bool _parseBool(dynamic value) {
-    if (value == null) return false;
-    if (value is bool) return value;
-    if (value is int) return value != 0;
-    return false;
   }
 
   Map<String, dynamic> toJson() {
