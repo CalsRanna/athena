@@ -55,7 +55,7 @@ class _MessageListViewState extends State<_MessageListView> {
   @override
   void initState() {
     super.initState();
-    viewModel.loadMessages(widget.chat.id!);
+    viewModel.refreshMessages(widget.chat.id!);
   }
 
   @override

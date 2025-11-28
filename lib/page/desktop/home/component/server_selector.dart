@@ -175,13 +175,28 @@ class _SentinelSelectDialog extends StatelessWidget {
   }
 
   Widget _buildData(List<ServerEntity> servers) {
-    if (servers.isEmpty) return const SizedBox();
+    if (servers.isEmpty) return _buildEmpty();
     List<Widget> children = servers
         .map((server) => _itemBuilder(server))
         .toList();
     return ConstrainedBox(
       constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
+    );
+  }
+
+  Widget _buildEmpty() {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      width: 520,
+      child: Text('No servers', style: textStyle),
     );
   }
 
