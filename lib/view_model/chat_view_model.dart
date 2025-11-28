@@ -5,10 +5,10 @@ import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
-import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -27,6 +27,7 @@ class ChatViewModel {
   final SentinelRepository _sentinelRepository = SentinelRepository();
   final ProviderRepository _providerRepository = ProviderRepository();
   final ModelRepository _modelRepository = ModelRepository();
+
   final ChatService _chatService = ChatService();
 
   // Signals 状态
@@ -53,30 +54,14 @@ class ChatViewModel {
 
   // 业务方法
 
-  /// 加载所有聊天会话
-  Future<void> getChats() async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      chats.value = await _chatRepository.getAllChats();
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
+  /// 添加待发送图片
+  void addPendingImage(String base64Image) {
+    pendingImages.value = [...pendingImages.value, base64Image];
   }
 
-  /// 加载指定聊天的消息
-  Future<void> loadMessages(int chatId) async {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      messages.value = await _messageRepository.getMessagesByChatId(chatId);
-    } catch (e) {
-      error.value = e.toString();
-    } finally {
-      isLoading.value = false;
-    }
+  /// 清空待发送图片
+  void clearPendingImages() {
+    pendingImages.value = [];
   }
 
   /// 创建新的聊天会话
@@ -182,56 +167,67 @@ class ChatViewModel {
     }
   }
 
-  /// 初始化聊天(如果没有聊天则创建一个)
-  Future<void> initChats() async {
-    var chatCount = chats.value.length;
-    if (chatCount == 0) {
-      await getChats();
-      chatCount = chats.value.length;
+  /// 导出聊天为图片
+  Future<void> exportImage({
+    required ChatEntity chat,
+    required GlobalKey repaintBoundaryKey,
+  }) async {
+    try {
+      // 获取RenderRepaintBoundary
+      final boundary =
+          repaintBoundaryKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
+      if (boundary == null) {
+        error.value = 'Failed to get render boundary';
+        return;
+      }
+
+      // 渲染为图片
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        error.value = 'Failed to convert image to bytes';
+        return;
+      }
+
+      final pngBytes = byteData.buffer.asUint8List();
+
+      // 保存图片
+      if (Platform.isAndroid || Platform.isIOS) {
+        // 移动端保存到Documents文件夹
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath =
+            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File(filePath);
+        await file.writeAsBytes(pngBytes);
+      } else {
+        // 桌面端保存到Downloads���件夹
+        final directory = await getDownloadsDirectory();
+        if (directory == null) {
+          error.value = 'Failed to get downloads directory';
+          return;
+        }
+        final filePath =
+            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
+        final file = File(filePath);
+        await file.writeAsBytes(pngBytes);
+      }
+    } catch (e) {
+      error.value = e.toString();
     }
-    if (chatCount == 0) {
-      await createChat();
+  }
+
+  /// 加载所有聊天会话
+  Future<void> getChats() async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      chats.value = await _chatRepository.getAllChats();
+    } catch (e) {
+      error.value = e.toString();
+    } finally {
+      isLoading.value = false;
     }
-  }
-
-  /// 切换当前聊天
-  Future<void> selectChat(ChatEntity chat) async {
-    if (isStreaming.value) return;
-
-    currentChat.value = chat;
-
-    // 加载消息
-    await loadMessages(chat.id!);
-
-    // 加载关联的 model
-    var model = await _modelRepository.getModelById(chat.modelId);
-    currentModel.value = model;
-
-    // 加载关联的 sentinel
-    var sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
-    currentSentinel.value = sentinel;
-
-    // 清空待发送图片
-    pendingImages.value = [];
-  }
-
-  /// 添加待发送图片
-  void addPendingImage(String base64Image) {
-    pendingImages.value = [...pendingImages.value, base64Image];
-  }
-
-  /// 移除待发送图片
-  void removePendingImage(int index) {
-    var images = List<String>.from(pendingImages.value);
-    if (index >= 0 && index < images.length) {
-      images.removeAt(index);
-      pendingImages.value = images;
-    }
-  }
-
-  /// 清空待发送图片
-  void clearPendingImages() {
-    pendingImages.value = [];
   }
 
   /// 获取第一个聊天
@@ -243,6 +239,86 @@ class ChatViewModel {
       return await createChat();
     }
     return chats.value.first;
+  }
+
+  Future<void> initSignals() async {
+    chats.value = await _chatRepository.getAllChats();
+    currentChat.value = chats.value.firstOrNull;
+    if (currentChat.value == null) return;
+    messages.value = await _messageRepository.getMessagesByChatId(
+      currentChat.value!.id!,
+    );
+    currentModel.value = await _modelRepository.getModelById(
+      currentChat.value!.modelId,
+    );
+    currentSentinel.value = await _sentinelRepository.getSentinelById(
+      currentChat.value!.sentinelId,
+    );
+  }
+
+  Future<void> refreshMessages(int chatId) async {
+    messages.value = await _messageRepository.getMessagesByChatId(chatId);
+  }
+
+  /// 移除待发送图片
+  void removePendingImage(int index) {
+    var images = List<String>.from(pendingImages.value);
+    if (index >= 0 && index < images.length) {
+      images.removeAt(index);
+      pendingImages.value = images;
+    }
+  }
+
+  /// 自动重命名聊天
+  Future<ChatEntity?> renameChat(ChatEntity chat) async {
+    try {
+      // 获取第一条用户消息
+      var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
+      var firstUserMessage = chatMessages
+          .where((m) => m.role == 'user')
+          .firstOrNull;
+      if (firstUserMessage == null) return null;
+
+      // 获取model和provider
+      var model = await _modelRepository.getModelById(chat.modelId);
+      if (model == null) return null;
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
+      if (provider == null) return null;
+
+      // 获取标题流
+      var titleBuffer = StringBuffer();
+      var stream = _chatService.getTitle(
+        firstUserMessage.content,
+        provider: provider,
+        model: model,
+      );
+
+      await for (final chunk in stream) {
+        titleBuffer.write(chunk);
+      }
+
+      var title = titleBuffer.toString().trim();
+      if (title.isEmpty) return null;
+
+      // 更新chat标题
+      var updated = chat.copyWith(title: title);
+      await _chatRepository.updateChat(updated);
+
+      // 更新状态
+      var index = chats.value.indexWhere((c) => c.id == chat.id);
+      if (index >= 0) {
+        var updatedChats = List<ChatEntity>.from(chats.value);
+        updatedChats[index] = updated;
+        chats.value = updatedChats;
+      }
+
+      return updated;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    }
   }
 
   /// 手动重命名聊天
@@ -272,165 +348,25 @@ class ChatViewModel {
     }
   }
 
-  /// 切换聊天的置顶状态
-  Future<void> togglePin(ChatEntity chat) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(pinned: !chat.pinned);
-      await _chatRepository.updateChat(updated);
+  /// 切换当前聊天
+  Future<void> selectChat(ChatEntity chat) async {
+    if (isStreaming.value) return;
 
-      // 重新加载聊天列表以应用排序
-      await getChats();
-    } catch (e) {
-      error.value = e.toString();
-    }
-  }
+    currentChat.value = chat;
 
-  /// 更新聊天的模型
-  Future<ChatEntity?> updateModel(
-    ModelEntity model, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(modelId: model.id);
-      await _chatRepository.updateChat(updated);
+    // 加载消息
+    messages.value = await _messageRepository.getMessagesByChatId(chat.id!);
 
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
+    // 加载关联的 model
+    var model = await _modelRepository.getModelById(chat.modelId);
+    currentModel.value = model;
 
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-        currentModel.value = model;
-      }
+    // 加载关联的 sentinel
+    var sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
+    currentSentinel.value = sentinel;
 
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  /// 更新聊天的哨兵
-  Future<ChatEntity?> updateSentinel(
-    SentinelEntity sentinel, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(sentinelId: sentinel.id);
-      await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-        currentSentinel.value = sentinel;
-      }
-
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  /// 更新温度参数
-  Future<ChatEntity?> updateTemperature(
-    double temperature, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(temperature: temperature);
-      await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-      }
-
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  /// 更新上下文轮数
-  Future<ChatEntity?> updateContext(
-    int context, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(context: context);
-      await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-      }
-
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
-  /// 更新是否启用搜索
-  Future<ChatEntity?> updateEnableSearch(
-    bool enabled, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(enableSearch: enabled);
-      await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-      }
-
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
+    // 清空待发送图片
+    pendingImages.value = [];
   }
 
   /// 发送消息(基础流式实现)
@@ -605,41 +541,28 @@ class ChatViewModel {
     }
   }
 
-  /// 自动重命名聊天
-  Future<ChatEntity?> renameChat(ChatEntity chat) async {
+  /// 切换聊天的置顶状态
+  Future<void> togglePin(ChatEntity chat) async {
+    error.value = null;
     try {
-      // 获取第一条用户消息
-      var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
-      var firstUserMessage = chatMessages
-          .where((m) => m.role == 'user')
-          .firstOrNull;
-      if (firstUserMessage == null) return null;
+      var updated = chat.copyWith(pinned: !chat.pinned);
+      await _chatRepository.updateChat(updated);
 
-      // 获取model和provider
-      var model = await _modelRepository.getModelById(chat.modelId);
-      if (model == null) return null;
-      var provider = await _providerRepository.getProviderById(
-        model.providerId,
-      );
-      if (provider == null) return null;
+      // 重新加载聊天列表以应用排序
+      await getChats();
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
 
-      // 获取标题流
-      var titleBuffer = StringBuffer();
-      var stream = _chatService.getTitle(
-        firstUserMessage.content,
-        provider: provider,
-        model: model,
-      );
-
-      await for (final chunk in stream) {
-        titleBuffer.write(chunk);
-      }
-
-      var title = titleBuffer.toString().trim();
-      if (title.isEmpty) return null;
-
-      // 更新chat标题
-      var updated = chat.copyWith(title: title);
+  /// 更新上下文轮数
+  Future<ChatEntity?> updateContext(
+    int context, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      var updated = chat.copyWith(context: context);
       await _chatRepository.updateChat(updated);
 
       // 更新状态
@@ -648,6 +571,39 @@ class ChatViewModel {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
+      }
+
+      return updated;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    }
+  }
+
+  /// 更新是否启用搜索
+  Future<ChatEntity?> updateEnableSearch(
+    bool enabled, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      var updated = chat.copyWith(enableSearch: enabled);
+      await _chatRepository.updateChat(updated);
+
+      // 更新状态
+      var index = chats.value.indexWhere((c) => c.id == chat.id);
+      if (index >= 0) {
+        var updatedChats = List<ChatEntity>.from(chats.value);
+        updatedChats[index] = updated;
+        chats.value = updatedChats;
+      }
+
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
       }
 
       return updated;
@@ -675,53 +631,92 @@ class ChatViewModel {
     }
   }
 
-  /// 导出聊天为图片
-  Future<void> exportImage({
+  /// 更新聊天的模型
+  Future<ChatEntity?> updateModel(
+    ModelEntity model, {
     required ChatEntity chat,
-    required GlobalKey repaintBoundaryKey,
   }) async {
+    error.value = null;
     try {
-      // 获取RenderRepaintBoundary
-      final boundary =
-          repaintBoundaryKey.currentContext?.findRenderObject()
-              as RenderRepaintBoundary?;
-      if (boundary == null) {
-        error.value = 'Failed to get render boundary';
-        return;
+      var updated = chat.copyWith(modelId: model.id);
+      await _chatRepository.updateChat(updated);
+
+      // 更新状态
+      var index = chats.value.indexWhere((c) => c.id == chat.id);
+      if (index >= 0) {
+        var updatedChats = List<ChatEntity>.from(chats.value);
+        updatedChats[index] = updated;
+        chats.value = updatedChats;
       }
 
-      // 渲染为图片
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        error.value = 'Failed to convert image to bytes';
-        return;
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
+        currentModel.value = model;
       }
 
-      final pngBytes = byteData.buffer.asUint8List();
-
-      // 保存图片
-      if (Platform.isAndroid || Platform.isIOS) {
-        // 移动端保存到Documents文件夹
-        final directory = await getApplicationDocumentsDirectory();
-        final filePath =
-            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
-        final file = File(filePath);
-        await file.writeAsBytes(pngBytes);
-      } else {
-        // 桌面端保存到Downloads���件夹
-        final directory = await getDownloadsDirectory();
-        if (directory == null) {
-          error.value = 'Failed to get downloads directory';
-          return;
-        }
-        final filePath =
-            '${directory.path}/chat_${chat.id}_${DateTime.now().millisecondsSinceEpoch}.png';
-        final file = File(filePath);
-        await file.writeAsBytes(pngBytes);
-      }
+      return updated;
     } catch (e) {
       error.value = e.toString();
+      return null;
+    }
+  }
+
+  /// 更新聊天的哨兵
+  Future<ChatEntity?> updateSentinel(
+    SentinelEntity sentinel, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      var updated = chat.copyWith(sentinelId: sentinel.id);
+      await _chatRepository.updateChat(updated);
+
+      // 更新状态
+      var index = chats.value.indexWhere((c) => c.id == chat.id);
+      if (index >= 0) {
+        var updatedChats = List<ChatEntity>.from(chats.value);
+        updatedChats[index] = updated;
+        chats.value = updatedChats;
+      }
+
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
+        currentSentinel.value = sentinel;
+      }
+
+      return updated;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    }
+  }
+
+  /// 更新温度参数
+  Future<ChatEntity?> updateTemperature(
+    double temperature, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      var updated = chat.copyWith(temperature: temperature);
+      await _chatRepository.updateChat(updated);
+
+      // 更新状态
+      var index = chats.value.indexWhere((c) => c.id == chat.id);
+      if (index >= 0) {
+        var updatedChats = List<ChatEntity>.from(chats.value);
+        updatedChats[index] = updated;
+        chats.value = updatedChats;
+      }
+
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
+      }
+
+      return updated;
+    } catch (e) {
+      error.value = e.toString();
+      return null;
     }
   }
 }

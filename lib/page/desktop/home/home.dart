@@ -16,6 +16,7 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -23,6 +24,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class DesktopHomePage extends StatefulWidget {
@@ -33,40 +35,35 @@ class DesktopHomePage extends StatefulWidget {
 }
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
-  // Flutter 资源管理
   final controller = TextEditingController();
   final scrollController = ScrollController();
-  late final viewModel = GetIt.instance<ChatViewModel>();
+  final chatViewModel = GetIt.instance<ChatViewModel>();
+  final modelViewModel = GetIt.instance<ModelViewModel>();
+  final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  final serverViewModel = GetIt.instance<ServerViewModel>();
 
-  // 临时本地缓存(用于避免 Watch 包装整个 widget tree)
-  // TODO: 后续应该完全移除,所有引用改为 viewModel.currentXxx.value 并使用 Watch
-  ChatEntity? chat;
-  ModelEntity? model;
-  SentinelEntity? sentinel;
-  var images = <String>[];
+  Future<void> autoRenameChat(ChatEntity chat) async {
+    await chatViewModel.renameChat(chat);
+  }
 
   @override
   Widget build(BuildContext context) {
-    var children = [_buildLeftBar(), Expanded(child: _buildWorkspace())];
-    return AthenaScaffold(
-      appBar: _buildAppBar(),
-      body: Row(children: children),
-    );
-  }
-
-  Future<void> changeChat(ChatEntity newChat) async {
-    await viewModel.selectChat(newChat);
-    // 同步本地缓存
-    setState(() {
-      chat = viewModel.currentChat.value;
-      model = viewModel.currentModel.value;
-      sentinel = viewModel.currentSentinel.value;
-      images = [];
+    return Watch((context) {
+      var children = [_buildLeftBar(), Expanded(child: _buildWorkspace())];
+      return AthenaScaffold(
+        appBar: _buildAppBar(),
+        body: Row(children: children),
+      );
     });
   }
 
+  Future<void> changeChat(ChatEntity newChat) async {
+    await chatViewModel.selectChat(newChat);
+    chatViewModel.pendingImages.value = [];
+  }
+
   Future<void> createChat() async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
@@ -78,18 +75,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
 
-    await viewModel.createChat();
-    // 同步本地缓存
-    setState(() {
-      chat = viewModel.currentChat.value;
-      model = viewModel.currentModel.value;
-      sentinel = viewModel.currentSentinel.value;
-      images = [];
-    });
-  }
-
-  Future<void> autoRenameChat(ChatEntity chat) async {
-    await viewModel.renameChat(chat);
+    await chatViewModel.createChat();
   }
 
   Future<void> destroyChat(ChatEntity chat) async {
@@ -99,17 +85,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       if (scrollController.hasClients) {
         scrollController.animateTo(0, curve: Curves.linear, duration: duration);
       }
-      await viewModel.deleteChat(chat);
-      _initChat();
-      _initModel();
-      _initSentinel();
+      await chatViewModel.deleteChat(chat);
     }
-  }
-
-  Future<void> destroyImage(int index) async {
-    setState(() {
-      images.removeAt(index);
-    });
   }
 
   @override
@@ -138,7 +115,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       initialValue: chat.title,
     );
     if (title != null && title.isNotEmpty) {
-      await viewModel.renameChatManually(chat, title);
+      await chatViewModel.renameChatManually(chat, title);
     }
   }
 
@@ -147,19 +124,21 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (scrollController.hasClients) {
       scrollController.animateTo(0, curve: Curves.linear, duration: duration);
     }
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    await viewModel.deleteMessage(message);
-    // After deleting, reload messages for UI update
-    await viewModel.loadMessages(chat!.id!);
+    await chatViewModel.deleteMessage(message);
+    await chatViewModel.refreshMessages(chat.id!);
   }
 
   Future<void> sendMessage() async {
     var text = controller.text.trim();
     if (text.isEmpty) return;
-    if (model == null || model!.id! <= 0) {
+    var model = chatViewModel.currentModel.value;
+    if (model == null || model.id! <= 0) {
       AthenaDialog.message('You should select a model first');
       return;
     }
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
 
     controller.clear();
@@ -168,6 +147,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       scrollController.animateTo(0, curve: Curves.linear, duration: duration);
     }
     var imageUrls = <String>[];
+    var images = chatViewModel.pendingImages.value;
     for (var image in images) {
       var bytes = await File(image).readAsBytes();
       imageUrls.add(base64Encode(bytes));
@@ -175,114 +155,85 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
     var message = MessageEntity(
       id: 0,
-      chatId: chat!.id ?? 0,
+      chatId: chat.id ?? 0,
       role: 'user',
       content: text,
       imageUrls: imageUrls.join(','),
     );
-    setState(() {
-      images = [];
-    });
+    chatViewModel.clearPendingImages();
 
-    await viewModel.sendMessage(message, chat: chat!);
+    await chatViewModel.sendMessage(message, chat: chat);
 
     // Auto-rename chat after first message
-    if (chat!.title.isEmpty || chat!.title == 'New Chat') {
-      var renamedChat = await viewModel.renameChat(chat!);
-      if (renamedChat != null) {
-        setState(() {
-          chat = renamedChat;
-        });
-      }
+    if (chat.title.isEmpty || chat.title == 'New Chat') {
+      await chatViewModel.renameChat(chat);
     }
   }
 
-  Future<void> terminateStreaming() async {
-    if (chat == null) return;
-    // Set streaming to false to stop the stream
-    viewModel.isStreaming.value = false;
+  void terminateStreaming() {
+    chatViewModel.isStreaming.value = false;
   }
 
   Future<void> updateContext(int context) async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    var updatedChat = await viewModel.updateContext(context, chat: chat!);
-    setState(() {
-      chat = updatedChat;
-    });
+    await chatViewModel.updateContext(context, chat: chat);
   }
 
   Future<void> updateEnableSearch(bool enabled) async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    var updatedChat = await viewModel.updateEnableSearch(enabled, chat: chat!);
-    setState(() {
-      chat = updatedChat;
-    });
+    await chatViewModel.updateEnableSearch(enabled, chat: chat);
   }
 
-  Future<void> updateImage(List<String> images) async {
-    if (viewModel.isStreaming.value) {
+  void updateImage(List<String> images) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
-    setState(() {
-      this.images = images;
-    });
+    chatViewModel.pendingImages.value = images;
   }
 
   Future<void> updateModel(ModelEntity newModel) async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
-    setState(() {
-      model = newModel;
-    });
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    var updatedChat = await viewModel.updateModel(newModel, chat: chat!);
-    setState(() {
-      chat = updatedChat;
-    });
+    await chatViewModel.updateModel(newModel, chat: chat);
   }
 
   Future<void> updateSentinel(SentinelEntity newSentinel) async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
-    setState(() {
-      sentinel = newSentinel;
-    });
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    var updatedChat = await viewModel.updateSentinel(newSentinel, chat: chat!);
-    setState(() {
-      chat = updatedChat;
-    });
+    await chatViewModel.updateSentinel(newSentinel, chat: chat);
   }
 
   Future<void> updateTemperature(double temperature) async {
-    if (viewModel.isStreaming.value) {
+    if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
       return;
     }
+    var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
-    var updatedChat = await viewModel.updateTemperature(
-      temperature,
-      chat: chat!,
-    );
-    setState(() {
-      chat = updatedChat;
-    });
+    await chatViewModel.updateTemperature(temperature, chat: chat);
   }
 
   Widget _buildAppBar() {
+    var chat = chatViewModel.currentChat.value;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: ColorUtil.FFFFFFFF,
@@ -300,22 +251,21 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         mainAxisAlignment: MainAxisAlignment.start,
         spacing: 8,
         children: [
-          if (chat != null) DesktopSentinelIndicator(chat: chat!),
-          if (chat != null) DesktopModelIndicator(chat: chat!),
+          if (chat != null) DesktopSentinelIndicator(chat: chat),
+          if (chat != null) DesktopModelIndicator(chat: chat),
         ],
       ),
     );
   }
 
   Widget _buildLeftBar() {
+    var chat = chatViewModel.currentChat.value;
     var chatListView = DesktopChatListView(
       onAutoRenamed: autoRenameChat,
       onDestroyed: destroyChat,
       onExportedImage: exportImage,
       onManualRenamed: manualRenameChat,
-      onPinned: (chat) {
-        viewModel.togglePin(chat);
-      },
+      onPinned: chatViewModel.togglePin,
       onSelected: changeChat,
       selectedChat: chat,
     );
@@ -346,6 +296,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildWorkspace() {
+    var chat = chatViewModel.currentChat.value;
+    var sentinel = chatViewModel.currentSentinel.value;
+    var images = chatViewModel.pendingImages.value;
+
     if (chat == null) {
       return Center(child: Text('No chat selected'));
     }
@@ -354,10 +308,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
 
     var workspace = DesktopMessageList(
-      chat: chat!,
+      chat: chat,
       controller: scrollController,
       onResend: resendMessage,
-      sentinel: sentinel!,
+      sentinel: sentinel,
     );
     var imageList = Container(
       height: 64,
@@ -369,7 +323,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       ),
     );
     var desktopMessageInput = DesktopMessageInput(
-      chat: chat!,
+      chat: chat,
       controller: controller,
       onContextChange: updateContext,
       onImageSelected: updateImage,
@@ -389,43 +343,19 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  Future<void> _initChat() async {
-    var chatViewModel = GetIt.instance<ChatViewModel>();
-    var chat = await chatViewModel.getFirstChat();
-    setState(() {
-      this.chat = chat;
-    });
-  }
-
-  Future<void> _initModel() async {
-    var modelViewModel = GetIt.instance<ModelViewModel>();
-    await modelViewModel.loadEnabledModels();
-    if (modelViewModel.enabledModels.value.isNotEmpty) {
-      setState(() {
-        model = modelViewModel.enabledModels.value.first;
-      });
-    }
-  }
-
-  Future<void> _initSentinel() async {
-    var sentinelViewModel = GetIt.instance<SentinelViewModel>();
-    await sentinelViewModel.getSentinels();
-    if (sentinelViewModel.sentinels.value.isNotEmpty) {
-      setState(() {
-        sentinel = sentinelViewModel.sentinels.value.first;
-      });
-    }
-  }
-
   Future<void> _initState() async {
-    var chatViewModel = GetIt.instance<ChatViewModel>();
-    await chatViewModel.initChats();
-    await _initChat();
-    await _initModel();
-    await _initSentinel();
+    await chatViewModel.initSignals();
+    // var chat = await chatViewModel.getFirstChat();
+    // if (chat != null) {
+    //   await chatViewModel.selectChat(chat);
+    // }
+    await modelViewModel.loadEnabledModels();
+    await sentinelViewModel.getSentinels();
+    await serverViewModel.loadServers();
   }
 
   Widget _itemBuilder(context, index) {
+    var images = chatViewModel.pendingImages.value;
     var image = Image.file(
       File(images[index]),
       fit: BoxFit.cover,
@@ -448,7 +378,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => destroyImage(index),
+      onTap: () => chatViewModel.removePendingImage(index),
       child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
     );
     var children = [
