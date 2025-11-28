@@ -149,4 +149,23 @@ class Database {
       await laconic.table('sentinels').insert([json]);
     }
   }
+
+  /// 重置数据库：清空所有数据并重新执行迁移和预设
+  Future<void> reset() async {
+    // 获取所有表名（排除 sqlite 系统表）
+    var tables = await laconic.select('''
+      SELECT name FROM sqlite_master
+      WHERE type='table' AND name NOT LIKE 'sqlite_%'
+    ''');
+
+    // 删除所有表
+    for (var table in tables) {
+      var tableName = table['name'] as String;
+      await laconic.statement('DROP TABLE IF EXISTS "$tableName"');
+    }
+
+    // 重新执行迁移和预设
+    await _migrate();
+    await _preset();
+  }
 }

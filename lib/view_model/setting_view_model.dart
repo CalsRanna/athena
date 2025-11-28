@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -321,5 +322,11 @@ class SettingViewModel {
       prompt: json['prompt'] as String? ?? '',
       tags: tags,
     );
+  }
+
+  Future<bool> resetData() async {
+    await Database.instance.reset();
+    await clearAllSettings();
+    return true;
   }
 }
