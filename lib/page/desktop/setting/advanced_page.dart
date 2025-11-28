@@ -25,14 +25,19 @@ class _DesktopSettingAdvancedPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AthenaSecondaryButton(
-            onTap: _handleExport,
-            child: Text('Export'),
-          ),
-          const SizedBox(height: 16),
-          AthenaSecondaryButton(
-            onTap: _handleImport,
-            child: Text('Import'),
+          Row(
+            spacing: 16,
+            children: [
+              AthenaSecondaryButton(
+                onTap: _handleExport,
+                child: Text('Export'),
+              ),
+              AthenaSecondaryButton(
+                onTap: _handleImport,
+                child: Text('Import'),
+              ),
+              AthenaSecondaryButton(onTap: _handleReset, child: Text('Reset')),
+            ],
           ),
         ],
       ),
@@ -54,6 +59,15 @@ class _DesktopSettingAdvancedPageState
     AthenaDialog.dismiss();
     if (!mounted) return;
     final message = success ? '导入成功' : '导入已取消';
+    AthenaDialog.message(message);
+  }
+
+  Future<void> _handleReset() async {
+    AthenaDialog.loading();
+    final success = await viewModel.resetData();
+    AthenaDialog.dismiss();
+    if (!mounted) return;
+    final message = success ? '重置成功' : '重置已取消';
     AthenaDialog.message(message);
   }
 }
