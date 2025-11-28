@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:athena/router/router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 
-@AutoRouterConfig()
-class AppRouter extends RootStackRouter {
-  AppRouter({super.navigatorKey});
+final router = AthenaRouter();
 
+@AutoRouterConfig()
+class AthenaRouter extends RootStackRouter {
   var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+
+  AthenaRouter({super.navigatorKey});
 
   @override
   List<AutoRoute> get routes {

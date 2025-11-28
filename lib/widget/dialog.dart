@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:athena/main.dart';
+import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/input.dart';
@@ -10,17 +10,14 @@ class AthenaDialog {
   static Future<bool?> confirm(String text) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       return showDialog<bool>(
-        builder: (_) => _DesktopConfirmDialog(
-          title: 'Confirm',
-          message: text,
-        ),
-        context: globalKey.currentContext!,
+        builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
+        context: router.navigatorKey.currentContext!,
       );
     } else {
       return showModalBottomSheet<bool>(
         backgroundColor: ColorUtil.FF282F32,
         builder: (_) => _ConfirmDialog(text: text),
-        context: globalKey.currentContext!,
+        context: router.navigatorKey.currentContext!,
       );
     }
   }
@@ -28,33 +25,28 @@ class AthenaDialog {
   static Future<String?> input(String title, {String? initialValue}) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       return showDialog<String>(
-        builder: (_) => _DesktopInputDialog(
-          title: title,
-          initialValue: initialValue,
-        ),
-        context: globalKey.currentContext!,
+        builder: (_) =>
+            _DesktopInputDialog(title: title, initialValue: initialValue),
+        context: router.navigatorKey.currentContext!,
       );
     } else {
       return showModalBottomSheet<String>(
         backgroundColor: ColorUtil.FF282F32,
-        builder: (_) => _InputDialog(
-          title: title,
-          initialValue: initialValue,
-        ),
-        context: globalKey.currentContext!,
+        builder: (_) => _InputDialog(title: title, initialValue: initialValue),
+        context: router.navigatorKey.currentContext!,
       );
     }
   }
 
   static void dismiss() {
-    Navigator.of(globalKey.currentContext!).pop();
+    Navigator.of(router.navigatorKey.currentContext!).pop();
   }
 
   static void loading() {
     var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
     showDialog(
       barrierDismissible: false,
-      context: globalKey.currentContext!,
+      context: router.navigatorKey.currentContext!,
       builder: (context) => Center(child: indicator),
     );
   }
@@ -65,7 +57,9 @@ class AthenaDialog {
       borderRadius: BorderRadius.circular(8),
       color: ColorUtil.FF282F32,
     );
-    var screenWidth = MediaQuery.sizeOf(globalKey.currentContext!).width;
+    var screenWidth = MediaQuery.sizeOf(
+      router.navigatorKey.currentContext!,
+    ).width;
     var container = Container(
       constraints: BoxConstraints(maxWidth: screenWidth - 32),
       decoration: boxDecoration,
@@ -91,7 +85,7 @@ class AthenaDialog {
     if (!isWindow) {
       snackBar = SnackBar(behavior: SnackBarBehavior.floating, content: text);
     }
-    var messenger = ScaffoldMessenger.of(globalKey.currentContext!);
+    var messenger = ScaffoldMessenger.of(router.navigatorKey.currentContext!);
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(snackBar);
   }
@@ -101,13 +95,13 @@ class AthenaDialog {
       showDialog(
         barrierDismissible: barrierDismissible,
         builder: (_) => child,
-        context: globalKey.currentContext!,
+        context: router.navigatorKey.currentContext!,
       );
     } else {
       showModalBottomSheet(
         backgroundColor: ColorUtil.FF282F32,
         builder: (_) => child,
-        context: globalKey.currentContext!,
+        context: router.navigatorKey.currentContext!,
       );
     }
   }
@@ -143,11 +137,11 @@ class _ConfirmDialog extends StatelessWidget {
   }
 
   void cancelDialog() {
-    Navigator.of(globalKey.currentContext!).pop(false);
+    Navigator.of(router.navigatorKey.currentContext!).pop(false);
   }
 
   void confirmDialog(BuildContext context) {
-    Navigator.of(globalKey.currentContext!).pop(true);
+    Navigator.of(router.navigatorKey.currentContext!).pop(true);
   }
 
   Widget _buildCancelButton(BuildContext context) {
@@ -205,10 +199,7 @@ class _DesktopConfirmDialog extends StatelessWidget {
   final String title;
   final String message;
 
-  const _DesktopConfirmDialog({
-    required this.title,
-    required this.message,
-  });
+  const _DesktopConfirmDialog({required this.title, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -244,10 +235,7 @@ class _DesktopConfirmDialog extends StatelessWidget {
       padding: EdgeInsets.all(32),
       child: column,
     );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: container,
-    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   Widget _buildButtons(BuildContext context) {
@@ -269,10 +257,7 @@ class _DesktopInputDialog extends StatefulWidget {
   final String title;
   final String? initialValue;
 
-  const _DesktopInputDialog({
-    required this.title,
-    this.initialValue,
-  });
+  const _DesktopInputDialog({required this.title, this.initialValue});
 
   @override
   State<_DesktopInputDialog> createState() => _DesktopInputDialogState();
@@ -322,10 +307,7 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
       padding: EdgeInsets.all(32),
       child: column,
     );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: container,
-    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   Widget _buildButtons(BuildContext context) {
@@ -351,10 +333,7 @@ class _InputDialog extends StatefulWidget {
   final String title;
   final String? initialValue;
 
-  const _InputDialog({
-    required this.title,
-    this.initialValue,
-  });
+  const _InputDialog({required this.title, this.initialValue});
 
   @override
   State<_InputDialog> createState() => _InputDialogState();
@@ -496,7 +475,7 @@ class _SuccessDialog extends StatelessWidget {
   }
 
   void confirmDialog() {
-    Navigator.of(globalKey.currentContext!).pop();
+    Navigator.of(router.navigatorKey.currentContext!).pop();
   }
 
   Widget _buildConfirmButton(BuildContext context) {

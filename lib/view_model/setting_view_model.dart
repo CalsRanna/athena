@@ -2,8 +2,10 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/util/shared_preference_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
+import 'package:window_manager/window_manager.dart';
 
 /// SettingViewModel 使用 SharedPreferences 管理应用设置
 /// 不依赖数据库，所有设置都存储在本地偏好设置中
@@ -143,12 +145,13 @@ class SettingViewModel {
   }
 
   /// 更新窗口尺寸
-  Future<void> updateWindowSize(double height, double width) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setDouble(_keyWindowHeight, height);
-    await instance.setDouble(_keyWindowWidth, width);
+  Future<void> updateWindowSize() async {
+    final size = await windowManager.getSize();
+    final instance = SharedPreferenceUtil.instance;
+    await instance.setWindowHeight(size.height);
+    await instance.setWindowWidth(size.width);
 
-    windowHeight.value = height;
-    windowWidth.value = width;
+    windowHeight.value = size.height;
+    windowWidth.value = size.width;
   }
 }
