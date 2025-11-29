@@ -6,12 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopConfigurationButton extends StatelessWidget {
-  final ChatEntity chat;
+  final ChatEntity? chat;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const DesktopConfigurationButton({
     super.key,
-    required this.chat,
+    this.chat,
     this.onContextChange,
     this.onTemperatureChange,
   });
@@ -41,11 +41,11 @@ class DesktopConfigurationButton extends StatelessWidget {
 }
 
 class _DesktopConfigurationDialog extends StatelessWidget {
-  final ChatEntity chat;
+  final ChatEntity? chat;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const _DesktopConfigurationDialog({
-    required this.chat,
+    this.chat,
     this.onContextChange,
     this.onTemperatureChange,
   });
@@ -53,11 +53,11 @@ class _DesktopConfigurationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var contextSlider = _DesktopConfigurationDialogContextSlider(
-      context: chat.context,
+      context: chat?.context ?? 0,
       onChange: onContextChange,
     );
     var temperatureSlider = _DesktopConfigurationDialogTemperatureSlider(
-      temperature: chat.temperature,
+      temperature: chat?.temperature ?? 1,
       onChange: onTemperatureChange,
     );
     var children = [

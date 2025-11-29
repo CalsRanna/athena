@@ -1,10 +1,9 @@
 import 'package:athena/component/message_list_tile.dart';
-import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
-import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena/page/desktop/home/component/sentinel_placeholder.dart';
 import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -13,16 +12,12 @@ import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageList extends StatefulWidget {
-  final ChatEntity chat;
   final ScrollController? controller;
   final void Function(MessageEntity message) onResend;
-  final SentinelEntity sentinel;
   const DesktopMessageList({
     super.key,
-    required this.chat,
     this.controller,
     required this.onResend,
-    required this.sentinel,
   });
 
   @override
@@ -31,6 +26,7 @@ class DesktopMessageList extends StatefulWidget {
 
 class _DesktopMessageListState extends State<DesktopMessageList> {
   late final ChatViewModel chatViewModel;
+  final sentinelViewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   void initState() {
@@ -69,8 +65,10 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   }
 
   Widget _buildData(List<MessageEntity> messages) {
+    var sentinel = chatViewModel.currentSentinel.value;
+    var defaultSentinel = sentinelViewModel.defaultSentinel.value;
     if (messages.isEmpty == true) {
-      return DesktopSentinelPlaceholder(sentinel: widget.sentinel);
+      return DesktopSentinelPlaceholder(sentinel: sentinel ?? defaultSentinel);
     }
     return ListView.separated(
       controller: widget.controller,
@@ -84,6 +82,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   Widget _itemBuilder(List<MessageEntity> messages, int index) {
     final message = messages.reversed.elementAt(index);
+    var defaultSentinel = sentinelViewModel.defaultSentinel.value;
     return Watch((context) {
       var loading = chatViewModel.isStreaming.value;
       if (index > 0) loading = false;
@@ -92,7 +91,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         message: message,
         onResend: () => widget.onResend.call(message),
         onSecondaryTapUp: (details) => openContextMenu(details, message),
-        sentinel: widget.sentinel,
+        sentinel: chatViewModel.currentSentinel.value ?? defaultSentinel,
       );
     });
   }

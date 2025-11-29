@@ -296,22 +296,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildWorkspace() {
-    var chat = chatViewModel.currentChat.value;
-    var sentinel = chatViewModel.currentSentinel.value;
     var images = chatViewModel.pendingImages.value;
 
-    if (chat == null) {
-      return Center(child: Text('No chat selected'));
-    }
-    if (sentinel == null) {
-      return Center(child: Text('No sentinel selected'));
-    }
-
     var workspace = DesktopMessageList(
-      chat: chat,
       controller: scrollController,
       onResend: resendMessage,
-      sentinel: sentinel,
     );
     var imageList = Container(
       height: 64,
@@ -323,7 +312,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       ),
     );
     var desktopMessageInput = DesktopMessageInput(
-      chat: chat,
       controller: controller,
       onContextChange: updateContext,
       onImageSelected: updateImage,

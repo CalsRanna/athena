@@ -42,13 +42,23 @@ class DesktopChatListView extends StatelessWidget {
   }
 
   Widget _buildData(List<ChatEntity> chats) {
-    if (chats.isEmpty) return const SizedBox();
+    if (chats.isEmpty) return _buildEmpty();
     return ListView.separated(
       itemBuilder: (context, index) => _itemBuilder(chats[index]),
       itemCount: chats.length,
       padding: EdgeInsets.all(12),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
+  }
+
+  Widget _buildEmpty() {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    return Center(child: Text('No Chats', style: textStyle));
   }
 
   Widget _itemBuilder(ChatEntity chat) {

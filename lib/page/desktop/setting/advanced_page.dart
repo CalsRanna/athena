@@ -28,7 +28,7 @@ class _DesktopSettingAdvancedPageState
     );
     var databaseTitle = Text('Database', style: titleTextStyle);
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 12,
