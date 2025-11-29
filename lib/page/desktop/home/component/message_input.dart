@@ -1,4 +1,3 @@
-import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/configuration_button.dart';
@@ -15,7 +14,6 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageInput extends StatelessWidget {
-  final ChatEntity chat;
   final TextEditingController controller;
   final void Function(int)? onContextChange;
   final void Function(List<String>)? onImageSelected;
@@ -26,7 +24,6 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function()? onTerminated;
   const DesktopMessageInput({
     super.key,
-    required this.chat,
     required this.controller,
     this.onContextChange,
     this.onImageSelected,
@@ -39,6 +36,8 @@ class DesktopMessageInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chatViewModel = GetIt.instance<ChatViewModel>();
+    var chat = chatViewModel.currentChat.value;
     var toolbarChildren = [
       DesktopSentinelSelector(onSelected: onSentinelChanged),
       DesktopModelSelector(onSelected: onModelChanged),
