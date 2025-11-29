@@ -123,6 +123,7 @@ class _DesktopSettingProviderPageState
   ) async {
     var contextMenu = DesktopModelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
+      onConnected: () => checkConnection(model),
       onDestroyed: () => destroyModel(model),
       onEdited: () => editModel(model),
     );
@@ -174,10 +175,11 @@ class _DesktopSettingProviderPageState
       var child = _ModelListTile(
         model: model,
         onSecondaryTap: (details) => openModelContextMenu(details, model),
-        onTap: () => checkConnection(model),
       );
       children.add(child);
+      children.add(const SizedBox(height: 12));
     }
+    children.removeLast();
     return children;
   }
 
@@ -294,8 +296,7 @@ class _DesktopSettingProviderPageState
 class _ModelListTile extends StatefulWidget {
   final ModelEntity model;
   final void Function(TapUpDetails)? onSecondaryTap;
-  final void Function()? onTap;
-  const _ModelListTile({required this.model, this.onSecondaryTap, this.onTap});
+  const _ModelListTile({required this.model, this.onSecondaryTap});
 
   @override
   _ModelListTileState createState() => _ModelListTileState();
@@ -353,26 +354,19 @@ class _ModelListTileState extends State<_ModelListTile> {
       if (_showSubtitle) const SizedBox(height: 4),
       if (_showSubtitle) Row(spacing: 8, children: subtitleChildren),
     ];
-    var informationWidget = Column(
+    var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: informationChildren,
     );
-    var connectIcon = Icon(
-      HugeIcons.strokeRoundedConnect,
-      color: ColorUtil.FFE0E0E0,
-      size: 20,
-    );
-    var paddedConnectIcon = Padding(
-      padding: const EdgeInsets.only(left: 8.0),
-      child: connectIcon,
-    );
-    var contentChildren = [
-      Expanded(child: informationWidget),
-      if (hover) paddedConnectIcon,
-    ];
-    var paddedContent = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(children: contentChildren),
+    var paddedContent = Container(
+      decoration: BoxDecoration(
+        color: hover
+            ? ColorUtil.FF9E9E9E
+            : ColorUtil.FFADADAD.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: column,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -383,7 +377,6 @@ class _ModelListTileState extends State<_ModelListTile> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTapUp: widget.onSecondaryTap,
-      onTap: widget.onTap,
       child: mouseRegion,
     );
   }
