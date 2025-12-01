@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
@@ -40,6 +41,7 @@ class ChatViewModel {
 
   // 当前聊天的关联状态
   final currentModel = signal<ModelEntity?>(null);
+  final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
   final pendingImages = listSignal<String>([]);
 
@@ -77,6 +79,15 @@ class ChatViewModel {
         return null;
       }
       var model = modelViewModel.enabledModels.value.first;
+
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
+      if (provider == null) {
+        error.value = 'No provider found';
+        return null;
+      }
+      currentProvider.value = provider;
 
       // 获取第一个哨兵
       var sentinels = await _sentinelRepository.getAllSentinels();
@@ -251,6 +262,9 @@ class ChatViewModel {
     currentModel.value = await _modelRepository.getModelById(
       currentChat.value!.modelId,
     );
+    currentProvider.value = await _providerRepository.getProviderById(
+      currentModel.value!.providerId,
+    );
     currentSentinel.value = await _sentinelRepository.getSentinelById(
       currentChat.value!.sentinelId,
     );
@@ -360,6 +374,10 @@ class ChatViewModel {
     // 加载关联的 model
     var model = await _modelRepository.getModelById(chat.modelId);
     currentModel.value = model;
+
+    // 加载关联的 provider
+    var provider = await _providerRepository.getProviderById(model!.providerId);
+    currentProvider.value = provider;
 
     // 加载关联的 sentinel
     var sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
