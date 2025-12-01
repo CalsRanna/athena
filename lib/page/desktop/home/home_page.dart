@@ -10,7 +10,6 @@ import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/model_indicator.dart';
-import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -42,10 +41,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   final serverViewModel = GetIt.instance<ServerViewModel>();
 
-  Future<void> autoRenameChat(ChatEntity chat) async {
-    await chatViewModel.renameChat(chat);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -55,11 +50,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         body: Row(children: children),
       );
     });
-  }
-
-  Future<void> changeChat(ChatEntity newChat) async {
-    await chatViewModel.selectChat(newChat);
-    chatViewModel.pendingImages.value = [];
   }
 
   Future<void> createChat() async {
@@ -233,7 +223,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildAppBar() {
-    var chat = chatViewModel.currentChat.value;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
       color: ColorUtil.FFFFFFFF,
@@ -250,10 +239,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         spacing: 8,
-        children: [
-          if (chat != null) DesktopSentinelIndicator(chat: chat),
-          if (chat != null) DesktopModelIndicator(chat: chat),
-        ],
+        children: [_buildSentinelIndicator(), DesktopModelIndicator()],
       ),
     );
   }
@@ -261,12 +247,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Widget _buildLeftBar() {
     var chat = chatViewModel.currentChat.value;
     var chatListView = DesktopChatListView(
-      onAutoRenamed: autoRenameChat,
+      onAutoRenamed: chatViewModel.renameChat,
       onDestroyed: destroyChat,
       onExportedImage: exportImage,
       onManualRenamed: manualRenameChat,
       onPinned: chatViewModel.togglePin,
-      onSelected: changeChat,
+      onSelected: chatViewModel.selectChat,
       selectedChat: chat,
     );
     var borderSide = BorderSide(
@@ -278,6 +264,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       height: double.infinity,
       width: 240,
       child: chatListView,
+    );
+  }
+
+  Widget _buildSentinelIndicator() {
+    var sentinel = chatViewModel.currentSentinel.value;
+    var name = sentinel?.name ?? 'Athena';
+    const textStyle = TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14);
+    return Container(
+      padding: const EdgeInsets.only(left: 16),
+      child: Text(name, style: textStyle),
     );
   }
 

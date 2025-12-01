@@ -1,39 +1,24 @@
 import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
-import 'package:athena/view_model/model_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopModelIndicator extends StatelessWidget {
-  final ChatEntity chat;
-  const DesktopModelIndicator({super.key, required this.chat});
+  const DesktopModelIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    final providerViewModel = GetIt.instance<ProviderViewModel>();
 
     return Watch((context) {
-      var currentChat = chatViewModel.currentChat.value;
-      if (currentChat == null || currentChat.id != chat.id) {
-        return const SizedBox();
-      }
-
-      var model = modelViewModel.models.value
-          .where((m) => m.id == currentChat.modelId)
-          .firstOrNull;
+      var model = chatViewModel.currentModel.value;
       if (model == null) return const SizedBox();
 
-      var provider = providerViewModel.providers.value
-          .where((p) => p.id == model.providerId)
-          .firstOrNull;
+      var provider = chatViewModel.currentProvider.value;
       if (provider == null) return const SizedBox();
       if (provider.name.isEmpty) return const SizedBox();
 
