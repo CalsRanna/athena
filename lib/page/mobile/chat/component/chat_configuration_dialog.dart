@@ -62,6 +62,7 @@ class _MobileConfigurationDialogState
     ];
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 16),
+      shrinkWrap: true,
       children: children,
     );
   }

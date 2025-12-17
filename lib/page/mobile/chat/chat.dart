@@ -71,11 +71,16 @@ class _MessageListViewState extends State<_MessageListView> {
           .toList();
       if (messages.isEmpty) return _SentinelPlaceholder(sentinel: sentinel);
 
+      var loading = viewModel.isStreaming.value;
+
       final reversedMessages = messages.reversed.toList();
       return ListView.separated(
         controller: controller,
-        itemBuilder: (_, index) =>
-            _itemBuilder(reversedMessages[index], sentinel),
+        itemBuilder: (_, index) => _itemBuilder(
+          reversedMessages[index],
+          sentinel,
+          loading && index == 0,
+        ),
         itemCount: messages.length,
         padding: EdgeInsets.symmetric(horizontal: 16),
         reverse: true,
@@ -152,8 +157,11 @@ class _MessageListViewState extends State<_MessageListView> {
     await viewModel.sendMessage(message, chat: widget.chat);
   }
 
-  Widget _itemBuilder(MessageEntity message, SentinelEntity sentinel) {
-    var loading = viewModel.isStreaming.value;
+  Widget _itemBuilder(
+    MessageEntity message,
+    SentinelEntity sentinel,
+    bool loading,
+  ) {
     return MessageListTile(
       loading: loading,
       message: message,
@@ -221,6 +229,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   void initState() {
     super.initState();
+    modelViewModel.initSignals();
   }
 
   void openBottomSheet() {
