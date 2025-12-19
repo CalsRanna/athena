@@ -16,6 +16,7 @@ import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/server_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -40,6 +41,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   final modelViewModel = GetIt.instance<ModelViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   final serverViewModel = GetIt.instance<ServerViewModel>();
+  final settingViewModel = GetIt.instance<SettingViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -328,6 +330,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Future<void> _initState() async {
+    await settingViewModel.initSignals();
     await chatViewModel.initSignals();
     // var chat = await chatViewModel.getFirstChat();
     // if (chat != null) {
