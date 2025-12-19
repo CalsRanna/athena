@@ -1,9 +1,4 @@
 import 'package:athena/page/desktop/home/home_view_model.dart';
-import 'package:athena/repository/chat_repository.dart';
-import 'package:athena/repository/model_repository.dart';
-import 'package:athena/repository/provider_repository.dart';
-import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/repository/server_repository.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
