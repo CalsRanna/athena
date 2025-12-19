@@ -109,12 +109,14 @@ class ChatViewModel {
       var id = await _chatRepository.createChat(chat);
       chat = chat.copyWith(id: id);
 
-      // 更新状态
-      chats.value = [...chats.value, chat];
+      var pinnedChats = chats.value.where((c) => c.pinned).toList();
+      var unpinnedChats = chats.value.where((c) => !c.pinned).toList();
+      chats.value = [...pinnedChats, chat, ...unpinnedChats];
       currentChat.value = chat;
       currentModel.value = model;
       currentSentinel.value = firstSentinel;
       pendingImages.value = [];
+      messages.value = [];
 
       return chat;
     } catch (e) {
