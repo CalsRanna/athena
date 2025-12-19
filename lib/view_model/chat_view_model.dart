@@ -13,6 +13,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get_it/get_it.dart';
@@ -71,14 +72,21 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      // 获取第一个启用的模型 - 通过 ModelViewModel
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      if (modelViewModel.enabledModels.value.isEmpty) {
-        error.value = 'No enabled models found';
-        return null;
+      var settingViewModel = GetIt.instance<SettingViewModel>();
+      var modelId = settingViewModel.chatModelId.value;
+      ModelEntity? model;
+      if (modelId > 0) {
+        model = await _modelRepository.getModelById(modelId);
       }
-      var model = modelViewModel.enabledModels.value.first;
+      if (model == null) {
+        var modelViewModel = GetIt.instance<ModelViewModel>();
+        await modelViewModel.loadEnabledModels();
+        if (modelViewModel.enabledModels.value.isEmpty) {
+          error.value = 'No enabled models found';
+          return null;
+        }
+        model = modelViewModel.enabledModels.value.first;
+      }
 
       var provider = await _providerRepository.getProviderById(
         model.providerId,
