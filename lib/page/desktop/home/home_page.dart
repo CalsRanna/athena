@@ -285,7 +285,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        DesktopSettingRoute().push(context);
+        DesktopSettingProviderRoute().push(context);
       },
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
