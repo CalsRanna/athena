@@ -33,7 +33,7 @@ class MobileSettingTile extends StatelessWidget {
     );
     var titleChildren = [
       Text(title, style: titleTextStyle),
-      if (subtitle != null) Text(subtitle!, style: subtitleTextStyle)
+      if (subtitle != null) Text(subtitle!, style: subtitleTextStyle),
     ];
     var titleColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

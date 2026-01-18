@@ -7,7 +7,7 @@ class AthenaFormTileLabel extends StatelessWidget {
   final Widget? trailing;
 
   const AthenaFormTileLabel({super.key, required this.title, this.trailing})
-      : titleFontSize = 14;
+    : titleFontSize = 14;
 
   const AthenaFormTileLabel.large({
     super.key,

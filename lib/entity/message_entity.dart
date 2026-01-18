@@ -27,8 +27,8 @@ class MessageEntity {
     this.searching = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
-  })  : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
-        reasoningUpdatedAt = reasoningUpdatedAt ?? DateTime.now();
+  }) : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
+       reasoningUpdatedAt = reasoningUpdatedAt ?? DateTime.now();
 
   factory MessageEntity.fromJson(Map<String, dynamic> json) {
     return MessageEntity(

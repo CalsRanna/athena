@@ -25,8 +25,8 @@ class PresetProvider {
           'released_at': 'Created 2025/03/25',
           'reasoning': false,
           'vision': false,
-        }
-      ]
+        },
+      ],
     },
     {
       'is_preset': true,
@@ -163,8 +163,8 @@ class PresetProvider {
           'released_at': 'Created Apr 16, 2025',
           'reasoning': true,
           'vision': false,
-        }
-      ]
+        },
+      ],
     },
     {
       'is_preset': true,
@@ -221,8 +221,8 @@ class PresetProvider {
           'released_at': 'Created 2025-06-24',
           'reasoning': false,
           'vision': false,
-        }
-      ]
+        },
+      ],
     },
     {
       'is_preset': true,
@@ -249,8 +249,8 @@ class PresetProvider {
           'released_at': 'Created 2025-03-24',
           'reasoning': false,
           'vision': false,
-        }
-      ]
+        },
+      ],
     },
     {
       'is_preset': true,
@@ -297,8 +297,8 @@ class PresetProvider {
           'released_at': 'Created 2025/06/15',
           'reasoning': true,
           'vision': false,
-        }
-      ]
-    }
+        },
+      ],
+    },
   ];
 }

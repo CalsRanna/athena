@@ -18,8 +18,7 @@ class DesktopServerFormDialog extends StatefulWidget {
       _DesktopServerFormDialogState();
 }
 
-class _DesktopServerFormDialogState
-    extends State<DesktopServerFormDialog> {
+class _DesktopServerFormDialogState extends State<DesktopServerFormDialog> {
   final nameController = TextEditingController();
 
   late final viewModel = GetIt.instance<ServerViewModel>();
@@ -54,29 +53,23 @@ class _DesktopServerFormDialogState
     var nameChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: nameController))
+      Expanded(child: AthenaInput(controller: nameController)),
     ];
     var children = [
       Row(children: titleChildren),
       const SizedBox(height: 24),
       Row(children: nameChildren),
       const SizedBox(height: 12),
-      _buildButtons()
+      _buildButtons(),
     ];
-    var column = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
       width: 520,
       child: column,
     );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: container,
-    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   void cancelDialog() {
@@ -107,7 +100,6 @@ class _DesktopServerFormDialogState
         command: '',
         arguments: [],
         environmentVariables: {},
-        
       );
       await viewModel.createServer(newServer);
     }
@@ -124,14 +116,7 @@ class _DesktopServerFormDialogState
       onTap: storeServer,
       child: Padding(padding: edgeInsets, child: Text('Store')),
     );
-    var children = [
-      cancelButton,
-      const SizedBox(width: 12),
-      storeButton,
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: children,
-    );
+    var children = [cancelButton, const SizedBox(width: 12), storeButton];
+    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 }

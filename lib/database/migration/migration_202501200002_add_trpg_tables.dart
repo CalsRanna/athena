@@ -6,10 +6,7 @@ class Migration202501200002AddTrpgTables {
   Future<void> migrate() async {
     var laconic = Database.instance.laconic;
 
-    var count = await laconic
-        .table('migrations')
-        .where('name', name)
-        .count();
+    var count = await laconic.table('migrations').where('name', name).count();
     if (count > 0) return;
 
     // 创建 trpg_games 表
@@ -46,7 +43,7 @@ class Migration202501200002AddTrpgTables {
 
     // 记录迁移
     await laconic.table('migrations').insert([
-      {'name': name}
+      {'name': name},
     ]);
   }
 }

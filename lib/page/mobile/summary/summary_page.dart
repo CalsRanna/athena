@@ -69,7 +69,7 @@ class _MobileSummaryPageState extends State<MobileSummaryPage> {
         }
         if (children.isNotEmpty) children.removeLast();
         return Column(children: children);
-      })
+      }),
     ];
   }
 
@@ -106,7 +106,7 @@ class _MobileSummaryPageState extends State<MobileSummaryPage> {
     var children = [
       Text('History', style: titleTextStyle),
       const Spacer(),
-      AthenaTextButton(onTap: viewModel.deleteAllSummaries, text: 'Clear')
+      AthenaTextButton(onTap: viewModel.deleteAllSummaries, text: 'Clear'),
     ];
     return Row(children: children);
   }

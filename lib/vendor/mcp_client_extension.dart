@@ -22,21 +22,19 @@ extension McpClientExtension on MCPClient {
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen((line) {
-      stderr.writeln('[StdErr from server $command]: $line');
-    });
-    final channel = StreamChannel.withCloseGuarantee(
-      process.stdout,
-      process.stdin,
-    )
-        .transform(StreamChannelTransformer.fromCodec(utf8))
-        .transformStream(const LineSplitter())
-        .transformSink(
-      StreamSinkTransformer.fromHandlers(
-        handleData: (data, sink) {
-          sink.add('$data\n');
-        },
-      ),
-    );
+          stderr.writeln('[StdErr from server $command]: $line');
+        });
+    final channel =
+        StreamChannel.withCloseGuarantee(process.stdout, process.stdin)
+            .transform(StreamChannelTransformer.fromCodec(utf8))
+            .transformStream(const LineSplitter())
+            .transformSink(
+              StreamSinkTransformer.fromHandlers(
+                handleData: (data, sink) {
+                  sink.add('$data\n');
+                },
+              ),
+            );
     final connection = connectServer(channel, protocolLogSink: protocolLogSink);
     unawaited(connection.done.then((_) => process.kill()));
     return connection;

@@ -64,10 +64,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
       padding: EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [
-      Expanded(child: listView),
-      _buildTranslateButton(),
-    ];
+    var columnChildren = [Expanded(child: listView), _buildTranslateButton()];
     return AthenaScaffold(
       appBar: AthenaAppBar(title: Text('Translation')),
       body: Column(children: columnChildren),
@@ -102,7 +99,11 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     var streaming = viewModel.streaming.value;
     if (streaming) return;
 
-    var translationId = await viewModel.createTranslation(source, controller.text, target);
+    var translationId = await viewModel.createTranslation(
+      source,
+      controller.text,
+      target,
+    );
     setState(() {
       id = translationId;
     });
@@ -123,7 +124,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     var children = [
       Text(language),
       const SizedBox(width: 8),
-      Icon(HugeIcons.strokeRoundedArrowDown01, size: 16)
+      Icon(HugeIcons.strokeRoundedArrowDown01, size: 16),
     ];
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -144,14 +145,16 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
           .firstOrNull;
       return TranslationListTile(
         showSourceText: false,
-        translation: translation ?? TranslationEntity(
-          id: 0,
-          source: '',
-          sourceText: '',
-          target: '',
-          targetText: '',
-          createdAt: DateTime.now(),
-        ),
+        translation:
+            translation ??
+            TranslationEntity(
+              id: 0,
+              source: '',
+              sourceText: '',
+              target: '',
+              targetText: '',
+              createdAt: DateTime.now(),
+            ),
       );
     });
   }
@@ -165,7 +168,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     var children = [
       Text('History', style: titleTextStyle),
       const Spacer(),
-      AthenaTextButton(onTap: viewModel.deleteAllTranslations, text: 'Clear')
+      AthenaTextButton(onTap: viewModel.deleteAllTranslations, text: 'Clear'),
     ];
     return Row(children: children);
   }
@@ -224,7 +227,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
         }
         children.removeLast();
         return Column(children: children);
-      })
+      }),
     ];
   }
 

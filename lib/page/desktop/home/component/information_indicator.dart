@@ -28,10 +28,7 @@ class DesktopInformationIndicator extends StatelessWidget {
   }
 
   void openDialog(BuildContext context) {
-    AthenaDialog.show(
-      _DesktopInformationDialog(),
-      barrierDismissible: true,
-    );
+    AthenaDialog.show(_DesktopInformationDialog(), barrierDismissible: true);
   }
 }
 
@@ -79,9 +76,7 @@ class _DesktopInformationDialog extends StatelessWidget {
       SizedBox(width: 16),
       Expanded(child: Text(environment)),
     ];
-    return Row(
-      children: children,
-    );
+    return Row(children: children);
   }
 
   Widget _buildPath() {
@@ -91,9 +86,7 @@ class _DesktopInformationDialog extends StatelessWidget {
       SizedBox(width: 16),
       Expanded(child: Text(path)),
     ];
-    return Row(
-      children: children,
-    );
+    return Row(children: children);
   }
 
   Widget _buildProcessPath() {
@@ -104,8 +97,6 @@ class _DesktopInformationDialog extends StatelessWidget {
       // Expanded(child: Text(path)),
       Expanded(child: Text('Not implemented')),
     ];
-    return Row(
-      children: children,
-    );
+    return Row(children: children);
   }
 }

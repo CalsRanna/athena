@@ -36,9 +36,13 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   }
 
   void handleTap(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) {
-      return const SettingPage();
-    }));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) {
+          return const SettingPage();
+        },
+      ),
+    );
   }
 
   void handleVisibilityChanged(VisibilityInfo info) {

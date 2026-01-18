@@ -142,7 +142,9 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyChatSearchDecisionModelId, modelId);
     chatSearchDecisionModelId.value = modelId;
-    chatSearchDecisionModel.value = await _modelRepository.getModelById(modelId);
+    chatSearchDecisionModel.value = await _modelRepository.getModelById(
+      modelId,
+    );
     if (chatSearchDecisionModel.value != null) {
       chatSearchDecisionModelProvider.value = await _providerRepository
           .getProviderById(chatSearchDecisionModel.value!.providerId);

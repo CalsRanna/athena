@@ -16,7 +16,7 @@ class DesktopProviderContextMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     var children = [
       DesktopContextMenuTile(text: 'Edit', onTap: onEdited),
-      DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed)
+      DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
     ];
     return DesktopContextMenu(offset: offset, children: children);
   }

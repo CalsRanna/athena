@@ -18,10 +18,6 @@ class ActionSuggestion {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'emoji': emoji,
-      'text': text,
-      'type': type,
-    };
+    return {'emoji': emoji, 'text': text, 'type': type};
   }
 }

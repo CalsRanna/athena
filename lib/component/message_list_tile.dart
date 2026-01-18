@@ -425,10 +425,7 @@ class _UserMessageListTile extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
     );
-    var children = [
-      text,
-      if (images.isNotEmpty) gridView,
-    ];
+    var children = [text, if (images.isNotEmpty) gridView];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,

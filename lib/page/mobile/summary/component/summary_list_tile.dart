@@ -8,11 +8,7 @@ class MobileSummaryListTile extends StatelessWidget {
   final void Function()? onTap;
   final SummaryEntity summary;
 
-  const MobileSummaryListTile({
-    super.key,
-    this.onTap,
-    required this.summary,
-  });
+  const MobileSummaryListTile({super.key, this.onTap, required this.summary});
 
   @override
   Widget build(BuildContext context) {

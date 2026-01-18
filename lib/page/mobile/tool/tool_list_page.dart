@@ -66,9 +66,7 @@ class _ToolListTile extends StatelessWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var rowChildren = [
-      Expanded(child: Text(tool.name, style: titleTextStyle)),
-    ];
+    var rowChildren = [Expanded(child: Text(tool.name, style: titleTextStyle))];
     var columnChildren = [
       Row(children: rowChildren),
       Text(tool.description, style: subtitleTextStyle),

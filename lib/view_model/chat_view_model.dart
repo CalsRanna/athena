@@ -259,10 +259,13 @@ class ChatViewModel {
       }
 
       // 更新状态
-      chats.value = chats.value.where((c) => !idsToDelete.contains(c.id)).toList();
+      chats.value = chats.value
+          .where((c) => !idsToDelete.contains(c.id))
+          .toList();
 
       // 如果删除的包含当前聊天，选中第一个剩余对话
-      if (currentChat.value != null && idsToDelete.contains(currentChat.value!.id)) {
+      if (currentChat.value != null &&
+          idsToDelete.contains(currentChat.value!.id)) {
         await _selectFirstChatOrClear();
       }
     } catch (e) {
@@ -277,8 +280,12 @@ class ChatViewModel {
     if (chats.value.isNotEmpty) {
       var firstChat = chats.value.first;
       currentChat.value = firstChat;
-      messages.value = await _messageRepository.getMessagesByChatId(firstChat.id!);
-      currentModel.value = await _modelRepository.getModelById(firstChat.modelId);
+      messages.value = await _messageRepository.getMessagesByChatId(
+        firstChat.id!,
+      );
+      currentModel.value = await _modelRepository.getModelById(
+        firstChat.modelId,
+      );
       if (currentModel.value != null) {
         currentProvider.value = await _providerRepository.getProviderById(
           currentModel.value!.providerId,
@@ -483,6 +490,11 @@ class ChatViewModel {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      // 如果是当前选中的对话，也更新 currentChat
+      if (currentChat.value?.id == chat.id) {
+        currentChat.value = updated;
       }
 
       return updated;
