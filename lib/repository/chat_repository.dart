@@ -1,5 +1,6 @@
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/chat_history_entity.dart';
 
 class ChatRepository {
   Future<List<ChatEntity>> getAllChats() async {
@@ -65,5 +66,39 @@ class ChatRepository {
   Future<int> getChatsCount() async {
     var laconic = Database.instance.laconic;
     return await laconic.table('chats').count();
+  }
+
+  /// 获取所有聊天及其最后一条消息内容
+  Future<List<ChatHistoryEntity>> getAllChatsWithLastMessage() async {
+    var laconic = Database.instance.laconic;
+    var sql = '''
+      SELECT
+        c.*,
+        COALESCE(m.content, '') as last_message_content
+      FROM chats c
+      LEFT JOIN (
+        SELECT chat_id, content
+        FROM messages m1
+        WHERE id = (
+          SELECT MAX(id) FROM messages m2 WHERE m2.chat_id = m1.chat_id
+        )
+      ) m ON c.id = m.chat_id
+      ORDER BY c.updated_at DESC
+    ''';
+
+    var results = await laconic.select(sql);
+    var histories = results
+        .map((r) => ChatHistoryEntity.fromJson(r.toMap()))
+        .toList();
+
+    // 按置顶和更新时间排序
+    histories.sort((a, b) {
+      if (a.chat.pinned == b.chat.pinned) {
+        return b.chat.updatedAt.compareTo(a.chat.updatedAt);
+      }
+      return a.chat.pinned ? -1 : 1;
+    });
+
+    return histories;
   }
 }

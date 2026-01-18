@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
@@ -34,6 +35,7 @@ class ChatViewModel {
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
+  final chatHistories = listSignal<ChatHistoryEntity>([]);
   final currentChat = signal<ChatEntity?>(null);
   final messages = listSignal<MessageEntity>([]);
   final isLoading = signal(false);
@@ -53,6 +55,10 @@ class ChatViewModel {
   // Computed signals
   late final recentChats = computed(() {
     return chats.value.take(10).toList();
+  });
+
+  late final recentChatHistories = computed(() {
+    return chatHistories.value.take(10).toList();
   });
 
   late final pinnedChats = computed(() {
@@ -384,6 +390,7 @@ class ChatViewModel {
     error.value = null;
     try {
       chats.value = await _chatRepository.getAllChats();
+      chatHistories.value = await _chatRepository.getAllChatsWithLastMessage();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -404,6 +411,7 @@ class ChatViewModel {
 
   Future<void> initSignals() async {
     chats.value = await _chatRepository.getAllChats();
+    chatHistories.value = await _chatRepository.getAllChatsWithLastMessage();
     currentChat.value = chats.value.firstOrNull;
 
     if (currentChat.value != null) {
@@ -484,12 +492,28 @@ class ChatViewModel {
       var updated = chat.copyWith(title: title);
       await _chatRepository.updateChat(updated);
 
-      // 更新状态
+      // 更新 chats 状态
       var index = chats.value.indexWhere((c) => c.id == chat.id);
       if (index >= 0) {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      // 更新 chatHistories 状态
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
       }
 
       // 如果是当前选中的对话，也更新 currentChat
@@ -513,12 +537,28 @@ class ChatViewModel {
       var updated = chat.copyWith(title: title);
       await _chatRepository.updateChat(updated);
 
-      // 更新状态
+      // 更新 chats 状态
       var index = chats.value.indexWhere((c) => c.id == chat.id);
       if (index >= 0) {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      // 更新 chatHistories 状态
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
       }
 
       if (currentChat.value?.id == chat.id) {

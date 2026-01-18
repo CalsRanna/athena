@@ -1,4 +1,5 @@
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/model/shortcut.dart';
 import 'package:athena/page/mobile/home/component/welcome.dart';
@@ -25,8 +26,10 @@ class MobileHomePage extends StatefulWidget {
 }
 
 class _ChatTile extends StatelessWidget {
-  final ChatEntity chat;
-  const _ChatTile(this.chat);
+  final ChatHistoryEntity chatHistory;
+  const _ChatTile(this.chatHistory);
+
+  ChatEntity get chat => chatHistory.chat;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +40,7 @@ class _ChatTile extends StatelessWidget {
     final body = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Text(chat.title.isNotEmpty ? chat.title : '新的对话'),
+      child: Text(chat.title.isNotEmpty ? chat.title.trim() : '新的对话'),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -148,7 +151,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
         SizedBox(
           height: 52,
           child: Watch(
-            (_) => _RecentChatListView(chats: chatViewModel.recentChats.value),
+            (_) => _RecentChatListView(
+              chatHistories: chatViewModel.recentChatHistories.value,
+            ),
           ),
         ),
       ],
@@ -200,25 +205,25 @@ class _NewChatButton extends StatelessWidget {
 }
 
 class _RecentChatListView extends StatelessWidget {
-  final List<ChatEntity> chats;
-  const _RecentChatListView({required this.chats});
+  final List<ChatHistoryEntity> chatHistories;
+  const _RecentChatListView({required this.chatHistories});
 
   @override
   Widget build(BuildContext context) {
-    if (chats.isEmpty) return const SizedBox();
+    if (chatHistories.isEmpty) return const SizedBox();
     return ListView.builder(
       scrollDirection: Axis.horizontal,
-      itemBuilder: (_, index) => itemBuilder(chats, index),
-      itemCount: chats.length,
+      itemBuilder: (_, index) => itemBuilder(chatHistories, index),
+      itemCount: chatHistories.length,
     );
   }
 
-  Widget itemBuilder(List<ChatEntity> chats, int index) {
+  Widget itemBuilder(List<ChatHistoryEntity> chatHistories, int index) {
     const left = 16.0;
-    final right = index == chats.length - 1 ? 16.0 : 0.0;
+    final right = index == chatHistories.length - 1 ? 16.0 : 0.0;
     return Padding(
       padding: EdgeInsets.only(left: left, right: right),
-      child: _ChatTile(chats[index]),
+      child: _ChatTile(chatHistories[index]),
     );
   }
 }

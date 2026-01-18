@@ -34,7 +34,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   Widget _buildData() {
     return Watch(
       (_) => ListView.separated(
-        itemCount: viewModel.chats.value.length,
+        itemCount: viewModel.chatHistories.value.length,
         itemBuilder: _buildItem,
         padding: EdgeInsets.symmetric(horizontal: 16),
         separatorBuilder: (context, index) => _buildSeparator(),
@@ -43,7 +43,8 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   }
 
   Widget _buildItem(BuildContext context, int index) {
-    var chat = viewModel.chats.value[index];
+    var chatHistory = viewModel.chatHistories.value[index];
+    var chat = chatHistory.chat;
     var titleTextStyle = TextStyle(
       color: ColorUtil.FFFFFFFF,
       fontSize: 16,
@@ -51,7 +52,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       height: 1.5,
     );
     var title = Text(
-      chat.title.isNotEmpty ? chat.title : 'New Chat',
+      chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
       style: titleTextStyle,
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
@@ -66,11 +67,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       child: icon,
     );
     var rowChildren = [Expanded(child: title), gestureDetector];
-    var messages = viewModel.messages.value.where((m) => m.chatId == chat.id);
-    var content = '';
-    if (messages.isNotEmpty) {
-      content = messages.last.content.replaceAll('\n', ' ').trim();
-    }
+    var content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
     var messageTextStyle = TextStyle(
       color: ColorUtil.FFE0E0E0,
       fontSize: 12,
