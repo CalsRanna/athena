@@ -72,11 +72,14 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var settingViewModel = GetIt.instance<SettingViewModel>();
-      var modelId = settingViewModel.chatModelId.value;
-      ModelEntity? model;
-      if (modelId > 0) {
-        model = await _modelRepository.getModelById(modelId);
+      // 优先使用当前选择的模型，否则使用设置中的默认模型
+      ModelEntity? model = currentModel.value;
+      if (model == null) {
+        var settingViewModel = GetIt.instance<SettingViewModel>();
+        var modelId = settingViewModel.chatModelId.value;
+        if (modelId > 0) {
+          model = await _modelRepository.getModelById(modelId);
+        }
       }
       if (model == null) {
         var modelViewModel = GetIt.instance<ModelViewModel>();
@@ -97,10 +100,13 @@ class ChatViewModel {
       }
       currentProvider.value = provider;
 
-      // 获取第一个哨兵
-      var sentinels = await _sentinelRepository.getAllSentinels();
-      var firstSentinel = sentinel ?? sentinels.firstOrNull;
-      if (firstSentinel == null) {
+      // 优先使用传入的 sentinel，其次使用当前选择的 sentinel，最后使用第一个 sentinel
+      var selectedSentinel = sentinel ?? currentSentinel.value;
+      if (selectedSentinel == null) {
+        var sentinels = await _sentinelRepository.getAllSentinels();
+        selectedSentinel = sentinels.firstOrNull;
+      }
+      if (selectedSentinel == null) {
         error.value = 'No sentinels found';
         return null;
       }
@@ -109,7 +115,7 @@ class ChatViewModel {
       var chat = ChatEntity(
         title: 'New Chat',
         modelId: model.id!,
-        sentinelId: firstSentinel.id!,
+        sentinelId: selectedSentinel.id!,
         createdAt: now,
         updatedAt: now,
       );
@@ -122,7 +128,7 @@ class ChatViewModel {
       chats.value = [...pinnedChats, chat, ...unpinnedChats];
       currentChat.value = chat;
       currentModel.value = model;
-      currentSentinel.value = firstSentinel;
+      currentSentinel.value = selectedSentinel;
       pendingImages.value = [];
       messages.value = [];
 
@@ -149,14 +155,10 @@ class ChatViewModel {
       // 如果删除的是当前聊天,清空当前聊天
       if (currentChat.value?.id == chat.id) {
         currentChat.value = null;
+        currentModel.value = null;
+        currentProvider.value = null;
+        currentSentinel.value = null;
         messages.value = [];
-      }
-
-      // 如果是桌面端且没有聊天了,创建新聊天
-      var isDesktop =
-          Platform.isMacOS || Platform.isLinux || Platform.isWindows;
-      if (isDesktop && chats.value.isEmpty) {
-        await createChat();
       }
     } catch (e) {
       error.value = e.toString();
@@ -265,19 +267,33 @@ class ChatViewModel {
   Future<void> initSignals() async {
     chats.value = await _chatRepository.getAllChats();
     currentChat.value = chats.value.firstOrNull;
-    if (currentChat.value == null) return;
-    messages.value = await _messageRepository.getMessagesByChatId(
-      currentChat.value!.id!,
-    );
-    currentModel.value = await _modelRepository.getModelById(
-      currentChat.value!.modelId,
-    );
-    currentProvider.value = await _providerRepository.getProviderById(
-      currentModel.value!.providerId,
-    );
-    currentSentinel.value = await _sentinelRepository.getSentinelById(
-      currentChat.value!.sentinelId,
-    );
+
+    if (currentChat.value != null) {
+      // 有对话时，加载对话的消息和关联信息
+      messages.value = await _messageRepository.getMessagesByChatId(
+        currentChat.value!.id!,
+      );
+      currentModel.value = await _modelRepository.getModelById(
+        currentChat.value!.modelId,
+      );
+      if (currentModel.value != null) {
+        currentProvider.value = await _providerRepository.getProviderById(
+          currentModel.value!.providerId,
+        );
+      }
+      currentSentinel.value = await _sentinelRepository.getSentinelById(
+        currentChat.value!.sentinelId,
+      );
+    } else {
+      // 没有对话时，使用设置中的默认模型和默认哨兵
+      var settingViewModel = GetIt.instance<SettingViewModel>();
+      currentModel.value = settingViewModel.chatModel.value;
+      currentProvider.value = settingViewModel.chatModelProvider.value;
+
+      // 使用默认哨兵
+      var sentinels = await _sentinelRepository.getAllSentinels();
+      currentSentinel.value = sentinels.firstOrNull;
+    }
   }
 
   Future<void> refreshMessages(int chatId) async {
@@ -746,5 +762,18 @@ class ChatViewModel {
       error.value = e.toString();
       return null;
     }
+  }
+
+  /// 更新当前模型（没有选中对话时使用）
+  Future<void> updateCurrentModel(ModelEntity model) async {
+    currentModel.value = model;
+    currentProvider.value = await _providerRepository.getProviderById(
+      model.providerId,
+    );
+  }
+
+  /// 更新当前哨兵（没有选中对话时使用）
+  void updateCurrentSentinel(SentinelEntity sentinel) {
+    currentSentinel.value = sentinel;
   }
 }

@@ -83,16 +83,28 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   Widget _itemBuilder(List<MessageEntity> messages, int index) {
     final message = messages.reversed.elementAt(index);
     var defaultSentinel = sentinelViewModel.defaultSentinel.value;
-    return Watch((context) {
-      var loading = chatViewModel.isStreaming.value;
-      if (index > 0) loading = false;
-      return MessageListTile(
-        loading: loading,
-        message: message,
-        onResend: () => widget.onResend.call(message),
-        onSecondaryTapUp: (details) => openContextMenu(details, message),
-        sentinel: chatViewModel.currentSentinel.value ?? defaultSentinel,
-      );
-    });
+    var sentinel = chatViewModel.currentSentinel.value ?? defaultSentinel;
+
+    // 只有第一项需要监听 streaming 状态
+    if (index == 0) {
+      return Watch((context) {
+        var loading = chatViewModel.isStreaming.value;
+        return MessageListTile(
+          loading: loading,
+          message: message,
+          onResend: () => widget.onResend.call(message),
+          onSecondaryTapUp: (details) => openContextMenu(details, message),
+          sentinel: sentinel,
+        );
+      });
+    }
+
+    return MessageListTile(
+      loading: false,
+      message: message,
+      onResend: () => widget.onResend.call(message),
+      onSecondaryTapUp: (details) => openContextMenu(details, message),
+      sentinel: sentinel,
+    );
   }
 }

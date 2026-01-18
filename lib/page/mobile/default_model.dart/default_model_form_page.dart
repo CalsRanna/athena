@@ -146,8 +146,12 @@ class _MobileDefaultModelFormPageState
   @override
   void initState() {
     super.initState();
-    settingViewModel.initSignals();
-    modelViewModel.initSignals();
+    _initializeViewModels();
+  }
+
+  Future<void> _initializeViewModels() async {
+    await settingViewModel.initSignals();
+    await modelViewModel.initSignals();
   }
 }
 

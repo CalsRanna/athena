@@ -16,9 +16,9 @@ class DesktopModelIndicator extends StatelessWidget {
 
     return Watch((context) {
       var model = chatViewModel.currentModel.value;
-      if (model == null) return const SizedBox();
-
       var provider = chatViewModel.currentProvider.value;
+
+      if (model == null) return const SizedBox();
       if (provider == null) return const SizedBox();
       if (provider.name.isEmpty) return const SizedBox();
 

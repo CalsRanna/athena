@@ -1,4 +1,3 @@
-import 'package:athena/page/desktop/home/home_view_model.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -24,7 +23,5 @@ class DI {
     getIt.registerLazySingleton(() => TranslationViewModel());
     getIt.registerLazySingleton(() => SummaryViewModel());
     getIt.registerLazySingleton(() => TRPGViewModel());
-
-    getIt.registerLazySingleton(() => HomeViewModel());
   }
 }

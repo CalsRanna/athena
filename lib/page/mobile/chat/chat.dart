@@ -177,13 +177,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   late final viewModel = GetIt.instance<ChatViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
-  late String title = widget.chat.title;
-
-  late int _sentinelId = widget.chat.sentinelId;
-  late int _modelId = widget.chat.modelId;
-  late bool _enableSearch = widget.chat.enableSearch;
-  late double _temperature = widget.chat.temperature;
-  late int _context = widget.chat.context;
 
   @override
   Widget build(BuildContext context) {
@@ -194,20 +187,20 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (chat == null) return const SizedBox();
 
       var model = modelViewModel.models.value
-          .where((m) => m.id == _modelId)
+          .where((m) => m.id == chat.modelId)
           .firstOrNull;
 
       var actionButton = AthenaIconButton(
         icon: HugeIcons.strokeRoundedMoreHorizontal,
-        onTap: openBottomSheet,
+        onTap: () => openBottomSheet(chat),
       );
-      var titleText = Text(title, textAlign: TextAlign.center);
+      var titleText = Text(chat.title, textAlign: TextAlign.center);
       var messageListView = _MessageListView(
         chat: chat,
         model: model,
-        onChatTitleChanged: updateTitle,
+        onChatTitleChanged: (_) {},
       );
-      var input = _buildInput();
+      var input = _buildInput(chat);
       return AthenaScaffold(
         appBar: AthenaAppBar(action: actionButton, title: titleText),
         body: Column(
@@ -229,105 +222,75 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   void initState() {
     super.initState();
-    modelViewModel.initSignals();
+    _initializeViewModels();
   }
 
-  void openBottomSheet() {
-    var copiedModel = widget.chat.copyWith(
-      enableSearch: _enableSearch,
-      modelId: _modelId,
-      sentinelId: _sentinelId,
-      temperature: _temperature,
-      context: _context,
-    );
+  Future<void> _initializeViewModels() async {
+    await modelViewModel.initSignals();
+  }
+
+  void openBottomSheet(ChatEntity chat) {
     var mobileChatBottomSheet = MobileChatBottomSheet(
-      chat: copiedModel,
-      onContextChanged: updateContext,
-      onEnableSearchChanged: updateEnableSearch,
-      onModelChanged: updateModel,
-      onSentinelChanged: updateSentinel,
-      onTemperatureChanged: updateTemperature,
+      chat: chat,
+      onContextChanged: (value) => updateContext(value, chat),
+      onEnableSearchChanged: (value) => updateEnableSearch(value, chat),
+      onModelChanged: (model) => updateModel(model, chat),
+      onSentinelChanged: (sentinel) => updateSentinel(sentinel, chat),
+      onTemperatureChanged: (value) => updateTemperature(value, chat),
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
 
-  Future<void> sendMessage() async {
+  Future<void> sendMessage(ChatEntity chat) async {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
 
     var message = MessageEntity(
       id: 0,
-      chatId: widget.chat.id ?? 0,
+      chatId: chat.id ?? 0,
       role: 'user',
       content: text,
       imageUrls: '',
     );
 
-    await viewModel.sendMessage(message, chat: widget.chat);
-    if (title.isEmpty || title == 'New Chat') {
-      var renamedChat = await viewModel.renameChat(widget.chat);
-      if (renamedChat != null) {
-        setState(() {
-          title = renamedChat.title;
-        });
-      }
+    await viewModel.sendMessage(message, chat: chat);
+    if (chat.title.isEmpty || chat.title == 'New Chat') {
+      await viewModel.renameChat(chat);
     }
   }
 
   void terminateStreaming() {
     viewModel.isStreaming.value = false;
-    setState(() {});
   }
 
-  void updateContext(int value) {
-    viewModel.updateContext(value, chat: widget.chat);
-    setState(() {
-      _context = value;
-    });
+  void updateContext(int value, ChatEntity chat) {
+    viewModel.updateContext(value, chat: chat);
   }
 
-  void updateEnableSearch(bool value) {
-    viewModel.updateEnableSearch(value, chat: widget.chat);
-    setState(() {
-      _enableSearch = value;
-    });
+  void updateEnableSearch(bool value, ChatEntity chat) {
+    viewModel.updateEnableSearch(value, chat: chat);
   }
 
-  void updateModel(ModelEntity model) {
-    viewModel.updateModel(model, chat: widget.chat);
-    setState(() {
-      _modelId = model.id ?? 0;
-    });
+  void updateModel(ModelEntity model, ChatEntity chat) {
+    viewModel.updateModel(model, chat: chat);
   }
 
-  void updateSentinel(SentinelEntity sentinel) {
-    viewModel.updateSentinel(sentinel, chat: widget.chat);
-    setState(() {
-      _sentinelId = sentinel.id ?? 0;
-    });
+  void updateSentinel(SentinelEntity sentinel, ChatEntity chat) {
+    viewModel.updateSentinel(sentinel, chat: chat);
   }
 
-  void updateTemperature(double value) {
-    viewModel.updateTemperature(value, chat: widget.chat);
-    setState(() {
-      _temperature = value;
-    });
+  void updateTemperature(double value, ChatEntity chat) {
+    viewModel.updateTemperature(value, chat: chat);
   }
 
-  void updateTitle(ChatEntity chat) {
-    setState(() {
-      title = chat.title;
-    });
-  }
-
-  Widget _buildInput() {
+  Widget _buildInput(ChatEntity chat) {
     var userInput = _UserInput(
       controller: controller,
-      onSubmitted: sendMessage,
+      onSubmitted: () => sendMessage(chat),
     );
     var sendButton = _SendButton(
-      onSubmitted: sendMessage,
+      onSubmitted: () => sendMessage(chat),
       onTerminated: terminateStreaming,
     );
     final inputChildren = [
