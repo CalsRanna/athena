@@ -1,7 +1,6 @@
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
@@ -140,14 +139,10 @@ class _Tile extends StatelessWidget {
     MobileSentinelFormRoute(sentinel: sentinel).push(context);
   }
 
-  Future<void> navigateChatPage(BuildContext context) async {
+  void navigateChatPage(BuildContext context) {
     AthenaDialog.dismiss();
-    var viewModel = GetIt.instance<ChatViewModel>();
-    var chat = await viewModel.createChat(sentinel: sentinel);
-    if (!context.mounted) return;
-    if (chat != null) {
-      MobileChatRoute(chat: chat).push(context);
-    }
+    // Navigate to chat page with sentinel, chat will be created on first message
+    MobileChatRoute(sentinel: sentinel).push(context);
   }
 
   void openBottomSheet(BuildContext context) {

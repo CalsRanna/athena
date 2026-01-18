@@ -18,7 +18,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileChatBottomSheet extends StatefulWidget {
-  final ChatEntity chat;
+  final ChatEntity? chat;
   final void Function(int)? onContextChanged;
   final void Function(bool)? onEnableSearchChanged;
   final void Function(ModelEntity)? onModelChanged;
@@ -26,7 +26,7 @@ class MobileChatBottomSheet extends StatefulWidget {
   final void Function(double)? onTemperatureChanged;
   const MobileChatBottomSheet({
     super.key,
-    required this.chat,
+    this.chat,
     this.onContextChanged,
     this.onEnableSearchChanged,
     this.onModelChanged,
@@ -44,11 +44,35 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final modelViewModel = GetIt.instance<ModelViewModel>();
   late final providerViewModel = GetIt.instance<ProviderViewModel>();
 
-  late int sentinelId = widget.chat.sentinelId;
-  late int modelId = widget.chat.modelId;
-  late bool enableSearch = widget.chat.enableSearch;
-  late double temperature = widget.chat.temperature;
-  late int contextToken = widget.chat.context;
+  late int sentinelId;
+  late int modelId;
+  late bool enableSearch;
+  late double temperature;
+  late int contextToken;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize from chat if exists, otherwise from viewModel's current values
+    if (widget.chat != null) {
+      sentinelId = widget.chat!.sentinelId;
+      modelId = widget.chat!.modelId;
+      enableSearch = widget.chat!.enableSearch;
+      temperature = widget.chat!.temperature;
+      contextToken = widget.chat!.context;
+    } else {
+      // Use current values from viewModel, fallback to first available
+      sentinelId = chatViewModel.currentSentinel.value?.id ??
+          sentinelViewModel.sentinels.value.firstOrNull?.id ??
+          0;
+      modelId = chatViewModel.currentModel.value?.id ??
+          modelViewModel.enabledModels.value.firstOrNull?.id ??
+          0;
+      enableSearch = false;
+      temperature = 0.6;
+      contextToken = 20;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +80,15 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var sentinel = sentinelViewModel.sentinels.value
           .where((s) => s.id == sentinelId)
           .firstOrNull;
+      // Fallback to first sentinel if not found
+      sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
+
       var model = modelViewModel.models.value
           .where((m) => m.id == modelId)
           .firstOrNull;
+      // Fallback to first enabled model if not found
+      model ??= modelViewModel.enabledModels.value.firstOrNull;
+
       var provider = providerViewModel.providers.value
           .where((p) => p.id == (model?.providerId ?? 0))
           .firstOrNull;
@@ -95,19 +125,25 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         title: 'Chat Configuration',
         trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
       );
+
+      // Export image is disabled when no chat exists
+      var hasChat = widget.chat != null;
       var exportImageSheetTile = AthenaBottomSheetTile(
+        enabled: hasChat,
         leading: Icon(HugeIcons.strokeRoundedFileExport),
-        onTap: navigateImageExport,
+        onTap: hasChat ? navigateImageExport : null,
         title: 'Export Image',
         trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
       );
-      var children = [
+
+      var children = <Widget>[
         sentinelSheetTile,
         modelSheetTile,
         searchDecisionSheetTile,
         chatConfigurationSheetTile,
         exportImageSheetTile,
       ];
+
       var padding = Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Column(mainAxisSize: MainAxisSize.min, children: children),
@@ -117,12 +153,14 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void navigateImageExport() {
+    if (widget.chat == null) return;
     AthenaDialog.dismiss();
-    MobileChatExportRoute(chat: widget.chat).push(context);
+    MobileChatExportRoute(chat: widget.chat!).push(context);
   }
 
   void navigateChatConfiguration() {
-    MobileChatConfigurationRoute(chat: widget.chat).push(context);
+    if (widget.chat == null) return;
+    MobileChatConfigurationRoute(chat: widget.chat!).push(context);
   }
 
   void openModelSelectorDialog() {
