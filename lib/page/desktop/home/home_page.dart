@@ -125,13 +125,27 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Future<void> sendMessage() async {
     var text = controller.text.trim();
     if (text.isEmpty) return;
+
+    // 检查是否有可用的模型
+    await modelViewModel.loadEnabledModels();
+    if (modelViewModel.enabledModels.value.isEmpty) {
+      AthenaDialog.message('You should enable a provider first');
+      return;
+    }
+
+    // 如果没有选中的聊天，先创建一个
+    var chat = chatViewModel.currentChat.value;
+    if (chat == null) {
+      chat = await chatViewModel.createChat();
+      if (chat == null) return;
+    }
+
+    // 检查当前聊天的模型是否有效
     var model = chatViewModel.currentModel.value;
     if (model == null || model.id! <= 0) {
       AthenaDialog.message('You should select a model first');
       return;
     }
-    var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
 
     controller.clear();
     var duration = Duration(milliseconds: 300);
@@ -200,8 +214,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
-    await chatViewModel.updateModel(newModel, chat: chat);
+    if (chat != null) {
+      // 有选中的对话，更新对话的模型
+      await chatViewModel.updateModel(newModel, chat: chat);
+    } else {
+      // 没有选中对话，只更新当前状态
+      await chatViewModel.updateCurrentModel(newModel);
+    }
   }
 
   Future<void> updateSentinel(SentinelEntity newSentinel) async {
@@ -210,8 +229,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
-    await chatViewModel.updateSentinel(newSentinel, chat: chat);
+    if (chat != null) {
+      // 有选中的对话，更新对话的哨兵
+      await chatViewModel.updateSentinel(newSentinel, chat: chat);
+    } else {
+      // 没有选中对话，只更新当前状态
+      chatViewModel.updateCurrentSentinel(newSentinel);
+    }
   }
 
   Future<void> updateTemperature(double temperature) async {

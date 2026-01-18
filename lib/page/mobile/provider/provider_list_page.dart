@@ -28,7 +28,11 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   @override
   void initState() {
     super.initState();
-    viewModel.initSignals();
+    _initializeViewModels();
+  }
+
+  Future<void> _initializeViewModels() async {
+    await viewModel.initSignals();
   }
 
   @override

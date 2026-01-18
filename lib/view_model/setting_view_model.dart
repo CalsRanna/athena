@@ -86,19 +86,29 @@ class SettingViewModel {
       sentinelMetadataGenerationModelId.value,
     );
     shortModel.value = await _modelRepository.getModelById(shortModelId.value);
-    chatModelProvider.value = await _providerRepository.getProviderById(
-      chatModelId.value,
-    );
-    chatNamingModelProvider.value = await _providerRepository.getProviderById(
-      chatNamingModelId.value,
-    );
-    chatSearchDecisionModelProvider.value = await _providerRepository
-        .getProviderById(chatSearchDecisionModelId.value);
-    sentinelMetadataGenerationModelProvider.value = await _providerRepository
-        .getProviderById(sentinelMetadataGenerationModelId.value);
-    shortModelProvider.value = await _providerRepository.getProviderById(
-      shortModelId.value,
-    );
+    if (chatModel.value != null) {
+      chatModelProvider.value = await _providerRepository.getProviderById(
+        chatModel.value!.providerId,
+      );
+    }
+    if (chatNamingModel.value != null) {
+      chatNamingModelProvider.value = await _providerRepository.getProviderById(
+        chatNamingModel.value!.providerId,
+      );
+    }
+    if (chatSearchDecisionModel.value != null) {
+      chatSearchDecisionModelProvider.value = await _providerRepository
+          .getProviderById(chatSearchDecisionModel.value!.providerId);
+    }
+    if (sentinelMetadataGenerationModel.value != null) {
+      sentinelMetadataGenerationModelProvider.value = await _providerRepository
+          .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
+    }
+    if (shortModel.value != null) {
+      shortModelProvider.value = await _providerRepository.getProviderById(
+        shortModel.value!.providerId,
+      );
+    }
   }
 
   /// 更新聊天模型 ID
@@ -107,9 +117,11 @@ class SettingViewModel {
     await instance.setInt(_keyChatModelId, modelId);
     chatModelId.value = modelId;
     chatModel.value = await _modelRepository.getModelById(modelId);
-    chatModelProvider.value = await _providerRepository.getProviderById(
-      modelId,
-    );
+    if (chatModel.value != null) {
+      chatModelProvider.value = await _providerRepository.getProviderById(
+        chatModel.value!.providerId,
+      );
+    }
   }
 
   /// 更新聊天命名模型 ID
@@ -118,9 +130,11 @@ class SettingViewModel {
     await instance.setInt(_keyChatNamingModelId, modelId);
     chatNamingModelId.value = modelId;
     chatNamingModel.value = await _modelRepository.getModelById(modelId);
-    chatNamingModelProvider.value = await _providerRepository.getProviderById(
-      modelId,
-    );
+    if (chatNamingModel.value != null) {
+      chatNamingModelProvider.value = await _providerRepository.getProviderById(
+        chatNamingModel.value!.providerId,
+      );
+    }
   }
 
   /// 更新搜索决策模型 ID
@@ -128,8 +142,11 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyChatSearchDecisionModelId, modelId);
     chatSearchDecisionModelId.value = modelId;
-    chatSearchDecisionModelProvider.value = await _providerRepository
-        .getProviderById(modelId);
+    chatSearchDecisionModel.value = await _modelRepository.getModelById(modelId);
+    if (chatSearchDecisionModel.value != null) {
+      chatSearchDecisionModelProvider.value = await _providerRepository
+          .getProviderById(chatSearchDecisionModel.value!.providerId);
+    }
   }
 
   /// 更新 Sentinel 元数据生成模型 ID
@@ -140,8 +157,10 @@ class SettingViewModel {
     sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
       modelId,
     );
-    sentinelMetadataGenerationModelProvider.value = await _providerRepository
-        .getProviderById(modelId);
+    if (sentinelMetadataGenerationModel.value != null) {
+      sentinelMetadataGenerationModelProvider.value = await _providerRepository
+          .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
+    }
   }
 
   /// 更新短模型 ID
@@ -150,9 +169,11 @@ class SettingViewModel {
     await instance.setInt(_keyShortModelId, modelId);
     shortModelId.value = modelId;
     shortModel.value = await _modelRepository.getModelById(modelId);
-    shortModelProvider.value = await _providerRepository.getProviderById(
-      modelId,
-    );
+    if (shortModel.value != null) {
+      shortModelProvider.value = await _providerRepository.getProviderById(
+        shortModel.value!.providerId,
+      );
+    }
   }
 
   /// 更新窗口尺寸
