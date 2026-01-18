@@ -27,6 +27,7 @@ class TRPGViewModel {
   // Signals
   final currentGame = signal<TRPGGameEntity?>(null);
   final messages = listSignal<TRPGMessageEntity>([]);
+  final savedGames = listSignal<TRPGGameWithPreview>([]);
   final isStreaming = signal(false);
   final isGeneratingSuggestions = signal(false);
   final currentSuggestions = listSignal<String>([]); // 当前显示的建议列表
@@ -67,6 +68,15 @@ class TRPGViewModel {
     } catch (e) {
       error.value = '创建游戏失败：$e';
       return null;
+    }
+  }
+
+  /// 获取所有存档
+  Future<void> getSavedGames() async {
+    try {
+      savedGames.value = await _gameRepository.getAllGamesWithPreview();
+    } catch (e) {
+      error.value = '获取存档失败：$e';
     }
   }
 

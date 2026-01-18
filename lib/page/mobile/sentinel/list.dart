@@ -124,7 +124,7 @@ class _Tile extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPress: () => openBottomSheet(context),
-      onTap: () => navigateChatPage(context),
+      onTap: () => editSentinel(context),
       child: container,
     );
   }
@@ -135,14 +135,7 @@ class _Tile extends StatelessWidget {
   }
 
   void editSentinel(BuildContext context) {
-    AthenaDialog.dismiss();
     MobileSentinelFormRoute(sentinel: sentinel).push(context);
-  }
-
-  void navigateChatPage(BuildContext context) {
-    AthenaDialog.dismiss();
-    // Navigate to chat page with sentinel, chat will be created on first message
-    MobileChatRoute(sentinel: sentinel).push(context);
   }
 
   void openBottomSheet(BuildContext context) {

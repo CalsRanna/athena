@@ -1,5 +1,6 @@
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/trpg_message_entity.dart';
+import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/trpg_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
@@ -19,7 +20,7 @@ class MobileTRPGPage extends StatefulWidget {
   State<MobileTRPGPage> createState() => _MobileTRPGPageState();
 }
 
-enum TRPGPageState { init, playing }
+enum TRPGPageState { init, savedGames, playing }
 
 class _MobileTRPGPageState extends State<MobileTRPGPage> {
   final viewModel = GetIt.instance<TRPGViewModel>();
@@ -29,6 +30,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
   final scrollController = ScrollController();
 
   bool _isCreatingGame = false;
+  bool _isLoadingGame = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +39,14 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
       child: AthenaScaffold(
         appBar: _buildAppBar(),
         body: Watch((_) {
-          return pageState.value == TRPGPageState.init
-              ? _buildInitView()
-              : _buildGameView();
+          switch (pageState.value) {
+            case TRPGPageState.init:
+              return _buildInitView();
+            case TRPGPageState.savedGames:
+              return _buildSavedGamesView();
+            case TRPGPageState.playing:
+              return _buildGameView();
+          }
         }),
       ),
     );
@@ -88,34 +95,187 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
 
   Widget _buildInitView() {
     return Center(
-      child: GestureDetector(
-        onTap: _isCreatingGame ? null : _handleStartGame,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-          decoration: BoxDecoration(
-            color: _isCreatingGame ? ColorUtil.FF757575 : ColorUtil.FFFFFFFF,
-            borderRadius: BorderRadius.circular(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 16,
+        children: [
+          // Start Game Button
+          GestureDetector(
+            onTap: _isCreatingGame ? null : _handleStartGame,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+              decoration: BoxDecoration(
+                color: _isCreatingGame
+                    ? ColorUtil.FF757575
+                    : ColorUtil.FFFFFFFF,
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: _isCreatingGame
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ColorUtil.FF282828,
+                      ),
+                    )
+                  : Text(
+                      'START GAME',
+                      style: TextStyle(
+                        color: ColorUtil.FF282828,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
           ),
-          child: _isCreatingGame
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: ColorUtil.FF282828,
-                  ),
-                )
-              : Text(
-                  'START GAME',
-                  style: TextStyle(
-                    color: ColorUtil.FF282828,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+          // Load Game Button
+          GestureDetector(
+            onTap: _handleLoadGameList,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: ColorUtil.FFFFFFFF, width: 1),
+              ),
+              child: Text(
+                'LOAD GAME',
+                style: TextStyle(
+                  color: ColorUtil.FFFFFFFF,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavedGamesView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => pageState.value = TRPGPageState.init,
+                child: Icon(
+                  HugeIcons.strokeRoundedArrowLeft01,
+                  color: ColorUtil.FFFFFFFF,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'Saved Games',
+                style: TextStyle(
+                  color: ColorUtil.FFFFFFFF,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Watch((_) {
+            var games = viewModel.savedGames.value;
+            if (games.isEmpty) {
+              return Center(
+                child: Text(
+                  'No saved games',
+                  style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 16),
+                ),
+              );
+            }
+            return ListView.separated(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              itemCount: games.length,
+              separatorBuilder: (_, __) => SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildSavedGameTile(games[index]);
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSavedGameTile(TRPGGameWithPreview gameWithPreview) {
+    var game = gameWithPreview.game;
+    var date = game.updatedAt;
+    var dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')} '
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+    return GestureDetector(
+      onTap: _isLoadingGame ? null : () => _handleLoadGame(game.id!),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ColorUtil.FFFFFFFF.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    dateStr,
+                    style: TextStyle(
+                      color: ColorUtil.FFFFFFFF,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
+                if (_isLoadingGame)
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ColorUtil.FFFFFFFF,
+                    ),
+                  ),
+              ],
+            ),
+            Text(
+              gameWithPreview.previewContent.isNotEmpty
+                  ? gameWithPreview.previewContent
+                  : 'No preview available',
+              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 12),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _handleLoadGameList() async {
+    await viewModel.getSavedGames();
+    pageState.value = TRPGPageState.savedGames;
+  }
+
+  void _handleLoadGame(int gameId) async {
+    if (_isLoadingGame) return;
+
+    setState(() => _isLoadingGame = true);
+
+    await viewModel.loadGame(gameId);
+    pageState.value = TRPGPageState.playing;
+
+    setState(() => _isLoadingGame = false);
   }
 
   void _handleStartGame() async {
