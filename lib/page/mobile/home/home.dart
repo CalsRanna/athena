@@ -6,9 +6,12 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/widget/bottom_sheet_tile.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -39,12 +42,51 @@ class _ChatTile extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => handlePressed(context),
+      onLongPress: () => handleLongPress(context),
       child: body,
     );
   }
 
   void handlePressed(BuildContext context) async {
     MobileChatRoute(chat: chat).push(context);
+  }
+
+  void handleLongPress(BuildContext context) {
+    HapticFeedback.heavyImpact();
+    var viewModel = GetIt.instance<ChatViewModel>();
+    var renameTile = AthenaBottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      title: 'Rename',
+      onTap: () => _renameChat(context, viewModel),
+    );
+    var deleteTile = AthenaBottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      title: 'Delete',
+      onTap: () => _deleteChat(viewModel),
+    );
+    var children = [renameTile, deleteTile];
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    AthenaDialog.show(SafeArea(child: padding));
+  }
+
+  void _deleteChat(ChatViewModel viewModel) {
+    AthenaDialog.dismiss();
+    viewModel.deleteChat(chat);
+  }
+
+  void _renameChat(BuildContext context, ChatViewModel viewModel) async {
+    AthenaDialog.dismiss();
+    var title = await AthenaDialog.input(
+      'Rename Chat',
+      initialValue: chat.title,
+    );
+    if (title != null && title.isNotEmpty && title != chat.title) {
+      await viewModel.renameChatManually(chat, title);
+    }
   }
 }
 

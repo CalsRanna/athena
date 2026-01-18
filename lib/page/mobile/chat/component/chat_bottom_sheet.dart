@@ -62,10 +62,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       contextToken = widget.chat!.context;
     } else {
       // Use current values from viewModel, fallback to first available
-      sentinelId = chatViewModel.currentSentinel.value?.id ??
+      sentinelId =
+          chatViewModel.currentSentinel.value?.id ??
           sentinelViewModel.sentinels.value.firstOrNull?.id ??
           0;
-      modelId = chatViewModel.currentModel.value?.id ??
+      modelId =
+          chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
           0;
       enableSearch = false;

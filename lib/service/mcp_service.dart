@@ -42,16 +42,16 @@ class MCPService {
           .transform(utf8.decoder)
           .transform(LineSplitter())
           .listen((line) {
-        if (line.trim().isEmpty) return;
-        try {
-          var response = jsonDecode(line);
-          if (!completer.isCompleted) {
-            completer.complete(response);
-          }
-        } catch (e) {
-          // Ignore invalid JSON
-        }
-      });
+            if (line.trim().isEmpty) return;
+            try {
+              var response = jsonDecode(line);
+              if (!completer.isCompleted) {
+                completer.complete(response);
+              }
+            } catch (e) {
+              // Ignore invalid JSON
+            }
+          });
 
       _subscriptions[server.id!] = subscription;
 
@@ -70,11 +70,7 @@ class MCPService {
       await process.stdin.flush();
 
       // 发送 tools/list 请求
-      var toolsRequest = {
-        'jsonrpc': '2.0',
-        'id': 2,
-        'method': 'tools/list',
-      };
+      var toolsRequest = {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'};
 
       process.stdin.writeln(jsonEncode(toolsRequest));
       await process.stdin.flush();
@@ -85,16 +81,16 @@ class MCPService {
           .transform(utf8.decoder)
           .transform(LineSplitter())
           .listen((line) {
-        if (line.trim().isEmpty) return;
-        try {
-          var response = jsonDecode(line);
-          if (response['id'] == 2 && !toolsCompleter.isCompleted) {
-            toolsCompleter.complete(response);
-          }
-        } catch (e) {
-          // Ignore invalid JSON
-        }
-      });
+            if (line.trim().isEmpty) return;
+            try {
+              var response = jsonDecode(line);
+              if (response['id'] == 2 && !toolsCompleter.isCompleted) {
+                toolsCompleter.complete(response);
+              }
+            } catch (e) {
+              // Ignore invalid JSON
+            }
+          });
 
       var toolsResponse = await toolsCompleter.future.timeout(
         Duration(seconds: 5),

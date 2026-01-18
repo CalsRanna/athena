@@ -6,10 +6,7 @@ class Migration202501210001AddSuggestionsToTrpgMessages {
   Future<void> migrate() async {
     var laconic = Database.instance.laconic;
 
-    var count = await laconic
-        .table('migrations')
-        .where('name', name)
-        .count();
+    var count = await laconic.table('migrations').where('name', name).count();
     if (count > 0) return;
 
     // 为 trpg_messages 表添加 suggestions 字段
@@ -19,7 +16,7 @@ class Migration202501210001AddSuggestionsToTrpgMessages {
 
     // 记录迁移
     await laconic.table('migrations').insert([
-      {'name': name}
+      {'name': name},
     ]);
   }
 }

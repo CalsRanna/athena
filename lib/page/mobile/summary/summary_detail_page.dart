@@ -77,7 +77,7 @@ class MobileSummaryDetailPage extends StatelessWidget {
         if (streaming) const SizedBox(width: 4),
         if (streaming) indicator,
         const Spacer(),
-        textButton
+        textButton,
       ];
       return Row(children: children);
     });

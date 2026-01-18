@@ -37,10 +37,7 @@ class _MobilAboutPageState extends State<MobileAboutPage> {
       SizedBox(height: 24),
       Text(version, style: textStyle),
     ];
-    var column = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     return AthenaScaffold(
       appBar: AthenaAppBar(title: const Text('About')),
       body: Center(child: column),

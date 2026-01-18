@@ -40,7 +40,6 @@ class DesktopImageExportDialog extends StatelessWidget {
       avatar: '',
       description: '',
       tags: '',
-
     );
     for (var message in messages) {
       var expandedMessage = message.copyWith(expanded: true);

@@ -48,7 +48,7 @@ class _CopyButtonState extends State<CopyButton> {
     var children = [
       hugeIcon,
       const SizedBox(width: 4),
-      const Text('Copied', style: TextStyle(fontSize: 12, height: 1))
+      const Text('Copied', style: TextStyle(fontSize: 12, height: 1)),
     ];
     return Row(children: children);
   }

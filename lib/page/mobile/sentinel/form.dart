@@ -19,8 +19,7 @@ class MobileSentinelFormPage extends StatefulWidget {
   const MobileSentinelFormPage({super.key, this.sentinel});
 
   @override
-  State<MobileSentinelFormPage> createState() =>
-      _MobileSentinelFormPageState();
+  State<MobileSentinelFormPage> createState() => _MobileSentinelFormPageState();
 }
 
 class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
@@ -49,14 +48,12 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       padding: EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [
-      Expanded(child: listView),
-      _buildButtons(),
-    ];
+    var columnChildren = [Expanded(child: listView), _buildButtons()];
     var column = Column(children: columnChildren);
     return AthenaScaffold(
-      appBar:
-          AthenaAppBar(title: Text(widget.sentinel?.name ?? 'New Sentinel')),
+      appBar: AthenaAppBar(
+        title: Text(widget.sentinel?.name ?? 'New Sentinel'),
+      ),
       body: SafeArea(top: false, child: column),
     );
   }
@@ -247,7 +244,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       description: descriptionController.text,
       tags: '',
       prompt: promptController.text,
-
     );
     await viewModel.createSentinel(sentinel);
     if (!mounted) return;

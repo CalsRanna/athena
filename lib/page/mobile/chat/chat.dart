@@ -306,7 +306,9 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
     // If no chat exists, create one first
     if (chat == null) {
-      chat = await viewModel.createChat(sentinel: _selectedSentinel ?? widget.sentinel);
+      chat = await viewModel.createChat(
+        sentinel: _selectedSentinel ?? widget.sentinel,
+      );
       if (chat == null) return;
       setState(() {
         _currentChatId = chat!.id;

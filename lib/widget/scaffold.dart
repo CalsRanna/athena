@@ -33,7 +33,7 @@ class _DesktopScaffold extends StatelessWidget {
     );
     var colors = [
       ColorUtil.FF6ABEB9.withValues(alpha: 0.2),
-      Colors.transparent
+      Colors.transparent,
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topRight,

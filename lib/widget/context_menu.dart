@@ -112,8 +112,9 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       child: Text(widget.text, style: textStyle),
     );
     var mouseRegion = MouseRegion(
-      cursor:
-          widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
       onEnter: handleEnter,
       onExit: handleExit,
       child: container,
@@ -257,8 +258,9 @@ class _DesktopContextMenuTileWithSubmenuState
       child: row,
     );
     var mouseRegion = MouseRegion(
-      cursor:
-          widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: widget.enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
       onEnter: widget.enabled ? handleEnter : null,
       onExit: widget.enabled ? handleExit : null,
       child: container,

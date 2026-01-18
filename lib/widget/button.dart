@@ -73,15 +73,19 @@ class AthenaSecondaryButton extends StatelessWidget {
   final Widget child;
 
   const AthenaSecondaryButton({super.key, this.onTap, required this.child})
-      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+    : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 16);
 
-  const AthenaSecondaryButton.medium(
-      {super.key, this.onTap, required this.child})
-      : padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
+  const AthenaSecondaryButton.medium({
+    super.key,
+    this.onTap,
+    required this.child,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12);
 
-  const AthenaSecondaryButton.small(
-      {super.key, this.onTap, required this.child})
-      : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 8);
+  const AthenaSecondaryButton.small({
+    super.key,
+    this.onTap,
+    required this.child,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 8);
 
   @override
   Widget build(BuildContext context) {

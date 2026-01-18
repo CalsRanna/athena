@@ -18,8 +18,10 @@ class SettingPage extends StatelessWidget {
         trailing: '',
       ),
       MobileSettingTile(
-        leading:
-            Icon(HugeIcons.strokeRoundedArtificialIntelligence03, size: 24),
+        leading: Icon(
+          HugeIcons.strokeRoundedArtificialIntelligence03,
+          size: 24,
+        ),
         onTap: () => navigateSentinel(context),
         title: 'Sentinel',
         trailing: '',

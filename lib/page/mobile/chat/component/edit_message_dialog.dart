@@ -42,7 +42,12 @@ class _MobileEditMessageDialogState extends State<MobileEditMessageDialog> {
     );
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Column(children: [Expanded(child: barrier), container]),
+      body: Column(
+        children: [
+          Expanded(child: barrier),
+          container,
+        ],
+      ),
     );
   }
 

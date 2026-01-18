@@ -60,12 +60,9 @@ class DesktopChatListView extends StatelessWidget {
     }
   }
 
-  void _handleTap(
-    ChatViewModel viewModel,
-    ChatEntity chat,
-    int index,
-  ) {
-    var isMetaPressed = HardwareKeyboard.instance.isMetaPressed ||
+  void _handleTap(ChatViewModel viewModel, ChatEntity chat, int index) {
+    var isMetaPressed =
+        HardwareKeyboard.instance.isMetaPressed ||
         HardwareKeyboard.instance.isControlPressed;
     var isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 

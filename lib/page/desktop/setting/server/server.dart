@@ -259,10 +259,7 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
       var description = servers.isNotEmpty && index < servers.length
           ? servers[index].description
           : '';
-      var descriptionText = Text(
-        description,
-        style: descriptionTextStyle,
-      );
+      var descriptionText = Text(description, style: descriptionTextStyle);
       var toolsTextStyle = TextStyle(
         color: ColorUtil.FFFFFFFF,
         fontSize: 16,

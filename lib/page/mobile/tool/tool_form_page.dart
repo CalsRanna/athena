@@ -40,11 +40,7 @@ class _MobileToolFormPageState extends State<MobileToolFormPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: column,
     );
-    var listViewChildren = [
-      labels,
-      SizedBox(height: 16),
-      _buildTip(),
-    ];
+    var listViewChildren = [labels, SizedBox(height: 16), _buildTip()];
     var listView = ListView(
       padding: EdgeInsets.zero,
       children: listViewChildren,

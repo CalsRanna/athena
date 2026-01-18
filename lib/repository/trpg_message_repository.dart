@@ -36,6 +36,9 @@ class TRPGMessageRepository {
 
   Future<int> getMessagesCountByGameId(int gameId) async {
     var laconic = Database.instance.laconic;
-    return await laconic.table('trpg_messages').where('game_id', gameId).count();
+    return await laconic
+        .table('trpg_messages')
+        .where('game_id', gameId)
+        .count();
   }
 }
