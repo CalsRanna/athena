@@ -119,7 +119,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     var chat = chatViewModel.currentChat.value;
     if (chat == null) return;
     await chatViewModel.deleteMessage(message);
-    await chatViewModel.refreshMessages(chat.id!);
+    await chatViewModel.sendMessage(message, chat: chat);
   }
 
   Future<void> sendMessage() async {
