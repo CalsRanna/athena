@@ -72,10 +72,16 @@ class DesktopContextMenuConfiguration extends InheritedWidget {
 }
 
 class DesktopContextMenuTile extends StatefulWidget {
+  final bool enabled;
   final void Function()? onTap;
   final String text;
 
-  const DesktopContextMenuTile({super.key, this.onTap, required this.text});
+  const DesktopContextMenuTile({
+    super.key,
+    this.enabled = true,
+    this.onTap,
+    required this.text,
+  });
 
   @override
   State<DesktopContextMenuTile> createState() => _DesktopContextMenuTileState();
@@ -86,15 +92,16 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
 
   @override
   Widget build(BuildContext context) {
+    var textColor = widget.enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: textColor,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover && widget.enabled ? ColorUtil.FF616161 : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var container = Container(
@@ -105,14 +112,15 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       child: Text(widget.text, style: textStyle),
     );
     var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor:
+          widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: handleEnter,
       onExit: handleExit,
       child: container,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
+      onTap: widget.enabled ? handleTap : null,
       child: mouseRegion,
     );
   }
@@ -197,11 +205,13 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
 }
 
 class DesktopContextMenuTileWithSubmenu extends StatefulWidget {
+  final bool enabled;
   final String text;
   final List<DesktopContextMenuSubItem> submenuItems;
 
   const DesktopContextMenuTileWithSubmenu({
     super.key,
+    this.enabled = true,
     required this.text,
     required this.submenuItems,
   });
@@ -220,22 +230,23 @@ class _DesktopContextMenuTileWithSubmenuState
 
   @override
   Widget build(BuildContext context) {
+    var textColor = widget.enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: textColor,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover && widget.enabled ? ColorUtil.FF616161 : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(widget.text, style: textStyle),
-        Icon(Icons.chevron_right, color: ColorUtil.FFFFFFFF, size: 16),
+        Icon(Icons.chevron_right, color: textColor, size: 16),
       ],
     );
     var container = Container(
@@ -246,9 +257,10 @@ class _DesktopContextMenuTileWithSubmenuState
       child: row,
     );
     var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
+      cursor:
+          widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: widget.enabled ? handleEnter : null,
+      onExit: widget.enabled ? handleExit : null,
       child: container,
     );
     return mouseRegion;

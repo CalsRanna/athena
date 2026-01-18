@@ -46,6 +46,10 @@ class ChatViewModel {
   final currentSentinel = signal<SentinelEntity?>(null);
   final pendingImages = listSignal<String>([]);
 
+  // 多选状态
+  final selectedChatIds = setSignal<int>({});
+  final lastSelectedIndex = signal<int?>(null);
+
   // Computed signals
   late final recentChats = computed(() {
     return chats.value.take(10).toList();
@@ -53,6 +57,10 @@ class ChatViewModel {
 
   late final pinnedChats = computed(() {
     return chats.value.where((c) => c.pinned).toList();
+  });
+
+  late final isMultiSelect = computed(() {
+    return selectedChatIds.value.length > 1;
   });
 
   // 业务方法
@@ -65,6 +73,77 @@ class ChatViewModel {
   /// 清空待发送图片
   void clearPendingImages() {
     pendingImages.value = [];
+  }
+
+  /// 清空多选状态
+  void clearSelection() {
+    selectedChatIds.value = {};
+    lastSelectedIndex.value = null;
+  }
+
+  /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
+  void toggleChatSelection(int chatId, int index) {
+    var newSet = Set<int>.from(selectedChatIds.value);
+    if (newSet.contains(chatId)) {
+      newSet.remove(chatId);
+      if (newSet.isEmpty) {
+        lastSelectedIndex.value = null;
+      }
+    } else {
+      newSet.add(chatId);
+      lastSelectedIndex.value = index;
+    }
+    selectedChatIds.value = newSet;
+  }
+
+  /// 范围选择 (Shift+Click)
+  void rangeSelectChats(int endIndex) {
+    if (selectedChatIds.value.isEmpty && lastSelectedIndex.value == null) {
+      return;
+    }
+
+    // Find the first selected index in the list
+    int? firstSelectedIndex;
+    if (selectedChatIds.value.isNotEmpty) {
+      for (var i = 0; i < chats.value.length; i++) {
+        if (selectedChatIds.value.contains(chats.value[i].id)) {
+          firstSelectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    var startIndex = firstSelectedIndex ?? lastSelectedIndex.value;
+    if (startIndex == null) return;
+
+    var start = startIndex;
+    var end = endIndex;
+    if (start > end) {
+      var temp = start;
+      start = end;
+      end = temp;
+    }
+
+    var newSet = Set<int>.from(selectedChatIds.value);
+    for (var i = start; i <= end; i++) {
+      if (i < chats.value.length) {
+        var chatId = chats.value[i].id;
+        if (chatId != null) {
+          newSet.add(chatId);
+        }
+      }
+    }
+    selectedChatIds.value = newSet;
+  }
+
+  /// 初始化 lastSelectedIndex（用于首次打开时）
+  void initLastSelectedIndex() {
+    if (lastSelectedIndex.value == null && currentChat.value != null) {
+      var index = chats.value.indexWhere((c) => c.id == currentChat.value!.id);
+      if (index >= 0) {
+        lastSelectedIndex.value = index;
+      }
+    }
   }
 
   /// 创建新的聊天会话
@@ -132,6 +211,10 @@ class ChatViewModel {
       pendingImages.value = [];
       messages.value = [];
 
+      // 清除多选状态，更新选中索引为新建的对话
+      clearSelection();
+      lastSelectedIndex.value = pinnedChats.length; // 新对话在 pinnedChats 之后
+
       return chat;
     } catch (e) {
       error.value = e.toString();
@@ -152,18 +235,66 @@ class ChatViewModel {
       // 更新状态
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
 
-      // 如果删除的是当前聊天,清空当前聊天
+      // 如果删除的是当前聊天，选中第一个剩余对话
       if (currentChat.value?.id == chat.id) {
-        currentChat.value = null;
-        currentModel.value = null;
-        currentProvider.value = null;
-        currentSentinel.value = null;
-        messages.value = [];
+        await _selectFirstChatOrClear();
       }
     } catch (e) {
       error.value = e.toString();
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// 批量删除聊天会话
+  Future<void> deleteChats(List<ChatEntity> chatsToDelete) async {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      var idsToDelete = chatsToDelete.map((c) => c.id!).toSet();
+
+      for (var chat in chatsToDelete) {
+        await _chatRepository.deleteChat(chat.id!);
+        await _messageRepository.deleteMessagesByChatId(chat.id!);
+      }
+
+      // 更新状态
+      chats.value = chats.value.where((c) => !idsToDelete.contains(c.id)).toList();
+
+      // 如果删除的包含当前聊天，选中第一个剩余对话
+      if (currentChat.value != null && idsToDelete.contains(currentChat.value!.id)) {
+        await _selectFirstChatOrClear();
+      }
+    } catch (e) {
+      error.value = e.toString();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 选中第一个对话，如果没有对话则清空状态
+  Future<void> _selectFirstChatOrClear() async {
+    if (chats.value.isNotEmpty) {
+      var firstChat = chats.value.first;
+      currentChat.value = firstChat;
+      messages.value = await _messageRepository.getMessagesByChatId(firstChat.id!);
+      currentModel.value = await _modelRepository.getModelById(firstChat.modelId);
+      if (currentModel.value != null) {
+        currentProvider.value = await _providerRepository.getProviderById(
+          currentModel.value!.providerId,
+        );
+      }
+      currentSentinel.value = await _sentinelRepository.getSentinelById(
+        firstChat.sentinelId,
+      );
+      lastSelectedIndex.value = 0;
+    } else {
+      currentChat.value = null;
+      currentModel.value = null;
+      currentProvider.value = null;
+      currentSentinel.value = null;
+      messages.value = [];
+      lastSelectedIndex.value = null;
     }
   }
 

@@ -70,6 +70,20 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.createChat();
   }
 
+  Future<void> batchDestroyChats(List<ChatEntity> chats) async {
+    var result = await AthenaDialog.confirm(
+      'Do you want to delete ${chats.length} chats?',
+    );
+    if (result == true) {
+      var duration = Duration(milliseconds: 300);
+      if (scrollController.hasClients) {
+        scrollController.animateTo(0, curve: Curves.linear, duration: duration);
+      }
+      await chatViewModel.deleteChats(chats);
+    }
+    chatViewModel.clearSelection();
+  }
+
   Future<void> destroyChat(ChatEntity chat) async {
     var result = await AthenaDialog.confirm('Do you want to delete this chat?');
     if (result == true) {
@@ -271,15 +285,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildLeftBar() {
-    var chat = chatViewModel.currentChat.value;
     var chatListView = DesktopChatListView(
       onAutoRenamed: chatViewModel.renameChat,
+      onBatchDestroyed: batchDestroyChats,
       onDestroyed: destroyChat,
       onExportedImage: exportImage,
       onManualRenamed: manualRenameChat,
       onPinned: chatViewModel.togglePin,
       onSelected: chatViewModel.selectChat,
-      selectedChat: chat,
     );
     var borderSide = BorderSide(
       color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
