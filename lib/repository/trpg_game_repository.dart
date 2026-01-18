@@ -1,6 +1,14 @@
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/trpg_game_entity.dart';
 
+/// 用于存档列表展示的数据类
+class TRPGGameWithPreview {
+  final TRPGGameEntity game;
+  final String previewContent;
+
+  TRPGGameWithPreview({required this.game, this.previewContent = ''});
+}
+
 class TRPGGameRepository {
   Future<List<TRPGGameEntity>> getAllGames() async {
     var laconic = Database.instance.laconic;
@@ -51,5 +59,34 @@ class TRPGGameRepository {
   Future<int> getGamesCount() async {
     var laconic = Database.instance.laconic;
     return await laconic.table('trpg_games').count();
+  }
+
+  /// 获取所有游戏及其第一条DM消息预览
+  Future<List<TRPGGameWithPreview>> getAllGamesWithPreview() async {
+    var laconic = Database.instance.laconic;
+    var sql = '''
+      SELECT
+        g.*,
+        COALESCE(m.content, '') as preview_content
+      FROM trpg_games g
+      LEFT JOIN (
+        SELECT game_id, content
+        FROM trpg_messages m1
+        WHERE role = 'dm' AND id = (
+          SELECT MIN(id) FROM trpg_messages m2
+          WHERE m2.game_id = m1.game_id AND m2.role = 'dm'
+        )
+      ) m ON g.id = m.game_id
+      ORDER BY g.updated_at DESC
+    ''';
+
+    var results = await laconic.select(sql);
+    return results.map((r) {
+      var map = r.toMap();
+      return TRPGGameWithPreview(
+        game: TRPGGameEntity.fromJson(map),
+        previewContent: (map['preview_content'] as String?) ?? '',
+      );
+    }).toList();
   }
 }
