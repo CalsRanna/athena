@@ -23,7 +23,7 @@ class MobileProviderListPage extends StatefulWidget {
 }
 
 class _MobileProviderListPageState extends State<MobileProviderListPage> {
-  final viewModel = GetIt.instance.get<ProviderViewModel>();
+  final viewModel = GetIt.instance<ProviderViewModel>();
 
   @override
   void initState() {

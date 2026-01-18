@@ -2,12 +2,14 @@ import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 
 class AthenaBottomSheetTile extends StatelessWidget {
+  final bool enabled;
   final Widget? leading;
   final void Function()? onTap;
   final String title;
   final Widget? trailing;
   const AthenaBottomSheetTile({
     super.key,
+    this.enabled = true,
     this.leading,
     this.onTap,
     required this.title,
@@ -16,20 +18,22 @@ class AthenaBottomSheetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var textColor = enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: textColor,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
     var trailingTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: textColor,
       fontSize: 14,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var leadingIconThemeData = IconThemeData(color: ColorUtil.FFE0E0E0);
-    var trailingIconThemeData = IconThemeData(color: ColorUtil.FFFFFFFF);
+    var iconColor = enabled ? ColorUtil.FFE0E0E0 : ColorUtil.FF9E9E9E;
+    var leadingIconThemeData = IconThemeData(color: iconColor);
+    var trailingIconThemeData = IconThemeData(color: textColor);
     var trailingIconTheme = IconTheme(
       data: trailingIconThemeData,
       child: trailing ?? const SizedBox(),
@@ -54,7 +58,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: container,
     );
   }

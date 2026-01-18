@@ -25,8 +25,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileChatPage extends StatefulWidget {
-  final ChatEntity chat;
-  const MobileChatPage({super.key, required this.chat});
+  final ChatEntity? chat;
+  final SentinelEntity? sentinel;
+  const MobileChatPage({super.key, this.chat, this.sentinel});
 
   @override
   State<MobileChatPage> createState() => _MobileChatPageState();
@@ -55,7 +56,11 @@ class _MessageListViewState extends State<_MessageListView> {
   @override
   void initState() {
     super.initState();
-    viewModel.refreshMessages(widget.chat.id!);
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    await viewModel.refreshMessages(widget.chat.id!);
   }
 
   @override
@@ -177,35 +182,76 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   late final viewModel = GetIt.instance<ChatViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
+  late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+
+  // Track the current chat ID (null means new chat not yet created)
+  int? _currentChatId;
+
+  // Track selected sentinel for new chat (before creation)
+  SentinelEntity? _selectedSentinel;
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var chat = viewModel.chats.value
-          .where((c) => c.id == widget.chat.id)
-          .firstOrNull;
-      if (chat == null) return const SizedBox();
+      // If we have a chat ID, find the chat
+      ChatEntity? chat;
+      if (_currentChatId != null) {
+        chat = viewModel.chats.value
+            .where((c) => c.id == _currentChatId)
+            .firstOrNull;
+      } else if (widget.chat != null) {
+        chat = viewModel.chats.value
+            .where((c) => c.id == widget.chat!.id)
+            .firstOrNull;
+        if (chat != null) {
+          _currentChatId = chat.id;
+        }
+      }
 
-      var model = modelViewModel.models.value
-          .where((m) => m.id == chat.modelId)
-          .firstOrNull;
+      // Get sentinel for placeholder
+      SentinelEntity? sentinel = _selectedSentinel ?? widget.sentinel;
+      if (sentinel == null && chat != null) {
+        sentinel = sentinelViewModel.sentinels.value
+            .where((s) => s.id == chat!.sentinelId)
+            .firstOrNull;
+      }
+      // If no sentinel selected, use current sentinel from viewModel
+      sentinel ??= viewModel.currentSentinel.value;
+      sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
+      // Build title
+      String title = chat?.title ?? 'New Chat';
+      if (title.isEmpty) title = 'New Chat';
+
+      // Always show action button
       var actionButton = AthenaIconButton(
         icon: HugeIcons.strokeRoundedMoreHorizontal,
         onTap: () => openBottomSheet(chat),
       );
-      var titleText = Text(chat.title, textAlign: TextAlign.center);
-      var messageListView = _MessageListView(
-        chat: chat,
-        model: model,
-        onChatTitleChanged: (_) {},
-      );
+
+      var titleText = Text(title, textAlign: TextAlign.center);
+
+      // Build message list or placeholder
+      Widget content;
+      if (chat != null) {
+        var model = modelViewModel.models.value
+            .where((m) => m.id == chat!.modelId)
+            .firstOrNull;
+        content = _MessageListView(
+          chat: chat,
+          model: model,
+          onChatTitleChanged: (_) {},
+        );
+      } else {
+        content = _SentinelPlaceholder(sentinel: sentinel);
+      }
+
       var input = _buildInput(chat);
       return AthenaScaffold(
         appBar: AthenaAppBar(action: actionButton, title: titleText),
         body: Column(
           children: [
-            Expanded(child: messageListView),
+            Expanded(child: content),
             input,
           ],
         ),
@@ -223,28 +269,49 @@ class _MobileChatPageState extends State<MobileChatPage> {
   void initState() {
     super.initState();
     _initializeViewModels();
+    // Initialize current chat ID if chat was passed
+    if (widget.chat != null) {
+      _currentChatId = widget.chat!.id;
+    }
+    // Initialize selected sentinel if passed
+    _selectedSentinel = widget.sentinel;
   }
 
   Future<void> _initializeViewModels() async {
     await modelViewModel.initSignals();
   }
 
-  void openBottomSheet(ChatEntity chat) {
+  void openBottomSheet(ChatEntity? chat) {
     var mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
-      onContextChanged: (value) => updateContext(value, chat),
-      onEnableSearchChanged: (value) => updateEnableSearch(value, chat),
+      onContextChanged: (value) {
+        if (chat != null) updateContext(value, chat);
+      },
+      onEnableSearchChanged: (value) {
+        if (chat != null) updateEnableSearch(value, chat);
+      },
       onModelChanged: (model) => updateModel(model, chat),
       onSentinelChanged: (sentinel) => updateSentinel(sentinel, chat),
-      onTemperatureChanged: (value) => updateTemperature(value, chat),
+      onTemperatureChanged: (value) {
+        if (chat != null) updateTemperature(value, chat);
+      },
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
 
-  Future<void> sendMessage(ChatEntity chat) async {
+  Future<void> sendMessage(ChatEntity? chat) async {
     final text = controller.text;
     if (text.isEmpty) return;
     controller.clear();
+
+    // If no chat exists, create one first
+    if (chat == null) {
+      chat = await viewModel.createChat(sentinel: _selectedSentinel ?? widget.sentinel);
+      if (chat == null) return;
+      setState(() {
+        _currentChatId = chat!.id;
+      });
+    }
 
     var message = MessageEntity(
       id: 0,
@@ -255,6 +322,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
     );
 
     await viewModel.sendMessage(message, chat: chat);
+
+    // Rename chat after first message
     if (chat.title.isEmpty || chat.title == 'New Chat') {
       await viewModel.renameChat(chat);
     }
@@ -272,19 +341,32 @@ class _MobileChatPageState extends State<MobileChatPage> {
     viewModel.updateEnableSearch(value, chat: chat);
   }
 
-  void updateModel(ModelEntity model, ChatEntity chat) {
-    viewModel.updateModel(model, chat: chat);
+  void updateModel(ModelEntity model, ChatEntity? chat) {
+    if (chat != null) {
+      viewModel.updateModel(model, chat: chat);
+    } else {
+      // Update the current model in viewModel for new chat
+      viewModel.updateCurrentModel(model);
+    }
   }
 
-  void updateSentinel(SentinelEntity sentinel, ChatEntity chat) {
-    viewModel.updateSentinel(sentinel, chat: chat);
+  void updateSentinel(SentinelEntity sentinel, ChatEntity? chat) {
+    if (chat != null) {
+      viewModel.updateSentinel(sentinel, chat: chat);
+    } else {
+      // Update local state and viewModel for new chat
+      setState(() {
+        _selectedSentinel = sentinel;
+      });
+      viewModel.updateCurrentSentinel(sentinel);
+    }
   }
 
   void updateTemperature(double value, ChatEntity chat) {
     viewModel.updateTemperature(value, chat: chat);
   }
 
-  Widget _buildInput(ChatEntity chat) {
+  Widget _buildInput(ChatEntity? chat) {
     var userInput = _UserInput(
       controller: controller,
       onSubmitted: () => sendMessage(chat),

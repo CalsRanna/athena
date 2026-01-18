@@ -49,14 +49,18 @@ class _ChatTile extends StatelessWidget {
 }
 
 class _MobileHomePageState extends State<MobileHomePage> {
-  final chatViewModel = GetIt.instance.get<ChatViewModel>();
-  final sentinelViewModel = GetIt.instance.get<SentinelViewModel>();
+  final chatViewModel = GetIt.instance<ChatViewModel>();
+  final sentinelViewModel = GetIt.instance<SentinelViewModel>();
 
   @override
   void initState() {
     super.initState();
-    chatViewModel.getChats();
-    sentinelViewModel.getSentinels();
+    _initializeViewModels();
+  }
+
+  Future<void> _initializeViewModels() async {
+    await chatViewModel.getChats();
+    await sentinelViewModel.getSentinels();
   }
 
   @override
@@ -146,13 +150,10 @@ class _NewChatButton extends StatelessWidget {
     );
   }
 
-  void handleTap(BuildContext context) async {
-    var viewModel = GetIt.instance<ChatViewModel>();
-    var chat = await viewModel.createChat();
-    if (!context.mounted) return;
-    if (chat != null) {
-      MobileChatRoute(chat: chat).push(context);
-    }
+  void handleTap(BuildContext context) {
+    // Navigate to chat page without creating chat
+    // Chat will be created when first message is sent
+    MobileChatRoute().push(context);
   }
 }
 
@@ -268,13 +269,9 @@ class _SentinelTile extends StatelessWidget {
     );
   }
 
-  void navigateChatPage(BuildContext context) async {
-    var viewModel = GetIt.instance<ChatViewModel>();
-    var chat = await viewModel.createChat(sentinel: sentinel);
-    if (!context.mounted) return;
-    if (chat != null) {
-      MobileChatRoute(chat: chat).push(context);
-    }
+  void navigateChatPage(BuildContext context) {
+    // Navigate to chat page with sentinel, chat will be created on first message
+    MobileChatRoute(sentinel: sentinel).push(context);
   }
 }
 

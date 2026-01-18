@@ -6,14 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
 class MobileChatConfigurationDialog extends StatefulWidget {
-  final ChatEntity chat;
+  final ChatEntity? chat;
   final int contextToken;
   final double temperature;
   final void Function(int)? onContextChanged;
   final void Function(double)? onTemperatureChanged;
   const MobileChatConfigurationDialog({
     super.key,
-    required this.chat,
+    this.chat,
     required this.contextToken,
     required this.temperature,
     this.onContextChanged,
