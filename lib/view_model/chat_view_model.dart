@@ -238,8 +238,13 @@ class ChatViewModel {
       await _chatRepository.deleteChat(chat.id!);
       await _messageRepository.deleteMessagesByChatId(chat.id!);
 
-      // 更新状态
+      // 更新 chats 状态
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
+
+      // 更新 chatHistories 状态
+      chatHistories.value = chatHistories.value
+          .where((h) => h.chat.id != chat.id)
+          .toList();
 
       // 如果删除的是当前聊天，选中第一个剩余对话
       if (currentChat.value?.id == chat.id) {
@@ -264,9 +269,14 @@ class ChatViewModel {
         await _messageRepository.deleteMessagesByChatId(chat.id!);
       }
 
-      // 更新状态
+      // 更新 chats 状态
       chats.value = chats.value
           .where((c) => !idsToDelete.contains(c.id))
+          .toList();
+
+      // 更新 chatHistories 状态
+      chatHistories.value = chatHistories.value
+          .where((h) => !idsToDelete.contains(h.chat.id))
           .toList();
 
       // 如果删除的包含当前聊天，选中第一个剩余对话
