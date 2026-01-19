@@ -52,6 +52,9 @@ class ChatViewModel {
   final selectedChatIds = setSignal<int>({});
   final lastSelectedIndex = signal<int?>(null);
 
+  // AI 重命名状态
+  final renamingChatIds = setSignal<int>({});
+
   // Computed signals
   late final recentChats = computed(() {
     return chats.value.take(10).toList();
@@ -150,6 +153,18 @@ class ChatViewModel {
         lastSelectedIndex.value = index;
       }
     }
+  }
+
+  /// 开始 AI 重命名
+  void startRenaming(int chatId) {
+    renamingChatIds.value = {...renamingChatIds.value, chatId};
+  }
+
+  /// 结束 AI 重命名
+  void stopRenaming(int chatId) {
+    var newSet = Set<int>.from(renamingChatIds.value);
+    newSet.remove(chatId);
+    renamingChatIds.value = newSet;
   }
 
   /// 创建新的聊天会话
@@ -467,6 +482,7 @@ class ChatViewModel {
 
   /// 自动重命名聊天
   Future<ChatEntity?> renameChat(ChatEntity chat) async {
+    startRenaming(chat.id!);
     try {
       // 获取第一条用户消息
       var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
@@ -535,6 +551,8 @@ class ChatViewModel {
     } catch (e) {
       error.value = e.toString();
       return null;
+    } finally {
+      stopRenaming(chat.id!);
     }
   }
 
