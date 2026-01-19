@@ -125,9 +125,11 @@ class DesktopChatListView extends StatelessWidget {
     return Watch((context) {
       var selectedChat = chatViewModel.currentChat.value;
       var selectedIds = chatViewModel.selectedChatIds.value;
+      var renamingIds = chatViewModel.renamingChatIds.value;
       return _ChatTile(
         active: selectedChat?.id == chat.id,
         chat: chat,
+        isRenaming: renamingIds.contains(chat.id),
         onTap: () => _handleTap(chatViewModel, chat, index),
         onSecondaryTap: (details) =>
             _openContextMenu(context, details, chat, chats),
@@ -140,12 +142,14 @@ class DesktopChatListView extends StatelessWidget {
 class _ChatTile extends StatefulWidget {
   final bool active;
   final ChatEntity chat;
+  final bool isRenaming;
   final void Function()? onTap;
   final void Function(TapUpDetails)? onSecondaryTap;
   final bool selected;
   const _ChatTile({
     this.active = false,
     required this.chat,
+    this.isRenaming = false,
     this.onTap,
     this.onSecondaryTap,
     this.selected = false,
@@ -159,7 +163,16 @@ class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
     Widget? trailing;
-    if (widget.chat.pinned) {
+    if (widget.isRenaming) {
+      trailing = SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: ColorUtil.FFFFFFFF,
+        ),
+      );
+    } else if (widget.chat.pinned) {
       trailing = Icon(
         HugeIcons.strokeRoundedPinLocation03,
         color: ColorUtil.FFFFFFFF,
