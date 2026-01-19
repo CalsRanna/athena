@@ -116,6 +116,7 @@ class ModelViewModel {
       var id = await _repository.createModel(model);
       var created = model.copyWith(id: id);
       models.value = [...models.value, created];
+      await loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -134,6 +135,7 @@ class ModelViewModel {
         updated[index] = model;
         models.value = updated;
       }
+      await loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -147,6 +149,7 @@ class ModelViewModel {
     try {
       await _repository.deleteModel(model.id!);
       models.value = models.value.where((m) => m.id != model.id).toList();
+      await loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
