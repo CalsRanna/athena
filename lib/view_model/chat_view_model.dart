@@ -626,6 +626,7 @@ class ChatViewModel {
 
     isStreaming.value = true;
     error.value = null;
+    int? assistantId;
 
     try {
       // 1. 保存用户消息
@@ -716,7 +717,7 @@ class ChatViewModel {
         role: 'assistant',
         content: '',
       );
-      var assistantId = await _messageRepository.storeMessage(assistantMessage);
+      assistantId = await _messageRepository.storeMessage(assistantMessage);
       assistantMessage = assistantMessage.copyWith(id: assistantId);
       messages.value = [...messages.value, assistantMessage];
 
@@ -733,23 +734,24 @@ class ChatViewModel {
       await for (final chunk in stream) {
         if (!isStreaming.value) break; // Allow termination
 
-        if (chunk.response.choices.isEmpty) continue;
-        var choice = chunk.response.choices.first;
+        if (chunk.choices.isEmpty) continue;
+        var choice = chunk.choices.first;
 
-        // Handle reasoning content from rawJson
-        var reasoningContent =
-            chunk.rawJson['choices']?[0]?['delta']?['reasoning_content'];
-        if (reasoningContent != null) {
+        // Handle reasoning content from delta
+        var reasoningContent = choice.delta.reasoningContent;
+        if (reasoningContent != null && reasoningContent.isNotEmpty) {
           reasoningBuffer.write(reasoningContent);
           assistantMessage = assistantMessage.copyWith(
             reasoningContent: reasoningBuffer.toString(),
             reasoning: true,
+            reasoningUpdatedAt: DateTime.now(),
           );
         }
 
-        // Handle regular content
-        if (choice.delta.content != null) {
-          contentBuffer.write(choice.delta.content);
+        // Handle regular content from delta
+        var content = choice.delta.content;
+        if (content != null && content.isNotEmpty) {
+          contentBuffer.write(content);
           assistantMessage = assistantMessage.copyWith(
             content: contentBuffer.toString(),
           );
@@ -764,15 +766,42 @@ class ChatViewModel {
         }
       }
 
-      // 8. 保存最终消息
+      // 8. 流结束后，标记推理完成
+      if (reasoningBuffer.isNotEmpty) {
+        assistantMessage = assistantMessage.copyWith(reasoning: false);
+        var index = messages.value.indexWhere((m) => m.id == assistantId);
+        if (index >= 0) {
+          var updated = List<MessageEntity>.from(messages.value);
+          updated[index] = assistantMessage;
+          messages.value = updated;
+        }
+      }
+
+      // 9. 保存最终消息
       await _messageRepository.updateMessage(assistantMessage);
 
-      // 9. 更新chat的updatedAt
+      // 10. 更新chat的updatedAt
       var updatedChat = chat.copyWith(updatedAt: DateTime.now());
       await _chatRepository.updateChat(updatedChat);
       await getChats();
     } catch (e) {
       error.value = e.toString();
+      // 如果已创建 assistant 消息，将错误信息写入消息内容
+      if (assistantId != null) {
+        var errorMessage = MessageEntity(
+          id: assistantId,
+          chatId: chat.id!,
+          role: 'assistant',
+          content: 'Error: ${e.toString()}',
+        );
+        await _messageRepository.updateMessage(errorMessage);
+        var index = messages.value.indexWhere((m) => m.id == assistantId);
+        if (index >= 0) {
+          var updated = List<MessageEntity>.from(messages.value);
+          updated[index] = errorMessage;
+          messages.value = updated;
+        }
+      }
     } finally {
       isStreaming.value = false;
     }
