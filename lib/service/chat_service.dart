@@ -7,7 +7,7 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/vendor/enhanced_openai_dart/client.dart';
-import 'package:athena/vendor/enhanced_openai_dart/response.dart';
+import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// ChatService 负责与 AI 提供商进行聊天相关的网络请求
@@ -38,7 +38,7 @@ class ChatService {
   }
 
   /// 获取聊天完成流
-  Stream<EnhancedCreateChatCompletionStreamResponse> getCompletion({
+  Stream<EnhancedStreamResponse> getCompletion({
     required ChatEntity chat,
     required List<ChatCompletionMessage> messages,
     required ProviderEntity provider,
@@ -58,7 +58,7 @@ class ChatService {
       messages: messages,
       temperature: chat.temperature,
     );
-    yield* client.createOverrodeChatCompletionStream(request: request);
+    yield* client.createEnhancedChatCompletionStream(request: request);
   }
 
   /// 获取搜索决策

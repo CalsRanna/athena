@@ -5,7 +5,7 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/vendor/enhanced_openai_dart/client.dart';
-import 'package:athena/vendor/enhanced_openai_dart/response.dart';
+import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class TRPGService {
@@ -60,7 +60,7 @@ class TRPGService {
     }
   }
 
-  Stream<EnhancedCreateChatCompletionStreamResponse> getDMResponse({
+  Stream<EnhancedStreamResponse> getDMResponse({
     required List<ChatCompletionMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
@@ -80,6 +80,6 @@ class TRPGService {
       messages: messages,
       temperature: temperature,
     );
-    yield* client.createOverrodeChatCompletionStream(request: request);
+    yield* client.createEnhancedChatCompletionStream(request: request);
   }
 }

@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:athena/vendor/enhanced_openai_dart/response.dart';
+import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 // ignore: implementation_imports
 import 'package:openai_dart/src/generated/client.dart' as g;
 
+/// 增强版 OpenAI 客户端，支持 reasoning 字段
 class EnhancedOpenAIClient extends OpenAIClient {
   EnhancedOpenAIClient({
     super.apiKey,
@@ -17,12 +18,28 @@ class EnhancedOpenAIClient extends OpenAIClient {
     super.client,
   });
 
-  Stream<EnhancedCreateChatCompletionStreamResponse>
-  createOverrodeChatCompletionStream({
-    required final CreateChatCompletionRequest request,
+  /// 创建增强版非流式聊天完成请求
+  Future<EnhancedResponse> createEnhancedChatCompletion({
+    required CreateChatCompletionRequest request,
+  }) async {
+    final response = await makeRequest(
+      baseUrl: baseUrl ?? 'https://api.openai.com/v1',
+      path: '/chat/completions',
+      method: g.HttpMethod.post,
+      requestType: 'application/json',
+      responseType: 'application/json',
+      body: request.copyWith(stream: false),
+    );
+    var responseJson = json.decode(response.body) as Map<String, dynamic>;
+    return EnhancedResponse.fromJson(responseJson);
+  }
+
+  /// 创建增强版流式聊天完成请求
+  Stream<EnhancedStreamResponse> createEnhancedChatCompletionStream({
+    required CreateChatCompletionRequest request,
   }) async* {
     final streamResponse = await makeRequestStream(
-      baseUrl: 'https://api.openai.com/v1',
+      baseUrl: baseUrl ?? 'https://api.openai.com/v1',
       path: '/chat/completions',
       method: g.HttpMethod.post,
       requestType: 'application/json',
@@ -31,39 +48,21 @@ class EnhancedOpenAIClient extends OpenAIClient {
     );
     yield* streamResponse.stream
         .transform(const _OpenAIStreamTransformer())
-        .map((final string) {
-          try {
-            var rawJson = json.decode(string);
-            var response = CreateChatCompletionStreamResponse.fromJson(rawJson);
-            return EnhancedCreateChatCompletionStreamResponse(
-              rawJson: rawJson,
-              response: response,
-            );
-          } catch (e) {
-            var baseUrl = this.baseUrl ?? 'https://api.openai.com/v1';
-            var uri = Uri.parse('$baseUrl/chat/completions');
-            throw OpenAIClientException(
-              message: string,
-              method: g.HttpMethod.post,
-              uri: uri,
-            );
-          }
-        });
+        .map((json) => EnhancedStreamResponse.fromJson(json));
   }
 }
 
+/// SSE 流转换器
 class _OpenAIStreamTransformer
-    extends StreamTransformerBase<List<int>, String> {
+    extends StreamTransformerBase<List<int>, Map<String, dynamic>> {
   const _OpenAIStreamTransformer();
 
   @override
-  Stream<String> bind(final Stream<List<int>> stream) {
+  Stream<Map<String, dynamic>> bind(Stream<List<int>> stream) {
     return stream
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .where(
-          (final line) => line.startsWith('data: ') && !line.endsWith('[DONE]'),
-        )
-        .map((final item) => item.substring(6));
+        .where((line) => line.startsWith('data: ') && !line.endsWith('[DONE]'))
+        .map((line) => json.decode(line.substring(6)) as Map<String, dynamic>);
   }
 }
