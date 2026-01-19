@@ -1,6 +1,8 @@
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
@@ -71,6 +73,7 @@ class ProviderViewModel {
         updated[index] = provider;
         providers.value = updated;
       }
+      await GetIt.instance<ModelViewModel>().loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -86,6 +89,7 @@ class ProviderViewModel {
       providers.value = providers.value
           .where((p) => p.id != provider.id)
           .toList();
+      await GetIt.instance<ModelViewModel>().loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -104,6 +108,7 @@ class ProviderViewModel {
         updatedList[index] = updated;
         providers.value = updatedList;
       }
+      await GetIt.instance<ModelViewModel>().loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     }
