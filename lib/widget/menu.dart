@@ -37,6 +37,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     );
     var text = Text(
       widget.label,
+      maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
