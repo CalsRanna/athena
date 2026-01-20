@@ -798,9 +798,12 @@ class ChatViewModel {
       // 9. 保存最终消息
       await _messageRepository.updateMessage(assistantMessage);
 
-      // 10. 更新chat的updatedAt
-      var updatedChat = chat.copyWith(updatedAt: DateTime.now());
-      await _chatRepository.updateChat(updatedChat);
+      // 10. 更新chat的updatedAt（从数据库获取最新数据避免覆盖已更新的字段）
+      var latestChat = await _chatRepository.getChatById(chat.id!);
+      if (latestChat != null) {
+        var updatedChat = latestChat.copyWith(updatedAt: DateTime.now());
+        await _chatRepository.updateChat(updatedChat);
+      }
       await getChats();
     } catch (e) {
       error.value = e.toString();
