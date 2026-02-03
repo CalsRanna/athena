@@ -410,7 +410,9 @@ class _UserMessageListTile extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     var textStyle = TextStyle(color: ColorUtil.FFCACACA);
     var text = Text(message.content, style: textStyle);
-    var images = message.imageUrls;
+    var images = message.imageUrls.isNotEmpty
+        ? message.imageUrls.split(',')
+        : <String>[];
     const delegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 9,
     );
