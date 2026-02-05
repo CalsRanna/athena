@@ -114,6 +114,11 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     super.initState();
     keyController.text = widget.provider.apiKey;
     urlController.text = widget.provider.baseUrl;
+    _initializeModels();
+  }
+
+  Future<void> _initializeModels() async {
+    await GetIt.instance<ModelViewModel>().initSignals();
   }
 
   void openBottomSheet(ModelEntity model) {
