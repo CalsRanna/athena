@@ -279,22 +279,19 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Future<void> _initializeViewModels() async {
     await modelViewModel.initSignals();
+    if (widget.chat != null) {
+      await viewModel.selectChat(widget.chat!);
+    }
   }
 
   void openBottomSheet(ChatEntity? chat) {
     var mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
-      onContextChanged: (value) {
-        if (chat != null) updateContext(value, chat);
-      },
-      onEnableSearchChanged: (value) {
-        if (chat != null) updateEnableSearch(value, chat);
-      },
-      onModelChanged: (model) => updateModel(model, chat),
-      onSentinelChanged: (sentinel) => updateSentinel(sentinel, chat),
-      onTemperatureChanged: (value) {
-        if (chat != null) updateTemperature(value, chat);
-      },
+      onContextChanged: (value) => updateContext(value),
+      onEnableSearchChanged: (value) => updateEnableSearch(value),
+      onModelChanged: (model) => updateModel(model),
+      onSentinelChanged: (sentinel) => updateSentinel(sentinel),
+      onTemperatureChanged: (value) => updateTemperature(value),
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
@@ -335,28 +332,41 @@ class _MobileChatPageState extends State<MobileChatPage> {
     viewModel.isStreaming.value = false;
   }
 
-  void updateContext(int value, ChatEntity chat) {
-    viewModel.updateContext(value, chat: chat);
+  ChatEntity? _getCurrentChat() {
+    if (_currentChatId == null) return null;
+    return viewModel.chats.value
+        .where((c) => c.id == _currentChatId)
+        .firstOrNull;
   }
 
-  void updateEnableSearch(bool value, ChatEntity chat) {
-    viewModel.updateEnableSearch(value, chat: chat);
-  }
-
-  void updateModel(ModelEntity model, ChatEntity? chat) {
+  Future<void> updateContext(int value) async {
+    var chat = _getCurrentChat();
     if (chat != null) {
-      viewModel.updateModel(model, chat: chat);
-    } else {
-      // Update the current model in viewModel for new chat
-      viewModel.updateCurrentModel(model);
+      await viewModel.updateContext(value, chat: chat);
     }
   }
 
-  void updateSentinel(SentinelEntity sentinel, ChatEntity? chat) {
+  Future<void> updateEnableSearch(bool value) async {
+    var chat = _getCurrentChat();
     if (chat != null) {
-      viewModel.updateSentinel(sentinel, chat: chat);
+      await viewModel.updateEnableSearch(value, chat: chat);
+    }
+  }
+
+  Future<void> updateModel(ModelEntity model) async {
+    var chat = _getCurrentChat();
+    if (chat != null) {
+      await viewModel.updateModel(model, chat: chat);
     } else {
-      // Update local state and viewModel for new chat
+      await viewModel.updateCurrentModel(model);
+    }
+  }
+
+  Future<void> updateSentinel(SentinelEntity sentinel) async {
+    var chat = _getCurrentChat();
+    if (chat != null) {
+      await viewModel.updateSentinel(sentinel, chat: chat);
+    } else {
       setState(() {
         _selectedSentinel = sentinel;
       });
@@ -364,8 +374,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
     }
   }
 
-  void updateTemperature(double value, ChatEntity chat) {
-    viewModel.updateTemperature(value, chat: chat);
+  Future<void> updateTemperature(double value) async {
+    var chat = _getCurrentChat();
+    if (chat != null) {
+      await viewModel.updateTemperature(value, chat: chat);
+    }
   }
 
   Widget _buildInput(ChatEntity? chat) {
