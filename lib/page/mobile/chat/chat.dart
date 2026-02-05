@@ -372,21 +372,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var userInput = _UserInput(
       controller: controller,
       onSubmitted: () => sendMessage(chat),
-    );
-    var sendButton = _SendButton(
-      onSubmitted: () => sendMessage(chat),
       onTerminated: terminateStreaming,
     );
-    final inputChildren = [
-      Expanded(child: userInput),
-      const SizedBox(width: 16),
-      sendButton,
-    ];
-    final row = Padding(
-      padding: EdgeInsets.all(16),
-      child: Row(children: inputChildren),
-    );
-    return SafeArea(top: false, child: row);
+    final padding = Padding(padding: EdgeInsets.all(16), child: userInput);
+    return SafeArea(top: false, child: padding);
   }
 }
 
@@ -411,10 +400,10 @@ class _SendButton extends StatelessWidget {
       final streaming = chatViewModel.isStreaming.value;
       var iconData = HugeIcons.strokeRoundedSent;
       if (streaming) iconData = HugeIcons.strokeRoundedStop;
-      var icon = Icon(iconData, color: ColorUtil.FF161616);
+      var icon = Icon(iconData, color: ColorUtil.FF161616, size: 16);
       var container = Container(
         decoration: shapeDecoration,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.all(12),
         child: icon,
       );
       return GestureDetector(
@@ -471,7 +460,12 @@ class _SentinelPlaceholder extends StatelessWidget {
 class _UserInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function()? onSubmitted;
-  const _UserInput({required this.controller, this.onSubmitted});
+  final void Function()? onTerminated;
+  const _UserInput({
+    required this.controller,
+    this.onSubmitted,
+    this.onTerminated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -493,28 +487,33 @@ class _UserInput extends StatelessWidget {
       controller: controller,
       cursorColor: ColorUtil.FFFFFFFF,
       decoration: inputDecoration,
-      onSubmitted: (_) => handleSubmitted(context),
+      maxLines: 2,
+      minLines: 2,
       onTapOutside: (_) => handleTapOutside(context),
       style: textStyle,
-      textInputAction: TextInputAction.send,
+      textInputAction: TextInputAction.newline,
+    );
+    var sendButton = _SendButton(
+      onSubmitted: onSubmitted,
+      onTerminated: onTerminated,
     );
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
-      shape: StadiumBorder(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     );
+    var rowChildren = [
+      Expanded(child: textField),
+      const SizedBox(width: 16),
+      sendButton,
+    ];
     return Container(
       decoration: shapeDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: textField,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: rowChildren,
+      ),
     );
-  }
-
-  void handleSubmitted(BuildContext context) {
-    if (controller.text.trim().isEmpty) return;
-    FocusScope.of(context).unfocus();
-    var viewModel = GetIt.instance<ChatViewModel>();
-    if (viewModel.isStreaming.value) return;
-    onSubmitted?.call();
   }
 
   void handleTapOutside(BuildContext context) {
