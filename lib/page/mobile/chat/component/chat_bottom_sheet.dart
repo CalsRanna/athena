@@ -6,6 +6,7 @@ import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/view_model/provider_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -61,15 +62,17 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       temperature = widget.chat!.temperature;
       contextToken = widget.chat!.context;
     } else {
-      // Use current values from viewModel, fallback to first available
+      // Use settings default model, fallback to first available
+      var settingViewModel = GetIt.instance<SettingViewModel>();
       sentinelId =
           chatViewModel.currentSentinel.value?.id ??
           sentinelViewModel.sentinels.value.firstOrNull?.id ??
           0;
+      var defaultModelId = settingViewModel.chatModelId.value;
       modelId =
-          chatViewModel.currentModel.value?.id ??
-          modelViewModel.enabledModels.value.firstOrNull?.id ??
-          0;
+          defaultModelId > 0
+              ? defaultModelId
+              : modelViewModel.enabledModels.value.firstOrNull?.id ?? 0;
       enableSearch = false;
       temperature = 0.6;
       contextToken = 20;

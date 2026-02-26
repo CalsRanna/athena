@@ -178,7 +178,7 @@ class _ModelDropdown extends StatelessWidget {
       color: ColorUtil.FFF5F5F5,
       size: 20,
     );
-    var children = [_buildText(), icon];
+    var children = [Expanded(child: _buildText()), icon];
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: children,
