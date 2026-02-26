@@ -4,6 +4,8 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/translation_service.dart';
+import 'package:athena/view_model/setting_view_model.dart';
+import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
@@ -87,22 +89,40 @@ class TranslationViewModel {
     error.value = null;
 
     try {
-      // 获取第一个启用的模型和provider
-      var providers = await _providerRepository.getEnabledProviders();
-      if (providers.isEmpty) {
-        error.value = 'No enabled providers found';
-        streaming.value = false;
-        return;
+      // 优先使用设置中配置的 shortModelId
+      var settingViewModel = GetIt.instance<SettingViewModel>();
+      ModelEntity? model;
+      ProviderEntity? provider;
+      var shortModelId = settingViewModel.shortModelId.value;
+      if (shortModelId > 0) {
+        model = await _modelRepository.getModelById(shortModelId);
+        if (model != null) {
+          provider = await _providerRepository.getProviderById(
+            model.providerId,
+          );
+        }
       }
-      var provider = providers.first;
 
-      var models = await _modelRepository.getModelsByProviderId(provider.id!);
-      if (models.isEmpty) {
-        error.value = 'No models found for provider';
-        streaming.value = false;
-        return;
+      // Fallback: 获取第一个启用的模型和provider
+      if (model == null || provider == null) {
+        var providers = await _providerRepository.getEnabledProviders();
+        if (providers.isEmpty) {
+          error.value = 'No enabled providers found';
+          streaming.value = false;
+          return;
+        }
+        provider = providers.first;
+
+        var models = await _modelRepository.getModelsByProviderId(
+          provider.id!,
+        );
+        if (models.isEmpty) {
+          error.value = 'No models found for provider';
+          streaming.value = false;
+          return;
+        }
+        model = models.first;
       }
-      var model = models.first;
 
       // 构建翻译消息
       var prompt =

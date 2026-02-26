@@ -10,7 +10,9 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
 import 'package:athena/service/trpg_service.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
@@ -276,6 +278,12 @@ class TRPGViewModel {
 
   /// 获取默认模型
   Future<ModelEntity?> _getDefaultModel() async {
+    var settingViewModel = GetIt.instance<SettingViewModel>();
+    var shortModelId = settingViewModel.shortModelId.value;
+    if (shortModelId > 0) {
+      var model = await _modelRepository.getModelById(shortModelId);
+      if (model != null) return model;
+    }
     var models = await _modelRepository.getAllModels();
     return models.isNotEmpty ? models.first : null;
   }
