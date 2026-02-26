@@ -63,7 +63,7 @@ class MobileSummaryDetailPage extends StatelessWidget {
         onTap: () async {
           var viewModel = GetIt.instance<SummaryViewModel>();
           if (viewModel.streaming.value) return;
-          await viewModel.parse(summary);
+          await viewModel.performSummary(summary);
         },
         text: 'Summarize',
       );
@@ -116,7 +116,11 @@ class _SummaryContent extends StatelessWidget {
   }
 
   void handleCopy() {
-    Clipboard.setData(ClipboardData(text: summary.content));
+    var viewModel = GetIt.instance<SummaryViewModel>();
+    var text = viewModel.streaming.value
+        ? viewModel.summary.value
+        : summary.content;
+    Clipboard.setData(ClipboardData(text: text));
   }
 
   Widget _buildAvatar() {
@@ -131,22 +135,28 @@ class _SummaryContent extends StatelessWidget {
   }
 
   Widget _buildContent() {
-    var wrappedMessage = MessageEntity(
-      id: 0,
-      chatId: 0,
-      role: '',
-      content: summary.content,
-    );
-    var markdown = AthenaMarkdown(
-      engine: AthenaMarkdownEngine.flutter,
-      message: wrappedMessage,
-    );
-    var container = Container(
-      alignment: Alignment.centerLeft,
-      constraints: const BoxConstraints(minHeight: 36),
-      child: markdown,
-    );
-    return Expanded(child: container);
+    return Watch((context) {
+      var viewModel = GetIt.instance<SummaryViewModel>();
+      var displayContent = viewModel.streaming.value
+          ? viewModel.summary.value
+          : summary.content;
+      var wrappedMessage = MessageEntity(
+        id: 0,
+        chatId: 0,
+        role: '',
+        content: displayContent,
+      );
+      var markdown = AthenaMarkdown(
+        engine: AthenaMarkdownEngine.flutter,
+        message: wrappedMessage,
+      );
+      var container = Container(
+        alignment: Alignment.centerLeft,
+        constraints: const BoxConstraints(minHeight: 36),
+        child: markdown,
+      );
+      return Expanded(child: container);
+    });
   }
 
   Widget _buildTrailingSpace() {
