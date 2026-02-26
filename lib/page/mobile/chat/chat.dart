@@ -193,14 +193,22 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      // If we have a chat ID, find the chat
+      // If we have a chat ID, find the chat from currentChat or chats list
       ChatEntity? chat;
+      var currentChat = viewModel.currentChat.value;
       if (_currentChatId != null) {
-        chat = viewModel.chats.value
+        // Prefer currentChat if it matches (updated by renameChat)
+        if (currentChat?.id == _currentChatId) {
+          chat = currentChat;
+        }
+        chat ??= viewModel.chats.value
             .where((c) => c.id == _currentChatId)
             .firstOrNull;
       } else if (widget.chat != null) {
-        chat = viewModel.chats.value
+        if (currentChat?.id == widget.chat!.id) {
+          chat = currentChat;
+        }
+        chat ??= viewModel.chats.value
             .where((c) => c.id == widget.chat!.id)
             .firstOrNull;
         if (chat != null) {

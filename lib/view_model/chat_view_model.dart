@@ -514,8 +514,9 @@ class ChatViewModel {
       var title = titleBuffer.toString().trim();
       if (title.isEmpty) return null;
 
-      // 更新chat标题
-      var updated = chat.copyWith(title: title);
+      // 从数据库获取最新的chat（避免用旧对象覆盖已更新的字段如updatedAt）
+      var latestChat = await _chatRepository.getChatById(chat.id!);
+      var updated = (latestChat ?? chat).copyWith(title: title);
       await _chatRepository.updateChat(updated);
 
       // 更新 chats 状态
