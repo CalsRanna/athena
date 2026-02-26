@@ -228,8 +228,15 @@ class _MobileChatPageState extends State<MobileChatPage> {
       sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
       // Build title
-      String title = chat?.title ?? 'New Chat';
-      if (title.isEmpty) title = 'New Chat';
+      var isRenaming = chat != null &&
+          viewModel.renamingChatIds.value.contains(chat.id);
+      String title;
+      if (isRenaming && viewModel.renamingTitle.value.isNotEmpty) {
+        title = viewModel.renamingTitle.value;
+      } else {
+        title = chat?.title ?? 'New Chat';
+        if (title.isEmpty) title = 'New Chat';
+      }
 
       // Always show action button
       var actionButton = AthenaIconButton(
@@ -237,7 +244,27 @@ class _MobileChatPageState extends State<MobileChatPage> {
         onTap: () => openBottomSheet(chat),
       );
 
-      var titleText = Text(title, textAlign: TextAlign.center);
+      Widget titleWidget;
+      if (isRenaming) {
+        var loadingIndicator = SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: ColorUtil.FFFFFFFF,
+          ),
+        );
+        titleWidget = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: Text(title, textAlign: TextAlign.center)),
+            const SizedBox(width: 8),
+            loadingIndicator,
+          ],
+        );
+      } else {
+        titleWidget = Text(title, textAlign: TextAlign.center);
+      }
 
       // Build message list or placeholder
       Widget content;
@@ -256,7 +283,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
       var input = _buildInput(chat);
       return AthenaScaffold(
-        appBar: AthenaAppBar(action: actionButton, title: titleText),
+        appBar: AthenaAppBar(action: actionButton, title: titleWidget),
         body: Column(
           children: [
             Expanded(child: content),

@@ -54,6 +54,7 @@ class ChatViewModel {
 
   // AI 重命名状态
   final renamingChatIds = setSignal<int>({});
+  final renamingTitle = signal<String>('');
 
   // Computed signals
   late final recentChats = computed(() {
@@ -172,14 +173,12 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      // 优先使用当前选择的模型，否则使用设置中的默认模型
-      ModelEntity? model = currentModel.value;
-      if (model == null) {
-        var settingViewModel = GetIt.instance<SettingViewModel>();
-        var modelId = settingViewModel.chatModelId.value;
-        if (modelId > 0) {
-          model = await _modelRepository.getModelById(modelId);
-        }
+      // 使用设置中的默认模型，未设置则回退到第一个可用模型
+      ModelEntity? model;
+      var settingViewModel = GetIt.instance<SettingViewModel>();
+      var modelId = settingViewModel.chatModelId.value;
+      if (modelId > 0) {
+        model = await _modelRepository.getModelById(modelId);
       }
       if (model == null) {
         var modelViewModel = GetIt.instance<ModelViewModel>();
@@ -483,6 +482,7 @@ class ChatViewModel {
   /// 自动重命名聊天
   Future<ChatEntity?> renameChat(ChatEntity chat) async {
     startRenaming(chat.id!);
+    renamingTitle.value = '';
     try {
       // 获取第一条用户消息
       var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
@@ -509,6 +509,7 @@ class ChatViewModel {
 
       await for (final chunk in stream) {
         titleBuffer.write(chunk);
+        renamingTitle.value = titleBuffer.toString();
       }
 
       var title = titleBuffer.toString().trim();
@@ -553,6 +554,7 @@ class ChatViewModel {
       error.value = e.toString();
       return null;
     } finally {
+      renamingTitle.value = '';
       stopRenaming(chat.id!);
     }
   }
