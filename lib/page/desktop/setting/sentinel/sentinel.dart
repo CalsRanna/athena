@@ -4,6 +4,7 @@ import 'package:athena/page/desktop/setting/sentinel/component/sentinel_form_dia
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/context_menu.dart';
 import 'package:athena/widget/dialog.dart';
@@ -98,16 +99,8 @@ class _DesktopSettingSentinelPageState
       loading = true;
     });
     try {
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      if (modelViewModel.enabledModels.value.isEmpty) {
-        setState(() {
-          loading = false;
-        });
-        AthenaDialog.message('No enabled models found');
-        return;
-      }
-      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var modelId = await _getModelId();
+      if (modelId == null) return;
       final generatedSentinel = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
@@ -117,6 +110,8 @@ class _DesktopSettingSentinelPageState
         avatarController.text = generatedSentinel.avatar;
         descriptionController.text = generatedSentinel.description;
         tagsController.text = generatedSentinel.tags;
+      } else if (generatedSentinel == null) {
+        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
       }
       setState(() {
         loading = false;
@@ -298,5 +293,21 @@ class _DesktopSettingSentinelPageState
     tagsController.text = sentinels[index].tags;
     promptController.text = sentinels[index].prompt;
     setState(() {});
+  }
+
+  Future<int?> _getModelId() async {
+    var settingViewModel = GetIt.instance<SettingViewModel>();
+    var modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
+    if (modelId > 0) return modelId;
+    var modelViewModel = GetIt.instance<ModelViewModel>();
+    await modelViewModel.loadEnabledModels();
+    if (modelViewModel.enabledModels.value.isEmpty) {
+      setState(() {
+        loading = false;
+      });
+      AthenaDialog.message('No enabled models found');
+      return null;
+    }
+    return modelViewModel.enabledModels.value.first.id!;
   }
 }

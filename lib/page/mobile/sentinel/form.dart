@@ -2,6 +2,7 @@ import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
@@ -85,23 +86,19 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      if (modelViewModel.enabledModels.value.isEmpty) {
-        AthenaDialog.dismiss();
-        AthenaDialog.message('No enabled models found');
-        return;
-      }
-      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var modelId = await _getModelId();
+      if (modelId == null) return;
       var sentinel = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
       );
+      AthenaDialog.dismiss();
       if (sentinel != null) {
         nameController.text = sentinel.name;
         descriptionController.text = sentinel.description;
+      } else {
+        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
       }
-      AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
       AthenaDialog.message(error.toString());
@@ -115,22 +112,18 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      if (modelViewModel.enabledModels.value.isEmpty) {
-        AthenaDialog.dismiss();
-        AthenaDialog.message('No enabled models found');
-        return;
-      }
-      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var modelId = await _getModelId();
+      if (modelId == null) return;
       var sentinel = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
       );
+      AthenaDialog.dismiss();
       if (sentinel != null) {
         descriptionController.text = sentinel.description;
+      } else {
+        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
       }
-      AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
       AthenaDialog.message(error.toString());
@@ -144,22 +137,18 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     }
     AthenaDialog.loading();
     try {
-      var modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      if (modelViewModel.enabledModels.value.isEmpty) {
-        AthenaDialog.dismiss();
-        AthenaDialog.message('No enabled models found');
-        return;
-      }
-      var modelId = modelViewModel.enabledModels.value.first.id!;
+      var modelId = await _getModelId();
+      if (modelId == null) return;
       var sentinel = await viewModel.generateSentinel(
         promptController.text,
         modelId: modelId,
       );
+      AthenaDialog.dismiss();
       if (sentinel != null) {
         nameController.text = sentinel.name;
+      } else {
+        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
       }
-      AthenaDialog.dismiss();
     } catch (error) {
       AthenaDialog.dismiss();
       AthenaDialog.message(error.toString());
@@ -266,5 +255,19 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     if (descriptionController.text.isEmpty) return 'Description is required';
     if (promptController.text.isEmpty) return 'Prompt is required';
     return null;
+  }
+
+  Future<int?> _getModelId() async {
+    var settingViewModel = GetIt.instance<SettingViewModel>();
+    var modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
+    if (modelId > 0) return modelId;
+    var modelViewModel = GetIt.instance<ModelViewModel>();
+    await modelViewModel.loadEnabledModels();
+    if (modelViewModel.enabledModels.value.isEmpty) {
+      AthenaDialog.dismiss();
+      AthenaDialog.message('No enabled models found');
+      return null;
+    }
+    return modelViewModel.enabledModels.value.first.id!;
   }
 }
