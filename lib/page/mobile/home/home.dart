@@ -7,6 +7,7 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -104,6 +105,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   Future<void> _initializeViewModels() async {
+    await GetIt.instance<SettingViewModel>().initSignals();
     await chatViewModel.getChats();
     await sentinelViewModel.getSentinels();
   }
