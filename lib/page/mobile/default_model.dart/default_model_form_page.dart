@@ -219,8 +219,12 @@ class _ModelDropdown extends StatelessWidget {
         fontSize: 14,
         height: 1.7,
       );
-      if (model == null) return Text('No Model', style: textStyle);
-      return Text('${model?.name} | ${provider?.name}', style: textStyle);
+      if (model == null) return Text('No Model', maxLines: 1, style: textStyle);
+      return Text(
+        '${model?.name} | ${provider?.name}',
+        maxLines: 1,
+        style: textStyle,
+      );
     });
   }
 }
