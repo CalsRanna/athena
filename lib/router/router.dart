@@ -47,6 +47,7 @@ class AthenaRouter extends RootStackRouter {
       AutoRoute(page: MobileToolListRoute.page),
       AutoRoute(page: MobileToolFormRoute.page),
       AutoRoute(page: MobileAboutRoute.page),
+      AutoRoute(page: MobileDataRoute.page),
     ];
   }
 }

@@ -13,7 +13,7 @@ class SettingPage extends StatelessWidget {
     var children = [
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedPowerService, size: 24),
-        onTap: () => navigateProvider(context),
+        onTap: () => MobileProviderListRoute().push(context),
         title: 'Provider',
         trailing: '',
       ),
@@ -22,25 +22,31 @@ class SettingPage extends StatelessWidget {
           HugeIcons.strokeRoundedArtificialIntelligence03,
           size: 24,
         ),
-        onTap: () => navigateSentinel(context),
+        onTap: () => MobileSentinelListRoute().push(context),
         title: 'Sentinel',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedTools, size: 24),
-        onTap: () => navigateToolList(context),
+        onTap: () => MobileToolListRoute().push(context),
         title: 'Built-in Tools',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedAiBrain01, size: 24),
-        onTap: () => navigateDefaultModel(context),
+        onTap: () => MobileDefaultModelFormRoute().push(context),
         title: 'Default Model',
         trailing: '',
       ),
       MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedDatabase, size: 24),
+        onTap: () => MobileDataRoute().push(context),
+        title: 'Data',
+        trailing: '',
+      ),
+      MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedInformationCircle, size: 24),
-        onTap: () => navigateAbout(context),
+        onTap: () => MobileAboutRoute().push(context),
         title: 'About Athena',
         trailing: '',
       ),
@@ -53,25 +59,5 @@ class SettingPage extends StatelessWidget {
       appBar: AthenaAppBar(title: Text('Setting')),
       body: SingleChildScrollView(child: column),
     );
-  }
-
-  void navigateAbout(BuildContext context) {
-    MobileAboutRoute().push(context);
-  }
-
-  void navigateDefaultModel(BuildContext context) {
-    MobileDefaultModelFormRoute().push(context);
-  }
-
-  void navigateProvider(BuildContext context) {
-    MobileProviderListRoute().push(context);
-  }
-
-  void navigateSentinel(BuildContext context) {
-    MobileSentinelListRoute().push(context);
-  }
-
-  void navigateToolList(BuildContext context) {
-    MobileToolListRoute().push(context);
   }
 }

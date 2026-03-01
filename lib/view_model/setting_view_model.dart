@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -191,14 +192,6 @@ class SettingViewModel {
 
   /// 导出数据到 JSON 文件
   Future<bool> exportData() async {
-    final path = await FilePicker.platform.saveFile(
-      dialogTitle: '选择导出位置',
-      fileName: 'athena_export.json',
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-    if (path == null) return false;
-
     final providers = await _providerRepository.getAllProviders();
     final models = await _modelRepository.getAllModels();
     final sentinels = await _sentinelRepository.getAllSentinels();
@@ -212,8 +205,23 @@ class SettingViewModel {
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
-    final file = File(path);
-    await file.writeAsString(jsonString);
+    final bytes = utf8.encode(jsonString);
+
+    final path = await FilePicker.platform.saveFile(
+      bytes: Uint8List.fromList(bytes),
+      dialogTitle: '选择导出位置',
+      fileName: 'athena_export.json',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (path == null) return false;
+
+    // 桌面端 saveFile 只返回路径，需要手动写入文件
+    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+      final file = File(path);
+      await file.writeAsString(jsonString);
+    }
+
     return true;
   }
 
