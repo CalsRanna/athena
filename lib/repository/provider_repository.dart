@@ -75,27 +75,16 @@ class ProviderRepository {
     }
   }
 
-  /// 导入 providers：同名更新，不同名插入
+  Future<void> deleteAllProviders() async {
+    var laconic = Database.instance.laconic;
+    await laconic.table('providers').delete();
+  }
+
+  /// 导入 providers：清空后插入，保留原始 ID
   Future<void> importProviders(List<ProviderEntity> providers) async {
     if (providers.isEmpty) return;
-
-    var toInsert = <ProviderEntity>[];
-
-    for (var provider in providers) {
-      var existing = await getProviderByName(provider.name);
-      if (existing != null) {
-        // 同名存在，更新
-        var updated = provider.copyWith(id: existing.id);
-        await updateProvider(updated);
-      } else {
-        // 不存在，加入批量插入列表
-        toInsert.add(provider);
-      }
-    }
-
-    // 批量插入新的
-    if (toInsert.isNotEmpty) {
-      await batchStoreProviders(toInsert);
-    }
+    var laconic = Database.instance.laconic;
+    var jsonList = providers.map((p) => p.toJson()).toList();
+    await laconic.table('providers').insert(jsonList);
   }
 }
