@@ -88,30 +88,16 @@ class ModelRepository {
     }
   }
 
-  /// 导入 models：同名同 provider 更新，否则插入
+  Future<void> deleteAllModels() async {
+    var laconic = Database.instance.laconic;
+    await laconic.table('models').delete();
+  }
+
+  /// 导入 models：清空后插入，保留原始 ID
   Future<void> importModels(List<ModelEntity> models) async {
     if (models.isEmpty) return;
-
-    var toInsert = <ModelEntity>[];
-
-    for (var model in models) {
-      var existing = await getModelByNameAndProviderId(
-        model.name,
-        model.providerId,
-      );
-      if (existing != null) {
-        // 同名同 provider 存在，更新
-        var updated = model.copyWith(id: existing.id);
-        await updateModel(updated);
-      } else {
-        // 不存在，加入批量插入列表
-        toInsert.add(model);
-      }
-    }
-
-    // 批量插入新的
-    if (toInsert.isNotEmpty) {
-      await batchCreateModels(toInsert);
-    }
+    var laconic = Database.instance.laconic;
+    var jsonList = models.map((m) => m.toJson()).toList();
+    await laconic.table('models').insert(jsonList);
   }
 }

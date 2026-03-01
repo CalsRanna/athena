@@ -241,7 +241,11 @@ class SettingViewModel {
     final jsonString = await file.readAsString();
     final data = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // 导入 providers：同名更新，不同名插入
+    // 先清空本地的 models 和 providers，避免同 ID 不同名导致关联错误
+    await _modelRepository.deleteAllModels();
+    await _providerRepository.deleteAllProviders();
+
+    // 导入 providers，保留原始 ID
     if (data['providers'] != null) {
       final providersList = data['providers'] as List;
       final providers = providersList
@@ -250,7 +254,7 @@ class SettingViewModel {
       await _providerRepository.importProviders(providers);
     }
 
-    // 导入 models：同名同 provider 更新，否则插入
+    // 导入 models，保留原始 ID 和 provider_id
     if (data['models'] != null) {
       final modelsList = data['models'] as List;
       final models = modelsList
