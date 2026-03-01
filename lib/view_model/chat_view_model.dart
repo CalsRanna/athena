@@ -942,6 +942,9 @@ class ChatViewModel {
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
         currentModel.value = model;
+        currentProvider.value = await _providerRepository.getProviderById(
+          model.providerId,
+        );
       }
 
       return updated;
