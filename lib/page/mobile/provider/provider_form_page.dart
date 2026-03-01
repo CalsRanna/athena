@@ -124,7 +124,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
     var editTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      leading: Icon(HugeIcons.strokeRoundedConnect),
       title: 'Connect',
       onTap: () => checkConnection(model),
     );
