@@ -68,6 +68,18 @@ class ChatRepository {
     return await laconic.table('chats').count();
   }
 
+  Future<List<ChatEntity>> getChatsAfterId(int chatId, {int limit = 10}) async {
+    var laconic = Database.instance.laconic;
+    var sql = '''
+      SELECT * FROM chats
+      WHERE id > $chatId
+      ORDER BY id ASC
+      LIMIT $limit
+    ''';
+    var results = await laconic.select(sql);
+    return results.map((r) => ChatEntity.fromJson(r.toMap())).toList();
+  }
+
   /// 获取所有聊天及其最后一条消息内容
   Future<List<ChatHistoryEntity>> getAllChatsWithLastMessage() async {
     var laconic = Database.instance.laconic;
