@@ -187,9 +187,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
   // Track the current chat ID (null means new chat not yet created)
   int? _currentChatId;
 
-  // Track selected sentinel for new chat (before creation)
-  SentinelEntity? _selectedSentinel;
-
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -216,20 +213,21 @@ class _MobileChatPageState extends State<MobileChatPage> {
         }
       }
 
-      // Get sentinel for placeholder
-      SentinelEntity? sentinel = _selectedSentinel ?? widget.sentinel;
-      if (sentinel == null && chat != null) {
+      // New chat should always start from the default sentinel.
+      SentinelEntity? sentinel;
+      if (chat != null) {
         sentinel = sentinelViewModel.sentinels.value
             .where((s) => s.id == chat!.sentinelId)
             .firstOrNull;
+      } else {
+        sentinel = sentinelViewModel.defaultSentinel.value;
       }
-      // If no sentinel selected, use current sentinel from viewModel
       sentinel ??= viewModel.currentSentinel.value;
-      sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
+      sentinel ??= sentinelViewModel.defaultSentinel.value;
 
       // Build title
-      var isRenaming = chat != null &&
-          viewModel.renamingChatIds.value.contains(chat.id);
+      var isRenaming =
+          chat != null && viewModel.renamingChatIds.value.contains(chat.id);
       String title;
       if (isRenaming && viewModel.renamingTitle.value.isNotEmpty) {
         title = viewModel.renamingTitle.value;
@@ -308,8 +306,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (widget.chat != null) {
       _currentChatId = widget.chat!.id;
     }
-    // Initialize selected sentinel if passed
-    _selectedSentinel = widget.sentinel;
   }
 
   Future<void> _initializeViewModels() async {
@@ -338,9 +334,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
     // If no chat exists, create one first
     if (chat == null) {
-      chat = await viewModel.createChat(
-        sentinel: _selectedSentinel ?? widget.sentinel,
-      );
+      chat = await viewModel.createChat();
       if (chat == null) return;
       setState(() {
         _currentChatId = chat!.id;
@@ -402,9 +396,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (chat != null) {
       await viewModel.updateSentinel(sentinel, chat: chat);
     } else {
-      setState(() {
-        _selectedSentinel = sentinel;
-      });
       viewModel.updateCurrentSentinel(sentinel);
     }
   }
