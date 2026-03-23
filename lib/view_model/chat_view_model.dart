@@ -25,6 +25,10 @@ import 'package:signals/signals.dart';
 
 /// ChatViewModel 负责聊天会话的业务逻辑
 class ChatViewModel {
+  static const int defaultDraftContext = 0;
+  static const double defaultDraftTemperature = 1.0;
+  static const bool defaultDraftEnableSearch = false;
+
   // ViewModel 内部直接持有 Service/Repository
   final ChatRepository _chatRepository = ChatRepository();
   final MessageRepository _messageRepository = MessageRepository();
@@ -47,6 +51,9 @@ class ChatViewModel {
   final currentModel = signal<ModelEntity?>(null);
   final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
+  final currentContext = signal(defaultDraftContext);
+  final currentTemperature = signal(defaultDraftTemperature);
+  final currentEnableSearch = signal(defaultDraftEnableSearch);
   final pendingImages = listSignal<String>([]);
 
   // 多选状态
@@ -174,14 +181,16 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      // 使用设置中的默认模型，未设置则回退到第一个可用模型
-      ModelEntity? model;
-      var settingViewModel = GetIt.instance<SettingViewModel>();
-      var modelId = settingViewModel.chatModelId.value;
-      if (modelId > 0) {
-        model = await _modelRepository.getModelById(modelId);
+      // 优先使用当前草稿模型，未设置则回退到默认模型或第一个可用模型
+      ModelEntity? model = currentModel.value;
+      if (model == null || model.id == null || model.id! <= 0) {
+        var settingViewModel = GetIt.instance<SettingViewModel>();
+        var modelId = settingViewModel.chatModelId.value;
+        if (modelId > 0) {
+          model = await _modelRepository.getModelById(modelId);
+        }
       }
-      if (model == null) {
+      if (model == null || model.id == null || model.id! <= 0) {
         var modelViewModel = GetIt.instance<ModelViewModel>();
         await modelViewModel.loadEnabledModels();
         if (modelViewModel.enabledModels.value.isEmpty) {
@@ -212,6 +221,9 @@ class ChatViewModel {
         title: 'New Chat',
         modelId: model.id!,
         sentinelId: selectedSentinel.id!,
+        temperature: currentTemperature.value,
+        context: currentContext.value,
+        enableSearch: currentEnableSearch.value,
         createdAt: now,
         updatedAt: now,
       );
@@ -225,6 +237,9 @@ class ChatViewModel {
       currentChat.value = chat;
       currentModel.value = model;
       currentSentinel.value = selectedSentinel;
+      currentContext.value = chat.context;
+      currentTemperature.value = chat.temperature;
+      currentEnableSearch.value = chat.enableSearch;
       pendingImages.value = [];
       messages.value = [];
 
@@ -321,12 +336,12 @@ class ChatViewModel {
       currentSentinel.value = await _sentinelRepository.getSentinelById(
         firstChat.sentinelId,
       );
+      currentContext.value = firstChat.context;
+      currentTemperature.value = firstChat.temperature;
+      currentEnableSearch.value = firstChat.enableSearch;
       lastSelectedIndex.value = 0;
     } else {
-      currentChat.value = null;
-      currentModel.value = null;
-      currentProvider.value = null;
-      currentSentinel.value = await _getDefaultSentinel();
+      await prepareNewChatDraft();
       messages.value = [];
       lastSelectedIndex.value = null;
     }
@@ -451,12 +466,11 @@ class ChatViewModel {
       currentSentinel.value = await _sentinelRepository.getSentinelById(
         currentChat.value!.sentinelId,
       );
+      currentContext.value = currentChat.value!.context;
+      currentTemperature.value = currentChat.value!.temperature;
+      currentEnableSearch.value = currentChat.value!.enableSearch;
     } else {
-      // 没有对话时，使用设置中的默认模型和默认哨兵
-      var settingViewModel = GetIt.instance<SettingViewModel>();
-      currentModel.value = settingViewModel.chatModel.value;
-      currentProvider.value = settingViewModel.chatModelProvider.value;
-      currentSentinel.value = await _getDefaultSentinel();
+      await prepareNewChatDraft();
     }
   }
 
@@ -616,6 +630,9 @@ class ChatViewModel {
     // 加载关联的 sentinel
     var sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
     currentSentinel.value = sentinel;
+    currentContext.value = chat.context;
+    currentTemperature.value = chat.temperature;
+    currentEnableSearch.value = chat.enableSearch;
 
     // 清空待发送图片
     pendingImages.value = [];
@@ -859,6 +876,7 @@ class ChatViewModel {
 
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
+        currentContext.value = updated.context;
       }
 
       return updated;
@@ -888,6 +906,7 @@ class ChatViewModel {
 
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
+        currentEnableSearch.value = updated.enableSearch;
       }
 
       return updated;
@@ -998,6 +1017,7 @@ class ChatViewModel {
 
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
+        currentTemperature.value = updated.temperature;
       }
 
       return updated;
@@ -1020,11 +1040,52 @@ class ChatViewModel {
     currentSentinel.value = sentinel;
   }
 
+  void updateCurrentContext(int context) {
+    currentContext.value = context;
+  }
+
+  void updateCurrentEnableSearch(bool enabled) {
+    currentEnableSearch.value = enabled;
+  }
+
+  void updateCurrentTemperature(double temperature) {
+    currentTemperature.value = temperature;
+  }
+
+  Future<void> prepareNewChatDraft() async {
+    currentChat.value = null;
+    messages.value = [];
+    pendingImages.value = [];
+    await _syncDraftDefaults();
+  }
+
   Future<SentinelEntity?> _getDefaultSentinel() async {
     final sentinelViewModel = GetIt.instance<SentinelViewModel>();
     if (sentinelViewModel.sentinels.value.isEmpty) {
       await sentinelViewModel.getSentinels();
     }
     return sentinelViewModel.defaultSentinel.value;
+  }
+
+  Future<void> _syncDraftDefaults() async {
+    final settingViewModel = GetIt.instance<SettingViewModel>();
+    currentModel.value = settingViewModel.chatModel.value;
+    currentProvider.value = settingViewModel.chatModelProvider.value;
+
+    if (currentModel.value == null) {
+      final modelViewModel = GetIt.instance<ModelViewModel>();
+      await modelViewModel.loadEnabledModels();
+      currentModel.value = modelViewModel.enabledModels.value.firstOrNull;
+      if (currentModel.value != null) {
+        currentProvider.value = await _providerRepository.getProviderById(
+          currentModel.value!.providerId,
+        );
+      }
+    }
+
+    currentSentinel.value = await _getDefaultSentinel();
+    currentContext.value = defaultDraftContext;
+    currentTemperature.value = defaultDraftTemperature;
+    currentEnableSearch.value = defaultDraftEnableSearch;
   }
 }

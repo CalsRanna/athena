@@ -310,8 +310,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Future<void> _initializeViewModels() async {
     await modelViewModel.initSignals();
+    await sentinelViewModel.getSentinels();
     if (widget.chat != null) {
       await viewModel.selectChat(widget.chat!);
+    } else {
+      await viewModel.prepareNewChatDraft();
     }
   }
 
@@ -372,6 +375,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var chat = _getCurrentChat();
     if (chat != null) {
       await viewModel.updateContext(value, chat: chat);
+    } else {
+      viewModel.updateCurrentContext(value);
     }
   }
 
@@ -379,6 +384,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var chat = _getCurrentChat();
     if (chat != null) {
       await viewModel.updateEnableSearch(value, chat: chat);
+    } else {
+      viewModel.updateCurrentEnableSearch(value);
     }
   }
 
@@ -404,6 +411,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var chat = _getCurrentChat();
     if (chat != null) {
       await viewModel.updateTemperature(value, chat: chat);
+    } else {
+      viewModel.updateCurrentTemperature(value);
     }
   }
 

@@ -9,18 +9,23 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopSentinelSelector extends StatelessWidget {
+  final bool enabled;
   final void Function(SentinelEntity)? onSelected;
-  const DesktopSentinelSelector({super.key, this.onSelected});
+  const DesktopSentinelSelector({
+    super.key,
+    this.enabled = true,
+    this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedArtificialIntelligence03,
-      color: ColorUtil.FFFFFFFF,
+      color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E,
       size: 24,
     );
     return GestureDetector(
-      onTap: openDialog,
+      onTap: enabled ? openDialog : null,
       child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
     );
   }

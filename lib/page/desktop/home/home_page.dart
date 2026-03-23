@@ -200,7 +200,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
+    if (chat == null) {
+      chatViewModel.updateCurrentContext(context);
+      return;
+    }
     await chatViewModel.updateContext(context, chat: chat);
   }
 
@@ -210,7 +213,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
+    if (chat == null) {
+      chatViewModel.updateCurrentEnableSearch(enabled);
+      return;
+    }
     await chatViewModel.updateEnableSearch(enabled, chat: chat);
   }
 
@@ -258,7 +264,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
+    if (chat == null) {
+      chatViewModel.updateCurrentTemperature(temperature);
+      return;
+    }
     await chatViewModel.updateTemperature(temperature, chat: chat);
   }
 
