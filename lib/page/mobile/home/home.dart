@@ -319,7 +319,7 @@ class _SentinelTile extends StatelessWidget {
   }
 
   void navigateChatPage(BuildContext context) {
-    // Navigate to chat page with sentinel, chat will be created on first message
+    // Open the chat page; the chat itself will still be created with the default sentinel.
     MobileChatRoute(sentinel: sentinel).push(context);
   }
 }

@@ -14,6 +14,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -169,7 +170,7 @@ class ChatViewModel {
   }
 
   /// 创建新的聊天会话
-  Future<ChatEntity?> createChat({SentinelEntity? sentinel}) async {
+  Future<ChatEntity?> createChat() async {
     isLoading.value = true;
     error.value = null;
     try {
@@ -199,12 +200,8 @@ class ChatViewModel {
       }
       currentProvider.value = provider;
 
-      // 优先使用传入的 sentinel，其次使用当前选择的 sentinel，最后使用第一个 sentinel
-      var selectedSentinel = sentinel ?? currentSentinel.value;
-      if (selectedSentinel == null) {
-        var sentinels = await _sentinelRepository.getAllSentinels();
-        selectedSentinel = sentinels.firstOrNull;
-      }
+      // 新建对话始终从默认 sentinel 开始，避免沿用上一个会话的状态
+      var selectedSentinel = await _getDefaultSentinel();
       if (selectedSentinel == null) {
         error.value = 'No sentinels found';
         return null;
@@ -329,7 +326,7 @@ class ChatViewModel {
       currentChat.value = null;
       currentModel.value = null;
       currentProvider.value = null;
-      currentSentinel.value = null;
+      currentSentinel.value = await _getDefaultSentinel();
       messages.value = [];
       lastSelectedIndex.value = null;
     }
@@ -459,10 +456,7 @@ class ChatViewModel {
       var settingViewModel = GetIt.instance<SettingViewModel>();
       currentModel.value = settingViewModel.chatModel.value;
       currentProvider.value = settingViewModel.chatModelProvider.value;
-
-      // 使用默认哨兵
-      var sentinels = await _sentinelRepository.getAllSentinels();
-      currentSentinel.value = sentinels.firstOrNull;
+      currentSentinel.value = await _getDefaultSentinel();
     }
   }
 
@@ -1024,5 +1018,13 @@ class ChatViewModel {
   /// 更新当前哨兵（没有选中对话时使用）
   void updateCurrentSentinel(SentinelEntity sentinel) {
     currentSentinel.value = sentinel;
+  }
+
+  Future<SentinelEntity?> _getDefaultSentinel() async {
+    final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+    if (sentinelViewModel.sentinels.value.isEmpty) {
+      await sentinelViewModel.getSentinels();
+    }
+    return sentinelViewModel.defaultSentinel.value;
   }
 }
