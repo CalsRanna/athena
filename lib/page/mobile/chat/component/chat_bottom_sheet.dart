@@ -6,7 +6,6 @@ import 'package:athena/page/mobile/chat/component/model_selector.dart';
 import 'package:athena/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/view_model/provider_view_model.dart';
-import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -62,26 +61,21 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       temperature = widget.chat!.temperature;
       contextToken = widget.chat!.context;
     } else {
-      // Use settings default model, fallback to first available
-      var settingViewModel = GetIt.instance<SettingViewModel>();
-      sentinelId =
-          chatViewModel.currentSentinel.value?.id ??
-          sentinelViewModel.sentinels.value.firstOrNull?.id ??
-          0;
-      var defaultModelId = settingViewModel.chatModelId.value;
+      sentinelId = sentinelViewModel.defaultSentinel.value.id ?? 0;
       modelId =
-          defaultModelId > 0
-              ? defaultModelId
-              : modelViewModel.enabledModels.value.firstOrNull?.id ?? 0;
-      enableSearch = false;
-      temperature = 0.6;
-      contextToken = 20;
+          chatViewModel.currentModel.value?.id ??
+          modelViewModel.enabledModels.value.firstOrNull?.id ??
+          0;
+      enableSearch = chatViewModel.currentEnableSearch.value;
+      temperature = chatViewModel.currentTemperature.value;
+      contextToken = chatViewModel.currentContext.value;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      var hasChat = widget.chat != null;
       var sentinel = sentinelViewModel.sentinels.value
           .where((s) => s.id == sentinelId)
           .firstOrNull;
@@ -103,8 +97,9 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var modelFullName =
           '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
       var sentinelSheetTile = AthenaBottomSheetTile(
+        enabled: hasChat,
         leading: Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
-        onTap: openSentinelSelectorDialog,
+        onTap: hasChat ? openSentinelSelectorDialog : null,
         title: 'Sentinel',
         trailing: Text(sentinel?.name ?? ''),
       );
@@ -131,8 +126,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
       );
 
-      // Export image is disabled when no chat exists
-      var hasChat = widget.chat != null;
+      // Export image is disabled when no chat exists.
       var exportImageSheetTile = AthenaBottomSheetTile(
         enabled: hasChat,
         leading: Icon(HugeIcons.strokeRoundedFileExport),

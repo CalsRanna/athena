@@ -7,11 +7,15 @@ import 'package:hugeicons/hugeicons.dart';
 
 class DesktopConfigurationButton extends StatelessWidget {
   final ChatEntity? chat;
+  final int currentContext;
+  final double currentTemperature;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const DesktopConfigurationButton({
     super.key,
     this.chat,
+    required this.currentContext,
+    required this.currentTemperature,
     this.onContextChange,
     this.onTemperatureChange,
   });
@@ -33,6 +37,8 @@ class DesktopConfigurationButton extends StatelessWidget {
   void openDialog() {
     var desktopConfigurationDialog = _DesktopConfigurationDialog(
       chat: chat,
+      currentContext: currentContext,
+      currentTemperature: currentTemperature,
       onContextChange: onContextChange,
       onTemperatureChange: onTemperatureChange,
     );
@@ -42,10 +48,14 @@ class DesktopConfigurationButton extends StatelessWidget {
 
 class _DesktopConfigurationDialog extends StatelessWidget {
   final ChatEntity? chat;
+  final int currentContext;
+  final double currentTemperature;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const _DesktopConfigurationDialog({
     this.chat,
+    required this.currentContext,
+    required this.currentTemperature,
     this.onContextChange,
     this.onTemperatureChange,
   });
@@ -53,11 +63,11 @@ class _DesktopConfigurationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var contextSlider = _DesktopConfigurationDialogContextSlider(
-      context: chat?.context ?? 0,
+      context: chat?.context ?? currentContext,
       onChange: onContextChange,
     );
     var temperatureSlider = _DesktopConfigurationDialogTemperatureSlider(
-      temperature: chat?.temperature ?? 1,
+      temperature: chat?.temperature ?? currentTemperature,
       onChange: onTemperatureChange,
     );
     var children = [

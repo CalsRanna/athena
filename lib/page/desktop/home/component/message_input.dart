@@ -39,11 +39,16 @@ class DesktopMessageInput extends StatelessWidget {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     var chat = chatViewModel.currentChat.value;
     var toolbarChildren = [
-      DesktopSentinelSelector(onSelected: onSentinelChanged),
+      DesktopSentinelSelector(
+        enabled: chat != null,
+        onSelected: onSentinelChanged,
+      ),
       DesktopModelSelector(onSelected: onModelChanged),
       DesktopServerSelector(),
       DesktopConfigurationButton(
         chat: chat,
+        currentContext: chatViewModel.currentContext.value,
+        currentTemperature: chatViewModel.currentTemperature.value,
         onContextChange: onContextChange,
         onTemperatureChange: onTemperatureChange,
       ),
