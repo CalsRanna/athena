@@ -189,7 +189,9 @@ class TRPGViewModel {
 
       var fullContent = '';
       await for (var chunk in stream) {
-        var delta = chunk.choices.first.delta.content ?? '';
+        var choice = chunk.choices.firstOrNull;
+        if (choice == null) continue;
+        var delta = choice.delta.content ?? '';
         fullContent += delta;
         streamingMessage.value = streamingMessage.value!.copyWith(
           content: fullContent,

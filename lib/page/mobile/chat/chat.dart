@@ -356,11 +356,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     );
 
     await viewModel.sendMessage(message, chat: chat);
-
-    // Rename chat after first message
-    if (chat.title.isEmpty || chat.title == 'New Chat') {
-      await viewModel.renameChat(chat);
-    }
   }
 
   void terminateStreaming() {

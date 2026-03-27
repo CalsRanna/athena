@@ -63,6 +63,14 @@ class _OpenAIStreamTransformer
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .where((line) => line.startsWith('data: ') && !line.endsWith('[DONE]'))
-        .map((line) => json.decode(line.substring(6)) as Map<String, dynamic>);
+        .map((line) {
+          try {
+            return json.decode(line.substring(6)) as Map<String, dynamic>;
+          } catch (_) {
+            return null;
+          }
+        })
+        .where((json) => json != null)
+        .cast<Map<String, dynamic>>();
   }
 }
