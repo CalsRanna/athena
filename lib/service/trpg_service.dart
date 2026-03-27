@@ -44,11 +44,18 @@ class TRPGService {
       var content = response.choices.first.message.content ?? '';
 
       // 清理可能的 markdown 代码块标记
-      content = content.replaceAll('```json', '').replaceAll('```', '').trim();
+      content = content
+          .replaceAll(RegExp(r'```\w*\n?'), '')
+          .replaceAll('```', '')
+          .trim();
+
+      // 提取 JSON 数组（处理模型可能输出额外文本的情况）
+      var jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(content);
+      if (jsonMatch == null) return [];
 
       // 解析 JSON 数组
       try {
-        var jsonArray = jsonDecode(content) as List;
+        var jsonArray = jsonDecode(jsonMatch.group(0)!) as List;
         return jsonArray.map((item) => item.toString()).toList();
       } catch (e) {
         // 如果 JSON 解析失败，返回空列表

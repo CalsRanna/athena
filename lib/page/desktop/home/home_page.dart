@@ -183,11 +183,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     chatViewModel.clearPendingImages();
 
     await chatViewModel.sendMessage(message, chat: chat);
-
-    // Auto-rename chat after first message
-    if (chat.title.isEmpty || chat.title == 'New Chat') {
-      await chatViewModel.renameChat(chat);
-    }
   }
 
   void terminateStreaming() {

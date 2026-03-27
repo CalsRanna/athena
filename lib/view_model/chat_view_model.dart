@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -481,6 +482,9 @@ class ChatViewModel {
 
   /// 自动重命名聊天
   Future<ChatEntity?> renameChat(ChatEntity chat) async {
+    if (chat.id == null) return null;
+    if (renamingChatIds.value.contains(chat.id)) return null;
+
     startRenaming(chat.id!);
     renamingTitle.value = '';
     try {
@@ -654,6 +658,18 @@ class ChatViewModel {
       var id = await _messageRepository.storeMessage(message);
       var userMessage = message.copyWith(id: id);
       messages.value = [...messages.value, userMessage];
+
+      // 首条用户消息入库后立即异步触发自动命名，不等待本轮回复结束。
+      var isDefaultTitle = chat.title.isEmpty || chat.title == 'New Chat';
+      if (isDefaultTitle) {
+        var persistedMessages = await _messageRepository.getMessagesByChatId(
+          chat.id!,
+        );
+        var userMessageCount = persistedMessages.where((m) => m.role == 'user');
+        if (userMessageCount.length == 1) {
+          unawaited(renameChat(chat));
+        }
+      }
 
       // 2. 获取model和provider
       var model = await _modelRepository.getModelById(chat.modelId);
