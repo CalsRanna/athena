@@ -3,7 +3,6 @@ import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -54,29 +53,27 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
       width: 120,
     );
 
-    return AthenaScaffold(
-      body: Center(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: openDeveloperMode,
-          child: Watch((context) {
-            var children = [
-              ClipOval(child: image),
-              SizedBox(height: 24),
-              Text(version, style: textStyle),
-              if (developerMode.value) const SizedBox(height: 24),
-              if (developerMode.value)
-                AthenaSecondaryButton.small(
-                  onTap: emptyServers,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Empty Servers'),
-                  ),
+    return Center(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: openDeveloperMode,
+        child: Watch((context) {
+          var children = [
+            ClipOval(child: image),
+            SizedBox(height: 24),
+            Text(version, style: textStyle),
+            if (developerMode.value) const SizedBox(height: 24),
+            if (developerMode.value)
+              AthenaSecondaryButton.small(
+                onTap: emptyServers,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                  child: Text('Empty Servers'),
                 ),
-            ];
-            return Column(mainAxisSize: MainAxisSize.min, children: children);
-          }),
-        ),
+              ),
+          ];
+          return Column(mainAxisSize: MainAxisSize.min, children: children);
+        }),
       ),
     );
   }
@@ -144,7 +141,8 @@ class _DesktopDeveloperModeDialog extends StatelessWidget {
   }
 
   Widget _buildButtons(BuildContext context) {
-    final state = context.findAncestorStateOfType<_DesktopSettingAboutPageState>();
+    final state = context
+        .findAncestorStateOfType<_DesktopSettingAboutPageState>();
     final edgeInsets = const EdgeInsets.symmetric(horizontal: 16);
     final cancelButton = AthenaSecondaryButton(
       onTap: AthenaDialog.dismiss,
