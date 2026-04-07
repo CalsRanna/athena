@@ -43,15 +43,16 @@ class AthenaDialog {
   }
 
   static void loading() {
-    var indicator = CircularProgressIndicator(color: ColorUtil.FFFFFFFF);
     showDialog(
       barrierDismissible: false,
       context: router.navigatorKey.currentContext!,
-      builder: (context) => Center(child: indicator),
+      builder: (context) => const _DesktopLoadingDialog(),
     );
   }
 
   static void message(String message) {
+    final messenger = scaffoldMessengerKey.currentState;
+    if (messenger == null) return;
     var text = Text(message, style: TextStyle(color: ColorUtil.FFFFFFFF));
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
@@ -85,7 +86,6 @@ class AthenaDialog {
     if (!isWindow) {
       snackBar = SnackBar(behavior: SnackBarBehavior.floating, content: text);
     }
-    var messenger = ScaffoldMessenger.of(router.navigatorKey.currentContext!);
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(snackBar);
   }
@@ -502,6 +502,54 @@ class _SuccessDialog extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text('Done', style: textStyle),
       ),
+    );
+  }
+}
+
+class _DesktopLoadingDialog extends StatelessWidget {
+  const _DesktopLoadingDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final indicator = SizedBox(
+      height: 20,
+      width: 20,
+      child: CircularProgressIndicator(
+        color: ColorUtil.FFFFFFFF,
+        strokeWidth: 2,
+      ),
+    );
+    final textStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.8),
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    final borderSide = BorderSide(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+    );
+    final children = [
+      indicator,
+      const SizedBox(width: 12),
+      Text('Loading...', style: textStyle),
+    ];
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: children,
+    );
+    final container = Container(
+      decoration: BoxDecoration(
+        color: ColorUtil.FF282F32,
+        border: Border.fromBorderSide(borderSide),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: row,
+    );
+    return Material(
+      type: MaterialType.transparency,
+      child: Center(child: container),
     );
   }
 }
