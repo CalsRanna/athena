@@ -9,7 +9,6 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/switch.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
@@ -42,11 +41,10 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
       _buildServerListView(),
       Expanded(child: _buildServerView()),
     ];
-    var row = Row(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AthenaScaffold(body: row);
   }
 
   Future<void> changeServer(int index) async {
@@ -133,7 +131,9 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
   Future<void> toggleServer(bool value) async {
     var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    var copiedServer = servers[_selectedIndex(servers)].copyWith(enabled: value);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(
+      enabled: value,
+    );
     return viewModel.updateServer(copiedServer);
   }
 
@@ -144,7 +144,9 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         .split(' ')
         .where((s) => s.isNotEmpty)
         .toList();
-    var copiedServer = servers[_selectedIndex(servers)].copyWith(arguments: args);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(
+      arguments: args,
+    );
     viewModel.updateServer(copiedServer);
   }
 
@@ -276,15 +278,17 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
       var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
       var toolsChildren = <Widget>[];
       for (var tool in server.tools) {
-        toolsChildren.add(
-          _ToolListTile(description: '', name: tool),
-        );
+        toolsChildren.add(_ToolListTile(description: '', name: tool));
       }
       if (toolsChildren.isEmpty) {
-        toolsChildren.add(_buildToolsStateText(hasTools: server.tools.isNotEmpty));
+        toolsChildren.add(
+          _buildToolsStateText(hasTools: server.tools.isNotEmpty),
+        );
       } else if (toolsMessage != null && toolsMessage!.isNotEmpty) {
         toolsChildren.add(const SizedBox(height: 8));
-        toolsChildren.add(_buildToolsStateText(hasTools: server.tools.isNotEmpty));
+        toolsChildren.add(
+          _buildToolsStateText(hasTools: server.tools.isNotEmpty),
+        );
       }
       var listChildren = [
         Row(children: nameChildren),
@@ -339,7 +343,9 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
     );
     var text =
         toolsMessage ??
-        (hasTools ? 'Tools loaded successfully.' : 'Click "List tools" to fetch tools from this server.');
+        (hasTools
+            ? 'Tools loaded successfully.'
+            : 'Click "List tools" to fetch tools from this server.');
     return Text(text, style: textStyle);
   }
 }

@@ -11,7 +11,6 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -44,7 +43,7 @@ class _DesktopSettingSentinelPageState
       _buildSentinelListView(),
       Expanded(child: _buildSentinelView()),
     ];
-    return AthenaScaffold(body: Row(children: children));
+    return Row(children: children);
   }
 
   Future<void> changeSentinel(int index) async {
