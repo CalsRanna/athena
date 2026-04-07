@@ -97,7 +97,7 @@ class DesktopModelSelector extends StatelessWidget {
         barrierDismissible: true,
       );
     } else {
-      AthenaDialog.message('Your should enable a provider first');
+      AthenaDialog.warning('Your should enable a provider first');
     }
   }
 }

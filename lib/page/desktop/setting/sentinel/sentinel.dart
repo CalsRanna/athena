@@ -92,7 +92,7 @@ class _DesktopSettingSentinelPageState
   void generateSentinel() async {
     if (loading) return;
     if (promptController.text.trim().isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     setState(() {
@@ -111,7 +111,7 @@ class _DesktopSettingSentinelPageState
         descriptionController.text = generatedSentinel.description;
         tagsController.text = generatedSentinel.tags;
       } else if (generatedSentinel == null) {
-        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
+        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
       setState(() {
         loading = false;
@@ -120,7 +120,7 @@ class _DesktopSettingSentinelPageState
       setState(() {
         loading = false;
       });
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 
@@ -146,7 +146,7 @@ class _DesktopSettingSentinelPageState
 
   void storeSentinel() async {
     if (promptController.text.isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     var sentinels = viewModel.sentinels.value;
@@ -159,7 +159,7 @@ class _DesktopSettingSentinelPageState
       tags: tagsController.text,
     );
     await viewModel.updateSentinel(copiedSentinel);
-    AthenaDialog.message('Sentinel updated');
+    AthenaDialog.success('Sentinel updated');
   }
 
   Widget _buildButtons() {
@@ -305,7 +305,7 @@ class _DesktopSettingSentinelPageState
       setState(() {
         loading = false;
       });
-      AthenaDialog.message('No enabled models found');
+      AthenaDialog.warning('No enabled models found');
       return null;
     }
     return modelViewModel.enabledModels.value.first.id!;
