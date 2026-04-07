@@ -80,8 +80,20 @@ class _DesktopSettingProviderPageState
     urlController.text = providers[index].baseUrl;
   }
 
-  void checkConnection(ModelEntity model) {
-    modelViewModel.checkConnection(model);
+  Future<void> checkConnection(ModelEntity model) async {
+    AthenaDialog.loading();
+    try {
+      var result = await modelViewModel.checkConnection(model);
+      AthenaDialog.dismiss();
+      if (!result.isSuccess) {
+        AthenaDialog.error(result.detail ?? result.message);
+        return;
+      }
+      AthenaDialog.success(result.message);
+    } catch (e) {
+      AthenaDialog.dismiss();
+      AthenaDialog.error('Connection error: $e');
+    }
   }
 
   void createModel(ProviderEntity provider) {
