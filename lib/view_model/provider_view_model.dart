@@ -56,7 +56,7 @@ class ProviderViewModel {
       var created = provider.copyWith(id: id);
       providers.value = [...providers.value, created];
     } catch (e) {
-      AthenaDialog.success(e.toString());
+      AthenaDialog.error(e.toString());
     } finally {
       isLoading.value = false;
     }

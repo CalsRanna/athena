@@ -82,10 +82,10 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     try {
       var result = await viewModel.checkConnection(model);
       AthenaDialog.dismiss();
-      AthenaDialog.message(result);
+      AthenaDialog.success(result);
     } catch (e) {
       AthenaDialog.dismiss();
-      AthenaDialog.message('Connection error: $e');
+      AthenaDialog.error('Connection error: $e');
     }
   }
 

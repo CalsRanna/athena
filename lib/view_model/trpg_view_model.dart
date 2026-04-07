@@ -224,7 +224,7 @@ class TRPGViewModel {
       streamingMessage.value = null;
     } catch (e) {
       error.value = '发送消息失败：$e';
-      AthenaDialog.message(e.toString());
+      AthenaDialog.error(e.toString());
       isStreaming.value = false;
       streamingMessage.value = null;
     }

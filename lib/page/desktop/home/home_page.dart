@@ -56,14 +56,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> createChat() async {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
 
     var modelViewModel = GetIt.instance<ModelViewModel>();
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {
-      AthenaDialog.message('You should enable a provider first');
+      AthenaDialog.warning('You should enable a provider first');
       return;
     }
 
@@ -143,7 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     // 检查是否有可用的模型
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {
-      AthenaDialog.message('You should enable a provider first');
+      AthenaDialog.warning('You should enable a provider first');
       return;
     }
 
@@ -157,7 +157,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     // 检查当前聊天的模型是否有效
     var model = chatViewModel.currentModel.value;
     if (model == null || model.id! <= 0) {
-      AthenaDialog.message('You should select a model first');
+      AthenaDialog.warning('You should select a model first');
       return;
     }
 
@@ -191,7 +191,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> updateContext(int context) async {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     var chat = chatViewModel.currentChat.value;
@@ -201,7 +201,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   void updateImage(List<String> images) {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     chatViewModel.pendingImages.value = images;
@@ -209,7 +209,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> updateModel(ModelEntity newModel) async {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     var chat = chatViewModel.currentChat.value;
@@ -224,7 +224,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> updateSentinel(SentinelEntity newSentinel) async {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     var chat = chatViewModel.currentChat.value;
@@ -239,7 +239,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> updateTemperature(double temperature) async {
     if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
+      AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     var chat = chatViewModel.currentChat.value;

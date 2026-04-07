@@ -216,7 +216,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
   Future<void> openLink(String? url) async {
     var uri = Uri.parse(url ?? '');
     if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.message('The link is invalid');
+      AthenaDialog.warning('The link is invalid');
       return;
     }
     launchUrl(uri);
