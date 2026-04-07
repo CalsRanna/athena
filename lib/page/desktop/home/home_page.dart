@@ -199,16 +199,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateContext(context, chat: chat);
   }
 
-  Future<void> updateEnableSearch(bool enabled) async {
-    if (chatViewModel.isStreaming.value) {
-      AthenaDialog.message('Please wait for the current chat to finish.');
-      return;
-    }
-    var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
-    await chatViewModel.updateEnableSearch(enabled, chat: chat);
-  }
-
   void updateImage(List<String> images) {
     if (chatViewModel.isStreaming.value) {
       AthenaDialog.message('Please wait for the current chat to finish.');
