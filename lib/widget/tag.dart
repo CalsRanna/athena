@@ -1,4 +1,5 @@
 import 'package:athena/util/color_util.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 class AthenaTag extends StatelessWidget {
@@ -62,5 +63,106 @@ class AthenaTag extends StatelessWidget {
       padding: EdgeInsets.all(1),
       child: innerContainer,
     );
+  }
+}
+
+class AthenaTagButton extends StatefulWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  final void Function()? onTap;
+  final bool selected;
+
+  const AthenaTagButton({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.selected = false,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
+
+  const AthenaTagButton.small({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.selected = false,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+
+  @override
+  State<AthenaTagButton> createState() => _AthenaTagButtonState();
+}
+
+class _AthenaTagButtonState extends State<AthenaTagButton> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    var selected = widget.selected;
+    var foregroundColor = selected ? ColorUtil.FF161616 : ColorUtil.FFFFFFFF;
+    var innerColor = selected ? ColorUtil.FFE0E0E0 : ColorUtil.FF161616;
+    var gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      colors: [
+        ColorUtil.FFEAEAEA.withValues(alpha: hover ? 0.28 : 0.17),
+        ColorUtil.FFFFFFFF.withValues(alpha: hover ? 0.04 : 0),
+      ],
+      end: Alignment.bottomRight,
+    );
+    var child = DefaultTextStyle.merge(
+      style: TextStyle(
+        color: foregroundColor,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 1.4,
+      ),
+      child: IconTheme.merge(
+        data: IconThemeData(color: foregroundColor, size: 14),
+        child: widget.child,
+      ),
+    );
+    var innerContainer = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(44),
+        color: innerColor,
+      ),
+      padding: widget.padding,
+      child: child,
+    );
+    var outerContainer = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(44),
+        gradient: gradient,
+      ),
+      padding: const EdgeInsets.all(1),
+      child: innerContainer,
+    );
+    var mouseRegion = MouseRegion(
+      cursor: widget.onTap == null
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
+      onEnter: _handleEnter,
+      onExit: _handleExit,
+      child: outerContainer,
+    );
+    if (widget.onTap == null) return mouseRegion;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      child: mouseRegion,
+    );
+  }
+
+  void _handleEnter(PointerEnterEvent event) {
+    if (!mounted) return;
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void _handleExit(PointerExitEvent event) {
+    if (!mounted) return;
+    setState(() {
+      hover = false;
+    });
   }
 }
