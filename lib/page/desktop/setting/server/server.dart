@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:athena/entity/server_entity.dart';
 import 'package:athena/page/desktop/setting/server/component/server_context_menu.dart';
 import 'package:athena/page/desktop/setting/server/component/server_form_dialog.dart';
@@ -31,7 +29,7 @@ class DesktopSettingServerPage extends StatefulWidget {
 
 class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
   int index = 0;
-  String result = '';
+  String? toolsMessage;
   final commandController = TextEditingController();
   final argumentsController = TextEditingController();
   final environmentsController = TextEditingController();
@@ -57,11 +55,7 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
     });
     var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    commandController.text = servers[index].command;
-    argumentsController.text = servers[index].arguments.join(' ');
-    environmentsController.text = servers[index].environmentVariables.entries
-        .map((e) => '${e.key}=${e.value}')
-        .join('\n');
+    _syncControllers(servers[index]);
 
     // 获取工具列表
     await fetchTools();
@@ -69,18 +63,18 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
 
   Future<void> fetchTools() async {
     var servers = viewModel.servers.value;
-    if (servers.isEmpty || index >= servers.length) return;
+    if (servers.isEmpty) return;
 
-    var server = servers[index];
+    var server = servers[_selectedIndex(servers)];
     var updated = await viewModel.fetchServerTools(server);
 
     if (updated != null && updated.tools.isNotEmpty) {
       setState(() {
-        result = 'Tools:\n${updated.tools.join('\n')}';
+        toolsMessage = null;
       });
     } else {
       setState(() {
-        result = viewModel.error.value ?? 'No tools found';
+        toolsMessage = viewModel.error.value ?? 'No tools found';
       });
     }
   }
@@ -91,10 +85,15 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
     );
     if (confirmResult == true) {
       await viewModel.deleteServer(server);
+      var servers = viewModel.servers.value;
+      var nextIndex = servers.isEmpty ? 0 : index.clamp(0, servers.length - 1);
       setState(() {
-        index = 0;
-        result = '';
+        index = nextIndex;
+        toolsMessage = null;
       });
+      if (servers.isNotEmpty) {
+        _syncControllers(servers[index]);
+      }
     }
   }
 
@@ -134,7 +133,7 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
   Future<void> toggleServer(bool value) async {
     var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    var copiedServer = servers[index].copyWith(enabled: value);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(enabled: value);
     return viewModel.updateServer(copiedServer);
   }
 
@@ -145,14 +144,16 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         .split(' ')
         .where((s) => s.isNotEmpty)
         .toList();
-    var copiedServer = servers[index].copyWith(arguments: args);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(arguments: args);
     viewModel.updateServer(copiedServer);
   }
 
   Future<void> updateCommand() async {
     var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    var copiedServer = servers[index].copyWith(command: commandController.text);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(
+      command: commandController.text,
+    );
     viewModel.updateServer(copiedServer);
   }
 
@@ -166,7 +167,9 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         envMap[parts[0].trim()] = parts[1].trim();
       }
     }
-    var copiedServer = servers[index].copyWith(environmentVariables: envMap);
+    var copiedServer = servers[_selectedIndex(servers)].copyWith(
+      environmentVariables: envMap,
+    );
     viewModel.updateServer(copiedServer);
   }
 
@@ -215,16 +218,18 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
     return Watch((context) {
       var servers = viewModel.servers.value;
       if (servers.isEmpty) return const SizedBox();
+      var selectedIndex = _selectedIndex(servers);
+      var server = servers[selectedIndex];
       var nameTextStyle = TextStyle(
         color: ColorUtil.FFFFFFFF,
         fontSize: 20,
         fontWeight: FontWeight.w500,
       );
-      var nameText = Text(servers[index].name, style: nameTextStyle);
+      var nameText = Text(server.name, style: nameTextStyle);
       var nameChildren = [
         nameText,
         Spacer(),
-        AthenaSwitch(value: servers[index].enabled, onChanged: toggleServer),
+        AthenaSwitch(value: server.enabled, onChanged: toggleServer),
       ];
       var commandInput = AthenaInput(
         controller: commandController,
@@ -256,9 +261,7 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         fontWeight: FontWeight.w400,
         height: 1.5,
       );
-      var description = servers.isNotEmpty && index < servers.length
-          ? servers[index].description
-          : '';
+      var description = server.description;
       var descriptionText = Text(description, style: descriptionTextStyle);
       var toolsTextStyle = TextStyle(
         color: ColorUtil.FFFFFFFF,
@@ -271,12 +274,17 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         text: 'List tools',
       );
       var listToolsChildren = [toolsText, const Spacer(), listToolsButton];
-      var tools = jsonDecode(result.isEmpty ? '[]' : result);
       var toolsChildren = <Widget>[];
-      for (var tool in tools) {
+      for (var tool in server.tools) {
         toolsChildren.add(
-          _ToolListTile(description: tool['description'], name: tool['name']),
+          _ToolListTile(description: '', name: tool),
         );
+      }
+      if (toolsChildren.isEmpty) {
+        toolsChildren.add(_buildToolsStateText(hasTools: server.tools.isNotEmpty));
+      } else if (toolsMessage != null && toolsMessage!.isNotEmpty) {
+        toolsChildren.add(const SizedBox(height: 8));
+        toolsChildren.add(_buildToolsStateText(hasTools: server.tools.isNotEmpty));
       }
       var listChildren = [
         Row(children: nameChildren),
@@ -290,6 +298,7 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
         if (description.isNotEmpty) descriptionText,
         const SizedBox(height: 12),
         Row(children: listToolsChildren),
+        const SizedBox(height: 8),
         ...toolsChildren,
       ];
       var sliverPadding = SliverPadding(
@@ -303,18 +312,35 @@ class _DesktopSettingServerPageState extends State<DesktopSettingServerPage> {
   Future<void> _initState() async {
     var servers = viewModel.servers.value;
     if (servers.isEmpty) return;
-    commandController.text = servers[index].command;
-    argumentsController.text = servers[index].arguments.join(' ');
-    environmentsController.text = servers[index].environmentVariables.entries
+    _syncControllers(servers[index]);
+
+    toolsMessage = null;
+  }
+
+  void _syncControllers(ServerEntity server) {
+    commandController.text = server.command;
+    argumentsController.text = server.arguments.join(' ');
+    environmentsController.text = server.environmentVariables.entries
         .map((e) => '${e.key}=${e.value}')
         .join('\n');
+  }
 
-    // 如果服务器有工具列表,显示它们
-    if (servers[index].tools.isNotEmpty) {
-      setState(() {
-        result = 'Tools:\n${servers[index].tools.join('\n')}';
-      });
-    }
+  int _selectedIndex(List<ServerEntity> servers) {
+    if (servers.isEmpty) return 0;
+    return index.clamp(0, servers.length - 1);
+  }
+
+  Widget _buildToolsStateText({required bool hasTools}) {
+    var textStyle = TextStyle(
+      color: hasTools ? ColorUtil.FFC2C2C2 : ColorUtil.FFE0E0E0,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var text =
+        toolsMessage ??
+        (hasTools ? 'Tools loaded successfully.' : 'Click "List tools" to fetch tools from this server.');
+    return Text(text, style: textStyle);
   }
 }
 
