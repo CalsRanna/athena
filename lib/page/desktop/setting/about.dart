@@ -1,6 +1,7 @@
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/server_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -65,9 +66,12 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
               Text(version, style: textStyle),
               if (developerMode.value) const SizedBox(height: 24),
               if (developerMode.value)
-                TextButton(
-                  onPressed: emptyServers,
-                  child: Text('Empty Servers'),
+                AthenaSecondaryButton.small(
+                  onTap: emptyServers,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('Empty Servers'),
+                  ),
                 ),
             ];
             return Column(mainAxisSize: MainAxisSize.min, children: children);
@@ -83,24 +87,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   void openDeveloperMode() {
     if (developerMode.value) return;
-
-    var cancelButton = TextButton(
-      onPressed: () => AthenaDialog.dismiss(),
-      child: Text('Cancel'),
-    );
-    var openButton = TextButton(
-      onPressed: () {
-        AthenaDialog.dismiss();
-        developerMode.value = true;
-      },
-      child: Text('Open'),
-    );
-    var alertDialog = AlertDialog(
-      title: Text('Developer Mode'),
-      content: Text('Are you sure you want to open developer mode?'),
-      actions: [cancelButton, openButton],
-    );
-    showDialog(context: context, builder: (context) => alertDialog);
+    AthenaDialog.show(const _DesktopDeveloperModeDialog());
   }
 
   Future<void> _initState() async {
@@ -110,5 +97,69 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
     setState(() {
       this.version = '$version ($buildNumber)';
     });
+  }
+}
+
+class _DesktopDeveloperModeDialog extends StatelessWidget {
+  const _DesktopDeveloperModeDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final titleStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
+    final messageStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.8),
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    final children = [
+      Text('Developer Mode', style: titleStyle),
+      const SizedBox(height: 12),
+      Text(
+        'Are you sure you want to open developer mode?',
+        style: messageStyle,
+      ),
+      const SizedBox(height: 24),
+      _buildButtons(context),
+    ];
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+    final boxDecoration = BoxDecoration(
+      color: ColorUtil.FF282F32,
+      borderRadius: BorderRadius.circular(8),
+    );
+    final container = Container(
+      constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
+      decoration: boxDecoration,
+      padding: const EdgeInsets.all(32),
+      child: column,
+    );
+    return Dialog(backgroundColor: Colors.transparent, child: container);
+  }
+
+  Widget _buildButtons(BuildContext context) {
+    final state = context.findAncestorStateOfType<_DesktopSettingAboutPageState>();
+    final edgeInsets = const EdgeInsets.symmetric(horizontal: 16);
+    final cancelButton = AthenaSecondaryButton(
+      onTap: AthenaDialog.dismiss,
+      child: Padding(padding: edgeInsets, child: const Text('Cancel')),
+    );
+    final openButton = AthenaPrimaryButton(
+      onTap: () {
+        AthenaDialog.dismiss();
+        state?.developerMode.value = true;
+      },
+      child: Padding(padding: edgeInsets, child: const Text('Open')),
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [cancelButton, const SizedBox(width: 12), openButton],
+    );
   }
 }
