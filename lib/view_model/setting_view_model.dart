@@ -205,19 +205,25 @@ class SettingViewModel {
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
-    final bytes = utf8.encode(jsonString);
-
-    final path = await FilePicker.platform.saveFile(
-      bytes: Uint8List.fromList(bytes),
-      dialogTitle: '选择导出位置',
-      fileName: 'athena_export.json',
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
+    final isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    final path = isDesktop
+        ? await FilePicker.platform.saveFile(
+            dialogTitle: '选择导出位置',
+            fileName: 'athena_export.json',
+            type: FileType.custom,
+            allowedExtensions: ['json'],
+          )
+        : await FilePicker.platform.saveFile(
+            bytes: Uint8List.fromList(utf8.encode(jsonString)),
+            dialogTitle: '选择导出位置',
+            fileName: 'athena_export.json',
+            type: FileType.custom,
+            allowedExtensions: ['json'],
+          );
     if (path == null) return false;
 
     // 桌面端 saveFile 只返回路径，需要手动写入文件
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+    if (isDesktop) {
       final file = File(path);
       await file.writeAsString(jsonString);
     }

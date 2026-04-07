@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:athena/router/router.dart';
@@ -5,8 +6,14 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/input.dart';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+
+enum AthenaMessageType { info, success, warning, error }
 
 class AthenaDialog {
+  static OverlayEntry? _messageOverlay;
+  static Timer? _messageTimer;
+
   static Future<bool?> confirm(String text) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       return showDialog<bool>(
@@ -50,42 +57,32 @@ class AthenaDialog {
     );
   }
 
-  static void message(String message) {
+  static void message(
+    String message, {
+    AthenaMessageType type = AthenaMessageType.info,
+  }) {
+    var isWindow = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    if (isWindow) {
+      _showDesktopMessage(message, type: type);
+      return;
+    }
     final messenger = scaffoldMessengerKey.currentState;
     if (messenger == null) return;
-    var text = Text(message, style: TextStyle(color: ColorUtil.FFFFFFFF));
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FF282F32,
-    );
-    var screenWidth = MediaQuery.sizeOf(
-      router.navigatorKey.currentContext!,
-    ).width;
-    var container = Container(
-      constraints: BoxConstraints(maxWidth: screenWidth - 32),
-      decoration: boxDecoration,
-      margin: EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: text,
-    );
-    var alignment = Alignment.center;
-    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      alignment = Alignment.centerLeft;
-    }
-    var unconstrainedBox = UnconstrainedBox(
-      alignment: alignment,
-      child: container,
+    final style = _AthenaMessageVisualStyle.fromType(type);
+    var textStyle = const TextStyle(color: ColorUtil.FFFFFFFF);
+    var content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(style.icon, color: style.accentColor, size: 18),
+        const SizedBox(width: 8),
+        Flexible(child: Text(message, style: textStyle)),
+      ],
     );
     var snackBar = SnackBar(
-      backgroundColor: Colors.transparent,
-      content: unconstrainedBox,
-      elevation: 0,
-      padding: EdgeInsets.zero,
+      backgroundColor: ColorUtil.FF282F32,
+      behavior: SnackBarBehavior.floating,
+      content: content,
     );
-    var isWindow = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
-    if (!isWindow) {
-      snackBar = SnackBar(behavior: SnackBarBehavior.floating, content: text);
-    }
     messenger.removeCurrentSnackBar();
     messenger.showSnackBar(snackBar);
   }
@@ -106,8 +103,70 @@ class AthenaDialog {
     }
   }
 
+  static void info(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.info);
+  }
+
   static void success(String message) {
-    show(_SuccessDialog(message: message));
+    AthenaDialog.message(message, type: AthenaMessageType.success);
+  }
+
+  static void warning(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.warning);
+  }
+
+  static void error(String message) {
+    AthenaDialog.message(message, type: AthenaMessageType.error);
+  }
+
+  static void _dismissDesktopMessage() {
+    _messageTimer?.cancel();
+    _messageTimer = null;
+    _messageOverlay?.remove();
+    _messageOverlay = null;
+  }
+
+  static void _showDesktopMessage(
+    String message, {
+    AthenaMessageType type = AthenaMessageType.info,
+  }) {
+    final overlay = router.navigatorKey.currentState?.overlay;
+    if (overlay == null) return;
+    _dismissDesktopMessage();
+    final entry = OverlayEntry(
+      builder: (context) => _DesktopMessageOverlay(message: message, type: type),
+    );
+    overlay.insert(entry);
+    _messageOverlay = entry;
+    _messageTimer = Timer(const Duration(seconds: 3), _dismissDesktopMessage);
+  }
+}
+
+class _AthenaMessageVisualStyle {
+  final Color accentColor;
+  final IconData icon;
+
+  const _AthenaMessageVisualStyle({required this.accentColor, required this.icon});
+
+  factory _AthenaMessageVisualStyle.fromType(AthenaMessageType type) {
+    return switch (type) {
+      AthenaMessageType.info => const _AthenaMessageVisualStyle(
+        accentColor: ColorUtil.FFC2C2C2,
+        icon: HugeIcons.strokeRoundedInformationCircle,
+      ),
+      AthenaMessageType.success => const _AthenaMessageVisualStyle(
+        accentColor: ColorUtil.FFA7BA88,
+        icon: HugeIcons.strokeRoundedTick02,
+      ),
+      AthenaMessageType.warning => const _AthenaMessageVisualStyle(
+        accentColor: Color(0xFFE8B86D),
+        icon: HugeIcons.strokeRoundedAlert02,
+      ),
+      AthenaMessageType.error => const _AthenaMessageVisualStyle(
+        accentColor: Color(0xFFE38B8B),
+        icon: HugeIcons.strokeRoundedCancelCircle,
+      ),
+    };
   }
 }
 
@@ -451,61 +510,6 @@ class _InputDialogState extends State<_InputDialog> {
   }
 }
 
-class _SuccessDialog extends StatelessWidget {
-  final String message;
-  const _SuccessDialog({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 24,
-      fontWeight: FontWeight.w500,
-    );
-    var children = [
-      Text(message, style: textStyle),
-      const SizedBox(height: 24),
-      _buildConfirmButton(context),
-      SizedBox(height: MediaQuery.paddingOf(context).bottom),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-
-  void confirmDialog() {
-    Navigator.of(router.navigatorKey.currentContext!).pop();
-  }
-
-  Widget _buildConfirmButton(BuildContext context) {
-    var boxShadow = BoxShadow(
-      blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
-    );
-    var shapeDecoration = ShapeDecoration(
-      shape: StadiumBorder(),
-      color: ColorUtil.FFFFFFFF,
-      shadows: [boxShadow],
-    );
-    var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: confirmDialog,
-      child: Container(
-        alignment: Alignment.center,
-        decoration: shapeDecoration,
-        padding: EdgeInsets.all(16),
-        child: Text('Done', style: textStyle),
-      ),
-    );
-  }
-}
-
 class _DesktopLoadingDialog extends StatelessWidget {
   const _DesktopLoadingDialog();
 
@@ -550,6 +554,60 @@ class _DesktopLoadingDialog extends StatelessWidget {
     return Material(
       type: MaterialType.transparency,
       child: Center(child: container),
+    );
+  }
+}
+
+class _DesktopMessageOverlay extends StatelessWidget {
+  final String message;
+  final AthenaMessageType type;
+  const _DesktopMessageOverlay({
+    required this.message,
+    this.type = AthenaMessageType.info,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final style = _AthenaMessageVisualStyle.fromType(type);
+    final textStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      decoration: TextDecoration.none,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    final borderSide = BorderSide(
+      color: style.accentColor.withValues(alpha: 0.35),
+    );
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final children = [
+      Icon(style.icon, color: style.accentColor, size: 18),
+      const SizedBox(width: 10),
+      Flexible(child: Text(message, style: textStyle)),
+    ];
+    final container = Container(
+      constraints: BoxConstraints(maxWidth: screenWidth - 32),
+      decoration: BoxDecoration(
+        color: ColorUtil.FF282F32,
+        border: Border.fromBorderSide(borderSide),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
+    return IgnorePointer(
+      child: Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: container,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
