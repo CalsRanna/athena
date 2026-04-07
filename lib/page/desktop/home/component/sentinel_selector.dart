@@ -32,7 +32,7 @@ class DesktopSentinelSelector extends StatelessWidget {
 
   void openDialog() {
     AthenaDialog.show(
-      _SentinelSelectDialog(onTap: changeModel),
+      DesktopSentinelSelectDialog(onTap: changeModel),
       barrierDismissible: true,
     );
   }
@@ -97,9 +97,9 @@ class _DesktopSentinelSelectDialogTileState
   }
 }
 
-class _SentinelSelectDialog extends StatelessWidget {
+class DesktopSentinelSelectDialog extends StatelessWidget {
   final void Function(SentinelEntity)? onTap;
-  const _SentinelSelectDialog({this.onTap});
+  const DesktopSentinelSelectDialog({super.key, this.onTap});
 
   @override
   Widget build(BuildContext context) {

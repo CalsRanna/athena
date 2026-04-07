@@ -10,6 +10,10 @@ import 'package:athena/page/desktop/home/component/image_export.dart';
 import 'package:athena/page/desktop/home/component/message_input.dart';
 import 'package:athena/page/desktop/home/component/message_list.dart';
 import 'package:athena/page/desktop/home/component/model_indicator.dart';
+import 'package:athena/page/desktop/home/component/model_selector.dart';
+import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
+import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
+import 'package:athena/page/desktop/home/component/server_selector.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -21,6 +25,7 @@ import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -261,10 +266,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return AthenaAppBar(
       action: _buildSettingButton(),
       leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        spacing: 8,
-        children: [_buildSentinelIndicator(), DesktopModelIndicator()],
+      title: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              spacing: 6,
+              children: [
+                DesktopSentinelIndicator(onTap: _openSentinelSelector),
+                DesktopModelIndicator(onTap: _openModelSelector),
+                _DesktopToolsButton(onTap: _openServerSelector),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -288,16 +305,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       height: double.infinity,
       width: 240,
       child: chatListView,
-    );
-  }
-
-  Widget _buildSentinelIndicator() {
-    var sentinel = chatViewModel.currentSentinel.value;
-    var name = sentinel?.name ?? 'Athena';
-    const textStyle = TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14);
-    return Container(
-      padding: const EdgeInsets.only(left: 16),
-      child: Text(name, style: textStyle),
     );
   }
 
@@ -335,8 +342,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       controller: controller,
       onContextChange: updateContext,
       onImageSelected: updateImage,
-      onModelChanged: updateModel,
-      onSentinelChanged: updateSentinel,
       onSubmitted: sendMessage,
       onTemperatureChange: updateTemperature,
       onTerminated: terminateStreaming,
@@ -395,5 +400,148 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       Positioned(right: 2, top: 2, child: gestureDetector),
     ];
     return AspectRatio(aspectRatio: 1, child: Stack(children: children));
+  }
+
+  void _openModelSelector() async {
+    await modelViewModel.loadEnabledModels();
+    if (modelViewModel.enabledModels.value.isEmpty) {
+      AthenaDialog.warning('You should enable a provider first');
+      return;
+    }
+    AthenaDialog.show(
+      DesktopModelSelectDialog(
+        onTap: (model) {
+          AthenaDialog.dismiss();
+          updateModel(model);
+        },
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+  void _openSentinelSelector() async {
+    if (sentinelViewModel.sentinels.value.isEmpty) {
+      await sentinelViewModel.getSentinels();
+    }
+    if (sentinelViewModel.sentinels.value.isEmpty) {
+      AthenaDialog.warning('No sentinels found');
+      return;
+    }
+    AthenaDialog.show(
+      DesktopSentinelSelectDialog(
+        onTap: (sentinel) {
+          AthenaDialog.dismiss();
+          updateSentinel(sentinel);
+        },
+      ),
+      barrierDismissible: true,
+    );
+  }
+
+  void _openServerSelector() {
+    AthenaDialog.show(
+      const DesktopServerSelectDialog(),
+      barrierDismissible: true,
+    );
+  }
+}
+
+class _DesktopToolsButton extends StatefulWidget {
+  final void Function()? onTap;
+
+  const _DesktopToolsButton({this.onTap});
+
+  @override
+  State<_DesktopToolsButton> createState() => _DesktopToolsButtonState();
+}
+
+class _DesktopToolsButtonState extends State<_DesktopToolsButton> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final serverViewModel = GetIt.instance<ServerViewModel>();
+    return Watch((context) {
+      var enabledCount = serverViewModel.servers.value
+          .where((s) => s.enabled)
+          .length;
+      var foregroundColor = ColorUtil.FFFFFFFF.withValues(
+        alpha: enabledCount > 0 ? 0.86 : 0.72,
+      );
+      var gradient = LinearGradient(
+        begin: Alignment.topLeft,
+        colors: [
+          ColorUtil.FFEAEAEA.withValues(alpha: hover ? 0.18 : 0.1),
+          ColorUtil.FFFFFFFF.withValues(alpha: hover ? 0.03 : 0),
+        ],
+        end: Alignment.bottomRight,
+      );
+      var innerColor = enabledCount > 0
+          ? ColorUtil.FF161616.withValues(alpha: hover ? 0.98 : 0.94)
+          : ColorUtil.FF161616.withValues(alpha: hover ? 0.86 : 0.78);
+      var icon = Icon(
+        HugeIcons.strokeRoundedTools,
+        color: foregroundColor,
+        size: 15,
+      );
+      var inner = AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        decoration: BoxDecoration(
+          color: innerColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            icon,
+            if (enabledCount > 0) ...[
+              const SizedBox(width: 5),
+              Text(
+                '$enabledCount',
+                style: TextStyle(
+                  color: foregroundColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  height: 1,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+      var button = AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(17),
+        ),
+        padding: const EdgeInsets.all(1),
+        child: inner,
+      );
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: _handleEnter,
+          onExit: _handleExit,
+          child: button,
+        ),
+      );
+    });
+  }
+
+  void _handleEnter(PointerEnterEvent event) {
+    setState(() {
+      hover = true;
+    });
+  }
+
+  void _handleExit(PointerExitEvent event) {
+    setState(() {
+      hover = false;
+    });
   }
 }

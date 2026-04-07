@@ -74,7 +74,10 @@ class DesktopServerSelector extends StatelessWidget {
   }
 
   void openDialog() {
-    AthenaDialog.show(_SentinelSelectDialog(), barrierDismissible: true);
+    AthenaDialog.show(
+      const DesktopServerSelectDialog(),
+      barrierDismissible: true,
+    );
   }
 }
 
@@ -145,8 +148,8 @@ class _DesktopServerSelectDialogTileState
   }
 }
 
-class _SentinelSelectDialog extends StatelessWidget {
-  const _SentinelSelectDialog();
+class DesktopServerSelectDialog extends StatelessWidget {
+  const DesktopServerSelectDialog({super.key});
 
   @override
   Widget build(BuildContext context) {

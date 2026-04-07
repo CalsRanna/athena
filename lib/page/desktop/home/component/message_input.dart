@@ -1,10 +1,5 @@
-import 'package:athena/entity/model_entity.dart';
-import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/configuration_button.dart';
 import 'package:athena/page/desktop/home/component/image_selector.dart';
-import 'package:athena/page/desktop/home/component/model_selector.dart';
-import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
-import 'package:athena/page/desktop/home/component/server_selector.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
@@ -17,8 +12,6 @@ class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function(int)? onContextChange;
   final void Function(List<String>)? onImageSelected;
-  final void Function(ModelEntity)? onModelChanged;
-  final void Function(SentinelEntity)? onSentinelChanged;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
   final void Function()? onTerminated;
@@ -27,8 +20,6 @@ class DesktopMessageInput extends StatelessWidget {
     required this.controller,
     this.onContextChange,
     this.onImageSelected,
-    this.onModelChanged,
-    this.onSentinelChanged,
     this.onSubmitted,
     this.onTemperatureChange,
     this.onTerminated,
@@ -39,21 +30,14 @@ class DesktopMessageInput extends StatelessWidget {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     var chat = chatViewModel.currentChat.value;
     var toolbarChildren = [
-      DesktopSentinelSelector(onSelected: onSentinelChanged),
-      DesktopModelSelector(onSelected: onModelChanged),
-      DesktopServerSelector(),
       DesktopConfigurationButton(
         chat: chat,
         onContextChange: onContextChange,
         onTemperatureChange: onTemperatureChange,
       ),
       DesktopImageSelector(onSelected: onImageSelected),
-      // Icon(HugeIcons.strokeRoundedImage01),
     ];
-    var toolbar = IconTheme.merge(
-      data: IconThemeData(color: ColorUtil.FF616161, size: 24),
-      child: Row(spacing: 12, children: toolbarChildren),
-    );
+    var toolbar = Row(spacing: 12, children: toolbarChildren);
     var input = _Input(controller: controller, onSubmitted: onSubmitted);
     var inputChildren = [
       Expanded(child: input),
