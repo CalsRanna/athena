@@ -11,7 +11,6 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -44,7 +43,7 @@ class _DesktopSettingSentinelPageState
       _buildSentinelListView(),
       Expanded(child: _buildSentinelView()),
     ];
-    return AthenaScaffold(body: Row(children: children));
+    return Row(children: children);
   }
 
   Future<void> changeSentinel(int index) async {
@@ -92,7 +91,7 @@ class _DesktopSettingSentinelPageState
   void generateSentinel() async {
     if (loading) return;
     if (promptController.text.trim().isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     setState(() {
@@ -111,7 +110,7 @@ class _DesktopSettingSentinelPageState
         descriptionController.text = generatedSentinel.description;
         tagsController.text = generatedSentinel.tags;
       } else if (generatedSentinel == null) {
-        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
+        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
       setState(() {
         loading = false;
@@ -120,7 +119,7 @@ class _DesktopSettingSentinelPageState
       setState(() {
         loading = false;
       });
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 
@@ -146,7 +145,7 @@ class _DesktopSettingSentinelPageState
 
   void storeSentinel() async {
     if (promptController.text.isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     var sentinels = viewModel.sentinels.value;
@@ -159,7 +158,7 @@ class _DesktopSettingSentinelPageState
       tags: tagsController.text,
     );
     await viewModel.updateSentinel(copiedSentinel);
-    AthenaDialog.message('Sentinel updated');
+    AthenaDialog.success('Sentinel updated');
   }
 
   Widget _buildButtons() {
@@ -305,7 +304,7 @@ class _DesktopSettingSentinelPageState
       setState(() {
         loading = false;
       });
-      AthenaDialog.message('No enabled models found');
+      AthenaDialog.warning('No enabled models found');
       return null;
     }
     return modelViewModel.enabledModels.value.first.id!;

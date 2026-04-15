@@ -1,5 +1,6 @@
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,8 @@ class DesktopConfigurationButton extends StatelessWidget {
   final ChatEntity? chat;
   final int currentContext;
   final double currentTemperature;
+  final bool compact;
+  final String? label;
   final void Function(int)? onContextChange;
   final void Function(double)? onTemperatureChange;
   const DesktopConfigurationButton({
@@ -16,12 +19,23 @@ class DesktopConfigurationButton extends StatelessWidget {
     this.chat,
     required this.currentContext,
     required this.currentTemperature,
+    this.compact = false,
+    this.label,
     this.onContextChange,
     this.onTemperatureChange,
   });
 
+  const DesktopConfigurationButton.compact({
+    super.key,
+    this.chat,
+    this.label = 'Configure',
+    this.onContextChange,
+    this.onTemperatureChange,
+  }) : compact = true;
+
   @override
   Widget build(BuildContext context) {
+    if (compact) return _buildCompactButton();
     var icon = Icon(
       HugeIcons.strokeRoundedSlidersHorizontal,
       color: ColorUtil.FFFFFFFF,
@@ -32,6 +46,22 @@ class DesktopConfigurationButton extends StatelessWidget {
       onTap: openDialog,
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
+  }
+
+  Widget _buildCompactButton() {
+    var row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedSlidersHorizontal,
+          color: ColorUtil.FFFFFFFF,
+          size: 14,
+        ),
+        const SizedBox(width: 8),
+        Text(label ?? 'Configure'),
+      ],
+    );
+    return AthenaSecondaryButton.small(onTap: openDialog, child: row);
   }
 
   void openDialog() {

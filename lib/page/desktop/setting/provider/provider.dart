@@ -13,7 +13,6 @@ import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/switch.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
@@ -63,11 +62,10 @@ class _DesktopSettingProviderPageState
       _buildProviderListView(),
       Expanded(child: _buildProviderView()),
     ];
-    var row = Row(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    return AthenaScaffold(body: row);
   }
 
   Future<void> changeProvider(int index) async {
@@ -80,8 +78,20 @@ class _DesktopSettingProviderPageState
     urlController.text = providers[index].baseUrl;
   }
 
-  void checkConnection(ModelEntity model) {
-    modelViewModel.checkConnection(model);
+  Future<void> checkConnection(ModelEntity model) async {
+    AthenaDialog.loading();
+    try {
+      var result = await modelViewModel.checkConnection(model);
+      AthenaDialog.dismiss();
+      if (!result.isSuccess) {
+        AthenaDialog.error(result.detail ?? result.message);
+        return;
+      }
+      AthenaDialog.success(result.message);
+    } catch (e) {
+      AthenaDialog.dismiss();
+      AthenaDialog.error('Connection error: $e');
+    }
   }
 
   void createModel(ProviderEntity provider) {

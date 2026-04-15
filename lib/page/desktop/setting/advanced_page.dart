@@ -58,8 +58,11 @@ class _DesktopSettingAdvancedPageState
     final success = await viewModel.exportData();
     AthenaDialog.dismiss();
     if (!mounted) return;
-    final message = success ? '导出成功' : '导出已取消';
-    AthenaDialog.message(message);
+    if (success) {
+      AthenaDialog.success('导出成功');
+    } else {
+      AthenaDialog.info('导出已取消');
+    }
   }
 
   Future<void> _handleImport() async {
@@ -67,8 +70,11 @@ class _DesktopSettingAdvancedPageState
     final success = await viewModel.importData();
     AthenaDialog.dismiss();
     if (!mounted) return;
-    final message = success ? '导入成功' : '导入已取消';
-    AthenaDialog.message(message);
+    if (success) {
+      AthenaDialog.success('导入成功');
+    } else {
+      AthenaDialog.info('导入已取消');
+    }
   }
 
   Future<void> _handleReset() async {
@@ -76,7 +82,10 @@ class _DesktopSettingAdvancedPageState
     final success = await viewModel.resetData();
     AthenaDialog.dismiss();
     if (!mounted) return;
-    final message = success ? '重置成功' : '重置已取消';
-    AthenaDialog.message(message);
+    if (success) {
+      AthenaDialog.success('重置成功');
+    } else {
+      AthenaDialog.info('重置已取消');
+    }
   }
 }

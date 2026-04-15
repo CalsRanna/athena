@@ -79,7 +79,7 @@ class _MobileSummaryPageState extends State<MobileSummaryPage> {
 
   Future<void> handleSubmit(String link) async {
     if (link.isEmpty) {
-      AthenaDialog.message('Link can not be empty');
+      AthenaDialog.warning('Link can not be empty');
       return;
     }
     var id = await viewModel.createSummary(link);

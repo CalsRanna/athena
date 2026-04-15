@@ -7,7 +7,7 @@ import 'package:athena/entity/server_entity.dart';
 /// MCP Service 负责与 MCP 服务器的连接和通信
 class MCPService {
   final Map<int, Process> _processes = {};
-  final Map<int, StreamSubscription> _subscriptions = {};
+  final Map<int, StreamIterator<String>> _stdoutIterators = {};
 
   /// 启动 MCP 服务器进程并获取工具列表
   Future<Map<String, dynamic>> connectAndGetTools(ServerEntity server) async {
@@ -20,6 +20,10 @@ class MCPService {
       );
 
       _processes[server.id!] = process;
+      var stdoutIterator = StreamIterator<String>(
+        process.stdout.transform(utf8.decoder).transform(LineSplitter()),
+      );
+      _stdoutIterators[server.id!] = stdoutIterator;
 
       // 发送 initialize 请求
       var initRequest = {
@@ -36,30 +40,17 @@ class MCPService {
       process.stdin.writeln(jsonEncode(initRequest));
       await process.stdin.flush();
 
-      // 读取响应
-      var completer = Completer<Map<String, dynamic>>();
-      var subscription = process.stdout
-          .transform(utf8.decoder)
-          .transform(LineSplitter())
-          .listen((line) {
-            if (line.trim().isEmpty) return;
-            try {
-              var response = jsonDecode(line);
-              if (!completer.isCompleted) {
-                completer.complete(response);
-              }
-            } catch (e) {
-              // Ignore invalid JSON
-            }
-          });
-
-      _subscriptions[server.id!] = subscription;
-
       // 等待响应(超时5秒)
-      var response = await completer.future.timeout(
+      var response = await _readResponse(
+        stdoutIterator,
+        (response) => response['id'] == 1,
+      ).timeout(
         Duration(seconds: 5),
         onTimeout: () => {'error': 'Connection timeout'},
       );
+      if (response['error'] != null) {
+        return {'error': response['error']};
+      }
 
       // 发送 initialized 通知
       var initializedNotification = {
@@ -75,27 +66,16 @@ class MCPService {
       process.stdin.writeln(jsonEncode(toolsRequest));
       await process.stdin.flush();
 
-      // 读取工具列表响应
-      var toolsCompleter = Completer<Map<String, dynamic>>();
-      subscription = process.stdout
-          .transform(utf8.decoder)
-          .transform(LineSplitter())
-          .listen((line) {
-            if (line.trim().isEmpty) return;
-            try {
-              var response = jsonDecode(line);
-              if (response['id'] == 2 && !toolsCompleter.isCompleted) {
-                toolsCompleter.complete(response);
-              }
-            } catch (e) {
-              // Ignore invalid JSON
-            }
-          });
-
-      var toolsResponse = await toolsCompleter.future.timeout(
+      var toolsResponse = await _readResponse(
+        stdoutIterator,
+        (response) => response['id'] == 2,
+      ).timeout(
         Duration(seconds: 5),
         onTimeout: () => {'error': 'Tools list timeout'},
       );
+      if (toolsResponse['error'] != null) {
+        return {'error': toolsResponse['error']};
+      }
 
       return {
         'serverInfo': response['result']?['serverInfo'],
@@ -108,9 +88,8 @@ class MCPService {
 
   /// 断开服务器连接
   Future<void> disconnect(int serverId) async {
-    // 取消订阅
-    await _subscriptions[serverId]?.cancel();
-    _subscriptions.remove(serverId);
+    await _stdoutIterators[serverId]?.cancel();
+    _stdoutIterators.remove(serverId);
 
     // 杀死进程
     _processes[serverId]?.kill();
@@ -126,5 +105,26 @@ class MCPService {
 
   void dispose() {
     disconnectAll();
+  }
+
+  Future<Map<String, dynamic>> _readResponse(
+    StreamIterator<String> iterator,
+    bool Function(Map<String, dynamic> response) predicate,
+  ) async {
+    while (await iterator.moveNext()) {
+      var line = iterator.current.trim();
+      if (line.isEmpty) continue;
+      try {
+        var decoded = jsonDecode(line);
+        if (decoded is! Map) continue;
+        var response = Map<String, dynamic>.from(decoded);
+        if (predicate(response)) {
+          return response;
+        }
+      } catch (_) {
+        // Ignore invalid JSON lines and continue waiting for the expected response.
+      }
+    }
+    return {'error': 'Connection closed'};
   }
 }
