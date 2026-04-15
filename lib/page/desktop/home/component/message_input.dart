@@ -28,34 +28,36 @@ class DesktopMessageInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    var chat = chatViewModel.currentChat.value;
-    var toolbarChildren = [
-      DesktopConfigurationButton(
-        chat: chat,
-        currentContext: chatViewModel.currentContext.value,
-        currentTemperature: chatViewModel.currentTemperature.value,
-        onContextChange: onContextChange,
-        onTemperatureChange: onTemperatureChange,
-      ),
-      DesktopImageSelector(onSelected: onImageSelected),
-    ];
-    var toolbar = Row(spacing: 12, children: toolbarChildren);
-    var input = _Input(controller: controller, onSubmitted: onSubmitted);
-    var inputChildren = [
-      Expanded(child: input),
-      const SizedBox(width: 8),
-      _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated),
-    ];
-    var inputRow = Row(children: inputChildren);
-    var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
-    );
-    var children = [toolbar, const SizedBox(height: 12), inputRow];
-    return Container(
-      decoration: BoxDecoration(border: Border(top: borderSide)),
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      child: Column(children: children),
-    );
+    return Watch((context) {
+      var chat = chatViewModel.currentChat.value;
+      var toolbarChildren = [
+        DesktopConfigurationButton(
+          chat: chat,
+          currentContext: chatViewModel.currentContext.value,
+          currentTemperature: chatViewModel.currentTemperature.value,
+          onContextChange: onContextChange,
+          onTemperatureChange: onTemperatureChange,
+        ),
+        DesktopImageSelector(onSelected: onImageSelected),
+      ];
+      var toolbar = Row(spacing: 12, children: toolbarChildren);
+      var input = _Input(controller: controller, onSubmitted: onSubmitted);
+      var inputChildren = [
+        Expanded(child: input),
+        const SizedBox(width: 8),
+        _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated),
+      ];
+      var inputRow = Row(children: inputChildren);
+      var borderSide = BorderSide(
+        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      );
+      var children = [toolbar, const SizedBox(height: 12), inputRow];
+      return Container(
+        decoration: BoxDecoration(border: Border(top: borderSide)),
+        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        child: Column(children: children),
+      );
+    });
   }
 }
 

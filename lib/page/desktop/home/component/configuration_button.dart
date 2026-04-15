@@ -28,6 +28,8 @@ class DesktopConfigurationButton extends StatelessWidget {
   const DesktopConfigurationButton.compact({
     super.key,
     this.chat,
+    this.currentContext = 0,
+    this.currentTemperature = 0.7,
     this.label = 'Configure',
     this.onContextChange,
     this.onTemperatureChange,
