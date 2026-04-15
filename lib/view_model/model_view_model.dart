@@ -4,6 +4,18 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:signals/signals.dart';
 
+class ConnectionCheckResult {
+  final bool isSuccess;
+  final String message;
+  final String? detail;
+
+  const ConnectionCheckResult({
+    required this.isSuccess,
+    required this.message,
+    this.detail,
+  });
+}
+
 class ModelViewModel {
   // ViewModel 内部直接持有 Service/Repository
   final ModelRepository _repository = ModelRepository();
@@ -157,22 +169,33 @@ class ModelViewModel {
     }
   }
 
-  Future<String> checkConnection(ModelEntity model) async {
+  Future<ConnectionCheckResult> checkConnection(ModelEntity model) async {
     try {
       var provider = await _providerRepository.getProviderById(
         model.providerId,
       );
-      if (provider == null) return 'Connection failed: provider not found';
+      if (provider == null) {
+        return const ConnectionCheckResult(
+          isSuccess: false,
+          message: 'Connection failed',
+          detail: 'Provider not found.',
+        );
+      }
       var response = await _chatService.connect(
         model: model,
         provider: provider,
       );
-      if (response.isEmpty) {
-        return 'Connection succeed, but response is empty'; // Success
-      }
-      return 'Connection succeed, and response is: $response'; // Success
+      return ConnectionCheckResult(
+        isSuccess: true,
+        message: 'Connected to ${model.name}',
+        detail: response.isEmpty ? null : response,
+      );
     } catch (e) {
-      return 'Connection failed: ${e.toString()}';
+      return ConnectionCheckResult(
+        isSuccess: false,
+        message: 'Connection failed',
+        detail: e.toString(),
+      );
     }
   }
 }

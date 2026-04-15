@@ -73,7 +73,7 @@ class _MobileToolFormPageState extends State<MobileToolFormPage> {
     var viewModel = GetIt.instance<ToolViewModel>();
     var copiedTool = widget.tool.copyWith(key: keyController.text);
     await viewModel.updateTool(copiedTool);
-    AthenaDialog.message('Update successfully');
+    AthenaDialog.success('Update successfully');
   }
 
   Widget _buildSubmitButton() {

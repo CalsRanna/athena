@@ -81,7 +81,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   Future<void> generateSentinel() async {
     if (promptController.text.trim().isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     AthenaDialog.loading();
@@ -97,17 +97,17 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         nameController.text = sentinel.name;
         descriptionController.text = sentinel.description;
       } else {
-        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
+        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
     } catch (error) {
       AthenaDialog.dismiss();
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 
   Future<void> generateSentinelDescription() async {
     if (promptController.text.trim().isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     AthenaDialog.loading();
@@ -122,17 +122,17 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       if (sentinel != null) {
         descriptionController.text = sentinel.description;
       } else {
-        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
+        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
     } catch (error) {
       AthenaDialog.dismiss();
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 
   Future<void> generateSentinelName() async {
     if (promptController.text.trim().isEmpty) {
-      AthenaDialog.message('Prompt is required');
+      AthenaDialog.warning('Prompt is required');
       return;
     }
     AthenaDialog.loading();
@@ -147,11 +147,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       if (sentinel != null) {
         nameController.text = sentinel.name;
       } else {
-        AthenaDialog.message(viewModel.error.value ?? 'Generation failed');
+        AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
     } catch (error) {
       AthenaDialog.dismiss();
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 
@@ -165,7 +165,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   Future<void> storeSentinel() async {
     var message = _validate();
-    if (message != null) return AthenaDialog.message(message);
+    if (message != null) return AthenaDialog.warning(message);
     if (widget.sentinel == null) return _store();
     _update();
   }
@@ -265,7 +265,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {
       AthenaDialog.dismiss();
-      AthenaDialog.message('No enabled models found');
+      AthenaDialog.warning('No enabled models found');
       return null;
     }
     return modelViewModel.enabledModels.value.first.id!;

@@ -50,6 +50,7 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router.config(),
+      scaffoldMessengerKey: scaffoldMessengerKey,
       theme: themeData,
     );
   }

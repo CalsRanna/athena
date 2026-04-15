@@ -6,7 +6,6 @@ import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/menu.dart';
-import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -39,7 +38,7 @@ class _DesktopSettingDefaultModelPageState
       _buildDefaultModelListView(),
       Expanded(child: _buildDefaultModelView()),
     ];
-    return AthenaScaffold(body: Row(children: children));
+    return Row(children: children);
   }
 
   Future<void> changeDefaultModel(int index) async {

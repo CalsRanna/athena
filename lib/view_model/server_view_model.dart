@@ -139,14 +139,14 @@ class ServerViewModel {
         servers.value = updatedServers;
       }
 
-      // 断开连接
-      await _mcpService.disconnect(server.id!);
-
       return updated;
     } catch (e) {
       error.value = e.toString();
       return null;
     } finally {
+      if (server.id != null) {
+        await _mcpService.disconnect(server.id!);
+      }
       isLoading.value = false;
     }
   }

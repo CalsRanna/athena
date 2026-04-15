@@ -93,7 +93,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
 
   Future<void> translate() async {
     if (controller.text.isEmpty) {
-      AthenaDialog.message('Please input source text');
+      AthenaDialog.warning('Please input source text');
       return;
     }
     var streaming = viewModel.streaming.value;

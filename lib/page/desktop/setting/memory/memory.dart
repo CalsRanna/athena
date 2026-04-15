@@ -184,7 +184,7 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
     final modelViewModel = GetIt.instance<ModelViewModel>();
     var hasModel = modelViewModel.enabledModels.value.isNotEmpty;
     if (!hasModel) {
-      AthenaDialog.message('请先启用一个提供商');
+      AthenaDialog.warning('请先启用一个提供商');
       return;
     }
     AthenaDialog.show(
@@ -203,9 +203,9 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
     if (!mounted) return;
     var error = viewModel.error.value;
     if (error != null) {
-      AthenaDialog.message(error);
+      AthenaDialog.error(error);
     } else {
-      AthenaDialog.message('记忆已更新');
+      AthenaDialog.success('记忆已更新');
     }
   }
 

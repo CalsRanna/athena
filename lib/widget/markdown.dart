@@ -203,7 +203,7 @@ class _FlutterMarkdown extends StatelessWidget {
   Future<void> openLink(String? url) async {
     var uri = Uri.parse(url ?? '');
     if (!(await canLaunchUrl(uri))) {
-      AthenaDialog.message('The link is invalid');
+      AthenaDialog.warning('The link is invalid');
       return;
     }
     launchUrl(uri);
@@ -216,7 +216,7 @@ class _FlutterMarkdown extends StatelessWidget {
       var url = reference['url'];
       openLink(url);
     } catch (error) {
-      AthenaDialog.message(error.toString());
+      AthenaDialog.error(error.toString());
     }
   }
 }
