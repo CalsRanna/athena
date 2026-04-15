@@ -182,15 +182,10 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      // 优先使用当前草稿模型，未设置则回退到默认模型或第一个可用模型
-      ModelEntity? model = currentModel.value;
-      if (model == null || model.id == null || model.id! <= 0) {
-        var settingViewModel = GetIt.instance<SettingViewModel>();
-        var modelId = settingViewModel.chatModelId.value;
-        if (modelId > 0) {
-          model = await _modelRepository.getModelById(modelId);
-        }
-      }
+      // 优先使用用户设置的默认模型，未设置则回退到第一个可用模型
+      ModelEntity? model;
+      var settingViewModel = GetIt.instance<SettingViewModel>();
+      model = settingViewModel.chatModel.value;
       if (model == null || model.id == null || model.id! <= 0) {
         var modelViewModel = GetIt.instance<ModelViewModel>();
         await modelViewModel.loadEnabledModels();
