@@ -6,12 +6,9 @@ import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/util/system_tray_util.dart';
 import 'package:athena/util/window_util.dart';
-import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
-import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,9 +30,7 @@ class AthenaApp extends StatefulWidget {
   }
 }
 
-class _AthenaAppState extends State<AthenaApp> with WindowListener {
-  final viewModel = GetIt.instance<SettingViewModel>();
-
+class _AthenaAppState extends State<AthenaApp> {
   @override
   Widget build(BuildContext context) {
     var sliderThemeData = SliderThemeData(
@@ -58,7 +53,6 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(this);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
   }
 
@@ -76,17 +70,5 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
       return true;
     }
     return false;
-  }
-
-  @override
-  void onWindowMoved() {
-    viewModel.updateWindowSize();
-    super.onWindowMoved();
-  }
-
-  @override
-  void onWindowResized() {
-    viewModel.updateWindowSize();
-    super.onWindowResized();
   }
 }
