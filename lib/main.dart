@@ -16,8 +16,8 @@ import 'package:window_manager/window_manager.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Database.instance.ensureInitialized();
-  await WindowUtil.ensureInitialized();
-  await SystemTrayUtil.ensureInitialized();
+  await WindowUtil.instance.ensureInitialized();
+  await SystemTrayUtil.instance.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   SignalsObserver.instance = null;
   DI.ensureInitialized();
@@ -59,6 +59,23 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.keyW &&
+        HardwareKeyboard.instance.isMetaPressed) {
+      WindowUtil.instance.hide();
+      return true;
+    }
+    return false;
   }
 
   @override

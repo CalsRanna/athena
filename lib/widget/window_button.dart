@@ -1,3 +1,4 @@
+import 'package:athena/util/window_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -88,7 +89,7 @@ class _CloseButton extends StatelessWidget {
   }
 
   void handleTap() {
-    windowManager.close();
+    WindowUtil.instance.hide();
   }
 }
 
