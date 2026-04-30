@@ -186,6 +186,14 @@ class _DesktopConfigurationDialogContextSliderState
     value = widget.context.toDouble();
   }
 
+  @override
+  void didUpdateWidget(_DesktopConfigurationDialogContextSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.context != oldWidget.context) {
+      value = widget.context.toDouble();
+    }
+  }
+
   void _updateValue(double value) {
     setState(() {
       this.value = value;
@@ -245,6 +253,14 @@ class _DesktopConfigurationDialogTemperatureSliderState
   void initState() {
     super.initState();
     value = widget.temperature;
+  }
+
+  @override
+  void didUpdateWidget(_DesktopConfigurationDialogTemperatureSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.temperature != oldWidget.temperature) {
+      value = widget.temperature;
+    }
   }
 
   void _updateValue(double value) {
