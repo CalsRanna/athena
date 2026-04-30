@@ -885,6 +885,21 @@ class ChatViewModel {
         chats.value = updatedChats;
       }
 
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
+      }
+
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
         currentContext.value = updated.context;
@@ -913,6 +928,21 @@ class ChatViewModel {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
       }
 
       if (currentChat.value?.id == chat.id) {
@@ -963,6 +993,21 @@ class ChatViewModel {
         chats.value = updatedChats;
       }
 
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
+      }
+
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
         currentModel.value = model;
@@ -996,6 +1041,21 @@ class ChatViewModel {
         chats.value = updatedChats;
       }
 
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
+      }
+
       if (currentChat.value?.id == chat.id) {
         currentChat.value = updated;
         currentSentinel.value = sentinel;
@@ -1024,6 +1084,21 @@ class ChatViewModel {
         var updatedChats = List<ChatEntity>.from(chats.value);
         updatedChats[index] = updated;
         chats.value = updatedChats;
+      }
+
+      var historyIndex = chatHistories.value.indexWhere(
+        (h) => h.chat.id == chat.id,
+      );
+      if (historyIndex >= 0) {
+        var updatedHistories = List<ChatHistoryEntity>.from(
+          chatHistories.value,
+        );
+        updatedHistories[historyIndex] = ChatHistoryEntity(
+          chat: updated,
+          lastMessageContent:
+              chatHistories.value[historyIndex].lastMessageContent,
+        );
+        chatHistories.value = updatedHistories;
       }
 
       if (currentChat.value?.id == chat.id) {
