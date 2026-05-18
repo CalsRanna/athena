@@ -10,7 +10,6 @@ class MessageEntity {
   final bool expanded;
   final String imageUrls;
   final String reference;
-  final bool searching;
   final DateTime reasoningStartedAt;
   final DateTime reasoningUpdatedAt;
 
@@ -24,7 +23,6 @@ class MessageEntity {
     this.expanded = true,
     this.imageUrls = '',
     this.reference = '',
-    this.searching = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
@@ -41,7 +39,6 @@ class MessageEntity {
       expanded: json.getBool('expanded', defaultValue: true),
       imageUrls: json.getString('image_urls'),
       reference: json.getString('reference'),
-      searching: json.getBool('searching'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
     );
@@ -58,7 +55,6 @@ class MessageEntity {
       'expanded': expanded ? 1 : 0,
       'image_urls': imageUrls,
       'reference': reference,
-      'searching': searching ? 1 : 0,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
     };
@@ -74,7 +70,6 @@ class MessageEntity {
     bool? expanded,
     String? imageUrls,
     String? reference,
-    bool? searching,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) {
@@ -88,7 +83,6 @@ class MessageEntity {
       expanded: expanded ?? this.expanded,
       imageUrls: imageUrls ?? this.imageUrls,
       reference: reference ?? this.reference,
-      searching: searching ?? this.searching,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,
     );

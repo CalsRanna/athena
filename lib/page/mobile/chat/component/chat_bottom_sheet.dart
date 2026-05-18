@@ -11,7 +11,6 @@ import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:athena/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -20,7 +19,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 class MobileChatBottomSheet extends StatefulWidget {
   final ChatEntity? chat;
   final void Function(int)? onContextChanged;
-  final void Function(bool)? onEnableSearchChanged;
   final void Function(ModelEntity)? onModelChanged;
   final void Function(SentinelEntity)? onSentinelChanged;
   final void Function(double)? onTemperatureChanged;
@@ -28,7 +26,6 @@ class MobileChatBottomSheet extends StatefulWidget {
     super.key,
     this.chat,
     this.onContextChanged,
-    this.onEnableSearchChanged,
     this.onModelChanged,
     this.onSentinelChanged,
     this.onTemperatureChanged,
@@ -46,7 +43,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
 
   late int sentinelId;
   late int modelId;
-  late bool enableSearch;
   late double temperature;
   late int contextToken;
 
@@ -57,7 +53,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     if (widget.chat != null) {
       sentinelId = widget.chat!.sentinelId;
       modelId = widget.chat!.modelId;
-      enableSearch = widget.chat!.enableSearch;
       temperature = widget.chat!.temperature;
       contextToken = widget.chat!.context;
     } else {
@@ -66,7 +61,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
           chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
           0;
-      enableSearch = chatViewModel.currentEnableSearch.value;
       temperature = chatViewModel.currentTemperature.value;
       contextToken = chatViewModel.currentContext.value;
     }
@@ -109,16 +103,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         title: 'Model',
         trailing: Text(modelFullName),
       );
-      var athenaSwitch = AthenaSwitch(
-        onChanged: _updateEnableSearch,
-        value: enableSearch,
-      );
-      var searchDecisionSheetTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedInternet),
-        onTap: () => _updateEnableSearch(!enableSearch),
-        title: 'Search Decision',
-        trailing: athenaSwitch,
-      );
       var chatConfigurationSheetTile = AthenaBottomSheetTile(
         leading: Icon(HugeIcons.strokeRoundedSlidersHorizontal),
         onTap: openConfigurationDialog,
@@ -138,7 +122,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var children = <Widget>[
         sentinelSheetTile,
         modelSheetTile,
-        searchDecisionSheetTile,
         chatConfigurationSheetTile,
         exportImageSheetTile,
       ];
@@ -198,13 +181,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void openSentinelSelectorDialog() {
     var dialog = MobileSentinelSelectDialog(onTap: _updateSentinel);
     AthenaDialog.show(dialog);
-  }
-
-  void _updateEnableSearch(bool value) {
-    widget.onEnableSearchChanged?.call(value);
-    setState(() {
-      enableSearch = value;
-    });
   }
 
   void _updateModel(ModelEntity model) {

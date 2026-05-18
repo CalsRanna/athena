@@ -28,7 +28,6 @@ import 'package:signals/signals.dart';
 class ChatViewModel {
   static const int defaultDraftContext = 0;
   static const double defaultDraftTemperature = 1.0;
-  static const bool defaultDraftEnableSearch = false;
 
   // ViewModel 内部直接持有 Service/Repository
   final ChatRepository _chatRepository = ChatRepository();
@@ -54,7 +53,6 @@ class ChatViewModel {
   final currentSentinel = signal<SentinelEntity?>(null);
   final currentContext = signal(defaultDraftContext);
   final currentTemperature = signal(defaultDraftTemperature);
-  final currentEnableSearch = signal(defaultDraftEnableSearch);
   final pendingImages = listSignal<String>([]);
 
   // 多选状态
@@ -219,7 +217,6 @@ class ChatViewModel {
         sentinelId: selectedSentinel.id!,
         temperature: currentTemperature.value,
         context: currentContext.value,
-        enableSearch: currentEnableSearch.value,
         createdAt: now,
         updatedAt: now,
       );
@@ -235,7 +232,6 @@ class ChatViewModel {
       currentSentinel.value = selectedSentinel;
       currentContext.value = chat.context;
       currentTemperature.value = chat.temperature;
-      currentEnableSearch.value = chat.enableSearch;
       pendingImages.value = [];
       messages.value = [];
 
@@ -334,7 +330,6 @@ class ChatViewModel {
       );
       currentContext.value = firstChat.context;
       currentTemperature.value = firstChat.temperature;
-      currentEnableSearch.value = firstChat.enableSearch;
       lastSelectedIndex.value = 0;
     } else {
       await prepareNewChatDraft();
@@ -464,7 +459,6 @@ class ChatViewModel {
       );
       currentContext.value = currentChat.value!.context;
       currentTemperature.value = currentChat.value!.temperature;
-      currentEnableSearch.value = currentChat.value!.enableSearch;
     } else {
       await prepareNewChatDraft();
     }
@@ -631,7 +625,6 @@ class ChatViewModel {
     currentSentinel.value = sentinel;
     currentContext.value = chat.context;
     currentTemperature.value = chat.temperature;
-    currentEnableSearch.value = chat.enableSearch;
 
     // 清空待发送图片
     pendingImages.value = [];
@@ -646,7 +639,6 @@ class ChatViewModel {
   /// 4. 实时更新消息内容
   ///
   /// 待实现功能:
-  /// - 搜索集成 (需要 SearchService)
   /// - MCP 工具调用 (需要 MCP 架构完善)
   /// - 错误重试机制
   Future<void> sendMessage(
@@ -912,51 +904,6 @@ class ChatViewModel {
     }
   }
 
-  /// 更新是否启用搜索
-  Future<ChatEntity?> updateEnableSearch(
-    bool enabled, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      var updated = chat.copyWith(enableSearch: enabled);
-      await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-        currentEnableSearch.value = updated.enableSearch;
-      }
-
-      return updated;
-    } catch (e) {
-      error.value = e.toString();
-      return null;
-    }
-  }
-
   /// 更新消息的expanded状态
   Future<void> updateExpanded(MessageEntity message) async {
     try {
@@ -1130,10 +1077,6 @@ class ChatViewModel {
     currentContext.value = context;
   }
 
-  void updateCurrentEnableSearch(bool enabled) {
-    currentEnableSearch.value = enabled;
-  }
-
   void updateCurrentTemperature(double temperature) {
     currentTemperature.value = temperature;
   }
@@ -1172,6 +1115,5 @@ class ChatViewModel {
     currentSentinel.value = await _getDefaultSentinel();
     currentContext.value = defaultDraftContext;
     currentTemperature.value = defaultDraftTemperature;
-    currentEnableSearch.value = defaultDraftEnableSearch;
   }
 }

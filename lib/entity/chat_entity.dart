@@ -7,7 +7,6 @@ class ChatEntity {
   final int sentinelId;
   final double temperature;
   final int context;
-  final bool enableSearch;
   final bool pinned;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -19,7 +18,6 @@ class ChatEntity {
     required this.sentinelId,
     this.temperature = 1.0,
     this.context = 0,
-    this.enableSearch = false,
     this.pinned = false,
     required this.createdAt,
     required this.updatedAt,
@@ -33,7 +31,6 @@ class ChatEntity {
       sentinelId: json.getInt('sentinel_id'),
       temperature: json.getDouble('temperature', defaultValue: 1.0),
       context: json.getInt('context'),
-      enableSearch: json.getBool('enable_search'),
       pinned: json.getBool('pinned'),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
@@ -48,7 +45,6 @@ class ChatEntity {
       'sentinel_id': sentinelId,
       'temperature': temperature,
       'context': context,
-      'enable_search': enableSearch ? 1 : 0,
       'pinned': pinned ? 1 : 0,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
@@ -62,7 +58,6 @@ class ChatEntity {
     int? sentinelId,
     double? temperature,
     int? context,
-    bool? enableSearch,
     bool? pinned,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -74,7 +69,6 @@ class ChatEntity {
       sentinelId: sentinelId ?? this.sentinelId,
       temperature: temperature ?? this.temperature,
       context: context ?? this.context,
-      enableSearch: enableSearch ?? this.enableSearch,
       pinned: pinned ?? this.pinned,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
