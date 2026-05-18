@@ -15,14 +15,13 @@ class SentinelService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
     var system = PresetPrompt.metadataGenerationPrompt;
     var messages = [
@@ -31,23 +30,21 @@ class SentinelService {
     ];
     var wrappedMessages = messages.map((message) {
       if (message.role == 'system') {
-        return ChatCompletionMessage.system(content: message.content);
+        return ChatMessage.system(message.content);
       } else if (message.role == 'assistant') {
-        return ChatCompletionMessage.assistant(content: message.content);
+        return ChatMessage.assistant(content: message.content);
       } else {
-        return ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(message.content),
-        );
+        return ChatMessage.user(message.content);
       }
     }).toList();
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
       messages: wrappedMessages,
     );
-    var response = await client.createChatCompletion(request: request);
-    final content = response.choices.first.message.content;
+    var response = await client.chat.completions.create(request);
+    final content = response.text ?? '';
     final formatted = jsonDecode(
-      content.toString().replaceAll('```json', '').replaceAll('```', ''),
+      content.replaceAll('```json', '').replaceAll('```', ''),
     );
     final tagsList = List<String>.from(formatted['tags'] ?? []);
     return SentinelEntity(

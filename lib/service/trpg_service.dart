@@ -4,8 +4,6 @@ import 'dart:convert';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/preset/prompt.dart';
-import 'package:athena/vendor/enhanced_openai_dart/client.dart';
-import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 class TRPGService {
@@ -15,33 +13,26 @@ class TRPGService {
     required ModelEntity model,
   }) async {
     try {
-      var headers = {
-        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-        'X-Title': 'Athena',
-      };
-      var client = OpenAIClient(
-        apiKey: provider.apiKey,
+      var client = OpenAIClient.withApiKey(
+        provider.apiKey,
         baseUrl: provider.baseUrl,
-        headers: headers,
+        defaultHeaders: {
+          'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+          'X-Title': 'Athena',
+        },
       );
 
-      var messages = [
-        ChatCompletionMessage.system(
-          content: PresetPrompt.actionSuggestionPrompt,
-        ),
-        ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(dmMessage),
-        ),
-      ];
-
-      var request = CreateChatCompletionRequest(
-        model: ChatCompletionModel.modelId(model.modelId),
-        messages: messages,
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: [
+          ChatMessage.system(PresetPrompt.actionSuggestionPrompt),
+          ChatMessage.user(dmMessage),
+        ],
         temperature: 0.8,
       );
 
-      var response = await client.createChatCompletion(request: request);
-      var content = response.choices.first.message.content ?? '';
+      var response = await client.chat.completions.create(request);
+      var content = response.text ?? '';
 
       // 清理可能的 markdown 代码块标记
       content = content
@@ -67,26 +58,25 @@ class TRPGService {
     }
   }
 
-  Stream<EnhancedStreamResponse> getDMResponse({
-    required List<ChatCompletionMessage> messages,
+  Stream<ChatStreamEvent> getDMResponse({
+    required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
     double temperature = 1.0,
   }) async* {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = EnhancedOpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
       messages: messages,
       temperature: temperature,
     );
-    yield* client.createEnhancedChatCompletionStream(request: request);
+    yield* client.chat.completions.createStream(request);
   }
 }

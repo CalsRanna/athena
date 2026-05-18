@@ -6,28 +6,27 @@ import 'package:openai_dart/openai_dart.dart';
 
 /// TranslationService 负责翻译相关的网络请求
 class TranslationService {
-  Stream<ChatCompletionStreamResponseDelta> translate({
-    required List<ChatCompletionMessage> messages,
+  Stream<ChatDelta> translate({
+    required List<ChatMessage> messages,
     required ModelEntity model,
     required ProviderEntity provider,
   }) async* {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
       messages: messages,
     );
-    var response = client.createChatCompletionStream(request: request);
+    var response = client.chat.completions.createStream(request);
     await for (final chunk in response) {
-      if (chunk.choices.isEmpty) continue;
-      yield chunk.choices.first.delta;
+      if (chunk.choices == null || chunk.choices!.isEmpty) continue;
+      yield chunk.choices!.first.delta;
     }
   }
 }

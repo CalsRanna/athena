@@ -189,7 +189,7 @@ class TRPGViewModel {
 
       var fullContent = '';
       await for (var chunk in stream) {
-        var choice = chunk.choices.firstOrNull;
+        var choice = chunk.choices?.firstOrNull;
         if (choice == null) continue;
         var delta = choice.delta.content ?? '';
         fullContent += delta;
@@ -231,23 +231,19 @@ class TRPGViewModel {
   }
 
   /// 构建对话历史
-  Future<List<ChatCompletionMessage>> _buildChatMessages() async {
-    var result = <ChatCompletionMessage>[];
+  Future<List<ChatMessage>> _buildChatMessages() async {
+    var result = <ChatMessage>[];
 
     // 系统提示词
     var systemPrompt = PresetPrompt.dungeonPrompt;
-    result.add(ChatCompletionMessage.system(content: systemPrompt));
+    result.add(ChatMessage.system(systemPrompt));
 
     // 历史消息
     for (var msg in messages.value) {
       if (msg.role == 'player') {
-        result.add(
-          ChatCompletionMessage.user(
-            content: ChatCompletionUserMessageContent.string(msg.content),
-          ),
-        );
+        result.add(ChatMessage.user(msg.content));
       } else {
-        result.add(ChatCompletionMessage.assistant(content: msg.content));
+        result.add(ChatMessage.assistant(content: msg.content));
       }
     }
 

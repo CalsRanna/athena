@@ -10,29 +10,23 @@ class MemoryService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
     var prompt = PresetPrompt.memoryBatchAnalysisPrompt
         .replaceAll('{existing_memories}', existingMemories)
         .replaceAll('{chat_data}', chatData);
-    var messages = [
-      ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(prompt),
-      ),
-    ];
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
-      messages: messages,
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: [ChatMessage.user(prompt)],
     );
-    var response = await client.createChatCompletion(request: request);
-    return response.choices.first.message.content ?? '';
+    var response = await client.chat.completions.create(request);
+    return response.text ?? '';
   }
 
   Future<String> synthesize({
@@ -40,29 +34,23 @@ class MemoryService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
     var prompt = PresetPrompt.memorySynthesisPrompt.replaceAll(
       '{memory_data}',
       memoryData,
     );
-    var messages = [
-      ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(prompt),
-      ),
-    ];
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
-      messages: messages,
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: [ChatMessage.user(prompt)],
     );
-    var response = await client.createChatCompletion(request: request);
-    return response.choices.first.message.content ?? '';
+    var response = await client.chat.completions.create(request);
+    return response.text ?? '';
   }
 }

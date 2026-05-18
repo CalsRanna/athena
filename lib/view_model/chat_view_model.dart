@@ -695,53 +695,40 @@ class ChatViewModel {
           : chatMessages;
 
       // 5. 转换为OpenAI格式并添加system message
-      var wrappedMessages = <ChatCompletionMessage>[];
+      var wrappedMessages = <ChatMessage>[];
       if (sentinel != null && sentinel.prompt.isNotEmpty) {
         wrappedMessages.add(
-          ChatCompletionMessage.system(content: sentinel.prompt),
+          ChatMessage.system(sentinel.prompt),
         );
       }
 
       for (var contextMessage in contextMessages) {
         if (contextMessage.role == 'system') {
           wrappedMessages.add(
-            ChatCompletionMessage.system(content: contextMessage.content),
+            ChatMessage.system(contextMessage.content),
           );
         } else if (contextMessage.role == 'assistant') {
           wrappedMessages.add(
-            ChatCompletionMessage.assistant(content: contextMessage.content),
+            ChatMessage.assistant(content: contextMessage.content),
           );
         } else {
           // Handle images
           if (contextMessage.imageUrls.isNotEmpty) {
             var imageList = contextMessage.imageUrls.split(',');
-            var contentParts = <ChatCompletionMessageContentPart>[
-              ChatCompletionMessageContentPart.text(
-                text: contextMessage.content,
-              ),
+            var contentParts = <ContentPart>[
+              ContentPart.text(contextMessage.content),
             ];
             for (var imageUrl in imageList) {
               contentParts.add(
-                ChatCompletionMessageContentPart.image(
-                  imageUrl: ChatCompletionMessageImageUrl(
-                    url: 'data:image/jpeg;base64,$imageUrl',
-                  ),
+                ContentPart.imageBase64(
+                  data: imageUrl,
+                  mediaType: 'image/jpeg',
                 ),
               );
             }
-            wrappedMessages.add(
-              ChatCompletionMessage.user(
-                content: ChatCompletionUserMessageContent.parts(contentParts),
-              ),
-            );
+            wrappedMessages.add(ChatMessage.user(contentParts));
           } else {
-            wrappedMessages.add(
-              ChatCompletionMessage.user(
-                content: ChatCompletionUserMessageContent.string(
-                  contextMessage.content,
-                ),
-              ),
-            );
+            wrappedMessages.add(ChatMessage.user(contextMessage.content));
           }
         }
       }
@@ -769,8 +756,8 @@ class ChatViewModel {
       await for (final chunk in stream) {
         if (!isStreaming.value) break; // Allow termination
 
-        if (chunk.choices.isEmpty) continue;
-        var choice = chunk.choices.first;
+        if (chunk.choices == null || chunk.choices!.isEmpty) continue;
+        var choice = chunk.choices!.first;
 
         // Handle reasoning content from delta
         var reasoningContent = choice.delta.reasoningContent;
