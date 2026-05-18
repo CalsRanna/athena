@@ -46,8 +46,10 @@ class MemoryViewModel {
         return;
       }
 
+      // 加载已有记忆作为增量更新的基础
       var lastChatId = memory.value?.lastChatId ?? 0;
-      var existingMemories = '';
+      var existingMemories = memory.value?.content ?? '';
+
       var batchIndex = 0;
 
       while (true) {
@@ -60,7 +62,13 @@ class MemoryViewModel {
           lastChatId,
           limit: 10,
         );
-        if (chats.isEmpty) break;
+
+        if (chats.isEmpty) {
+          if (batchIndex == 0) {
+            progress.value = '已是最新，无需更新';
+          }
+          break;
+        }
 
         batchIndex++;
         progress.value = '正在分析第 $batchIndex 批对话...';
@@ -95,7 +103,6 @@ class MemoryViewModel {
 
         lastChatId = chats.last.id!;
 
-        // 保存增量进度
         var now = DateTime.now();
         var intermediateMemory = MemoryEntity(
           content: existingMemories,
@@ -113,13 +120,18 @@ class MemoryViewModel {
         return;
       }
 
+      if (batchIndex == 0 && existingMemories.isNotEmpty) {
+        isGenerating.value = false;
+        return;
+      }
+
       if (existingMemories.isEmpty) {
         progress.value = '没有找到可分析的对话数据';
         isGenerating.value = false;
         return;
       }
 
-      // 最终综合生成
+      // 最终综合整理
       progress.value = '正在整理记忆...';
       var synthesized = await _memoryService.synthesize(
         memoryData: existingMemories,

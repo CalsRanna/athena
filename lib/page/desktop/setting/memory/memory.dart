@@ -204,6 +204,8 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
     var error = viewModel.error.value;
     if (error != null) {
       AthenaDialog.error(error);
+    } else if (viewModel.progress.value == '已是最新，无需更新') {
+      AthenaDialog.info('已是最新，没有需要分析的新对话');
     } else {
       AthenaDialog.success('记忆已更新');
     }
