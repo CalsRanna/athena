@@ -13,14 +13,15 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get_it/get_it.dart';
-import 'package:openai_dart/openai_dart.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signals/signals.dart';
 
@@ -29,14 +30,32 @@ class ChatViewModel {
   static const int defaultDraftContext = 0;
   static const double defaultDraftTemperature = 1.0;
 
-  // ViewModel 内部直接持有 Service/Repository
-  final ChatRepository _chatRepository = ChatRepository();
-  final MessageRepository _messageRepository = MessageRepository();
-  final SentinelRepository _sentinelRepository = SentinelRepository();
-  final ProviderRepository _providerRepository = ProviderRepository();
-  final ModelRepository _modelRepository = ModelRepository();
+  final ChatRepository _chatRepository;
+  final MessageRepository _messageRepository;
+  final SentinelRepository _sentinelRepository;
+  final ProviderRepository _providerRepository;
+  final ModelRepository _modelRepository;
+  final ChatService _chatService;
+  final ChatMessageService _chatMessageService;
+  final ChatSelectionDelegate _selection;
 
-  final ChatService _chatService = ChatService();
+  ChatViewModel({
+    ChatRepository? chatRepository,
+    MessageRepository? messageRepository,
+    SentinelRepository? sentinelRepository,
+    ProviderRepository? providerRepository,
+    ModelRepository? modelRepository,
+    ChatService? chatService,
+    ChatMessageService? chatMessageService,
+    ChatSelectionDelegate? selection,
+  })  : _chatRepository = chatRepository ?? ChatRepository(),
+        _messageRepository = messageRepository ?? MessageRepository(),
+        _sentinelRepository = sentinelRepository ?? SentinelRepository(),
+        _providerRepository = providerRepository ?? ProviderRepository(),
+        _modelRepository = modelRepository ?? ModelRepository(),
+        _chatService = chatService ?? ChatService(),
+        _chatMessageService = chatMessageService ?? ChatMessageService(),
+        _selection = selection ?? ChatSelectionDelegate();
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -55,13 +74,15 @@ class ChatViewModel {
   final currentTemperature = signal(defaultDraftTemperature);
   final pendingImages = listSignal<String>([]);
 
-  // 多选状态
-  final selectedChatIds = setSignal<int>({});
-  final lastSelectedIndex = signal<int?>(null);
+  // 多选与重命名 UI 交互状态委托
+  ChatSelectionDelegate get selection => _selection;
 
-  // AI 重命名状态
-  final renamingChatIds = setSignal<int>({});
-  final renamingTitle = signal<String>('');
+  // 保持向后兼容的信号访问器
+  SetSignal<int> get selectedChatIds => _selection.selectedChatIds;
+  Signal<int?> get lastSelectedIndex => _selection.lastSelectedIndex;
+  SetSignal<int> get renamingChatIds => _selection.renamingChatIds;
+  Signal<String> get renamingTitle => _selection.renamingTitle;
+  late final isMultiSelect = _selection.isMultiSelect;
 
   // Computed signals
   late final recentChats = computed(() {
@@ -76,9 +97,49 @@ class ChatViewModel {
     return chats.value.where((c) => c.pinned).toList();
   });
 
-  late final isMultiSelect = computed(() {
-    return selectedChatIds.value.length > 1;
-  });
+  /// 更新 chats、chatHistories、currentChat 三个列表中的 chat 数据
+  void _updateChatInLists(
+    ChatEntity updated, {
+    void Function()? onCurrentChatUpdated,
+  }) {
+    final idx = chats.value.indexWhere((c) => c.id == updated.id);
+    if (idx >= 0) {
+      final copy = List<ChatEntity>.from(chats.value);
+      copy[idx] = updated;
+      chats.value = copy;
+    }
+
+    final hIdx = chatHistories.value.indexWhere((h) => h.chat.id == updated.id);
+    if (hIdx >= 0) {
+      final copy = List<ChatHistoryEntity>.from(chatHistories.value);
+      copy[hIdx] = ChatHistoryEntity(
+        chat: updated,
+        lastMessageContent: chatHistories.value[hIdx].lastMessageContent,
+      );
+      chatHistories.value = copy;
+    }
+
+    if (currentChat.value?.id == updated.id) {
+      currentChat.value = updated;
+      onCurrentChatUpdated?.call();
+    }
+  }
+
+  void _updateMessageInList(int? messageId, MessageEntity updated) {
+    var index = messages.value.indexWhere((m) => m.id == messageId);
+    if (index >= 0) {
+      var copy = List<MessageEntity>.from(messages.value);
+      copy[index] = updated;
+      messages.value = copy;
+    }
+  }
+
+  Future<void> _updateChatTimestamp(ChatEntity chat) async {
+    var latest = await _chatRepository.getChatById(chat.id!);
+    if (latest != null) {
+      await _chatRepository.updateChat(latest.copyWith(updatedAt: DateTime.now()));
+    }
+  }
 
   // 业务方法
 
@@ -93,87 +154,25 @@ class ChatViewModel {
   }
 
   /// 清空多选状态
-  void clearSelection() {
-    selectedChatIds.value = {};
-    lastSelectedIndex.value = null;
-  }
+  void clearSelection() => _selection.clearSelection();
 
   /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
-  void toggleChatSelection(int chatId, int index) {
-    var newSet = Set<int>.from(selectedChatIds.value);
-    if (newSet.contains(chatId)) {
-      newSet.remove(chatId);
-      if (newSet.isEmpty) {
-        lastSelectedIndex.value = null;
-      }
-    } else {
-      newSet.add(chatId);
-      lastSelectedIndex.value = index;
-    }
-    selectedChatIds.value = newSet;
-  }
+  void toggleChatSelection(int chatId, int index) =>
+      _selection.toggleChatSelection(chatId, index);
 
   /// 范围选择 (Shift+Click)
-  void rangeSelectChats(int endIndex) {
-    if (selectedChatIds.value.isEmpty && lastSelectedIndex.value == null) {
-      return;
-    }
-
-    // Find the first selected index in the list
-    int? firstSelectedIndex;
-    if (selectedChatIds.value.isNotEmpty) {
-      for (var i = 0; i < chats.value.length; i++) {
-        if (selectedChatIds.value.contains(chats.value[i].id)) {
-          firstSelectedIndex = i;
-          break;
-        }
-      }
-    }
-
-    var startIndex = firstSelectedIndex ?? lastSelectedIndex.value;
-    if (startIndex == null) return;
-
-    var start = startIndex;
-    var end = endIndex;
-    if (start > end) {
-      var temp = start;
-      start = end;
-      end = temp;
-    }
-
-    var newSet = Set<int>.from(selectedChatIds.value);
-    for (var i = start; i <= end; i++) {
-      if (i < chats.value.length) {
-        var chatId = chats.value[i].id;
-        if (chatId != null) {
-          newSet.add(chatId);
-        }
-      }
-    }
-    selectedChatIds.value = newSet;
-  }
+  void rangeSelectChats(int endIndex) =>
+      _selection.rangeSelectChats(endIndex, chats.value);
 
   /// 初始化 lastSelectedIndex（用于首次打开时）
-  void initLastSelectedIndex() {
-    if (lastSelectedIndex.value == null && currentChat.value != null) {
-      var index = chats.value.indexWhere((c) => c.id == currentChat.value!.id);
-      if (index >= 0) {
-        lastSelectedIndex.value = index;
-      }
-    }
-  }
+  void initLastSelectedIndex() =>
+      _selection.initLastSelectedIndex(currentChat.value, chats.value);
 
   /// 开始 AI 重命名
-  void startRenaming(int chatId) {
-    renamingChatIds.value = {...renamingChatIds.value, chatId};
-  }
+  void startRenaming(int chatId) => _selection.startRenaming(chatId);
 
   /// 结束 AI 重命名
-  void stopRenaming(int chatId) {
-    var newSet = Set<int>.from(renamingChatIds.value);
-    newSet.remove(chatId);
-    renamingChatIds.value = newSet;
-  }
+  void stopRenaming(int chatId) => _selection.stopRenaming(chatId);
 
   /// 创建新的聊天会话
   Future<ChatEntity?> createChat() async {
@@ -520,35 +519,7 @@ class ChatViewModel {
       var latestChat = await _chatRepository.getChatById(chat.id!);
       var updated = (latestChat ?? chat).copyWith(title: title);
       await _chatRepository.updateChat(updated);
-
-      // 更新 chats 状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      // 更新 chatHistories 状态
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      // 如果是当前选中的对话，也更新 currentChat
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-      }
+      _updateChatInLists(updated);
 
       return updated;
     } catch (e) {
@@ -566,36 +537,9 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      var updated = chat.copyWith(title: title);
+      final updated = chat.copyWith(title: title);
       await _chatRepository.updateChat(updated);
-
-      // 更新 chats 状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      // 更新 chatHistories 状态
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
-      }
+      _updateChatInLists(updated);
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -657,19 +601,15 @@ class ChatViewModel {
       var userMessage = message.copyWith(id: id);
       messages.value = [...messages.value, userMessage];
 
-      // 首条用户消息入库后立即异步触发自动命名，不等待本轮回复结束。
+      // 首条用户消息入库后立即异步触发自动命名
       var isDefaultTitle = chat.title.isEmpty || chat.title == 'New Chat';
       if (isDefaultTitle) {
-        var persistedMessages = await _messageRepository.getMessagesByChatId(
-          chat.id!,
-        );
-        var userMessageCount = persistedMessages.where((m) => m.role == 'user');
-        if (userMessageCount.length == 1) {
+        if (await _chatMessageService.isFirstUserMessage(chat.id!)) {
           unawaited(renameChat(chat));
         }
       }
 
-      // 2. 获取model和provider
+      // 2. 获取model、provider、sentinel
       var model = await _modelRepository.getModelById(chat.modelId);
       if (model == null) {
         error.value = 'Model not found';
@@ -682,58 +622,15 @@ class ChatViewModel {
         error.value = 'Provider not found';
         return;
       }
-
-      // 3. 获取sentinel
       var sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
 
-      // 4. 构建历史消息上下文
-      var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
-      var contextLimit = chat.context * 2; // 每轮对话包含user和assistant两条消息
-      var contextMessages =
-          chatMessages.length > contextLimit && chat.context > 0
-          ? chatMessages.sublist(chatMessages.length - contextLimit)
-          : chatMessages;
+      // 3. 构建消息上下文（委托给 ChatMessageService）
+      var wrappedMessages = await _chatMessageService.buildMessages(
+        chat: chat,
+        sentinel: sentinel,
+      );
 
-      // 5. 转换为OpenAI格式并添加system message
-      var wrappedMessages = <ChatMessage>[];
-      if (sentinel != null && sentinel.prompt.isNotEmpty) {
-        wrappedMessages.add(
-          ChatMessage.system(sentinel.prompt),
-        );
-      }
-
-      for (var contextMessage in contextMessages) {
-        if (contextMessage.role == 'system') {
-          wrappedMessages.add(
-            ChatMessage.system(contextMessage.content),
-          );
-        } else if (contextMessage.role == 'assistant') {
-          wrappedMessages.add(
-            ChatMessage.assistant(content: contextMessage.content),
-          );
-        } else {
-          // Handle images
-          if (contextMessage.imageUrls.isNotEmpty) {
-            var imageList = contextMessage.imageUrls.split(',');
-            var contentParts = <ContentPart>[
-              ContentPart.text(contextMessage.content),
-            ];
-            for (var imageUrl in imageList) {
-              contentParts.add(
-                ContentPart.imageBase64(
-                  data: imageUrl,
-                  mediaType: 'image/jpeg',
-                ),
-              );
-            }
-            wrappedMessages.add(ChatMessage.user(contentParts));
-          } else {
-            wrappedMessages.add(ChatMessage.user(contextMessage.content));
-          }
-        }
-      }
-
-      // 6. 创建assistant消息用于流式更新
+      // 4. 创建 assistant 消息占位
       var assistantMessage = MessageEntity(
         chatId: chat.id!,
         role: 'assistant',
@@ -743,10 +640,10 @@ class ChatViewModel {
       assistantMessage = assistantMessage.copyWith(id: assistantId);
       messages.value = [...messages.value, assistantMessage];
 
-      // 7. 获取流式响应
+      // 5. 流式获取并更新 UI
       var contentBuffer = StringBuffer();
       var reasoningBuffer = StringBuffer();
-      var stream = _chatService.getCompletion(
+      var stream = _chatMessageService.getCompletionStream(
         chat: chat,
         messages: wrappedMessages,
         provider: provider,
@@ -754,12 +651,11 @@ class ChatViewModel {
       );
 
       await for (final chunk in stream) {
-        if (!isStreaming.value) break; // Allow termination
+        if (!isStreaming.value) break;
 
         if (chunk.choices == null || chunk.choices!.isEmpty) continue;
         var choice = chunk.choices!.first;
 
-        // Handle reasoning content from delta
         var reasoningContent = choice.delta.reasoningContent;
         if (reasoningContent != null && reasoningContent.isNotEmpty) {
           reasoningBuffer.write(reasoningContent);
@@ -770,7 +666,6 @@ class ChatViewModel {
           );
         }
 
-        // Handle regular content from delta
         var content = choice.delta.content;
         if (content != null && content.isNotEmpty) {
           contentBuffer.write(content);
@@ -779,39 +674,21 @@ class ChatViewModel {
           );
         }
 
-        // Update UI
-        var index = messages.value.indexWhere((m) => m.id == assistantId);
-        if (index >= 0) {
-          var updated = List<MessageEntity>.from(messages.value);
-          updated[index] = assistantMessage;
-          messages.value = updated;
-        }
+        _updateMessageInList(assistantId, assistantMessage);
       }
 
-      // 8. 流结束后，标记推理完成
+      // 6. 流结束，标记推理完成
       if (reasoningBuffer.isNotEmpty) {
         assistantMessage = assistantMessage.copyWith(reasoning: false);
-        var index = messages.value.indexWhere((m) => m.id == assistantId);
-        if (index >= 0) {
-          var updated = List<MessageEntity>.from(messages.value);
-          updated[index] = assistantMessage;
-          messages.value = updated;
-        }
+        _updateMessageInList(assistantId, assistantMessage);
       }
 
-      // 9. 保存最终消息
+      // 7. 保存最终消息并更新时间戳
       await _messageRepository.updateMessage(assistantMessage);
-
-      // 10. 更新chat的updatedAt（从数据库获取最新数据避免覆盖已更新的字段）
-      var latestChat = await _chatRepository.getChatById(chat.id!);
-      if (latestChat != null) {
-        var updatedChat = latestChat.copyWith(updatedAt: DateTime.now());
-        await _chatRepository.updateChat(updatedChat);
-      }
+      await _updateChatTimestamp(chat);
       await getChats();
     } catch (e) {
       error.value = e.toString();
-      // 如果已创建 assistant 消息，将错误信息写入消息内容
       if (assistantId != null) {
         var errorMessage = MessageEntity(
           id: assistantId,
@@ -820,12 +697,7 @@ class ChatViewModel {
           content: 'Error: ${e.toString()}',
         );
         await _messageRepository.updateMessage(errorMessage);
-        var index = messages.value.indexWhere((m) => m.id == assistantId);
-        if (index >= 0) {
-          var updated = List<MessageEntity>.from(messages.value);
-          updated[index] = errorMessage;
-          messages.value = updated;
-        }
+        _updateMessageInList(assistantId, errorMessage);
       }
     } finally {
       isStreaming.value = false;
@@ -853,37 +725,11 @@ class ChatViewModel {
   }) async {
     error.value = null;
     try {
-      var updated = chat.copyWith(context: context);
+      final updated = chat.copyWith(context: context);
       await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
+      _updateChatInLists(updated, onCurrentChatUpdated: () {
         currentContext.value = updated.context;
-      }
-
+      });
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -916,40 +762,14 @@ class ChatViewModel {
   }) async {
     error.value = null;
     try {
-      var updated = chat.copyWith(modelId: model.id);
+      final updated = chat.copyWith(modelId: model.id);
       await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
+      _updateChatInLists(updated, onCurrentChatUpdated: () async {
         currentModel.value = model;
         currentProvider.value = await _providerRepository.getProviderById(
           model.providerId,
         );
-      }
-
+      });
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -964,37 +784,11 @@ class ChatViewModel {
   }) async {
     error.value = null;
     try {
-      var updated = chat.copyWith(sentinelId: sentinel.id);
+      final updated = chat.copyWith(sentinelId: sentinel.id);
       await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
+      _updateChatInLists(updated, onCurrentChatUpdated: () {
         currentSentinel.value = sentinel;
-      }
-
+      });
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -1009,37 +803,11 @@ class ChatViewModel {
   }) async {
     error.value = null;
     try {
-      var updated = chat.copyWith(temperature: temperature);
+      final updated = chat.copyWith(temperature: temperature);
       await _chatRepository.updateChat(updated);
-
-      // 更新状态
-      var index = chats.value.indexWhere((c) => c.id == chat.id);
-      if (index >= 0) {
-        var updatedChats = List<ChatEntity>.from(chats.value);
-        updatedChats[index] = updated;
-        chats.value = updatedChats;
-      }
-
-      var historyIndex = chatHistories.value.indexWhere(
-        (h) => h.chat.id == chat.id,
-      );
-      if (historyIndex >= 0) {
-        var updatedHistories = List<ChatHistoryEntity>.from(
-          chatHistories.value,
-        );
-        updatedHistories[historyIndex] = ChatHistoryEntity(
-          chat: updated,
-          lastMessageContent:
-              chatHistories.value[historyIndex].lastMessageContent,
-        );
-        chatHistories.value = updatedHistories;
-      }
-
-      if (currentChat.value?.id == chat.id) {
-        currentChat.value = updated;
+      _updateChatInLists(updated, onCurrentChatUpdated: () {
         currentTemperature.value = updated.temperature;
-      }
-
+      });
       return updated;
     } catch (e) {
       error.value = e.toString();

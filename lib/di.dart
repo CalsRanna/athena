@@ -1,3 +1,10 @@
+import 'package:athena/repository/chat_repository.dart';
+import 'package:athena/repository/message_repository.dart';
+import 'package:athena/repository/model_repository.dart';
+import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/service/chat_message_service.dart';
+import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -14,6 +21,19 @@ import 'package:get_it/get_it.dart';
 class DI {
   static void ensureInitialized() {
     final getIt = GetIt.instance;
+
+    // Repositories
+    getIt.registerLazySingleton(() => ChatRepository());
+    getIt.registerLazySingleton(() => MessageRepository());
+    getIt.registerLazySingleton(() => ModelRepository());
+    getIt.registerLazySingleton(() => ProviderRepository());
+    getIt.registerLazySingleton(() => SentinelRepository());
+
+    // Services
+    getIt.registerLazySingleton(() => ChatService());
+    getIt.registerLazySingleton(() => ChatMessageService());
+
+    // ViewModels
     getIt.registerLazySingleton(() => ChatViewModel());
     getIt.registerLazySingleton(() => ModelViewModel());
     getIt.registerLazySingleton(() => ProviderViewModel());
