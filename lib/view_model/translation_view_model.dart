@@ -44,8 +44,8 @@ class TranslationViewModel {
 
   /// 执行翻译 - 返回原始流
   /// UI 层需要处理流式响应并调用 appendTranslatedText() 更新状态
-  Stream<ChatCompletionStreamResponseDelta> translate({
-    required List<ChatCompletionMessage> messages,
+  Stream<ChatDelta> translate({
+    required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
   }) {
@@ -127,11 +127,7 @@ class TranslationViewModel {
       // 构建翻译消息
       var prompt =
           '请将以下${translation.source}文本翻译成${translation.target}:\n\n${translation.sourceText}';
-      var messages = [
-        ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(prompt),
-        ),
-      ];
+      var messages = [ChatMessage.user(prompt)];
 
       // 获取流式翻译
       var buffer = StringBuffer();

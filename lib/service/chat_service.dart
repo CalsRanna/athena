@@ -4,8 +4,6 @@ import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/preset/prompt.dart';
-import 'package:athena/vendor/enhanced_openai_dart/client.dart';
-import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// ChatService 负责与 AI 提供商进行聊天相关的网络请求
@@ -15,48 +13,43 @@ class ChatService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
-    var message = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string('Hi'),
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: [ChatMessage.user('Hi')],
     );
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
-      messages: [message],
-    );
-    var response = await client.createChatCompletion(request: request);
-    return response.choices.first.message.content ?? '';
+    var response = await client.chat.completions.create(request);
+    return response.text ?? '';
   }
 
   /// 获取聊天完成流
-  Stream<EnhancedStreamResponse> getCompletion({
+  Stream<ChatStreamEvent> getCompletion({
     required ChatEntity chat,
-    required List<ChatCompletionMessage> messages,
+    required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = EnhancedOpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
       messages: messages,
       temperature: chat.temperature,
     );
-    yield* client.createEnhancedChatCompletionStream(request: request);
+    yield* client.chat.completions.createStream(request);
   }
 
   /// 获取聊天标题流
@@ -65,29 +58,25 @@ class ChatService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
       baseUrl: provider.baseUrl,
-      headers: headers,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
     );
-    var wrappedMessages = [
-      ChatCompletionMessage.system(content: PresetPrompt.namingPrompt),
-      ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(value),
-      ),
-    ];
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
-      messages: wrappedMessages,
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: [
+        ChatMessage.system(PresetPrompt.namingPrompt),
+        ChatMessage.user(value),
+      ],
     );
-    var response = client.createChatCompletionStream(request: request);
+    var response = client.chat.completions.createStream(request);
     await for (final chunk in response) {
-      if (chunk.choices.isEmpty) continue;
-      yield chunk.choices.first.delta.content ?? '';
+      if (chunk.choices == null || chunk.choices!.isEmpty) continue;
+      yield chunk.choices!.first.delta.content ?? '';
     }
   }
 }

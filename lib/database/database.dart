@@ -14,6 +14,7 @@ import 'package:athena/preset/provider.dart';
 import 'package:athena/preset/sentinel.dart';
 import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
+import 'package:laconic_sqlite/laconic_sqlite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -45,9 +46,8 @@ class Database {
       await file.create(recursive: true);
     }
 
-    var config = SqliteConfig(path);
-    laconic = Laconic.sqlite(
-      config,
+    laconic = Laconic(
+      SqliteDriver(SqliteConfig(path)),
       listen: (query) {
         LoggerUtil.d(query.sql);
       },

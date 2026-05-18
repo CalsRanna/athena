@@ -116,11 +116,7 @@ class SummaryViewModel {
       }
 
       var prompt = '请对以下网页内容生成摘要:\n\n${content.value}';
-      var messages = [
-        ChatCompletionMessage.user(
-          content: ChatCompletionUserMessageContent.string(prompt),
-        ),
-      ];
+      var messages = [ChatMessage.user(prompt)];
 
       var buffer = StringBuffer();
       var stream = _service.summarize(
