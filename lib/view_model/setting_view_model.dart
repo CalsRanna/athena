@@ -26,8 +26,6 @@ class SettingViewModel {
 
   static const String _keyChatModelId = 'chat_model_id';
   static const String _keyChatNamingModelId = 'chat_naming_model_id';
-  static const String _keyChatSearchDecisionModelId =
-      'chat_search_decision_model_id';
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
   static const String _keyShortModelId = 'short_model_id';
@@ -37,18 +35,15 @@ class SettingViewModel {
   // 模型 ID 设置
   final chatModelId = signal(0);
   final chatNamingModelId = signal(0);
-  final chatSearchDecisionModelId = signal(0);
   final sentinelMetadataGenerationModelId = signal(0);
   final shortModelId = signal(0);
   final chatModel = signal<ModelEntity?>(null);
   final chatNamingModel = signal<ModelEntity?>(null);
-  final chatSearchDecisionModel = signal<ModelEntity?>(null);
 
   final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
   final shortModel = signal<ModelEntity?>(null);
   final chatModelProvider = signal<ProviderEntity?>(null);
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
-  final chatSearchDecisionModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
 
@@ -71,17 +66,12 @@ class SettingViewModel {
     windowWidth.value = instance.getDouble(_keyWindowWidth) ?? 960.0;
     chatModelId.value = instance.getInt(_keyChatModelId) ?? 0;
     chatNamingModelId.value = instance.getInt(_keyChatNamingModelId) ?? 0;
-    chatSearchDecisionModelId.value =
-        instance.getInt(_keyChatSearchDecisionModelId) ?? 0;
     sentinelMetadataGenerationModelId.value =
         instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
     shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
       chatNamingModelId.value,
-    );
-    chatSearchDecisionModel.value = await _modelRepository.getModelById(
-      chatSearchDecisionModelId.value,
     );
     sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
       sentinelMetadataGenerationModelId.value,
@@ -96,10 +86,6 @@ class SettingViewModel {
       chatNamingModelProvider.value = await _providerRepository.getProviderById(
         chatNamingModel.value!.providerId,
       );
-    }
-    if (chatSearchDecisionModel.value != null) {
-      chatSearchDecisionModelProvider.value = await _providerRepository
-          .getProviderById(chatSearchDecisionModel.value!.providerId);
     }
     if (sentinelMetadataGenerationModel.value != null) {
       sentinelMetadataGenerationModelProvider.value = await _providerRepository
@@ -135,20 +121,6 @@ class SettingViewModel {
       chatNamingModelProvider.value = await _providerRepository.getProviderById(
         chatNamingModel.value!.providerId,
       );
-    }
-  }
-
-  /// 更新搜索决策模型 ID
-  Future<void> updateChatSearchDecisionModelId(int modelId) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keyChatSearchDecisionModelId, modelId);
-    chatSearchDecisionModelId.value = modelId;
-    chatSearchDecisionModel.value = await _modelRepository.getModelById(
-      modelId,
-    );
-    if (chatSearchDecisionModel.value != null) {
-      chatSearchDecisionModelProvider.value = await _providerRepository
-          .getProviderById(chatSearchDecisionModel.value!.providerId);
     }
   }
 

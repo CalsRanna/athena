@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
-import 'package:athena/model/search_decision.dart';
 import 'package:athena/preset/prompt.dart';
 import 'package:athena/vendor/enhanced_openai_dart/client.dart';
 import 'package:athena/vendor/enhanced_openai_dart/delta.dart';
@@ -59,47 +57,6 @@ class ChatService {
       temperature: chat.temperature,
     );
     yield* client.createEnhancedChatCompletionStream(request: request);
-  }
-
-  /// 获取搜索决策
-  Future<SearchDecision> getSearchDecision(
-    String message, {
-    required ProviderEntity provider,
-    required ModelEntity model,
-  }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-      'X-Title': 'Athena',
-    };
-    var client = OpenAIClient(
-      apiKey: provider.apiKey,
-      baseUrl: provider.baseUrl,
-      headers: headers,
-    );
-    var now = DateTime.now();
-    var prompt = PresetPrompt.searchDecisionPrompt.replaceAll(
-      '{now}',
-      now.toString(),
-    );
-    var wrappedMessages = [
-      ChatCompletionMessage.system(content: prompt),
-      ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(message),
-      ),
-    ];
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(model.modelId),
-      messages: wrappedMessages,
-    );
-    var response = await client.createChatCompletion(request: request);
-    var content = response.choices.first.message.content ?? '';
-    content = content.replaceAll('```json', '').replaceAll('```', '');
-    try {
-      var json = jsonDecode(content);
-      return SearchDecision.fromJson(json);
-    } catch (error) {
-      return SearchDecision();
-    }
   }
 
   /// 获取聊天标题流

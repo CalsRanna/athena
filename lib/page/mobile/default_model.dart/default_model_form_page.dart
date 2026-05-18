@@ -36,10 +36,6 @@ class _MobileDefaultModelFormPageState
     );
     var chatTitle = Text('Default Chat Model', style: titleTextStyle);
     var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
-    var chatSearchDecisionTitle = Text(
-      'Chat Search Decision Model',
-      style: titleTextStyle,
-    );
     var generationTitle = Text(
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
@@ -54,10 +50,6 @@ class _MobileDefaultModelFormPageState
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
     var namingTip = Text(
       'Model designated for automatic chat renaming',
-      style: tipTextStyle,
-    );
-    var chatSearchDecisionTip = Text(
-      'Model designated for deciding whether user\'s input should search from internet or not',
       style: tipTextStyle,
     );
     var generationTip = Text(
@@ -80,12 +72,6 @@ class _MobileDefaultModelFormPageState
         model: settingViewModel.chatNamingModel.value,
         onChanged: settingViewModel.updateChatNamingModelId,
         provider: settingViewModel.chatNamingModelProvider.value,
-      );
-      var chatSearchDecisionDropdown = _ModelDropdown(
-        groupedModels: modelViewModel.groupedEnabledModels.value,
-        model: settingViewModel.chatSearchDecisionModel.value,
-        onChanged: settingViewModel.updateChatSearchDecisionModelId,
-        provider: settingViewModel.chatSearchDecisionModelProvider.value,
       );
       var sentinelMetadataGenerationDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
@@ -112,12 +98,6 @@ class _MobileDefaultModelFormPageState
         chatNamingDropdown,
         const SizedBox(height: 12),
         namingTip,
-        const SizedBox(height: 16),
-        chatSearchDecisionTitle,
-        const SizedBox(height: 12),
-        chatSearchDecisionDropdown,
-        const SizedBox(height: 12),
-        chatSearchDecisionTip,
         const SizedBox(height: 16),
         generationTitle,
         const SizedBox(height: 12),

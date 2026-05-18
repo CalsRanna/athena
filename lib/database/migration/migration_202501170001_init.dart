@@ -18,7 +18,6 @@ class Migration202501170001Init {
         sentinel_id INTEGER NOT NULL,
         temperature REAL DEFAULT 1.0,
         context INTEGER DEFAULT 0,
-        enable_search INTEGER DEFAULT 0,
         pinned INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
@@ -37,7 +36,6 @@ class Migration202501170001Init {
         expanded INTEGER DEFAULT 1,
         image_urls TEXT DEFAULT '',
         reference TEXT DEFAULT '',
-        searching INTEGER DEFAULT 0,
         reasoning_started_at INTEGER NOT NULL,
         reasoning_updated_at INTEGER NOT NULL,
         FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE

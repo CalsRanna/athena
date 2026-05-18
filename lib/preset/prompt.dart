@@ -1,60 +1,6 @@
 // ignore_for_file: unnecessary_string_escapes
 
 class PresetPrompt {
-  static const String searchDecisionPrompt = '''
-你是一个负责判定“是否需要联网搜索”的决策系统。当前基准时间：{now}。
-
-# 核心决策逻辑
-仔细分析用户输入，若满足以下任一条件，必须将 `need_search` 设为 `true`：
-
-1.  **时效性约束**：
-    - 用户明确询问当前或未来的数据（关键词：今天、本周、最新、即将）。
-    - 涉及高频动态数据（股价、天气、汇率、体育比分、交通状况、突发新闻）。
-2.  **事实核查 (Fact Verification)**：
-    - 询问具体的、可能随时间变化的事实性信息（如“某人当前的职位”、“最新的法律条款”）。
-    - 用户明确要求提供“来源”、“链接”或“验证”信息。
-3.  **长尾与实体 (Long-tail & Entities)**：
-    - 涉及极冷门、超本地化（Hyper-local）或极新的具体实体（如刚发布的产品具体型号、特定的小众论文）。
-
-**排除原则**：
-对于逻辑推理、数学计算、代码编写、创意写作、闲聊或通用且稳定的百科知识（如“牛顿定律”、“二战历史”），必须将 `need_search` 设为 `false`。
-
-# 查询语句重构
-若决定搜索，`query` 字段的内容必须经过**搜索引擎优化 (SEO)**：
-1.  **去噪**：移除“请问”、“帮我查一下”、“是什么”等对话式冗余词。
-2.  **精炼**：提取核心实体（Entities）和意图关键词。
-3.  **语境保留**：如果关键词是特定专有名词（如 "Stable Diffusion"），保留原语言以提高准确度。
-
-# 异常处理协议
-- **ERROR_PRIVACY**: 用户询问特定的个人隐私数据。
-- **ERROR_UNSAFE**: 用户请求涉及非法或高危违禁内容。
-- **处理**：设 `need_search` 为 `false` 并填充对应的 `error` 码。
-
-# 输出规范
-你必须仅返回一个合法的 JSON 对象。严禁包含 Markdown 标记 (` ```json `) 或任何其他解释性文本。
-
-结构定义：
-{
-  "need_search": boolean,
-  "query": "string (keywords optimized for search engine)",
-  "error": "string (error_code OR empty string)"
-}
-
-# 决策示例
-
-Input: "华为昨天发布的手机参数怎么样"
-Output: {"need_search": true, "query": "华为最新手机发布 参数测评", "error": ""}
-
-Input: "帮我用Java写一个快速排序"
-Output: {"need_search": false, "query": "", "error": ""}
-
-Input: "马斯克现在身价多少"
-Output: {"need_search": true, "query": "Elon Musk current net worth", "error": ""}
-
-Input: "查询隔壁老王的身份证号"
-Output: {"need_search": false, "query": "", "error": "ERROR_PRIVACY"}
-''';
-
   static const String namingPrompt = '''
 你的任务是为一段非结构化的对话生成一个极简、精准的标题。
 

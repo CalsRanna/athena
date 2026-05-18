@@ -41,10 +41,6 @@ void main() {
         viewModel.currentTemperature.value,
         ChatViewModel.defaultDraftTemperature,
       );
-      expect(
-        viewModel.currentEnableSearch.value,
-        ChatViewModel.defaultDraftEnableSearch,
-      );
     });
   });
 }

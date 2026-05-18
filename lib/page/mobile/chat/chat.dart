@@ -322,7 +322,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
       onContextChanged: (value) => updateContext(value),
-      onEnableSearchChanged: (value) => updateEnableSearch(value),
       onModelChanged: (model) => updateModel(model),
       onSentinelChanged: (sentinel) => updateSentinel(sentinel),
       onTemperatureChanged: (value) => updateTemperature(value),
@@ -372,15 +371,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
       await viewModel.updateContext(value, chat: chat);
     } else {
       viewModel.updateCurrentContext(value);
-    }
-  }
-
-  Future<void> updateEnableSearch(bool value) async {
-    var chat = _getCurrentChat();
-    if (chat != null) {
-      await viewModel.updateEnableSearch(value, chat: chat);
-    } else {
-      viewModel.updateCurrentEnableSearch(value);
     }
   }
 
