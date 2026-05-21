@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -13,6 +14,11 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/agent/agent_service.dart';
+import 'package:athena/agent/tool/file_read_tool.dart';
+import 'package:athena/agent/tool/search_tool.dart';
+import 'package:athena/agent/tool/shell_tool.dart';
+import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
@@ -640,50 +646,66 @@ class ChatViewModel {
       assistantMessage = assistantMessage.copyWith(id: assistantId);
       messages.value = [...messages.value, assistantMessage];
 
-      // 5. 流式获取并更新 UI
-      var contentBuffer = StringBuffer();
-      var reasoningBuffer = StringBuffer();
-      var stream = _chatMessageService.getCompletionStream(
-        chat: chat,
-        messages: wrappedMessages,
-        provider: provider,
-        model: model,
+      // 5. AgentService 编排
+      var toolCallsJson = <Map<String, dynamic>>[];
+      var toolResultsJson = <Map<String, dynamic>>[];
+
+      final agentService = AgentService(
+        toolRegistry: ToolRegistry()
+          ..registerAll([
+            SearchTool(),
+            FileReadTool(),
+            ShellTool(),
+          ]),
       );
 
-      await for (final chunk in stream) {
+      var agentStream = agentService.run(
+        chat: chat,
+        provider: provider,
+        model: model,
+        baseMessages: wrappedMessages,
+      );
+
+      var contentBuffer = StringBuffer();
+
+      await for (final event in agentStream) {
         if (!isStreaming.value) break;
 
-        if (chunk.choices == null || chunk.choices!.isEmpty) continue;
-        var choice = chunk.choices!.first;
-
-        var reasoningContent = choice.delta.reasoningContent;
-        if (reasoningContent != null && reasoningContent.isNotEmpty) {
-          reasoningBuffer.write(reasoningContent);
-          assistantMessage = assistantMessage.copyWith(
-            reasoningContent: reasoningBuffer.toString(),
-            reasoning: true,
-            reasoningUpdatedAt: DateTime.now(),
-          );
-        }
-
-        var content = choice.delta.content;
-        if (content != null && content.isNotEmpty) {
-          contentBuffer.write(content);
+        if (event is AgentTextEvent) {
+          contentBuffer.write(event.delta);
           assistantMessage = assistantMessage.copyWith(
             content: contentBuffer.toString(),
           );
+          _updateMessageInList(assistantId, assistantMessage);
+        } else if (event is AgentToolCallEvent) {
+          toolCallsJson.add({
+            'id': event.id,
+            'name': event.name,
+            'arguments': event.arguments,
+          });
+          assistantMessage = assistantMessage.copyWith(
+            toolCalls: jsonEncode(toolCallsJson),
+          );
+          _updateMessageInList(assistantId, assistantMessage);
+        } else if (event is AgentToolResultEvent) {
+          toolResultsJson.add({
+            'id': event.id,
+            'name': event.name,
+            'result': event.result,
+          });
+          assistantMessage = assistantMessage.copyWith(
+            toolResults: jsonEncode(toolResultsJson),
+          );
+          _updateMessageInList(assistantId, assistantMessage);
+        } else if (event is AgentDoneEvent) {
+          assistantMessage = assistantMessage.copyWith(
+            content: event.content,
+          );
+          _updateMessageInList(assistantId, assistantMessage);
         }
-
-        _updateMessageInList(assistantId, assistantMessage);
       }
 
-      // 6. 流结束，标记推理完成
-      if (reasoningBuffer.isNotEmpty) {
-        assistantMessage = assistantMessage.copyWith(reasoning: false);
-        _updateMessageInList(assistantId, assistantMessage);
-      }
-
-      // 7. 保存最终消息并更新时间戳
+      // 6. 保存最终消息并更新时间戳
       await _messageRepository.updateMessage(assistantMessage);
       await _updateChatTimestamp(chat);
       await getChats();

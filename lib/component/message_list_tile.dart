@@ -5,6 +5,8 @@ import 'package:athena/component/button.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/base64_image.dart';
+import 'package:athena/page/desktop/home/component/tool_call_card.dart';
+import 'package:athena/page/desktop/home/component/tool_result_card.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/dialog.dart';
@@ -134,10 +136,35 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent() {
+    final toolCards = <Widget>[];
+    if (message.toolCalls.isNotEmpty) {
+      try {
+        final calls = jsonDecode(message.toolCalls) as List<dynamic>;
+        for (final call in calls) {
+          toolCards.add(ToolCallCard(
+            toolName: call['name'] ?? '',
+            arguments: call['arguments'] ?? '',
+          ));
+        }
+      } catch (_) {}
+    }
+    if (message.toolResults.isNotEmpty) {
+      try {
+        final results = jsonDecode(message.toolResults) as List<dynamic>;
+        for (final result in results) {
+          toolCards.add(ToolResultCard(
+            toolName: result['name'] ?? '',
+            result: result['result'] ?? '',
+          ));
+        }
+      } catch (_) {}
+    }
+
     var children = [
       _AssistantMessageListTileThinkingPart(message: message),
       if (message.content.isNotEmpty) SizedBox(height: 8),
       AthenaMarkdown(engine: AthenaMarkdownEngine.flutter, message: message),
+      ...toolCards,
       _AssistantMessageListTileReferencePart(message: message),
       _AssistantMessageListTileLoadingPart(loading: loading, message: message),
     ];
