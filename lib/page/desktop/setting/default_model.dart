@@ -48,7 +48,7 @@ class _DesktopSettingDefaultModelPageState
   }
 
   Widget _buildDefaultModelListView() {
-    var models = ['Chat', 'Topic Naming', 'Sentinel Metadata Generation'];
+    var models = ['Agent', 'Topic Naming', 'Sentinel Metadata Generation'];
     var borderSide = BorderSide(
       color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
     );
@@ -80,7 +80,8 @@ class _DesktopSettingDefaultModelPageState
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var chatTitle = Text('Chat Model', style: titleTextStyle);
+    var chatTitle = Text('Agent Model', style: titleTextStyle);
+    var auxiliaryTitle = Text('Auxiliary Model', style: titleTextStyle);
     var namingTitle = Text('Topic Naming Model', style: titleTextStyle);
     var generationTitle = Text(
       'Sentinel Metadata Generation Model',
@@ -89,6 +90,7 @@ class _DesktopSettingDefaultModelPageState
 
     return Watch((context) {
       var chatModel = settingViewModel.chatModelId.value;
+      var auxiliaryModel = settingViewModel.auxiliaryModelId.value;
       var chatNamingModel = settingViewModel.chatNamingModelId.value;
       var sentinelMetadataGenerationModel =
           settingViewModel.sentinelMetadataGenerationModelId.value;
@@ -96,6 +98,10 @@ class _DesktopSettingDefaultModelPageState
       var chatDropdown = _ModelDropdown(
         model: chatModel,
         onChanged: settingViewModel.updateChatModelId,
+      );
+      var auxiliaryDropdown = _ModelDropdown(
+        model: auxiliaryModel,
+        onChanged: settingViewModel.updateAuxiliaryModelId,
       );
       var chatNamingDropdown = _ModelDropdown(
         model: chatNamingModel,
@@ -113,6 +119,11 @@ class _DesktopSettingDefaultModelPageState
         height: 1.5,
       );
       var chatTip = Text('Model designated for new chat', style: tipTextStyle);
+      var auxiliaryTip = Text(
+        'Optional model for summarizing long tool results. '
+        'Recommended: a small, fast model.',
+        style: tipTextStyle,
+      );
       var namingTip = Text(
         'Model designated for automatic naming topic',
         style: tipTextStyle,
@@ -131,6 +142,12 @@ class _DesktopSettingDefaultModelPageState
             chatDropdown,
             const SizedBox(height: 12),
             chatTip,
+            const SizedBox(height: 24),
+            auxiliaryTitle,
+            const SizedBox(height: 12),
+            auxiliaryDropdown,
+            const SizedBox(height: 12),
+            auxiliaryTip,
           ],
         ),
         1 => ListView(

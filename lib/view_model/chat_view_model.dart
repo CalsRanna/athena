@@ -649,14 +649,16 @@ class ChatViewModel {
       var toolResultsJson = <Map<String, dynamic>>[];
 
       final agentService = GetIt.instance<AgentService>();
+      final settingVM = GetIt.instance<SettingViewModel>();
 
       var agentStream = agentService.run(
         chat: chat,
         provider: provider,
         model: model,
         baseMessages: wrappedMessages,
-        maxIterations:
-            GetIt.instance<SettingViewModel>().maxAgentIterations.value,
+        maxIterations: settingVM.maxAgentIterations.value,
+        auxiliaryModel: settingVM.auxiliaryModel.value,
+        auxiliaryModelProvider: settingVM.auxiliaryModelProvider.value,
         onPermission: (toolName, arguments) async {
           final context = router.navigatorKey.currentContext;
           if (context == null) return false;

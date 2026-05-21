@@ -29,6 +29,8 @@ class AgentService {
     String? skillPrompt,
     PermissionCallback? onPermission,
     int maxIterations = 100,
+    ModelEntity? auxiliaryModel,
+    ProviderEntity? auxiliaryModelProvider,
   }) async* {
     var messages = List<ChatMessage>.from(baseMessages);
 
@@ -147,13 +149,29 @@ class AgentService {
             ? await tool.execute(args)
             : 'Error: Unknown tool "${tc.function.name}"';
 
+        var processedResult = _smartTruncate(result);
+        if (auxiliaryModel != null && auxiliaryModelProvider != null) {
+          if (processedResult.length > 4000) {
+            final summary = await _summarizeToolResult(
+              toolName: tc.function.name,
+              result: processedResult,
+              auxModel: auxiliaryModel,
+              auxProvider: auxiliaryModelProvider,
+            );
+            if (summary != null && summary.isNotEmpty) {
+              processedResult = summary;
+            }
+          }
+        }
+
         yield AgentEvent.toolResult(
           id: tc.id,
           name: tc.function.name,
           result: result,
         );
 
-        messages.add(ChatMessage.tool(toolCallId: tc.id, content: result));
+        messages.add(
+            ChatMessage.tool(toolCallId: tc.id, content: processedResult));
 
         toolCallDataList.add({
           'id': tc.id,
@@ -168,6 +186,69 @@ class AgentService {
         content: accumulator.content,
       );
     }
+  }
+
+  String _smartTruncate(String result, {int threshold = 12000}) {
+    if (result.length <= threshold) return result;
+    final headLen = (threshold * 0.6).round();
+    final tailLen = threshold - headLen;
+    final head = result.substring(0, headLen);
+    final tail = result.substring(result.length - tailLen);
+    final skipped = result.length - headLen - tailLen;
+    return '$head\n\n... [truncated $skipped characters] ...\n\n$tail';
+  }
+
+  Future<String?> _summarizeToolResult({
+    required String toolName,
+    required String result,
+    required ModelEntity auxModel,
+    required ProviderEntity auxProvider,
+  }) async {
+    try {
+      final systemPrompt = _buildSummarizationPrompt(toolName);
+      final messages = [
+        ChatMessage.system(systemPrompt),
+        ChatMessage.user(result),
+      ];
+      return await _chatService.complete(
+        messages: messages,
+        provider: auxProvider,
+        model: auxModel,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _buildSummarizationPrompt(String toolName) {
+    const prefix =
+        'You are a tool result summarizer. Extract the key information '
+        'from the tool output below. Be concise but do not omit critical data '
+        'like file paths, exit codes, error messages, URLs, or data values. '
+        'Preserve exact numbers, identifiers, and code symbols.';
+    final String toolSpecific = switch (toolName) {
+      'shell' =>
+        'This is shell command output. Preserve: exit code, error messages, '
+            'exact file paths. Summarize stdout/stderr, keeping any warnings or '
+            'errors verbatim. Omit redundant or repetitive output lines.',
+      'file_read' =>
+        'This is file content. Preserve: code structure (function/class '
+            'signatures), imports, key logic. Summarize the file\'s purpose and '
+            'main components. Keep important code snippets intact.',
+      'search' =>
+        'This is file content search results (grep). Preserve: exact file '
+            'paths, line numbers, matching lines. Group by file.',
+      'web_fetch' =>
+        'This is fetched web page content. Extract: page title, main headings, '
+            'key facts/data, and important links. Omit boilerplate, ads, '
+            'navigation, and scripts.',
+      'web_search' =>
+        'This is web search results. Preserve: all result titles, URLs, and '
+            'key snippets. Organize by relevance.',
+      _ => 'Preserve all key information, data values, identifiers, and '
+          'structural elements. Be thorough but concise.',
+    };
+    return '$prefix\n\n$toolSpecific';
   }
 }
 
