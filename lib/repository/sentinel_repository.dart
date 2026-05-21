@@ -22,10 +22,7 @@ class SentinelRepository {
     var laconic = Database.instance.laconic;
     var json = sentinel.toJson();
     json.remove('id');
-    await laconic.table('sentinels').insert([json]);
-
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('sentinels').insertGetId(json);
   }
 
   Future<void> updateSentinel(SentinelEntity sentinel) async {

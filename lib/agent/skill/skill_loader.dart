@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:yaml/yaml.dart';
+
 class Skill {
   final String name;
   final String description;
@@ -53,32 +55,27 @@ class SkillLoader {
     }
     if (endIndex == -1) return null;
 
-    final frontmatter = lines.sublist(1, endIndex).join('\n');
+    final frontmatterYaml = lines.sublist(1, endIndex).join('\n');
     final body = lines.sublist(endIndex + 1).join('\n').trim();
 
-    final name = _extractField(frontmatter, 'name');
-    final description = _extractField(frontmatter, 'description');
-    if (name.isEmpty || description.isEmpty) return null;
+    final frontmatter = loadYaml(frontmatterYaml);
+    if (frontmatter is! YamlMap) return null;
+
+    final name = frontmatter['name'] as String?;
+    final description = frontmatter['description'] as String?;
+    if (name == null || description == null || name.isEmpty || description.isEmpty) {
+      return null;
+    }
 
     return Skill(
       name: name,
       description: description,
       body: body,
-      allowedTools: _extractFieldOrNull(frontmatter, 'allowed-tools'),
+      allowedTools: frontmatter['allowed-tools'] as String?,
       disableModelInvocation:
-          _extractField(frontmatter, 'disable-model-invocation') == 'true',
+          frontmatter['disable-model-invocation'] == true ||
+              frontmatter['disable-model-invocation'] == 'true',
       sourcePath: file.parent.path,
     );
-  }
-
-  String _extractField(String yaml, String key) {
-    final regex = RegExp('^$key:\\s*(.+)\$', multiLine: true);
-    final match = regex.firstMatch(yaml);
-    return match?.group(1)?.trim() ?? '';
-  }
-
-  String? _extractFieldOrNull(String yaml, String key) {
-    final value = _extractField(yaml, key);
-    return value.isEmpty ? null : value;
   }
 }

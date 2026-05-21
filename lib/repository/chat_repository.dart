@@ -37,11 +37,7 @@ class ChatRepository {
     var laconic = Database.instance.laconic;
     var json = chat.toJson();
     json.remove('id'); // 移除 id,让数据库自动生成
-    await laconic.table('chats').insert([json]);
-
-    // 获取最后插入的 id
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('chats').insertGetId(json);
   }
 
   Future<void> updateChat(ChatEntity chat) async {

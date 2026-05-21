@@ -15,10 +15,6 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/agent/agent_service.dart';
-import 'package:athena/agent/tool/file_read_tool.dart';
-import 'package:athena/agent/tool/search_tool.dart';
-import 'package:athena/agent/tool/shell_tool.dart';
-import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
@@ -650,14 +646,7 @@ class ChatViewModel {
       var toolCallsJson = <Map<String, dynamic>>[];
       var toolResultsJson = <Map<String, dynamic>>[];
 
-      final agentService = AgentService(
-        toolRegistry: ToolRegistry()
-          ..registerAll([
-            SearchTool(),
-            FileReadTool(),
-            ShellTool(),
-          ]),
-      );
+      final agentService = GetIt.instance<AgentService>();
 
       var agentStream = agentService.run(
         chat: chat,
@@ -687,6 +676,8 @@ class ChatViewModel {
             messages.value = [...messages.value, assistantMessage];
             contentBuffer = StringBuffer();
             reasoningBuffer = StringBuffer();
+            toolCallsJson = [];
+            toolResultsJson = [];
             hasCompletedIteration = false;
           }
           reasoningBuffer.write(event.delta);
@@ -709,6 +700,8 @@ class ChatViewModel {
             messages.value = [...messages.value, assistantMessage];
             contentBuffer = StringBuffer();
             reasoningBuffer = StringBuffer();
+            toolCallsJson = [];
+            toolResultsJson = [];
             hasCompletedIteration = false;
           }
           contentBuffer.write(event.delta);
