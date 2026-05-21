@@ -57,67 +57,25 @@ Stream<T> retryStream<T>(
 }) async* {
   final random = Random();
   var attempt = 0;
-  var hasYielded = false;
 
   while (true) {
     attempt++;
-    StreamSubscription<T>? subscription;
-    final completer = Completer<void>();
-    final buffer = <T>[];
-
+    var hasYielded = false;
     try {
-      final stream = operation();
-      Object? streamError;
-
-      subscription = stream.listen(
-        (data) {
-          if (!hasYielded && completer.isCompleted) return;
-          buffer.add(data);
-        },
-        onError: (e) {
-          streamError = e;
-          completer.complete();
-        },
-        onDone: () => completer.complete(),
-        cancelOnError: false,
-      );
-
-      await completer.future;
-
-      final error = streamError;
-      if (error != null) {
-        if (!_isRetryable(error) ||
-            attempt >= config.maxAttempts ||
-            hasYielded) {
-          await subscription.cancel();
-          throw error;
-        }
-        await subscription.cancel();
-        final backoff = config.baseDelay.inMilliseconds *
-            pow(2, attempt - 1).toInt();
-        final delayMs = min(backoff + random.nextInt(500),
-            config.maxDelay.inMilliseconds);
-        LoggerUtil.w('Stream retry attempt $attempt/$config.maxAttempts '
-            'after ${delayMs}ms: ${streamError.runtimeType}');
-        await Future.delayed(Duration(milliseconds: delayMs));
-        continue;
-      }
-
-      // Success — emit buffered data, then signal done
-      for (final item in buffer) {
+      await for (final item in operation()) {
         yield item;
         hasYielded = true;
       }
       return;
     } catch (e) {
-      if (!_isRetryable(e) || attempt >= config.maxAttempts || hasYielded) {
+      if (hasYielded || !_isRetryable(e) || attempt >= config.maxAttempts) {
         rethrow;
       }
-      final backoff = config.baseDelay.inMilliseconds *
-          pow(2, attempt - 1).toInt();
-      final delayMs = min(backoff + random.nextInt(500),
-          config.maxDelay.inMilliseconds);
-      LoggerUtil.w('Stream retry attempt $attempt/$config.maxAttempts '
+      final backoff =
+          config.baseDelay.inMilliseconds * pow(2, attempt - 1).toInt();
+      final delayMs =
+          min(backoff + random.nextInt(500), config.maxDelay.inMilliseconds);
+      LoggerUtil.w('Stream retry attempt $attempt/${config.maxAttempts} '
           'after ${delayMs}ms: ${e.runtimeType}');
       await Future.delayed(Duration(milliseconds: delayMs));
     }
