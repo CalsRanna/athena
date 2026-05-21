@@ -23,6 +23,11 @@ class ShellTool implements Tool {
             'type': 'integer',
             'description': 'Timeout in seconds. Defaults to 30.',
           },
+          'workdir': {
+            'type': 'string',
+            'description': 'Working directory for the command. '
+                'Defaults to the project root.',
+          },
         },
         'required': ['command'],
       };
@@ -34,12 +39,13 @@ class ShellTool implements Tool {
   Future<String> execute(Map<String, dynamic> args) async {
     final command = args['command'] as String;
     final timeoutSeconds = args['timeout'] as int? ?? 30;
+    final workdir = args['workdir'] as String? ?? Directory.current.path;
 
     try {
       final result = await Process.run(
         '/bin/sh',
         ['-c', command],
-        workingDirectory: Directory.current.path,
+        workingDirectory: workdir,
       ).timeout(Duration(seconds: timeoutSeconds));
 
       final stdout = '${result.stdout}'.trim();

@@ -47,7 +47,7 @@ class SearchTool implements Tool {
       type == 'find' ? 'find' : 'grep',
       type == 'find'
           ? [path, '-name', pattern, '-not', '-path', r'*\/\.*']
-          : ['-rn', '--include=*.{dart,yaml,md,json}', pattern, path],
+          : ['-rn', '--include=*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}', pattern, path],
     );
 
     final output = '${results.stdout}'.trim();
