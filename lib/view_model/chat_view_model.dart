@@ -667,12 +667,21 @@ class ChatViewModel {
       );
 
       var contentBuffer = StringBuffer();
+      var reasoningBuffer = StringBuffer();
       var hasCompletedIteration = false;
 
       await for (final event in agentStream) {
         if (!isStreaming.value) break;
 
-        if (event is AgentTextEvent) {
+        if (event is AgentReasoningEvent) {
+          reasoningBuffer.write(event.delta);
+          assistantMessage = assistantMessage.copyWith(
+            reasoningContent: reasoningBuffer.toString(),
+            reasoning: true,
+            reasoningUpdatedAt: DateTime.now(),
+          );
+          _updateMessageInList(assistantId, assistantMessage);
+        } else if (event is AgentTextEvent) {
           if (hasCompletedIteration) {
             await _messageRepository.updateMessage(assistantMessage);
             assistantMessage = MessageEntity(
@@ -684,6 +693,7 @@ class ChatViewModel {
             assistantMessage = assistantMessage.copyWith(id: assistantId);
             messages.value = [...messages.value, assistantMessage];
             contentBuffer = StringBuffer();
+            reasoningBuffer = StringBuffer();
             hasCompletedIteration = false;
           }
           contentBuffer.write(event.delta);
@@ -718,6 +728,12 @@ class ChatViewModel {
           );
           _updateMessageInList(assistantId, assistantMessage);
         }
+      }
+
+      // 标记推理完成
+      if (reasoningBuffer.isNotEmpty) {
+        assistantMessage = assistantMessage.copyWith(reasoning: false);
+        _updateMessageInList(assistantId, assistantMessage);
       }
 
       // 6. 保存最终消息并更新时间戳
