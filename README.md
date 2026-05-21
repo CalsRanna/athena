@@ -2,276 +2,160 @@
 
 <div align="center">
 
-一个功能强大的跨平台 AI 聊天应用，使用 Flutter 构建，支持多种 AI 提供商和丰富的功能特性。
+一个跨平台 AI Agent 应用，使用 Flutter 构建，具备内置工具调用能力和可扩展的 Skill 系统。
 
-![Version](https://img.shields.io/badge/version-2.2.2-blue)
+![Version](https://img.shields.io/badge/version-2.2.12-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 
 </div>
 
-## ✨ 功能特性
+## 功能特性
+
+### Agent 系统
+
+- **内置工具**：Agent 可自主调用 Shell、文件读写、代码搜索等工具完成任务
+- **权限控制**：三层权限模型（工具危险等级 × Skill 覆盖 × 用户规则），危险操作需用户确认
+- **沙箱隔离**：路径级沙箱，防止 Agent 访问敏感目录
+- **流式推理**：支持推理模型的思考过程实时展示
+
+### Skill 系统
+
+- **渐进式加载**：三级加载机制，只在使用时消耗上下文
+- **自动匹配**：Agent 根据任务自主判断何时调用 Skill
+- **可扩展**：用户可编写自定义 Skill（Markdown 格式），放入 `~/.athena/skills/`
+- **项目级共享**：`.athena/skills/` 中 Skill 可随项目版本控制
 
 ### 核心功能
 
-- **🤖 AI 聊天对话**
-  - 支持流式响应，实时获取 AI 回复
-  - 多轮对话上下文管理
-  - 聊天历史保存和检索
-  - 支持固定重要对话
-
-- **🎭 Sentinel（哨兵）系统**
-  - 预定义角色和系统提示词
-  - 自定义 AI 助手人格和行为
-  - 快速切换不同的对话角色
-  - 内置专业的 Athena 助手角色
-
-- **🌐 多 AI 提供商支持**
-  - DeepSeek（包括 R1 推理模型和 V3）
-  - OpenRouter（支持 Claude、GPT、Gemini、Llama 等多种模型）
-  - 阿里云百炼（通义千问系列）
-  - 硅基流动
-  - 火山方舟（豆包系列）
-  - 支持自定义 API 提供商
-
-- **🧠 高级 AI 能力**
-  - 支持视觉能力的模型（图片理解）
-  - 支持推理能力的模型（DeepSeek-R1、o3 等）
-  - 可选择不同上下文窗口的模型
+- **AI 聊天对话**：流式响应，多轮上下文管理，聊天历史保存
+- **Sentinel 系统**：预定义角色和系统提示词，自定义 AI 助手人格
+- **多 AI 提供商**：DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟等
+- **视觉与推理**：支持视觉模型和推理模型（DeepSeek-R1 等）
 
 ### 扩展功能
 
-- **📝 网页摘要**
-  - 自动解析网页内容
-  - 生成智能摘要
-  - 过滤脚本和样式，提取核心信息
+- **网页摘要**：自动解析网页内容生成智能摘要
+- **文本翻译**：AI 驱动的多语言翻译
+- **网络搜索**：集成 Tavily 搜索，为 AI 提供实时信息
+- **TRPG 游戏**：AI 驱动的桌面角色扮演游戏
 
-- **🌍 文本翻译**
-  - 利用 AI 进行高质量翻译
-  - 支持多语言互译
+### 平台
 
-- **🔍 网络搜索**
-  - 集成 Tavily 搜索服务
-  - 为 AI 提供实时信息检索能力
+- **桌面端**：macOS、Windows、Linux，支持窗口管理和系统托盘
+- **移动端**：iOS、Android，触摸优化
 
-- **🎲 TRPG 游戏**
-  - 桌面角色扮演游戏支持
-  - AI 驱动的游戏主持人
-  - 智能行动建议生成
-
-- **🔌 MCP 服务器集成**
-  - 支持 Model Context Protocol
-  - 可扩展的工具和能力
-  - 自定义环境变量配置
-
-### 平台支持
-
-- **桌面端**
-  - macOS
-  - Windows
-  - Linux
-  - 窗口管理和系统托盘支持
-
-- **移动端**
-  - iOS
-  - Android
-  - 触摸优化的交互体验
-
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
 - Flutter SDK >= 3.8.0
 - Dart SDK >= 3.8.0
 
-### 安装依赖
+### 安装
 
 ```bash
-# 克隆项目
 git clone https://github.com/CalsRanna/athena.git
 cd athena
-
-# 安装依赖
 flutter pub get
-
-# 生成必要的代码（路由、数据库等）
 flutter pub run build_runner build
 ```
 
-### 运行应用
+### 运行
 
 ```bash
-# 查看可用设备
-flutter devices
-
-# 在指定设备上运行
-flutter run -d <device-id>
-
-# 调试模式
-flutter run --debug
-
-# 发布模式
-flutter run --release
+flutter devices          # 查看可用设备
+flutter run -d <device>  # 运行
 ```
 
-### 开发命令
+### 开发
 
 ```bash
-# 代码分析
-flutter analyze
-
-# 运行测试
-flutter test
-
-# 清理并重新生成代码
-flutter pub run build_runner build --delete-conflicting-outputs
+flutter analyze  # 代码分析
+flutter test     # 运行测试
 ```
 
-## 🏗️ 项目架构
-
-### 分层架构
+## 架构
 
 ```
 lib/
+├── agent/          # Agent 层 — 工具、权限、Skill
+│   ├── tool/       #   内置工具（search, file_read/write/delete, shell, skill）
+│   ├── permission/ #   权限服务与沙箱
+│   └── skill/      #   Skill 加载与注册
 ├── page/           # UI 层
-│   ├── desktop/    # 桌面端页面
-│   └── mobile/     # 移动端页面
+│   ├── desktop/    #   桌面端页面
+│   └── mobile/     #   移动端页面
 ├── view_model/     # 视图模型层（Signals 状态管理）
-├── service/        # 服务层（业务逻辑）
+├── service/        # 服务层（ChatService, ChatMessageService 等）
 ├── repository/     # 数据访问层
 ├── entity/         # 数据库实体
 ├── database/       # 数据库管理和迁移
-├── router/         # 路由配置
+├── router/         # 路由配置（AutoRoute）
 ├── widget/         # 可复用组件
-├── component/      # 业务组件
-├── preset/         # 预设数据
-└── vendor/         # 第三方库扩展
+└── component/      # 业务组件
 ```
 
-### 核心技术栈
+### 技术栈
 
-- **UI 框架**: Flutter
-- **状态管理**: Signals（细粒度响应式）
+- **UI**: Flutter
+- **状态管理**: Signals
 - **依赖注入**: GetIt
-- **路由管理**: AutoRoute
+- **路由**: AutoRoute
 - **数据库**: SQLite + Laconic ORM
-- **HTTP 客户端**: OpenAI Dart（支持 OpenAI 兼容 API）
-- **其他**:
-  - `dart_mcp` - MCP 协议支持
-  - `tavily_dart` - 搜索服务
-  - `window_manager` - 桌面窗口管理
-  - `system_tray` - 系统托盘
+- **API**: openai_dart v5.0.0（支持工具调用）
 
-## ⚙️ 配置说明
+## 配置
 
-### 添加 AI 提供商
+### Skill 配置
 
-1. 在应用中导航到设置 > 提供商
-2. 点击添加新提供商
-3. 填写以下信息：
-   - 提供商名称
-   - Base URL（API 地址）
-   - API Key
-4. 添加支持的模型信息
+Skill 是以 `SKILL.md` 为入口的目录：
 
-### 配置 Sentinel（角色）
+```markdown
+---
+name: my-skill
+description: What this skill does and when to use it
+allowed-tools: Read, Grep
+---
+## Process
+1. Step one
+2. Step two
+```
 
-1. 在应用中导航到设置 > Sentinel
-2. 创建新的 Sentinel 或编辑现有的
-3. 设置：
-   - 角色名称
-   - 描述
-   - 系统提示词
-   - 标签
+放置位置：
+- `~/.athena/skills/` — 用户级（个人用）
+- `.athena/skills/` — 项目级（版本控制）
 
-### MCP 服务器配置
+Agent 会在推理时自主判断是否需要调用某个 Skill，通过内置的 `skill` 工具加载完整指令。
 
-1. 在设置 > 服务器中添加 MCP 服务器
-2. 配置：
-   - 服务器名称
-   - 启动命令
-   - 命令参数
-   - 环境变量
+### AI 提供商配置
 
-## 🗂️ 数据库管理
+在设置中添加提供商，填写 API 地址和 Key。内置预设：
 
-Athena 使用 SQLite 数据库存储所有数据，数据库位于应用程序支持目录下的 `athena.db`。
+| 提供商 | 模型 |
+|--------|------|
+| DeepSeek | R1, V3 |
+| OpenRouter | Claude, GPT, Gemini, Llama 等 |
+| 阿里云百炼 | 通义千问系列, DeepSeek 系列 |
+| 硅基流动 | DeepSeek 系列 |
+| 火山方舟 | 豆包系列, DeepSeek 系列 |
 
-### 数据库迁移
+## 贡献
 
-迁移文件位于 `lib/database/migration/`，按时间顺序自动执行。
+1. Fork 仓库
+2. 创建分支 (`git checkout -b feature/xxx`)
+3. 提交 (`git commit -m 'Add xxx'`)
+4. Push (`git push origin feature/xxx`)
+5. 开 PR
 
-添加新迁移：
+## 许可证
 
-1. 在 `lib/database/migration/` 创建新文件，命名格式：
-   ```
-   migration_YYYYMMDDNNNN_description.dart
-   ```
-
-2. 在 `lib/database/database.dart` 的 `_migrate()` 方法中添加迁移调用
-
-3. 运行应用以应用迁移
-
-## 🎨 预设提供商
-
-Athena 内置了以下 AI 提供商的配置：
-
-| 提供商 | 支持模型 | 特点 |
-|--------|---------|------|
-| DeepSeek | DeepSeek-R1, DeepSeek-V3 | 推理能力强，性价比高 |
-| OpenRouter | Claude 4, GPT-5, Gemini 2.5, o3, Llama 4 等 | 聚合多家模型，选择丰富 |
-| 阿里云百炼 | 通义千问系列, DeepSeek 系列 | 国内访问稳定 |
-| 硅基流动 | DeepSeek 系列 | 国内服务 |
-| 火山方舟 | 豆包系列, DeepSeek 系列 | 字节跳动服务 |
-
-## 🤝 贡献指南
-
-欢迎贡献代码、报告问题或提出建议！
-
-### 开发流程
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-### 代码规范
-
-- 遵循 Flutter 官方代码风格
-- 运行 `flutter analyze` 确保无警告
-- 为新功能添加适当的测试
-- 更新相关文档
-
-## 📝 开发注意事项
-
-1. **代码生成**: 修改路由或实体后，务必运行 `flutter pub run build_runner build`
-2. **数据库迁移**: 按时间顺序创建迁移文件，避免跳过序号
-3. **平台判断**: 使用 `Platform.isMacOS || Platform.isLinux || Platform.isWindows` 判断桌面端
-4. **状态管理**: 在 ViewModel 中使用 Signals，避免手动 setState
-5. **依赖注入**: 新增 ViewModel 需要在 `lib/di.dart` 中注册
-6. **日志输出**: 使用 `LoggerUtil` 而不是 `print()`
-
-## 📄 许可证
-
-本项目采用 MIT 许可证。详见 [LICENSE](LICENSE) 文件。
-
-## 🙏 致谢
-
-感谢所有为这个项目做出贡献的开发者，以及以下开源项目：
-
-- [Flutter](https://flutter.dev)
-- [Signals](https://github.com/rodydavis/signals.dart)
-- [OpenAI Dart](https://github.com/davidmigloz/langchain_dart)
-- [AutoRoute](https://github.com/Milad-Akarie/auto_route_library)
-- [GetIt](https://github.com/fluttercommunity/get_it)
+MIT
 
 ---
 
 <div align="center">
 
-**[报告问题](https://github.com/CalsRanna/athena/issues) · [功能建议](https://github.com/CalsRanna/athena/issues)**
-
-Made with ❤️ by CalsRanna
+**[报告问题](https://github.com/CalsRanna/athena/issues)**
 
 </div>
