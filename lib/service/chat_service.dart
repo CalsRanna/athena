@@ -63,6 +63,31 @@ class ChatService {
     );
   }
 
+  /// 非流式完成，用于辅助模型摘要等场景
+  Future<String> complete({
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    var client = OpenAIClient.withApiKey(
+      provider.apiKey,
+      baseUrl: provider.baseUrl,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
+        'X-Title': 'Athena',
+      },
+    );
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: messages,
+    );
+    var response = await retry(
+      () => client.chat.completions.create(request),
+      config: retryConfig,
+    );
+    return response.text ?? '';
+  }
+
   /// 获取聊天标题流
   Stream<String> getTitle(
     String value, {

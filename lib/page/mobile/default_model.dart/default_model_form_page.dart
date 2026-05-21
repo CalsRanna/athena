@@ -34,7 +34,8 @@ class _MobileDefaultModelFormPageState
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var chatTitle = Text('Default Chat Model', style: titleTextStyle);
+    var chatTitle = Text('Agent Model', style: titleTextStyle);
+    var auxiliaryTitle = Text('Auxiliary Model', style: titleTextStyle);
     var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
     var generationTitle = Text(
       'Sentinel Metadata Generation Model',
@@ -48,6 +49,11 @@ class _MobileDefaultModelFormPageState
       height: 1.5,
     );
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
+    var auxiliaryTip = Text(
+      'Optional model for summarizing long tool results. '
+      'Recommended: a small, fast model.',
+      style: tipTextStyle,
+    );
     var namingTip = Text(
       'Model designated for automatic chat renaming',
       style: tipTextStyle,
@@ -66,6 +72,12 @@ class _MobileDefaultModelFormPageState
         model: settingViewModel.chatModel.value,
         onChanged: settingViewModel.updateChatModelId,
         provider: settingViewModel.chatModelProvider.value,
+      );
+      var auxiliaryDropdown = _ModelDropdown(
+        groupedModels: modelViewModel.groupedEnabledModels.value,
+        model: settingViewModel.auxiliaryModel.value,
+        onChanged: settingViewModel.updateAuxiliaryModelId,
+        provider: settingViewModel.auxiliaryModelProvider.value,
       );
       var chatNamingDropdown = _ModelDropdown(
         groupedModels: modelViewModel.groupedEnabledModels.value,
@@ -92,6 +104,12 @@ class _MobileDefaultModelFormPageState
         chatDropdown,
         const SizedBox(height: 12),
         chatTip,
+        const SizedBox(height: 16),
+        auxiliaryTitle,
+        const SizedBox(height: 12),
+        auxiliaryDropdown,
+        const SizedBox(height: 12),
+        auxiliaryTip,
         const SizedBox(height: 16),
         namingTitle,
         const SizedBox(height: 12),

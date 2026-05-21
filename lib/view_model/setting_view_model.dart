@@ -31,6 +31,7 @@ class SettingViewModel {
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
   static const String _keyShortModelId = 'short_model_id';
+  static const String _keyAuxiliaryModelId = 'auxiliary_model_id';
   static const String _keyMaxAgentIterations = 'max_agent_iterations';
   static const String _keyMaxRetries = 'max_retries';
   static const String _keyBraveApiKey = 'brave_api_key';
@@ -42,15 +43,18 @@ class SettingViewModel {
   final chatNamingModelId = signal(0);
   final sentinelMetadataGenerationModelId = signal(0);
   final shortModelId = signal(0);
+  final auxiliaryModelId = signal(0);
   final chatModel = signal<ModelEntity?>(null);
   final chatNamingModel = signal<ModelEntity?>(null);
 
   final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
   final shortModel = signal<ModelEntity?>(null);
+  final auxiliaryModel = signal<ModelEntity?>(null);
   final chatModelProvider = signal<ProviderEntity?>(null);
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
+  final auxiliaryModelProvider = signal<ProviderEntity?>(null);
   final maxAgentIterations = signal(100);
   final maxRetries = signal(10);
   final braveApiKey = signal('');
@@ -76,6 +80,7 @@ class SettingViewModel {
     sentinelMetadataGenerationModelId.value =
         instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
     shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
+    auxiliaryModelId.value = instance.getInt(_keyAuxiliaryModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
     GetIt.instance<ChatService>().retryConfig =
@@ -89,6 +94,8 @@ class SettingViewModel {
       sentinelMetadataGenerationModelId.value,
     );
     shortModel.value = await _modelRepository.getModelById(shortModelId.value);
+    auxiliaryModel.value =
+        await _modelRepository.getModelById(auxiliaryModelId.value);
     if (chatModel.value != null) {
       chatModelProvider.value = await _providerRepository.getProviderById(
         chatModel.value!.providerId,
@@ -106,6 +113,11 @@ class SettingViewModel {
     if (shortModel.value != null) {
       shortModelProvider.value = await _providerRepository.getProviderById(
         shortModel.value!.providerId,
+      );
+    }
+    if (auxiliaryModel.value != null) {
+      auxiliaryModelProvider.value = await _providerRepository.getProviderById(
+        auxiliaryModel.value!.providerId,
       );
     }
   }
@@ -159,6 +171,19 @@ class SettingViewModel {
     if (shortModel.value != null) {
       shortModelProvider.value = await _providerRepository.getProviderById(
         shortModel.value!.providerId,
+      );
+    }
+  }
+
+  /// 更新辅助模型 ID
+  Future<void> updateAuxiliaryModelId(int modelId) async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyAuxiliaryModelId, modelId);
+    auxiliaryModelId.value = modelId;
+    auxiliaryModel.value = await _modelRepository.getModelById(modelId);
+    if (auxiliaryModel.value != null) {
+      auxiliaryModelProvider.value = await _providerRepository.getProviderById(
+        auxiliaryModel.value!.providerId,
       );
     }
   }
