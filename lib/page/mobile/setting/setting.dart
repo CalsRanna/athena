@@ -1,3 +1,4 @@
+import 'package:athena/page/mobile/setting/agent_page.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
@@ -11,6 +12,14 @@ class SettingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
+      MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedAiSetting, size: 24),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MobileAgentPage()),
+        ),
+        title: 'Agent',
+        trailing: '',
+      ),
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedPowerService, size: 24),
         onTap: () => MobileProviderListRoute().push(context),
