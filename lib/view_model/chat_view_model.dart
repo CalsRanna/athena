@@ -667,11 +667,25 @@ class ChatViewModel {
       );
 
       var contentBuffer = StringBuffer();
+      var hasCompletedIteration = false;
 
       await for (final event in agentStream) {
         if (!isStreaming.value) break;
 
         if (event is AgentTextEvent) {
+          if (hasCompletedIteration) {
+            await _messageRepository.updateMessage(assistantMessage);
+            assistantMessage = MessageEntity(
+              chatId: chat.id!,
+              role: 'assistant',
+              content: '',
+            );
+            assistantId = await _messageRepository.storeMessage(assistantMessage);
+            assistantMessage = assistantMessage.copyWith(id: assistantId);
+            messages.value = [...messages.value, assistantMessage];
+            contentBuffer = StringBuffer();
+            hasCompletedIteration = false;
+          }
           contentBuffer.write(event.delta);
           assistantMessage = assistantMessage.copyWith(
             content: contentBuffer.toString(),
@@ -697,6 +711,7 @@ class ChatViewModel {
             toolResults: jsonEncode(toolResultsJson),
           );
           _updateMessageInList(assistantId, assistantMessage);
+          hasCompletedIteration = true;
         } else if (event is AgentDoneEvent) {
           assistantMessage = assistantMessage.copyWith(
             content: event.content,
