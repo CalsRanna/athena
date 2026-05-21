@@ -1,3 +1,4 @@
+import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -106,6 +107,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Future<void> _initializeViewModels() async {
     await GetIt.instance<SettingViewModel>().initSignals();
+    await GetIt.instance<PermissionService>().load();
     await chatViewModel.getChats();
     await sentinelViewModel.getSentinels();
   }

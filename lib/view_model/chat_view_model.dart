@@ -15,6 +15,8 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/agent/agent_service.dart';
+import 'package:athena/agent/permission/permission_dialog.dart';
+import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
@@ -650,6 +652,7 @@ class ChatViewModel {
 
       final agentService = GetIt.instance<AgentService>();
       final settingVM = GetIt.instance<SettingViewModel>();
+      final permissionService = GetIt.instance<PermissionService>();
 
       var agentStream = agentService.run(
         chat: chat,
@@ -659,15 +662,31 @@ class ChatViewModel {
         maxIterations: settingVM.maxAgentIterations.value,
         auxiliaryModel: settingVM.auxiliaryModel.value,
         auxiliaryModelProvider: settingVM.auxiliaryModelProvider.value,
+        permissionService: permissionService,
         onPermission: (toolName, arguments) async {
           final context = router.navigatorKey.currentContext;
           if (context == null) return false;
-          final formatted = _formatToolArgs(toolName, arguments);
-          final approved = await AthenaDialog.confirm(
-            formatted,
-            dismissible: false,
+          Map<String, dynamic> args;
+          try {
+            args = jsonDecode(arguments) as Map<String, dynamic>;
+          } catch (_) {
+            args = {};
+          }
+          final description = _formatToolArgs(toolName, arguments);
+          final ruleDesc =
+              permissionService.generateRuleDescription(toolName, args);
+          final isDangerous = permissionService.isDangerous(toolName, args);
+          final result = await showPermissionDialog(
+            toolName: toolName,
+            description: description,
+            ruleDescription: ruleDesc,
+            allowPersist: !isDangerous,
           );
-          return approved ?? false;
+          if (result.approved && result.persist) {
+            final rule = permissionService.generateRule(toolName, args);
+            await permissionService.persistRule(rule);
+          }
+          return result.approved;
         },
       );
 
