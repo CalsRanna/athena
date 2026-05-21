@@ -3,15 +3,15 @@ import 'dart:io';
 
 class PermissionRule {
   final String tool;
-  final String? prefix;
+  final String? pattern;
   final String? contains;
 
-  const PermissionRule({required this.tool, this.prefix, this.contains});
+  const PermissionRule({required this.tool, this.pattern, this.contains});
 
   factory PermissionRule.fromJson(Map<String, dynamic> json) {
     return PermissionRule(
       tool: json['tool'] as String,
-      prefix: json['prefix'] as String?,
+      pattern: json['pattern'] as String?,
       contains: json['contains'] as String?,
     );
   }
@@ -19,16 +19,16 @@ class PermissionRule {
   Map<String, dynamic> toJson() {
     return {
       'tool': tool,
-      if (prefix != null) 'prefix': prefix,
+      if (pattern != null) 'pattern': pattern,
       if (contains != null) 'contains': contains,
     };
   }
 
   bool matchesAllow(String toolName, String? keyArg) {
     if (tool != toolName) return false;
-    if (prefix == null) return true;
+    if (pattern == null) return true;
     if (keyArg == null) return false;
-    return keyArg.startsWith(prefix!);
+    return _globMatch(pattern!, keyArg);
   }
 
   bool matchesDeny(String toolName, String? keyArg) {
@@ -36,6 +36,14 @@ class PermissionRule {
     if (contains == null) return true;
     if (keyArg == null) return false;
     return keyArg.contains(contains!);
+  }
+
+  static bool _globMatch(String pattern, String value) {
+    if (pattern == '*') return true;
+    if (pattern.endsWith('*')) {
+      return value.startsWith(pattern.substring(0, pattern.length - 1));
+    }
+    return value == pattern;
   }
 }
 
@@ -92,7 +100,7 @@ class PermissionStore {
 
   Future<void> addAllowRule(PermissionRule rule) async {
     final exists = allowRules.any(
-      (r) => r.tool == rule.tool && r.prefix == rule.prefix,
+      (r) => r.tool == rule.tool && r.pattern == rule.pattern,
     );
     if (exists) return;
     allowRules.add(rule);

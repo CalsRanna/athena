@@ -29,12 +29,12 @@ class PermissionService {
     switch (toolName) {
       case 'shell':
         final prefix = _extractCommandPrefix(keyArg ?? '');
-        return PermissionRule(tool: toolName, prefix: prefix);
+        return PermissionRule(tool: toolName, pattern: '$prefix*');
       case 'file_write':
       case 'file_update':
       case 'file_delete':
         final dir = _extractDirectory(keyArg ?? '');
-        return PermissionRule(tool: toolName, prefix: dir);
+        return PermissionRule(tool: toolName, pattern: '$dir*');
       default:
         return PermissionRule(tool: toolName);
     }
@@ -43,20 +43,22 @@ class PermissionService {
   /// 生成 checkbox 显示文案
   String generateRuleDescription(String toolName, Map<String, dynamic> args) {
     final rule = generateRule(toolName, args);
-    if (rule.prefix == null) {
+    if (rule.pattern == null) {
       return 'Always allow $toolName';
     }
     switch (toolName) {
       case 'shell':
-        final cmd = rule.prefix!.trim();
+        final cmd = rule.pattern!.replaceAll('*', '').trim();
         return 'Always allow "$cmd" commands';
       case 'file_write':
       case 'file_update':
-        return 'Always allow writes to "${rule.prefix}"';
+        final dir = rule.pattern!.replaceAll('*', '');
+        return 'Always allow writes to "$dir"';
       case 'file_delete':
-        return 'Always allow deletes in "${rule.prefix}"';
+        final dir = rule.pattern!.replaceAll('*', '');
+        return 'Always allow deletes in "$dir"';
       default:
-        return 'Always allow $toolName with prefix "${rule.prefix}"';
+        return 'Always allow $toolName matching "${rule.pattern}"';
     }
   }
 
@@ -90,6 +92,24 @@ class PermissionService {
   String _extractCommandPrefix(String command) {
     final parts = command.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty) return '';
+    if (parts.length == 1) return '${parts.first} ';
+    // 有子命令结构的工具，取前两个词
+    const multiLevelTools = {
+      'npm', 'npx', 'pnpm', 'yarn',
+      'pip', 'pip3', 'pipx',
+      'docker', 'docker-compose', 'podman',
+      'kubectl', 'helm',
+      'flutter', 'dart', 'pub',
+      'cargo', 'rustup',
+      'go',
+      'brew',
+      'apt', 'apt-get', 'dnf', 'yum', 'pacman',
+      'systemctl', 'journalctl',
+      'git', // git 虽然通常安全，但 git push/reset 等有风险
+    };
+    if (multiLevelTools.contains(parts.first)) {
+      return '${parts[0]} ${parts[1]} ';
+    }
     return '${parts.first} ';
   }
 
