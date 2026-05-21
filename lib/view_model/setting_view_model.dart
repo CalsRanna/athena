@@ -10,9 +10,11 @@ import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-
+import 'package:athena/service/chat_service.dart';
+import 'package:athena/util/retry.dart';
 import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
 import 'package:window_manager/window_manager.dart';
@@ -30,6 +32,7 @@ class SettingViewModel {
       'sentinel_metadata_generation_model_id';
   static const String _keyShortModelId = 'short_model_id';
   static const String _keyMaxAgentIterations = 'max_agent_iterations';
+  static const String _keyMaxRetries = 'max_retries';
   static const String _keyBraveApiKey = 'brave_api_key';
   // Window 尺寸
   final windowHeight = signal(720.0);
@@ -49,6 +52,7 @@ class SettingViewModel {
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
   final maxAgentIterations = signal(100);
+  final maxRetries = signal(10);
   final braveApiKey = signal('');
 
   final _modelRepository = ModelRepository();
@@ -73,6 +77,9 @@ class SettingViewModel {
         instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
     shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
+    maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
+    GetIt.instance<ChatService>().retryConfig =
+        RetryConfig(maxAttempts: maxRetries.value);
     braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
@@ -154,6 +161,14 @@ class SettingViewModel {
         shortModel.value!.providerId,
       );
     }
+  }
+
+  /// 更新最大重试次数
+  Future<void> updateMaxRetries(int max) async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyMaxRetries, max);
+    maxRetries.value = max;
+    GetIt.instance<ChatService>().retryConfig = RetryConfig(maxAttempts: max);
   }
 
   /// 更新 Brave Search API Key

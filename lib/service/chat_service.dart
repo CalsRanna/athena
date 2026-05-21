@@ -4,10 +4,13 @@ import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/preset/prompt.dart';
+import 'package:athena/util/retry.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// ChatService 负责与 AI 提供商进行聊天相关的网络请求
 class ChatService {
+  RetryConfig retryConfig = const RetryConfig();
+
   /// 测试连接
   Future<String> connect({
     required ProviderEntity provider,
@@ -25,7 +28,10 @@ class ChatService {
       model: model.modelId,
       messages: [ChatMessage.user('Hi')],
     );
-    var response = await client.chat.completions.create(request);
+    var response = await retry(
+      () => client.chat.completions.create(request),
+      config: retryConfig,
+    );
     return response.text ?? '';
   }
 
@@ -51,7 +57,10 @@ class ChatService {
       temperature: chat.temperature,
       tools: tools,
     );
-    yield* client.chat.completions.createStream(request);
+    yield* retryStream(
+      () => client.chat.completions.createStream(request),
+      config: retryConfig,
+    );
   }
 
   /// 获取聊天标题流
@@ -75,7 +84,10 @@ class ChatService {
         ChatMessage.user(value),
       ],
     );
-    var response = client.chat.completions.createStream(request);
+    var response = retryStream(
+      () => client.chat.completions.createStream(request),
+      config: retryConfig,
+    );
     await for (final chunk in response) {
       if (chunk.choices == null || chunk.choices!.isEmpty) continue;
       yield chunk.choices!.first.delta.content ?? '';

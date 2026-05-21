@@ -14,15 +14,21 @@ class AthenaDialog {
   static OverlayEntry? _messageOverlay;
   static Timer? _messageTimer;
 
-  static Future<bool?> confirm(String text) async {
+  static Future<bool?> confirm(
+    String text, {
+    bool dismissible = true,
+  }) async {
     if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
       return showDialog<bool>(
+        barrierDismissible: dismissible,
         builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
         context: router.navigatorKey.currentContext!,
       );
     } else {
       return showModalBottomSheet<bool>(
         backgroundColor: ColorUtil.FF282F32,
+        isDismissible: dismissible,
+        enableDrag: dismissible,
         builder: (_) => _ConfirmDialog(text: text),
         context: router.navigatorKey.currentContext!,
       );

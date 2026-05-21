@@ -21,6 +21,9 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   late final iterationsController = TextEditingController(
     text: viewModel.maxAgentIterations.value.toString(),
   );
+  late final retriesController = TextEditingController(
+    text: viewModel.maxRetries.value.toString(),
+  );
   late final braveApiKeyController = TextEditingController(
     text: viewModel.braveApiKey.value,
   );
@@ -28,6 +31,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   @override
   void dispose() {
     iterationsController.dispose();
+    retriesController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
   }
@@ -81,6 +85,29 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
             ],
           ),
           const SizedBox(height: 12),
+          Text('Max Retries', style: titleTextStyle),
+          Text(
+            'Maximum network retry attempts for LLM API calls (default: 10)',
+            style: labelTextStyle,
+          ),
+          Row(
+            spacing: 16,
+            children: [
+              SizedBox(
+                width: 120,
+                child: AthenaInput(
+                  controller: retriesController,
+                  placeholder: '10',
+                  radius: 8,
+                ),
+              ),
+              AthenaSecondaryButton.small(
+                onTap: _saveRetries,
+                child: Text('Save'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           braveApiTitle,
           braveApiLabel,
           Row(
@@ -115,6 +142,18 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     await viewModel.updateMaxAgentIterations(value);
     if (!mounted) return;
     AthenaDialog.success('Max iterations updated');
+  }
+
+  Future<void> _saveRetries() async {
+    final value = int.tryParse(retriesController.text.trim());
+    if (value == null || value < 1) {
+      if (!mounted) return;
+      AthenaDialog.info('Please enter a valid number (minimum 1)');
+      return;
+    }
+    await viewModel.updateMaxRetries(value);
+    if (!mounted) return;
+    AthenaDialog.success('Max retries updated');
   }
 
   Future<void> _saveBraveApiKey() async {

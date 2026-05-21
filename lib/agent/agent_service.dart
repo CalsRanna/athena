@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/tool_interface.dart' show DangerLevel;
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
@@ -15,7 +14,6 @@ typedef PermissionCallback = Future<bool> Function(String toolName, String descr
 class AgentService {
   final ChatService _chatService;
   final ToolRegistry _toolRegistry;
-  final PathSandbox _pathSandbox = PathSandbox();
 
   AgentService({
     ChatService? chatService,
@@ -115,23 +113,21 @@ class AgentService {
 
         final tool = _toolRegistry.get(tc.function.name);
 
-        if (tool != null) {
-          final sandboxError = _checkSandbox(tool.name, args);
-          if (sandboxError != null) {
+        if (tool != null &&
+            tool.dangerLevel == DangerLevel.needsApproval) {
+          if (onPermission == null) {
+            const deniedMsg =
+                'Error: Tool requires user approval but no permission '
+                'callback is configured.';
             yield AgentEvent.toolResult(
               id: tc.id,
               name: tc.function.name,
-              result: sandboxError,
+              result: deniedMsg,
             );
             messages.add(
-                ChatMessage.tool(toolCallId: tc.id, content: sandboxError));
+                ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
             continue;
           }
-        }
-
-        if (onPermission != null &&
-            tool != null &&
-            tool.dangerLevel == DangerLevel.needsApproval) {
           final approved =
               await onPermission(tc.function.name, tc.function.arguments);
           if (!approved) {
@@ -171,37 +167,6 @@ class AgentService {
         toolCalls: toolCallDataList,
         content: accumulator.content,
       );
-    }
-  }
-
-  String? _checkSandbox(String toolName, Map<String, dynamic> args) {
-    switch (toolName) {
-      case 'file_read':
-      case 'search':
-      case 'list_directory':
-        final path = args['path'] as String?;
-        if (path != null && !_pathSandbox.canRead(path)) {
-          return 'Error: Path "$path" is outside the allowed directories';
-        }
-        return null;
-      case 'file_write':
-      case 'file_update':
-      case 'file_delete':
-        final path = args['path'] as String?;
-        if (path == null) return 'Error: path is required';
-        if (!_pathSandbox.canWrite(path)) {
-          return 'Error: Path "$path" is outside the allowed directories';
-        }
-        return null;
-      case 'shell':
-        final command = args['command'] as String?;
-        if (command == null) return 'Error: command is required';
-        if (!_pathSandbox.canExecute(command)) {
-          return 'Error: Command blocked by sandbox';
-        }
-        return null;
-      default:
-        return null;
     }
   }
 }

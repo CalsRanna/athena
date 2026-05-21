@@ -20,7 +20,9 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/router/router.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get_it/get_it.dart';
@@ -653,7 +655,18 @@ class ChatViewModel {
         provider: provider,
         model: model,
         baseMessages: wrappedMessages,
-        maxIterations: GetIt.instance<SettingViewModel>().maxAgentIterations.value,
+        maxIterations:
+            GetIt.instance<SettingViewModel>().maxAgentIterations.value,
+        onPermission: (toolName, arguments) async {
+          final context = router.navigatorKey.currentContext;
+          if (context == null) return false;
+          final formatted = _formatToolArgs(toolName, arguments);
+          final approved = await AthenaDialog.confirm(
+            formatted,
+            dismissible: false,
+          );
+          return approved ?? false;
+        },
       );
 
       var contentBuffer = StringBuffer();
@@ -895,6 +908,28 @@ class ChatViewModel {
 
   void updateCurrentTemperature(double temperature) {
     currentTemperature.value = temperature;
+  }
+
+  String _formatToolArgs(String toolName, String arguments) {
+    final buffer = StringBuffer();
+    buffer.writeln('Agent wants to use: $toolName');
+    try {
+      final args = jsonDecode(arguments) as Map<String, dynamic>;
+      for (final entry in args.entries) {
+        var value = entry.value.toString();
+        if (value.length > 120) {
+          value = '${value.substring(0, 120)}...';
+        }
+        buffer.writeln('  ${entry.key}: $value');
+      }
+    } catch (_) {
+      if (arguments.length > 200) {
+        buffer.writeln('  ${arguments.substring(0, 200)}...');
+      } else {
+        buffer.writeln('  $arguments');
+      }
+    }
+    return buffer.toString();
   }
 
   Future<void> prepareNewChatDraft() async {

@@ -17,6 +17,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   late final iterationsController = TextEditingController(
     text: viewModel.maxAgentIterations.value.toString(),
   );
+  late final retriesController = TextEditingController(
+    text: viewModel.maxRetries.value.toString(),
+  );
   late final braveApiKeyController = TextEditingController(
     text: viewModel.braveApiKey.value,
   );
@@ -24,6 +27,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
   @override
   void dispose() {
     iterationsController.dispose();
+    retriesController.dispose();
     braveApiKeyController.dispose();
     super.dispose();
   }
@@ -62,6 +66,34 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             const SizedBox(height: 8),
             AthenaSecondaryButton.small(
               onTap: _saveIterations,
+              child: const Text('Save'),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Max Retries',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Maximum network retry attempts for LLM API calls (default: 10)',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: retriesController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                hintText: '10',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            AthenaSecondaryButton.small(
+              onTap: _saveRetries,
               child: const Text('Save'),
             ),
             const SizedBox(height: 24),
@@ -111,6 +143,22 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Max iterations updated')),
+    );
+  }
+
+  Future<void> _saveRetries() async {
+    final value = int.tryParse(retriesController.text.trim());
+    if (value == null || value < 1) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid number (minimum 1)')),
+      );
+      return;
+    }
+    await viewModel.updateMaxRetries(value);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Max retries updated')),
     );
   }
 
