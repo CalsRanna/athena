@@ -21,7 +21,7 @@ class AgentService {
   })  : _chatService = chatService ?? ChatService(),
         _toolRegistry = toolRegistry ?? ToolRegistry();
 
-  static const int maxIterations = 10;
+  static const int maxIterations = 25;
 
   Stream<AgentEvent> run({
     required ChatEntity chat,
