@@ -5,8 +5,7 @@ import 'package:athena/component/button.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/home/component/base64_image.dart';
-import 'package:athena/page/desktop/home/component/tool_call_card.dart';
-import 'package:athena/page/desktop/home/component/tool_result_card.dart';
+import 'package:athena/page/desktop/home/component/tool_card.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/dialog.dart';
@@ -136,29 +135,7 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent() {
-    final toolCards = <Widget>[];
-    if (message.toolCalls.isNotEmpty) {
-      try {
-        final calls = jsonDecode(message.toolCalls) as List<dynamic>;
-        for (final call in calls) {
-          toolCards.add(ToolCallCard(
-            toolName: call['name'] ?? '',
-            arguments: call['arguments'] ?? '',
-          ));
-        }
-      } catch (_) {}
-    }
-    if (message.toolResults.isNotEmpty) {
-      try {
-        final results = jsonDecode(message.toolResults) as List<dynamic>;
-        for (final result in results) {
-          toolCards.add(ToolResultCard(
-            toolName: result['name'] ?? '',
-            result: result['result'] ?? '',
-          ));
-        }
-      } catch (_) {}
-    }
+    final toolCards = _buildToolCards();
 
     var children = [
       _AssistantMessageListTileThinkingPart(message: message),
@@ -178,6 +155,36 @@ class _AssistantMessageListTile extends StatelessWidget {
       child: column,
     );
     return Expanded(child: container);
+  }
+
+  List<Widget> _buildToolCards() {
+    final cards = <Widget>[];
+
+    Map<String, String> results = {};
+    if (message.toolResults.isNotEmpty) {
+      try {
+        final list = jsonDecode(message.toolResults) as List<dynamic>;
+        for (final r in list) {
+          results[r['id'] as String] = r['result'] as String;
+        }
+      } catch (_) {}
+    }
+
+    if (message.toolCalls.isNotEmpty) {
+      try {
+        final calls = jsonDecode(message.toolCalls) as List<dynamic>;
+        for (final call in calls) {
+          final id = call['id'] as String;
+          cards.add(ToolCard(
+            toolName: call['name'] ?? '',
+            arguments: call['arguments'] ?? '',
+            result: results[id],
+          ));
+        }
+      } catch (_) {}
+    }
+
+    return cards;
   }
 
   Widget _buildTrailingSpace() {
