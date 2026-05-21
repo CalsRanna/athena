@@ -674,6 +674,20 @@ class ChatViewModel {
         if (!isStreaming.value) break;
 
         if (event is AgentReasoningEvent) {
+          if (hasCompletedIteration) {
+            await _messageRepository.updateMessage(assistantMessage);
+            assistantMessage = MessageEntity(
+              chatId: chat.id!,
+              role: 'assistant',
+              content: '',
+            );
+            assistantId = await _messageRepository.storeMessage(assistantMessage);
+            assistantMessage = assistantMessage.copyWith(id: assistantId);
+            messages.value = [...messages.value, assistantMessage];
+            contentBuffer = StringBuffer();
+            reasoningBuffer = StringBuffer();
+            hasCompletedIteration = false;
+          }
           reasoningBuffer.write(event.delta);
           assistantMessage = assistantMessage.copyWith(
             reasoningContent: reasoningBuffer.toString(),
