@@ -10,6 +10,8 @@ class MessageEntity {
   final bool expanded;
   final String imageUrls;
   final String reference;
+  final String toolCalls;
+  final String toolResults;
   final DateTime reasoningStartedAt;
   final DateTime reasoningUpdatedAt;
 
@@ -23,6 +25,8 @@ class MessageEntity {
     this.expanded = true,
     this.imageUrls = '',
     this.reference = '',
+    this.toolCalls = '',
+    this.toolResults = '',
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
@@ -39,6 +43,8 @@ class MessageEntity {
       expanded: json.getBool('expanded', defaultValue: true),
       imageUrls: json.getString('image_urls'),
       reference: json.getString('reference'),
+      toolCalls: json.getString('tool_calls'),
+      toolResults: json.getString('tool_results'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
     );
@@ -55,6 +61,8 @@ class MessageEntity {
       'expanded': expanded ? 1 : 0,
       'image_urls': imageUrls,
       'reference': reference,
+      'tool_calls': toolCalls,
+      'tool_results': toolResults,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
     };
@@ -70,6 +78,8 @@ class MessageEntity {
     bool? expanded,
     String? imageUrls,
     String? reference,
+    String? toolCalls,
+    String? toolResults,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) {
@@ -83,6 +93,8 @@ class MessageEntity {
       expanded: expanded ?? this.expanded,
       imageUrls: imageUrls ?? this.imageUrls,
       reference: reference ?? this.reference,
+      toolCalls: toolCalls ?? this.toolCalls,
+      toolResults: toolResults ?? this.toolResults,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,
     );
