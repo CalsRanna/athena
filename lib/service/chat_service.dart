@@ -35,6 +35,7 @@ class ChatService {
     required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
+    List<Tool>? tools,
   }) async* {
     var client = OpenAIClient.withApiKey(
       provider.apiKey,
@@ -48,6 +49,7 @@ class ChatService {
       model: model.modelId,
       messages: messages,
       temperature: chat.temperature,
+      tools: tools,
     );
     yield* client.chat.completions.createStream(request);
   }

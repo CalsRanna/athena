@@ -49,12 +49,14 @@ class ChatMessageService {
     required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
+    List<Tool>? tools,
   }) {
     return _chatService.getCompletion(
       chat: chat,
       messages: messages,
       provider: provider,
       model: model,
+      tools: tools,
     );
   }
 
