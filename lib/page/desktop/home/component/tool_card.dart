@@ -1,3 +1,4 @@
+import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -25,122 +26,122 @@ class _ToolCardState extends State<ToolCard> {
 
   @override
   Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(8);
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: widget.hasResult ? _resultColor : null,
-        border: Border.all(
-          color: widget.hasResult ? _borderColor : Colors.grey.shade300,
-        ),
+        borderRadius: borderRadius,
+        color: ColorUtil.FFEDEDED,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
-          if (widget.hasResult && _expanded) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-              child: Text(
-                widget.result!,
-                maxLines: 15,
-                style: GoogleFonts.firaCode(fontSize: 11, height: 1.4),
-              ),
-            ),
-          ],
+          _buildHeader(borderRadius),
+          if (widget.hasResult && _expanded) _buildContent(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BorderRadius outerRadius) {
+    final collapsedRadius = BorderRadius.circular(8);
+    final expandedRadius = BorderRadius.only(
+      topLeft: const Radius.circular(8),
+      topRight: const Radius.circular(8),
+    );
+    final borderRadius = (widget.hasResult && _expanded) ? expandedRadius : collapsedRadius;
+
     return GestureDetector(
       onTap: widget.hasResult ? () => setState(() => _expanded = !_expanded) : null,
-      child: Row(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          color: ColorUtil.FFE0E0E0,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            _buildStatusIcon(),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.toolName,
+                style: GoogleFonts.firaCode(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: ColorUtil.FF282F32,
+                ),
+              ),
+            ),
+            if (widget.hasResult) ...[
+              const SizedBox(width: 8),
+              Text(
+                _resultLabel,
+                style: GoogleFonts.firaCode(
+                  fontSize: 11,
+                  color: ColorUtil.FF9E9E9E,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                _expanded
+                    ? HugeIcons.strokeRoundedArrowUp01
+                    : HugeIcons.strokeRoundedArrowDown01,
+                size: 14,
+                color: ColorUtil.FF9E9E9E,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusIcon() {
+    if (!widget.hasResult) {
+      return const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 1.5),
+      );
+    }
+    final isError = widget.result!.startsWith('Error:');
+    return Icon(
+      isError ? HugeIcons.strokeRoundedCancel01 : HugeIcons.strokeRoundedCheckmarkCircle02,
+      size: 14,
+      color: isError ? ColorUtil.FF9E9E9E : ColorUtil.FF6ABEB9,
+    );
+  }
+
+  Widget _buildContent() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            _statusIcon,
-            size: 16,
-            color: _statusColor,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.toolName,
-                  style: GoogleFonts.firaCode(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _statusColor,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.hasResult ? _summaryLine : widget.arguments,
-                  maxLines: widget.hasResult ? 1 : 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.firaCode(
-                    fontSize: 11,
-                    color: widget.hasResult
-                        ? _statusColor.withValues(alpha: 0.7)
-                        : Colors.grey.shade500,
-                  ),
-                ),
-              ],
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Text(
+            widget.arguments,
+            style: GoogleFonts.firaCode(
+              fontSize: 11,
+              color: ColorUtil.FF757575,
             ),
           ),
-          if (widget.hasResult) ...[
-            const SizedBox(width: 8),
-            Icon(
-              _expanded
-                  ? HugeIcons.strokeRoundedArrowUp01
-                  : HugeIcons.strokeRoundedArrowDown01,
-              size: 14,
-              color: Colors.grey.shade500,
-            ),
-          ],
+          const SizedBox(height: 8),
+          Text(
+            widget.result!,
+            maxLines: 15,
+            style: GoogleFonts.firaCode(fontSize: 11, height: 1.4, color: ColorUtil.FF616161),
+          ),
         ],
       ),
     );
   }
 
-  bool get _isError => widget.result?.startsWith('Error:') ?? false;
-
-  Color get _statusColor {
-    if (!widget.hasResult) return Colors.grey.shade600;
-    return _isError ? Colors.red.shade600 : Colors.green.shade600;
-  }
-
-  Color get _resultColor {
-    if (!widget.hasResult) return Colors.transparent;
-    return _isError ? Colors.red.shade50 : Colors.green.shade50;
-  }
-
-  Color get _borderColor {
-    return _isError ? Colors.red.shade200 : Colors.green.shade200;
-  }
-
-  IconData get _statusIcon {
-    if (!widget.hasResult) return HugeIcons.strokeRoundedLoading02;
-    return _isError
-        ? HugeIcons.strokeRoundedCancel01
-        : HugeIcons.strokeRoundedCheckmarkCircle02;
-  }
-
-  String get _summaryLine {
-    final r = widget.result!;
-    final firstLine = r.split('\n').first;
-    if (firstLine.length > 60) return '${firstLine.substring(0, 60)}...';
-    return firstLine;
+  String get _resultLabel {
+    if (widget.result!.startsWith('Error:')) return 'error';
+    return 'done';
   }
 }
