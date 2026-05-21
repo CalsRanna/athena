@@ -18,7 +18,6 @@ class AthenaRouter extends RootStackRouter {
     var desktopSettingChildren = [
       DesktopRoute(page: DesktopSettingProviderRoute.page),
       DesktopRoute(page: DesktopSettingDefaultModelRoute.page),
-      DesktopRoute(page: DesktopSettingServerRoute.page),
       DesktopRoute(page: DesktopSettingSentinelRoute.page),
       DesktopRoute(page: DesktopSettingAdvancedRoute.page),
       DesktopRoute(page: DesktopSettingMemoryRoute.page),
@@ -47,8 +46,6 @@ class AthenaRouter extends RootStackRouter {
       AutoRoute(page: MobileProviderNameRoute.page),
       AutoRoute(page: MobileModelFormRoute.page),
       AutoRoute(page: MobileDefaultModelFormRoute.page),
-      AutoRoute(page: MobileToolListRoute.page),
-      AutoRoute(page: MobileToolFormRoute.page),
       AutoRoute(page: MobileAboutRoute.page),
       AutoRoute(page: MobileDataRoute.page),
     ];

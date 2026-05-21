@@ -27,12 +27,6 @@ class SettingPage extends StatelessWidget {
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(HugeIcons.strokeRoundedTools, size: 24),
-        onTap: () => MobileToolListRoute().push(context),
-        title: 'Built-in Tools',
-        trailing: '',
-      ),
-      MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedAiBrain01, size: 24),
         onTap: () => MobileDefaultModelFormRoute().push(context),
         title: 'Default Model',
