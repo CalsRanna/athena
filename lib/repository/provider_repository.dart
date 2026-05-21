@@ -30,10 +30,7 @@ class ProviderRepository {
     var laconic = Database.instance.laconic;
     var json = provider.toJson();
     json.remove('id');
-    await laconic.table('providers').insert([json]);
-
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('providers').insertGetId(json);
   }
 
   Future<void> updateProvider(ProviderEntity provider) async {

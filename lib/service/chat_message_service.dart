@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -37,7 +39,7 @@ class ChatMessageService {
     }
 
     for (final msg in contextMessages) {
-      wrapped.add(_convertMessage(msg));
+      wrapped.addAll(_convertMessages(msg));
     }
 
     return wrapped;
@@ -66,12 +68,42 @@ class ChatMessageService {
     return messages.where((m) => m.role == 'user').length == 1;
   }
 
-  ChatMessage _convertMessage(MessageEntity msg) {
+  List<ChatMessage> _convertMessages(MessageEntity msg) {
     switch (msg.role) {
       case 'system':
-        return ChatMessage.system(msg.content);
+        return [ChatMessage.system(msg.content)];
       case 'assistant':
-        return ChatMessage.assistant(content: msg.content);
+        final messages = <ChatMessage>[];
+        List<ToolCall>? toolCalls;
+        if (msg.toolCalls.isNotEmpty) {
+          final parsed = jsonDecode(msg.toolCalls) as List<dynamic>;
+          toolCalls = parsed.map((tc) {
+            final m = tc as Map<String, dynamic>;
+            return ToolCall(
+              id: m['id'] as String,
+              type: 'function',
+              function: FunctionCall(
+                name: m['name'] as String,
+                arguments: m['arguments'] as String,
+              ),
+            );
+          }).toList();
+        }
+        messages.add(ChatMessage.assistant(
+          content: msg.content,
+          toolCalls: toolCalls,
+        ));
+        if (msg.toolResults.isNotEmpty) {
+          final parsed = jsonDecode(msg.toolResults) as List<dynamic>;
+          for (final tr in parsed) {
+            final m = tr as Map<String, dynamic>;
+            messages.add(ChatMessage.tool(
+              toolCallId: m['id'] as String,
+              content: m['result'] as String,
+            ));
+          }
+        }
+        return messages;
       default:
         if (msg.imageUrls.isNotEmpty) {
           final images = msg.imageUrls.split(',');
@@ -82,9 +114,9 @@ class ChatMessageService {
               mediaType: 'image/jpeg',
             ));
           }
-          return ChatMessage.user(parts);
+          return [ChatMessage.user(parts)];
         }
-        return ChatMessage.user(msg.content);
+        return [ChatMessage.user(msg.content)];
     }
   }
 }

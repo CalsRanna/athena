@@ -26,10 +26,7 @@ class MessageRepository {
     var laconic = Database.instance.laconic;
     var json = message.toJson();
     json.remove('id');
-    await laconic.table('messages').insert([json]);
-
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('messages').insertGetId(json);
   }
 
   Future<void> updateMessage(MessageEntity message) async {

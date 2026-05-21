@@ -34,11 +34,7 @@ class TRPGGameRepository {
     var laconic = Database.instance.laconic;
     var json = game.toJson();
     json.remove('id'); // 移除 id,让数据库自动生成
-    await laconic.table('trpg_games').insert([json]);
-
-    // 获取最后插入的 id
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('trpg_games').insertGetId(json);
   }
 
   Future<void> updateGame(TRPGGameEntity game) async {

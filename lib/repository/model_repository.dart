@@ -31,10 +31,7 @@ class ModelRepository {
     var laconic = Database.instance.laconic;
     var json = model.toJson();
     json.remove('id');
-    await laconic.table('models').insert([json]);
-
-    var result = await laconic.select('SELECT last_insert_rowid() as id');
-    return result.first['id'] as int;
+    return await laconic.table('models').insertGetId(json);
   }
 
   Future<void> updateModel(ModelEntity model) async {

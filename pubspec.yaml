@@ -34,6 +34,7 @@ dependencies:
   markdown: ^7.2.2
   path: ^1.8.0
   signals: ^6.2.0
+  yaml: ^3.1.2
   signals_flutter: ^6.2.0
   shared_preferences: ^2.0.15
   # mcp_dart:
