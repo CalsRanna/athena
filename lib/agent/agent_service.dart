@@ -68,6 +68,15 @@ class AgentService {
       await for (final chunk in stream) {
         accumulator.add(chunk);
 
+        final delta = chunk.firstChoice?.delta;
+        if (delta != null) {
+          final reasoningContent =
+              delta.reasoningContent ?? delta.reasoning;
+          if (reasoningContent != null && reasoningContent.isNotEmpty) {
+            yield AgentEvent.reasoning(reasoningContent);
+          }
+        }
+
         final textDelta = chunk.textDelta;
         if (textDelta != null && textDelta.isNotEmpty) {
           yield AgentEvent.text(textDelta);
@@ -156,6 +165,8 @@ sealed class AgentEvent {
 
   const factory AgentEvent.text(String delta) = AgentTextEvent;
 
+  const factory AgentEvent.reasoning(String delta) = AgentReasoningEvent;
+
   const factory AgentEvent.toolCall({
     required String id,
     required String name,
@@ -179,6 +190,11 @@ sealed class AgentEvent {
 class AgentTextEvent extends AgentEvent {
   final String delta;
   const AgentTextEvent(this.delta);
+}
+
+class AgentReasoningEvent extends AgentEvent {
+  final String delta;
+  const AgentReasoningEvent(this.delta);
 }
 
 class AgentToolCallEvent extends AgentEvent {
