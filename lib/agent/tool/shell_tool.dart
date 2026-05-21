@@ -1,0 +1,61 @@
+import 'dart:io';
+
+import 'tool_interface.dart';
+
+class ShellTool implements Tool {
+  @override
+  String get name => 'shell';
+
+  @override
+  String get description => 'Execute a shell command. '
+      'Use when you need to run terminal commands like git, npm, dart, etc. '
+      'Commands run in the current working directory.';
+
+  @override
+  Map<String, dynamic> get parameters => {
+        'type': 'object',
+        'properties': {
+          'command': {
+            'type': 'string',
+            'description': 'The shell command to execute.',
+          },
+          'timeout': {
+            'type': 'integer',
+            'description': 'Timeout in seconds. Defaults to 30.',
+          },
+        },
+        'required': ['command'],
+      };
+
+  @override
+  DangerLevel get dangerLevel => DangerLevel.needsApproval;
+
+  @override
+  Future<String> execute(Map<String, dynamic> args) async {
+    final command = args['command'] as String;
+    final timeoutSeconds = args['timeout'] as int? ?? 30;
+
+    try {
+      final result = await Process.run(
+        '/bin/sh',
+        ['-c', command],
+        workingDirectory: Directory.current.path,
+      ).timeout(Duration(seconds: timeoutSeconds));
+
+      final stdout = '${result.stdout}'.trim();
+      final stderr = '${result.stderr}'.trim();
+      final buffer = StringBuffer();
+      if (stdout.isNotEmpty) {
+        buffer.writeln(stdout);
+      }
+      if (stderr.isNotEmpty) {
+        buffer.writeln('[stderr]');
+        buffer.writeln(stderr);
+      }
+      buffer.writeln('[exit code: ${result.exitCode}]');
+      return buffer.toString().trim();
+    } catch (e) {
+      return 'Error executing command: $e';
+    }
+  }
+}
