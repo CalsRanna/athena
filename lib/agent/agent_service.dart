@@ -21,8 +21,6 @@ class AgentService {
   })  : _chatService = chatService ?? ChatService(),
         _toolRegistry = toolRegistry ?? ToolRegistry();
 
-  static const int maxIterations = 25;
-
   Stream<AgentEvent> run({
     required ChatEntity chat,
     required ProviderEntity provider,
@@ -30,6 +28,7 @@ class AgentService {
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
     PermissionCallback? onPermission,
+    int maxIterations = 100,
   }) async* {
     var messages = List<ChatMessage>.from(baseMessages);
 
