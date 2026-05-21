@@ -29,6 +29,7 @@ class SettingViewModel {
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
   static const String _keyShortModelId = 'short_model_id';
+  static const String _keyMaxAgentIterations = 'max_agent_iterations';
   // Window 尺寸
   final windowHeight = signal(720.0);
   final windowWidth = signal(960.0);
@@ -46,6 +47,7 @@ class SettingViewModel {
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
+  final maxAgentIterations = signal(100);
 
   final _modelRepository = ModelRepository();
   final _providerRepository = ProviderRepository();
@@ -68,6 +70,7 @@ class SettingViewModel {
     sentinelMetadataGenerationModelId.value =
         instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
     shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
+    maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
       chatNamingModelId.value,
@@ -148,6 +151,13 @@ class SettingViewModel {
         shortModel.value!.providerId,
       );
     }
+  }
+
+  /// 更新最大 Agent 迭代次数
+  Future<void> updateMaxAgentIterations(int max) async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.setInt(_keyMaxAgentIterations, max);
+    maxAgentIterations.value = max;
   }
 
   /// 更新窗口尺寸

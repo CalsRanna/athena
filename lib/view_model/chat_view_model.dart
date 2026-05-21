@@ -664,6 +664,7 @@ class ChatViewModel {
         provider: provider,
         model: model,
         baseMessages: wrappedMessages,
+        maxIterations: GetIt.instance<SettingViewModel>().maxAgentIterations.value,
       );
 
       var contentBuffer = StringBuffer();
