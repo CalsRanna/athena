@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/tool/tool_interface.dart' show DangerLevel;
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
@@ -28,6 +29,7 @@ class AgentService {
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
     PermissionCallback? onPermission,
+    PermissionService? permissionService,
     int maxIterations = 100,
     ModelEntity? auxiliaryModel,
     ProviderEntity? auxiliaryModelProvider,
@@ -117,31 +119,37 @@ class AgentService {
 
         if (tool != null &&
             tool.dangerLevel == DangerLevel.needsApproval) {
-          if (onPermission == null) {
-            const deniedMsg =
-                'Error: Tool requires user approval but no permission '
-                'callback is configured.';
-            yield AgentEvent.toolResult(
-              id: tc.id,
-              name: tc.function.name,
-              result: deniedMsg,
-            );
-            messages.add(
-                ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
-            continue;
-          }
-          final approved =
-              await onPermission(tc.function.name, tc.function.arguments);
-          if (!approved) {
-            const deniedMsg = 'User denied the tool execution.';
-            yield AgentEvent.toolResult(
-              id: tc.id,
-              name: tc.function.name,
-              result: deniedMsg,
-            );
-            messages.add(ChatMessage.tool(
-                toolCallId: tc.id, content: deniedMsg));
-            continue;
+          // 先检查已有规则
+          final ruleResult = permissionService?.check(tc.function.name, args);
+          if (ruleResult == true) {
+            // 规则允许，跳过弹窗
+          } else {
+            if (onPermission == null) {
+              const deniedMsg =
+                  'Error: Tool requires user approval but no permission '
+                  'callback is configured.';
+              yield AgentEvent.toolResult(
+                id: tc.id,
+                name: tc.function.name,
+                result: deniedMsg,
+              );
+              messages.add(
+                  ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
+              continue;
+            }
+            final approved =
+                await onPermission(tc.function.name, tc.function.arguments);
+            if (!approved) {
+              const deniedMsg = 'User denied the tool execution.';
+              yield AgentEvent.toolResult(
+                id: tc.id,
+                name: tc.function.name,
+                result: deniedMsg,
+              );
+              messages.add(ChatMessage.tool(
+                  toolCallId: tc.id, content: deniedMsg));
+              continue;
+            }
           }
         }
 
