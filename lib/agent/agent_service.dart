@@ -178,12 +178,14 @@ class AgentService {
     switch (toolName) {
       case 'file_read':
       case 'search':
+      case 'list_directory':
         final path = args['path'] as String?;
         if (path != null && !_pathSandbox.canRead(path)) {
           return 'Error: Path "$path" is outside the allowed directories';
         }
         return null;
       case 'file_write':
+      case 'file_update':
       case 'file_delete':
         final path = args['path'] as String?;
         if (path == null) return 'Error: path is required';

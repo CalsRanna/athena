@@ -1,8 +1,12 @@
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/tool/file_delete_tool.dart';
+import 'package:athena/agent/tool/file_update_tool.dart';
 import 'package:athena/agent/tool/file_read_tool.dart';
 import 'package:athena/agent/tool/file_write_tool.dart';
+import 'package:athena/agent/tool/web_fetch_tool.dart';
+import 'package:athena/agent/tool/web_search_tool.dart';
+import 'package:athena/agent/tool/list_directory_tool.dart';
 import 'package:athena/agent/tool/search_tool.dart';
 import 'package:athena/agent/tool/shell_tool.dart';
 import 'package:athena/agent/tool/skill_tool.dart';
@@ -66,8 +70,12 @@ class DI {
           SearchTool(),
           FileReadTool(),
           FileWriteTool(),
+          FileUpdateTool(),
           FileDeleteTool(),
+          ListDirectoryTool(),
           ShellTool(),
+          WebFetchTool(),
+          WebSearchTool(),
           SkillTool(skillRegistry),
         ]);
       return toolRegistry;
