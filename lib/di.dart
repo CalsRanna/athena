@@ -1,3 +1,10 @@
+import 'package:athena/agent/agent_service.dart';
+import 'package:athena/agent/skill/skill_registry.dart';
+import 'package:athena/agent/tool/file_read_tool.dart';
+import 'package:athena/agent/tool/search_tool.dart';
+import 'package:athena/agent/tool/shell_tool.dart';
+import 'package:athena/agent/tool/skill_tool.dart';
+import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
@@ -45,5 +52,28 @@ class DI {
     getIt.registerLazySingleton(() => SummaryViewModel());
     getIt.registerLazySingleton(() => TRPGViewModel());
     getIt.registerLazySingleton(() => MemoryViewModel());
+
+    // Agent
+    getIt.registerLazySingleton(() {
+      final registry = SkillRegistry();
+      registry.loadAll();
+      return registry;
+    });
+
+    getIt.registerLazySingleton(() {
+      final skillRegistry = getIt<SkillRegistry>();
+      final toolRegistry = ToolRegistry()
+        ..registerAll([
+          SearchTool(),
+          FileReadTool(),
+          ShellTool(),
+          SkillTool(skillRegistry),
+        ]);
+      return toolRegistry;
+    });
+
+    getIt.registerLazySingleton(() => AgentService(
+      toolRegistry: getIt<ToolRegistry>(),
+    ));
   }
 }
