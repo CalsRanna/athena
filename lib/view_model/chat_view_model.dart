@@ -208,7 +208,7 @@ class ChatViewModel {
       }
       currentProvider.value = provider;
 
-      // 新建对话始终从默认 sentinel 开始，避免沿用上一个会话的状态
+      // 新建对话始终从默认值开始，避免沿用上一个会话的状态
       var selectedSentinel = await _getDefaultSentinel();
       if (selectedSentinel == null) {
         error.value = 'No sentinels found';
@@ -220,8 +220,8 @@ class ChatViewModel {
         title: 'New Chat',
         modelId: model.id!,
         sentinelId: selectedSentinel.id!,
-        temperature: currentTemperature.value,
-        context: currentContext.value,
+        temperature: defaultDraftTemperature,
+        context: defaultDraftContext,
         createdAt: now,
         updatedAt: now,
       );
