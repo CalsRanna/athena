@@ -13,19 +13,19 @@ import 'package:athena/page/desktop/home/component/model_indicator.dart';
 import 'package:athena/page/desktop/home/component/model_selector.dart';
 import 'package:athena/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena/page/desktop/home/component/sentinel_selector.dart';
-import 'package:athena/page/desktop/home/component/server_selector.dart';
+
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
-import 'package:athena/view_model/server_view_model.dart';
+
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/gestures.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -45,7 +45,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final modelViewModel = GetIt.instance<ModelViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
-  final serverViewModel = GetIt.instance<ServerViewModel>();
   final settingViewModel = GetIt.instance<SettingViewModel>();
 
   @override
@@ -283,7 +282,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               children: [
                 DesktopSentinelIndicator(onTap: _openSentinelSelector),
                 DesktopModelIndicator(onTap: _openModelSelector),
-                _DesktopToolsButton(onTap: _openServerSelector),
               ],
             ),
           ),
@@ -371,7 +369,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     // }
     await modelViewModel.loadEnabledModels();
     await sentinelViewModel.getSentinels();
-    await serverViewModel.loadServers();
+
   }
 
   Widget _itemBuilder(context, index) {
@@ -444,110 +442,4 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  void _openServerSelector() {
-    AthenaDialog.show(
-      const DesktopServerSelectDialog(),
-      barrierDismissible: true,
-    );
-  }
-}
-
-class _DesktopToolsButton extends StatefulWidget {
-  final void Function()? onTap;
-
-  const _DesktopToolsButton({this.onTap});
-
-  @override
-  State<_DesktopToolsButton> createState() => _DesktopToolsButtonState();
-}
-
-class _DesktopToolsButtonState extends State<_DesktopToolsButton> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final serverViewModel = GetIt.instance<ServerViewModel>();
-    return Watch((context) {
-      var enabledCount = serverViewModel.servers.value
-          .where((s) => s.enabled)
-          .length;
-      var foregroundColor = ColorUtil.FFFFFFFF.withValues(
-        alpha: enabledCount > 0 ? 0.86 : 0.72,
-      );
-      var gradient = LinearGradient(
-        begin: Alignment.topLeft,
-        colors: [
-          ColorUtil.FFEAEAEA.withValues(alpha: hover ? 0.18 : 0.1),
-          ColorUtil.FFFFFFFF.withValues(alpha: hover ? 0.03 : 0),
-        ],
-        end: Alignment.bottomRight,
-      );
-      var innerColor = enabledCount > 0
-          ? ColorUtil.FF161616.withValues(alpha: hover ? 0.98 : 0.94)
-          : ColorUtil.FF161616.withValues(alpha: hover ? 0.86 : 0.78);
-      var icon = Icon(
-        HugeIcons.strokeRoundedTools,
-        color: foregroundColor,
-        size: 15,
-      );
-      var inner = AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        decoration: BoxDecoration(
-          color: innerColor,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            icon,
-            if (enabledCount > 0) ...[
-              const SizedBox(width: 5),
-              Text(
-                '$enabledCount',
-                style: TextStyle(
-                  color: foregroundColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  height: 1,
-                ),
-              ),
-            ],
-          ],
-        ),
-      );
-      var button = AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(17),
-        ),
-        padding: const EdgeInsets.all(1),
-        child: inner,
-      );
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: _handleEnter,
-          onExit: _handleExit,
-          child: button,
-        ),
-      );
-    });
-  }
-
-  void _handleEnter(PointerEnterEvent event) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void _handleExit(PointerExitEvent event) {
-    setState(() {
-      hover = false;
-    });
-  }
 }

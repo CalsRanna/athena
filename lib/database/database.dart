@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:athena/database/migration/migration_202501170001_init.dart';
-import 'package:athena/database/migration/migration_202501170002_add_server_fields.dart';
+
 import 'package:athena/database/migration/migration_202501200001_fix_providers_models_schema.dart';
 import 'package:athena/database/migration/migration_202501200002_add_trpg_tables.dart';
 import 'package:athena/database/migration/migration_202501210001_add_suggestions_to_trpg_messages.dart';
@@ -66,7 +66,7 @@ class Database {
 
     // 按顺序执行迁移
     await Migration202501170001Init().migrate();
-    await Migration202501170002AddServerFields().migrate();
+
     await Migration202501200001FixProvidersModelsSchema().migrate();
     await Migration202501200002AddTrpgTables().migrate();
     await Migration202501210001AddSuggestionsToTrpgMessages().migrate();
