@@ -52,13 +52,20 @@ class PermissionStore {
   List<PermissionRule> denyRules = [];
 
   static final List<PermissionRule> _builtinDenyRules = [
-    PermissionRule(tool: 'shell', contains: 'rm -rf'),
-    PermissionRule(tool: 'shell', contains: 'sudo '),
-    PermissionRule(tool: 'shell', contains: 'mkfs'),
-    PermissionRule(tool: 'shell', contains: '> /dev/'),
-    PermissionRule(tool: 'shell', contains: 'dd if='),
-    PermissionRule(tool: 'shell', contains: 'chmod 777'),
-    PermissionRule(tool: 'shell', contains: ':(){:|:&};:'),
+    PermissionRule(tool: 'bash', contains: 'rm -rf'),
+    PermissionRule(tool: 'bash', contains: 'sudo '),
+    PermissionRule(tool: 'bash', contains: 'mkfs'),
+    PermissionRule(tool: 'bash', contains: '> /dev/'),
+    PermissionRule(tool: 'bash', contains: 'dd if='),
+    PermissionRule(tool: 'bash', contains: 'chmod 777'),
+    PermissionRule(tool: 'bash', contains: ':(){:|:&};:'),
+    PermissionRule(tool: 'powershell', contains: 'rm -rf'),
+    PermissionRule(tool: 'powershell', contains: 'sudo '),
+    PermissionRule(tool: 'powershell', contains: 'mkfs'),
+    PermissionRule(tool: 'powershell', contains: '> /dev/'),
+    PermissionRule(tool: 'powershell', contains: 'dd if='),
+    PermissionRule(tool: 'powershell', contains: 'chmod 777'),
+    PermissionRule(tool: 'powershell', contains: ':(){:|:&};:'),
   ];
 
   File get _file {
