@@ -24,7 +24,6 @@ import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/view_model/setting_view_model.dart';
-import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get_it/get_it.dart';
@@ -54,14 +53,14 @@ class ChatViewModel {
     ChatService? chatService,
     ChatMessageService? chatMessageService,
     ChatSelectionDelegate? selection,
-  })  : _chatRepository = chatRepository ?? ChatRepository(),
-        _messageRepository = messageRepository ?? MessageRepository(),
-        _sentinelRepository = sentinelRepository ?? SentinelRepository(),
-        _providerRepository = providerRepository ?? ProviderRepository(),
-        _modelRepository = modelRepository ?? ModelRepository(),
-        _chatService = chatService ?? ChatService(),
-        _chatMessageService = chatMessageService ?? ChatMessageService(),
-        _selection = selection ?? ChatSelectionDelegate();
+  }) : _chatRepository = chatRepository ?? ChatRepository(),
+       _messageRepository = messageRepository ?? MessageRepository(),
+       _sentinelRepository = sentinelRepository ?? SentinelRepository(),
+       _providerRepository = providerRepository ?? ProviderRepository(),
+       _modelRepository = modelRepository ?? ModelRepository(),
+       _chatService = chatService ?? ChatService(),
+       _chatMessageService = chatMessageService ?? ChatMessageService(),
+       _selection = selection ?? ChatSelectionDelegate();
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -143,7 +142,9 @@ class ChatViewModel {
   Future<void> _updateChatTimestamp(ChatEntity chat) async {
     var latest = await _chatRepository.getChatById(chat.id!);
     if (latest != null) {
-      await _chatRepository.updateChat(latest.copyWith(updatedAt: DateTime.now()));
+      await _chatRepository.updateChat(
+        latest.copyWith(updatedAt: DateTime.now()),
+      );
     }
   }
 
@@ -673,8 +674,10 @@ class ChatViewModel {
             args = {};
           }
           final description = _formatToolArgs(toolName, arguments);
-          final ruleDesc =
-              permissionService.generateRuleDescription(toolName, args);
+          final ruleDesc = permissionService.generateRuleDescription(
+            toolName,
+            args,
+          );
           final isDangerous = permissionService.isDangerous(toolName, args);
           final result = await showPermissionDialog(
             toolName: toolName,
@@ -705,7 +708,9 @@ class ChatViewModel {
               role: 'assistant',
               content: '',
             );
-            assistantId = await _messageRepository.storeMessage(assistantMessage);
+            assistantId = await _messageRepository.storeMessage(
+              assistantMessage,
+            );
             assistantMessage = assistantMessage.copyWith(id: assistantId);
             messages.value = [...messages.value, assistantMessage];
             contentBuffer = StringBuffer();
@@ -729,7 +734,9 @@ class ChatViewModel {
               role: 'assistant',
               content: '',
             );
-            assistantId = await _messageRepository.storeMessage(assistantMessage);
+            assistantId = await _messageRepository.storeMessage(
+              assistantMessage,
+            );
             assistantMessage = assistantMessage.copyWith(id: assistantId);
             messages.value = [...messages.value, assistantMessage];
             contentBuffer = StringBuffer();
@@ -765,9 +772,7 @@ class ChatViewModel {
           _updateMessageInList(assistantId, assistantMessage);
           hasCompletedIteration = true;
         } else if (event is AgentDoneEvent) {
-          assistantMessage = assistantMessage.copyWith(
-            content: event.content,
-          );
+          assistantMessage = assistantMessage.copyWith(content: event.content);
           _updateMessageInList(assistantId, assistantMessage);
         }
       }
@@ -822,9 +827,12 @@ class ChatViewModel {
     try {
       final updated = chat.copyWith(context: context);
       await _chatRepository.updateChat(updated);
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentContext.value = updated.context;
-      });
+      _updateChatInLists(
+        updated,
+        onCurrentChatUpdated: () {
+          currentContext.value = updated.context;
+        },
+      );
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -859,12 +867,15 @@ class ChatViewModel {
     try {
       final updated = chat.copyWith(modelId: model.id);
       await _chatRepository.updateChat(updated);
-      _updateChatInLists(updated, onCurrentChatUpdated: () async {
-        currentModel.value = model;
-        currentProvider.value = await _providerRepository.getProviderById(
-          model.providerId,
-        );
-      });
+      _updateChatInLists(
+        updated,
+        onCurrentChatUpdated: () async {
+          currentModel.value = model;
+          currentProvider.value = await _providerRepository.getProviderById(
+            model.providerId,
+          );
+        },
+      );
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -881,9 +892,12 @@ class ChatViewModel {
     try {
       final updated = chat.copyWith(sentinelId: sentinel.id);
       await _chatRepository.updateChat(updated);
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentSentinel.value = sentinel;
-      });
+      _updateChatInLists(
+        updated,
+        onCurrentChatUpdated: () {
+          currentSentinel.value = sentinel;
+        },
+      );
       return updated;
     } catch (e) {
       error.value = e.toString();
@@ -900,9 +914,12 @@ class ChatViewModel {
     try {
       final updated = chat.copyWith(temperature: temperature);
       await _chatRepository.updateChat(updated);
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentTemperature.value = updated.temperature;
-      });
+      _updateChatInLists(
+        updated,
+        onCurrentChatUpdated: () {
+          currentTemperature.value = updated.temperature;
+        },
+      );
       return updated;
     } catch (e) {
       error.value = e.toString();

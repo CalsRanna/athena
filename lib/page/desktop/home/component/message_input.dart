@@ -70,9 +70,15 @@ class _Input extends StatefulWidget {
   State<_Input> createState() => _InputState();
 }
 
-class _InputState extends State<_Input> {
-  bool shift = false;
+class _SendIntent extends Intent {
+  const _SendIntent();
+}
 
+class _NewlineIntent extends Intent {
+  const _NewlineIntent();
+}
+
+class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     var boxDecoration = BoxDecoration(
@@ -103,42 +109,72 @@ class _InputState extends State<_Input> {
       maxLines: 4,
       minLines: 1,
     );
-    var keyboardListener = KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: handleKeyEvent,
-      child: textField,
+    var shortcuts = Shortcuts(
+      shortcuts: const {
+        _SendActivator(): _SendIntent(),
+        _SendNumpadActivator(): _SendIntent(),
+        _NewlineActivator(): _NewlineIntent(),
+      },
+      child: Actions(
+        actions: {
+          _SendIntent: CallbackAction<_SendIntent>(
+            onInvoke: (_) {
+              widget.onSubmitted?.call();
+              return null;
+            },
+          ),
+          _NewlineIntent: CallbackAction<_NewlineIntent>(
+            onInvoke: (_) => _insertNewline(),
+          ),
+        },
+        child: textField,
+      ),
     );
     return Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: keyboardListener,
+      child: shortcuts,
     );
   }
 
-  void handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent) {
-      if (_isModifierKey(event)) shift = true;
-    } else if (event is KeyUpEvent) {
-      if (_isModifierKey(event)) shift = false;
-      if (_isEnterKey(event) && !shift) widget.onSubmitted?.call();
-    }
+  void _insertNewline() {
+    final controller = widget.controller;
+    final text = controller.text;
+    final selection = controller.selection;
+    final newText =
+        '${text.substring(0, selection.start)}\n${text.substring(selection.end)}';
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: selection.start + 1),
+    );
   }
+}
 
-  bool _isEnterKey(KeyEvent event) {
-    return event.logicalKey == LogicalKeyboardKey.enter;
-  }
+class _SendActivator extends SingleActivator {
+  const _SendActivator()
+      : super(
+          LogicalKeyboardKey.enter,
+          shift: false,
+          control: false,
+          alt: false,
+          meta: false,
+        );
+}
 
-  bool _isModifierKey(KeyEvent event) {
-    const modifierKeys = [
-      LogicalKeyboardKey.shiftLeft,
-      LogicalKeyboardKey.shiftRight,
-      LogicalKeyboardKey.controlLeft,
-      LogicalKeyboardKey.controlRight,
-      LogicalKeyboardKey.metaLeft,
-      LogicalKeyboardKey.metaRight,
-    ];
-    return modifierKeys.contains(event.logicalKey);
-  }
+class _SendNumpadActivator extends SingleActivator {
+  const _SendNumpadActivator()
+      : super(
+          LogicalKeyboardKey.numpadEnter,
+          shift: false,
+          control: false,
+          alt: false,
+          meta: false,
+        );
+}
+
+class _NewlineActivator extends SingleActivator {
+  const _NewlineActivator()
+      : super(LogicalKeyboardKey.enter, shift: true);
 }
 
 class _SendButton extends StatelessWidget {
