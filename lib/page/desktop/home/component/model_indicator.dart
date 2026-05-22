@@ -32,9 +32,10 @@ class _ModelIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var modelText = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 160),
-      child: Text(model.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+    var modelText = Text(
+      model.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
     var children = <Widget>[
       const Icon(HugeIcons.strokeRoundedAiBrain01),
