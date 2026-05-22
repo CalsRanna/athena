@@ -65,8 +65,6 @@ class _ToolCardState extends State<ToolCard> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            _buildStatusIcon(),
-            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 '${widget.toolName}(${widget.arguments})',
@@ -89,24 +87,6 @@ class _ToolCardState extends State<ToolCard> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatusIcon() {
-    if (!widget.hasResult) {
-      return const SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 1.5),
-      );
-    }
-    final isError = widget.result!.startsWith('Error:');
-    return Icon(
-      isError
-          ? HugeIcons.strokeRoundedCancel01
-          : HugeIcons.strokeRoundedCheckmarkCircle02,
-      size: 14,
-      color: isError ? ColorUtil.FF9E9E9E : ColorUtil.FF6ABEB9,
     );
   }
 
