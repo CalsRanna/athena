@@ -27,7 +27,7 @@ class PermissionService {
   PermissionRule generateRule(String toolName, Map<String, dynamic> args) {
     final keyArg = _extractKeyArg(toolName, args);
     switch (toolName) {
-      case 'shell':
+      case 'bash' || 'powershell':
         final prefix = _extractCommandPrefix(keyArg ?? '');
         return PermissionRule(tool: toolName, pattern: '$prefix*');
       case 'file_write':
@@ -47,7 +47,7 @@ class PermissionService {
       return 'Always allow $toolName';
     }
     switch (toolName) {
-      case 'shell':
+      case 'bash' || 'powershell':
         final cmd = rule.pattern!.replaceAll('*', '').trim();
         return 'Always allow "$cmd" commands';
       case 'file_write':
@@ -82,7 +82,7 @@ class PermissionService {
 
   String? _extractKeyArg(String toolName, Map<String, dynamic> args) {
     return switch (toolName) {
-      'shell' => args['command'] as String?,
+      'bash' || 'powershell' => args['command'] as String?,
       'file_write' || 'file_update' || 'file_delete' => args['path'] as String?,
       'web_fetch' => args['url'] as String?,
       _ => null,
