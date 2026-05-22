@@ -9,8 +9,11 @@ import 'package:athena/agent/tool/file_write_tool.dart';
 import 'package:athena/agent/tool/web_fetch_tool.dart';
 import 'package:athena/agent/tool/web_search_tool.dart';
 import 'package:athena/agent/tool/list_directory_tool.dart';
-import 'package:athena/agent/tool/search_tool.dart';
-import 'package:athena/agent/tool/shell_tool.dart';
+import 'dart:io';
+import 'package:athena/agent/tool/bash_shell_tool.dart';
+import 'package:athena/agent/tool/powershell_shell_tool.dart';
+import 'package:athena/agent/tool/unix_search_tool.dart';
+import 'package:athena/agent/tool/powershell_search_tool.dart';
 import 'package:athena/agent/tool/skill_tool.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/repository/chat_repository.dart';
@@ -72,15 +75,16 @@ class DI {
 
     getIt.registerLazySingleton(() {
       final skillRegistry = getIt<SkillRegistry>();
+      final isWindows = Platform.isWindows;
       final toolRegistry = ToolRegistry()
         ..registerAll([
-          SearchTool(),
+          isWindows ? PowerShellSearchTool() : UnixSearchTool(),
           FileReadTool(),
           FileWriteTool(),
           FileUpdateTool(),
           FileDeleteTool(),
           ListDirectoryTool(),
-          ShellTool(),
+          isWindows ? PowerShellShellTool() : BashShellTool(),
           WebFetchTool(),
           WebSearchTool(),
           SkillTool(skillRegistry),
