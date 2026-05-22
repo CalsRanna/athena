@@ -44,19 +44,22 @@ class PowerShellSearchTool implements Tool {
     final path = args['path'] as String? ?? Directory.current.path;
     final type = args['type'] as String? ?? 'grep';
 
+    final escapedPath = path.replaceAll("'", "''");
+    final escapedPattern = pattern.replaceAll("'", "''");
+
     try {
       final ProcessResult results;
       if (type == 'find') {
         results = await Process.run(
           'powershell.exe',
-          ['-Command', "Get-ChildItem -Path '$path' -Recurse -Filter '$pattern' | Select-Object -ExpandProperty FullName"],
+          ['-Command', "Get-ChildItem -Path '$escapedPath' -Recurse -Filter '$escapedPattern' | Select-Object -ExpandProperty FullName"],
           workingDirectory: path,
         );
       } else {
         final extensions = '*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}';
         results = await Process.run(
           'powershell.exe',
-          ['-Command', "Get-ChildItem -Path '$path' -Recurse -Include $extensions -File | Select-String -Pattern '$pattern'"],
+          ['-Command', "Get-ChildItem -Path '$escapedPath' -Recurse -Include $extensions -File | Select-String -Pattern '$escapedPattern'"],
           workingDirectory: path,
         );
       }
