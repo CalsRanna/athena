@@ -48,8 +48,8 @@ class BashShellTool implements Tool {
         workingDirectory: workdir,
       ).timeout(Duration(seconds: timeoutSeconds));
 
-      final stdout = '${result.stdout}'.trim();
-      final stderr = '${result.stderr}'.trim();
+      final stdout = result.stdout.toString().trim();
+      final stderr = result.stderr.toString().trim();
       final buffer = StringBuffer();
       if (stdout.isNotEmpty) {
         buffer.writeln(stdout);
