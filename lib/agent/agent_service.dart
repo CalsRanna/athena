@@ -235,7 +235,7 @@ class AgentService {
         'like file paths, exit codes, error messages, URLs, or data values. '
         'Preserve exact numbers, identifiers, and code symbols.';
     final String toolSpecific = switch (toolName) {
-      'shell' =>
+      'bash' || 'powershell' =>
         'This is shell command output. Preserve: exit code, error messages, '
             'exact file paths. Summarize stdout/stderr, keeping any warnings or '
             'errors verbatim. Omit redundant or repetitive output lines.',
