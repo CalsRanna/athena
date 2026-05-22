@@ -49,10 +49,14 @@ class _ToolCardState extends State<ToolCard> {
       topLeft: const Radius.circular(8),
       topRight: const Radius.circular(8),
     );
-    final borderRadius = (widget.hasResult && _expanded) ? expandedRadius : collapsedRadius;
+    final borderRadius = (widget.hasResult && _expanded)
+        ? expandedRadius
+        : collapsedRadius;
 
     return GestureDetector(
-      onTap: widget.hasResult ? () => setState(() => _expanded = !_expanded) : null,
+      onTap: widget.hasResult
+          ? () => setState(() => _expanded = !_expanded)
+          : null,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
@@ -65,30 +69,21 @@ class _ToolCardState extends State<ToolCard> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                widget.toolName,
-                style: GoogleFonts.firaCode(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: ColorUtil.FF282F32,
-                ),
+                '${widget.toolName}(${widget.arguments})',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.firaCode(fontSize: 12),
               ),
             ),
             if (widget.hasResult) ...[
               const SizedBox(width: 8),
-              Text(
-                _resultLabel,
-                style: GoogleFonts.firaCode(
-                  fontSize: 11,
-                  color: ColorUtil.FF9E9E9E,
-                ),
-              ),
+              Text(_resultLabel, style: GoogleFonts.firaCode(fontSize: 12)),
               const SizedBox(width: 4),
               Icon(
                 _expanded
                     ? HugeIcons.strokeRoundedArrowUp01
                     : HugeIcons.strokeRoundedArrowDown01,
-                size: 14,
-                color: ColorUtil.FF9E9E9E,
+                size: 16,
               ),
             ],
           ],
@@ -107,7 +102,9 @@ class _ToolCardState extends State<ToolCard> {
     }
     final isError = widget.result!.startsWith('Error:');
     return Icon(
-      isError ? HugeIcons.strokeRoundedCancel01 : HugeIcons.strokeRoundedCheckmarkCircle02,
+      isError
+          ? HugeIcons.strokeRoundedCancel01
+          : HugeIcons.strokeRoundedCheckmarkCircle02,
       size: 14,
       color: isError ? ColorUtil.FF9E9E9E : ColorUtil.FF6ABEB9,
     );
@@ -116,26 +113,12 @@ class _ToolCardState extends State<ToolCard> {
   Widget _buildContent() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          Text(
-            widget.arguments,
-            style: GoogleFonts.firaCode(
-              fontSize: 11,
-              color: ColorUtil.FF757575,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.result!,
-            maxLines: 15,
-            style: GoogleFonts.firaCode(fontSize: 11, height: 1.4, color: ColorUtil.FF616161),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Text(
+        widget.result!,
+        maxLines: 10,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.firaCode(fontSize: 12),
       ),
     );
   }
