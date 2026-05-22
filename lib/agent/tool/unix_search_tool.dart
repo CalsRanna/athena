@@ -46,7 +46,7 @@ class UnixSearchTool implements Tool {
     final results = await Process.run(
       type == 'find' ? 'find' : 'grep',
       type == 'find'
-          ? [path, '-name', pattern, '-not', '-path', r'*\/\.*']
+          ? [path, '-name', pattern, '-not', '-path', '*/.*']
           : ['-rn', '--include=*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}', pattern, path],
     );
 
