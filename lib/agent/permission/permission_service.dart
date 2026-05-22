@@ -116,6 +116,6 @@ class PermissionService {
   String _extractDirectory(String path) {
     final lastSlash = path.lastIndexOf('/');
     if (lastSlash <= 0) return '/';
-    return '${path.substring(0, lastSlash + 1)}';
+    return path.substring(0, lastSlash + 1);
   }
 }
