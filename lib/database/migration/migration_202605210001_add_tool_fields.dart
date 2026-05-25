@@ -9,16 +9,18 @@ class Migration202605210001AddToolFields {
     var count = await laconic.table('migrations').where('name', name).count();
     if (count > 0) return;
 
-    await laconic.statement(
-      "ALTER TABLE messages ADD COLUMN tool_calls TEXT DEFAULT ''",
-    );
+    await laconic.transaction(() async {
+      await laconic.statement(
+        "ALTER TABLE messages ADD COLUMN tool_calls TEXT DEFAULT ''",
+      );
 
-    await laconic.statement(
-      "ALTER TABLE messages ADD COLUMN tool_results TEXT DEFAULT ''",
-    );
+      await laconic.statement(
+        "ALTER TABLE messages ADD COLUMN tool_results TEXT DEFAULT ''",
+      );
 
-    await laconic.table('migrations').insert([
-      {'name': name},
-    ]);
+      await laconic.table('migrations').insert([
+        {'name': name},
+      ]);
+    });
   }
 }

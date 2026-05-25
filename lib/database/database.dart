@@ -8,6 +8,7 @@ import 'package:athena/database/migration/migration_202501210001_add_suggestions
 import 'package:athena/database/migration/migration_202501210002_simplify_trpg_games.dart';
 import 'package:athena/database/migration/migration_202511280001_fix_models_schema_types.dart';
 import 'package:athena/database/migration/migration_202605210001_add_tool_fields.dart';
+import 'package:athena/database/migration/migration_202605260001_db_integrity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -35,6 +36,9 @@ class Database {
     WHERE type='table' AND name='migrations';
   ''';
 
+  static const _presetProvidersMarker = 'preset_providers_v1';
+  static const _presetSentinelsMarker = 'preset_sentinels_v1';
+
   Database._internal();
 
   Future<void> ensureInitialized() async {
@@ -55,6 +59,8 @@ class Database {
     );
 
     await _migrate();
+    // 启用外键级联，必须在所有迁移（含孤儿清理）完成之后
+    await laconic.statement('PRAGMA foreign_keys = ON');
     await _preset();
   }
 
@@ -66,13 +72,13 @@ class Database {
 
     // 按顺序执行迁移
     await Migration202501170001Init().migrate();
-
     await Migration202501200001FixProvidersModelsSchema().migrate();
     await Migration202501200002AddTrpgTables().migrate();
     await Migration202501210001AddSuggestionsToTrpgMessages().migrate();
     await Migration202501210002SimplifyTrpgGames().migrate();
     await Migration202511280001FixModelsSchemaTypes().migrate();
     await Migration202605210001AddToolFields().migrate();
+    await Migration202605260001DbIntegrity().migrate();
   }
 
   Future<void> _preset() async {
@@ -81,61 +87,74 @@ class Database {
   }
 
   Future<void> _presetProviders() async {
-    var providerCount = await laconic.table('providers').count();
-    if (providerCount > 0) return;
+    var done = await laconic
+        .table('migrations')
+        .where('name', _presetProvidersMarker)
+        .count();
+    if (done > 0) return;
 
-    var now = DateTime.now();
-    var providers = PresetProvider.providers;
+    await laconic.transaction(() async {
+      var now = DateTime.now();
+      var providers = PresetProvider.providers;
 
-    for (var providerData in providers) {
-      var provider = ProviderEntity(
-        name: providerData['name'] as String,
-        baseUrl: providerData['base_url'] as String,
-        apiKey: providerData['api_key'] as String,
-        enabled: false,
-        isPreset: providerData['is_preset'] as bool,
-        createdAt: now,
-      );
-
-      var providerJson = provider.toJson();
-      providerJson.remove('id');
-      var providerId = await laconic
-          .table('providers')
-          .insertGetId(providerJson);
-
-      var models = providerData['models'] as List<Map<String, dynamic>>;
-      var modelJsonList = <Map<String, dynamic>>[];
-
-      for (var modelData in models) {
-        var model = ModelEntity(
-          name: modelData['name'] as String,
-          modelId: modelData['model_id'] as String,
-          providerId: providerId,
-          contextWindow: modelData['context_window'] as String,
-          inputPrice: modelData['input_price'] as String,
-          outputPrice: modelData['output_price'] as String,
-          releasedAt: modelData['released_at'] as String,
-          reasoning: modelData['reasoning'] as bool,
-          vision: modelData['vision'] as bool,
+      for (var providerData in providers) {
+        var provider = ProviderEntity(
+          name: providerData['name'] as String,
+          baseUrl: providerData['base_url'] as String,
+          apiKey: providerData['api_key'] as String,
+          enabled: false,
+          isPreset: providerData['is_preset'] as bool,
           createdAt: now,
-          updatedAt: now,
         );
 
-        var modelJson = model.toJson();
-        modelJson.remove('id');
-        modelJsonList.add(modelJson);
+        var providerJson = provider.toJson();
+        providerJson.remove('id');
+        var providerId = await laconic
+            .table('providers')
+            .insertGetId(providerJson);
+
+        var models = providerData['models'] as List<Map<String, dynamic>>;
+        var modelJsonList = <Map<String, dynamic>>[];
+
+        for (var modelData in models) {
+          var model = ModelEntity(
+            name: modelData['name'] as String,
+            modelId: modelData['model_id'] as String,
+            providerId: providerId,
+            contextWindow: modelData['context_window'] as String,
+            inputPrice: modelData['input_price'] as String,
+            outputPrice: modelData['output_price'] as String,
+            releasedAt: modelData['released_at'] as String,
+            reasoning: modelData['reasoning'] as bool,
+            vision: modelData['vision'] as bool,
+            createdAt: now,
+            updatedAt: now,
+          );
+
+          var modelJson = model.toJson();
+          modelJson.remove('id');
+          modelJsonList.add(modelJson);
+        }
+
+        if (modelJsonList.isNotEmpty) {
+          await laconic.table('models').insert(modelJsonList);
+        }
       }
 
-      if (modelJsonList.isNotEmpty) {
-        await laconic.table('models').insert(modelJsonList);
-      }
-    }
+      await laconic.table('migrations').insert([
+        {'name': _presetProvidersMarker},
+      ]);
+    });
   }
 
   Future<void> _presetSentinel() async {
-    var count = await laconic.table('sentinels').count();
+    var done = await laconic
+        .table('migrations')
+        .where('name', _presetSentinelsMarker)
+        .count();
+    if (done > 0) return;
 
-    if (count == 0) {
+    await laconic.transaction(() async {
       var preset = PresetSentinel.defaultPresetSentinel;
 
       var sentinel = SentinelEntity(
@@ -149,25 +168,28 @@ class Database {
       var json = sentinel.toJson();
       json.remove('id');
       await laconic.table('sentinels').insert([json]);
-    }
+
+      await laconic.table('migrations').insert([
+        {'name': _presetSentinelsMarker},
+      ]);
+    });
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设
   Future<void> reset() async {
-    // 获取所有表名（排除 sqlite 系统表）
+    // DROP 阶段不包事务（单个 DROP IF EXISTS 是原子的，失败可重启重试）
     var tables = await laconic.select('''
       SELECT name FROM sqlite_master
       WHERE type='table' AND name NOT LIKE 'sqlite_%'
     ''');
 
-    // 删除所有表
     for (var table in tables) {
       var tableName = table['name'] as String;
       await laconic.statement('DROP TABLE IF EXISTS "$tableName"');
     }
 
-    // 重新执行迁移和预设
     await _migrate();
+    await laconic.statement('PRAGMA foreign_keys = ON');
     await _preset();
   }
 }
