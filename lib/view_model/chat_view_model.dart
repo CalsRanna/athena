@@ -503,6 +503,7 @@ class ChatViewModel {
     isStreaming.value = true;
     error.value = null;
     int? assistantId;
+    MessageEntity? assistantMessage;
 
     try {
       // 1. 保存用户消息
@@ -540,7 +541,7 @@ class ChatViewModel {
       );
 
       // 4. 创建 assistant 消息占位
-      var assistantMessage = MessageEntity(
+      assistantMessage = MessageEntity(
         chatId: chat.id!,
         role: 'assistant',
         content: '',
@@ -614,7 +615,7 @@ class ChatViewModel {
 
         if (event is SendReasoningDelta) {
           if (hasCompletedIteration) {
-            await _manage.updateMessage(assistantMessage);
+            await _manage.updateMessage(assistantMessage!);
             assistantMessage = MessageEntity(
               chatId: chat.id!,
               role: 'assistant',
@@ -632,7 +633,7 @@ class ChatViewModel {
             hasCompletedIteration = false;
           }
           reasoningBuffer.write(event.delta);
-          assistantMessage = assistantMessage.copyWith(
+          assistantMessage = assistantMessage!.copyWith(
             reasoningContent: reasoningBuffer.toString(),
             reasoning: true,
             reasoningUpdatedAt: DateTime.now(),
@@ -640,7 +641,7 @@ class ChatViewModel {
           _updateMessageInList(assistantId, assistantMessage);
         } else if (event is SendTextDelta) {
           if (hasCompletedIteration) {
-            await _manage.updateMessage(assistantMessage);
+            await _manage.updateMessage(assistantMessage!);
             assistantMessage = MessageEntity(
               chatId: chat.id!,
               role: 'assistant',
@@ -658,7 +659,7 @@ class ChatViewModel {
             hasCompletedIteration = false;
           }
           contentBuffer.write(event.delta);
-          assistantMessage = assistantMessage.copyWith(
+          assistantMessage = assistantMessage!.copyWith(
             content: contentBuffer.toString(),
           );
           _updateMessageInList(assistantId, assistantMessage);
@@ -668,7 +669,7 @@ class ChatViewModel {
             'name': event.name,
             'arguments': event.arguments,
           });
-          assistantMessage = assistantMessage.copyWith(
+          assistantMessage = assistantMessage!.copyWith(
             toolCalls: jsonEncode(toolCallsJson),
           );
           _updateMessageInList(assistantId, assistantMessage);
@@ -678,38 +679,39 @@ class ChatViewModel {
             'name': event.name,
             'result': event.result,
           });
-          assistantMessage = assistantMessage.copyWith(
+          assistantMessage = assistantMessage!.copyWith(
             toolResults: jsonEncode(toolResultsJson),
           );
           _updateMessageInList(assistantId, assistantMessage);
           hasCompletedIteration = true;
         } else if (event is SendDone) {
-          assistantMessage = assistantMessage.copyWith(content: event.content);
+          assistantMessage = assistantMessage!.copyWith(content: event.content);
           _updateMessageInList(assistantId, assistantMessage);
         }
       }
 
       // 标记推理完成
       if (reasoningBuffer.isNotEmpty) {
-        assistantMessage = assistantMessage.copyWith(reasoning: false);
+        assistantMessage = assistantMessage!.copyWith(reasoning: false);
         _updateMessageInList(assistantId, assistantMessage);
       }
 
       // 6. 保存最终消息并更新时间戳
-      await _manage.updateMessage(assistantMessage);
+      await _manage.updateMessage(assistantMessage!);
       await _manage.updateChatTimestamp(chat);
       await getChats();
     } catch (e) {
       error.value = e.toString();
-      if (assistantId != null) {
-        var errorMessage = MessageEntity(
-          id: assistantId,
-          chatId: chat.id!,
-          role: 'assistant',
-          content: 'Error: ${e.toString()}',
+      if (assistantId != null && assistantMessage != null) {
+        var preservedContent = assistantMessage.content.isEmpty
+            ? 'Error: ${e.toString()}'
+            : '${assistantMessage.content}\n\n[Error: ${e.toString()}]';
+        var preserved = assistantMessage.copyWith(
+          content: preservedContent,
+          reasoning: false,
         );
-        await _manage.updateMessage(errorMessage);
-        _updateMessageInList(assistantId, errorMessage);
+        await _manage.updateMessage(preserved);
+        _updateMessageInList(assistantId, preserved);
       }
     } finally {
       isStreaming.value = false;

@@ -66,13 +66,12 @@ class ChatRepository {
 
   Future<List<ChatEntity>> getChatsAfterId(int chatId, {int limit = 10}) async {
     var laconic = Database.instance.laconic;
-    var sql = '''
-      SELECT * FROM chats
-      WHERE id > $chatId
-      ORDER BY id ASC
-      LIMIT $limit
-    ''';
-    var results = await laconic.select(sql);
+    var results = await laconic
+        .table('chats')
+        .where('id', chatId, comparator: '>')
+        .orderBy('id', direction: 'asc')
+        .limit(limit)
+        .get();
     return results.map((r) => ChatEntity.fromJson(r.toMap())).toList();
   }
 
