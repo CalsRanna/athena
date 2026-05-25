@@ -9,14 +9,16 @@ class Migration202501210001AddSuggestionsToTrpgMessages {
     var count = await laconic.table('migrations').where('name', name).count();
     if (count > 0) return;
 
-    // 为 trpg_messages 表添加 suggestions 字段
-    await laconic.statement('''
-      ALTER TABLE trpg_messages ADD COLUMN suggestions TEXT DEFAULT ''
-    ''');
+    await laconic.transaction(() async {
+      // 为 trpg_messages 表添加 suggestions 字段
+      await laconic.statement('''
+        ALTER TABLE trpg_messages ADD COLUMN suggestions TEXT DEFAULT ''
+      ''');
 
-    // 记录迁移
-    await laconic.table('migrations').insert([
-      {'name': name},
-    ]);
+      // 记录迁移
+      await laconic.table('migrations').insert([
+        {'name': name},
+      ]);
+    });
   }
 }
