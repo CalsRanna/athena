@@ -6,13 +6,24 @@ class PermissionRule {
   final String? pattern;
   final String? contains;
 
-  const PermissionRule({required this.tool, this.pattern, this.contains});
+  /// 仅文件类工具（file_read/file_write/file_update/file_delete）使用：
+  /// true 表示该目录及其所有子目录都允许；false 仅允许该目录直接子文件。
+  /// shell 工具忽略此字段。
+  final bool recursive;
+
+  const PermissionRule({
+    required this.tool,
+    this.pattern,
+    this.contains,
+    this.recursive = false,
+  });
 
   factory PermissionRule.fromJson(Map<String, dynamic> json) {
     return PermissionRule(
       tool: json['tool'] as String,
       pattern: json['pattern'] as String?,
       contains: json['contains'] as String?,
+      recursive: json['recursive'] as bool? ?? false,
     );
   }
 
@@ -21,6 +32,7 @@ class PermissionRule {
       'tool': tool,
       if (pattern != null) 'pattern': pattern,
       if (contains != null) 'contains': contains,
+      if (recursive) 'recursive': true,
     };
   }
 
@@ -28,6 +40,10 @@ class PermissionRule {
     if (tool != toolName) return false;
     if (pattern == null) return true;
     if (keyArg == null) return false;
+
+    if (_isFileTool(toolName)) {
+      return _matchesPath(pattern!, keyArg, recursive);
+    }
     return _globMatch(pattern!, keyArg);
   }
 
@@ -36,6 +52,29 @@ class PermissionRule {
     if (contains == null) return true;
     if (keyArg == null) return false;
     return keyArg.contains(contains!);
+  }
+
+  static bool _isFileTool(String toolName) {
+    return const {
+      'file_read',
+      'file_write',
+      'file_update',
+      'file_delete',
+    }.contains(toolName);
+  }
+
+  /// 文件路径匹配：pattern 是目录前缀（以 `/` 结尾），keyArg 是文件绝对路径。
+  static bool _matchesPath(String pattern, String value, bool recursive) {
+    var dir = pattern;
+    if (!dir.endsWith('/')) dir = '$dir/';
+
+    if (!value.startsWith(dir)) return false;
+
+    if (recursive) return true;
+
+    // 非递归：value 必须是 dir 的直接子项（dir 之后没有再出现 `/`）
+    final tail = value.substring(dir.length);
+    return !tail.contains('/');
   }
 
   static bool _globMatch(String pattern, String value) {
@@ -69,7 +108,9 @@ class PermissionStore {
   ];
 
   File get _file {
-    final home = Platform.environment['HOME'] ?? '';
+    final home = Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '';
     return File('$home/.athena/permissions.json');
   }
 
@@ -107,7 +148,10 @@ class PermissionStore {
 
   Future<void> addAllowRule(PermissionRule rule) async {
     final exists = allowRules.any(
-      (r) => r.tool == rule.tool && r.pattern == rule.pattern,
+      (r) =>
+          r.tool == rule.tool &&
+          r.pattern == rule.pattern &&
+          r.recursive == rule.recursive,
     );
     if (exists) return;
     allowRules.add(rule);
