@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class UnixSearchTool implements Tool {
+  final PathSandbox sandbox;
+
+  UnixSearchTool({required this.sandbox});
+
   @override
   String get name => 'search';
 
@@ -43,11 +49,20 @@ class UnixSearchTool implements Tool {
     final path = args['path'] as String? ?? Directory.current.path;
     final type = args['type'] as String? ?? 'grep';
 
+    if (!sandbox.canRead(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
+
     final results = await Process.run(
       type == 'find' ? 'find' : 'grep',
       type == 'find'
           ? [path, '-name', pattern, '-not', '-path', '*/.*']
-          : ['-rn', '--include=*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}', pattern, path],
+          : [
+              '-rn',
+              '--include=*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}',
+              pattern,
+              path,
+            ],
     );
 
     final output = '${results.stdout}'.trim();

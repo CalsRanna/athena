@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class FileReadTool implements Tool {
+  final PathSandbox sandbox;
+
+  FileReadTool({required this.sandbox});
+
   @override
   String get name => 'file_read';
 
@@ -32,13 +38,17 @@ class FileReadTool implements Tool {
       };
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
+  DangerLevel get dangerLevel => DangerLevel.needsApproval;
 
   @override
   Future<String> execute(Map<String, dynamic> args) async {
     final path = args['path'] as String;
     final offset = args['offset'] as int? ?? 0;
     final limit = args['limit'] as int?;
+
+    if (!sandbox.canRead(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
 
     final file = File(path);
     if (!await file.exists()) {

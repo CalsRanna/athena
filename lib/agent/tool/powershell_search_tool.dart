@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class PowerShellSearchTool implements Tool {
+  final PathSandbox sandbox;
+
+  PowerShellSearchTool({required this.sandbox});
+
   @override
   String get name => 'search';
 
@@ -44,6 +50,10 @@ class PowerShellSearchTool implements Tool {
     final path = args['path'] as String? ?? Directory.current.path;
     final type = args['type'] as String? ?? 'grep';
 
+    if (!sandbox.canRead(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
+
     final escapedPath = path.replaceAll("'", "''");
     final escapedPattern = pattern.replaceAll("'", "''");
 
@@ -52,14 +62,22 @@ class PowerShellSearchTool implements Tool {
       if (type == 'find') {
         results = await Process.run(
           'powershell.exe',
-          ['-Command', "Get-ChildItem -Path '$escapedPath' -Recurse -Filter '$escapedPattern' | Select-Object -ExpandProperty FullName"],
+          [
+            '-Command',
+            "Get-ChildItem -Path '$escapedPath' -Recurse -Filter '$escapedPattern' | Select-Object -ExpandProperty FullName",
+          ],
           workingDirectory: path,
         );
       } else {
-        final extensions = '*.{dart,yaml,md,json,js,ts,py,java,kt,swift,c,cpp,h,hpp,rs,go,rb,php,html,css,sql,xml,toml,cfg}';
+        // PowerShell native array syntax for -Include; brace expansion is bash-only.
+        const includeArray =
+            "@('*.dart','*.yaml','*.md','*.json','*.js','*.ts','*.py','*.java','*.kt','*.swift','*.c','*.cpp','*.h','*.hpp','*.rs','*.go','*.rb','*.php','*.html','*.css','*.sql','*.xml','*.toml','*.cfg')";
         results = await Process.run(
           'powershell.exe',
-          ['-Command', "Get-ChildItem -Path '$escapedPath' -Recurse -Include $extensions -File | Select-String -Pattern '$escapedPattern'"],
+          [
+            '-Command',
+            "Get-ChildItem -Path '$escapedPath' -Recurse -Include $includeArray -File | Select-String -Pattern '$escapedPattern'",
+          ],
           workingDirectory: path,
         );
       }

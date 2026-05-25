@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class FileWriteTool implements Tool {
+  final PathSandbox sandbox;
+
+  FileWriteTool({required this.sandbox});
+
   @override
   String get name => 'file_write';
 
@@ -34,6 +40,10 @@ class FileWriteTool implements Tool {
   Future<String> execute(Map<String, dynamic> args) async {
     final path = args['path'] as String;
     final content = args['content'] as String;
+
+    if (!sandbox.canWrite(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
 
     final file = File(path);
     await file.parent.create(recursive: true);

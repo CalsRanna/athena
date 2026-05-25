@@ -1,9 +1,10 @@
+import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/unix_search_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('UnixSearchTool', () {
-    final tool = UnixSearchTool();
+    final tool = UnixSearchTool(sandbox: PathSandbox());
 
     test('name is search', () {
       expect(tool.name, 'search');

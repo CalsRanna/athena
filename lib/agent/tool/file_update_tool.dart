@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class FileUpdateTool implements Tool {
+  final PathSandbox sandbox;
+
+  FileUpdateTool({required this.sandbox});
+
   @override
   String get name => 'file_update';
 
@@ -49,6 +55,10 @@ class FileUpdateTool implements Tool {
     final rawOld = args['old_string'] as String;
     final rawNew = args['new_string'] as String;
     final replaceAll = args['replace_all'] as bool? ?? false;
+
+    if (!sandbox.canWrite(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
 
     if (rawOld == rawNew) {
       return 'Error: old_string and new_string must differ';

@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class ListDirectoryTool implements Tool {
+  final PathSandbox sandbox;
+
+  ListDirectoryTool({required this.sandbox});
+
   @override
   String get name => 'list_directory';
 
@@ -36,8 +42,12 @@ class ListDirectoryTool implements Tool {
   Future<String> execute(Map<String, dynamic> args) async {
     final path = args['path'] as String? ?? Directory.current.path;
     final depth = (args['depth'] as int? ?? 1).clamp(1, 3);
-    final dir = Directory(path);
 
+    if (!sandbox.canRead(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
+
+    final dir = Directory(path);
     if (!await dir.exists()) {
       return 'Error: Directory not found: $path';
     }
@@ -57,13 +67,14 @@ class ListDirectoryTool implements Tool {
     if (currentDepth >= maxDepth) return;
 
     try {
-      final entries = dir.listSync()..sort((a, b) {
-            final aIsDir = a is Directory;
-            final bIsDir = b is Directory;
-            if (aIsDir && !bIsDir) return -1;
-            if (!aIsDir && bIsDir) return 1;
-            return a.path.compareTo(b.path);
-          });
+      final entries = dir.listSync()
+        ..sort((a, b) {
+          final aIsDir = a is Directory;
+          final bIsDir = b is Directory;
+          if (aIsDir && !bIsDir) return -1;
+          if (!aIsDir && bIsDir) return 1;
+          return a.path.compareTo(b.path);
+        });
 
       for (final entry in entries) {
         final name = entry.path.split('/').last;
