@@ -1,6 +1,7 @@
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/tool/file_delete_tool.dart';
 import 'package:athena/agent/tool/file_update_tool.dart';
@@ -62,6 +63,7 @@ class DI {
     getIt.registerLazySingleton(() => MemoryViewModel());
 
     // Agent
+    getIt.registerLazySingleton(() => PathSandbox());
     getIt.registerLazySingleton(() => PermissionStore());
     getIt.registerLazySingleton(
       () => PermissionService(store: getIt<PermissionStore>()),
@@ -75,16 +77,21 @@ class DI {
 
     getIt.registerLazySingleton(() {
       final skillRegistry = getIt<SkillRegistry>();
+      final sandbox = getIt<PathSandbox>();
       final isWindows = Platform.isWindows;
       final toolRegistry = ToolRegistry()
         ..registerAll([
-          isWindows ? PowerShellSearchTool() : UnixSearchTool(),
-          FileReadTool(),
-          FileWriteTool(),
-          FileUpdateTool(),
-          FileDeleteTool(),
-          ListDirectoryTool(),
-          isWindows ? PowerShellShellTool() : BashShellTool(),
+          isWindows
+              ? PowerShellSearchTool(sandbox: sandbox)
+              : UnixSearchTool(sandbox: sandbox),
+          FileReadTool(sandbox: sandbox),
+          FileWriteTool(sandbox: sandbox),
+          FileUpdateTool(sandbox: sandbox),
+          FileDeleteTool(sandbox: sandbox),
+          ListDirectoryTool(sandbox: sandbox),
+          isWindows
+              ? PowerShellShellTool(sandbox: sandbox)
+              : BashShellTool(sandbox: sandbox),
           WebFetchTool(),
           WebSearchTool(),
           SkillTool(skillRegistry),

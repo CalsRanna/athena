@@ -1,9 +1,10 @@
+import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/powershell_search_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PowerShellSearchTool', () {
-    final tool = PowerShellSearchTool();
+    final tool = PowerShellSearchTool(sandbox: PathSandbox());
 
     test('name is search', () {
       expect(tool.name, 'search');

@@ -580,14 +580,25 @@ class ChatViewModel {
             args,
           );
           final isDangerous = permissionService.isDangerous(toolName, args);
+          final isFileRule = const {
+            'file_read',
+            'file_write',
+            'file_update',
+            'file_delete',
+          }.contains(toolName);
           final result = await showPermissionDialog(
             toolName: toolName,
             description: description,
             ruleDescription: ruleDesc,
             allowPersist: !isDangerous,
+            isFileRule: isFileRule,
           );
           if (result.approved && result.persist) {
-            final rule = permissionService.generateRule(toolName, args);
+            final rule = permissionService.generateRule(
+              toolName,
+              args,
+              recursive: result.recursive,
+            );
             await permissionService.persistRule(rule);
           }
           return result.approved;

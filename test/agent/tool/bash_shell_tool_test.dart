@@ -1,9 +1,10 @@
+import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/bash_shell_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('BashShellTool', () {
-    final tool = BashShellTool();
+    final tool = BashShellTool(sandbox: PathSandbox());
 
     test('name is bash', () {
       expect(tool.name, 'bash');

@@ -1,8 +1,14 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/sandbox.dart';
+
 import 'tool_interface.dart';
 
 class FileDeleteTool implements Tool {
+  final PathSandbox sandbox;
+
+  FileDeleteTool({required this.sandbox});
+
   @override
   String get name => 'file_delete';
 
@@ -28,6 +34,10 @@ class FileDeleteTool implements Tool {
   @override
   Future<String> execute(Map<String, dynamic> args) async {
     final path = args['path'] as String;
+
+    if (!sandbox.canWrite(path)) {
+      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
+    }
 
     final file = File(path);
     if (!await file.exists()) {
