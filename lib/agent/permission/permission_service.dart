@@ -23,40 +23,57 @@ class PermissionService {
     return _matchesDenyRules(toolName, keyArg);
   }
 
-  /// 根据工具调用自动生成 allow 规则
-  PermissionRule generateRule(String toolName, Map<String, dynamic> args) {
+  /// 根据工具调用与用户选择的粒度生成 allow 规则。
+  ///
+  /// [recursive] 仅对文件类工具有效：true=该目录及所有子目录，false=该目录直接子项。
+  PermissionRule generateRule(
+    String toolName,
+    Map<String, dynamic> args, {
+    bool recursive = false,
+  }) {
     final keyArg = _extractKeyArg(toolName, args);
     switch (toolName) {
       case 'bash' || 'powershell':
-        final prefix = _extractCommandPrefix(keyArg ?? '');
-        return PermissionRule(tool: toolName, pattern: '$prefix*');
+        // Shell 永久规则按完整命令字面量匹配，不再按命令前缀放开整个命令族。
+        return PermissionRule(tool: toolName, pattern: keyArg ?? '');
+      case 'file_read':
       case 'file_write':
       case 'file_update':
       case 'file_delete':
         final dir = _extractDirectory(keyArg ?? '');
-        return PermissionRule(tool: toolName, pattern: '$dir*');
+        return PermissionRule(
+          tool: toolName,
+          pattern: dir,
+          recursive: recursive,
+        );
       default:
         return PermissionRule(tool: toolName);
     }
   }
 
   /// 生成 checkbox 显示文案
-  String generateRuleDescription(String toolName, Map<String, dynamic> args) {
-    final rule = generateRule(toolName, args);
-    if (rule.pattern == null) {
+  String generateRuleDescription(
+    String toolName,
+    Map<String, dynamic> args, {
+    bool recursive = false,
+  }) {
+    final rule = generateRule(toolName, args, recursive: recursive);
+    if (rule.pattern == null || rule.pattern!.isEmpty) {
       return 'Always allow $toolName';
     }
     switch (toolName) {
       case 'bash' || 'powershell':
-        final cmd = rule.pattern!.replaceAll('*', '').trim();
-        return 'Always allow "$cmd" commands';
+        return 'Always allow this exact command';
+      case 'file_read':
+        final suffix = recursive ? ' (including subdirectories)' : '';
+        return 'Always allow reads in "${rule.pattern}"$suffix';
       case 'file_write':
       case 'file_update':
-        final dir = rule.pattern!.replaceAll('*', '');
-        return 'Always allow writes to "$dir"';
+        final suffix = recursive ? ' (including subdirectories)' : '';
+        return 'Always allow writes to "${rule.pattern}"$suffix';
       case 'file_delete':
-        final dir = rule.pattern!.replaceAll('*', '');
-        return 'Always allow deletes in "$dir"';
+        final suffix = recursive ? ' (including subdirectories)' : '';
+        return 'Always allow deletes in "${rule.pattern}"$suffix';
       default:
         return 'Always allow $toolName matching "${rule.pattern}"';
     }
@@ -83,34 +100,14 @@ class PermissionService {
   String? _extractKeyArg(String toolName, Map<String, dynamic> args) {
     return switch (toolName) {
       'bash' || 'powershell' => args['command'] as String?,
-      'file_write' || 'file_update' || 'file_delete' => args['path'] as String?,
+      'file_read' ||
+      'file_write' ||
+      'file_update' ||
+      'file_delete' =>
+        args['path'] as String?,
       'web_fetch' => args['url'] as String?,
       _ => null,
     };
-  }
-
-  String _extractCommandPrefix(String command) {
-    final parts = command.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty) return '';
-    if (parts.length == 1) return '${parts.first} ';
-    // 有子命令结构的工具，取前两个词
-    const multiLevelTools = {
-      'npm', 'npx', 'pnpm', 'yarn',
-      'pip', 'pip3', 'pipx',
-      'docker', 'docker-compose', 'podman',
-      'kubectl', 'helm',
-      'flutter', 'dart', 'pub',
-      'cargo', 'rustup',
-      'go',
-      'brew',
-      'apt', 'apt-get', 'dnf', 'yum', 'pacman',
-      'systemctl', 'journalctl',
-      'git', // git 虽然通常安全，但 git push/reset 等有风险
-    };
-    if (multiLevelTools.contains(parts.first)) {
-      return '${parts[0]} ${parts[1]} ';
-    }
-    return '${parts.first} ';
   }
 
   String _extractDirectory(String path) {

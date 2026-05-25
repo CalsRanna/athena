@@ -10,8 +10,13 @@ import 'package:hugeicons/hugeicons.dart';
 class PermissionDialogResult {
   final bool approved;
   final bool persist;
+  final bool recursive;
 
-  const PermissionDialogResult({required this.approved, required this.persist});
+  const PermissionDialogResult({
+    required this.approved,
+    required this.persist,
+    this.recursive = false,
+  });
 }
 
 Future<PermissionDialogResult> showPermissionDialog({
@@ -19,6 +24,7 @@ Future<PermissionDialogResult> showPermissionDialog({
   required String description,
   required String ruleDescription,
   bool allowPersist = true,
+  bool isFileRule = false,
 }) async {
   final context = router.navigatorKey.currentContext!;
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
@@ -30,9 +36,11 @@ Future<PermissionDialogResult> showPermissionDialog({
         description: description,
         ruleDescription: ruleDescription,
         allowPersist: allowPersist,
+        isFileRule: isFileRule,
       ),
     );
-    return result ?? const PermissionDialogResult(approved: false, persist: false);
+    return result ??
+        const PermissionDialogResult(approved: false, persist: false);
   } else {
     final result = await showModalBottomSheet<PermissionDialogResult>(
       context: context,
@@ -44,9 +52,11 @@ Future<PermissionDialogResult> showPermissionDialog({
         description: description,
         ruleDescription: ruleDescription,
         allowPersist: allowPersist,
+        isFileRule: isFileRule,
       ),
     );
-    return result ?? const PermissionDialogResult(approved: false, persist: false);
+    return result ??
+        const PermissionDialogResult(approved: false, persist: false);
   }
 }
 
@@ -55,12 +65,14 @@ class _DesktopPermissionDialog extends StatefulWidget {
   final String description;
   final String ruleDescription;
   final bool allowPersist;
+  final bool isFileRule;
 
   const _DesktopPermissionDialog({
     required this.toolName,
     required this.description,
     required this.ruleDescription,
     required this.allowPersist,
+    required this.isFileRule,
   });
 
   @override
@@ -70,6 +82,7 @@ class _DesktopPermissionDialog extends StatefulWidget {
 
 class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
   bool _persist = false;
+  bool _recursive = false;
 
   @override
   Widget build(BuildContext context) {
@@ -80,11 +93,12 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
         color: Colors.orange.shade700,
       ),
       const SizedBox(width: 8),
-      Text(widget.toolName, style: GoogleFonts.firaCode(
-        fontSize: 16,
-        color: ColorUtil.FFFFFFFF,
-        fontWeight: FontWeight.w500,
-      )),
+      Text(widget.toolName,
+          style: GoogleFonts.firaCode(
+            fontSize: 16,
+            color: ColorUtil.FFFFFFFF,
+            fontWeight: FontWeight.w500,
+          )),
     ]);
     var descriptionText = Text(
       widget.description,
@@ -101,7 +115,11 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
     ];
     if (widget.allowPersist) {
       children.add(const SizedBox(height: 16));
-      children.add(_buildCheckbox());
+      children.add(_buildPersistCheckbox());
+      if (_persist && widget.isFileRule) {
+        children.add(const SizedBox(height: 8));
+        children.add(_buildRecursiveCheckbox());
+      }
     }
     children.add(const SizedBox(height: 24));
     children.add(_buildButtons());
@@ -123,28 +141,25 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
     return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
-  Widget _buildCheckbox() {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 13,
+  Widget _buildPersistCheckbox() {
+    return _CheckboxRow(
+      value: _persist,
+      label: widget.ruleDescription,
+      onChanged: (v) => setState(() {
+        _persist = v;
+        if (!v) _recursive = false;
+      }),
     );
-    return GestureDetector(
-      onTap: () => setState(() => _persist = !_persist),
-      behavior: HitTestBehavior.opaque,
-      child: Row(children: [
-        SizedBox(
-          width: 20,
-          height: 20,
-          child: Checkbox(
-            value: _persist,
-            onChanged: (v) => setState(() => _persist = v ?? false),
-            activeColor: Colors.orange.shade700,
-            side: BorderSide(color: ColorUtil.FFC2C2C2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(child: Text(widget.ruleDescription, style: textStyle)),
-      ]),
+  }
+
+  Widget _buildRecursiveCheckbox() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 28),
+      child: _CheckboxRow(
+        value: _recursive,
+        label: 'Include subdirectories',
+        onChanged: (v) => setState(() => _recursive = v),
+      ),
     );
   }
 
@@ -160,7 +175,11 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
     var allowButton = AthenaPrimaryButton(
       onTap: () => Navigator.pop(
         context,
-        PermissionDialogResult(approved: true, persist: _persist),
+        PermissionDialogResult(
+          approved: true,
+          persist: _persist,
+          recursive: _persist && widget.isFileRule ? _recursive : false,
+        ),
       ),
       child: Padding(padding: edgeInsets, child: const Text('Allow')),
     );
@@ -176,12 +195,14 @@ class _MobilePermissionDialog extends StatefulWidget {
   final String description;
   final String ruleDescription;
   final bool allowPersist;
+  final bool isFileRule;
 
   const _MobilePermissionDialog({
     required this.toolName,
     required this.description,
     required this.ruleDescription,
     required this.allowPersist,
+    required this.isFileRule,
   });
 
   @override
@@ -191,6 +212,7 @@ class _MobilePermissionDialog extends StatefulWidget {
 
 class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
   bool _persist = false;
+  bool _recursive = false;
 
   @override
   Widget build(BuildContext context) {
@@ -201,11 +223,12 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
         color: Colors.orange.shade700,
       ),
       const SizedBox(width: 8),
-      Text(widget.toolName, style: GoogleFonts.firaCode(
-        fontSize: 16,
-        color: ColorUtil.FFFFFFFF,
-        fontWeight: FontWeight.w500,
-      )),
+      Text(widget.toolName,
+          style: GoogleFonts.firaCode(
+            fontSize: 16,
+            color: ColorUtil.FFFFFFFF,
+            fontWeight: FontWeight.w500,
+          )),
     ]);
     var descriptionText = Text(
       widget.description,
@@ -222,7 +245,11 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     ];
     if (widget.allowPersist) {
       children.add(const SizedBox(height: 16));
-      children.add(_buildCheckbox());
+      children.add(_buildPersistCheckbox());
+      if (_persist && widget.isFileRule) {
+        children.add(const SizedBox(height: 8));
+        children.add(_buildRecursiveCheckbox());
+      }
     }
     children.add(const SizedBox(height: 24));
     children.add(_buildAllowButton());
@@ -236,28 +263,25 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     );
   }
 
-  Widget _buildCheckbox() {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 13,
+  Widget _buildPersistCheckbox() {
+    return _CheckboxRow(
+      value: _persist,
+      label: widget.ruleDescription,
+      onChanged: (v) => setState(() {
+        _persist = v;
+        if (!v) _recursive = false;
+      }),
     );
-    return GestureDetector(
-      onTap: () => setState(() => _persist = !_persist),
-      behavior: HitTestBehavior.opaque,
-      child: Row(children: [
-        SizedBox(
-          width: 20,
-          height: 20,
-          child: Checkbox(
-            value: _persist,
-            onChanged: (v) => setState(() => _persist = v ?? false),
-            activeColor: Colors.orange.shade700,
-            side: BorderSide(color: ColorUtil.FFC2C2C2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(child: Text(widget.ruleDescription, style: textStyle)),
-      ]),
+  }
+
+  Widget _buildRecursiveCheckbox() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 28),
+      child: _CheckboxRow(
+        value: _recursive,
+        label: 'Include subdirectories',
+        onChanged: (v) => setState(() => _recursive = v),
+      ),
     );
   }
 
@@ -281,7 +305,11 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.pop(
         context,
-        PermissionDialogResult(approved: true, persist: _persist),
+        PermissionDialogResult(
+          approved: true,
+          persist: _persist,
+          recursive: _persist && widget.isFileRule ? _recursive : false,
+        ),
       ),
       child: Container(
         alignment: Alignment.center,
@@ -314,6 +342,44 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
         padding: const EdgeInsets.all(16),
         child: Text('Deny', style: textStyle),
       ),
+    );
+  }
+}
+
+class _CheckboxRow extends StatelessWidget {
+  final bool value;
+  final String label;
+  final ValueChanged<bool> onChanged;
+
+  const _CheckboxRow({
+    required this.value,
+    required this.label,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var textStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      fontSize: 13,
+    );
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
+      child: Row(children: [
+        SizedBox(
+          width: 20,
+          height: 20,
+          child: Checkbox(
+            value: value,
+            onChanged: (v) => onChanged(v ?? false),
+            activeColor: Colors.orange.shade700,
+            side: BorderSide(color: ColorUtil.FFC2C2C2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: textStyle)),
+      ]),
     );
   }
 }
