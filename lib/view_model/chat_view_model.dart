@@ -14,7 +14,7 @@ import 'package:athena/router/router.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_support_service.dart';
-import 'package:athena/service/message_send_service.dart';
+import 'package:athena/agent/agent_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -31,29 +31,20 @@ class ChatViewModel {
   final ChatSupportService _support;
   final ChatMessageService _chatMessageService;
   final ChatSelectionDelegate _selection;
-
-  MessageSendService? _sendService;
+  final AgentService _agentService;
 
   ChatViewModel({
     ChatManageService? manageService,
-    MessageSendService? sendService,
     ChatSupportService? supportService,
     ChatMessageService? chatMessageService,
     ChatSelectionDelegate? selection,
+    AgentService? agentService,
   })  : _manage = manageService ?? GetIt.instance<ChatManageService>(),
-        _sendService = sendService,
         _support = supportService ?? GetIt.instance<ChatSupportService>(),
         _chatMessageService =
             chatMessageService ?? GetIt.instance<ChatMessageService>(),
-        _selection = selection ?? ChatSelectionDelegate();
-
-  /// Lazily initialised getter for MessageSendService.
-  /// Uses GetIt to resolve, ensuring downstream dependencies (AgentService)
-  /// are wired by the time send is invoked.
-  MessageSendService get _send {
-    _sendService ??= GetIt.instance<MessageSendService>();
-    return _sendService!;
-  }
+        _selection = selection ?? ChatSelectionDelegate(),
+        _agentService = agentService ?? GetIt.instance<AgentService>();
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -554,7 +545,7 @@ class ChatViewModel {
       final settingVM = GetIt.instance<SettingViewModel>();
       final permissionService = GetIt.instance<PermissionService>();
 
-      var agentStream = _send.sendMessage(
+      var agentStream = _agentService.run(
         chat: chat,
         provider: provider,
         model: model,
@@ -572,7 +563,7 @@ class ChatViewModel {
           } catch (_) {
             args = {};
           }
-          final description = _send.formatToolArgs(toolName, arguments);
+          final description = _formatToolArgs(toolName, arguments);
           final ruleDesc = permissionService.generateRuleDescription(
             toolName,
             args,
@@ -610,7 +601,7 @@ class ChatViewModel {
       await for (final event in agentStream) {
         if (!isStreaming.value) break;
 
-        if (event is SendReasoningDelta) {
+        if (event is AgentReasoningEvent) {
           if (hasCompletedIteration) {
             await _manage.updateMessage(assistantMessage!);
             assistantMessage = MessageEntity(
@@ -636,7 +627,7 @@ class ChatViewModel {
             reasoningUpdatedAt: DateTime.now(),
           );
           _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is SendTextDelta) {
+        } else if (event is AgentTextEvent) {
           if (hasCompletedIteration) {
             await _manage.updateMessage(assistantMessage!);
             assistantMessage = MessageEntity(
@@ -660,7 +651,7 @@ class ChatViewModel {
             content: contentBuffer.toString(),
           );
           _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is SendToolCall) {
+        } else if (event is AgentToolCallEvent) {
           toolCallsJson.add({
             'id': event.id,
             'name': event.name,
@@ -670,7 +661,7 @@ class ChatViewModel {
             toolCalls: jsonEncode(toolCallsJson),
           );
           _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is SendToolResult) {
+        } else if (event is AgentToolResultEvent) {
           toolResultsJson.add({
             'id': event.id,
             'name': event.name,
@@ -681,7 +672,7 @@ class ChatViewModel {
           );
           _updateMessageInList(assistantId, assistantMessage);
           hasCompletedIteration = true;
-        } else if (event is SendDone) {
+        } else if (event is AgentDoneEvent) {
           assistantMessage = assistantMessage!.copyWith(content: event.content);
           _updateMessageInList(assistantId, assistantMessage);
         }
@@ -887,5 +878,27 @@ class ChatViewModel {
     currentSentinel.value = await _getDefaultSentinel();
     currentContext.value = defaultDraftContext;
     currentTemperature.value = defaultDraftTemperature;
+  }
+
+  String _formatToolArgs(String toolName, String arguments) {
+    final buffer = StringBuffer();
+    buffer.writeln('Agent wants to use: $toolName');
+    try {
+      final args = jsonDecode(arguments) as Map<String, dynamic>;
+      for (final entry in args.entries) {
+        var value = entry.value.toString();
+        if (value.length > 120) {
+          value = '${value.substring(0, 120)}...';
+        }
+        buffer.writeln('  ${entry.key}: $value');
+      }
+    } catch (_) {
+      if (arguments.length > 200) {
+        buffer.writeln('  ${arguments.substring(0, 200)}...');
+      } else {
+        buffer.writeln('  $arguments');
+      }
+    }
+    return buffer.toString();
   }
 }
