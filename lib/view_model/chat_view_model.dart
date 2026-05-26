@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:athena/agent/agent_service.dart';
-import 'package:athena/agent/permission/permission_dialog.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/widget/permission_dialog.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/message_entity.dart';
@@ -19,7 +19,6 @@ import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
-import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
@@ -41,19 +40,18 @@ class ChatViewModel {
     ChatSupportService? supportService,
     ChatMessageService? chatMessageService,
     ChatSelectionDelegate? selection,
-  })  : _manage = manageService ?? ChatManageService(),
+  })  : _manage = manageService ?? GetIt.instance<ChatManageService>(),
         _sendService = sendService,
-        _support = supportService ?? ChatSupportService(),
-        _chatMessageService = chatMessageService ?? ChatMessageService(),
+        _support = supportService ?? GetIt.instance<ChatSupportService>(),
+        _chatMessageService =
+            chatMessageService ?? GetIt.instance<ChatMessageService>(),
         _selection = selection ?? ChatSelectionDelegate();
 
   /// Lazily initialised getter for MessageSendService.
-  /// Uses GetIt to resolve AgentService, which may not be available
-  /// in lightweight contexts (e.g. tests that only inspect signals).
+  /// Uses GetIt to resolve, ensuring downstream dependencies (AgentService)
+  /// are wired by the time send is invoked.
   MessageSendService get _send {
-    _sendService ??= MessageSendService(
-      agentService: GetIt.instance<AgentService>(),
-    );
+    _sendService ??= GetIt.instance<MessageSendService>();
     return _sendService!;
   }
 
@@ -327,13 +325,12 @@ class ChatViewModel {
     }
   }
 
-  /// 导出聊天为图片
+  /// 导出聊天为图片（接收已渲染的 PNG 字节）
   Future<void> exportImage({
     required ChatEntity chat,
-    required GlobalKey repaintBoundaryKey,
+    required Uint8List bytes,
   }) async {
     try {
-      final bytes = await _support.exportImage(repaintBoundaryKey);
       await _support.saveImageFile(bytes, chat.id!);
     } catch (e) {
       error.value = e.toString();

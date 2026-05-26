@@ -9,6 +9,7 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:get_it/get_it.dart';
 
 class ChatManageService {
   final ChatRepository _chatRepository;
@@ -23,11 +24,14 @@ class ChatManageService {
     ModelRepository? modelRepository,
     ProviderRepository? providerRepository,
     SentinelRepository? sentinelRepository,
-  })  : _chatRepository = chatRepository ?? ChatRepository(),
-        _messageRepository = messageRepository ?? MessageRepository(),
-        _modelRepository = modelRepository ?? ModelRepository(),
-        _providerRepository = providerRepository ?? ProviderRepository(),
-        _sentinelRepository = sentinelRepository ?? SentinelRepository();
+  })  : _chatRepository = chatRepository ?? GetIt.instance<ChatRepository>(),
+        _messageRepository =
+            messageRepository ?? GetIt.instance<MessageRepository>(),
+        _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>(),
+        _providerRepository =
+            providerRepository ?? GetIt.instance<ProviderRepository>(),
+        _sentinelRepository =
+            sentinelRepository ?? GetIt.instance<SentinelRepository>();
 
   Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async {
     final chats = await _chatRepository.getAllChats();

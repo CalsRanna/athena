@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui' as ui;
 
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
@@ -10,8 +9,7 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/chat_service.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ChatSupportService {
@@ -25,10 +23,12 @@ class ChatSupportService {
     MessageRepository? messageRepository,
     ProviderRepository? providerRepository,
     ChatService? chatService,
-  })  : _chatRepository = chatRepository ?? ChatRepository(),
-        _messageRepository = messageRepository ?? MessageRepository(),
-        _providerRepository = providerRepository ?? ProviderRepository(),
-        _chatService = chatService ?? ChatService();
+  })  : _chatRepository = chatRepository ?? GetIt.instance<ChatRepository>(),
+        _messageRepository =
+            messageRepository ?? GetIt.instance<MessageRepository>(),
+        _providerRepository =
+            providerRepository ?? GetIt.instance<ProviderRepository>(),
+        _chatService = chatService ?? GetIt.instance<ChatService>();
 
   Stream<String> renameChat(
     String firstUserMessage, {
@@ -47,18 +47,6 @@ class ChatSupportService {
     final updated = chat.copyWith(title: title);
     await _chatRepository.updateChat(updated);
     return updated;
-  }
-
-  Future<Uint8List> exportImage(GlobalKey repaintBoundaryKey) async {
-    final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
-        as RenderRepaintBoundary?;
-    if (boundary == null) throw Exception('Failed to get render boundary');
-
-    final image = await boundary.toImage(pixelRatio: 3.0);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (byteData == null) throw Exception('Failed to convert image to bytes');
-
-    return byteData.buffer.asUint8List();
   }
 
   Future<String> saveImageFile(Uint8List bytes, int chatId) async {

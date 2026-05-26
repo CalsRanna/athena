@@ -1,9 +1,19 @@
+import 'package:athena/di.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 
 void main() {
+  setUpAll(() {
+    DI.ensureInitialized();
+  });
+
+  tearDownAll(() {
+    GetIt.instance.reset();
+  });
+
   group('SentinelViewModel.defaultSentinel', () {
     test('falls back to Athena when no sentinels are loaded', () {
       final viewModel = SentinelViewModel();

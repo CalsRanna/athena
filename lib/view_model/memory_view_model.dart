@@ -6,14 +6,31 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/memory_service.dart';
 import 'package:athena/util/logger_util.dart';
+import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class MemoryViewModel {
-  final MemoryRepository _memoryRepository = MemoryRepository();
-  final ChatRepository _chatRepository = ChatRepository();
-  final MessageRepository _messageRepository = MessageRepository();
-  final ProviderRepository _providerRepository = ProviderRepository();
-  final MemoryService _memoryService = MemoryService();
+  late final MemoryRepository _memoryRepository;
+  late final ChatRepository _chatRepository;
+  late final MessageRepository _messageRepository;
+  late final ProviderRepository _providerRepository;
+  late final MemoryService _memoryService;
+
+  MemoryViewModel({
+    MemoryRepository? memoryRepository,
+    ChatRepository? chatRepository,
+    MessageRepository? messageRepository,
+    ProviderRepository? providerRepository,
+    MemoryService? memoryService,
+  }) {
+    _memoryRepository = memoryRepository ?? GetIt.instance<MemoryRepository>();
+    _chatRepository = chatRepository ?? GetIt.instance<ChatRepository>();
+    _messageRepository =
+        messageRepository ?? GetIt.instance<MessageRepository>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+    _memoryService = memoryService ?? GetIt.instance<MemoryService>();
+  }
 
   final memory = signal<MemoryEntity?>(null);
   final isGenerating = signal(false);

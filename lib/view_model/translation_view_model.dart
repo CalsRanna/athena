@@ -11,9 +11,20 @@ import 'package:signals/signals.dart';
 
 /// TranslationViewModel 负责翻译功能的业务逻辑
 class TranslationViewModel {
-  final TranslationService _service = TranslationService();
-  final ProviderRepository _providerRepository = ProviderRepository();
-  final ModelRepository _modelRepository = ModelRepository();
+  late final TranslationService _service;
+  late final ProviderRepository _providerRepository;
+  late final ModelRepository _modelRepository;
+
+  TranslationViewModel({
+    TranslationService? service,
+    ProviderRepository? providerRepository,
+    ModelRepository? modelRepository,
+  }) {
+    _service = service ?? GetIt.instance<TranslationService>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+  }
 
   // Signals 状态
   final sourceText = signal('');

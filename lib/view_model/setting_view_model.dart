@@ -59,9 +59,21 @@ class SettingViewModel {
   final maxRetries = signal(10);
   final braveApiKey = signal('');
 
-  final _modelRepository = ModelRepository();
-  final _providerRepository = ProviderRepository();
-  final _sentinelRepository = SentinelRepository();
+  late final ModelRepository _modelRepository;
+  late final ProviderRepository _providerRepository;
+  late final SentinelRepository _sentinelRepository;
+
+  SettingViewModel({
+    ModelRepository? modelRepository,
+    ProviderRepository? providerRepository,
+    SentinelRepository? sentinelRepository,
+  }) {
+    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+    _sentinelRepository =
+        sentinelRepository ?? GetIt.instance<SentinelRepository>();
+  }
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {

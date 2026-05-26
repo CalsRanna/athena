@@ -3,14 +3,28 @@ import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/sentinel_service.dart';
+import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
-  // ViewModel 内部直接持有 Service/Repository
-  final SentinelRepository _sentinelRepository = SentinelRepository();
-  final ProviderRepository _providerRepository = ProviderRepository();
-  final ModelRepository _modelRepository = ModelRepository();
-  final SentinelService _sentinelService = SentinelService();
+  late final SentinelRepository _sentinelRepository;
+  late final ProviderRepository _providerRepository;
+  late final ModelRepository _modelRepository;
+  late final SentinelService _sentinelService;
+
+  SentinelViewModel({
+    SentinelRepository? sentinelRepository,
+    ProviderRepository? providerRepository,
+    ModelRepository? modelRepository,
+    SentinelService? sentinelService,
+  }) {
+    _sentinelRepository =
+        sentinelRepository ?? GetIt.instance<SentinelRepository>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+    _sentinelService = sentinelService ?? GetIt.instance<SentinelService>();
+  }
 
   // Signals 状态
   final sentinels = listSignal<SentinelEntity>([]);

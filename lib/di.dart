@@ -18,12 +18,23 @@ import 'package:athena/agent/tool/powershell_search_tool.dart';
 import 'package:athena/agent/tool/skill_tool.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/repository/chat_repository.dart';
+import 'package:athena/repository/memory_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/repository/trpg_game_repository.dart';
+import 'package:athena/repository/trpg_message_repository.dart';
+import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/memory_service.dart';
+import 'package:athena/service/message_send_service.dart';
+import 'package:athena/service/sentinel_service.dart';
+import 'package:athena/service/summary_service.dart';
+import 'package:athena/service/translation_service.dart';
+import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -46,10 +57,20 @@ class DI {
     getIt.registerLazySingleton(() => ModelRepository());
     getIt.registerLazySingleton(() => ProviderRepository());
     getIt.registerLazySingleton(() => SentinelRepository());
+    getIt.registerLazySingleton(() => MemoryRepository());
+    getIt.registerLazySingleton(() => TRPGGameRepository());
+    getIt.registerLazySingleton(() => TRPGMessageRepository());
 
     // Services
     getIt.registerLazySingleton(() => ChatService());
     getIt.registerLazySingleton(() => ChatMessageService());
+    getIt.registerLazySingleton(() => ChatManageService());
+    getIt.registerLazySingleton(() => ChatSupportService());
+    getIt.registerLazySingleton(() => MemoryService());
+    getIt.registerLazySingleton(() => SentinelService());
+    getIt.registerLazySingleton(() => SummaryService());
+    getIt.registerLazySingleton(() => TranslationService());
+    getIt.registerLazySingleton(() => TRPGService());
 
     // ViewModels
     getIt.registerLazySingleton(() => ChatViewModel());
@@ -102,5 +123,10 @@ class DI {
     getIt.registerLazySingleton(() => AgentService(
       toolRegistry: getIt<ToolRegistry>(),
     ));
+
+    // MessageSendService 依赖 AgentService（Batch B 会修反向依赖）
+    getIt.registerLazySingleton(
+      () => MessageSendService(agentService: getIt<AgentService>()),
+    );
   }
 }
