@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/widget/permission_dialog.dart';
 import 'package:athena/entity/chat_entity.dart';
@@ -879,6 +880,94 @@ class ChatViewModel {
     currentSentinel.value = await _getDefaultSentinel();
     currentContext.value = defaultDraftContext;
     currentTemperature.value = defaultDraftTemperature;
+  }
+
+  // ignore: unused_element
+  Future<MessageEntity> _consumeAgentStream({
+    required ChatEntity chat,
+    required MessageEntity assistantMessage,
+    required CancelToken cancelToken,
+    required Stream<AgentEvent> agentStream,
+  }) async {
+    var current = assistantMessage;
+    var contentBuffer = StringBuffer();
+    var reasoningBuffer = StringBuffer();
+    var toolCallsJson = <Map<String, dynamic>>[];
+    var toolResultsJson = <Map<String, dynamic>>[];
+    var hasCompletedIteration = false;
+
+    await for (final event in agentStream) {
+      cancelToken.throwIfCancelled();
+
+      if (event is AgentReasoningEvent) {
+        if (hasCompletedIteration) {
+          current = await _advanceIteration(chat, current);
+          contentBuffer = StringBuffer();
+          reasoningBuffer = StringBuffer();
+          toolCallsJson = [];
+          toolResultsJson = [];
+          hasCompletedIteration = false;
+        }
+        reasoningBuffer.write(event.delta);
+        current = current.copyWith(
+          reasoningContent: reasoningBuffer.toString(),
+          reasoning: true,
+          reasoningUpdatedAt: DateTime.now(),
+        );
+        _updateMessageInList(current.id, current);
+      } else if (event is AgentTextEvent) {
+        if (hasCompletedIteration) {
+          current = await _advanceIteration(chat, current);
+          contentBuffer = StringBuffer();
+          reasoningBuffer = StringBuffer();
+          toolCallsJson = [];
+          toolResultsJson = [];
+          hasCompletedIteration = false;
+        }
+        contentBuffer.write(event.delta);
+        current = current.copyWith(content: contentBuffer.toString());
+        _updateMessageInList(current.id, current);
+      } else if (event is AgentToolCallEvent) {
+        toolCallsJson.add({
+          'id': event.id,
+          'name': event.name,
+          'arguments': event.arguments,
+        });
+        current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
+        _updateMessageInList(current.id, current);
+      } else if (event is AgentToolResultEvent) {
+        toolResultsJson.add({
+          'id': event.id,
+          'name': event.name,
+          'result': event.result,
+        });
+        current = current.copyWith(toolResults: jsonEncode(toolResultsJson));
+        _updateMessageInList(current.id, current);
+        hasCompletedIteration = true;
+      } else if (event is AgentDoneEvent) {
+        current = current.copyWith(content: event.content);
+        _updateMessageInList(current.id, current);
+      }
+    }
+
+    if (reasoningBuffer.isNotEmpty) {
+      current = current.copyWith(reasoning: false);
+      _updateMessageInList(current.id, current);
+    }
+
+    return current;
+  }
+
+  /// 推进到下一轮 iteration：finalize 上一条 assistant，append 新占位
+  // ignore: unused_element
+  Future<MessageEntity> _advanceIteration(
+    ChatEntity chat,
+    MessageEntity current,
+  ) async {
+    await _manage.finalizeAssistantMessage(current);
+    final next = await _manage.appendAssistantPlaceholder(chat.id!);
+    messages.value = [...messages.value, next];
+    return next;
   }
 
   // ignore: unused_element
