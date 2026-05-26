@@ -30,7 +30,6 @@ import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/memory_service.dart';
-import 'package:athena/service/message_send_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/translation_service.dart';
@@ -123,10 +122,5 @@ class DI {
     getIt.registerLazySingleton(() => AgentService(
       toolRegistry: getIt<ToolRegistry>(),
     ));
-
-    // MessageSendService 依赖 AgentService（Batch B 会修反向依赖）
-    getIt.registerLazySingleton(
-      () => MessageSendService(agentService: getIt<AgentService>()),
-    );
   }
 }
