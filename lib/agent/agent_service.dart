@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/tool/tool_interface.dart' show DangerLevel;
 import 'package:athena/agent/tool/tool_registry.dart';
@@ -33,10 +34,12 @@ class AgentService {
     int maxIterations = 100,
     ModelEntity? auxiliaryModel,
     ProviderEntity? auxiliaryModelProvider,
+    CancelToken? cancelToken,
   }) async* {
     var messages = List<ChatMessage>.from(baseMessages);
 
     for (var iteration = 0; iteration < maxIterations; iteration++) {
+      cancelToken?.throwIfCancelled();
       if (iteration == 0 && skillPrompt != null && skillPrompt.isNotEmpty) {
         messages = [
           ChatMessage.system(skillPrompt),
@@ -69,6 +72,7 @@ class AgentService {
       final accumulator = ChatStreamAccumulator();
 
       await for (final chunk in stream) {
+        cancelToken?.throwIfCancelled();
         accumulator.add(chunk);
 
         final delta = chunk.firstChoice?.delta;
@@ -137,8 +141,13 @@ class AgentService {
                   ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
               continue;
             }
-            final approved =
-                await onPermission(tc.function.name, tc.function.arguments);
+            final approved = cancelToken == null
+                ? await onPermission(tc.function.name, tc.function.arguments)
+                : await Future.any<bool>([
+                    onPermission(tc.function.name, tc.function.arguments),
+                    cancelToken.whenCancelled.then((_) => false),
+                  ]);
+            cancelToken?.throwIfCancelled();
             if (!approved) {
               const deniedMsg = 'User denied the tool execution.';
               yield AgentEvent.toolResult(
@@ -153,6 +162,7 @@ class AgentService {
           }
         }
 
+        cancelToken?.throwIfCancelled();
         final result = tool != null
             ? await tool.execute(args)
             : 'Error: Unknown tool "${tc.function.name}"';
