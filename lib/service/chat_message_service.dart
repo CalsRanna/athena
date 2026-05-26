@@ -2,23 +2,19 @@ import 'dart:convert';
 
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
-import 'package:athena/entity/model_entity.dart';
-import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/message_repository.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 消息格式转换与流式处理服务
 class ChatMessageService {
-  final ChatService _chatService;
   final MessageRepository _messageRepository;
 
   ChatMessageService({
-    ChatService? chatService,
     MessageRepository? messageRepository,
-  })  : _chatService = chatService ?? ChatService(),
-        _messageRepository = messageRepository ?? MessageRepository();
+  }) : _messageRepository =
+            messageRepository ?? GetIt.instance<MessageRepository>();
 
   /// 将 Entity 消息列表转换为 OpenAI ChatMessage 列表
   ///
@@ -43,23 +39,6 @@ class ChatMessageService {
     }
 
     return wrapped;
-  }
-
-  /// 获取流式完成响应
-  Stream<ChatStreamEvent> getCompletionStream({
-    required ChatEntity chat,
-    required List<ChatMessage> messages,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    List<Tool>? tools,
-  }) {
-    return _chatService.getCompletion(
-      chat: chat,
-      messages: messages,
-      provider: provider,
-      model: model,
-      tools: tools,
-    );
   }
 
   /// 判断是否为聊天的第一条用户消息（用于自动重命名触发）

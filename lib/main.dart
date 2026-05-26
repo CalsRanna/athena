@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/database/database.dart';
 import 'package:athena/di.dart';
 import 'package:athena/router/router.dart';
@@ -8,6 +9,7 @@ import 'package:athena/util/system_tray_util.dart';
 import 'package:athena/util/window_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 void main() async {
@@ -18,6 +20,7 @@ void main() async {
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   SignalsObserver.instance = null;
   DI.ensureInitialized();
+  await GetIt.instance<PermissionService>().load();
   runApp(const AthenaApp());
 }
 

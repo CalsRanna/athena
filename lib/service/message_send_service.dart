@@ -34,8 +34,6 @@ class SendToolResult extends SendEvent {
   SendToolResult({required this.id, required this.name, required this.result});
 }
 
-class SendIterationEnd extends SendEvent {}
-
 class SendDone extends SendEvent {
   final String content;
   SendDone(this.content);

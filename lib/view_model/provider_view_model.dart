@@ -6,7 +6,11 @@ import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
-  final _repository = ProviderRepository();
+  late final ProviderRepository _repository;
+
+  ProviderViewModel({ProviderRepository? repository}) {
+    _repository = repository ?? GetIt.instance<ProviderRepository>();
+  }
 
   // Signals 状态
   final providers = listSignal<ProviderEntity>([]);

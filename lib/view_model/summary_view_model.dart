@@ -11,9 +11,20 @@ import 'package:signals/signals.dart';
 
 /// SummaryViewModel 负责网页摘要功能的业务逻辑
 class SummaryViewModel {
-  final SummaryService _service = SummaryService();
-  final ModelRepository _modelRepository = ModelRepository();
-  final ProviderRepository _providerRepository = ProviderRepository();
+  late final SummaryService _service;
+  late final ModelRepository _modelRepository;
+  late final ProviderRepository _providerRepository;
+
+  SummaryViewModel({
+    SummaryService? service,
+    ModelRepository? modelRepository,
+    ProviderRepository? providerRepository,
+  }) {
+    _service = service ?? GetIt.instance<SummaryService>();
+    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+  }
 
   // Signals 状态
   final url = signal('');

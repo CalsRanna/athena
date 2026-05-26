@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -10,6 +12,7 @@ import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/annotations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -33,8 +36,21 @@ class MobileChatExportPage extends StatelessWidget {
 
   Future<void> exportImage(GlobalKey key) async {
     AthenaDialog.loading();
+    final boundary =
+        key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) {
+      AthenaDialog.dismiss();
+      return;
+    }
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      AthenaDialog.dismiss();
+      return;
+    }
+    final bytes = byteData.buffer.asUint8List();
     final viewModel = GetIt.instance<ChatViewModel>();
-    await viewModel.exportImage(chat: chat, repaintBoundaryKey: key);
+    await viewModel.exportImage(chat: chat, bytes: bytes);
     AthenaDialog.dismiss();
   }
 

@@ -18,13 +18,29 @@ import 'package:signals/signals.dart';
 
 class TRPGViewModel {
   // Repositories
-  final TRPGGameRepository _gameRepository = TRPGGameRepository();
-  final TRPGMessageRepository _messageRepository = TRPGMessageRepository();
-  final ModelRepository _modelRepository = ModelRepository();
-  final ProviderRepository _providerRepository = ProviderRepository();
+  late final TRPGGameRepository _gameRepository;
+  late final TRPGMessageRepository _messageRepository;
+  late final ModelRepository _modelRepository;
+  late final ProviderRepository _providerRepository;
 
   // Service
-  final TRPGService _service = TRPGService();
+  late final TRPGService _service;
+
+  TRPGViewModel({
+    TRPGGameRepository? gameRepository,
+    TRPGMessageRepository? messageRepository,
+    ModelRepository? modelRepository,
+    ProviderRepository? providerRepository,
+    TRPGService? service,
+  }) {
+    _gameRepository = gameRepository ?? GetIt.instance<TRPGGameRepository>();
+    _messageRepository =
+        messageRepository ?? GetIt.instance<TRPGMessageRepository>();
+    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+    _providerRepository =
+        providerRepository ?? GetIt.instance<ProviderRepository>();
+    _service = service ?? GetIt.instance<TRPGService>();
+  }
 
   // Signals
   final currentGame = signal<TRPGGameEntity?>(null);
