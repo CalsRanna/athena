@@ -125,4 +125,50 @@ class ChatManageService {
   Future<void> updateMessage(MessageEntity message) async {
     await _messageRepository.updateMessage(message);
   }
+
+  /// 创建并落库一条空的 assistant 占位消息，返回带 id 的 entity
+  Future<MessageEntity> appendAssistantPlaceholder(int chatId) async {
+    final placeholder = MessageEntity(
+      chatId: chatId,
+      role: 'assistant',
+      content: '',
+    );
+    final id = await _messageRepository.storeMessage(placeholder);
+    return placeholder.copyWith(id: id);
+  }
+
+  /// 持久化 assistant 消息最终内容（含 toolCalls/toolResults/reasoning）
+  Future<void> finalizeAssistantMessage(MessageEntity message) async {
+    await _messageRepository.updateMessage(message);
+  }
+
+  /// 取消现场：保留所有累积内容，content 末尾追加 [Cancelled]
+  Future<MessageEntity> recordCancelledOnMessage(MessageEntity message) async {
+    final preservedContent = message.content.isEmpty
+        ? '[Cancelled]'
+        : '${message.content}\n\n[Cancelled]';
+    final updated = message.copyWith(
+      content: preservedContent,
+      reasoning: false,
+    );
+    await _messageRepository.updateMessage(updated);
+    return updated;
+  }
+
+  /// 错误现场：保留所有累积内容，content 末尾追加 [Error: ...]
+  Future<MessageEntity> recordErrorOnMessage(
+    MessageEntity message,
+    Object error,
+  ) async {
+    final errorText = error.toString();
+    final preservedContent = message.content.isEmpty
+        ? 'Error: $errorText'
+        : '${message.content}\n\n[Error: $errorText]';
+    final updated = message.copyWith(
+      content: preservedContent,
+      reasoning: false,
+    );
+    await _messageRepository.updateMessage(updated);
+    return updated;
+  }
 }
