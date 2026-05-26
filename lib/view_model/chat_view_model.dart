@@ -20,6 +20,7 @@ import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:get_it/get_it.dart';
+import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
 /// ChatViewModel 负责聊天会话的业务逻辑
@@ -880,6 +881,51 @@ class ChatViewModel {
     currentTemperature.value = defaultDraftTemperature;
   }
 
+  // ignore: unused_element
+  Future<_SendContext?> _prepareSendContext(
+    MessageEntity message,
+    ChatEntity chat,
+  ) async {
+    // 1. 保存用户消息
+    final id = await _manage.storeMessage(message);
+    final userMessage = message.copyWith(id: id);
+    messages.value = [...messages.value, userMessage];
+
+    // 首条用户消息入库后立即异步触发自动命名
+    final isDefaultTitle = chat.title.isEmpty || chat.title == 'New Chat';
+    if (isDefaultTitle) {
+      if (await _chatMessageService.isFirstUserMessage(chat.id!)) {
+        unawaited(renameChat(chat));
+      }
+    }
+
+    // 2. 获取 model / provider / sentinel
+    final model = await _manage.getModel(chat.modelId);
+    if (model == null) {
+      error.value = 'Model not found';
+      return null;
+    }
+    final provider = await _support.getProviderForModel(model.providerId);
+    if (provider == null) {
+      error.value = 'Provider not found';
+      return null;
+    }
+    final sentinel = await _manage.getSentinel(chat.sentinelId);
+
+    // 3. 构建消息上下文
+    final wrappedMessages = await _chatMessageService.buildMessages(
+      chat: chat,
+      sentinel: sentinel,
+    );
+
+    return _SendContext(
+      model: model,
+      provider: provider,
+      sentinel: sentinel,
+      wrappedMessages: wrappedMessages,
+    );
+  }
+
   String _formatToolArgs(String toolName, String arguments) {
     final buffer = StringBuffer();
     buffer.writeln('Agent wants to use: $toolName');
@@ -901,4 +947,19 @@ class ChatViewModel {
     }
     return buffer.toString();
   }
+}
+
+// ignore: unused_element
+class _SendContext {
+  final ModelEntity model;
+  final ProviderEntity provider;
+  final SentinelEntity? sentinel;
+  final List<ChatMessage> wrappedMessages;
+
+  _SendContext({
+    required this.model,
+    required this.provider,
+    required this.sentinel,
+    required this.wrappedMessages,
+  });
 }
