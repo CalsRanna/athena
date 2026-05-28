@@ -21,6 +21,16 @@ class Skill {
 }
 
 class SkillLoader {
+  static bool _isValidSkillName(String name) {
+    if (name.length > 64) return false;
+    for (final code in name.codeUnits) {
+      if (code < 0x20 || code == 0x7f) return false; // 控制字符
+      if (code == 0x2f || code == 0x5c) return false; // / \
+    }
+    if (name == '.' || name == '..') return false;
+    return true;
+  }
+
   List<Skill> loadFromDirectory(String directoryPath) {
     final dir = Directory(directoryPath);
     if (!dir.existsSync()) return [];
@@ -66,6 +76,7 @@ class SkillLoader {
     if (name == null || description == null || name.isEmpty || description.isEmpty) {
       return null;
     }
+    if (!_isValidSkillName(name)) return null;
 
     return Skill(
       name: name,

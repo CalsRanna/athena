@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/tool/tool_interface.dart' show DangerLevel;
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
@@ -16,12 +17,15 @@ typedef PermissionCallback = Future<bool> Function(String toolName, String descr
 class AgentService {
   final ChatService _chatService;
   final ToolRegistry _toolRegistry;
+  final SkillRegistry? _skillRegistry;
 
   AgentService({
     ChatService? chatService,
     ToolRegistry? toolRegistry,
+    SkillRegistry? skillRegistry,
   })  : _chatService = chatService ?? ChatService(),
-        _toolRegistry = toolRegistry ?? ToolRegistry();
+        _toolRegistry = toolRegistry ?? ToolRegistry(),
+        _skillRegistry = skillRegistry;
 
   Stream<AgentEvent> run({
     required ChatEntity chat,
@@ -37,8 +41,10 @@ class AgentService {
     CancelToken? cancelToken,
   }) async* {
     var messages = List<ChatMessage>.from(baseMessages);
+    _skillRegistry?.clearContext();
 
-    for (var iteration = 0; iteration < maxIterations; iteration++) {
+    try {
+      for (var iteration = 0; iteration < maxIterations; iteration++) {
       cancelToken?.throwIfCancelled();
       if (iteration == 0 && skillPrompt != null && skillPrompt.isNotEmpty) {
         messages = [
@@ -120,9 +126,15 @@ class AgentService {
         }
 
         final tool = _toolRegistry.get(tc.function.name);
+        final effectiveLevel = tool == null
+            ? DangerLevel.safe
+            : (_skillRegistry?.effectiveDangerLevel(
+                  tc.function.name,
+                  tool.dangerLevel,
+                ) ??
+                tool.dangerLevel);
 
-        if (tool != null &&
-            tool.dangerLevel == DangerLevel.needsApproval) {
+        if (tool != null && effectiveLevel == DangerLevel.needsApproval) {
           // 先检查已有规则
           final ruleResult = permissionService?.check(tc.function.name, args);
           if (ruleResult == true) {
@@ -203,6 +215,9 @@ class AgentService {
         toolCalls: toolCallDataList,
         content: accumulator.content,
       );
+      }
+    } finally {
+      _skillRegistry?.clearContext();
     }
   }
 

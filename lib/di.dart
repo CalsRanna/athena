@@ -121,6 +121,7 @@ class DI {
 
     getIt.registerLazySingleton(() => AgentService(
       toolRegistry: getIt<ToolRegistry>(),
+      skillRegistry: getIt<SkillRegistry>(),
     ));
   }
 }

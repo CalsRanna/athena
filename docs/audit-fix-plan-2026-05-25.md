@@ -131,6 +131,15 @@
 - 测试 Skill 声明 `allowed-tools: file_read`，调用 `bash` 工具时被强制弹审批
 - 同名 Skill 项目级覆盖用户级，并在加载时打日志
 
+**完成**：2026-05-29，commits 待提交（Phase 1 收尾）。改动：
+- `lib/agent/skill/skill_loader.dart`：新增 `_isValidSkillName`，拒绝含路径分隔符 `/` `\`、控制字符、`.` `..`、超过 64 字符的名字
+- `lib/agent/skill/skill_registry.dart`：项目级 Skill 现在覆盖用户级（先加载用户级，再用项目级覆盖并打 info 日志），新增 `_contextStack` + `pushContext/popContext/clearContext/currentContext`，新增 `effectiveDangerLevel(toolName, defaultLevel)` 提供 Skill 上下文下的危险等级解释
+- `lib/agent/tool/skill_tool.dart`：成功加载 Skill 时 `pushContext`，结果文本附带权限范围说明
+- `lib/agent/agent_service.dart`：构造器新增 `SkillRegistry?` 依赖，工具分发前用 `effectiveDangerLevel` 计算实际等级而非工具默认等级，`run` 用 try/finally 在结束/取消/异常时 `clearContext`
+- `lib/di.dart`：把 `SkillRegistry` 注入 `AgentService`
+- `CLAUDE.md`：统一为 `~/.athena/permissions.json`
+- `test/agent/skill/skill_loader_test.dart`：新增 16 个测试覆盖 name 校验、context 栈、各 effectiveDangerLevel 分支
+
 ### Step 1.5：PowerShell 搜索工具修正（修复 C2）
 
 **改动点**：
@@ -339,7 +348,7 @@
 
 - **C3**：`SendIterationEnd` 死代码 → 已在 Step 2.3 中删除
 - **C4**：`ChatMessageService.getCompletionStream` 死方法 → 已在 Step 2.4 中删除
-- **B8 残留**：`ChatViewModel:81-85` 5 个透传 getter（向后兼容）→ Phase 2 结束后可删
+- **B8 残留**：`ChatViewModel:81-85` 5 个透传 getter（向后兼容）→ ✅ 2026-05-29 已删除（selectedChatIds/lastSelectedIndex/renamingChatIds/renamingTitle/isMultiSelect），调用方 `chat_list.dart`、`chat.dart` 及 VM 自身改走 `selection.xxx`
 
 ---
 
