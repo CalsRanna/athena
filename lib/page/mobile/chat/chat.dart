@@ -355,7 +355,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   void terminateStreaming() {
-    viewModel.isStreaming.value = false;
+    viewModel.stopGenerating();
   }
 
   ChatEntity? _getCurrentChat() {

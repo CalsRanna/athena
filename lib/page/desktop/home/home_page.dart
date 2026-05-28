@@ -190,7 +190,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   void terminateStreaming() {
-    chatViewModel.isStreaming.value = false;
+    chatViewModel.stopGenerating();
   }
 
   Future<void> updateContext(int context) async {
