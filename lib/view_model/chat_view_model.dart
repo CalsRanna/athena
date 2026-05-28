@@ -35,6 +35,8 @@ class ChatViewModel {
   final ChatSelectionDelegate _selection;
   final AgentService _agentService;
 
+  CancelToken? _activeCancelToken;
+
   ChatViewModel({
     ChatManageService? manageService,
     ChatSupportService? supportService,
@@ -490,221 +492,61 @@ class ChatViewModel {
   }) async {
     if (isStreaming.value) return;
 
+    final cancelToken = CancelToken();
+    _activeCancelToken = cancelToken;
     isStreaming.value = true;
     error.value = null;
-    int? assistantId;
     MessageEntity? assistantMessage;
 
     try {
-      // 1. 保存用户消息
-      var id = await _manage.storeMessage(message);
-      var userMessage = message.copyWith(id: id);
-      messages.value = [...messages.value, userMessage];
+      final ctx = await _prepareSendContext(message, chat);
+      if (ctx == null) return;
 
-      // 首条用户消息入库后立即异步触发自动命名
-      var isDefaultTitle = chat.title.isEmpty || chat.title == 'New Chat';
-      if (isDefaultTitle) {
-        if (await _chatMessageService.isFirstUserMessage(chat.id!)) {
-          unawaited(renameChat(chat));
-        }
-      }
-
-      // 2. 获取model、provider、sentinel
-      var model = await _manage.getModel(chat.modelId);
-      if (model == null) {
-        error.value = 'Model not found';
-        return;
-      }
-      var provider = await _support.getProviderForModel(
-        model.providerId,
-      );
-      if (provider == null) {
-        error.value = 'Provider not found';
-        return;
-      }
-      var sentinel = await _manage.getSentinel(chat.sentinelId);
-
-      // 3. 构建消息上下文（委托给 ChatMessageService）
-      var wrappedMessages = await _chatMessageService.buildMessages(
-        chat: chat,
-        sentinel: sentinel,
-      );
-
-      // 4. 创建 assistant 消息占位
-      assistantMessage = MessageEntity(
-        chatId: chat.id!,
-        role: 'assistant',
-        content: '',
-      );
-      assistantId = await _manage.storeMessage(assistantMessage);
-      assistantMessage = assistantMessage.copyWith(id: assistantId);
+      assistantMessage = await _manage.appendAssistantPlaceholder(chat.id!);
       messages.value = [...messages.value, assistantMessage];
-
-      // 5. AgentService 编排
-      var toolCallsJson = <Map<String, dynamic>>[];
-      var toolResultsJson = <Map<String, dynamic>>[];
 
       final settingVM = GetIt.instance<SettingViewModel>();
       final permissionService = GetIt.instance<PermissionService>();
 
-      var agentStream = _agentService.run(
+      final agentStream = _agentService.run(
         chat: chat,
-        provider: provider,
-        model: model,
-        baseMessages: wrappedMessages,
+        provider: ctx.provider,
+        model: ctx.model,
+        baseMessages: ctx.wrappedMessages,
         maxIterations: settingVM.maxAgentIterations.value,
         auxiliaryModel: settingVM.auxiliaryModel.value,
         auxiliaryModelProvider: settingVM.auxiliaryModelProvider.value,
         permissionService: permissionService,
-        onPermission: (toolName, arguments) async {
-          final context = router.navigatorKey.currentContext;
-          if (context == null) return false;
-          Map<String, dynamic> args;
-          try {
-            args = jsonDecode(arguments) as Map<String, dynamic>;
-          } catch (_) {
-            args = {};
-          }
-          final description = _formatToolArgs(toolName, arguments);
-          final ruleDesc = permissionService.generateRuleDescription(
-            toolName,
-            args,
-          );
-          final isDangerous = permissionService.isDangerous(toolName, args);
-          final isFileRule = const {
-            'file_read',
-            'file_write',
-            'file_update',
-            'file_delete',
-          }.contains(toolName);
-          final result = await showPermissionDialog(
-            toolName: toolName,
-            description: description,
-            ruleDescription: ruleDesc,
-            allowPersist: !isDangerous,
-            isFileRule: isFileRule,
-          );
-          if (result.approved && result.persist) {
-            final rule = permissionService.generateRule(
-              toolName,
-              args,
-              recursive: result.recursive,
-            );
-            await permissionService.persistRule(rule);
-          }
-          return result.approved;
-        },
+        cancelToken: cancelToken,
+        onPermission: (toolName, arguments) =>
+            _askPermission(toolName, arguments, permissionService, cancelToken),
       );
 
-      var contentBuffer = StringBuffer();
-      var reasoningBuffer = StringBuffer();
-      var hasCompletedIteration = false;
+      assistantMessage = await _consumeAgentStream(
+        chat: chat,
+        assistantMessage: assistantMessage,
+        cancelToken: cancelToken,
+        agentStream: agentStream,
+      );
 
-      await for (final event in agentStream) {
-        if (!isStreaming.value) break;
-
-        if (event is AgentReasoningEvent) {
-          if (hasCompletedIteration) {
-            await _manage.updateMessage(assistantMessage!);
-            assistantMessage = MessageEntity(
-              chatId: chat.id!,
-              role: 'assistant',
-              content: '',
-            );
-            assistantId = await _manage.storeMessage(
-              assistantMessage,
-            );
-            assistantMessage = assistantMessage.copyWith(id: assistantId);
-            messages.value = [...messages.value, assistantMessage];
-            contentBuffer = StringBuffer();
-            reasoningBuffer = StringBuffer();
-            toolCallsJson = [];
-            toolResultsJson = [];
-            hasCompletedIteration = false;
-          }
-          reasoningBuffer.write(event.delta);
-          assistantMessage = assistantMessage!.copyWith(
-            reasoningContent: reasoningBuffer.toString(),
-            reasoning: true,
-            reasoningUpdatedAt: DateTime.now(),
-          );
-          _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is AgentTextEvent) {
-          if (hasCompletedIteration) {
-            await _manage.updateMessage(assistantMessage!);
-            assistantMessage = MessageEntity(
-              chatId: chat.id!,
-              role: 'assistant',
-              content: '',
-            );
-            assistantId = await _manage.storeMessage(
-              assistantMessage,
-            );
-            assistantMessage = assistantMessage.copyWith(id: assistantId);
-            messages.value = [...messages.value, assistantMessage];
-            contentBuffer = StringBuffer();
-            reasoningBuffer = StringBuffer();
-            toolCallsJson = [];
-            toolResultsJson = [];
-            hasCompletedIteration = false;
-          }
-          contentBuffer.write(event.delta);
-          assistantMessage = assistantMessage!.copyWith(
-            content: contentBuffer.toString(),
-          );
-          _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is AgentToolCallEvent) {
-          toolCallsJson.add({
-            'id': event.id,
-            'name': event.name,
-            'arguments': event.arguments,
-          });
-          assistantMessage = assistantMessage!.copyWith(
-            toolCalls: jsonEncode(toolCallsJson),
-          );
-          _updateMessageInList(assistantId, assistantMessage);
-        } else if (event is AgentToolResultEvent) {
-          toolResultsJson.add({
-            'id': event.id,
-            'name': event.name,
-            'result': event.result,
-          });
-          assistantMessage = assistantMessage!.copyWith(
-            toolResults: jsonEncode(toolResultsJson),
-          );
-          _updateMessageInList(assistantId, assistantMessage);
-          hasCompletedIteration = true;
-        } else if (event is AgentDoneEvent) {
-          assistantMessage = assistantMessage!.copyWith(content: event.content);
-          _updateMessageInList(assistantId, assistantMessage);
-        }
-      }
-
-      // 标记推理完成
-      if (reasoningBuffer.isNotEmpty) {
-        assistantMessage = assistantMessage!.copyWith(reasoning: false);
-        _updateMessageInList(assistantId, assistantMessage);
-      }
-
-      // 6. 保存最终消息并更新时间戳
-      await _manage.updateMessage(assistantMessage!);
+      await _manage.finalizeAssistantMessage(assistantMessage);
       await _manage.updateChatTimestamp(chat);
       await getChats();
+    } on CancelledException {
+      if (assistantMessage != null) {
+        final cancelled =
+            await _manage.recordCancelledOnMessage(assistantMessage);
+        _updateMessageInList(cancelled.id, cancelled);
+      }
     } catch (e) {
       error.value = e.toString();
-      if (assistantId != null && assistantMessage != null) {
-        var preservedContent = assistantMessage.content.isEmpty
-            ? 'Error: ${e.toString()}'
-            : '${assistantMessage.content}\n\n[Error: ${e.toString()}]';
-        var preserved = assistantMessage.copyWith(
-          content: preservedContent,
-          reasoning: false,
-        );
-        await _manage.updateMessage(preserved);
-        _updateMessageInList(assistantId, preserved);
+      if (assistantMessage != null) {
+        final errored = await _manage.recordErrorOnMessage(assistantMessage, e);
+        _updateMessageInList(errored.id, errored);
       }
     } finally {
       isStreaming.value = false;
+      _activeCancelToken = null;
     }
   }
 
@@ -853,6 +695,11 @@ class ChatViewModel {
     await _syncDraftDefaults();
   }
 
+  /// 停止当前流式生成
+  void stopGenerating() {
+    _activeCancelToken?.cancel();
+  }
+
   Future<SentinelEntity?> _getDefaultSentinel() async {
     final sentinelViewModel = GetIt.instance<SentinelViewModel>();
     if (sentinelViewModel.sentinels.value.isEmpty) {
@@ -882,7 +729,6 @@ class ChatViewModel {
     currentTemperature.value = defaultDraftTemperature;
   }
 
-  // ignore: unused_element
   Future<MessageEntity> _consumeAgentStream({
     required ChatEntity chat,
     required MessageEntity assistantMessage,
@@ -959,7 +805,6 @@ class ChatViewModel {
   }
 
   /// 推进到下一轮 iteration：finalize 上一条 assistant，append 新占位
-  // ignore: unused_element
   Future<MessageEntity> _advanceIteration(
     ChatEntity chat,
     MessageEntity current,
@@ -970,7 +815,6 @@ class ChatViewModel {
     return next;
   }
 
-  // ignore: unused_element
   Future<_SendContext?> _prepareSendContext(
     MessageEntity message,
     ChatEntity chat,
@@ -1015,6 +859,57 @@ class ChatViewModel {
     );
   }
 
+  Future<bool> _askPermission(
+    String toolName,
+    String arguments,
+    PermissionService permissionService,
+    CancelToken cancelToken,
+  ) async {
+    if (cancelToken.isCancelled) return false;
+    Map<String, dynamic> args;
+    try {
+      args = jsonDecode(arguments) as Map<String, dynamic>;
+    } catch (_) {
+      args = {};
+    }
+    final description = _formatToolArgs(toolName, arguments);
+    final ruleDesc = permissionService.generateRuleDescription(toolName, args);
+    final isDangerous = permissionService.isDangerous(toolName, args);
+    final isFileRule = const {
+      'file_read',
+      'file_write',
+      'file_update',
+      'file_delete',
+    }.contains(toolName);
+
+    final dialogFuture = showPermissionDialog(
+      toolName: toolName,
+      description: description,
+      ruleDescription: ruleDesc,
+      allowPersist: !isDangerous,
+      isFileRule: isFileRule,
+    );
+
+    final result = await Future.any<PermissionDialogResult>([
+      dialogFuture,
+      cancelToken.whenCancelled.then((_) {
+        final nav = router.navigatorKey.currentState;
+        if (nav?.canPop() ?? false) nav!.pop();
+        return const PermissionDialogResult(approved: false, persist: false);
+      }),
+    ]);
+
+    if (result.approved && result.persist) {
+      final rule = permissionService.generateRule(
+        toolName,
+        args,
+        recursive: result.recursive,
+      );
+      await permissionService.persistRule(rule);
+    }
+    return result.approved;
+  }
+
   String _formatToolArgs(String toolName, String arguments) {
     final buffer = StringBuffer();
     buffer.writeln('Agent wants to use: $toolName');
@@ -1038,7 +933,6 @@ class ChatViewModel {
   }
 }
 
-// ignore: unused_element
 class _SendContext {
   final ModelEntity model;
   final ProviderEntity provider;
