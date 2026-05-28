@@ -52,7 +52,7 @@ class DesktopChatListView extends StatelessWidget {
     List<ChatEntity> chats,
   ) {
     var selectedChats = chats
-        .where((c) => viewModel.selectedChatIds.value.contains(c.id))
+        .where((c) => viewModel.selection.selectedChatIds.value.contains(c.id))
         .toList();
     if (selectedChats.isNotEmpty) {
       onBatchDestroyed?.call(selectedChats);
@@ -69,12 +69,12 @@ class DesktopChatListView extends StatelessWidget {
     if (isMetaPressed) {
       viewModel.toggleChatSelection(chat.id!, index);
     } else if (isShiftPressed &&
-        (viewModel.lastSelectedIndex.value != null ||
-            viewModel.selectedChatIds.value.isNotEmpty)) {
+        (viewModel.selection.lastSelectedIndex.value != null ||
+            viewModel.selection.selectedChatIds.value.isNotEmpty)) {
       viewModel.rangeSelectChats(index);
     } else {
       viewModel.clearSelection();
-      viewModel.lastSelectedIndex.value = index;
+      viewModel.selection.lastSelectedIndex.value = index;
       onSelected?.call(chat);
     }
   }
@@ -86,12 +86,12 @@ class DesktopChatListView extends StatelessWidget {
     List<ChatEntity> chats,
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    if (chatViewModel.isMultiSelect.value) {
+    if (chatViewModel.selection.isMultiSelect.value) {
       var contextMenu = DesktopChatContextMenu(
         chat: chat,
         offset: details.globalPosition,
         multiSelect: true,
-        selectedCount: chatViewModel.selectedChatIds.value.length,
+        selectedCount: chatViewModel.selection.selectedChatIds.value.length,
         onDestroyed: () => _handleBatchDelete(context, chatViewModel, chats),
       );
       DesktopContextMenuManager.instance.show(context, contextMenu);
@@ -124,8 +124,8 @@ class DesktopChatListView extends StatelessWidget {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     return Watch((context) {
       var selectedChat = chatViewModel.currentChat.value;
-      var selectedIds = chatViewModel.selectedChatIds.value;
-      var renamingIds = chatViewModel.renamingChatIds.value;
+      var selectedIds = chatViewModel.selection.selectedChatIds.value;
+      var renamingIds = chatViewModel.selection.renamingChatIds.value;
       return _ChatTile(
         active: selectedChat?.id == chat.id,
         chat: chat,

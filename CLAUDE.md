@@ -167,7 +167,7 @@ Athena 内置 6 个工具，Agent 可自主决定调用时机：
 三层权限判定：
 1. **工具默认危险等级**：safe 自动执行，needsApproval 弹窗确认，forbidden 拒绝
 2. **Skill 覆盖**：Skill 的 `allowed-tools` 字段可声明免审批工具
-3. **用户规则**：`~/.athena/permissions.yaml` 可配置路径/命令白名单
+3. **用户规则**：`~/.athena/permissions.json` 可配置路径/命令白名单
 
 ### 沙箱
 

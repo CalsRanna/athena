@@ -37,9 +37,18 @@ class SkillTool implements Tool {
     if (skill == null) {
       return 'Error: Skill "$name" not found.';
     }
+    _registry.pushContext(name);
     final buffer = StringBuffer();
     buffer.writeln('Skill "$name" loaded successfully.');
     buffer.writeln();
+    if (skill.allowedTools != null && skill.allowedTools!.isNotEmpty) {
+      buffer.writeln(
+        'Permission scope: tools listed in allowed-tools '
+        '(${skill.allowedTools}) may auto-approve; others require user '
+        'approval even if they are normally safe.',
+      );
+      buffer.writeln();
+    }
     buffer.writeln('Instructions:');
     buffer.writeln(skill.body);
     return buffer.toString();

@@ -227,10 +227,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
       // Build title
       var isRenaming =
-          chat != null && viewModel.renamingChatIds.value.contains(chat.id);
+          chat != null && viewModel.selection.renamingChatIds.value.contains(chat.id);
       String title;
-      if (isRenaming && viewModel.renamingTitle.value.isNotEmpty) {
-        title = viewModel.renamingTitle.value;
+      if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
+        title = viewModel.selection.renamingTitle.value;
       } else {
         title = chat?.title ?? 'New Chat';
         if (title.isEmpty) title = 'New Chat';

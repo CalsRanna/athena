@@ -84,13 +84,6 @@ class ChatViewModel {
   // 多选与重命名 UI 交互状态委托
   ChatSelectionDelegate get selection => _selection;
 
-  // 保持向后兼容的信号访问器
-  SetSignal<int> get selectedChatIds => _selection.selectedChatIds;
-  Signal<int?> get lastSelectedIndex => _selection.lastSelectedIndex;
-  SetSignal<int> get renamingChatIds => _selection.renamingChatIds;
-  Signal<String> get renamingTitle => _selection.renamingTitle;
-  late final isMultiSelect = _selection.isMultiSelect;
-
   // Computed signals
   late final recentChats = computed(() {
     return chats.value.take(10).toList();
@@ -229,7 +222,7 @@ class ChatViewModel {
 
       // 清除多选状态，更新选中索引为新建的对话
       clearSelection();
-      lastSelectedIndex.value = pinnedChats.length; // 新对话在 pinnedChats 之后
+      _selection.lastSelectedIndex.value = pinnedChats.length; // 新对话在 pinnedChats 之后
 
       return chat;
     } catch (e) {
@@ -309,11 +302,11 @@ class ChatViewModel {
       currentSentinel.value = result.sentinel;
       currentContext.value = firstChat.context;
       currentTemperature.value = firstChat.temperature;
-      lastSelectedIndex.value = 0;
+      _selection.lastSelectedIndex.value = 0;
     } else {
       await prepareNewChatDraft();
       messages.value = [];
-      lastSelectedIndex.value = null;
+      _selection.lastSelectedIndex.value = null;
     }
   }
 
@@ -407,10 +400,10 @@ class ChatViewModel {
   /// 自动重命名聊天
   Future<ChatEntity?> renameChat(ChatEntity chat) async {
     if (chat.id == null) return null;
-    if (renamingChatIds.value.contains(chat.id)) return null;
+    if (_selection.renamingChatIds.value.contains(chat.id)) return null;
 
     startRenaming(chat.id!);
-    renamingTitle.value = '';
+    _selection.renamingTitle.value = '';
     try {
       // 获取第一条用户消息
       var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
@@ -437,7 +430,7 @@ class ChatViewModel {
 
       await for (final chunk in stream) {
         titleBuffer.write(chunk);
-        renamingTitle.value = titleBuffer.toString();
+        _selection.renamingTitle.value = titleBuffer.toString();
       }
 
       var title = titleBuffer.toString().trim();
@@ -451,7 +444,7 @@ class ChatViewModel {
       error.value = e.toString();
       return null;
     } finally {
-      renamingTitle.value = '';
+      _selection.renamingTitle.value = '';
       stopRenaming(chat.id!);
     }
   }
