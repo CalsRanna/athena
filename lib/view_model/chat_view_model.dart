@@ -15,6 +15,9 @@ import 'package:athena/router/router.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/repository/message_repository.dart';
+import 'package:athena/repository/model_repository.dart';
+import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -34,6 +37,9 @@ class ChatViewModel {
   final ChatMessageService _chatMessageService;
   final ChatSelectionDelegate _selection;
   final AgentService _agentService;
+  final MessageRepository _messageRepository;
+  final ModelRepository _modelRepository;
+  final SentinelRepository _sentinelRepository;
 
   CancelToken? _activeCancelToken;
 
@@ -43,12 +49,20 @@ class ChatViewModel {
     ChatMessageService? chatMessageService,
     ChatSelectionDelegate? selection,
     AgentService? agentService,
+    MessageRepository? messageRepository,
+    ModelRepository? modelRepository,
+    SentinelRepository? sentinelRepository,
   })  : _manage = manageService ?? GetIt.instance<ChatManageService>(),
         _support = supportService ?? GetIt.instance<ChatSupportService>(),
         _chatMessageService =
             chatMessageService ?? GetIt.instance<ChatMessageService>(),
         _selection = selection ?? ChatSelectionDelegate(),
-        _agentService = agentService ?? GetIt.instance<AgentService>();
+        _agentService = agentService ?? GetIt.instance<AgentService>(),
+        _messageRepository =
+            messageRepository ?? GetIt.instance<MessageRepository>(),
+        _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>(),
+        _sentinelRepository =
+            sentinelRepository ?? GetIt.instance<SentinelRepository>();
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -311,7 +325,7 @@ class ChatViewModel {
       var index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         await _manage.deleteMessagesFromIndex(messages.value, index);
-        messages.value = await _manage.refreshMessages(message.chatId);
+        messages.value = await _messageRepository.getMessagesByChatId(message.chatId);
       }
     } catch (e) {
       error.value = e.toString();
@@ -378,7 +392,7 @@ class ChatViewModel {
   }
 
   Future<void> refreshMessages(int chatId) async {
-    messages.value = await _manage.refreshMessages(chatId);
+    messages.value = await _messageRepository.getMessagesByChatId(chatId);
   }
 
   /// 移除待发送图片
@@ -399,14 +413,14 @@ class ChatViewModel {
     renamingTitle.value = '';
     try {
       // 获取第一条用户消息
-      var chatMessages = await _manage.refreshMessages(chat.id!);
+      var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
       var firstUserMessage = chatMessages
           .where((m) => m.role == 'user')
           .firstOrNull;
       if (firstUserMessage == null) return null;
 
       // 获取model和provider
-      var model = await _manage.getModel(chat.modelId);
+      var model = await _modelRepository.getModelById(chat.modelId);
       if (model == null) return null;
       var provider = await _support.getProviderForModel(
         model.providerId,
@@ -820,7 +834,7 @@ class ChatViewModel {
     ChatEntity chat,
   ) async {
     // 1. 保存用户消息
-    final id = await _manage.storeMessage(message);
+    final id = await _messageRepository.storeMessage(message);
     final userMessage = message.copyWith(id: id);
     messages.value = [...messages.value, userMessage];
 
@@ -833,7 +847,7 @@ class ChatViewModel {
     }
 
     // 2. 获取 model / provider / sentinel
-    final model = await _manage.getModel(chat.modelId);
+    final model = await _modelRepository.getModelById(chat.modelId);
     if (model == null) {
       error.value = 'Model not found';
       return null;
@@ -843,7 +857,7 @@ class ChatViewModel {
       error.value = 'Provider not found';
       return null;
     }
-    final sentinel = await _manage.getSentinel(chat.sentinelId);
+    final sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
 
     // 3. 构建消息上下文
     final wrappedMessages = await _chatMessageService.buildMessages(
