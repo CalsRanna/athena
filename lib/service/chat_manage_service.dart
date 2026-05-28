@@ -90,10 +90,6 @@ class ChatManageService {
     await _chatRepository.updateChat(chat.copyWith(pinned: !chat.pinned));
   }
 
-  Future<List<MessageEntity>> refreshMessages(int chatId) async {
-    return _messageRepository.getMessagesByChatId(chatId);
-  }
-
   Future<void> deleteMessagesFromIndex(
     List<MessageEntity> messages,
     int fromIndex,
@@ -103,27 +99,11 @@ class ChatManageService {
     }
   }
 
-  Future<ModelEntity?> getModel(int modelId) async {
-    return _modelRepository.getModelById(modelId);
-  }
-
-  Future<SentinelEntity?> getSentinel(int sentinelId) async {
-    return _sentinelRepository.getSentinelById(sentinelId);
-  }
-
   Future<void> updateChatTimestamp(ChatEntity chat) async {
     final latest = await _chatRepository.getChatById(chat.id!);
     if (latest != null) {
       await _chatRepository.updateChat(latest.copyWith(updatedAt: DateTime.now()));
     }
-  }
-
-  Future<int> storeMessage(MessageEntity message) async {
-    return _messageRepository.storeMessage(message);
-  }
-
-  Future<void> updateMessage(MessageEntity message) async {
-    await _messageRepository.updateMessage(message);
   }
 
   /// 创建并落库一条空的 assistant 占位消息，返回带 id 的 entity
