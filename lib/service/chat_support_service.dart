@@ -43,10 +43,8 @@ class ChatSupportService {
     yield* stream;
   }
 
-  Future<ChatEntity> renameChatManually(ChatEntity chat, String title) async {
-    final updated = chat.copyWith(title: title);
-    await _chatRepository.updateChat(updated);
-    return updated;
+  Future<ChatEntity> renameChatManually(ChatEntity chat, String title) {
+    return _touchChat(chat.copyWith(title: title));
   }
 
   Future<String> saveImageFile(Uint8List bytes, int chatId) async {
@@ -65,29 +63,20 @@ class ChatSupportService {
     }
   }
 
-  Future<ChatEntity> updateModel(ChatEntity chat, int modelId) async {
-    final updated = chat.copyWith(modelId: modelId);
-    await _chatRepository.updateChat(updated);
-    return updated;
+  Future<ChatEntity> updateModel(ChatEntity chat, int modelId) {
+    return _touchChat(chat.copyWith(modelId: modelId));
   }
 
-  Future<ChatEntity> updateSentinel(ChatEntity chat, int sentinelId) async {
-    final updated = chat.copyWith(sentinelId: sentinelId);
-    await _chatRepository.updateChat(updated);
-    return updated;
+  Future<ChatEntity> updateSentinel(ChatEntity chat, int sentinelId) {
+    return _touchChat(chat.copyWith(sentinelId: sentinelId));
   }
 
-  Future<ChatEntity> updateContext(ChatEntity chat, int context) async {
-    final updated = chat.copyWith(context: context);
-    await _chatRepository.updateChat(updated);
-    return updated;
+  Future<ChatEntity> updateContext(ChatEntity chat, int context) {
+    return _touchChat(chat.copyWith(context: context));
   }
 
-  Future<ChatEntity> updateTemperature(
-      ChatEntity chat, double temperature) async {
-    final updated = chat.copyWith(temperature: temperature);
-    await _chatRepository.updateChat(updated);
-    return updated;
+  Future<ChatEntity> updateTemperature(ChatEntity chat, double temperature) {
+    return _touchChat(chat.copyWith(temperature: temperature));
   }
 
   Future<ProviderEntity?> getProviderForModel(int providerId) async {
@@ -98,5 +87,11 @@ class ChatSupportService {
     final updated = message.copyWith(expanded: !message.expanded);
     await _messageRepository.updateMessage(updated);
     return updated;
+  }
+
+  Future<ChatEntity> _touchChat(ChatEntity updated) async {
+    final touched = updated.copyWith(updatedAt: DateTime.now());
+    await _chatRepository.updateChat(touched);
+    return touched;
   }
 }
