@@ -80,10 +80,7 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
           const SizedBox(height: 16),
           Text('分析历史聊天记录，让 Athena 记住关于你的一切', style: textStyle),
           const SizedBox(height: 24),
-          AthenaPrimaryButton(
-            onTap: _handleGenerate,
-            child: Text('生成记忆'),
-          ),
+          AthenaPrimaryButton(onTap: _handleGenerate, child: Text('生成记忆')),
         ],
       ),
     );
@@ -109,10 +106,7 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
           child: Text('更新记忆'),
         ),
         const SizedBox(width: 12),
-        AthenaSecondaryButton.small(
-          onTap: _handleDelete,
-          child: Text('删除'),
-        ),
+        AthenaSecondaryButton.small(onTap: _handleDelete, child: Text('删除')),
       ],
     );
   }
@@ -120,6 +114,7 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
   Widget _buildContent(String content) {
     var borderSide = BorderSide(color: ColorUtil.FFC2C2C2, width: 1);
     var markdownStyleSheet = MarkdownStyleSheet(
+      code: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14, height: 1.6),
       p: TextStyle(color: ColorUtil.FFFFFFFF, fontSize: 14, height: 1.6),
       h2: TextStyle(
         color: ColorUtil.FFFFFFFF,
@@ -131,11 +126,14 @@ class _DesktopSettingMemoryPageState extends State<DesktopSettingMemoryPage> {
         fontSize: 16,
         fontWeight: FontWeight.w500,
       ),
+      h4: TextStyle(
+        color: ColorUtil.FFFFFFFF,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
       listBullet: TextStyle(color: ColorUtil.FFFFFFFF),
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
-      horizontalRuleDecoration: BoxDecoration(
-        border: Border(top: borderSide),
-      ),
+      horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
     );
     return SingleChildScrollView(
       child: MarkdownBody(
