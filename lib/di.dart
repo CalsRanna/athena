@@ -48,7 +48,7 @@ import 'package:athena/view_model/memory_view_model.dart';
 import 'package:get_it/get_it.dart';
 
 class DI {
-  static void ensureInitialized() {
+  static void ensureInitialized({String? dataDirectory}) {
     final getIt = GetIt.instance;
 
     // Repositories
@@ -84,7 +84,7 @@ class DI {
     getIt.registerLazySingleton(() => MemoryViewModel());
 
     // Agent
-    getIt.registerLazySingleton(() => PathSandbox());
+    getIt.registerLazySingleton(() => PathSandbox(dataDirectory: dataDirectory));
     getIt.registerLazySingleton(() => PermissionStore());
     getIt.registerLazySingleton(
       () => PermissionService(

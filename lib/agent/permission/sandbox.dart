@@ -10,10 +10,13 @@ class PathSandbox {
   /// 黑名单绝对路径（已 canonicalize、末尾无 `/`）。
   final List<String> deniedPaths;
 
-  PathSandbox({List<String>? deniedPaths})
-      : deniedPaths = (deniedPaths ?? _defaultDeniedPaths())
-            .map(_canonicalize)
-            .toList();
+  PathSandbox({List<String>? deniedPaths, String? dataDirectory})
+      : deniedPaths = [
+          ...(deniedPaths ?? _defaultDeniedPaths()),
+          // 应用数据目录（含明文 API key 的 athena.db）纳入黑名单，
+          // 阻止 Agent 经 file_read/search/file_write 读写密钥库（S7）。
+          if (dataDirectory != null) dataDirectory,
+        ].map(_canonicalize).toList();
 
   /// L0 检查：路径是否可读。
   bool canRead(String path) => !_isDenied(path);
