@@ -69,6 +69,12 @@ class PermissionService {
           pattern: dir,
           recursive: recursive,
         );
+      case 'web_fetch':
+        // 永久规则限定到来源（origin）：允许 https://a.com 不会放开 https://b.com。
+        // keyArg 已是 origin（http/https 时）；否则回退到原始 URL 字面量，
+        // 确保 pattern 永不为 null（null 会匹配一切，重新打开漏洞）。
+        final origin = keyArg ?? (args['url'] as String? ?? '');
+        return PermissionRule(tool: 'web_fetch', pattern: origin);
       default:
         return PermissionRule(tool: toolName);
     }
@@ -103,6 +109,8 @@ class PermissionService {
       case 'list_directory':
         final suffix = recursive ? ' (including subdirectories)' : '';
         return 'Always allow listing in "${rule.pattern}"$suffix';
+      case 'web_fetch':
+        return 'Always allow web fetches to "${rule.pattern}"';
       default:
         return 'Always allow $toolName matching "${rule.pattern}"';
     }
@@ -144,7 +152,16 @@ class PermissionService {
         final path = args['path'] as String? ?? Directory.current.path;
         return _sandbox.resolveAbsolute(path);
       case 'web_fetch':
-        return args['url'] as String?;
+        // 永久规则按请求来源（origin = scheme://host[:port]）匹配，而非整条 URL。
+        // 仅 http/https 才有合法 origin；其它（malformed/非 http）返回 null，
+        // 永不命中已存规则 → 始终弹窗。
+        final url = args['url'] as String?;
+        if (url == null) return null;
+        final uri = Uri.tryParse(url);
+        if (uri == null) return null;
+        if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+        if (uri.host.isEmpty) return null;
+        return uri.origin;
       default:
         return null;
     }
