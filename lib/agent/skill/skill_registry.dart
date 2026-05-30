@@ -1,10 +1,14 @@
 import 'dart:io';
 
 import 'package:athena/agent/skill/skill_loader.dart';
+import 'package:athena/agent/skill/skill_trust_store.dart';
 import 'package:athena/agent/tool/tool_interface.dart';
 import 'package:athena/util/logger_util.dart';
 
 class SkillRegistry {
+  SkillRegistry({SkillTrustStore? trustStore})
+      : _trustStore = trustStore ?? SkillTrustStore();
+
   /// 这些工具会修改文件系统、执行代码或外泄数据，因此 Skill 的 allowedTools
   /// 永远不能把它们降级为 safe（用户必须始终获得审批提示）。
   static const Set<String> dangerousTools = {
@@ -17,33 +21,91 @@ class SkillRegistry {
   };
 
   final SkillLoader _loader = SkillLoader();
+  final SkillTrustStore _trustStore;
   final Map<String, Skill> _skills = {};
+
+  /// 未被信任的项目级 Skill：已解析但保持 INERT（不可加载、不出现在任何
+  /// 列表中、不覆盖用户级 Skill），直到用户信任当前项目目录。
+  final Map<String, Skill> _pendingProjectSkills = {};
+  String? _pendingProjectDir;
 
   /// 当前 Agent 工具调用栈对应的 Skill 上下文。
   /// SkillTool 进入时 push，本轮工具调用结束后由 AgentService pop。
   final List<String> _contextStack = [];
 
-  void loadAll() {
-    _skills.clear();
+  void loadAll({String? homeDir, String? projectDir}) {
+    final home = homeDir ?? _homePath;
+    final project = projectDir ?? Directory.current.path;
 
-    final home = _homePath;
-    final userPath = '$home/.athena/skills';
-    final userSkills = _loader.loadFromDirectory(userPath);
+    _skills.clear();
+    _pendingProjectSkills.clear();
+    _pendingProjectDir = null;
+
+    final userSkillsPath = '$home/.athena/skills';
+    final userSkills = _loader.loadFromDirectory(userSkillsPath);
     for (final skill in userSkills) {
       _skills[skill.name] = skill;
     }
 
-    // 项目级覆盖用户级。
-    final projectPath = '${Directory.current.path}/.athena/skills';
-    final projectSkills = _loader.loadFromDirectory(projectPath);
-    for (final skill in projectSkills) {
-      if (_skills.containsKey(skill.name)) {
-        LoggerUtil.i(
-          'Skill "${skill.name}" project-level override at ${skill.sourcePath}',
-        );
-      }
-      _skills[skill.name] = skill;
+    final projectSkillsPath = '$project/.athena/skills';
+    // cwd 即 home：项目级路径与用户级路径相同，已作为用户级加载，跳过项目阶段。
+    if (_normalizePath(projectSkillsPath) == _normalizePath(userSkillsPath)) {
+      return;
     }
+
+    final projectSkills = _loader.loadFromDirectory(projectSkillsPath);
+    if (projectSkills.isEmpty) return;
+
+    if (_trustStore.isTrusted(project)) {
+      for (final skill in projectSkills) {
+        _mergeProjectSkill(skill);
+      }
+    } else {
+      // 未信任：保持 INERT，不并入 _skills。
+      for (final skill in projectSkills) {
+        _pendingProjectSkills[skill.name] = skill;
+      }
+      _pendingProjectDir = project;
+    }
+  }
+
+  void _mergeProjectSkill(Skill skill) {
+    if (_skills.containsKey(skill.name)) {
+      LoggerUtil.i(
+        'Skill "${skill.name}" project-level override at ${skill.sourcePath}',
+      );
+    }
+    _skills[skill.name] = skill;
+  }
+
+  /// 是否存在等待用户信任的项目级 Skill。
+  bool get hasPendingProjectSkills => _pendingProjectSkills.isNotEmpty;
+
+  /// 当前待信任的项目级 Skill 列表。
+  List<Skill> get pendingProjectSkills => _pendingProjectSkills.values.toList();
+
+  /// 当前待信任的项目目录（无则为 null）。
+  String? get pendingProjectDir => _pendingProjectDir;
+
+  /// 信任当前待审项目目录：持久化信任，并将待审 Skill 激活（并入 _skills）。
+  Future<void> trustCurrentProject() async {
+    final dir = _pendingProjectDir;
+    if (dir == null) return;
+    await _trustStore.trust(dir);
+    for (final skill in _pendingProjectSkills.values) {
+      _mergeProjectSkill(skill);
+    }
+    _pendingProjectSkills.clear();
+    _pendingProjectDir = null;
+  }
+
+  /// 规范化路径：去除末尾斜杠，使 `/a/b` 与 `/a/b/` 比较相等。
+  static String _normalizePath(String p) {
+    var path = p;
+    while (path.length > 1 && path.endsWith('/')) {
+      path = path.substring(0, path.length - 1);
+    }
+    return path;
   }
 
   String get level1Prompt {
