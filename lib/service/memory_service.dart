@@ -18,15 +18,19 @@ class MemoryService {
         'X-Title': 'Athena',
       },
     );
-    var prompt = PresetPrompt.memoryBatchAnalysisPrompt
-        .replaceAll('{existing_memories}', existingMemories)
-        .replaceAll('{chat_data}', chatData);
-    var request = ChatCompletionCreateRequest(
-      model: model.modelId,
-      messages: [ChatMessage.user(prompt)],
-    );
-    var response = await client.chat.completions.create(request);
-    return response.text ?? '';
+    try {
+      var prompt = PresetPrompt.memoryBatchAnalysisPrompt
+          .replaceAll('{existing_memories}', existingMemories)
+          .replaceAll('{chat_data}', chatData);
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: [ChatMessage.user(prompt)],
+      );
+      var response = await client.chat.completions.create(request);
+      return response.text ?? '';
+    } finally {
+      client.close();
+    }
   }
 
   Future<String> synthesize({
@@ -42,15 +46,19 @@ class MemoryService {
         'X-Title': 'Athena',
       },
     );
-    var prompt = PresetPrompt.memorySynthesisPrompt.replaceAll(
-      '{memory_data}',
-      memoryData,
-    );
-    var request = ChatCompletionCreateRequest(
-      model: model.modelId,
-      messages: [ChatMessage.user(prompt)],
-    );
-    var response = await client.chat.completions.create(request);
-    return response.text ?? '';
+    try {
+      var prompt = PresetPrompt.memorySynthesisPrompt.replaceAll(
+        '{memory_data}',
+        memoryData,
+      );
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: [ChatMessage.user(prompt)],
+      );
+      var response = await client.chat.completions.create(request);
+      return response.text ?? '';
+    } finally {
+      client.close();
+    }
   }
 }

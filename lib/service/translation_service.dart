@@ -19,14 +19,18 @@ class TranslationService {
         'X-Title': 'Athena',
       },
     );
-    var request = ChatCompletionCreateRequest(
-      model: model.modelId,
-      messages: messages,
-    );
-    var response = client.chat.completions.createStream(request);
-    await for (final chunk in response) {
-      if (chunk.choices == null || chunk.choices!.isEmpty) continue;
-      yield chunk.choices!.first.delta;
+    try {
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: messages,
+      );
+      var response = client.chat.completions.createStream(request);
+      await for (final chunk in response) {
+        if (chunk.choices == null || chunk.choices!.isEmpty) continue;
+        yield chunk.choices!.first.delta;
+      }
+    } finally {
+      client.close();
     }
   }
 }
