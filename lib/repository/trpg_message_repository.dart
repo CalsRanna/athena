@@ -8,6 +8,7 @@ class TRPGMessageRepository {
         .table('trpg_messages')
         .where('game_id', gameId)
         .orderBy('created_at', direction: 'asc')
+        .orderBy('id', direction: 'asc')
         .get();
 
     return results.map((r) => TRPGMessageEntity.fromJson(r.toMap())).toList();
