@@ -5,6 +5,17 @@ import 'package:athena/agent/tool/tool_interface.dart';
 import 'package:athena/util/logger_util.dart';
 
 class SkillRegistry {
+  /// 这些工具会修改文件系统、执行代码或外泄数据，因此 Skill 的 allowedTools
+  /// 永远不能把它们降级为 safe（用户必须始终获得审批提示）。
+  static const Set<String> dangerousTools = {
+    'bash',
+    'powershell',
+    'file_write',
+    'file_update',
+    'file_delete',
+    'web_fetch',
+  };
+
   final SkillLoader _loader = SkillLoader();
   final Map<String, Skill> _skills = {};
 
@@ -79,6 +90,7 @@ class SkillRegistry {
   /// - SkillTool 自身不受约束：返回默认等级；
   /// - forbidden 永远不变；
   /// - 当前 Skill 声明了 allowedTools 且工具在列表中：降级为 safe；
+  ///   但危险工具（dangerousTools）永不降级，保持其默认等级；
   /// - 当前 Skill 声明了 allowedTools 但工具不在列表中：强制 needsApproval（即便默认 safe）；
   /// - 当前 Skill 未声明 allowedTools：保持默认等级，行为不变。
   DangerLevel effectiveDangerLevel(String toolName, DangerLevel defaultLevel) {
@@ -90,7 +102,11 @@ class SkillRegistry {
     final allowed = _parseAllowedTools(skill.allowedTools);
     if (allowed == null) return defaultLevel;
 
-    if (allowed.contains(toolName)) return DangerLevel.safe;
+    if (allowed.contains(toolName)) {
+      // 危险工具硬下限：Skill 不能将其降级为 safe，保留原始等级。
+      if (dangerousTools.contains(toolName)) return defaultLevel;
+      return DangerLevel.safe;
+    }
     return DangerLevel.needsApproval;
   }
 
