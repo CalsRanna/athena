@@ -1,4 +1,5 @@
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:flutter/material.dart';
@@ -17,23 +18,30 @@ class DesktopModelIndicator extends StatelessWidget {
 
     return Watch((context) {
       var model = chatViewModel.currentModel.value;
+      var provider = chatViewModel.currentProvider.value;
 
       if (model == null) return const SizedBox();
-      return _ModelIndicator(model: model, onTap: onTap);
+      if (provider == null) return const SizedBox();
+      return _ModelIndicator(model: model, provider: provider, onTap: onTap);
     });
   }
 }
 
 class _ModelIndicator extends StatelessWidget {
   final ModelEntity model;
+  final ProviderEntity provider;
   final void Function()? onTap;
 
-  const _ModelIndicator({required this.model, this.onTap});
+  const _ModelIndicator({
+    required this.model,
+    required this.provider,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     var modelText = Text(
-      model.name,
+      '${model.name} | ${provider.name}',
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
