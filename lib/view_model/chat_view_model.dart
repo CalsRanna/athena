@@ -47,6 +47,17 @@ class ChatViewModel {
 
   CancelToken? _activeCancelToken;
 
+  /// 当前正在流式输出的 chat id；用于删除时判断是否需要先停流再删。
+  int? _streamingChatId;
+
+  /// 流式发送完成（含取消/出错落库）后 complete 的信号；
+  /// 删除当前流式 chat 前需等待它 settle，避免对将被删除的 chat 写入孤儿数据。
+  Completer<void>? _streamingDone;
+
+  /// 后台自动重命名流的取消令牌，按 chat id 注册；
+  /// 删除 chat 时取消对应令牌，避免重命名最终写入落到已删除的 chat。
+  final Map<int, CancelToken> _renameTokens = {};
+
   /// 流式过程中最新的 assistant 消息（携带本轮累积内容）。
   ///
   /// 取消/出错时 [_consumeAgentStream] 会在 await 内抛出，外层 catch 拿到的
@@ -252,6 +263,16 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
+      // 若正在流式输出的就是这个 chat，先停流并等待其完全 settle，
+      // 避免取消/finalize 落库与删除竞态产生孤儿写入。
+      if (isStreaming.value && _streamingChatId == chat.id) {
+        final done = _streamingDone?.future;
+        stopGenerating();
+        if (done != null) await done;
+      }
+      // 取消该 chat 后台进行中的自动重命名流，避免重命名最终写入落到已删除的 chat。
+      _renameTokens[chat.id]?.cancel();
+
       await _manage.deleteChat(chat.id!);
 
       // 更新 chats 状态
@@ -279,6 +300,19 @@ class ChatViewModel {
     error.value = null;
     try {
       var idsToDelete = chatsToDelete.map((c) => c.id!).toSet();
+
+      // 若正在流式输出的 chat 在删除集合内，先停流并等待 settle。
+      if (isStreaming.value &&
+          _streamingChatId != null &&
+          idsToDelete.contains(_streamingChatId)) {
+        final done = _streamingDone?.future;
+        stopGenerating();
+        if (done != null) await done;
+      }
+      // 取消这些 chat 后台进行中的自动重命名流。
+      for (final id in idsToDelete) {
+        _renameTokens[id]?.cancel();
+      }
 
       await _manage.deleteChats(idsToDelete);
 
@@ -418,6 +452,9 @@ class ChatViewModel {
 
     startRenaming(chat.id!);
     _selection.renamingTitle.value = '';
+    // 注册取消令牌：删除该 chat 时会取消，避免重命名最终写入落到已删除的 chat。
+    final renameToken = CancelToken();
+    _renameTokens[chat.id!] = renameToken;
     try {
       // 获取第一条用户消息
       var chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
@@ -443,6 +480,7 @@ class ChatViewModel {
       );
 
       await for (final chunk in stream) {
+        if (renameToken.isCancelled) return null;
         titleBuffer.write(chunk);
         _selection.renamingTitle.value = titleBuffer.toString();
       }
@@ -450,6 +488,8 @@ class ChatViewModel {
       var title = titleBuffer.toString().trim();
       if (title.isEmpty) return null;
 
+      // 写入前再次检查：流结束后 chat 可能已被删除。
+      if (renameToken.isCancelled) return null;
       var updated = await _support.renameChatManually(chat, title);
       _updateChatInLists(updated);
 
@@ -458,6 +498,7 @@ class ChatViewModel {
       error.value = e.toString();
       return null;
     } finally {
+      _renameTokens.remove(chat.id);
       _selection.renamingTitle.value = '';
       stopRenaming(chat.id!);
     }
@@ -534,6 +575,8 @@ class ChatViewModel {
     final cancelToken = CancelToken();
     _activeCancelToken = cancelToken;
     isStreaming.value = true;
+    _streamingChatId = chat.id;
+    _streamingDone = Completer<void>();
     error.value = null;
     MessageEntity? assistantMessage;
 
@@ -588,6 +631,12 @@ class ChatViewModel {
       isStreaming.value = false;
       _activeCancelToken = null;
       _latestStreamedMessage = null;
+      _streamingChatId = null;
+      // 通知等待方（如 deleteChat）流已完全 settle，所有写入均已落库。
+      if (_streamingDone != null && !_streamingDone!.isCompleted) {
+        _streamingDone!.complete();
+      }
+      _streamingDone = null;
     }
   }
 
