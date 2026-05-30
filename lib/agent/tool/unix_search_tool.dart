@@ -41,7 +41,7 @@ class UnixSearchTool implements Tool {
       };
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
+  DangerLevel get dangerLevel => DangerLevel.needsApproval;
 
   @override
   Future<String> execute(Map<String, dynamic> args) async {
