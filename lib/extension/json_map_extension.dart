@@ -4,19 +4,24 @@ extension JsonMapExtension on Map<String, dynamic> {
   String getString(String key, {String defaultValue = ''}) {
     final value = this[key];
     if (value == null) return defaultValue;
-    return value as String;
+    if (value is String) return value;
+    return value.toString();
   }
 
   int getInt(String key, {int defaultValue = 0}) {
     final value = this[key];
     if (value == null) return defaultValue;
-    return value as int;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? defaultValue;
   }
 
   int? getIntOrNull(String key) {
     final value = this[key];
     if (value == null) return null;
-    return value as int;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
   double getDouble(String key, {double defaultValue = 0.0}) {
