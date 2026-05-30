@@ -183,6 +183,65 @@ void main() {
         DangerLevel.needsApproval,
       );
     });
+
+    test('dangerousTools set contains exactly the six dangerous tools', () {
+      expect(
+        SkillRegistry.dangerousTools,
+        {'bash', 'powershell', 'file_write', 'file_update', 'file_delete',
+            'web_fetch'},
+      );
+    });
+
+    test('dangerous tool in allowed-tools is NOT downgraded to safe (S3)', () {
+      for (final tool in const [
+        'bash',
+        'powershell',
+        'file_write',
+        'file_update',
+        'file_delete',
+        'web_fetch',
+      ]) {
+        final reg = buildRegistryWithSkill(name: 'a', allowedTools: tool);
+        reg.pushContext('a');
+        expect(
+          reg.effectiveDangerLevel(tool, DangerLevel.needsApproval),
+          DangerLevel.needsApproval,
+          reason: '$tool listed in allowed-tools must stay needsApproval',
+        );
+      }
+    });
+
+    test('non-dangerous tools in allowed-tools still downgrade to safe', () {
+      final reg = buildRegistryWithSkill(
+        name: 'a',
+        allowedTools: 'file_read, search',
+      );
+      reg.pushContext('a');
+      expect(
+        reg.effectiveDangerLevel('file_read', DangerLevel.needsApproval),
+        DangerLevel.safe,
+      );
+      expect(
+        reg.effectiveDangerLevel('search', DangerLevel.needsApproval),
+        DangerLevel.safe,
+      );
+    });
+
+    test('mixed allowed-tools: non-dangerous downgraded, dangerous not', () {
+      final reg = buildRegistryWithSkill(
+        name: 'a',
+        allowedTools: 'file_read, bash',
+      );
+      reg.pushContext('a');
+      expect(
+        reg.effectiveDangerLevel('file_read', DangerLevel.needsApproval),
+        DangerLevel.safe,
+      );
+      expect(
+        reg.effectiveDangerLevel('bash', DangerLevel.needsApproval),
+        DangerLevel.needsApproval,
+      );
+    });
   });
 }
 
