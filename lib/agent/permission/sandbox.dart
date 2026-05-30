@@ -52,7 +52,8 @@ class PathSandbox {
   /// （如 `cat data.json | python -m json.tool`）。它仅供 PermissionService
   /// 的"危险"判定使用，从而隐藏"始终允许"勾选框（命令仍可单次审批后执行）。
   bool pipesToInterpreter(String command) {
-    return RegExp(r'\|\s*(python[23]?|node|perl|ruby)\b').hasMatch(command);
+    return RegExp(r'\|\s*(python[23]?|node|perl|ruby)\b', caseSensitive: false)
+        .hasMatch(command);
   }
 
   bool _isDenied(String path) {
@@ -117,7 +118,8 @@ class PathSandbox {
   /// 仅覆盖真正的 shell（硬拒绝）。管道到脚本解释器（python/node/perl/ruby）
   /// 不在此处——它有合法用途，改由 [pipesToInterpreter] 标记为"危险"。
   static bool _hasPipeToShell(String command) {
-    final pattern = RegExp(r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish)\b');
+    final pattern = RegExp(r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish)\b',
+        caseSensitive: false);
     return pattern.hasMatch(command);
   }
 
@@ -125,11 +127,16 @@ class PathSandbox {
   static bool _hasDestructiveRm(String command) {
     final segments = _splitByOperators(command);
     for (final segment in segments) {
-      final trimmed = segment.trim();
+      // 剥离前导环境变量赋值（如 `FOO=1 rm -rf /`），使命令名能正确锚定。
+      final trimmed = _stripLeadingAssignments(segment.trim());
       // 匹配 `rm` 或以 `/bin/rm`、`/usr/bin/rm` 等绝对/相对路径调用的 rm。
-      if (!RegExp(r'^(\S*/)?rm\b').hasMatch(trimmed)) continue;
+      if (!RegExp(r'^(\S*/)?rm\b', caseSensitive: false).hasMatch(trimmed)) {
+        continue;
+      }
       // 必须有 -r 或 -rf 或 -fr 或 -R
-      if (!RegExp(r'(^|\s)-[rR][fF]?(\s|$)|(^|\s)-[fF][rR](\s|$)|(^|\s)--recursive\b')
+      if (!RegExp(
+              r'(^|\s)-[rR][fF]?(\s|$)|(^|\s)-[fF][rR](\s|$)|(^|\s)--recursive\b',
+              caseSensitive: false)
           .hasMatch(trimmed)) {
         continue;
       }
@@ -149,13 +156,13 @@ class PathSandbox {
   /// 检测重定向写入黑名单目录或根目录。
   static bool _hasRedirectToDenied(String command) {
     // 匹配重定向：可选 fd 前缀（数字或 `&`）+ `>` 或 `>>`，随后是目标路径。
-    // 例如 `> f`、`>> f`、`1> f`、`2>> f`、`&> f`。
-    final redirect = RegExp(r'(?:\d+|&)?>>?\s*([^\s|;&<>]+)');
+    // 例如 `> f`、`>> f`、`1> f`、`2>> f`、`&> f`。目标可能带引号。
+    final redirect = RegExp(r'''(?:\d+|&)?>>?\s*("[^"]+"|'[^']+'|[^\s|;&<>]+)''');
     for (final match in redirect.allMatches(command)) {
       final target = match.group(1);
       if (target == null || target.isEmpty) continue;
       try {
-        if (_isDeniedStatic(target)) return true;
+        if (_isDeniedStatic(_stripQuotes(target))) return true;
       } catch (_) {}
     }
 
@@ -175,18 +182,38 @@ class PathSandbox {
           .where((t) => t.isNotEmpty)
           .toList();
       if (tokens.isEmpty) continue;
+      // 命令名为首个非环境变量赋值的 token（如 `FOO=1 tee ...`）。
+      final cmdIndex = tokens.indexWhere((t) => !RegExp(r'^\w+=').hasMatch(t));
+      if (cmdIndex < 0) continue;
       // tee 可能以绝对/相对路径调用（如 /usr/bin/tee）。
-      final cmd = tokens.first.split('/').last;
-      if (cmd != 'tee') continue;
+      final cmd = tokens[cmdIndex].split('/').last;
+      if (cmd.toLowerCase() != 'tee') continue;
       // tee 之后的非 flag 参数即为目标文件。
-      for (final t in tokens.skip(1)) {
+      for (final t in tokens.skip(cmdIndex + 1)) {
         if (t.startsWith('-')) continue;
         try {
-          if (_isDeniedStatic(t)) return true;
+          if (_isDeniedStatic(_stripQuotes(t))) return true;
         } catch (_) {}
       }
     }
     return false;
+  }
+
+  /// 剥离 token 首尾的成对引号。
+  static String _stripQuotes(String s) {
+    return s.replaceAll(RegExp(r'''^["']|["']$'''), '');
+  }
+
+  /// 剥离命令段开头的环境变量赋值 token（如 `FOO=1 BAR=x rm ...`）。
+  static String _stripLeadingAssignments(String segment) {
+    var rest = segment;
+    final assignment = RegExp(r'^\w+=\S*\s+');
+    while (true) {
+      final m = assignment.firstMatch(rest);
+      if (m == null) break;
+      rest = rest.substring(m.end);
+    }
+    return rest;
   }
 
   /// 静态版本的 _isDenied，用于命令检测阶段。
@@ -227,7 +254,7 @@ class PathSandbox {
 
   /// 路径是否"接近根"或指向 home 关键子项。
   static bool _isRootLikeTarget(String token) {
-    final stripped = token.replaceAll(RegExp(r'^["\047]|["\047]$'), '');
+    final stripped = _stripQuotes(token);
     final resolved = _canonicalize(stripped);
 
     // 根目录或一级子目录（如 `/`、`/usr`、`/Users`）

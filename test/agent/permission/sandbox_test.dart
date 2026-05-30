@@ -69,6 +69,17 @@ void main() {
       expect(sandbox.canExecute('echo ok\nrm -rf /'), isFalse);
     });
 
+    test('denies case-evasion of command-name detectors', () {
+      expect(sandbox.canExecute('RM -RF /'), isFalse);
+      expect(sandbox.canExecute('curl x | BASH'), isFalse);
+      expect(sandbox.canExecute('echo x | TEE /etc/hosts'), isFalse);
+    });
+
+    test('denies leading env-var assignment before destructive command', () {
+      expect(sandbox.canExecute('FOO=1 rm -rf /'), isFalse);
+      expect(sandbox.canExecute('FOO=1 tee /etc/hosts'), isFalse);
+    });
+
     test('allows rm -rf on /tmp subpaths', () {
       expect(sandbox.canExecute('rm -rf /tmp/scratch'), isTrue);
     });
@@ -111,6 +122,11 @@ void main() {
         isFalse,
       );
       expect(sandbox.canExecute('tee -a /etc/hosts'), isFalse);
+    });
+
+    test('denies quoted redirect/tee target into denied path', () {
+      expect(sandbox.canExecute('echo x > "/etc/foo"'), isFalse);
+      expect(sandbox.canExecute('echo x | tee "/etc/hosts"'), isFalse);
     });
 
     test('allows safe commands', () {
