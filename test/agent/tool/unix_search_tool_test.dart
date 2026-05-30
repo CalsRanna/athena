@@ -10,8 +10,8 @@ void main() {
       expect(tool.name, 'search');
     });
 
-    test('dangerLevel is safe', () {
-      expect(tool.dangerLevel.name, 'safe');
+    test('dangerLevel is needsApproval', () {
+      expect(tool.dangerLevel.name, 'needsApproval');
     });
 
     test('parameters require pattern', () {

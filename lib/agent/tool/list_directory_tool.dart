@@ -18,7 +18,7 @@ class ListDirectoryTool implements Tool {
       'Supports depth control for recursive listing.';
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
+  DangerLevel get dangerLevel => DangerLevel.needsApproval;
 
   @override
   Map<String, dynamic> get parameters => {
