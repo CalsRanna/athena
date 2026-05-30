@@ -6,9 +6,9 @@ class PermissionRule {
   final String? pattern;
   final String? contains;
 
-  /// 仅文件类工具（file_read/file_write/file_update/file_delete）使用：
-  /// true 表示该目录及其所有子目录都允许；false 仅允许该目录直接子文件。
-  /// shell 工具忽略此字段。
+  /// 路径类工具（file_read/file_write/file_update/file_delete/search/
+  /// list_directory）使用：true 表示该目录及其所有子目录都允许；
+  /// false 仅允许该目录及其直接子项。其它工具忽略此字段。
   final bool recursive;
 
   const PermissionRule({
