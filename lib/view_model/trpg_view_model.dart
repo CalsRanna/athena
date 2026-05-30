@@ -156,6 +156,9 @@ class TRPGViewModel {
 
   /// 发送玩家行动
   Future<void> sendPlayerAction(String action) async {
+    // 重入保护：若已有 DM 流在进行中，直接返回，避免并发流覆盖状态、重复落库
+    if (isStreaming.value) return;
+
     var game = currentGame.value;
     if (game == null) return;
 
