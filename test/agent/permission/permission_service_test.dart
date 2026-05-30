@@ -184,6 +184,113 @@ void main() {
     });
   });
 
+  group('PermissionService web_fetch origin scoping (S4)', () {
+    PermissionService serviceWithAllow(PermissionRule rule) {
+      final store = PermissionStore()..allowRules = [rule];
+      return PermissionService(store: store);
+    }
+
+    test('origin allow rule auto-approves another path on the same origin', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'https://a.com/some/path'}),
+        isTrue,
+      );
+    });
+
+    test('origin allow rule does NOT auto-approve a different host', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'https://b.com/'}),
+        isNull,
+      );
+    });
+
+    test('a different scheme is a different origin', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'http://a.com/'}),
+        isNull,
+      );
+    });
+
+    test('a different port is a different origin', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'https://a.com:8443/'}),
+        isNull,
+      );
+    });
+
+    test('userinfo in the URL does not widen the rule', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'https://user:pass@a.com/x'}),
+        isTrue,
+      );
+    });
+
+    test('uppercase host is normalized to the same origin', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'https://A.COM/x'}),
+        isTrue,
+      );
+    });
+
+    test('generateRule produces a non-null origin-scoped pattern', () {
+      final service = PermissionService(store: PermissionStore());
+      final rule = service.generateRule(
+        'web_fetch',
+        {'url': 'https://a.com/x?y=1'},
+      );
+      expect(rule.tool, 'web_fetch');
+      expect(rule.pattern, isNotNull);
+      expect(rule.pattern, 'https://a.com');
+    });
+
+    test('generateRuleDescription contains the origin', () {
+      final service = PermissionService(store: PermissionStore());
+      expect(
+        service.generateRuleDescription('web_fetch', {'url': 'https://a.com/x'}),
+        contains('https://a.com'),
+      );
+    });
+
+    test('a malformed/non-http URL is never auto-approved', () {
+      final service = serviceWithAllow(
+        PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
+      );
+      expect(
+        service.check('web_fetch', {'url': 'ftp://x'}),
+        isNull,
+      );
+      expect(
+        service.check('web_fetch', {'url': 'not a url'}),
+        isNull,
+      );
+    });
+
+    test('generateRule never yields a null pattern for a non-http url', () {
+      final service = PermissionService(store: PermissionStore());
+      final rule = service.generateRule('web_fetch', {'url': 'ftp://x'});
+      expect(rule.tool, 'web_fetch');
+      expect(rule.pattern, isNotNull);
+    });
+  });
+
   group('PermissionService isDangerous pipe-to-interpreter (S8)', () {
     final service = PermissionService(store: PermissionStore());
 
