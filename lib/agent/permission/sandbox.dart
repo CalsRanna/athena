@@ -46,6 +46,15 @@ class PathSandbox {
   /// 公开版本的路径解析，供工具构造审批文案使用。
   String resolveAbsolute(String path) => _canonicalize(path);
 
+  /// 检测命令是否管道到脚本解释器（python/node/perl/ruby）。
+  ///
+  /// 注意：这 *不* 参与 [canExecute] 的硬拒绝判定——管道到解释器有合法用途
+  /// （如 `cat data.json | python -m json.tool`）。它仅供 PermissionService
+  /// 的"危险"判定使用，从而隐藏"始终允许"勾选框（命令仍可单次审批后执行）。
+  bool pipesToInterpreter(String command) {
+    return RegExp(r'\|\s*(python[23]?|node|perl|ruby)\b').hasMatch(command);
+  }
+
   bool _isDenied(String path) {
     final resolved = _canonicalize(path);
     for (final denied in deniedPaths) {
@@ -103,10 +112,12 @@ class PathSandbox {
     return pattern.hasMatch(command);
   }
 
-  /// 检测 `... | sh` / `... | bash` / `... | python` 类管道到 shell/解释器。
+  /// 检测 `... | sh` / `... | bash` / `... | zsh` 类管道到 shell。
+  ///
+  /// 仅覆盖真正的 shell（硬拒绝）。管道到脚本解释器（python/node/perl/ruby）
+  /// 不在此处——它有合法用途，改由 [pipesToInterpreter] 标记为"危险"。
   static bool _hasPipeToShell(String command) {
-    final pattern = RegExp(
-        r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish|python[23]?|node|perl|ruby)\b');
+    final pattern = RegExp(r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish)\b');
     return pattern.hasMatch(command);
   }
 

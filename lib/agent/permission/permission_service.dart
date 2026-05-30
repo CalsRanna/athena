@@ -26,7 +26,14 @@ class PermissionService {
   /// 是否命中 deny 规则（命中则隐藏 checkbox）
   bool isDangerous(String toolName, Map<String, dynamic> args) {
     final keyArg = _extractKeyArg(toolName, args);
-    return _matchesDenyRules(toolName, keyArg);
+    if (_matchesDenyRules(toolName, keyArg)) return true;
+    // 命令工具：管道到脚本解释器视为危险（隐藏 checkbox，但仍可单次审批）。
+    if ((toolName == 'bash' || toolName == 'powershell') &&
+        keyArg != null &&
+        _sandbox.pipesToInterpreter(keyArg)) {
+      return true;
+    }
+    return false;
   }
 
   /// 根据工具调用与用户选择的粒度生成 allow 规则。
