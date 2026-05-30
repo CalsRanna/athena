@@ -48,6 +48,11 @@ class _RecordingManageService extends ChatManageService {
   MessageEntity? cancelledArg;
   MessageEntity? erroredArg;
 
+  /// 记录关键操作的发生顺序，用于断言删除等待了流 settle。
+  final List<String> events = [];
+  bool deleteChatCalled = false;
+  bool deleteChatsCalled = false;
+
   @override
   Future<MessageEntity> appendAssistantPlaceholder(int chatId) async {
     final id = _nextId++;
@@ -61,8 +66,21 @@ class _RecordingManageService extends ChatManageService {
   Future<void> updateChatTimestamp(ChatEntity chat) async {}
 
   @override
+  Future<void> deleteChat(int chatId) async {
+    deleteChatCalled = true;
+    events.add('delete');
+  }
+
+  @override
+  Future<void> deleteChats(Set<int> ids) async {
+    deleteChatsCalled = true;
+    events.add('delete');
+  }
+
+  @override
   Future<MessageEntity> recordCancelledOnMessage(MessageEntity message) async {
     cancelledArg = message;
+    events.add('cancel-persist');
     // 复用真实实现（super 经 _NoopMessageRepository，updateMessage 为空操作），
     // 避免重复保留逻辑与真实行为漂移。
     return super.recordCancelledOnMessage(message);
@@ -84,6 +102,9 @@ class _NoopMessageRepository extends MessageRepository {
   Future<int> storeMessage(MessageEntity message) async => _nextId++;
   @override
   Future<void> updateMessage(MessageEntity message) async {}
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(int chatId) async =>
+      [MessageEntity(id: 1, chatId: chatId, role: 'user', content: 'hello')];
 }
 
 class _FakeModelRepository extends ModelRepository {
@@ -104,13 +125,19 @@ class _FakeSentinelRepository extends SentinelRepository {
 }
 
 class _FakeSupportService extends ChatSupportService {
-  _FakeSupportService()
+  _FakeSupportService({this.renameStream})
       : super(
           chatRepository: ChatRepository(),
           messageRepository: _NoopMessageRepository(),
           providerRepository: ProviderRepositoryStub(),
           chatService: ChatService(),
         );
+
+  /// 可选的伪标题流；为 null 时回退到空流。
+  final Stream<String>? renameStream;
+
+  /// 记录 renameChatManually 是否被调用（用于断言删除后不再写入）。
+  bool renameChatManuallyCalled = false;
 
   @override
   Future<ProviderEntity?> getProviderForModel(int providerId) async =>
@@ -121,6 +148,23 @@ class _FakeSupportService extends ChatSupportService {
         apiKey: 'k',
         createdAt: DateTime(2024),
       );
+
+  @override
+  Stream<String> renameChat(
+    String firstUserMessage, {
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) {
+    final s = renameStream;
+    if (s != null) return s;
+    return const Stream<String>.empty();
+  }
+
+  @override
+  Future<ChatEntity> renameChatManually(ChatEntity chat, String title) async {
+    renameChatManuallyCalled = true;
+    return chat.copyWith(title: title);
+  }
 }
 
 class _FakeChatMessageService extends ChatMessageService {
@@ -160,8 +204,8 @@ class _FakeAgentService extends AgentService {
       stream;
 }
 
-ChatEntity _chat() => ChatEntity(
-      id: 1,
+ChatEntity _chat({int id = 1}) => ChatEntity(
+      id: id,
       title: 'New Chat',
       modelId: 1,
       sentinelId: 1,
@@ -175,10 +219,11 @@ MessageEntity _userMessage() =>
 ChatViewModel _buildViewModel({
   required _RecordingManageService manage,
   required _FakeAgentService agent,
+  _FakeSupportService? support,
 }) {
   return ChatViewModel(
     manageService: manage,
-    supportService: _FakeSupportService(),
+    supportService: support ?? _FakeSupportService(),
     chatMessageService: _FakeChatMessageService(),
     agentService: agent,
     messageRepository: _NoopMessageRepository(),
@@ -307,6 +352,152 @@ void main() {
     expect(errored!.content, 'partial');
     expect(manage.cancelledArg, isNull);
     expect(vm.error.value, contains('boom'));
+  });
+
+  test(
+      'C12: 删除正在流式输出的 chat，删除会等待流 settle（取消落库先于删除完成）',
+      () async {
+    // 事件流：发两段文本后 await gate；测试在文本到达后发起删除（删除内部
+    // 会 stopGenerating 并 await 流 settle），随后打开 gate 让流抛出取消。
+    final gate = Completer<void>();
+    final emittedSome = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('Hello');
+      yield const AgentTextEvent(', world');
+      if (!emittedSome.isCompleted) emittedSome.complete();
+      await gate.future;
+      yield const AgentTextEvent('!!!');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    final chat = _chat();
+    final sendFuture = vm.sendMessage(_userMessage(), chat: chat);
+
+    await emittedSome.future;
+    expect(vm.isStreaming.value, isTrue);
+
+    // 删除正在流式输出的 chat：内部应 stopGenerating 并等待流 settle。
+    final deleteFuture = vm.deleteChat(chat);
+    // 打开 gate，让流到达循环顶部的 throwIfCancelled 后抛出取消。
+    gate.complete();
+
+    await Future.wait([sendFuture, deleteFuture]);
+
+    // 删除已完成，且确实调用了底层删除。
+    expect(manage.deleteChatCalled, isTrue);
+    // 删除完成时流已 settle，isStreaming 复位。
+    expect(vm.isStreaming.value, isFalse);
+    // 取消落库发生在删除之前——证明 deleteChat 等待了流 settle。
+    expect(manage.cancelledArg, isNotNull);
+    expect(manage.events, ['cancel-persist', 'delete']);
+  });
+
+  test('C12: 删除 chat 取消其后台自动重命名流，不再写入 renameChatManually',
+      () async {
+    // 伪标题流：先发一段标题片段，然后 await gate；测试在片段到达后删除该
+    // chat（应取消重命名令牌），再打开 gate 让流结束。删除后不应写入标题。
+    final gate = Completer<void>();
+    final emittedChunk = Completer<void>();
+
+    Stream<String> titleStream() async* {
+      yield 'My Title';
+      if (!emittedChunk.isCompleted) emittedChunk.complete();
+      await gate.future;
+      yield ' More';
+    }
+
+    final manage = _RecordingManageService();
+    final support = _FakeSupportService(renameStream: titleStream());
+    // sendMessage 不参与本用例，给一个空事件流即可。
+    final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+    final vm = _buildViewModel(manage: manage, agent: agent, support: support);
+
+    final chat = _chat();
+    // 直接驱动后台重命名流（fire-and-forget）。
+    final renameFuture = vm.renameChat(chat);
+
+    await emittedChunk.future;
+    // 删除该 chat：应取消重命名令牌。
+    await vm.deleteChat(chat);
+    // 放行剩余流；renameChat 应在写入前检测到取消并提前返回 null。
+    gate.complete();
+
+    final result = await renameFuture;
+
+    expect(result, isNull, reason: '取消后 renameChat 应返回 null');
+    expect(support.renameChatManuallyCalled, isFalse,
+        reason: '删除后不应再写入已删除 chat 的标题');
+    expect(manage.deleteChatCalled, isTrue);
+  });
+
+  test('C12: 删除非流式 chat 不会阻塞等待进行中的其他流', () async {
+    // chat A(id=1) 正在流式且不结束（gate 不打开）；删除另一个 chat B(id=2)
+    // 不应等待 A 的流 settle，应立即完成且不触发 A 的取消落库。
+    final gate = Completer<void>();
+    final emittedSome = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('streaming A');
+      if (!emittedSome.isCompleted) emittedSome.complete();
+      await gate.future;
+      yield const AgentTextEvent('more');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat(id: 1));
+    await emittedSome.future;
+    expect(vm.isStreaming.value, isTrue);
+
+    // 删除不同的 chat B(id=2)：守卫 _streamingChatId == chat.id 不成立，
+    // 应立即完成而不等待 A 的流。
+    await vm.deleteChat(_chat(id: 2));
+    expect(manage.deleteChatCalled, isTrue);
+    expect(manage.events, ['delete'], reason: '不应发生 A 的取消落库');
+    expect(vm.isStreaming.value, isTrue, reason: 'A 仍在流式');
+
+    // 清理：结束 A 的流。
+    vm.stopGenerating();
+    gate.complete();
+    await sendFuture;
+  });
+
+  test('C12: deleteChats 集合含流式 chat 时先停流再删', () async {
+    final gate = Completer<void>();
+    final emittedSome = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('Hello');
+      if (!emittedSome.isCompleted) emittedSome.complete();
+      await gate.future;
+      yield const AgentTextEvent('!!!');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    final streamingChat = _chat(id: 1);
+    final sendFuture = vm.sendMessage(_userMessage(), chat: streamingChat);
+    await emittedSome.future;
+
+    // 删除集合同时包含正在流式的 chat 1 与另一个 chat 2。
+    final deleteFuture = vm.deleteChats([streamingChat, _chat(id: 2)]);
+    gate.complete();
+
+    await Future.wait([sendFuture, deleteFuture]);
+
+    expect(manage.deleteChatsCalled, isTrue);
+    expect(vm.isStreaming.value, isFalse);
+    expect(manage.cancelledArg, isNotNull);
+    expect(manage.events, ['cancel-persist', 'delete'],
+        reason: '删除应等待流 settle，取消落库先于删除');
   });
 }
 
