@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:athena/util/logger_util.dart';
 import 'package:http/http.dart' as http;
+import 'package:openai_dart/openai_dart.dart';
 
 class RetryConfig {
   final int maxAttempts;
@@ -40,7 +41,7 @@ Future<T> retry<T>(
           pow(2, attempt - 1).toInt();
       final delayMs = min(backoff + random.nextInt(500),
           config.maxDelay.inMilliseconds);
-      LoggerUtil.w('Retry attempt $attempt/$config.maxAttempts '
+      LoggerUtil.w('Retry attempt $attempt/${config.maxAttempts} '
           'after ${delayMs}ms: ${e.runtimeType}');
       await Future.delayed(Duration(milliseconds: delayMs));
     }
@@ -83,12 +84,17 @@ Stream<T> retryStream<T>(
 }
 
 bool _isRetryable(Object e) {
+  // dart:io / http network-level failures.
   if (e is SocketException) return true;
   if (e is http.ClientException) return true;
   if (e is TimeoutException) return true;
   if (e is HandshakeException) return true;
   if (e is TlsException) return true;
-  final msg = e.toString().toLowerCase();
-  if (msg.contains('connection') && (msg.contains('reset') || msg.contains('refused') || msg.contains('closed'))) return true;
+  // openai_dart typed exceptions: only transient network/server/rate-limit
+  // errors are retryable. Business 4xx errors and user aborts are not.
+  if (e is ConnectionException) return true;
+  if (e is RequestTimeoutException) return true;
+  if (e is RateLimitException) return true;
+  if (e is InternalServerException) return true;
   return false;
 }
