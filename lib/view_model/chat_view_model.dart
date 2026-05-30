@@ -47,6 +47,13 @@ class ChatViewModel {
 
   CancelToken? _activeCancelToken;
 
+  /// 流式过程中最新的 assistant 消息（携带本轮累积内容）。
+  ///
+  /// 取消/出错时 [_consumeAgentStream] 会在 await 内抛出，外层 catch 拿到的
+  /// `assistantMessage` 仍是最初的空占位；该字段让 catch 基于最新消息落库，
+  /// 避免丢失已生成内容、避免覆盖前序 iteration 已 finalize 的消息。
+  MessageEntity? _latestStreamedMessage;
+
   /// 一次会话内仅提示一次项目级 Skill 信任弹窗的守卫。
   bool _skillTrustPrompted = false;
 
@@ -565,20 +572,22 @@ class ChatViewModel {
       await _manage.updateChatTimestamp(chat);
       await getChats();
     } on CancelledException {
-      if (assistantMessage != null) {
-        final cancelled =
-            await _manage.recordCancelledOnMessage(assistantMessage);
+      final target = _latestStreamedMessage ?? assistantMessage;
+      if (target != null) {
+        final cancelled = await _manage.recordCancelledOnMessage(target);
         _updateMessageInList(cancelled.id, cancelled);
       }
     } catch (e) {
       error.value = e.toString();
-      if (assistantMessage != null) {
-        final errored = await _manage.recordErrorOnMessage(assistantMessage, e);
+      final target = _latestStreamedMessage ?? assistantMessage;
+      if (target != null) {
+        final errored = await _manage.recordErrorOnMessage(target, e);
         _updateMessageInList(errored.id, errored);
       }
     } finally {
       isStreaming.value = false;
       _activeCancelToken = null;
+      _latestStreamedMessage = null;
     }
   }
 
@@ -768,6 +777,7 @@ class ChatViewModel {
     required Stream<AgentEvent> agentStream,
   }) async {
     var current = assistantMessage;
+    _latestStreamedMessage = current;
     var contentBuffer = StringBuffer();
     var reasoningBuffer = StringBuffer();
     var toolCallsJson = <Map<String, dynamic>>[];
@@ -793,6 +803,7 @@ class ChatViewModel {
           reasoningUpdatedAt: DateTime.now(),
         );
         _updateMessageInList(current.id, current);
+        _latestStreamedMessage = current;
       } else if (event is AgentTextEvent) {
         if (hasCompletedIteration) {
           current = await _advanceIteration(chat, current);
@@ -805,6 +816,7 @@ class ChatViewModel {
         contentBuffer.write(event.delta);
         current = current.copyWith(content: contentBuffer.toString());
         _updateMessageInList(current.id, current);
+        _latestStreamedMessage = current;
       } else if (event is AgentToolCallEvent) {
         toolCallsJson.add({
           'id': event.id,
@@ -813,6 +825,7 @@ class ChatViewModel {
         });
         current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
         _updateMessageInList(current.id, current);
+        _latestStreamedMessage = current;
       } else if (event is AgentToolResultEvent) {
         toolResultsJson.add({
           'id': event.id,
@@ -821,16 +834,19 @@ class ChatViewModel {
         });
         current = current.copyWith(toolResults: jsonEncode(toolResultsJson));
         _updateMessageInList(current.id, current);
+        _latestStreamedMessage = current;
         hasCompletedIteration = true;
       } else if (event is AgentDoneEvent) {
         current = current.copyWith(content: event.content);
         _updateMessageInList(current.id, current);
+        _latestStreamedMessage = current;
       }
     }
 
     if (reasoningBuffer.isNotEmpty) {
       current = current.copyWith(reasoning: false);
       _updateMessageInList(current.id, current);
+      _latestStreamedMessage = current;
     }
 
     return current;
