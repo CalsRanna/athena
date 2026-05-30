@@ -3,6 +3,7 @@ import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
+import 'package:athena/agent/skill/skill_trust_store.dart';
 import 'package:athena/agent/tool/file_delete_tool.dart';
 import 'package:athena/agent/tool/file_update_tool.dart';
 import 'package:athena/agent/tool/file_read_tool.dart';
@@ -92,8 +93,9 @@ class DI {
       ),
     );
 
+    getIt.registerLazySingleton(() => SkillTrustStore());
     getIt.registerLazySingleton(() {
-      final registry = SkillRegistry();
+      final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
       registry.loadAll();
       return registry;
     });
