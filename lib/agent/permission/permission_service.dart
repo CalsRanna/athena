@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:athena/agent/permission/permission_rule.dart';
+import 'package:athena/agent/permission/sandbox.dart';
 
 class PermissionService {
   final PermissionStore _store;
+  final PathSandbox _sandbox;
 
-  PermissionService({required PermissionStore store}) : _store = store;
+  PermissionService({required PermissionStore store, PathSandbox? sandbox})
+      : _store = store,
+        _sandbox = sandbox ?? PathSandbox();
 
   /// 返回: true=自动允许, null=需要弹窗
   bool? check(String toolName, Map<String, dynamic> args) {
@@ -40,6 +46,8 @@ class PermissionService {
       case 'file_write':
       case 'file_update':
       case 'file_delete':
+      case 'search':
+      case 'list_directory':
         final dir = _extractDirectory(keyArg ?? '');
         return PermissionRule(
           tool: toolName,
@@ -74,6 +82,12 @@ class PermissionService {
       case 'file_delete':
         final suffix = recursive ? ' (including subdirectories)' : '';
         return 'Always allow deletes in "${rule.pattern}"$suffix';
+      case 'search':
+        final suffix = recursive ? ' (including subdirectories)' : '';
+        return 'Always allow searching in "${rule.pattern}"$suffix';
+      case 'list_directory':
+        final suffix = recursive ? ' (including subdirectories)' : '';
+        return 'Always allow listing in "${rule.pattern}"$suffix';
       default:
         return 'Always allow $toolName matching "${rule.pattern}"';
     }
@@ -98,16 +112,27 @@ class PermissionService {
   }
 
   String? _extractKeyArg(String toolName, Map<String, dynamic> args) {
-    return switch (toolName) {
-      'bash' || 'powershell' => args['command'] as String?,
-      'file_read' ||
-      'file_write' ||
-      'file_update' ||
-      'file_delete' =>
-        args['path'] as String?,
-      'web_fetch' => args['url'] as String?,
-      _ => null,
-    };
+    switch (toolName) {
+      case 'bash' || 'powershell':
+        return args['command'] as String?;
+      case 'file_read':
+      case 'file_write':
+      case 'file_update':
+      case 'file_delete':
+        // path 必填：存在则规范化，否则返回 null。
+        final path = args['path'] as String?;
+        if (path == null) return null;
+        return _sandbox.resolveAbsolute(path);
+      case 'search':
+      case 'list_directory':
+        // path 可选，缺省为当前工作目录；规范化后再匹配。
+        final path = args['path'] as String? ?? Directory.current.path;
+        return _sandbox.resolveAbsolute(path);
+      case 'web_fetch':
+        return args['url'] as String?;
+      default:
+        return null;
+    }
   }
 
   String _extractDirectory(String path) {

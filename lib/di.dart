@@ -86,7 +86,10 @@ class DI {
     getIt.registerLazySingleton(() => PathSandbox());
     getIt.registerLazySingleton(() => PermissionStore());
     getIt.registerLazySingleton(
-      () => PermissionService(store: getIt<PermissionStore>()),
+      () => PermissionService(
+        store: getIt<PermissionStore>(),
+        sandbox: getIt<PathSandbox>(),
+      ),
     );
 
     getIt.registerLazySingleton(() {
