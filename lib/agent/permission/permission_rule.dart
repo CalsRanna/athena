@@ -51,7 +51,12 @@ class PermissionRule {
     if (tool != toolName) return false;
     if (contains == null) return true;
     if (keyArg == null) return false;
-    return keyArg.contains(contains!);
+    return _normalize(keyArg).contains(_normalize(contains!));
+  }
+
+  /// 归一化：小写 + 将连续空白折叠为单个空格，抵御大小写/空格规避。
+  static String _normalize(String s) {
+    return s.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   static bool _isFileTool(String toolName) {

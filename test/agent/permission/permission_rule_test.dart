@@ -82,6 +82,18 @@ void main() {
     });
   });
 
+  group('PermissionRule deny normalization', () {
+    test('deny matches despite extra whitespace', () {
+      final rule = PermissionRule(tool: 'bash', contains: 'rm -rf');
+      expect(rule.matchesDeny('bash', 'rm  -rf /x'), isTrue);
+    });
+
+    test('deny matches despite case difference', () {
+      final rule = PermissionRule(tool: 'bash', contains: 'rm -rf');
+      expect(rule.matchesDeny('bash', 'RM -RF /x'), isTrue);
+    });
+  });
+
   group('PermissionService generateRule', () {
     final store = PermissionStore();
     final service = PermissionService(store: store);
