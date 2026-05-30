@@ -1,12 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 
+import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
@@ -14,6 +14,7 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/util/retry.dart';
 import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
@@ -62,12 +63,18 @@ class SettingViewModel {
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
   late final SentinelRepository _sentinelRepository;
+  // 延迟解析：仅在 reconcileChatModelReferences 实际使用时才从 GetIt 取，
+  // 避免在未注册 ChatRepository 的测试中于构造期即抛错。
+  final ChatRepository? _injectedChatRepository;
+  ChatRepository get _chatRepository =>
+      _injectedChatRepository ?? GetIt.instance<ChatRepository>();
 
   SettingViewModel({
     ModelRepository? modelRepository,
     ProviderRepository? providerRepository,
     SentinelRepository? sentinelRepository,
-  }) {
+    ChatRepository? chatRepository,
+  }) : _injectedChatRepository = chatRepository {
     _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
     _providerRepository =
         providerRepository ?? GetIt.instance<ProviderRepository>();
@@ -319,7 +326,33 @@ class SettingViewModel {
       await _sentinelRepository.importSentinels(sentinels);
     }
 
+    // 导入数据可能来自其他实例，本地 chats 的 model_id 可能指向已不存在的模型
+    // （chats 无外键约束）。重整悬空引用，使会话立即可用。
+    // 注：sentinel_id 同样可能悬空，但本次仅处理 model_id（对应审计症状
+    // 'Model not found'）；sentinel 重整作为后续跟进项，暂不实现。
+    await reconcileChatModelReferences();
+
     return true;
+  }
+
+  /// 扫描所有会话，将 model_id 指向已不存在模型的会话重置为默认模型。
+  /// 默认模型优先取 [chatModelId]（若有效），否则取第一个可用模型。
+  @visibleForTesting
+  Future<void> reconcileChatModelReferences() async {
+    final models = await _modelRepository.getAllModels();
+    final validIds = models.map((m) => m.id).whereType<int>().toSet();
+    // 没有任何模型可指向：保持 chats 原样，避免写入无效引用。
+    if (validIds.isEmpty) return;
+
+    final defaultId =
+        validIds.contains(chatModelId.value) ? chatModelId.value : validIds.first;
+
+    final chats = await _chatRepository.getAllChats();
+    for (final chat in chats) {
+      if (!validIds.contains(chat.modelId)) {
+        await _chatRepository.updateChat(chat.copyWith(modelId: defaultId));
+      }
+    }
   }
 
   Future<bool> resetData() async {
