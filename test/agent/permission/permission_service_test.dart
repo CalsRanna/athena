@@ -115,21 +115,50 @@ void main() {
       );
     });
 
-    test('search with omitted path defaults to cwd and matches a parent rule',
-        () {
+    test('search with omitted path defaults to cwd and matches a rule on cwd '
+        'itself', () {
       final dir = Directory.current.path;
-      final parent = '${Directory(dir).parent.path}/';
       final store = PermissionStore()
         ..allowRules = [
-          PermissionRule(tool: 'search', pattern: parent, recursive: true),
+          PermissionRule(tool: 'search', pattern: '$dir/', recursive: true),
         ];
       final service = PermissionService(store: store);
       expect(service.check('search', {'pattern': 'foo'}), isTrue);
     });
+
+    test('recursive search rule matches the directory itself and descendants',
+        () {
+      final store = PermissionStore()
+        ..allowRules = [
+          PermissionRule(tool: 'search', pattern: '/a/b/c/', recursive: true),
+        ];
+      final service = PermissionService(store: store);
+      expect(service.check('search', {'pattern': 'x', 'path': '/a/b/c'}),
+          isTrue);
+      expect(service.check('search', {'pattern': 'x', 'path': '/a/b/c/sub'}),
+          isTrue);
+    });
+
+    test('non-recursive search rule matches dir itself and direct children '
+        'only', () {
+      final store = PermissionStore()
+        ..allowRules = [
+          PermissionRule(tool: 'search', pattern: '/a/b/c/'),
+        ];
+      final service = PermissionService(store: store);
+      expect(service.check('search', {'pattern': 'x', 'path': '/a/b/c'}),
+          isTrue);
+      expect(service.check('search', {'pattern': 'x', 'path': '/a/b/c/foo'}),
+          isTrue);
+      expect(
+        service.check('search', {'pattern': 'x', 'path': '/a/b/c/sub/deep'}),
+        isNull,
+      );
+    });
   });
 
   group('PermissionService rule generation (S1)', () {
-    test('generateRule for search produces a directory pattern', () {
+    test('generateRule for search scopes to the searched directory itself', () {
       final service = PermissionService(store: PermissionStore());
       final rule = service.generateRule(
         'search',
@@ -138,7 +167,7 @@ void main() {
       );
       expect(rule.tool, 'search');
       expect(rule.recursive, isTrue);
-      expect(rule.pattern, '/a/b/');
+      expect(rule.pattern, '/a/b/c/');
     });
 
     test('generateRuleDescription for search/list_directory', () {

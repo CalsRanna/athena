@@ -46,9 +46,17 @@ class PermissionService {
       case 'file_write':
       case 'file_update':
       case 'file_delete':
+        final dir = _extractDirectory(keyArg ?? '');
+        return PermissionRule(
+          tool: toolName,
+          pattern: dir,
+          recursive: recursive,
+        );
       case 'search':
       case 'list_directory':
-        final dir = _extractDirectory(keyArg ?? '');
+        // keyArg 本身就是用户操作的目录，规则即作用于该目录自身。
+        final raw = keyArg ?? '';
+        final dir = raw.endsWith('/') ? raw : '$raw/';
         return PermissionRule(
           tool: toolName,
           pattern: dir,

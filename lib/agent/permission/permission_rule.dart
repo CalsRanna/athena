@@ -70,6 +70,10 @@ class PermissionRule {
     var dir = pattern;
     if (!dir.endsWith('/')) dir = '$dir/';
 
+    // 规范目录路径无末尾 `/`，规则 `D/` 也应覆盖目录自身 `D`。
+    final self = dir.substring(0, dir.length - 1);
+    if (value == self) return true;
+
     if (!value.startsWith(dir)) return false;
 
     if (recursive) return true;
