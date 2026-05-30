@@ -1,7 +1,7 @@
 import 'package:athena/extension/json_map_extension.dart';
 
 class TranslationEntity {
-  final int id;
+  final String id;
   final String source;
   final String sourceText;
   final String target;
@@ -19,7 +19,7 @@ class TranslationEntity {
 
   factory TranslationEntity.fromJson(Map<String, dynamic> json) {
     return TranslationEntity(
-      id: json.getInt('id'),
+      id: json.getString('id'),
       source: json.getString('source'),
       sourceText: json.getString('source_text'),
       target: json.getString('target'),
@@ -30,7 +30,7 @@ class TranslationEntity {
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != 0) 'id': id,
+      if (id.isNotEmpty) 'id': id,
       'source': source,
       'source_text': sourceText,
       'target': target,
@@ -40,7 +40,7 @@ class TranslationEntity {
   }
 
   TranslationEntity copyWith({
-    int? id,
+    String? id,
     String? source,
     String? sourceText,
     String? target,

@@ -73,7 +73,7 @@ class _FakeModelRepository extends ModelRepository {
 class _FakeSentinelRepository extends SentinelRepository {}
 
 TranslationEntity _translation() => TranslationEntity(
-      id: 1,
+      id: 'fixed-id',
       source: 'en',
       sourceText: 'hello',
       target: 'zh',
@@ -157,5 +157,49 @@ void main() {
 
     final stored = vm.translations.value.firstWhere((t) => t.id == id);
     expect(stored.targetText, '你好，世界');
+  });
+
+  test('C7: createTranslation 生成的 id 为唯一 String（同毫秒不碰撞）', () async {
+    final vm = TranslationViewModel(
+      service: _FakeTranslationService(const Stream.empty()),
+      providerRepository: _FakeProviderRepository(),
+      modelRepository: _FakeModelRepository(),
+    );
+
+    final ids = <String>[];
+    for (var i = 0; i < 50; i++) {
+      final id = await vm.createTranslation('en', 'hello $i', 'zh');
+      expect(id, isA<String>());
+      expect(id, isNotEmpty);
+      ids.add(id);
+    }
+
+    expect(ids.toSet().length, ids.length, reason: 'id 必须全部唯一');
+  });
+
+  test('C7: 两条记录并存时写回正确记录（无 id 碰撞误写）', () async {
+    Stream<ChatDelta> events() async* {
+      yield const ChatDelta(content: 'world');
+    }
+
+    final vm = TranslationViewModel(
+      service: _FakeTranslationService(events()),
+      providerRepository: _FakeProviderRepository(),
+      modelRepository: _FakeModelRepository(),
+    );
+
+    // 创建两条记录（真实场景可能同毫秒创建）。
+    final idA = await vm.createTranslation('en', 'A', 'zh');
+    final idB = await vm.createTranslation('en', 'B', 'zh');
+    expect(idA, isNot(idB));
+
+    final translationB =
+        vm.translations.value.firstWhere((t) => t.id == idB);
+    await vm.performTranslation(translationB);
+
+    final storedB = vm.translations.value.firstWhere((t) => t.id == idB);
+    final storedA = vm.translations.value.firstWhere((t) => t.id == idA);
+    expect(storedB.targetText, 'world', reason: '译文应写回目标记录 B');
+    expect(storedA.targetText, '', reason: '另一条记录 A 不应被误写');
   });
 }
