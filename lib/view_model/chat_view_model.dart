@@ -20,6 +20,8 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/agent/agent_service.dart';
+import 'package:athena/agent/skill/skill_registry.dart';
+import 'package:athena/widget/skill_trust_dialog.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -43,6 +45,9 @@ class ChatViewModel {
   final SentinelRepository _sentinelRepository;
 
   CancelToken? _activeCancelToken;
+
+  /// 一次会话内仅提示一次项目级 Skill 信任弹窗的守卫。
+  bool _skillTrustPrompted = false;
 
   ChatViewModel({
     ChatManageService? manageService,
@@ -483,6 +488,22 @@ class ChatViewModel {
     pendingImages.value = [];
   }
 
+  /// 当存在未信任的项目级 Skill 时，按需提示用户是否信任当前项目目录。
+  /// 一次会话内最多提示一次；用户信任后激活待审 Skill。
+  Future<void> maybePromptProjectSkillTrust() async {
+    if (_skillTrustPrompted) return;
+    final registry = GetIt.instance<SkillRegistry>();
+    if (!registry.hasPendingProjectSkills) return;
+    _skillTrustPrompted = true;
+    final dir = registry.pendingProjectDir;
+    if (dir == null) return;
+    final names = registry.pendingProjectSkills.map((s) => s.name).toList();
+    final trusted = await showSkillTrustDialog(projectDir: dir, skillNames: names);
+    if (trusted) {
+      await registry.trustCurrentProject();
+    }
+  }
+
   /// 发送消息(基础流式实现)
   ///
   /// 这是一个简化版本,实现了核心的流式聊天功能:
@@ -499,6 +520,8 @@ class ChatViewModel {
     required ChatEntity chat,
   }) async {
     if (isStreaming.value) return;
+
+    await maybePromptProjectSkillTrust();
 
     final cancelToken = CancelToken();
     _activeCancelToken = cancelToken;
