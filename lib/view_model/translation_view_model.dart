@@ -152,6 +152,8 @@ class TranslationViewModel {
         if (!streaming.value) break;
         if (chunk.content != null) {
           buffer.write(chunk.content);
+          // 实时更新信号，使翻译面板随流式响应逐步显示，而非等待整段完成
+          translatedText.value = buffer.toString();
         }
       }
 
