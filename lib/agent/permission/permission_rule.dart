@@ -65,7 +65,8 @@ class PermissionRule {
     }.contains(toolName);
   }
 
-  /// 文件路径匹配：pattern 是目录前缀（以 `/` 结尾），keyArg 是文件绝对路径。
+  /// 路径匹配：pattern 是目录前缀，value 是规范化后的绝对路径（文件或目录）。
+  /// 规则 `D/` 覆盖目录自身 `D` 及其（递归或直接）子项。
   static bool _matchesPath(String pattern, String value, bool recursive) {
     var dir = pattern;
     if (!dir.endsWith('/')) dir = '$dir/';
