@@ -134,6 +134,20 @@ class AgentService {
                 ) ??
                 tool.dangerLevel);
 
+        if (tool != null && effectiveLevel == DangerLevel.forbidden) {
+          final forbiddenMsg =
+              'Error: Tool "${tc.function.name}" is forbidden and cannot be '
+              'executed.';
+          yield AgentEvent.toolResult(
+            id: tc.id,
+            name: tc.function.name,
+            result: forbiddenMsg,
+          );
+          messages.add(
+              ChatMessage.tool(toolCallId: tc.id, content: forbiddenMsg));
+          continue;
+        }
+
         if (tool != null && effectiveLevel == DangerLevel.needsApproval) {
           // 先检查已有规则
           final ruleResult = permissionService?.check(tc.function.name, args);
