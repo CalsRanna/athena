@@ -12,6 +12,7 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/router/router.dart';
+import 'package:athena/util/tool_args_formatter.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_support_service.dart';
@@ -920,25 +921,7 @@ class ChatViewModel {
   }
 
   String _formatToolArgs(String toolName, String arguments) {
-    final buffer = StringBuffer();
-    buffer.writeln('Agent wants to use: $toolName');
-    try {
-      final args = jsonDecode(arguments) as Map<String, dynamic>;
-      for (final entry in args.entries) {
-        var value = entry.value.toString();
-        if (value.length > 120) {
-          value = '${value.substring(0, 120)}...';
-        }
-        buffer.writeln('  ${entry.key}: $value');
-      }
-    } catch (_) {
-      if (arguments.length > 200) {
-        buffer.writeln('  ${arguments.substring(0, 200)}...');
-      } else {
-        buffer.writeln('  $arguments');
-      }
-    }
-    return buffer.toString();
+    return formatToolArgsForApproval(toolName, arguments);
   }
 }
 
