@@ -103,9 +103,10 @@ class PathSandbox {
     return pattern.hasMatch(command);
   }
 
-  /// 检测 `... | sh` / `... | bash` / `... | zsh` 类管道到 shell。
+  /// 检测 `... | sh` / `... | bash` / `... | python` 类管道到 shell/解释器。
   static bool _hasPipeToShell(String command) {
-    final pattern = RegExp(r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish)\b');
+    final pattern = RegExp(
+        r'\|\s*(sh|bash|zsh|ksh|csh|tcsh|fish|python[23]?|node|perl|ruby)\b');
     return pattern.hasMatch(command);
   }
 
@@ -114,7 +115,8 @@ class PathSandbox {
     final segments = _splitByOperators(command);
     for (final segment in segments) {
       final trimmed = segment.trim();
-      if (!RegExp(r'^rm\b').hasMatch(trimmed)) continue;
+      // 匹配 `rm` 或以 `/bin/rm`、`/usr/bin/rm` 等绝对/相对路径调用的 rm。
+      if (!RegExp(r'^(\S*/)?rm\b').hasMatch(trimmed)) continue;
       // 必须有 -r 或 -rf 或 -fr 或 -R
       if (!RegExp(r'(^|\s)-[rR][fF]?(\s|$)|(^|\s)-[fF][rR](\s|$)|(^|\s)--recursive\b')
           .hasMatch(trimmed)) {
@@ -135,25 +137,81 @@ class PathSandbox {
 
   /// 检测重定向写入黑名单目录或根目录。
   static bool _hasRedirectToDenied(String command) {
-    final pattern = RegExp(r'>\s*([^\s|;&]+)');
-    for (final match in pattern.allMatches(command)) {
+    // 匹配重定向：可选 fd 前缀（数字或 `&`）+ `>` 或 `>>`，随后是目标路径。
+    // 例如 `> f`、`>> f`、`1> f`、`2>> f`、`&> f`。
+    final redirect = RegExp(r'(?:\d+|&)?>>?\s*([^\s|;&<>]+)');
+    for (final match in redirect.allMatches(command)) {
       final target = match.group(1);
-      if (target == null) continue;
+      if (target == null || target.isEmpty) continue;
       try {
         if (_isDeniedStatic(target)) return true;
       } catch (_) {}
+    }
+
+    // 检测 `tee`（含 `tee -a`）：tee 会写入其文件参数（无需 `>`）。
+    if (_hasTeeToDenied(command)) return true;
+
+    return false;
+  }
+
+  /// 检测 `tee` / `tee -a` 写入黑名单路径。
+  static bool _hasTeeToDenied(String command) {
+    final segments = _splitByOperators(command);
+    for (final segment in segments) {
+      final tokens = segment
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where((t) => t.isNotEmpty)
+          .toList();
+      if (tokens.isEmpty) continue;
+      // tee 可能以绝对/相对路径调用（如 /usr/bin/tee）。
+      final cmd = tokens.first.split('/').last;
+      if (cmd != 'tee') continue;
+      // tee 之后的非 flag 参数即为目标文件。
+      for (final t in tokens.skip(1)) {
+        if (t.startsWith('-')) continue;
+        try {
+          if (_isDeniedStatic(t)) return true;
+        } catch (_) {}
+      }
     }
     return false;
   }
 
   /// 静态版本的 _isDenied，用于命令检测阶段。
   static bool _isDeniedStatic(String path) {
-    final resolved = _canonicalize(path);
-    for (final denied in _defaultDeniedPaths().map(_canonicalize)) {
-      if (resolved == denied) return true;
-      if (resolved.startsWith('$denied/')) return true;
+    final denied = _defaultDeniedPaths().map(_canonicalize).toList();
+    for (final candidate in {_canonicalize(path), _canonicalizeViaAncestor(path)}) {
+      for (final d in denied) {
+        if (candidate == d) return true;
+        if (candidate.startsWith('$d/')) return true;
+      }
     }
     return false;
+  }
+
+  /// 当目标路径尚不存在时，`_canonicalize` 无法解析其父目录上的 symlink
+  /// （如 `/etc` -> `/private/etc`）。此处解析最近的已存在祖先目录的真实位置，
+  /// 再拼回剩余路径，以堵住经 symlink 目录写入黑名单的命令注入。
+  static String _canonicalizeViaAncestor(String path) {
+    var base = _canonicalize(path);
+    final segments = <String>[];
+    while (true) {
+      if (FileSystemEntity.typeSync(base) != FileSystemEntityType.notFound) {
+        try {
+          final real = File(base).resolveSymbolicLinksSync();
+          if (segments.isEmpty) return real;
+          return p.joinAll([real, ...segments.reversed]);
+        } catch (_) {
+          break;
+        }
+      }
+      final parent = p.dirname(base);
+      if (parent == base) break; // 到达根
+      segments.add(p.basename(base));
+      base = parent;
+    }
+    return _canonicalize(path);
   }
 
   /// 路径是否"接近根"或指向 home 关键子项。
@@ -180,7 +238,7 @@ class PathSandbox {
   }
 
   static List<String> _splitByOperators(String command) {
-    return command.split(RegExp(r'(?:\|\||\&\&|[;|])'));
+    return command.split(RegExp(r'(?:\|\||\&\&|[;|\n\r])'));
   }
 
   static List<String> _defaultDeniedPaths() {
