@@ -291,8 +291,43 @@ void main() {
     });
   });
 
-  group('PermissionService isDangerous pipe-to-interpreter (S8)', () {
+  group('PermissionService web_fetch SSRF danger (S4)', () {
     final service = PermissionService(store: PermissionStore());
+
+    test('link-local / cloud-metadata is dangerous (hide checkbox)', () {
+      expect(
+        service.isDangerous('web_fetch', {'url': 'http://169.254.169.254/'}),
+        isTrue,
+      );
+    });
+
+    test('loopback is dangerous', () {
+      expect(
+        service.isDangerous('web_fetch', {'url': 'http://127.0.0.1/'}),
+        isTrue,
+      );
+      expect(
+        service.isDangerous('web_fetch', {'url': 'http://localhost:3000/'}),
+        isTrue,
+      );
+    });
+
+    test('private LAN is dangerous', () {
+      expect(
+        service.isDangerous('web_fetch', {'url': 'http://192.168.1.1/'}),
+        isTrue,
+      );
+    });
+
+    test('public host is not dangerous', () {
+      expect(
+        service.isDangerous('web_fetch', {'url': 'https://example.com/'}),
+        isFalse,
+      );
+    });
+  });
+
+  group('PermissionService isDangerous pipe-to-interpreter (S8)', () {    final service = PermissionService(store: PermissionStore());
 
     test('pipe to python/node/perl/ruby is dangerous (hide checkbox)', () {
       expect(
