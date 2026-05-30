@@ -23,36 +23,40 @@ class SentinelService {
         'X-Title': 'Athena',
       },
     );
-    var system = PresetPrompt.metadataGenerationPrompt;
-    var messages = [
-      MessageEntity(chatId: 0, role: 'system', content: system),
-      MessageEntity(chatId: 0, role: 'user', content: prompt),
-    ];
-    var wrappedMessages = messages.map((message) {
-      if (message.role == 'system') {
-        return ChatMessage.system(message.content);
-      } else if (message.role == 'assistant') {
-        return ChatMessage.assistant(content: message.content);
-      } else {
-        return ChatMessage.user(message.content);
-      }
-    }).toList();
-    var request = ChatCompletionCreateRequest(
-      model: model.modelId,
-      messages: wrappedMessages,
-    );
-    var response = await client.chat.completions.create(request);
-    final content = response.text ?? '';
-    final formatted = jsonDecode(
-      content.replaceAll('```json', '').replaceAll('```', ''),
-    );
-    final tagsList = List<String>.from(formatted['tags'] ?? []);
-    return SentinelEntity(
-      name: formatted['name'] ?? '',
-      description: formatted['description'] ?? '',
-      tags: tagsList.join(', '),
-      avatar: formatted['avatar'] ?? '',
-      prompt: prompt,
-    );
+    try {
+      var system = PresetPrompt.metadataGenerationPrompt;
+      var messages = [
+        MessageEntity(chatId: 0, role: 'system', content: system),
+        MessageEntity(chatId: 0, role: 'user', content: prompt),
+      ];
+      var wrappedMessages = messages.map((message) {
+        if (message.role == 'system') {
+          return ChatMessage.system(message.content);
+        } else if (message.role == 'assistant') {
+          return ChatMessage.assistant(content: message.content);
+        } else {
+          return ChatMessage.user(message.content);
+        }
+      }).toList();
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: wrappedMessages,
+      );
+      var response = await client.chat.completions.create(request);
+      final content = response.text ?? '';
+      final formatted = jsonDecode(
+        content.replaceAll('```json', '').replaceAll('```', ''),
+      );
+      final tagsList = List<String>.from(formatted['tags'] ?? []);
+      return SentinelEntity(
+        name: formatted['name'] ?? '',
+        description: formatted['description'] ?? '',
+        tags: tagsList.join(', '),
+        avatar: formatted['avatar'] ?? '',
+        prompt: prompt,
+      );
+    } finally {
+      client.close();
+    }
   }
 }

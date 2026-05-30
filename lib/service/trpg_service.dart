@@ -22,35 +22,39 @@ class TRPGService {
         },
       );
 
-      var request = ChatCompletionCreateRequest(
-        model: model.modelId,
-        messages: [
-          ChatMessage.system(PresetPrompt.actionSuggestionPrompt),
-          ChatMessage.user(dmMessage),
-        ],
-        temperature: 0.8,
-      );
-
-      var response = await client.chat.completions.create(request);
-      var content = response.text ?? '';
-
-      // 清理可能的 markdown 代码块标记
-      content = content
-          .replaceAll(RegExp(r'```\w*\n?'), '')
-          .replaceAll('```', '')
-          .trim();
-
-      // 提取 JSON 数组（处理模型可能输出额外文本的情况）
-      var jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(content);
-      if (jsonMatch == null) return [];
-
-      // 解析 JSON 数组
       try {
-        var jsonArray = jsonDecode(jsonMatch.group(0)!) as List;
-        return jsonArray.map((item) => item.toString()).toList();
-      } catch (e) {
-        // 如果 JSON 解析失败，返回空列表
-        return [];
+        var request = ChatCompletionCreateRequest(
+          model: model.modelId,
+          messages: [
+            ChatMessage.system(PresetPrompt.actionSuggestionPrompt),
+            ChatMessage.user(dmMessage),
+          ],
+          temperature: 0.8,
+        );
+
+        var response = await client.chat.completions.create(request);
+        var content = response.text ?? '';
+
+        // 清理可能的 markdown 代码块标记
+        content = content
+            .replaceAll(RegExp(r'```\w*\n?'), '')
+            .replaceAll('```', '')
+            .trim();
+
+        // 提取 JSON 数组（处理模型可能输出额外文本的情况）
+        var jsonMatch = RegExp(r'\[[\s\S]*\]').firstMatch(content);
+        if (jsonMatch == null) return [];
+
+        // 解析 JSON 数组
+        try {
+          var jsonArray = jsonDecode(jsonMatch.group(0)!) as List;
+          return jsonArray.map((item) => item.toString()).toList();
+        } catch (e) {
+          // 如果 JSON 解析失败，返回空列表
+          return [];
+        }
+      } finally {
+        client.close();
       }
     } catch (error) {
       // 生成失败时静默返回空列表
@@ -72,11 +76,15 @@ class TRPGService {
         'X-Title': 'Athena',
       },
     );
-    var request = ChatCompletionCreateRequest(
-      model: model.modelId,
-      messages: messages,
-      temperature: temperature,
-    );
-    yield* client.chat.completions.createStream(request);
+    try {
+      var request = ChatCompletionCreateRequest(
+        model: model.modelId,
+        messages: messages,
+        temperature: temperature,
+      );
+      yield* client.chat.completions.createStream(request);
+    } finally {
+      client.close();
+    }
   }
 }
