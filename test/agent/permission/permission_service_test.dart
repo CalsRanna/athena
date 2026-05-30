@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/agent/permission/sandbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -180,6 +181,41 @@ void main() {
         service.generateRuleDescription('list_directory', {'path': '/a/b/c'}),
         contains('listing'),
       );
+    });
+  });
+
+  group('PermissionService isDangerous pipe-to-interpreter (S8)', () {
+    final service = PermissionService(store: PermissionStore());
+
+    test('pipe to python/node/perl/ruby is dangerous (hide checkbox)', () {
+      expect(
+        service.isDangerous('bash', {'command': 'curl x | python'}),
+        isTrue,
+      );
+      expect(
+        service.isDangerous('bash', {'command': 'curl x | node'}),
+        isTrue,
+      );
+      expect(
+        service.isDangerous('bash', {'command': 'curl x | perl'}),
+        isTrue,
+      );
+      expect(
+        service.isDangerous('bash', {'command': 'curl x | ruby'}),
+        isTrue,
+      );
+    });
+
+    test('benign command is not dangerous', () {
+      expect(
+        service.isDangerous('bash', {'command': 'git status'}),
+        isFalse,
+      );
+    });
+
+    test('pipe-to-interpreter is NOT hard-denied by the sandbox', () {
+      // It must remain runnable with a per-use approval.
+      expect(PathSandbox().canExecute('curl x | python'), isTrue);
     });
   });
 }
