@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 
 import 'tool_interface.dart';
+import 'url_safety.dart';
 
 class WebFetchTool implements Tool {
   static const _maxResponseBytes = 1024 * 1024;
@@ -57,6 +58,11 @@ class WebFetchTool implements Tool {
     }
     if (uri.scheme != 'http' && uri.scheme != 'https') {
       return 'Error: Only http and https URLs are allowed';
+    }
+    // 链路本地/云元数据地址硬拦：审批也无法覆盖，在任何网络请求前返回。
+    if (classifyUrlHost(url) == UrlHostClass.linkLocal) {
+      return 'Error: Refusing to fetch link-local/cloud-metadata address ($url). '
+          'This is blocked to prevent SSRF and cloud-credential theft.';
     }
 
     try {

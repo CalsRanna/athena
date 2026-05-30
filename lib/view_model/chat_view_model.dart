@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/agent/tool/url_safety.dart';
 import 'package:athena/widget/permission_dialog.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/chat_history_entity.dart';
@@ -915,12 +916,17 @@ class ChatViewModel {
       'list_directory',
     }.contains(toolName);
 
+    final warning = toolName == 'web_fetch'
+        ? webFetchApprovalWarning(args['url'] as String?)
+        : null;
+
     final dialogFuture = showPermissionDialog(
       toolName: toolName,
       description: description,
       ruleDescription: ruleDesc,
       allowPersist: !isDangerous,
       isFileRule: isFileRule,
+      warning: warning,
     );
 
     final result = await Future.any<PermissionDialogResult>([

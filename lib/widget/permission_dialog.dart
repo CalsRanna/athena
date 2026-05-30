@@ -25,6 +25,7 @@ Future<PermissionDialogResult> showPermissionDialog({
   required String ruleDescription,
   bool allowPersist = true,
   bool isFileRule = false,
+  String? warning,
 }) async {
   final context = router.navigatorKey.currentContext!;
   if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
@@ -37,6 +38,7 @@ Future<PermissionDialogResult> showPermissionDialog({
         ruleDescription: ruleDescription,
         allowPersist: allowPersist,
         isFileRule: isFileRule,
+        warning: warning,
       ),
     );
     return result ??
@@ -53,6 +55,7 @@ Future<PermissionDialogResult> showPermissionDialog({
         ruleDescription: ruleDescription,
         allowPersist: allowPersist,
         isFileRule: isFileRule,
+        warning: warning,
       ),
     );
     return result ??
@@ -66,6 +69,7 @@ class _DesktopPermissionDialog extends StatefulWidget {
   final String ruleDescription;
   final bool allowPersist;
   final bool isFileRule;
+  final String? warning;
 
   const _DesktopPermissionDialog({
     required this.toolName,
@@ -73,6 +77,7 @@ class _DesktopPermissionDialog extends StatefulWidget {
     required this.ruleDescription,
     required this.allowPersist,
     required this.isFileRule,
+    this.warning,
   });
 
   @override
@@ -113,6 +118,10 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
       const SizedBox(height: 16),
       descriptionText,
     ];
+    if (widget.warning != null) {
+      children.add(const SizedBox(height: 12));
+      children.add(_buildPermissionWarningRow(widget.warning!));
+    }
     if (widget.allowPersist) {
       children.add(const SizedBox(height: 16));
       children.add(_buildPersistCheckbox());
@@ -196,6 +205,7 @@ class _MobilePermissionDialog extends StatefulWidget {
   final String ruleDescription;
   final bool allowPersist;
   final bool isFileRule;
+  final String? warning;
 
   const _MobilePermissionDialog({
     required this.toolName,
@@ -203,6 +213,7 @@ class _MobilePermissionDialog extends StatefulWidget {
     required this.ruleDescription,
     required this.allowPersist,
     required this.isFileRule,
+    this.warning,
   });
 
   @override
@@ -243,6 +254,10 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       const SizedBox(height: 16),
       descriptionText,
     ];
+    if (widget.warning != null) {
+      children.add(const SizedBox(height: 12));
+      children.add(_buildPermissionWarningRow(widget.warning!));
+    }
     if (widget.allowPersist) {
       children.add(const SizedBox(height: 16));
       children.add(_buildPersistCheckbox());
@@ -346,11 +361,35 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
   }
 }
 
+/// 红色安全警告行：用于 web_fetch 指向内网/本地地址等敏感场景。
+Widget _buildPermissionWarningRow(String warning) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(
+        HugeIcons.strokeRoundedAlert02,
+        size: 16,
+        color: Colors.red.shade400,
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          warning,
+          style: GoogleFonts.firaCode(
+            fontSize: 12,
+            color: Colors.red.shade400,
+            height: 1.5,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 class _CheckboxRow extends StatelessWidget {
   final bool value;
   final String label;
   final ValueChanged<bool> onChanged;
-
   const _CheckboxRow({
     required this.value,
     required this.label,

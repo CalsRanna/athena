@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/sandbox.dart';
+import 'package:athena/agent/tool/url_safety.dart';
 
 class PermissionService {
   final PermissionStore _store;
@@ -27,6 +28,11 @@ class PermissionService {
   bool isDangerous(String toolName, Map<String, dynamic> args) {
     final keyArg = _extractKeyArg(toolName, args);
     if (_matchesDenyRules(toolName, keyArg)) return true;
+    // web_fetch 指向内网/本地地址视为危险（隐藏 checkbox，但仍可单次审批）。
+    if (toolName == 'web_fetch') {
+      final url = args['url'] as String?;
+      if (url != null && isInternalUrl(url)) return true;
+    }
     // 命令工具：管道到脚本解释器视为危险（隐藏 checkbox，但仍可单次审批）。
     if ((toolName == 'bash' || toolName == 'powershell') &&
         keyArg != null &&
