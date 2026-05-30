@@ -10,6 +10,7 @@ import 'package:athena/util/window_util.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:signals/signals.dart';
 
 void main() async {
@@ -19,7 +20,8 @@ void main() async {
   await SystemTrayUtil.instance.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   SignalsObserver.instance = null;
-  DI.ensureInitialized();
+  final supportDir = await getApplicationSupportDirectory();
+  DI.ensureInitialized(dataDirectory: supportDir.path);
   await GetIt.instance<PermissionService>().load();
   runApp(const AthenaApp());
 }

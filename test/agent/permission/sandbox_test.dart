@@ -41,6 +41,37 @@ void main() {
       ? 'POSIX-only path layout'
       : null);
 
+  group('PathSandbox injected data directory (S7)', () {
+    final sandbox = PathSandbox(dataDirectory: '/tmp/athena_support');
+
+    test('denies athena.db under data directory', () {
+      expect(sandbox.canRead('/tmp/athena_support/athena.db'), isFalse);
+    });
+
+    test('denies nested write under data directory', () {
+      expect(sandbox.canWrite('/tmp/athena_support/sub/x'), isFalse);
+    });
+
+    test('denies the data directory itself', () {
+      expect(sandbox.canRead('/tmp/athena_support'), isFalse);
+    });
+
+    test('allows sibling path not under data directory', () {
+      expect(sandbox.canRead('/tmp/other/file'), isTrue);
+    });
+
+    test('allows path sharing string prefix but not under data dir', () {
+      expect(sandbox.canRead('/tmp/athena_support_evil/x'), isTrue);
+    });
+
+    test('when dataDirectory is null, defaults are unchanged', () {
+      final plain = PathSandbox();
+      expect(plain.canRead('/tmp/scratch.txt'), isTrue);
+    });
+  }, skip: !(Platform.isMacOS || Platform.isLinux)
+      ? 'POSIX-only path layout'
+      : null);
+
   group('PathSandbox L0 command denials', () {
     final sandbox = PathSandbox();
 
