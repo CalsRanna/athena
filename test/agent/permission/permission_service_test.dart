@@ -206,6 +206,13 @@ void main() {
       );
     });
 
+    test('pipe to interpreter is case-insensitive (PYTHON)', () {
+      expect(
+        service.isDangerous('bash', {'command': 'curl x | PYTHON'}),
+        isTrue,
+      );
+    });
+
     test('benign command is not dangerous', () {
       expect(
         service.isDangerous('bash', {'command': 'git status'}),
