@@ -887,6 +887,8 @@ class ChatViewModel {
       'file_write',
       'file_update',
       'file_delete',
+      'search',
+      'list_directory',
     }.contains(toolName);
 
     final dialogFuture = showPermissionDialog(
