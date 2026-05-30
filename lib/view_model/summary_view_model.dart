@@ -8,6 +8,7 @@ import 'package:athena/view_model/setting_view_model.dart';
 import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
+import 'package:uuid/uuid.dart';
 
 /// SummaryViewModel 负责网页摘要功能的业务逻辑
 class SummaryViewModel {
@@ -38,9 +39,9 @@ class SummaryViewModel {
   final summaries = listSignal<SummaryEntity>([]);
 
   /// 创建摘要记录
-  Future<int> createSummary(String link) async {
+  Future<String> createSummary(String link) async {
     var summaryEntity = SummaryEntity(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: const Uuid().v4(),
       link: link,
       title: '',
       content: '',

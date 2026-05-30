@@ -27,7 +27,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   final controller = TextEditingController();
   late final viewModel = GetIt.instance<TranslationViewModel>();
 
-  var id = 0;
+  var id = '';
   var source = 'Chinese';
   var target = 'English';
 
@@ -138,7 +138,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   }
 
   Widget _buildTargetText() {
-    if (id == 0) return const SizedBox();
+    if (id.isEmpty) return const SizedBox();
     return Watch((context) {
       var translation = viewModel.translations.value
           .where((t) => t.id == id)
@@ -148,7 +148,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
         translation:
             translation ??
             TranslationEntity(
-              id: 0,
+              id: '',
               source: '',
               sourceText: '',
               target: '',

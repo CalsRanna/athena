@@ -1,7 +1,7 @@
 import 'package:athena/extension/json_map_extension.dart';
 
 class SummaryEntity {
-  final int id;
+  final String id;
   final String link;
   final String title;
   final String content;
@@ -19,7 +19,7 @@ class SummaryEntity {
 
   factory SummaryEntity.fromJson(Map<String, dynamic> json) {
     return SummaryEntity(
-      id: json.getInt('id'),
+      id: json.getString('id'),
       link: json.getString('link'),
       title: json.getString('title'),
       content: json.getString('content'),
@@ -30,7 +30,7 @@ class SummaryEntity {
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != 0) 'id': id,
+      if (id.isNotEmpty) 'id': id,
       'link': link,
       'title': title,
       'content': content,
@@ -40,7 +40,7 @@ class SummaryEntity {
   }
 
   SummaryEntity copyWith({
-    int? id,
+    String? id,
     String? link,
     String? title,
     String? content,

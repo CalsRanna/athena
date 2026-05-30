@@ -8,6 +8,7 @@ import 'package:athena/view_model/setting_view_model.dart';
 import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
+import 'package:uuid/uuid.dart';
 
 /// TranslationViewModel 负责翻译功能的业务逻辑
 class TranslationViewModel {
@@ -36,13 +37,13 @@ class TranslationViewModel {
   final translations = listSignal<TranslationEntity>([]);
 
   /// 创建翻译记录
-  Future<int> createTranslation(
+  Future<String> createTranslation(
     String source,
     String sourceText,
     String target,
   ) async {
     var translationEntity = TranslationEntity(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: const Uuid().v4(),
       source: source,
       sourceText: sourceText,
       target: target,
