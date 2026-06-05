@@ -42,7 +42,7 @@ class _AthenaAppState extends State<AthenaApp> {
       showValueIndicator: ShowValueIndicator.onDrag,
     );
     var themeData = ThemeData(
-      fontFamily: Platform.isWindows ? 'Microsoft YaHei' : null,
+      fontFamily: Platform.isWindows ? 'Microsoft YaHei UI' : null,
       scaffoldBackgroundColor: ColorUtil.FF282828,
       sliderTheme: sliderThemeData,
       useMaterial3: true,

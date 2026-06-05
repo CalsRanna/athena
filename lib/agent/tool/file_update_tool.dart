@@ -106,13 +106,16 @@ class FileUpdateTool implements Tool {
     return _writeSafely(file, mtimeBefore, _normalizeLineEndings(restored, lineEnding));
   }
 
-  /// Strip line number prefixes from file_read output.
+  /// Strip line number prefixes and normalize smart quotes.
   ///
   /// file_read outputs "42\tcontent" format. Models may copy these prefixes
   /// into old_string. Strip both "42\t" and "    42\t" (cat -n style) formats.
+  /// Also normalize smart/curly quotes — models may output " (U+201C/U+201D)
+  /// or ' (U+2018/U+2019) while files use straight quotes.
   String _preprocess(String text) {
-    // Strip leading line number prefix on each line: optional spaces, digits, then tab
-    return text.replaceAll(RegExp(r'^[ \t]*\d+\t', multiLine: true), '');
+    return _normalizeQuotes(
+      text.replaceAll(RegExp(r'^[ \t]*\d+\t', multiLine: true), ''),
+    );
   }
 
   /// Normalize smart/curly quotes to straight quotes for matching.
