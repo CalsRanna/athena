@@ -9,8 +9,6 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:get_it/get_it.dart';
-
 /// 会话与消息的持久化编排。
 ///
 /// 职责：会话 CRUD、消息删除/占位/最终化、取消/错误标记。
@@ -23,19 +21,16 @@ class ChatManageService {
   final SentinelRepository _sentinelRepository;
 
   ChatManageService({
-    ChatRepository? chatRepository,
-    MessageRepository? messageRepository,
-    ModelRepository? modelRepository,
-    ProviderRepository? providerRepository,
-    SentinelRepository? sentinelRepository,
-  })  : _chatRepository = chatRepository ?? GetIt.instance<ChatRepository>(),
-        _messageRepository =
-            messageRepository ?? GetIt.instance<MessageRepository>(),
-        _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>(),
-        _providerRepository =
-            providerRepository ?? GetIt.instance<ProviderRepository>(),
-        _sentinelRepository =
-            sentinelRepository ?? GetIt.instance<SentinelRepository>();
+    required ChatRepository chatRepository,
+    required MessageRepository messageRepository,
+    required ModelRepository modelRepository,
+    required ProviderRepository providerRepository,
+    required SentinelRepository sentinelRepository,
+  })  : _chatRepository = chatRepository,
+        _messageRepository = messageRepository,
+        _modelRepository = modelRepository,
+        _providerRepository = providerRepository,
+        _sentinelRepository = sentinelRepository;
 
   Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async {
     final chats = await _chatRepository.getAllChats();

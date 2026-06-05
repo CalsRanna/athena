@@ -15,7 +15,6 @@ import 'package:athena/util/retry.dart';
 import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
 import 'package:window_manager/window_manager.dart';
@@ -63,27 +62,20 @@ class SettingViewModel {
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
   late final SentinelRepository _sentinelRepository;
-  final ChatService? _chatService;
-  // 延迟解析：仅在 reconcileChatModelReferences 实际使用时才从 GetIt 取，
-  // 避免在未注册 ChatRepository 的测试中于构造期即抛错。
-  final ChatRepository? _injectedChatRepository;
-  ChatRepository get _chatRepository =>
-      _injectedChatRepository ?? GetIt.instance<ChatRepository>();
+  final ChatService _chatService;
+  final ChatRepository _chatRepository;
 
   SettingViewModel({
-    ModelRepository? modelRepository,
-    ProviderRepository? providerRepository,
-    SentinelRepository? sentinelRepository,
-    ChatRepository? chatRepository,
-    ChatService? chatService,
-  }) : _injectedChatRepository = chatRepository,
-       _chatService = chatService {
-    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
-    _providerRepository =
-        providerRepository ?? GetIt.instance<ProviderRepository>();
-    _sentinelRepository =
-        sentinelRepository ?? GetIt.instance<SentinelRepository>();
-  }
+    required ModelRepository modelRepository,
+    required ProviderRepository providerRepository,
+    required SentinelRepository sentinelRepository,
+    required ChatRepository chatRepository,
+    required ChatService chatService,
+  })  : _modelRepository = modelRepository,
+        _providerRepository = providerRepository,
+        _sentinelRepository = sentinelRepository,
+        _chatRepository = chatRepository,
+        _chatService = chatService;
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
@@ -105,7 +97,7 @@ class SettingViewModel {
     auxiliaryModelId.value = instance.getInt(_keyAuxiliaryModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
-    (_chatService ?? GetIt.instance<ChatService>()).updateRetryConfig(
+    _chatService.updateRetryConfig(
         RetryConfig(maxAttempts: maxRetries.value),
       );
     braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
@@ -216,7 +208,7 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
-    (_chatService ?? GetIt.instance<ChatService>()).updateRetryConfig(
+    _chatService.updateRetryConfig(
       RetryConfig(maxAttempts: max),
     );
   }

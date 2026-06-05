@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/translation_entity.dart';
+import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/translation_view_model.dart';
@@ -88,6 +90,8 @@ void main() {
         modelRepository: _FakeModelRepository(),
         providerRepository: _FakeProviderRepository(),
         sentinelRepository: _FakeSentinelRepository(),
+        chatRepository: ChatRepository(),
+        chatService: ChatService(),
       ),
     );
   });
@@ -113,6 +117,7 @@ void main() {
     }
 
     final vm = TranslationViewModel(
+      settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
       providerRepository: _FakeProviderRepository(),
       modelRepository: _FakeModelRepository(),
@@ -144,6 +149,7 @@ void main() {
     }
 
     final vm = TranslationViewModel(
+      settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
       providerRepository: _FakeProviderRepository(),
       modelRepository: _FakeModelRepository(),
@@ -161,6 +167,7 @@ void main() {
 
   test('C7: createTranslation 生成的 id 为唯一 String（同毫秒不碰撞）', () async {
     final vm = TranslationViewModel(
+      settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(const Stream.empty()),
       providerRepository: _FakeProviderRepository(),
       modelRepository: _FakeModelRepository(),
@@ -183,6 +190,7 @@ void main() {
     }
 
     final vm = TranslationViewModel(
+      settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
       providerRepository: _FakeProviderRepository(),
       modelRepository: _FakeModelRepository(),

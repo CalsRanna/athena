@@ -2,32 +2,28 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
+import 'package:athena/agent/permission/permission_interactor.dart';
 import 'package:athena/agent/permission/permission_service.dart';
-import 'package:athena/agent/tool/url_safety.dart';
-import 'package:athena/widget/permission_dialog.dart';
+import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
-import 'package:athena/router/router.dart';
-import 'package:athena/util/tool_args_formatter.dart';
-import 'package:athena/service/chat_manage_service.dart';
-import 'package:athena/service/chat_message_service.dart';
-import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/agent/agent_service.dart';
-import 'package:athena/agent/skill/skill_registry.dart';
-import 'package:athena/widget/skill_trust_dialog.dart';
+import 'package:athena/service/chat_manage_service.dart';
+import 'package:athena/service/chat_message_service.dart';
+import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
-import 'package:get_it/get_it.dart';
+import 'package:athena/widget/skill_trust_dialog.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
@@ -49,6 +45,7 @@ class ChatViewModel {
   final SentinelViewModel _sentinelViewModel;
   final PermissionService _permissionService;
   final SkillRegistry _skillRegistry;
+  final PermissionInteractor _permissionInteractor;
 
   CancelToken? _activeCancelToken;
 
@@ -74,38 +71,34 @@ class ChatViewModel {
   bool _skillTrustPrompted = false;
 
   ChatViewModel({
-    ChatManageService? manageService,
-    ChatSupportService? supportService,
-    ChatMessageService? chatMessageService,
+    required ChatManageService manageService,
+    required ChatSupportService supportService,
+    required ChatMessageService chatMessageService,
     ChatSelectionDelegate? selection,
-    AgentService? agentService,
-    MessageRepository? messageRepository,
-    ModelRepository? modelRepository,
-    SentinelRepository? sentinelRepository,
-    SettingViewModel? settingViewModel,
-    ModelViewModel? modelViewModel,
-    SentinelViewModel? sentinelViewModel,
-    PermissionService? permissionService,
-    SkillRegistry? skillRegistry,
-  })  : _manage = manageService ?? GetIt.instance<ChatManageService>(),
-        _support = supportService ?? GetIt.instance<ChatSupportService>(),
-        _chatMessageService =
-            chatMessageService ?? GetIt.instance<ChatMessageService>(),
+    required AgentService agentService,
+    required MessageRepository messageRepository,
+    required ModelRepository modelRepository,
+    required SentinelRepository sentinelRepository,
+    required SettingViewModel settingViewModel,
+    required ModelViewModel modelViewModel,
+    required SentinelViewModel sentinelViewModel,
+    required PermissionService permissionService,
+    required SkillRegistry skillRegistry,
+    required PermissionInteractor permissionInteractor,
+  })  : _manage = manageService,
+        _support = supportService,
+        _chatMessageService = chatMessageService,
         _selection = selection ?? ChatSelectionDelegate(),
-        _agentService = agentService ?? GetIt.instance<AgentService>(),
-        _messageRepository =
-            messageRepository ?? GetIt.instance<MessageRepository>(),
-        _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>(),
-        _sentinelRepository =
-            sentinelRepository ?? GetIt.instance<SentinelRepository>(),
-        _settingViewModel =
-            settingViewModel ?? GetIt.instance<SettingViewModel>(),
-        _modelViewModel = modelViewModel ?? GetIt.instance<ModelViewModel>(),
-        _sentinelViewModel =
-            sentinelViewModel ?? GetIt.instance<SentinelViewModel>(),
-        _permissionService =
-            permissionService ?? GetIt.instance<PermissionService>(),
-        _skillRegistry = skillRegistry ?? GetIt.instance<SkillRegistry>();
+        _agentService = agentService,
+        _messageRepository = messageRepository,
+        _modelRepository = modelRepository,
+        _sentinelRepository = sentinelRepository,
+        _settingViewModel = settingViewModel,
+        _modelViewModel = modelViewModel,
+        _sentinelViewModel = sentinelViewModel,
+        _permissionService = permissionService,
+        _skillRegistry = skillRegistry,
+        _permissionInteractor = permissionInteractor;
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -961,61 +954,12 @@ class ChatViewModel {
     String arguments,
     PermissionService permissionService,
     CancelToken cancelToken,
-  ) async {
-    if (cancelToken.isCancelled) return false;
-    Map<String, dynamic> args;
-    try {
-      args = jsonDecode(arguments) as Map<String, dynamic>;
-    } catch (_) {
-      args = {};
-    }
-    final description = _formatToolArgs(toolName, arguments);
-    final ruleDesc = permissionService.generateRuleDescription(toolName, args);
-    final isDangerous = permissionService.isDangerous(toolName, args);
-    final isFileRule = const {
-      'file_read',
-      'file_write',
-      'file_update',
-      'file_delete',
-      'search',
-      'list_directory',
-    }.contains(toolName);
-
-    final warning = toolName == 'web_fetch'
-        ? webFetchApprovalWarning(args['url'] as String?)
-        : null;
-
-    final dialogFuture = showPermissionDialog(
+  ) {
+    return _permissionInteractor.askPermission(
       toolName: toolName,
-      description: description,
-      ruleDescription: ruleDesc,
-      allowPersist: !isDangerous,
-      isFileRule: isFileRule,
-      warning: warning,
+      arguments: arguments,
+      cancelToken: cancelToken,
     );
-
-    final result = await Future.any<PermissionDialogResult>([
-      dialogFuture,
-      cancelToken.whenCancelled.then((_) {
-        final nav = router.navigatorKey.currentState;
-        if (nav?.canPop() ?? false) nav!.pop();
-        return const PermissionDialogResult(approved: false, persist: false);
-      }),
-    ]);
-
-    if (result.approved && result.persist) {
-      final rule = permissionService.generateRule(
-        toolName,
-        args,
-        recursive: result.recursive,
-      );
-      await permissionService.persistRule(rule);
-    }
-    return result.approved;
-  }
-
-  String _formatToolArgs(String toolName, String arguments) {
-    return formatToolArgsForApproval(toolName, arguments);
   }
 }
 

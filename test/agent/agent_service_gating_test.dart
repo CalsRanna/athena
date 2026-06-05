@@ -408,18 +408,27 @@ void main() {
 
   group('AgentService _smartTruncate', () {
     test('short result is returned as-is', () {
-      final agent = AgentService();
+      final agent = AgentService(
+        chatService: ChatService(),
+        toolRegistry: ToolRegistry(),
+      );
       expect(agent.smartTruncate('hello'), 'hello');
     });
 
     test('result at threshold is returned as-is', () {
-      final agent = AgentService();
+      final agent = AgentService(
+        chatService: ChatService(),
+        toolRegistry: ToolRegistry(),
+      );
       final s = 'x' * 12000;
       expect(agent.smartTruncate(s), s);
     });
 
     test('result over threshold is truncated with marker', () {
-      final agent = AgentService();
+      final agent = AgentService(
+        chatService: ChatService(),
+        toolRegistry: ToolRegistry(),
+      );
       final s = 'x' * 20000;
       final result = agent.smartTruncate(s);
       expect(result.length, lessThanOrEqualTo(12100)); // 12000 + marker overhead
@@ -432,7 +441,10 @@ void main() {
     });
 
     test('custom threshold', () {
-      final agent = AgentService();
+      final agent = AgentService(
+        chatService: ChatService(),
+        toolRegistry: ToolRegistry(),
+      );
       final s = 'y' * 1000;
       final result = agent.smartTruncate(s, threshold: 500);
       expect(result.length, lessThanOrEqualTo(600));

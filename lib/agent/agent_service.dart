@@ -21,11 +21,11 @@ class AgentService {
   final SkillRegistry? _skillRegistry;
 
   AgentService({
-    ChatService? chatService,
-    ToolRegistry? toolRegistry,
+    required ChatService chatService,
+    required ToolRegistry toolRegistry,
     SkillRegistry? skillRegistry,
-  })  : _chatService = chatService ?? ChatService(),
-        _toolRegistry = toolRegistry ?? ToolRegistry(),
+  })  : _chatService = chatService,
+        _toolRegistry = toolRegistry,
         _skillRegistry = skillRegistry;
 
   Stream<AgentEvent> run({

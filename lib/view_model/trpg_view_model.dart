@@ -12,7 +12,6 @@ import 'package:athena/repository/trpg_message_repository.dart';
 import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 
@@ -28,23 +27,18 @@ class TRPGViewModel {
   late final SettingViewModel _settingViewModel;
 
   TRPGViewModel({
-    TRPGGameRepository? gameRepository,
-    TRPGMessageRepository? messageRepository,
-    ModelRepository? modelRepository,
-    ProviderRepository? providerRepository,
-    TRPGService? service,
-    SettingViewModel? settingViewModel,
-  }) {
-    _gameRepository = gameRepository ?? GetIt.instance<TRPGGameRepository>();
-    _messageRepository =
-        messageRepository ?? GetIt.instance<TRPGMessageRepository>();
-    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
-    _providerRepository =
-        providerRepository ?? GetIt.instance<ProviderRepository>();
-    _service = service ?? GetIt.instance<TRPGService>();
-    _settingViewModel =
-        settingViewModel ?? GetIt.instance<SettingViewModel>();
-  }
+    required TRPGGameRepository gameRepository,
+    required TRPGMessageRepository messageRepository,
+    required ModelRepository modelRepository,
+    required ProviderRepository providerRepository,
+    required TRPGService service,
+    required SettingViewModel settingViewModel,
+  })  : _gameRepository = gameRepository,
+        _messageRepository = messageRepository,
+        _modelRepository = modelRepository,
+        _providerRepository = providerRepository,
+        _service = service,
+        _settingViewModel = settingViewModel;
 
   // Signals
   final currentGame = signal<TRPGGameEntity?>(null);

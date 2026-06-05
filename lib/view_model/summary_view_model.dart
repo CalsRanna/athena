@@ -5,7 +5,6 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
-import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 import 'package:uuid/uuid.dart';
@@ -18,18 +17,14 @@ class SummaryViewModel {
   late final SettingViewModel _settingViewModel;
 
   SummaryViewModel({
-    SummaryService? service,
-    ModelRepository? modelRepository,
-    ProviderRepository? providerRepository,
-    SettingViewModel? settingViewModel,
-  }) {
-    _service = service ?? GetIt.instance<SummaryService>();
-    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
-    _providerRepository =
-        providerRepository ?? GetIt.instance<ProviderRepository>();
-    _settingViewModel =
-        settingViewModel ?? GetIt.instance<SettingViewModel>();
-  }
+    required SummaryService service,
+    required ModelRepository modelRepository,
+    required ProviderRepository providerRepository,
+    required SettingViewModel settingViewModel,
+  })  : _service = service,
+        _modelRepository = modelRepository,
+        _providerRepository = providerRepository,
+        _settingViewModel = settingViewModel;
 
   // Signals 状态
   final url = signal('');

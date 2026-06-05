@@ -5,7 +5,6 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
-import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
 import 'package:uuid/uuid.dart';
@@ -18,18 +17,14 @@ class TranslationViewModel {
   late final SettingViewModel _settingViewModel;
 
   TranslationViewModel({
-    TranslationService? service,
-    ProviderRepository? providerRepository,
-    ModelRepository? modelRepository,
-    SettingViewModel? settingViewModel,
-  }) {
-    _service = service ?? GetIt.instance<TranslationService>();
-    _providerRepository =
-        providerRepository ?? GetIt.instance<ProviderRepository>();
-    _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
-    _settingViewModel =
-        settingViewModel ?? GetIt.instance<SettingViewModel>();
-  }
+    required TranslationService service,
+    required ProviderRepository providerRepository,
+    required ModelRepository modelRepository,
+    required SettingViewModel settingViewModel,
+  })  : _service = service,
+        _providerRepository = providerRepository,
+        _modelRepository = modelRepository,
+        _settingViewModel = settingViewModel;
 
   // Signals 状态
   final sourceText = signal('');

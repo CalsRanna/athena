@@ -4,7 +4,6 @@ import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/message_repository.dart';
-import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 消息格式转换与上下文组装。
@@ -16,9 +15,8 @@ class ChatMessageService {
   final MessageRepository _messageRepository;
 
   ChatMessageService({
-    MessageRepository? messageRepository,
-  }) : _messageRepository =
-            messageRepository ?? GetIt.instance<MessageRepository>();
+    required MessageRepository messageRepository,
+  }) : _messageRepository = messageRepository;
 
   /// 将 Entity 消息列表转换为 OpenAI ChatMessage 列表
   ///
