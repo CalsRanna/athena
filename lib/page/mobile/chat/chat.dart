@@ -1,25 +1,22 @@
-import 'dart:async';
-
-import 'package:athena/component/message_list_tile.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/mobile/chat/component/chat_bottom_sheet.dart';
-import 'package:athena/page/mobile/chat/component/edit_message_dialog.dart';
+import 'package:athena/page/mobile/chat/component/message_list_view.dart';
+import 'package:athena/page/mobile/chat/component/sentinel_placeholder.dart';
+import 'package:athena/page/mobile/chat/component/user_input.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
-import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/error_boundary.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -34,157 +31,6 @@ class MobileChatPage extends StatefulWidget {
   State<MobileChatPage> createState() => _MobileChatPageState();
 }
 
-class _MessageListView extends StatefulWidget {
-  final ChatEntity chat;
-  final ChatViewModel viewModel;
-  final SentinelViewModel sentinelViewModel;
-  final ModelEntity? model;
-  final void Function(ChatEntity)? onChatTitleChanged;
-  const _MessageListView({
-    required this.chat,
-    required this.viewModel,
-    required this.sentinelViewModel,
-    this.model,
-    this.onChatTitleChanged,
-  });
-
-  @override
-  State<_MessageListView> createState() => _MessageListViewState();
-}
-
-class _MessageListViewState extends State<_MessageListView> {
-  final controller = ScrollController();
-
-  ChatViewModel get viewModel => widget.viewModel;
-  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMessages();
-  }
-
-  Future<void> _loadMessages() async {
-    await viewModel.refreshMessages(widget.chat.id!);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Watch((context) {
-      var sentinel = sentinelViewModel.sentinels.value
-          .where((s) => s.id == widget.chat.sentinelId)
-          .firstOrNull;
-      if (sentinel == null) return const SizedBox();
-
-      var messages = viewModel.messages.value
-          .where((m) => m.chatId == widget.chat.id)
-          .toList();
-      if (messages.isEmpty) return _SentinelPlaceholder(sentinel: sentinel);
-
-      var loading = viewModel.isStreaming.value;
-
-      final reversedMessages = messages.reversed.toList();
-      return ListView.separated(
-        controller: controller,
-        itemBuilder: (_, index) => _itemBuilder(
-          reversedMessages[index],
-          sentinel,
-          loading && index == 0,
-          key: ValueKey(reversedMessages[index].id),
-        ),
-        itemCount: messages.length,
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        reverse: true,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-      );
-    });
-  }
-
-  void destroyMessage(MessageEntity message) {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
-    viewModel.deleteMessage(message);
-    AthenaDialog.dismiss();
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  void editMessage(MessageEntity message) {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
-    // Edit message by deleting from this message onwards, then user can resend
-    viewModel.deleteMessage(message);
-  }
-
-  void openBottomSheet(MessageEntity message) {
-    HapticFeedback.heavyImpact();
-    var editTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
-      title: 'Edit',
-      onTap: () => openEditDialog(message),
-    );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedDelete02),
-      title: 'Delete',
-      onTap: () => destroyMessage(message),
-    );
-    var children = [editTile, deleteTile];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var padding = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: column,
-    );
-    AthenaDialog.show(SafeArea(child: padding));
-  }
-
-  void openEditDialog(MessageEntity message) {
-    AthenaDialog.dismiss();
-    var dialog = MobileEditMessageDialog(
-      message: message,
-      onSubmitted: editMessage,
-    );
-    showModalBottomSheet(
-      backgroundColor: Colors.transparent,
-      context: context,
-      builder: (_) => dialog,
-      isScrollControlled: true,
-    );
-  }
-
-  Future<void> resendMessage(MessageEntity message) async {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
-    await viewModel.deleteMessage(message);
-    await viewModel.sendMessage(message, chat: widget.chat);
-  }
-
-  Widget _itemBuilder(
-    MessageEntity message,
-    SentinelEntity sentinel,
-    bool loading, {
-    Key? key,
-  }) {
-    return MessageListTile(
-      key: key,
-      loading: loading,
-      message: message,
-      onLongPress: () => openBottomSheet(message),
-      onResend: () => resendMessage(message),
-      sentinel: sentinel,
-    );
-  }
-}
-
 class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
 
@@ -197,14 +43,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
     return Watch((context) {
       ChatEntity? chat = viewModel.currentChat.value;
 
-      // Fallback to chat from widget or chats list if currentChat is null
       if (chat == null && widget.chat != null) {
         chat = viewModel.chats.value
             .where((c) => c.id == widget.chat!.id)
             .firstOrNull;
       }
 
-      // New chat should always start from the default sentinel.
       SentinelEntity? sentinel;
       if (chat != null) {
         sentinel = sentinelViewModel.sentinels.value
@@ -216,9 +60,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
       sentinel ??= viewModel.currentSentinel.value;
       sentinel ??= sentinelViewModel.defaultSentinel.value;
 
-      // Build title
-      var isRenaming =
-          chat != null && viewModel.selection.renamingChatIds.value.contains(chat.id);
+      var isRenaming = chat != null &&
+          viewModel.selection.renamingChatIds.value.contains(chat.id);
       String title;
       if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
         title = viewModel.selection.renamingTitle.value;
@@ -227,7 +70,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
         if (title.isEmpty) title = 'New Chat';
       }
 
-      // Always show action button
       var actionButton = AthenaIconButton(
         icon: HugeIcons.strokeRoundedMoreHorizontal,
         onTap: () => openBottomSheet(chat),
@@ -255,13 +97,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
         titleWidget = Text(title, textAlign: TextAlign.center);
       }
 
-      // Build message list or placeholder
       Widget content;
       if (chat != null) {
         var model = modelViewModel.models.value
             .where((m) => m.id == chat!.modelId)
             .firstOrNull;
-        content = _MessageListView(
+        content = MessageListView(
           chat: chat,
           viewModel: viewModel,
           sentinelViewModel: sentinelViewModel,
@@ -269,7 +110,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
           onChatTitleChanged: (_) {},
         );
       } else {
-        content = _SentinelPlaceholder(sentinel: sentinel);
+        content = SentinelPlaceholder(sentinel: sentinel);
       }
 
       var input = _buildInput(chat);
@@ -334,7 +175,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (text.isEmpty) return;
     controller.clear();
 
-    // If no chat exists, create one first
     if (chat == null) {
       chat = await viewModel.createChat();
       if (chat == null) return;
@@ -420,7 +260,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Widget _buildInput(ChatEntity? chat) {
-    var userInput = _UserInput(
+    var userInput = UserInput(
       controller: controller,
       isStreaming: viewModel.isStreaming.value,
       onSubmitted: () => sendMessage(chat),
@@ -428,154 +268,5 @@ class _MobileChatPageState extends State<MobileChatPage> {
     );
     final padding = Padding(padding: EdgeInsets.all(16), child: userInput);
     return SafeArea(top: false, child: padding);
-  }
-}
-
-class _SendButton extends StatelessWidget {
-  final void Function()? onSubmitted;
-  final void Function()? onTerminated;
-  final bool isStreaming;
-  const _SendButton({
-    this.onSubmitted,
-    this.onTerminated,
-    required this.isStreaming,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Watch((context) {
-      var boxShadow = BoxShadow(
-        blurRadius: 16,
-        color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
-      );
-      var shapeDecoration = ShapeDecoration(
-        color: ColorUtil.FFFFFFFF,
-        shape: StadiumBorder(),
-        shadows: [boxShadow],
-      );
-      final streaming = isStreaming;
-      var iconData = HugeIcons.strokeRoundedSent;
-      if (streaming) iconData = HugeIcons.strokeRoundedStop;
-      var icon = Icon(iconData, color: ColorUtil.FF161616, size: 16);
-      var container = Container(
-        decoration: shapeDecoration,
-        padding: const EdgeInsets.all(12),
-        child: icon,
-      );
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => handleTap(context, streaming),
-        child: container,
-      );
-    });
-  }
-
-  void handleTap(BuildContext context, bool streaming) {
-    if (!streaming) {
-      onSubmitted?.call();
-      return;
-    }
-    onTerminated?.call();
-  }
-}
-
-class _SentinelPlaceholder extends StatelessWidget {
-  final SentinelEntity? sentinel;
-  const _SentinelPlaceholder({required this.sentinel});
-
-  @override
-  Widget build(BuildContext context) {
-    const nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-    );
-    const descriptionTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-    );
-    var text = Text(
-      sentinel?.name ?? '',
-      style: nameTextStyle,
-      textAlign: TextAlign.center,
-    );
-    var children = [
-      text,
-      const SizedBox(height: 36),
-      Text(sentinel?.description ?? '', style: descriptionTextStyle),
-    ];
-    var column = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: children,
-    );
-    return Padding(padding: const EdgeInsets.all(16.0), child: column);
-  }
-}
-
-class _UserInput extends StatelessWidget {
-  final TextEditingController controller;
-  final void Function()? onSubmitted;
-  final void Function()? onTerminated;
-  final bool isStreaming;
-  const _UserInput({
-    required this.controller,
-    this.onSubmitted,
-    this.onTerminated,
-    required this.isStreaming,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const hintTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-    );
-    const inputDecoration = InputDecoration.collapsed(
-      hintText: 'Send a message',
-      hintStyle: hintTextStyle,
-    );
-    const textStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    final textField = TextField(
-      controller: controller,
-      cursorColor: ColorUtil.FFFFFFFF,
-      decoration: inputDecoration,
-      maxLines: 2,
-      minLines: 2,
-      onTapOutside: (_) => handleTapOutside(context),
-      style: textStyle,
-      textInputAction: TextInputAction.newline,
-    );
-    var sendButton = _SendButton(
-      onSubmitted: onSubmitted,
-      onTerminated: onTerminated,
-      isStreaming: isStreaming,
-    );
-    var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-    );
-    var rowChildren = [
-      Expanded(child: textField),
-      const SizedBox(width: 16),
-      sendButton,
-    ];
-    return Container(
-      decoration: shapeDecoration,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: rowChildren,
-      ),
-    );
-  }
-
-  void handleTapOutside(BuildContext context) {
-    FocusScope.of(context).unfocus();
   }
 }
