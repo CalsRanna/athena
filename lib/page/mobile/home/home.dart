@@ -29,7 +29,8 @@ class MobileHomePage extends StatefulWidget {
 
 class _ChatTile extends StatelessWidget {
   final ChatHistoryEntity chatHistory;
-  const _ChatTile(this.chatHistory);
+  final ChatViewModel viewModel;
+  const _ChatTile(this.chatHistory, {required this.viewModel});
 
   ChatEntity get chat => chatHistory.chat;
 
@@ -58,7 +59,6 @@ class _ChatTile extends StatelessWidget {
 
   void handleLongPress(BuildContext context) {
     HapticFeedback.heavyImpact();
-    var viewModel = GetIt.instance<ChatViewModel>();
     var renameTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Rename',
@@ -134,7 +134,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       spacing: 8,
       children: [
         _Title('Sentinel', onTap: () => navigateSentinelList(context)),
-        SizedBox(height: 156, child: _SentinelListView()),
+        SizedBox(height: 156, child: _SentinelListView(sentinelViewModel: sentinelViewModel)),
       ],
     );
   }
@@ -160,6 +160,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
           child: Watch(
             (_) => _RecentChatListView(
               chatHistories: chatViewModel.recentChatHistories.value,
+              viewModel: chatViewModel,
             ),
           ),
         ),
@@ -213,7 +214,11 @@ class _NewChatButton extends StatelessWidget {
 
 class _RecentChatListView extends StatelessWidget {
   final List<ChatHistoryEntity> chatHistories;
-  const _RecentChatListView({required this.chatHistories});
+  final ChatViewModel viewModel;
+  const _RecentChatListView({
+    required this.chatHistories,
+    required this.viewModel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,18 +235,18 @@ class _RecentChatListView extends StatelessWidget {
     final right = index == chatHistories.length - 1 ? 16.0 : 0.0;
     return Padding(
       padding: EdgeInsets.only(left: left, right: right),
-      child: _ChatTile(chatHistories[index]),
+      child: _ChatTile(chatHistories[index], viewModel: viewModel),
     );
   }
 }
 
 class _SentinelListView extends StatelessWidget {
-  const _SentinelListView();
+  final SentinelViewModel sentinelViewModel;
+  const _SentinelListView({required this.sentinelViewModel});
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var sentinelViewModel = GetIt.instance<SentinelViewModel>();
       var sentinels = sentinelViewModel.sentinels.value;
       return _buildData(sentinels);
     });
