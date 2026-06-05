@@ -33,11 +33,14 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
 
   Widget _buildData() {
     return Watch(
-      (_) => ListView.separated(
-        itemCount: viewModel.chatHistories.value.length,
-        itemBuilder: _buildItem,
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        separatorBuilder: (context, index) => _buildSeparator(),
+      (_) => RefreshIndicator(
+        onRefresh: () => viewModel.getChats(),
+        child: ListView.separated(
+          itemCount: viewModel.chatHistories.value.length,
+          itemBuilder: _buildItem,
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          separatorBuilder: (context, index) => _buildSeparator(),
+        ),
       ),
     );
   }
