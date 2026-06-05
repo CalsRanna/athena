@@ -115,6 +115,8 @@ class ChatViewModel {
   final currentSentinel = signal<SentinelEntity?>(null);
   final currentContext = signal(defaultDraftContext);
   final currentTemperature = signal(defaultDraftTemperature);
+  final currentIteration = signal(0);
+  final currentToolName = signal<String?>(null);
   final pendingImages = listSignal<String>([]);
 
   // 多选与重命名 UI 交互状态委托
@@ -577,6 +579,8 @@ class ChatViewModel {
     _streamingChatId = chat.id;
     _streamingDone = Completer<void>();
     error.value = null;
+    currentIteration.value = 0;
+    currentToolName.value = null;
     MessageEntity? assistantMessage;
 
     try {
@@ -628,6 +632,8 @@ class ChatViewModel {
       _activeCancelToken = null;
       _latestStreamedMessage = null;
       _streamingChatId = null;
+      currentIteration.value = 0;
+      currentToolName.value = null;
       // 通知等待方（如 deleteChat）流已完全 settle，所有写入均已落库。
       if (_streamingDone != null && !_streamingDone!.isCompleted) {
         _streamingDone!.complete();
@@ -860,6 +866,7 @@ class ChatViewModel {
         _updateMessageInList(current.id, current);
         _latestStreamedMessage = current;
       } else if (event is AgentToolCallEvent) {
+        currentToolName.value = event.name;
         toolCallsJson.add({
           'id': event.id,
           'name': event.name,
@@ -899,6 +906,7 @@ class ChatViewModel {
     ChatEntity chat,
     MessageEntity current,
   ) async {
+    currentIteration.value = currentIteration.value + 1;
     await _manage.finalizeAssistantMessage(current);
     final next = await _manage.appendAssistantPlaceholder(chat.id!);
     messages.value = [...messages.value, next];
