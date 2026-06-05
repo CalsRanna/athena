@@ -2,7 +2,6 @@ import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/dialog.dart';
-import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
@@ -10,12 +9,10 @@ class ProviderViewModel {
   late final ModelViewModel _modelViewModel;
 
   ProviderViewModel({
-    ProviderRepository? repository,
-    ModelViewModel? modelViewModel,
-  }) {
-    _repository = repository ?? GetIt.instance<ProviderRepository>();
-    _modelViewModel = modelViewModel ?? GetIt.instance<ModelViewModel>();
-  }
+    required ProviderRepository repository,
+    required ModelViewModel modelViewModel,
+  })  : _repository = repository,
+        _modelViewModel = modelViewModel;
 
   // Signals 状态
   final providers = listSignal<ProviderEntity>([]);

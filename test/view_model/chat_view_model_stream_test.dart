@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
+import 'package:athena/agent/permission/permission_interactor.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
+import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -186,7 +188,8 @@ class _FakeChatMessageService extends ChatMessageService {
 
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
 class _FakeAgentService extends AgentService {
-  _FakeAgentService(this.stream);
+  _FakeAgentService(this.stream)
+      : super(chatService: ChatService(), toolRegistry: ToolRegistry());
 
   final Stream<AgentEvent> stream;
 
@@ -237,6 +240,9 @@ ChatViewModel _buildViewModel({
     settingViewModel: GetIt.instance<SettingViewModel>(),
     permissionService: GetIt.instance<PermissionService>(),
     skillRegistry: GetIt.instance<SkillRegistry>(),
+    permissionInteractor: PermissionInteractor(
+      permissionService: GetIt.instance<PermissionService>(),
+    ),
   );
 }
 
@@ -254,6 +260,8 @@ void main() {
         modelRepository: _FakeModelRepository(),
         providerRepository: ProviderRepositoryStub(),
         sentinelRepository: _FakeSentinelRepository(),
+        chatRepository: ChatRepository(),
+        chatService: getIt<ChatService>(),
       ),
     );
     getIt.registerSingleton<ModelViewModel>(
@@ -268,6 +276,7 @@ void main() {
         sentinelRepository: _FakeSentinelRepository(),
         providerRepository: ProviderRepositoryStub(),
         modelRepository: _FakeModelRepository(),
+        sentinelService: getIt<SentinelService>(),
       ),
     );
   });

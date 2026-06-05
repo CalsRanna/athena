@@ -2,7 +2,6 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/chat_service.dart';
-import 'package:get_it/get_it.dart';
 import 'package:signals/signals.dart';
 
 class ConnectionCheckResult {
@@ -23,15 +22,12 @@ class ModelViewModel {
   late final ChatService _chatService;
 
   ModelViewModel({
-    ModelRepository? repository,
-    ProviderRepository? providerRepository,
-    ChatService? chatService,
-  }) {
-    _repository = repository ?? GetIt.instance<ModelRepository>();
-    _providerRepository =
-        providerRepository ?? GetIt.instance<ProviderRepository>();
-    _chatService = chatService ?? GetIt.instance<ChatService>();
-  }
+    required ModelRepository repository,
+    required ProviderRepository providerRepository,
+    required ChatService chatService,
+  })  : _repository = repository,
+        _providerRepository = providerRepository,
+        _chatService = chatService;
 
   // Signals 状态
   final models = listSignal<ModelEntity>([]);

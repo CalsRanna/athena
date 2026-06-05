@@ -9,7 +9,6 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/chat_service.dart';
-import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// 会话的 UI 辅助操作。
@@ -23,16 +22,14 @@ class ChatSupportService {
   final ChatService _chatService;
 
   ChatSupportService({
-    ChatRepository? chatRepository,
-    MessageRepository? messageRepository,
-    ProviderRepository? providerRepository,
-    ChatService? chatService,
-  })  : _chatRepository = chatRepository ?? GetIt.instance<ChatRepository>(),
-        _messageRepository =
-            messageRepository ?? GetIt.instance<MessageRepository>(),
-        _providerRepository =
-            providerRepository ?? GetIt.instance<ProviderRepository>(),
-        _chatService = chatService ?? GetIt.instance<ChatService>();
+    required ChatRepository chatRepository,
+    required MessageRepository messageRepository,
+    required ProviderRepository providerRepository,
+    required ChatService chatService,
+  })  : _chatRepository = chatRepository,
+        _messageRepository = messageRepository,
+        _providerRepository = providerRepository,
+        _chatService = chatService;
 
   Stream<String> renameChat(
     String firstUserMessage, {

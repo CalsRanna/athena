@@ -1,10 +1,12 @@
 import 'package:athena/entity/trpg_game_entity.dart';
 import 'package:athena/entity/trpg_message_entity.dart';
+import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
+import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/trpg_view_model.dart';
@@ -40,6 +42,8 @@ void main() {
         modelRepository: ModelRepository(),
         providerRepository: ProviderRepository(),
         sentinelRepository: SentinelRepository(),
+        chatRepository: ChatRepository(),
+        chatService: ChatService(),
       ),
     );
 
@@ -49,6 +53,7 @@ void main() {
       modelRepository: ModelRepository(),
       providerRepository: ProviderRepository(),
       service: TRPGService(),
+      settingViewModel: getIt<SettingViewModel>(),
     );
 
     addTearDown(() async {
