@@ -1,9 +1,7 @@
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 
 class MobileChatConfigurationDialog extends StatefulWidget {
   final ChatEntity? chat;
@@ -29,8 +27,6 @@ class _MobileConfigurationDialogState
     extends State<MobileChatConfigurationDialog> {
   late double _context = widget.contextToken.toDouble();
   late double _temperature = widget.temperature;
-
-  late final viewModel = GetIt.instance<ChatViewModel>();
 
   @override
   Widget build(BuildContext context) {

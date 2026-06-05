@@ -187,7 +187,10 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   }
 
   void openSentinelSelectorDialog() {
-    var dialog = MobileSentinelSelectDialog(onTap: _updateSentinel);
+    var dialog = MobileSentinelSelectDialog(
+      onTap: _updateSentinel,
+      sentinelViewModel: sentinelViewModel,
+    );
     AthenaDialog.show(dialog);
   }
 
