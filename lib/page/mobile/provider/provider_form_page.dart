@@ -54,6 +54,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       onLongPress: openBottomSheet,
       onTap: editModel,
       provider: widget.provider,
+      modelViewModel: GetIt.instance<ModelViewModel>(),
     );
     var listViewChildren = [
       labels,

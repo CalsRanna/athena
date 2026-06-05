@@ -3,24 +3,24 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/tag.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileModelWallView extends StatelessWidget {
   final void Function(ModelEntity)? onLongPress;
   final void Function(ModelEntity)? onTap;
   final ProviderEntity provider;
+  final ModelViewModel modelViewModel;
   const MobileModelWallView({
     super.key,
     this.onLongPress,
     this.onTap,
     required this.provider,
+    required this.modelViewModel,
   });
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var modelViewModel = GetIt.instance<ModelViewModel>();
       var models = modelViewModel.models.value
           .where((m) => m.providerId == provider.id)
           .toList();
