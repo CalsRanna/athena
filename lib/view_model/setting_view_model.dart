@@ -63,6 +63,7 @@ class SettingViewModel {
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
   late final SentinelRepository _sentinelRepository;
+  final ChatService? _chatService;
   // 延迟解析：仅在 reconcileChatModelReferences 实际使用时才从 GetIt 取，
   // 避免在未注册 ChatRepository 的测试中于构造期即抛错。
   final ChatRepository? _injectedChatRepository;
@@ -74,7 +75,9 @@ class SettingViewModel {
     ProviderRepository? providerRepository,
     SentinelRepository? sentinelRepository,
     ChatRepository? chatRepository,
-  }) : _injectedChatRepository = chatRepository {
+    ChatService? chatService,
+  }) : _injectedChatRepository = chatRepository,
+       _chatService = chatService {
     _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
     _providerRepository =
         providerRepository ?? GetIt.instance<ProviderRepository>();
@@ -102,8 +105,9 @@ class SettingViewModel {
     auxiliaryModelId.value = instance.getInt(_keyAuxiliaryModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
-    GetIt.instance<ChatService>().retryConfig =
-        RetryConfig(maxAttempts: maxRetries.value);
+    (_chatService ?? GetIt.instance<ChatService>()).updateRetryConfig(
+        RetryConfig(maxAttempts: maxRetries.value),
+      );
     braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
@@ -212,7 +216,9 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
-    GetIt.instance<ChatService>().retryConfig = RetryConfig(maxAttempts: max);
+    (_chatService ?? GetIt.instance<ChatService>()).updateRetryConfig(
+      RetryConfig(maxAttempts: max),
+    );
   }
 
   /// 更新 Brave Search API Key

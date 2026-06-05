@@ -19,7 +19,10 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -229,13 +232,19 @@ ChatViewModel _buildViewModel({
     messageRepository: _NoopMessageRepository(),
     modelRepository: _FakeModelRepository(),
     sentinelRepository: _FakeSentinelRepository(),
+    modelViewModel: GetIt.instance<ModelViewModel>(),
+    sentinelViewModel: GetIt.instance<SentinelViewModel>(),
+    settingViewModel: GetIt.instance<SettingViewModel>(),
+    permissionService: GetIt.instance<PermissionService>(),
+    skillRegistry: GetIt.instance<SkillRegistry>(),
   );
 }
 
 void main() {
   setUp(() {
     final getIt = GetIt.instance;
-    // sendMessage 体内会直接通过 GetIt 解析这三者。
+    getIt.registerSingleton<ChatService>(ChatService());
+    getIt.registerSingleton<SentinelService>(SentinelService());
     getIt.registerSingleton<SkillRegistry>(SkillRegistry());
     getIt.registerSingleton<PermissionService>(
       PermissionService(store: PermissionStore()),
@@ -245,6 +254,20 @@ void main() {
         modelRepository: _FakeModelRepository(),
         providerRepository: ProviderRepositoryStub(),
         sentinelRepository: _FakeSentinelRepository(),
+      ),
+    );
+    getIt.registerSingleton<ModelViewModel>(
+      ModelViewModel(
+        repository: _FakeModelRepository(),
+        providerRepository: ProviderRepositoryStub(),
+        chatService: getIt<ChatService>(),
+      ),
+    );
+    getIt.registerSingleton<SentinelViewModel>(
+      SentinelViewModel(
+        sentinelRepository: _FakeSentinelRepository(),
+        providerRepository: ProviderRepositoryStub(),
+        modelRepository: _FakeModelRepository(),
       ),
     );
   });

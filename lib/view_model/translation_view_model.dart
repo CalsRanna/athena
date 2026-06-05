@@ -15,16 +15,20 @@ class TranslationViewModel {
   late final TranslationService _service;
   late final ProviderRepository _providerRepository;
   late final ModelRepository _modelRepository;
+  late final SettingViewModel _settingViewModel;
 
   TranslationViewModel({
     TranslationService? service,
     ProviderRepository? providerRepository,
     ModelRepository? modelRepository,
+    SettingViewModel? settingViewModel,
   }) {
     _service = service ?? GetIt.instance<TranslationService>();
     _providerRepository =
         providerRepository ?? GetIt.instance<ProviderRepository>();
     _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
+    _settingViewModel =
+        settingViewModel ?? GetIt.instance<SettingViewModel>();
   }
 
   // Signals 状态
@@ -102,10 +106,9 @@ class TranslationViewModel {
 
     try {
       // 优先使用设置中配置的 shortModelId
-      var settingViewModel = GetIt.instance<SettingViewModel>();
       ModelEntity? model;
       ProviderEntity? provider;
-      var shortModelId = settingViewModel.shortModelId.value;
+      var shortModelId = _settingViewModel.shortModelId.value;
       if (shortModelId > 0) {
         model = await _modelRepository.getModelById(shortModelId);
         if (model != null) {

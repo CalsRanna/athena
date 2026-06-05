@@ -7,9 +7,14 @@ import 'package:signals/signals.dart';
 
 class ProviderViewModel {
   late final ProviderRepository _repository;
+  late final ModelViewModel _modelViewModel;
 
-  ProviderViewModel({ProviderRepository? repository}) {
+  ProviderViewModel({
+    ProviderRepository? repository,
+    ModelViewModel? modelViewModel,
+  }) {
     _repository = repository ?? GetIt.instance<ProviderRepository>();
+    _modelViewModel = modelViewModel ?? GetIt.instance<ModelViewModel>();
   }
 
   // Signals 状态
@@ -77,7 +82,7 @@ class ProviderViewModel {
         updated[index] = provider;
         providers.value = updated;
       }
-      await GetIt.instance<ModelViewModel>().loadEnabledModels();
+      await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -93,7 +98,7 @@ class ProviderViewModel {
       providers.value = providers.value
           .where((p) => p.id != provider.id)
           .toList();
-      await GetIt.instance<ModelViewModel>().loadEnabledModels();
+      await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -112,7 +117,7 @@ class ProviderViewModel {
         updatedList[index] = updated;
         providers.value = updatedList;
       }
-      await GetIt.instance<ModelViewModel>().loadEnabledModels();
+      await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
     }

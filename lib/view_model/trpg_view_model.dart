@@ -25,6 +25,7 @@ class TRPGViewModel {
 
   // Service
   late final TRPGService _service;
+  late final SettingViewModel _settingViewModel;
 
   TRPGViewModel({
     TRPGGameRepository? gameRepository,
@@ -32,6 +33,7 @@ class TRPGViewModel {
     ModelRepository? modelRepository,
     ProviderRepository? providerRepository,
     TRPGService? service,
+    SettingViewModel? settingViewModel,
   }) {
     _gameRepository = gameRepository ?? GetIt.instance<TRPGGameRepository>();
     _messageRepository =
@@ -40,6 +42,8 @@ class TRPGViewModel {
     _providerRepository =
         providerRepository ?? GetIt.instance<ProviderRepository>();
     _service = service ?? GetIt.instance<TRPGService>();
+    _settingViewModel =
+        settingViewModel ?? GetIt.instance<SettingViewModel>();
   }
 
   // Signals
@@ -295,8 +299,7 @@ class TRPGViewModel {
 
   /// 获取默认模型
   Future<ModelEntity?> _getDefaultModel() async {
-    var settingViewModel = GetIt.instance<SettingViewModel>();
-    var shortModelId = settingViewModel.shortModelId.value;
+    var shortModelId = _settingViewModel.shortModelId.value;
     if (shortModelId > 0) {
       var model = await _modelRepository.getModelById(shortModelId);
       if (model != null) return model;
