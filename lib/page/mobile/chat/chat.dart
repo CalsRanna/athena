@@ -15,6 +15,7 @@ import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:athena/widget/error_boundary.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -85,6 +86,7 @@ class _MessageListViewState extends State<_MessageListView> {
           reversedMessages[index],
           sentinel,
           loading && index == 0,
+          key: ValueKey(reversedMessages[index].id),
         ),
         itemCount: messages.length,
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -165,9 +167,11 @@ class _MessageListViewState extends State<_MessageListView> {
   Widget _itemBuilder(
     MessageEntity message,
     SentinelEntity sentinel,
-    bool loading,
-  ) {
+    bool loading, {
+    Key? key,
+  }) {
     return MessageListTile(
+      key: key,
       loading: loading,
       message: message,
       onLongPress: () => openBottomSheet(message),
@@ -184,33 +188,16 @@ class _MobileChatPageState extends State<MobileChatPage> {
   late final modelViewModel = GetIt.instance<ModelViewModel>();
   late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
 
-  // Track the current chat ID (null means new chat not yet created)
-  int? _currentChatId;
-
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      // If we have a chat ID, find the chat from currentChat or chats list
-      ChatEntity? chat;
-      var currentChat = viewModel.currentChat.value;
-      if (_currentChatId != null) {
-        // Prefer currentChat if it matches (updated by renameChat)
-        if (currentChat?.id == _currentChatId) {
-          chat = currentChat;
-        }
-        chat ??= viewModel.chats.value
-            .where((c) => c.id == _currentChatId)
-            .firstOrNull;
-      } else if (widget.chat != null) {
-        if (currentChat?.id == widget.chat!.id) {
-          chat = currentChat;
-        }
-        chat ??= viewModel.chats.value
+      ChatEntity? chat = viewModel.currentChat.value;
+
+      // Fallback to chat from widget or chats list if currentChat is null
+      if (chat == null && widget.chat != null) {
+        chat = viewModel.chats.value
             .where((c) => c.id == widget.chat!.id)
             .firstOrNull;
-        if (chat != null) {
-          _currentChatId = chat.id;
-        }
       }
 
       // New chat should always start from the default sentinel.
@@ -282,17 +269,21 @@ class _MobileChatPageState extends State<MobileChatPage> {
       var input = _buildInput(chat);
       return AthenaScaffold(
         appBar: AthenaAppBar(action: actionButton, title: titleWidget),
-        body: Builder(
-          builder: (context) {
-            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-            return Column(
-              children: [
-                Expanded(child: content),
-                input,
-                SizedBox(height: bottomInset),
-              ],
-            );
-          },
+        body: AthenaErrorBoundary(
+          message: 'Chat page encountered an error',
+          onRetry: _initializeViewModels,
+          child: Builder(
+            builder: (context) {
+              final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+              return Column(
+                children: [
+                  Expanded(child: content),
+                  input,
+                  SizedBox(height: bottomInset),
+                ],
+              );
+            },
+          ),
         ),
       );
     });
@@ -308,10 +299,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
   void initState() {
     super.initState();
     _initializeViewModels();
-    // Initialize current chat ID if chat was passed
-    if (widget.chat != null) {
-      _currentChatId = widget.chat!.id;
-    }
   }
 
   Future<void> _initializeViewModels() async {
@@ -344,9 +331,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     if (chat == null) {
       chat = await viewModel.createChat();
       if (chat == null) return;
-      setState(() {
-        _currentChatId = chat!.id;
-      });
     }
 
     var message = MessageEntity(
@@ -364,15 +348,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
     viewModel.stopGenerating();
   }
 
-  ChatEntity? _getCurrentChat() {
-    if (_currentChatId == null) return null;
-    return viewModel.chats.value
-        .where((c) => c.id == _currentChatId)
-        .firstOrNull;
-  }
-
   Future<void> updateContext(int value) async {
-    var chat = _getCurrentChat();
+    final chat = viewModel.currentChat.value;
     if (chat != null) {
       await viewModel.updateContext(value, chat: chat);
     } else {
@@ -381,7 +358,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> updateModel(ModelEntity model) async {
-    var chat = _getCurrentChat();
+    final chat = viewModel.currentChat.value;
     if (chat != null) {
       await viewModel.updateModel(model, chat: chat);
     } else {
@@ -390,7 +367,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> updateSentinel(SentinelEntity sentinel) async {
-    var chat = _getCurrentChat();
+    final chat = viewModel.currentChat.value;
     if (chat != null) {
       await viewModel.updateSentinel(sentinel, chat: chat);
     } else {
@@ -399,7 +376,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> updateTemperature(double value) async {
-    var chat = _getCurrentChat();
+    final chat = viewModel.currentChat.value;
     if (chat != null) {
       await viewModel.updateTemperature(value, chat: chat);
     } else {
