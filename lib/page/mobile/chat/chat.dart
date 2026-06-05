@@ -36,10 +36,14 @@ class MobileChatPage extends StatefulWidget {
 
 class _MessageListView extends StatefulWidget {
   final ChatEntity chat;
+  final ChatViewModel viewModel;
+  final SentinelViewModel sentinelViewModel;
   final ModelEntity? model;
   final void Function(ChatEntity)? onChatTitleChanged;
   const _MessageListView({
     required this.chat,
+    required this.viewModel,
+    required this.sentinelViewModel,
     this.model,
     this.onChatTitleChanged,
   });
@@ -51,8 +55,8 @@ class _MessageListView extends StatefulWidget {
 class _MessageListViewState extends State<_MessageListView> {
   final controller = ScrollController();
 
-  late final viewModel = GetIt.instance<ChatViewModel>();
-  late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  ChatViewModel get viewModel => widget.viewModel;
+  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
 
   @override
   void initState() {
@@ -259,6 +263,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
             .firstOrNull;
         content = _MessageListView(
           chat: chat,
+          viewModel: viewModel,
+          sentinelViewModel: sentinelViewModel,
           model: model,
           onChatTitleChanged: (_) {},
         );
@@ -416,6 +422,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Widget _buildInput(ChatEntity? chat) {
     var userInput = _UserInput(
       controller: controller,
+      isStreaming: viewModel.isStreaming.value,
       onSubmitted: () => sendMessage(chat),
       onTerminated: terminateStreaming,
     );
@@ -427,7 +434,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
 class _SendButton extends StatelessWidget {
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
-  const _SendButton({this.onSubmitted, this.onTerminated});
+  final bool isStreaming;
+  const _SendButton({
+    this.onSubmitted,
+    this.onTerminated,
+    required this.isStreaming,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -441,8 +453,7 @@ class _SendButton extends StatelessWidget {
         shape: StadiumBorder(),
         shadows: [boxShadow],
       );
-      final chatViewModel = GetIt.instance<ChatViewModel>();
-      final streaming = chatViewModel.isStreaming.value;
+      final streaming = isStreaming;
       var iconData = HugeIcons.strokeRoundedSent;
       if (streaming) iconData = HugeIcons.strokeRoundedStop;
       var icon = Icon(iconData, color: ColorUtil.FF161616, size: 16);
@@ -506,10 +517,12 @@ class _UserInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
+  final bool isStreaming;
   const _UserInput({
     required this.controller,
     this.onSubmitted,
     this.onTerminated,
+    required this.isStreaming,
   });
 
   @override
@@ -541,6 +554,7 @@ class _UserInput extends StatelessWidget {
     var sendButton = _SendButton(
       onSubmitted: onSubmitted,
       onTerminated: onTerminated,
+      isStreaming: isStreaming,
     );
     var shapeDecoration = ShapeDecoration(
       color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
