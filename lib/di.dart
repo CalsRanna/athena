@@ -167,8 +167,17 @@ class DI {
       final skillRegistry = getIt<SkillRegistry>();
       final sandbox = getIt<PathSandbox>();
       final isWindows = Platform.isWindows;
-      final toolRegistry = ToolRegistry()
-        ..registerAll([
+      final isMobile = Platform.isIOS || Platform.isAndroid;
+      final toolRegistry = ToolRegistry();
+
+      if (isMobile) {
+        toolRegistry.registerAll([
+          WebFetchTool(),
+          WebSearchTool(),
+          SkillTool(skillRegistry),
+        ]);
+      } else {
+        toolRegistry.registerAll([
           isWindows
               ? PowerShellSearchTool(sandbox: sandbox)
               : UnixSearchTool(sandbox: sandbox),
@@ -184,6 +193,8 @@ class DI {
           WebSearchTool(),
           SkillTool(skillRegistry),
         ]);
+      }
+
       return toolRegistry;
     });
 
