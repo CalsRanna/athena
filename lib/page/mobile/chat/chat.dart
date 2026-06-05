@@ -282,11 +282,17 @@ class _MobileChatPageState extends State<MobileChatPage> {
       var input = _buildInput(chat);
       return AthenaScaffold(
         appBar: AthenaAppBar(action: actionButton, title: titleWidget),
-        body: Column(
-          children: [
-            Expanded(child: content),
-            input,
-          ],
+        body: Builder(
+          builder: (context) {
+            final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+            return Column(
+              children: [
+                Expanded(child: content),
+                input,
+                SizedBox(height: bottomInset),
+              ],
+            );
+          },
         ),
       );
     });

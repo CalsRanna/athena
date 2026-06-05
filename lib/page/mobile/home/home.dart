@@ -372,6 +372,8 @@ class _ShortcutListView extends StatelessWidget {
       'Translation' => MobileTranslationRoute(),
       'Summary' => MobileSummaryRoute(),
       'TRPG' => MobileTRPGRoute(),
+      'Food' => MobileChatRoute(),
+      'Code' => MobileChatRoute(),
       _ => null,
     };
     if (route != null) route.push(context);
