@@ -10,6 +10,7 @@ import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 typedef PermissionCallback = Future<bool> Function(String toolName, String description);
@@ -193,7 +194,7 @@ class AgentService {
             ? await tool.execute(args)
             : 'Error: Unknown tool "${tc.function.name}"';
 
-        var processedResult = _smartTruncate(result);
+        var processedResult = smartTruncate(result);
         if (auxiliaryModel != null && auxiliaryModelProvider != null) {
           if (processedResult.length > 4000) {
             final summary = await _summarizeToolResult(
@@ -235,7 +236,8 @@ class AgentService {
     }
   }
 
-  String _smartTruncate(String result, {int threshold = 12000}) {
+  @visibleForTesting
+  String smartTruncate(String result, {int threshold = 12000}) {
     if (result.length <= threshold) return result;
     final headLen = (threshold * 0.6).round();
     final tailLen = threshold - headLen;

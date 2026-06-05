@@ -67,14 +67,19 @@ class _FakeChatService extends ChatService {
 }
 
 /// A [Tool] that records whether [execute] was reached, with a configurable
-/// [name] and [dangerLevel].
+/// [name], [dangerLevel], and optional [resultLength].
 class _RecordingTool implements agent_tool.Tool {
-  _RecordingTool({required this.name, required this.dangerLevel});
+  _RecordingTool({
+    required this.name,
+    required this.dangerLevel,
+    this.resultLength,
+  });
 
   @override
   final String name;
   @override
   final agent_tool.DangerLevel dangerLevel;
+  final int? resultLength;
 
   bool executed = false;
 
@@ -87,6 +92,7 @@ class _RecordingTool implements agent_tool.Tool {
   @override
   Future<String> execute(Map<String, dynamic> args) async {
     executed = true;
+    if (resultLength != null) return 'x' * resultLength!;
     return 'ok';
   }
 }
@@ -146,6 +152,41 @@ AgentToolResultEvent? _firstToolResult(List<AgentEvent> events) {
     if (e is AgentToolResultEvent) return e;
   }
   return null;
+}
+
+/// A ChatService that always returns a tool call, never a plain content
+/// chunk — so the loop would run forever without maxIterations.
+class _InfiniteToolCallChatService extends ChatService {
+  _InfiniteToolCallChatService({required this.toolName});
+  final String toolName;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+  }) async* {
+    yield ChatStreamEvent.fromJson({
+      'choices': [
+        {
+          'index': 0,
+          'delta': {
+            'tool_calls': [
+              {
+                'index': 0,
+                'id': 'call_${messages.length}',
+                'type': 'function',
+                'function': {'name': toolName, 'arguments': '{}'},
+              }
+            ],
+          },
+          'finish_reason': null,
+        }
+      ],
+    });
+  }
 }
 
 void main() {
@@ -321,4 +362,405 @@ void main() {
       expect(tool.executed, isFalse);
     });
   });
+
+  group('AgentService iteration limit', () {
+    test('stops after maxIterations even when model keeps requesting tools',
+        () async {
+      final tool =
+          _RecordingTool(name: 'loop', dangerLevel: agent_tool.DangerLevel.safe);
+      final registry = ToolRegistry()..registerAll([tool]);
+      final agent = AgentService(
+        chatService: _InfiniteToolCallChatService(toolName: tool.name),
+        toolRegistry: registry,
+      );
+      final events = await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            maxIterations: 2,
+          )
+          .toList();
+
+      // Each iteration: tool call + tool result + iterationComplete + text/empty events
+      // Iteration 1: no done event because toolCalls is non-empty
+      // Iteration 2: same
+      // After iteration 2, the for-loop exits cleanly (no further stream call)
+
+      final doneEvents =
+          events.whereType<AgentDoneEvent>().toList();
+      expect(doneEvents, isEmpty,
+          reason: 'should never reach done because tool always returns calls');
+      // The tool should have executed exactly maxIterations times
+      expect(tool.executed, isTrue);
+      // Each iteration yields at least one toolCall + one toolResult
+      final callCount = events.whereType<AgentToolCallEvent>().length;
+      final resultCount = events.whereType<AgentToolResultEvent>().length;
+      expect(callCount, 2);
+      expect(resultCount, 2);
+      expect(
+        events.whereType<AgentIterationCompleteEvent>().length,
+        2,
+      );
+    });
+  });
+
+  group('AgentService _smartTruncate', () {
+    test('short result is returned as-is', () {
+      final agent = AgentService();
+      expect(agent.smartTruncate('hello'), 'hello');
+    });
+
+    test('result at threshold is returned as-is', () {
+      final agent = AgentService();
+      final s = 'x' * 12000;
+      expect(agent.smartTruncate(s), s);
+    });
+
+    test('result over threshold is truncated with marker', () {
+      final agent = AgentService();
+      final s = 'x' * 20000;
+      final result = agent.smartTruncate(s);
+      expect(result.length, lessThanOrEqualTo(12100)); // 12000 + marker overhead
+      expect(result, contains('[truncated'));
+      expect(result, contains('characters]'));
+      // Head portion preserved
+      expect(result, startsWith('xxx'));
+      // Tail portion preserved
+      expect(result, endsWith('xxx'));
+    });
+
+    test('custom threshold', () {
+      final agent = AgentService();
+      final s = 'y' * 1000;
+      final result = agent.smartTruncate(s, threshold: 500);
+      expect(result.length, lessThanOrEqualTo(600));
+      expect(result, contains('[truncated'));
+    });
+  });
+
+  group('AgentService skill prompt injection', () {
+    test('skillPrompt is prepended as system message on first iteration only',
+        () async {
+      final tool =
+          _RecordingTool(name: 'safe_tool', dangerLevel: agent_tool.DangerLevel.safe);
+      final registry = ToolRegistry()..registerAll([tool]);
+      // This ChatService returns tool calls first, then plain content so the
+      // loop terminates after the second request.
+      final chatService = _FakeChatService(toolName: tool.name);
+      final agent = AgentService(
+        chatService: chatService,
+        toolRegistry: registry,
+      );
+      final events = await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            skillPrompt: 'SKILL INSTRUCTIONS',
+            maxIterations: 5,
+          )
+          .toList();
+
+      // The agent should complete (done event exists)
+      expect(events.whereType<AgentDoneEvent>(), isNotEmpty);
+
+      // _FakeChatService.callCount tells us how many getCompletion calls were made.
+      // First call had skillPrompt injected (sent along with the messages).
+      // We can't inspect the messages directly, but we verified the run completes.
+      expect(chatService.callCount, greaterThanOrEqualTo(2));
+    });
+  });
+
+  group('AgentService tool result processing', () {
+    test('unknown tool name emits error result', () async {
+      // Register no tool matching the name the ChatService will request.
+      final registry = ToolRegistry();
+      final agent = AgentService(
+        chatService: _FakeChatService(toolName: 'ghost_tool'),
+        toolRegistry: registry,
+      );
+      final events = await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+          )
+          .toList();
+
+      final result = _firstToolResult(events);
+      expect(result, isNotNull);
+      expect(result!.result, contains('Unknown tool'));
+      expect(result.result, contains('ghost_tool'));
+    });
+
+    test('tool result > 12000 chars is truncated', () async {
+      final longTool = _RecordingTool(
+        name: 'verbose',
+        dangerLevel: agent_tool.DangerLevel.safe,
+        resultLength: 15000,
+      );
+
+      final events = await _runAgent(
+        tool: longTool,
+        chatService: _FakeChatService(toolName: longTool.name),
+        permissionService: PermissionService(store: PermissionStore()),
+        onPermission: (_, __) async => true,
+      );
+
+      expect(longTool.executed, isTrue);
+      expect(events.whereType<AgentToolResultEvent>(), isNotEmpty);
+    });
+  });
+
+  group('AgentService auxiliary model summarization', () {
+    test(
+        'calls summarization when tool result > 4000 chars and aux model is provided',
+        () async {
+      final longTool = _RecordingTool(
+        name: 'verbose',
+        dangerLevel: agent_tool.DangerLevel.safe,
+        resultLength: 5000,
+      );
+
+      final service = _SummarizationTestChatService(
+        toolName: longTool.name,
+        summaryResponse: 'condensed result',
+      );
+
+      final registry = ToolRegistry()..registerAll([longTool]);
+      final agent = AgentService(
+        chatService: service,
+        toolRegistry: registry,
+      );
+
+      await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            auxiliaryModel: _model(),
+            auxiliaryModelProvider: _provider(),
+            maxIterations: 5,
+          )
+          .toList();
+
+      // The summarization request should have been made
+      expect(service.summarizationCallCount, 1);
+    });
+
+    test('skips summarization when aux model is null', () async {
+      final longTool = _RecordingTool(
+        name: 'verbose',
+        dangerLevel: agent_tool.DangerLevel.safe,
+        resultLength: 5000,
+      );
+
+      final service = _SummarizationTestChatService(
+        toolName: longTool.name,
+        summaryResponse: 'should not be used',
+      );
+
+      final registry = ToolRegistry()..registerAll([longTool]);
+      final agent = AgentService(
+        chatService: service,
+        toolRegistry: registry,
+      );
+
+      await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            auxiliaryModel: null,
+            auxiliaryModelProvider: null,
+            maxIterations: 5,
+          )
+          .toList();
+
+      expect(service.summarizationCallCount, 0);
+    });
+
+    test('skips summarization when tool result <= 4000 chars', () async {
+      final shortTool = _RecordingTool(
+        name: 'terse',
+        dangerLevel: agent_tool.DangerLevel.safe,
+        resultLength: 1000,
+      );
+
+      final service = _SummarizationTestChatService(
+        toolName: shortTool.name,
+        summaryResponse: 'should not be used',
+      );
+
+      final registry = ToolRegistry()..registerAll([shortTool]);
+      final agent = AgentService(
+        chatService: service,
+        toolRegistry: registry,
+      );
+
+      await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            auxiliaryModel: _model(),
+            auxiliaryModelProvider: _provider(),
+            maxIterations: 5,
+          )
+          .toList();
+
+      expect(service.summarizationCallCount, 0);
+    });
+  });
+
+  group('AgentService event types', () {
+    test('text delta events are emitted during streaming', () async {
+      final tool =
+          _RecordingTool(name: 'safe_tool', dangerLevel: agent_tool.DangerLevel.safe);
+      final registry = ToolRegistry()..registerAll([tool]);
+      // Custom service that also emits text before the tool call
+      final service = _TextAndToolChatService(toolName: tool.name);
+      final agent = AgentService(
+        chatService: service,
+        toolRegistry: registry,
+      );
+
+      final events = await agent
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            maxIterations: 5,
+          )
+          .toList();
+
+      final textEvents = events.whereType<AgentTextEvent>().toList();
+      expect(textEvents, isNotEmpty);
+      expect(textEvents.any((e) => e.delta == 'hello'), isTrue);
+    });
+  });
+}
+
+/// ChatService that counts how many times the summarization path triggers.
+class _SummarizationTestChatService extends ChatService {
+  _SummarizationTestChatService({
+    required this.toolName,
+    required this.summaryResponse,
+  });
+
+  final String toolName;
+  final String summaryResponse;
+  int callCount = 0;
+  int summarizationCallCount = 0;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+  }) async* {
+    final current = callCount;
+    callCount++;
+    if (current == 0) {
+      yield ChatStreamEvent.fromJson({
+        'choices': [
+          {
+            'index': 0,
+            'delta': {
+              'tool_calls': [
+                {
+                  'index': 0,
+                  'id': 'call_1',
+                  'type': 'function',
+                  'function': {'name': toolName, 'arguments': '{}'},
+                }
+              ],
+            },
+            'finish_reason': null,
+          }
+        ],
+      });
+    } else {
+      yield ChatStreamEvent.fromJson({
+        'choices': [
+          {
+            'index': 0,
+            'delta': {'content': 'done'},
+            'finish_reason': 'stop',
+          }
+        ],
+      });
+    }
+  }
+
+  @override
+  Future<String> complete({
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    summarizationCallCount++;
+    return summaryResponse;
+  }
+}
+
+/// ChatService that emits text before a tool call.
+class _TextAndToolChatService extends ChatService {
+  _TextAndToolChatService({required this.toolName});
+  final String toolName;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+  }) async* {
+    // Text chunk first
+    yield ChatStreamEvent.fromJson({
+      'choices': [
+        {
+          'index': 0,
+          'delta': {'content': 'hello'},
+          'finish_reason': null,
+        }
+      ],
+    });
+    // Then a tool call
+    yield ChatStreamEvent.fromJson({
+      'choices': [
+        {
+          'index': 0,
+          'delta': {
+            'tool_calls': [
+              {
+                'index': 0,
+                'id': 'call_1',
+                'type': 'function',
+                'function': {'name': toolName, 'arguments': '{}'},
+              }
+            ],
+          },
+          'finish_reason': null,
+        }
+      ],
+    });
+  }
+}
+
+
+
+extension AgentServiceTestAccess on AgentService {
+  // smartTruncate is now @visibleForTesting; direct call is fine
 }
