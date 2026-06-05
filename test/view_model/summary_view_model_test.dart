@@ -2,9 +2,12 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/summary_service.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/summary_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 
 // 这些测试针对审计 C7：createSummary 之前使用 DateTime.now().millisecondsSinceEpoch
 // 作为 int id，同毫秒创建会碰撞，导致流式写回写错记录。修复后 id 改为 String UUID。
@@ -45,6 +48,21 @@ class _FakeModelRepository extends ModelRepository {
 }
 
 void main() {
+  setUp(() {
+    final getIt = GetIt.instance;
+    getIt.registerSingleton<SettingViewModel>(
+      SettingViewModel(
+        modelRepository: _FakeModelRepository(),
+        providerRepository: _FakeProviderRepository(),
+        sentinelRepository: SentinelRepository(),
+      ),
+    );
+  });
+
+  tearDown(() async {
+    await GetIt.instance.reset();
+  });
+
   SummaryViewModel buildViewModel() => SummaryViewModel(
         service: SummaryService(),
         modelRepository: _FakeModelRepository(),

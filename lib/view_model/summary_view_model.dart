@@ -15,16 +15,20 @@ class SummaryViewModel {
   late final SummaryService _service;
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
+  late final SettingViewModel _settingViewModel;
 
   SummaryViewModel({
     SummaryService? service,
     ModelRepository? modelRepository,
     ProviderRepository? providerRepository,
+    SettingViewModel? settingViewModel,
   }) {
     _service = service ?? GetIt.instance<SummaryService>();
     _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>();
     _providerRepository =
         providerRepository ?? GetIt.instance<ProviderRepository>();
+    _settingViewModel =
+        settingViewModel ?? GetIt.instance<SettingViewModel>();
   }
 
   // Signals 状态
@@ -94,10 +98,9 @@ class SummaryViewModel {
     summary.value = '';
 
     try {
-      var settingViewModel = GetIt.instance<SettingViewModel>();
       ModelEntity? model;
       ProviderEntity? provider;
-      var shortModelId = settingViewModel.shortModelId.value;
+      var shortModelId = _settingViewModel.shortModelId.value;
       if (shortModelId > 0) {
         model = await _modelRepository.getModelById(shortModelId);
         if (model != null) {

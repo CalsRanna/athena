@@ -7,7 +7,11 @@ import 'package:athena/repository/message_repository.dart';
 import 'package:get_it/get_it.dart';
 import 'package:openai_dart/openai_dart.dart';
 
-/// 消息格式转换与流式处理服务
+/// 消息格式转换与上下文组装。
+///
+/// 职责：将 [MessageEntity] 列表转换为 OpenAI [ChatMessage] 列表
+/// （含 system prompt 注入、上下文截断、tool_calls/tool_results 展开、
+/// 图片 ContentPart 处理）。不涉及网络或持久化。
 class ChatMessageService {
   final MessageRepository _messageRepository;
 

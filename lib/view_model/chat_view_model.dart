@@ -44,6 +44,11 @@ class ChatViewModel {
   final MessageRepository _messageRepository;
   final ModelRepository _modelRepository;
   final SentinelRepository _sentinelRepository;
+  final SettingViewModel _settingViewModel;
+  final ModelViewModel _modelViewModel;
+  final SentinelViewModel _sentinelViewModel;
+  final PermissionService _permissionService;
+  final SkillRegistry _skillRegistry;
 
   CancelToken? _activeCancelToken;
 
@@ -77,6 +82,11 @@ class ChatViewModel {
     MessageRepository? messageRepository,
     ModelRepository? modelRepository,
     SentinelRepository? sentinelRepository,
+    SettingViewModel? settingViewModel,
+    ModelViewModel? modelViewModel,
+    SentinelViewModel? sentinelViewModel,
+    PermissionService? permissionService,
+    SkillRegistry? skillRegistry,
   })  : _manage = manageService ?? GetIt.instance<ChatManageService>(),
         _support = supportService ?? GetIt.instance<ChatSupportService>(),
         _chatMessageService =
@@ -87,7 +97,15 @@ class ChatViewModel {
             messageRepository ?? GetIt.instance<MessageRepository>(),
         _modelRepository = modelRepository ?? GetIt.instance<ModelRepository>(),
         _sentinelRepository =
-            sentinelRepository ?? GetIt.instance<SentinelRepository>();
+            sentinelRepository ?? GetIt.instance<SentinelRepository>(),
+        _settingViewModel =
+            settingViewModel ?? GetIt.instance<SettingViewModel>(),
+        _modelViewModel = modelViewModel ?? GetIt.instance<ModelViewModel>(),
+        _sentinelViewModel =
+            sentinelViewModel ?? GetIt.instance<SentinelViewModel>(),
+        _permissionService =
+            permissionService ?? GetIt.instance<PermissionService>(),
+        _skillRegistry = skillRegistry ?? GetIt.instance<SkillRegistry>();
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -197,18 +215,12 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      // 优先使用用户设置的默认模型，未设置则回退到第一个可用模型
-      ModelEntity? model;
-      var settingViewModel = GetIt.instance<SettingViewModel>();
-      model = settingViewModel.chatModel.value;
-      if (model == null || model.id == null || model.id! <= 0) {
-        var modelViewModel = GetIt.instance<ModelViewModel>();
-        await modelViewModel.loadEnabledModels();
-        if (modelViewModel.enabledModels.value.isEmpty) {
-          error.value = 'No enabled models found';
-          return null;
-        }
-        model = modelViewModel.enabledModels.value.first;
+      final model = await _modelViewModel.resolveDefaultModel(
+        _settingViewModel.chatModelId.value,
+      );
+      if (model == null) {
+        error.value = 'No enabled models found';
+        return null;
       }
 
       var provider = await _support.getProviderForModel(
@@ -541,29 +553,23 @@ class ChatViewModel {
   /// 一次会话内最多提示一次；用户信任后激活待审 Skill。
   Future<void> maybePromptProjectSkillTrust() async {
     if (_skillTrustPrompted) return;
-    final registry = GetIt.instance<SkillRegistry>();
-    if (!registry.hasPendingProjectSkills) return;
+    if (!_skillRegistry.hasPendingProjectSkills) return;
     _skillTrustPrompted = true;
-    final dir = registry.pendingProjectDir;
+    final dir = _skillRegistry.pendingProjectDir;
     if (dir == null) return;
-    final names = registry.pendingProjectSkills.map((s) => s.name).toList();
+    final names = _skillRegistry.pendingProjectSkills.map((s) => s.name).toList();
     final trusted = await showSkillTrustDialog(projectDir: dir, skillNames: names);
     if (trusted) {
-      await registry.trustCurrentProject();
+      await _skillRegistry.trustCurrentProject();
     }
   }
 
-  /// 发送消息(基础流式实现)
+  /// 发送消息（完整 Agent 循环）
   ///
-  /// 这是一个简化版本,实现了核心的流式聊天功能:
-  /// 1. 保存用户消息
-  /// 2. 获取历史上下文
-  /// 3. 调用 AI 获取流式响应
-  /// 4. 实时更新消息内容
-  ///
-  /// 待实现功能:
-  /// - MCP 工具调用 (需要 MCP 架构完善)
-  /// - 错误重试机制
+  /// 1. 保存用户消息并触发自动命名
+  /// 2. 构建消息上下文（system prompt + 历史截断 + 图片处理）
+  /// 3. 启动 Agent 推理-工具调用循环，流式更新 UI
+  /// 4. 取消/错误时保留已生成内容并标记
   Future<void> sendMessage(
     MessageEntity message, {
     required ChatEntity chat,
@@ -587,21 +593,18 @@ class ChatViewModel {
       assistantMessage = await _manage.appendAssistantPlaceholder(chat.id!);
       messages.value = [...messages.value, assistantMessage];
 
-      final settingVM = GetIt.instance<SettingViewModel>();
-      final permissionService = GetIt.instance<PermissionService>();
-
       final agentStream = _agentService.run(
         chat: chat,
         provider: ctx.provider,
         model: ctx.model,
         baseMessages: ctx.wrappedMessages,
-        maxIterations: settingVM.maxAgentIterations.value,
-        auxiliaryModel: settingVM.auxiliaryModel.value,
-        auxiliaryModelProvider: settingVM.auxiliaryModelProvider.value,
-        permissionService: permissionService,
+        maxIterations: _settingViewModel.maxAgentIterations.value,
+        auxiliaryModel: _settingViewModel.auxiliaryModel.value,
+        auxiliaryModelProvider: _settingViewModel.auxiliaryModelProvider.value,
+        permissionService: _permissionService,
         cancelToken: cancelToken,
         onPermission: (toolName, arguments) =>
-            _askPermission(toolName, arguments, permissionService, cancelToken),
+            _askPermission(toolName, arguments, _permissionService, cancelToken),
       );
 
       assistantMessage = await _consumeAgentStream(
@@ -791,22 +794,19 @@ class ChatViewModel {
   }
 
   Future<SentinelEntity?> _getDefaultSentinel() async {
-    final sentinelViewModel = GetIt.instance<SentinelViewModel>();
-    if (sentinelViewModel.sentinels.value.isEmpty) {
-      await sentinelViewModel.getSentinels();
+    if (_sentinelViewModel.sentinels.value.isEmpty) {
+      await _sentinelViewModel.getSentinels();
     }
-    return sentinelViewModel.defaultSentinel.value;
+    return _sentinelViewModel.defaultSentinel.value;
   }
 
   Future<void> _syncDraftDefaults() async {
-    final settingViewModel = GetIt.instance<SettingViewModel>();
-    currentModel.value = settingViewModel.chatModel.value;
-    currentProvider.value = settingViewModel.chatModelProvider.value;
+    currentModel.value = _settingViewModel.chatModel.value;
+    currentProvider.value = _settingViewModel.chatModelProvider.value;
 
     if (currentModel.value == null) {
-      final modelViewModel = GetIt.instance<ModelViewModel>();
-      await modelViewModel.loadEnabledModels();
-      currentModel.value = modelViewModel.enabledModels.value.firstOrNull;
+      await _modelViewModel.loadEnabledModels();
+      currentModel.value = _modelViewModel.enabledModels.value.firstOrNull;
       if (currentModel.value != null) {
         currentProvider.value = await _support.getProviderForModel(
           currentModel.value!.providerId,

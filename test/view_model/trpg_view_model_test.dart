@@ -2,11 +2,14 @@ import 'package:athena/entity/trpg_game_entity.dart';
 import 'package:athena/entity/trpg_message_entity.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
 import 'package:athena/service/trpg_service.dart';
+import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/trpg_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 
 // 这些测试针对审计 C8：sendPlayerAction 缺少重入保护，快速二次调用会启动
 // 两个并发 DM 流，覆盖状态并重复落库。修复后第一个语句即 isStreaming 守卫，
@@ -31,6 +34,15 @@ void main() {
   test('C8: 已有流进行中时 sendPlayerAction 立即短路，无副作用', () async {
     final messageRepository = _RecordingMessageRepository();
     // 显式注入全部依赖，避免构造时经 GetIt 解析。
+    final getIt = GetIt.instance;
+    getIt.registerSingleton<SettingViewModel>(
+      SettingViewModel(
+        modelRepository: ModelRepository(),
+        providerRepository: ProviderRepository(),
+        sentinelRepository: SentinelRepository(),
+      ),
+    );
+
     final vm = TRPGViewModel(
       gameRepository: TRPGGameRepository(),
       messageRepository: messageRepository,
@@ -38,6 +50,10 @@ void main() {
       providerRepository: ProviderRepository(),
       service: TRPGService(),
     );
+
+    addTearDown(() async {
+      await GetIt.instance.reset();
+    });
 
     // 设置一个非空当前游戏：这样若缺少守卫，sendPlayerAction 会越过
     // game==null 检查并创建玩家消息（createCount 变为 1）。有守卫时则在

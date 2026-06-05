@@ -17,17 +17,31 @@ typedef OpenAIClientFactory = OpenAIClient Function({
   required String? baseUrl,
 });
 
-/// ChatService 负责与 AI 提供商进行聊天相关的网络请求
+/// 与 AI 提供商通信的网络层。
+///
+/// 职责：封装 [OpenAIClient] 生命周期（创建、请求、关闭）、
+/// 重试配置、流式/非流式完成请求。
+/// 不涉及消息格式转换（→ [ChatMessageService]）、
+/// 会话/消息持久化（→ [ChatManageService]）、
+/// 或 UI 辅助操作（→ [ChatSupportService]）。
 class ChatService {
-  RetryConfig retryConfig = const RetryConfig();
-
   /// 用于创建 [OpenAIClient] 的工厂，默认指向真实实现。
   ///
   /// 通过可选构造参数注入，便于测试断言客户端在使用完毕后被关闭。
   final OpenAIClientFactory _clientFactory;
 
-  ChatService({@visibleForTesting OpenAIClientFactory? clientFactory})
-      : _clientFactory = clientFactory ?? _defaultClientFactory;
+  RetryConfig _retryConfig;
+  RetryConfig get retryConfig => _retryConfig;
+
+  ChatService({
+    RetryConfig retryConfig = const RetryConfig(),
+    @visibleForTesting OpenAIClientFactory? clientFactory,
+  })  : _retryConfig = retryConfig,
+      _clientFactory = clientFactory ?? _defaultClientFactory;
+
+  void updateRetryConfig(RetryConfig config) {
+    _retryConfig = config;
+  }
 
   static OpenAIClient _defaultClientFactory({
     required String apiKey,

@@ -28,7 +28,6 @@ class DesktopSettingSentinelPage extends StatefulWidget {
 class _DesktopSettingSentinelPageState
     extends State<DesktopSettingSentinelPage> {
   int index = 0;
-  bool loading = false;
   final nameController = TextEditingController();
   final avatarController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -89,14 +88,11 @@ class _DesktopSettingSentinelPageState
   }
 
   void generateSentinel() async {
-    if (loading) return;
+    if (viewModel.isGenerating.value) return;
     if (promptController.text.trim().isEmpty) {
       AthenaDialog.warning('Prompt is required');
       return;
     }
-    setState(() {
-      loading = true;
-    });
     try {
       var modelId = await _getModelId();
       if (modelId == null) return;
@@ -112,13 +108,7 @@ class _DesktopSettingSentinelPageState
       } else if (generatedSentinel == null) {
         AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
-      setState(() {
-        loading = false;
-      });
     } catch (error) {
-      setState(() {
-        loading = false;
-      });
       AthenaDialog.error(error.toString());
     }
   }
@@ -167,7 +157,7 @@ class _DesktopSettingSentinelPageState
       strokeWidth: 2,
     );
     var generateChildren = [
-      if (loading) SizedBox(height: 16, width: 16, child: indicator),
+      if (viewModel.isGenerating.value) SizedBox(height: 16, width: 16, child: indicator),
       AthenaTextButton(text: 'Generate', onTap: generateSentinel),
     ];
     var generateButton = Row(
@@ -295,18 +285,15 @@ class _DesktopSettingSentinelPageState
   }
 
   Future<int?> _getModelId() async {
-    var settingViewModel = GetIt.instance<SettingViewModel>();
-    var modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
-    if (modelId > 0) return modelId;
-    var modelViewModel = GetIt.instance<ModelViewModel>();
-    await modelViewModel.loadEnabledModels();
-    if (modelViewModel.enabledModels.value.isEmpty) {
-      setState(() {
-        loading = false;
-      });
+    final settingViewModel = GetIt.instance<SettingViewModel>();
+    final modelViewModel = GetIt.instance<ModelViewModel>();
+    final model = await modelViewModel.resolveDefaultModel(
+      settingViewModel.sentinelMetadataGenerationModelId.value,
+    );
+    if (model == null) {
       AthenaDialog.warning('No enabled models found');
       return null;
     }
-    return modelViewModel.enabledModels.value.first.id!;
+    return model.id!;
   }
 }

@@ -102,10 +102,13 @@ void main() {
       return http.Response(_completionBody('done'), 200,
           headers: {'content-type': 'application/json'});
     });
-    final service = ChatService(clientFactory: ({required apiKey, baseUrl}) {
-      observed = _ObservableClient(mock);
-      return observed;
-    })..retryConfig = fastRetry;
+    final service = ChatService(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _ObservableClient(mock);
+        return observed;
+      },
+    );
 
     final result = await service.complete(
       messages: [ChatMessage.user('hi')],
@@ -130,10 +133,13 @@ void main() {
         headers: {'content-type': 'application/json'},
       );
     });
-    final service = ChatService(clientFactory: ({required apiKey, baseUrl}) {
-      observed = _ObservableClient(mock);
-      return observed;
-    })..retryConfig = fastRetry;
+    final service = ChatService(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _ObservableClient(mock);
+        return observed;
+      },
+    );
 
     await expectLater(
       service.complete(
@@ -159,10 +165,13 @@ void main() {
         headers: {'content-type': 'text/event-stream'},
       );
     });
-    final service = ChatService(clientFactory: ({required apiKey, baseUrl}) {
-      observed = _ObservableClient(mock);
-      return observed;
-    })..retryConfig = fastRetry;
+    final service = ChatService(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _ObservableClient(mock);
+        return observed;
+      },
+    );
 
     final events = await service
         .getCompletion(
@@ -191,10 +200,13 @@ void main() {
         headers: {'content-type': 'text/event-stream'},
       );
     });
-    final service = ChatService(clientFactory: ({required apiKey, baseUrl}) {
-      observed = _ObservableClient(mock);
-      return observed;
-    })..retryConfig = fastRetry;
+    final service = ChatService(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _ObservableClient(mock);
+        return observed;
+      },
+    );
 
     final firstChunk = Completer<void>();
     late StreamSubscription sub;

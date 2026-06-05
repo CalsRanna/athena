@@ -12,6 +12,10 @@ import 'package:athena/service/chat_service.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// 会话的 UI 辅助操作。
+///
+/// 职责：重命名（AI 流 + 手动）、模型/哨兵/上下文/温度等字段更新、
+/// 图片保存、消息折叠。是 ViewModel 与 Repository/网络层之间的薄胶水。
 class ChatSupportService {
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
