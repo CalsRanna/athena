@@ -9,6 +9,7 @@ import 'package:athena/page/mobile/chat/component/user_input.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
+import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
@@ -37,6 +38,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   late final viewModel = GetIt.instance<ChatViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
   late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  late final providerViewModel = GetIt.instance<ProviderViewModel>();
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +164,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
   void openBottomSheet(ChatEntity? chat) {
     var mobileChatBottomSheet = MobileChatBottomSheet(
       chat: chat,
+      chatViewModel: viewModel,
+      sentinelViewModel: sentinelViewModel,
+      modelViewModel: modelViewModel,
+      providerViewModel: providerViewModel,
       onContextChanged: (value) => updateContext(value),
       onModelChanged: (model) => updateModel(model),
       onSentinelChanged: (sentinel) => updateSentinel(sentinel),

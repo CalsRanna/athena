@@ -12,12 +12,16 @@ import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:get_it/get_it.dart';
+
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileChatBottomSheet extends StatefulWidget {
   final ChatEntity? chat;
+  final ChatViewModel chatViewModel;
+  final SentinelViewModel sentinelViewModel;
+  final ModelViewModel modelViewModel;
+  final ProviderViewModel providerViewModel;
   final void Function(int)? onContextChanged;
   final void Function(ModelEntity)? onModelChanged;
   final void Function(SentinelEntity)? onSentinelChanged;
@@ -25,6 +29,10 @@ class MobileChatBottomSheet extends StatefulWidget {
   const MobileChatBottomSheet({
     super.key,
     this.chat,
+    required this.chatViewModel,
+    required this.sentinelViewModel,
+    required this.modelViewModel,
+    required this.providerViewModel,
     this.onContextChanged,
     this.onModelChanged,
     this.onSentinelChanged,
@@ -36,10 +44,10 @@ class MobileChatBottomSheet extends StatefulWidget {
 }
 
 class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
-  late final chatViewModel = GetIt.instance<ChatViewModel>();
-  late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
-  late final modelViewModel = GetIt.instance<ModelViewModel>();
-  late final providerViewModel = GetIt.instance<ProviderViewModel>();
+  ChatViewModel get chatViewModel => widget.chatViewModel;
+  SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
+  ModelViewModel get modelViewModel => widget.modelViewModel;
+  ProviderViewModel get providerViewModel => widget.providerViewModel;
 
   late int sentinelId;
   late int modelId;
