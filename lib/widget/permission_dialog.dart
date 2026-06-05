@@ -272,9 +272,22 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     children.add(_buildDenyButton());
     children.add(SizedBox(height: MediaQuery.paddingOf(context).bottom));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    final isDangerous = const {
+      'bash', 'powershell', 'file_write', 'file_delete',
+    }.contains(widget.toolName);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: ColorUtil.FF282F32,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: isDangerous
+            ? Border(top: BorderSide(color: Colors.red.shade700, width: 2))
+            : null,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+      ),
     );
   }
 
