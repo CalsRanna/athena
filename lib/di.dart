@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:athena/util/platform_util.dart';
 
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
@@ -64,24 +64,28 @@ class DI {
     // Services
     getIt.registerLazySingleton(() => ChatService());
 
-    getIt.registerLazySingleton(() => ChatMessageService(
-          messageRepository: getIt<MessageRepository>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ChatMessageService(messageRepository: getIt<MessageRepository>()),
+    );
 
-    getIt.registerLazySingleton(() => ChatManageService(
-          chatRepository: getIt<ChatRepository>(),
-          messageRepository: getIt<MessageRepository>(),
-          modelRepository: getIt<ModelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          sentinelRepository: getIt<SentinelRepository>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ChatManageService(
+        chatRepository: getIt<ChatRepository>(),
+        messageRepository: getIt<MessageRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => ChatSupportService(
-          chatRepository: getIt<ChatRepository>(),
-          messageRepository: getIt<MessageRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          chatService: getIt<ChatService>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ChatSupportService(
+        chatRepository: getIt<ChatRepository>(),
+        messageRepository: getIt<MessageRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        chatService: getIt<ChatService>(),
+      ),
+    );
 
     getIt.registerLazySingleton(() => MemoryService());
     getIt.registerLazySingleton(() => SentinelService());
@@ -90,70 +94,90 @@ class DI {
     getIt.registerLazySingleton(() => TRPGService());
 
     // ViewModels
-    getIt.registerLazySingleton(() => ModelViewModel(
-          repository: getIt<ModelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          chatService: getIt<ChatService>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ModelViewModel(
+        repository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        chatService: getIt<ChatService>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => SentinelViewModel(
-          sentinelRepository: getIt<SentinelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          modelRepository: getIt<ModelRepository>(),
-          sentinelService: getIt<SentinelService>(),
-        ));
+    getIt.registerLazySingleton(
+      () => SentinelViewModel(
+        sentinelRepository: getIt<SentinelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        sentinelService: getIt<SentinelService>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => SettingViewModel(
-          modelRepository: getIt<ModelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          sentinelRepository: getIt<SentinelRepository>(),
-          chatRepository: getIt<ChatRepository>(),
-          chatService: getIt<ChatService>(),
-        ));
+    getIt.registerLazySingleton(
+      () => SettingViewModel(
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
+        chatRepository: getIt<ChatRepository>(),
+        chatService: getIt<ChatService>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => ProviderViewModel(
-          repository: getIt<ProviderRepository>(),
-          modelViewModel: getIt<ModelViewModel>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ProviderViewModel(
+        repository: getIt<ProviderRepository>(),
+        modelViewModel: getIt<ModelViewModel>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => SummaryViewModel(
-          service: getIt<SummaryService>(),
-          modelRepository: getIt<ModelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          settingViewModel: getIt<SettingViewModel>(),
-        ));
+    getIt.registerLazySingleton(
+      () => SummaryViewModel(
+        service: getIt<SummaryService>(),
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        settingViewModel: getIt<SettingViewModel>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => TranslationViewModel(
-          service: getIt<TranslationService>(),
-          providerRepository: getIt<ProviderRepository>(),
-          modelRepository: getIt<ModelRepository>(),
-          settingViewModel: getIt<SettingViewModel>(),
-        ));
+    getIt.registerLazySingleton(
+      () => TranslationViewModel(
+        service: getIt<TranslationService>(),
+        providerRepository: getIt<ProviderRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        settingViewModel: getIt<SettingViewModel>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => TRPGViewModel(
-          gameRepository: getIt<TRPGGameRepository>(),
-          messageRepository: getIt<TRPGMessageRepository>(),
-          modelRepository: getIt<ModelRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          service: getIt<TRPGService>(),
-          settingViewModel: getIt<SettingViewModel>(),
-        ));
+    getIt.registerLazySingleton(
+      () => TRPGViewModel(
+        gameRepository: getIt<TRPGGameRepository>(),
+        messageRepository: getIt<TRPGMessageRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        service: getIt<TRPGService>(),
+        settingViewModel: getIt<SettingViewModel>(),
+      ),
+    );
 
-    getIt.registerLazySingleton(() => MemoryViewModel(
-          memoryRepository: getIt<MemoryRepository>(),
-          chatRepository: getIt<ChatRepository>(),
-          messageRepository: getIt<MessageRepository>(),
-          providerRepository: getIt<ProviderRepository>(),
-          memoryService: getIt<MemoryService>(),
-        ));
+    getIt.registerLazySingleton(
+      () => MemoryViewModel(
+        memoryRepository: getIt<MemoryRepository>(),
+        chatRepository: getIt<ChatRepository>(),
+        messageRepository: getIt<MessageRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        memoryService: getIt<MemoryService>(),
+      ),
+    );
 
     // Agent
-    getIt.registerLazySingleton(() => PathSandbox(dataDirectory: dataDirectory));
+    getIt.registerLazySingleton(
+      () => PathSandbox(dataDirectory: dataDirectory),
+    );
     getIt.registerLazySingleton(() => PermissionStore());
-    getIt.registerLazySingleton(() => PermissionService(
-          store: getIt<PermissionStore>(),
-          sandbox: getIt<PathSandbox>(),
-        ));
+    getIt.registerLazySingleton(
+      () => PermissionService(
+        store: getIt<PermissionStore>(),
+        sandbox: getIt<PathSandbox>(),
+      ),
+    );
 
     getIt.registerLazySingleton(() => SkillTrustStore());
     getIt.registerLazySingleton(() {
@@ -165,8 +189,8 @@ class DI {
     getIt.registerLazySingleton(() {
       final skillRegistry = getIt<SkillRegistry>();
       final sandbox = getIt<PathSandbox>();
-      final isWindows = Platform.isWindows;
-      final isMobile = Platform.isIOS || Platform.isAndroid;
+      final isWindows = PlatformUtil.isWindows;
+      final isMobile = PlatformUtil.isMobile;
       final toolRegistry = ToolRegistry();
 
       if (isMobile) {
@@ -197,26 +221,30 @@ class DI {
       return toolRegistry;
     });
 
-    getIt.registerLazySingleton(() => AgentService(
-          chatService: getIt<ChatService>(),
-          toolRegistry: getIt<ToolRegistry>(),
-          skillRegistry: getIt<SkillRegistry>(),
-        ));
+    getIt.registerLazySingleton(
+      () => AgentService(
+        chatService: getIt<ChatService>(),
+        toolRegistry: getIt<ToolRegistry>(),
+        skillRegistry: getIt<SkillRegistry>(),
+      ),
+    );
 
     // ChatViewModel (depends on many things, registered last)
-    getIt.registerLazySingleton(() => ChatViewModel(
-          manageService: getIt<ChatManageService>(),
-          supportService: getIt<ChatSupportService>(),
-          chatMessageService: getIt<ChatMessageService>(),
-          agentService: getIt<AgentService>(),
-          messageRepository: getIt<MessageRepository>(),
-          modelRepository: getIt<ModelRepository>(),
-          sentinelRepository: getIt<SentinelRepository>(),
-          settingViewModel: getIt<SettingViewModel>(),
-          modelViewModel: getIt<ModelViewModel>(),
-          sentinelViewModel: getIt<SentinelViewModel>(),
-          permissionService: getIt<PermissionService>(),
-          skillRegistry: getIt<SkillRegistry>(),
-        ));
+    getIt.registerLazySingleton(
+      () => ChatViewModel(
+        manageService: getIt<ChatManageService>(),
+        supportService: getIt<ChatSupportService>(),
+        chatMessageService: getIt<ChatMessageService>(),
+        agentService: getIt<AgentService>(),
+        messageRepository: getIt<MessageRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
+        settingViewModel: getIt<SettingViewModel>(),
+        modelViewModel: getIt<ModelViewModel>(),
+        sentinelViewModel: getIt<SentinelViewModel>(),
+        permissionService: getIt<PermissionService>(),
+        skillRegistry: getIt<SkillRegistry>(),
+      ),
+    );
   }
 }

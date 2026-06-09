@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'dart:io';
+
+import 'package:athena/util/platform_util.dart';
 
 import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
@@ -14,11 +15,8 @@ class AthenaDialog {
   static OverlayEntry? _messageOverlay;
   static Timer? _messageTimer;
 
-  static Future<bool?> confirm(
-    String text, {
-    bool dismissible = true,
-  }) async {
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+  static Future<bool?> confirm(String text, {bool dismissible = true}) async {
+    if (PlatformUtil.isDesktop) {
       return showDialog<bool>(
         barrierDismissible: dismissible,
         builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
@@ -36,7 +34,7 @@ class AthenaDialog {
   }
 
   static Future<String?> input(String title, {String? initialValue}) async {
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+    if (PlatformUtil.isDesktop) {
       return showDialog<String>(
         builder: (_) =>
             _DesktopInputDialog(title: title, initialValue: initialValue),
@@ -68,7 +66,7 @@ class AthenaDialog {
     String message, {
     AthenaMessageType type = AthenaMessageType.info,
   }) {
-    var isWindow = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    var isWindow = PlatformUtil.isDesktop;
     if (isWindow) {
       _showDesktopMessage(message, type: type);
       return;
@@ -95,7 +93,7 @@ class AthenaDialog {
   }
 
   static void show(Widget child, {bool barrierDismissible = false}) {
-    if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+    if (PlatformUtil.isDesktop) {
       showDialog(
         barrierDismissible: barrierDismissible,
         builder: (_) => child,
@@ -141,7 +139,8 @@ class AthenaDialog {
     if (overlay == null) return;
     _dismissDesktopMessage();
     final entry = OverlayEntry(
-      builder: (context) => _DesktopMessageOverlay(message: message, type: type),
+      builder: (context) =>
+          _DesktopMessageOverlay(message: message, type: type),
     );
     overlay.insert(entry);
     _messageOverlay = entry;
@@ -153,7 +152,10 @@ class _AthenaMessageVisualStyle {
   final Color accentColor;
   final IconData icon;
 
-  const _AthenaMessageVisualStyle({required this.accentColor, required this.icon});
+  const _AthenaMessageVisualStyle({
+    required this.accentColor,
+    required this.icon,
+  });
 
   factory _AthenaMessageVisualStyle.fromType(AthenaMessageType type) {
     return switch (type) {
@@ -427,10 +429,7 @@ class _InputDialogState extends State<_InputDialog> {
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var input = AthenaInput(
-      controller: controller,
-      autoFocus: true,
-    );
+    var input = AthenaInput(controller: controller, autoFocus: true);
     var children = [
       Text(widget.title, style: titleStyle),
       const SizedBox(height: 16),
@@ -589,10 +588,7 @@ class _DesktopMessageOverlay extends StatelessWidget {
         child: SafeArea(
           child: Align(
             alignment: Alignment.bottomLeft,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: container,
-            ),
+            child: Padding(padding: const EdgeInsets.all(16), child: container),
           ),
         ),
       ),

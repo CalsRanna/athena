@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:athena/util/platform_util.dart';
 
 import 'package:athena/component/button.dart';
 import 'package:athena/entity/message_entity.dart';
@@ -175,11 +176,13 @@ class _AssistantMessageListTile extends StatelessWidget {
         final calls = jsonDecode(message.toolCalls) as List<dynamic>;
         for (final call in calls) {
           final id = call['id'] as String;
-          cards.add(ToolCard(
-            toolName: call['name'] ?? '',
-            arguments: call['arguments'] ?? '',
-            result: results[id],
-          ));
+          cards.add(
+            ToolCard(
+              toolName: call['name'] ?? '',
+              arguments: call['arguments'] ?? '',
+              result: results[id],
+            ),
+          );
         }
       } catch (_) {}
     }
@@ -188,7 +191,7 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildTrailingSpace() {
-    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    var isDesktop = PlatformUtil.isDesktop;
     return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
@@ -390,7 +393,7 @@ class _ToolMessageListTile extends StatelessWidget {
   }
 
   Widget _buildTrailingSpace() {
-    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    var isDesktop = PlatformUtil.isDesktop;
     return SizedBox(width: isDesktop ? 48 : 24);
   }
 }
