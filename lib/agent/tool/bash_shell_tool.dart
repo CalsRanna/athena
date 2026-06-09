@@ -55,9 +55,6 @@ class BashShellTool implements Tool {
         Directory.current.path;
     final workdir = args['workdir'] as String? ?? home;
 
-    if (!sandbox.canExecute(command)) {
-      return 'Error: command rejected by sandbox policy (matches a hard-denied pattern).';
-    }
     if (!sandbox.canWrite(workdir)) {
       return 'Error: workdir "$workdir" is in a restricted system area and cannot be used.';
     }

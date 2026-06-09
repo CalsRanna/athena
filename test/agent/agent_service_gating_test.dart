@@ -270,7 +270,7 @@ void main() {
       final tool =
           _RecordingTool(name: 'risky', dangerLevel: agent_tool.DangerLevel.needsApproval);
       final store = PermissionStore()
-        ..allowRules = [const PermissionRule(tool: 'risky')];
+        ..rules = [PermissionRule(tool: 'risky')];
       var onPermissionCalled = false;
       final events = await _runAgent(
         tool: tool,

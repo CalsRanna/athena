@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
-import 'package:athena/agent/permission/permission_interactor.dart';
+import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
@@ -23,6 +23,10 @@ import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/agent/tool/url_safety.dart';
+import 'package:athena/router/router.dart';
+import 'package:athena/util/tool_args_formatter.dart';
+import 'package:athena/widget/permission_dialog.dart';
 import 'package:athena/widget/skill_trust_dialog.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:signals/signals.dart';
@@ -45,7 +49,7 @@ class ChatViewModel {
   final SentinelViewModel _sentinelViewModel;
   final PermissionService _permissionService;
   final SkillRegistry _skillRegistry;
-  final PermissionInteractor _permissionInteractor;
+
 
   CancelToken? _activeCancelToken;
 
@@ -84,7 +88,6 @@ class ChatViewModel {
     required SentinelViewModel sentinelViewModel,
     required PermissionService permissionService,
     required SkillRegistry skillRegistry,
-    required PermissionInteractor permissionInteractor,
   })  : _manage = manageService,
         _support = supportService,
         _chatMessageService = chatMessageService,
@@ -97,8 +100,7 @@ class ChatViewModel {
         _modelViewModel = modelViewModel,
         _sentinelViewModel = sentinelViewModel,
         _permissionService = permissionService,
-        _skillRegistry = skillRegistry,
-        _permissionInteractor = permissionInteractor;
+        _skillRegistry = skillRegistry;
 
   // Signals 状态
   final chats = listSignal<ChatEntity>([]);
@@ -962,12 +964,45 @@ class ChatViewModel {
     String arguments,
     PermissionService permissionService,
     CancelToken cancelToken,
-  ) {
-    return _permissionInteractor.askPermission(
+  ) async {
+    Map<String, dynamic> args;
+    try {
+      args = jsonDecode(arguments) as Map<String, dynamic>;
+    } catch (_) {
+      args = {};
+    }
+
+    final description = formatToolArgsForApproval(toolName, arguments);
+    final ruleDescription = permissionService.describeRule(toolName);
+    final warning = toolName == 'web_fetch'
+        ? webFetchApprovalWarning(args['url'] as String?)
+        : null;
+
+    final dialogFuture = showPermissionDialog(
       toolName: toolName,
-      arguments: arguments,
-      cancelToken: cancelToken,
+      description: description,
+      ruleDescription: ruleDescription,
+      warning: warning,
     );
+
+    final result = await Future.any<PermissionDialogResult>([
+      dialogFuture,
+      cancelToken.whenCancelled.then((_) {
+        final nav = router.navigatorKey.currentState;
+        if (nav?.canPop() ?? false) nav!.pop();
+        return const PermissionDialogResult(approved: false, persist: false);
+      }),
+    ]);
+
+    if (result.approved && result.persist) {
+      final keyArg = permissionService.primaryArg(toolName, args);
+      await permissionService.persistRule(PermissionRule(
+        tool: toolName,
+        pattern: keyArg ?? '',
+      ));
+    }
+
+    return result.approved;
   }
 }
 
