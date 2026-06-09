@@ -49,28 +49,28 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   ModelViewModel get modelViewModel => widget.modelViewModel;
   ProviderViewModel get providerViewModel => widget.providerViewModel;
 
-  late int sentinelId;
-  late int modelId;
-  late double temperature;
-  late int contextToken;
+  late final _sentinelId = signal<int>(0);
+  late final _modelId = signal<int>(0);
+  late final _temperature = signal<double>(1.0);
+  late final _contextToken = signal<int>(0);
 
   @override
   void initState() {
     super.initState();
     // Initialize from chat if exists, otherwise from viewModel's current values
     if (widget.chat != null) {
-      sentinelId = widget.chat!.sentinelId;
-      modelId = widget.chat!.modelId;
-      temperature = widget.chat!.temperature;
-      contextToken = widget.chat!.context;
+      _sentinelId.value = widget.chat!.sentinelId;
+      _modelId.value = widget.chat!.modelId;
+      _temperature.value = widget.chat!.temperature;
+      _contextToken.value = widget.chat!.context;
     } else {
-      sentinelId = sentinelViewModel.defaultSentinel.value.id ?? 0;
-      modelId =
+      _sentinelId.value = sentinelViewModel.defaultSentinel.value.id ?? 0;
+      _modelId.value =
           chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
           0;
-      temperature = chatViewModel.currentTemperature.value;
-      contextToken = chatViewModel.currentContext.value;
+      _temperature.value = chatViewModel.currentTemperature.value;
+      _contextToken.value = chatViewModel.currentContext.value;
     }
   }
 
@@ -79,13 +79,13 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     return Watch((context) {
       var hasChat = widget.chat != null;
       var sentinel = sentinelViewModel.sentinels.value
-          .where((s) => s.id == sentinelId)
+          .where((s) => s.id == _sentinelId.value)
           .firstOrNull;
       // Fallback to first sentinel if not found
       sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
       var model = modelViewModel.models.value
-          .where((m) => m.id == modelId)
+          .where((m) => m.id == _modelId.value)
           .firstOrNull;
       // Fallback to first enabled model if not found
       model ??= modelViewModel.enabledModels.value.firstOrNull;
@@ -164,26 +164,18 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void openConfigurationDialog() {
     var dialog = MobileChatConfigurationDialog(
       chat: widget.chat,
-      contextToken: contextToken,
-      temperature: temperature,
-      onTemperatureChanged: _updateTemperature,
-      onContextChanged: _updateContextToken,
+      contextToken: _contextToken.value,
+      temperature: _temperature.value,
+      onTemperatureChanged: (v) {
+        widget.onTemperatureChanged?.call(v);
+        _temperature.value = v;
+      },
+      onContextChanged: (v) {
+        widget.onContextChanged?.call(v);
+        _contextToken.value = v;
+      },
     );
     AthenaDialog.show(dialog);
-  }
-
-  void _updateContextToken(int value) {
-    widget.onContextChanged?.call(value);
-    setState(() {
-      contextToken = value;
-    });
-  }
-
-  void _updateTemperature(double value) {
-    widget.onTemperatureChanged?.call(value);
-    setState(() {
-      temperature = value;
-    });
   }
 
   void openSentinelSelectorDialog() {
@@ -197,16 +189,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void _updateModel(ModelEntity model) {
     widget.onModelChanged?.call(model);
     AthenaDialog.dismiss();
-    setState(() {
-      modelId = model.id ?? 0;
-    });
+    _modelId.value = model.id ?? 0;
   }
 
   void _updateSentinel(SentinelEntity sentinel) {
     widget.onSentinelChanged?.call(sentinel);
     AthenaDialog.dismiss();
-    setState(() {
-      sentinelId = sentinel.id ?? 0;
-    });
+    _sentinelId.value = sentinel.id ?? 0;
   }
 }

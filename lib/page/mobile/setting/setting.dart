@@ -1,11 +1,12 @@
-import 'package:athena/page/mobile/setting/agent_page.dart';
 import 'package:athena/router/router.gr.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:athena/widget/tile.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+@RoutePage()
 class SettingPage extends StatelessWidget {
   const SettingPage({super.key});
 
@@ -14,9 +15,7 @@ class SettingPage extends StatelessWidget {
     var children = [
       MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedAiSetting, size: 24),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const MobileAgentPage()),
-        ),
+        onTap: () => MobileAgentRoute().push(context),
         title: 'Agent',
         trailing: '',
       ),

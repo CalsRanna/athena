@@ -2,6 +2,7 @@ import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileChatConfigurationDialog extends StatefulWidget {
   final ChatEntity? chat;
@@ -25,36 +26,20 @@ class MobileChatConfigurationDialog extends StatefulWidget {
 
 class _MobileConfigurationDialogState
     extends State<MobileChatConfigurationDialog> {
-  late double _context = widget.contextToken.toDouble();
-  late double _temperature = widget.temperature;
+  late final _context = signal(widget.contextToken.toDouble());
+  late final _temperature = signal(widget.temperature);
 
   @override
   Widget build(BuildContext context) {
-    var temperatureSlider = Slider(
-      activeColor: ColorUtil.FFA7BA88,
-      inactiveColor: ColorUtil.FFFFFFFF,
-      label: _temperature.toStringAsFixed(1),
-      max: 2,
-      onChanged: _updateTemperature,
-      onChangeEnd: _storeTemperature,
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      thumbColor: ColorUtil.FFA7BA88,
-      value: _temperature,
-    );
-    var contextSlider = Slider(
-      activeColor: ColorUtil.FFA7BA88,
-      inactiveColor: ColorUtil.FFFFFFFF,
-      label: _context.toStringAsFixed(0),
-      max: 20,
-      onChanged: _updateContext,
-      onChangeEnd: _storeContext,
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      thumbColor: ColorUtil.FFA7BA88,
-      value: _context,
-    );
     var children = [
-      AthenaBottomSheetTile(title: 'Temperature', trailing: temperatureSlider),
-      AthenaBottomSheetTile(title: 'Context', trailing: contextSlider),
+      AthenaBottomSheetTile(
+        title: 'Temperature',
+        trailing: _buildTemperatureSlider(),
+      ),
+      AthenaBottomSheetTile(
+        title: 'Context',
+        trailing: _buildContextSlider(),
+      ),
     ];
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 16),
@@ -71,15 +56,35 @@ class _MobileConfigurationDialogState
     widget.onTemperatureChanged?.call(value);
   }
 
-  void _updateContext(double value) {
-    setState(() {
-      _context = value;
+  Widget _buildContextSlider() {
+    return Watch((_) {
+      return Slider(
+        activeColor: ColorUtil.FFA7BA88,
+        inactiveColor: ColorUtil.FFFFFFFF,
+        label: _context.value.toStringAsFixed(0),
+        max: 20,
+        onChanged: (v) => _context.value = v,
+        onChangeEnd: _storeContext,
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        thumbColor: ColorUtil.FFA7BA88,
+        value: _context.value,
+      );
     });
   }
 
-  void _updateTemperature(double value) {
-    setState(() {
-      _temperature = value;
+  Widget _buildTemperatureSlider() {
+    return Watch((_) {
+      return Slider(
+        activeColor: ColorUtil.FFA7BA88,
+        inactiveColor: ColorUtil.FFFFFFFF,
+        label: _temperature.value.toStringAsFixed(1),
+        max: 2,
+        onChanged: (v) => _temperature.value = v,
+        onChangeEnd: _storeTemperature,
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        thumbColor: ColorUtil.FFA7BA88,
+        value: _temperature.value,
+      );
     });
   }
 }

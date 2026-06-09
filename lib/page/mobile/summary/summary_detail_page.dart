@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:athena/component/button.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/summary_entity.dart';
@@ -160,7 +158,6 @@ class _SummaryContent extends StatelessWidget {
   }
 
   Widget _buildTrailingSpace() {
-    var isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
-    return SizedBox(width: isDesktop ? 48 : 24);
+    return const SizedBox(width: 24);
   }
 }

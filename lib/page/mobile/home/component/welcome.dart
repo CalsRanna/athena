@@ -1,4 +1,4 @@
-import 'package:athena/page/mobile/setting/setting.dart';
+import 'package:athena/router/router.gr.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -17,6 +17,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(children: [_buildText(), _buildAvatar(context)]),
     );
+    // Rebuild when page becomes visible to update the time-based greeting.
     return VisibilityDetector(
       key: const Key('MobileHomeWelcome'),
       onVisibilityChanged: handleVisibilityChanged,
@@ -36,13 +37,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   }
 
   void handleTap(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) {
-          return const SettingPage();
-        },
-      ),
-    );
+    SettingRoute().push(context);
   }
 
   void handleVisibilityChanged(VisibilityInfo info) {

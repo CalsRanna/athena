@@ -42,26 +42,33 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    var actionButton = AthenaIconButton(
+      icon: HugeIcons.strokeRoundedMoreHorizontal,
+      onTap: () {
+        final chat = viewModel.currentChat.value ?? widget.chat;
+        openBottomSheet(chat);
+      },
+    );
+
+    return AthenaScaffold(
+      appBar: AthenaAppBar(action: actionButton, title: _buildTitle()),
+      body: AthenaErrorBoundary(
+        message: 'Chat page encountered an error',
+        onRetry: _initializeViewModels,
+        child: Column(
+          children: [
+            Expanded(child: _buildContent()),
+            _buildProgressBar(),
+            _buildInput(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
     return Watch((context) {
-      ChatEntity? chat = viewModel.currentChat.value;
-
-      if (chat == null && widget.chat != null) {
-        chat = viewModel.chats.value
-            .where((c) => c.id == widget.chat!.id)
-            .firstOrNull;
-      }
-
-      SentinelEntity? sentinel;
-      if (chat != null) {
-        sentinel = sentinelViewModel.sentinels.value
-            .where((s) => s.id == chat!.sentinelId)
-            .firstOrNull;
-      } else {
-        sentinel = sentinelViewModel.defaultSentinel.value;
-      }
-      sentinel ??= viewModel.currentSentinel.value;
-      sentinel ??= sentinelViewModel.defaultSentinel.value;
-
+      var chat = _resolveChat();
       var isRenaming = chat != null &&
           viewModel.selection.renamingChatIds.value.contains(chat.id);
       String title;
@@ -72,71 +79,70 @@ class _MobileChatPageState extends State<MobileChatPage> {
         if (title.isEmpty) title = 'New Chat';
       }
 
-      var actionButton = AthenaIconButton(
-        icon: HugeIcons.strokeRoundedMoreHorizontal,
-        onTap: () => openBottomSheet(chat),
-      );
-
-      Widget titleWidget;
       if (isRenaming) {
-        var loadingIndicator = SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: ColorUtil.FFFFFFFF,
-          ),
-        );
-        titleWidget = Row(
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(child: Text(title, textAlign: TextAlign.center)),
             const SizedBox(width: 8),
-            loadingIndicator,
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: ColorUtil.FFFFFFFF,
+              ),
+            ),
           ],
         );
-      } else {
-        titleWidget = Text(title, textAlign: TextAlign.center);
       }
+      return Text(title, textAlign: TextAlign.center);
+    });
+  }
 
-      Widget content;
+  Widget _buildContent() {
+    return Watch((context) {
+      var chat = _resolveChat();
+      var sentinel = _resolveSentinel(chat);
+
       if (chat != null) {
         var model = modelViewModel.models.value
-            .where((m) => m.id == chat!.modelId)
+            .where((m) => m.id == chat.modelId)
             .firstOrNull;
-        content = MessageListView(
+        return MessageListView(
           chat: chat,
           viewModel: viewModel,
           sentinelViewModel: sentinelViewModel,
           model: model,
           onChatTitleChanged: (_) {},
         );
-      } else {
-        content = SentinelPlaceholder(sentinel: sentinel);
       }
-
-      var input = _buildInput(chat);
-      return AthenaScaffold(
-        appBar: AthenaAppBar(action: actionButton, title: titleWidget),
-        body: AthenaErrorBoundary(
-          message: 'Chat page encountered an error',
-          onRetry: _initializeViewModels,
-          child: Builder(
-            builder: (context) {
-              final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-              return Column(
-                children: [
-                  Expanded(child: content),
-                  _buildProgressBar(),
-                  input,
-                  SizedBox(height: bottomInset),
-                ],
-              );
-            },
-          ),
-        ),
-      );
+      return SentinelPlaceholder(sentinel: sentinel);
     });
+  }
+
+  ChatEntity? _resolveChat() {
+    ChatEntity? chat = viewModel.currentChat.value;
+    if (chat == null && widget.chat != null) {
+      chat = viewModel.chats.value
+          .where((c) => c.id == widget.chat!.id)
+          .firstOrNull;
+    }
+    return chat;
+  }
+
+  SentinelEntity? _resolveSentinel(ChatEntity? chat) {
+    SentinelEntity? sentinel;
+    if (chat != null) {
+      sentinel = sentinelViewModel.sentinels.value
+          .where((s) => s.id == chat.sentinelId)
+          .firstOrNull;
+    } else {
+      sentinel = sentinelViewModel.defaultSentinel.value;
+    }
+    sentinel ??= viewModel.currentSentinel.value;
+    sentinel ??= sentinelViewModel.defaultSentinel.value;
+    return sentinel;
   }
 
   @override
@@ -271,14 +277,17 @@ class _MobileChatPageState extends State<MobileChatPage> {
     });
   }
 
-  Widget _buildInput(ChatEntity? chat) {
-    var userInput = UserInput(
-      controller: controller,
-      isStreaming: viewModel.isStreaming.value,
-      onSubmitted: () => sendMessage(chat),
-      onTerminated: terminateStreaming,
-    );
-    final padding = Padding(padding: EdgeInsets.all(16), child: userInput);
-    return SafeArea(top: false, child: padding);
+  Widget _buildInput() {
+    return Watch((context) {
+      final chat = viewModel.currentChat.value ?? widget.chat;
+      var userInput = UserInput(
+        controller: controller,
+        isStreaming: viewModel.isStreaming.value,
+        onSubmitted: () => sendMessage(chat),
+        onTerminated: terminateStreaming,
+      );
+      final padding = Padding(padding: EdgeInsets.all(16), child: userInput);
+      return SafeArea(top: false, child: padding);
+    });
   }
 }
