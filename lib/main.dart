@@ -16,8 +16,10 @@ import 'package:signals/signals.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Database.instance.ensureInitialized();
-  await WindowUtil.instance.ensureInitialized();
-  await SystemTrayUtil.instance.ensureInitialized();
+  if (!Platform.isIOS && !Platform.isAndroid) {
+    await WindowUtil.instance.ensureInitialized();
+    await SystemTrayUtil.instance.ensureInitialized();
+  }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   SignalsObserver.instance = null;
   final supportDir = await getApplicationSupportDirectory();
@@ -58,12 +60,16 @@ class _AthenaAppState extends State<AthenaApp> {
   @override
   void initState() {
     super.initState();
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    if (!Platform.isIOS && !Platform.isAndroid) {
+      HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    }
   }
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    if (!Platform.isIOS && !Platform.isAndroid) {
+      HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    }
     super.dispose();
   }
 

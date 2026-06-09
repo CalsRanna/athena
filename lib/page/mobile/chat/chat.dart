@@ -152,12 +152,18 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> _initializeViewModels() async {
-    await modelViewModel.initSignals();
-    await sentinelViewModel.getSentinels();
-    if (widget.chat != null) {
-      await viewModel.selectChat(widget.chat!);
-    } else {
-      await viewModel.prepareNewChatDraft();
+    try {
+      await modelViewModel.initSignals();
+      await sentinelViewModel.getSentinels();
+      if (widget.chat != null) {
+        await viewModel.selectChat(widget.chat!);
+      } else {
+        await viewModel.prepareNewChatDraft();
+      }
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load chat. Please try again.');
+      }
     }
   }
 

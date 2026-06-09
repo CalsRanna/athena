@@ -92,16 +92,14 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         promptController.text,
         modelId: modelId,
       );
-      AthenaDialog.dismiss();
       if (sentinel != null) {
         nameController.text = sentinel.name;
         descriptionController.text = sentinel.description;
       } else {
         AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
-    } catch (error) {
+    } finally {
       AthenaDialog.dismiss();
-      AthenaDialog.error(error.toString());
     }
   }
 
@@ -114,19 +112,18 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     try {
       var modelId = await _getModelId();
       if (modelId == null) return;
-      var sentinel = await viewModel.generateSentinel(
+      var description = await viewModel.generateSentinelDescription(
         promptController.text,
         modelId: modelId,
+        existingName: nameController.text,
       );
-      AthenaDialog.dismiss();
-      if (sentinel != null) {
-        descriptionController.text = sentinel.description;
+      if (description != null) {
+        descriptionController.text = description;
       } else {
         AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
-    } catch (error) {
+    } finally {
       AthenaDialog.dismiss();
-      AthenaDialog.error(error.toString());
     }
   }
 
@@ -139,19 +136,17 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     try {
       var modelId = await _getModelId();
       if (modelId == null) return;
-      var sentinel = await viewModel.generateSentinel(
+      var name = await viewModel.generateSentinelName(
         promptController.text,
         modelId: modelId,
       );
-      AthenaDialog.dismiss();
-      if (sentinel != null) {
-        nameController.text = sentinel.name;
+      if (name != null) {
+        nameController.text = name;
       } else {
         AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
-    } catch (error) {
+    } finally {
       AthenaDialog.dismiss();
-      AthenaDialog.error(error.toString());
     }
   }
 

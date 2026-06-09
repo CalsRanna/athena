@@ -30,13 +30,27 @@ class MobileProviderFormPage extends StatefulWidget {
 class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   final keyController = TextEditingController();
   final urlController = TextEditingController();
+  var _obscureKey = true;
 
   @override
   Widget build(BuildContext context) {
+    var keyVisibilityToggle = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _obscureKey = !_obscureKey),
+      child: Icon(
+        _obscureKey ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+        size: 18,
+        color: ColorUtil.FFC2C2C2,
+      ),
+    );
     var children = [
       AthenaFormTileLabel.large(title: 'API Key'),
       SizedBox(height: 12),
-      AthenaInput(controller: keyController),
+      AthenaInput(
+        controller: keyController,
+        obscureText: _obscureKey,
+        suffix: keyVisibilityToggle,
+      ),
       SizedBox(height: 16),
       AthenaFormTileLabel.large(title: 'API Url'),
       SizedBox(height: 12),
@@ -82,15 +96,15 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     var viewModel = GetIt.instance<ModelViewModel>();
     try {
       var result = await viewModel.checkConnection(model);
-      AthenaDialog.dismiss();
       if (!result.isSuccess) {
         AthenaDialog.error(result.detail ?? result.message);
         return;
       }
       AthenaDialog.success(result.message);
     } catch (e) {
-      AthenaDialog.dismiss();
       AthenaDialog.error('Connection error: $e');
+    } finally {
+      AthenaDialog.dismiss();
     }
   }
 
@@ -123,7 +137,13 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Future<void> _initializeModels() async {
-    await GetIt.instance<ModelViewModel>().initSignals();
+    try {
+      await GetIt.instance<ModelViewModel>().initSignals();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load models. Please try again.');
+      }
+    }
   }
 
   void openBottomSheet(ModelEntity model) {
@@ -193,7 +213,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       height: 1.5,
     );
     var tipText = Text(
-      '查看${widget.provider.name}文档和模型获取更多详情',
+      'See ${widget.provider.name} documentation for more details',
       style: tipTextStyle,
     );
     return Padding(

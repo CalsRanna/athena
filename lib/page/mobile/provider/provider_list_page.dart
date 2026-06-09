@@ -32,7 +32,13 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   }
 
   Future<void> _initializeViewModels() async {
-    await viewModel.initSignals();
+    try {
+      await viewModel.initSignals();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load providers. Please try again.');
+      }
+    }
   }
 
   @override

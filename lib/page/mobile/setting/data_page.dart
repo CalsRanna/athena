@@ -53,39 +53,48 @@ class _MobileDataPageState extends State<MobileDataPage> {
 
   Future<void> _handleExport() async {
     AthenaDialog.loading();
-    final success = await viewModel.exportData();
-    AthenaDialog.dismiss();
-    if (!mounted) return;
-    if (success) {
-      AthenaDialog.success('导出成功');
-    } else {
-      AthenaDialog.info('导出已取消');
+    try {
+      final success = await viewModel.exportData();
+      if (!mounted) return;
+      if (success) {
+        AthenaDialog.success('Export successful');
+      } else {
+        AthenaDialog.info('Export cancelled');
+      }
+    } finally {
+      AthenaDialog.dismiss();
     }
   }
 
   Future<void> _handleImport() async {
     AthenaDialog.loading();
-    final success = await viewModel.importData();
-    AthenaDialog.dismiss();
-    if (!mounted) return;
-    if (success) {
-      AthenaDialog.success('导入成功');
-    } else {
-      AthenaDialog.info('导入已取消');
+    try {
+      final success = await viewModel.importData();
+      if (!mounted) return;
+      if (success) {
+        AthenaDialog.success('Import successful');
+      } else {
+        AthenaDialog.info('Import cancelled');
+      }
+    } finally {
+      AthenaDialog.dismiss();
     }
   }
 
   Future<void> _handleReset() async {
-    final confirmed = await AthenaDialog.confirm('确定要重置所有数据吗？');
+    final confirmed = await AthenaDialog.confirm('Are you sure you want to reset all data?');
     if (confirmed != true) return;
     AthenaDialog.loading();
-    final success = await viewModel.resetData();
-    AthenaDialog.dismiss();
-    if (!mounted) return;
-    if (success) {
-      AthenaDialog.success('重置成功');
-    } else {
-      AthenaDialog.info('重置已取消');
+    try {
+      final success = await viewModel.resetData();
+      if (!mounted) return;
+      if (success) {
+        AthenaDialog.success('Reset successful');
+      } else {
+        AthenaDialog.info('Reset cancelled');
+      }
+    } finally {
+      AthenaDialog.dismiss();
     }
   }
 }
