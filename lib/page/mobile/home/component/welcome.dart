@@ -77,14 +77,8 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );
-    const nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
-    );
     var textChildren = [
-      TextSpan(text: 'Good ${getPeriod()}, ', style: welcomeTextStyle),
-      TextSpan(text: 'Cals', style: nameTextStyle),
+      TextSpan(text: 'Good ${getPeriod()}!', style: welcomeTextStyle),
     ];
     return Expanded(child: Text.rich(TextSpan(children: textChildren)));
   }

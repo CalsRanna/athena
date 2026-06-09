@@ -36,22 +36,19 @@ class MobileChatExportPage extends StatelessWidget {
 
   Future<void> exportImage(GlobalKey key) async {
     AthenaDialog.loading();
-    final boundary =
-        key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) {
+    try {
+      final boundary =
+          key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+      final bytes = byteData.buffer.asUint8List();
+      final viewModel = GetIt.instance<ChatViewModel>();
+      await viewModel.exportImage(chat: chat, bytes: bytes);
+    } finally {
       AthenaDialog.dismiss();
-      return;
     }
-    final image = await boundary.toImage(pixelRatio: 3.0);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (byteData == null) {
-      AthenaDialog.dismiss();
-      return;
-    }
-    final bytes = byteData.buffer.asUint8List();
-    final viewModel = GetIt.instance<ChatViewModel>();
-    await viewModel.exportImage(chat: chat, bytes: bytes);
-    AthenaDialog.dismiss();
   }
 
   Widget _buildBarrier(GlobalKey repaintBoundaryKey) {

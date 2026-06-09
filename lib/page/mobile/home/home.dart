@@ -8,6 +8,7 @@ import 'package:athena/router/router.gr.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/error_boundary.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -34,9 +35,15 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   Future<void> _initializeViewModels() async {
-    await GetIt.instance<SettingViewModel>().initSignals();
-    await chatViewModel.getChats();
-    await sentinelViewModel.getSentinels();
+    try {
+      await GetIt.instance<SettingViewModel>().initSignals();
+      await chatViewModel.getChats();
+      await sentinelViewModel.getSentinels();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load home data. Please try again.');
+      }
+    }
   }
 
   @override

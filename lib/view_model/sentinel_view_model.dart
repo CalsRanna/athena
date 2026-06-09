@@ -94,6 +94,70 @@ class SentinelViewModel {
     return sentinels.value.firstOrNull ?? defaultSentinel.value;
   }
 
+  /// 仅生成并返回 Sentinel 名称
+  Future<String?> generateSentinelName(
+    String prompt, {
+    required int modelId,
+  }) async {
+    isGenerating.value = true;
+    error.value = null;
+    try {
+      var model = await _modelRepository.getModelById(modelId);
+      if (model == null) {
+        error.value = 'Model not found';
+        return null;
+      }
+      var provider = await _providerRepository.getProviderById(model.providerId);
+      if (provider == null) {
+        error.value = 'Provider not found';
+        return null;
+      }
+      return await _sentinelService.generateName(
+        prompt,
+        provider: provider,
+        model: model,
+      );
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    } finally {
+      isGenerating.value = false;
+    }
+  }
+
+  /// 仅生成并返回 Sentinel 描述
+  Future<String?> generateSentinelDescription(
+    String prompt, {
+    required int modelId,
+    String existingName = '',
+  }) async {
+    isGenerating.value = true;
+    error.value = null;
+    try {
+      var model = await _modelRepository.getModelById(modelId);
+      if (model == null) {
+        error.value = 'Model not found';
+        return null;
+      }
+      var provider = await _providerRepository.getProviderById(model.providerId);
+      if (provider == null) {
+        error.value = 'Provider not found';
+        return null;
+      }
+      return await _sentinelService.generateDescription(
+        prompt,
+        provider: provider,
+        model: model,
+        existingName: existingName,
+      );
+    } catch (e) {
+      error.value = e.toString();
+      return null;
+    } finally {
+      isGenerating.value = false;
+    }
+  }
+
   Future<SentinelEntity?> generateSentinel(
     String prompt, {
     required int modelId,

@@ -148,8 +148,14 @@ class _MobileDefaultModelFormPageState
   }
 
   Future<void> _initializeViewModels() async {
-    await settingViewModel.initSignals();
-    await modelViewModel.initSignals();
+    try {
+      await settingViewModel.initSignals();
+      await modelViewModel.initSignals();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load settings. Please try again.');
+      }
+    }
   }
 }
 

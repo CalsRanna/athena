@@ -6,20 +6,24 @@ class AthenaInput extends StatefulWidget {
   final TextEditingController controller;
   final int maxLines;
   final int minLines;
+  final bool obscureText;
   final void Function()? onBlur;
   final void Function(String)? onSubmitted;
   final String? placeholder;
   final double? radius;
+  final Widget? suffix;
   const AthenaInput({
     super.key,
     this.autoFocus = false,
     required this.controller,
     this.maxLines = 1,
     this.minLines = 1,
+    this.obscureText = false,
     this.onSubmitted,
     this.onBlur,
     this.placeholder,
     this.radius,
+    this.suffix,
   });
 
   @override
@@ -76,14 +80,18 @@ class _AthenaInputState extends State<AthenaInput> {
       focusNode: focusNode,
       maxLines: widget.maxLines,
       minLines: widget.minLines,
+      obscureText: widget.obscureText,
       onSubmitted: widget.onSubmitted,
       onTapOutside: handleTapOutside,
       style: inputTextStyle,
     );
+    var child = widget.suffix != null
+        ? Row(children: [Expanded(child: textField), const SizedBox(width: 8), widget.suffix!])
+        : textField;
     return Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: textField,
+      child: child,
     );
   }
 
