@@ -1,123 +1,61 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// 单条权限规则：工具名 + 前缀模式。
+///
+/// - 文件类工具：pattern 为目录前缀，匹配该目录及所有子目录
+/// - Shell 工具：pattern 为命令前缀，如 "git " 匹配所有 git 命令
+/// - web_fetch：pattern 为 URL origin（scheme://host[:port]）
+/// - pattern 为空表示允许该工具的所有调用
 class PermissionRule {
   final String tool;
-  final String? pattern;
-  final String? contains;
+  final String pattern;
 
-  /// 路径类工具（file_read/file_write/file_update/file_delete/search/
-  /// list_directory）使用：true 表示该目录及其所有子目录都允许；
-  /// false 仅允许该目录及其直接子项。其它工具忽略此字段。
-  final bool recursive;
-
-  const PermissionRule({
-    required this.tool,
-    this.pattern,
-    this.contains,
-    this.recursive = false,
-  });
+  const PermissionRule({required this.tool, this.pattern = ''});
 
   factory PermissionRule.fromJson(Map<String, dynamic> json) {
     return PermissionRule(
       tool: json['tool'] as String,
-      pattern: json['pattern'] as String?,
-      contains: json['contains'] as String?,
-      recursive: json['recursive'] as bool? ?? false,
+      pattern: json['pattern'] as String? ?? '',
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'tool': tool,
-      if (pattern != null) 'pattern': pattern,
-      if (contains != null) 'contains': contains,
-      if (recursive) 'recursive': true,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'tool': tool,
+        'pattern': pattern,
+      };
 
-  bool matchesAllow(String toolName, String? keyArg) {
+  /// [keyArg] 是归一化后的参数（路径/命令/origin）。
+  ///
+  /// 路径类工具：keyArg 等于 pattern（去掉尾斜杠）或以 `pattern/` 为前缀。
+  /// 非路径工具：keyArg 以 pattern 为前缀（shell 命令、URL origin 等）。
+  bool matches(String toolName, String? keyArg) {
     if (tool != toolName) return false;
-    if (pattern == null) return true;
+    if (pattern.isEmpty) return true;
     if (keyArg == null) return false;
 
-    if (_isFileTool(toolName)) {
-      return _matchesPath(pattern!, keyArg, recursive);
+    if (_isFilePathTool(tool)) {
+      var p = pattern;
+      if (p.endsWith('/')) p = p.substring(0, p.length - 1);
+      var k = keyArg;
+      if (k.endsWith('/')) k = k.substring(0, k.length - 1);
+      return k == p || k.startsWith('$p/');
     }
-    return _globMatch(pattern!, keyArg);
+
+    return keyArg.startsWith(pattern);
   }
 
-  bool matchesDeny(String toolName, String? keyArg) {
-    if (tool != toolName) return false;
-    if (contains == null) return true;
-    if (keyArg == null) return false;
-    return _normalize(keyArg).contains(_normalize(contains!));
-  }
-
-  /// 归一化：小写 + 将连续空白折叠为单个空格，抵御大小写/空格规避。
-  static String _normalize(String s) {
-    return s.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
-  static bool _isFileTool(String toolName) {
+  static bool _isFilePathTool(String toolName) {
     return const {
-      'file_read',
-      'file_write',
-      'file_update',
-      'file_delete',
-      'search',
-      'list_directory',
+      'file_read', 'file_write', 'file_update', 'file_delete',
+      'search', 'list_directory',
     }.contains(toolName);
-  }
-
-  /// 路径匹配：pattern 是目录前缀，value 是规范化后的绝对路径（文件或目录）。
-  /// 规则 `D/` 覆盖目录自身 `D` 及其（递归或直接）子项。
-  static bool _matchesPath(String pattern, String value, bool recursive) {
-    var dir = pattern;
-    if (!dir.endsWith('/')) dir = '$dir/';
-
-    // 规范目录路径无末尾 `/`，规则 `D/` 也应覆盖目录自身 `D`。
-    final self = dir.substring(0, dir.length - 1);
-    if (value == self) return true;
-
-    if (!value.startsWith(dir)) return false;
-
-    if (recursive) return true;
-
-    // 非递归：value 必须是 dir 的直接子项（dir 之后没有再出现 `/`）
-    final tail = value.substring(dir.length);
-    return !tail.contains('/');
-  }
-
-  static bool _globMatch(String pattern, String value) {
-    if (pattern == '*') return true;
-    if (pattern.endsWith('*')) {
-      return value.startsWith(pattern.substring(0, pattern.length - 1));
-    }
-    return value == pattern;
   }
 }
 
+/// 规则持久化存储（`~/.athena/permissions.json`）。
 class PermissionStore {
-  List<PermissionRule> allowRules = [];
-  List<PermissionRule> denyRules = [];
-
-  static final List<PermissionRule> _builtinDenyRules = [
-    PermissionRule(tool: 'bash', contains: 'rm -rf'),
-    PermissionRule(tool: 'bash', contains: 'sudo '),
-    PermissionRule(tool: 'bash', contains: 'mkfs'),
-    PermissionRule(tool: 'bash', contains: '> /dev/'),
-    PermissionRule(tool: 'bash', contains: 'dd if='),
-    PermissionRule(tool: 'bash', contains: 'chmod 777'),
-    PermissionRule(tool: 'bash', contains: ':(){:|:&};:'),
-    PermissionRule(tool: 'powershell', contains: 'rm -rf'),
-    PermissionRule(tool: 'powershell', contains: 'sudo '),
-    PermissionRule(tool: 'powershell', contains: 'mkfs'),
-    PermissionRule(tool: 'powershell', contains: '> /dev/'),
-    PermissionRule(tool: 'powershell', contains: 'dd if='),
-    PermissionRule(tool: 'powershell', contains: 'chmod 777'),
-    PermissionRule(tool: 'powershell', contains: ':(){:|:&};:'),
-  ];
+  List<PermissionRule> rules = [];
 
   File get _file {
     final home = Platform.environment['HOME'] ??
@@ -132,17 +70,13 @@ class PermissionStore {
     try {
       final content = await file.readAsString();
       final json = jsonDecode(content) as Map<String, dynamic>;
-      allowRules = (json['allow'] as List?)
-              ?.map((e) => PermissionRule.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
-      denyRules = (json['deny'] as List?)
-              ?.map((e) => PermissionRule.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
+      final list = json['rules'] as List?;
+      if (list == null) return;
+      rules = list
+          .map((e) => PermissionRule.fromJson(e as Map<String, dynamic>))
+          .toList();
     } catch (_) {
-      allowRules = [];
-      denyRules = [];
+      rules = [];
     }
   }
 
@@ -150,25 +84,19 @@ class PermissionStore {
     final file = _file;
     await file.parent.create(recursive: true);
     final json = {
-      'allow': allowRules.map((r) => r.toJson()).toList(),
-      'deny': denyRules.map((r) => r.toJson()).toList(),
+      'rules': rules.map((r) => r.toJson()).toList(),
     };
     await file.writeAsString(
       const JsonEncoder.withIndent('  ').convert(json),
     );
   }
 
-  Future<void> addAllowRule(PermissionRule rule) async {
-    final exists = allowRules.any(
-      (r) =>
-          r.tool == rule.tool &&
-          r.pattern == rule.pattern &&
-          r.recursive == rule.recursive,
+  Future<void> add(PermissionRule rule) async {
+    final exists = rules.any(
+      (r) => r.tool == rule.tool && r.pattern == rule.pattern,
     );
     if (exists) return;
-    allowRules.add(rule);
+    rules.add(rule);
     await save();
   }
-
-  List<PermissionRule> get allDenyRules => [..._builtinDenyRules, ...denyRules];
 }

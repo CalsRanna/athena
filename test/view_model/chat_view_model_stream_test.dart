@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
-import 'package:athena/agent/permission/permission_interactor.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
@@ -240,9 +239,6 @@ ChatViewModel _buildViewModel({
     settingViewModel: GetIt.instance<SettingViewModel>(),
     permissionService: GetIt.instance<PermissionService>(),
     skillRegistry: GetIt.instance<SkillRegistry>(),
-    permissionInteractor: PermissionInteractor(
-      permissionService: GetIt.instance<PermissionService>(),
-    ),
   );
 }
 

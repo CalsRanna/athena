@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/sandbox.dart';
-import 'package:athena/agent/tool/url_safety.dart';
 
+/// 权限编排：
+/// - L0: 沙箱黑名单硬拦截
+/// - L1: 用户持久化规则自动放行
+/// - L2: 无匹配 → 弹出审批弹窗（由调用方处理）
 class PermissionService {
   final PermissionStore _store;
   final PathSandbox _sandbox;
@@ -12,170 +15,86 @@ class PermissionService {
       : _store = store,
         _sandbox = sandbox ?? PathSandbox();
 
-  /// 返回: true=自动允许, null=需要弹窗
+  /// 检查工具调用是否需要弹窗。
+  /// - `true`  → 规则命中，自动允许，无需弹窗
+  /// - `false` → 沙箱拦截，直接拒绝，无需弹窗
+  /// - `null`  → 需要弹出审批弹窗
   bool? check(String toolName, Map<String, dynamic> args) {
-    final keyArg = _extractKeyArg(toolName, args);
+    final keyArg = _primaryArg(toolName, args);
 
-    if (_matchesAllowRules(toolName, keyArg)) {
-      if (_matchesDenyRules(toolName, keyArg)) return null;
-      return true;
+    // L0: 文件类工具先过沙箱
+    if (_isFilePathTool(toolName) && keyArg != null) {
+      if (!_sandbox.canAccess(keyArg)) return false;
+    }
+
+    // L1: 持久化规则
+    for (final rule in _store.rules) {
+      if (rule.matches(toolName, keyArg)) return true;
     }
 
     return null;
   }
 
-  /// 是否命中 deny 规则（命中则隐藏 checkbox）
-  bool isDangerous(String toolName, Map<String, dynamic> args) {
-    final keyArg = _extractKeyArg(toolName, args);
-    if (_matchesDenyRules(toolName, keyArg)) return true;
-    // web_fetch 指向内网/本地地址视为危险（隐藏 checkbox，但仍可单次审批）。
-    if (toolName == 'web_fetch') {
-      final url = args['url'] as String?;
-      if (url != null && isInternalUrl(url)) return true;
-    }
-    // 命令工具：管道到脚本解释器视为危险（隐藏 checkbox，但仍可单次审批）。
-    if ((toolName == 'bash' || toolName == 'powershell') &&
-        keyArg != null &&
-        _sandbox.pipesToInterpreter(keyArg)) {
-      return true;
-    }
-    return false;
+  /// 持久化一条规则。
+  Future<void> persistRule(PermissionRule rule) => _store.add(rule);
+
+  /// 加载已持久化规则。
+  Future<void> load() => _store.load();
+
+  /// 提取工具调用的关键参数，归一化后用于规则匹配。
+  String? primaryArg(String toolName, Map<String, dynamic> args) {
+    return _primaryArg(toolName, args);
   }
 
-  /// 根据工具调用与用户选择的粒度生成 allow 规则。
-  ///
-  /// [recursive] 仅对文件类工具有效：true=该目录及所有子目录，false=该目录直接子项。
-  PermissionRule generateRule(
-    String toolName,
-    Map<String, dynamic> args, {
-    bool recursive = false,
-  }) {
-    final keyArg = _extractKeyArg(toolName, args);
+  /// 生成"始终允许" checkbox 的描述文案。
+  String describeRule(String toolName) {
+    return switch (toolName) {
+      'bash' || 'powershell' => 'Always allow this command',
+      'file_read' => 'Always allow reads in this directory',
+      'file_write' || 'file_update' => 'Always allow writes in this directory',
+      'file_delete' => 'Always allow deletes in this directory',
+      'search' => 'Always allow searching in this directory',
+      'list_directory' => 'Always allow listing this directory',
+      'web_fetch' => 'Always allow this domain',
+      _ => 'Always allow $toolName',
+    };
+  }
+
+  String? _primaryArg(String toolName, Map<String, dynamic> args) {
     switch (toolName) {
-      case 'bash' || 'powershell':
-        // Shell 永久规则按完整命令字面量匹配，不再按命令前缀放开整个命令族。
-        return PermissionRule(tool: toolName, pattern: keyArg ?? '');
-      case 'file_read':
-      case 'file_write':
-      case 'file_update':
-      case 'file_delete':
-        final dir = _extractDirectory(keyArg ?? '');
-        return PermissionRule(
-          tool: toolName,
-          pattern: dir,
-          recursive: recursive,
-        );
-      case 'search':
-      case 'list_directory':
-        // keyArg 本身就是用户操作的目录，规则即作用于该目录自身。
-        final raw = keyArg ?? '';
-        final dir = raw.endsWith('/') ? raw : '$raw/';
-        return PermissionRule(
-          tool: toolName,
-          pattern: dir,
-          recursive: recursive,
-        );
-      case 'web_fetch':
-        // 永久规则限定到来源（origin）：允许 https://a.com 不会放开 https://b.com。
-        // keyArg 已是 origin（http/https 时）；否则回退到原始 URL 字面量，
-        // 确保 pattern 永不为 null（null 会匹配一切，重新打开漏洞）。
-        final origin = keyArg ?? (args['url'] as String? ?? '');
-        return PermissionRule(tool: 'web_fetch', pattern: origin);
-      default:
-        return PermissionRule(tool: toolName);
-    }
-  }
-
-  /// 生成 checkbox 显示文案
-  String generateRuleDescription(
-    String toolName,
-    Map<String, dynamic> args, {
-    bool recursive = false,
-  }) {
-    final rule = generateRule(toolName, args, recursive: recursive);
-    if (rule.pattern == null || rule.pattern!.isEmpty) {
-      return 'Always allow $toolName';
-    }
-    switch (toolName) {
-      case 'bash' || 'powershell':
-        return 'Always allow this exact command';
-      case 'file_read':
-        final suffix = recursive ? ' (including subdirectories)' : '';
-        return 'Always allow reads in "${rule.pattern}"$suffix';
-      case 'file_write':
-      case 'file_update':
-        final suffix = recursive ? ' (including subdirectories)' : '';
-        return 'Always allow writes to "${rule.pattern}"$suffix';
-      case 'file_delete':
-        final suffix = recursive ? ' (including subdirectories)' : '';
-        return 'Always allow deletes in "${rule.pattern}"$suffix';
-      case 'search':
-        final suffix = recursive ? ' (including subdirectories)' : '';
-        return 'Always allow searching in "${rule.pattern}"$suffix';
-      case 'list_directory':
-        final suffix = recursive ? ' (including subdirectories)' : '';
-        return 'Always allow listing in "${rule.pattern}"$suffix';
-      case 'web_fetch':
-        return 'Always allow web fetches to "${rule.pattern}"';
-      default:
-        return 'Always allow $toolName matching "${rule.pattern}"';
-    }
-  }
-
-  /// 持久化规则
-  Future<void> persistRule(PermissionRule rule) async {
-    await _store.addAllowRule(rule);
-  }
-
-  /// 加载规则
-  Future<void> load() async {
-    await _store.load();
-  }
-
-  bool _matchesAllowRules(String toolName, String? keyArg) {
-    return _store.allowRules.any((r) => r.matchesAllow(toolName, keyArg));
-  }
-
-  bool _matchesDenyRules(String toolName, String? keyArg) {
-    return _store.allDenyRules.any((r) => r.matchesDeny(toolName, keyArg));
-  }
-
-  String? _extractKeyArg(String toolName, Map<String, dynamic> args) {
-    switch (toolName) {
-      case 'bash' || 'powershell':
+      case 'bash':
+      case 'powershell':
         return args['command'] as String?;
       case 'file_read':
       case 'file_write':
       case 'file_update':
       case 'file_delete':
-        // path 必填：存在则规范化，否则返回 null。
-        final path = args['path'] as String?;
-        if (path == null) return null;
-        return _sandbox.resolveAbsolute(path);
+        final p = args['path'] as String?;
+        return p != null ? _sandbox.resolveAbsolute(p) : null;
       case 'search':
       case 'list_directory':
-        // path 可选，缺省为当前工作目录；规范化后再匹配。
-        final path = args['path'] as String? ?? Directory.current.path;
-        return _sandbox.resolveAbsolute(path);
+        final p = (args['path'] as String?) ?? Directory.current.path;
+        return _sandbox.resolveAbsolute(p);
       case 'web_fetch':
-        // 永久规则按请求来源（origin = scheme://host[:port]）匹配，而非整条 URL。
-        // 仅 http/https 才有合法 origin；其它（malformed/非 http）返回 null，
-        // 永不命中已存规则 → 始终弹窗。
         final url = args['url'] as String?;
         if (url == null) return null;
         final uri = Uri.tryParse(url);
-        if (uri == null) return null;
+        if (uri == null || uri.host.isEmpty) return null;
         if (uri.scheme != 'http' && uri.scheme != 'https') return null;
-        if (uri.host.isEmpty) return null;
         return uri.origin;
       default:
         return null;
     }
   }
 
-  String _extractDirectory(String path) {
-    final lastSlash = path.lastIndexOf('/');
-    if (lastSlash <= 0) return '/';
-    return path.substring(0, lastSlash + 1);
+  static bool _isFilePathTool(String toolName) {
+    return const {
+      'file_read',
+      'file_write',
+      'file_update',
+      'file_delete',
+      'search',
+      'list_directory',
+    }.contains(toolName);
   }
 }

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:athena/agent/agent_service.dart';
-import 'package:athena/agent/permission/permission_interactor.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/permission/sandbox.dart';
@@ -204,10 +203,6 @@ class DI {
           skillRegistry: getIt<SkillRegistry>(),
         ));
 
-    getIt.registerLazySingleton(() => PermissionInteractor(
-          permissionService: getIt<PermissionService>(),
-        ));
-
     // ChatViewModel (depends on many things, registered last)
     getIt.registerLazySingleton(() => ChatViewModel(
           manageService: getIt<ChatManageService>(),
@@ -222,7 +217,6 @@ class DI {
           sentinelViewModel: getIt<SentinelViewModel>(),
           permissionService: getIt<PermissionService>(),
           skillRegistry: getIt<SkillRegistry>(),
-          permissionInteractor: getIt<PermissionInteractor>(),
         ));
   }
 }

@@ -1,5 +1,4 @@
 import 'package:athena/agent/agent_service.dart';
-import 'package:athena/agent/permission/permission_interactor.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
@@ -116,9 +115,6 @@ void main() {
         ),
         permissionService: PermissionService(store: PermissionStore()),
         skillRegistry: SkillRegistry(),
-        permissionInteractor: PermissionInteractor(
-          permissionService: PermissionService(store: PermissionStore()),
-        ),
       );
 
       expect(viewModel.currentContext.value, ChatViewModel.defaultDraftContext);
