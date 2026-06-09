@@ -45,6 +45,7 @@ class AthenaDialog {
     } else {
       return showModalBottomSheet<String>(
         backgroundColor: ColorUtil.FF282F32,
+        isScrollControlled: true,
         builder: (_) => _InputDialog(title: title, initialValue: initialValue),
         context: router.navigatorKey.currentContext!,
       );
@@ -426,38 +427,19 @@ class _InputDialogState extends State<_InputDialog> {
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var inputDecoration = InputDecoration(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: ColorUtil.FF616161),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: ColorUtil.FF616161),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: ColorUtil.FFFFFFFF),
-      ),
-      filled: true,
-      fillColor: ColorUtil.FF616161,
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    );
-    var textField = TextField(
+    var input = AthenaInput(
       controller: controller,
-      autofocus: true,
-      decoration: inputDecoration,
-      style: TextStyle(color: ColorUtil.FFFFFFFF),
+      autoFocus: true,
     );
     var children = [
       Text(widget.title, style: titleStyle),
       const SizedBox(height: 16),
-      textField,
+      input,
       const SizedBox(height: 24),
       _buildConfirmButton(context),
       const SizedBox(height: 12),
       _buildCancelButton(context),
-      SizedBox(height: MediaQuery.paddingOf(context).bottom),
+      SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
