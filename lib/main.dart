@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/database/database.dart';
 import 'package:athena/di.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:athena/util/system_tray_util.dart';
 import 'package:athena/util/window_util.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +15,7 @@ import 'package:signals/signals.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Database.instance.ensureInitialized();
-  if (!Platform.isIOS && !Platform.isAndroid) {
+  if (PlatformUtil.isDesktop) {
     await WindowUtil.instance.ensureInitialized();
     await SystemTrayUtil.instance.ensureInitialized();
   }
@@ -44,7 +43,7 @@ class _AthenaAppState extends State<AthenaApp> {
       showValueIndicator: ShowValueIndicator.onDrag,
     );
     var themeData = ThemeData(
-      fontFamily: Platform.isWindows ? 'Microsoft YaHei UI' : null,
+      fontFamily: PlatformUtil.isWindows ? 'Microsoft YaHei UI' : null,
       scaffoldBackgroundColor: ColorUtil.FF282828,
       sliderTheme: sliderThemeData,
       useMaterial3: true,
@@ -60,14 +59,14 @@ class _AthenaAppState extends State<AthenaApp> {
   @override
   void initState() {
     super.initState();
-    if (!Platform.isIOS && !Platform.isAndroid) {
+    if (PlatformUtil.isDesktop) {
       HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     }
   }
 
   @override
   void dispose() {
-    if (!Platform.isIOS && !Platform.isAndroid) {
+    if (PlatformUtil.isDesktop) {
       HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     }
     super.dispose();

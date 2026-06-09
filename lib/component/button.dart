@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:athena/util/platform_util.dart';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -43,7 +43,7 @@ class _CopyButtonState extends State<CopyButton> {
       icon: HugeIcons.strokeRoundedTick01,
       size: 12.0,
     );
-    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    var isDesktop = PlatformUtil.isDesktop;
     if (!isDesktop) return hugeIcon;
     var children = [
       hugeIcon,

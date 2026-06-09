@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,7 +15,7 @@ Future<bool> showSkillTrustDialog({
   required List<String> skillNames,
 }) async {
   final context = router.navigatorKey.currentContext!;
-  if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+  if (PlatformUtil.isDesktop) {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -42,20 +41,24 @@ Future<bool> showSkillTrustDialog({
 }
 
 Widget _buildTitleRow() {
-  return Row(children: [
-    Icon(
-      HugeIcons.strokeRoundedAlert02,
-      size: 20,
-      color: Colors.orange.shade700,
-    ),
-    const SizedBox(width: 8),
-    Text('Trust project skills?',
+  return Row(
+    children: [
+      Icon(
+        HugeIcons.strokeRoundedAlert02,
+        size: 20,
+        color: Colors.orange.shade700,
+      ),
+      const SizedBox(width: 8),
+      Text(
+        'Trust project skills?',
         style: GoogleFonts.firaCode(
           fontSize: 16,
           color: ColorUtil.FFFFFFFF,
           fontWeight: FontWeight.w500,
-        )),
-  ]);
+        ),
+      ),
+    ],
+  );
 }
 
 Widget _buildBody(String projectDir, List<String> skillNames) {

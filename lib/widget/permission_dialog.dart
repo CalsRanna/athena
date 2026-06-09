@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:athena/router/router.dart';
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,7 +20,7 @@ Future<PermissionDialogResult> showPermissionDialog({
   String? warning,
 }) async {
   final context = router.navigatorKey.currentContext!;
-  if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
+  if (PlatformUtil.isDesktop) {
     final result = await showDialog<PermissionDialogResult>(
       context: context,
       barrierDismissible: false,
@@ -76,20 +75,33 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[
-      Row(children: [
-        Icon(HugeIcons.strokeRoundedAlert02,
-            size: 20, color: Colors.orange.shade700),
-        const SizedBox(width: 8),
-        Text(widget.toolName,
+      Row(
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedAlert02,
+            size: 20,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            widget.toolName,
             style: GoogleFonts.firaCode(
-                fontSize: 16,
-                color: ColorUtil.FFFFFFFF,
-                fontWeight: FontWeight.w500)),
-      ]),
+              fontSize: 16,
+              color: ColorUtil.FFFFFFFF,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
       const SizedBox(height: 16),
-      Text(widget.description,
-          style: GoogleFonts.firaCode(
-              fontSize: 13, color: ColorUtil.FFFFFFFF, height: 1.6)),
+      Text(
+        widget.description,
+        style: GoogleFonts.firaCode(
+          fontSize: 13,
+          color: ColorUtil.FFFFFFFF,
+          height: 1.6,
+        ),
+      ),
     ];
 
     if (widget.warning != null) {
@@ -112,71 +124,93 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: children),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
       ),
     );
   }
 
   Widget _buildWarning(String warning) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(HugeIcons.strokeRoundedAlert02,
-          size: 16, color: Colors.red.shade400),
-      const SizedBox(width: 8),
-      Expanded(
-          child: Text(warning,
-              style: GoogleFonts.firaCode(
-                  fontSize: 12, color: Colors.red.shade400, height: 1.5))),
-    ]);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedAlert02,
+          size: 16,
+          color: Colors.red.shade400,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            warning,
+            style: GoogleFonts.firaCode(
+              fontSize: 12,
+              color: Colors.red.shade400,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCheckbox() {
     return GestureDetector(
       onTap: () => setState(() => _persist = !_persist),
       behavior: HitTestBehavior.opaque,
-      child: Row(children: [
-        SizedBox(
-          width: 20,
-          height: 20,
-          child: Checkbox(
-            value: _persist,
-            onChanged: (v) => setState(() => _persist = v ?? false),
-            activeColor: Colors.orange.shade700,
-            side: BorderSide(color: ColorUtil.FFC2C2C2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: _persist,
+              onChanged: (v) => setState(() => _persist = v ?? false),
+              activeColor: Colors.orange.shade700,
+              side: BorderSide(color: ColorUtil.FFC2C2C2),
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(widget.ruleDescription,
-                style:
-                    TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13))),
-      ]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.ruleDescription,
+              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildButtons() {
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-      AthenaSecondaryButton(
-        onTap: () => Navigator.pop(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        AthenaSecondaryButton(
+          onTap: () => Navigator.pop(
             context,
-            const PermissionDialogResult(
-                approved: false, persist: false)),
-        child: const Padding(
+            const PermissionDialogResult(approved: false, persist: false),
+          ),
+          child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Deny')),
-      ),
-      const SizedBox(width: 12),
-      AthenaPrimaryButton(
-        onTap: () => Navigator.pop(
+            child: Text('Deny'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        AthenaPrimaryButton(
+          onTap: () => Navigator.pop(
             context,
-            PermissionDialogResult(
-                approved: true, persist: _persist)),
-        child: const Padding(
+            PermissionDialogResult(approved: true, persist: _persist),
+          ),
+          child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Allow')),
-      ),
-    ]);
+            child: Text('Allow'),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -204,20 +238,33 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[
-      Row(children: [
-        Icon(HugeIcons.strokeRoundedAlert02,
-            size: 20, color: Colors.orange.shade700),
-        const SizedBox(width: 8),
-        Text(widget.toolName,
+      Row(
+        children: [
+          Icon(
+            HugeIcons.strokeRoundedAlert02,
+            size: 20,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            widget.toolName,
             style: GoogleFonts.firaCode(
-                fontSize: 16,
-                color: ColorUtil.FFFFFFFF,
-                fontWeight: FontWeight.w500)),
-      ]),
+              fontSize: 16,
+              color: ColorUtil.FFFFFFFF,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
       const SizedBox(height: 16),
-      Text(widget.description,
-          style: GoogleFonts.firaCode(
-              fontSize: 13, color: ColorUtil.FFFFFFFF, height: 1.6)),
+      Text(
+        widget.description,
+        style: GoogleFonts.firaCode(
+          fontSize: 13,
+          color: ColorUtil.FFFFFFFF,
+          height: 1.6,
+        ),
+      ),
     ];
 
     if (widget.warning != null) {
@@ -231,8 +278,7 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     children.add(_buildAllowButton());
     children.add(const SizedBox(height: 12));
     children.add(_buildDenyButton());
-    children
-        .add(SizedBox(height: MediaQuery.paddingOf(context).bottom));
+    children.add(SizedBox(height: MediaQuery.paddingOf(context).bottom));
 
     return Container(
       decoration: const BoxDecoration(
@@ -240,47 +286,61 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Padding(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child:
-            Column(mainAxisSize: MainAxisSize.min, children: children),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: children),
       ),
     );
   }
 
   Widget _buildWarning(String warning) {
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(HugeIcons.strokeRoundedAlert02,
-          size: 16, color: Colors.red.shade400),
-      const SizedBox(width: 8),
-      Expanded(
-          child: Text(warning,
-              style: GoogleFonts.firaCode(
-                  fontSize: 12, color: Colors.red.shade400, height: 1.5))),
-    ]);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedAlert02,
+          size: 16,
+          color: Colors.red.shade400,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            warning,
+            style: GoogleFonts.firaCode(
+              fontSize: 12,
+              color: Colors.red.shade400,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildCheckbox() {
     return GestureDetector(
       onTap: () => setState(() => _persist = !_persist),
       behavior: HitTestBehavior.opaque,
-      child: Row(children: [
-        SizedBox(
-          width: 20,
-          height: 20,
-          child: Checkbox(
-            value: _persist,
-            onChanged: (v) => setState(() => _persist = v ?? false),
-            activeColor: Colors.orange.shade700,
-            side: BorderSide(color: ColorUtil.FFC2C2C2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: Checkbox(
+              value: _persist,
+              onChanged: (v) => setState(() => _persist = v ?? false),
+              activeColor: Colors.orange.shade700,
+              side: BorderSide(color: ColorUtil.FFC2C2C2),
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-            child: Text(widget.ruleDescription,
-                style:
-                    TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13))),
-      ]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.ruleDescription,
+              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -288,8 +348,9 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.pop(
-          context,
-          PermissionDialogResult(approved: true, persist: _persist)),
+        context,
+        PermissionDialogResult(approved: true, persist: _persist),
+      ),
       child: Container(
         alignment: Alignment.center,
         decoration: ShapeDecoration(
@@ -297,16 +358,20 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
           color: ColorUtil.FFFFFFFF,
           shadows: [
             BoxShadow(
-                blurRadius: 16,
-                color: ColorUtil.FFCED2C7.withValues(alpha: 0.5)),
+              blurRadius: 16,
+              color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+            ),
           ],
         ),
         padding: const EdgeInsets.all(16),
-        child: Text('Allow',
-            style: TextStyle(
-                color: ColorUtil.FF161616,
-                fontSize: 14,
-                fontWeight: FontWeight.w500)),
+        child: Text(
+          'Allow',
+          style: TextStyle(
+            color: ColorUtil.FF161616,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }
@@ -314,8 +379,10 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
   Widget _buildDenyButton() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.pop(context,
-          const PermissionDialogResult(approved: false, persist: false)),
+      onTap: () => Navigator.pop(
+        context,
+        const PermissionDialogResult(approved: false, persist: false),
+      ),
       child: Container(
         alignment: Alignment.center,
         decoration: const ShapeDecoration(
@@ -323,11 +390,14 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
           shape: StadiumBorder(),
         ),
         padding: const EdgeInsets.all(16),
-        child: Text('Deny',
-            style: TextStyle(
-                color: ColorUtil.FFFFFFFF,
-                fontSize: 14,
-                fontWeight: FontWeight.w500)),
+        child: Text(
+          'Deny',
+          style: TextStyle(
+            color: ColorUtil.FFFFFFFF,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
     );
   }

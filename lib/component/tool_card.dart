@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -26,20 +25,15 @@ class ToolCard extends StatefulWidget {
 class _ToolCardState extends State<ToolCard> {
   bool _expanded = false;
 
-  bool get _isDesktop =>
-      Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  bool get _isDesktop => PlatformUtil.isDesktop;
 
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(_isDesktop ? 8 : 12);
-    final cardBgColor =
-        _isDesktop ? ColorUtil.FFEDEDED : ColorUtil.FF616161;
+    final cardBgColor = _isDesktop ? ColorUtil.FFEDEDED : ColorUtil.FF616161;
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        color: cardBgColor,
-      ),
+      decoration: BoxDecoration(borderRadius: borderRadius, color: cardBgColor),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -59,8 +53,7 @@ class _ToolCardState extends State<ToolCard> {
     final borderRadius = (widget.hasResult && _expanded)
         ? expandedRadius
         : collapsedRadius;
-    final headerBgColor =
-        _isDesktop ? ColorUtil.FFE0E0E0 : ColorUtil.FF757575;
+    final headerBgColor = _isDesktop ? ColorUtil.FFE0E0E0 : ColorUtil.FF757575;
     final fontSize = _isDesktop ? 12.0 : 11.0;
 
     return GestureDetector(
@@ -85,8 +78,10 @@ class _ToolCardState extends State<ToolCard> {
             ),
             if (widget.hasResult) ...[
               const SizedBox(width: 8),
-              Text(_resultLabel,
-                  style: GoogleFonts.firaCode(fontSize: fontSize)),
+              Text(
+                _resultLabel,
+                style: GoogleFonts.firaCode(fontSize: fontSize),
+              ),
               const SizedBox(width: 4),
               Icon(
                 _expanded

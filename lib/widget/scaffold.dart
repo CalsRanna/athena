@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:athena/util/color_util.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:flutter/material.dart';
 
 class AthenaScaffold extends StatelessWidget {
@@ -10,7 +9,7 @@ class AthenaScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    var isDesktop = PlatformUtil.isDesktop;
     if (isDesktop) return _DesktopScaffold(appBar: appBar, body: body);
     return _MobileScaffold(appBar: appBar, body: body);
   }
@@ -65,9 +64,6 @@ class _MobileScaffold extends StatelessWidget {
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: container,
-    );
+    return Scaffold(resizeToAvoidBottomInset: true, body: container);
   }
 }

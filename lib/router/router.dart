@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:athena/util/platform_util.dart';
 
 import 'package:athena/router/router.gr.dart';
 import 'package:auto_route/auto_route.dart';
@@ -9,7 +9,7 @@ final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 @AutoRouterConfig()
 class AthenaRouter extends RootStackRouter {
-  var isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+  var isDesktop = PlatformUtil.isDesktop;
 
   AthenaRouter({super.navigatorKey});
 

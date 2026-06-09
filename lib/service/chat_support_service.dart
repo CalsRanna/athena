@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:athena/util/platform_util.dart';
+
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -26,10 +28,10 @@ class ChatSupportService {
     required MessageRepository messageRepository,
     required ProviderRepository providerRepository,
     required ChatService chatService,
-  })  : _chatRepository = chatRepository,
-        _messageRepository = messageRepository,
-        _providerRepository = providerRepository,
-        _chatService = chatService;
+  }) : _chatRepository = chatRepository,
+       _messageRepository = messageRepository,
+       _providerRepository = providerRepository,
+       _chatService = chatService;
 
   Stream<String> renameChat(
     String firstUserMessage, {
@@ -50,14 +52,15 @@ class ChatSupportService {
 
   Future<String> saveImageFile(Uint8List bytes, int chatId) async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (PlatformUtil.isMobile) {
       final directory = await getApplicationDocumentsDirectory();
       final path = '${directory.path}/chat_${chatId}_$timestamp.png';
       await File(path).writeAsBytes(bytes);
       return path;
     } else {
       final directory = await getDownloadsDirectory();
-      if (directory == null) throw Exception('Failed to get downloads directory');
+      if (directory == null)
+        throw Exception('Failed to get downloads directory');
       final path = '${directory.path}/chat_${chatId}_$timestamp.png';
       await File(path).writeAsBytes(bytes);
       return path;

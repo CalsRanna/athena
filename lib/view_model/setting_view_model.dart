@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena/util/platform_util.dart';
+
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
@@ -71,11 +73,11 @@ class SettingViewModel {
     required SentinelRepository sentinelRepository,
     required ChatRepository chatRepository,
     required ChatService chatService,
-  })  : _modelRepository = modelRepository,
-        _providerRepository = providerRepository,
-        _sentinelRepository = sentinelRepository,
-        _chatRepository = chatRepository,
-        _chatService = chatService;
+  }) : _modelRepository = modelRepository,
+       _providerRepository = providerRepository,
+       _sentinelRepository = sentinelRepository,
+       _chatRepository = chatRepository,
+       _chatService = chatService;
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
@@ -97,9 +99,7 @@ class SettingViewModel {
     auxiliaryModelId.value = instance.getInt(_keyAuxiliaryModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
-    _chatService.updateRetryConfig(
-        RetryConfig(maxAttempts: maxRetries.value),
-      );
+    _chatService.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
     braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
@@ -109,8 +109,9 @@ class SettingViewModel {
       sentinelMetadataGenerationModelId.value,
     );
     shortModel.value = await _modelRepository.getModelById(shortModelId.value);
-    auxiliaryModel.value =
-        await _modelRepository.getModelById(auxiliaryModelId.value);
+    auxiliaryModel.value = await _modelRepository.getModelById(
+      auxiliaryModelId.value,
+    );
     if (chatModel.value != null) {
       chatModelProvider.value = await _providerRepository.getProviderById(
         chatModel.value!.providerId,
@@ -208,9 +209,7 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
-    _chatService.updateRetryConfig(
-      RetryConfig(maxAttempts: max),
-    );
+    _chatService.updateRetryConfig(RetryConfig(maxAttempts: max));
   }
 
   /// 更新 Brave Search API Key
@@ -251,7 +250,7 @@ class SettingViewModel {
     };
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(exportData);
-    final isDesktop = Platform.isMacOS || Platform.isLinux || Platform.isWindows;
+    final isDesktop = PlatformUtil.isDesktop;
     final path = isDesktop
         ? await FilePicker.platform.saveFile(
             dialogTitle: '选择导出位置',
@@ -342,8 +341,9 @@ class SettingViewModel {
     // 没有任何模型可指向：保持 chats 原样，避免写入无效引用。
     if (validIds.isEmpty) return;
 
-    final defaultId =
-        validIds.contains(chatModelId.value) ? chatModelId.value : validIds.first;
+    final defaultId = validIds.contains(chatModelId.value)
+        ? chatModelId.value
+        : validIds.first;
 
     final chats = await _chatRepository.getAllChats();
     for (final chat in chats) {
