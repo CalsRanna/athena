@@ -36,10 +36,7 @@ class _MobileConfigurationDialogState
         title: 'Temperature',
         trailing: _buildTemperatureSlider(),
       ),
-      AthenaBottomSheetTile(
-        title: 'Context',
-        trailing: _buildContextSlider(),
-      ),
+      AthenaBottomSheetTile(title: 'Context', trailing: _buildContextSlider()),
     ];
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 16),

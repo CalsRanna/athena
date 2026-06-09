@@ -82,7 +82,9 @@ class _MobileDataPageState extends State<MobileDataPage> {
   }
 
   Future<void> _handleReset() async {
-    final confirmed = await AthenaDialog.confirm('Are you sure you want to reset all data?');
+    final confirmed = await AthenaDialog.confirm(
+      'Are you sure you want to reset all data?',
+    );
     if (confirmed != true) return;
     AthenaDialog.loading();
     try {

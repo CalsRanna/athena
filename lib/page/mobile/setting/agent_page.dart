@@ -137,15 +137,17 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     if (value == null || value < 1) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid number (minimum 1)')),
+        const SnackBar(
+          content: Text('Please enter a valid number (minimum 1)'),
+        ),
       );
       return;
     }
     await viewModel.updateMaxAgentIterations(value);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Max iterations updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Max iterations updated')));
   }
 
   Future<void> _saveRetries() async {
@@ -153,22 +155,24 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     if (value == null || value < 1) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid number (minimum 1)')),
+        const SnackBar(
+          content: Text('Please enter a valid number (minimum 1)'),
+        ),
       );
       return;
     }
     await viewModel.updateMaxRetries(value);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Max retries updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Max retries updated')));
   }
 
   Future<void> _saveBraveApiKey() async {
     await viewModel.updateBraveApiKey(braveApiKeyController.text.trim());
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Brave API key updated')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Brave API key updated')));
   }
 }
