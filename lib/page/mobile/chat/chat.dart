@@ -69,7 +69,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Widget _buildTitle() {
     return Watch((context) {
       var chat = _resolveChat();
-      var isRenaming = chat != null &&
+      var isRenaming =
+          chat != null &&
           viewModel.selection.renamingChatIds.value.contains(chat.id);
       String title;
       if (isRenaming && viewModel.selection.renamingTitle.value.isNotEmpty) {
@@ -261,18 +262,20 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: Row(children: [
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(strokeWidth: 1.5),
-          ),
-          const SizedBox(width: 8),
-          Text(text, style: const TextStyle(
-            color: ColorUtil.FFC2C2C2,
-            fontSize: 12,
-          )),
-        ]),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 1.5),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 12),
+            ),
+          ],
+        ),
       );
     });
   }

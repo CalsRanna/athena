@@ -38,7 +38,9 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _obscureKey = !_obscureKey),
       child: Icon(
-        _obscureKey ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+        _obscureKey
+            ? HugeIcons.strokeRoundedView
+            : HugeIcons.strokeRoundedViewOff,
         size: 18,
         color: ColorUtil.FFC2C2C2,
       ),
