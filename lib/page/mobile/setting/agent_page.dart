@@ -1,6 +1,10 @@
+import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/dialog.dart';
+import 'package:athena/widget/form_tile_label.dart';
+import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -39,140 +43,125 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     return AthenaScaffold(
       appBar: AthenaAppBar(title: const Text('Agent Settings')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Max Iterations',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Maximum number of agent loop iterations (default: 100)',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: iterationsController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: '100',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            AthenaSecondaryButton.small(
-              onTap: _saveIterations,
-              child: const Text('Save'),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Max Retries',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Maximum network retry attempts for LLM API calls (default: 10)',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: retriesController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                hintText: '10',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            AthenaSecondaryButton.small(
-              onTap: _saveRetries,
-              child: const Text('Save'),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Brave Search API Key',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Required for web_search. Get a free key at brave.com/search/api/',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: braveApiKeyController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: 'BSA...',
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            AthenaSecondaryButton.small(
-              onTap: _saveBraveApiKey,
-              child: const Text('Save'),
-            ),
+            const SizedBox(height: 12),
+            _buildGeneralSection(),
+            const SizedBox(height: 32),
+            _buildToolsSection(),
+            SafeArea(top: false, child: const SizedBox()),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _saveIterations() async {
-    final value = int.tryParse(iterationsController.text.trim());
-    if (value == null || value < 1) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid number (minimum 1)'),
+  Widget _buildGeneralSection() {
+    const tipTextStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AthenaFormTileLabel.large(title: 'Max Iterations'),
+        const SizedBox(height: 12),
+        AthenaInput(
+          controller: iterationsController,
+          placeholder: '100',
         ),
-      );
-      return;
-    }
-    await viewModel.updateMaxAgentIterations(value);
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Max iterations updated')));
+        const SizedBox(height: 4),
+        Text(
+          'Maximum number of agent loop iterations (default: 100)',
+          style: tipTextStyle,
+        ),
+        const SizedBox(height: 16),
+        AthenaFormTileLabel.large(title: 'Max Retries'),
+        const SizedBox(height: 12),
+        AthenaInput(
+          controller: retriesController,
+          placeholder: '10',
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Maximum network retry attempts for LLM API calls (default: 10)',
+          style: tipTextStyle,
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: AthenaPrimaryButton(
+            onTap: _saveGeneral,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Save'),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Future<void> _saveRetries() async {
-    final value = int.tryParse(retriesController.text.trim());
-    if (value == null || value < 1) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid number (minimum 1)'),
+  Widget _buildToolsSection() {
+    const tipTextStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AthenaFormTileLabel.large(title: 'Brave API Key'),
+        const SizedBox(height: 12),
+        AthenaInput(
+          controller: braveApiKeyController,
+          placeholder: 'BSA...',
         ),
-      );
-      return;
-    }
-    await viewModel.updateMaxRetries(value);
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Max retries updated')));
+        const SizedBox(height: 8),
+        Text(
+          'Required for web_search. Get a free key at brave.com/search/api/',
+          style: tipTextStyle,
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerRight,
+          child: AthenaPrimaryButton(
+            onTap: _saveTools,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Save'),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
-  Future<void> _saveBraveApiKey() async {
+  Future<void> _saveGeneral() async {
+    final iterations = int.tryParse(iterationsController.text.trim());
+    if (iterations == null || iterations < 1) {
+      AthenaDialog.warning('Max Iterations must be a valid number (minimum 1)');
+      return;
+    }
+    final retries = int.tryParse(retriesController.text.trim());
+    if (retries == null || retries < 1) {
+      AthenaDialog.warning('Max Retries must be a valid number (minimum 1)');
+      return;
+    }
+    await viewModel.updateMaxAgentIterations(iterations);
+    await viewModel.updateMaxRetries(retries);
+    if (!mounted) return;
+    AthenaDialog.success('Settings saved');
+  }
+
+  Future<void> _saveTools() async {
     await viewModel.updateBraveApiKey(braveApiKeyController.text.trim());
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Brave API key updated')));
+    AthenaDialog.success('API key saved');
   }
 }

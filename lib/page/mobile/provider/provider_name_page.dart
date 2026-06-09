@@ -1,8 +1,8 @@
 import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
+import 'package:athena/widget/input.dart';
 import 'package:athena/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -19,13 +19,6 @@ class MobileProviderNamePage extends StatefulWidget {
 
 class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
   final controller = TextEditingController();
-  final focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    focusNode.requestFocus();
-  }
 
   @override
   void dispose() {
@@ -39,17 +32,14 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
       icon: HugeIcons.strokeRoundedTick02,
       onTap: handleTap,
     );
-    var textField = TextField(
+    var input = AthenaInput(
       controller: controller,
-      cursorColor: ColorUtil.FFFFFFFF,
-      decoration: const InputDecoration.collapsed(hintText: 'Name'),
-      focusNode: focusNode,
-      maxLines: null,
-      style: const TextStyle(color: ColorUtil.FFFFFFFF),
+      autoFocus: true,
+      placeholder: 'Name',
     );
     return AthenaScaffold(
       appBar: AthenaAppBar(action: button, title: const Text('New Provider')),
-      body: Padding(padding: const EdgeInsets.all(16), child: textField),
+      body: Padding(padding: const EdgeInsets.all(16), child: input),
     );
   }
 
