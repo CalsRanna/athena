@@ -59,7 +59,7 @@ class _MobileChatConfigurationPageState
     return Watch((_) {
       return Slider(
         activeColor: ColorUtil.FFA7BA88,
-        inactiveColor: ColorUtil.FFFFFFFF,
+        inactiveColor: ColorUtil.FF757575,
         label: _context.value.toStringAsFixed(0),
         max: 20,
         onChanged: (v) => _context.value = v,
@@ -75,7 +75,7 @@ class _MobileChatConfigurationPageState
     return Watch((_) {
       return Slider(
         activeColor: ColorUtil.FFA7BA88,
-        inactiveColor: ColorUtil.FFFFFFFF,
+        inactiveColor: ColorUtil.FF757575,
         label: _temperature.value.toStringAsFixed(1),
         max: 2,
         onChanged: (v) => _temperature.value = v,
