@@ -16,7 +16,7 @@ class MobileModelSelectDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     if (groupedModels.isEmpty) return const SizedBox();
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFE0E0E0,
+      color: ColorUtil.FFC2C2C2,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
