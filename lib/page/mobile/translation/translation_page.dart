@@ -27,9 +27,9 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   final controller = TextEditingController();
   late final viewModel = GetIt.instance<TranslationViewModel>();
 
-  var id = '';
-  var source = 'Chinese';
-  var target = 'English';
+  final _translationId = signal('');
+  final _source = signal('Chinese');
+  final _target = signal('English');
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +38,11 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
       onTap: exchangeSourceTarget,
     );
     var rowChildren = [
-      Expanded(child: _buildLanguageButton(source, type: 'source')),
+      Expanded(child: _buildLanguageButton(_source.value, type: 'source')),
       SizedBox(width: 4),
       exchangeButton,
       SizedBox(width: 4),
-      Expanded(child: _buildLanguageButton(target, type: 'target')),
+      Expanded(child: _buildLanguageButton(_target.value, type: 'target')),
     ];
     var sourceTextInput = AthenaInput(
       controller: controller,
@@ -78,10 +78,9 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   }
 
   void exchangeSourceTarget() {
-    var temp = source;
-    source = target;
-    target = temp;
-    setState(() {});
+    var temp = _source.value;
+    _source.value = _target.value;
+    _target.value = temp;
   }
 
   void openLanguageSelector(String type) {
@@ -100,20 +99,18 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     if (streaming) return;
 
     var translationId = await viewModel.createTranslation(
-      source,
+      _source.value,
       controller.text,
-      target,
+      _target.value,
     );
-    setState(() {
-      id = translationId;
-    });
+    _translationId.value = translationId;
 
     // 执行翻译
     var translation = TranslationEntity(
       id: translationId,
-      source: source,
+      source: _source.value,
       sourceText: controller.text,
-      target: target,
+      target: _target.value,
       targetText: '',
       createdAt: DateTime.now(),
     );
@@ -138,10 +135,10 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   }
 
   Widget _buildTargetText() {
-    if (id.isEmpty) return const SizedBox();
+    if (_translationId.value.isEmpty) return const SizedBox();
     return Watch((context) {
       var translation = viewModel.translations.value
-          .where((t) => t.id == id)
+          .where((t) => t.id == _translationId.value)
           .firstOrNull;
       return TranslationListTile(
         showSourceText: false,
@@ -232,14 +229,10 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   }
 
   void _updateSource(String source) {
-    setState(() {
-      this.source = source;
-    });
+    _source.value = source;
   }
 
   void _updateTarget(String target) {
-    setState(() {
-      this.target = target;
-    });
+    _target.value = target;
   }
 }

@@ -29,8 +29,8 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
   final inputController = TextEditingController();
   final scrollController = ScrollController();
 
-  bool _isCreatingGame = false;
-  bool _isLoadingGame = false;
+  final _isCreatingGame = signal(false);
+  final _isLoadingGame = signal(false);
 
   @override
   Widget build(BuildContext context) {
@@ -101,16 +101,16 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         children: [
           // Start Game Button
           GestureDetector(
-            onTap: _isCreatingGame ? null : _handleStartGame,
+            onTap: _isCreatingGame.value ? null : _handleStartGame,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
               decoration: BoxDecoration(
-                color: _isCreatingGame
+                color: _isCreatingGame.value
                     ? ColorUtil.FF757575
                     : ColorUtil.FFFFFFFF,
                 borderRadius: BorderRadius.circular(32),
               ),
-              child: _isCreatingGame
+              child: _isCreatingGame.value
                   ? SizedBox(
                       width: 20,
                       height: 20,
@@ -214,7 +214,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 
     return GestureDetector(
-      onTap: _isLoadingGame ? null : () => _handleLoadGame(game.id!),
+      onTap: _isLoadingGame.value ? null : () => _handleLoadGame(game.id!),
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -237,7 +237,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                     ),
                   ),
                 ),
-                if (_isLoadingGame)
+                if (_isLoadingGame.value)
                   SizedBox(
                     width: 16,
                     height: 16,
@@ -268,24 +268,24 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
   }
 
   void _handleLoadGame(int gameId) async {
-    if (_isLoadingGame) return;
+    if (_isLoadingGame.value) return;
 
-    setState(() => _isLoadingGame = true);
+    _isLoadingGame.value = true;
 
     await viewModel.loadGame(gameId);
     pageState.value = TRPGPageState.playing;
 
-    setState(() => _isLoadingGame = false);
+    _isLoadingGame.value = false;
   }
 
   void _handleStartGame() async {
-    if (_isCreatingGame) return;
+    if (_isCreatingGame.value) return;
 
-    setState(() => _isCreatingGame = true);
+    _isCreatingGame.value = true;
     pageState.value = TRPGPageState.playing;
 
     viewModel.createNewGame().then((_) {
-      setState(() => _isCreatingGame = false);
+      _isCreatingGame.value = false;
     });
   }
 

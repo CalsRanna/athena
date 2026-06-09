@@ -2,9 +2,11 @@ import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+@RoutePage()
 class MobileAgentPage extends StatefulWidget {
   const MobileAgentPage({super.key});
 

@@ -65,6 +65,9 @@ class _MobileScaffold extends StatelessWidget {
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );
-    return Scaffold(body: container);
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: container,
+    );
   }
 }

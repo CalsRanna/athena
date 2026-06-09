@@ -12,10 +12,10 @@ class MobileAboutPage extends StatefulWidget {
   const MobileAboutPage({super.key});
 
   @override
-  State<MobileAboutPage> createState() => _MobilAboutPageState();
+  State<MobileAboutPage> createState() => _MobileAboutPageState();
 }
 
-class _MobilAboutPageState extends State<MobileAboutPage> {
+class _MobileAboutPageState extends State<MobileAboutPage> {
   late final viewModel = GetIt.instance<SettingViewModel>();
   String version = '';
 
