@@ -15,12 +15,16 @@ import 'package:athena/agent/tool/list_directory_tool.dart';
 import 'package:athena/agent/tool/powershell_search_tool.dart';
 import 'package:athena/agent/tool/powershell_shell_tool.dart';
 import 'package:athena/agent/tool/skill_tool.dart';
+import 'package:athena/agent/tool/skill_evolve_tool.dart';
+import 'package:athena/agent/tool/experience_learn_tool.dart';
+import 'package:athena/agent/tool/sentinel_evolve_tool.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/agent/tool/unix_search_tool.dart';
 import 'package:athena/agent/tool/web_fetch_tool.dart';
 import 'package:athena/agent/tool/web_search_tool.dart';
 import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/memory_repository.dart';
+import 'package:athena/repository/experience_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
@@ -58,6 +62,7 @@ class DI {
     getIt.registerLazySingleton(() => ProviderRepository());
     getIt.registerLazySingleton(() => SentinelRepository());
     getIt.registerLazySingleton(() => MemoryRepository());
+    getIt.registerLazySingleton(() => ExperienceRepository());
     getIt.registerLazySingleton(() => TRPGGameRepository());
     getIt.registerLazySingleton(() => TRPGMessageRepository());
 
@@ -189,6 +194,8 @@ class DI {
     getIt.registerLazySingleton(() {
       final skillRegistry = getIt<SkillRegistry>();
       final sandbox = getIt<PathSandbox>();
+      final experienceRepository = getIt<ExperienceRepository>();
+      final sentinelRepository = getIt<SentinelRepository>();
       final isWindows = PlatformUtil.isWindows;
       final isMobile = PlatformUtil.isMobile;
       final toolRegistry = ToolRegistry();
@@ -215,6 +222,10 @@ class DI {
           WebFetchTool(),
           WebSearchTool(),
           SkillTool(skillRegistry),
+          SkillEvolveTool(skillRegistry: skillRegistry, sandbox: sandbox),
+          ExperienceLearnTool(repository: experienceRepository),
+          ExperienceRecallTool(repository: experienceRepository),
+          SentinelEvolveTool(sentinelRepository: sentinelRepository),
         ]);
       }
 

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
+import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
@@ -597,6 +598,7 @@ class ChatViewModel {
         provider: ctx.provider,
         model: ctx.model,
         baseMessages: ctx.wrappedMessages,
+        evolutionPrompt: EvolutionPrompt.full,
         maxIterations: _settingViewModel.maxAgentIterations.value,
         auxiliaryModel: _settingViewModel.auxiliaryModel.value,
         auxiliaryModelProvider: _settingViewModel.auxiliaryModelProvider.value,

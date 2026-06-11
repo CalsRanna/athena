@@ -199,6 +199,7 @@ class _FakeAgentService extends AgentService {
     required ModelEntity model,
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
+    String? evolutionPrompt,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,

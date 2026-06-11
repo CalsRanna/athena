@@ -50,6 +50,10 @@ class SkillLoader {
     return skills;
   }
 
+  Skill? parseSkillFile(File file) {
+    return _parseSkill(file);
+  }
+
   Skill? _parseSkill(File file) {
     final content = file.readAsStringSync();
     final lines = content.split('\n');
