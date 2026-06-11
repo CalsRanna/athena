@@ -4,8 +4,10 @@ import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/permission/sandbox.dart';
+import 'package:athena/agent/skill/skill_loader.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/skill/skill_trust_store.dart';
+import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/tool/bash_shell_tool.dart';
 import 'package:athena/agent/tool/file_delete_tool.dart';
 import 'package:athena/agent/tool/file_read_tool.dart';
@@ -188,6 +190,14 @@ class DI {
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
       registry.loadAll();
+      // 注册内置 self-evolve skill（不被文件系统 skill 覆盖）
+      registry.registerBuiltin(const Skill(
+        name: 'self-evolve',
+        description: 'Guidance on self-evolution: creating skills, recording '
+            'experiences, and optimizing sentinels to improve over time',
+        body: EvolutionPrompt.fullBody,
+        sourcePath: '(builtin)',
+      ));
       return registry;
     });
 

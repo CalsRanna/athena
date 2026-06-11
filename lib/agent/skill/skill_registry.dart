@@ -9,6 +9,9 @@ class SkillRegistry {
   SkillRegistry({SkillTrustStore? trustStore})
       : _trustStore = trustStore ?? SkillTrustStore();
 
+  /// Level 1 技能列表最大条数。超过此数量后，仅显示最近使用的技能。
+  static const int maxLevel1Skills = 20;
+
   /// 这些工具会修改文件系统、执行代码或外泄数据，因此 Skill 的 allowedTools
   /// 永远不能把它们降级为 safe（用户必须始终获得审批提示）。
   static const Set<String> dangerousTools = {
@@ -23,6 +26,12 @@ class SkillRegistry {
   final SkillLoader _loader = SkillLoader();
   final SkillTrustStore _trustStore;
   final Map<String, Skill> _skills = {};
+
+  /// 内置 Skill：不来自文件系统，由代码注册，始终可用。
+  final Map<String, Skill> _builtinSkills = {};
+
+  /// Skill 最近访问时间戳（毫秒），用于 level1 排序。
+  final Map<String, int> _skillAccessTimestamps = {};
 
   /// 未被信任的项目级 Skill：已解析但保持 INERT（不可加载、不出现在任何
   /// 列表中、不覆盖用户级 Skill），直到用户信任当前项目目录。
@@ -40,6 +49,8 @@ class SkillRegistry {
     _skills.clear();
     _pendingProjectSkills.clear();
     _pendingProjectDir = null;
+    // 清除文件系统 skill 的时间戳，但保留内置 skill 的时间戳
+    _skillAccessTimestamps.removeWhere((k, _) => !_builtinSkills.containsKey(k));
 
     final userSkillsPath = '$home/.athena/skills';
     final userSkills = _loader.loadFromDirectory(userSkillsPath);
@@ -78,6 +89,14 @@ class SkillRegistry {
     _skills[skill.name] = skill;
   }
 
+  /// 注册内置 Skill（不依赖文件系统，代码中定义）。
+  ///
+  /// 内置 Skill 始终参与 level1 提示词且不会被文件系统中的同名 Skill 覆盖。
+  void registerBuiltin(Skill skill) {
+    _builtinSkills[skill.name] = skill;
+    _skillAccessTimestamps[skill.name] = DateTime.now().millisecondsSinceEpoch;
+  }
+
   /// 是否存在等待用户信任的项目级 Skill。
   bool get hasPendingProjectSkills => _pendingProjectSkills.isNotEmpty;
 
@@ -109,25 +128,56 @@ class SkillRegistry {
   }
 
   String get level1Prompt {
-    if (_skills.isEmpty) return '';
+    // 合并内置 Skill 和文件系统 Skill（内置优先，不会被覆盖）
+    final allSkills = <String, Skill>{};
+    allSkills.addAll(_skills);
+    allSkills.addAll(_builtinSkills);
+
+    if (allSkills.isEmpty) return '';
+
+    // 按最近访问时间排序（未访问过的排在最后）
+    final sorted = allSkills.values.toList()
+      ..sort((a, b) {
+        final tA = _skillAccessTimestamps[a.name] ?? 0;
+        final tB = _skillAccessTimestamps[b.name] ?? 0;
+        return tB.compareTo(tA);
+      });
+
+    final display = sorted.take(maxLevel1Skills).toList();
+    final remaining = sorted.length - display.length;
+
     final buffer = StringBuffer();
     buffer.writeln('## Available Skills');
     buffer.writeln('You have access to the following skills. '
         'Use the "skill" tool to load one when it would help with the task.');
+    if (remaining > 0) {
+      buffer.writeln('(${display.length} shown, $remaining more available. '
+          'Use the "skill" tool to load any by name.)');
+    }
     buffer.writeln();
-    for (final skill in _skills.values) {
+    for (final skill in display) {
       buffer.writeln('- **${skill.name}**: ${skill.description}');
     }
     return buffer.toString();
   }
 
   String? getLevel2Content(String name) {
-    return _skills[name]?.body;
+    // 访问时记录时间戳，用于 level1 排序
+    _skillAccessTimestamps[name] = DateTime.now().millisecondsSinceEpoch;
+    return _skills[name]?.body ?? _builtinSkills[name]?.body;
   }
 
-  Skill? get(String name) => _skills[name];
+  Skill? get(String name) {
+    _skillAccessTimestamps[name] = DateTime.now().millisecondsSinceEpoch;
+    return _skills[name] ?? _builtinSkills[name];
+  }
 
-  List<Skill> get all => _skills.values.toList();
+  List<Skill> get all {
+    final result = <Skill>[];
+    result.addAll(_skills.values);
+    result.addAll(_builtinSkills.values);
+    return result;
+  }
 
   void pushContext(String skillName) {
     _contextStack.add(skillName);
