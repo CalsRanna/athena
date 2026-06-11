@@ -9,6 +9,7 @@ import 'package:athena/database/migration/migration_202501210002_simplify_trpg_g
 import 'package:athena/database/migration/migration_202511280001_fix_models_schema_types.dart';
 import 'package:athena/database/migration/migration_202605210001_add_tool_fields.dart';
 import 'package:athena/database/migration/migration_202605260001_db_integrity.dart';
+import 'package:athena/database/migration/migration_202606110001_dedup_presets.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -79,6 +80,7 @@ class Database {
     await Migration202511280001FixModelsSchemaTypes().migrate();
     await Migration202605210001AddToolFields().migrate();
     await Migration202605260001DbIntegrity().migrate();
+    await Migration202606110001DedupPresets().migrate();
   }
 
   Future<void> _preset() async {
