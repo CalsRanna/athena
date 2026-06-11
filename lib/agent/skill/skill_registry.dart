@@ -141,6 +141,49 @@ class SkillRegistry {
     _contextStack.clear();
   }
 
+  /// 重新加载单个 Skill（创建或更新后调用）。
+  ///
+  /// 解析指定目录下的 SKILL.md 并更新到 _skills 映射中。
+  /// 项目级 Skill 需要该项目目录已被信任。
+  void reloadSkill(String skillName, String directoryPath) {
+    final skillFile = File('$directoryPath/SKILL.md');
+    if (!skillFile.existsSync()) {
+      // SKILL.md 不存在：从映射中移除
+      _skills.remove(skillName);
+      _pendingProjectSkills.remove(skillName);
+      return;
+    }
+    final skill = _loader.parseSkillFile(skillFile);
+    if (skill == null) return;
+
+    // 判断是项目级还是用户级
+    final home = _homePath;
+    final normalizedDir = _normalizePath(directoryPath);
+    final normalizedHome = _normalizePath('$home/.athena/skills');
+
+    if (normalizedDir.startsWith(normalizedHome)) {
+      // 用户级，直接合并
+      _skills[skillName] = skill;
+    } else {
+      // 项目级：只有信任了才合并
+      final projectRoot = _findProjectRoot(normalizedDir);
+      if (projectRoot != null && _trustStore.isTrusted(projectRoot)) {
+        _mergeProjectSkill(skill);
+      } else {
+        // 未信任：放入 pending
+        _pendingProjectSkills[skillName] = skill;
+        _pendingProjectDir ??= projectRoot ?? Directory.current.path;
+      }
+    }
+  }
+
+  /// 推断项目根目录（从 skill 路径中提取 .athena 的父目录）。
+  String? _findProjectRoot(String skillDir) {
+    final idx = skillDir.indexOf('/.athena/');
+    if (idx > 0) return skillDir.substring(0, idx);
+    return null;
+  }
+
   /// 当前 Agent 处于的最近一个 Skill 上下文。
   Skill? get currentContext {
     if (_contextStack.isEmpty) return null;

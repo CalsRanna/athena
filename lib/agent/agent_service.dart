@@ -34,6 +34,7 @@ class AgentService {
     required ModelEntity model,
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
+    String? evolutionPrompt,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,
@@ -47,11 +48,21 @@ class AgentService {
     try {
       for (var iteration = 0; iteration < maxIterations; iteration++) {
       cancelToken?.throwIfCancelled();
-      if (iteration == 0 && skillPrompt != null && skillPrompt.isNotEmpty) {
-        messages = [
-          ChatMessage.system(skillPrompt),
-          ...messages,
-        ];
+      if (iteration == 0) {
+        // 技能指令在最前，优先级最高
+        if (skillPrompt != null && skillPrompt.isNotEmpty) {
+          messages = [
+            ChatMessage.system(skillPrompt),
+            ...messages,
+          ];
+        }
+        // 进化引导提示放在技能之后、基础消息之前
+        if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
+          messages = [
+            ChatMessage.system(evolutionPrompt),
+            ...messages,
+          ];
+        }
       }
 
       final toolDefs = _toolRegistry.definitions;
