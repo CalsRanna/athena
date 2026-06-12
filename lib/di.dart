@@ -205,7 +205,6 @@ class DI {
       final skillRegistry = getIt<SkillRegistry>();
       final sandbox = getIt<PathSandbox>();
       final experienceRepository = getIt<ExperienceRepository>();
-      final sentinelRepository = getIt<SentinelRepository>();
       final isWindows = PlatformUtil.isWindows;
       final isMobile = PlatformUtil.isMobile;
       final toolRegistry = ToolRegistry();
@@ -235,7 +234,7 @@ class DI {
           SkillEvolveTool(skillRegistry: skillRegistry, sandbox: sandbox),
           ExperienceLearnTool(repository: experienceRepository),
           ExperienceRecallTool(repository: experienceRepository),
-          SentinelEvolveTool(sentinelRepository: sentinelRepository),
+          SentinelEvolveTool(sentinelViewModel: getIt<SentinelViewModel>()),
         ]);
       }
 

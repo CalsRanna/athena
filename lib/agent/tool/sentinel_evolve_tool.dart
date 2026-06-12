@@ -1,29 +1,33 @@
 import 'package:athena/agent/tool/tool_interface.dart';
-import 'package:athena/repository/sentinel_repository.dart';
+import 'package:athena/view_model/sentinel_view_model.dart';
 
 /// 优化 Sentinel（系统提示词）的工具，使 Agent 能基于使用反馈改进自身角色设定。
 ///
-/// Agent 可以在使用某个 Sentinel 一段时间后，分析其表现并提出改进版本。
-/// 改进后的 Sentinel 作为新版本保存，用户可选择是否采纳。
+/// Agent 直接修改当前使用的 Sentinel，在原有基础上改进其提示词、
+/// 描述等信息，而不是创建新的 Sentinel。可选支持重命名。
 class SentinelEvolveTool implements Tool {
-  final SentinelRepository _sentinelRepository;
+  /// 内置 sentinel 的名称，其内容可改进但名称不可修改
+  static const builtinSentinelName = 'Athena';
 
-  SentinelEvolveTool({required SentinelRepository sentinelRepository})
-      : _sentinelRepository = sentinelRepository;
+  final SentinelViewModel _sentinelViewModel;
+
+  SentinelEvolveTool({required SentinelViewModel sentinelViewModel})
+      : _sentinelViewModel = sentinelViewModel;
 
   @override
   String get name => 'sentinel_evolve';
 
   @override
   String get description =>
-      'Create an improved version of a sentinel (system prompt / role '
-      'definition). Use this to refine how you operate in a specific role '
-      'based on experience. This enables:\n'
+      'Improve an existing sentinel (system prompt / role definition) in place. '
+      'Use this to refine how you operate in a specific role based on experience. '
+      'This enables:\n'
       '- Fixing issues in the current sentinel\'s instructions\n'
       '- Adding missing capabilities or constraints\n'
       '- Refining the tone, workflow, or output format\n'
       '- Adapting the role based on user feedback patterns\n'
-      'The improved sentinel is saved as a new entry for user review. '
+      '- Optionally renaming the sentinel\n'
+      'The sentinel is updated directly — no duplicate is created. '
       'Always explain what changes you made and why.';
 
   @override
@@ -33,13 +37,15 @@ class SentinelEvolveTool implements Tool {
           'sentinel_name': {
             'type': 'string',
             'description':
-                'The name of the existing sentinel to improve. Use the exact name as shown in the sentinel list.',
+                'The name of the existing sentinel to improve. Use the exact '
+                'name as shown in the sentinel list.',
           },
           'new_name': {
             'type': 'string',
             'description':
-                'Name for the improved sentinel. Should differ from the original '
-                'to distinguish versions (e.g., append "v2" or a descriptive suffix).',
+                'New name for the sentinel (optional). If provided and '
+                'different from the original, the sentinel will be renamed. '
+                'If omitted, the sentinel keeps its current name.',
           },
           'improvements': {
             'type': 'string',
@@ -56,21 +62,22 @@ class SentinelEvolveTool implements Tool {
           'new_description': {
             'type': 'string',
             'description':
-                'Updated description for the improved sentinel (optional, '
-                'defaults to description of improvements).',
+                'Updated description for the sentinel (optional, '
+                'defaults to current description).',
           },
           'new_tags': {
             'type': 'string',
             'description':
-                'Comma-separated tags for the new sentinel (optional).',
+                'Comma-separated tags for the sentinel (optional, '
+                'defaults to current tags).',
           },
           'new_avatar': {
             'type': 'string',
             'description':
-                'Emoji avatar for the new sentinel (optional, defaults to original).',
+                'Emoji avatar for the sentinel (optional, defaults to current).',
           },
         },
-        'required': ['sentinel_name', 'new_name', 'improvements', 'new_prompt'],
+        'required': ['sentinel_name', 'improvements', 'new_prompt'],
       };
 
   @override
@@ -79,64 +86,87 @@ class SentinelEvolveTool implements Tool {
   @override
   Future<String> execute(Map<String, dynamic> args) async {
     final sentinelName = args['sentinel_name'] as String;
-    final newName = args['new_name'] as String;
+    final newName = args['new_name'] as String?;
     final improvements = args['improvements'] as String;
     final newPrompt = args['new_prompt'] as String;
-    final newDescription =
-        args['new_description'] as String? ?? improvements;
-    final newTags = args['new_tags'] as String? ?? '';
-    final newAvatar = args['new_avatar'] as String? ?? '';
+    final newDescription = args['new_description'] as String?;
+    final newTags = args['new_tags'] as String?;
+    final newAvatar = args['new_avatar'] as String?;
 
     // 查找原 sentinel
-    final original = await _sentinelRepository.getSentinelByName(sentinelName);
+    final original = await _sentinelViewModel.getSentinelByName(sentinelName);
     if (original == null) {
       return 'Error: Sentinel "$sentinelName" not found. '
-          'Check the name spelling. Available sentinels can be listed in the settings.';
-    }
-
-    // 检查新名称是否已存在
-    final existing = await _sentinelRepository.getSentinelByName(newName);
-    if (existing != null) {
-      return 'Error: A sentinel named "$newName" already exists. '
-          'Choose a different name for the improved version.';
+          'Check the name spelling. Available sentinels can be listed in the '
+          'settings.';
     }
 
     if (newPrompt.trim().isEmpty) {
       return 'Error: new_prompt must not be empty.';
     }
 
-    try {
-      final avatar = newAvatar.isNotEmpty ? newAvatar : original.avatar;
-      final tags = newTags.isNotEmpty ? newTags : original.tags;
+    // 内置 sentinel 不允许改名
+    if (original.name == builtinSentinelName) {
+      final requestedName =
+          (newName != null && newName.isNotEmpty) ? newName : original.name;
+      if (requestedName != builtinSentinelName) {
+        return 'Error: The built-in "$builtinSentinelName" sentinel cannot be '
+            'renamed. You can improve its prompt, description, tags, and avatar, '
+            'but the name must remain "$builtinSentinelName".';
+      }
+    }
 
-      // 构建改进版 sentinel
-      final improved = original.copyWith(
-        name: newName,
-        description: newDescription,
+    try {
+      final effectiveName =
+          (newName != null && newName.isNotEmpty) ? newName : original.name;
+
+      // 如果改名且新名称与当前名称不同，检查是否与其他 sentinel 冲突
+      if (effectiveName != original.name) {
+        final conflict =
+            await _sentinelViewModel.getSentinelByName(effectiveName);
+        if (conflict != null && conflict.id != original.id) {
+          return 'Error: A different sentinel named "$effectiveName" already '
+              'exists. Choose a different name.';
+        }
+      }
+
+      final avatar = newAvatar != null && newAvatar.isNotEmpty
+          ? newAvatar
+          : original.avatar;
+      final tags = newTags ?? original.tags;
+      final description = newDescription != null && newDescription.isNotEmpty
+          ? newDescription
+          : original.description;
+
+      // 在原 sentinel 基础上修改（保留原始 id）
+      final updated = original.copyWith(
+        name: effectiveName,
+        description: description,
         prompt: newPrompt,
         avatar: avatar,
         tags: tags,
       );
 
-      // 保存
-      final id = await _sentinelRepository.createSentinel(improved);
+      // 更新到数据库并刷新信号列表
+      await _sentinelViewModel.updateSentinel(updated);
 
       // 生成变更摘要
       final changeReport = _buildChangeReport(
         originalName: sentinelName,
-        newName: newName,
+        newName: effectiveName,
         improvements: improvements,
         originalPrompt: original.prompt,
         newPrompt: newPrompt,
       );
 
       return 'Sentinel evolved successfully!\n'
-          'Created "$newName" (id: $id) based on "$sentinelName".\n\n'
+          'Updated "$sentinelName"'
+          '${effectiveName != sentinelName ? ' → "$effectiveName"' : ''}.\n\n'
           '$changeReport\n\n'
-          'The improved sentinel is now available in your sentinel list. '
-          'You can switch to it in chat settings to use the improved version.';
+          'The sentinel has been updated in place. '
+          'The changes take effect immediately in the current chat.';
     } catch (e) {
-      return 'Error creating improved sentinel: $e';
+      return 'Error updating sentinel: $e';
     }
   }
 
@@ -150,15 +180,21 @@ class SentinelEvolveTool implements Tool {
     final buffer = StringBuffer();
     buffer.writeln('## Evolution Report');
     buffer.writeln();
-    buffer.writeln('**From:** $originalName → **To:** $newName');
+    if (originalName != newName) {
+      buffer.writeln('**From:** $originalName → **To:** $newName');
+    } else {
+      buffer.writeln('**Sentinel:** $originalName (updated in place)');
+    }
     buffer.writeln();
     buffer.writeln('**Improvements:**');
     buffer.writeln(improvements);
     buffer.writeln();
     buffer.writeln('**Changes:**');
-    buffer.writeln('- Original prompt length: ${originalPrompt.length} chars');
+    buffer.writeln(
+        '- Original prompt length: ${originalPrompt.length} chars');
     buffer.writeln('- New prompt length: ${newPrompt.length} chars');
-    buffer.writeln('- Difference: ${newPrompt.length - originalPrompt.length} chars');
+    buffer.writeln(
+        '- Difference: ${newPrompt.length - originalPrompt.length} chars');
     return buffer.toString();
   }
 }
