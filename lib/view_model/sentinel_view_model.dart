@@ -87,6 +87,18 @@ class SentinelViewModel {
     }
   }
 
+  /// 按名称查找 sentinel（先查内存信号，再查数据库）
+  Future<SentinelEntity?> getSentinelByName(String name) async {
+    // 优先从已加载列表查找
+    var match = sentinels.value.cast<SentinelEntity?>().firstWhere(
+          (s) => s!.name == name,
+          orElse: () => null,
+        );
+    if (match != null) return match;
+    // 回退到数据库
+    return await _sentinelRepository.getSentinelByName(name);
+  }
+
   Future<SentinelEntity> getFirstSentinel() async {
     if (sentinels.value.isEmpty) {
       await getSentinels();

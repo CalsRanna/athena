@@ -68,7 +68,7 @@ class Migration202606110001DedupPresets {
         WHERE provider_id IN (
           SELECT id FROM providers WHERE name = ? AND id != ?
         )
-      ''', [keepId, name]);
+      ''', [keepId, name, keepId]);
 
       // 3. 删除重复的 providers
       await laconic.statement('''
@@ -100,7 +100,7 @@ class Migration202606110001DedupPresets {
         WHERE sentinel_id IN (
           SELECT id FROM sentinels WHERE name = ? AND id != ?
         )
-      ''', [keepId, name]);
+      ''', [keepId, name, keepId]);
 
       // 2. 删除重复的 sentinels
       await laconic.statement('''
