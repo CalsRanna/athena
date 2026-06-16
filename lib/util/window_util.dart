@@ -28,15 +28,11 @@ class WindowUtil {
     var width = await instance.getWindowWidth();
     await windowManager.ensureInitialized();
 
-    TitleBarStyle? titleStyle = TitleBarStyle.hidden;
-    if (Platform.isWindows) {
-      titleStyle = TitleBarStyle.normal;
-    }
     final options = WindowOptions(
+      titleBarStyle: TitleBarStyle.hidden,
       center: true,
       minimumSize: const Size(1080, 720),
       size: Size(width, height),
-      titleBarStyle: titleStyle,
       windowButtonVisibility: false,
       title: 'Athena',
     );

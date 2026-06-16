@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:athena/agent/skill/skill_loader.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
-import 'package:athena/agent/tool/tool_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -20,7 +19,6 @@ void main() {
     void writeSkill(String dirName, String name, {String? description}) {
       final dir = Directory('${tmp.path}/$dirName')..createSync();
       final desc = description ?? 'Test skill';
-      // SKILL.md 的 YAML 部分用引号包名字，保证控制字符不会破坏解析。
       File('${dir.path}/SKILL.md').writeAsStringSync(
         '---\nname: "$name"\ndescription: $desc\n---\nbody\n',
       );
@@ -44,7 +42,7 @@ void main() {
     });
 
     test('rejects name with control character', () {
-      writeSkill('a', 'foobar');
+      writeSkill('a', 'foo\u0001bar');
       expect(SkillLoader().loadFromDirectory(tmp.path), isEmpty);
     });
 
@@ -84,163 +82,64 @@ void main() {
     });
   });
 
-  group('SkillRegistry.effectiveDangerLevel', () {
+  group('SkillRegistry isToolAllowed', () {
     _TestRegistry buildRegistryWithSkill({
       required String name,
       String? allowedTools,
     }) {
-      final tmp = Directory.systemTemp.createTempSync('skill_eff_test_');
+      final t = Directory.systemTemp.createTempSync('skill_test_');
       addTearDown(() {
-        if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+        if (t.existsSync()) t.deleteSync(recursive: true);
       });
-      final dir = Directory('${tmp.path}/$name')..createSync();
+      final dir = Directory('${t.path}/$name')..createSync();
       final allowedLine =
           allowedTools == null ? '' : 'allowed-tools: $allowedTools\n';
       File('${dir.path}/SKILL.md').writeAsStringSync(
         '---\nname: $name\ndescription: x\n$allowedLine---\nbody\n',
       );
-      final skills = SkillLoader().loadFromDirectory(tmp.path);
+      final skills = SkillLoader().loadFromDirectory(t.path);
       return _TestRegistry(skills.isNotEmpty ? skills.first : null);
     }
 
-    test('outside skill context returns default level', () {
+    test('outside skill context returns false', () {
       final reg = buildRegistryWithSkill(name: 'a', allowedTools: 'file_read');
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.needsApproval),
-        DangerLevel.needsApproval,
-      );
-      expect(
-        reg.effectiveDangerLevel('file_read', DangerLevel.safe),
-        DangerLevel.safe,
-      );
+      expect(reg.isToolAllowed('file_read'), isFalse);
     });
 
-    test('allowed tool in skill context downgrades to safe', () {
+    test('allowed tool in skill context returns true', () {
       final reg = buildRegistryWithSkill(name: 'a', allowedTools: 'file_read');
       reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('file_read', DangerLevel.needsApproval),
-        DangerLevel.safe,
-      );
+      expect(reg.isToolAllowed('file_read'), isTrue);
     });
 
-    test('disallowed tool in skill context forced to needsApproval', () {
+    test('disallowed tool in skill context returns false', () {
       final reg = buildRegistryWithSkill(name: 'a', allowedTools: 'file_read');
       reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.safe),
-        DangerLevel.needsApproval,
-      );
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.needsApproval),
-        DangerLevel.needsApproval,
-      );
+      expect(reg.isToolAllowed('bash'), isFalse);
     });
 
-    test('skill without allowed-tools field keeps defaults', () {
+    test('skill without allowed-tools returns false for all', () {
       final reg = buildRegistryWithSkill(name: 'a', allowedTools: null);
       reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.needsApproval),
-        DangerLevel.needsApproval,
-      );
-      expect(
-        reg.effectiveDangerLevel('file_read', DangerLevel.safe),
-        DangerLevel.safe,
-      );
+      expect(reg.isToolAllowed('bash'), isFalse);
+      expect(reg.isToolAllowed('file_read'), isFalse);
     });
 
-    test('forbidden tool never gets relaxed', () {
-      final reg = buildRegistryWithSkill(name: 'a', allowedTools: 'bash');
-      reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.forbidden),
-        DangerLevel.forbidden,
-      );
-    });
-
-    test('skill tool itself is never restricted by current context', () {
+    test('skill tool itself is always allowed', () {
       final reg = buildRegistryWithSkill(name: 'a', allowedTools: 'file_read');
       reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('skill', DangerLevel.safe),
-        DangerLevel.safe,
-      );
+      expect(reg.isToolAllowed('skill'), isTrue);
     });
 
-    test('allowed-tools with multiple comma-separated entries', () {
+    test('multiple comma-separated entries', () {
       final reg = buildRegistryWithSkill(
         name: 'a',
         allowedTools: 'file_read, search ,bash',
       );
       reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('search', DangerLevel.needsApproval),
-        DangerLevel.safe,
-      );
-      expect(
-        reg.effectiveDangerLevel('file_write', DangerLevel.needsApproval),
-        DangerLevel.needsApproval,
-      );
-    });
-
-    test('dangerousTools set contains exactly the six dangerous tools', () {
-      expect(
-        SkillRegistry.dangerousTools,
-        {'bash', 'powershell', 'file_write', 'file_update', 'file_delete',
-            'web_fetch'},
-      );
-    });
-
-    test('dangerous tool in allowed-tools is NOT downgraded to safe (S3)', () {
-      for (final tool in const [
-        'bash',
-        'powershell',
-        'file_write',
-        'file_update',
-        'file_delete',
-        'web_fetch',
-      ]) {
-        final reg = buildRegistryWithSkill(name: 'a', allowedTools: tool);
-        reg.pushContext('a');
-        expect(
-          reg.effectiveDangerLevel(tool, DangerLevel.needsApproval),
-          DangerLevel.needsApproval,
-          reason: '$tool listed in allowed-tools must stay needsApproval',
-        );
-      }
-    });
-
-    test('non-dangerous tools in allowed-tools still downgrade to safe', () {
-      final reg = buildRegistryWithSkill(
-        name: 'a',
-        allowedTools: 'file_read, search',
-      );
-      reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('file_read', DangerLevel.needsApproval),
-        DangerLevel.safe,
-      );
-      expect(
-        reg.effectiveDangerLevel('search', DangerLevel.needsApproval),
-        DangerLevel.safe,
-      );
-    });
-
-    test('mixed allowed-tools: non-dangerous downgraded, dangerous not', () {
-      final reg = buildRegistryWithSkill(
-        name: 'a',
-        allowedTools: 'file_read, bash',
-      );
-      reg.pushContext('a');
-      expect(
-        reg.effectiveDangerLevel('file_read', DangerLevel.needsApproval),
-        DangerLevel.safe,
-      );
-      expect(
-        reg.effectiveDangerLevel('bash', DangerLevel.needsApproval),
-        DangerLevel.needsApproval,
-      );
+      expect(reg.isToolAllowed('file_read'), isTrue);
+      expect(reg.isToolAllowed('bash'), isTrue);
+      expect(reg.isToolAllowed('file_write'), isFalse);
     });
   });
 }

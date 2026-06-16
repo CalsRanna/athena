@@ -1,21 +1,24 @@
-import 'dart:io';
-
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PermissionRule matching', () {
     test('matches file path under allowed directory', () {
-      final rule = PermissionRule(tool: 'file_read', pattern: '/Users/x/Downloads/');
+      final rule = PermissionRule(
+        tool: 'file_read',
+        pattern: '/Users/x/Downloads/',
+      );
       expect(rule.matches('file_read', '/Users/x/Downloads/a.txt'), isTrue);
       expect(rule.matches('file_read', '/Users/x/Downloads/sub/c.txt'), isTrue);
       expect(rule.matches('file_read', '/Users/x/Other/a.txt'), isFalse);
     });
 
     test('different tool does not match', () {
-      final rule = PermissionRule(tool: 'file_read', pattern: '/Users/x/Downloads/');
+      final rule = PermissionRule(
+        tool: 'file_read',
+        pattern: '/Users/x/Downloads/',
+      );
       expect(rule.matches('file_write', '/Users/x/Downloads/a.txt'), isFalse);
     });
 
@@ -24,6 +27,20 @@ void main() {
       expect(rule.matches('bash', 'git status'), isTrue);
       expect(rule.matches('bash', 'git log'), isTrue);
       expect(rule.matches('bash', 'ls -la'), isFalse);
+    });
+
+    test('glob pattern matches wildcards', () {
+      final rule = PermissionRule(tool: 'bash', pattern: 'rm *.log');
+      expect(rule.matches('bash', 'rm error.log'), isTrue);
+      expect(rule.matches('bash', 'rm access.log'), isTrue);
+      expect(rule.matches('bash', 'rm /var/log/error.log'), isFalse);
+    });
+
+    test('glob pattern with ? matches single char', () {
+      final rule = PermissionRule(tool: 'bash', pattern: 'ls file?.txt');
+      expect(rule.matches('bash', 'ls file1.txt'), isTrue);
+      expect(rule.matches('bash', 'ls fileA.txt'), isTrue);
+      expect(rule.matches('bash', 'ls file12.txt'), isFalse);
     });
 
     test('empty pattern matches everything for that tool', () {
@@ -63,39 +80,11 @@ void main() {
       expect(service.check('file_read', {'path': '/a/b/c.txt'}), isNull);
     });
 
-    test('L0 sandbox block returns false (hard deny) for blacklisted path', () {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '/';
+    test('all paths allowed without sandbox', () {
       final store = PermissionStore();
       final service = PermissionService(store: store);
-      expect(service.check('file_read', {'path': '$home/.ssh/id_rsa'}), isFalse);
-    });
-
-    test('sandbox block takes precedence over allow rule', () {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '/';
-      final service = serviceWithRule(
-        PermissionRule(tool: 'file_read', pattern: '$home/.ssh/'),
-      );
-      // 即使有 allow rule，sandbox 仍然硬拦截
-      expect(service.check('file_read', {'path': '$home/.ssh/id_rsa'}), isFalse);
-    });
-
-    test('search tool: omitted path defaults to cwd and matches rule', () {
-      // PathSandbox.resolveAbsolute canonicalizes; rule must use same output.
-      final sandbox = PathSandbox();
-      final dir = sandbox.resolveAbsolute('/tmp/athena_search_test');
-      final store = PermissionStore()
-        ..rules = [PermissionRule(tool: 'search', pattern: '$dir/')];
-      final service = PermissionService(store: store, sandbox: sandbox);
-      // Explicit path matching the rule
-      expect(service.check('search', {'pattern': 'foo', 'path': '/tmp/athena_search_test'}), isTrue);
-      // Subdirectory also matches (prefix matching)
-      expect(service.check('search', {'pattern': 'foo', 'path': '/tmp/athena_search_test/sub'}), isTrue);
-      // Outside the rule does not match
-      expect(service.check('search', {'pattern': 'foo', 'path': '/tmp/other'}), isNull);
+      // No sandbox: even sensitive paths need user approval, not auto-denied
+      expect(service.check('file_read', {'path': '/etc/passwd'}), isNull);
     });
 
     test('web_fetch origin matching', () {
@@ -122,11 +111,10 @@ void main() {
 
     test('describes each tool type', () {
       expect(service.describeRule('bash'), contains('command'));
+      expect(service.describeRule('powershell'), contains('command'));
       expect(service.describeRule('file_read'), contains('reads'));
       expect(service.describeRule('file_write'), contains('writes'));
-      expect(service.describeRule('file_delete'), contains('deletes'));
-      expect(service.describeRule('search'), contains('searching'));
-      expect(service.describeRule('list_directory'), contains('listing'));
+      expect(service.describeRule('file_update'), contains('writes'));
       expect(service.describeRule('web_fetch'), contains('domain'));
     });
   });
@@ -142,27 +130,24 @@ void main() {
       );
     });
 
-    test('canonicalizes path for file tools', () {
-      final home = Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '/';
-      final arg = service.primaryArg('file_read', {'path': '$home/Documents/../Downloads/note.md'});
-      expect(arg, isNotNull);
-      expect(arg, contains('Downloads/note.md'));
+    test('extracts path for file tools', () {
+      expect(
+        service.primaryArg('file_read', {'path': '/a/b/c.txt'}),
+        '/a/b/c.txt',
+      );
     });
 
     test('extracts origin for web_fetch', () {
       expect(
-        service.primaryArg('web_fetch', {'url': 'https://example.com/path?q=1'}),
+        service.primaryArg('web_fetch', {
+          'url': 'https://example.com/path?q=1',
+        }),
         'https://example.com',
       );
     });
 
     test('returns null for non-http URL in web_fetch', () {
-      expect(
-        service.primaryArg('web_fetch', {'url': 'ftp://x'}),
-        isNull,
-      );
+      expect(service.primaryArg('web_fetch', {'url': 'ftp://x'}), isNull);
     });
   });
 }

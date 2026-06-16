@@ -1,13 +1,10 @@
 import 'dart:io';
 
-import 'package:athena/agent/permission/sandbox.dart';
-
 import 'tool_interface.dart';
 
 class FileUpdateTool implements Tool {
-  final PathSandbox sandbox;
 
-  FileUpdateTool({required this.sandbox});
+  FileUpdateTool();
 
   @override
   String get name => 'file_update';
@@ -18,9 +15,6 @@ class FileUpdateTool implements Tool {
       'When replace_all is false (default), old_string must appear exactly once. '
       'Use for targeted edits without rewriting the entire file. '
       'For creating or overwriting a whole file, use file_write.';
-
-  @override
-  DangerLevel get dangerLevel => DangerLevel.needsApproval;
 
   @override
   Map<String, dynamic> get parameters => {
@@ -56,10 +50,6 @@ class FileUpdateTool implements Tool {
     final rawNew = args['new_string'] as String;
     final replaceAll = args['replace_all'] as bool? ?? false;
 
-    if (!sandbox.canWrite(path)) {
-      return 'Error: path "$path" is in a restricted system area and cannot be accessed.';
-    }
-
     if (rawOld == rawNew) {
       return 'Error: old_string and new_string must differ';
     }
@@ -83,13 +73,11 @@ class FileUpdateTool implements Tool {
 
     final matchCount = _countMatches(normalized, oldString);
     if (matchCount == 0) {
-      // Attempt matching with original quotes in case normalization was wrong
       final rawCount = _countMatches(content, oldString);
       if (rawCount == 0) {
         return 'Error: old_string not found in file. '
             'Make sure the string matches exactly, including whitespace and indentation.';
       }
-      // Raw match works, don't normalize
       final updated = _applyReplace(content, oldString, newString, replaceAll, lineEnding);
       return _writeSafely(file, mtimeBefore, updated);
     }
@@ -101,52 +89,35 @@ class FileUpdateTool implements Tool {
     }
 
     final updated = _applyReplace(normalized, oldString, newString, replaceAll, lineEnding);
-    // Restore original quote style
     final restored = _restoreQuotes(updated, content);
     return _writeSafely(file, mtimeBefore, _normalizeLineEndings(restored, lineEnding));
   }
 
-  /// Strip line number prefixes and normalize smart quotes.
-  ///
-  /// file_read outputs "42\tcontent" format. Models may copy these prefixes
-  /// into old_string. Strip both "42\t" and "    42\t" (cat -n style) formats.
-  /// Also normalize smart/curly quotes — models may output " (U+201C/U+201D)
-  /// or ' (U+2018/U+2019) while files use straight quotes.
   String _preprocess(String text) {
     return _normalizeQuotes(
       text.replaceAll(RegExp(r'^[ \t]*\d+\t', multiLine: true), ''),
     );
   }
 
-  /// Normalize smart/curly quotes to straight quotes for matching.
-  ///
-  /// Models may output " (U+201C/U+201D) or ' (U+2018/U+2019) while files
-  /// use straight quotes. Normalize all to straight for comparison.
   String _normalizeQuotes(String text) {
     return text
-        .replaceAll('“', '"') // left double
-        .replaceAll('”', '"') // right double
-        .replaceAll('‘', "'") // left single
-        .replaceAll('’', "'") // right single
-        .replaceAll('«', '"') // left guillemet
-        .replaceAll('»', '"'); // right guillemet
+        .replaceAll('\u201c', '"')
+        .replaceAll('\u201d', '"')
+        .replaceAll('\u2018', "'")
+        .replaceAll('\u2019', "'")
+        .replaceAll('\u00ab', '"')
+        .replaceAll('\u00bb', '"');
   }
 
-  /// Restore original quote style in the file.
-  ///
-  /// After applying replacements on normalized content, convert back
-  /// to the quote style found in the original content.
   String _restoreQuotes(String updated, String original) {
     for (final pair in [
-      ('"', ['“', '”']),
-      ("'", ['‘', '’']),
+      ('"', ['\u201c', '\u201d']),
+      ("'", ['\u2018', '\u2019']),
     ]) {
       final straight = pair.$1;
       if (!original.contains(straight)) continue;
-      // If original uses curly quotes, convert new content's straight quotes back
       final hasCurly = pair.$2.any((c) => original.contains(c));
       if (hasCurly) {
-        // Keep curly quotes as-is since normalization already handled matching
         return updated;
       }
     }
@@ -178,8 +149,6 @@ class FileUpdateTool implements Tool {
     final before = content.substring(0, index);
     final after = content.substring(index + oldString.length);
 
-    // When deleting (newString is empty) and old_string doesn't end with
-    // a newline, remove the following newline too to avoid leaving a blank line.
     var trailing = after;
     if (newString.isEmpty &&
         !oldString.endsWith('\n') &&
@@ -209,7 +178,6 @@ class FileUpdateTool implements Tool {
   }
 
   Future<String> _writeSafely(File file, DateTime mtimeBefore, String updated) async {
-    // Re-read to detect external modification between our read and write
     final mtimeNow = await file.lastModified();
     if (mtimeNow != mtimeBefore) {
       return 'Error: File was modified externally since reading. '

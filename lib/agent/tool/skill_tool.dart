@@ -28,9 +28,6 @@ class SkillTool implements Tool {
   };
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
-
-  @override
   Future<String> execute(Map<String, dynamic> args) async {
     final name = args['name'] as String;
     final skill = _registry.get(name);
@@ -43,9 +40,9 @@ class SkillTool implements Tool {
     buffer.writeln();
     if (skill.allowedTools != null && skill.allowedTools!.isNotEmpty) {
       buffer.writeln(
-        'Permission scope: tools listed in allowed-tools '
-        '(${skill.allowedTools}) may auto-approve; others require user '
-        'approval even if they are normally safe.',
+        'Permission scope: tools in allowed-tools '
+        '(${skill.allowedTools}) will skip the approval dialog automatically. '
+        'Other tools still require user approval.',
       );
       buffer.writeln();
     }

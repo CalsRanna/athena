@@ -1,17 +1,12 @@
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/powershell_shell_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PowerShellShellTool', () {
-    final tool = PowerShellShellTool(sandbox: PathSandbox());
+    final tool = PowerShellShellTool();
 
     test('name is powershell', () {
       expect(tool.name, 'powershell');
-    });
-
-    test('dangerLevel is needsApproval', () {
-      expect(tool.dangerLevel.name, 'needsApproval');
     });
 
     test('parameters require command', () {
@@ -26,6 +21,13 @@ void main() {
 
     test('description mentions PowerShell', () {
       expect(tool.description.toLowerCase(), contains('powershell'));
+    });
+
+    test('blocks recursive delete command', () async {
+      final result = await tool.execute({
+        'command': 'Remove-Item -Path C:\\test -Recurse',
+      });
+      expect(result, contains('Warning'));
     });
   });
 }

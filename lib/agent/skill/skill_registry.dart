@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:athena/agent/skill/skill_loader.dart';
 import 'package:athena/agent/skill/skill_trust_store.dart';
-import 'package:athena/agent/tool/tool_interface.dart';
 import 'package:athena/util/logger_util.dart';
 
 class SkillRegistry {
@@ -11,17 +10,6 @@ class SkillRegistry {
 
   /// Level 1 技能列表最大条数。超过此数量后，仅显示最近使用的技能。
   static const int maxLevel1Skills = 20;
-
-  /// 这些工具会修改文件系统、执行代码或外泄数据，因此 Skill 的 allowedTools
-  /// 永远不能把它们降级为 safe（用户必须始终获得审批提示）。
-  static const Set<String> dangerousTools = {
-    'bash',
-    'powershell',
-    'file_write',
-    'file_update',
-    'file_delete',
-    'web_fetch',
-  };
 
   final SkillLoader _loader = SkillLoader();
   final SkillTrustStore _trustStore;
@@ -49,7 +37,6 @@ class SkillRegistry {
     _skills.clear();
     _pendingProjectSkills.clear();
     _pendingProjectDir = null;
-    // 清除文件系统 skill 的时间戳，但保留内置 skill 的时间戳
     _skillAccessTimestamps.removeWhere((k, _) => !_builtinSkills.containsKey(k));
 
     final userSkillsPath = '$home/.athena/skills';
@@ -59,7 +46,6 @@ class SkillRegistry {
     }
 
     final projectSkillsPath = '$project/.athena/skills';
-    // cwd 即 home：项目级路径与用户级路径相同，已作为用户级加载，跳过项目阶段。
     if (_normalizePath(projectSkillsPath) == _normalizePath(userSkillsPath)) {
       return;
     }
@@ -72,7 +58,6 @@ class SkillRegistry {
         _mergeProjectSkill(skill);
       }
     } else {
-      // 未信任：保持 INERT，不并入 _skills。
       for (final skill in projectSkills) {
         _pendingProjectSkills[skill.name] = skill;
       }
@@ -89,24 +74,17 @@ class SkillRegistry {
     _skills[skill.name] = skill;
   }
 
-  /// 注册内置 Skill（不依赖文件系统，代码中定义）。
-  ///
-  /// 内置 Skill 始终参与 level1 提示词且不会被文件系统中的同名 Skill 覆盖。
   void registerBuiltin(Skill skill) {
     _builtinSkills[skill.name] = skill;
     _skillAccessTimestamps[skill.name] = DateTime.now().millisecondsSinceEpoch;
   }
 
-  /// 是否存在等待用户信任的项目级 Skill。
   bool get hasPendingProjectSkills => _pendingProjectSkills.isNotEmpty;
 
-  /// 当前待信任的项目级 Skill 列表。
   List<Skill> get pendingProjectSkills => _pendingProjectSkills.values.toList();
 
-  /// 当前待信任的项目目录（无则为 null）。
   String? get pendingProjectDir => _pendingProjectDir;
 
-  /// 信任当前待审项目目录：持久化信任，并将待审 Skill 激活（并入 _skills）。
   Future<void> trustCurrentProject() async {
     final dir = _pendingProjectDir;
     if (dir == null) return;
@@ -118,7 +96,6 @@ class SkillRegistry {
     _pendingProjectDir = null;
   }
 
-  /// 规范化路径：去除末尾斜杠，使 `/a/b` 与 `/a/b/` 比较相等。
   static String _normalizePath(String p) {
     var path = p;
     while (path.length > 1 && path.endsWith('/')) {
@@ -128,14 +105,12 @@ class SkillRegistry {
   }
 
   String get level1Prompt {
-    // 合并内置 Skill 和文件系统 Skill（内置优先，不会被覆盖）
     final allSkills = <String, Skill>{};
     allSkills.addAll(_skills);
     allSkills.addAll(_builtinSkills);
 
     if (allSkills.isEmpty) return '';
 
-    // 按最近访问时间排序（未访问过的排在最后）
     final sorted = allSkills.values.toList()
       ..sort((a, b) {
         final tA = _skillAccessTimestamps[a.name] ?? 0;
@@ -162,7 +137,6 @@ class SkillRegistry {
   }
 
   String? getLevel2Content(String name) {
-    // 访问时记录时间戳，用于 level1 排序
     _skillAccessTimestamps[name] = DateTime.now().millisecondsSinceEpoch;
     return _skills[name]?.body ?? _builtinSkills[name]?.body;
   }
@@ -191,14 +165,9 @@ class SkillRegistry {
     _contextStack.clear();
   }
 
-  /// 重新加载单个 Skill（创建或更新后调用）。
-  ///
-  /// 解析指定目录下的 SKILL.md 并更新到 _skills 映射中。
-  /// 项目级 Skill 需要该项目目录已被信任。
   void reloadSkill(String skillName, String directoryPath) {
     final skillFile = File('$directoryPath/SKILL.md');
     if (!skillFile.existsSync()) {
-      // SKILL.md 不存在：从映射中移除
       _skills.remove(skillName);
       _pendingProjectSkills.remove(skillName);
       return;
@@ -206,63 +175,48 @@ class SkillRegistry {
     final skill = _loader.parseSkillFile(skillFile);
     if (skill == null) return;
 
-    // 判断是项目级还是用户级
     final home = _homePath;
     final normalizedDir = _normalizePath(directoryPath);
     final normalizedHome = _normalizePath('$home/.athena/skills');
 
     if (normalizedDir.startsWith(normalizedHome)) {
-      // 用户级，直接合并
       _skills[skillName] = skill;
     } else {
-      // 项目级：只有信任了才合并
       final projectRoot = _findProjectRoot(normalizedDir);
       if (projectRoot != null && _trustStore.isTrusted(projectRoot)) {
         _mergeProjectSkill(skill);
       } else {
-        // 未信任：放入 pending
         _pendingProjectSkills[skillName] = skill;
         _pendingProjectDir ??= projectRoot ?? Directory.current.path;
       }
     }
   }
 
-  /// 推断项目根目录（从 skill 路径中提取 .athena 的父目录）。
   String? _findProjectRoot(String skillDir) {
     final idx = skillDir.indexOf('/.athena/');
     if (idx > 0) return skillDir.substring(0, idx);
     return null;
   }
 
-  /// 当前 Agent 处于的最近一个 Skill 上下文。
   Skill? get currentContext {
     if (_contextStack.isEmpty) return null;
     return _skills[_contextStack.last];
   }
 
-  /// 在当前 Skill 上下文下重新解释工具的危险等级：
-  /// - 不在任何 Skill 上下文中：返回工具默认等级；
-  /// - SkillTool 自身不受约束：返回默认等级；
-  /// - forbidden 永远不变；
-  /// - 当前 Skill 声明了 allowedTools 且工具在列表中：降级为 safe；
-  ///   但危险工具（dangerousTools）永不降级，保持其默认等级；
-  /// - 当前 Skill 声明了 allowedTools 但工具不在列表中：强制 needsApproval（即便默认 safe）；
-  /// - 当前 Skill 未声明 allowedTools：保持默认等级，行为不变。
-  DangerLevel effectiveDangerLevel(String toolName, DangerLevel defaultLevel) {
-    if (defaultLevel == DangerLevel.forbidden) return defaultLevel;
-    if (toolName == 'skill') return defaultLevel;
+  /// 检查工具是否被当前 Skill 的 allowed-tools 覆盖。
+  ///
+  /// - 不在任何 Skill 上下文中 → false（需要弹窗）
+  /// - Skill 未声明 allowedTools → false（需要弹窗）
+  /// - 工具在 allowedTools 列表中 → true（自动放行）
+  /// - 工具不在列表中 → false（需要弹窗）
+  bool isToolAllowed(String toolName) {
+    if (toolName == 'skill') return true;
     final skill = currentContext;
-    if (skill == null) return defaultLevel;
+    if (skill == null) return false;
 
     final allowed = _parseAllowedTools(skill.allowedTools);
-    if (allowed == null) return defaultLevel;
-
-    if (allowed.contains(toolName)) {
-      // 危险工具硬下限：Skill 不能将其降级为 safe，保留原始等级。
-      if (dangerousTools.contains(toolName)) return defaultLevel;
-      return DangerLevel.safe;
-    }
-    return DangerLevel.needsApproval;
+    if (allowed == null) return false;
+    return allowed.contains(toolName);
   }
 
   static Set<String>? _parseAllowedTools(String? raw) {

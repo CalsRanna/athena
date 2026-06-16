@@ -81,9 +81,6 @@ class SentinelEvolveTool implements Tool {
       };
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.needsApproval;
-
-  @override
   Future<String> execute(Map<String, dynamic> args) async {
     final sentinelName = args['sentinel_name'] as String;
     final newName = args['new_name'] as String?;
