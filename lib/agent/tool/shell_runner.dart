@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 /// Shell 工具共享配置：默认与最大超时（秒）。
 class ShellTimeoutPolicy {
   static const int defaultSeconds = 120;
@@ -40,6 +42,39 @@ String shellTimeoutParamDescription() => 'Timeout in seconds. '
 String shellWorkdirParamDescription() =>
     'Working directory for the command. Defaults to the user home directory.';
 
+/// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
+/// 确保 Homebrew、用户级二进制目录等常见安装路径可被找到。
+Map<String, String> _buildEnvironment() {
+  final env = Map<String, String>.from(Platform.environment);
+  final home = env['HOME'] ?? env['USERPROFILE'] ?? '/';
+
+  // 按优先级排列的额外 PATH 目录（仅当目录实际存在时才加入）
+  final candidates = <String>[
+    '/opt/homebrew/bin',
+    '/opt/homebrew/sbin',
+    '/usr/local/bin',
+    '/usr/local/sbin',
+    p.join(home, '.local', 'bin'),
+    p.join(home, '.cargo', 'bin'),
+    p.join(home, 'go', 'bin'),
+  ];
+
+  final extraPaths = <String>[];
+  for (final dir in candidates) {
+    if (Directory(dir).existsSync()) {
+      extraPaths.add(dir);
+    }
+  }
+
+  if (extraPaths.isNotEmpty) {
+    final currentPath = env['PATH'] ?? '';
+    final separator = Platform.isWindows ? ';' : ':';
+    env['PATH'] = '${extraPaths.join(separator)}$separator$currentPath';
+  }
+
+  return env;
+}
+
 /// 用 [Process.start] 跑一个 shell 进程，对超时主动 kill。
 ///
 /// 与 [Process.run] 的关键差异：超时不再只是抛 TimeoutException 任由后台进程
@@ -59,6 +94,7 @@ Future<String> runShellProcess({
       executable,
       arguments,
       workingDirectory: workdir,
+      environment: _buildEnvironment(),
     );
   } catch (e) {
     return 'Error launching command: $e';
