@@ -1,17 +1,12 @@
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/bash_shell_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('BashShellTool', () {
-    final tool = BashShellTool(sandbox: PathSandbox());
+    final tool = BashShellTool();
 
     test('name is bash', () {
       expect(tool.name, 'bash');
-    });
-
-    test('dangerLevel is needsApproval', () {
-      expect(tool.dangerLevel.name, 'needsApproval');
     });
 
     test('parameters require command', () {
@@ -28,6 +23,12 @@ void main() {
       final result = await tool.execute({'command': 'echo hello'});
       expect(result, contains('hello'));
       expect(result, contains('[exit code: 0]'));
+    });
+
+    test('blocks recursive delete command', () async {
+      final result = await tool.execute({'command': 'rm -rf /tmp/test'});
+      expect(result, contains('Warning'));
+      expect(result, contains('recursive delete'));
     });
 
     test('execute returns error on bad command', () async {

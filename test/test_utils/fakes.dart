@@ -1,7 +1,6 @@
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/skill/skill_trust_store.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
@@ -76,9 +75,8 @@ void setupMobileTestDI() {
   getIt.registerSingleton<SentinelService>(SentinelService());
 
   // Agent
-  getIt.registerSingleton<PathSandbox>(PathSandbox(dataDirectory: '/tmp/test'));
   getIt.registerSingleton<PermissionService>(
-    PermissionService(store: PermissionStore(), sandbox: getIt<PathSandbox>()),
+    PermissionService(store: PermissionStore()),
   );
   getIt.registerSingleton<SkillRegistry>(
     SkillRegistry(trustStore: SkillTrustStore()),

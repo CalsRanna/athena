@@ -3,25 +3,20 @@ import 'package:athena/util/platform_util.dart';
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/skill/skill_loader.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/skill/skill_trust_store.dart';
 import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/tool/bash_shell_tool.dart';
-import 'package:athena/agent/tool/file_delete_tool.dart';
 import 'package:athena/agent/tool/file_read_tool.dart';
 import 'package:athena/agent/tool/file_update_tool.dart';
 import 'package:athena/agent/tool/file_write_tool.dart';
-import 'package:athena/agent/tool/list_directory_tool.dart';
-import 'package:athena/agent/tool/powershell_search_tool.dart';
 import 'package:athena/agent/tool/powershell_shell_tool.dart';
 import 'package:athena/agent/tool/skill_tool.dart';
 import 'package:athena/agent/tool/skill_evolve_tool.dart';
 import 'package:athena/agent/tool/experience_learn_tool.dart';
 import 'package:athena/agent/tool/sentinel_evolve_tool.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
-import 'package:athena/agent/tool/unix_search_tool.dart';
 import 'package:athena/agent/tool/web_fetch_tool.dart';
 import 'package:athena/agent/tool/web_search_tool.dart';
 import 'package:athena/repository/chat_repository.dart';
@@ -175,14 +170,10 @@ class DI {
     );
 
     // Agent
-    getIt.registerLazySingleton(
-      () => PathSandbox(dataDirectory: dataDirectory),
-    );
     getIt.registerLazySingleton(() => PermissionStore());
     getIt.registerLazySingleton(
       () => PermissionService(
         store: getIt<PermissionStore>(),
-        sandbox: getIt<PathSandbox>(),
       ),
     );
 
@@ -190,7 +181,6 @@ class DI {
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
       registry.loadAll();
-      // 注册内置 self-evolve skill（不被文件系统 skill 覆盖）
       registry.registerBuiltin(const Skill(
         name: 'self-evolve',
         description: 'Guidance on self-evolution: creating skills, recording '
@@ -203,7 +193,6 @@ class DI {
 
     getIt.registerLazySingleton(() {
       final skillRegistry = getIt<SkillRegistry>();
-      final sandbox = getIt<PathSandbox>();
       final experienceRepository = getIt<ExperienceRepository>();
       final isWindows = PlatformUtil.isWindows;
       final isMobile = PlatformUtil.isMobile;
@@ -217,21 +206,14 @@ class DI {
         ]);
       } else {
         toolRegistry.registerAll([
-          isWindows
-              ? PowerShellSearchTool(sandbox: sandbox)
-              : UnixSearchTool(sandbox: sandbox),
-          FileReadTool(sandbox: sandbox),
-          FileWriteTool(sandbox: sandbox),
-          FileUpdateTool(sandbox: sandbox),
-          FileDeleteTool(sandbox: sandbox),
-          ListDirectoryTool(sandbox: sandbox),
-          isWindows
-              ? PowerShellShellTool(sandbox: sandbox)
-              : BashShellTool(sandbox: sandbox),
+          FileReadTool(),
+          FileWriteTool(),
+          FileUpdateTool(),
+          isWindows ? PowerShellShellTool() : BashShellTool(),
           WebFetchTool(),
           WebSearchTool(),
           SkillTool(skillRegistry),
-          SkillEvolveTool(skillRegistry: skillRegistry, sandbox: sandbox),
+          SkillEvolveTool(skillRegistry: skillRegistry),
           ExperienceLearnTool(repository: experienceRepository),
           ExperienceRecallTool(repository: experienceRepository),
           SentinelEvolveTool(sentinelViewModel: getIt<SentinelViewModel>()),

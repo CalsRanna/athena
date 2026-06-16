@@ -1,7 +1,7 @@
 import 'package:http/http.dart' as http;
 
-import 'tool_interface.dart';
 import 'url_safety.dart';
+import 'tool_interface.dart';
 
 class WebFetchTool implements Tool {
   static const _maxResponseBytes = 1024 * 1024;
@@ -14,9 +14,6 @@ class WebFetchTool implements Tool {
   String get description => 'Fetch content from a URL. '
       'Use when you need to read web pages, API responses, or documentation. '
       'Response is capped at 1MB.';
-
-  @override
-  DangerLevel get dangerLevel => DangerLevel.needsApproval;
 
   @override
   Map<String, dynamic> get parameters => {

@@ -21,9 +21,6 @@ class WebSearchTool implements Tool {
       'Requires a Brave Search API key in settings.';
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
-
-  @override
   Map<String, dynamic> get parameters => {
         'type': 'object',
         'properties': {

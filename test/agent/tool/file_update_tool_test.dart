@@ -1,11 +1,7 @@
 import 'dart:io';
 
-import 'package:athena/agent/permission/sandbox.dart';
 import 'package:athena/agent/tool/file_update_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-/// Creates a sandbox that allows reads/writes within [dir].
-PathSandbox _sandboxForDir(String dir) => PathSandbox(dataDirectory: '$dir/.data');
 
 void main() {
   late Directory tmpDir;
@@ -13,7 +9,7 @@ void main() {
 
   setUp(() {
     tmpDir = Directory.systemTemp.createTempSync('file_update_test_');
-    tool = FileUpdateTool(sandbox: _sandboxForDir(tmpDir.path));
+    tool = FileUpdateTool();
   });
 
   tearDown(() {
@@ -118,24 +114,10 @@ void main() {
     expect(result, contains('File not found'));
   });
 
-  test('sandbox deny returns error', () async {
-    final restricted = FileUpdateTool(
-      sandbox: PathSandbox(deniedPaths: [tmpDir.path]),
-    );
-    await writeFile('f.txt', 'x');
-    final result = await restricted.execute({
-      'path': '${tmpDir.path}/f.txt',
-      'old_string': 'x',
-      'new_string': 'y',
-    });
-    expect(result, contains('restricted'));
-  });
-
   // ---------- line-number prefix stripping ----------
 
   test('strips line-number prefixes from old_string', () async {
     await writeFile('f.txt', 'line1\nline2\nline3\n');
-    // Model typically copies file_read output like "2\tline2"
     final result = await tool.execute({
       'path': '${tmpDir.path}/f.txt',
       'old_string': '2\tline2',
@@ -147,7 +129,6 @@ void main() {
 
   test('strips line-number prefix with leading spaces (cat -n style)', () async {
     await writeFile('f.txt', 'line1\nline2\n');
-    // "     2\tline2" — cat -n style
     final result = await tool.execute({
       'path': '${tmpDir.path}/f.txt',
       'old_string': '     2\tline2',
@@ -163,7 +144,7 @@ void main() {
     await writeFile('f.txt', 'Say "hello" to me');
     final result = await tool.execute({
       'path': '${tmpDir.path}/f.txt',
-      'old_string': 'Say “hello” to me', // curly double quotes
+      'old_string': 'Say \u201chello\u201d to me',
       'new_string': 'Say hi to me',
     });
     expect(result, contains('Successfully updated'));
@@ -174,7 +155,7 @@ void main() {
     await writeFile('f.txt', "it's fine");
     final result = await tool.execute({
       'path': '${tmpDir.path}/f.txt',
-      'old_string': 'it’s fine', // right single quote
+      'old_string': 'it\u2019s fine',
       'new_string': 'it is fine',
     });
     expect(result, contains('Successfully updated'));
@@ -199,7 +180,7 @@ void main() {
     await writeFile('f.txt', 'first\nsecond\nthird\n');
     final result = await tool.execute({
       'path': '${tmpDir.path}/f.txt',
-      'old_string': 'second', // no trailing newline
+      'old_string': 'second',
       'new_string': '',
     });
     expect(result, contains('Successfully updated'));
@@ -218,7 +199,6 @@ void main() {
     expect(result, contains('Successfully updated'));
     final content = await readFile('f.txt');
     expect(content, 'a\r\nBB\r\nc\r\n');
-    // confirm CRLF is still present
     expect(content.contains('\r\n'), isTrue);
   });
 
@@ -239,23 +219,12 @@ void main() {
 
   test('detects external modification and refuses to write', () async {
     final file = await writeFile('f.txt', 'original content here');
-    // Capture the internal mtime, then immediately re-write so the mtime differs
-    // when _writeSafely re-reads it.
     final originalFut = tool.execute({
       'path': file.path,
       'old_string': 'original',
       'new_string': 'modified',
     });
-    // While the tool is running (after reading but before writing), modify externally
-    // We can't easily time this, so let's just verity the mtime check exists.
-    // Instead: write a test that forces the race by pausing.
-    // Actually, the execute method reads and writes synchronously enough in tests
-    // that we can't easily race. Let's skip the timing test and just verify the
-    // method returns the error string when the check fails.
-    // For now, verify a normal execution passes, proving the mtime check is in
-    // the code path but not causing false positives.
     await originalFut;
-    // The result should be success since no external change happened.
     final result = await tool.execute({
       'path': file.path,
       'old_string': 'modified',
@@ -263,8 +232,6 @@ void main() {
     });
     expect(result, contains('Successfully updated'));
   });
-
-  // ---------- empty new_string (deletion is just replace with empty) ----------
 
   test('delete replaces with empty string', () async {
     await writeFile('f.txt', 'hello world\n');

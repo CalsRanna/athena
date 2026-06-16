@@ -55,9 +55,6 @@ class ExperienceLearnTool implements Tool {
       };
 
   @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
-
-  @override
   Future<String> execute(Map<String, dynamic> args) async {
     final lesson = args['lesson'] as String;
     final context = args['context'] as String? ?? '';
@@ -129,9 +126,6 @@ class ExperienceRecallTool implements Tool {
         },
         'required': [],
       };
-
-  @override
-  DangerLevel get dangerLevel => DangerLevel.safe;
 
   @override
   Future<String> execute(Map<String, dynamic> args) async {

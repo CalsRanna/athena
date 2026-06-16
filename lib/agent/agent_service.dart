@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
-import 'package:athena/agent/tool/tool_interface.dart' show DangerLevel;
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -49,14 +48,12 @@ class AgentService {
       for (var iteration = 0; iteration < maxIterations; iteration++) {
       cancelToken?.throwIfCancelled();
       if (iteration == 0) {
-        // 技能指令在最前，优先级最高
         if (skillPrompt != null && skillPrompt.isNotEmpty) {
           messages = [
             ChatMessage.system(skillPrompt),
             ...messages,
           ];
         }
-        // 进化引导提示放在技能之后、基础消息之前
         if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
           messages = [
             ChatMessage.system(evolutionPrompt),
@@ -138,65 +135,45 @@ class AgentService {
         }
 
         final tool = _toolRegistry.get(tc.function.name);
-        final effectiveLevel = tool == null
-            ? DangerLevel.safe
-            : (_skillRegistry?.effectiveDangerLevel(
-                  tc.function.name,
-                  tool.dangerLevel,
-                ) ??
-                tool.dangerLevel);
 
-        if (tool != null && effectiveLevel == DangerLevel.forbidden) {
-          final forbiddenMsg =
-              'Error: Tool "${tc.function.name}" is forbidden and cannot be '
-              'executed.';
-          yield AgentEvent.toolResult(
-            id: tc.id,
-            name: tc.function.name,
-            result: forbiddenMsg,
-          );
-          messages.add(
-              ChatMessage.tool(toolCallId: tc.id, content: forbiddenMsg));
-          continue;
-        }
+        // Skill allowed-tools 白名单：命中则跳过弹窗
+        final skillAllowed = tool != null &&
+            (_skillRegistry?.isToolAllowed(tc.function.name) ?? false);
 
-        if (tool != null && effectiveLevel == DangerLevel.needsApproval) {
-          // 先检查已有规则
-          final ruleResult = permissionService?.check(tc.function.name, args);
-          if (ruleResult == true) {
-            // 规则允许，跳过弹窗
-          } else {
-            if (onPermission == null) {
-              const deniedMsg =
-                  'Error: Tool requires user approval but no permission '
-                  'callback is configured.';
-              yield AgentEvent.toolResult(
-                id: tc.id,
-                name: tc.function.name,
-                result: deniedMsg,
-              );
-              messages.add(
-                  ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
-              continue;
-            }
-            final approved = cancelToken == null
-                ? await onPermission(tc.function.name, tc.function.arguments)
-                : await Future.any<bool>([
-                    onPermission(tc.function.name, tc.function.arguments),
-                    cancelToken.whenCancelled.then((_) => false),
-                  ]);
-            cancelToken?.throwIfCancelled();
-            if (!approved) {
-              const deniedMsg = 'User denied the tool execution.';
-              yield AgentEvent.toolResult(
-                id: tc.id,
-                name: tc.function.name,
-                result: deniedMsg,
-              );
-              messages.add(ChatMessage.tool(
-                  toolCallId: tc.id, content: deniedMsg));
-              continue;
-            }
+        // 持久化规则：命中则跳过弹窗
+        final ruleMatched = permissionService?.check(tc.function.name, args) == true;
+
+        if (!skillAllowed && !ruleMatched) {
+          if (onPermission == null) {
+            const deniedMsg =
+                'Error: Tool requires user approval but no permission '
+                'callback is configured.';
+            yield AgentEvent.toolResult(
+              id: tc.id,
+              name: tc.function.name,
+              result: deniedMsg,
+            );
+            messages.add(
+                ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
+            continue;
+          }
+          final approved = cancelToken == null
+              ? await onPermission(tc.function.name, tc.function.arguments)
+              : await Future.any<bool>([
+                  onPermission(tc.function.name, tc.function.arguments),
+                  cancelToken.whenCancelled.then((_) => false),
+                ]);
+          cancelToken?.throwIfCancelled();
+          if (!approved) {
+            const deniedMsg = 'User denied the tool execution.';
+            yield AgentEvent.toolResult(
+              id: tc.id,
+              name: tc.function.name,
+              result: deniedMsg,
+            );
+            messages.add(ChatMessage.tool(
+                toolCallId: tc.id, content: deniedMsg));
+            continue;
           }
         }
 
@@ -295,9 +272,6 @@ class AgentService {
         'This is file content. Preserve: code structure (function/class '
             'signatures), imports, key logic. Summarize the file\'s purpose and '
             'main components. Keep important code snippets intact.',
-      'search' =>
-        'This is file content search results (grep). Preserve: exact file '
-            'paths, line numbers, matching lines. Group by file.',
       'web_fetch' =>
         'This is fetched web page content. Extract: page title, main headings, '
             'key facts/data, and important links. Omit boilerplate, ads, '

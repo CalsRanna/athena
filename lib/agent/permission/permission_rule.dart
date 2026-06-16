@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-/// 单条权限规则：工具名 + 前缀模式。
+/// 单条权限规则：工具名 + 通配符模式。
 ///
-/// - 文件类工具：pattern 为目录前缀，匹配该目录及所有子目录
-/// - Shell 工具：pattern 为命令前缀，如 "git " 匹配所有 git 命令
+/// - 文件类工具：pattern 为路径，支持 * 和 ? 通配符
+/// - Shell 工具：pattern 为命令匹配模式，支持 * 通配符
 /// - web_fetch：pattern 为 URL origin（scheme://host[:port]）
 /// - pattern 为空表示允许该工具的所有调用
 class PermissionRule {
@@ -27,8 +27,10 @@ class PermissionRule {
 
   /// [keyArg] 是归一化后的参数（路径/命令/origin）。
   ///
-  /// 路径类工具：keyArg 等于 pattern（去掉尾斜杠）或以 `pattern/` 为前缀。
-  /// 非路径工具：keyArg 以 pattern 为前缀（shell 命令、URL origin 等）。
+  /// 支持 * 和 ? 通配符：
+  /// - * 匹配任意字符（包括路径分隔符）
+  /// - ? 匹配单个字符
+  /// - 不加通配符时行为同前缀匹配（向后兼容）
   bool matches(String toolName, String? keyArg) {
     if (tool != toolName) return false;
     if (pattern.isEmpty) return true;
@@ -39,16 +41,34 @@ class PermissionRule {
       if (p.endsWith('/')) p = p.substring(0, p.length - 1);
       var k = keyArg;
       if (k.endsWith('/')) k = k.substring(0, k.length - 1);
+      // 路径类：使用通配符匹配 + 向下兼容的目录前缀匹配
+      if (p.contains('*') || p.contains('?')) {
+        return _globMatch(p, k);
+      }
       return k == p || k.startsWith('$p/');
     }
 
+    // 非路径工具：使用通配符匹配 + 向下兼容的前缀匹配
+    if (pattern.contains('*') || pattern.contains('?')) {
+      return _globMatch(pattern, keyArg);
+    }
     return keyArg.startsWith(pattern);
+  }
+
+  /// 简单的通配符匹配：* → .*  ,  ? → .
+  bool _globMatch(String glob, String value) {
+    final escaped = glob
+        .replaceAll('.', r'\.')
+        .replaceAll('*', r'[___STAR___]')
+        .replaceAll('?', r'[___QM___]')
+        .replaceAll('[___STAR___]', '.*')
+        .replaceAll('[___QM___]', '.');
+    return RegExp('^$escaped\$').hasMatch(value);
   }
 
   static bool _isFilePathTool(String toolName) {
     return const {
-      'file_read', 'file_write', 'file_update', 'file_delete',
-      'search', 'list_directory',
+      'file_read', 'file_write', 'file_update',
     }.contains(toolName);
   }
 }
