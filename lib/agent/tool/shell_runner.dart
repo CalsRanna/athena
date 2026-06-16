@@ -42,6 +42,51 @@ String shellTimeoutParamDescription() => 'Timeout in seconds. '
 String shellWorkdirParamDescription() =>
     'Working directory for the command. Defaults to the user home directory.';
 
+/// 输出截断上限。超过任一条目即触发头尾保留 + 中间省略。
+class OutputLimit {
+  static const int maxLines = 100;
+  static const int maxChars = 5000;
+}
+
+/// 根据命令的第一个 token 推断缩小输出的建议。
+String _hintForCommand(String? command) {
+  if (command == null || command.isEmpty) return _defaultHint;
+  final firstWord = command.trim().split(RegExp(r'[\s|;&]')).first.toLowerCase();
+  return switch (firstWord) {
+    'grep' || 'rg' || 'select-string' || 'findstr' =>
+      'Pipe to head (| head -100) or add --include / --glob to narrow matches.',
+    'ls' || 'dir' || 'get-childitem' || 'find' =>
+      'Limit depth (e.g. -maxdepth 2 for find) or pipe to head.',
+    'cat' || 'type' || 'get-content' || 'tail' || 'head' =>
+      'Use offset/limit with file_read tool, or pipe to head/tail.',
+    _ => _defaultHint,
+  };
+}
+
+const _defaultHint =
+    'Narrow output with grep, head, tail, or redirect to a file and read with file_read.';
+
+/// 保留输出头尾，截断中间并告知 LLM 原因和缩小范围的建议。
+String _truncateOutput(String output, String? command) {
+  final lines = output.split('\n');
+  if (lines.length <= OutputLimit.maxLines &&
+      output.length <= OutputLimit.maxChars) {
+    return output;
+  }
+  final headLines = (OutputLimit.maxLines * 0.6).round();
+  final tailLines = OutputLimit.maxLines - headLines;
+  final head = lines.take(headLines).join('\n');
+  final tail = lines.skip(lines.length - tailLines).join('\n');
+  final skippedLines = lines.length - headLines - tailLines;
+  return '$head\n'
+      '\n'
+      '[output truncated: $skippedLines lines / ${output.length - OutputLimit.maxChars} chars skipped '
+      '(limit ${OutputLimit.maxLines} lines / ${OutputLimit.maxChars} chars)]\n'
+      'Hint: ${_hintForCommand(command)}\n'
+      '\n'
+      '$tail';
+}
+
 /// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
 /// 确保 Homebrew、用户级二进制目录等常见安装路径可被找到。
 Map<String, String> _buildEnvironment() {
@@ -85,6 +130,7 @@ Future<String> runShellProcess({
   required List<String> arguments,
   required String workdir,
   required int timeoutSeconds,
+  String? command,
   bool clamped = false,
   int? requestedTimeout,
 }) async {
@@ -169,5 +215,5 @@ Future<String> runShellProcess({
     buffer.writeln(stderr);
   }
   buffer.writeln('[exit code: $exitCode]');
-  return buffer.toString().trim();
+  return _truncateOutput(buffer.toString().trim(), command);
 }
