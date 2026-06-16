@@ -72,11 +72,12 @@ class PowerShellShellTool implements Tool {
       arguments: ['-Command', command],
       workdir: workdir,
       timeoutSeconds: timeout.effective,
+      command: command,
       clamped: timeout.clamped,
       requestedTimeout: timeout.requested,
     );
 
-    return _truncateOutput(result);
+    return result;
   }
 
   bool _isRecursiveDelete(String command) {
@@ -89,16 +90,4 @@ class PowerShellShellTool implements Tool {
     return patterns.any((p) => p.hasMatch(command));
   }
 
-  String _truncateOutput(String output, {int maxLines = 200, int maxChars = 10000}) {
-    final lines = output.split('\n');
-    if (lines.length <= maxLines && output.length <= maxChars) {
-      return output;
-    }
-    final headLines = (maxLines * 0.7).round();
-    final tailLines = maxLines - headLines;
-    final head = lines.take(headLines).join('\n');
-    final tail = lines.skip(lines.length - tailLines).join('\n');
-    final skipped = lines.length - headLines - tailLines;
-    return '$head\n\n... [truncated $skipped lines / ${output.length} total chars] ...\n\n$tail';
-  }
 }
