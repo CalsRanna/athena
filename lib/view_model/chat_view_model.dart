@@ -975,15 +975,15 @@ class ChatViewModel {
     }
 
     final description = formatToolArgsForApproval(toolName, arguments);
-    final ruleDescription = permissionService.describeRule(toolName);
     final warning = toolName == 'web_fetch'
         ? webFetchApprovalWarning(args['url'] as String?)
         : null;
 
+    final keyArg = permissionService.primaryArg(toolName, args);
     final dialogFuture = showPermissionDialog(
       toolName: toolName,
       description: description,
-      ruleDescription: ruleDescription,
+      keyArg: keyArg ?? '',
       warning: warning,
     );
 
@@ -992,16 +992,22 @@ class ChatViewModel {
       cancelToken.whenCancelled.then((_) {
         final nav = router.navigatorKey.currentState;
         if (nav?.canPop() ?? false) nav!.pop();
-        return const PermissionDialogResult(approved: false, persist: false);
+        return const PermissionDialogResult(approved: false);
       }),
     ]);
 
-    if (result.approved && result.persist) {
-      final keyArg = permissionService.primaryArg(toolName, args);
-      await permissionService.persistRule(PermissionRule(
-        tool: toolName,
-        pattern: keyArg ?? '',
-      ));
+    if (result.approved) {
+      if (result.persistExact) {
+        await permissionService.persistRule(PermissionRule(
+          tool: toolName,
+          pattern: keyArg ?? '',
+        ));
+      } else if (result.persistPattern != null) {
+        await permissionService.persistRule(PermissionRule(
+          tool: toolName,
+          pattern: result.persistPattern!,
+        ));
+      }
     }
 
     return result.approved;

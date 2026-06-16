@@ -6,17 +6,24 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+enum _RememberMode { none, exact, pattern }
+
 class PermissionDialogResult {
   final bool approved;
-  final bool persist;
+  final bool persistExact;
+  final String? persistPattern;
 
-  const PermissionDialogResult({required this.approved, this.persist = false});
+  const PermissionDialogResult({
+    required this.approved,
+    this.persistExact = false,
+    this.persistPattern,
+  });
 }
 
 Future<PermissionDialogResult> showPermissionDialog({
   required String toolName,
   required String description,
-  required String ruleDescription,
+  required String keyArg,
   String? warning,
 }) async {
   final context = router.navigatorKey.currentContext!;
@@ -27,12 +34,11 @@ Future<PermissionDialogResult> showPermissionDialog({
       builder: (_) => _DesktopPermissionDialog(
         toolName: toolName,
         description: description,
-        ruleDescription: ruleDescription,
+        keyArg: keyArg,
         warning: warning,
       ),
     );
-    return result ??
-        const PermissionDialogResult(approved: false, persist: false);
+    return result ?? const PermissionDialogResult(approved: false);
   } else {
     final result = await showModalBottomSheet<PermissionDialogResult>(
       context: context,
@@ -42,25 +48,24 @@ Future<PermissionDialogResult> showPermissionDialog({
       builder: (_) => _MobilePermissionDialog(
         toolName: toolName,
         description: description,
-        ruleDescription: ruleDescription,
+        keyArg: keyArg,
         warning: warning,
       ),
     );
-    return result ??
-        const PermissionDialogResult(approved: false, persist: false);
+    return result ?? const PermissionDialogResult(approved: false);
   }
 }
 
 class _DesktopPermissionDialog extends StatefulWidget {
   final String toolName;
   final String description;
-  final String ruleDescription;
+  final String keyArg;
   final String? warning;
 
   const _DesktopPermissionDialog({
     required this.toolName,
     required this.description,
-    required this.ruleDescription,
+    required this.keyArg,
     this.warning,
   });
 
@@ -70,38 +75,21 @@ class _DesktopPermissionDialog extends StatefulWidget {
 }
 
 class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
-  bool _persist = false;
+  var _rememberMode = _RememberMode.none;
+  late final _patternController = TextEditingController(text: widget.keyArg);
+
+  @override
+  void dispose() {
+    _patternController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[
-      Row(
-        children: [
-          Icon(
-            HugeIcons.strokeRoundedAlert02,
-            size: 20,
-            color: Colors.orange.shade700,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            widget.toolName,
-            style: GoogleFonts.firaCode(
-              fontSize: 16,
-              color: ColorUtil.FFFFFFFF,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+      _buildHeader(),
       const SizedBox(height: 16),
-      Text(
-        widget.description,
-        style: GoogleFonts.firaCode(
-          fontSize: 13,
-          color: ColorUtil.FFFFFFFF,
-          height: 1.6,
-        ),
-      ),
+      _buildDescription(),
     ];
 
     if (widget.warning != null) {
@@ -109,15 +97,15 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
       children.add(_buildWarning(widget.warning!));
     }
 
-    children.add(const SizedBox(height: 16));
-    children.add(_buildCheckbox());
+    children.add(const SizedBox(height: 20));
+    children.add(_buildRememberSection());
     children.add(const SizedBox(height: 24));
     children.add(_buildButtons());
 
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(minWidth: 360, maxWidth: 520),
+        constraints: const BoxConstraints(minWidth: 400, maxWidth: 560),
         decoration: BoxDecoration(
           color: ColorUtil.FF282F32,
           borderRadius: BorderRadius.circular(8),
@@ -127,6 +115,43 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: children,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedAlert02,
+          size: 20,
+          color: Colors.orange.shade700,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          widget.toolName,
+          style: GoogleFonts.firaCode(
+            fontSize: 16,
+            color: ColorUtil.FFFFFFFF,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescription() {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Text(
+          widget.description,
+          style: GoogleFonts.firaCode(
+            fontSize: 13,
+            color: ColorUtil.FFFFFFFF,
+            height: 1.6,
+          ),
         ),
       ),
     );
@@ -156,30 +181,92 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
     );
   }
 
-  Widget _buildCheckbox() {
+  Widget _buildRememberSection() {
+    final baseStyle = TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Remember:', style: baseStyle),
+        const SizedBox(height: 8),
+        _radioOption(_RememberMode.none, 'Don\'t remember'),
+        const SizedBox(height: 6),
+        _radioOption(_RememberMode.exact, 'Exactly this call'),
+        const SizedBox(height: 6),
+        _radioOption(_RememberMode.pattern, '', trailing: _buildPatternInput()),
+      ],
+    );
+  }
+
+  Widget _radioOption(_RememberMode mode, String label, {Widget? trailing}) {
+    final selected = _rememberMode == mode;
+    final labelText = switch (mode) {
+      _RememberMode.none => 'Don\'t remember',
+      _RememberMode.exact => 'Exactly this call',
+      _RememberMode.pattern => 'Pattern:',
+    };
+
     return GestureDetector(
-      onTap: () => setState(() => _persist = !_persist),
+      onTap: () => setState(() => _rememberMode = mode),
       behavior: HitTestBehavior.opaque,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _persist,
-              onChanged: (v) => setState(() => _persist = v ?? false),
+            width: 18,
+            height: 18,
+            child: Radio<_RememberMode>(
+              value: mode,
+              groupValue: _rememberMode,
+              onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
               activeColor: Colors.orange.shade700,
-              side: BorderSide(color: ColorUtil.FFC2C2C2),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.ruleDescription,
-              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13),
+          const SizedBox(width: 6),
+          Text(
+            labelText,
+            style: TextStyle(
+              color: selected ? ColorUtil.FFFFFFFF : ColorUtil.FFC2C2C2,
+              fontSize: 12,
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 4),
+            Expanded(child: trailing),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPatternInput() {
+    final enabled = _rememberMode == _RememberMode.pattern;
+    return TextField(
+      controller: _patternController,
+      enabled: enabled,
+      style: GoogleFonts.firaCode(
+        fontSize: 12,
+        color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF616161,
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(
+            color: enabled ? ColorUtil.FFC2C2C2 : ColorUtil.FF616161,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: ColorUtil.FFC2C2C2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: ColorUtil.FF616161),
+        ),
+        filled: true,
+        fillColor: enabled ? ColorUtil.FF161616 : ColorUtil.FF282828,
       ),
     );
   }
@@ -191,7 +278,7 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
         AthenaSecondaryButton(
           onTap: () => Navigator.pop(
             context,
-            const PermissionDialogResult(approved: false, persist: false),
+            const PermissionDialogResult(approved: false),
           ),
           child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
@@ -200,10 +287,19 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
         ),
         const SizedBox(width: 12),
         AthenaPrimaryButton(
-          onTap: () => Navigator.pop(
-            context,
-            PermissionDialogResult(approved: true, persist: _persist),
-          ),
+          onTap: () {
+            final pattern = _rememberMode == _RememberMode.pattern
+                ? _patternController.text.trim()
+                : null;
+            Navigator.pop(
+              context,
+              PermissionDialogResult(
+                approved: true,
+                persistExact: _rememberMode == _RememberMode.exact,
+                persistPattern: (pattern != null && pattern.isNotEmpty) ? pattern : null,
+              ),
+            );
+          },
           child: const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text('Allow'),
@@ -217,13 +313,13 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
 class _MobilePermissionDialog extends StatefulWidget {
   final String toolName;
   final String description;
-  final String ruleDescription;
+  final String keyArg;
   final String? warning;
 
   const _MobilePermissionDialog({
     required this.toolName,
     required this.description,
-    required this.ruleDescription,
+    required this.keyArg,
     this.warning,
   });
 
@@ -233,38 +329,21 @@ class _MobilePermissionDialog extends StatefulWidget {
 }
 
 class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
-  bool _persist = false;
+  var _rememberMode = _RememberMode.none;
+  late final _patternController = TextEditingController(text: widget.keyArg);
+
+  @override
+  void dispose() {
+    _patternController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[
-      Row(
-        children: [
-          Icon(
-            HugeIcons.strokeRoundedAlert02,
-            size: 20,
-            color: Colors.orange.shade700,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            widget.toolName,
-            style: GoogleFonts.firaCode(
-              fontSize: 16,
-              color: ColorUtil.FFFFFFFF,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+      _buildHeader(),
       const SizedBox(height: 16),
-      Text(
-        widget.description,
-        style: GoogleFonts.firaCode(
-          fontSize: 13,
-          color: ColorUtil.FFFFFFFF,
-          height: 1.6,
-        ),
-      ),
+      _buildDescription(),
     ];
 
     if (widget.warning != null) {
@@ -272,8 +351,8 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       children.add(_buildWarning(widget.warning!));
     }
 
-    children.add(const SizedBox(height: 16));
-    children.add(_buildCheckbox());
+    children.add(const SizedBox(height: 20));
+    children.add(_buildRememberSection());
     children.add(const SizedBox(height: 24));
     children.add(_buildAllowButton());
     children.add(const SizedBox(height: 12));
@@ -292,6 +371,43 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     );
   }
 
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Icon(
+          HugeIcons.strokeRoundedAlert02,
+          size: 20,
+          color: Colors.orange.shade700,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          widget.toolName,
+          style: GoogleFonts.firaCode(
+            fontSize: 16,
+            color: ColorUtil.FFFFFFFF,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescription() {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 200),
+      child: SingleChildScrollView(
+        child: Text(
+          widget.description,
+          style: GoogleFonts.firaCode(
+            fontSize: 13,
+            color: ColorUtil.FFFFFFFF,
+            height: 1.6,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWarning(String warning) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,30 +432,92 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     );
   }
 
-  Widget _buildCheckbox() {
+  Widget _buildRememberSection() {
+    final baseStyle = TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Remember:', style: baseStyle),
+        const SizedBox(height: 8),
+        _radioOption(_RememberMode.none, 'Don\'t remember'),
+        const SizedBox(height: 6),
+        _radioOption(_RememberMode.exact, 'Exactly this call'),
+        const SizedBox(height: 6),
+        _radioOption(_RememberMode.pattern, '', trailing: _buildPatternInput()),
+      ],
+    );
+  }
+
+  Widget _radioOption(_RememberMode mode, String label, {Widget? trailing}) {
+    final selected = _rememberMode == mode;
+    final labelText = switch (mode) {
+      _RememberMode.none => 'Don\'t remember',
+      _RememberMode.exact => 'Exactly this call',
+      _RememberMode.pattern => 'Pattern:',
+    };
+
     return GestureDetector(
-      onTap: () => setState(() => _persist = !_persist),
+      onTap: () => setState(() => _rememberMode = mode),
       behavior: HitTestBehavior.opaque,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _persist,
-              onChanged: (v) => setState(() => _persist = v ?? false),
+            width: 18,
+            height: 18,
+            child: Radio<_RememberMode>(
+              value: mode,
+              groupValue: _rememberMode,
+              onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
               activeColor: Colors.orange.shade700,
-              side: BorderSide(color: ColorUtil.FFC2C2C2),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.ruleDescription,
-              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13),
+          const SizedBox(width: 6),
+          Text(
+            labelText,
+            style: TextStyle(
+              color: selected ? ColorUtil.FFFFFFFF : ColorUtil.FFC2C2C2,
+              fontSize: 12,
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 4),
+            Expanded(child: trailing),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPatternInput() {
+    final enabled = _rememberMode == _RememberMode.pattern;
+    return TextField(
+      controller: _patternController,
+      enabled: enabled,
+      style: GoogleFonts.firaCode(
+        fontSize: 12,
+        color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF616161,
+      ),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(
+            color: enabled ? ColorUtil.FFC2C2C2 : ColorUtil.FF616161,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: ColorUtil.FFC2C2C2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(4),
+          borderSide: BorderSide(color: ColorUtil.FF616161),
+        ),
+        filled: true,
+        fillColor: enabled ? ColorUtil.FF161616 : ColorUtil.FF282828,
       ),
     );
   }
@@ -347,10 +525,19 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
   Widget _buildAllowButton() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.pop(
-        context,
-        PermissionDialogResult(approved: true, persist: _persist),
-      ),
+      onTap: () {
+        final pattern = _rememberMode == _RememberMode.pattern
+            ? _patternController.text.trim()
+            : null;
+        Navigator.pop(
+          context,
+          PermissionDialogResult(
+            approved: true,
+            persistExact: _rememberMode == _RememberMode.exact,
+            persistPattern: (pattern != null && pattern.isNotEmpty) ? pattern : null,
+          ),
+        );
+      },
       child: Container(
         alignment: Alignment.center,
         decoration: ShapeDecoration(
@@ -381,7 +568,7 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.pop(
         context,
-        const PermissionDialogResult(approved: false, persist: false),
+        const PermissionDialogResult(approved: false),
       ),
       child: Container(
         alignment: Alignment.center,
