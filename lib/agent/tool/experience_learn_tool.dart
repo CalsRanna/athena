@@ -5,7 +5,9 @@ import 'package:athena/repository/experience_repository.dart';
 ///
 /// Agent 可以在对话过程中或对话结束后调用此工具，
 /// 将学到的教训、发现的模式、或用户的重要偏好记录下来。
-/// 这些经验可以在未来的对话中通过 `experience_recall` 工具检索。
+///
+/// 每条经验属于当前 Sentinel（scope="self"），或标记为全局共享（scope="shared"）。
+/// shared 经验对所有 Sentinel 可见，适用于用户通用偏好、沟通风格等跨域信息。
 class ExperienceLearnTool implements Tool {
   final ExperienceRepository _repository;
 
@@ -24,7 +26,10 @@ class ExperienceLearnTool implements Tool {
       '- The user corrected your approach and you want to remember it\n'
       '- You identified a recurring pattern that could inform future responses\n'
       '- You want to remember the user\'s preferences or conventions\n'
-      'Recorded experiences can be recalled later with experience_recall.';
+      'Recorded experiences can be recalled later with experience_recall.\n'
+      'By default, experiences are private to your current Sentinel role. '
+      'Use scope="shared" only for universal user preferences or '
+      'communication style that other roles should also know.';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -50,6 +55,17 @@ class ExperienceLearnTool implements Tool {
                 'Comma-separated tags for categorization and retrieval '
                 '(e.g., "flutter, state-management, best-practice").',
           },
+          'scope': {
+            'type': 'string',
+            'description':
+                'Scope of this experience. "self" (default): only visible to '
+                'your current Sentinel role. "shared": visible to all Sentinel '
+                'roles. Use "shared" for universal user preferences, '
+                'communication style, or personal info that applies across '
+                'contexts. Use "self" for tool-specific tricks or '
+                'domain-specific patterns.',
+            'enum': ['self', 'shared'],
+          },
         },
         'required': ['lesson'],
       };
@@ -59,6 +75,8 @@ class ExperienceLearnTool implements Tool {
     final lesson = args['lesson'] as String;
     final context = args['context'] as String? ?? '';
     final tagsStr = args['tags'] as String? ?? '';
+    final scope = args['scope'] as String? ?? 'self';
+    final sentinelId = args['_sentinel_id'] as String? ?? 'default';
     final tags = tagsStr
         .split(',')
         .map((t) => t.trim())
@@ -75,9 +93,11 @@ class ExperienceLearnTool implements Tool {
         context: context.trim(),
         tags: tags,
         source: 'auto',
+        scope: scope,
+        sentinelId: sentinelId,
       );
-      return 'Experience recorded successfully (id: ${entity.id}). '
-          'Total experiences: ${_repository.count}. '
+      return 'Experience recorded successfully (id: ${entity.id}, '
+          'scope: ${entity.scope}). '
           'This knowledge will be available in future conversations.';
     } catch (e) {
       return 'Error recording experience: $e';
@@ -89,6 +109,8 @@ class ExperienceLearnTool implements Tool {
 ///
 /// Agent 可以在开始新任务时检索相关经验，
 /// 以便利用过去的教训和洞察来改进当前的表现。
+///
+/// 默认检索当前 Sentinel 的私有经验 + shared 经验。
 class ExperienceRecallTool implements Tool {
   final ExperienceRepository _repository;
 
@@ -100,8 +122,10 @@ class ExperienceRecallTool implements Tool {
 
   @override
   String get description =>
-      'Search and recall past experiences, lessons, and insights you have '
-      'recorded. Use this to inform your approach to current tasks by '
+      'Search and recall past experiences, lessons, and insights. '
+      'Searches both your private experiences (specific to your current '
+      'Sentinel role) and shared experiences (universal user preferences). '
+      'Use this to inform your approach to current tasks by '
       'leveraging past learnings. Call this when:\n'
       '- Starting a task similar to ones you\'ve done before\n'
       '- Looking for established patterns or user preferences\n'
@@ -123,6 +147,13 @@ class ExperienceRecallTool implements Tool {
             'description':
                 'Maximum number of experiences to return (default: 10).',
           },
+          'include_shared': {
+            'type': 'boolean',
+            'description':
+                'Whether to include shared experiences in results '
+                '(default: true). Set to false to search only your private '
+                'experiences.',
+          },
         },
         'required': [],
       };
@@ -131,11 +162,17 @@ class ExperienceRecallTool implements Tool {
   Future<String> execute(Map<String, dynamic> args) async {
     final query = args['query'] as String? ?? '';
     final limit = args['limit'] as int? ?? 10;
+    final includeShared = args['include_shared'] as bool? ?? true;
+    final sentinelId = args['_sentinel_id'] as String? ?? 'default';
 
     try {
-      final results = query.trim().isEmpty
-          ? _repository.listAll()
-          : _repository.search(query.trim());
+      final results = includeShared
+          ? (query.trim().isEmpty
+              ? _repository.listForSentinel(sentinelId)
+              : _repository.searchForSentinel(sentinelId, query.trim()))
+          : (query.trim().isEmpty
+              ? _repository.listPrivate(sentinelId)
+              : _repository.searchPrivate(sentinelId, query.trim()));
 
       if (results.isEmpty) {
         return query.isEmpty
@@ -152,7 +189,8 @@ class ExperienceRecallTool implements Tool {
 
       for (var i = 0; i < display.length; i++) {
         final e = display[i];
-        buffer.writeln('--- Experience ${i + 1} ---');
+        final origin = e.scope == 'shared' ? 'shared' : 'private';
+        buffer.writeln('--- Experience ${i + 1} ($origin) ---');
         buffer.writeln('ID: ${e.id}');
         buffer.writeln('Date: ${_formatDate(e.createdAt)}');
         if (e.context.isNotEmpty) {

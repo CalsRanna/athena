@@ -34,6 +34,7 @@ class AgentService {
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
     String? evolutionPrompt,
+    String? sentinelId,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,
@@ -178,6 +179,10 @@ class AgentService {
         }
 
         cancelToken?.throwIfCancelled();
+        // 注入 sentinelId 到工具参数中，供 experience 等工具使用
+        if (sentinelId != null) {
+          args['_sentinel_id'] = sentinelId;
+        }
         final result = tool != null
             ? await tool.execute(args)
             : 'Error: Unknown tool "${tc.function.name}"';

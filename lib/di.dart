@@ -20,7 +20,6 @@ import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/agent/tool/web_fetch_tool.dart';
 import 'package:athena/agent/tool/web_search_tool.dart';
 import 'package:athena/repository/chat_repository.dart';
-import 'package:athena/repository/memory_repository.dart';
 import 'package:athena/repository/experience_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
@@ -32,13 +31,11 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
-import 'package:athena/service/memory_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
-import 'package:athena/view_model/memory_view_model.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -58,7 +55,6 @@ class DI {
     getIt.registerLazySingleton(() => ModelRepository());
     getIt.registerLazySingleton(() => ProviderRepository());
     getIt.registerLazySingleton(() => SentinelRepository());
-    getIt.registerLazySingleton(() => MemoryRepository());
     getIt.registerLazySingleton(() => ExperienceRepository());
     getIt.registerLazySingleton(() => TRPGGameRepository());
     getIt.registerLazySingleton(() => TRPGMessageRepository());
@@ -89,7 +85,6 @@ class DI {
       ),
     );
 
-    getIt.registerLazySingleton(() => MemoryService());
     getIt.registerLazySingleton(() => SentinelService());
     getIt.registerLazySingleton(() => SummaryService());
     getIt.registerLazySingleton(() => TranslationService());
@@ -156,16 +151,6 @@ class DI {
         providerRepository: getIt<ProviderRepository>(),
         service: getIt<TRPGService>(),
         settingViewModel: getIt<SettingViewModel>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => MemoryViewModel(
-        memoryRepository: getIt<MemoryRepository>(),
-        chatRepository: getIt<ChatRepository>(),
-        messageRepository: getIt<MessageRepository>(),
-        providerRepository: getIt<ProviderRepository>(),
-        memoryService: getIt<MemoryService>(),
       ),
     );
 
