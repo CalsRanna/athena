@@ -33,7 +33,15 @@ lib/
 ├── page/                        # UI 层（桌面端 DesktopRoute / 移动端 AutoRoute）
 │   ├── desktop/                 #   桌面端（多区工作台：侧栏+顶栏context+主内容区+底部composer）
 │   └── mobile/                  #   移动端（分段浏览 + Bottom Sheet）
-├── view_model/                  # Signals 状态管理（ChatViewModel 是最大最复杂的）
+├── view_model/                  # Signals 状态管理 + Delegate 委托
+│   ├── delegate/                #   业务逻辑委托（纯逻辑，不持有 Signal）
+│   │   ├── chat_list_delegate.dart
+│   │   ├── chat_config_delegate.dart
+│   │   ├── agent_stream_delegate.dart
+│   │   ├── chat_rename_delegate.dart
+│   │   └── chat_selection_delegate.dart
+│   ├── chat_view_model.dart     #   ChatViewModel（Signal 持有者 + 跨委托编排）
+│   └── ...                      #   其他 ViewModel
 ├── service/                     # 服务层（网络通信/消息转换/持久化编排/UI辅助操作）
 ├── repository/                  # 数据访问层（Laconic ORM 封装）
 ├── entity/                      # 数据库实体（10 个 entity）
@@ -73,7 +81,8 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 
 1. **Repository**（无依赖，8 个 LazySingleton）
 2. **Service**（依赖 Repository，8 个 LazySingleton）
-3. **ViewModel**（依赖 Service + Repository，8 个 LazySingleton）
+3. **ViewModel Delegate**（4 个 LazySingleton）—— 纯业务逻辑，不持有 Signal
+4. **ViewModel**（依赖 Delegate，8 个 LazySingleton）
 4. **Agent**（PermissionService → SkillRegistry → ToolRegistry → AgentService）
 5. **ChatViewModel**（最后注册，依赖最多）
 
@@ -266,32 +275,155 @@ allowed-tools: file_read, web_search
 
 ## 10. ViewModel 详解
 
-### ChatViewModel（核心，~1000 行）
+### 架构模式：ViewModel + Delegate
 
-:warning: **技术债务**：该类已膨胀为"上帝类"，集成了会话 CRUD、消息管理、Agent 流交互、权限审批、自动命名、Skill 信任弹窗、图片管理、参数更新、多选、导出等几乎所有核心逻辑。合理的拆分方向：
-- `ChatListViewModel`：会话列表管理（创建/删除/置顶/选择/命名）
-- `AgentStreamViewModel`：Agent 流式交互（发送/消费流/取消/错误处理/迭代管理）
-- `PermissionViewModel`：权限审批弹窗逻辑
-- `ChatDraftViewModel`：新建会话草稿状态（模型/哨兵/上下文/温度/图片）
+ChatViewModel 采用委托模式拆分：
 
-最复杂的 ViewModel，管理所有聊天相关状态和业务逻辑：
+- **ChatViewModel**（~520 行）：持有全部 16 个 Signal，负责跨委托编排和 Signal 写入
+- **4 个 Delegate**：封装内聚的业务逻辑，**不持有任何 Signal**，通过返回值或回调将结果交给 ChatViewModel 写入 Signal
 
-**核心方法**：
-- `sendMessage()` - 发送消息并启动完整 Agent 循环
-- `createChat()` - 创建新会话
-- `deleteChat()` / `deleteChats()` - 删除会话（含流取消等待）
-- `selectChat()` - 切换当前聊天
-- `renameChat()` - AI 自动重命名
-- `updateModel()` / `updateSentinel()` / `updateContext()` / `updateTemperature()` - 更新会话参数
-- `stopGenerating()` - 取消当前流式生成
-- `prepareNewChatDraft()` - 准备新建聊天的草稿状态
+```
+ChatViewModel（Signal 唯一持有者 + 编排层）
+├── ChatListDelegate       — 会话列表 CRUD
+├── ChatConfigDelegate     — 会话参数更新
+├── AgentStreamDelegate    — Agent 流式交互
+├── ChatRenameDelegate     — 自动/手动重命名
+└── ChatSelectionDelegate  — 多选 UI 交互状态（已有）
+```
 
-**流式处理的核心约束**：
+### ChatListDelegate
 
-1. **取消安全性**：`_activeCancelToken` 控制流取消；删除正在流式的 chat 时必须先 `stopGenerating()` 并等待 `_streamingDone?.future` settle
-2. **竞态保护**：`_renameTokens` 用 CancelToken 防止重命名流在 chat 已被删除后写入；`_latestStreamedMessage` 引用确保取消/错误时保留最新累积内容
-3. **迭代管理**：每轮 tool result 后 `_advanceIteration()` 最终化上一条 assistant 消息并 append 新占位消息
-4. **Skill 信任弹窗**：`_skillTrustPrompted` 守卫确保每会话只弹一次
+```dart
+class ChatListDelegate {
+  Future<({List<ChatEntity> chats, List<ChatHistoryEntity> histories})> load();
+  Future<({ChatEntity chat, ModelEntity model, ...})?> create();
+  Future<void> remove({required ChatEntity chat});
+  Future<void> removeAll({required List<ChatEntity> chats});
+  Future<({List<MessageEntity> messages, ModelEntity? model, ...})> select({required ChatEntity chat});
+  Future<void> togglePin({required ChatEntity chat});
+}
+```
+
+依赖：`ChatManageService`、`ChatSupportService`。
+
+### ChatConfigDelegate
+
+```dart
+class ChatConfigDelegate {
+  Future<ChatEntity> updateModel({required ModelEntity model, required ChatEntity chat});
+  Future<ChatEntity> updateSentinel({required SentinelEntity sentinel, required ChatEntity chat});
+  Future<ChatEntity> updateContext({required int context, required ChatEntity chat});
+  Future<ChatEntity> updateTemperature({required double temperature, required ChatEntity chat});
+  Future<MessageEntity> updateExpanded({required MessageEntity message});
+  Future<ProviderEntity?> resolveProvider({required ModelEntity model});
+}
+```
+
+依赖：`ChatSupportService`。
+
+### AgentStreamDelegate
+
+最复杂的委托（~350 行），封装完整的 sendMessage 流程：准备上下文 → 启动 Agent → 消费流 → 落库。
+
+```dart
+class AgentStreamDelegate {
+  int? get streamingChatId;
+  Future<void>? get settled;
+
+  Future<void> send({
+    required MessageEntity message,
+    required ChatEntity chat,
+    required void Function(MessageEntity) onUserMessageStored,
+    required void Function(MessageEntity) onAssistantAppended,
+    required void Function(MessageEntity) onMessageUpdated,
+    required void Function(int) onIterationChanged,
+    required void Function(String?) onToolNameChanged,
+    required Future<void> Function() onListReload,
+    required Future<void> Function() onAutoRename,
+  });
+
+  void stop();
+  Future<void> deleteMessage(...);
+  Future<void> refreshMessages(...);
+}
+```
+
+依赖：`AgentService`、`ChatManageService`、`ChatMessageService`、`MessageRepository`、`ModelRepository`、`SentinelRepository`、`ChatSupportService`、`SettingViewModel`、`PermissionService`、`SkillRegistry`。
+
+内部状态（每次 `send` 调用时创建，结束后清理）：`_cancelToken`、`_streamingChatId`、`_settled`、`_latestMessage`、`_skillTrustPrompted`。
+
+### ChatRenameDelegate
+
+```dart
+class ChatRenameDelegate {
+  Future<ChatEntity?> rename({required ChatEntity chat, required void Function(String) onTitle});
+  Future<ChatEntity> renameManually({required ChatEntity chat, required String title});
+  void cancel(int chatId);
+}
+```
+
+依赖：`MessageRepository`、`ModelRepository`、`ChatSupportService`。
+
+内部状态：`_tokens: Map<int, CancelToken>`（管理进行中的重命名流，供 deleteChat 取消）。
+
+### ChatViewModel 作为编排层
+
+ChatViewModel 不再直接操作数据库或网络，而是：
+1. 调用 Delegate 获取结果
+2. 将结果写入自己的 Signal
+3. 协调 Delegate 之间的依赖（如 deleteChat 需先停流再删数据）
+
+```dart
+class ChatViewModel {
+  // 全部 Signal（16 个）
+  final chats = listSignal<ChatEntity>([]);
+  final messages = listSignal<MessageEntity>([]);
+  // ...
+
+  // 委托（纯逻辑，不持有 Signal）
+  final ChatListDelegate _list;
+  final ChatConfigDelegate _config;
+  final AgentStreamDelegate _stream;
+  final ChatRenameDelegate _rename;
+
+  // 发送消息：委托给 AgentStreamDelegate
+  Future<void> sendMessage(...) async {
+    isStreaming.value = true;
+    try {
+      await _stream.send(
+        message: message,
+        chat: chat,
+        onMessageUpdated: (m) => _updateMessageInList(m),
+        onIterationChanged: (i) => currentIteration.value = i,
+        // ...
+      );
+    } finally {
+      isStreaming.value = false;
+    }
+  }
+
+  // 删除会话：跨委托编排
+  Future<void> deleteChat(ChatEntity chat) async {
+    if (isStreaming.value && _stream.streamingChatId == chat.id) {
+      final done = _stream.settled;
+      _stream.stop();
+      if (done != null) await done;
+    }
+    _rename.cancel(chat.id!);
+    await _list.remove(chat: chat);
+    // 更新 Signal...
+  }
+}
+```
+
+### 流式处理的核心约束
+
+这些约束现在由 `AgentStreamDelegate` 统一管理：
+
+1. **取消安全性**：`AgentStreamDelegate._cancelToken` 控制流取消；`ChatViewModel.deleteChat` 通过 `_stream.settled` 等待流完全 settle 后再删除数据
+2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 已被删除后写入；`AgentStreamDelegate._latestMessage` 引用确保取消/错误时保留最新累积内容
+3. **迭代管理**：每轮 tool result 后 `AgentStreamDelegate._advanceIteration()` 最终化上一条 assistant 消息并 append 新占位消息
+4. **Skill 信任弹窗**：`AgentStreamDelegate._skillTrustPrompted` 守卫确保每会话只弹一次
 
 ### 其他 ViewModel
 
@@ -433,7 +565,7 @@ PlatformUtil.isWindows  // 特定平台
 
 7. **上下文截断**：`chat.context` 值乘以 2 得到保留消息数（user/assistant 各一条），context=0 表示不截断
 
-9. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
+8. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
 
 9. **预设数据不重复插入**：通过 `migrations` 表中的 marker 记录（`preset_providers_v1`、`preset_sentinels_v1`）
 

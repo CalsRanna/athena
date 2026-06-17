@@ -7,7 +7,6 @@ import 'package:athena/widget/bottom_sheet_tile.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
 import 'package:athena/widget/scaffold.dart';
-import 'package:athena/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -105,8 +104,11 @@ class _ProviderListTile extends StatelessWidget {
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) const SizedBox(width: 8),
       if (provider.enabled)
-        Icon(HugeIcons.strokeRoundedToggleOn,
-            size: 16, color: ColorUtil.FFE0E0E0),
+        Icon(
+          HugeIcons.strokeRoundedToggleOn,
+          size: 16,
+          color: ColorUtil.FFE0E0E0,
+        ),
     ];
     var icon = Icon(
       HugeIcons.strokeRoundedMoreHorizontal,
