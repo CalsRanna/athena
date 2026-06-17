@@ -66,7 +66,11 @@ class _ModelTile extends StatelessWidget {
     );
     var nameChildren = [
       Flexible(child: nameText),
-      SizedBox(width: 8),
+      if (model.isPreset) const SizedBox(width: 8),
+      if (model.isPreset)
+        Icon(HugeIcons.strokeRoundedCircleLock01,
+            size: 16, color: ColorUtil.FFE0E0E0),
+      const SizedBox(width: 8),
       AthenaTag.small(text: model.modelId),
     ];
     var thinkIcon = Icon(

@@ -12,6 +12,7 @@ import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/input.dart';
 import 'package:athena/widget/menu.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -124,7 +125,7 @@ class _DesktopSettingSentinelPageState
   }
 
   void showSentinelContextMenu(TapUpDetails details, SentinelEntity sentinel) {
-    if (sentinel.name == 'Athena') return;
+    if (sentinel.isPreset) return;
     var contextMenu = DesktopSentinelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroySentinel(sentinel),
@@ -204,9 +205,14 @@ class _DesktopSettingSentinelPageState
 
   Widget _buildSentinelTile(List<SentinelEntity> sentinels, int index) {
     var sentinel = sentinels[index];
+    var trailing = sentinel.isPreset
+        ? Icon(HugeIcons.strokeRoundedCircleLock01,
+            size: 10, color: ColorUtil.FFE0E0E0)
+        : null;
     return DesktopMenuTile(
       active: this.index == index,
       label: sentinel.name,
+      trailing: trailing,
       onSecondaryTap: (details) => showSentinelContextMenu(details, sentinel),
       onTap: () => changeSentinel(index),
     );
@@ -221,17 +227,27 @@ class _DesktopSettingSentinelPageState
         fontSize: 20,
         fontWeight: FontWeight.w500,
       );
-      var avatarInput = AthenaInput(controller: avatarController);
+      var isPreset = index < sentinels.length && sentinels[index].isPreset;
+      var avatarInput = AthenaInput(
+        controller: avatarController,
+        enabled: !isPreset,
+      );
       var avatarChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
         Expanded(child: avatarInput),
       ];
-      var descriptionInput = AthenaInput(controller: descriptionController);
+      var descriptionInput = AthenaInput(
+        controller: descriptionController,
+        enabled: !isPreset,
+      );
       var descriptionChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
         Expanded(child: descriptionInput),
       ];
-      var tagsInput = AthenaInput(controller: tagsController);
+      var tagsInput = AthenaInput(
+        controller: tagsController,
+        enabled: !isPreset,
+      );
       var tagsChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Tags')),
         Expanded(child: tagsInput),
@@ -240,6 +256,7 @@ class _DesktopSettingSentinelPageState
         controller: promptController,
         maxLines: 20,
         minLines: 20,
+        enabled: !isPreset,
       );
       const edgeInsets = EdgeInsets.symmetric(vertical: 16);
       var promptLabel = SizedBox(
@@ -253,8 +270,8 @@ class _DesktopSettingSentinelPageState
       var listChildren = [
         Text(nameController.text, style: nameTextStyle),
         const SizedBox(height: 12),
-        if (nameController.text != 'Athena') Row(children: avatarChildren),
-        if (nameController.text != 'Athena') const SizedBox(height: 12),
+        if (!isPreset) Row(children: avatarChildren),
+        if (!isPreset) const SizedBox(height: 12),
         Row(children: descriptionChildren),
         const SizedBox(height: 12),
         Row(children: tagsChildren),
@@ -264,7 +281,7 @@ class _DesktopSettingSentinelPageState
           children: promptChildren,
         ),
         const SizedBox(height: 12),
-        _buildButtons(),
+        if (!isPreset) _buildButtons(),
       ];
       return ListView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),

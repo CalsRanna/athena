@@ -127,6 +127,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   void editModel(ModelEntity model) {
+    if (model.isPreset) return;
     MobileModelFormRoute(model: model).push(context);
   }
 
@@ -150,17 +151,25 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
-    var editTile = AthenaBottomSheetTile(
+    var connectTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedConnect),
       title: 'Connect',
       onTap: () => checkConnection(model),
     );
-    var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedDelete02),
-      title: 'Delete',
-      onTap: () => destroyModel(model),
-    );
-    var children = [editTile, deleteTile];
+    var children = <Widget>[connectTile];
+    if (!model.isPreset) {
+      var editTile = AthenaBottomSheetTile(
+        leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+        title: 'Edit',
+        onTap: () => editModel(model),
+      );
+      var deleteTile = AthenaBottomSheetTile(
+        leading: Icon(HugeIcons.strokeRoundedDelete02),
+        title: 'Delete',
+        onTap: () => destroyModel(model),
+      );
+      children.addAll([editTile, deleteTile]);
+    }
     var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     var padding = Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),

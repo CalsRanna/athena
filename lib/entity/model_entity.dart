@@ -11,6 +11,7 @@ class ModelEntity {
   final String releasedAt;
   final bool reasoning;
   final bool vision;
+  final bool isPreset;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -25,6 +26,7 @@ class ModelEntity {
     this.releasedAt = '',
     this.reasoning = false,
     this.vision = false,
+    this.isPreset = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -41,6 +43,7 @@ class ModelEntity {
       releasedAt: json.getString('released_at'),
       reasoning: json.getBool('reasoning'),
       vision: json.getBool('vision'),
+      isPreset: json.getBool('is_preset'),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
     );
@@ -58,6 +61,7 @@ class ModelEntity {
       'released_at': releasedAt,
       'reasoning': reasoning ? 1 : 0,
       'vision': vision ? 1 : 0,
+      'is_preset': isPreset ? 1 : 0,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -74,6 +78,7 @@ class ModelEntity {
     String? releasedAt,
     bool? reasoning,
     bool? vision,
+    bool? isPreset,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -88,6 +93,7 @@ class ModelEntity {
       releasedAt: releasedAt ?? this.releasedAt,
       reasoning: reasoning ?? this.reasoning,
       vision: vision ?? this.vision,
+      isPreset: isPreset ?? this.isPreset,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

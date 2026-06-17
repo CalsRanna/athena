@@ -104,7 +104,9 @@ class _ProviderListTile extends StatelessWidget {
     var titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) const SizedBox(width: 8),
-      if (provider.enabled) AthenaTag.small(text: 'On'),
+      if (provider.enabled)
+        Icon(HugeIcons.strokeRoundedToggleOn,
+            size: 16, color: ColorUtil.FFE0E0E0),
     ];
     var icon = Icon(
       HugeIcons.strokeRoundedMoreHorizontal,
