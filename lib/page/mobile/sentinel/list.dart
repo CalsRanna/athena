@@ -140,7 +140,7 @@ class _Tile extends StatelessWidget {
 
   void openBottomSheet(BuildContext context) {
     HapticFeedback.heavyImpact();
-    if (sentinel.name == 'Athena') return;
+    if (sentinel.isPreset) return;
     var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',

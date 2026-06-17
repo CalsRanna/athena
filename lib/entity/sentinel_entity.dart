@@ -7,6 +7,7 @@ class SentinelEntity {
   final String description;
   final String prompt;
   final String tags;
+  final bool isPreset;
 
   SentinelEntity({
     this.id,
@@ -15,6 +16,7 @@ class SentinelEntity {
     this.description = '',
     this.prompt = '',
     this.tags = '',
+    this.isPreset = false,
   });
 
   factory SentinelEntity.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class SentinelEntity {
       description: json.getString('description'),
       prompt: json.getString('prompt'),
       tags: json.getString('tags'),
+      isPreset: json.getBool('is_preset'),
     );
   }
 
@@ -36,6 +39,7 @@ class SentinelEntity {
       'description': description,
       'prompt': prompt,
       'tags': tags,
+      'is_preset': isPreset ? 1 : 0,
     };
   }
 
@@ -52,6 +56,7 @@ class SentinelEntity {
     String? description,
     String? prompt,
     String? tags,
+    bool? isPreset,
   }) {
     return SentinelEntity(
       id: id ?? this.id,
@@ -60,6 +65,7 @@ class SentinelEntity {
       description: description ?? this.description,
       prompt: prompt ?? this.prompt,
       tags: tags ?? this.tags,
+      isPreset: isPreset ?? this.isPreset,
     );
   }
 }

@@ -131,6 +131,7 @@ class _DesktopSettingProviderPageState
     TapUpDetails details,
     ModelEntity model,
   ) async {
+    if (model.isPreset) return;
     var contextMenu = DesktopModelContextMenu(
       offset: details.globalPosition - Offset(240, 50),
       onConnected: () => checkConnection(model),
@@ -216,13 +217,30 @@ class _DesktopSettingProviderPageState
 
   Widget _buildProviderTile(List<ProviderEntity> providers, int index) {
     var provider = providers[index];
-    var tag = AthenaTag.small(fontSize: 6, text: 'ON');
+    var trailing = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (provider.enabled)
+          Icon(
+            HugeIcons.strokeRoundedToggleOn,
+            size: 10,
+            color: ColorUtil.FFE0E0E0,
+          ),
+        if (provider.isPreset) const SizedBox(width: 4),
+        if (provider.isPreset)
+          Icon(
+            HugeIcons.strokeRoundedCircleLock01,
+            size: 10,
+            color: ColorUtil.FFE0E0E0,
+          ),
+      ],
+    );
     return DesktopMenuTile(
       active: this.index == index,
       label: provider.name,
       onSecondaryTap: (details) => openProviderContextMenu(details, provider),
       onTap: () => changeProvider(index),
-      trailing: provider.enabled ? tag : null,
+      trailing: trailing,
     );
   }
 
@@ -341,7 +359,14 @@ class _ModelListTileState extends State<_ModelListTile> {
     );
     var nameChildren = [
       Flexible(child: nameText),
-      SizedBox(width: 8),
+      if (widget.model.isPreset) const SizedBox(width: 8),
+      if (widget.model.isPreset)
+        Icon(
+          HugeIcons.strokeRoundedCircleLock01,
+          size: 14,
+          color: ColorUtil.FFE0E0E0,
+        ),
+      const SizedBox(width: 8),
       AthenaTag.small(text: widget.model.modelId),
     ];
     var thinkIcon = Icon(

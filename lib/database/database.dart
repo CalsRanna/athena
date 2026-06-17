@@ -10,6 +10,7 @@ import 'package:athena/database/migration/migration_202511280001_fix_models_sche
 import 'package:athena/database/migration/migration_202605210001_add_tool_fields.dart';
 import 'package:athena/database/migration/migration_202605260001_db_integrity.dart';
 import 'package:athena/database/migration/migration_202606110001_dedup_presets.dart';
+import 'package:athena/database/migration/migration_202606170001_add_preset_flag.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -81,6 +82,7 @@ class Database {
     await Migration202605210001AddToolFields().migrate();
     await Migration202605260001DbIntegrity().migrate();
     await Migration202606110001DedupPresets().migrate();
+    await Migration202606170001AddPresetFlag().migrate();
   }
 
   Future<void> _preset() async {
@@ -129,6 +131,7 @@ class Database {
             releasedAt: modelData['released_at'] as String,
             reasoning: modelData['reasoning'] as bool,
             vision: modelData['vision'] as bool,
+            isPreset: true,
             createdAt: now,
             updatedAt: now,
           );
@@ -165,6 +168,7 @@ class Database {
         description: preset['description'] as String,
         prompt: preset['prompt'] as String,
         tags: preset['tags'] as String,
+        isPreset: true,
       );
 
       var json = sentinel.toJson();

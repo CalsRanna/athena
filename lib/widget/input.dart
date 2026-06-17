@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 class AthenaInput extends StatefulWidget {
   final bool autoFocus;
   final TextEditingController controller;
+  final bool enabled;
   final int maxLines;
   final int minLines;
   final bool obscureText;
@@ -16,6 +17,7 @@ class AthenaInput extends StatefulWidget {
     super.key,
     this.autoFocus = false,
     required this.controller,
+    this.enabled = true,
     this.maxLines = 1,
     this.minLines = 1,
     this.obscureText = false,
@@ -77,6 +79,7 @@ class _AthenaInputState extends State<AthenaInput> {
       cursorHeight: 16,
       cursorColor: ColorUtil.FFF5F5F5,
       decoration: inputDecoration,
+      enabled: widget.enabled,
       focusNode: focusNode,
       maxLines: widget.maxLines,
       minLines: widget.minLines,

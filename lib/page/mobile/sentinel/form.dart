@@ -32,24 +32,38 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    var isPreset = widget.sentinel?.isPreset ?? false;
     var listViewChildren = [
       const AthenaFormTileLabel.large(title: 'Prompt'),
       const SizedBox(height: 12),
-      AthenaInput(controller: promptController, maxLines: 8, minLines: 8),
+      AthenaInput(
+        controller: promptController,
+        maxLines: 8,
+        minLines: 8,
+        enabled: !isPreset,
+      ),
       const SizedBox(height: 32),
       _buildNameLabel(),
       const SizedBox(height: 12),
-      AthenaInput(controller: nameController),
+      AthenaInput(controller: nameController, enabled: !isPreset),
       const SizedBox(height: 16),
       _buildDescriptionLabel(),
       const SizedBox(height: 12),
-      AthenaInput(controller: descriptionController, maxLines: 4, minLines: 4),
+      AthenaInput(
+        controller: descriptionController,
+        maxLines: 4,
+        minLines: 4,
+        enabled: !isPreset,
+      ),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [Expanded(child: listView), _buildButtons()];
+    var columnChildren = [
+      Expanded(child: listView),
+      if (!isPreset) _buildButtons(),
+    ];
     var column = Column(children: columnChildren);
     return AthenaScaffold(
       appBar: AthenaAppBar(
