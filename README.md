@@ -2,7 +2,7 @@
 
 <div align="center">
 
-一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 14+ 工具、可自我进化的 Skill 系统、以及严谨的三层权限与安全模型。
+一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 12 个工具、可自我进化的 Skill 系统、以及严谨的三层权限与安全模型。
 
 ![Version](https://img.shields.io/badge/version-3.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
@@ -37,7 +37,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 | `experience_recall` | 检索过往经验以指导当前任务 |
 | `sentinel_evolve` | 改进当前角色（系统提示词），支持重命名、原地更新，内置 Sentinel 不可改名 |
 
-桌面端注册全部 12 个工具，移动端精简为 4 个（web_fetch、web_search、skill、skill_evolve）。
+桌面端注册 11 个工具（bash/powershell 按操作系统互斥），移动端精简为 3 个（web_fetch、web_search、skill）。
 
 #### 权限模型（三层）
 
@@ -157,7 +157,7 @@ flutter test test/agent/tool/bash_shell_tool_test.dart  # 运行单个测试
 ```
 lib/
 ├── agent/               # Agent 层
-│   ├── tool/            #   14 个工具（部分按平台二选一）
+│   ├── tool/            #   12 个工具（bash/powershell 按平台二选一）
 │   ├── permission/      #   权限服务 + 持久化规则
 │   ├── skill/           #   Skill 加载、注册、信任
 │   └── evolution/       #   自我进化提示词
