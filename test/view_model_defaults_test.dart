@@ -16,6 +16,10 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
+import 'package:athena/view_model/delegate/chat_config_delegate.dart';
+import 'package:athena/view_model/delegate/chat_list_delegate.dart';
+import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
@@ -72,12 +76,72 @@ void main() {
   group('ChatViewModel draft defaults', () {
     test('start from the shared new chat defaults', () {
       final viewModel = ChatViewModel(
-        manageService: ChatManageService(
-          chatRepository: ChatRepository(),
-          messageRepository: MessageRepository(),
-          modelRepository: ModelRepository(),
-          providerRepository: ProviderRepository(),
-          sentinelRepository: SentinelRepository(),
+        listDelegate: ChatListDelegate(
+          manageService: ChatManageService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            modelRepository: ModelRepository(),
+            providerRepository: ProviderRepository(),
+            sentinelRepository: SentinelRepository(),
+          ),
+          supportService: ChatSupportService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            providerRepository: ProviderRepository(),
+            chatService: ChatService(),
+          ),
+        ),
+        configDelegate: ChatConfigDelegate(
+          supportService: ChatSupportService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            providerRepository: ProviderRepository(),
+            chatService: ChatService(),
+          ),
+        ),
+        streamDelegate: AgentStreamDelegate(
+          agentService: AgentService(
+            chatService: ChatService(),
+            toolRegistry: ToolRegistry(),
+          ),
+          manageService: ChatManageService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            modelRepository: ModelRepository(),
+            providerRepository: ProviderRepository(),
+            sentinelRepository: SentinelRepository(),
+          ),
+          messageService: ChatMessageService(
+            messageRepository: MessageRepository(),
+          ),
+          messageRepo: MessageRepository(),
+          modelRepo: ModelRepository(),
+          sentinelRepo: SentinelRepository(),
+          supportService: ChatSupportService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            providerRepository: ProviderRepository(),
+            chatService: ChatService(),
+          ),
+          settingViewModel: SettingViewModel(
+            modelRepository: ModelRepository(),
+            providerRepository: ProviderRepository(),
+            sentinelRepository: SentinelRepository(),
+            chatRepository: ChatRepository(),
+            chatService: ChatService(),
+          ),
+          permissionService: PermissionService(store: PermissionStore()),
+          skillRegistry: SkillRegistry(),
+        ),
+        renameDelegate: ChatRenameDelegate(
+          messageRepo: MessageRepository(),
+          modelRepo: ModelRepository(),
+          supportService: ChatSupportService(
+            chatRepository: ChatRepository(),
+            messageRepository: MessageRepository(),
+            providerRepository: ProviderRepository(),
+            chatService: ChatService(),
+          ),
         ),
         supportService: ChatSupportService(
           chatRepository: ChatRepository(),
@@ -85,16 +149,13 @@ void main() {
           providerRepository: ProviderRepository(),
           chatService: ChatService(),
         ),
-        chatMessageService: ChatMessageService(
-          messageRepository: MessageRepository(),
-        ),
-        agentService: AgentService(
+        settingViewModel: SettingViewModel(
+          modelRepository: ModelRepository(),
+          providerRepository: ProviderRepository(),
+          sentinelRepository: SentinelRepository(),
+          chatRepository: ChatRepository(),
           chatService: ChatService(),
-          toolRegistry: ToolRegistry(),
         ),
-        messageRepository: MessageRepository(),
-        modelRepository: ModelRepository(),
-        sentinelRepository: SentinelRepository(),
         modelViewModel: ModelViewModel(
           repository: ModelRepository(),
           providerRepository: ProviderRepository(),
@@ -106,15 +167,6 @@ void main() {
           modelRepository: ModelRepository(),
           sentinelService: SentinelService(),
         ),
-        settingViewModel: SettingViewModel(
-          modelRepository: ModelRepository(),
-          providerRepository: ProviderRepository(),
-          sentinelRepository: SentinelRepository(),
-          chatRepository: ChatRepository(),
-          chatService: ChatService(),
-        ),
-        permissionService: PermissionService(store: PermissionStore()),
-        skillRegistry: SkillRegistry(),
       );
 
       expect(viewModel.currentContext.value, ChatViewModel.defaultDraftContext);

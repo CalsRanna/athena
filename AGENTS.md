@@ -268,6 +268,12 @@ allowed-tools: file_read, web_search
 
 ### ChatViewModel（核心，~1000 行）
 
+:warning: **技术债务**：该类已膨胀为"上帝类"，集成了会话 CRUD、消息管理、Agent 流交互、权限审批、自动命名、Skill 信任弹窗、图片管理、参数更新、多选、导出等几乎所有核心逻辑。合理的拆分方向：
+- `ChatListViewModel`：会话列表管理（创建/删除/置顶/选择/命名）
+- `AgentStreamViewModel`：Agent 流式交互（发送/消费流/取消/错误处理/迭代管理）
+- `PermissionViewModel`：权限审批弹窗逻辑
+- `ChatDraftViewModel`：新建会话草稿状态（模型/哨兵/上下文/温度/图片）
+
 最复杂的 ViewModel，管理所有聊天相关状态和业务逻辑：
 
 **核心方法**：

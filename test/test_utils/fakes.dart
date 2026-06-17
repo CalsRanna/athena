@@ -21,6 +21,10 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
+import 'package:athena/view_model/delegate/chat_config_delegate.dart';
+import 'package:athena/view_model/delegate/chat_list_delegate.dart';
+import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/provider_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -90,6 +94,41 @@ void setupMobileTestDI() {
     ),
   );
 
+  // ViewModel Delegates
+  getIt.registerSingleton<ChatConfigDelegate>(
+    ChatConfigDelegate(supportService: getIt<ChatSupportService>()),
+  );
+
+  getIt.registerSingleton<ChatRenameDelegate>(
+    ChatRenameDelegate(
+      messageRepo: getIt<MessageRepository>(),
+      modelRepo: getIt<ModelRepository>(),
+      supportService: getIt<ChatSupportService>(),
+    ),
+  );
+
+  getIt.registerSingleton<ChatListDelegate>(
+    ChatListDelegate(
+      manageService: getIt<ChatManageService>(),
+      supportService: getIt<ChatSupportService>(),
+    ),
+  );
+
+  getIt.registerSingleton<AgentStreamDelegate>(
+    AgentStreamDelegate(
+      agentService: getIt<AgentService>(),
+      manageService: getIt<ChatManageService>(),
+      messageService: getIt<ChatMessageService>(),
+      messageRepo: getIt<MessageRepository>(),
+      modelRepo: getIt<ModelRepository>(),
+      sentinelRepo: getIt<SentinelRepository>(),
+      supportService: getIt<ChatSupportService>(),
+      settingViewModel: getIt<SettingViewModel>(),
+      permissionService: getIt<PermissionService>(),
+      skillRegistry: getIt<SkillRegistry>(),
+    ),
+  );
+
   // ViewModels
   getIt.registerSingleton<SettingViewModel>(
     SettingViewModel(
@@ -127,18 +166,14 @@ void setupMobileTestDI() {
 
   getIt.registerSingleton<ChatViewModel>(
     ChatViewModel(
-      manageService: getIt<ChatManageService>(),
+      listDelegate: getIt<ChatListDelegate>(),
+      configDelegate: getIt<ChatConfigDelegate>(),
+      streamDelegate: getIt<AgentStreamDelegate>(),
+      renameDelegate: getIt<ChatRenameDelegate>(),
       supportService: getIt<ChatSupportService>(),
-      chatMessageService: getIt<ChatMessageService>(),
-      agentService: getIt<AgentService>(),
-      messageRepository: getIt<MessageRepository>(),
-      modelRepository: getIt<ModelRepository>(),
-      sentinelRepository: getIt<SentinelRepository>(),
       settingViewModel: getIt<SettingViewModel>(),
       modelViewModel: getIt<ModelViewModel>(),
       sentinelViewModel: getIt<SentinelViewModel>(),
-      permissionService: getIt<PermissionService>(),
-      skillRegistry: getIt<SkillRegistry>(),
     ),
   );
 }
