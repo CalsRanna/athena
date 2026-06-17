@@ -22,6 +22,10 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
+import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
+import 'package:athena/view_model/delegate/chat_config_delegate.dart';
+import 'package:athena/view_model/delegate/chat_list_delegate.dart';
+import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
@@ -228,19 +232,34 @@ ChatViewModel _buildViewModel({
   required _FakeAgentService agent,
   _FakeSupportService? support,
 }) {
+  final svc = support ?? _FakeSupportService();
   return ChatViewModel(
-    manageService: manage,
-    supportService: support ?? _FakeSupportService(),
-    chatMessageService: _FakeChatMessageService(),
-    agentService: agent,
-    messageRepository: _NoopMessageRepository(),
-    modelRepository: _FakeModelRepository(),
-    sentinelRepository: _FakeSentinelRepository(),
+    listDelegate: ChatListDelegate(
+      manageService: manage,
+      supportService: svc,
+    ),
+    configDelegate: ChatConfigDelegate(supportService: svc),
+    streamDelegate: AgentStreamDelegate(
+      agentService: agent,
+      manageService: manage,
+      messageService: _FakeChatMessageService(),
+      messageRepo: _NoopMessageRepository(),
+      modelRepo: _FakeModelRepository(),
+      sentinelRepo: _FakeSentinelRepository(),
+      supportService: svc,
+      settingViewModel: GetIt.instance<SettingViewModel>(),
+      permissionService: GetIt.instance<PermissionService>(),
+      skillRegistry: GetIt.instance<SkillRegistry>(),
+    ),
+    renameDelegate: ChatRenameDelegate(
+      messageRepo: _NoopMessageRepository(),
+      modelRepo: _FakeModelRepository(),
+      supportService: svc,
+    ),
+    supportService: svc,
+    settingViewModel: GetIt.instance<SettingViewModel>(),
     modelViewModel: GetIt.instance<ModelViewModel>(),
     sentinelViewModel: GetIt.instance<SentinelViewModel>(),
-    settingViewModel: GetIt.instance<SettingViewModel>(),
-    permissionService: GetIt.instance<PermissionService>(),
-    skillRegistry: GetIt.instance<SkillRegistry>(),
   );
 }
 
