@@ -599,6 +599,7 @@ class ChatViewModel {
         model: ctx.model,
         baseMessages: ctx.wrappedMessages,
         evolutionPrompt: EvolutionPrompt.hint,
+        sentinelId: chat.sentinelId.toString(),
         maxIterations: _settingViewModel.maxAgentIterations.value,
         auxiliaryModel: _settingViewModel.auxiliaryModel.value,
         auxiliaryModelProvider: _settingViewModel.auxiliaryModelProvider.value,

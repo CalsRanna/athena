@@ -28,7 +28,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedAiSetting,
     HugeIcons.strokeRoundedSettings03,
-    HugeIcons.strokeRoundedBrain02,
     HugeIcons.strokeRoundedInformationCircle,
   ];
   final _menus = [
@@ -37,7 +36,6 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     'Default Model',
     'Agent',
     'Advanced',
-    'Memory',
     'About Athena',
   ];
 
@@ -65,8 +63,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       2 => const DesktopSettingDefaultModelRoute(),
       3 => const DesktopSettingAgentRoute(),
       4 => const DesktopSettingAdvancedRoute(),
-      5 => const DesktopSettingMemoryRoute(),
-      6 => const DesktopSettingAboutRoute(),
+      5 => const DesktopSettingAboutRoute(),
       _ => null,
     };
     if (route == null) return;
