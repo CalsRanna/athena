@@ -137,14 +137,10 @@ class AgentService {
 
         final tool = _toolRegistry.get(tc.function.name);
 
-        // Skill allowed-tools 白名单：命中则跳过弹窗
-        final skillAllowed = tool != null &&
-            (_skillRegistry?.isToolAllowed(tc.function.name) ?? false);
-
         // 持久化规则：命中则跳过弹窗
         final ruleMatched = permissionService?.check(tc.function.name, args) == true;
 
-        if (!skillAllowed && !ruleMatched) {
+        if (!ruleMatched) {
           if (onPermission == null) {
             const deniedMsg =
                 'Error: Tool requires user approval but no permission '

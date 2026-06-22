@@ -203,33 +203,6 @@ class SkillRegistry {
     return _skills[_contextStack.last];
   }
 
-  /// 检查工具是否被当前 Skill 的 allowed-tools 覆盖。
-  ///
-  /// - 不在任何 Skill 上下文中 → false（需要弹窗）
-  /// - Skill 未声明 allowedTools → false（需要弹窗）
-  /// - 工具在 allowedTools 列表中 → true（自动放行）
-  /// - 工具不在列表中 → false（需要弹窗）
-  bool isToolAllowed(String toolName) {
-    if (toolName == 'skill') return true;
-    final skill = currentContext;
-    if (skill == null) return false;
-
-    final allowed = _parseAllowedTools(skill.allowedTools);
-    if (allowed == null) return false;
-    return allowed.contains(toolName);
-  }
-
-  static Set<String>? _parseAllowedTools(String? raw) {
-    if (raw == null) return null;
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty) return null;
-    return trimmed
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toSet();
-  }
-
   static String get _homePath {
     return Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
