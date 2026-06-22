@@ -59,12 +59,12 @@ class PowerShellShellTool implements Tool {
 
     // 递归删除拦截
     if (_isRecursiveDelete(command)) {
-      return 'Warning: This command contains recursive delete patterns. '
-          'If you intended to delete a single file, use Remove-Item without -Recurse. '
-          'If you are sure you want recursive deletion, the user will approve '
-          'this in the permission dialog.\n'
-          'Aborting for safety. Please rephrase the command to delete only '
-          'specific files.';
+      return 'Warning: This command contains potentially dangerous '
+          'recursive delete patterns and was blocked by safety checks. '
+          'To delete files, use explicit commands targeting specific files '
+          '(e.g. Remove-Item path/to/file without -Recurse flag).'
+          'If you genuinely need recursive deletion, the user must run '
+          'the command manually outside this tool.';
     }
 
     final result = await runShellProcess(

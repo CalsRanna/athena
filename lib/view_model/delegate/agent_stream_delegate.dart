@@ -7,7 +7,6 @@ import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
-import 'package:athena/agent/tool/url_safety.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/repository/message_repository.dart';
@@ -348,16 +347,12 @@ class AgentStreamDelegate {
     }
 
     final description = formatToolArgsForApproval(toolName, arguments);
-    final warning = toolName == 'web_fetch'
-        ? webFetchApprovalWarning(args['url'] as String?)
-        : null;
 
     final keyArg = _permissionService.primaryArg(toolName, args);
     final dialogFuture = showPermissionDialog(
       toolName: toolName,
       description: description,
       keyArg: keyArg ?? '',
-      warning: warning,
     );
 
     final result = await Future.any<PermissionDialogResult>([

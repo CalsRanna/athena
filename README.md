@@ -2,7 +2,7 @@
 
 <div align="center">
 
-一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 12 个工具、可自我进化的 Skill 系统、以及严谨的三层权限与安全模型。
+一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 12 个工具、可自我进化的 Skill 系统、以及严谨的权限与安全模型。
 
 ![Version](https://img.shields.io/badge/version-3.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
@@ -29,9 +29,9 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 | `file_read` | 读取文件，支持 offset/limit 分段读取和行号输出 |
 | `file_write` | 创建或覆写文件，自动递归创建父目录 |
 | `file_update` | 精确字符串替换编辑文件，支持 replace_all、自动去除行号前缀、智能引号归一化、外部修改检测 |
-| `web_fetch` | HTTP GET/POST 抓取网页（1MB 上限），含 SSRF 硬拦截（链路本地/云元数据地址不可绕过） |
+| `web_fetch` | HTTP GET/POST 抓取网页（200KB 上限），支持自定义 headers 和 body |
 | `web_search` | Brave Search API 网络搜索，为 Agent 提供实时信息 |
-| `skill` | 加载 Skill 的完整 Level 2 指令，触发 allowed-tools 白名单 |
+| `skill` | 加载 Skill 的完整 Level 2 指令到当前上下文 |
 | `skill_evolve` | Agent 自我进化：创建/更新 Skill（SKILL.md），扩展未来能力 |
 | `experience_learn` | 记录经验教训到长期记忆，支持标签和上下文 |
 | `experience_recall` | 检索过往经验以指导当前任务 |
@@ -39,17 +39,18 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 桌面端注册 11 个工具（bash/powershell 按操作系统互斥），移动端精简为 3 个（web_fetch、web_search、skill）。
 
-#### 权限模型（三层）
+#### 权限模型
 
-1. **Skill allowed-tools 白名单**：Skill 声明可免审批的工具列表，命中则自动放行
-2. **用户持久化规则**：`~/.athena/permissions.json` 存储路径/命令前缀匹配规则，支持 `*` 和 `?` 通配符
-3. **审批弹窗**：不匹配任何规则时弹出完整命令预览弹窗，shell 命令全文展示不截断
+两层决策，简洁明了：
 
-递归删除命令（rm -rf 变体）在工具执行前自动拦截并拒绝。
+1. **用户持久化规则**：`~/.athena/permissions.json` 存储路径/命令前缀匹配规则，支持 `*` 和 `?` 通配符。命中则直接放行，不弹窗。
+2. **审批弹窗**：无匹配规则时弹出完整命令预览弹窗（shell 命令全文展示不截断），用户可选 Allow/Deny 并决定是否记忆为持久化规则。弹窗不可被空白点击关闭。
 
-#### 安全防护
+#### 工具自我保护
 
-- **SSRF 防护**：链路本地地址（169.254.0.0/16）和云元数据地址硬拦截；内网地址标红警告但可审批放行
+独立于权限系统，在工具内部执行的安全检查：
+
+- **递归删除拦截**：bash/powershell 检测到 `rm -rf`、`del /s` 等模式时拒绝执行
 - **Shell 进程管理**：超时主动 SIGTERM → SIGKILL 杀死进程，防止孤儿进程泄漏
 - **文件修改检测**：`file_update` 在写入前校验 mtime，防止覆盖外部并发修改
 
@@ -87,9 +88,10 @@ allowed-tools: file_read, web_search
 
 #### 信任模型
 
-- 未信任的项目级 Skill 保持 INERT 状态：不出现在 Level 1 列表、不可加载、不覆盖用户级 Skill
+- 未信任的项目级 Skill 不出现在 Level 1 列表，不可通过 `skill` 工具加载
 - 信任状态持久化到 `~/.athena/trusted_skill_dirs.json`
 - 每次会话仅提示一次信任弹窗
+- 信任后 Skill 指令会注入系统提示词，但工具调用仍需经过权限检查
 
 ### Agent 自我进化
 
@@ -259,7 +261,7 @@ lib/
 
 项目包含约 30 个测试文件，覆盖：
 
-- **Agent 层**：工具执行、权限规则、SSRF 防护、Skill 加载与信任、Shell 进程管理
+- **Agent 层**：工具执行、权限规则、Skill 加载与信任、Shell 进程管理
 - **Service 层**：消息转换、聊天服务、会话管理
 - **ViewModel 层**：聊天流、设置、摘要、翻译、TRPG
 - **UI 层**：移动端主页和聊天页 widget 测试

@@ -64,8 +64,8 @@ Widget _buildTitleRow() {
 Widget _buildBody(String projectDir, List<String> skillNames) {
   var descriptionText = Text(
     'The current working directory ships project skills. Trusting them will '
-    'inject their descriptions into the AI\'s system prompt and let their '
-    'allowed-tools relax tool approvals. Only trust directories you control.',
+    'inject their instructions into the AI\'s system prompt. '
+    'Only trust directories you control.',
     style: GoogleFonts.firaCode(
       fontSize: 13,
       color: ColorUtil.FFFFFFFF,

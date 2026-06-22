@@ -40,9 +40,8 @@ class SkillTool implements Tool {
     buffer.writeln();
     if (skill.allowedTools != null && skill.allowedTools!.isNotEmpty) {
       buffer.writeln(
-        'Permission scope: tools in allowed-tools '
-        '(${skill.allowedTools}) will skip the approval dialog automatically. '
-        'Other tools still require user approval.',
+        'Note: this skill declares allowed-tools: ${skill.allowedTools}. '
+        'All tool calls still require user approval or a matching persistent permission rule.',
       );
       buffer.writeln();
     }
