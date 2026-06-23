@@ -304,7 +304,6 @@ class AgentService {
     }
   }
 
-  @visibleForTesting
   String smartTruncate(String result, {int threshold = 12000}) {
     if (result.length <= threshold) return result;
     final headLen = (threshold * 0.6).round();
