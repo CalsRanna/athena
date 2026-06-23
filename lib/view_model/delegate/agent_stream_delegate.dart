@@ -163,8 +163,7 @@ class AgentStreamDelegate {
       if (provider == null) return;
 
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
-      final includeReasoning =
-          model.modelId.toLowerCase().contains('deepseek');
+      final includeReasoning = model.reasoning;
       final wrappedMessages = await _messageService.buildMessages(
         chat: chat,
         sentinel: sentinel,
