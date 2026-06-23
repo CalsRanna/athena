@@ -152,9 +152,16 @@ class AgentService {
         );
       }
 
-      messages.add(ChatMessage.assistant(
+      final isDeepSeekModel =
+          model.modelId.toLowerCase().contains('deepseek');
+      final reasoningContent = isDeepSeekModel &&
+              accumulator.reasoningContent.isNotEmpty
+          ? accumulator.reasoningContent
+          : null;
+      messages.add(AssistantMessage(
         content: accumulator.content.isNotEmpty ? accumulator.content : null,
         toolCalls: toolCalls,
+        reasoningContent: reasoningContent,
       ));
 
       for (final tc in toolCalls) {

@@ -135,9 +135,12 @@ class AgentStreamDelegate {
       if (provider == null) return;
 
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+      final includeReasoning =
+          model.modelId.toLowerCase().contains('deepseek');
       final wrappedMessages = await _messageService.buildMessages(
         chat: chat,
         sentinel: sentinel,
+        includeReasoning: includeReasoning,
       );
 
       // 2.5. Auto 模式下，若上下文接近窗口上限则触发 compact

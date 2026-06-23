@@ -226,6 +226,7 @@ class _FakeChatMessageService extends ChatMessageService {
   Future<List<ChatMessage>> buildMessages({
     required ChatEntity chat,
     SentinelEntity? sentinel,
+    bool includeReasoning = false,
   }) async =>
       [ChatMessage.user('hi')];
 
