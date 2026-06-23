@@ -9,6 +9,7 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/dialog.dart';
@@ -22,9 +23,10 @@ class TRPGViewModel {
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
 
-  // Service
+  // Services
   late final TRPGService _service;
   late final SettingViewModel _settingViewModel;
+  late final ModelResolver _modelResolver;
 
   TRPGViewModel({
     required TRPGGameRepository gameRepository,
@@ -33,12 +35,14 @@ class TRPGViewModel {
     required ProviderRepository providerRepository,
     required TRPGService service,
     required SettingViewModel settingViewModel,
+    required ModelResolver modelResolver,
   })  : _gameRepository = gameRepository,
         _messageRepository = messageRepository,
         _modelRepository = modelRepository,
         _providerRepository = providerRepository,
         _service = service,
-        _settingViewModel = settingViewModel;
+        _settingViewModel = settingViewModel,
+        _modelResolver = modelResolver;
 
   // Signals
   final currentGame = signal<TRPGGameEntity?>(null);
@@ -46,24 +50,23 @@ class TRPGViewModel {
   final savedGames = listSignal<TRPGGameWithPreview>([]);
   final isStreaming = signal(false);
   final isGeneratingSuggestions = signal(false);
-  final currentSuggestions = listSignal<String>([]); // 当前显示的建议列表
-  final showInputPanel = signal(false); // 控制输入面板显示
+  final currentSuggestions = listSignal<String>([]);
+  final showInputPanel = signal(false);
   final error = signal<String?>(null);
 
-  // 当前流式响应的消息实体
   final streamingMessage = signal<TRPGMessageEntity?>(null);
 
   /// 创建新游戏
   Future<TRPGGameEntity?> createNewGame() async {
     try {
-      // 获取默认模型
-      var model = await _getDefaultModel();
+      var model = await _modelResolver.resolveModel(
+        preferredModelId: _settingViewModel.shortModelId.value,
+      );
       if (model == null) {
         error.value = '未找到可用的模型';
         return null;
       }
 
-      // 创建游戏实体
       var now = DateTime.now();
       var game = TRPGGameEntity(
         modelId: model.id!,
@@ -75,10 +78,8 @@ class TRPGViewModel {
       game = game.copyWith(id: gameId);
       currentGame.value = game;
 
-      // 初始化消息列表
       messages.value = [];
 
-      // 发送初始化消息
       await sendPlayerAction('开始游戏');
       return game;
     } catch (e) {
@@ -112,21 +113,17 @@ class TRPGViewModel {
   /// 删除消息（用于重试）
   Future<void> deleteMessage(TRPGMessageEntity message) async {
     try {
-      // 先找到消息的索引
       var messageIndex = messages.value.indexOf(message);
       if (messageIndex < 0) return;
 
-      // 获取要删除的所有消息（包括选中的消息及之后的所有消息）
       var toRemove = messages.value.skip(messageIndex).toList();
 
-      // 从数据库中删除这些消息
       for (var msg in toRemove) {
         if (msg.id != null) {
           await _messageRepository.deleteMessage(msg.id!);
         }
       }
 
-      // 更新内存中的消息列表（只保留索引之前的消息）
       messages.value = messages.value.take(messageIndex).toList();
     } catch (e) {
       error.value = '删除消息失败：$e';
@@ -144,7 +141,6 @@ class TRPGViewModel {
 
       currentGame.value = game;
 
-      // 加载消息历史
       var loadedMessages = await _messageRepository.getMessagesByGameId(gameId);
       messages.value = loadedMessages;
     } catch (e) {
@@ -154,18 +150,15 @@ class TRPGViewModel {
 
   /// 发送玩家行动
   Future<void> sendPlayerAction(String action) async {
-    // 重入保护：若已有 DM 流在进行中，直接返回，避免并发流覆盖状态、重复落库
     if (isStreaming.value) return;
 
     var game = currentGame.value;
     if (game == null) return;
 
     try {
-      // 清空当前的建议并隐藏输入框
       currentSuggestions.value = [];
       showInputPanel.value = false;
 
-      // 创建玩家消息
       var playerMessage = TRPGMessageEntity(
         gameId: game.id!,
         role: 'player',
@@ -175,10 +168,8 @@ class TRPGViewModel {
       await _messageRepository.createMessage(playerMessage);
       messages.add(playerMessage);
 
-      // 构建对话历史
       var chatMessages = await _buildChatMessages();
 
-      // 获取提供商和模型
       var model = await _modelRepository.getModelById(game.modelId);
       if (model == null) return;
 
@@ -187,7 +178,6 @@ class TRPGViewModel {
       );
       if (provider == null) return;
 
-      // 初始化 streaming message（必须在 isStreaming 之前设置）
       streamingMessage.value = TRPGMessageEntity(
         gameId: game.id!,
         role: 'dm',
@@ -195,7 +185,6 @@ class TRPGViewModel {
         createdAt: DateTime.now(),
       );
 
-      // 流式获取 DM 响应
       isStreaming.value = true;
 
       var stream = _service.getDMResponse(
@@ -215,14 +204,12 @@ class TRPGViewModel {
         );
       }
 
-      // 生成行动建议（此时仍然保持 streaming 状态）
       var suggestions = await _generateActionSuggestions(
         dmMessage: fullContent,
         model: model,
         provider: provider,
       );
 
-      // 保存 DM 消息（带 suggestions）
       var dmMessage = TRPGMessageEntity(
         gameId: game.id!,
         role: 'dm',
@@ -233,10 +220,8 @@ class TRPGViewModel {
       await _messageRepository.createMessage(dmMessage);
       messages.add(dmMessage);
 
-      // 更新当前显示的建议列表（输入框仍然隐藏，等待用户选择）
       currentSuggestions.value = suggestions;
 
-      // 所有操作完成后才结束 streaming 状态
       isStreaming.value = false;
       streamingMessage.value = null;
     } catch (e) {
@@ -251,11 +236,9 @@ class TRPGViewModel {
   Future<List<ChatMessage>> _buildChatMessages() async {
     var result = <ChatMessage>[];
 
-    // 系统提示词
     var systemPrompt = PresetPrompt.dungeonPrompt;
     result.add(ChatMessage.system(systemPrompt));
 
-    // 历史消息
     for (var msg in messages.value) {
       if (msg.role == 'player') {
         result.add(ChatMessage.user(msg.content));
@@ -267,7 +250,7 @@ class TRPGViewModel {
     return result;
   }
 
-  /// 生成行动建议（私有方法）
+  /// 生成行动建议
   Future<List<String>> _generateActionSuggestions({
     required String dmMessage,
     required ModelEntity model,
@@ -284,21 +267,9 @@ class TRPGViewModel {
 
       return suggestions;
     } catch (e) {
-      // 静默失败
       return [];
     } finally {
       isGeneratingSuggestions.value = false;
     }
-  }
-
-  /// 获取默认模型
-  Future<ModelEntity?> _getDefaultModel() async {
-    var shortModelId = _settingViewModel.shortModelId.value;
-    if (shortModelId > 0) {
-      var model = await _modelRepository.getModelById(shortModelId);
-      if (model != null) return model;
-    }
-    var models = await _modelRepository.getAllModels();
-    return models.isNotEmpty ? models.first : null;
   }
 }

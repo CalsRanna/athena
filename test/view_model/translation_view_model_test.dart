@@ -9,6 +9,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/translation_service.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/translation_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -119,8 +120,9 @@ void main() {
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
-      providerRepository: _FakeProviderRepository(),
-      modelRepository: _FakeModelRepository(),
+      
+      
+      modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
     final future = vm.performTranslation(_translation());
@@ -151,8 +153,9 @@ void main() {
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
-      providerRepository: _FakeProviderRepository(),
-      modelRepository: _FakeModelRepository(),
+      
+      
+      modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
     // 先经 createTranslation 将占位记录放入列表（模拟真实调用顺序）。
@@ -169,8 +172,9 @@ void main() {
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(const Stream.empty()),
-      providerRepository: _FakeProviderRepository(),
-      modelRepository: _FakeModelRepository(),
+      
+      
+      modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
     final ids = <String>[];
@@ -192,8 +196,9 @@ void main() {
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
       service: _FakeTranslationService(events()),
-      providerRepository: _FakeProviderRepository(),
-      modelRepository: _FakeModelRepository(),
+      
+      
+      modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
     // 创建两条记录（真实场景可能同毫秒创建）。

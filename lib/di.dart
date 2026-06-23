@@ -30,6 +30,7 @@ import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/translation_service.dart';
@@ -118,10 +119,16 @@ class DI {
     );
 
     getIt.registerLazySingleton(
+      () => ModelResolver(
+        modelRepo: getIt<ModelRepository>(),
+        providerRepo: getIt<ProviderRepository>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
       () => SummaryViewModel(
         service: getIt<SummaryService>(),
-        modelRepository: getIt<ModelRepository>(),
-        providerRepository: getIt<ProviderRepository>(),
+        modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
       ),
     );
@@ -129,8 +136,7 @@ class DI {
     getIt.registerLazySingleton(
       () => TranslationViewModel(
         service: getIt<TranslationService>(),
-        providerRepository: getIt<ProviderRepository>(),
-        modelRepository: getIt<ModelRepository>(),
+        modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
       ),
     );
@@ -143,6 +149,7 @@ class DI {
         providerRepository: getIt<ProviderRepository>(),
         service: getIt<TRPGService>(),
         settingViewModel: getIt<SettingViewModel>(),
+        modelResolver: getIt<ModelResolver>(),
       ),
     );
 

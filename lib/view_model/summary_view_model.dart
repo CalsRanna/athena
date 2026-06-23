@@ -1,8 +1,5 @@
 import 'package:athena/entity/summary_entity.dart';
-import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/entity/model_entity.dart';
-import 'package:athena/repository/model_repository.dart';
-import 'package:athena/repository/provider_repository.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -11,19 +8,16 @@ import 'package:uuid/uuid.dart';
 
 /// SummaryViewModel 负责网页摘要功能的业务逻辑
 class SummaryViewModel {
-  late final SummaryService _service;
-  late final ModelRepository _modelRepository;
-  late final ProviderRepository _providerRepository;
-  late final SettingViewModel _settingViewModel;
+  final SummaryService _service;
+  final ModelResolver _modelResolver;
+  final SettingViewModel _settingViewModel;
 
   SummaryViewModel({
     required SummaryService service,
-    required ModelRepository modelRepository,
-    required ProviderRepository providerRepository,
+    required ModelResolver modelResolver,
     required SettingViewModel settingViewModel,
   })  : _service = service,
-        _modelRepository = modelRepository,
-        _providerRepository = providerRepository,
+        _modelResolver = modelResolver,
         _settingViewModel = settingViewModel;
 
   // Signals 状态
@@ -93,37 +87,16 @@ class SummaryViewModel {
     summary.value = '';
 
     try {
-      ModelEntity? model;
-      ProviderEntity? provider;
-      var shortModelId = _settingViewModel.shortModelId.value;
-      if (shortModelId > 0) {
-        model = await _modelRepository.getModelById(shortModelId);
-        if (model != null) {
-          provider = await _providerRepository.getProviderById(
-            model.providerId,
-          );
-        }
+      final resolved = await _modelResolver.resolve(
+        preferredModelId: _settingViewModel.shortModelId.value,
+      );
+      if (resolved == null) {
+        error.value = 'No enabled providers or models found';
+        streaming.value = false;
+        return;
       }
-
-      if (model == null || provider == null) {
-        var providers = await _providerRepository.getEnabledProviders();
-        if (providers.isEmpty) {
-          error.value = 'No enabled providers found';
-          streaming.value = false;
-          return;
-        }
-        provider = providers.first;
-
-        var models = await _modelRepository.getModelsByProviderId(
-          provider.id!,
-        );
-        if (models.isEmpty) {
-          error.value = 'No models found for provider';
-          streaming.value = false;
-          return;
-        }
-        model = models.first;
-      }
+      final model = resolved.model;
+      final provider = resolved.provider;
 
       var prompt = '请对以下网页内容生成摘要:\n\n${content.value}';
       var messages = [ChatMessage.user(prompt)];
