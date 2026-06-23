@@ -12,6 +12,8 @@ import 'package:athena/database/migration/migration_202605260001_db_integrity.da
 import 'package:athena/database/migration/migration_202606110001_dedup_presets.dart';
 import 'package:athena/database/migration/migration_202606170001_add_preset_flag.dart';
 import 'package:athena/database/migration/migration_202606230001_add_chat_token_total.dart';
+import 'package:athena/database/migration/migration_202606240001_context_window_to_int.dart';
+import 'package:athena/database/migration/migration_202606240002_add_chat_token_snapshots.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -85,6 +87,8 @@ class Database {
     await Migration202606110001DedupPresets().migrate();
     await Migration202606170001AddPresetFlag().migrate();
     await Migration202606230001AddChatTokenTotal().migrate();
+    await Migration202606240001ContextWindowToInt().migrate();
+    await Migration202606240002AddChatTokenSnapshots().migrate();
   }
 
   Future<void> _preset() async {
@@ -127,7 +131,7 @@ class Database {
             name: modelData['name'] as String,
             modelId: modelData['model_id'] as String,
             providerId: providerId,
-            contextWindow: modelData['context_window'] as String,
+            contextWindow: modelData['context_window'] as int,
             inputPrice: modelData['input_price'] as String,
             outputPrice: modelData['output_price'] as String,
             releasedAt: modelData['released_at'] as String,

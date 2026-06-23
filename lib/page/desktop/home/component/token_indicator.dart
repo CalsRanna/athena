@@ -1,19 +1,18 @@
-import 'package:athena/model/token_usage.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 输入框工具栏中的 token 使用情况指示器。
 ///
-/// 展示三类指标：
-/// - 单次调用：prompt ↑ / completion ↓ / total Σ（最近一次推理）。。
-/// - 缓存率：cachedTokens / promptTokens（仅当 provider 返回缓存数据）。
-/// - 会话累计：当前会话所有轮次加总的 token 总量（跨重启持久化）。
+/// 与左侧的 Config/Image 图标同风格（24px 图标 + 紧凑文本），
+/// 不渲染 chip 容器。展示：
+/// - 上下文窗口占用率（ctx%），超过 80% 暖色提示
+/// - 缓存命中率（仅 provider 返回缓存数据时）
+/// - 会话累计总量（悬停 Tooltip 显完整明细）
 ///
-/// 无任何数据时（无当前 usage 且累计为 0）不渲染。
+/// 无任何数据时不渲染。
 class DesktopTokenIndicator extends StatefulWidget {
   const DesktopTokenIndicator({super.key});
 
@@ -27,139 +26,160 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final usage = viewModel.currentTokenUsage.value;
+      final chat = viewModel.currentChat.value;
+      final model = viewModel.currentModel.value;
       final cumulative = viewModel.cumulativeTokenTotal.value;
-      if (usage == null && cumulative == 0) {
-        return const SizedBox.shrink();
-      }
-      return _TokenIndicatorChip(usage: usage, cumulative: cumulative);
+      final ctxTokens = chat?.contextTokens ?? 0;
+      final ctxWindow = model?.contextWindow ?? 0;
+      final cachedTokens = chat?.cachedTokens ?? 0;
+      final hasCtx = ctxTokens > 0 && ctxWindow > 0;
+      final hasCache = cachedTokens > 0 && ctxTokens > 0;
+      if (!hasCtx && cumulative == 0) return const SizedBox.shrink();
+
+      return _buildIndicator(
+        cumulative: cumulative,
+        ctxTokens: ctxTokens,
+        ctxWindow: ctxWindow,
+        cachedTokens: cachedTokens,
+        hasCtx: hasCtx,
+        hasCache: hasCache,
+      );
     });
   }
-}
 
-class _TokenIndicatorChip extends StatelessWidget {
-  final TokenUsage? usage;
-  final int cumulative;
-  const _TokenIndicatorChip({required this.usage, required this.cumulative});
-
-  @override
-  Widget build(BuildContext context) {
-    final hasUsage = usage != null;
-    final prompt = _format(usage?.promptTokens ?? 0);
-    final completion = _format(usage?.completionTokens ?? 0);
-    final total = _format(usage?.totalTokens ?? 0);
-    final hasCache =
-        hasUsage && usage!.cachedTokens != null && usage!.promptTokens > 0;
+  Widget _buildIndicator({
+    required int cumulative,
+    required int ctxTokens,
+    required int ctxWindow,
+    required int cachedTokens,
+    required bool hasCtx,
+    required bool hasCache,
+  }) {
     final style = TextStyle(
       color: ColorUtil.FFF5F5F5,
       fontSize: 12,
       fontFeatures: const [FontFeature.tabularFigures()],
-    );
-    final dimStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5.withValues(alpha: 0.6),
-      fontSize: 12,
     );
     final accentStyle = TextStyle(
       color: ColorUtil.FF6ABEB9,
       fontSize: 12,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
-    final tooltipStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
-      fontSize: 12,
-      height: 1.5,
-    );
-    final tooltip = TextSpan(
-      style: tooltipStyle,
-      children: [
-        const TextSpan(
-          text: '最近一次调用',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        TextSpan(
-          text: '\nPrompt: ${usage?.promptTokens ?? 0}',
-          style: TextStyle(color: ColorUtil.FFF5F5F5.withValues(alpha: 0.8)),
-        ),
-        TextSpan(text: '\nCompletion: ${usage?.completionTokens ?? 0}'),
-        TextSpan(
-          text: '\nTotal: ${usage?.totalTokens ?? 0}',
-          style: TextStyle(color: ColorUtil.FF6ABEB9),
-        ),
-        if (usage?.reasoningTokens != null)
-          TextSpan(
-            text: '\nReasoning: ${usage!.reasoningTokens}',
-            style: TextStyle(color: ColorUtil.FFF5F5F5.withValues(alpha: 0.8)),
-          ),
-        if (hasCache)
-          TextSpan(
-            text: '\nCache: ${usage!.cachedTokens} / '
-                '${usage!.promptTokens} tokens 命中缓存',
-            style: TextStyle(color: ColorUtil.FFF5F5F5.withValues(alpha: 0.8)),
-          ),
-        const TextSpan(text: '\n\n会话累计'),
-        TextSpan(
-          text: '\nTotal: $cumulative',
-          style: TextStyle(color: ColorUtil.FF6ABEB9),
+    // 超过 80% 用暖色提醒窗口即将耗尽。
+    final over80 = hasCtx && ctxTokens / ctxWindow >= 0.8;
+    final ctxPctStyle = over80
+        ? accentStyle.copyWith(color: ColorUtil.FFC2C2C2)
+        : accentStyle;
+
+    final ctxPct = hasCtx
+        ? ((ctxTokens / ctxWindow) * 100).toStringAsFixed(
+            ctxTokens * 100 ~/ ctxWindow > 99 ? 0 : 1,
+          )
+        : '—';
+
+    // 主行：ctx 占用率 + 可选 cache 率 + 累计
+    final children = <Widget>[
+      Text('context $ctxPct%', style: ctxPctStyle),
+      if (hasCache) ...[
+        const SizedBox(width: 10),
+        Text(
+          'cache ${_cacheRate(cachedTokens, ctxTokens)}%',
+          style: accentStyle,
         ),
       ],
-    );
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          HugeIcons.strokeRoundedCommandLine,
-          color: ColorUtil.FFF5F5F5.withValues(alpha: 0.6),
-          size: 14,
-        ),
-        const SizedBox(width: 6),
-        Text('↑$prompt', style: style),
-        const SizedBox(width: 6),
-        Text('↓$completion', style: style),
-        if (hasCache) ...[
-          const SizedBox(width: 6),
-          Text('${_cacheRate(usage!)}%', style: accentStyle),
-        ],
-        const SizedBox(width: 6),
-        Text('Σ$total', style: dimStyle),
-        const SizedBox(width: 8),
-        Container(
-          width: 1,
-          height: 12,
-          color: ColorUtil.FFFFFFFF.withValues(alpha: 0.15),
-        ),
-        const SizedBox(width: 8),
-        Text('∑${_format(cumulative)}', style: accentStyle),
-      ],
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      const SizedBox(width: 10),
+      Text('total ${_format(cumulative)}', style: style),
+    ];
+
+    final child = Row(mainAxisSize: MainAxisSize.min, children: children);
+    final tooltip = Tooltip(
+      richMessage: _tooltip(
+        cumulative: cumulative,
+        ctxTokens: ctxTokens,
+        ctxWindow: ctxWindow,
+        cachedTokens: cachedTokens,
+        hasCtx: hasCtx,
+        hasCache: hasCache,
+      ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.12)),
+        color: ColorUtil.FF282F32,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Tooltip(
-        richMessage: tooltip,
-        decoration: BoxDecoration(
-          color: ColorUtil.FF282F32,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.all(10),
-        preferBelow: false,
-        child: row,
-      ),
+      padding: const EdgeInsets.all(10),
+      preferBelow: false,
+      child: child,
     );
+    return MouseRegion(cursor: SystemMouseCursors.click, child: tooltip);
   }
 
-  String _cacheRate(TokenUsage u) {
-    final cached = u.cachedTokens ?? 0;
-    if (u.promptTokens <= 0) return '0';
-    final rate = (cached / u.promptTokens) * 100;
+  TextSpan _tooltip({
+    required int cumulative,
+    required int ctxTokens,
+    required int ctxWindow,
+    required int cachedTokens,
+    required bool hasCtx,
+    required bool hasCache,
+  }) {
+    final ts = TextStyle(color: ColorUtil.FFF5F5F5, fontSize: 12, height: 1.5);
+    final children = <InlineSpan>[
+      const TextSpan(text: '上下文窗口'),
+      TextSpan(
+        text: hasCtx
+            ? '\n${_format(ctxTokens)} / ${_format(ctxWindow)}'
+            : '\n暂无数据',
+        style: TextStyle(color: ColorUtil.FF6ABEB9),
+      ),
+    ];
+    if (hasCache) {
+      children.add(
+        TextSpan(
+          text:
+              '\n缓存命中 ${_cacheRate(cachedTokens, ctxTokens)}%'
+              '（${_brk(cachedTokens)} / ${_brk(ctxTokens)}）',
+          style: TextStyle(color: ColorUtil.FF6ABEB9),
+        ),
+      );
+    }
+    children.addAll([
+      const TextSpan(text: '\n\n会话累计'),
+      TextSpan(
+        text: '\n${_brk(cumulative)}',
+        style: TextStyle(color: ColorUtil.FF6ABEB9),
+      ),
+      TextSpan(
+        text: '\n口径：每轮 usage.total 都计入，含 prompt 重复计费',
+        style: TextStyle(
+          color: ColorUtil.FFF5F5F5.withValues(alpha: 0.45),
+          fontSize: 11,
+        ),
+      ),
+    ]);
+    return TextSpan(style: ts, children: children);
+  }
+
+  String _cacheRate(int cached, int prompt) {
+    if (prompt <= 0) return '0';
+    final rate = (cached / prompt) * 100;
     return rate == rate.roundToDouble()
         ? rate.toStringAsFixed(0)
         : rate.toStringAsFixed(1);
   }
 
+  String _brk(int v) {
+    if (v < 1000) return '$v';
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
   String _format(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
     if (value >= 1000) {
       final k = value / 1000;
       return k == k.roundToDouble()

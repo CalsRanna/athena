@@ -148,8 +148,10 @@ class _FakeSupportService extends ChatSupportService {
   /// 记录 renameChatManually 是否被调用（用于断言删除后不再写入）。
   bool renameChatManuallyCalled = false;
 
-  /// 会话 id → 累计 token 总量（内存态，桩掉 DB 持久化）。
-  final Map<int, int> _tokenTotals = {};
+  /// 会话 id → 内存态 chat 快照（token 总计与 title 都在此处演进，
+  /// 模拟 DB 将 updateChat 与 incrementTokenTotal 共享同一行；
+  /// 用于暴露 autoRename 与 usage 整行覆盖的竞态）。
+  final Map<int, ChatEntity> _chats = {};
 
   @override
   Future<ProviderEntity?> getProviderForModel(int providerId) async =>
@@ -175,20 +177,45 @@ class _FakeSupportService extends ChatSupportService {
   @override
   Future<ChatEntity> renameChatManually(ChatEntity chat, String title) async {
     renameChatManuallyCalled = true;
-    return chat.copyWith(title: title);
+    // 模拟修复后 updateChat 不再写 token_total：rename 只改 title，
+    // 保留行里现存的 tokenTotal。用 _chats 中累积值回写，暴露
+    // 「旧快照整行覆盖 token_total」会造成的退化。
+    final existing = chat.id == null ? null : _chats[chat.id!];
+    final merged = (existing ?? chat).copyWith(title: title);
+    if (chat.id != null) _chats[chat.id!] = merged;
+    return merged;
   }
 
   @override
-  Future<ChatEntity> incrementTokenTotal(ChatEntity chat, int delta) async {
-    if (chat.id == null) return chat.copyWith(tokenTotal: chat.tokenTotal + delta);
-    final next = (_tokenTotals[chat.id!] ?? chat.tokenTotal) + delta;
-    _tokenTotals[chat.id!] = next;
-    return chat.copyWith(tokenTotal: next);
+  Future<ChatEntity?> incrementTokenTotal(ChatEntity chat, int delta) async {
+    if (chat.id == null) return chat;
+    return recordUsage(chat, tokenDelta: delta, contextTokens: 0, cachedTokens: 0);
+  }
+
+  @override
+  Future<ChatEntity?> recordUsage(
+    ChatEntity chat, {
+    required int tokenDelta,
+    required int contextTokens,
+    required int cachedTokens,
+  }) async {
+    if (chat.id == null) return chat;
+    final existing = _chats[chat.id!] ?? chat;
+    final next = existing.copyWith(
+      tokenTotal: existing.tokenTotal + tokenDelta,
+      contextTokens: contextTokens,
+      cachedTokens: cachedTokens,
+    );
+    _chats[chat.id!] = next;
+    return next;
   }
 }
 
 class _FakeChatMessageService extends ChatMessageService {
-  _FakeChatMessageService() : super(messageRepository: _NoopMessageRepository());
+  _FakeChatMessageService({this.firstUserMessage = false})
+      : super(messageRepository: _NoopMessageRepository());
+
+  final bool firstUserMessage;
 
   @override
   Future<List<ChatMessage>> buildMessages({
@@ -198,7 +225,7 @@ class _FakeChatMessageService extends ChatMessageService {
       [ChatMessage.user('hi')];
 
   @override
-  Future<bool> isFirstUserMessage(int chatId) async => false;
+  Future<bool> isFirstUserMessage(int chatId) async => firstUserMessage;
 }
 
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
@@ -243,8 +270,10 @@ ChatViewModel _buildViewModel({
   required _RecordingManageService manage,
   required _FakeAgentService agent,
   _FakeSupportService? support,
+  ChatMessageService? messageService,
 }) {
   final svc = support ?? _FakeSupportService();
+  final messages = messageService ?? _FakeChatMessageService();
   return ChatViewModel(
     listDelegate: ChatListDelegate(
       manageService: manage,
@@ -254,7 +283,7 @@ ChatViewModel _buildViewModel({
     streamDelegate: AgentStreamDelegate(
       agentService: agent,
       manageService: manage,
-      messageService: _FakeChatMessageService(),
+      messageService: messages,
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
       sentinelRepo: _FakeSentinelRepository(),
@@ -582,6 +611,7 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    vm.currentChat.value = _chat();
 
     expect(vm.currentTokenUsage.value, isNull);
     final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
@@ -623,6 +653,7 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    vm.currentChat.value = _chat();
 
     final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
     await emittedFirst.future;
@@ -632,6 +663,62 @@ void main() {
     // currentTokenUsage 保留最近一次，累计为两次之和。
     expect(vm.currentTokenUsage.value!.totalTokens, 90);
     expect(vm.cumulativeTokenTotal.value, 120);
+  });
+
+  // P0 回归：autoRename (旧快照整行覆盖) 与 usage 累加竞态不再丢失 token。
+  // A) 修复后：rename 跟在 usage 之后落库，token_total 仍保留、title 也保留。
+  test(
+      'token race: usage 后 autoRename 整行写不回退 token_total，且保留新 title',
+      () async {
+    // 重命名流：发出一个完整标题后结束。
+    final support = _FakeSupportService(renameStream: Stream.value('New Title'));
+    final messages = _FakeChatMessageService(firstUserMessage: true);
+    // 主流：先发文本。发出 usage=N 之后 await gate。test 在 usage 落库后
+    // 让标题流恰好结束（即命名写库发生在 usage 之后），再打开 gate 让主流结束。
+    final gate = Completer<void>();
+    final emittedUsage = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('partial');
+      if (!emittedUsage.isCompleted) emittedUsage.complete();
+      yield const AgentUsageEvent(TokenUsage(
+        promptTokens: 10,
+        completionTokens: 20,
+        totalTokens: 30,
+      ));
+      await gate.future;
+      yield const AgentDoneEvent(content: 'partial');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(
+      manage: manage,
+      agent: agent,
+      support: support,
+      messageService: messages,
+    );
+    vm.currentChat.value = _chat();
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await emittedUsage.future;
+    // 此时 usage 已落库，token_total=30。autoRename (unawaited) 启动后命名
+    // 流是同步 Stream.value，会很快走完并调用 renameChatManually ——
+    // 我们切到事件循环让命名写库执行。
+    await Future.microtask(() {});
+    await Future.delayed(Duration.zero);
+    gate.complete();
+    await sendFuture;
+    // 让最终的 autoRename future 也 settle 以防迟到。
+    await Future.delayed(Duration.zero);
+
+    // token 不能被旧快照整行覆盖回退。
+    expect(vm.cumulativeTokenTotal.value, 30,
+        reason: 'autoRename 不应回退已累加的 token_total');
+    expect(support.renameChatManuallyCalled, isTrue);
+    // autoRename 的新 title 也应保留（修复②：incrementTokenTotal 返回最新行）。
+    expect(vm.currentChat.value!.title, 'New Title',
+        reason: 'usage 回调用最新行不应回滚 autoRename 的新 title');
   });
 }
 

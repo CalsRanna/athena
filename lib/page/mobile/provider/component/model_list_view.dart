@@ -1,5 +1,6 @@
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/util/context_window_util.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/tag.dart';
@@ -114,7 +115,7 @@ class _ModelTile extends StatelessWidget {
     var inputPrice = model.inputPrice;
     var outputPrice = model.outputPrice;
     var parts = [
-      if (context.isNotEmpty) context,
+      if (context > 0) formatContextWindow(context),
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];

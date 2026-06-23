@@ -9,7 +9,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-R1-0528',
           'model_id': 'deepseek-reasoner',
-          'context_window': '64K context',
+          'context_window': 65536,
           'input_price': '¥4/M input tokens',
           'output_price': '¥16/M output tokens',
           'released_at': 'Created 2025/05/28',
@@ -19,7 +19,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-V3-0324',
           'model_id': 'deepseek-chat',
-          'context_window': '64K context',
+          'context_window': 65536,
           'input_price': '¥2/M input tokens',
           'output_price': '¥8/M output tokens',
           'released_at': 'Created 2025/03/25',
@@ -37,7 +37,7 @@ class PresetProvider {
         {
           'name': 'Anthropic: Claude Sonnet 4',
           'model_id': 'anthropic/claude-sonnet-4',
-          'context_window': '200,000 context',
+          'context_window': 200000,
           'input_price': r'$3/M input tokens',
           'output_price': r'$15/M output tokens',
           'released_at': 'Created May 22, 2025',
@@ -47,7 +47,7 @@ class PresetProvider {
         {
           'name': 'Anthropic: Claude Opus 4',
           'model_id': 'anthropic/claude-opus-4',
-          'context_window': '200,000 context',
+          'context_window': 200000,
           'input_price': r'$15/M input tokens',
           'output_price': r'$75/M output tokens',
           'released_at': 'Created May 22, 2025',
@@ -57,7 +57,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek: DeepSeek V3 0324',
           'model_id': 'deepseek/deepseek-chat-v3-0324',
-          'context_window': '163,840 context',
+          'context_window': 163840,
           'input_price': r'$0.28/M input tokens',
           'output_price': r'$0.88/M output tokens',
           'released_at': 'Created Mar 24, 2025',
@@ -67,7 +67,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek: R1 0528',
           'model_id': 'deepseek/deepseek-r1-0528',
-          'context_window': '128,000 context',
+          'context_window': 128000,
           'input_price': r'$0.5/M input tokens',
           'output_price': r'$2.15/M output tokens',
           'released_at': 'Created May 28, 2025',
@@ -77,7 +77,7 @@ class PresetProvider {
         {
           'name': 'Google: Gemini 2.5 Flash',
           'model_id': 'google/gemini-2.5-flash',
-          'context_window': '1,048,576 context',
+          'context_window': 1048576,
           'input_price': r'$0.30/M input tokens',
           'output_price': r'$2.50/M output tokens',
           'released_at': 'Created Jun 17, 2025',
@@ -87,7 +87,7 @@ class PresetProvider {
         {
           'name': 'Google: Gemini 2.5 Pro',
           'model_id': 'google/gemini-2.5-pro',
-          'context_window': '1,048,576 context',
+          'context_window': 1048576,
           'input_price': r'Starting at $1.25/M input tokens',
           'output_price': r'Starting at $10/M output tokens',
           'released_at': 'Created Jun 17, 2025',
@@ -97,7 +97,7 @@ class PresetProvider {
         {
           'name': 'Meta: Llama 4 Maverick',
           'model_id': 'meta-llama/llama-4-maverick',
-          'context_window': '1,048,576 context',
+          'context_window': 1048576,
           'input_price': r'$0.15/M input tokens',
           'output_price': r'$0.60/M output tokens',
           'released_at': 'Created Apr 5, 2025',
@@ -107,7 +107,7 @@ class PresetProvider {
         {
           'name': 'OpenAI: GPT-4.1',
           'model_id': 'openai/gpt-4.1',
-          'context_window': '1,047,576 context',
+          'context_window': 1047576,
           'input_price': r'$2/M input tokens',
           'output_price': r'$8/M output tokens',
           'released_at': 'Created Apr 14, 2025',
@@ -117,7 +117,7 @@ class PresetProvider {
         {
           'name': 'Qwen: Qwen3 235B A22B',
           'model_id': 'qwen/qwen3-235b-a22b',
-          'context_window': '40,960 context',
+          'context_window': 40960,
           'input_price': r'$0.13/M input tokens',
           'output_price': r'$0.60/M output tokens',
           'released_at': 'Created Apr 28, 2025',
@@ -127,7 +127,7 @@ class PresetProvider {
         {
           'name': 'xAI: Grok 4',
           'model_id': 'x-ai/grok-4',
-          'context_window': '256,000 context',
+          'context_window': 256000,
           'input_price': r'$3/M input tokens',
           'output_price': r'$15/M output tokens',
           'released_at': 'Created Jul 9, 2025',
@@ -137,7 +137,7 @@ class PresetProvider {
         {
           'name': 'OpenAI: GPT-5 Chat',
           'model_id': 'openai/gpt-5',
-          'context_window': '128,000 context',
+          'context_window': 128000,
           'input_price': r'$1.25/M input tokens',
           'output_price': r'$10/M output tokens',
           'released_at': 'Created Aug 7, 2025',
@@ -147,7 +147,7 @@ class PresetProvider {
         {
           'name': 'Anthropic: Claude Sonnet 4.5',
           'model_id': 'anthropic/claude-sonnet-4.5',
-          'context_window': '1,000,000 context',
+          'context_window': 1000000,
           'input_price': r'Starting at $3/M input tokens',
           'output_price': r'Starting at $15/M output tokens',
           'released_at': 'Created Sep 29, 2025',
@@ -157,7 +157,7 @@ class PresetProvider {
         {
           'name': 'OpenAI: o3',
           'model_id': 'openai/o3',
-          'context_window': '200,000 context',
+          'context_window': 200000,
           'input_price': r'$2/M input tokens',
           'output_price': r'$8/M output tokens',
           'released_at': 'Created Apr 16, 2025',
@@ -175,7 +175,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-R1',
           'model_id': 'deepseek-r1',
-          'context_window': '131,072 context',
+          'context_window': 131072,
           'input_price': '¥0.004/K input tokens',
           'output_price': '¥0.016/K output tokens',
           'released_at': 'Created 2025-05-28',
@@ -185,7 +185,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-V3',
           'model_id': 'deepseek-v3',
-          'context_window': '65,536 context',
+          'context_window': 65536,
           'input_price': '¥0.002/K input tokens',
           'output_price': '¥0.008/K output tokens',
           'released_at': 'Created 2024-12-26',
@@ -195,7 +195,7 @@ class PresetProvider {
         {
           'name': '通义千问-Max',
           'model_id': 'qwen-max',
-          'context_window': '32,768 context',
+          'context_window': 32768,
           'input_price': '¥0.0024/K input tokens',
           'output_price': '¥0.0096/K output tokens',
           'released_at': 'Created 2025-04-09',
@@ -205,7 +205,7 @@ class PresetProvider {
         {
           'name': '通义千问-Plus',
           'model_id': 'qwen-plus',
-          'context_window': '131,072 context',
+          'context_window': 131072,
           'input_price': '¥0.0008/K input tokens',
           'output_price': '¥0.002/K output tokens',
           'released_at': 'Created 2025-06-24',
@@ -215,7 +215,7 @@ class PresetProvider {
         {
           'name': '通义千问-Turbo',
           'model_id': 'qwen-turbo',
-          'context_window': '1,000,000 context',
+          'context_window': 1000000,
           'input_price': '¥0.0003/K input tokens',
           'output_price': '¥0.0006/K output tokens',
           'released_at': 'Created 2025-06-24',
@@ -233,7 +233,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-R1',
           'model_id': 'deepseek-ai/DeepSeek-R1',
-          'context_window': '160K context',
+          'context_window': 163840,
           'input_price': '￥4/M input tokens',
           'output_price': '￥16/M output tokens',
           'released_at': 'Created 2025-05-28',
@@ -243,7 +243,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-V3',
           'model_id': 'deepseek-ai/DeepSeek-V3',
-          'context_window': '64K context',
+          'context_window': 65536,
           'input_price': '￥2/M input tokens',
           'output_price': '￥8/M output tokens',
           'released_at': 'Created 2025-03-24',
@@ -261,7 +261,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-R1',
           'model_id': 'deepseek-r1-250528',
-          'context_window': '128K context',
+          'context_window': 131072,
           'input_price': '¥4/M input tokens',
           'output_price': '¥16/M output tokens',
           'released_at': 'Created 2025/05/28',
@@ -271,7 +271,7 @@ class PresetProvider {
         {
           'name': 'DeepSeek-V3',
           'model_id': 'deepseek-v3-250324',
-          'context_window': '128K context',
+          'context_window': 131072,
           'input_price': '¥2/M input tokens',
           'output_price': '¥8/M output tokens',
           'released_at': 'Created 2025/03/24',
@@ -281,7 +281,7 @@ class PresetProvider {
         {
           'name': 'Doubao-Seed-1.6-thinking',
           'model_id': 'doubao-seed-1-6-thinking-250615',
-          'context_window': '256K context',
+          'context_window': 262144,
           'input_price': 'Starting at ¥0.8/M input tokens',
           'output_price': 'Starting at ¥8/M output tokens',
           'released_at': 'Created 2025/06/15',
@@ -291,7 +291,7 @@ class PresetProvider {
         {
           'name': 'Doubao-Seed-1.6-flash',
           'model_id': 'doubao-seed-1-6-flash-250615',
-          'context_window': '256K context',
+          'context_window': 262144,
           'input_price': 'Starting at ¥0.15/M input tokens',
           'output_price': 'Starting at ¥1.5/M input tokens',
           'released_at': 'Created 2025/06/15',

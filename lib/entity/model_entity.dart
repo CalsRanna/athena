@@ -5,7 +5,7 @@ class ModelEntity {
   final String name;
   final String modelId;
   final int providerId;
-  final String contextWindow;
+  final int contextWindow;
   final String inputPrice;
   final String outputPrice;
   final String releasedAt;
@@ -20,7 +20,7 @@ class ModelEntity {
     required this.name,
     required this.modelId,
     required this.providerId,
-    this.contextWindow = '',
+    this.contextWindow = 0,
     this.inputPrice = '',
     this.outputPrice = '',
     this.releasedAt = '',
@@ -37,7 +37,7 @@ class ModelEntity {
       name: json.getString('name'),
       modelId: json.getString('model_id'),
       providerId: json.getInt('provider_id'),
-      contextWindow: json.getString('context_window'),
+      contextWindow: json.getInt('context_window', defaultValue: 0),
       inputPrice: json.getString('input_price'),
       outputPrice: json.getString('output_price'),
       releasedAt: json.getString('released_at'),
@@ -72,7 +72,7 @@ class ModelEntity {
     String? name,
     String? modelId,
     int? providerId,
-    String? contextWindow,
+    int? contextWindow,
     String? inputPrice,
     String? outputPrice,
     String? releasedAt,

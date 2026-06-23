@@ -317,11 +317,16 @@ class AgentStreamDelegate {
         onMessageUpdated(current);
         _latestMessage = current;
       } else if (event is AgentUsageEvent) {
-        final updated = await _supportService.incrementTokenTotal(
+        // 一次性原子写入累计 token_total + 上下文/缓存快照。
+        final updated = await _supportService.recordUsage(
           chat,
-          event.usage.totalTokens,
+          tokenDelta: event.usage.totalTokens,
+          contextTokens: event.usage.promptTokens,
+          cachedTokens: event.usage.cachedTokens ?? 0,
         );
-        await onUsageChanged(event.usage, updated);
+        if (updated != null) {
+          await onUsageChanged(event.usage, updated);
+        }
       }
     }
 

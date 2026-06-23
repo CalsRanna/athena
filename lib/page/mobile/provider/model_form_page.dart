@@ -94,7 +94,7 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
         name: nameController.text,
         modelId: valueController.text,
         providerId: widget.provider!.id ?? 0,
-        contextWindow: '',
+        contextWindow: 0,
         inputPrice: inputController.text,
         outputPrice: outputController.text,
         releasedAt: '',
