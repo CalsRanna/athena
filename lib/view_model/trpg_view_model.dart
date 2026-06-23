@@ -18,15 +18,15 @@ import 'package:signals/signals.dart';
 
 class TRPGViewModel {
   // Repositories
-  late final TRPGGameRepository _gameRepository;
-  late final TRPGMessageRepository _messageRepository;
-  late final ModelRepository _modelRepository;
-  late final ProviderRepository _providerRepository;
+  final TRPGGameRepository _gameRepository;
+  final TRPGMessageRepository _messageRepository;
+  final ModelRepository _modelRepository;
+  final ProviderRepository _providerRepository;
 
   // Services
-  late final TRPGService _service;
-  late final SettingViewModel _settingViewModel;
-  late final ModelResolver _modelResolver;
+  final TRPGService _service;
+  final SettingViewModel _settingViewModel;
+  final ModelResolver _modelResolver;
 
   TRPGViewModel({
     required TRPGGameRepository gameRepository,

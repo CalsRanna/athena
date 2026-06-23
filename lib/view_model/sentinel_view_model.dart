@@ -7,10 +7,10 @@ import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
-  late final SentinelRepository _sentinelRepository;
-  late final ProviderRepository _providerRepository;
-  late final ModelRepository _modelRepository;
-  late final SentinelService _sentinelService;
+  final SentinelRepository _sentinelRepository;
+  final ProviderRepository _providerRepository;
+  final ModelRepository _modelRepository;
+  final SentinelService _sentinelService;
 
   SentinelViewModel({
     required SentinelRepository sentinelRepository,
