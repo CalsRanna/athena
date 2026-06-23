@@ -20,6 +20,7 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/util/logger_util.dart';
@@ -89,6 +90,7 @@ class AgentStreamDelegate {
   final ModelRepository _modelRepo;
   final SentinelRepository _sentinelRepo;
   final ChatSupportService _supportService;
+  final TokenUsageService _tokenUsageService;
   final SettingViewModel _settingViewModel;
   final PermissionService _permissionService;
   final SkillRegistry _skillRegistry;
@@ -107,6 +109,7 @@ class AgentStreamDelegate {
     required ModelRepository modelRepo,
     required SentinelRepository sentinelRepo,
     required ChatSupportService supportService,
+    required TokenUsageService tokenUsageService,
     required SettingViewModel settingViewModel,
     required PermissionService permissionService,
     required SkillRegistry skillRegistry,
@@ -118,6 +121,7 @@ class AgentStreamDelegate {
         _modelRepo = modelRepo,
         _sentinelRepo = sentinelRepo,
         _supportService = supportService,
+        _tokenUsageService = tokenUsageService,
         _settingViewModel = settingViewModel,
         _permissionService = permissionService,
         _skillRegistry = skillRegistry;
@@ -309,7 +313,7 @@ class AgentStreamDelegate {
         } else if (event is AgentDoneEvent) {
           current = current.copyWith(content: event.content);
         } else if (event is AgentUsageEvent) {
-          final updated = await _supportService.recordUsage(
+          final updated = await _tokenUsageService.recordUsage(
             chat,
             tokenDelta: event.usage.totalTokens,
             contextTokens: event.usage.promptTokens,

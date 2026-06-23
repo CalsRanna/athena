@@ -13,10 +13,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// 会话的 UI 辅助操作。
-///
-/// 职责：重命名（AI 流 + 手动）、模型/哨兵/上下文/温度等字段更新、
-/// 图片保存、消息折叠。是 ViewModel 与 Repository/网络层之间的薄胶水。
+/// 会话辅助操作：重命名、配置更新、Provider 解析、消息折叠、图片导出。
 class ChatSupportService {
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
@@ -32,6 +29,8 @@ class ChatSupportService {
        _messageRepository = messageRepository,
        _providerRepository = providerRepository,
        _chatService = chatService;
+
+  // ─── 重命名 ─────────────────────────────────────────────
 
   Stream<String> renameChat(
     String firstUserMessage, {
@@ -50,22 +49,7 @@ class ChatSupportService {
     return _touchChat(chat.copyWith(title: title));
   }
 
-  Future<String> saveImageFile(Uint8List bytes, int chatId) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    if (PlatformUtil.isMobile) {
-      final directory = await getApplicationDocumentsDirectory();
-      final path = '${directory.path}/chat_${chatId}_$timestamp.png';
-      await File(path).writeAsBytes(bytes);
-      return path;
-    } else {
-      final directory = await getDownloadsDirectory();
-      if (directory == null)
-        throw Exception('Failed to get downloads directory');
-      final path = '${directory.path}/chat_${chatId}_$timestamp.png';
-      await File(path).writeAsBytes(bytes);
-      return path;
-    }
-  }
+  // ─── 配置更新 ───────────────────────────────────────────
 
   Future<ChatEntity> updateModel(ChatEntity chat, int modelId) {
     return _touchChat(chat.copyWith(modelId: modelId));
@@ -83,42 +67,40 @@ class ChatSupportService {
     return _touchChat(chat.copyWith(temperature: temperature));
   }
 
-  /// 原子累加 token_total [tokenDelta] 并覆盖写 context_tokens/cached_tokens
-  /// 快照列。不触碰 updatedAt。返回 DB 最新行（跨并发写者一致）。
-  Future<ChatEntity?> recordUsage(
-    ChatEntity chat, {
-    required int tokenDelta,
-    required int contextTokens,
-    required int cachedTokens,
-  }) async {
-    if (chat.id == null) return chat;
-    await _chatRepository.recordUsage(
-      chat.id!,
-      tokenDelta,
-      contextTokens,
-      cachedTokens,
-    );
-    return _chatRepository.getChatById(chat.id!);
+  // ─── 图片 ───────────────────────────────────────────────
+
+  Future<String> saveImageFile(Uint8List bytes, int chatId) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    if (PlatformUtil.isMobile) {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/chat_${chatId}_$timestamp.png';
+      await File(path).writeAsBytes(bytes);
+      return path;
+    } else {
+      final directory = await getDownloadsDirectory();
+      if (directory == null)
+        throw Exception('Failed to get downloads directory');
+      final path = '${directory.path}/chat_${chatId}_$timestamp.png';
+      await File(path).writeAsBytes(bytes);
+      return path;
+    }
   }
 
-  /// 累加 [chat] 的 token_total [delta] 个 token 并落库。
-  /// 不触碰 updatedAt。返回 DB 最近一行。
-  /// 新代码优先使用 [recordUsage]。
-  Future<ChatEntity?> incrementTokenTotal(ChatEntity chat, int delta) async {
-    if (chat.id == null) return chat;
-    await _chatRepository.incrementTokenTotal(chat.id!, delta);
-    return _chatRepository.getChatById(chat.id!);
-  }
+  // ─── Provider 解析 ──────────────────────────────────────
 
   Future<ProviderEntity?> getProviderForModel(int providerId) async {
     return _providerRepository.getProviderById(providerId);
   }
+
+  // ─── 消息 ───────────────────────────────────────────────
 
   Future<MessageEntity> updateExpanded(MessageEntity message) async {
     final updated = message.copyWith(expanded: !message.expanded);
     await _messageRepository.updateMessage(updated);
     return updated;
   }
+
+  // ─── 内部 ───────────────────────────────────────────────
 
   Future<ChatEntity> _touchChat(ChatEntity updated) async {
     final touched = updated.copyWith(updatedAt: DateTime.now());
