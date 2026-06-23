@@ -21,6 +21,8 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/data_migration_service.dart';
+import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -110,33 +112,7 @@ void setupMobileTestDI() {
     ),
   );
 
-  // ViewModel Delegates
-  getIt.registerSingleton<ChatRenameDelegate>(
-    ChatRenameDelegate(
-      messageRepo: getIt<MessageRepository>(),
-      modelRepo: getIt<ModelRepository>(),
-      supportService: getIt<ChatSupportService>(),
-    ),
-  );
-
-  getIt.registerSingleton<AgentStreamDelegate>(
-    AgentStreamDelegate(
-      agentService: getIt<AgentService>(),
-      manageService: getIt<ChatManageService>(),
-      messageService: getIt<ChatMessageService>(),
-      chatService: getIt<ChatService>(),
-      messageRepo: getIt<MessageRepository>(),
-      modelRepo: getIt<ModelRepository>(),
-      sentinelRepo: getIt<SentinelRepository>(),
-      supportService: getIt<ChatSupportService>(),
-      tokenUsageService: TokenUsageService(chatRepo: getIt<ChatRepository>()),
-      settingViewModel: getIt<SettingViewModel>(),
-      permissionService: getIt<PermissionService>(),
-      skillRegistry: getIt<SkillRegistry>(),
-    ),
-  );
-
-  // ViewModels
+  // ViewModels（必须在 ViewModel Delegates 之前注册，因为 AgentStreamDelegate 依赖 SettingViewModel）
   getIt.registerSingleton<SettingViewModel>(
     SettingViewModel(
       modelRepository: getIt<ModelRepository>(),
@@ -170,6 +146,33 @@ void setupMobileTestDI() {
     ),
   );
 
+  // ViewModel Delegates
+  getIt.registerSingleton<ChatRenameDelegate>(
+    ChatRenameDelegate(
+      messageRepo: getIt<MessageRepository>(),
+      modelRepo: getIt<ModelRepository>(),
+      supportService: getIt<ChatSupportService>(),
+    ),
+  );
+
+  getIt.registerSingleton<AgentStreamDelegate>(
+    AgentStreamDelegate(
+      agentService: getIt<AgentService>(),
+      manageService: getIt<ChatManageService>(),
+      messageService: getIt<ChatMessageService>(),
+      chatService: getIt<ChatService>(),
+      messageRepo: getIt<MessageRepository>(),
+      modelRepo: getIt<ModelRepository>(),
+      sentinelRepo: getIt<SentinelRepository>(),
+      supportService: getIt<ChatSupportService>(),
+      tokenUsageService: TokenUsageService(chatRepo: getIt<ChatRepository>()),
+      settingViewModel: getIt<SettingViewModel>(),
+      permissionService: getIt<PermissionService>(),
+      skillRegistry: getIt<SkillRegistry>(),
+    ),
+  );
+
+  // ChatViewModel（依赖 AgentStreamDelegate，必须在它之后）
   getIt.registerSingleton<ChatViewModel>(
     ChatViewModel(
       manageService: getIt<ChatManageService>(),
@@ -177,11 +180,16 @@ void setupMobileTestDI() {
       renameDelegate: getIt<ChatRenameDelegate>(),
       supportService: getIt<ChatSupportService>(),
       messageRepo: getIt<MessageRepository>(),
+      modelResolver: ModelResolver(
+        modelRepo: getIt<ModelRepository>(),
+        providerRepo: getIt<ProviderRepository>(),
+      ),
       settingViewModel: getIt<SettingViewModel>(),
       modelViewModel: getIt<ModelViewModel>(),
       sentinelViewModel: getIt<SentinelViewModel>(),
     ),
   );
+
 }
 
 /// 快速创建一个 Sentinel 用于测试。
