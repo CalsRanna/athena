@@ -118,8 +118,7 @@ class AgentService {
         }
 
         // 追加 assistant 消息（含 tool_calls）
-        final isDeepSeek = model.modelId.toLowerCase().contains('deepseek');
-        final rc = isDeepSeek && accumulator.reasoningContent.isNotEmpty
+        final rc = model.reasoning && accumulator.reasoningContent.isNotEmpty
             ? accumulator.reasoningContent
             : null;
         messages.add(AssistantMessage(
