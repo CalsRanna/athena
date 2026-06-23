@@ -18,6 +18,7 @@ import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/util/logger_util.dart';
 import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
@@ -461,7 +462,7 @@ class ChatViewModel {
           case StreamListReload():
             unawaited(getChats());
           case StreamError(:final message):
-            print("[DEBUG] sendMessage StreamError: $message");
+            LoggerUtil.e("sendMessage StreamError: $message");
             error.value = message;
         }
       }
