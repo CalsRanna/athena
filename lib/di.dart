@@ -36,7 +36,6 @@ import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/service/trpg_service.dart';
-import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/util/platform_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
@@ -79,7 +78,7 @@ class DI {
         modelRepo: getIt<ModelRepository>(),
         sentinelRepo: getIt<SentinelRepository>(),
         supportService: getIt<ChatSupportService>(),
-        tokenUsageService: getIt<TokenUsageService>(),
+        chatRepo: getIt<ChatRepository>(),
         settingViewModel: getIt<SettingViewModel>(),
         permissionService: getIt<PermissionService>(),
         skillRegistry: getIt<SkillRegistry>(),
@@ -300,10 +299,6 @@ class DI {
         sentinelRepo: getIt<SentinelRepository>(),
         chatRepo: getIt<ChatRepository>(),
       ),
-    );
-
-    getIt.registerLazySingleton(
-      () => TokenUsageService(chatRepo: getIt<ChatRepository>()),
     );
   }
 }

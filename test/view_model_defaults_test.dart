@@ -18,7 +18,6 @@ import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
-import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
@@ -105,8 +104,8 @@ void main() {
           messageRepo: MessageRepository(),
           modelRepo: ModelRepository(),
           sentinelRepo: SentinelRepository(),
+          chatRepo: ChatRepository(),
           supportService: supportService,
-          tokenUsageService: TokenUsageService(chatRepo: ChatRepository()),
           settingViewModel: SettingViewModel(
             modelRepository: ModelRepository(),
             providerRepository: ProviderRepository(),

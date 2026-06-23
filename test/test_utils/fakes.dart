@@ -24,7 +24,6 @@ import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
-import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
@@ -165,7 +164,7 @@ void setupMobileTestDI() {
       modelRepo: getIt<ModelRepository>(),
       sentinelRepo: getIt<SentinelRepository>(),
       supportService: getIt<ChatSupportService>(),
-      tokenUsageService: TokenUsageService(chatRepo: getIt<ChatRepository>()),
+      chatRepo: getIt<ChatRepository>(),
       settingViewModel: getIt<SettingViewModel>(),
       permissionService: getIt<PermissionService>(),
       skillRegistry: getIt<SkillRegistry>(),
