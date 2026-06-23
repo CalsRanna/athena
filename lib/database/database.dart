@@ -17,6 +17,7 @@ import 'package:athena/database/migration/migration_202606240002_add_chat_token_
 import 'package:athena/database/migration/migration_202606240003_rename_context_to_retention.dart';
 import 'package:athena/database/migration/migration_202606240004_add_compacted_to_messages.dart';
 import 'package:athena/database/migration/migration_202606240005_seed_presets.dart';
+import 'package:athena/database/migration/migration_202606240006_update_deepseek_models.dart';
 import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -86,6 +87,7 @@ class Database {
     await Migration202606240003RenameContextToRetention().migrate();
     await Migration202606240004AddCompactedToMessages().migrate();
     await Migration202606240005SeedPresets().migrate();
+    await Migration202606240006UpdateDeepSeekModels().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设
