@@ -21,7 +21,6 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/data_migration_service.dart';
-import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -188,7 +187,6 @@ void setupMobileTestDI() {
       sentinelViewModel: getIt<SentinelViewModel>(),
     ),
   );
-
 }
 
 /// 快速创建一个 Sentinel 用于测试。
@@ -291,8 +289,7 @@ class _FakeMessageRepository extends MessageRepository {
   Future<List<MessageEntity>> getMessagesByChatId(
     int chatId, {
     bool includeCompacted = true,
-  }) async =>
-      [];
+  }) async => [];
   @override
   Future<MessageEntity?> getMessageById(int id) async => null;
   @override

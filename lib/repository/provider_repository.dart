@@ -4,7 +4,7 @@ import 'package:athena/entity/provider_entity.dart';
 class ProviderRepository {
   Future<List<ProviderEntity>> getAllProviders() async {
     var laconic = Database.instance.laconic;
-    var results = await laconic.table('providers').get();
+    var results = await laconic.table('providers').orderBy('name').get();
     return results
         .map((result) => ProviderEntity.fromJson(result.toMap()))
         .toList();
@@ -22,7 +22,7 @@ class ProviderRepository {
 
   Future<List<ProviderEntity>> getEnabledProviders() async {
     var laconic = Database.instance.laconic;
-    var results = await laconic.table('providers').where('enabled', 1).get();
+    var results = await laconic.table('providers').where('enabled', 1).orderBy('name').get();
     return results.map((r) => ProviderEntity.fromJson(r.toMap())).toList();
   }
 

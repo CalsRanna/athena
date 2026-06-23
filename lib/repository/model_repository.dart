@@ -4,7 +4,7 @@ import 'package:athena/entity/model_entity.dart';
 class ModelRepository {
   Future<List<ModelEntity>> getAllModels() async {
     var laconic = Database.instance.laconic;
-    var results = await laconic.table('models').get();
+    var results = await laconic.table('models').orderBy('name').get();
     return results.map((r) => ModelEntity.fromJson(r.toMap())).toList();
   }
 
@@ -23,6 +23,7 @@ class ModelRepository {
     var results = await laconic
         .table('models')
         .where('provider_id', providerId)
+        .orderBy('name')
         .get();
     return results.map((r) => ModelEntity.fromJson(r.toMap())).toList();
   }
