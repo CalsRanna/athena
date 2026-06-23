@@ -1,5 +1,6 @@
 import 'package:athena/page/desktop/home/component/configuration_button.dart';
 import 'package:athena/page/desktop/home/component/image_selector.dart';
+import 'package:athena/page/desktop/home/component/token_indicator.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,8 @@ class DesktopMessageInput extends StatelessWidget {
           onTemperatureChange: onTemperatureChange,
         ),
         DesktopImageSelector(onSelected: onImageSelected),
+        const Spacer(),
+        const DesktopTokenIndicator(),
       ];
       var toolbar = Row(spacing: 12, children: toolbarChildren);
       var input = _Input(controller: controller, onSubmitted: onSubmitted);

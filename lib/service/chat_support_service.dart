@@ -83,6 +83,16 @@ class ChatSupportService {
     return _touchChat(chat.copyWith(temperature: temperature));
   }
 
+  /// 累加 [chat] 的 token_total [delta] 个 token 并落库。
+  /// 不触碰 updatedAt，避免 token 统计写入扰动会话排序。
+  /// 返回落库后的最新 ChatEntity。
+  Future<ChatEntity> incrementTokenTotal(ChatEntity chat, int delta) async {
+    if (chat.id == null) return chat;
+    final newTotal =
+        await _chatRepository.incrementTokenTotal(chat.id!, delta);
+    return chat.copyWith(tokenTotal: newTotal);
+  }
+
   Future<ProviderEntity?> getProviderForModel(int providerId) async {
     return _providerRepository.getProviderById(providerId);
   }

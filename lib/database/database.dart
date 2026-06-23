@@ -11,6 +11,7 @@ import 'package:athena/database/migration/migration_202605210001_add_tool_fields
 import 'package:athena/database/migration/migration_202605260001_db_integrity.dart';
 import 'package:athena/database/migration/migration_202606110001_dedup_presets.dart';
 import 'package:athena/database/migration/migration_202606170001_add_preset_flag.dart';
+import 'package:athena/database/migration/migration_202606230001_add_chat_token_total.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -83,6 +84,7 @@ class Database {
     await Migration202605260001DbIntegrity().migrate();
     await Migration202606110001DedupPresets().migrate();
     await Migration202606170001AddPresetFlag().migrate();
+    await Migration202606230001AddChatTokenTotal().migrate();
   }
 
   Future<void> _preset() async {

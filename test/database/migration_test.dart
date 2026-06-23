@@ -56,6 +56,7 @@ Future<Laconic> _buildSchema() async {
       temperature REAL DEFAULT 1.0,
       context INTEGER DEFAULT 0,
       pinned INTEGER DEFAULT 0,
+      token_total INTEGER DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
@@ -405,6 +406,43 @@ void main() {
     final info = await laconic.select("PRAGMA table_info('models')");
     final columns = info.map((r) => r.toMap()['name'] as String).toSet();
     expect(columns, contains('context_window'));
+  });
+
+  test('chats table has token_total column after migration', () async {
+    final laconic = await _buildSchema();
+    final info = await laconic.select("PRAGMA table_info('chats')");
+    final columns = info.map((r) => r.toMap()['name'] as String).toSet();
+    expect(columns, contains('token_total'));
+  });
+
+  test('token_total defaults to 0 and accumulates on increment', () async {
+    final laconic = await _buildSchema();
+    final chatId = await laconic.table('chats').insertGetId(<String, dynamic>{
+      'title': 'T',
+      'model_id': 1,
+      'sentinel_id': 1,
+      'temperature': 1.0,
+      'context': 0,
+      'pinned': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    final inserted =
+        await laconic.table('chats').where('id', chatId).first();
+    expect(inserted.toMap()['token_total'], 0,
+        reason: 'new chats default to token_total 0');
+    await laconic.statement(
+      'UPDATE chats SET token_total = token_total + ? WHERE id = ?',
+      <Object?>[5, chatId],
+    );
+    await laconic.statement(
+      'UPDATE chats SET token_total = token_total + ? WHERE id = ?',
+      <Object?>[7, chatId],
+    );
+    final updated =
+        await laconic.table('chats').where('id', chatId).first();
+    expect(updated.toMap()['token_total'], 12,
+        reason: 'token_total should accumulate');
   });
 
   test('all expected tables exist after full migration', () async {

@@ -6,9 +6,11 @@ import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/model/token_usage.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/util/logger_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:openai_dart/openai_dart.dart';
 
@@ -104,6 +106,34 @@ class AgentService {
         if (textDelta != null && textDelta.isNotEmpty) {
           yield AgentEvent.text(textDelta);
         }
+      }
+
+      // 上报本轮调用的 token 使用统计（include_usage 已开启）。
+      final usage = accumulator.usage;
+      if (kDebugMode) {
+        if (usage != null) {
+          LoggerUtil.d(
+            'agent usage: prompt=${usage.promptTokens} '
+            'completion=${usage.completionTokens} '
+            'total=${usage.totalTokens} '
+            'cached=${usage.promptTokensDetails?.cachedTokens}',
+          );
+        } else {
+          LoggerUtil.w(
+            'agent usage: provider 返回的流中未携带 usage（多数是该 '
+            'provider/model 不支持 stream_options.include_usage）',
+          );
+        }
+      }
+      if (usage != null) {
+        yield AgentEvent.usage(TokenUsage(
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          reasoningTokens:
+              usage.completionTokensDetails?.reasoningTokens,
+          cachedTokens: usage.promptTokensDetails?.cachedTokens,
+        ));
       }
 
       final toolCalls = accumulator.toolCalls;
@@ -312,6 +342,8 @@ sealed class AgentEvent {
   }) = AgentIterationCompleteEvent;
 
   const factory AgentEvent.done({required String content}) = AgentDoneEvent;
+
+  const factory AgentEvent.usage(TokenUsage usage) = AgentUsageEvent;
 }
 
 class AgentTextEvent extends AgentEvent {
@@ -358,4 +390,9 @@ class AgentIterationCompleteEvent extends AgentEvent {
 class AgentDoneEvent extends AgentEvent {
   final String content;
   const AgentDoneEvent({required this.content});
+}
+
+class AgentUsageEvent extends AgentEvent {
+  final TokenUsage usage;
+  const AgentUsageEvent(this.usage);
 }

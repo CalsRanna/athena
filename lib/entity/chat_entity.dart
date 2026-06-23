@@ -8,6 +8,9 @@ class ChatEntity {
   final double temperature;
   final int context;
   final bool pinned;
+  /// 本会话累计消耗的 token 总量（跨重启持久化）。
+  /// 由 AgentStreamDelegate 在每次推理调用返回 usage 时累加落库。
+  final int tokenTotal;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -19,6 +22,7 @@ class ChatEntity {
     this.temperature = 1.0,
     this.context = 0,
     this.pinned = false,
+    this.tokenTotal = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -32,6 +36,7 @@ class ChatEntity {
       temperature: json.getDouble('temperature', defaultValue: 1.0),
       context: json.getInt('context'),
       pinned: json.getBool('pinned'),
+      tokenTotal: json.getInt('token_total', defaultValue: 0),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
     );
@@ -46,6 +51,7 @@ class ChatEntity {
       'temperature': temperature,
       'context': context,
       'pinned': pinned ? 1 : 0,
+      'token_total': tokenTotal,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -59,6 +65,7 @@ class ChatEntity {
     double? temperature,
     int? context,
     bool? pinned,
+    int? tokenTotal,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -70,6 +77,7 @@ class ChatEntity {
       temperature: temperature ?? this.temperature,
       context: context ?? this.context,
       pinned: pinned ?? this.pinned,
+      tokenTotal: tokenTotal ?? this.tokenTotal,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
