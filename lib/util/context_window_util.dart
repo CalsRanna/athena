@@ -4,6 +4,7 @@
 /// "200,000 context"、"128K" 的自由文本。现已迁移为 INTEGER（单位 token）。
 /// 本 util 保留解析函数，仅供历史路径兼容，以及把整数格式化为
 /// "64K" / "1M" 的简洁展示。
+library;
 
 /// 把旧 context_window 文本解析为 token 数。
 /// 支持："200,000 context"、"64K context"、"128K"、"1M"、纯粹千分位数字。
