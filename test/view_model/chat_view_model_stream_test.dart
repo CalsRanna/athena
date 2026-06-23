@@ -9,6 +9,7 @@ import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/model/token_usage.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/repository/message_repository.dart';
@@ -147,6 +148,9 @@ class _FakeSupportService extends ChatSupportService {
   /// 记录 renameChatManually 是否被调用（用于断言删除后不再写入）。
   bool renameChatManuallyCalled = false;
 
+  /// 会话 id → 累计 token 总量（内存态，桩掉 DB 持久化）。
+  final Map<int, int> _tokenTotals = {};
+
   @override
   Future<ProviderEntity?> getProviderForModel(int providerId) async =>
       ProviderEntity(
@@ -172,6 +176,14 @@ class _FakeSupportService extends ChatSupportService {
   Future<ChatEntity> renameChatManually(ChatEntity chat, String title) async {
     renameChatManuallyCalled = true;
     return chat.copyWith(title: title);
+  }
+
+  @override
+  Future<ChatEntity> incrementTokenTotal(ChatEntity chat, int delta) async {
+    if (chat.id == null) return chat.copyWith(tokenTotal: chat.tokenTotal + delta);
+    final next = (_tokenTotals[chat.id!] ?? chat.tokenTotal) + delta;
+    _tokenTotals[chat.id!] = next;
+    return chat.copyWith(tokenTotal: next);
   }
 }
 
@@ -547,6 +559,79 @@ void main() {
     expect(manage.cancelledArg, isNotNull);
     expect(manage.events, ['cancel-persist', 'delete'],
         reason: '删除应等待流 settle，取消落库先于删除');
+  });
+
+  test('token usage: AgentUsageEvent 会写入 currentTokenUsage 信号', () async {
+    final gate = Completer<void>();
+    final emittedUsage = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('partial');
+      if (!emittedUsage.isCompleted) emittedUsage.complete();
+      await gate.future;
+      yield const AgentUsageEvent(TokenUsage(
+        promptTokens: 100,
+        completionTokens: 3,
+        totalTokens: 5,
+        reasoningTokens: 1,
+        cachedTokens: 40,
+      ));
+      yield const AgentDoneEvent(content: 'partial');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    expect(vm.currentTokenUsage.value, isNull);
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await emittedUsage.future;
+    gate.complete();
+    await sendFuture;
+
+    expect(vm.currentTokenUsage.value, isNotNull);
+    expect(vm.currentTokenUsage.value!.totalTokens, 5);
+    expect(vm.currentTokenUsage.value!.promptTokens, 100);
+    expect(vm.currentTokenUsage.value!.completionTokens, 3);
+    expect(vm.currentTokenUsage.value!.reasoningTokens, 1);
+    expect(vm.currentTokenUsage.value!.cachedTokens, 40);
+    // 会话累计等于本轮 totalTokens。
+    expect(vm.cumulativeTokenTotal.value, 5);
+  });
+
+  test('token usage: 多个 usage 事件会累计到 cumulativeTokenTotal', () async {
+    final gate = Completer<void>();
+    final emittedFirst = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('partial');
+      yield const AgentUsageEvent(TokenUsage(
+        promptTokens: 10,
+        completionTokens: 20,
+        totalTokens: 30,
+      ));
+      yield const AgentUsageEvent(TokenUsage(
+        promptTokens: 40,
+        completionTokens: 50,
+        totalTokens: 90,
+      ));
+      if (!emittedFirst.isCompleted) emittedFirst.complete();
+      await gate.future;
+      yield const AgentDoneEvent(content: 'partial');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await emittedFirst.future;
+    gate.complete();
+    await sendFuture;
+
+    // currentTokenUsage 保留最近一次，累计为两次之和。
+    expect(vm.currentTokenUsage.value!.totalTokens, 90);
+    expect(vm.cumulativeTokenTotal.value, 120);
   });
 }
 

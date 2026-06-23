@@ -59,6 +59,22 @@ class ChatRepository {
     return allChats.take(limit).toList();
   }
 
+  /// 原子地累加 [chatId] 的 token_total 列 [delta]，不触碰 updatedAt。
+  /// 返回累加后的总 token 数。
+  Future<int> incrementTokenTotal(int chatId, int delta) async {
+    if (delta == 0) {
+      final chat = await getChatById(chatId);
+      return chat?.tokenTotal ?? 0;
+    }
+    var laconic = Database.instance.laconic;
+    await laconic.statement(
+      'UPDATE chats SET token_total = token_total + ? WHERE id = ?',
+      [delta, chatId],
+    );
+    final chat = await getChatById(chatId);
+    return chat?.tokenTotal ?? 0;
+  }
+
   Future<int> getChatsCount() async {
     var laconic = Database.instance.laconic;
     return await laconic.table('chats').count();

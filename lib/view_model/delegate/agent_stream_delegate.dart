@@ -9,6 +9,7 @@ import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
+import 'package:athena/model/token_usage.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
@@ -88,6 +89,7 @@ class AgentStreamDelegate {
     required void Function(String?) onToolNameChanged,
     required Future<void> Function() onListReload,
     required Future<void> Function() onAutoRename,
+    required Future<void> Function(TokenUsage, ChatEntity) onUsageChanged,
   }) async {
     await _maybePromptSkillTrust();
 
@@ -161,6 +163,7 @@ class AgentStreamDelegate {
         onMessageUpdated: onMessageUpdated,
         onIterationChanged: onIterationChanged,
         onToolNameChanged: onToolNameChanged,
+        onUsageChanged: onUsageChanged,
       );
 
       await _manageService.finalizeAssistantMessage(assistantMessage);
@@ -245,6 +248,7 @@ class AgentStreamDelegate {
     required void Function(MessageEntity) onMessageUpdated,
     required void Function(int) onIterationChanged,
     required void Function(String?) onToolNameChanged,
+    required Future<void> Function(TokenUsage, ChatEntity) onUsageChanged,
   }) async {
     var current = assistantMessage;
     _latestMessage = current;
@@ -312,6 +316,12 @@ class AgentStreamDelegate {
         current = current.copyWith(content: event.content);
         onMessageUpdated(current);
         _latestMessage = current;
+      } else if (event is AgentUsageEvent) {
+        final updated = await _supportService.incrementTokenTotal(
+          chat,
+          event.usage.totalTokens,
+        );
+        await onUsageChanged(event.usage, updated);
       }
     }
 

@@ -99,6 +99,8 @@ class ChatService {
         messages: messages,
         temperature: chat.temperature,
         tools: tools,
+        // 请求在最后一个流式 chunk 中附带 token 使用统计。
+        streamOptions: const StreamOptions(includeUsage: true),
       );
       yield* retryStream(
         () => client.chat.completions.createStream(request),

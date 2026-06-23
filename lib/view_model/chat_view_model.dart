@@ -7,6 +7,7 @@ import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
+import 'package:athena/model/token_usage.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_config_delegate.dart';
@@ -53,6 +54,9 @@ class ChatViewModel {
   final currentTemperature = signal(defaultDraftTemperature);
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
+  final currentTokenUsage = signal<TokenUsage?>(null);
+  // 当前会话累计的 token 总量（所有轮次加总）。会话切换 / 新建时重置。
+  final cumulativeTokenTotal = signal(0);
   final pendingImages = listSignal<String>([]);
 
   // ─── Computed ───
@@ -170,6 +174,7 @@ class ChatViewModel {
       currentSentinel.value = selected.sentinel;
       currentContext.value = currentChat.value!.context;
       currentTemperature.value = currentChat.value!.temperature;
+      cumulativeTokenTotal.value = currentChat.value!.tokenTotal;
     } else {
       await prepareNewChatDraft();
     }
@@ -188,6 +193,8 @@ class ChatViewModel {
         error.value = 'Failed to create chat';
         return null;
       }
+      currentTokenUsage.value = null;
+      cumulativeTokenTotal.value = 0;
 
       final pinned = chats.value.where((c) => c.pinned).toList();
       final unpinned = chats.value.where((c) => !c.pinned).toList();
@@ -288,10 +295,13 @@ class ChatViewModel {
       currentSentinel.value = result.sentinel;
       currentContext.value = first.context;
       currentTemperature.value = first.temperature;
+      cumulativeTokenTotal.value = first.tokenTotal;
       _selection.lastSelectedIndex.value = 0;
     } else {
       await prepareNewChatDraft();
       messages.value = [];
+      currentTokenUsage.value = null;
+      cumulativeTokenTotal.value = 0;
       _selection.lastSelectedIndex.value = null;
     }
   }
@@ -309,6 +319,8 @@ class ChatViewModel {
     currentContext.value = chat.context;
     currentTemperature.value = chat.temperature;
     pendingImages.value = [];
+    currentTokenUsage.value = null;
+    cumulativeTokenTotal.value = chat.tokenTotal;
   }
 
   Future<void> togglePin(ChatEntity chat) async {
@@ -445,6 +457,7 @@ class ChatViewModel {
     if (isStreaming.value) return;
 
     isStreaming.value = true;
+    currentTokenUsage.value = null;
 
     try {
       await _stream.send(
@@ -461,6 +474,12 @@ class ChatViewModel {
         onToolNameChanged: (n) => currentToolName.value = n,
         onListReload: () => getChats(),
         onAutoRename: () => renameChat(chat),
+        onUsageChanged: (u, updatedChat) async {
+          currentTokenUsage.value = u;
+          // 让持久化值成为权威累加值（避免多轮重复加 delta）。
+          cumulativeTokenTotal.value = updatedChat.tokenTotal;
+          _updateChatInLists(updatedChat);
+        },
       );
     } on CancelledException {
       // 已生成内容在 AgentStreamDelegate 内部保留并标记
@@ -588,6 +607,8 @@ class ChatViewModel {
     currentChat.value = null;
     messages.value = [];
     pendingImages.value = [];
+    currentTokenUsage.value = null;
+    cumulativeTokenTotal.value = 0;
     await _syncDraftDefaults();
   }
 
