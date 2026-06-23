@@ -71,11 +71,14 @@ class SentinelService {
       final formatted = jsonDecode(
         content.replaceAll('```json', '').replaceAll('```', ''),
       );
+      final tags = formatted['tags'] is List
+          ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
+          : (formatted['tags']?.toString() ?? '');
       return SentinelEntity(
         name: formatted['name'] ?? '',
         description: formatted['description'] ?? '',
-        tags: '',
-        avatar: '',
+        tags: tags,
+        avatar: formatted['avatar']?.toString() ?? '',
         prompt: prompt,
       );
     } finally {
