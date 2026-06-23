@@ -78,8 +78,9 @@ class ChatSupportService {
       return path;
     } else {
       final directory = await getDownloadsDirectory();
-      if (directory == null)
+      if (directory == null) {
         throw Exception('Failed to get downloads directory');
+      }
       final path = '${directory.path}/chat_${chatId}_$timestamp.png';
       await File(path).writeAsBytes(bytes);
       return path;
