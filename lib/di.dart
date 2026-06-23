@@ -37,8 +37,6 @@ import 'package:athena/service/trpg_service.dart';
 import 'package:athena/util/platform_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena/view_model/delegate/chat_config_delegate.dart';
-import 'package:athena/view_model/delegate/chat_list_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/provider_view_model.dart';
@@ -61,20 +59,9 @@ class DI {
 
     // ViewModel Delegates
     getIt.registerLazySingleton(
-      () => ChatConfigDelegate(supportService: getIt<ChatSupportService>()),
-    );
-
-    getIt.registerLazySingleton(
       () => ChatRenameDelegate(
         messageRepo: getIt<MessageRepository>(),
         modelRepo: getIt<ModelRepository>(),
-        supportService: getIt<ChatSupportService>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => ChatListDelegate(
-        manageService: getIt<ChatManageService>(),
         supportService: getIt<ChatSupportService>(),
       ),
     );
@@ -225,11 +212,11 @@ class DI {
     // ChatViewModel (depends on many things, registered last)
     getIt.registerLazySingleton(
       () => ChatViewModel(
-        listDelegate: getIt<ChatListDelegate>(),
-        configDelegate: getIt<ChatConfigDelegate>(),
+        manageService: getIt<ChatManageService>(),
         streamDelegate: getIt<AgentStreamDelegate>(),
         renameDelegate: getIt<ChatRenameDelegate>(),
         supportService: getIt<ChatSupportService>(),
+        messageRepo: getIt<MessageRepository>(),
         settingViewModel: getIt<SettingViewModel>(),
         modelViewModel: getIt<ModelViewModel>(),
         sentinelViewModel: getIt<SentinelViewModel>(),
