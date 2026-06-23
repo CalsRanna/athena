@@ -309,7 +309,7 @@ String _resolveUrl(String src, Element node) {
     current = current.parent;
   }
   if (base.isNotEmpty && !base.endsWith('/')) {
-    base = '${base.substring(0, base.lastIndexOf('/') + 1)}';
+    base = base.substring(0, base.lastIndexOf('/') + 1);
   }
   // 在无完整 base 时返回原路径
   return '$base$src';
