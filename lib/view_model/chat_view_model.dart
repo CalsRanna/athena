@@ -11,6 +11,7 @@ import 'package:athena/model/token_usage.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
@@ -34,6 +35,7 @@ class ChatViewModel {
   final ChatSelectionDelegate _selection;
   final ChatSupportService _supportService;
   final MessageRepository _messageRepo;
+  final ModelResolver _modelResolver;
   final SettingViewModel _settingViewModel;
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
@@ -108,6 +110,7 @@ class ChatViewModel {
     ChatSelectionDelegate? selectionDelegate,
     required ChatSupportService supportService,
     required MessageRepository messageRepo,
+    required ModelResolver modelResolver,
     required SettingViewModel settingViewModel,
     required ModelViewModel modelViewModel,
     required SentinelViewModel sentinelViewModel,
@@ -117,6 +120,7 @@ class ChatViewModel {
         _selection = selectionDelegate ?? ChatSelectionDelegate(),
         _supportService = supportService,
         _messageRepo = messageRepo,
+        _modelResolver = modelResolver,
         _settingViewModel = settingViewModel,
         _modelViewModel = modelViewModel,
         _sentinelViewModel = sentinelViewModel;
@@ -168,19 +172,16 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      final model = await _modelViewModel.resolveDefaultModel(
-        _settingViewModel.chatModelId.value,
+      final resolved = await _modelResolver.resolve(
+        preferredModelId: _settingViewModel.chatModelId.value,
       );
-      if (model == null) {
+      if (resolved == null) {
         error.value = 'Failed to create chat';
         return null;
       }
 
-      final provider = await _supportService.getProviderForModel(model.providerId);
-      if (provider == null) {
-        error.value = 'Failed to create chat';
-        return null;
-      }
+      final model = resolved.model;
+      final provider = resolved.provider;
 
       if (_sentinelViewModel.sentinels.value.isEmpty) {
         await _sentinelViewModel.getSentinels();

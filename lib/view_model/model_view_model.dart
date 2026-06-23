@@ -115,23 +115,6 @@ class ModelViewModel {
     }
   }
 
-  Future<ModelEntity?> getFirstEnabledModel() async {
-    if (enabledModels.value.isEmpty) {
-      await loadEnabledModels();
-    }
-    return enabledModels.value.firstOrNull;
-  }
-
-  /// 解析默认模型：优先返回 [preferredModelId] 对应的模型（若有效），
-  /// 否则回退到第一个已启用的模型。返回 null 表示没有可用模型。
-  Future<ModelEntity?> resolveDefaultModel(int? preferredModelId) async {
-    if (preferredModelId != null && preferredModelId > 0) {
-      final model = await _repository.getModelById(preferredModelId);
-      if (model != null) return model;
-    }
-    return getFirstEnabledModel();
-  }
-
   Future<bool> hasModel() async {
     if (enabledModels.value.isEmpty) {
       await loadEnabledModels();

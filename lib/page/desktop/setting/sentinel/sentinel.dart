@@ -1,8 +1,8 @@
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/util/color_util.dart';
-import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/widget/button.dart';
@@ -303,9 +303,9 @@ class _DesktopSettingSentinelPageState
 
   Future<int?> _getModelId() async {
     final settingViewModel = GetIt.instance<SettingViewModel>();
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    final model = await modelViewModel.resolveDefaultModel(
-      settingViewModel.sentinelMetadataGenerationModelId.value,
+    final modelResolver = GetIt.instance<ModelResolver>();
+    final model = await modelResolver.resolveModel(
+      preferredModelId: settingViewModel.sentinelMetadataGenerationModelId.value,
     );
     if (model == null) {
       AthenaDialog.warning('No enabled models found');
