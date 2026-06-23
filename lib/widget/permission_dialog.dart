@@ -189,16 +189,25 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
       children: [
         Text('Remember:', style: baseStyle),
         const SizedBox(height: 8),
-        _radioOption(_RememberMode.none, 'Don\'t remember'),
-        const SizedBox(height: 6),
-        _radioOption(_RememberMode.exact, 'Exactly this call'),
-        const SizedBox(height: 6),
-        _radioOption(_RememberMode.pattern, '', trailing: _buildPatternInput()),
+        RadioGroup<_RememberMode>(
+          groupValue: _rememberMode,
+          onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _radioOption(_RememberMode.none),
+              const SizedBox(height: 6),
+              _radioOption(_RememberMode.exact),
+              const SizedBox(height: 6),
+              _radioOption(_RememberMode.pattern, trailing: _buildPatternInput()),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _radioOption(_RememberMode mode, String label, {Widget? trailing}) {
+  Widget _radioOption(_RememberMode mode, {Widget? trailing}) {
     final selected = _rememberMode == mode;
     final labelText = switch (mode) {
       _RememberMode.none => 'Don\'t remember',
@@ -217,8 +226,6 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
             height: 18,
             child: Radio<_RememberMode>(
               value: mode,
-              groupValue: _rememberMode,
-              onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
               activeColor: Colors.orange.shade700,
             ),
           ),
@@ -440,16 +447,25 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       children: [
         Text('Remember:', style: baseStyle),
         const SizedBox(height: 8),
-        _radioOption(_RememberMode.none, 'Don\'t remember'),
-        const SizedBox(height: 6),
-        _radioOption(_RememberMode.exact, 'Exactly this call'),
-        const SizedBox(height: 6),
-        _radioOption(_RememberMode.pattern, '', trailing: _buildPatternInput()),
+        RadioGroup<_RememberMode>(
+          groupValue: _rememberMode,
+          onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _radioOption(_RememberMode.none),
+              const SizedBox(height: 6),
+              _radioOption(_RememberMode.exact),
+              const SizedBox(height: 6),
+              _radioOption(_RememberMode.pattern, trailing: _buildPatternInput()),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _radioOption(_RememberMode mode, String label, {Widget? trailing}) {
+  Widget _radioOption(_RememberMode mode, {Widget? trailing}) {
     final selected = _rememberMode == mode;
     final labelText = switch (mode) {
       _RememberMode.none => 'Don\'t remember',
@@ -468,8 +484,6 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
             height: 18,
             child: Radio<_RememberMode>(
               value: mode,
-              groupValue: _rememberMode,
-              onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
               activeColor: Colors.orange.shade700,
             ),
           ),
