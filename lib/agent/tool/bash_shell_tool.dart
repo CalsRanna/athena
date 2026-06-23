@@ -5,9 +5,6 @@ import 'package:athena/agent/tool/shell_runner.dart';
 import 'tool_interface.dart';
 
 class BashShellTool implements Tool {
-
-  BashShellTool();
-
   @override
   String get name => 'bash';
 

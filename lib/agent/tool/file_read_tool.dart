@@ -10,8 +10,6 @@ class FileReadTool implements Tool {
   /// 单次最多返回的行数，防止 LLM 上下文撑爆。
   static const _maxReturnLines = 2000;
 
-  FileReadTool();
-
   @override
   String get name => 'file_read';
 
