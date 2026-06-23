@@ -3,9 +3,6 @@ import 'dart:io';
 import 'tool_interface.dart';
 
 class FileWriteTool implements Tool {
-
-  FileWriteTool();
-
   @override
   String get name => 'file_write';
 
