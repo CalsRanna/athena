@@ -6,7 +6,8 @@ class ChatEntity {
   final int modelId;
   final int sentinelId;
   final double temperature;
-  final int context;
+  /// 上下文保留策略。0 = 无历史（每次独立请求），-1 = 自动管理（compact）。
+  final int retention;
   final bool pinned;
   /// 本会话累计消耗的 token 总量（跨重启持久化）。
   final int tokenTotal;
@@ -23,7 +24,7 @@ class ChatEntity {
     required this.modelId,
     required this.sentinelId,
     this.temperature = 1.0,
-    this.context = 0,
+    this.retention = -1,
     this.pinned = false,
     this.tokenTotal = 0,
     this.contextTokens = 0,
@@ -39,7 +40,7 @@ class ChatEntity {
       modelId: json.getInt('model_id'),
       sentinelId: json.getInt('sentinel_id'),
       temperature: json.getDouble('temperature', defaultValue: 1.0),
-      context: json.getInt('context'),
+      retention: json.getInt('retention', defaultValue: -1),
       pinned: json.getBool('pinned'),
       tokenTotal: json.getInt('token_total', defaultValue: 0),
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
@@ -56,7 +57,7 @@ class ChatEntity {
       'model_id': modelId,
       'sentinel_id': sentinelId,
       'temperature': temperature,
-      'context': context,
+      'retention': retention,
       'pinned': pinned ? 1 : 0,
       'token_total': tokenTotal,
       'context_tokens': contextTokens,
@@ -72,7 +73,7 @@ class ChatEntity {
     int? modelId,
     int? sentinelId,
     double? temperature,
-    int? context,
+    int? retention,
     bool? pinned,
     int? tokenTotal,
     int? contextTokens,
@@ -86,7 +87,7 @@ class ChatEntity {
       modelId: modelId ?? this.modelId,
       sentinelId: sentinelId ?? this.sentinelId,
       temperature: temperature ?? this.temperature,
-      context: context ?? this.context,
+      retention: retention ?? this.retention,
       pinned: pinned ?? this.pinned,
       tokenTotal: tokenTotal ?? this.tokenTotal,
       contextTokens: contextTokens ?? this.contextTokens,

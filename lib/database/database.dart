@@ -14,6 +14,8 @@ import 'package:athena/database/migration/migration_202606170001_add_preset_flag
 import 'package:athena/database/migration/migration_202606230001_add_chat_token_total.dart';
 import 'package:athena/database/migration/migration_202606240001_context_window_to_int.dart';
 import 'package:athena/database/migration/migration_202606240002_add_chat_token_snapshots.dart';
+import 'package:athena/database/migration/migration_202606240003_rename_context_to_retention.dart';
+import 'package:athena/database/migration/migration_202606240004_add_compacted_to_messages.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
@@ -89,6 +91,8 @@ class Database {
     await Migration202606230001AddChatTokenTotal().migrate();
     await Migration202606240001ContextWindowToInt().migrate();
     await Migration202606240002AddChatTokenSnapshots().migrate();
+    await Migration202606240003RenameContextToRetention().migrate();
+    await Migration202606240004AddCompactedToMessages().migrate();
   }
 
   Future<void> _preset() async {

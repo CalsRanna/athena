@@ -121,6 +121,7 @@ class DI {
         agentService: getIt<AgentService>(),
         manageService: getIt<ChatManageService>(),
         messageService: getIt<ChatMessageService>(),
+        chatService: getIt<ChatService>(),
         messageRepo: getIt<MessageRepository>(),
         modelRepo: getIt<ModelRepository>(),
         sentinelRepo: getIt<SentinelRepository>(),

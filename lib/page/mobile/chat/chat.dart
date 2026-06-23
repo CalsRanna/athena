@@ -181,7 +181,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       sentinelViewModel: sentinelViewModel,
       modelViewModel: modelViewModel,
       providerViewModel: providerViewModel,
-      onContextChanged: (value) => updateContext(value),
+      onRetentionChanged: (value) => updateRetention(value),
       onModelChanged: (model) => updateModel(model),
       onSentinelChanged: (sentinel) => updateSentinel(sentinel),
       onTemperatureChanged: (value) => updateTemperature(value),
@@ -214,12 +214,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
     viewModel.stopGenerating();
   }
 
-  Future<void> updateContext(int value) async {
+  Future<void> updateRetention(int value) async {
     final chat = viewModel.currentChat.value;
     if (chat != null) {
-      await viewModel.updateContext(value, chat: chat);
+      await viewModel.updateRetention(value, chat: chat);
     } else {
-      viewModel.updateCurrentContext(value);
+      viewModel.updateCurrentRetention(value);
     }
   }
 

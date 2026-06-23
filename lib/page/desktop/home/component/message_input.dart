@@ -11,7 +11,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
-  final void Function(int)? onContextChange;
+  final void Function(int)? onRetentionChange;
   final void Function(List<String>)? onImageSelected;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
@@ -19,7 +19,7 @@ class DesktopMessageInput extends StatelessWidget {
   const DesktopMessageInput({
     super.key,
     required this.controller,
-    this.onContextChange,
+    this.onRetentionChange,
     this.onImageSelected,
     this.onSubmitted,
     this.onTemperatureChange,
@@ -34,9 +34,9 @@ class DesktopMessageInput extends StatelessWidget {
       var toolbarChildren = [
         DesktopConfigurationButton(
           chat: chat,
-          currentContext: chatViewModel.currentContext.value,
+          currentRetention: chatViewModel.currentRetention.value,
           currentTemperature: chatViewModel.currentTemperature.value,
-          onContextChange: onContextChange,
+          onRetentionChange: onRetentionChange,
           onTemperatureChange: onTemperatureChange,
         ),
         DesktopImageSelector(onSelected: onImageSelected),

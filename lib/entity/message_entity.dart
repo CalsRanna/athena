@@ -12,6 +12,8 @@ class MessageEntity {
   final String reference;
   final String toolCalls;
   final String toolResults;
+  /// 是否已被 compact 压缩。被压缩的消息不参与上下文组装，但保留在 DB 中供回溯。
+  final bool compacted;
   final DateTime reasoningStartedAt;
   final DateTime reasoningUpdatedAt;
 
@@ -27,6 +29,7 @@ class MessageEntity {
     this.reference = '',
     this.toolCalls = '',
     this.toolResults = '',
+    this.compacted = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) : reasoningStartedAt = reasoningStartedAt ?? DateTime.now(),
@@ -45,6 +48,7 @@ class MessageEntity {
       reference: json.getString('reference'),
       toolCalls: json.getString('tool_calls'),
       toolResults: json.getString('tool_results'),
+      compacted: json.getBool('compacted'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
     );
@@ -63,6 +67,7 @@ class MessageEntity {
       'reference': reference,
       'tool_calls': toolCalls,
       'tool_results': toolResults,
+      'compacted': compacted ? 1 : 0,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
     };
@@ -80,6 +85,7 @@ class MessageEntity {
     String? reference,
     String? toolCalls,
     String? toolResults,
+    bool? compacted,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
   }) {
@@ -95,6 +101,7 @@ class MessageEntity {
       reference: reference ?? this.reference,
       toolCalls: toolCalls ?? this.toolCalls,
       toolResults: toolResults ?? this.toolResults,
+      compacted: compacted ?? this.compacted,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,
     );

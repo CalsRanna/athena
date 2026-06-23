@@ -2,13 +2,17 @@ import 'package:athena/database/database.dart';
 import 'package:athena/entity/message_entity.dart';
 
 class MessageRepository {
-  Future<List<MessageEntity>> getMessagesByChatId(int chatId) async {
+  /// 获取聊天消息，[includeCompacted] 为 false 时排除已被 compact 压缩的消息。
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async {
     var laconic = Database.instance.laconic;
-    var results = await laconic
-        .table('messages')
-        .where('chat_id', chatId)
-        .orderBy('id')
-        .get();
+    var query = laconic.table('messages').where('chat_id', chatId);
+    if (!includeCompacted) {
+      query = query.where('compacted', 0);
+    }
+    var results = await query.orderBy('id').get();
     return results.map((r) => MessageEntity.fromJson(r.toMap())).toList();
   }
 
@@ -50,6 +54,17 @@ class MessageRepository {
   Future<int> getMessagesCount(int chatId) async {
     var laconic = Database.instance.laconic;
     return await laconic.table('messages').where('chat_id', chatId).count();
+  }
+
+  /// 批量标记消息为已压缩。
+  Future<void> markAsCompacted(Set<int> ids) async {
+    if (ids.isEmpty) return;
+    var laconic = Database.instance.laconic;
+    final placeholders = ids.map((_) => '?').join(',');
+    await laconic.statement(
+      'UPDATE messages SET compacted = 1 WHERE id IN ($placeholders)',
+      ids.toList(),
+    );
   }
 
   Future<MessageEntity?> getLatestMessageByChatId(int chatId) async {

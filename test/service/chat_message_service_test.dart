@@ -17,16 +17,24 @@ class _FakeMessageRepository extends MessageRepository {
   final List<MessageEntity> _messages;
 
   @override
-  Future<List<MessageEntity>> getMessagesByChatId(int chatId) async =>
-      _messages;
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async {
+    if (includeCompacted) return _messages;
+    return _messages.where((m) => !m.compacted).toList();
+  }
+
+  @override
+  Future<void> markAsCompacted(Set<int> ids) async {}
 }
 
-ChatEntity _chat({required int context}) => ChatEntity(
+ChatEntity _chat({required int retention}) => ChatEntity(
       id: 1,
       title: 'test',
       modelId: 1,
       sentinelId: 1,
-      context: context,
+      retention: retention,
       createdAt: DateTime(2024),
       updatedAt: DateTime(2024),
     );
@@ -112,7 +120,7 @@ void main() {
       final service =
           ChatMessageService(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
-        chat: _chat(context: 0),
+        chat: _chat(retention: -1),
         sentinel: null,
       );
       _assertPairingValid(result);
@@ -120,106 +128,44 @@ void main() {
       expect(result.length, 5);
     });
 
-    // Boundary: contextLimit = context*2. With many entities, the sublist cut
-    // point is forced to land exactly before / on / after an
-    // assistant-with-tool_calls entity. Because truncation is entity-level and
-    // the assistant+results are emitted atomically from ONE entity, the cut can
-    // never split a tool group.
-    test('cut point lands immediately BEFORE the tool-call entity', () async {
-      // 6 entities; context=2 => keep last 4. Tool entity at index 2 is kept,
-      // with the boundary right at its left edge.
+    // Auto mode (retention == -1): all messages preserved.
+    test('auto mode preserves all messages', () async {
       final messages = [
-        _user('q0'), // index 0 - dropped
-        _user('q1'), // index 1 - dropped
-        _assistantWithTools(callIds: ['call_a']), // index 2 - first kept
-        _user('q2'), // index 3
-        _assistantText('a2'), // index 4
-        _user('q3'), // index 5
+        _user('q0'),
+        _user('q1'),
+        _assistantWithTools(callIds: ['call_a']),
+        _user('q2'),
+        _assistantText('a2'),
+        _user('q3'),
       ];
       final service =
           ChatMessageService(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
-        chat: _chat(context: 2),
+        chat: _chat(retention: -1),
         sentinel: null,
       );
       _assertPairingValid(result);
-      // Kept entities: [assistantWithTools, user, assistant, user]
-      // => assistant + tool + user + assistant + user = 5 messages
-      expect(result.length, 5);
-      expect(result.first, isA<AssistantMessage>());
-      expect((result.first as AssistantMessage).hasToolCalls, isTrue);
-      expect(result[1], isA<ToolMessage>());
+      // assistant + tool + user + assistant + user + user + user = 7
+      expect(result.length, 7);
     });
 
-    test('cut point lands immediately AFTER the tool-call entity', () async {
-      // 6 entities; context=2 => keep last 4. Tool entity at index 1 is the
-      // LAST dropped entity, so the boundary is right at its right edge.
+    // Zero context mode (retention == 0): only last user message.
+    test('zero context mode returns only last user message', () async {
       final messages = [
-        _user('q0'), // index 0 - dropped
-        _assistantWithTools(callIds: ['call_a']), // index 1 - dropped (last)
-        _user('q2'), // index 2 - first kept
-        _assistantText('a2'), // index 3
-        _user('q3'), // index 4
-        _assistantText('a3'), // index 5
+        _user('q1'),
+        _assistantWithTools(callIds: ['call_a']),
+        _user('q2'),
+        _assistantText('a2'),
+        _user('latest'),
       ];
       final service =
           ChatMessageService(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
-        chat: _chat(context: 2),
+        chat: _chat(retention: 0),
         sentinel: null,
       );
-      _assertPairingValid(result);
-      // The dropped tool entity took BOTH its tool_calls and tool_results with
-      // it, so there is no orphan tool message at the head.
+      expect(result.length, 1);
       expect(result.first, isA<UserMessage>());
-      // No tool message should appear at all (the only tool group was dropped).
-      expect(result.whereType<ToolMessage>(), isEmpty);
-    });
-
-    test('multiple consecutive tool-call entities (no truncation at this limit)',
-        () async {
-      // Two tool entities; only the second survives a context=1 cut.
-      final messages = [
-        _assistantWithTools(callIds: ['call_x', 'call_y']), // dropped
-        _assistantWithTools(callIds: ['call_z']), // kept (last entity)
-      ];
-      final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
-      final result = await service.buildMessages(
-        chat: _chat(context: 1), // limit = 2; len 2 not > 2 => NO truncation
-        sentinel: null,
-      );
-      _assertPairingValid(result);
-      // len(2) is not > limit(2), so nothing is truncated: both groups present.
-      // assistant(2 calls) + tool + tool + assistant(1 call) + tool = 5
-      expect(result.length, 5);
-    });
-
-    test('truncation actually triggers and preserves surviving tool group',
-        () async {
-      // 5 entities, context=1 => limit=2, keep last 2 entities.
-      final messages = [
-        _user('q0'), // dropped
-        _assistantWithTools(callIds: ['call_a']), // dropped
-        _user('q1'), // dropped
-        _assistantWithTools(callIds: ['call_b', 'call_c']), // kept
-        _user('q2'), // kept
-      ];
-      final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
-      final result = await service.buildMessages(
-        chat: _chat(context: 1),
-        sentinel: null,
-      );
-      _assertPairingValid(result);
-      // Kept: [assistantWithTools(2 calls), user]
-      // => assistant + tool + tool + user = 4
-      expect(result.length, 4);
-      expect(result.first, isA<AssistantMessage>());
-      final assistant = result.first as AssistantMessage;
-      expect(assistant.toolCalls!.map((t) => t.id), ['call_b', 'call_c']);
-      expect((result[1] as ToolMessage).toolCallId, 'call_b');
-      expect((result[2] as ToolMessage).toolCallId, 'call_c');
     });
 
     test('sentinel system prompt is prepended without breaking pairing',
@@ -231,7 +177,7 @@ void main() {
       final service =
           ChatMessageService(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
-        chat: _chat(context: 0),
+        chat: _chat(retention: -1),
         sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
       );
       expect(result.first, isA<SystemMessage>());
@@ -259,7 +205,7 @@ void main() {
       final service = ChatMessageService(
           messageRepository: _FakeMessageRepository([_user('q'), orphan]));
       final result = await service.buildMessages(
-        chat: _chat(context: 0),
+        chat: _chat(retention: -1),
         sentinel: null,
       );
       final assistant = result.whereType<AssistantMessage>().single;

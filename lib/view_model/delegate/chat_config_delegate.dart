@@ -29,11 +29,11 @@ class ChatConfigDelegate {
     return _supportService.updateSentinel(chat, sentinel.id!);
   }
 
-  Future<ChatEntity> updateContext({
-    required int context,
+  Future<ChatEntity> updateRetention({
+    required int retention,
     required ChatEntity chat,
   }) async {
-    return _supportService.updateContext(chat, context);
+    return _supportService.updateRetention(chat, retention);
   }
 
   Future<ChatEntity> updateTemperature({

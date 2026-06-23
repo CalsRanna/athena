@@ -2,36 +2,37 @@ import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:athena/widget/switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class DesktopConfigurationButton extends StatelessWidget {
   final ChatEntity? chat;
-  final int currentContext;
+  final int currentRetention;
   final double currentTemperature;
   final bool compact;
   final String? label;
-  final void Function(int)? onContextChange;
+  final void Function(int)? onRetentionChange;
   final void Function(double)? onTemperatureChange;
   const DesktopConfigurationButton({
     super.key,
     this.chat,
-    required this.currentContext,
+    required this.currentRetention,
     required this.currentTemperature,
     this.compact = false,
     this.label,
-    this.onContextChange,
+    this.onRetentionChange,
     this.onTemperatureChange,
   });
 
   const DesktopConfigurationButton.compact({
     super.key,
     this.chat,
-    this.currentContext = 0,
+    this.currentRetention = -1,
     this.currentTemperature = 0.7,
     this.label = 'Configure',
-    this.onContextChange,
+    this.onRetentionChange,
     this.onTemperatureChange,
   }) : compact = true;
 
@@ -69,47 +70,66 @@ class DesktopConfigurationButton extends StatelessWidget {
   void openDialog() {
     var desktopConfigurationDialog = _DesktopConfigurationDialog(
       chat: chat,
-      currentContext: currentContext,
+      currentRetention: currentRetention,
       currentTemperature: currentTemperature,
-      onContextChange: onContextChange,
+      onRetentionChange: onRetentionChange,
       onTemperatureChange: onTemperatureChange,
     );
     AthenaDialog.show(desktopConfigurationDialog, barrierDismissible: true);
   }
 }
 
-class _DesktopConfigurationDialog extends StatelessWidget {
+class _DesktopConfigurationDialog extends StatefulWidget {
   final ChatEntity? chat;
-  final int currentContext;
+  final int currentRetention;
   final double currentTemperature;
-  final void Function(int)? onContextChange;
+  final void Function(int)? onRetentionChange;
   final void Function(double)? onTemperatureChange;
   const _DesktopConfigurationDialog({
     this.chat,
-    required this.currentContext,
+    required this.currentRetention,
     required this.currentTemperature,
-    this.onContextChange,
+    this.onRetentionChange,
     this.onTemperatureChange,
   });
 
   @override
+  State<_DesktopConfigurationDialog> createState() =>
+      _DesktopConfigurationDialogState();
+}
+
+class _DesktopConfigurationDialogState
+    extends State<_DesktopConfigurationDialog> {
+  late bool _zeroContext;
+
+  @override
+  void initState() {
+    super.initState();
+    final retention = widget.chat?.retention ?? widget.currentRetention;
+    _zeroContext = retention == 0;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var contextSlider = _DesktopConfigurationDialogContextSlider(
-      context: chat?.context ?? currentContext,
-      onChange: onContextChange,
+    var retentionTile = _DesktopConfigurationDialogTile(
+      help:
+          'When enabled, each message is sent independently without any '
+          'conversation history. Ideal for one-shot tasks.',
+      title: 'Zero Context',
+      child: AthenaSwitch(
+        value: _zeroContext,
+        onChanged: (v) {
+          setState(() => _zeroContext = v);
+          widget.onRetentionChange?.call(v ? 0 : -1);
+        },
+      ),
     );
     var temperatureSlider = _DesktopConfigurationDialogTemperatureSlider(
-      temperature: chat?.temperature ?? currentTemperature,
-      onChange: onTemperatureChange,
+      temperature: widget.chat?.temperature ?? widget.currentTemperature,
+      onChange: widget.onTemperatureChange,
     );
     var children = [
-      _DesktopConfigurationDialogTile(
-        help:
-            'The number of previous turns to include in the conversation\'s '
-            'context. Set to 0 for no limit.',
-        title: 'Context',
-        child: contextSlider,
-      ),
+      retentionTile,
       _DesktopConfigurationDialogTile(
         title: 'Temperature',
         child: temperatureSlider,
@@ -129,75 +149,6 @@ class _DesktopConfigurationDialog extends StatelessWidget {
       child: child,
     );
     return UnconstrainedBox(child: container);
-  }
-}
-
-class _DesktopConfigurationDialogContextSlider extends StatefulWidget {
-  final int context;
-  final void Function(int)? onChange;
-  const _DesktopConfigurationDialogContextSlider({
-    required this.context,
-    this.onChange,
-  });
-
-  @override
-  State<_DesktopConfigurationDialogContextSlider> createState() =>
-      _DesktopConfigurationDialogContextSliderState();
-}
-
-class _DesktopConfigurationDialogContextSliderState
-    extends State<_DesktopConfigurationDialogContextSlider> {
-  double value = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
-      decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-    );
-    var slider = Slider(
-      activeColor: ColorUtil.FFA7BA88,
-      inactiveColor: ColorUtil.FFFFFFFF,
-      label: value.toStringAsFixed(0),
-      max: 20,
-      onChanged: _updateValue,
-      onChangeEnd: (value) => widget.onChange?.call(value.toInt()),
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      thumbColor: ColorUtil.FFA7BA88,
-      value: value,
-    );
-    var text = Text(
-      value.toStringAsFixed(0),
-      style: textStyle,
-      textAlign: TextAlign.end,
-    );
-    var children = [
-      SizedBox(width: 240, child: slider),
-      SizedBox(width: 40, child: text),
-    ];
-    return Row(children: children);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    value = widget.context.toDouble();
-  }
-
-  @override
-  void didUpdateWidget(_DesktopConfigurationDialogContextSlider oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.context != oldWidget.context) {
-      value = widget.context.toDouble();
-    }
-  }
-
-  void _updateValue(double value) {
-    setState(() {
-      this.value = value;
-    });
   }
 }
 

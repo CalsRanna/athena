@@ -193,17 +193,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     chatViewModel.stopGenerating();
   }
 
-  Future<void> updateContext(int context) async {
+  Future<void> updateRetention(int retention) async {
     if (chatViewModel.isStreaming.value) {
       AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
     var chat = chatViewModel.currentChat.value;
     if (chat == null) {
-      chatViewModel.updateCurrentContext(context);
+      chatViewModel.updateCurrentRetention(retention);
       return;
     }
-    await chatViewModel.updateContext(context, chat: chat);
+    await chatViewModel.updateRetention(retention, chat: chat);
   }
 
   void updateImage(List<String> images) {
@@ -344,7 +344,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
     var desktopMessageInput = DesktopMessageInput(
       controller: controller,
-      onContextChange: updateContext,
+      onRetentionChange: updateRetention,
       onImageSelected: updateImage,
       onSubmitted: sendMessage,
       onTemperatureChange: updateTemperature,
