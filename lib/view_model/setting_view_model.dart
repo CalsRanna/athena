@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 
@@ -5,8 +9,10 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:athena/util/retry.dart';
 import 'package:athena/util/shared_preference_util.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
@@ -226,11 +232,50 @@ class SettingViewModel {
   }
 
   /// 导出数据到 JSON 文件
-  Future<bool> exportData() => _dataMigrationService.exportData();
+  Future<bool> exportData() async {
+    final json = await _dataMigrationService.exportToJson();
+    final isDesktop = PlatformUtil.isDesktop;
+    final path = isDesktop
+        ? await FilePicker.platform.saveFile(
+            dialogTitle: '选择导出位置',
+            fileName: 'athena_export.json',
+            type: FileType.custom,
+            allowedExtensions: ['json'],
+          )
+        : await FilePicker.platform.saveFile(
+            bytes: Uint8List.fromList(utf8.encode(json)),
+            dialogTitle: '选择导出位置',
+            fileName: 'athena_export.json',
+            type: FileType.custom,
+            allowedExtensions: ['json'],
+          );
+    if (path == null) return false;
+
+    if (isDesktop) {
+      await File(path).writeAsString(json);
+    }
+
+    return true;
+  }
 
   /// 从 JSON 文件导入数据
-  Future<bool> importData() =>
-      _dataMigrationService.importData(chatModelId: chatModelId.value);
+  Future<bool> importData() async {
+    final result = await FilePicker.platform.pickFiles(
+      dialogTitle: '选择要导入的文件',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (result == null || result.files.isEmpty) return false;
+
+    final path = result.files.single.path;
+    if (path == null) return false;
+
+    final json = await File(path).readAsString();
+    return _dataMigrationService.importFromJson(
+      json,
+      chatModelId: chatModelId.value,
+    );
+  }
 
   /// 扫描所有会话，重整悬空的 model_id 引用
   @visibleForTesting

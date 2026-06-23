@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:athena/database/database.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -9,14 +8,13 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/util/platform_util.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart';
 
 /// 数据导入/导出与迁移服务。
 ///
-/// 负责将 Provider/Model/Sentinel 导出为 JSON 文件、
-/// 从 JSON 文件导入、重整悬空的 chat 引用、以及数据库重置。
+/// 负责将 Provider/Model/Sentinel 序列化为 JSON、从 JSON 反序列化导入、
+/// 重整悬空的 chat 引用、以及数据库重置。
+///
+/// 文件 I/O 和文件选择 UI 由上层（ViewModel）负责。
 class DataMigrationService {
   final ProviderRepository _providerRepo;
   final ModelRepository _modelRepo;
@@ -33,8 +31,9 @@ class DataMigrationService {
         _sentinelRepo = sentinelRepo,
         _chatRepo = chatRepo;
 
-  /// 导出 Provider/Model/Sentinel 数据到 JSON 文件。返回是否成功。
-  Future<bool> exportData() async {
+  /// 将 Provider/Model/Sentinel 序列化为 JSON 字符串。
+  /// 文件写入由上层负责。
+  Future<String> exportToJson() async {
     final providers = await _providerRepo.getAllProviders();
     final models = await _modelRepo.getAllModels();
     final sentinels = await _sentinelRepo.getAllSentinels();
@@ -45,49 +44,17 @@ class DataMigrationService {
       'sentinels': sentinels.map((s) => s.toJson()).toList(),
     };
 
-    final jsonString = const JsonEncoder.withIndent('  ').convert(data);
-    final isDesktop = PlatformUtil.isDesktop;
-    final path = isDesktop
-        ? await FilePicker.platform.saveFile(
-            dialogTitle: '选择导出位置',
-            fileName: 'athena_export.json',
-            type: FileType.custom,
-            allowedExtensions: ['json'],
-          )
-        : await FilePicker.platform.saveFile(
-            bytes: Uint8List.fromList(utf8.encode(jsonString)),
-            dialogTitle: '选择导出位置',
-            fileName: 'athena_export.json',
-            type: FileType.custom,
-            allowedExtensions: ['json'],
-          );
-    if (path == null) return false;
-
-    if (isDesktop) {
-      final file = File(path);
-      await file.writeAsString(jsonString);
-    }
-
-    return true;
+    return const JsonEncoder.withIndent('  ').convert(data);
   }
 
-  /// 从 JSON 文件导入数据。
+  /// 从 JSON 字符串导入数据。
   ///
   /// [chatModelId] 用于重整导入后悬空的 chat.model_id 引用。
-  Future<bool> importData({required int chatModelId}) async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: '选择要导入的文件',
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-    if (result == null || result.files.isEmpty) return false;
-
-    final path = result.files.single.path;
-    if (path == null) return false;
-
-    final file = File(path);
-    final jsonString = await file.readAsString();
-    final data = jsonDecode(jsonString) as Map<String, dynamic>;
+  Future<bool> importFromJson(
+    String json, {
+    required int chatModelId,
+  }) async {
+    final data = jsonDecode(json) as Map<String, dynamic>;
 
     // 先清空本地数据，避免同 ID 不同名导致关联错误
     await _modelRepo.deleteAllModels();
