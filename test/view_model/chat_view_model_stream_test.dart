@@ -47,13 +47,13 @@ import 'package:openai_dart/openai_dart.dart';
 /// 记录每个占位消息分配的递增 id，并捕获取消/错误落库时收到的消息。
 class _RecordingManageService extends ChatManageService {
   _RecordingManageService()
-      : super(
-          chatRepository: ChatRepository(),
-          messageRepository: _NoopMessageRepository(),
-          modelRepository: _FakeModelRepository(),
-          providerRepository: ProviderRepositoryStub(),
-          sentinelRepository: _FakeSentinelRepository(),
-        );
+    : super(
+        chatRepository: ChatRepository(),
+        messageRepository: _NoopMessageRepository(),
+        modelRepository: _FakeModelRepository(),
+        providerRepository: ProviderRepositoryStub(),
+        sentinelRepository: _FakeSentinelRepository(),
+      );
 
   int _nextId = 1000;
   MessageEntity? cancelledArg;
@@ -67,7 +67,12 @@ class _RecordingManageService extends ChatManageService {
   @override
   Future<MessageEntity> appendAssistantPlaceholder(int chatId) async {
     final id = _nextId++;
-    return MessageEntity(id: id, chatId: chatId, role: 'assistant', content: '');
+    return MessageEntity(
+      id: id,
+      chatId: chatId,
+      role: 'assistant',
+      content: '',
+    );
   }
 
   @override
@@ -125,20 +130,21 @@ class _NoopMessageRepository extends MessageRepository {
   Future<List<MessageEntity>> getMessagesByChatId(
     int chatId, {
     bool includeCompacted = true,
-  }) async =>
-      [MessageEntity(id: 1, chatId: chatId, role: 'user', content: 'hello')];
+  }) async => [
+    MessageEntity(id: 1, chatId: chatId, role: 'user', content: 'hello'),
+  ];
 }
 
 class _FakeModelRepository extends ModelRepository {
   @override
   Future<ModelEntity?> getModelById(int id) async => ModelEntity(
-        id: id,
-        name: 'm',
-        modelId: 'm',
-        providerId: 1,
-        createdAt: DateTime(2024),
-        updatedAt: DateTime(2024),
-      );
+    id: id,
+    name: 'm',
+    modelId: 'm',
+    providerId: 1,
+    createdAt: DateTime(2024),
+    updatedAt: DateTime(2024),
+  );
 }
 
 class _FakeSentinelRepository extends SentinelRepository {
@@ -148,12 +154,12 @@ class _FakeSentinelRepository extends SentinelRepository {
 
 class _FakeSupportService extends ChatSupportService {
   _FakeSupportService({this.renameStream, this.tokenUsage})
-      : super(
-          chatRepository: ChatRepository(),
-          messageRepository: _NoopMessageRepository(),
-          providerRepository: ProviderRepositoryStub(),
-          chatService: ChatService(llmClient: LlmClient()),
-        );
+    : super(
+        chatRepository: ChatRepository(),
+        messageRepository: _NoopMessageRepository(),
+        providerRepository: ProviderRepositoryStub(),
+        chatService: ChatService(llmClient: LlmClient()),
+      );
 
   /// 可选的伪标题流；为 null 时回退到空流。
   final Stream<String>? renameStream;
@@ -225,7 +231,7 @@ class _FakeTokenUsageService extends TokenUsageService {
 
 class _FakeChatMessageService extends ChatMessageService {
   _FakeChatMessageService({this.firstUserMessage = false})
-      : super(messageRepository: _NoopMessageRepository());
+    : super(messageRepository: _NoopMessageRepository());
 
   final bool firstUserMessage;
 
@@ -234,8 +240,7 @@ class _FakeChatMessageService extends ChatMessageService {
     required ChatEntity chat,
     SentinelEntity? sentinel,
     bool includeReasoning = false,
-  }) async =>
-      [ChatMessage.user('hi')];
+  }) async => [ChatMessage.user('hi')];
 
   @override
   Future<bool> isFirstUserMessage(int chatId) async => firstUserMessage;
@@ -244,7 +249,10 @@ class _FakeChatMessageService extends ChatMessageService {
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
 class _FakeAgentService extends AgentService {
   _FakeAgentService(this.stream)
-      : super(chatService: ChatService(llmClient: LlmClient()), toolRegistry: ToolRegistry());
+    : super(
+        chatService: ChatService(llmClient: LlmClient()),
+        toolRegistry: ToolRegistry(),
+      );
 
   final Stream<AgentEvent> stream;
 
@@ -263,18 +271,17 @@ class _FakeAgentService extends AgentService {
     ModelEntity? auxiliaryModel,
     ProviderEntity? auxiliaryModelProvider,
     CancelToken? cancelToken,
-  }) =>
-      stream;
+  }) => stream;
 }
 
 ChatEntity _chat({int id = 1}) => ChatEntity(
-      id: id,
-      title: 'New Chat',
-      modelId: 1,
-      sentinelId: 1,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
-    );
+  id: id,
+  title: 'New Chat',
+  modelId: 1,
+  sentinelId: 1,
+  createdAt: DateTime(2024),
+  updatedAt: DateTime(2024),
+);
 
 MessageEntity _userMessage() =>
     MessageEntity(chatId: 1, role: 'user', content: 'hello');
@@ -327,8 +334,12 @@ void main() {
   setUp(() {
     final getIt = GetIt.instance;
     getIt.registerSingleton<LlmClient>(LlmClient());
-    getIt.registerSingleton<ChatService>(ChatService(llmClient: getIt<LlmClient>()));
-    getIt.registerSingleton<SentinelService>(SentinelService(llmClient: getIt<LlmClient>()));
+    getIt.registerSingleton<ChatService>(
+      ChatService(llmClient: getIt<LlmClient>()),
+    );
+    getIt.registerSingleton<SentinelService>(
+      SentinelService(llmClient: getIt<LlmClient>()),
+    );
     getIt.registerSingleton<SkillRegistry>(SkillRegistry());
     getIt.registerSingleton<PermissionService>(
       PermissionService(store: PermissionStore()),
@@ -367,9 +378,7 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  test(
-      'C2: 单轮流式中途取消，落库的是携带已生成内容的最新消息（非空占位）',
-      () async {
+  test('C2: 单轮流式中途取消，落库的是携带已生成内容的最新消息（非空占位）', () async {
     // 事件流：先发两段文本，再 await gate；gate 完成后再发一个事件以触发
     // 循环顶部的 throwIfCancelled。测试在收到文本后取消并打开 gate。
     final gate = Completer<void>();
@@ -409,9 +418,7 @@ void main() {
     expect(shown.content, contains('[Cancelled]'));
   });
 
-  test(
-      'C2: 多轮流式中途取消，落库目标是进行中的第二轮消息（非首轮占位 id）',
-      () async {
+  test('C2: 多轮流式中途取消，落库目标是进行中的第二轮消息（非首轮占位 id）', () async {
     // 第一轮：文本 + 工具调用 + 工具结果（触发 hasCompletedIteration）。
     // 第二轮：文本，随后取消。验证落库消息 id 是第二轮的新占位 id，
     // 且携带第二轮内容（确保不会覆盖已 finalize 的第一轮）。
@@ -444,8 +451,7 @@ void main() {
     final cancelled = manage.cancelledArg;
     expect(cancelled, isNotNull);
     // 第一个占位 id 是 1000；_advanceIteration 创建的第二轮占位 id 是 1001。
-    expect(cancelled!.id, 1001,
-        reason: '取消应作用于进行中的第二轮消息，而非首轮占位');
+    expect(cancelled!.id, 1001, reason: '取消应作用于进行中的第二轮消息，而非首轮占位');
     expect(cancelled.content, 'iter2-content');
   });
 
@@ -468,9 +474,7 @@ void main() {
     expect(vm.error.value, contains('boom'));
   });
 
-  test(
-      'C12: 删除正在流式输出的 chat，删除会等待流 settle（取消落库先于删除完成）',
-      () async {
+  test('C12: 删除正在流式输出的 chat，删除会等待流 settle（取消落库先于删除完成）', () async {
     // 事件流：发两段文本后 await gate；测试在文本到达后发起删除（删除内部
     // 会 stopGenerating 并 await 流 settle），随后打开 gate 让流抛出取消。
     final gate = Completer<void>();
@@ -510,8 +514,7 @@ void main() {
     expect(manage.events, ['cancel-persist', 'delete']);
   });
 
-  test('C12: 删除 chat 取消其后台自动重命名流，不再写入 renameChatManually',
-      () async {
+  test('C12: 删除 chat 取消其后台自动重命名流，不再写入 renameChatManually', () async {
     // 伪标题流：先发一段标题片段，然后 await gate；测试在片段到达后删除该
     // chat（应取消重命名令牌），再打开 gate 让流结束。删除后不应写入标题。
     final gate = Completer<void>();
@@ -543,8 +546,11 @@ void main() {
     final result = await renameFuture;
 
     expect(result, isNull, reason: '取消后 renameChat 应返回 null');
-    expect(support.renameChatManuallyCalled, isFalse,
-        reason: '删除后不应再写入已删除 chat 的标题');
+    expect(
+      support.renameChatManuallyCalled,
+      isFalse,
+      reason: '删除后不应再写入已删除 chat 的标题',
+    );
     expect(manage.deleteChatCalled, isTrue);
   });
 
@@ -610,8 +616,10 @@ void main() {
     expect(manage.deleteChatsCalled, isTrue);
     expect(vm.isStreaming.value, isFalse);
     expect(manage.cancelledArg, isNotNull);
-    expect(manage.events, ['cancel-persist', 'delete'],
-        reason: '删除应等待流 settle，取消落库先于删除');
+    expect(manage.events, [
+      'cancel-persist',
+      'delete',
+    ], reason: '删除应等待流 settle，取消落库先于删除');
   });
 
   test('token usage: AgentUsageEvent 会写入 currentTokenUsage 信号', () async {
@@ -622,13 +630,15 @@ void main() {
       yield const AgentTextEvent('partial');
       if (!emittedUsage.isCompleted) emittedUsage.complete();
       await gate.future;
-      yield const AgentUsageEvent(TokenUsage(
-        promptTokens: 100,
-        completionTokens: 3,
-        totalTokens: 5,
-        reasoningTokens: 1,
-        cachedTokens: 40,
-      ));
+      yield const AgentUsageEvent(
+        TokenUsage(
+          promptTokens: 100,
+          completionTokens: 3,
+          totalTokens: 5,
+          reasoningTokens: 1,
+          cachedTokens: 40,
+        ),
+      );
       yield const AgentDoneEvent(content: 'partial');
     }
 
@@ -659,16 +669,12 @@ void main() {
 
     Stream<AgentEvent> events() async* {
       yield const AgentTextEvent('partial');
-      yield const AgentUsageEvent(TokenUsage(
-        promptTokens: 10,
-        completionTokens: 20,
-        totalTokens: 30,
-      ));
-      yield const AgentUsageEvent(TokenUsage(
-        promptTokens: 40,
-        completionTokens: 50,
-        totalTokens: 90,
-      ));
+      yield const AgentUsageEvent(
+        TokenUsage(promptTokens: 10, completionTokens: 20, totalTokens: 30),
+      );
+      yield const AgentUsageEvent(
+        TokenUsage(promptTokens: 40, completionTokens: 50, totalTokens: 90),
+      );
       if (!emittedFirst.isCompleted) emittedFirst.complete();
       await gate.future;
       yield const AgentDoneEvent(content: 'partial');
@@ -692,58 +698,65 @@ void main() {
   // P0 回归：autoRename (旧快照整行覆盖) 与 usage 累加竞态不再丢失 token。
   // A) 修复后：rename 跟在 usage 之后落库，token_total 仍保留、title 也保留。
   test(
-      'token race: usage 后 autoRename 整行写不回退 token_total，且保留新 title',
-      () async {
-    // 重命名流：发出一个完整标题后结束。
-    final support = _FakeSupportService(renameStream: Stream.value('New Title'));
-    final messages = _FakeChatMessageService(firstUserMessage: true);
-    // 主流：先发文本。发出 usage=N 之后 await gate。test 在 usage 落库后
-    // 让标题流恰好结束（即命名写库发生在 usage 之后），再打开 gate 让主流结束。
-    final gate = Completer<void>();
-    final emittedUsage = Completer<void>();
+    'token race: usage 后 autoRename 整行写不回退 token_total，且保留新 title',
+    () async {
+      // 重命名流：发出一个完整标题后结束。
+      final support = _FakeSupportService(
+        renameStream: Stream.value('New Title'),
+      );
+      final messages = _FakeChatMessageService(firstUserMessage: true);
+      // 主流：先发文本。发出 usage=N 之后 await gate。test 在 usage 落库后
+      // 让标题流恰好结束（即命名写库发生在 usage 之后），再打开 gate 让主流结束。
+      final gate = Completer<void>();
+      final emittedUsage = Completer<void>();
 
-    Stream<AgentEvent> events() async* {
-      yield const AgentTextEvent('partial');
-      if (!emittedUsage.isCompleted) emittedUsage.complete();
-      yield const AgentUsageEvent(TokenUsage(
-        promptTokens: 10,
-        completionTokens: 20,
-        totalTokens: 30,
-      ));
-      await gate.future;
-      yield const AgentDoneEvent(content: 'partial');
-    }
+      Stream<AgentEvent> events() async* {
+        yield const AgentTextEvent('partial');
+        if (!emittedUsage.isCompleted) emittedUsage.complete();
+        yield const AgentUsageEvent(
+          TokenUsage(promptTokens: 10, completionTokens: 20, totalTokens: 30),
+        );
+        await gate.future;
+        yield const AgentDoneEvent(content: 'partial');
+      }
 
-    final manage = _RecordingManageService();
-    final agent = _FakeAgentService(events());
-    final vm = _buildViewModel(
-      manage: manage,
-      agent: agent,
-      support: support,
-      messageService: messages,
-    );
-    vm.currentChat.value = _chat();
+      final manage = _RecordingManageService();
+      final agent = _FakeAgentService(events());
+      final vm = _buildViewModel(
+        manage: manage,
+        agent: agent,
+        support: support,
+        messageService: messages,
+      );
+      vm.currentChat.value = _chat();
 
-    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
-    await emittedUsage.future;
-    // 此时 usage 已落库，token_total=30。autoRename (unawaited) 启动后命名
-    // 流是同步 Stream.value，会很快走完并调用 renameChatManually ——
-    // 我们切到事件循环让命名写库执行。
-    await Future.microtask(() {});
-    await Future.delayed(Duration.zero);
-    gate.complete();
-    await sendFuture;
-    // 让最终的 autoRename future 也 settle 以防迟到。
-    await Future.delayed(Duration.zero);
+      final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+      await emittedUsage.future;
+      // 此时 usage 已落库，token_total=30。autoRename (unawaited) 启动后命名
+      // 流是同步 Stream.value，会很快走完并调用 renameChatManually ——
+      // 我们切到事件循环让命名写库执行。
+      await Future.microtask(() {});
+      await Future.delayed(Duration.zero);
+      gate.complete();
+      await sendFuture;
+      // 让最终的 autoRename future 也 settle 以防迟到。
+      await Future.delayed(Duration.zero);
 
-    // token 不能被旧快照整行覆盖回退。
-    expect(vm.cumulativeTokenTotal.value, 30,
-        reason: 'autoRename 不应回退已累加的 token_total');
-    expect(support.renameChatManuallyCalled, isTrue);
-    // autoRename 的新 title 也应保留（修复②：incrementTokenTotal 返回最新行）。
-    expect(vm.currentChat.value!.title, 'New Title',
-        reason: 'usage 回调用最新行不应回滚 autoRename 的新 title');
-  });
+      // token 不能被旧快照整行覆盖回退。
+      expect(
+        vm.cumulativeTokenTotal.value,
+        30,
+        reason: 'autoRename 不应回退已累加的 token_total',
+      );
+      expect(support.renameChatManuallyCalled, isTrue);
+      // autoRename 的新 title 也应保留。
+      expect(
+        vm.currentChat.value!.title,
+        'New Title',
+        reason: 'usage 回调用最新行不应回滚 autoRename 的新 title',
+      );
+    },
+  );
 }
 
 /// ProviderRepository 的最小桩；SettingViewModel 仅在构造时持有引用，

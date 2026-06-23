@@ -596,7 +596,7 @@ PlatformUtil.isWindows  // 特定平台
 
 10. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false` / `isDismissible: false`
 
-11. **Token 写入**：`ChatRepository.updateChat()` 显式排除 `token_total`、`context_tokens`、`cached_tokens`，这些值由独立的增量写入路径（`recordUsage` / `incrementTokenTotal`）管理，防止并发覆盖
+11. **Token 写入**：`ChatRepository.updateChat()` 显式排除 `token_total`、`context_tokens`、`cached_tokens`，这些值由独立的增量写入路径（`recordUsage`）管理，防止并发覆盖
 
 ---
 
