@@ -44,221 +44,264 @@ class AgentService {
     ProviderEntity? auxiliaryModelProvider,
     CancelToken? cancelToken,
   }) async* {
-    var messages = List<ChatMessage>.from(baseMessages);
+    var messages = _injectPrompts(baseMessages, skillPrompt, evolutionPrompt);
     _skillRegistry?.clearContext();
 
     try {
       for (var iteration = 0; iteration < maxIterations; iteration++) {
-      cancelToken?.throwIfCancelled();
-      if (iteration == 0) {
-        if (skillPrompt != null && skillPrompt.isNotEmpty) {
-          messages = [
-            ChatMessage.system(skillPrompt),
-            ...messages,
-          ];
-        }
-        if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
-          messages = [
-            ChatMessage.system(evolutionPrompt),
-            ...messages,
-          ];
-        }
-      }
-
-      final toolDefs = _toolRegistry.definitions;
-      final request = ChatCompletionCreateRequest(
-        model: model.modelId,
-        messages: messages,
-        tools: toolDefs.isNotEmpty
-            ? toolDefs.map((t) => Tool.function(
-                  name: t['function']['name'] as String,
-                  description: t['function']['description'] as String,
-                  parameters: t['function']['parameters']
-                      as Map<String, dynamic>,
-                )).toList()
-            : null,
-      );
-
-      final stream = _chatService.getCompletion(
-        chat: chat,
-        messages: messages,
-        provider: provider,
-        model: model,
-        tools: request.tools,
-      );
-
-      final accumulator = ChatStreamAccumulator();
-
-      await for (final chunk in stream) {
         cancelToken?.throwIfCancelled();
-        accumulator.add(chunk);
 
-        final delta = chunk.firstChoice?.delta;
-        if (delta != null) {
-          final reasoningContent =
-              delta.reasoningContent ?? delta.reasoning;
-          if (reasoningContent != null && reasoningContent.isNotEmpty) {
-            yield AgentEvent.reasoning(reasoningContent);
-          }
+        if (iteration > 0) {
+          // 非首轮：重新计算工具定义（Skill 可能在首轮被加载）
         }
 
-        final textDelta = chunk.textDelta;
-        if (textDelta != null && textDelta.isNotEmpty) {
-          yield AgentEvent.text(textDelta);
-        }
-      }
-
-      // 上报本轮调用的 token 使用统计（include_usage 已开启）。
-      final usage = accumulator.usage;
-      if (kDebugMode) {
-        if (usage != null) {
-          LoggerUtil.d(
-            'agent usage: prompt=${usage.promptTokens} '
-            'completion=${usage.completionTokens} '
-            'total=${usage.totalTokens} '
-            'cached=${usage.promptTokensDetails?.cachedTokens}',
-          );
-        } else {
-          LoggerUtil.w(
-            'agent usage: provider 返回的流中未携带 usage（多数是该 '
-            'provider/model 不支持 stream_options.include_usage）',
-          );
-        }
-      }
-      if (usage != null) {
-        yield AgentEvent.usage(TokenUsage(
-          promptTokens: usage.promptTokens,
-          completionTokens: usage.completionTokens,
-          totalTokens: usage.totalTokens,
-          reasoningTokens:
-              usage.completionTokensDetails?.reasoningTokens,
-          cachedTokens: usage.promptTokensDetails?.cachedTokens,
-        ));
-      }
-
-      final toolCalls = accumulator.toolCalls;
-
-      if (toolCalls.isEmpty) {
-        yield AgentEvent.done(content: accumulator.content);
-        return;
-      }
-
-      final toolCallDataList = <Map<String, dynamic>>[];
-      for (final tc in toolCalls) {
-        yield AgentEvent.toolCall(
-          id: tc.id,
-          name: tc.function.name,
-          arguments: tc.function.arguments,
+        final tools = _buildTools();
+        final request = ChatCompletionCreateRequest(
+          model: model.modelId,
+          messages: messages,
+          tools: tools,
         );
-      }
 
-      final isDeepSeekModel =
-          model.modelId.toLowerCase().contains('deepseek');
-      final reasoningContent = isDeepSeekModel &&
-              accumulator.reasoningContent.isNotEmpty
-          ? accumulator.reasoningContent
-          : null;
-      messages.add(AssistantMessage(
-        content: accumulator.content.isNotEmpty ? accumulator.content : null,
-        toolCalls: toolCalls,
-        reasoningContent: reasoningContent,
-      ));
+        final stream = _chatService.getCompletion(
+          chat: chat,
+          messages: messages,
+          provider: provider,
+          model: model,
+          tools: request.tools,
+        );
 
-      for (final tc in toolCalls) {
-        Map<String, dynamic> args;
-        try {
-          args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
-        } catch (_) {
-          args = {};
-        }
+        final accumulator = ChatStreamAccumulator();
 
-        final tool = _toolRegistry.get(tc.function.name);
-
-        // 持久化规则：命中则跳过弹窗
-        final ruleMatched = permissionService?.check(tc.function.name, args) == true;
-
-        if (!ruleMatched) {
-          if (onPermission == null) {
-            const deniedMsg =
-                'Error: Tool requires user approval but no permission '
-                'callback is configured.';
-            yield AgentEvent.toolResult(
-              id: tc.id,
-              name: tc.function.name,
-              result: deniedMsg,
-            );
-            messages.add(
-                ChatMessage.tool(toolCallId: tc.id, content: deniedMsg));
-            continue;
-          }
-          final approved = cancelToken == null
-              ? await onPermission(tc.function.name, tc.function.arguments)
-              : await Future.any<bool>([
-                  onPermission(tc.function.name, tc.function.arguments),
-                  cancelToken.whenCancelled.then((_) => false),
-                ]);
+        await for (final chunk in stream) {
           cancelToken?.throwIfCancelled();
-          if (!approved) {
-            const deniedMsg = 'User denied the tool execution.';
-            yield AgentEvent.toolResult(
-              id: tc.id,
-              name: tc.function.name,
-              result: deniedMsg,
-            );
-            messages.add(ChatMessage.tool(
-                toolCallId: tc.id, content: deniedMsg));
-            continue;
-          }
-        }
+          accumulator.add(chunk);
 
-        cancelToken?.throwIfCancelled();
-        // 注入 sentinelId 到工具参数中，供 experience 等工具使用
-        if (sentinelId != null) {
-          args['_sentinel_id'] = sentinelId;
-        }
-        final result = tool != null
-            ? await tool.execute(args)
-            : 'Error: Unknown tool "${tc.function.name}"';
-
-        var processedResult = smartTruncate(result);
-        if (auxiliaryModel != null && auxiliaryModelProvider != null) {
-          if (processedResult.length > 4000) {
-            final summary = await _summarizeToolResult(
-              toolName: tc.function.name,
-              result: processedResult,
-              auxModel: auxiliaryModel,
-              auxProvider: auxiliaryModelProvider,
-            );
-            if (summary != null && summary.isNotEmpty) {
-              processedResult = summary;
+          final delta = chunk.firstChoice?.delta;
+          if (delta != null) {
+            final rc = delta.reasoningContent ?? delta.reasoning;
+            if (rc != null && rc.isNotEmpty) {
+              yield AgentEvent.reasoning(rc);
             }
           }
+
+          final td = chunk.textDelta;
+          if (td != null && td.isNotEmpty) {
+            yield AgentEvent.text(td);
+          }
         }
 
-        yield AgentEvent.toolResult(
-          id: tc.id,
-          name: tc.function.name,
-          result: result,
+        _logUsage(accumulator.usage);
+        final usage = accumulator.usage;
+        if (usage != null) {
+          yield AgentEvent.usage(TokenUsage(
+            promptTokens: usage.promptTokens,
+            completionTokens: usage.completionTokens,
+            totalTokens: usage.totalTokens,
+            reasoningTokens: usage.completionTokensDetails?.reasoningTokens,
+            cachedTokens: usage.promptTokensDetails?.cachedTokens,
+          ));
+        }
+
+        final toolCalls = accumulator.toolCalls;
+        if (toolCalls.isEmpty) {
+          yield AgentEvent.done(content: accumulator.content);
+          return;
+        }
+
+        // 产出 tool_call 事件
+        for (final tc in toolCalls) {
+          yield AgentEvent.toolCall(
+            id: tc.id,
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          );
+        }
+
+        // 追加 assistant 消息（含 tool_calls）
+        final isDeepSeek = model.modelId.toLowerCase().contains('deepseek');
+        final rc = isDeepSeek && accumulator.reasoningContent.isNotEmpty
+            ? accumulator.reasoningContent
+            : null;
+        messages.add(AssistantMessage(
+          content: accumulator.content.isNotEmpty ? accumulator.content : null,
+          toolCalls: toolCalls,
+          reasoningContent: rc,
+        ));
+
+        // 执行每个工具调用
+        final toolCallDataList = <Map<String, dynamic>>[];
+        for (final tc in toolCalls) {
+          final result = await _executeToolCall(
+            toolCall: tc,
+            permissionService: permissionService,
+            onPermission: onPermission,
+            cancelToken: cancelToken,
+            sentinelId: sentinelId,
+            auxiliaryModel: auxiliaryModel,
+            auxiliaryModelProvider: auxiliaryModelProvider,
+          );
+
+          yield result.event;
+          messages.add(ChatMessage.tool(
+            toolCallId: tc.id,
+            content: result.processedResult,
+          ));
+          toolCallDataList.add({
+            'id': tc.id,
+            'name': tc.function.name,
+            'arguments': tc.function.arguments,
+            'result': result.rawResult,
+          });
+        }
+
+        yield AgentEvent.iterationComplete(
+          toolCalls: toolCallDataList,
+          content: accumulator.content,
         );
-
-        messages.add(
-            ChatMessage.tool(toolCallId: tc.id, content: processedResult));
-
-        toolCallDataList.add({
-          'id': tc.id,
-          'name': tc.function.name,
-          'arguments': tc.function.arguments,
-          'result': result,
-        });
-      }
-
-      yield AgentEvent.iterationComplete(
-        toolCalls: toolCallDataList,
-        content: accumulator.content,
-      );
       }
     } finally {
       _skillRegistry?.clearContext();
+    }
+  }
+
+  // ─── 内部 ─────────────────────────────────────────────────
+
+  /// 首轮注入 skill / evolution prompt。
+  List<ChatMessage> _injectPrompts(
+    List<ChatMessage> base,
+    String? skillPrompt,
+    String? evolutionPrompt,
+  ) {
+    var messages = List<ChatMessage>.from(base);
+    if (skillPrompt != null && skillPrompt.isNotEmpty) {
+      messages = [ChatMessage.system(skillPrompt), ...messages];
+    }
+    if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
+      messages = [ChatMessage.system(evolutionPrompt), ...messages];
+    }
+    return messages;
+  }
+
+  /// 从 ToolRegistry 构建 OpenAI Tool 列表。
+  List<Tool>? _buildTools() {
+    final defs = _toolRegistry.definitions;
+    if (defs.isEmpty) return null;
+    return defs
+        .map((t) => Tool.function(
+              name: t['function']['name'] as String,
+              description: t['function']['description'] as String,
+              parameters: t['function']['parameters'] as Map<String, dynamic>,
+            ))
+        .toList();
+  }
+
+  /// 执行单个工具调用：权限检查 → 执行 → 摘要。
+  Future<_ToolCallResult> _executeToolCall({
+    required ToolCall toolCall,
+    required PermissionService? permissionService,
+    required PermissionCallback? onPermission,
+    required CancelToken? cancelToken,
+    String? sentinelId,
+    ModelEntity? auxiliaryModel,
+    ProviderEntity? auxiliaryModelProvider,
+  }) async {
+    Map<String, dynamic> args;
+    try {
+      args = jsonDecode(toolCall.function.arguments) as Map<String, dynamic>;
+    } catch (_) {
+      args = {};
+    }
+
+    final tool = _toolRegistry.get(toolCall.function.name);
+
+    // 权限检查
+    final ruleMatched =
+        permissionService?.check(toolCall.function.name, args) == true;
+
+    if (!ruleMatched) {
+      if (onPermission == null) {
+        const msg = 'Error: Tool requires user approval but no permission '
+            'callback is configured.';
+        return _ToolCallResult(
+          event: AgentToolResultEvent(
+            id: toolCall.id,
+            name: toolCall.function.name,
+            result: msg,
+          ),
+          processedResult: msg,
+          rawResult: msg,
+        );
+      }
+      final approved = cancelToken == null
+          ? await onPermission(toolCall.function.name, toolCall.function.arguments)
+          : await Future.any<bool>([
+              onPermission(toolCall.function.name, toolCall.function.arguments),
+              cancelToken.whenCancelled.then((_) => false),
+            ]);
+      cancelToken?.throwIfCancelled();
+      if (!approved) {
+        const msg = 'User denied the tool execution.';
+        return _ToolCallResult(
+          event: AgentToolResultEvent(
+            id: toolCall.id,
+            name: toolCall.function.name,
+            result: msg,
+          ),
+          processedResult: msg,
+          rawResult: msg,
+        );
+      }
+    }
+
+    cancelToken?.throwIfCancelled();
+    if (sentinelId != null) {
+      args['_sentinel_id'] = sentinelId;
+    }
+
+    final rawResult = tool != null
+        ? await tool.execute(args)
+        : 'Error: Unknown tool "${toolCall.function.name}"';
+
+    var processed = smartTruncate(rawResult);
+    if (auxiliaryModel != null && auxiliaryModelProvider != null) {
+      if (processed.length > 4000) {
+        final summary = await _summarizeToolResult(
+          toolName: toolCall.function.name,
+          result: processed,
+          auxModel: auxiliaryModel,
+          auxProvider: auxiliaryModelProvider,
+        );
+        if (summary != null && summary.isNotEmpty) {
+          processed = summary;
+        }
+      }
+    }
+
+    return _ToolCallResult(
+      event: AgentToolResultEvent(
+        id: toolCall.id,
+        name: toolCall.function.name,
+        result: rawResult,
+      ),
+      processedResult: processed,
+      rawResult: rawResult,
+    );
+  }
+
+  void _logUsage(Usage? usage) {
+    if (!kDebugMode) return;
+    if (usage != null) {
+      LoggerUtil.d(
+        'agent usage: prompt=${usage.promptTokens} '
+        'completion=${usage.completionTokens} '
+        'total=${usage.totalTokens} '
+        'cached=${usage.promptTokensDetails?.cachedTokens}',
+      );
+    } else {
+      LoggerUtil.w(
+        'agent usage: provider 返回的流中未携带 usage（多数是该 '
+        'provider/model 不支持 stream_options.include_usage）',
+      );
     }
   }
 
@@ -322,6 +365,18 @@ class AgentService {
     };
     return '$prefix\n\n$toolSpecific';
   }
+}
+
+/// 单个工具调用的执行结果。
+class _ToolCallResult {
+  final AgentToolResultEvent event;
+  final String processedResult;
+  final String rawResult;
+  const _ToolCallResult({
+    required this.event,
+    required this.processedResult,
+    required this.rawResult,
+  });
 }
 
 sealed class AgentEvent {
