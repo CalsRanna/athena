@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
