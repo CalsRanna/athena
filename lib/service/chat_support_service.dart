@@ -75,8 +75,8 @@ class ChatSupportService {
     return _touchChat(chat.copyWith(sentinelId: sentinelId));
   }
 
-  Future<ChatEntity> updateContext(ChatEntity chat, int context) {
-    return _touchChat(chat.copyWith(context: context));
+  Future<ChatEntity> updateRetention(ChatEntity chat, int retention) {
+    return _touchChat(chat.copyWith(retention: retention));
   }
 
   Future<ChatEntity> updateTemperature(ChatEntity chat, double temperature) {

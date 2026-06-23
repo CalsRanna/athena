@@ -14,7 +14,7 @@ import 'package:athena/view_model/setting_view_model.dart';
 ///
 /// 不持有 Signal，纯业务逻辑。调用方获取返回值后自行写入 Signal。
 class ChatListDelegate {
-  static const int defaultDraftContext = 0;
+  static const int defaultDraftRetention = -1;
   static const double defaultDraftTemperature = 1.0;
 
   final ChatManageService _manageService;
@@ -64,7 +64,7 @@ class ChatListDelegate {
     final chat = await _manageService.createChat(
       model: model,
       sentinel: sentinel,
-      context: defaultDraftContext,
+      retention: defaultDraftRetention,
       temperature: defaultDraftTemperature,
     );
 

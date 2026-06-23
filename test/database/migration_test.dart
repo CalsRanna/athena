@@ -54,7 +54,7 @@ Future<Laconic> _buildSchema() async {
       model_id INTEGER NOT NULL,
       sentinel_id INTEGER NOT NULL,
       temperature REAL DEFAULT 1.0,
-      context INTEGER DEFAULT 0,
+      retention INTEGER DEFAULT -1,
       pinned INTEGER DEFAULT 0,
       token_total INTEGER DEFAULT 0,
       context_tokens INTEGER DEFAULT 0,
@@ -78,6 +78,7 @@ Future<Laconic> _buildSchema() async {
       tool_results TEXT DEFAULT '',
       reasoning_started_at INTEGER NOT NULL,
       reasoning_updated_at INTEGER NOT NULL,
+      compacted INTEGER DEFAULT 0,
       FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
     )
   ''');
@@ -160,7 +161,7 @@ void main() {
       'model_id': 1,
       'sentinel_id': 1,
       'temperature': 1.0,
-      'context': 0,
+      'retention': -1,
       'pinned': 0,
       'created_at': 1,
       'updated_at': 1,
@@ -198,7 +199,7 @@ void main() {
       'model_id': 1,
       'sentinel_id': 1,
       'temperature': 1.0,
-      'context': 0,
+      'retention': -1,
       'pinned': 0,
       'created_at': 1,
       'updated_at': 1,
@@ -322,6 +323,13 @@ void main() {
     expect(columns, contains('context_window'));
   });
 
+  test('messages table has compacted column', () async {
+    final laconic = await _buildSchema();
+    final info = await laconic.select("PRAGMA table_info('messages')");
+    final columns = info.map((r) => r.toMap()['name'] as String).toSet();
+    expect(columns, contains('compacted'));
+  });
+
   test('chats table has token_total column after migration', () async {
     final laconic = await _buildSchema();
     final info = await laconic.select("PRAGMA table_info('chats')");
@@ -336,7 +344,7 @@ void main() {
       'model_id': 1,
       'sentinel_id': 1,
       'temperature': 1.0,
-      'context': 0,
+      'retention': -1,
       'pinned': 0,
       'created_at': 1,
       'updated_at': 1,

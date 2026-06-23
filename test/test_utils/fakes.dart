@@ -119,6 +119,7 @@ void setupMobileTestDI() {
       agentService: getIt<AgentService>(),
       manageService: getIt<ChatManageService>(),
       messageService: getIt<ChatMessageService>(),
+      chatService: getIt<ChatService>(),
       messageRepo: getIt<MessageRepository>(),
       modelRepo: getIt<ModelRepository>(),
       sentinelRepo: getIt<SentinelRepository>(),
@@ -201,7 +202,7 @@ ChatEntity testChat({
   String title = 'Test Chat',
   int sentinelId = 1,
   int modelId = 1,
-  int context = 4,
+  int retention = -1,
   double temperature = 1.0,
 }) {
   return ChatEntity(
@@ -209,7 +210,7 @@ ChatEntity testChat({
     title: title,
     sentinelId: sentinelId,
     modelId: modelId,
-    context: context,
+    retention: retention,
     temperature: temperature,
     createdAt: DateTime(2025),
     updatedAt: DateTime(2025),
@@ -273,7 +274,13 @@ class _FakeMessageRepository extends MessageRepository {
   @override
   Future<void> updateMessage(MessageEntity message) async {}
   @override
-  Future<List<MessageEntity>> getMessagesByChatId(int chatId) async => [];
+  Future<void> markAsCompacted(Set<int> ids) async {}
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async =>
+      [];
   @override
   Future<MessageEntity?> getMessageById(int id) async => null;
   @override

@@ -53,7 +53,7 @@ void main() {
         modelId: 10,
         sentinelId: 20,
         temperature: 1.0,
-        context: 0,
+        retention: -1,
         createdAt: DateTime(2020),
         updatedAt: DateTime(2020),
       );
@@ -72,9 +72,9 @@ void main() {
       expect(out.updatedAt.isAfter(original.updatedAt), isTrue);
     });
 
-    test('updateContext touches updatedAt', () async {
-      final out = await service.updateContext(original, 5);
-      expect(out.context, 5);
+    test('updateRetention touches updatedAt', () async {
+      final out = await service.updateRetention(original, 0);
+      expect(out.retention, 0);
       expect(out.updatedAt.isAfter(original.updatedAt), isTrue);
     });
 

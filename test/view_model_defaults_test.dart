@@ -111,6 +111,7 @@ void main() {
             providerRepository: ProviderRepository(),
             sentinelRepository: SentinelRepository(),
           ),
+          chatService: ChatService(),
           messageService: ChatMessageService(
             messageRepository: MessageRepository(),
           ),
@@ -169,7 +170,7 @@ void main() {
         ),
       );
 
-      expect(viewModel.currentContext.value, ChatViewModel.defaultDraftContext);
+      expect(viewModel.currentRetention.value, ChatViewModel.defaultDraftRetention);
       expect(
         viewModel.currentTemperature.value,
         ChatViewModel.defaultDraftTemperature,

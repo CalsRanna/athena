@@ -41,7 +41,7 @@ class ChatManageService {
   Future<ChatEntity> createChat({
     required ModelEntity model,
     required SentinelEntity sentinel,
-    int context = 0,
+    int retention = -1,
     double temperature = 1.0,
   }) async {
     final now = DateTime.now();
@@ -50,7 +50,7 @@ class ChatManageService {
       modelId: model.id!,
       sentinelId: sentinel.id!,
       temperature: temperature,
-      context: context,
+      retention: retention,
       createdAt: now,
       updatedAt: now,
     );

@@ -112,7 +112,12 @@ class _NoopMessageRepository extends MessageRepository {
   @override
   Future<void> updateMessage(MessageEntity message) async {}
   @override
-  Future<List<MessageEntity>> getMessagesByChatId(int chatId) async =>
+  Future<void> markAsCompacted(Set<int> ids) async {}
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async =>
       [MessageEntity(id: 1, chatId: chatId, role: 'user', content: 'hello')];
 }
 
@@ -284,6 +289,7 @@ ChatViewModel _buildViewModel({
       agentService: agent,
       manageService: manage,
       messageService: messages,
+      chatService: ChatService(),
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
       sentinelRepo: _FakeSentinelRepository(),

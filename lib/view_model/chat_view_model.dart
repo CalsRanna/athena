@@ -24,7 +24,7 @@ import 'package:signals/signals.dart';
 /// 持有全部 UI 状态（Signal），将内聚的业务逻辑委托给各个 Delegate。
 /// ChatViewModel 本身只做跨委托编排和 Signal 写入。
 class ChatViewModel {
-  static const int defaultDraftContext = 0;
+  static const int defaultDraftRetention = -1;
   static const double defaultDraftTemperature = 1.0;
 
   final ChatListDelegate _list;
@@ -50,7 +50,7 @@ class ChatViewModel {
   final currentModel = signal<ModelEntity?>(null);
   final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
-  final currentContext = signal(defaultDraftContext);
+  final currentRetention = signal(defaultDraftRetention);
   final currentTemperature = signal(defaultDraftTemperature);
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
@@ -172,7 +172,7 @@ class ChatViewModel {
       currentModel.value = selected.model;
       currentProvider.value = selected.provider;
       currentSentinel.value = selected.sentinel;
-      currentContext.value = currentChat.value!.context;
+      currentRetention.value = currentChat.value!.retention;
       currentTemperature.value = currentChat.value!.temperature;
       cumulativeTokenTotal.value = currentChat.value!.tokenTotal;
     } else {
@@ -204,7 +204,7 @@ class ChatViewModel {
       currentModel.value = result.model;
       currentProvider.value = result.provider;
       currentSentinel.value = result.sentinel;
-      currentContext.value = result.chat.context;
+      currentRetention.value = result.chat.retention;
       currentTemperature.value = result.chat.temperature;
       pendingImages.value = [];
       messages.value = [];
@@ -293,7 +293,7 @@ class ChatViewModel {
       currentModel.value = result.model;
       currentProvider.value = result.provider;
       currentSentinel.value = result.sentinel;
-      currentContext.value = first.context;
+      currentRetention.value = first.retention;
       currentTemperature.value = first.temperature;
       cumulativeTokenTotal.value = first.tokenTotal;
       _selection.lastSelectedIndex.value = 0;
@@ -316,7 +316,7 @@ class ChatViewModel {
     currentModel.value = result.model;
     currentProvider.value = result.provider;
     currentSentinel.value = result.sentinel;
-    currentContext.value = chat.context;
+    currentRetention.value = chat.retention;
     currentTemperature.value = chat.temperature;
     pendingImages.value = [];
     currentTokenUsage.value = null;
@@ -379,18 +379,18 @@ class ChatViewModel {
     }
   }
 
-  Future<void> updateContext(
-    int context, {
+  Future<void> updateRetention(
+    int retention, {
     required ChatEntity chat,
   }) async {
     error.value = null;
     try {
-      final updated = await _config.updateContext(
-        context: context,
+      final updated = await _config.updateRetention(
+        retention: retention,
         chat: chat,
       );
       _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentContext.value = updated.context;
+        currentRetention.value = updated.retention;
       });
     } catch (e) {
       error.value = e.toString();
@@ -438,8 +438,8 @@ class ChatViewModel {
     currentSentinel.value = sentinel;
   }
 
-  void updateCurrentContext(int context) {
-    currentContext.value = context;
+  void updateCurrentRetention(int retention) {
+    currentRetention.value = retention;
   }
 
   void updateCurrentTemperature(double temperature) {
@@ -633,7 +633,7 @@ class ChatViewModel {
       await _sentinelViewModel.getSentinels();
     }
     currentSentinel.value = _sentinelViewModel.defaultSentinel.value;
-    currentContext.value = defaultDraftContext;
+    currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
   }
 }

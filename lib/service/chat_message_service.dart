@@ -25,18 +25,32 @@ class ChatMessageService {
     required ChatEntity chat,
     required SentinelEntity? sentinel,
   }) async {
-    final chatMessages = await _messageRepository.getMessagesByChatId(chat.id!);
-    final contextLimit = chat.context * 2;
-    final contextMessages = chat.context > 0 && chatMessages.length > contextLimit
-        ? chatMessages.sublist(chatMessages.length - contextLimit)
-        : chatMessages;
+    final chatMessages = await _messageRepository.getMessagesByChatId(
+      chat.id!,
+      includeCompacted: false,
+    );
 
+    // retention == 0：零上下文模式，每次只携带当前用户消息
+    if (chat.retention == 0) {
+      final lastUser = chatMessages.lastWhere(
+        (m) => m.role == 'user',
+        orElse: () => chatMessages.last,
+      );
+      final wrapped = <ChatMessage>[];
+      if (sentinel != null && sentinel.prompt.isNotEmpty) {
+        wrapped.add(ChatMessage.system(sentinel.prompt));
+      }
+      wrapped.addAll(_convertMessages(lastUser));
+      return wrapped;
+    }
+
+    // retention == -1：自动管理，返回全部消息，由调用方决定是否 compact
     final wrapped = <ChatMessage>[];
     if (sentinel != null && sentinel.prompt.isNotEmpty) {
       wrapped.add(ChatMessage.system(sentinel.prompt));
     }
 
-    for (final msg in contextMessages) {
+    for (final msg in chatMessages) {
       wrapped.addAll(_convertMessages(msg));
     }
 

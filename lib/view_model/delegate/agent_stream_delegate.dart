@@ -9,18 +9,24 @@ import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/message_entity.dart';
+import 'package:athena/entity/model_entity.dart';
+import 'package:athena/entity/provider_entity.dart';
+import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/model/token_usage.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
+import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/router/router.dart';
+import 'package:athena/util/logger_util.dart';
 import 'package:athena/util/tool_args_formatter.dart';
 import 'package:athena/widget/permission_dialog.dart';
 import 'package:athena/widget/skill_trust_dialog.dart';
+import 'package:openai_dart/openai_dart.dart';
 
 /// Agent 流式交互的委托。
 ///
@@ -30,6 +36,7 @@ class AgentStreamDelegate {
   final AgentService _agentService;
   final ChatManageService _manageService;
   final ChatMessageService _messageService;
+  final ChatService _chatService;
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
   final SentinelRepository _sentinelRepo;
@@ -48,6 +55,7 @@ class AgentStreamDelegate {
     required AgentService agentService,
     required ChatManageService manageService,
     required ChatMessageService messageService,
+    required ChatService chatService,
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
     required SentinelRepository sentinelRepo,
@@ -58,6 +66,7 @@ class AgentStreamDelegate {
   })  : _agentService = agentService,
         _manageService = manageService,
         _messageService = messageService,
+        _chatService = chatService,
         _messageRepo = messageRepo,
         _modelRepo = modelRepo,
         _sentinelRepo = sentinelRepo,
@@ -131,6 +140,19 @@ class AgentStreamDelegate {
         sentinel: sentinel,
       );
 
+      // 2.5. Auto 模式下，若上下文接近窗口上限则触发 compact
+      final compactedMessages = chat.retention == -1
+          ? await _prepareMessagesWithCompact(
+              chat: chat,
+              sentinel: sentinel,
+              wrappedMessages: wrappedMessages,
+              contextWindow: model.contextWindow,
+              currentTokens: chat.contextTokens,
+              provider: provider,
+              model: model,
+            )
+          : wrappedMessages;
+
       // 3. 追加 assistant 占位消息
       assistantMessage = await _manageService.appendAssistantPlaceholder(
         chat.id!,
@@ -142,7 +164,7 @@ class AgentStreamDelegate {
         chat: chat,
         provider: provider,
         model: model,
-        baseMessages: wrappedMessages,
+        baseMessages: compactedMessages,
         evolutionPrompt: EvolutionPrompt.hint,
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _settingViewModel.maxAgentIterations.value,
@@ -349,6 +371,149 @@ class AgentStreamDelegate {
     onMessageUpdated(next);
     return next;
   }
+
+  /// Auto 模式下准备消息：若 token 占用率超过 70% 则触发 compact。
+  ///
+  /// compact 成功后：
+  /// - 在 DB 中将压缩范围内的消息标记为 compacted=1
+  /// - 插入一条 system 摘要消息
+  /// - 下次 buildMessages 时 compacted 消息自动被过滤
+  Future<List<ChatMessage>> _prepareMessagesWithCompact({
+    required ChatEntity chat,
+    required SentinelEntity? sentinel,
+    required List<ChatMessage> wrappedMessages,
+    required int contextWindow,
+    required int currentTokens,
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    // 仅当上下文占用率 > 80% 时触发压缩
+    if (contextWindow <= 0 ||
+        currentTokens <= 0 ||
+        currentTokens / contextWindow <= 0.8) {
+      return wrappedMessages;
+    }
+
+    // 找出 system 消息（sentinel prompt），它们不参与压缩
+    final systemMessages = <ChatMessage>[];
+    final compressible = <ChatMessage>[];
+    for (final m in wrappedMessages) {
+      if (m is SystemMessage) {
+        systemMessages.add(m);
+      } else {
+        compressible.add(m);
+      }
+    }
+
+    // 前半段压缩，后半段保留
+    final splitIndex = (compressible.length * 0.6).ceil();
+    final toSummarize = compressible.sublist(0, splitIndex);
+    final keep = compressible.sublist(splitIndex);
+
+    // 构建压缩文本
+    final textToSummarize = _buildCompactText(toSummarize);
+
+    final auxModel = _settingViewModel.auxiliaryModel.value;
+    final auxProvider = _settingViewModel.auxiliaryModelProvider.value;
+
+    try {
+      final summary = await _chatService.complete(
+        messages: [
+          ChatMessage.system(_compactSystemPrompt),
+          ChatMessage.user(textToSummarize),
+        ],
+        provider: auxProvider ?? provider,
+        model: auxModel ?? model,
+      );
+      if (summary.isEmpty) return wrappedMessages;
+
+      // 持久化 compact 结果
+      final chatId = chat.id!;
+
+      // 1. 获取当前非压缩消息实体，定位被压缩的消息 ID
+      final activeMessages =
+          await _messageRepo.getMessagesByChatId(chatId, includeCompacted: false);
+
+      // 找到 splitIndex 对应的实体 ID 分界点（跳过 system 角色消息）
+      final nonSystemEntities = <MessageEntity>[];
+      for (final entity in activeMessages) {
+        if (entity.role != 'system') {
+          nonSystemEntities.add(entity);
+        }
+      }
+
+      final compactSplit = (nonSystemEntities.length * 0.6).ceil();
+      final toCompactIds = nonSystemEntities
+          .sublist(0, compactSplit)
+          .where((e) => e.id != null)
+          .map((e) => e.id!)
+          .toSet();
+
+      // 2. 标记被压缩消息为 compacted
+      if (toCompactIds.isNotEmpty) {
+        await _messageRepo.markAsCompacted(toCompactIds);
+      }
+
+      // 3. 插入摘要消息
+      final summaryEntity = MessageEntity(
+        chatId: chatId,
+        role: 'system',
+        content: 'Previous conversation summary:\n$summary',
+      );
+      final summaryId = await _messageRepo.storeMessage(summaryEntity);
+      final persistedSummary = summaryEntity.copyWith(id: summaryId);
+
+      LoggerUtil.i(
+        'Compact: ${toCompactIds.length} messages compacted → '
+        '${summary.length} char summary (msg #$summaryId), '
+        'keeping ${keep.length} recent messages',
+      );
+
+      return [
+        ...systemMessages,
+        ChatMessage.system(persistedSummary.content),
+        ...keep,
+      ];
+    } catch (e) {
+      LoggerUtil.w('Compact failed, falling back to full messages: $e');
+      return wrappedMessages;
+    }
+  }
+
+  /// 把消息列表压缩为适合摘要的纯文本。
+  String _buildCompactText(List<ChatMessage> messages) {
+    final buf = StringBuffer();
+    for (final m in messages) {
+      if (m is SystemMessage) continue;
+      final role = m is UserMessage
+          ? 'User'
+          : m is AssistantMessage
+              ? 'Assistant'
+              : m is ToolMessage
+                  ? 'Tool'
+                  : 'System';
+      String content;
+      if (m is ToolMessage) {
+        content = 'tool_call_id=${m.toolCallId} result=${m.content}';
+      } else if (m is AssistantMessage) {
+        content = m.content ?? '';
+      } else if (m is UserMessage) {
+        content = '${m.content}';
+      } else {
+        continue;
+      }
+      if (content.isEmpty) continue;
+      buf.writeln('$role: $content');
+      buf.writeln();
+    }
+    return buf.toString();
+  }
+
+  static const _compactSystemPrompt =
+      'Summarize the conversation below. Keep all key facts, decisions, '
+      'code patterns, file paths, URLs, error messages, and data values. '
+      'Be concise but do not omit anything that might be needed later. '
+      'Output only the summary, no preamble.';
 
   Future<bool> _askPermission(
     String toolName,

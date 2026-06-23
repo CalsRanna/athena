@@ -4,6 +4,7 @@ import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/widget/app_bar.dart';
 import 'package:athena/widget/form_tile_label.dart';
 import 'package:athena/widget/scaffold.dart';
+import 'package:athena/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -21,7 +22,7 @@ class MobileChatConfigurationPage extends StatefulWidget {
 
 class _MobileChatConfigurationPageState
     extends State<MobileChatConfigurationPage> {
-  late final _context = signal(widget.chat.context.toDouble());
+  late final _zeroContext = signal(widget.chat.retention == 0);
   late final _temperature = signal(widget.chat.temperature);
 
   late final viewModel = GetIt.instance<ChatViewModel>();
@@ -33,9 +34,21 @@ class _MobileChatConfigurationPageState
       const SizedBox(height: 12),
       _buildTemperatureSlider(),
       const SizedBox(height: 24),
-      AthenaFormTileLabel.large(title: 'Context'),
+      AthenaFormTileLabel.large(title: 'Zero Context'),
       const SizedBox(height: 12),
-      _buildContextSlider(),
+      _buildRetentionSwitch(),
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'When enabled, each message is sent independently '
+          'without any conversation history.',
+          style: TextStyle(
+            color: ColorUtil.FFFFFFFF.withValues(alpha: 0.6),
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -47,26 +60,22 @@ class _MobileChatConfigurationPageState
     );
   }
 
-  void _storeContext(double value) {
-    viewModel.updateContext(value.toInt(), chat: widget.chat);
+  void _storeRetention(bool value) {
+    viewModel.updateRetention(value ? 0 : -1, chat: widget.chat);
   }
 
   void _storeTemperature(double value) {
     viewModel.updateTemperature(value, chat: widget.chat);
   }
 
-  Widget _buildContextSlider() {
+  Widget _buildRetentionSwitch() {
     return Watch((_) {
-      return Slider(
-        activeColor: ColorUtil.FFA7BA88,
-        inactiveColor: ColorUtil.FF757575,
-        label: _context.value.toStringAsFixed(0),
-        max: 20,
-        onChanged: (v) => _context.value = v,
-        onChangeEnd: _storeContext,
-        padding: EdgeInsets.symmetric(horizontal: 4),
-        thumbColor: ColorUtil.FFA7BA88,
-        value: _context.value,
+      return AthenaSwitch(
+        value: _zeroContext.value,
+        onChanged: (v) {
+          _zeroContext.value = v;
+          _storeRetention(v);
+        },
       );
     });
   }

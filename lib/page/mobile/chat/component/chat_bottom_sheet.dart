@@ -22,7 +22,7 @@ class MobileChatBottomSheet extends StatefulWidget {
   final SentinelViewModel sentinelViewModel;
   final ModelViewModel modelViewModel;
   final ProviderViewModel providerViewModel;
-  final void Function(int)? onContextChanged;
+  final void Function(int)? onRetentionChanged;
   final void Function(ModelEntity)? onModelChanged;
   final void Function(SentinelEntity)? onSentinelChanged;
   final void Function(double)? onTemperatureChanged;
@@ -33,7 +33,7 @@ class MobileChatBottomSheet extends StatefulWidget {
     required this.sentinelViewModel,
     required this.modelViewModel,
     required this.providerViewModel,
-    this.onContextChanged,
+    this.onRetentionChanged,
     this.onModelChanged,
     this.onSentinelChanged,
     this.onTemperatureChanged,
@@ -52,7 +52,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final _sentinelId = signal<int>(0);
   late final _modelId = signal<int>(0);
   late final _temperature = signal<double>(1.0);
-  late final _contextToken = signal<int>(0);
+  late final _retention = signal<int>(-1);
 
   @override
   void initState() {
@@ -62,7 +62,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _sentinelId.value = widget.chat!.sentinelId;
       _modelId.value = widget.chat!.modelId;
       _temperature.value = widget.chat!.temperature;
-      _contextToken.value = widget.chat!.context;
+      _retention.value = widget.chat!.retention;
     } else {
       _sentinelId.value = sentinelViewModel.defaultSentinel.value.id ?? 0;
       _modelId.value =
@@ -70,7 +70,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
           modelViewModel.enabledModels.value.firstOrNull?.id ??
           0;
       _temperature.value = chatViewModel.currentTemperature.value;
-      _contextToken.value = chatViewModel.currentContext.value;
+      _retention.value = chatViewModel.currentRetention.value;
     }
   }
 
@@ -164,15 +164,15 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void openConfigurationDialog() {
     var dialog = MobileChatConfigurationDialog(
       chat: widget.chat,
-      contextToken: _contextToken.value,
+      retention: _retention.value,
       temperature: _temperature.value,
       onTemperatureChanged: (v) {
         widget.onTemperatureChanged?.call(v);
         _temperature.value = v;
       },
-      onContextChanged: (v) {
-        widget.onContextChanged?.call(v);
-        _contextToken.value = v;
+      onRetentionChanged: (v) {
+        widget.onRetentionChanged?.call(v);
+        _retention.value = v;
       },
     );
     AthenaDialog.show(dialog);
