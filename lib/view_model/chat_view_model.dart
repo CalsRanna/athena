@@ -17,6 +17,7 @@ import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
 import 'package:athena/view_model/setting_view_model.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 /// ChatViewModel 负责聊天会话的业务逻辑。
@@ -79,12 +80,7 @@ class ChatViewModel {
   // ─── 内部辅助 ───
 
   void _updateChatInLists(ChatEntity updated) {
-    final idx = chats.value.indexWhere((c) => c.id == updated.id);
-    if (idx >= 0) {
-      final copy = List<ChatEntity>.from(chats.value);
-      copy[idx] = updated;
-      chats.value = copy;
-    }
+    chats.replaceWhere((c) => c.id == updated.id, updated);
 
     final hIdx = chatHistories.value.indexWhere((h) => h.chat.id == updated.id);
     if (hIdx >= 0) {
@@ -102,12 +98,7 @@ class ChatViewModel {
   }
 
   void _updateMessageInList(MessageEntity updated) {
-    final index = messages.value.indexWhere((m) => m.id == updated.id);
-    if (index >= 0) {
-      final copy = List<MessageEntity>.from(messages.value);
-      copy[index] = updated;
-      messages.value = copy;
-    }
+    messages.replaceWhere((m) => m.id == updated.id, updated);
   }
 
   ChatViewModel({
@@ -407,7 +398,7 @@ class ChatViewModel {
   Future<void> updateExpanded(MessageEntity message) async {
     try {
       final updated = await _supportService.updateExpanded(message);
-      _updateMessageInList(updated);
+      messages.replaceWhere((m) => m.id == message.id, updated);
     } catch (e) {
       error.value = e.toString();
     }

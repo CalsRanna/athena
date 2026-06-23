@@ -3,6 +3,7 @@ import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 import 'package:uuid/uuid.dart';
 
@@ -117,15 +118,10 @@ class SummaryViewModel {
       }
 
       // 更新 summaries 列表中的对应 entity
-      var index = summaries.value.indexWhere((s) => s.id == summaryEntity.id);
-      if (index >= 0) {
-        var updated = summaries.value[index].copyWith(
-          content: buffer.toString(),
-        );
-        var updatedList = List<SummaryEntity>.from(summaries.value);
-        updatedList[index] = updated;
-        summaries.value = updatedList;
-      }
+      summaries.replaceWhere(
+        (s) => s.id == summaryEntity.id,
+        summaries.value.firstWhere((s) => s.id == summaryEntity.id).copyWith(content: buffer.toString()),
+      );
     } catch (e) {
       error.value = e.toString();
     } finally {
