@@ -26,7 +26,6 @@ import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
-import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
@@ -164,7 +163,7 @@ class _FakeSupportService extends ChatSupportService {
 
   /// 可选的伪标题流；为 null 时回退到空流。
   final Stream<String>? renameStream;
-  _FakeTokenUsageService? tokenUsage;
+  _FakeTokenTrackingChatRepo? tokenUsage;
 
   /// 记录 renameChatManually 是否被调用（用于断言删除后不再写入）。
   bool renameChatManuallyCalled = false;
@@ -202,32 +201,36 @@ class _FakeSupportService extends ChatSupportService {
   }
 }
 
-/// 内存态 Token 用量追踪（供测试验证 token 累计与竞态）。
-class _FakeTokenUsageService extends TokenUsageService {
-  _FakeTokenUsageService() : super(chatRepo: ChatRepository());
-
-  final Map<int, ChatEntity> _chats = {};
-
-  /// 供 _FakeSupportService 在 rename 时合并累积的 token 状态。
-  Map<int, ChatEntity> get chats => _chats;
+/// 内存态 ChatRepository，捕获 recordUsage 写入供测试验证 token 累计与竞态。
+class _FakeTokenTrackingChatRepo extends ChatRepository {
+  final Map<int, ChatEntity> chats = {};
 
   @override
-  Future<ChatEntity?> recordUsage(
-    ChatEntity chat, {
-    required int tokenDelta,
-    required int contextTokens,
-    required int cachedTokens,
-  }) async {
-    if (chat.id == null) return chat;
-    final existing = _chats[chat.id!] ?? chat;
+  Future<int> recordUsage(
+    int chatId,
+    int tokenDelta,
+    int contextTokens,
+    int cachedTokens,
+  ) async {
+    final existing = chats[chatId] ?? ChatEntity(
+      id: chatId,
+      title: '',
+      modelId: 1,
+      sentinelId: 1,
+      createdAt: DateTime(2024),
+      updatedAt: DateTime(2024),
+    );
     final next = existing.copyWith(
       tokenTotal: existing.tokenTotal + tokenDelta,
       contextTokens: contextTokens,
       cachedTokens: cachedTokens,
     );
-    _chats[chat.id!] = next;
-    return next;
+    chats[chatId] = next;
+    return next.tokenTotal;
   }
+
+  @override
+  Future<ChatEntity?> getChatById(int id) async => chats[id];
 }
 
 class _FakeChatMessageService extends ChatMessageService {
@@ -292,9 +295,9 @@ ChatViewModel _buildViewModel({
   required _FakeAgentService agent,
   _FakeSupportService? support,
   ChatMessageService? messageService,
-  _FakeTokenUsageService? tokenUsage,
+  _FakeTokenTrackingChatRepo? tokenUsage,
 }) {
-  final tUsage = tokenUsage ?? _FakeTokenUsageService();
+  final tUsage = tokenUsage ?? _FakeTokenTrackingChatRepo();
   final svc = support;
   // 确保外部传入的 support 也能访问 token 累积状态
   if (svc != null && svc.tokenUsage == null) {
@@ -309,11 +312,11 @@ ChatViewModel _buildViewModel({
       manageService: manage,
       messageService: messages,
       chatService: ChatService(llmClient: LlmClient()),
+      chatRepo: tUsage,
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
       sentinelRepo: _FakeSentinelRepository(),
       supportService: effectiveSvc,
-      tokenUsageService: tUsage,
       settingViewModel: GetIt.instance<SettingViewModel>(),
       permissionService: GetIt.instance<PermissionService>(),
       skillRegistry: GetIt.instance<SkillRegistry>(),

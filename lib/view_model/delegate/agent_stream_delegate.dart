@@ -13,6 +13,7 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/model/token_usage.dart';
+import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/message_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
@@ -20,7 +21,6 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
-import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/router/router.dart';
 import 'package:athena/util/logger_util.dart';
@@ -89,8 +89,8 @@ class AgentStreamDelegate {
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
   final SentinelRepository _sentinelRepo;
+  final ChatRepository _chatRepo;
   final ChatSupportService _supportService;
-  final TokenUsageService _tokenUsageService;
   final SettingViewModel _settingViewModel;
   final PermissionService _permissionService;
   final SkillRegistry _skillRegistry;
@@ -108,8 +108,8 @@ class AgentStreamDelegate {
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
     required SentinelRepository sentinelRepo,
+    required ChatRepository chatRepo,
     required ChatSupportService supportService,
-    required TokenUsageService tokenUsageService,
     required SettingViewModel settingViewModel,
     required PermissionService permissionService,
     required SkillRegistry skillRegistry,
@@ -120,8 +120,8 @@ class AgentStreamDelegate {
         _messageRepo = messageRepo,
         _modelRepo = modelRepo,
         _sentinelRepo = sentinelRepo,
+        _chatRepo = chatRepo,
         _supportService = supportService,
-        _tokenUsageService = tokenUsageService,
         _settingViewModel = settingViewModel,
         _permissionService = permissionService,
         _skillRegistry = skillRegistry;
@@ -306,12 +306,14 @@ class AgentStreamDelegate {
         } else if (event is AgentDoneEvent) {
           current = current.copyWith(content: event.content);
         } else if (event is AgentUsageEvent) {
-          final updated = await _tokenUsageService.recordUsage(
-            chat,
-            tokenDelta: event.usage.totalTokens,
-            contextTokens: event.usage.promptTokens,
-            cachedTokens: event.usage.cachedTokens ?? 0,
+          await _chatRepo.recordUsage(
+            chat.id!,
+            event.usage.totalTokens,
+            event.usage.promptTokens,
+            event.usage.cachedTokens ?? 0,
           );
+          final updated =
+              await _chatRepo.getChatById(chat.id!);
           if (updated != null) {
             yield StreamUsageChanged(event.usage, updated);
           }
