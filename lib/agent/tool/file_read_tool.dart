@@ -4,10 +4,10 @@ import 'dart:io';
 import 'tool_interface.dart';
 
 class FileReadTool implements Tool {
-  /// 文件超过此大小（字节）时改用流式读取，避免整文件加载到内存。
+  /// When file exceeds this size (bytes), switch to streaming to avoid loading the entire file into memory.
   static const _streamThreshold = 5 * 1024 * 1024; // 5MB
 
-  /// 单次最多返回的行数，防止 LLM 上下文撑爆。
+  /// Maximum lines returned per call, to avoid blowing up the LLM context.
   static const _maxReturnLines = 2000;
 
   @override
@@ -67,7 +67,7 @@ class FileReadTool implements Tool {
     }
   }
 
-  /// 小文件：一次性读入内存，简单快速。
+  /// Small file: read all at once, simple and fast.
   Future<String> _readSmall(File file, int offset, int? limit) async {
     final lines = await file.readAsLines();
     final total = lines.length;
@@ -79,13 +79,13 @@ class FileReadTool implements Tool {
     return _formatOutput(selected, start, total, offset, limit);
   }
 
-  /// 大文件：流式读取 + 预扫换行计数，避免内存爆炸。
+  /// Large file: streaming read + pre-scan line count, to avoid memory explosion.
   Future<String> _readLarge(
       File file, int offset, int? limit, int fileSize) async {
-    // 第一遍：数换行符（纯字节扫描，不分配字符串，非常快）。
+    // First pass: count newlines (pure byte scan, no string allocation, very fast).
     final total = await _countLines(file);
 
-    // 第二遍：流式读取所需行。
+    // Second pass: stream-read the required line range.
     final start = offset.clamp(0, total);
     final effectiveLimit = (limit ?? total).clamp(0, _maxReturnLines);
     final end = (start + effectiveLimit).clamp(start, total);
@@ -96,7 +96,7 @@ class FileReadTool implements Tool {
         fileSize: fileSize);
   }
 
-  /// 格式化为输出：行号前缀 + 头部统计信息。
+  /// Format output: line number prefix + header statistics.
   String _formatOutput(
     List<String> lines,
     int start,
@@ -107,7 +107,7 @@ class FileReadTool implements Tool {
   }) {
     final buffer = StringBuffer();
 
-    // 头部：给出完整上下文让 LLM 知道位置
+    // Header: give LLM full context of position within the file
     final first = start + 1;
     final last = start + lines.length;
     buffer.writeln('[lines $first-$last / $total total]');
@@ -127,7 +127,7 @@ class FileReadTool implements Tool {
     }
     buffer.writeln();
 
-    // 正文：行号 + 内容
+    // Body: line number + content
     for (var i = 0; i < lines.length; i++) {
       buffer.write('${start + i + 1}\t');
       buffer.writeln(lines[i]);
@@ -136,7 +136,7 @@ class FileReadTool implements Tool {
     return buffer.toString();
   }
 
-  /// 扫描文件统计换行数（只计 \n，字节流方式避免字符串分配）。
+  /// Count newlines by scanning file bytes (streaming, no string allocation).
   Future<int> _countLines(File file) async {
     var count = 0;
     final stream = file.openRead();
@@ -145,19 +145,19 @@ class FileReadTool implements Tool {
         if (byte == 0x0A) count++; // \n
       }
     }
-    // 如果文件非空且不以 \n 结尾，最后一行也要算。
+    // If file is non-empty and doesn't end with \n, count the last line too.
     if (count == 0) {
-      // 空文件或只有一行且无换行
+      // Empty file, or single line without newline
       return file.lengthSync() > 0 ? 1 : 0;
     }
-    // 检查文件是否以 \n 结尾
+    // Check if file ends with \n
     final raf = await file.open(mode: FileMode.read);
     try {
       if (await file.length() > 0) {
         await raf.setPosition(await file.length() - 1);
         final lastByte = await raf.read(1);
         if (lastByte.isNotEmpty && lastByte[0] != 0x0A) {
-          count++; // 最后一行没有 \n 结尾
+          count++; // Last line doesn't end with \n
         }
       }
     } finally {
@@ -166,7 +166,7 @@ class FileReadTool implements Tool {
     return count;
   }
 
-  /// 流式读取指定行范围 [start, end)。
+  /// Stream-read the specified line range [start, end).
   Future<List<String>> _streamLines(File file, int start, int end) async {
     final lines = <String>[];
     var lineIndex = 0;
