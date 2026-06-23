@@ -65,12 +65,11 @@ class SentinelService {
       var request = ChatCompletionCreateRequest(
         model: model.modelId,
         messages: messages,
+        responseFormat: ResponseFormat.jsonObject(),
       );
       var response = await client.chat.completions.create(request);
       final content = response.text ?? '';
-      final formatted = jsonDecode(
-        content.replaceAll('```json', '').replaceAll('```', ''),
-      );
+      final formatted = jsonDecode(content);
       final tags = formatted['tags'] is List
           ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
           : (formatted['tags']?.toString() ?? '');
