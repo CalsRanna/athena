@@ -23,6 +23,7 @@ import 'package:athena/database/migration/migration_202606240008_add_zhipu_provi
 import 'package:athena/database/migration/migration_202606240009_add_minimax_provider.dart';
 import 'package:athena/database/migration/migration_202606240010_update_aliyun_models.dart';
 import 'package:athena/database/migration/migration_202606240011_update_siliconflow_models.dart';
+import 'package:athena/database/migration/migration_202606240012_update_volcano_models.dart';
 import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -98,6 +99,7 @@ class Database {
     await Migration202606240009AddMinimaxProvider().migrate();
     await Migration202606240010UpdateAliyunModels().migrate();
     await Migration202606240011UpdateSiliconFlowModels().migrate();
+    await Migration202606240012UpdateVolcanoModels().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设
