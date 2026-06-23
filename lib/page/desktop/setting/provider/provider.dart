@@ -1,5 +1,6 @@
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/util/context_window_util.dart';
 import 'package:athena/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena/page/desktop/setting/provider/component/provider_context_menu.dart';
@@ -335,7 +336,7 @@ class _ModelListTileState extends State<_ModelListTile> {
 
   bool get _showSubtitle {
     var visible = widget.model.releasedAt.isNotEmpty;
-    visible |= widget.model.contextWindow.isNotEmpty;
+    visible |= widget.model.contextWindow > 0;
     visible |= widget.model.inputPrice.isNotEmpty;
     visible |= widget.model.outputPrice.isNotEmpty;
     visible |= widget.model.reasoning;
@@ -431,7 +432,7 @@ class _ModelListTileState extends State<_ModelListTile> {
     var outputPrice = widget.model.outputPrice;
     var parts = <String>[
       if (releasedAt.isNotEmpty) releasedAt,
-      if (context.isNotEmpty) context,
+      if (context > 0) formatContextWindow(context),
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];

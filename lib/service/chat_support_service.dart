@@ -83,14 +83,31 @@ class ChatSupportService {
     return _touchChat(chat.copyWith(temperature: temperature));
   }
 
-  /// 累加 [chat] 的 token_total [delta] 个 token 并落库。
-  /// 不触碰 updatedAt，避免 token 统计写入扰动会话排序。
-  /// 返回落库后的最新 ChatEntity。
-  Future<ChatEntity> incrementTokenTotal(ChatEntity chat, int delta) async {
+  /// 原子累加 token_total [tokenDelta] 并覆盖写 context_tokens/cached_tokens
+  /// 快照列。不触碰 updatedAt。返回 DB 最新行（跨并发写者一致）。
+  Future<ChatEntity?> recordUsage(
+    ChatEntity chat, {
+    required int tokenDelta,
+    required int contextTokens,
+    required int cachedTokens,
+  }) async {
     if (chat.id == null) return chat;
-    final newTotal =
-        await _chatRepository.incrementTokenTotal(chat.id!, delta);
-    return chat.copyWith(tokenTotal: newTotal);
+    await _chatRepository.recordUsage(
+      chat.id!,
+      tokenDelta,
+      contextTokens,
+      cachedTokens,
+    );
+    return _chatRepository.getChatById(chat.id!);
+  }
+
+  /// 累加 [chat] 的 token_total [delta] 个 token 并落库。
+  /// 不触碰 updatedAt。返回 DB 最近一行。
+  /// 新代码优先使用 [recordUsage]。
+  Future<ChatEntity?> incrementTokenTotal(ChatEntity chat, int delta) async {
+    if (chat.id == null) return chat;
+    await _chatRepository.incrementTokenTotal(chat.id!, delta);
+    return _chatRepository.getChatById(chat.id!);
   }
 
   Future<ProviderEntity?> getProviderForModel(int providerId) async {

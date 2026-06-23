@@ -1,5 +1,6 @@
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/util/context_window_util.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/button.dart';
@@ -143,7 +144,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     valueController.text = widget.model?.modelId ?? '';
     nameController.text = widget.model?.name ?? '';
     releasedAtController.text = widget.model?.releasedAt ?? '';
-    contextController.text = widget.model?.contextWindow ?? '';
+    var cw = widget.model?.contextWindow ?? 0;
+    contextController.text = cw > 0 ? formatContextWindow(cw) : '';
     inputController.text = widget.model?.inputPrice ?? '';
     outputController.text = widget.model?.outputPrice ?? '';
     supportReasoning = widget.model?.reasoning ?? false;
@@ -158,7 +160,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
         modelId: valueController.text,
         name: nameController.text,
         providerId: widget.provider.id!,
-        contextWindow: contextController.text,
+        contextWindow: parseContextWindow(contextController.text),
         inputPrice: inputController.text,
         outputPrice: outputController.text,
         releasedAt: releasedAtController.text,
@@ -172,7 +174,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       var copiedModel = widget.model!.copyWith(
         modelId: valueController.text,
         name: nameController.text,
-        contextWindow: contextController.text,
+        contextWindow: parseContextWindow(contextController.text),
         inputPrice: inputController.text,
         outputPrice: outputController.text,
         releasedAt: releasedAtController.text,

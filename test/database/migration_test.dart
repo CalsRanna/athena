@@ -24,7 +24,7 @@ Future<Laconic> _buildSchema() async {
       name TEXT NOT NULL,
       model_id TEXT NOT NULL,
       provider_id INTEGER NOT NULL,
-      context_window TEXT DEFAULT '',
+      context_window INTEGER DEFAULT 0,
       input_price TEXT DEFAULT '',
       output_price TEXT DEFAULT '',
       released_at TEXT DEFAULT '',
@@ -57,6 +57,8 @@ Future<Laconic> _buildSchema() async {
       context INTEGER DEFAULT 0,
       pinned INTEGER DEFAULT 0,
       token_total INTEGER DEFAULT 0,
+      context_tokens INTEGER DEFAULT 0,
+      cached_tokens INTEGER DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
@@ -134,7 +136,7 @@ void main() {
       'name': 'TestM',
       'model_id': 'test-m',
       'provider_id': providerId,
-      'context_window': '',
+      'context_window': 0,
       'input_price': '',
       'output_price': '',
       'released_at': '',
@@ -251,7 +253,7 @@ void main() {
       'name': 'GoodModel',
       'model_id': 'gm',
       'provider_id': providerId,
-      'context_window': '',
+      'context_window': 0,
       'input_price': '',
       'output_price': '',
       'released_at': '',
@@ -263,7 +265,7 @@ void main() {
     await laconic.statement(
       "INSERT INTO models (name, model_id, provider_id, context_window, "
       "input_price, output_price, released_at, reasoning, vision, created_at, updated_at) "
-      "VALUES ('OrphanModel', 'om', 99999, '', '', '', '', 0, 0, 1, 1)",
+      "VALUES ('OrphanModel', 'om', 99999, 0, '', '', '', 0, 0, 1, 1)",
     );
     expect(await laconic.table('models').count(), 2);
 
@@ -277,119 +279,31 @@ void main() {
     expect(remaining.first.toMap()['name'], 'GoodModel');
   });
 
-  // ---------- context_window normalization ----------
+  // ---------- context_window INTEGER 迁移验证 ----------
 
-  test('normalizes bare digits with thousands separator', () async {
+  test('context_window column is now INTEGER', () async {
     final laconic = await _buildSchema();
-
-    final providerId = await laconic.table('providers').insertGetId(<String, dynamic>{
-      'name': 'P',
-      'base_url': 'http://localhost',
-      'api_key': 'k',
-      'enabled': 1,
-      'is_preset': 0,
-      'created_at': 1,
-    });
-    await _insert(laconic, 'models', <String, dynamic>{
-      'name': 'M',
-      'model_id': 'm',
-      'provider_id': providerId,
-      'context_window': '128000',
-      'input_price': '',
-      'output_price': '',
-      'released_at': '',
-      'reasoning': 0,
-      'vision': 0,
-      'created_at': 1,
-      'updated_at': 1,
-    });
-
-    final rows = await laconic.select('SELECT id, context_window FROM models');
-    for (final row in rows) {
-      final map = row.toMap();
-      final cw = map['context_window'] as String?;
-      if (cw == null || cw.isEmpty || cw.contains('context')) continue;
-      if (cw.contains('K') || cw.contains('M')) continue;
-      final digits = cw.replaceAll(',', '');
-      final n = int.tryParse(digits);
-      if (n == null) continue;
-      await laconic
-          .table('models')
-          .where('id', map['id'])
-          .update({'context_window': '${_formatThousands(n)} context'});
+    // 验证 data_type 不是 TEXT
+    final info = await laconic.select("PRAGMA table_info('models')");
+    var type = '';
+    for (var row in info) {
+      if (row.toMap()['name'] == 'context_window') {
+        type = (row.toMap()['type'] as String).toUpperCase();
+      }
     }
-
-    final model = await laconic.table('models').first();
-    expect(model.toMap()['context_window'], '128,000 context');
+    expect(type, contains('INT'));
+    expect(type, isNot(contains('TEXT')));
   });
 
-  test('normalization skips K/M values', () async {
+  test('chats table has context_tokens and cached_tokens columns', () async {
     final laconic = await _buildSchema();
-
-    final providerId = await laconic.table('providers').insertGetId(<String, dynamic>{
-      'name': 'P',
-      'base_url': 'http://localhost',
-      'api_key': 'k',
-      'enabled': 1,
-      'is_preset': 0,
-      'created_at': 1,
-    });
-    await _insert(laconic, 'models', <String, dynamic>{
-      'name': 'M',
-      'model_id': 'm',
-      'provider_id': providerId,
-      'context_window': '128K',
-      'input_price': '',
-      'output_price': '',
-      'released_at': '',
-      'reasoning': 0,
-      'vision': 0,
-      'created_at': 1,
-      'updated_at': 1,
-    });
-
-    final model = await laconic.table('models').first();
-    // Value should be unchanged — 128K contains 'K' so normalization skips
-    expect(model.toMap()['context_window'], '128K');
+    final info = await laconic.select("PRAGMA table_info('chats')");
+    final columns = info.map((r) => r.toMap()['name'] as String).toSet();
+    expect(columns, contains('context_tokens'));
+    expect(columns, contains('cached_tokens'));
   });
 
-  test('normalization skips values already containing "context"', () async {
-    final laconic = await _buildSchema();
-
-    final providerId = await laconic.table('providers').insertGetId(<String, dynamic>{
-      'name': 'P',
-      'base_url': 'http://localhost',
-      'api_key': 'k',
-      'enabled': 1,
-      'is_preset': 0,
-      'created_at': 1,
-    });
-    await _insert(laconic, 'models', <String, dynamic>{
-      'name': 'M',
-      'model_id': 'm',
-      'provider_id': providerId,
-      'context_window': '128,000 context',
-      'input_price': '',
-      'output_price': '',
-      'released_at': '',
-      'reasoning': 0,
-      'vision': 0,
-      'created_at': 1,
-      'updated_at': 1,
-    });
-
-    final model = await laconic.table('models').first();
-    expect(model.toMap()['context_window'], '128,000 context');
-  });
-
-  test('_formatThousands', () {
-    expect(_formatThousands(0), '0');
-    expect(_formatThousands(128), '128');
-    expect(_formatThousands(1000), '1,000');
-    expect(_formatThousands(128000), '128,000');
-    expect(_formatThousands(1000000), '1,000,000');
-    expect(_formatThousands(999), '999');
-  });
+  // ---------- schema verification ----------
 
   // ---------- schema verification ----------
 
@@ -466,12 +380,4 @@ void main() {
   });
 }
 
-String _formatThousands(int n) {
-  final s = n.toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-    buf.write(s[i]);
-  }
-  return buf.toString();
-}
+/// ProviderRepository

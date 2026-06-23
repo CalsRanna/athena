@@ -45,6 +45,12 @@ class ChatRepository {
     var laconic = Database.instance.laconic;
     var json = chat.toJson();
     json.remove('id');
+    // 以下三列由独立写入路径（incrementTokenTotal / recordTokenSnapshot）
+    // 管理，整行覆盖写回会回退已累加/已覆盖值；
+    // 此处显式排除，与增量路径解耦。
+    json.remove('token_total');
+    json.remove('context_tokens');
+    json.remove('cached_tokens');
     await laconic.table('chats').where('id', chat.id).update(json);
   }
 
@@ -59,8 +65,28 @@ class ChatRepository {
     return allChats.take(limit).toList();
   }
 
-  /// 原子地累加 [chatId] 的 token_total 列 [delta]，不触碰 updatedAt。
-  /// 返回累加后的总 token 数。
+  /// 原子地累加 [chatId] 的 token_total 列 [delta]，
+  /// 同时覆盖写 context_tokens 与 cached_tokens 快照列，不触碰 updatedAt。
+  /// 返回累加后的最新行。
+  Future<int> recordUsage(
+    int chatId,
+    int tokenDelta,
+    int contextTokens,
+    int cachedTokens,
+  ) async {
+    var laconic = Database.instance.laconic;
+    await laconic.statement(
+      'UPDATE chats SET token_total = token_total + ?, '
+          'context_tokens = ?, cached_tokens = ? WHERE id = ?',
+      [tokenDelta, contextTokens, cachedTokens, chatId],
+    );
+    final chat = await getChatById(chatId);
+    return chat?.tokenTotal ?? 0;
+  }
+
+  /// 原子地累加 [chatId] 的 token_total 列 [delta] 且不触碰 updatedAt。
+  /// 返回累加后的 token_total 值。
+  /// 新代码优先使用 [recordUsage]（同时写快照列）。
   Future<int> incrementTokenTotal(int chatId, int delta) async {
     if (delta == 0) {
       final chat = await getChatById(chatId);

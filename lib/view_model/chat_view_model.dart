@@ -475,6 +475,9 @@ class ChatViewModel {
         onListReload: () => getChats(),
         onAutoRename: () => renameChat(chat),
         onUsageChanged: (u, updatedChat) async {
+          // 仅当仍处于当前会话才更新累计：避免流式期间新建会话被旧 chat
+          // 的迟到 usage 事件污染。
+          if (updatedChat.id != currentChat.value?.id) return;
           currentTokenUsage.value = u;
           // 让持久化值成为权威累加值（避免多轮重复加 delta）。
           cumulativeTokenTotal.value = updatedChat.tokenTotal;
