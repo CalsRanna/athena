@@ -2,6 +2,7 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class ConnectionCheckResult {
@@ -158,12 +159,7 @@ class ModelViewModel {
     error.value = null;
     try {
       await _repository.updateModel(model);
-      var index = models.value.indexWhere((m) => m.id == model.id);
-      if (index >= 0) {
-        var updated = List<ModelEntity>.from(models.value);
-        updated[index] = model;
-        models.value = updated;
-      }
+      models.replaceWhere((m) => m.id == model.id, model);
       await loadEnabledModels();
     } catch (e) {
       error.value = e.toString();

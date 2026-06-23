@@ -2,6 +2,7 @@ import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/widget/dialog.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
@@ -73,12 +74,7 @@ class ProviderViewModel {
     error.value = null;
     try {
       await _repository.updateProvider(provider);
-      var index = providers.value.indexWhere((p) => p.id == provider.id);
-      if (index >= 0) {
-        var updated = List<ProviderEntity>.from(providers.value);
-        updated[index] = provider;
-        providers.value = updated;
-      }
+      providers.replaceWhere((p) => p.id == provider.id, provider);
       await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();
@@ -108,12 +104,7 @@ class ProviderViewModel {
     try {
       var updated = provider.copyWith(enabled: !provider.enabled);
       await _repository.updateProvider(updated);
-      var index = providers.value.indexWhere((p) => p.id == provider.id);
-      if (index >= 0) {
-        var updatedList = List<ProviderEntity>.from(providers.value);
-        updatedList[index] = updated;
-        providers.value = updatedList;
-      }
+      providers.replaceWhere((p) => p.id == provider.id, updated);
       await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();

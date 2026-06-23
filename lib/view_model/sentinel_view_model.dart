@@ -3,6 +3,7 @@ import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/service/sentinel_service.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
@@ -227,12 +228,7 @@ class SentinelViewModel {
     error.value = null;
     try {
       await _sentinelRepository.updateSentinel(sentinel);
-      var index = sentinels.value.indexWhere((s) => s.id == sentinel.id);
-      if (index >= 0) {
-        var updated = List<SentinelEntity>.from(sentinels.value);
-        updated[index] = sentinel;
-        sentinels.value = updated;
-      }
+      sentinels.replaceWhere((s) => s.id == sentinel.id, sentinel);
     } catch (e) {
       error.value = e.toString();
     } finally {

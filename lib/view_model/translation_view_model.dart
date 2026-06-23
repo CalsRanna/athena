@@ -5,6 +5,7 @@ import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:openai_dart/openai_dart.dart';
+import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 import 'package:uuid/uuid.dart';
 
@@ -131,14 +132,7 @@ class TranslationViewModel {
 
       // 更新translation实体并保存到列表
       var updated = translation.copyWith(targetText: buffer.toString());
-
-      // 更新列表中的translation
-      var index = translations.value.indexWhere((t) => t.id == translation.id);
-      if (index >= 0) {
-        var updatedList = List<TranslationEntity>.from(translations.value);
-        updatedList[index] = updated;
-        translations.value = updatedList;
-      }
+      translations.replaceWhere((t) => t.id == translation.id, updated);
     } catch (e) {
       error.value = e.toString();
     } finally {
