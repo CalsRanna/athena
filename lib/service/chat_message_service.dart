@@ -24,6 +24,7 @@ class ChatMessageService {
   Future<List<ChatMessage>> buildMessages({
     required ChatEntity chat,
     required SentinelEntity? sentinel,
+    bool includeReasoning = false,
   }) async {
     final chatMessages = await _messageRepository.getMessagesByChatId(
       chat.id!,
@@ -40,7 +41,7 @@ class ChatMessageService {
       if (sentinel != null && sentinel.prompt.isNotEmpty) {
         wrapped.add(ChatMessage.system(sentinel.prompt));
       }
-      wrapped.addAll(_convertMessages(lastUser));
+      wrapped.addAll(_convertMessages(lastUser, includeReasoning: includeReasoning));
       return wrapped;
     }
 
@@ -51,7 +52,7 @@ class ChatMessageService {
     }
 
     for (final msg in chatMessages) {
-      wrapped.addAll(_convertMessages(msg));
+      wrapped.addAll(_convertMessages(msg, includeReasoning: includeReasoning));
     }
 
     return wrapped;
@@ -63,7 +64,7 @@ class ChatMessageService {
     return messages.where((m) => m.role == 'user').length == 1;
   }
 
-  List<ChatMessage> _convertMessages(MessageEntity msg) {
+  List<ChatMessage> _convertMessages(MessageEntity msg, {bool includeReasoning = false}) {
     switch (msg.role) {
       case 'system':
         return [ChatMessage.system(msg.content)];
@@ -84,9 +85,13 @@ class ChatMessageService {
             );
           }).toList();
         }
-        messages.add(ChatMessage.assistant(
+        final reasoning = includeReasoning && msg.reasoningContent.isNotEmpty
+            ? msg.reasoningContent
+            : null;
+        messages.add(AssistantMessage(
           content: msg.content,
           toolCalls: toolCalls,
+          reasoningContent: reasoning,
         ));
         if (msg.toolResults.isNotEmpty) {
           final parsed = jsonDecode(msg.toolResults) as List<dynamic>;
