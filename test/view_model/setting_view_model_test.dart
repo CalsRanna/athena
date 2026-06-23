@@ -4,7 +4,7 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -72,7 +72,7 @@ SettingViewModel _vm({
     chatRepository: chatRepository,
     providerRepository: _FakeProviderRepository(),
     sentinelRepository: _FakeSentinelRepository(),
-    chatService: ChatService(),
+    llmClient: LlmClient(),
   );
 }
 

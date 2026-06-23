@@ -2,12 +2,17 @@ import 'dart:async';
 
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:html_parser_plus/html_parser_plus.dart';
 import 'package:http/http.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// SummaryService 负责网页摘要相关的网络请求
 class SummaryService {
+  final LlmClient _llmClient;
+
+  SummaryService({required LlmClient llmClient}) : _llmClient = llmClient;
+
   /// 解析网页文档
   Future<Map<String, String>> parseDocument(String url) async {
     var uri = Uri.parse(url);
@@ -31,26 +36,14 @@ class SummaryService {
     required ModelEntity model,
     required ProviderEntity provider,
   }) async* {
-    var client = OpenAIClient.withApiKey(
-      provider.apiKey,
-      baseUrl: provider.baseUrl,
-      defaultHeaders: {
-        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-        'X-Title': 'Athena',
-      },
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: messages,
     );
-    try {
-      var request = ChatCompletionCreateRequest(
-        model: model.modelId,
-        messages: messages,
-      );
-      var response = client.chat.completions.createStream(request);
-      await for (final chunk in response) {
-        if (chunk.choices == null || chunk.choices!.isEmpty) continue;
-        yield chunk.choices!.first.delta;
-      }
-    } finally {
-      client.close();
+    var stream = _llmClient.stream(provider: provider, request: request);
+    await for (final chunk in stream) {
+      if (chunk.choices == null || chunk.choices!.isEmpty) continue;
+      yield chunk.choices!.first.delta;
     }
   }
 }

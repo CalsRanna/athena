@@ -1,21 +1,19 @@
-import 'package:athena/util/platform_util.dart';
-
 import 'package:athena/agent/agent_service.dart';
+import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_loader.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/skill/skill_trust_store.dart';
-import 'package:athena/agent/evolution/evolution_prompt.dart';
 import 'package:athena/agent/tool/bash_shell_tool.dart';
+import 'package:athena/agent/tool/experience_learn_tool.dart';
 import 'package:athena/agent/tool/file_read_tool.dart';
 import 'package:athena/agent/tool/file_update_tool.dart';
 import 'package:athena/agent/tool/file_write_tool.dart';
 import 'package:athena/agent/tool/powershell_shell_tool.dart';
-import 'package:athena/agent/tool/skill_tool.dart';
-import 'package:athena/agent/tool/skill_evolve_tool.dart';
-import 'package:athena/agent/tool/experience_learn_tool.dart';
 import 'package:athena/agent/tool/sentinel_evolve_tool.dart';
+import 'package:athena/agent/tool/skill_evolve_tool.dart';
+import 'package:athena/agent/tool/skill_tool.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/agent/tool/web_fetch_tool.dart';
 import 'package:athena/agent/tool/web_search_tool.dart';
@@ -31,10 +29,12 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/service/trpg_service.dart';
+import 'package:athena/util/platform_util.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_config_delegate.dart';
@@ -54,51 +54,14 @@ class DI {
     final getIt = GetIt.instance;
 
     // Repositories (no dependencies)
-    getIt.registerLazySingleton(() => ChatRepository());
-    getIt.registerLazySingleton(() => MessageRepository());
-    getIt.registerLazySingleton(() => ModelRepository());
-    getIt.registerLazySingleton(() => ProviderRepository());
-    getIt.registerLazySingleton(() => SentinelRepository());
-    getIt.registerLazySingleton(() => ExperienceRepository());
-    getIt.registerLazySingleton(() => TRPGGameRepository());
-    getIt.registerLazySingleton(() => TRPGMessageRepository());
+    _registerRepositories();
 
     // Services
-    getIt.registerLazySingleton(() => ChatService());
-
-    getIt.registerLazySingleton(
-      () => ChatMessageService(messageRepository: getIt<MessageRepository>()),
-    );
-
-    getIt.registerLazySingleton(
-      () => ChatManageService(
-        chatRepository: getIt<ChatRepository>(),
-        messageRepository: getIt<MessageRepository>(),
-        modelRepository: getIt<ModelRepository>(),
-        providerRepository: getIt<ProviderRepository>(),
-        sentinelRepository: getIt<SentinelRepository>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => ChatSupportService(
-        chatRepository: getIt<ChatRepository>(),
-        messageRepository: getIt<MessageRepository>(),
-        providerRepository: getIt<ProviderRepository>(),
-        chatService: getIt<ChatService>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(() => SentinelService());
-    getIt.registerLazySingleton(() => SummaryService());
-    getIt.registerLazySingleton(() => TranslationService());
-    getIt.registerLazySingleton(() => TRPGService());
+    _registerServices();
 
     // ViewModel Delegates
     getIt.registerLazySingleton(
-      () => ChatConfigDelegate(
-        supportService: getIt<ChatSupportService>(),
-      ),
+      () => ChatConfigDelegate(supportService: getIt<ChatSupportService>()),
     );
 
     getIt.registerLazySingleton(
@@ -156,7 +119,7 @@ class DI {
         providerRepository: getIt<ProviderRepository>(),
         sentinelRepository: getIt<SentinelRepository>(),
         chatRepository: getIt<ChatRepository>(),
-        chatService: getIt<ChatService>(),
+        llmClient: getIt<LlmClient>(),
       ),
     );
 
@@ -199,22 +162,23 @@ class DI {
     // Agent
     getIt.registerLazySingleton(() => PermissionStore());
     getIt.registerLazySingleton(
-      () => PermissionService(
-        store: getIt<PermissionStore>(),
-      ),
+      () => PermissionService(store: getIt<PermissionStore>()),
     );
 
     getIt.registerLazySingleton(() => SkillTrustStore());
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
       registry.loadAll();
-      registry.registerBuiltin(const Skill(
-        name: 'self-evolve',
-        description: 'Guidance on self-evolution: creating skills, recording '
-            'experiences, and optimizing sentinels to improve over time',
-        body: EvolutionPrompt.fullBody,
-        sourcePath: '(builtin)',
-      ));
+      registry.registerBuiltin(
+        const Skill(
+          name: 'self-evolve',
+          description:
+              'Guidance on self-evolution: creating skills, recording '
+              'experiences, and optimizing sentinels to improve over time',
+          body: EvolutionPrompt.fullBody,
+          sourcePath: '(builtin)',
+        ),
+      );
       return registry;
     });
 
@@ -270,6 +234,63 @@ class DI {
         modelViewModel: getIt<ModelViewModel>(),
         sentinelViewModel: getIt<SentinelViewModel>(),
       ),
+    );
+  }
+
+  static void _registerRepositories() {
+    final getIt = GetIt.instance;
+    getIt.registerLazySingleton(() => ChatRepository());
+    getIt.registerLazySingleton(() => MessageRepository());
+    getIt.registerLazySingleton(() => ModelRepository());
+    getIt.registerLazySingleton(() => ProviderRepository());
+    getIt.registerLazySingleton(() => SentinelRepository());
+    getIt.registerLazySingleton(() => ExperienceRepository());
+    getIt.registerLazySingleton(() => TRPGGameRepository());
+    getIt.registerLazySingleton(() => TRPGMessageRepository());
+  }
+
+  static void _registerServices() {
+    final getIt = GetIt.instance;
+    getIt.registerLazySingleton(() => LlmClient());
+
+    getIt.registerLazySingleton(
+      () => ChatService(llmClient: getIt<LlmClient>()),
+    );
+
+    getIt.registerLazySingleton(
+      () => ChatMessageService(messageRepository: getIt<MessageRepository>()),
+    );
+
+    getIt.registerLazySingleton(
+      () => ChatManageService(
+        chatRepository: getIt<ChatRepository>(),
+        messageRepository: getIt<MessageRepository>(),
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
+      () => ChatSupportService(
+        chatRepository: getIt<ChatRepository>(),
+        messageRepository: getIt<MessageRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        chatService: getIt<ChatService>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
+      () => SentinelService(llmClient: getIt<LlmClient>()),
+    );
+    getIt.registerLazySingleton(
+      () => SummaryService(llmClient: getIt<LlmClient>()),
+    );
+    getIt.registerLazySingleton(
+      () => TranslationService(llmClient: getIt<LlmClient>()),
+    );
+    getIt.registerLazySingleton(
+      () => TRPGService(llmClient: getIt<LlmClient>()),
     );
   }
 }

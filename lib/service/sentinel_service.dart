@@ -4,10 +4,15 @@ import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/preset/prompt.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// SentinelService 负责 Sentinel 生成相关的网络请求
 class SentinelService {
+  final LlmClient _llmClient;
+
+  SentinelService({required LlmClient llmClient}) : _llmClient = llmClient;
+
   /// 仅生成 Sentinel 名称
   Future<String> generateName(
     String prompt, {
@@ -49,40 +54,31 @@ class SentinelService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var client = OpenAIClient.withApiKey(
-      provider.apiKey,
-      baseUrl: provider.baseUrl,
-      defaultHeaders: {
-        'HTTP-Referer': 'https://github.com/CalsRanna/athena',
-        'X-Title': 'Athena',
-      },
+    var messages = [
+      ChatMessage.system(systemPrompt),
+      ChatMessage.user(prompt),
+    ];
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: messages,
+      responseFormat: ResponseFormat.jsonObject(),
     );
-    try {
-      var messages = [
-        ChatMessage.system(systemPrompt),
-        ChatMessage.user(prompt),
-      ];
-      var request = ChatCompletionCreateRequest(
-        model: model.modelId,
-        messages: messages,
-        responseFormat: ResponseFormat.jsonObject(),
-      );
-      var response = await client.chat.completions.create(request);
-      final content = response.text ?? '';
-      final formatted = jsonDecode(content);
-      final tags = formatted['tags'] is List
-          ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
-          : (formatted['tags']?.toString() ?? '');
-      return SentinelEntity(
-        name: formatted['name'] ?? '',
-        description: formatted['description'] ?? '',
-        tags: tags,
-        avatar: formatted['avatar']?.toString() ?? '',
-        prompt: prompt,
-      );
-    } finally {
-      client.close();
-    }
+    var response = await _llmClient.fetch(
+      provider: provider,
+      request: request,
+    );
+    final content = response.text ?? '';
+    final formatted = jsonDecode(content);
+    final tags = formatted['tags'] is List
+        ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
+        : (formatted['tags']?.toString() ?? '');
+    return SentinelEntity(
+      name: formatted['name'] ?? '',
+      description: formatted['description'] ?? '',
+      tags: tags,
+      avatar: formatted['avatar']?.toString() ?? '',
+      prompt: prompt,
+    );
   }
 
   /// 基于用户输入的 prompt 生成完整 Sentinel 元数据（名称、描述、标签、头像）

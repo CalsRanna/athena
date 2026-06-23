@@ -7,7 +7,7 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/translation_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/translation_view_model.dart';
@@ -42,7 +42,7 @@ ProviderEntity _provider() => ProviderEntity(
 
 /// 伪翻译服务：将外部提供的 [stream] 原样返回，便于控制 chunk 时序。
 class _FakeTranslationService extends TranslationService {
-  _FakeTranslationService(this.stream);
+  _FakeTranslationService(this.stream) : super(llmClient: LlmClient());
 
   final Stream<ChatDelta> stream;
 
@@ -91,7 +91,7 @@ void main() {
         providerRepository: _FakeProviderRepository(),
         sentinelRepository: _FakeSentinelRepository(),
         chatRepository: ChatRepository(),
-        chatService: ChatService(),
+        llmClient: LlmClient(),
       ),
     );
   });

@@ -18,6 +18,7 @@ import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -51,7 +52,11 @@ void setupMobileTestDI() {
   getIt.registerSingleton<SentinelRepository>(_FakeSentinelRepository());
 
   // Services
-  getIt.registerSingleton<ChatService>(ChatService());
+  getIt.registerSingleton<LlmClient>(LlmClient());
+
+  getIt.registerSingleton<ChatService>(
+    ChatService(llmClient: getIt<LlmClient>()),
+  );
 
   getIt.registerSingleton<ChatMessageService>(
     ChatMessageService(messageRepository: getIt<MessageRepository>()),
@@ -76,7 +81,9 @@ void setupMobileTestDI() {
     ),
   );
 
-  getIt.registerSingleton<SentinelService>(SentinelService());
+  getIt.registerSingleton<SentinelService>(
+    SentinelService(llmClient: getIt<LlmClient>()),
+  );
 
   // Agent
   getIt.registerSingleton<PermissionService>(
@@ -137,7 +144,7 @@ void setupMobileTestDI() {
       providerRepository: getIt<ProviderRepository>(),
       sentinelRepository: getIt<SentinelRepository>(),
       chatRepository: getIt<ChatRepository>(),
-      chatService: getIt<ChatService>(),
+      llmClient: getIt<LlmClient>(),
     ),
   );
 
