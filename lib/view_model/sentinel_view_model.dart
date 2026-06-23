@@ -30,14 +30,18 @@ class SentinelViewModel {
 
   // Computed signals
   late final defaultSentinel = computed(() {
-    return sentinels.value.where((s) => s.name == 'Athena').firstOrNull ??
-        SentinelEntity(
-          name: 'Athena',
-          description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
-          prompt: '你是一个智能聊天助手。',
-          tags: '',
-        );
+    return sentinels.value.where((s) => s.name == defaultName).firstOrNull ??
+        defaultSentinelEntity;
   });
+
+  static const defaultName = 'Athena';
+
+  static SentinelEntity get defaultSentinelEntity => SentinelEntity(
+        name: defaultName,
+        description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
+        prompt: '你是一个智能聊天助手。',
+        tags: '',
+      );
 
   late final tags = computed(() {
     var allTags = <String>[];
@@ -58,17 +62,10 @@ class SentinelViewModel {
 
       // 如果没有 sentinel,创建默认的
       if (loadedSentinels.isEmpty) {
-        var defaultSentinelEntity = SentinelEntity(
-          name: 'Athena',
-          description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
-          prompt: '你是一个智能聊天助手。',
-          tags: '',
-        );
-        var id = await _sentinelRepository.createSentinel(
-          defaultSentinelEntity,
-        );
-        defaultSentinelEntity = defaultSentinelEntity.copyWith(id: id);
-        loadedSentinels = [defaultSentinelEntity];
+        var entity = defaultSentinelEntity;
+        var id = await _sentinelRepository.createSentinel(entity);
+        entity = entity.copyWith(id: id);
+        loadedSentinels = [entity];
       }
 
       sentinels.value = loadedSentinels;
