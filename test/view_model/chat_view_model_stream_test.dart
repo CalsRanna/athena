@@ -25,6 +25,7 @@ import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
+import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
@@ -146,7 +147,7 @@ class _FakeSentinelRepository extends SentinelRepository {
 }
 
 class _FakeSupportService extends ChatSupportService {
-  _FakeSupportService({this.renameStream})
+  _FakeSupportService({this.renameStream, this.tokenUsage})
       : super(
           chatRepository: ChatRepository(),
           messageRepository: _NoopMessageRepository(),
@@ -156,14 +157,10 @@ class _FakeSupportService extends ChatSupportService {
 
   /// 可选的伪标题流；为 null 时回退到空流。
   final Stream<String>? renameStream;
+  _FakeTokenUsageService? tokenUsage;
 
   /// 记录 renameChatManually 是否被调用（用于断言删除后不再写入）。
   bool renameChatManuallyCalled = false;
-
-  /// 会话 id → 内存态 chat 快照（token 总计与 title 都在此处演进，
-  /// 模拟 DB 将 updateChat 与 incrementTokenTotal 共享同一行；
-  /// 用于暴露 autoRename 与 usage 整行覆盖的竞态）。
-  final Map<int, ChatEntity> _chats = {};
 
   @override
   Future<ProviderEntity?> getProviderForModel(int providerId) async =>
@@ -189,20 +186,23 @@ class _FakeSupportService extends ChatSupportService {
   @override
   Future<ChatEntity> renameChatManually(ChatEntity chat, String title) async {
     renameChatManuallyCalled = true;
-    // 模拟修复后 updateChat 不再写 token_total：rename 只改 title，
-    // 保留行里现存的 tokenTotal。用 _chats 中累积值回写，暴露
-    // 「旧快照整行覆盖 token_total」会造成的退化。
-    final existing = chat.id == null ? null : _chats[chat.id!];
+    final existing = tokenUsage?.chats[chat.id];
     final merged = (existing ?? chat).copyWith(title: title);
-    if (chat.id != null) _chats[chat.id!] = merged;
+    if (chat.id != null && tokenUsage != null) {
+      tokenUsage!.chats[chat.id!] = merged;
+    }
     return merged;
   }
+}
 
-  @override
-  Future<ChatEntity?> incrementTokenTotal(ChatEntity chat, int delta) async {
-    if (chat.id == null) return chat;
-    return recordUsage(chat, tokenDelta: delta, contextTokens: 0, cachedTokens: 0);
-  }
+/// 内存态 Token 用量追踪（供测试验证 token 累计与竞态）。
+class _FakeTokenUsageService extends TokenUsageService {
+  _FakeTokenUsageService() : super(chatRepo: ChatRepository());
+
+  final Map<int, ChatEntity> _chats = {};
+
+  /// 供 _FakeSupportService 在 rename 时合并累积的 token 状态。
+  Map<int, ChatEntity> get chats => _chats;
 
   @override
   Future<ChatEntity?> recordUsage(
@@ -284,8 +284,15 @@ ChatViewModel _buildViewModel({
   required _FakeAgentService agent,
   _FakeSupportService? support,
   ChatMessageService? messageService,
+  _FakeTokenUsageService? tokenUsage,
 }) {
-  final svc = support ?? _FakeSupportService();
+  final tUsage = tokenUsage ?? _FakeTokenUsageService();
+  final svc = support;
+  // 确保外部传入的 support 也能访问 token 累积状态
+  if (svc != null && svc.tokenUsage == null) {
+    svc.tokenUsage = tUsage;
+  }
+  final effectiveSvc = svc ?? _FakeSupportService(tokenUsage: tUsage);
   final messages = messageService ?? _FakeChatMessageService();
   return ChatViewModel(
     manageService: manage,
@@ -297,7 +304,8 @@ ChatViewModel _buildViewModel({
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
       sentinelRepo: _FakeSentinelRepository(),
-      supportService: svc,
+      supportService: effectiveSvc,
+      tokenUsageService: tUsage,
       settingViewModel: GetIt.instance<SettingViewModel>(),
       permissionService: GetIt.instance<PermissionService>(),
       skillRegistry: GetIt.instance<SkillRegistry>(),
@@ -305,9 +313,9 @@ ChatViewModel _buildViewModel({
     renameDelegate: ChatRenameDelegate(
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
-      supportService: svc,
+      supportService: effectiveSvc,
     ),
-    supportService: svc,
+    supportService: effectiveSvc,
     messageRepo: _NoopMessageRepository(),
     settingViewModel: GetIt.instance<SettingViewModel>(),
     modelViewModel: GetIt.instance<ModelViewModel>(),
