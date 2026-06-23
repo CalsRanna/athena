@@ -51,10 +51,6 @@ class AgentService {
       for (var iteration = 0; iteration < maxIterations; iteration++) {
         cancelToken?.throwIfCancelled();
 
-        if (iteration > 0) {
-          // 非首轮：重新计算工具定义（Skill 可能在首轮被加载）
-        }
-
         final tools = _buildTools();
         final request = ChatCompletionCreateRequest(
           model: model.modelId,
