@@ -7,20 +7,11 @@ class ChatRepository {
     var laconic = Database.instance.laconic;
     var results = await laconic
         .table('chats')
+        .orderBy('pinned', direction: 'desc')
         .orderBy('updated_at', direction: 'desc')
         .get();
 
-    var chats = results.map((r) => ChatEntity.fromJson(r.toMap())).toList();
-
-    // 先按置顶排序,再按更新时间
-    chats.sort((a, b) {
-      if (a.pinned == b.pinned) {
-        return b.updatedAt.compareTo(a.updatedAt);
-      }
-      return a.pinned ? -1 : 1;
-    });
-
-    return chats;
+    return results.map((r) => ChatEntity.fromJson(r.toMap())).toList();
   }
 
   Future<ChatEntity?> getChatById(int id) async {
@@ -45,7 +36,7 @@ class ChatRepository {
     var laconic = Database.instance.laconic;
     var json = chat.toJson();
     json.remove('id');
-    // 以下三列由独立写入路径（recordTokenSnapshot）
+    // 以下三列由独立写入路径（recordUsage）
     // 管理，整行覆盖写回会回退已累加/已覆盖值；
     // 此处显式排除，与增量路径解耦。
     json.remove('token_total');
@@ -115,22 +106,12 @@ class ChatRepository {
           SELECT MAX(id) FROM messages m2 WHERE m2.chat_id = m1.chat_id
         )
       ) m ON c.id = m.chat_id
-      ORDER BY c.updated_at DESC
+      ORDER BY c.pinned DESC, c.updated_at DESC
     ''';
 
     var results = await laconic.select(sql);
-    var histories = results
+    return results
         .map((r) => ChatHistoryEntity.fromJson(r.toMap()))
         .toList();
-
-    // 按置顶和更新时间排序
-    histories.sort((a, b) {
-      if (a.chat.pinned == b.chat.pinned) {
-        return b.chat.updatedAt.compareTo(a.chat.updatedAt);
-      }
-      return a.chat.pinned ? -1 : 1;
-    });
-
-    return histories;
   }
 }
