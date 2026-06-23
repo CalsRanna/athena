@@ -229,6 +229,7 @@ class DI {
         renameDelegate: getIt<ChatRenameDelegate>(),
         supportService: getIt<ChatSupportService>(),
         messageRepo: getIt<MessageRepository>(),
+        modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
         modelViewModel: getIt<ModelViewModel>(),
         sentinelViewModel: getIt<SentinelViewModel>(),
