@@ -50,7 +50,7 @@ lib/
 ├── widget/                      # 通用组件（20+ 组件，含设计系统）
 ├── component/                   # 业务组件（消息列表项、工具卡片、翻译列表项等）
 ├── util/                        # 工具类（重试、日志、平台检测、颜色等）
-├── preset/                      # 预设数据（提示词、提供商、Sentinel）
+├── preset/                      # 预设提示词模板（运行时使用，非 DB 种子数据）
 ├── extension/                   # Dart 扩展方法
 └── model/                       # 普通数据类（ActionSuggestion、Shortcut）
 ```
@@ -568,7 +568,7 @@ PlatformUtil.isWindows  // 特定平台
 
 8. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
 
-9. **预设数据不重复插入**：通过 `migrations` 表中的 marker 记录（`preset_providers_v1`、`preset_sentinels_v1`）
+9. **预设数据完全走 migration 机制**：首次安装由 `migration_202606240005_seed_presets` 插入初始数据（provider/model/sentinel）；后续每次修改预设数据都新增一条幂等 migration，不再使用独立的 preset 数据文件
 
 10. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false` / `isDismissible: false`
 
@@ -596,6 +596,19 @@ PlatformUtil.isWindows  // 特定平台
 1. 创建 Service 类，通过构造函数注入依赖的 Repository
 2. 在 `lib/di.dart` 中注册为 LazySingleton
 3. 如需在 ViewModel 中使用，在 ViewModel 构造函数中注入
+
+### 修改预设数据（Provider / Model / Sentinel）
+
+1. 修改数据（新增模型、更新定价/上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
+2. 创建数据库迁移 `lib/database/migration/migration_YYYYMMDD001_xxx.dart`
+3. 在 `lib/database/database.dart` 的 `_migrate()` 中注册迁移（**排在 seed migration 之后**）
+4. 迁移规则：
+   - **幂等**：INSERT 使用 `WHERE NOT EXISTS` 防重复；UPDATE 无条件执行
+   - **不删除**：废弃 preset 条目时用 `UPDATE ... SET is_preset = 0`，保留数据供已有 chat 引用
+   - **保留用户字段**：provider 的 `api_key`、`enabled` 不覆盖
+   - **模型关联**：新增模型时通过 provider name 查找正确的 `provider_id`
+5. 无论新安装还是老用户升级，迁移都必须能正确处理（幂等保证）
+6. 添加单元测试 `test/database/migration/xxx_test.dart`
 
 ### 修改设计系统组件
 

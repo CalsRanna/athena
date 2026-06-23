@@ -16,11 +16,7 @@ import 'package:athena/database/migration/migration_202606240001_context_window_
 import 'package:athena/database/migration/migration_202606240002_add_chat_token_snapshots.dart';
 import 'package:athena/database/migration/migration_202606240003_rename_context_to_retention.dart';
 import 'package:athena/database/migration/migration_202606240004_add_compacted_to_messages.dart';
-import 'package:athena/entity/model_entity.dart';
-import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/entity/sentinel_entity.dart';
-import 'package:athena/preset/provider.dart';
-import 'package:athena/preset/sentinel.dart';
+import 'package:athena/database/migration/migration_202606240005_seed_presets.dart';
 import 'package:athena/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -42,9 +38,6 @@ class Database {
     SELECT name FROM sqlite_master
     WHERE type='table' AND name='migrations';
   ''';
-
-  static const _presetProvidersMarker = 'preset_providers_v1';
-  static const _presetSentinelsMarker = 'preset_sentinels_v1';
 
   Database._internal();
 
@@ -68,7 +61,6 @@ class Database {
     await _migrate();
     // 启用外键级联，必须在所有迁移（含孤儿清理）完成之后
     await laconic.statement('PRAGMA foreign_keys = ON');
-    await _preset();
   }
 
   Future<void> _migrate() async {
@@ -93,102 +85,7 @@ class Database {
     await Migration202606240002AddChatTokenSnapshots().migrate();
     await Migration202606240003RenameContextToRetention().migrate();
     await Migration202606240004AddCompactedToMessages().migrate();
-  }
-
-  Future<void> _preset() async {
-    await _presetSentinel();
-    await _presetProviders();
-  }
-
-  Future<void> _presetProviders() async {
-    var done = await laconic
-        .table('migrations')
-        .where('name', _presetProvidersMarker)
-        .count();
-    if (done > 0) return;
-
-    await laconic.transaction(() async {
-      var now = DateTime.now();
-      var providers = PresetProvider.providers;
-
-      for (var providerData in providers) {
-        var provider = ProviderEntity(
-          name: providerData['name'] as String,
-          baseUrl: providerData['base_url'] as String,
-          apiKey: providerData['api_key'] as String,
-          enabled: false,
-          isPreset: providerData['is_preset'] as bool,
-          createdAt: now,
-        );
-
-        var providerJson = provider.toJson();
-        providerJson.remove('id');
-        var providerId = await laconic
-            .table('providers')
-            .insertGetId(providerJson);
-
-        var models = providerData['models'] as List<Map<String, dynamic>>;
-        var modelJsonList = <Map<String, dynamic>>[];
-
-        for (var modelData in models) {
-          var model = ModelEntity(
-            name: modelData['name'] as String,
-            modelId: modelData['model_id'] as String,
-            providerId: providerId,
-            contextWindow: modelData['context_window'] as int,
-            inputPrice: modelData['input_price'] as String,
-            outputPrice: modelData['output_price'] as String,
-            releasedAt: modelData['released_at'] as String,
-            reasoning: modelData['reasoning'] as bool,
-            vision: modelData['vision'] as bool,
-            isPreset: true,
-            createdAt: now,
-            updatedAt: now,
-          );
-
-          var modelJson = model.toJson();
-          modelJson.remove('id');
-          modelJsonList.add(modelJson);
-        }
-
-        if (modelJsonList.isNotEmpty) {
-          await laconic.table('models').insert(modelJsonList);
-        }
-      }
-
-      await laconic.table('migrations').insert([
-        {'name': _presetProvidersMarker},
-      ]);
-    });
-  }
-
-  Future<void> _presetSentinel() async {
-    var done = await laconic
-        .table('migrations')
-        .where('name', _presetSentinelsMarker)
-        .count();
-    if (done > 0) return;
-
-    await laconic.transaction(() async {
-      var preset = PresetSentinel.defaultPresetSentinel;
-
-      var sentinel = SentinelEntity(
-        name: preset['name'] as String,
-        avatar: preset['avatar'] as String,
-        description: preset['description'] as String,
-        prompt: preset['prompt'] as String,
-        tags: preset['tags'] as String,
-        isPreset: true,
-      );
-
-      var json = sentinel.toJson();
-      json.remove('id');
-      await laconic.table('sentinels').insert([json]);
-
-      await laconic.table('migrations').insert([
-        {'name': _presetSentinelsMarker},
-      ]);
-    });
+    await Migration202606240005SeedPresets().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设
@@ -206,6 +103,5 @@ class Database {
 
     await _migrate();
     await laconic.statement('PRAGMA foreign_keys = ON');
-    await _preset();
   }
 }
