@@ -57,10 +57,10 @@ class SettingViewModel {
   final maxRetries = signal(10);
   final braveApiKey = signal('');
 
-  late final ModelRepository _modelRepository;
-  late final ProviderRepository _providerRepository;
-  late final LlmClient _llmClient;
-  late final DataMigrationService _dataMigrationService;
+  final ModelRepository _modelRepository;
+  final ProviderRepository _providerRepository;
+  final LlmClient _llmClient;
+  final DataMigrationService _dataMigrationService;
 
   SettingViewModel({
     required ModelRepository modelRepository,

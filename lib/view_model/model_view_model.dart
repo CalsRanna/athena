@@ -18,9 +18,9 @@ class ConnectionCheckResult {
 }
 
 class ModelViewModel {
-  late final ModelRepository _repository;
-  late final ProviderRepository _providerRepository;
-  late final ChatService _chatService;
+  final ModelRepository _repository;
+  final ProviderRepository _providerRepository;
+  final ChatService _chatService;
 
   ModelViewModel({
     required ModelRepository repository,

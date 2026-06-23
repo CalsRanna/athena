@@ -6,8 +6,8 @@ import 'package:athena/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {
-  late final ProviderRepository _repository;
-  late final ModelViewModel _modelViewModel;
+  final ProviderRepository _repository;
+  final ModelViewModel _modelViewModel;
 
   ProviderViewModel({
     required ProviderRepository repository,
