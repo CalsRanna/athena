@@ -5,6 +5,7 @@ import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/summary_service.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/view_model/setting_view_model.dart';
@@ -57,9 +58,13 @@ void main() {
       SettingViewModel(
         modelRepository: _FakeModelRepository(),
         providerRepository: _FakeProviderRepository(),
-        sentinelRepository: SentinelRepository(),
-        chatRepository: ChatRepository(),
         llmClient: LlmClient(),
+        dataMigrationService: DataMigrationService(
+          providerRepo: _FakeProviderRepository(),
+          modelRepo: _FakeModelRepository(),
+          sentinelRepo: SentinelRepository(),
+          chatRepo: ChatRepository(),
+        ),
       ),
     );
   });

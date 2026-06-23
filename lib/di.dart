@@ -29,6 +29,7 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
@@ -105,9 +106,8 @@ class DI {
       () => SettingViewModel(
         modelRepository: getIt<ModelRepository>(),
         providerRepository: getIt<ProviderRepository>(),
-        sentinelRepository: getIt<SentinelRepository>(),
-        chatRepository: getIt<ChatRepository>(),
         llmClient: getIt<LlmClient>(),
+        dataMigrationService: getIt<DataMigrationService>(),
       ),
     );
 
@@ -285,6 +285,15 @@ class DI {
     );
     getIt.registerLazySingleton(
       () => TRPGService(llmClient: getIt<LlmClient>()),
+    );
+
+    getIt.registerLazySingleton(
+      () => DataMigrationService(
+        providerRepo: getIt<ProviderRepository>(),
+        modelRepo: getIt<ModelRepository>(),
+        sentinelRepo: getIt<SentinelRepository>(),
+        chatRepo: getIt<ChatRepository>(),
+      ),
     );
   }
 }

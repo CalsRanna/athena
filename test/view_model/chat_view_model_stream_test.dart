@@ -22,6 +22,7 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -328,9 +329,13 @@ void main() {
       SettingViewModel(
         modelRepository: _FakeModelRepository(),
         providerRepository: ProviderRepositoryStub(),
-        sentinelRepository: _FakeSentinelRepository(),
-        chatRepository: ChatRepository(),
         llmClient: getIt<LlmClient>(),
+        dataMigrationService: DataMigrationService(
+          providerRepo: ProviderRepositoryStub(),
+          modelRepo: _FakeModelRepository(),
+          sentinelRepo: _FakeSentinelRepository(),
+          chatRepo: ChatRepository(),
+        ),
       ),
     );
     getIt.registerSingleton<ModelViewModel>(

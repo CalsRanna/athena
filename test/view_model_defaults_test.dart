@@ -14,6 +14,7 @@ import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -106,9 +107,13 @@ void main() {
           settingViewModel: SettingViewModel(
             modelRepository: ModelRepository(),
             providerRepository: ProviderRepository(),
-            sentinelRepository: SentinelRepository(),
-            chatRepository: ChatRepository(),
             llmClient: LlmClient(),
+            dataMigrationService: DataMigrationService(
+              providerRepo: ProviderRepository(),
+              modelRepo: ModelRepository(),
+              sentinelRepo: SentinelRepository(),
+              chatRepo: ChatRepository(),
+            ),
           ),
           permissionService: PermissionService(store: PermissionStore()),
           skillRegistry: SkillRegistry(),
@@ -123,9 +128,13 @@ void main() {
         settingViewModel: SettingViewModel(
           modelRepository: ModelRepository(),
           providerRepository: ProviderRepository(),
-          sentinelRepository: SentinelRepository(),
-          chatRepository: ChatRepository(),
           llmClient: LlmClient(),
+          dataMigrationService: DataMigrationService(
+            providerRepo: ProviderRepository(),
+            modelRepo: ModelRepository(),
+            sentinelRepo: SentinelRepository(),
+            chatRepo: ChatRepository(),
+          ),
         ),
         modelViewModel: ModelViewModel(
           repository: ModelRepository(),
