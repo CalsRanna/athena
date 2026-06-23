@@ -6,6 +6,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/summary_service.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/summary_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,8 +70,10 @@ void main() {
 
   SummaryViewModel buildViewModel() => SummaryViewModel(
         service: SummaryService(llmClient: LlmClient()),
-        modelRepository: _FakeModelRepository(),
-        providerRepository: _FakeProviderRepository(),
+        modelResolver: ModelResolver(
+          modelRepo: _FakeModelRepository(),
+          providerRepo: _FakeProviderRepository(),
+        ),
         settingViewModel: GetIt.instance<SettingViewModel>(),
       );
 
