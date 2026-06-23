@@ -16,6 +16,7 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/token_usage_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -127,6 +128,10 @@ void main() {
         ),
         supportService: supportService,
         messageRepo: MessageRepository(),
+        modelResolver: ModelResolver(
+          modelRepo: ModelRepository(),
+          providerRepo: ProviderRepository(),
+        ),
         settingViewModel: SettingViewModel(
           modelRepository: ModelRepository(),
           providerRepository: ProviderRepository(),

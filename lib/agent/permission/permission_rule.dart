@@ -61,7 +61,7 @@ class PermissionRule {
         .replaceAll('.', r'\.')
         .replaceAll('*', r'[___STAR___]')
         .replaceAll('?', r'[___QM___]')
-        .replaceAll('[___STAR___]', '.*')
+        .replaceAll('[___STAR___]', r'[^/]*')
         .replaceAll('[___QM___]', '.');
     return RegExp('^$escaped\$').hasMatch(value);
   }
