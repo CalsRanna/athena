@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/message_entity.dart';
@@ -8,10 +8,10 @@ import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
 import 'package:athena/entity/sentinel_entity.dart';
 import 'package:athena/model/token_usage.dart';
+import 'package:athena/repository/message_repository.dart';
+import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena/view_model/delegate/chat_config_delegate.dart';
-import 'package:athena/view_model/delegate/chat_list_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/delegate/chat_selection_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
@@ -21,18 +21,18 @@ import 'package:signals/signals.dart';
 
 /// ChatViewModel 负责聊天会话的业务逻辑。
 ///
-/// 持有全部 UI 状态（Signal），将内聚的业务逻辑委托给各个 Delegate。
-/// ChatViewModel 本身只做跨委托编排和 Signal 写入。
+/// 持有全部 UI 状态（Signal），直接调用 Service/Repository 完成简单操作，
+/// 将复杂的流式 Agent 交互委托给 [AgentStreamDelegate]（通过 Stream 事件通信）。
 class ChatViewModel {
   static const int defaultDraftRetention = -1;
   static const double defaultDraftTemperature = 1.0;
 
-  final ChatListDelegate _list;
-  final ChatConfigDelegate _config;
+  final ChatManageService _manageService;
   final AgentStreamDelegate _stream;
   final ChatRenameDelegate _rename;
   final ChatSelectionDelegate _selection;
   final ChatSupportService _supportService;
+  final MessageRepository _messageRepo;
   final SettingViewModel _settingViewModel;
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
@@ -55,7 +55,6 @@ class ChatViewModel {
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
-  // 当前会话累计的 token 总量（所有轮次加总）。会话切换 / 新建时重置。
   final cumulativeTokenTotal = signal(0);
   final pendingImages = listSignal<String>([]);
 
@@ -79,10 +78,7 @@ class ChatViewModel {
 
   // ─── 内部辅助 ───
 
-  void _updateChatInLists(
-    ChatEntity updated, {
-    void Function()? onCurrentChatUpdated,
-  }) {
+  void _updateChatInLists(ChatEntity updated) {
     final idx = chats.value.indexWhere((c) => c.id == updated.id);
     if (idx >= 0) {
       final copy = List<ChatEntity>.from(chats.value);
@@ -90,8 +86,7 @@ class ChatViewModel {
       chats.value = copy;
     }
 
-    final hIdx = chatHistories.value
-        .indexWhere((h) => h.chat.id == updated.id);
+    final hIdx = chatHistories.value.indexWhere((h) => h.chat.id == updated.id);
     if (hIdx >= 0) {
       final copy = List<ChatHistoryEntity>.from(chatHistories.value);
       copy[hIdx] = ChatHistoryEntity(
@@ -103,7 +98,6 @@ class ChatViewModel {
 
     if (currentChat.value?.id == updated.id) {
       currentChat.value = updated;
-      onCurrentChatUpdated?.call();
     }
   }
 
@@ -117,21 +111,21 @@ class ChatViewModel {
   }
 
   ChatViewModel({
-    required ChatListDelegate listDelegate,
-    required ChatConfigDelegate configDelegate,
+    required ChatManageService manageService,
     required AgentStreamDelegate streamDelegate,
     required ChatRenameDelegate renameDelegate,
     ChatSelectionDelegate? selectionDelegate,
     required ChatSupportService supportService,
+    required MessageRepository messageRepo,
     required SettingViewModel settingViewModel,
     required ModelViewModel modelViewModel,
     required SentinelViewModel sentinelViewModel,
-  })  : _list = listDelegate,
-        _config = configDelegate,
+  })  : _manageService = manageService,
         _stream = streamDelegate,
         _rename = renameDelegate,
         _selection = selectionDelegate ?? ChatSelectionDelegate(),
         _supportService = supportService,
+        _messageRepo = messageRepo,
         _settingViewModel = settingViewModel,
         _modelViewModel = modelViewModel,
         _sentinelViewModel = sentinelViewModel;
@@ -142,11 +136,10 @@ class ChatViewModel {
 
   Future<void> getChats() async {
     isLoading.value = true;
-    error.value = null;
     try {
-      final result = await _list.load();
-      chats.value = result.chats;
-      chatHistories.value = result.histories;
+      final (chatsList, histories) = await _manageService.getChats();
+      chats.value = chatsList;
+      chatHistories.value = histories;
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -161,13 +154,13 @@ class ChatViewModel {
   }
 
   Future<void> initSignals() async {
-    final result = await _list.load();
-    chats.value = result.chats;
-    chatHistories.value = result.histories;
+    final (chatsList, histories) = await _manageService.getChats();
+    chats.value = chatsList;
+    chatHistories.value = histories;
     currentChat.value = chats.value.firstOrNull;
 
     if (currentChat.value != null) {
-      final selected = await _list.select(chat: currentChat.value!);
+      final selected = await _manageService.selectChat(currentChat.value!);
       messages.value = selected.messages;
       currentModel.value = selected.model;
       currentProvider.value = selected.provider;
@@ -184,35 +177,52 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      final result = await _list.create(
-        modelViewModel: _modelViewModel,
-        sentinelViewModel: _sentinelViewModel,
-        settingViewModel: _settingViewModel,
+      final model = await _modelViewModel.resolveDefaultModel(
+        _settingViewModel.chatModelId.value,
       );
-      if (result == null) {
+      if (model == null) {
         error.value = 'Failed to create chat';
         return null;
       }
+
+      final provider = await _supportService.getProviderForModel(model.providerId);
+      if (provider == null) {
+        error.value = 'Failed to create chat';
+        return null;
+      }
+
+      if (_sentinelViewModel.sentinels.value.isEmpty) {
+        await _sentinelViewModel.getSentinels();
+      }
+      final sentinel = _sentinelViewModel.defaultSentinel.value;
+
+      final chat = await _manageService.createChat(
+        model: model,
+        sentinel: sentinel,
+        retention: defaultDraftRetention,
+        temperature: defaultDraftTemperature,
+      );
+
       currentTokenUsage.value = null;
       cumulativeTokenTotal.value = 0;
 
       final pinned = chats.value.where((c) => c.pinned).toList();
       final unpinned = chats.value.where((c) => !c.pinned).toList();
-      chats.value = [...pinned, result.chat, ...unpinned];
+      chats.value = [...pinned, chat, ...unpinned];
 
-      currentChat.value = result.chat;
-      currentModel.value = result.model;
-      currentProvider.value = result.provider;
-      currentSentinel.value = result.sentinel;
-      currentRetention.value = result.chat.retention;
-      currentTemperature.value = result.chat.temperature;
+      currentChat.value = chat;
+      currentModel.value = model;
+      currentProvider.value = provider;
+      currentSentinel.value = sentinel;
+      currentRetention.value = chat.retention;
+      currentTemperature.value = chat.temperature;
       pendingImages.value = [];
       messages.value = [];
 
       clearSelection();
       _selection.lastSelectedIndex.value = pinned.length;
 
-      return result.chat;
+      return chat;
     } catch (e) {
       error.value = e.toString();
       return null;
@@ -232,12 +242,11 @@ class ChatViewModel {
       }
       _rename.cancel(chat.id!);
 
-      await _list.remove(chat: chat);
+      await _manageService.deleteChat(chat.id!);
 
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
-      chatHistories.value = chatHistories.value
-          .where((h) => h.chat.id != chat.id)
-          .toList();
+      chatHistories.value =
+          chatHistories.value.where((h) => h.chat.id != chat.id).toList();
 
       if (currentChat.value?.id == chat.id) {
         await _selectFirstChatOrClear();
@@ -266,15 +275,13 @@ class ChatViewModel {
         _rename.cancel(id);
       }
 
-      await _list.removeAll(chats: chatsToDelete);
+      await _manageService.deleteChats(ids);
 
       chats.value = chats.value.where((c) => !ids.contains(c.id)).toList();
-      chatHistories.value = chatHistories.value
-          .where((h) => !ids.contains(h.chat.id))
-          .toList();
+      chatHistories.value =
+          chatHistories.value.where((h) => !ids.contains(h.chat.id)).toList();
 
-      if (currentChat.value != null &&
-          ids.contains(currentChat.value!.id)) {
+      if (currentChat.value != null && ids.contains(currentChat.value!.id)) {
         await _selectFirstChatOrClear();
       }
     } catch (e) {
@@ -287,7 +294,7 @@ class ChatViewModel {
   Future<void> _selectFirstChatOrClear() async {
     if (chats.value.isNotEmpty) {
       final first = chats.value.first;
-      final result = await _list.select(chat: first);
+      final result = await _manageService.selectChat(first);
       currentChat.value = first;
       messages.value = result.messages;
       currentModel.value = result.model;
@@ -311,7 +318,7 @@ class ChatViewModel {
 
     currentChat.value = chat;
 
-    final result = await _list.select(chat: chat);
+    final result = await _manageService.selectChat(chat);
     messages.value = result.messages;
     currentModel.value = result.model;
     currentProvider.value = result.provider;
@@ -326,7 +333,7 @@ class ChatViewModel {
   Future<void> togglePin(ChatEntity chat) async {
     error.value = null;
     try {
-      await _list.togglePin(chat: chat);
+      await _manageService.togglePin(chat);
       await getChats();
     } catch (e) {
       error.value = e.toString();
@@ -345,71 +352,53 @@ class ChatViewModel {
   // 会话参数操作
   // ═══════════════════════════════════════════════════════════════
 
-  Future<void> updateModel(
-    ModelEntity model, {
-    required ChatEntity chat,
-  }) async {
+  Future<void> updateModel(ModelEntity model, {required ChatEntity chat}) async {
     error.value = null;
     try {
-      final updated = await _config.updateModel(model: model, chat: chat);
-      _updateChatInLists(updated, onCurrentChatUpdated: () async {
-        currentModel.value = model;
-        currentProvider.value = await _config.resolveProvider(model: model);
-      });
+      final updated =
+          await _supportService.updateModel(chat, model.id!);
+      _updateChatInLists(updated);
+      currentModel.value = model;
+      currentProvider.value =
+          await _supportService.getProviderForModel(model.providerId);
     } catch (e) {
       error.value = e.toString();
     }
   }
 
   Future<void> updateSentinel(
-    SentinelEntity sentinel, {
-    required ChatEntity chat,
-  }) async {
+      SentinelEntity sentinel, {required ChatEntity chat}) async {
     error.value = null;
     try {
-      final updated = await _config.updateSentinel(
-        sentinel: sentinel,
-        chat: chat,
-      );
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentSentinel.value = sentinel;
-      });
+      final updated =
+          await _supportService.updateSentinel(chat, sentinel.id!);
+      _updateChatInLists(updated);
+      currentSentinel.value = sentinel;
     } catch (e) {
       error.value = e.toString();
     }
   }
 
-  Future<void> updateRetention(
-    int retention, {
-    required ChatEntity chat,
-  }) async {
+  Future<void> updateRetention(int retention, {required ChatEntity chat}) async {
     error.value = null;
     try {
-      final updated = await _config.updateRetention(
-        retention: retention,
-        chat: chat,
-      );
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentRetention.value = updated.retention;
-      });
+      final updated =
+          await _supportService.updateRetention(chat, retention);
+      _updateChatInLists(updated);
+      currentRetention.value = updated.retention;
     } catch (e) {
       error.value = e.toString();
     }
   }
 
   Future<void> updateTemperature(
-    double temperature, {
-    required ChatEntity chat,
-  }) async {
+      double temperature, {required ChatEntity chat}) async {
     error.value = null;
     try {
-      final updated = await _config.updateTemperature(
-        temperature: temperature,
-        chat: chat,
-      );
-      _updateChatInLists(updated, onCurrentChatUpdated: () {
-        currentTemperature.value = updated.temperature;
-      });
+      final updated =
+          await _supportService.updateTemperature(chat, temperature);
+      _updateChatInLists(updated);
+      currentTemperature.value = updated.temperature;
     } catch (e) {
       error.value = e.toString();
     }
@@ -417,13 +406,8 @@ class ChatViewModel {
 
   Future<void> updateExpanded(MessageEntity message) async {
     try {
-      final updated = await _config.updateExpanded(message: message);
-      final index = messages.value.indexWhere((m) => m.id == message.id);
-      if (index >= 0) {
-        final copy = List<MessageEntity>.from(messages.value);
-        copy[index] = updated;
-        messages.value = copy;
-      }
+      final updated = await _supportService.updateExpanded(message);
+      _updateMessageInList(updated);
     } catch (e) {
       error.value = e.toString();
     }
@@ -431,7 +415,8 @@ class ChatViewModel {
 
   Future<void> updateCurrentModel(ModelEntity model) async {
     currentModel.value = model;
-    currentProvider.value = await _config.resolveProvider(model: model);
+    currentProvider.value =
+        await _supportService.getProviderForModel(model.providerId);
   }
 
   void updateCurrentSentinel(SentinelEntity sentinel) {
@@ -460,32 +445,34 @@ class ChatViewModel {
     currentTokenUsage.value = null;
 
     try {
-      await _stream.send(
-        message: message,
-        chat: chat,
-        onUserMessageStored: (m) {
-          messages.value = [...messages.value, m];
-        },
-        onAssistantAppended: (m) {
-          messages.value = [...messages.value, m];
-        },
-        onMessageUpdated: (m) => _updateMessageInList(m),
-        onIterationChanged: (i) => currentIteration.value = i,
-        onToolNameChanged: (n) => currentToolName.value = n,
-        onListReload: () => getChats(),
-        onAutoRename: () => renameChat(chat),
-        onUsageChanged: (u, updatedChat) async {
-          // 仅当仍处于当前会话才更新累计：避免流式期间新建会话被旧 chat
-          // 的迟到 usage 事件污染。
-          if (updatedChat.id != currentChat.value?.id) return;
-          currentTokenUsage.value = u;
-          // 让持久化值成为权威累加值（避免多轮重复加 delta）。
-          cumulativeTokenTotal.value = updatedChat.tokenTotal;
-          _updateChatInLists(updatedChat);
-        },
-      );
-    } on CancelledException {
-      // 已生成内容在 AgentStreamDelegate 内部保留并标记
+      final eventStream = _stream.send(message: message, chat: chat);
+      await for (final event in eventStream) {
+        switch (event) {
+          case StreamMessageStored(:final message):
+            messages.value = [...messages.value, message];
+          case StreamAssistantAppended(:final message):
+            messages.value = [...messages.value, message];
+          case StreamMessageUpdated(:final message):
+            _updateMessageInList(message);
+          case StreamIterationChanged(:final iteration):
+            currentIteration.value = iteration;
+          case StreamToolNameChanged(:final toolName):
+            currentToolName.value = toolName;
+          case StreamUsageChanged(:final usage, :final chat):
+            if (chat.id == currentChat.value?.id) {
+              currentTokenUsage.value = usage;
+              cumulativeTokenTotal.value = chat.tokenTotal;
+              _updateChatInLists(chat);
+            }
+          case StreamAutoRename():
+            unawaited(renameChat(chat));
+          case StreamListReload():
+            unawaited(getChats());
+          case StreamError(:final message):
+            print("[DEBUG] sendMessage StreamError: $message");
+            error.value = message;
+        }
+      }
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -503,11 +490,12 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      await _stream.deleteMessage(
-        message: message,
-        currentMessages: messages.value,
-        onMessagesChanged: (updated) => messages.value = updated,
-      );
+      final index =
+          messages.value.indexWhere((item) => item.id == message.id);
+      if (index >= 0) {
+        await _manageService.deleteMessagesFromIndex(messages.value, index);
+        messages.value = await _messageRepo.getMessagesByChatId(message.chatId);
+      }
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -516,10 +504,7 @@ class ChatViewModel {
   }
 
   Future<void> refreshMessages(int chatId) async {
-    await _stream.refreshMessages(
-      chatId: chatId,
-      onMessagesChanged: (updated) => messages.value = updated,
-    );
+    messages.value = await _messageRepo.getMessagesByChatId(chatId);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -559,10 +544,7 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      final updated = await _rename.renameManually(
-        chat: chat,
-        title: title,
-      );
+      final updated = await _supportService.renameChatManually(chat, title);
       _updateChatInLists(updated);
     } catch (e) {
       error.value = e.toString();
@@ -623,8 +605,8 @@ class ChatViewModel {
       await _modelViewModel.loadEnabledModels();
       currentModel.value = _modelViewModel.enabledModels.value.firstOrNull;
       if (currentModel.value != null) {
-        currentProvider.value = await _config.resolveProvider(
-          model: currentModel.value!,
+        currentProvider.value = await _supportService.getProviderForModel(
+          currentModel.value!.providerId,
         );
       }
     }

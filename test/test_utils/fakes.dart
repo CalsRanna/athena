@@ -23,8 +23,6 @@ import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena/view_model/delegate/chat_config_delegate.dart';
-import 'package:athena/view_model/delegate/chat_list_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/provider_view_model.dart';
@@ -102,21 +100,10 @@ void setupMobileTestDI() {
   );
 
   // ViewModel Delegates
-  getIt.registerSingleton<ChatConfigDelegate>(
-    ChatConfigDelegate(supportService: getIt<ChatSupportService>()),
-  );
-
   getIt.registerSingleton<ChatRenameDelegate>(
     ChatRenameDelegate(
       messageRepo: getIt<MessageRepository>(),
       modelRepo: getIt<ModelRepository>(),
-      supportService: getIt<ChatSupportService>(),
-    ),
-  );
-
-  getIt.registerSingleton<ChatListDelegate>(
-    ChatListDelegate(
-      manageService: getIt<ChatManageService>(),
       supportService: getIt<ChatSupportService>(),
     ),
   );
@@ -174,11 +161,11 @@ void setupMobileTestDI() {
 
   getIt.registerSingleton<ChatViewModel>(
     ChatViewModel(
-      listDelegate: getIt<ChatListDelegate>(),
-      configDelegate: getIt<ChatConfigDelegate>(),
+      manageService: getIt<ChatManageService>(),
       streamDelegate: getIt<AgentStreamDelegate>(),
       renameDelegate: getIt<ChatRenameDelegate>(),
       supportService: getIt<ChatSupportService>(),
+      messageRepo: getIt<MessageRepository>(),
       settingViewModel: getIt<SettingViewModel>(),
       modelViewModel: getIt<ModelViewModel>(),
       sentinelViewModel: getIt<SentinelViewModel>(),

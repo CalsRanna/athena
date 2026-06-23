@@ -7,6 +7,7 @@ import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
+import 'package:athena/entity/chat_history_entity.dart';
 import 'package:athena/entity/message_entity.dart';
 import 'package:athena/entity/model_entity.dart';
 import 'package:athena/model/token_usage.dart';
@@ -25,8 +26,6 @@ import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena/view_model/delegate/chat_config_delegate.dart';
-import 'package:athena/view_model/delegate/chat_list_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -76,6 +75,10 @@ class _RecordingManageService extends ChatManageService {
   Future<void> updateChatTimestamp(ChatEntity chat) async {}
 
   @override
+  Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async =>
+      (<ChatEntity>[], <ChatHistoryEntity>[]);
+
+  @override
   Future<void> deleteChat(int chatId) async {
     deleteChatCalled = true;
     events.add('delete');
@@ -111,7 +114,9 @@ class _NoopMessageRepository extends MessageRepository {
   @override
   Future<int> storeMessage(MessageEntity message) async => _nextId++;
   @override
-  Future<void> updateMessage(MessageEntity message) async {}
+  Future<void> updateMessage(MessageEntity message) async {
+    // ignore: avoid_print
+  }
   @override
   Future<void> markAsCompacted(Set<int> ids) async {}
   @override
@@ -282,11 +287,7 @@ ChatViewModel _buildViewModel({
   final svc = support ?? _FakeSupportService();
   final messages = messageService ?? _FakeChatMessageService();
   return ChatViewModel(
-    listDelegate: ChatListDelegate(
-      manageService: manage,
-      supportService: svc,
-    ),
-    configDelegate: ChatConfigDelegate(supportService: svc),
+    manageService: manage,
     streamDelegate: AgentStreamDelegate(
       agentService: agent,
       manageService: manage,
@@ -306,6 +307,7 @@ ChatViewModel _buildViewModel({
       supportService: svc,
     ),
     supportService: svc,
+    messageRepo: _NoopMessageRepository(),
     settingViewModel: GetIt.instance<SettingViewModel>(),
     modelViewModel: GetIt.instance<ModelViewModel>(),
     sentinelViewModel: GetIt.instance<SentinelViewModel>(),

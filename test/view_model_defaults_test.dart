@@ -18,8 +18,6 @@ import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena/view_model/delegate/chat_config_delegate.dart';
-import 'package:athena/view_model/delegate/chat_list_delegate.dart';
 import 'package:athena/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena/view_model/model_view_model.dart';
 import 'package:athena/view_model/sentinel_view_model.dart';
@@ -76,42 +74,27 @@ void main() {
 
   group('ChatViewModel draft defaults', () {
     test('start from the shared new chat defaults', () {
-      final viewModel = ChatViewModel(
-        listDelegate: ChatListDelegate(
-          manageService: ChatManageService(
+      final manageService = ChatManageService(
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             modelRepository: ModelRepository(),
             providerRepository: ProviderRepository(),
             sentinelRepository: SentinelRepository(),
-          ),
-          supportService: ChatSupportService(
+          );
+      final supportService = ChatSupportService(
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             providerRepository: ProviderRepository(),
             chatService: ChatService(llmClient: LlmClient()),
-          ),
-        ),
-        configDelegate: ChatConfigDelegate(
-          supportService: ChatSupportService(
-            chatRepository: ChatRepository(),
-            messageRepository: MessageRepository(),
-            providerRepository: ProviderRepository(),
-            chatService: ChatService(llmClient: LlmClient()),
-          ),
-        ),
+          );
+      final viewModel = ChatViewModel(
+        manageService: manageService,
         streamDelegate: AgentStreamDelegate(
           agentService: AgentService(
             chatService: ChatService(llmClient: LlmClient()),
             toolRegistry: ToolRegistry(),
           ),
-          manageService: ChatManageService(
-            chatRepository: ChatRepository(),
-            messageRepository: MessageRepository(),
-            modelRepository: ModelRepository(),
-            providerRepository: ProviderRepository(),
-            sentinelRepository: SentinelRepository(),
-          ),
+          manageService: manageService,
           chatService: ChatService(llmClient: LlmClient()),
           messageService: ChatMessageService(
             messageRepository: MessageRepository(),
@@ -119,12 +102,7 @@ void main() {
           messageRepo: MessageRepository(),
           modelRepo: ModelRepository(),
           sentinelRepo: SentinelRepository(),
-          supportService: ChatSupportService(
-            chatRepository: ChatRepository(),
-            messageRepository: MessageRepository(),
-            providerRepository: ProviderRepository(),
-            chatService: ChatService(llmClient: LlmClient()),
-          ),
+          supportService: supportService,
           settingViewModel: SettingViewModel(
             modelRepository: ModelRepository(),
             providerRepository: ProviderRepository(),
@@ -138,19 +116,10 @@ void main() {
         renameDelegate: ChatRenameDelegate(
           messageRepo: MessageRepository(),
           modelRepo: ModelRepository(),
-          supportService: ChatSupportService(
-            chatRepository: ChatRepository(),
-            messageRepository: MessageRepository(),
-            providerRepository: ProviderRepository(),
-            chatService: ChatService(llmClient: LlmClient()),
-          ),
+          supportService: supportService,
         ),
-        supportService: ChatSupportService(
-          chatRepository: ChatRepository(),
-          messageRepository: MessageRepository(),
-          providerRepository: ProviderRepository(),
-          chatService: ChatService(llmClient: LlmClient()),
-        ),
+        supportService: supportService,
+        messageRepo: MessageRepository(),
         settingViewModel: SettingViewModel(
           modelRepository: ModelRepository(),
           providerRepository: ProviderRepository(),
