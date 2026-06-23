@@ -20,6 +20,7 @@ import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
+import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
 import 'package:athena/view_model/delegate/agent_stream_delegate.dart';
@@ -51,6 +52,15 @@ void setupMobileTestDI() {
 
   // Services
   getIt.registerSingleton<LlmClient>(LlmClient());
+
+  getIt.registerSingleton<DataMigrationService>(
+    DataMigrationService(
+      providerRepo: getIt<ProviderRepository>(),
+      modelRepo: getIt<ModelRepository>(),
+      sentinelRepo: getIt<SentinelRepository>(),
+      chatRepo: getIt<ChatRepository>(),
+    ),
+  );
 
   getIt.registerSingleton<ChatService>(
     ChatService(llmClient: getIt<LlmClient>()),
@@ -129,9 +139,8 @@ void setupMobileTestDI() {
     SettingViewModel(
       modelRepository: getIt<ModelRepository>(),
       providerRepository: getIt<ProviderRepository>(),
-      sentinelRepository: getIt<SentinelRepository>(),
-      chatRepository: getIt<ChatRepository>(),
       llmClient: getIt<LlmClient>(),
+      dataMigrationService: getIt<DataMigrationService>(),
     ),
   );
 
