@@ -30,20 +30,13 @@ class Migration202606240006UpdateDeepSeekModels {
         "SELECT id FROM providers WHERE name = 'Deep Seek' AND is_preset = 1",
       );
       if (rows.isEmpty) {
-        LoggerUtil.i(
-          'Migration $name: Deep Seek provider not found, skipping',
-        );
-        await laconic.table('migrations').insert([{'name': name}]);
+        LoggerUtil.i('Migration $name: Deep Seek provider not found, skipping');
+        await laconic.table('migrations').insert([
+          {'name': name},
+        ]);
         return;
       }
       var providerId = rows.first.toMap()['id'] as int;
-
-      // 2. 更新 base_url
-      await laconic.statement(
-        "UPDATE providers SET base_url = 'https://api.deepseek.com' WHERE id = ?",
-        [providerId],
-      );
-      LoggerUtil.i('Migration $name: updated base_url');
 
       // 3. 插入新模型（幂等：先查后插）
       var now = DateTime.now().millisecondsSinceEpoch;
@@ -110,7 +103,9 @@ class Migration202606240006UpdateDeepSeekModels {
         );
       }
 
-      await laconic.table('migrations').insert([{'name': name}]);
+      await laconic.table('migrations').insert([
+        {'name': name},
+      ]);
     });
   }
 
