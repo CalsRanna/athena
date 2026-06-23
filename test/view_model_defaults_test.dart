@@ -13,6 +13,7 @@ import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -41,7 +42,7 @@ void main() {
         sentinelRepository: SentinelRepository(),
         providerRepository: ProviderRepository(),
         modelRepository: ModelRepository(),
-        sentinelService: SentinelService(),
+        sentinelService: SentinelService(llmClient: LlmClient()),
       );
 
       final sentinel = viewModel.defaultSentinel.value;
@@ -55,7 +56,7 @@ void main() {
         sentinelRepository: SentinelRepository(),
         providerRepository: ProviderRepository(),
         modelRepository: ModelRepository(),
-        sentinelService: SentinelService(),
+        sentinelService: SentinelService(llmClient: LlmClient()),
       );
       final storedAthena = SentinelEntity(
         id: 2,
@@ -88,7 +89,7 @@ void main() {
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             providerRepository: ProviderRepository(),
-            chatService: ChatService(),
+            chatService: ChatService(llmClient: LlmClient()),
           ),
         ),
         configDelegate: ChatConfigDelegate(
@@ -96,12 +97,12 @@ void main() {
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             providerRepository: ProviderRepository(),
-            chatService: ChatService(),
+            chatService: ChatService(llmClient: LlmClient()),
           ),
         ),
         streamDelegate: AgentStreamDelegate(
           agentService: AgentService(
-            chatService: ChatService(),
+            chatService: ChatService(llmClient: LlmClient()),
             toolRegistry: ToolRegistry(),
           ),
           manageService: ChatManageService(
@@ -111,7 +112,7 @@ void main() {
             providerRepository: ProviderRepository(),
             sentinelRepository: SentinelRepository(),
           ),
-          chatService: ChatService(),
+          chatService: ChatService(llmClient: LlmClient()),
           messageService: ChatMessageService(
             messageRepository: MessageRepository(),
           ),
@@ -122,14 +123,14 @@ void main() {
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             providerRepository: ProviderRepository(),
-            chatService: ChatService(),
+            chatService: ChatService(llmClient: LlmClient()),
           ),
           settingViewModel: SettingViewModel(
             modelRepository: ModelRepository(),
             providerRepository: ProviderRepository(),
             sentinelRepository: SentinelRepository(),
             chatRepository: ChatRepository(),
-            chatService: ChatService(),
+            llmClient: LlmClient(),
           ),
           permissionService: PermissionService(store: PermissionStore()),
           skillRegistry: SkillRegistry(),
@@ -141,32 +142,32 @@ void main() {
             chatRepository: ChatRepository(),
             messageRepository: MessageRepository(),
             providerRepository: ProviderRepository(),
-            chatService: ChatService(),
+            chatService: ChatService(llmClient: LlmClient()),
           ),
         ),
         supportService: ChatSupportService(
           chatRepository: ChatRepository(),
           messageRepository: MessageRepository(),
           providerRepository: ProviderRepository(),
-          chatService: ChatService(),
+          chatService: ChatService(llmClient: LlmClient()),
         ),
         settingViewModel: SettingViewModel(
           modelRepository: ModelRepository(),
           providerRepository: ProviderRepository(),
           sentinelRepository: SentinelRepository(),
           chatRepository: ChatRepository(),
-          chatService: ChatService(),
+          llmClient: LlmClient(),
         ),
         modelViewModel: ModelViewModel(
           repository: ModelRepository(),
           providerRepository: ProviderRepository(),
-          chatService: ChatService(),
+          chatService: ChatService(llmClient: LlmClient()),
         ),
         sentinelViewModel: SentinelViewModel(
           sentinelRepository: SentinelRepository(),
           providerRepository: ProviderRepository(),
           modelRepository: ModelRepository(),
-          sentinelService: SentinelService(),
+          sentinelService: SentinelService(llmClient: LlmClient()),
         ),
       );
 

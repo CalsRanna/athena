@@ -20,6 +20,7 @@ import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/service/chat_manage_service.dart';
 import 'package:athena/service/chat_message_service.dart';
 import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/view_model/chat_view_model.dart';
@@ -144,7 +145,7 @@ class _FakeSupportService extends ChatSupportService {
           chatRepository: ChatRepository(),
           messageRepository: _NoopMessageRepository(),
           providerRepository: ProviderRepositoryStub(),
-          chatService: ChatService(),
+          chatService: ChatService(llmClient: LlmClient()),
         );
 
   /// 可选的伪标题流；为 null 时回退到空流。
@@ -237,7 +238,7 @@ class _FakeChatMessageService extends ChatMessageService {
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
 class _FakeAgentService extends AgentService {
   _FakeAgentService(this.stream)
-      : super(chatService: ChatService(), toolRegistry: ToolRegistry());
+      : super(chatService: ChatService(llmClient: LlmClient()), toolRegistry: ToolRegistry());
 
   final Stream<AgentEvent> stream;
 
@@ -290,7 +291,7 @@ ChatViewModel _buildViewModel({
       agentService: agent,
       manageService: manage,
       messageService: messages,
-      chatService: ChatService(),
+      chatService: ChatService(llmClient: LlmClient()),
       messageRepo: _NoopMessageRepository(),
       modelRepo: _FakeModelRepository(),
       sentinelRepo: _FakeSentinelRepository(),
@@ -314,8 +315,9 @@ ChatViewModel _buildViewModel({
 void main() {
   setUp(() {
     final getIt = GetIt.instance;
-    getIt.registerSingleton<ChatService>(ChatService());
-    getIt.registerSingleton<SentinelService>(SentinelService());
+    getIt.registerSingleton<LlmClient>(LlmClient());
+    getIt.registerSingleton<ChatService>(ChatService(llmClient: getIt<LlmClient>()));
+    getIt.registerSingleton<SentinelService>(SentinelService(llmClient: getIt<LlmClient>()));
     getIt.registerSingleton<SkillRegistry>(SkillRegistry());
     getIt.registerSingleton<PermissionService>(
       PermissionService(store: PermissionStore()),
@@ -326,7 +328,7 @@ void main() {
         providerRepository: ProviderRepositoryStub(),
         sentinelRepository: _FakeSentinelRepository(),
         chatRepository: ChatRepository(),
-        chatService: getIt<ChatService>(),
+        llmClient: getIt<LlmClient>(),
       ),
     );
     getIt.registerSingleton<ModelViewModel>(

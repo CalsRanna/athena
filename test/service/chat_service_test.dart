@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:athena/entity/chat_entity.dart';
-import 'package:athena/entity/model_entity.dart';
 import 'package:athena/entity/provider_entity.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/util/retry.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -36,22 +34,6 @@ ProviderEntity _provider() => ProviderEntity(
       baseUrl: 'https://example.test/v1',
       apiKey: 'sk-test',
       createdAt: DateTime(2024),
-    );
-
-ModelEntity _model() => ModelEntity(
-      name: 'test',
-      modelId: 'gpt-test',
-      providerId: 1,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
-    );
-
-ChatEntity _chat() => ChatEntity(
-      title: 'test',
-      modelId: 1,
-      sentinelId: 1,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
     );
 
 /// Minimal valid non-streaming chat completion JSON body.
@@ -87,6 +69,16 @@ String _sseChunk(String content) {
   return 'data: $json\n\n';
 }
 
+ChatCompletionCreateRequest _streamRequest() => ChatCompletionCreateRequest(
+      model: 'gpt-test',
+      messages: [ChatMessage.user('hi')],
+    );
+
+ChatCompletionCreateRequest _fetchRequest() => ChatCompletionCreateRequest(
+      model: 'gpt-test',
+      messages: [ChatMessage.user('hi')],
+    );
+
 void main() {
   // Use a fast retry config so failure-path tests don't wait on backoff.
   final fastRetry = const RetryConfig(
@@ -95,14 +87,13 @@ void main() {
     maxDelay: Duration.zero,
   );
 
-  test('Future method (complete) closes the client exactly once on success',
-      () async {
+  test('fetch() closes the client exactly once on success', () async {
     late _ObservableClient observed;
     final mock = MockClient((request) async {
       return http.Response(_completionBody('done'), 200,
           headers: {'content-type': 'application/json'});
     });
-    final service = ChatService(
+    final llmClient = LlmClient(
       retryConfig: fastRetry,
       clientFactory: ({required apiKey, baseUrl}) {
         observed = _ObservableClient(mock);
@@ -110,21 +101,18 @@ void main() {
       },
     );
 
-    final result = await service.complete(
-      messages: [ChatMessage.user('hi')],
+    final response = await llmClient.fetch(
       provider: _provider(),
-      model: _model(),
+      request: _fetchRequest(),
     );
 
-    expect(result, 'done');
+    expect(response.text, 'done');
     expect(observed.closeCount, 1);
   });
 
-  test('Future method (complete) closes the client when the operation throws',
-      () async {
+  test('fetch() closes the client when the operation throws', () async {
     late _ObservableClient observed;
     final mock = MockClient((request) async {
-      // Return an error status to make the resource throw an ApiException.
       return http.Response(
         jsonEncode({
           'error': {'message': 'boom', 'type': 'server_error'}
@@ -133,7 +121,7 @@ void main() {
         headers: {'content-type': 'application/json'},
       );
     });
-    final service = ChatService(
+    final llmClient = LlmClient(
       retryConfig: fastRetry,
       clientFactory: ({required apiKey, baseUrl}) {
         observed = _ObservableClient(mock);
@@ -142,11 +130,7 @@ void main() {
     );
 
     await expectLater(
-      service.complete(
-        messages: [ChatMessage.user('hi')],
-        provider: _provider(),
-        model: _model(),
-      ),
+      llmClient.fetch(provider: _provider(), request: _fetchRequest()),
       throwsA(isA<Object>()),
     );
 
@@ -154,8 +138,7 @@ void main() {
     expect(observed.closeCount, 1);
   });
 
-  test('streaming method (getCompletion) closes the client after normal drain',
-      () async {
+  test('stream() closes the client after normal drain', () async {
     late _ObservableClient observed;
     final mock = MockClient.streaming((request, bodyStream) async {
       final body = '${_sseChunk('hello')}data: [DONE]\n\n';
@@ -165,7 +148,7 @@ void main() {
         headers: {'content-type': 'text/event-stream'},
       );
     });
-    final service = ChatService(
+    final llmClient = LlmClient(
       retryConfig: fastRetry,
       clientFactory: ({required apiKey, baseUrl}) {
         observed = _ObservableClient(mock);
@@ -173,25 +156,19 @@ void main() {
       },
     );
 
-    final events = await service
-        .getCompletion(
-          chat: _chat(),
-          messages: [ChatMessage.user('hi')],
-          provider: _provider(),
-          model: _model(),
-        )
+    final events = await llmClient
+        .stream(provider: _provider(), request: _streamRequest())
         .toList();
 
     expect(events, isNotEmpty);
     expect(observed.closeCount, 1);
   });
 
-  test(
-      'streaming method (getCompletion) closes the client when subscription is '
-      'cancelled mid-stream', () async {
+  test('stream() closes the client when subscription is cancelled mid-stream',
+      () async {
     late _ObservableClient observed;
     // A controller we keep open so the stream never completes on its own; the
-    // ChatService consumer cancels mid-stream after the first chunk.
+    // consumer cancels mid-stream after the first chunk.
     final bodyController = StreamController<List<int>>();
     final mock = MockClient.streaming((request, bodyStream) async {
       return http.StreamedResponse(
@@ -200,7 +177,7 @@ void main() {
         headers: {'content-type': 'text/event-stream'},
       );
     });
-    final service = ChatService(
+    final llmClient = LlmClient(
       retryConfig: fastRetry,
       clientFactory: ({required apiKey, baseUrl}) {
         observed = _ObservableClient(mock);
@@ -210,13 +187,8 @@ void main() {
 
     final firstChunk = Completer<void>();
     late StreamSubscription sub;
-    sub = service
-        .getCompletion(
-          chat: _chat(),
-          messages: [ChatMessage.user('hi')],
-          provider: _provider(),
-          model: _model(),
-        )
+    sub = llmClient
+        .stream(provider: _provider(), request: _streamRequest())
         .listen((event) {
       if (!firstChunk.isCompleted) firstChunk.complete();
     });

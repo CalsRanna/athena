@@ -6,7 +6,7 @@ import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
 import 'package:athena/repository/trpg_game_repository.dart';
 import 'package:athena/repository/trpg_message_repository.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/service/trpg_service.dart';
 import 'package:athena/view_model/setting_view_model.dart';
 import 'package:athena/view_model/trpg_view_model.dart';
@@ -43,7 +43,7 @@ void main() {
         providerRepository: ProviderRepository(),
         sentinelRepository: SentinelRepository(),
         chatRepository: ChatRepository(),
-        chatService: ChatService(),
+        llmClient: LlmClient(),
       ),
     );
 
@@ -52,7 +52,7 @@ void main() {
       messageRepository: messageRepository,
       modelRepository: ModelRepository(),
       providerRepository: ProviderRepository(),
-      service: TRPGService(),
+      service: TRPGService(llmClient: LlmClient()),
       settingViewModel: getIt<SettingViewModel>(),
     );
 

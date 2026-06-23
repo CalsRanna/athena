@@ -12,7 +12,7 @@ import 'package:athena/repository/chat_repository.dart';
 import 'package:athena/repository/model_repository.dart';
 import 'package:athena/repository/provider_repository.dart';
 import 'package:athena/repository/sentinel_repository.dart';
-import 'package:athena/service/chat_service.dart';
+import 'package:athena/service/llm_client.dart';
 import 'package:athena/util/retry.dart';
 import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
@@ -64,7 +64,7 @@ class SettingViewModel {
   late final ModelRepository _modelRepository;
   late final ProviderRepository _providerRepository;
   late final SentinelRepository _sentinelRepository;
-  final ChatService _chatService;
+  final LlmClient _llmClient;
   final ChatRepository _chatRepository;
 
   SettingViewModel({
@@ -72,12 +72,12 @@ class SettingViewModel {
     required ProviderRepository providerRepository,
     required SentinelRepository sentinelRepository,
     required ChatRepository chatRepository,
-    required ChatService chatService,
+    required LlmClient llmClient,
   }) : _modelRepository = modelRepository,
        _providerRepository = providerRepository,
        _sentinelRepository = sentinelRepository,
        _chatRepository = chatRepository,
-       _chatService = chatService;
+       _llmClient = llmClient;
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
@@ -99,7 +99,7 @@ class SettingViewModel {
     auxiliaryModelId.value = instance.getInt(_keyAuxiliaryModelId) ?? 0;
     maxAgentIterations.value = instance.getInt(_keyMaxAgentIterations) ?? 100;
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
-    _chatService.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
+    _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
     braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
@@ -209,7 +209,7 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
-    _chatService.updateRetryConfig(RetryConfig(maxAttempts: max));
+    _llmClient.updateRetryConfig(RetryConfig(maxAttempts: max));
   }
 
   /// 更新 Brave Search API Key
