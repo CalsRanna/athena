@@ -203,7 +203,10 @@ class DI {
           SkillEvolveTool(skillRegistry: skillRegistry),
           ExperienceLearnTool(repository: experienceRepository),
           ExperienceRecallTool(repository: experienceRepository),
-          SentinelEvolveTool(sentinelViewModel: getIt<SentinelViewModel>()),
+          SentinelEvolveTool(
+            repository: getIt<SentinelRepository>(),
+            onChanged: () => getIt<SentinelViewModel>().getSentinels(),
+          ),
         ]);
       }
 

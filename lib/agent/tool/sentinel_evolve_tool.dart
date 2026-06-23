@@ -1,5 +1,5 @@
 import 'package:athena/agent/tool/tool_interface.dart';
-import 'package:athena/view_model/sentinel_view_model.dart';
+import 'package:athena/repository/sentinel_repository.dart';
 
 /// 优化 Sentinel（系统提示词）的工具，使 Agent 能基于使用反馈改进自身角色设定。
 ///
@@ -9,10 +9,14 @@ class SentinelEvolveTool implements Tool {
   /// 内置 sentinel 的名称，其内容可改进但名称不可修改
   static const builtinSentinelName = 'Athena';
 
-  final SentinelViewModel _sentinelViewModel;
+  final SentinelRepository _repository;
+  final void Function()? _onChanged;
 
-  SentinelEvolveTool({required SentinelViewModel sentinelViewModel})
-      : _sentinelViewModel = sentinelViewModel;
+  SentinelEvolveTool({
+    required SentinelRepository repository,
+    void Function()? onChanged,
+  })  : _repository = repository,
+        _onChanged = onChanged;
 
   @override
   String get name => 'sentinel_evolve';
@@ -91,7 +95,7 @@ class SentinelEvolveTool implements Tool {
     final newAvatar = args['new_avatar'] as String?;
 
     // 查找原 sentinel
-    final original = await _sentinelViewModel.getSentinelByName(sentinelName);
+    final original = await _repository.getSentinelByName(sentinelName);
     if (original == null) {
       return 'Error: Sentinel "$sentinelName" not found. '
           'Check the name spelling. Available sentinels can be listed in the '
@@ -119,8 +123,7 @@ class SentinelEvolveTool implements Tool {
 
       // 如果改名且新名称与当前名称不同，检查是否与其他 sentinel 冲突
       if (effectiveName != original.name) {
-        final conflict =
-            await _sentinelViewModel.getSentinelByName(effectiveName);
+        final conflict = await _repository.getSentinelByName(effectiveName);
         if (conflict != null && conflict.id != original.id) {
           return 'Error: A different sentinel named "$effectiveName" already '
               'exists. Choose a different name.';
@@ -144,8 +147,9 @@ class SentinelEvolveTool implements Tool {
         tags: tags,
       );
 
-      // 更新到数据库并刷新信号列表
-      await _sentinelViewModel.updateSentinel(updated);
+      // 更新到数据库
+      await _repository.updateSentinel(updated);
+      _onChanged?.call();
 
       // 生成变更摘要
       final changeReport = _buildChangeReport(
