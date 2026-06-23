@@ -262,20 +262,22 @@ class AgentStreamDelegate {
     var toolResultsJson = <Map<String, dynamic>>[];
     var hasCompletedIteration = false;
 
+    Future<void> _beginNewIteration() async {
+      await _manageService.finalizeAssistantMessage(current);
+      current = await _manageService.appendAssistantPlaceholder(chat.id!);
+      contentBuffer = StringBuffer();
+      reasoningBuffer = StringBuffer();
+      toolCallsJson = [];
+      toolResultsJson = [];
+      hasCompletedIteration = false;
+    }
+
     try {
       await for (final event in agentStream) {
         _cancelToken?.throwIfCancelled();
 
         if (event is AgentReasoningEvent) {
-          if (hasCompletedIteration) {
-            await _manageService.finalizeAssistantMessage(current);
-            current = await _manageService.appendAssistantPlaceholder(chat.id!);
-            contentBuffer = StringBuffer();
-            reasoningBuffer = StringBuffer();
-            toolCallsJson = [];
-            toolResultsJson = [];
-            hasCompletedIteration = false;
-          }
+          if (hasCompletedIteration) await _beginNewIteration();
           reasoningBuffer.write(event.delta);
           current = current.copyWith(
             reasoningContent: reasoningBuffer.toString(),
@@ -283,15 +285,7 @@ class AgentStreamDelegate {
             reasoningUpdatedAt: DateTime.now(),
           );
         } else if (event is AgentTextEvent) {
-          if (hasCompletedIteration) {
-            await _manageService.finalizeAssistantMessage(current);
-            current = await _manageService.appendAssistantPlaceholder(chat.id!);
-            contentBuffer = StringBuffer();
-            reasoningBuffer = StringBuffer();
-            toolCallsJson = [];
-            toolResultsJson = [];
-            hasCompletedIteration = false;
-          }
+          if (hasCompletedIteration) await _beginNewIteration();
           contentBuffer.write(event.delta);
           current = current.copyWith(content: contentBuffer.toString());
         } else if (event is AgentToolCallEvent) {

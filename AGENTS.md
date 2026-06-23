@@ -79,10 +79,14 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 
 1. **Repository**（无依赖，8 个 LazySingleton）
 2. **Service**（依赖 Repository，12 个 LazySingleton）
-3. **Agent**（PermissionService → SkillRegistry → ToolRegistry → AgentService）
-4. **ViewModel Delegate**（依赖 Service/Agent，3 个 LazySingleton）
-5. **ViewModel**（依赖 Delegate 或 Service，8 个 LazySingleton）
+3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate）
+4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel 等，依赖 Delegate/Service）
+5. **Agent**（PermissionService → SkillRegistry → ToolRegistry → AgentService）
 6. **ChatViewModel**（最后注册，依赖最多）
+
+> 所有注册使用 `registerLazySingleton`，实例化延迟到首次访问，
+> 因此声明顺序不影响运行时依赖解析——Agent 虽在 ViewModel 之后声明，
+> 但 ViewModel Delegate 依赖 AgentService 时，AgentService 会在首次被访问时才创建。
 
 **重要规则**：
 - 所有注册使用 `registerLazySingleton`（首次访问时才实例化）
@@ -576,7 +580,7 @@ PlatformUtil.isWindows  // 特定平台
 
 ## 15. 重要约束与注意事项
 
-1. **DI 初始化顺序**：Repository → Service → Agent → ViewModel Delegate → ViewModel，ChatViewModel 必须在 AgentService 和 SkillRegistry 注册之后
+1. **DI 初始化顺序**：Repository → Service → ViewModel Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 注册之后。所有注册使用 `registerLazySingleton`，声明顺序仅影响可读性，不影响运行时依赖解析
 
 2. **数据库单例**：`Database.instance` 是全局单例，所有 Repository 直接访问 `.instance.laconic`
 
