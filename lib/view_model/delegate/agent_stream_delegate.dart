@@ -260,6 +260,10 @@ class AgentStreamDelegate {
     var toolCallsJson = <Map<String, dynamic>>[];
     var toolResultsJson = <Map<String, dynamic>>[];
     var hasCompletedIteration = false;
+    // beginNewIteration() 创建了新占位消息时置位，循环体底部据此先发出
+    // StreamAssistantAppended 把新卡片加入 UI 列表，否则仅有 id 不同的新
+    // 消息走 StreamMessageUpdated 时 replaceWhere 找不到匹配而被丢弃。
+    var appendedNewMessage = false;
 
     Future<void> beginNewIteration() async {
       await _manageService.finalizeAssistantMessage(current);
@@ -269,6 +273,7 @@ class AgentStreamDelegate {
       toolCallsJson = [];
       toolResultsJson = [];
       hasCompletedIteration = false;
+      appendedNewMessage = true;
     }
 
     try {
@@ -319,6 +324,10 @@ class AgentStreamDelegate {
           }
         }
 
+        if (appendedNewMessage) {
+          yield StreamAssistantAppended(current);
+          appendedNewMessage = false;
+        }
         yield StreamMessageUpdated(current);
       }
 

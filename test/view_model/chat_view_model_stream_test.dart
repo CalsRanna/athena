@@ -463,6 +463,33 @@ void main() {
     expect(cancelled.content, 'iter2-content');
   });
 
+  // 回归：工具调用后进入下一轮时，beginNewIteration 创建的新占位消息必须通过
+  // StreamAssistantAppended 加入 UI 列表；否则 StreamMessageUpdated 走
+  // replaceWhere 因找不到新 id 而静默丢弃，第二轮输出在 UI 上完全不可见。
+  test('多轮工具调用后第二轮输出在 UI 上以新消息卡片展示', () async {
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('iter1');
+      yield const AgentToolCallEvent(id: 'c1', name: 'search', arguments: '{}');
+      yield const AgentToolResultEvent(id: 'c1', name: 'search', result: 'ok');
+      yield const AgentTextEvent('iter2-content');
+      yield const AgentDoneEvent(content: 'iter2-content');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    await vm.sendMessage(_userMessage(), chat: _chat());
+
+    final assistants =
+        vm.messages.value.where((m) => m.role == 'assistant').toList();
+    expect(assistants.length, 2, reason: '应有两张 assistant 卡片（首轮与第二轮）');
+    expect(assistants[0].id, 1000);
+    expect(assistants[0].content, 'iter1');
+    expect(assistants[1].id, 1001, reason: '第二轮应是新占位 id，而非继续写到首轮');
+    expect(assistants[1].content, 'iter2-content');
+  });
+
   test('C2: 流式中途抛错，落库的是携带已生成内容的最新消息', () async {
     Stream<AgentEvent> events() async* {
       yield const AgentTextEvent('partial');
