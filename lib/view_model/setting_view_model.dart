@@ -10,7 +10,6 @@ import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/llm_client.dart';
 import 'package:athena/util/platform_util.dart';
 import 'package:athena/util/retry.dart';
-import 'package:athena/util/shared_preference_util.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -221,11 +220,11 @@ class SettingViewModel {
 
   /// 更新窗口尺寸
   Future<void> updateWindowSize() async {
+    if (await windowManager.isMaximized()) return;
     final size = await windowManager.getSize();
-    final instance = SharedPreferenceUtil.instance;
-    await instance.setWindowHeight(size.height);
-    await instance.setWindowWidth(size.width);
-
+    final instance = await SharedPreferences.getInstance();
+    await instance.setDouble(_keyWindowHeight, size.height);
+    await instance.setDouble(_keyWindowWidth, size.width);
     windowHeight.value = size.height;
     windowWidth.value = size.width;
   }

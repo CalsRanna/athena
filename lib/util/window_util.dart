@@ -88,4 +88,13 @@ class WindowUtil {
   Future<void> unmaximize() async {
     await windowManager.unmaximize();
   }
+
+  /// Save current window size to SharedPreferences.
+  Future<void> saveWindowSize() async {
+    if (await windowManager.isMaximized()) return;
+    final size = await windowManager.getSize();
+    final instance = SharedPreferenceUtil.instance;
+    await instance.setWindowHeight(size.height);
+    await instance.setWindowWidth(size.width);
+  }
 }

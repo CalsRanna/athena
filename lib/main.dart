@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:signals/signals.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,7 +37,7 @@ class AthenaApp extends StatefulWidget {
   }
 }
 
-class _AthenaAppState extends State<AthenaApp> {
+class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   Widget build(BuildContext context) {
     var sliderThemeData = SliderThemeData(
@@ -57,19 +58,26 @@ class _AthenaAppState extends State<AthenaApp> {
   }
 
   @override
+  void dispose() {
+    if (PlatformUtil.isDesktop) {
+      HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+      windowManager.removeListener(this);
+    }
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     if (PlatformUtil.isDesktop) {
       HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+      windowManager.addListener(this);
     }
   }
 
   @override
-  void dispose() {
-    if (PlatformUtil.isDesktop) {
-      HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    }
-    super.dispose();
+  void onWindowResized() {
+    WindowUtil.instance.saveWindowSize();
   }
 
   bool _handleKeyEvent(KeyEvent event) {
