@@ -16,6 +16,7 @@ class SystemTrayUtil with TrayListener {
 
   Future<void> ensureInitialized() async {
     trayManager.addListener(this);
+    await _setContextMenu();
     await _setTrayIcon();
   }
 
@@ -26,7 +27,25 @@ class SystemTrayUtil with TrayListener {
 
   @override
   void onTrayIconRightMouseDown() {
-    WindowUtil.instance.show();
+    // bringAppToFront 使 Windows 在 TrackPopupMenu 前调用
+    // SetForegroundWindow，否则托盘菜单点击外部无法关闭（Windows 经典行为）。
+    // 该参数被 tray_manager 标记 deprecated（仅 Windows、未来移除）但无替代 API。
+    // ignore: deprecated_member_use
+    trayManager.popUpContextMenu(bringAppToFront: true);
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    if (menuItem.key == 'quit') {
+      exit(0);
+    }
+  }
+
+  Future<void> _setContextMenu() async {
+    final menu = Menu(items: [
+      MenuItem(key: 'quit', label: '退出'),
+    ]);
+    await trayManager.setContextMenu(menu);
   }
 
   Future<void> _setTrayIcon() async {
@@ -34,7 +53,7 @@ class SystemTrayUtil with TrayListener {
       String iconPath;
       bool isTemplate;
       if (Platform.isWindows) {
-        iconPath = 'asset/image/tray_512x512.jpg';
+        iconPath = 'asset/image/tray_256x256.ico';
         isTemplate = false;
       } else if (Platform.isMacOS) {
         iconPath = 'asset/image/tray_512x512.jpg';
