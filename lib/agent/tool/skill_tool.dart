@@ -2,6 +2,8 @@ import 'package:athena/agent/skill/skill_registry.dart';
 import 'tool_interface.dart';
 
 class SkillTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
   final SkillRegistry _registry;
 
   SkillTool(this._registry);
@@ -28,7 +30,7 @@ class SkillTool implements Tool {
   };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final name = args['name'] as String;
     final skill = _registry.get(name);
     if (skill == null) {

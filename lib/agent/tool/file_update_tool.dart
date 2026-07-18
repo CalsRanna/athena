@@ -3,6 +3,8 @@ import 'dart:io';
 import 'tool_interface.dart';
 
 class FileUpdateTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
 
   FileUpdateTool();
 
@@ -44,7 +46,7 @@ class FileUpdateTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final path = args['path'] as String;
     final rawOld = args['old_string'] as String;
     final rawNew = args['new_string'] as String;

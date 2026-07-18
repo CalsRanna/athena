@@ -4,6 +4,8 @@ import 'dart:io';
 import 'tool_interface.dart';
 
 class FileReadTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
   /// When file exceeds this size (bytes), switch to streaming to avoid loading the entire file into memory.
   static const _streamThreshold = 5 * 1024 * 1024; // 5MB
 
@@ -48,7 +50,7 @@ class FileReadTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final path = args['path'] as String;
     final offset = args['offset'] as int? ?? 0;
     final limit = args['limit'] as int?;

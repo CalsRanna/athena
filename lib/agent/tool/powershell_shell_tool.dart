@@ -5,6 +5,8 @@ import 'package:athena/agent/tool/shell_runner.dart';
 import 'tool_interface.dart';
 
 class PowerShellShellTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
 
   PowerShellShellTool();
 
@@ -49,7 +51,7 @@ class PowerShellShellTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final command = args['command'] as String;
     final timeout = ShellTimeoutPolicy.normalize(args['timeout'] as int?);
     final home = Platform.environment['USERPROFILE'] ??

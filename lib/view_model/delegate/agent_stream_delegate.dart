@@ -95,9 +95,7 @@ class AgentStreamDelegate {
   final PermissionService _permissionService;
   final SkillRegistry _skillRegistry;
 
-  CancelToken? _cancelToken;
   int? _streamingChatId;
-  Completer<void>? _settled;
   bool _skillTrustPrompted = false;
 
   AgentStreamDelegate({
@@ -127,7 +125,7 @@ class AgentStreamDelegate {
         _skillRegistry = skillRegistry;
 
   int? get streamingChatId => _streamingChatId;
-  Future<void>? get settled => _settled?.future;
+  Future<void>? get settled => _agentService.settled;
 
   Stream<AgentStreamEvent> send({
     required MessageEntity message,
@@ -135,9 +133,7 @@ class AgentStreamDelegate {
   }) async* {
     await _maybePromptSkillTrust();
 
-    _cancelToken = CancelToken();
     _streamingChatId = chat.id;
-    _settled = Completer<void>();
     yield const StreamIterationChanged(0);
     yield const StreamToolNameChanged(null);
 
@@ -197,11 +193,7 @@ class AgentStreamDelegate {
         evolutionPrompt: EvolutionPrompt.hint,
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _settingViewModel.maxAgentIterations.value,
-        auxiliaryModel: _settingViewModel.auxiliaryModel.value,
-        auxiliaryModelProvider:
-            _settingViewModel.auxiliaryModelProvider.value,
         permissionService: _permissionService,
-        cancelToken: _cancelToken,
         onPermission: (toolName, arguments) =>
             _askPermission(toolName, arguments),
       );
@@ -212,17 +204,27 @@ class AgentStreamDelegate {
       await _manageService.updateChatTimestamp(chat);
       yield const StreamListReload();
     } finally {
-      if (_settled != null && !_settled!.isCompleted) {
-        _settled!.complete();
-      }
-      _cancelToken = null;
       _streamingChatId = null;
-      _settled = null;
     }
   }
 
   void stop() {
-    _cancelToken?.cancel();
+    _agentService.abort();
+  }
+
+  /// 注入一条 steering 消息：当前轮工具执行完后、下一轮 LLM 调用前插入。
+  void steer(ChatMessage message) {
+    _agentService.steer(message);
+  }
+
+  /// 注入一条 followUp 消息：Agent 停止后作为新用户输入继续运行。
+  void followUp(ChatMessage message) {
+    _agentService.followUp(message);
+  }
+
+  /// 清空所有待注入消息队列。
+  void clearQueues() {
+    _agentService.clearQueues();
   }
 
   // ─── 内部 ─────────────────────────────────────────────────
@@ -278,9 +280,13 @@ class AgentStreamDelegate {
 
     try {
       await for (final event in agentStream) {
-        _cancelToken?.throwIfCancelled();
+        _agentService.currentCancelToken?.throwIfCancelled();
 
-        if (event is AgentReasoningEvent) {
+        if (event is AgentTurnStartEvent) {
+          yield StreamIterationChanged(event.iteration);
+        } else if (event is AgentToolExecutionStartEvent) {
+          yield StreamToolNameChanged(event.name);
+        } else if (event is AgentReasoningEvent) {
           if (hasCompletedIteration) await beginNewIteration();
           reasoningBuffer.write(event.delta);
           current = current.copyWith(
@@ -384,17 +390,14 @@ class AgentStreamDelegate {
 
     final textToSummarize = _buildCompactText(toSummarize);
 
-    final auxModel = _settingViewModel.auxiliaryModel.value;
-    final auxProvider = _settingViewModel.auxiliaryModelProvider.value;
-
     try {
       final summary = await _chatService.complete(
         messages: [
           ChatMessage.system(_compactSystemPrompt),
           ChatMessage.user(textToSummarize),
         ],
-        provider: auxProvider ?? provider,
-        model: auxModel ?? model,
+        provider: provider,
+        model: model,
       );
       if (summary.isEmpty) return wrappedMessages;
 
@@ -502,13 +505,15 @@ class AgentStreamDelegate {
       keyArg: keyArg ?? '',
     );
 
+    final cancelToken = _agentService.currentCancelToken;
     final result = await Future.any<PermissionDialogResult>([
       dialogFuture,
-      _cancelToken!.whenCancelled.then((_) {
-        final nav = router.navigatorKey.currentState;
-        if (nav?.canPop() ?? false) nav!.pop();
-        return const PermissionDialogResult(approved: false);
-      }),
+      if (cancelToken != null)
+        cancelToken.whenCancelled.then((_) {
+          final nav = router.navigatorKey.currentState;
+          if (nav?.canPop() ?? false) nav!.pop();
+          return const PermissionDialogResult(approved: false);
+        }),
     ]);
 
     if (result.approved) {

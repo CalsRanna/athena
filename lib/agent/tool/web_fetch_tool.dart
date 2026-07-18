@@ -4,6 +4,8 @@ import 'html_to_markdown.dart';
 import 'tool_interface.dart';
 
 class WebFetchTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
   static const _maxResponseBytes = 200 * 1024; // 200KB
   static const _defaultTimeout = Duration(seconds: 30);
 
@@ -54,7 +56,7 @@ class WebFetchTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final url = args['url'] as String;
     final method = args['method'] as String? ?? 'GET';
     final format = args['format'] as String? ?? 'markdown';

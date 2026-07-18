@@ -6,6 +6,8 @@ import 'package:athena/repository/sentinel_repository.dart';
 /// Agent 直接修改当前使用的 Sentinel，在原有基础上改进其提示词、
 /// 描述等信息，而不是创建新的 Sentinel。可选支持重命名。
 class SentinelEvolveTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
   /// 内置 sentinel 的名称，其内容可改进但名称不可修改
   static const builtinSentinelName = 'Athena';
 
@@ -85,7 +87,7 @@ class SentinelEvolveTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final sentinelName = args['sentinel_name'] as String;
     final newName = args['new_name'] as String?;
     final improvements = args['improvements'] as String;

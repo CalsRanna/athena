@@ -6,6 +6,8 @@ import 'tool_interface.dart';
 
 class BashShellTool implements Tool {
   @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
   String get name => 'bash';
 
   @override
@@ -47,7 +49,7 @@ class BashShellTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final command = args['command'] as String;
     final timeout = ShellTimeoutPolicy.normalize(args['timeout'] as int?);
     final home = Platform.environment['HOME'] ??

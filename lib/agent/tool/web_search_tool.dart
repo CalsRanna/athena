@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'tool_interface.dart';
 
 class WebSearchTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.parallel;
   static const _keyBraveApiKey = 'brave_api_key';
   static const _defaultTimeout = Duration(seconds: 15);
   static const _maxResults = 10;
@@ -33,7 +35,7 @@ class WebSearchTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final query = args['query'] as String;
 
     final prefs = await SharedPreferences.getInstance();
