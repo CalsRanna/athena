@@ -4,6 +4,8 @@ import 'tool_interface.dart';
 
 class FileWriteTool implements Tool {
   @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
   String get name => 'file_write';
 
   @override
@@ -28,7 +30,7 @@ class FileWriteTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final path = args['path'] as String;
     final content = args['content'] as String;
 

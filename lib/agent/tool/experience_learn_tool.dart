@@ -9,6 +9,8 @@ import 'package:athena/repository/experience_repository.dart';
 /// 每条经验属于当前 Sentinel（scope="self"），或标记为全局共享（scope="shared"）。
 /// shared 经验对所有 Sentinel 可见，适用于用户通用偏好、沟通风格等跨域信息。
 class ExperienceLearnTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
   final ExperienceRepository _repository;
 
   ExperienceLearnTool({required ExperienceRepository repository})
@@ -71,7 +73,7 @@ class ExperienceLearnTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final lesson = args['lesson'] as String;
     final context = args['context'] as String? ?? '';
     final tagsStr = args['tags'] as String? ?? '';
@@ -112,6 +114,8 @@ class ExperienceLearnTool implements Tool {
 ///
 /// 默认检索当前 Sentinel 的私有经验 + shared 经验。
 class ExperienceRecallTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
   final ExperienceRepository _repository;
 
   ExperienceRecallTool({required ExperienceRepository repository})
@@ -159,7 +163,7 @@ class ExperienceRecallTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final query = args['query'] as String? ?? '';
     final limit = args['limit'] as int? ?? 10;
     final includeShared = args['include_shared'] as bool? ?? true;

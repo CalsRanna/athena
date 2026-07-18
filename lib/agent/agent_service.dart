@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
+import 'package:athena/agent/tool/schema_validator.dart';
 import 'package:athena/agent/tool/tool_registry.dart';
 import 'package:athena/entity/chat_entity.dart';
 import 'package:athena/entity/model_entity.dart';
@@ -16,10 +17,79 @@ import 'package:openai_dart/openai_dart.dart';
 
 typedef PermissionCallback = Future<bool> Function(String toolName, String description);
 
+/// beforeToolCall 上下文。
+typedef BeforeToolCallContext = ({
+  String name,
+  String arguments,
+  Map<String, dynamic> args,
+});
+
+/// beforeToolCall 返回结果。
+typedef BeforeToolCallResult = ({bool block, String reason});
+
+/// beforeToolCall 回调：返回 { block: true } 则拒绝执行。
+typedef BeforeToolCallHook = Future<BeforeToolCallResult> Function(
+  BeforeToolCallContext ctx,
+);
+
+/// afterToolCall 上下文。
+typedef AfterToolCallContext = ({
+  String name,
+  String arguments,
+  Map<String, dynamic> args,
+  String rawResult,
+  String processedResult,
+});
+
+/// afterToolCall 返回结果：可覆写 content / isError。
+typedef AfterToolCallResult = ({String content, bool isError});
+
+/// afterToolCall 回调：工具执行后处理结果。
+typedef AfterToolCallHook = Future<AfterToolCallResult> Function(
+  AfterToolCallContext ctx,
+);
+
 class AgentService {
   final ChatService _chatService;
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
+
+  // ─── 运行时状态 ──────────────────────────────────────────
+  @protected
+  CancelToken? currentCancelTokenInternal;
+  @protected
+  Completer<void>? settledInternal;
+  @protected
+  bool isRunningInternal = false;
+
+  /// 当前是否正在执行 Agent 循环。
+  bool get isRunning => isRunningInternal;
+
+  /// 当前运行的取消令牌（可能为 null）。
+  CancelToken? get currentCancelToken => currentCancelTokenInternal;
+
+  /// 等待当前运行完成后 resolve 的 Future。
+  Future<void>? get settled => settledInternal?.future;
+
+  // ─── 消息注入队列 ───────────────────────────────────────
+  final List<ChatMessage> _steerQueue = [];
+  final List<ChatMessage> _followUpQueue = [];
+
+  /// 注入一条 steering 消息：在当前轮工具执行完成后、下一轮 LLM 调用前插入。
+  void steer(ChatMessage message) {
+    _steerQueue.add(message);
+  }
+
+  /// 注入一条 followUp 消息：在 Agent 停止后作为新用户输入继续运行。
+  void followUp(ChatMessage message) {
+    _followUpQueue.add(message);
+  }
+
+  /// 清空所有待注入的消息。
+  void clearQueues() {
+    _steerQueue.clear();
+    _followUpQueue.clear();
+  }
 
   AgentService({
     required ChatService chatService,
@@ -28,6 +98,16 @@ class AgentService {
   })  : _chatService = chatService,
         _toolRegistry = toolRegistry,
         _skillRegistry = skillRegistry;
+
+  /// 取消当前正在进行的 Agent 循环。
+  void abort() {
+    currentCancelTokenInternal?.cancel();
+  }
+
+  /// 等待当前运行结束（如果正在运行）。
+  Future<void> waitForIdle() async {
+    await (settledInternal?.future ?? Future.value());
+  }
 
   Stream<AgentEvent> run({
     required ChatEntity chat,
@@ -40,16 +120,54 @@ class AgentService {
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,
-    ModelEntity? auxiliaryModel,
-    ProviderEntity? auxiliaryModelProvider,
     CancelToken? cancelToken,
+    BeforeToolCallHook? beforeToolCall,
+    AfterToolCallHook? afterToolCall,
   }) async* {
+    if (isRunningInternal) {
+      throw StateError('Agent is already processing. Wait for completion or abort first.');
+    }
+
+    isRunningInternal = true;
+    currentCancelTokenInternal = cancelToken ?? CancelToken();
+    settledInternal = Completer<void>();
+    final token = currentCancelTokenInternal!;
+
     var messages = _injectPrompts(baseMessages, skillPrompt, evolutionPrompt);
     _skillRegistry?.clearContext();
 
+    // 构建复合 beforeToolCall：用户 hook → 权限检查
+    final compositeBeforeToolCall = _buildCompositeBeforeHook(
+      userHook: beforeToolCall,
+      permissionService: permissionService,
+      onPermission: onPermission,
+      cancelToken: token,
+    );
+
+    // 构建复合 afterToolCall：用户 hook
+    final compositeAfterToolCall = _buildCompositeAfterHook(
+      userHook: afterToolCall,
+    );
+
     try {
-      for (var iteration = 0; iteration < maxIterations; iteration++) {
-        cancelToken?.throwIfCancelled();
+      // 外层循环：followUp 消息可重启内层循环
+      while (true) {
+        var done = false;
+
+        // 内层循环：工具调用迭代
+        for (var iteration = 0;
+            iteration < maxIterations && !done;
+            iteration++) {
+          token.throwIfCancelled();
+
+          // 注入 steering 消息
+          if (_steerQueue.isNotEmpty) {
+            final steerMessages = List<ChatMessage>.from(_steerQueue);
+            _steerQueue.clear();
+            messages.addAll(steerMessages);
+          }
+
+          yield AgentEvent.turnStart(iteration: iteration);
 
         final tools = _buildTools();
         final request = ChatCompletionCreateRequest(
@@ -69,7 +187,7 @@ class AgentService {
         final accumulator = ChatStreamAccumulator();
 
         await for (final chunk in stream) {
-          cancelToken?.throwIfCancelled();
+          token.throwIfCancelled();
           accumulator.add(chunk);
 
           final delta = chunk.firstChoice?.delta;
@@ -99,9 +217,12 @@ class AgentService {
         }
 
         final toolCalls = accumulator.toolCalls;
+        final truncated = accumulator.finishReason == FinishReason.length;
+
         if (toolCalls.isEmpty) {
           yield AgentEvent.done(content: accumulator.content);
-          return;
+          done = true;
+          break;
         }
 
         // 产出 tool_call 事件
@@ -123,30 +244,95 @@ class AgentService {
           reasoningContent: rc,
         ));
 
-        // 执行每个工具调用
-        final toolCallDataList = <Map<String, dynamic>>[];
-        for (final tc in toolCalls) {
-          final result = await _executeToolCall(
-            toolCall: tc,
-            permissionService: permissionService,
-            onPermission: onPermission,
-            cancelToken: cancelToken,
-            sentinelId: sentinelId,
-            auxiliaryModel: auxiliaryModel,
-            auxiliaryModelProvider: auxiliaryModelProvider,
+        // 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用
+        if (truncated) {
+          final toolCallDataList = <Map<String, dynamic>>[];
+          for (final tc in toolCalls) {
+            const msg = 'Error: Tool call was not executed because the '
+                'response hit the output token limit. Its arguments may be '
+                'truncated. Re-issue the tool call with complete arguments.';
+            yield AgentEvent.toolResult(
+              id: tc.id,
+              name: tc.function.name,
+              result: msg,
+            );
+            messages.add(ChatMessage.tool(
+              toolCallId: tc.id,
+              content: msg,
+            ));
+            toolCallDataList.add({
+              'id': tc.id,
+              'name': tc.function.name,
+              'arguments': tc.function.arguments,
+              'result': msg,
+            });
+          }
+          yield AgentEvent.iterationComplete(
+            toolCalls: toolCallDataList,
+            content: accumulator.content,
           );
+          continue;
+        }
 
-          yield result.event;
-          messages.add(ChatMessage.tool(
-            toolCallId: tc.id,
-            content: result.processedResult,
+        // 执行工具调用（串行 + 并行混合）
+        final toolCallDataList = <Map<String, dynamic>>[];
+
+        // 分组：区分 sequential / parallel 工具
+        final sequentialCalls = <ToolCall>[];
+        final parallelCalls = <ToolCall>[];
+        for (final tc in toolCalls) {
+          final t = _toolRegistry.get(tc.function.name);
+          if (t != null && t.executionMode == ExecutionMode.parallel) {
+            parallelCalls.add(tc);
+          } else {
+            sequentialCalls.add(tc);
+          }
+        }
+
+        // 串行执行
+        for (final tc in sequentialCalls) {
+          yield AgentEvent.toolExecutionStart(
+            id: tc.id,
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          );
+          final data = await _executeOneTool(
+            tc: tc,
+            token: token,
+            sentinelId: sentinelId,
+            beforeHook: compositeBeforeToolCall,
+            afterHook: compositeAfterToolCall,
+          );
+          yield data.event;
+          messages.add(data.toolMessage);
+          toolCallDataList.add(data.record);
+        }
+
+        // 并行执行
+        if (parallelCalls.isNotEmpty) {
+          for (final tc in parallelCalls) {
+            yield AgentEvent.toolExecutionStart(
+              id: tc.id,
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            );
+          }
+
+          final parallelFutures = parallelCalls.map((tc) => _executeOneTool(
+            tc: tc,
+            token: token,
+            sentinelId: sentinelId,
+            beforeHook: compositeBeforeToolCall,
+            afterHook: compositeAfterToolCall,
           ));
-          toolCallDataList.add({
-            'id': tc.id,
-            'name': tc.function.name,
-            'arguments': tc.function.arguments,
-            'result': result.rawResult,
-          });
+
+          final results = await Future.wait(parallelFutures);
+
+          for (final data in results) {
+            yield data.event;
+            messages.add(data.toolMessage);
+            toolCallDataList.add(data.record);
+          }
         }
 
         yield AgentEvent.iterationComplete(
@@ -154,12 +340,89 @@ class AgentService {
           content: accumulator.content,
         );
       }
+
+        // 检查 followUp 消息：有则注入并重启内层循环
+        if (_followUpQueue.isNotEmpty) {
+          final followUps = List<ChatMessage>.from(_followUpQueue);
+          _followUpQueue.clear();
+          messages.addAll(followUps);
+        } else {
+          break; // 无 followUp，退出外层循环
+        }
+      }
     } finally {
       _skillRegistry?.clearContext();
+      isRunningInternal = false;
+      currentCancelTokenInternal = null;
+      if (settledInternal != null && !settledInternal!.isCompleted) {
+        settledInternal!.complete();
+      }
+      settledInternal = null;
     }
   }
 
-  // ─── 内部 ─────────────────────────────────────────────────
+  /// 构建复合 beforeToolCall：用户 hook + 权限检查串联。
+  BeforeToolCallHook? _buildCompositeBeforeHook({
+    BeforeToolCallHook? userHook,
+    PermissionService? permissionService,
+    PermissionCallback? onPermission,
+    required CancelToken cancelToken,
+  }) {
+    if (userHook == null && permissionService == null && onPermission == null) {
+      return null;
+    }
+
+    return (ctx) async {
+      if (userHook != null) {
+        final result = await userHook(ctx);
+        if (result.block) return result;
+      }
+
+      if (permissionService == null && onPermission == null) {
+        return (block: false, reason: '');
+      }
+
+      final ruleMatched =
+          permissionService?.check(ctx.name, ctx.args) == true;
+
+      if (!ruleMatched) {
+        if (onPermission == null) {
+          return (
+            block: true,
+            reason: 'Error: Tool requires user approval but no permission '
+                'callback is configured.',
+          );
+        }
+        final approved = await Future.any<bool>([
+          onPermission(ctx.name, ctx.arguments),
+          cancelToken.whenCancelled.then((_) => false),
+        ]);
+        cancelToken.throwIfCancelled();
+        if (!approved) {
+          return (block: true, reason: 'User denied the tool execution.');
+        }
+      }
+
+      return (block: false, reason: '');
+    };
+  }
+
+  /// 构建复合 afterToolCall：用户 hook。
+  AfterToolCallHook? _buildCompositeAfterHook({
+    AfterToolCallHook? userHook,
+  }) {
+    if (userHook == null) return null;
+
+    return (ctx) async {
+      return userHook((
+        name: ctx.name,
+        arguments: ctx.arguments,
+        args: ctx.args,
+        rawResult: ctx.rawResult,
+        processedResult: ctx.processedResult,
+      ));
+    };
+  }
 
   /// 首轮注入 skill / evolution prompt。
   List<ChatMessage> _injectPrompts(
@@ -190,34 +453,40 @@ class AgentService {
         .toList();
   }
 
-  /// 执行单个工具调用：权限检查 → 执行 → 摘要。
-  Future<_ToolCallResult> _executeToolCall({
+  /// 执行单个工具调用：校验 → beforeToolCall → 权限检查 → 执行 → afterToolCall。
+  Future<ToolCallResultInternal> executeToolCallInternal({
     required ToolCall toolCall,
-    required PermissionService? permissionService,
-    required PermissionCallback? onPermission,
     required CancelToken? cancelToken,
     String? sentinelId,
-    ModelEntity? auxiliaryModel,
-    ProviderEntity? auxiliaryModelProvider,
+    BeforeToolCallHook? beforeToolCall,
+    AfterToolCallHook? afterToolCall,
   }) async {
     Map<String, dynamic> args;
     try {
       args = jsonDecode(toolCall.function.arguments) as Map<String, dynamic>;
     } catch (_) {
-      args = {};
+      final msg = 'Error: Failed to parse tool call arguments as JSON: '
+          '${toolCall.function.arguments}';
+      return ToolCallResultInternal(
+        event: AgentToolResultEvent(
+          id: toolCall.id,
+          name: toolCall.function.name,
+          result: msg,
+        ),
+        processedResult: msg,
+        rawResult: msg,
+      );
     }
 
     final tool = _toolRegistry.get(toolCall.function.name);
 
-    // 权限检查
-    final ruleMatched =
-        permissionService?.check(toolCall.function.name, args) == true;
-
-    if (!ruleMatched) {
-      if (onPermission == null) {
-        const msg = 'Error: Tool requires user approval but no permission '
-            'callback is configured.';
-        return _ToolCallResult(
+    // 参数校验
+    if (tool != null) {
+      final validationError = SchemaValidator.validate(tool.parameters, args);
+      if (validationError != null) {
+        final msg = 'Error: Invalid arguments for tool '
+            '"${toolCall.function.name}": $validationError';
+        return ToolCallResultInternal(
           event: AgentToolResultEvent(
             id: toolCall.id,
             name: toolCall.function.name,
@@ -227,16 +496,20 @@ class AgentService {
           rawResult: msg,
         );
       }
-      final approved = cancelToken == null
-          ? await onPermission(toolCall.function.name, toolCall.function.arguments)
-          : await Future.any<bool>([
-              onPermission(toolCall.function.name, toolCall.function.arguments),
-              cancelToken.whenCancelled.then((_) => false),
-            ]);
-      cancelToken?.throwIfCancelled();
-      if (!approved) {
-        const msg = 'User denied the tool execution.';
-        return _ToolCallResult(
+    }
+
+    // beforeToolCall hook
+    if (beforeToolCall != null) {
+      final beforeResult = await beforeToolCall((
+        name: toolCall.function.name,
+        arguments: toolCall.function.arguments,
+        args: args,
+      ));
+      if (beforeResult.block) {
+        final msg = beforeResult.reason.isEmpty
+            ? 'Tool execution was blocked by beforeToolCall hook.'
+            : beforeResult.reason;
+        return ToolCallResultInternal(
           event: AgentToolResultEvent(
             id: toolCall.id,
             name: toolCall.function.name,
@@ -258,21 +531,20 @@ class AgentService {
         : 'Error: Unknown tool "${toolCall.function.name}"';
 
     var processed = smartTruncate(rawResult);
-    if (auxiliaryModel != null && auxiliaryModelProvider != null) {
-      if (processed.length > 4000) {
-        final summary = await _summarizeToolResult(
-          toolName: toolCall.function.name,
-          result: processed,
-          auxModel: auxiliaryModel,
-          auxProvider: auxiliaryModelProvider,
-        );
-        if (summary != null && summary.isNotEmpty) {
-          processed = summary;
-        }
-      }
+
+    // afterToolCall hook（含摘要逻辑）
+    if (afterToolCall != null) {
+      final afterResult = await afterToolCall((
+        name: toolCall.function.name,
+        arguments: toolCall.function.arguments,
+        args: args,
+        rawResult: rawResult,
+        processedResult: processed,
+      ));
+      processed = afterResult.content;
     }
 
-    return _ToolCallResult(
+    return ToolCallResultInternal(
       event: AgentToolResultEvent(
         id: toolCall.id,
         name: toolCall.function.name,
@@ -300,6 +572,40 @@ class AgentService {
     }
   }
 
+  /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
+  Future<_ToolExecutionData> _executeOneTool({
+    required ToolCall tc,
+    required CancelToken token,
+    String? sentinelId,
+    BeforeToolCallHook? beforeHook,
+    AfterToolCallHook? afterHook,
+  }) async {
+    final result = await executeToolCallInternal(
+      toolCall: tc,
+      cancelToken: token,
+      sentinelId: sentinelId,
+      beforeToolCall: beforeHook,
+      afterToolCall: afterHook,
+    );
+    return _ToolExecutionData(
+      event: AgentToolResultEvent(
+        id: tc.id,
+        name: tc.function.name,
+        result: result.rawResult,
+      ),
+      toolMessage: ChatMessage.tool(
+        toolCallId: tc.id,
+        content: result.processedResult,
+      ),
+      record: {
+        'id': tc.id,
+        'name': tc.function.name,
+        'arguments': tc.function.arguments,
+        'result': result.rawResult,
+      },
+    );
+  }
+
   String smartTruncate(String result, {int threshold = 12000}) {
     if (result.length <= threshold) return result;
     final headLen = (threshold * 0.6).round();
@@ -310,63 +616,28 @@ class AgentService {
     return '$head\n\n... [truncated $skipped characters] ...\n\n$tail';
   }
 
-  Future<String?> _summarizeToolResult({
-    required String toolName,
-    required String result,
-    required ModelEntity auxModel,
-    required ProviderEntity auxProvider,
-  }) async {
-    try {
-      final systemPrompt = _buildSummarizationPrompt(toolName);
-      final messages = [
-        ChatMessage.system(systemPrompt),
-        ChatMessage.user(result),
-      ];
-      return await _chatService.complete(
-        messages: messages,
-        provider: auxProvider,
-        model: auxModel,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
 
-  String _buildSummarizationPrompt(String toolName) {
-    const prefix =
-        'You are a tool result summarizer. Extract the key information '
-        'from the tool output below. Be concise but do not omit critical data '
-        'like file paths, exit codes, error messages, URLs, or data values. '
-        'Preserve exact numbers, identifiers, and code symbols.';
-    final String toolSpecific = switch (toolName) {
-      'bash' || 'powershell' =>
-        'This is shell command output. Preserve: exit code, error messages, '
-            'exact file paths. Summarize stdout/stderr, keeping any warnings or '
-            'errors verbatim. Omit redundant or repetitive output lines.',
-      'file_read' =>
-        'This is file content. Preserve: code structure (function/class '
-            'signatures), imports, key logic. Summarize the file\'s purpose and '
-            'main components. Keep important code snippets intact.',
-      'web_fetch' =>
-        'This is fetched web page content. Extract: page title, main headings, '
-            'key facts/data, and important links. Omit boilerplate, ads, '
-            'navigation, and scripts.',
-      'web_search' =>
-        'This is web search results. Preserve: all result titles, URLs, and '
-            'key snippets. Organize by relevance.',
-      _ => 'Preserve all key information, data values, identifiers, and '
-          'structural elements. Be thorough but concise.',
-    };
-    return '$prefix\n\n$toolSpecific';
-  }
+}
+
+/// 单个工具执行的结果打包。供 [_executeOneTool] 返回。
+class _ToolExecutionData {
+  final AgentToolResultEvent event;
+  final ChatMessage toolMessage;
+  final Map<String, dynamic> record;
+  const _ToolExecutionData({
+    required this.event,
+    required this.toolMessage,
+    required this.record,
+  });
 }
 
 /// 单个工具调用的执行结果。
-class _ToolCallResult {
+@visibleForTesting
+class ToolCallResultInternal {
   final AgentToolResultEvent event;
   final String processedResult;
   final String rawResult;
-  const _ToolCallResult({
+  const ToolCallResultInternal({
     required this.event,
     required this.processedResult,
     required this.rawResult,
@@ -398,6 +669,20 @@ sealed class AgentEvent {
   }) = AgentIterationCompleteEvent;
 
   const factory AgentEvent.done({required String content}) = AgentDoneEvent;
+
+  const factory AgentEvent.turnStart({required int iteration}) = AgentTurnStartEvent;
+
+  const factory AgentEvent.toolExecutionStart({
+    required String id,
+    required String name,
+    required String arguments,
+  }) = AgentToolExecutionStartEvent;
+
+  const factory AgentEvent.toolExecutionUpdate({
+    required String id,
+    required String name,
+    required String partialResult,
+  }) = AgentToolExecutionUpdateEvent;
 
   const factory AgentEvent.usage(TokenUsage usage) = AgentUsageEvent;
 }
@@ -452,3 +737,31 @@ class AgentUsageEvent extends AgentEvent {
   final TokenUsage usage;
   const AgentUsageEvent(this.usage);
 }
+
+class AgentTurnStartEvent extends AgentEvent {
+  final int iteration;
+  const AgentTurnStartEvent({required this.iteration});
+}
+
+class AgentToolExecutionStartEvent extends AgentEvent {
+  final String id;
+  final String name;
+  final String arguments;
+  const AgentToolExecutionStartEvent({
+    required this.id,
+    required this.name,
+    required this.arguments,
+  });
+}
+
+class AgentToolExecutionUpdateEvent extends AgentEvent {
+  final String id;
+  final String name;
+  final String partialResult;
+  const AgentToolExecutionUpdateEvent({
+    required this.id,
+    required this.name,
+    required this.partialResult,
+  });
+}
+

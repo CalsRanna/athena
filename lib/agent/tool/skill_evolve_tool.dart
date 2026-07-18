@@ -11,6 +11,8 @@ import 'package:athena/agent/tool/tool_interface.dart';
 /// Skill 保存在项目级（`.athena/skills/`）或用户级（`~/.athena/skills/`）
 /// 目录下，以 `SKILL.md` 文件形式存在。
 class SkillEvolveTool implements Tool {
+  @override
+  ExecutionMode get executionMode => ExecutionMode.sequential;
   final SkillRegistry _skillRegistry;
 
   SkillEvolveTool({
@@ -81,7 +83,7 @@ class SkillEvolveTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args) async {
+  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     final skillName = args['name'] as String;
     final action = args['action'] as String;
     final description = args['description'] as String? ?? '';

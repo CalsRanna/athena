@@ -272,10 +272,25 @@ class _FakeAgentService extends AgentService {
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,
-    ModelEntity? auxiliaryModel,
-    ProviderEntity? auxiliaryModelProvider,
     CancelToken? cancelToken,
-  }) => stream;
+    BeforeToolCallHook? beforeToolCall,
+    AfterToolCallHook? afterToolCall,
+  }) async* {
+    // 模拟基类的状态管理
+    isRunningInternal = true;
+    currentCancelTokenInternal = cancelToken ?? CancelToken();
+    settledInternal = Completer<void>();
+    try {
+      yield* stream;
+    } finally {
+      isRunningInternal = false;
+      currentCancelTokenInternal = null;
+      if (settledInternal != null && !settledInternal!.isCompleted) {
+        settledInternal!.complete();
+      }
+      settledInternal = null;
+    }
+  }
 }
 
 ChatEntity _chat({int id = 1}) => ChatEntity(

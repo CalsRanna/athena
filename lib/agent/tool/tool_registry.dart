@@ -1,5 +1,7 @@
 import 'tool_interface.dart';
 
+export 'tool_interface.dart' show ExecutionMode;
+
 class ToolRegistry {
   final Map<String, Tool> _tools = {};
 
