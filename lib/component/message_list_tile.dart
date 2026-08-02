@@ -387,9 +387,25 @@ class _ToolMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent() {
-    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
+    // 工具消息没有工具名可用（MessageEntity 无 tool_call_id），
+    // 内容以浅灰代码块样式呈现，与 ToolCard 展开区呼应。
+    var textStyle = GoogleFonts.firaCode(
+      fontSize: 12,
+      color: ColorUtil.FF282F32,
+      height: 1.6,
+    );
     var text = Text(message.content, style: textStyle);
-    return Expanded(child: text);
+    return Expanded(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: ColorUtil.FFEDEDED,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: text,
+      ),
+    );
   }
 
   Widget _buildTrailingSpace() {

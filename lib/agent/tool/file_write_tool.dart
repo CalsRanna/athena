@@ -6,6 +6,11 @@ class FileWriteTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
   @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
+
+  @override
   String get name => 'file_write';
 
   @override

@@ -4,9 +4,15 @@ import 'tool_interface.dart';
 class SkillTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
   final SkillRegistry _registry;
 
   SkillTool(this._registry);
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'skill';

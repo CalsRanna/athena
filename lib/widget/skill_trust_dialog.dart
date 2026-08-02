@@ -46,7 +46,7 @@ Widget _buildTitleRow() {
       Icon(
         HugeIcons.strokeRoundedAlert02,
         size: 20,
-        color: Colors.orange.shade700,
+        color: const Color(0xFFE8B86D),
       ),
       const SizedBox(width: 8),
       Text(

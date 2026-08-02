@@ -8,6 +8,8 @@ import 'package:athena/repository/sentinel_repository.dart';
 class SentinelEvolveTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
   /// 内置 sentinel 的名称，其内容可改进但名称不可修改
   static const builtinSentinelName = 'Athena';
 
@@ -19,6 +21,10 @@ class SentinelEvolveTool implements Tool {
     void Function()? onChanged,
   })  : _repository = repository,
         _onChanged = onChanged;
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'sentinel_evolve';

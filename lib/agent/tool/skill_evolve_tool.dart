@@ -13,11 +13,17 @@ import 'package:athena/agent/tool/tool_interface.dart';
 class SkillEvolveTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
   final SkillRegistry _skillRegistry;
 
   SkillEvolveTool({
     required SkillRegistry skillRegistry,
   }) : _skillRegistry = skillRegistry;
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'skill_evolve';

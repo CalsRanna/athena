@@ -1,12 +1,23 @@
 import 'dart:io';
 
-import 'package:athena/agent/tool/shell_runner.dart';
+import 'package:athena/agent/permission/command_analyzer.dart';
 
+import 'shell_runner.dart';
 import 'tool_interface.dart';
 
 class BashShellTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
+
+  /// 只读命令（ls、git status 等）可并行执行，有副作用命令必须串行。
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) {
+    final command = args['command'] as String?;
+    return command != null && CommandAnalyzer.isReadOnlyCommand(command);
+  }
+
   @override
   String get name => 'bash';
 

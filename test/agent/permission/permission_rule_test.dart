@@ -50,5 +50,39 @@ void main() {
       expect(store.rules[0].matches('bash', 'git status'), isTrue);
       expect(store.rules[1].matches('file_read', '/tmp/data.txt'), isTrue);
     });
+
+    test('action-level rule matches by action', () {
+      final rule = PermissionRule(tool: 'bash', action: 'git');
+      expect(rule.matches('bash', 'git status', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git push', action: 'git'), isTrue);
+      // 动作不一致不匹配
+      expect(rule.matches('bash', 'git status', action: 'npm'), isFalse);
+      // 调用方未提供动作不匹配
+      expect(rule.matches('bash', 'git status'), isFalse);
+      // 其他工具不匹配
+      expect(rule.matches('powershell', 'git status', action: 'git'), isFalse);
+    });
+
+    test('action-level rule with pattern narrows arguments', () {
+      final rule = PermissionRule(
+        tool: 'bash',
+        action: 'git',
+        pattern: 'status*',
+      );
+      // pattern 匹配剥离动作后的参数部分
+      expect(rule.matches('bash', 'git status -s', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git status --short', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git push', action: 'git'), isFalse);
+    });
+
+    test('action serialized and restored in json', () {
+      final rule = PermissionRule(tool: 'bash', action: 'git', pattern: '*');
+      final json = rule.toJson();
+      expect(json['action'], 'git');
+
+      final restored = PermissionRule.fromJson(json);
+      expect(restored.action, 'git');
+      expect(restored.pattern, '*');
+    });
   });
 }

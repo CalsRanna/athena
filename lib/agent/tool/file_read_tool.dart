@@ -6,6 +6,12 @@ import 'tool_interface.dart';
 class FileReadTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => true;
+
+  @override
+  ToolRisk get risk => ToolRisk.readOnly;
+
   /// When file exceeds this size (bytes), switch to streaming to avoid loading the entire file into memory.
   static const _streamThreshold = 5 * 1024 * 1024; // 5MB
 

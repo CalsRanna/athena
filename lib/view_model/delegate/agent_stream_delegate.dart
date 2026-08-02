@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:athena/agent/agent_service.dart';
 import 'package:athena/agent/cancel_token.dart';
 import 'package:athena/agent/evolution/evolution_prompt.dart';
+import 'package:athena/agent/permission/command_analyzer.dart';
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/agent/skill/skill_registry.dart';
@@ -502,7 +503,6 @@ class AgentStreamDelegate {
     final dialogFuture = showPermissionDialog(
       toolName: toolName,
       description: description,
-      keyArg: keyArg ?? '',
     );
 
     final cancelToken = _agentService.currentCancelToken;
@@ -517,16 +517,26 @@ class AgentStreamDelegate {
     ]);
 
     if (result.approved) {
+      // 任何批准模式都先写入会话级缓存:同一 run 内不再重复弹窗
+      await _permissionService.approveForSession(toolName, args);
+
       if (result.persistExact) {
-        await _permissionService.persistRule(PermissionRule(
-          tool: toolName,
-          pattern: keyArg ?? '',
-        ));
-      } else if (result.persistPattern != null) {
-        await _permissionService.persistRule(PermissionRule(
-          tool: toolName,
-          pattern: result.persistPattern!,
-        ));
+        // "Always Allow" 对 shell 命令存动作级规则(如 git push → action git,
+        // pattern push*),这样记住后同类调用真正放行;非 shell 存精确路径/URL。
+        final isShell = toolName == 'bash' || toolName == 'powershell';
+        if (isShell && keyArg != null) {
+          final parsed = CommandAnalyzer.parseRulePattern('$keyArg *');
+          await _permissionService.persistRule(PermissionRule(
+            tool: toolName,
+            action: parsed.action,
+            pattern: parsed.pattern,
+          ));
+        } else {
+          await _permissionService.persistRule(PermissionRule(
+            tool: toolName,
+            pattern: keyArg ?? '',
+          ));
+        }
       }
     }
 
