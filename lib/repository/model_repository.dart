@@ -86,6 +86,24 @@ class ModelRepository {
     }
   }
 
+  /// 按 API 模型 id 查找模型,供模型目录同步使用。
+  Future<ModelEntity?> getModelByModelIdAndProviderId(
+    String modelId,
+    int providerId,
+  ) async {
+    var laconic = Database.instance.laconic;
+    try {
+      var result = await laconic
+          .table('models')
+          .where('model_id', modelId)
+          .where('provider_id', providerId)
+          .first();
+      return ModelEntity.fromJson(result.toMap());
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> deleteAllModels() async {
     var laconic = Database.instance.laconic;
     await laconic.table('models').delete();

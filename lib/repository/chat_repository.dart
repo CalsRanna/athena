@@ -80,6 +80,12 @@ class ChatRepository {
     return await laconic.table('chats').count();
   }
 
+  /// 统计引用指定模型的 chat 数量,供模型目录清理下架模型时保护引用。
+  Future<int> getChatCountByModelId(int modelId) async {
+    var laconic = Database.instance.laconic;
+    return await laconic.table('chats').where('model_id', modelId).count();
+  }
+
   Future<List<ChatEntity>> getChatsAfterId(int chatId, {int limit = 10}) async {
     var laconic = Database.instance.laconic;
     var results = await laconic

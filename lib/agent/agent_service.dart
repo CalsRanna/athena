@@ -192,6 +192,11 @@ class AgentService {
 
         final accumulator = ChatStreamAccumulator();
 
+        // 流式累积 tool_calls：id/name/arguments 分片到达，实时产出事件，
+        // 避免等整个流结束后才一次性出现所有工具卡片。
+        final streamingCalls = <int, _StreamingToolCall>{};
+        final announcedIds = <String>{};
+
         await for (final chunk in stream) {
           token.throwIfCancelled();
           accumulator.add(chunk);
@@ -201,6 +206,44 @@ class AgentService {
             final rc = delta.reasoningContent ?? delta.reasoning;
             if (rc != null && rc.isNotEmpty) {
               yield AgentEvent.reasoning(rc);
+            }
+
+            if (delta.toolCalls != null) {
+              for (final tcd in delta.toolCalls!) {
+                final acc = streamingCalls.putIfAbsent(
+                  tcd.index,
+                  _StreamingToolCall.new,
+                );
+                if (tcd.id != null) acc.id = tcd.id;
+                final fnName = tcd.function?.name;
+                if (fnName != null) acc.name ??= fnName;
+
+                // 卡片出现时机：id 与 name 齐备（与 accumulator 建卡条件一致）。
+                // 先于参数增量产出，保证同 chunk 内参数不丢失。
+                if (acc.id != null &&
+                    acc.name != null &&
+                    !announcedIds.contains(acc.id)) {
+                  announcedIds.add(acc.id!);
+                  yield AgentEvent.toolCall(
+                    id: acc.id!,
+                    name: acc.name!,
+                    arguments: acc.arguments,
+                  );
+                }
+
+                final argsDelta = tcd.function?.arguments;
+                if (argsDelta != null && argsDelta.isNotEmpty) {
+                  acc.arguments += argsDelta;
+                  // 仅已建卡（announced）时产出增量事件；未建卡的分片
+                  // 已缓冲在 acc.arguments 中，由建卡事件一并携带。
+                  if (acc.id != null && announcedIds.contains(acc.id)) {
+                    yield AgentEvent.toolCallArgs(
+                      id: acc.id!,
+                      delta: argsDelta,
+                    );
+                  }
+                }
+              }
             }
           }
 
@@ -231,16 +274,8 @@ class AgentService {
           break;
         }
 
-        // 产出 tool_call 事件
-        for (final tc in toolCalls) {
-          yield AgentEvent.toolCall(
-            id: tc.id,
-            name: tc.function.name,
-            arguments: tc.function.arguments,
-          );
-        }
-
         // 追加 assistant 消息（含 tool_calls）
+        // 注意：toolCall 事件已由流式循环实时产出，此处不再重复 yield
         final rc = model.reasoning && accumulator.reasoningContent.isNotEmpty
             ? accumulator.reasoningContent
             : null;
@@ -740,6 +775,13 @@ class _AsyncSemaphore {
   }
 }
 
+/// 流式累积中的单个 tool_call：id/name/arguments 分片到达。
+class _StreamingToolCall {
+  String? id;
+  String? name;
+  String arguments = '';
+}
+
 /// 单个工具执行的结果打包。供 [_executeOneTool] 返回。
 class _ToolExecutionData {
   final AgentToolResultEvent event;
@@ -777,6 +819,12 @@ sealed class AgentEvent {
     required String name,
     required String arguments,
   }) = AgentToolCallEvent;
+
+  /// 流式 tool_call 参数增量：卡片已出现后，参数分片实时追加。
+  const factory AgentEvent.toolCallArgs({
+    required String id,
+    required String delta,
+  }) = AgentToolCallArgsEvent;
 
   const factory AgentEvent.toolResult({
     required String id,
@@ -826,6 +874,18 @@ class AgentToolCallEvent extends AgentEvent {
     required this.id,
     required this.name,
     required this.arguments,
+  });
+}
+
+/// 流式 tool_call 参数增量事件。
+class AgentToolCallArgsEvent extends AgentEvent {
+  final String id;
+
+  /// 本次 chunk 携带的 arguments 分片（非完整参数）。
+  final String delta;
+  const AgentToolCallArgsEvent({
+    required this.id,
+    required this.delta,
   });
 }
 
