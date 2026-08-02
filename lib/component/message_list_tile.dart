@@ -296,7 +296,7 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
   }
 
   void updateExpanded() {
-    if (message.reasoning) return;
+    // 思考期间也可点击展开/折叠，实时查看推理进度
     GetIt.instance<ChatViewModel>().updateExpanded(message);
   }
 

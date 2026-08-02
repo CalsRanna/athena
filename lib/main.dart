@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:athena/agent/permission/permission_service.dart';
 import 'package:athena/database/database.dart';
 import 'package:athena/di.dart';
 import 'package:athena/router/router.dart';
+import 'package:athena/service/model_catalog_service.dart';
 import 'package:athena/util/color_util.dart';
 import 'package:athena/util/platform_util.dart';
 import 'package:athena/util/system_tray_util.dart';
@@ -25,6 +28,8 @@ void main() async {
   final supportDir = await getApplicationSupportDirectory();
   DI.ensureInitialized(dataDirectory: supportDir.path);
   await GetIt.instance<PermissionService>().load();
+  // 后台同步模型目录(models.dev),失败自动降级缓存,不阻塞启动
+  unawaited(GetIt.instance<ModelCatalogService>().syncIfNeeded());
   runApp(const AthenaApp());
 }
 

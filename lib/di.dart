@@ -31,6 +31,7 @@ import 'package:athena/service/chat_service.dart';
 import 'package:athena/service/chat_support_service.dart';
 import 'package:athena/service/data_migration_service.dart';
 import 'package:athena/service/llm_client.dart';
+import 'package:athena/service/model_catalog_service.dart';
 import 'package:athena/service/model_resolver.dart';
 import 'package:athena/service/sentinel_service.dart';
 import 'package:athena/service/summary_service.dart';
@@ -298,6 +299,14 @@ class DI {
         modelRepo: getIt<ModelRepository>(),
         sentinelRepo: getIt<SentinelRepository>(),
         chatRepo: getIt<ChatRepository>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
+      () => ModelCatalogService(
+        modelRepository: getIt<ModelRepository>(),
+        providerRepository: getIt<ProviderRepository>(),
+        chatRepository: getIt<ChatRepository>(),
       ),
     );
   }

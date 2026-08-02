@@ -72,6 +72,21 @@ class ProviderRepository {
     }
   }
 
+  /// 按名字查找预设 provider(is_preset = 1),供模型目录同步使用。
+  Future<ProviderEntity?> getPresetProviderByName(String name) async {
+    var laconic = Database.instance.laconic;
+    try {
+      var result = await laconic
+          .table('providers')
+          .where('name', name)
+          .where('is_preset', 1)
+          .first();
+      return ProviderEntity.fromJson(result.toMap());
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> deleteAllProviders() async {
     var laconic = Database.instance.laconic;
     await laconic.table('providers').delete();

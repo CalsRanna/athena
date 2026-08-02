@@ -270,6 +270,7 @@ class AgentStreamDelegate {
 
     Future<void> beginNewIteration() async {
       await _manageService.finalizeAssistantMessage(current);
+      // 每条消息的思考折叠状态独立：新迭代的消息重置为默认折叠
       current = await _manageService.appendAssistantPlaceholder(chat.id!);
       contentBuffer = StringBuffer();
       reasoningBuffer = StringBuffer();
@@ -290,9 +291,11 @@ class AgentStreamDelegate {
         } else if (event is AgentReasoningEvent) {
           if (hasCompletedIteration) await beginNewIteration();
           reasoningBuffer.write(event.delta);
+          // expanded 显式传当前值：流式更新不得覆盖用户已持久化的展开状态
           current = current.copyWith(
             reasoningContent: reasoningBuffer.toString(),
             reasoning: true,
+            expanded: current.expanded,
             reasoningUpdatedAt: DateTime.now(),
           );
         } else if (event is AgentTextEvent) {
@@ -307,6 +310,18 @@ class AgentStreamDelegate {
             'arguments': event.arguments,
           });
           current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
+        } else if (event is AgentToolCallArgsEvent) {
+          // 流式参数增量：按 id 找到已建卡的工具调用并追加 arguments
+          final index =
+              toolCallsJson.indexWhere((c) => c['id'] == event.id);
+          if (index >= 0) {
+            toolCallsJson[index] = {
+              ...toolCallsJson[index],
+              'arguments':
+                  (toolCallsJson[index]['arguments'] as String) + event.delta,
+            };
+            current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
+          }
         } else if (event is AgentToolResultEvent) {
           toolResultsJson.add({
             'id': event.id,

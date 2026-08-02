@@ -24,7 +24,8 @@ class MessageEntity {
     this.content = '',
     this.reasoningContent = '',
     this.reasoning = false,
-    this.expanded = true,
+    // 思考内容默认折叠：多数用户不关心 LLM 推理过程，点击标题可展开
+    this.expanded = false,
     this.imageUrls = '',
     this.reference = '',
     this.toolCalls = '',
@@ -43,7 +44,8 @@ class MessageEntity {
       content: json.getString('content'),
       reasoningContent: json.getString('reasoning_content'),
       reasoning: json.getBool('reasoning'),
-      expanded: json.getBool('expanded', defaultValue: true),
+      // 兼容旧数据：DB 里无 expanded 记录的旧消息仍按折叠处理
+      expanded: json.getBool('expanded', defaultValue: false),
       imageUrls: json.getString('image_urls'),
       reference: json.getString('reference'),
       toolCalls: json.getString('tool_calls'),
