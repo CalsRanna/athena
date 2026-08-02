@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena/agent/permission/command_analyzer.dart';
 import 'package:athena/agent/tool/shell_runner.dart';
 
 import 'tool_interface.dart';
@@ -9,6 +10,16 @@ class PowerShellShellTool implements Tool {
   ExecutionMode get executionMode => ExecutionMode.sequential;
 
   PowerShellShellTool();
+
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
+
+  /// 只读命令（CommandAnalyzer 白名单内）可并行执行，其余必须串行。
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) {
+    final command = args['command'] as String?;
+    return command != null && CommandAnalyzer.isReadOnlyCommand(command);
+  }
 
   @override
   String get name => 'powershell';

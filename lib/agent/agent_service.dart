@@ -50,6 +50,9 @@ typedef AfterToolCallHook = Future<AfterToolCallResult> Function(
 );
 
 class AgentService {
+  /// 并行工具执行的并发上限，防止模型一轮发大量并行调用时瞬时打爆。
+  static const _maxParallelTools = 8;
+
   final ChatService _chatService;
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
@@ -132,6 +135,9 @@ class AgentService {
     currentCancelTokenInternal = cancelToken ?? CancelToken();
     settledInternal = Completer<void>();
     final token = currentCancelTokenInternal!;
+
+    // 新 run 开始:清空上一步的会话级权限缓存
+    permissionService?.resetSession();
 
     var messages = _injectPrompts(baseMessages, skillPrompt, evolutionPrompt);
     _skillRegistry?.clearContext();
@@ -277,19 +283,19 @@ class AgentService {
         // 执行工具调用（串行 + 并行混合）
         final toolCallDataList = <Map<String, dynamic>>[];
 
-        // 分组：区分 sequential / parallel 工具
-        final sequentialCalls = <ToolCall>[];
-        final parallelCalls = <ToolCall>[];
-        for (final tc in toolCalls) {
-          final t = _toolRegistry.get(tc.function.name);
-          if (t != null && t.executionMode == ExecutionMode.parallel) {
-            parallelCalls.add(tc);
-          } else {
-            sequentialCalls.add(tc);
-          }
-        }
+        // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
+        // 审批的调用）进入串行组
+        final parallelCalls = selectParallelCalls(
+          toolCalls,
+          permissionService: permissionService,
+          onPermission: onPermission,
+        );
+        final sequentialCalls = [
+          for (final tc in toolCalls)
+            if (!parallelCalls.contains(tc)) tc,
+        ];
 
-        // 串行执行
+        // 串行执行（弹窗审批天然逐个出现）
         for (final tc in sequentialCalls) {
           yield AgentEvent.toolExecutionStart(
             id: tc.id,
@@ -308,7 +314,7 @@ class AgentService {
           toolCallDataList.add(data.record);
         }
 
-        // 并行执行
+        // 并行执行：信号量限流 + 取消优先 + 结果渐进式产出
         if (parallelCalls.isNotEmpty) {
           for (final tc in parallelCalls) {
             yield AgentEvent.toolExecutionStart(
@@ -318,20 +324,30 @@ class AgentService {
             );
           }
 
-          final parallelFutures = parallelCalls.map((tc) => _executeOneTool(
-            tc: tc,
-            token: token,
-            sentinelId: sentinelId,
-            beforeHook: compositeBeforeToolCall,
-            afterHook: compositeAfterToolCall,
-          ));
+          final semaphore = _AsyncSemaphore(_maxParallelTools);
+          final futures = <Future<_ToolExecutionData>>{
+            for (final tc in parallelCalls)
+              _executeParallelOne(
+                tc: tc,
+                token: token,
+                sentinelId: sentinelId,
+                beforeHook: compositeBeforeToolCall,
+                afterHook: compositeAfterToolCall,
+                semaphore: semaphore,
+              ),
+          };
 
-          final results = await Future.wait(parallelFutures);
-
-          for (final data in results) {
-            yield data.event;
-            messages.add(data.toolMessage);
-            toolCallDataList.add(data.record);
+          while (futures.isNotEmpty) {
+            // 每轮取最快完成的工具；取消信号优先返回，不等待卡住的工具
+            final first = await Future.any([
+              for (final f in futures) f.then((r) => (f: f, r: r)),
+              token.whenCancelled.then((_) => null),
+            ]);
+            if (first == null) token.throwIfCancelled();
+            futures.remove(first!.f);
+            yield first.r.event;
+            messages.add(first.r.toolMessage);
+            toolCallDataList.add(first.r.record);
           }
         }
 
@@ -382,8 +398,12 @@ class AgentService {
         return (block: false, reason: '');
       }
 
-      final ruleMatched =
-          permissionService?.check(ctx.name, ctx.args) == true;
+      final ruleMatched = permissionService?.check(
+            ctx.name,
+            ctx.args,
+            risk: _toolRegistry.get(ctx.name)?.risk,
+          ) ==
+          true;
 
       if (!ruleMatched) {
         if (onPermission == null) {
@@ -572,6 +592,79 @@ class AgentService {
     }
   }
 
+  /// 从 [toolCalls] 中选出可并行执行的一批，经过权限预检分级。
+  ///
+  /// 预检目的：并行组内不得出现需要审批弹窗的调用（多个模态 dialog
+  /// 同时弹出会互相覆盖），因此：
+  /// - [permissionService] 非空时，`check` 返回 `true`（readOnly / 会话
+  ///   缓存 / 持久规则命中）才留在并行组，需弹窗（返回 `null`）的降级串行；
+  /// - [permissionService] 为空但 [onPermission] 非空（无预检能力）时，
+  ///   候选并行调用全部降级串行（保守）；
+  /// - 两者皆空（无权限系统）时不做降级。
+  ///
+  /// 参数解析失败、工具不存在或工具判定不可并行的调用归入串行组。
+  @visibleForTesting
+  List<ToolCall> selectParallelCalls(
+    List<ToolCall> toolCalls, {
+    PermissionService? permissionService,
+    PermissionCallback? onPermission,
+  }) {
+    final parallelCalls = <ToolCall>[];
+    for (final tc in toolCalls) {
+      final tool = _toolRegistry.get(tc.function.name);
+      Map<String, dynamic>? args;
+      try {
+        args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
+      } catch (_) {
+        args = null;
+      }
+
+      if (args == null || tool == null || !tool.canExecuteParallel(args)) {
+        continue;
+      }
+
+      // 权限预检分级：需弹窗的调用降级串行
+      if (permissionService != null) {
+        if (permissionService.check(
+                tc.function.name,
+                args,
+                risk: tool.risk,
+              ) !=
+            true) {
+          continue;
+        }
+      } else if (onPermission != null) {
+        continue;
+      }
+
+      parallelCalls.add(tc);
+    }
+    return parallelCalls;
+  }
+
+  /// 并行执行单个工具，受 [semaphore] 限流。
+  Future<_ToolExecutionData> _executeParallelOne({
+    required ToolCall tc,
+    required CancelToken token,
+    String? sentinelId,
+    BeforeToolCallHook? beforeHook,
+    AfterToolCallHook? afterHook,
+    required _AsyncSemaphore semaphore,
+  }) async {
+    await semaphore.acquire();
+    try {
+      return await _executeOneTool(
+        tc: tc,
+        token: token,
+        sentinelId: sentinelId,
+        beforeHook: beforeHook,
+        afterHook: afterHook,
+      );
+    } finally {
+      semaphore.release();
+    }
+  }
+
   /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
   Future<_ToolExecutionData> _executeOneTool({
     required ToolCall tc,
@@ -617,6 +710,34 @@ class AgentService {
   }
 
 
+}
+
+/// 简单的异步信号量，限制并发执行数（FIFO 公平）。
+class _AsyncSemaphore {
+  final int _max;
+  int _current = 0;
+  final List<Completer<void>> _waiters = [];
+
+  _AsyncSemaphore(this._max);
+
+  Future<void> acquire() async {
+    if (_current < _max) {
+      _current++;
+      return;
+    }
+    final completer = Completer<void>();
+    _waiters.add(completer);
+    await completer.future;
+  }
+
+  void release() {
+    // 有等待者时直接把 permit 让给队首，否则归还计数
+    if (_waiters.isNotEmpty) {
+      _waiters.removeAt(0).complete();
+    } else {
+      _current--;
+    }
+  }
 }
 
 /// 单个工具执行的结果打包。供 [_executeOneTool] 返回。

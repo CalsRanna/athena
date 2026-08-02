@@ -3,27 +3,26 @@ import 'package:athena/util/color_util.dart';
 import 'package:athena/util/platform_util.dart';
 import 'package:athena/widget/button.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-enum _RememberMode { none, exact, pattern }
+/// 错误色（对齐 AthenaMessageType.error）。
+const _accentError = Color(0xFFE38B8B);
 
 class PermissionDialogResult {
   final bool approved;
+
+  /// Always Allow：持久化规则（shell 存动作级规则，其他存精确 keyArg）。
   final bool persistExact;
-  final String? persistPattern;
 
   const PermissionDialogResult({
     required this.approved,
     this.persistExact = false,
-    this.persistPattern,
   });
 }
 
 Future<PermissionDialogResult> showPermissionDialog({
   required String toolName,
   required String description,
-  required String keyArg,
   String? warning,
 }) async {
   final context = router.navigatorKey.currentContext!;
@@ -34,7 +33,6 @@ Future<PermissionDialogResult> showPermissionDialog({
       builder: (_) => _DesktopPermissionDialog(
         toolName: toolName,
         description: description,
-        keyArg: keyArg,
         warning: warning,
       ),
     );
@@ -48,7 +46,6 @@ Future<PermissionDialogResult> showPermissionDialog({
       builder: (_) => _MobilePermissionDialog(
         toolName: toolName,
         description: description,
-        keyArg: keyArg,
         warning: warning,
       ),
     );
@@ -56,52 +53,19 @@ Future<PermissionDialogResult> showPermissionDialog({
   }
 }
 
-class _DesktopPermissionDialog extends StatefulWidget {
+class _DesktopPermissionDialog extends StatelessWidget {
   final String toolName;
   final String description;
-  final String keyArg;
   final String? warning;
 
   const _DesktopPermissionDialog({
     required this.toolName,
     required this.description,
-    required this.keyArg,
     this.warning,
   });
 
   @override
-  State<_DesktopPermissionDialog> createState() =>
-      _DesktopPermissionDialogState();
-}
-
-class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
-  var _rememberMode = _RememberMode.none;
-  late final _patternController = TextEditingController(text: widget.keyArg);
-
-  @override
-  void dispose() {
-    _patternController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final children = <Widget>[
-      _buildHeader(),
-      const SizedBox(height: 16),
-      _buildDescription(),
-    ];
-
-    if (widget.warning != null) {
-      children.add(const SizedBox(height: 12));
-      children.add(_buildWarning(widget.warning!));
-    }
-
-    children.add(const SizedBox(height: 20));
-    children.add(_buildRememberSection());
-    children.add(const SizedBox(height: 24));
-    children.add(_buildButtons());
-
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
@@ -111,261 +75,30 @@ class _DesktopPermissionDialogState extends State<_DesktopPermissionDialog> {
           borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
+        child: _PermissionDialogContent(
+          toolName: toolName,
+          description: description,
+          warning: warning,
+          mobile: false,
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        Icon(
-          HugeIcons.strokeRoundedAlert02,
-          size: 20,
-          color: Colors.orange.shade700,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          widget.toolName,
-          style: GoogleFonts.firaCode(
-            fontSize: 16,
-            color: ColorUtil.FFFFFFFF,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescription() {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 200),
-      child: SingleChildScrollView(
-        child: Text(
-          widget.description,
-          style: GoogleFonts.firaCode(
-            fontSize: 13,
-            color: ColorUtil.FFFFFFFF,
-            height: 1.6,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWarning(String warning) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          HugeIcons.strokeRoundedAlert02,
-          size: 16,
-          color: Colors.red.shade400,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            warning,
-            style: GoogleFonts.firaCode(
-              fontSize: 12,
-              color: Colors.red.shade400,
-              height: 1.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRememberSection() {
-    final baseStyle = TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Remember:', style: baseStyle),
-        const SizedBox(height: 8),
-        RadioGroup<_RememberMode>(
-          groupValue: _rememberMode,
-          onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _radioOption(_RememberMode.none),
-              const SizedBox(height: 6),
-              _radioOption(_RememberMode.exact),
-              const SizedBox(height: 6),
-              _radioOption(_RememberMode.pattern, trailing: _buildPatternInput()),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _radioOption(_RememberMode mode, {Widget? trailing}) {
-    final selected = _rememberMode == mode;
-    final labelText = switch (mode) {
-      _RememberMode.none => 'Don\'t remember',
-      _RememberMode.exact => 'Exactly this call',
-      _RememberMode.pattern => 'Pattern:',
-    };
-
-    return GestureDetector(
-      onTap: () => setState(() => _rememberMode = mode),
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: Radio<_RememberMode>(
-              value: mode,
-              activeColor: Colors.orange.shade700,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            labelText,
-            style: TextStyle(
-              color: selected ? ColorUtil.FFFFFFFF : ColorUtil.FFC2C2C2,
-              fontSize: 12,
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 4),
-            Expanded(child: trailing),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatternInput() {
-    final enabled = _rememberMode == _RememberMode.pattern;
-    return TextField(
-      controller: _patternController,
-      enabled: enabled,
-      style: GoogleFonts.firaCode(
-        fontSize: 12,
-        color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF616161,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(
-            color: enabled ? ColorUtil.FFC2C2C2 : ColorUtil.FF616161,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(color: ColorUtil.FFC2C2C2),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(color: ColorUtil.FF616161),
-        ),
-        filled: true,
-        fillColor: enabled ? ColorUtil.FF161616 : ColorUtil.FF282828,
-      ),
-    );
-  }
-
-  Widget _buildButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        AthenaSecondaryButton(
-          onTap: () => Navigator.pop(
-            context,
-            const PermissionDialogResult(approved: false),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Deny'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        AthenaPrimaryButton(
-          onTap: () {
-            final pattern = _rememberMode == _RememberMode.pattern
-                ? _patternController.text.trim()
-                : null;
-            Navigator.pop(
-              context,
-              PermissionDialogResult(
-                approved: true,
-                persistExact: _rememberMode == _RememberMode.exact,
-                persistPattern: (pattern != null && pattern.isNotEmpty) ? pattern : null,
-              ),
-            );
-          },
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Allow'),
-          ),
-        ),
-      ],
     );
   }
 }
 
-class _MobilePermissionDialog extends StatefulWidget {
+class _MobilePermissionDialog extends StatelessWidget {
   final String toolName;
   final String description;
-  final String keyArg;
   final String? warning;
 
   const _MobilePermissionDialog({
     required this.toolName,
     required this.description,
-    required this.keyArg,
     this.warning,
   });
 
   @override
-  State<_MobilePermissionDialog> createState() =>
-      _MobilePermissionDialogState();
-}
-
-class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
-  var _rememberMode = _RememberMode.none;
-  late final _patternController = TextEditingController(text: widget.keyArg);
-
-  @override
-  void dispose() {
-    _patternController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final children = <Widget>[
-      _buildHeader(),
-      const SizedBox(height: 16),
-      _buildDescription(),
-    ];
-
-    if (widget.warning != null) {
-      children.add(const SizedBox(height: 12));
-      children.add(_buildWarning(widget.warning!));
-    }
-
-    children.add(const SizedBox(height: 20));
-    children.add(_buildRememberSection());
-    children.add(const SizedBox(height: 24));
-    children.add(_buildAllowButton());
-    children.add(const SizedBox(height: 12));
-    children.add(_buildDenyButton());
-    children.add(SizedBox(height: MediaQuery.paddingOf(context).bottom));
-
     return Container(
       decoration: const BoxDecoration(
         color: ColorUtil.FF282F32,
@@ -373,45 +106,100 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+        child: _PermissionDialogContent(
+          toolName: toolName,
+          description: description,
+          warning: warning,
+          mobile: true,
+        ),
       ),
+    );
+  }
+}
+
+/// 桌面/移动共享的对话框内容：标题行 + 请求内容 + 三个操作按钮。
+///
+/// 三个按钮即三种决策，无需额外步骤：
+/// - Allow Once：仅放行本次
+/// - Always Allow：放行并持久化规则
+/// - Deny：拒绝
+class _PermissionDialogContent extends StatelessWidget {
+  final String toolName;
+  final String description;
+  final String? warning;
+  final bool mobile;
+
+  const _PermissionDialogContent({
+    required this.toolName,
+    required this.description,
+    required this.warning,
+    required this.mobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final children = <Widget>[
+      _buildHeader(),
+      const SizedBox(height: 16),
+      _buildCodeBlock(),
+    ];
+
+    if (warning != null) {
+      children.add(const SizedBox(height: 12));
+      children.add(_buildWarning(warning!));
+    }
+
+    children.add(const SizedBox(height: 24));
+    children.add(_buildButtons(context));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
     );
   }
 
   Widget _buildHeader() {
+    // 标题样式对齐其他对话框（如 Edit Sentinel）：纯文字、普通字体、20px w500
+    const titleTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
     return Row(
       children: [
-        Icon(
-          HugeIcons.strokeRoundedAlert02,
-          size: 20,
-          color: Colors.orange.shade700,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          widget.toolName,
-          style: GoogleFonts.firaCode(
-            fontSize: 16,
-            color: ColorUtil.FFFFFFFF,
-            fontWeight: FontWeight.w500,
+        Text('Tool Approval', style: titleTextStyle),
+        const Spacer(),
+        // 工具名 chip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: ColorUtil.FF616161,
+            borderRadius: BorderRadius.circular(44),
+          ),
+          child: Text(
+            toolName,
+            style: const TextStyle(
+              fontSize: 12,
+              color: ColorUtil.FFFFFFFF,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDescription() {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 200),
-      child: SingleChildScrollView(
-        child: Text(
-          widget.description,
-          style: GoogleFonts.firaCode(
-            fontSize: 13,
-            color: ColorUtil.FFFFFFFF,
-            height: 1.6,
-          ),
-        ),
-      ),
+  /// 请求内容（shell 为完整命令，其他为参数键值）。
+  Widget _buildCodeBlock() {
+    // 正文样式对齐其他对话框的 messageStyle（普通字体、14、白 0.8）
+    const contentStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.6,
+    );
+    return SingleChildScrollView(
+      child: Text(description, style: contentStyle),
     );
   }
 
@@ -422,15 +210,15 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
         Icon(
           HugeIcons.strokeRoundedAlert02,
           size: 16,
-          color: Colors.red.shade400,
+          color: _accentError,
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             warning,
-            style: GoogleFonts.firaCode(
-              fontSize: 12,
-              color: Colors.red.shade400,
+            style: const TextStyle(
+              fontSize: 13,
+              color: _accentError,
               height: 1.5,
             ),
           ),
@@ -439,162 +227,116 @@ class _MobilePermissionDialogState extends State<_MobilePermissionDialog> {
     );
   }
 
-  Widget _buildRememberSection() {
-    final baseStyle = TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 13);
+  void _allowOnce(BuildContext context) {
+    Navigator.pop(
+      context,
+      const PermissionDialogResult(approved: true),
+    );
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Remember:', style: baseStyle),
-        const SizedBox(height: 8),
-        RadioGroup<_RememberMode>(
-          groupValue: _rememberMode,
-          onChanged: (v) => setState(() => _rememberMode = v ?? _RememberMode.none),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _radioOption(_RememberMode.none),
-              const SizedBox(height: 6),
-              _radioOption(_RememberMode.exact),
-              const SizedBox(height: 6),
-              _radioOption(_RememberMode.pattern, trailing: _buildPatternInput()),
-            ],
+  void _alwaysAllow(BuildContext context) {
+    Navigator.pop(
+      context,
+      const PermissionDialogResult(approved: true, persistExact: true),
+    );
+  }
+
+  void _deny(BuildContext context) {
+    Navigator.pop(
+      context,
+      const PermissionDialogResult(approved: false),
+    );
+  }
+
+  Widget _buildButtons(BuildContext context) {
+    if (!mobile) {
+      // 桌面：行内按钮，主操作（Allow Once）在最右
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          AthenaSecondaryButton(
+            onTap: () => _deny(context),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Deny'),
+            ),
           ),
+          const SizedBox(width: 12),
+          AthenaSecondaryButton(
+            onTap: () => _alwaysAllow(context),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Always Allow'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          AthenaPrimaryButton(
+            onTap: () => _allowOnce(context),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Allow Once'),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 移动：全宽胶囊按钮，主操作在最上
+    return Column(
+      children: [
+        _buildMobileButton(
+          label: 'Allow Once',
+          onTap: () => _allowOnce(context),
+          background: ColorUtil.FFFFFFFF,
+          foreground: ColorUtil.FF161616,
+          bordered: false,
         ),
+        const SizedBox(height: 12),
+        _buildMobileButton(
+          label: 'Always Allow',
+          onTap: () => _alwaysAllow(context),
+          background: Colors.transparent,
+          foreground: ColorUtil.FFFFFFFF,
+          bordered: true,
+        ),
+        const SizedBox(height: 12),
+        _buildMobileButton(
+          label: 'Deny',
+          onTap: () => _deny(context),
+          background: ColorUtil.FF616161,
+          foreground: ColorUtil.FFFFFFFF,
+          bordered: false,
+        ),
+        SizedBox(height: MediaQuery.paddingOf(context).bottom),
       ],
     );
   }
 
-  Widget _radioOption(_RememberMode mode, {Widget? trailing}) {
-    final selected = _rememberMode == mode;
-    final labelText = switch (mode) {
-      _RememberMode.none => 'Don\'t remember',
-      _RememberMode.exact => 'Exactly this call',
-      _RememberMode.pattern => 'Pattern:',
-    };
-
-    return GestureDetector(
-      onTap: () => setState(() => _rememberMode = mode),
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: Radio<_RememberMode>(
-              value: mode,
-              activeColor: Colors.orange.shade700,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            labelText,
-            style: TextStyle(
-              color: selected ? ColorUtil.FFFFFFFF : ColorUtil.FFC2C2C2,
-              fontSize: 12,
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 4),
-            Expanded(child: trailing),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPatternInput() {
-    final enabled = _rememberMode == _RememberMode.pattern;
-    return TextField(
-      controller: _patternController,
-      enabled: enabled,
-      style: GoogleFonts.firaCode(
-        fontSize: 12,
-        color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF616161,
-      ),
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(
-            color: enabled ? ColorUtil.FFC2C2C2 : ColorUtil.FF616161,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(color: ColorUtil.FFC2C2C2),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
-          borderSide: BorderSide(color: ColorUtil.FF616161),
-        ),
-        filled: true,
-        fillColor: enabled ? ColorUtil.FF161616 : ColorUtil.FF282828,
-      ),
-    );
-  }
-
-  Widget _buildAllowButton() {
+  Widget _buildMobileButton({
+    required String label,
+    required VoidCallback onTap,
+    required Color background,
+    required Color foreground,
+    required bool bordered,
+  }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        final pattern = _rememberMode == _RememberMode.pattern
-            ? _patternController.text.trim()
-            : null;
-        Navigator.pop(
-          context,
-          PermissionDialogResult(
-            approved: true,
-            persistExact: _rememberMode == _RememberMode.exact,
-            persistPattern: (pattern != null && pattern.isNotEmpty) ? pattern : null,
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         alignment: Alignment.center,
         decoration: ShapeDecoration(
-          shape: const StadiumBorder(),
-          color: ColorUtil.FFFFFFFF,
-          shadows: [
-            BoxShadow(
-              blurRadius: 16,
-              color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'Allow',
-          style: TextStyle(
-            color: ColorUtil.FF161616,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+          shape: StadiumBorder(
+            side: bordered
+                ? const BorderSide(color: ColorUtil.FFC2C2C2)
+                : BorderSide.none,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDenyButton() {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.pop(
-        context,
-        const PermissionDialogResult(approved: false),
-      ),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: const ShapeDecoration(
-          color: ColorUtil.FF616161,
-          shape: StadiumBorder(),
+          color: background,
         ),
         padding: const EdgeInsets.all(16),
         child: Text(
-          'Deny',
+          label,
           style: TextStyle(
-            color: ColorUtil.FFFFFFFF,
+            color: foreground,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),

@@ -5,8 +5,14 @@ import 'tool_interface.dart';
 class FileUpdateTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
 
   FileUpdateTool();
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'file_update';

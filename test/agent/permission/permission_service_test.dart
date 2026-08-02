@@ -1,5 +1,6 @@
 import 'package:athena/agent/permission/permission_rule.dart';
 import 'package:athena/agent/permission/permission_service.dart';
+import 'package:athena/agent/tool/tool_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -100,8 +101,65 @@ void main() {
       final service = serviceWithRule(
         PermissionRule(tool: 'bash', pattern: 'git '),
       );
+      // git status 是只读命令,直接短路放行
       expect(service.check('bash', {'command': 'git status'}), isTrue);
-      expect(service.check('bash', {'command': 'ls -la'}), isNull);
+      // 有副作用命令(无规则)需要审批
+      expect(service.check('bash', {'command': 'npm install'}), isNull);
+    });
+
+    test('readOnly tool bypasses rules entirely', () {
+      final service = PermissionService(store: PermissionStore());
+      expect(
+        service.check(
+          'web_fetch',
+          {'url': 'https://a.com/path'},
+          risk: ToolRisk.readOnly,
+        ),
+        isTrue,
+      );
+    });
+
+    test('readOnly shell command bypasses rules', () {
+      final service = PermissionService(store: PermissionStore());
+      expect(service.check('bash', {'command': 'ls -la'}), isTrue);
+      expect(service.check('bash', {'command': 'cat README.md'}), isTrue);
+      // 有副作用命令仍需审批
+      expect(service.check('bash', {'command': 'rm file.txt'}), isNull);
+      expect(service.check('bash', {'command': 'git push'}), isNull);
+    });
+
+    test('action-level rule matches by action', () {
+      final service = serviceWithRule(
+        PermissionRule(tool: 'bash', action: 'git'),
+      );
+      expect(service.check('bash', {'command': 'git status'}), isTrue);
+      expect(service.check('bash', {'command': 'git push origin main'}), isTrue);
+      // 其他动作不匹配
+      expect(service.check('bash', {'command': 'npm install'}), isNull);
+    });
+
+    test('session approval bypasses rules within same run', () async {
+      final service = PermissionService(store: PermissionStore());
+      expect(service.check('bash', {'command': 'git push'}), isNull);
+
+      await service.approveForSession('bash', {'command': 'git push'});
+      // 同动作其他参数也放行
+      expect(service.check('bash', {'command': 'git push'}), isTrue);
+      expect(
+        service.check('bash', {'command': 'git push origin main'}),
+        isTrue,
+      );
+      // 其他动作不放行
+      expect(service.check('bash', {'command': 'npm install'}), isNull);
+    });
+
+    test('resetSession clears session approvals', () async {
+      final service = PermissionService(store: PermissionStore());
+      await service.approveForSession('bash', {'command': 'git push'});
+      expect(service.check('bash', {'command': 'git push'}), isTrue);
+
+      service.resetSession();
+      expect(service.check('bash', {'command': 'git push'}), isNull);
     });
   });
 

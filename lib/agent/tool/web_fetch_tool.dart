@@ -6,6 +6,12 @@ import 'tool_interface.dart';
 class WebFetchTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => true;
+
+  @override
+  ToolRisk get risk => ToolRisk.readOnly;
+
   static const _maxResponseBytes = 200 * 1024; // 200KB
   static const _defaultTimeout = Duration(seconds: 30);
 

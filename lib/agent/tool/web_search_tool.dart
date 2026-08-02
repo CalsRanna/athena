@@ -8,6 +8,12 @@ import 'tool_interface.dart';
 class WebSearchTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => true;
+
+  @override
+  ToolRisk get risk => ToolRisk.readOnly;
+
   static const _keyBraveApiKey = 'brave_api_key';
   static const _defaultTimeout = Duration(seconds: 15);
   static const _maxResults = 10;

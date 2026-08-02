@@ -11,10 +11,16 @@ import 'package:athena/repository/experience_repository.dart';
 class ExperienceLearnTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
   final ExperienceRepository _repository;
 
   ExperienceLearnTool({required ExperienceRepository repository})
       : _repository = repository;
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'experience_learn';
@@ -116,10 +122,16 @@ class ExperienceLearnTool implements Tool {
 class ExperienceRecallTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
+  @override
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
   final ExperienceRepository _repository;
 
   ExperienceRecallTool({required ExperienceRepository repository})
       : _repository = repository;
+
+  @override
+  @override
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'experience_recall';
