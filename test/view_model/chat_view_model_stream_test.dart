@@ -505,6 +505,81 @@ void main() {
     expect(assistants[1].content, 'iter2-content');
   });
 
+  // 回归：多轮推理+工具调用后，前一轮消息 finalize 时必须清除 reasoning
+  // 标记（流式期间一直为 true），否则该卡片在 UI 上永久显示 Thinking。
+  test('多轮推理后前一轮卡片不再显示 Thinking', () async {
+    Stream<AgentEvent> events() async* {
+      yield const AgentReasoningEvent('think1');
+      yield const AgentToolCallEvent(id: 'c1', name: 'search', arguments: '{}');
+      yield const AgentToolResultEvent(id: 'c1', name: 'search', result: 'ok');
+      // 下一段推理触发 beginNewIteration，finalize 首轮消息
+      yield const AgentReasoningEvent('think2');
+      yield const AgentTextEvent('final answer');
+      yield const AgentDoneEvent(content: 'final answer');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    await vm.sendMessage(_userMessage(), chat: _chat());
+
+    final assistants =
+        vm.messages.value.where((m) => m.role == 'assistant').toList();
+    expect(assistants.length, 2);
+    expect(
+      assistants[0].reasoning,
+      isFalse,
+      reason: '已 finalize 的首轮卡片不应永久显示 Thinking',
+    );
+    expect(assistants[0].reasoningContent, 'think1');
+    expect(assistants[1].reasoning, isFalse);
+    expect(assistants[1].reasoningContent, 'think2');
+  });
+
+  // 回归：思考未结束时展开卡片，后续推理增量不得把展开状态重新折叠
+  // （delegate 的 copyWith 链基于本地缓存，必须应用用户最新的展开选择）。
+  test('思考期间展开卡片，后续推理增量不折叠', () async {
+    final gate = Completer<void>();
+    final expanded = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentReasoningEvent('think ');
+      yield const AgentReasoningEvent('more ');
+      if (!expanded.isCompleted) expanded.complete();
+      await gate.future;
+      yield const AgentReasoningEvent('after-expand');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+
+    final future = vm.sendMessage(_userMessage(), chat: _chat());
+
+    await expanded.future;
+    // 找到正在思考的卡片并展开
+    final thinking =
+        vm.messages.value.lastWhere((m) => m.role == 'assistant');
+    expect(thinking.reasoning, isTrue);
+    await vm.updateExpanded(thinking);
+    expect(
+      vm.messages.value.lastWhere((m) => m.id == thinking.id).expanded,
+      isTrue,
+    );
+
+    gate.complete();
+    await future;
+
+    final shown = vm.messages.value.lastWhere((m) => m.role == 'assistant');
+    expect(
+      shown.expanded,
+      isTrue,
+      reason: '思考期间展开的卡片不应被流式增量重新折叠',
+    );
+    expect(shown.reasoningContent, contains('after-expand'));
+  });
+
   test('C2: 流式中途抛错，落库的是携带已生成内容的最新消息', () async {
     Stream<AgentEvent> events() async* {
       yield const AgentTextEvent('partial');
