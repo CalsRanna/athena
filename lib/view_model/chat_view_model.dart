@@ -399,6 +399,11 @@ class ChatViewModel {
 
   Future<void> updateExpanded(MessageEntity message) async {
     try {
+      // 先同步通知流式代理:思考/生成期间流式增量基于 delegate 的本地缓存,
+      // 若不告知用户最新的展开选择,刚展开的卡片会被下一次增量重新折叠
+      if (message.id != null) {
+        _stream.updateExpanded(message.id!, !message.expanded);
+      }
       final updated = await _supportService.updateExpanded(message);
       messages.replaceWhere((m) => m.id == message.id, updated);
     } catch (e) {

@@ -99,6 +99,25 @@ class AgentStreamDelegate {
   int? _streamingChatId;
   bool _skillTrustPrompted = false;
 
+  /// 用户点击思考卡片切换的展开状态(messageId → expanded)。
+  ///
+  /// 流式更新期间由 [ChatViewModel.updateExpanded] 同步通知;`_consumeStream`
+  /// 的 copyWith 链基于本地缓存 `current`,若不应用 override,下一次推理增量
+  /// 会把用户刚展开的卡片重新折叠(思考未结束时"闪一下又关闭")。
+  final Map<int, bool> _expandedOverrides = {};
+
+  /// 记录用户对该消息的最新展开选择,流式增量更新据此保留状态。
+  void updateExpanded(int messageId, bool expanded) {
+    _expandedOverrides[messageId] = expanded;
+  }
+
+  /// 把 override 中用户最近的展开选择应用到流式更新前的消息上。
+  MessageEntity _withExpandedOverride(MessageEntity message) {
+    final override = _expandedOverrides[message.id];
+    if (override == null || message.expanded == override) return message;
+    return message.copyWith(expanded: override);
+  }
+
   AgentStreamDelegate({
     required AgentService agentService,
     required ChatManageService manageService,
@@ -206,6 +225,7 @@ class AgentStreamDelegate {
       yield const StreamListReload();
     } finally {
       _streamingChatId = null;
+      _expandedOverrides.clear();
     }
   }
 
@@ -268,8 +288,17 @@ class AgentStreamDelegate {
     // 消息走 StreamMessageUpdated 时 replaceWhere 找不到匹配而被丢弃。
     var appendedNewMessage = false;
 
-    Future<void> beginNewIteration() async {
+    Stream<AgentStreamEvent> beginNewIteration() async* {
+      // 迭代结束:清除 reasoning 标记(流式期间一直为 true),避免该卡片在
+      // UI 上永久显示 Thinking;落库后通知 UI 刷新为已结束的思考状态。
+      final hadReasoning = current.reasoning;
+      if (hadReasoning) {
+        current = current.copyWith(reasoning: false);
+      }
       await _manageService.finalizeAssistantMessage(current);
+      if (hadReasoning) yield StreamMessageUpdated(current);
+      // 该消息已 finalize,不再接收流式更新,清除其展开状态覆盖
+      if (current.id != null) _expandedOverrides.remove(current.id);
       // 每条消息的思考折叠状态独立：新迭代的消息重置为默认折叠
       current = await _manageService.appendAssistantPlaceholder(chat.id!);
       contentBuffer = StringBuffer();
@@ -289,7 +318,7 @@ class AgentStreamDelegate {
         } else if (event is AgentToolExecutionStartEvent) {
           yield StreamToolNameChanged(event.name);
         } else if (event is AgentReasoningEvent) {
-          if (hasCompletedIteration) await beginNewIteration();
+          if (hasCompletedIteration) yield* beginNewIteration();
           reasoningBuffer.write(event.delta);
           // expanded 显式传当前值：流式更新不得覆盖用户已持久化的展开状态
           current = current.copyWith(
@@ -299,7 +328,7 @@ class AgentStreamDelegate {
             reasoningUpdatedAt: DateTime.now(),
           );
         } else if (event is AgentTextEvent) {
-          if (hasCompletedIteration) await beginNewIteration();
+          if (hasCompletedIteration) yield* beginNewIteration();
           contentBuffer.write(event.delta);
           current = current.copyWith(content: contentBuffer.toString());
         } else if (event is AgentToolCallEvent) {
@@ -350,10 +379,13 @@ class AgentStreamDelegate {
           yield StreamAssistantAppended(current);
           appendedNewMessage = false;
         }
+        // 应用用户最近的展开选择:增量 copyWith 链基于本地缓存 current,
+        // 若不在此覆盖,刚展开的卡片会被下一次增量重新折叠
+        current = _withExpandedOverride(current);
         yield StreamMessageUpdated(current);
       }
 
-      if (reasoningBuffer.isNotEmpty) {
+      if (current.reasoning) {
         current = current.copyWith(reasoning: false);
         yield StreamMessageUpdated(current);
       }
