@@ -109,6 +109,17 @@ Future<Laconic> _buildSchema() async {
       updated_at INTEGER NOT NULL
     )
   ''');
+  await laconic.statement('''
+    CREATE TABLE shortcuts(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      icon TEXT DEFAULT '',
+      page_target TEXT DEFAULT '',
+      sentinel_id INTEGER NOT NULL,
+      FOREIGN KEY (sentinel_id) REFERENCES sentinels(id) ON DELETE CASCADE
+    )
+  ''');
 
   await laconic.statement('PRAGMA foreign_keys = ON');
   return laconic;
@@ -367,6 +378,53 @@ void main() {
         reason: 'token_total should accumulate');
   });
 
+  test('shortcuts table exists with expected columns', () async {
+    final laconic = await _buildSchema();
+    final info = await laconic.select("PRAGMA table_info('shortcuts')");
+    final columns = info.map((r) => r.toMap()['name'] as String).toSet();
+    expect(columns, contains('id'));
+    expect(columns, contains('name'));
+    expect(columns, contains('description'));
+    expect(columns, contains('icon'));
+    expect(columns, contains('page_target'));
+    expect(columns, contains('sentinel_id'));
+  });
+
+  test('bound sentinel deletion cascades to its shortcut', () async {
+    final laconic = await _buildSchema();
+
+    final sentinelId = await laconic.table('sentinels').insertGetId(<String, dynamic>{
+      'name': 'BoundSentinel',
+      'description': '',
+      'avatar': '',
+      'prompt': 'p',
+      'tags': '',
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    await laconic.table('shortcuts').insertGetId(<String, dynamic>{
+      'name': 'BoundShortcut',
+      'description': '',
+      'icon': '',
+      'page_target': 'translation',
+      'sentinel_id': sentinelId,
+    });
+    expect(await laconic.table('shortcuts').count(), 1);
+    expect(await laconic.table('sentinels').count(), 1);
+
+    // 删除 Shortcut 时，其绑定的 Sentinel 保留（普通聊天仍可选择）。
+    await laconic.table('shortcuts').where('id', 1).delete();
+    expect(await laconic.table('shortcuts').count(), 0);
+    expect(await laconic.table('sentinels').count(), 1,
+        reason: 'bound sentinel should SURVIVE shortcut deletion');
+
+    // 删除 Sentinel 时，其绑定的 Shortcut 级联删除（防悬空引用）。
+    await laconic.table('sentinels').where('id', sentinelId).delete();
+    expect(await laconic.table('sentinels').count(), 0);
+    expect(await laconic.table('shortcuts').count(), 0,
+        reason: 'shortcut should be cascade-deleted with its bound sentinel');
+  });
+
   test('all expected tables exist after full migration', () async {
     final laconic = await _buildSchema();
     final tables =
@@ -381,6 +439,7 @@ void main() {
       'trpg_games',
       'trpg_messages',
       'memories',
+      'shortcuts',
     ]) {
       expect(names, contains(expected),
           reason: 'table "$expected" should exist after migrations');

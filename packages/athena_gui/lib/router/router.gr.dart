@@ -30,17 +30,22 @@ import 'package:athena_gui/page/mobile/default_model.dart/default_model_form_pag
     as _i16;
 import 'package:athena_gui/page/mobile/home/home.dart' as _i17;
 import 'package:athena_gui/page/mobile/provider/model_form_page.dart' as _i18;
-import 'package:athena_gui/page/mobile/provider/provider_form_page.dart' as _i19;
-import 'package:athena_gui/page/mobile/provider/provider_list_page.dart' as _i20;
-import 'package:athena_gui/page/mobile/provider/provider_name_page.dart' as _i21;
+import 'package:athena_gui/page/mobile/provider/provider_form_page.dart'
+    as _i19;
+import 'package:athena_gui/page/mobile/provider/provider_list_page.dart'
+    as _i20;
+import 'package:athena_gui/page/mobile/provider/provider_name_page.dart'
+    as _i21;
 import 'package:athena_gui/page/mobile/sentinel/form.dart' as _i22;
 import 'package:athena_gui/page/mobile/sentinel/list.dart' as _i23;
 import 'package:athena_gui/page/mobile/setting/agent_page.dart' as _i10;
 import 'package:athena_gui/page/mobile/setting/data_page.dart' as _i15;
 import 'package:athena_gui/page/mobile/setting/setting.dart' as _i28;
-import 'package:athena_gui/page/mobile/summary/summary_detail_page.dart' as _i24;
+import 'package:athena_gui/page/mobile/summary/summary_detail_page.dart'
+    as _i24;
 import 'package:athena_gui/page/mobile/summary/summary_page.dart' as _i25;
-import 'package:athena_gui/page/mobile/translation/translation_page.dart' as _i27;
+import 'package:athena_gui/page/mobile/translation/translation_page.dart'
+    as _i27;
 import 'package:athena_gui/page/mobile/trpg/trpg_page.dart' as _i26;
 import 'package:auto_route/auto_route.dart' as _i29;
 import 'package:flutter/material.dart' as _i30;
@@ -355,6 +360,7 @@ class MobileChatRoute extends _i29.PageRouteInfo<MobileChatRouteArgs> {
     _i30.Key? key,
     _i31.ChatEntity? chat,
     _i32.SentinelEntity? sentinel,
+    bool jsonMode = false,
     List<_i29.PageRouteInfo>? children,
   }) : super(
           MobileChatRoute.name,
@@ -362,6 +368,7 @@ class MobileChatRoute extends _i29.PageRouteInfo<MobileChatRouteArgs> {
             key: key,
             chat: chat,
             sentinel: sentinel,
+            jsonMode: jsonMode,
           ),
           initialChildren: children,
         );
@@ -377,6 +384,7 @@ class MobileChatRoute extends _i29.PageRouteInfo<MobileChatRouteArgs> {
         key: args.key,
         chat: args.chat,
         sentinel: args.sentinel,
+        jsonMode: args.jsonMode,
       );
     },
   );
@@ -387,6 +395,7 @@ class MobileChatRouteArgs {
     this.key,
     this.chat,
     this.sentinel,
+    this.jsonMode = false,
   });
 
   final _i30.Key? key;
@@ -395,9 +404,11 @@ class MobileChatRouteArgs {
 
   final _i32.SentinelEntity? sentinel;
 
+  final bool jsonMode;
+
   @override
   String toString() {
-    return 'MobileChatRouteArgs{key: $key, chat: $chat, sentinel: $sentinel}';
+    return 'MobileChatRouteArgs{key: $key, chat: $chat, sentinel: $sentinel, jsonMode: $jsonMode}';
   }
 }
 

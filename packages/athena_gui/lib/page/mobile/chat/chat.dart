@@ -26,7 +26,15 @@ import 'package:signals_flutter/signals_flutter.dart';
 class MobileChatPage extends StatefulWidget {
   final ChatEntity? chat;
   final SentinelEntity? sentinel;
-  const MobileChatPage({super.key, this.chat, this.sentinel});
+
+  /// 从 Shortcut 发起：本次会话的 Agent run 声明 JSON 输出。
+  final bool jsonMode;
+  const MobileChatPage({
+    super.key,
+    this.chat,
+    this.sentinel,
+    this.jsonMode = false,
+  });
 
   @override
   State<MobileChatPage> createState() => _MobileChatPageState();
@@ -166,6 +174,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
         await viewModel.selectChat(widget.chat!);
       } else {
         await viewModel.prepareNewChatDraft();
+        // Shortcut 入口：注入绑定的专属 Sentinel，作为新聊天的角色
+        if (widget.sentinel != null) {
+          viewModel.updateCurrentSentinel(widget.sentinel!);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -207,7 +219,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       imageUrls: '',
     );
 
-    await viewModel.sendMessage(message, chat: chat);
+    await viewModel.sendMessage(message, chat: chat, jsonMode: widget.jsonMode);
   }
 
   void terminateStreaming() {

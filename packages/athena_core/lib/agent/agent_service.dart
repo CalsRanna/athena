@@ -126,6 +126,7 @@ class AgentService {
     CancelToken? cancelToken,
     BeforeToolCallHook? beforeToolCall,
     AfterToolCallHook? afterToolCall,
+    bool jsonMode = false,
   }) async* {
     if (isRunningInternal) {
       throw StateError('Agent is already processing. Wait for completion or abort first.');
@@ -180,6 +181,8 @@ class AgentService {
           model: model.modelId,
           messages: messages,
           tools: tools,
+          // jsonMode 场景（Shortcut 发起）：声明模型输出 JSON 对象
+          responseFormat: jsonMode ? ResponseFormat.jsonObject() : null,
         );
 
         final stream = _chatService.getCompletion(
@@ -188,6 +191,7 @@ class AgentService {
           provider: provider,
           model: model,
           tools: request.tools,
+          responseFormat: request.responseFormat,
         );
 
         final accumulator = ChatStreamAccumulator();

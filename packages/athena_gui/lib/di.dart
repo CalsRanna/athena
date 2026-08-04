@@ -28,6 +28,8 @@ import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_gui/repository/sqlite_provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_gui/repository/sqlite_sentinel_repository.dart';
+import 'package:athena_core/repository/shortcut_repository.dart';
+import 'package:athena_gui/repository/sqlite_shortcut_repository.dart';
 import 'package:athena_core/repository/trpg_game_repository.dart';
 import 'package:athena_gui/repository/sqlite_trpg_game_repository.dart';
 import 'package:athena_core/repository/trpg_message_repository.dart';
@@ -55,6 +57,7 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/view_model/shortcut_view_model.dart';
 import 'package:athena_gui/view_model/summary_view_model.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
 import 'package:athena_gui/view_model/trpg_view_model.dart';
@@ -131,6 +134,12 @@ class DI {
       () => ProviderViewModel(
         repository: getIt<ProviderRepository>(),
         modelViewModel: getIt<ModelViewModel>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
+      () => ShortcutViewModel(
+        shortcutRepository: getIt<ShortcutRepository>(),
       ),
     );
 
@@ -280,6 +289,9 @@ class DI {
     );
     getIt.registerLazySingleton<TRPGMessageRepository>(
       () => SqliteTRPGMessageRepository(),
+    );
+    getIt.registerLazySingleton<ShortcutRepository>(
+      () => SqliteShortcutRepository(),
     );
   }
 

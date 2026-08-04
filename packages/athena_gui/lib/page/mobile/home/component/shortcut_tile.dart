@@ -14,6 +14,7 @@ class ShortcutTile extends StatelessWidget {
     required this.shortcut,
   });
 
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(

@@ -57,8 +57,13 @@ class AgentStreamDelegate {
   Stream<RunEvent> send({
     required MessageEntity message,
     required ChatEntity chat,
+    bool jsonMode = false,
   }) {
-    return _coordinator.send(message: message, chat: chat);
+    return _coordinator.send(
+      message: message,
+      chat: chat,
+      jsonMode: jsonMode,
+    );
   }
 
   void stop() {

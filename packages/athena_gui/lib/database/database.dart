@@ -25,6 +25,8 @@ import 'package:athena_gui/database/migration/migration_202606240010_update_aliy
 import 'package:athena_gui/database/migration/migration_202606240011_update_siliconflow_models.dart';
 import 'package:athena_gui/database/migration/migration_202606240012_update_volcano_models.dart';
 import 'package:athena_gui/database/migration/migration_202606240013_clean_openrouter_models.dart';
+import 'package:athena_gui/database/migration/migration_202608040001_create_shortcuts.dart';
+import 'package:athena_gui/database/migration/migration_202608040002_seed_shortcuts.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -102,6 +104,8 @@ class Database {
     await Migration202606240011UpdateSiliconFlowModels().migrate();
     await Migration202606240012UpdateVolcanoModels().migrate();
     await Migration202606240013CleanOpenRouterModels().migrate();
+    await Migration202608040001CreateShortcuts().migrate();
+    await Migration202608040002SeedShortcuts().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设
