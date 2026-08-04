@@ -11,7 +11,6 @@ class FileUpdateTool implements Tool {
   FileUpdateTool();
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override

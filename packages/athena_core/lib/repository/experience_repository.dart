@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:athena_core/entity/experience_entity.dart';
 
@@ -47,8 +48,10 @@ class ExperienceRepository {
     required String sentinelId,
   }) async {
     final now = DateTime.now();
-    final id = '${now.millisecondsSinceEpoch}_${_randomSuffix(6)}';
     final isShared = scope == 'shared';
+    final dir = isShared ? _sharedPath : '$_basePath/$sentinelId';
+    _ensureDir(dir);
+    final id = await _uniqueId(dir);
     final entity = ExperienceEntity(
       id: id,
       createdAt: now,
@@ -60,8 +63,6 @@ class ExperienceRepository {
       sentinelId: isShared ? 'shared' : sentinelId,
     );
 
-    final dir = isShared ? _sharedPath : '$_basePath/$sentinelId';
-    _ensureDir(dir);
     final file = File('$dir/$id.json');
     await file.writeAsString(_prettyJson(entity.toJson()));
     return entity;
@@ -70,29 +71,30 @@ class ExperienceRepository {
   // === 检索 ===
 
   /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
-  List<ExperienceEntity> _listPrivate(String sentinelId) {
+  Future<List<ExperienceEntity>> _listPrivate(String sentinelId) {
     final dir = Directory('$_basePath/$sentinelId');
     return _listDir(dir);
   }
 
   /// 列出所有 shared 经验，按时间倒序。
-  List<ExperienceEntity> listShared() {
+  Future<List<ExperienceEntity>> listShared() {
     final dir = Directory(_sharedPath);
     return _listDir(dir);
   }
 
   /// 获取当前 Sentinel 的所有私有经验 + 所有 shared 经验。
-  List<ExperienceEntity> listForSentinel(String sentinelId) {
+  Future<List<ExperienceEntity>> listForSentinel(String sentinelId) async {
     final results = <ExperienceEntity>[];
-    results.addAll(_listPrivate(sentinelId));
-    results.addAll(listShared());
+    results.addAll(await _listPrivate(sentinelId));
+    results.addAll(await listShared());
     results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return results;
   }
 
   /// 在当前 Sentinel 私有经验 + shared 经验中搜索。
-  List<ExperienceEntity> searchForSentinel(String sentinelId, String query) {
-    final all = listForSentinel(sentinelId);
+  Future<List<ExperienceEntity>> searchForSentinel(
+      String sentinelId, String query) async {
+    final all = await listForSentinel(sentinelId);
     if (query.trim().isEmpty) return all;
     final lower = query.toLowerCase();
     return all.where((e) {
@@ -104,13 +106,14 @@ class ExperienceRepository {
   }
 
   /// 获取指定 Sentinel 的私有经验（不含 shared）。
-  List<ExperienceEntity> listPrivate(String sentinelId) {
+  Future<List<ExperienceEntity>> listPrivate(String sentinelId) {
     return _listPrivate(sentinelId);
   }
 
   /// 在指定 Sentinel 的私有经验中搜索（不含 shared）。
-  List<ExperienceEntity> searchPrivate(String sentinelId, String query) {
-    final all = listPrivate(sentinelId);
+  Future<List<ExperienceEntity>> searchPrivate(
+      String sentinelId, String query) async {
+    final all = await listPrivate(sentinelId);
     if (query.trim().isEmpty) return all;
     final lower = query.toLowerCase();
     return all.where((e) {
@@ -121,13 +124,14 @@ class ExperienceRepository {
     }).toList();
   }
 
-  List<ExperienceEntity> _listDir(Directory dir) {
+  Future<List<ExperienceEntity>> _listDir(Directory dir) async {
     final entities = <ExperienceEntity>[];
-    if (!dir.existsSync()) return entities;
-    for (final f in dir.listSync()) {
+    if (!await dir.exists()) return entities;
+    await for (final f in dir.list()) {
       if (f is! File || !f.path.endsWith('.json')) continue;
       try {
-        final json = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
+        final json =
+            jsonDecode(await f.readAsString()) as Map<String, dynamic>;
         entities.add(ExperienceEntity.fromJson(json));
       } catch (_) {
         // 跳过损坏文件
@@ -173,15 +177,15 @@ class ExperienceRepository {
   }
 
   /// 经验总数统计。
-  Map<String, int> get counts {
+  Future<Map<String, int>> get counts async {
     final result = <String, int>{'shared': 0};
     final baseDir = Directory(_basePath);
-    if (!baseDir.existsSync()) return result;
+    if (!await baseDir.exists()) return result;
 
-    for (final entry in baseDir.listSync()) {
+    await for (final entry in baseDir.list()) {
       if (entry is! Directory) continue;
-      final name = entry.path.split('/').last;
-      final count = _listDir(entry).length;
+      final name = entry.path.split(RegExp(r'[/\\]')).last;
+      final count = (await _listDir(entry)).length;
       if (name == 'shared') {
         result['shared'] = count;
       } else {
@@ -193,11 +197,28 @@ class ExperienceRepository {
 
   // === 工具 ===
 
+  /// 生成时间戳 + 随机后缀的文件名 ID，并确保文件不存在。
+  ///
+  /// 旧实现用 `DateTime.now().microsecond % chars.length` 生成"随机"后缀，
+  /// Windows 时钟粒度下连续保存极易碰撞、互相覆盖；改用 Random 并
+  /// 兜底重试（同毫秒连续碰撞时退回到更长后缀）。
+  static Future<String> _uniqueId(String dir) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final id =
+          '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(6)}';
+      if (!await File('$dir/$id.json').exists()) return id;
+    }
+    return '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(12)}';
+  }
+
+  static final Random _random = Random();
+
   static String _randomSuffix(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    final r = List.generate(
-        length, (_) => chars[DateTime.now().microsecond % chars.length]);
-    return r.join();
+    return List.generate(
+      length,
+      (_) => chars[_random.nextInt(chars.length)],
+    ).join();
   }
 
   static String _prettyJson(Map<String, dynamic> json) {

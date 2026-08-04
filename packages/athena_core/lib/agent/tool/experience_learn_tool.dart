@@ -19,7 +19,6 @@ class ExperienceLearnTool implements Tool {
       : _repository = repository;
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override
@@ -130,7 +129,6 @@ class ExperienceRecallTool implements Tool {
       : _repository = repository;
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override
@@ -184,11 +182,11 @@ class ExperienceRecallTool implements Tool {
     try {
       final results = includeShared
           ? (query.trim().isEmpty
-              ? _repository.listForSentinel(sentinelId)
-              : _repository.searchForSentinel(sentinelId, query.trim()))
+              ? await _repository.listForSentinel(sentinelId)
+              : await _repository.searchForSentinel(sentinelId, query.trim()))
           : (query.trim().isEmpty
-              ? _repository.listPrivate(sentinelId)
-              : _repository.searchPrivate(sentinelId, query.trim()));
+              ? await _repository.listPrivate(sentinelId)
+              : await _repository.searchPrivate(sentinelId, query.trim()));
 
       if (results.isEmpty) {
         return query.isEmpty

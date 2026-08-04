@@ -11,7 +11,6 @@ class SkillTool implements Tool {
   SkillTool(this._registry);
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override

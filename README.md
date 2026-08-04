@@ -2,9 +2,9 @@
 
 <div align="center">
 
-一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 11 个工具（桌面端）、可自我进化的 Skill 系统、以及严谨的权限与安全模型。
+一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 12 个工具实现类（桌面端运行时 11 个、移动端 3 个）、可自我进化的 Skill 系统、以及严谨的权限与安全模型。
 
-![Version](https://img.shields.io/badge/version-3.3.0-blue)
+![Version](https://img.shields.io/badge/version-3.4.4-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 
@@ -18,7 +18,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 - **推理-工具循环**：Agent 在每轮迭代中进行推理、调用工具、获取结果、再推理，最大 100 轮可配置
 - **流式响应**：文本和推理过程（reasoning）实时流式呈现
-- **辅助模型摘要**：当工具结果超过 4000 字符时，自动调用辅助模型进行摘要压缩，节省上下文
+- **工具输出保护**：工具结果超过 12000 字符时自动保留头尾、截断中间，防止过长输出挤占上下文
 - **取消令牌**：支持随时中断 Agent 运行，取消时保留已生成内容并标记 `[Cancelled]`
 - **自动压缩**：上下文接近窗口上限时自动压缩早期对话为摘要，保持长对话可继续
 

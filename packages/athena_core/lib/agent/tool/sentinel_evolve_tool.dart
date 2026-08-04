@@ -23,7 +23,6 @@ class SentinelEvolveTool implements Tool {
         _onChanged = onChanged;
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override

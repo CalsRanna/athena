@@ -47,7 +47,10 @@ class PlainPrinter extends LogPrinter {
     final exactTrace = traces.where(_excludePrinter).first;
     final match = RegExp(r'\(([^)]+)\)').firstMatch(exactTrace);
     if (match == null) return 'Unknown';
-    return match[0]!.replaceAll('(package:go_out/', '').replaceAll(')', '');
+    // match[0] 形如 "(package:foo/bar.dart:12:34)"：
+    // 去掉首尾括号，并剥掉 package: 前缀（native/dart: 路径原样保留）。
+    final raw = match[0]!;
+    return raw.substring(1, raw.length - 1).replaceFirst('package:', '');
   }
 
   bool _excludePrinter(trace) {

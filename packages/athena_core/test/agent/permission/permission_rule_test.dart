@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:test/test.dart';
 
@@ -83,6 +84,45 @@ void main() {
       final restored = PermissionRule.fromJson(json);
       expect(restored.action, 'git');
       expect(restored.pattern, '*');
+    });
+  });
+
+  group('Always Allow flow (规则由 parseRulePattern(keyArg) 生成)', () {
+    // 与 AgentRunCoordinator._askPermission 的生成方式保持一致。
+    PermissionRule buildShellRule(String command) {
+      final parsed = CommandAnalyzer.parseRulePattern(command);
+      return PermissionRule(
+        tool: 'bash',
+        action: parsed.action,
+        pattern: parsed.pattern,
+      );
+    }
+
+    test('bare command matches itself, not unrelated variants', () {
+      final rule = buildShellRule('git status');
+      // 回归：被记忆的命令本身必须放行（此前追加 " *" 导致只有
+      // git status -s 这类带参变体命中，git status 本身反而弹窗）
+      expect(rule.matches('bash', 'git status', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git status -s', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git push', action: 'git'), isFalse);
+    });
+
+    test('command with args matches itself and supersets, not partial prefixes',
+        () {
+      final rule = buildShellRule('git push origin main');
+      expect(
+          rule.matches('bash', 'git push origin main', action: 'git'), isTrue);
+      expect(rule.matches('bash', 'git push origin main -f', action: 'git'),
+          isTrue);
+      expect(rule.matches('bash', 'git push origin', action: 'git'), isFalse);
+      expect(rule.matches('bash', 'git push', action: 'git'), isFalse);
+    });
+
+    test('bare action with no args allows all commands of that action', () {
+      final rule = buildShellRule('dart');
+      expect(rule.matches('bash', 'dart run main.dart', action: 'dart'),
+          isTrue);
+      expect(rule.matches('bash', 'dart format .', action: 'dart'), isTrue);
     });
   });
 }

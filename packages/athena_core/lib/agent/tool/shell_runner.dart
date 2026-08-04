@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as p;
 
@@ -67,7 +68,12 @@ const _defaultHint =
     'Narrow output with grep, head, tail, or redirect to a file and read with file_read.';
 
 /// 保留输出头尾，截断中间并告知 LLM 原因和缩小范围的建议。
-String _truncateOutput(String output, String? command) {
+///
+/// 行数/字符数任一超限即触发。注意两个边界：
+/// - 行数不足以填满 head+tail 时，tail 与 head 重叠（或 skip 负数崩溃），
+///   此时 tail 只取 head 之后的剩余行，避免同一行输出两遍；
+/// - skipped 计数一律 clamp 到非负。
+String truncateOutput(String output, String? command) {
   final lines = output.split('\n');
   if (lines.length <= OutputLimit.maxLines &&
       output.length <= OutputLimit.maxChars) {
@@ -76,11 +82,18 @@ String _truncateOutput(String output, String? command) {
   final headLines = (OutputLimit.maxLines * 0.6).round();
   final tailLines = OutputLimit.maxLines - headLines;
   final head = lines.take(headLines).join('\n');
-  final tail = lines.skip(lines.length - tailLines).join('\n');
-  final skippedLines = lines.length - headLines - tailLines;
+  // tail 起点 = max(head 末尾, 倒数 tailLines 行起点)：行数不足时
+  // 不重复输出 head 已包含的行，也不产生负数 skip。
+  String tail = '';
+  if (lines.length > headLines) {
+    final tailStart = max(headLines, lines.length - tailLines);
+    tail = lines.skip(tailStart).join('\n');
+  }
+  final skippedLines = max(0, lines.length - headLines - tailLines);
+  final charsSkipped = max(0, output.length - OutputLimit.maxChars);
   return '$head\n'
       '\n'
-      '[output truncated: $skippedLines lines / ${output.length - OutputLimit.maxChars} chars skipped '
+      '[output truncated: $skippedLines lines / $charsSkipped chars skipped '
       '(limit ${OutputLimit.maxLines} lines / ${OutputLimit.maxChars} chars)]\n'
       'Hint: ${_hintForCommand(command)}\n'
       '\n'
@@ -215,5 +228,5 @@ Future<String> runShellProcess({
     buffer.writeln(stderr);
   }
   buffer.writeln('[exit code: $exitCode]');
-  return _truncateOutput(buffer.toString().trim(), command);
+  return truncateOutput(buffer.toString().trim(), command);
 }

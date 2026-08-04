@@ -144,33 +144,22 @@ class FileReadTool implements Tool {
     return buffer.toString();
   }
 
-  /// Count newlines by scanning file bytes (streaming, no string allocation).
+  /// Count newlines by scanning file bytes (streaming, no string allocation,
+  /// single pass — 不重复打开文件，也不混入同步 IO)。
   Future<int> _countLines(File file) async {
     var count = 0;
-    final stream = file.openRead();
-    await for (final chunk in stream) {
+    var bytesRead = 0;
+    var lastByte = -1;
+    await for (final chunk in file.openRead()) {
+      bytesRead += chunk.length;
       for (final byte in chunk) {
         if (byte == 0x0A) count++; // \n
+        lastByte = byte;
       }
     }
-    // If file is non-empty and doesn't end with \n, count the last line too.
-    if (count == 0) {
-      // Empty file, or single line without newline
-      return file.lengthSync() > 0 ? 1 : 0;
-    }
-    // Check if file ends with \n
-    final raf = await file.open(mode: FileMode.read);
-    try {
-      if (await file.length() > 0) {
-        await raf.setPosition(await file.length() - 1);
-        final lastByte = await raf.read(1);
-        if (lastByte.isNotEmpty && lastByte[0] != 0x0A) {
-          count++; // Last line doesn't end with \n
-        }
-      }
-    } finally {
-      await raf.close();
-    }
+    // 非空且不以 \n 结尾：末尾无换行的一行也要计入。
+    if (bytesRead == 0) return 0; // 空文件
+    if (lastByte != 0x0A) count++;
     return count;
   }
 
