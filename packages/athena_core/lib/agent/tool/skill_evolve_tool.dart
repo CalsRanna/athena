@@ -22,7 +22,6 @@ class SkillEvolveTool implements Tool {
   }) : _skillRegistry = skillRegistry;
 
   @override
-  @override
   ToolRisk get risk => ToolRisk.dangerous;
 
   @override
@@ -190,6 +189,15 @@ class SkillEvolveTool implements Tool {
     for (final code in name.codeUnits) {
       if (code < 0x20 || code == 0x7f) return false;
       if (code == 0x2f || code == 0x5c) return false;
+      if (code == 0x3a || // :
+          code == 0x2a || // *
+          code == 0x3f || // ?
+          code == 0x22 || // "
+          code == 0x3c || // <
+          code == 0x3e || // >
+          code == 0x7c) {
+        return false; // Windows 文件名非法字符
+      }
     }
     if (name == '.' || name == '..') return false;
     return true;

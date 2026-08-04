@@ -591,7 +591,8 @@ class AgentService {
 
     var processed = smartTruncate(rawResult);
 
-    // afterToolCall hook（含摘要逻辑）
+    // afterToolCall hook（摘要等可选后处理，由调用方注入；
+    // AgentRunCoordinator 当前未注入，实际生效的截断是上面的 smartTruncate）
     if (afterToolCall != null) {
       final afterResult = await afterToolCall((
         name: toolCall.function.name,

@@ -46,6 +46,64 @@ void main() {
     });
   });
 
+  group('truncateOutput edge cases', () {
+    test('within both limits returns output unchanged', () {
+      final output = List.generate(10, (i) => 'line $i').join('\n');
+      expect(truncateOutput(output, null), output);
+    });
+
+    test('many short lines: no negative chars, head+tail kept, middle dropped',
+        () {
+      final output = List.generate(200, (i) => 'line $i').join('\n');
+      final result = truncateOutput(output, 'ls -la');
+      expect(result, contains('[output truncated: 100 lines / 0 chars skipped'));
+      // head 与 tail 各保留一段
+      expect(result, contains('line 0'));
+      expect(result, contains('line 199'));
+      // 中间行被省略
+      expect(result, isNot(contains('line 100')));
+    });
+
+    test('few long lines: no crash, no duplicate output', () {
+      final line = 'x' * 2000;
+      final output = List.generate(5, (_) => line).join('\n');
+      final result = truncateOutput(output, 'cat big.txt');
+      expect(result, contains('[output truncated: 0 lines / '
+          '${output.length - OutputLimit.maxChars} chars skipped'));
+      // 每行只出现一次（此前 tail 会重复整段输出，或 skip 负数抛 RangeError）
+      expect(RegExp(RegExp.escape(line)).allMatches(result).length, 5);
+    });
+
+    test('overlapping head/tail: every line appears exactly once', () {
+      // 80 行长行：超字符上限（触发截断）但行数不足以填满 head+tail
+      final lines = List.generate(80, (i) => 'line $i ${'x' * 80}');
+      final result = truncateOutput(lines.join('\n'), null);
+      expect(result, contains('[output truncated: 0 lines /'));
+      for (final l in lines) {
+        expect(RegExp(RegExp.escape(l)).allMatches(result).length, 1,
+            reason: '$l 应恰好出现一次');
+      }
+    });
+
+    test('chars over budget with exactly 100 lines: all kept, no overlap', () {
+      // 100 行 × 长内容：超字符上限但行数刚好填满 head+tail
+      final lines = List.generate(100, (i) => 'L$i ${'x' * 100}');
+      final long = lines.join('\n');
+      final result = truncateOutput(long, null);
+      for (final l in lines) {
+        expect(RegExp(RegExp.escape(l)).allMatches(result).length, 1);
+      }
+      expect(result, contains('0 lines / '));
+    });
+
+    test('truncation message includes command hint', () {
+      final output = List.generate(200, (i) => 'line $i').join('\n');
+      final result = truncateOutput(output, 'grep foo');
+      expect(result, contains('Hint:'));
+      expect(result, contains('head'));
+    });
+  });
+
   group('shellTimeoutParamDescription', () {
     test('mentions default and max for LLM guidance', () {
       final desc = shellTimeoutParamDescription();

@@ -148,10 +148,20 @@ class AgentRunCoordinator {
 
       // 2. 准备上下文
       final model = await _modelRepo.getModelById(chat.modelId);
-      if (model == null) return;
+      if (model == null) {
+        // 用户消息已落库；必须发错误事件，否则 UI 侧静默无响应
+        yield RunError('Model not found (id: ${chat.modelId}). '
+            'Please select a valid model and retry.');
+        return;
+      }
 
-      final provider = await _supportService.getProviderForModel(model.providerId);
-      if (provider == null) return;
+      final provider =
+          await _supportService.getProviderForModel(model.providerId);
+      if (provider == null) {
+        yield RunError('Provider not found for model "${model.modelId}". '
+            'Please check provider configuration and retry.');
+        return;
+      }
 
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
       final includeReasoning = model.reasoning;
@@ -529,7 +539,11 @@ class AgentRunCoordinator {
         final keyArg = _permissionService.primaryArg(toolName, args);
         final isShell = toolName == 'bash' || toolName == 'powershell';
         if (isShell && keyArg != null) {
-          final parsed = CommandAnalyzer.parseRulePattern('$keyArg *');
+          // 直接解析完整命令为 动作+参数 规则，不要追加 " *"：glob 要求
+          // '*' 前必须有一个空格，导致被记忆的命令本身永远不匹配
+          // （如记住 git status 后，放行的是 git status -s 而非 git status）。
+          // 无通配符时按前缀匹配，裸命令与其带参变体都能命中。
+          final parsed = CommandAnalyzer.parseRulePattern(keyArg);
           await _permissionService.persistRule(PermissionRule(
             tool: toolName,
             action: parsed.action,

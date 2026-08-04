@@ -43,7 +43,7 @@ const _blockTags = {
 
 void _walk(Node node, StringBuffer buffer, _Context ctx) {
   if (node is Text) {
-    _writeText(buffer, node.text, ctx);
+    _writeText(buffer, node.text);
     return;
   }
   if (node is! Element) return;
@@ -237,7 +237,7 @@ void _walkChildren(List<Node> children, StringBuffer buffer, _Context ctx) {
 }
 
 /// 写入文本节点，合并空白并解码常见 HTML 实体。
-void _writeText(StringBuffer buffer, String text, _Context ctx) {
+void _writeText(StringBuffer buffer, String text) {
   var cleaned = text
       .replaceAll('\u00A0', ' ')   // non-breaking space
       .replaceAll('\u200B', '')    // zero-width space
@@ -253,17 +253,13 @@ void _writeText(StringBuffer buffer, String text, _Context ctx) {
       .replaceAll('&#39;', "'")
       .replaceAll('&nbsp;', ' ');
 
-  // 在块级标签内部不要保留前导/尾随空白
-  if (!_insideBlock(ctx)) {
-    cleaned = cleaned.trim();
-  }
+  // 统一去除前导/尾随空白（各标签内的空白保留由 _walk 按需调用控制）
+  cleaned = cleaned.trim();
 
   if (cleaned.isNotEmpty) {
     buffer.write(cleaned);
   }
 }
-
-bool _insideBlock(_Context ctx) => false; // 简化：由 _walk 在各标签中控制
 
 /// 判断 [node] 是否在 <pre> 内部。
 bool _isInsidePre(Node node) {

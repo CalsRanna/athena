@@ -24,6 +24,7 @@ void main() async {
     await SystemTrayUtil.instance.ensureInitialized();
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+  // 禁用 Signals 的 devtools 集成（桌面端无需信号调试面板，避免额外开销）
   SignalsObserver.instance = null;
   final supportDir = await getApplicationSupportDirectory();
   DI.ensureInitialized(dataDirectory: supportDir.path);

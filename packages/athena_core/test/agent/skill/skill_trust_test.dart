@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -137,9 +138,15 @@ void main() {
       expect(reg.hasPendingProjectSkills, isFalse);
       expect(reg.pendingProjectDir, isNull);
 
-      // 信任已持久化到文件。
+      // 信任已持久化到文件（JSON 解码后比较，避免 Windows 反斜杠
+      // 被 jsonEncode 转义导致的字符串差异）。
       expect(trustFile.existsSync(), isTrue);
-      expect(trustFile.readAsStringSync(), contains(projectDir.path));
+      final persisted = jsonDecode(trustFile.readAsStringSync())
+          as Map<String, dynamic>;
+      expect(
+        (persisted['trustedDirs'] as List).cast<String>(),
+        contains(projectDir.path),
+      );
 
       // 全新 registry（指向同一文件）应一开始就让 beta 处于激活状态。
       final fresh = SkillRegistry(trustStore: SkillTrustStore(file: trustFile));

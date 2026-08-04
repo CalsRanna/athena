@@ -79,7 +79,7 @@ class BashShellTool implements Tool {
     }
 
     final result = await runShellProcess(
-      executable: '/bin/sh',
+      executable: _resolveShellExecutable(),
       arguments: ['-c', command],
       workdir: workdir,
       timeoutSeconds: timeout.effective,
@@ -91,6 +91,36 @@ class BashShellTool implements Tool {
     return result;
   }
 
+  /// Windows 下解析可用的 sh 可执行文件。
+  ///
+  /// `/bin/sh` 是 Git Bash 会话内的虚拟路径，Windows 原生进程 API
+  /// 无法解析（`Process.start('/bin/sh')` 报"系统找不到指定的文件"）。
+  /// 依次探测：标准安装位置 → PATH 查找（where.exe，兼容 scoop 等
+  /// 包管理器）→ 兜底返回原路径（让错误信息保持可读）。
+  static String _resolveShellExecutable() {
+    if (!Platform.isWindows) return '/bin/sh';
+    const candidates = [
+      r'C:\Program Files\Git\bin\bash.exe',
+      r'C:\Program Files\Git\usr\bin\sh.exe',
+      r'C:\Program Files (x86)\Git\bin\bash.exe',
+      r'C:\Program Files (x86)\Git\usr\bin\sh.exe',
+    ];
+    for (final c in candidates) {
+      if (File(c).existsSync()) return c;
+    }
+    try {
+      final where = Process.runSync('where.exe', ['sh.exe']);
+      if (where.exitCode == 0) {
+        final first =
+            (where.stdout as String).trim().split('\n').first.trim();
+        if (first.isNotEmpty) return first;
+      }
+    } catch (_) {
+      // PATH 查找失败时走兜底。
+    }
+    return '/bin/sh';
+  }
+
   /// 检测递归删除命令模式。
   bool _isRecursiveDelete(String command) {
     final patterns = [
@@ -98,7 +128,11 @@ class BashShellTool implements Tool {
       RegExp(r'\brmdir\b'),
       RegExp(r'\bfind\b.*\brm\b'),
       RegExp(r'\bdel\b\s+/[sS]'),
-      RegExp(r'Remove-Item\s+.*-Recurse'),
+      // Remove-Item 大小写均可（PowerShell 命令不区分大小写）
+      RegExp(r'\bRemove-Item\b\s+.*-Recurse', caseSensitive: false),
+      // cmd 的 rd /s（rmdir 别名；要求 rd 与 /s 之间有空白，
+      // 避免误伤 "ls rd/s" 这类路径写法）
+      RegExp(r'\brd\b\s+/\s*[sS]'),
     ];
     return patterns.any((p) => p.hasMatch(command));
   }

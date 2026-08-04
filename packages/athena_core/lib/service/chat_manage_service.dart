@@ -59,14 +59,13 @@ class ChatManageService {
   }
 
   Future<void> deleteChat(int chatId) async {
+    // messages 表外键 ON DELETE CASCADE，无需手动删除
     await _chatRepository.deleteChat(chatId);
-    await _messageRepository.deleteMessagesByChatId(chatId);
   }
 
   Future<void> deleteChats(Set<int> ids) async {
     for (final id in ids) {
       await _chatRepository.deleteChat(id);
-      await _messageRepository.deleteMessagesByChatId(id);
     }
   }
 

@@ -167,7 +167,8 @@ messages.value.add(newMessage);
    - 无 tool call → `AgentDoneEvent`，结束
    - 有 tool call → 依次执行每个工具
 5. 执行前检查权限（持久化规则 → 审批弹窗）
-6. 工具结果超过 4000 字符时调用辅助模型摘要
+6. 工具结果超过 12000 字符时 `smartTruncate` 保留头尾截断中间
+   （辅助模型摘要尚未接线，见 `agent_service.dart` 的 afterToolCall hook）
 7. 工具结果消息加入消息列表，进入下一轮迭代
 
 ### 7.2 AgentEvent 类型

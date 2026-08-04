@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 import 'html_to_markdown.dart';
@@ -79,35 +82,53 @@ class WebFetchTool implements Tool {
       return 'Error: Only http and https URLs are allowed';
     }
     try {
+      final methodUpper = method.toUpperCase();
+      if (methodUpper != 'GET' && methodUpper != 'POST') {
+        return 'Error: Unsupported method: $method';
+      }
+
       final client = http.Client();
-      http.Response response;
+      final request = http.Request(methodUpper, uri)
+        ..headers.addAll(headers);
+      if (methodUpper == 'POST' && body != null) {
+        request.body = body;
+      }
+
+      late http.StreamedResponse streamed;
       try {
-        switch (method.toUpperCase()) {
-          case 'GET':
-            response = await client
-                .get(uri, headers: headers)
-                .timeout(_defaultTimeout);
+        streamed = await client.send(request).timeout(_defaultTimeout);
+      } catch (_) {
+        client.close();
+        rethrow;
+      }
+
+      // 流式读取响应体：超过上限即停止接收，避免超大文件
+      // （如数百 MB 的下载链接）被整个缓冲进内存。
+      final bodyBytes = BytesBuilder(copy: false);
+      var overLimit = false;
+      try {
+        await for (final chunk in streamed.stream.timeout(_defaultTimeout)) {
+          if (bodyBytes.length >= _maxResponseBytes) {
+            overLimit = true;
             break;
-          case 'POST':
-            response = await client
-                .post(uri, headers: headers, body: body)
-                .timeout(_defaultTimeout);
-            break;
-          default:
-            return 'Error: Unsupported method: $method';
+          }
+          final remaining = _maxResponseBytes - bodyBytes.length;
+          bodyBytes.add(chunk.length <= remaining
+              ? chunk
+              : chunk.sublist(0, remaining));
         }
       } finally {
         client.close();
       }
 
-      final totalBytes = response.body.length;
-      final tooLarge = totalBytes > _maxResponseBytes;
-      final raw = tooLarge
-          ? response.body.substring(0, _maxResponseBytes)
-          : response.body;
+      final knownTotal = streamed.contentLength;
+      final tooLarge =
+          (knownTotal ?? bodyBytes.length) > _maxResponseBytes || overLimit;
+      final raw =
+          _decodeBody(bodyBytes.toBytes(), streamed.headers['content-type']);
 
       // Markdown 模式且响应看起来像 HTML 时才转换
-      final contentType = response.headers['content-type'] ?? '';
+      final contentType = streamed.headers['content-type'] ?? '';
       final looksLikeHtml =
           contentType.contains('text/html') || _hasHtmlTags(raw);
 
@@ -116,10 +137,10 @@ class WebFetchTool implements Tool {
           : raw;
 
       final result = StringBuffer();
-      result.writeln('Status: ${response.statusCode}');
-      if (response.reasonPhrase != null &&
-          response.reasonPhrase!.isNotEmpty) {
-        result.writeln('Reason: ${response.reasonPhrase}');
+      result.writeln('Status: ${streamed.statusCode}');
+      if (streamed.reasonPhrase != null &&
+          streamed.reasonPhrase!.isNotEmpty) {
+        result.writeln('Reason: ${streamed.reasonPhrase}');
       }
       result.writeln(
           'Content-Type: ${contentType.isNotEmpty ? contentType : '(unknown)'}');
@@ -128,10 +149,12 @@ class WebFetchTool implements Tool {
       if (tooLarge) {
         result.writeln(output);
         result.writeln();
+        final totalNote = knownTotal != null
+            ? '${knownTotal ~/ 1024}KB'
+            : '>${_maxResponseBytes ~/ 1024}KB';
         result.writeln(
-            '[Response truncated: ${totalBytes - _maxResponseBytes} bytes '
-            'skipped (limit ${_maxResponseBytes ~/ 1024}KB / '
-            '${totalBytes ~/ 1024}KB total)]');
+            '[Response truncated: limit ${_maxResponseBytes ~/ 1024}KB / '
+            '$totalNote total]');
         result.writeln(
             'Hint: to reduce payload, use a more specific URL or API '
             'endpoint, add query parameters to filter results, or retry '
@@ -146,6 +169,18 @@ class WebFetchTool implements Tool {
     } catch (e) {
       return 'Error: $e';
     }
+  }
+
+  /// 按响应 Content-Type 的 charset 解码响应体；未指定时用 latin1
+  /// （与 http 包 Response.body 的默认行为一致）。
+  static String _decodeBody(List<int> bytes, String? contentType) {
+    final match = contentType == null
+        ? null
+        : RegExp(r'charset=([\w-]+)', caseSensitive: false)
+            .firstMatch(contentType);
+    final encoding = match != null ? Encoding.getByName(match[1]!) : null;
+    // 各具体 codec 的 allowMalformed 默认均为 true，无需显式传入。
+    return (encoding ?? latin1).decode(bytes);
   }
 
   /// 简单试探：检测文本是否包含 HTML 标签。

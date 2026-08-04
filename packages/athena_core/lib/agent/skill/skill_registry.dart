@@ -15,6 +15,10 @@ class SkillRegistry {
   final SkillTrustStore _trustStore;
   final Map<String, Skill> _skills = {};
 
+  /// loadAll 传入的用户级 Skill 目录（供 reloadSkill 复用，避免与
+  /// 环境变量 HOME 不一致——测试与自定义 home 场景下两者可能不同）。
+  String? _homeDir;
+
   /// 内置 Skill：不来自文件系统，由代码注册，始终可用。
   final Map<String, Skill> _builtinSkills = {};
 
@@ -32,6 +36,7 @@ class SkillRegistry {
 
   void loadAll({String? homeDir, String? projectDir}) {
     final home = homeDir ?? _homePath;
+    _homeDir = home;
     final project = projectDir ?? Directory.current.path;
 
     _skills.clear();
@@ -96,8 +101,10 @@ class SkillRegistry {
     _pendingProjectDir = null;
   }
 
+  /// 路径归一化：统一分隔符为 '/' 并去除末尾斜杠，使比较与搜索
+  /// 不依赖平台（Windows 原生路径为反斜杠）。
   static String _normalizePath(String p) {
-    var path = p;
+    var path = p.replaceAll('\\', '/');
     while (path.length > 1 && path.endsWith('/')) {
       path = path.substring(0, path.length - 1);
     }
@@ -175,7 +182,7 @@ class SkillRegistry {
     final skill = _loader.parseSkillFile(skillFile);
     if (skill == null) return;
 
-    final home = _homePath;
+    final home = _homeDir ?? _homePath;
     final normalizedDir = _normalizePath(directoryPath);
     final normalizedHome = _normalizePath('$home/.athena/skills');
 
@@ -192,10 +199,16 @@ class SkillRegistry {
     }
   }
 
+  /// 从 Skill 目录反查项目根目录。
+  ///
+  /// 输入可能含 Windows 反斜杠或混合分隔符；统一为 '/' 后再搜索，
+  /// 返回时还原为本机分隔符，以匹配 SkillTrustStore 中存储的目录格式。
   String? _findProjectRoot(String skillDir) {
-    final idx = skillDir.indexOf('/.athena/');
-    if (idx > 0) return skillDir.substring(0, idx);
-    return null;
+    final normalized = _normalizePath(skillDir);
+    final idx = normalized.indexOf('/.athena/');
+    if (idx <= 0) return null;
+    final root = normalized.substring(0, idx);
+    return Platform.isWindows ? root.replaceAll('/', '\\') : root;
   }
 
   Skill? get currentContext {
