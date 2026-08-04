@@ -1,0 +1,7 @@
+# athena_tui 分析配置:纯 Dart + nocterm,与 athena_core 相同的 lints 包。
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true

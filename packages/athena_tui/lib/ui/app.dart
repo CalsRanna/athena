@@ -1,0 +1,597 @@
+import 'dart:async';
+
+import 'package:athena_core/coordinator/agent_run_coordinator.dart';
+import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_tui/di/tui_di.dart';
+import 'package:athena_tui/ui/widgets/input_area.dart';
+import 'package:athena_tui/ui/widgets/message_list.dart';
+import 'package:athena_tui/ui/widgets/permission_bar.dart';
+import 'package:athena_tui/ui/widgets/picker_overlay.dart';
+import 'package:athena_tui/ui/widgets/status_bar.dart';
+import 'package:athena_tui/view_model/chat_controller.dart';
+import 'package:nocterm/nocterm.dart';
+
+/// Athena TUI 根组件:布局 + 全局按键 + 权限审批 + 命令处理。
+class AthenaApp extends StatefulComponent {
+  const AthenaApp({super.key, required this.di});
+
+  final TuiDi di;
+
+  @override
+  State<AthenaApp> createState() => _AthenaAppState();
+}
+
+class _AthenaAppState extends State<AthenaApp> {
+  late final ChatController _controller;
+  final _scrollController = ScrollController();
+  final _textController = TextEditingController();
+  final List<void Function()> _disposers = [];
+
+  // 权限 / Skill 信任审批请求(M3 模态)
+  _PermissionRequest? _permissionRequest;
+  _SkillTrustRequest? _skillTrustRequest;
+
+  // 选择模态(模型 / 角色 / 聊天)
+  _PickerState? _picker;
+
+  // API key 输入模式:非 null 时输入区被用作 key 输入(仅 Esc 可退出)
+  ProviderEntity? _keyInputProvider;
+
+  /// 用户是否停留在消息列表底部(决定新消息是否自动滚底)。
+  ///
+  /// 不能用 `scrollController.atEnd` 的瞬时值判断:新消息追加后
+  /// offset < maxScrollExtent 立即变 false,会漏掉"本来就在底部"的情况。
+  /// 改为 sticky:用户上翻时置 false,滚回底部时置 true。
+  bool _stickToBottom = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = component.di.chatController;
+
+    // UI 层注册审批实现(bridge 在 UI 未就绪时拒绝请求)
+    component.di.agentBridge.permissionHandler = _handlePermission;
+    component.di.agentBridge.skillTrustHandler = _handleSkillTrust;
+
+    _disposers.add(_controller.chatList.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentChat.subscribe((_) => _refresh()));
+    _disposers.add(_controller.messages.subscribe((_) => _onMessagesChanged()));
+    _disposers.add(_controller.currentModel.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentProvider.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentSentinel.subscribe((_) => _refresh()));
+    _disposers.add(_controller.isStreaming.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentIteration.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentToolName.subscribe((_) => _refresh()));
+    _disposers.add(_controller.currentTokenUsage.subscribe((_) => _refresh()));
+    _disposers.add(_controller.error.subscribe((_) => _refresh()));
+
+    _scrollController.addListener(_onScrollChanged);
+
+    unawaited(_controller.initialize());
+  }
+
+  void _onScrollChanged() {
+    _stickToBottom = _scrollController.atEnd;
+  }
+
+  void _refresh() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onMessagesChanged() {
+    _refresh();
+    // 自动滚底:仅当用户停留在底部时跟随(向上翻阅历史不打扰)。
+    // 必须在帧渲染后(新内容的 maxScrollExtent 已更新)再跳,
+    // setState 刚标记 dirty 时 maxScrollExtent 还是旧值。
+    if (_stickToBottom) {
+      final binding = NoctermBinding.instance;
+      if (binding is SchedulerBinding) {
+        binding.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _scrollController.jumpTo(_scrollController.maxScrollExtent);
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final dispose in _disposers) {
+      dispose();
+    }
+    _scrollController.dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  // ─── 发送与命令 ──────────────────────────────────────────
+
+  void _submit(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    _textController.clear();
+
+    // API key 输入模式:回车提交 key(留空视为取消)
+    final keyProvider = _keyInputProvider;
+    if (keyProvider != null) {
+      _keyInputProvider = null;
+      if (trimmed.isEmpty) {
+        _pushSystemMessage('已取消配置 ${keyProvider.name} 的 API key。');
+      } else {
+        unawaited(_saveApiKey(keyProvider, trimmed));
+      }
+      setState(() {});
+      return;
+    }
+
+    if (_controller.isStreaming.value) return;
+
+    if (trimmed.startsWith('/')) {
+      unawaited(_handleCommand(trimmed));
+    } else {
+      unawaited(_controller.sendMessage(trimmed));
+    }
+  }
+
+  Future<void> _saveApiKey(ProviderEntity provider, String apiKey) async {
+    await _controller.updateProviderApiKey(provider, apiKey);
+    _pushSystemMessage('已保存 ${provider.name} 的 API key。现在可以发送消息了。');
+  }
+
+  Future<void> _handleCommand(String input) async {
+    final parts = input.split(RegExp(r'\s+'));
+    final command = parts[0];
+    final args = input.substring(command.length).trim();
+
+    switch (command) {
+      case '/help':
+        _pushSystemMessage(_helpText);
+      case '/new':
+        await _controller.newChat();
+      case '/list':
+        final chats = _controller.chatList.value;
+        if (chats.isEmpty) {
+          _pushSystemMessage('暂无聊天。输入 /new 新建。');
+        } else {
+          _pushSystemMessage(
+            chats.asMap().entries.map((e) {
+              final c = e.value.chat;
+              final marker = c.id == _controller.currentChat.value?.id
+                  ? '● '
+                  : '  ';
+              return '$marker#${c.id} ${c.title}';
+            }).join('\n'),
+          );
+        }
+      case '/delete':
+        await _controller.deleteCurrentChat();
+      case '/switch':
+        await _switchChatPicker();
+      case '/models':
+        await _pickModel();
+      case '/sentinels':
+        await _pickSentinel();
+      case '/providers':
+        await _manageProviders();
+      case '/json':
+        if (args.isEmpty) {
+          _pushSystemMessage('用法:/json <文本> —— 以 JSON 模式运行 Agent。');
+        } else {
+          await _controller.sendMessage(args, jsonMode: true);
+        }
+      case '/quit':
+        shutdownApp();
+      default:
+        _pushSystemMessage('未知命令:$command。输入 /help 查看命令。');
+    }
+  }
+
+  void _pushSystemMessage(String content) {
+    if (content.isEmpty) return;
+    final message = MessageEntity(
+      chatId: _controller.currentChat.value?.id ?? -1,
+      role: 'system',
+      content: content,
+    );
+    // 仅内存展示,不落库(切换聊天后消失)
+    _controller.pushTransientMessage(message);
+  }
+
+  static const _helpText = '''
+Athena TUI 命令:
+  /new       新建聊天
+  /list      列出聊天
+  /switch    选择聊天
+  /delete    删除当前聊天
+  /json <t>  以 JSON 模式运行 Agent(输出结构化 JSON)
+  /models    选择模型
+  /sentinels 选择角色
+  /help      显示本帮助
+  /quit      退出
+
+快捷键:
+  Enter   发送消息(输入框内)
+  Esc     停止生成 / 关闭弹层
+  Ctrl+N  新建聊天    Ctrl+P  上一个聊天
+  Ctrl+M  选择模型    Ctrl+S  选择角色
+''';
+
+  // ─── 全局按键 ────────────────────────────────────────────
+
+  bool _handleGlobalKey(KeyboardEvent event) {
+    // 审批模态优先:输入被屏蔽,按键只服务审批
+    final permission = _permissionRequest;
+    if (permission != null) {
+      switch (event.logicalKey) {
+        case LogicalKey.keyY:
+          _resolvePermission(true, false);
+          return true;
+        case LogicalKey.keyN:
+          _resolvePermission(false, false);
+          return true;
+        case LogicalKey.keyA:
+          _resolvePermission(true, true);
+          return true;
+        case LogicalKey.escape:
+          // Esc = 拒绝 + 停止生成。直接关闭审批条(不依赖 cancelToken:
+          // 无活动 run 时 currentCancelToken 为 null,依赖它审批会悬挂)
+          _controller.stopGenerating();
+          _resolvePermission(false, false);
+          return true;
+      }
+      return true; // 模态期间吞掉所有按键,防止误操作
+    }
+    final skillTrust = _skillTrustRequest;
+    if (skillTrust != null) {
+      switch (event.logicalKey) {
+        case LogicalKey.keyY:
+          skillTrust.completer.complete(true);
+          _skillTrustRequest = null;
+          setState(() {});
+          return true;
+        case LogicalKey.keyN:
+          skillTrust.completer.complete(false);
+          _skillTrustRequest = null;
+          setState(() {});
+          return true;
+        case LogicalKey.escape:
+          skillTrust.completer.complete(false);
+          _skillTrustRequest = null;
+          setState(() {});
+          return true;
+      }
+      return true;
+    }
+
+    // 选择模态
+    if (_picker != null) {
+      return _handlePickerKey(event);
+    }
+
+    // 停止生成
+    if (event.logicalKey == LogicalKey.escape && _controller.isStreaming.value) {
+      _controller.stopGenerating();
+      return true;
+    }
+
+    // Ctrl 组合快捷键
+    if (event.modifiers.ctrl) {
+      switch (event.logicalKey) {
+        case LogicalKey.keyN:
+          unawaited(_controller.newChat());
+          return true;
+        case LogicalKey.keyP:
+          unawaited(_switchChat(-1));
+          return true;
+        case LogicalKey.keyM:
+          unawaited(_pickModel());
+          return true;
+        case LogicalKey.keyS:
+          unawaited(_pickSentinel());
+          return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _switchChat(int offset) async {
+    final chats = _controller.chatList.value;
+    if (chats.length < 2) return;
+    final currentId = _controller.currentChat.value?.id;
+    final index = chats.indexWhere((h) => h.chat.id == currentId);
+    if (index < 0) return;
+    final next = chats[(index + offset + chats.length) % chats.length];
+    await _controller.selectChat(next.chat);
+  }
+
+  Future<void> _pickModel() async {
+    final models = await _controller.availableModels;
+    if (models.isEmpty) {
+      _pushSystemMessage('暂无模型。请先在 provider 配置 API key。');
+      return;
+    }
+    final current = _controller.currentModel.value;
+    final initial = models.indexWhere((m) => m.id == current?.id);
+    final picked = await _openPicker(
+      title: '选择模型',
+      labels: [
+        for (final m in models) '${m.name} (${m.modelId})',
+      ],
+      initialIndex: initial < 0 ? 0 : initial,
+    );
+    if (picked != null && picked < models.length) {
+      await _controller.switchModel(models[picked]);
+    }
+  }
+
+  Future<void> _pickSentinel() async {
+    final sentinels = await _controller.availableSentinels;
+    if (sentinels.isEmpty) {
+      _pushSystemMessage('暂无角色。');
+      return;
+    }
+    final current = _controller.currentSentinel.value;
+    final initial = sentinels.indexWhere((s) => s.id == current?.id);
+    final picked = await _openPicker(
+      title: '选择角色',
+      labels: [for (final s in sentinels) '${s.name} — ${s.description}'],
+      initialIndex: initial < 0 ? 0 : initial,
+    );
+    if (picked != null && picked < sentinels.length) {
+      await _controller.switchSentinel(sentinels[picked]);
+    }
+  }
+
+  /// /providers:选择 provider 后进入 API key 输入模式。
+  Future<void> _manageProviders() async {
+    final providers = await _controller.availableProviders;
+    if (providers.isEmpty) {
+      _pushSystemMessage('暂无 provider。');
+      return;
+    }
+    final picked = await _openPicker(
+      title: '选择 Provider(配置 API key)',
+      labels: [
+        for (final p in providers)
+          '${p.name} — ${p.apiKey.isEmpty ? '未配置 key' : '已配置 key'}',
+      ],
+      initialIndex: 0,
+    );
+    if (picked == null || picked >= providers.length) return;
+    setState(() => _keyInputProvider = providers[picked]);
+    _pushSystemMessage(
+      '为 ${providers[picked].name} 输入 API key(回车保存,留空取消)。',
+    );
+  }
+
+  Future<void> _switchChatPicker() async {
+    final chats = _controller.chatList.value;
+    if (chats.isEmpty) return;
+    final currentId = _controller.currentChat.value?.id;
+    final initial = chats.indexWhere((h) => h.chat.id == currentId);
+    final picked = await _openPicker(
+      title: '选择聊天',
+      labels: [
+        for (final h in chats)
+          '#${h.chat.id} ${h.chat.title} — ${_truncate(h.lastMessageContent, 24)}',
+      ],
+      initialIndex: initial < 0 ? 0 : initial,
+    );
+    if (picked != null && picked < chats.length) {
+      await _controller.selectChat(chats[picked].chat);
+    }
+  }
+
+  static String _truncate(String text, int max) {
+    if (text.length <= max) return text;
+    return '${text.substring(0, max - 1)}…';
+  }
+
+  // ─── 选择模态(常驻组件,visible 切换;不用 Overlay ─────────
+  // 避免 NoctermApp/Navigator 对根树的挂载时序依赖) ─────────
+
+  Future<int?> _openPicker({
+    required String title,
+    required List<String> labels,
+    required int initialIndex,
+  }) async {
+    final completer = Completer<int?>();
+    _picker = _PickerState(
+      title: title,
+      labels: labels,
+      index: initialIndex.clamp(0, labels.length - 1),
+      completer: completer,
+    );
+    setState(() {});
+    return completer.future;
+  }
+
+  void _closePicker([int? result]) {
+    final picker = _picker;
+    if (picker == null) return;
+    _picker = null;
+    picker.completer.complete(result);
+    setState(() {});
+  }
+
+  /// picker 按键处理(全局键与输入区共用,模态期间拦截方向键)。
+  bool _handlePickerKey(KeyboardEvent event) {
+    final picker = _picker;
+    if (picker == null) return false;
+    switch (event.logicalKey) {
+      case LogicalKey.arrowUp:
+        picker.index =
+            (picker.index - 1 + picker.labels.length) % picker.labels.length;
+        setState(() {});
+        return true;
+      case LogicalKey.arrowDown:
+        picker.index = (picker.index + 1) % picker.labels.length;
+        setState(() {});
+        return true;
+      case LogicalKey.enter:
+        _closePicker(picker.index);
+        return true;
+      case LogicalKey.escape:
+        _closePicker(null);
+        return true;
+    }
+    return true; // 模态期间吞掉其他按键,防止误操作
+  }
+
+  // ─── 权限审批(M3) ────────────────────────────────────────
+
+  Future<PermissionDecision> _handlePermission(
+    String toolName,
+    String arguments,
+  ) async {
+    final completer = Completer<PermissionDecision>();
+    _permissionRequest = _PermissionRequest(toolName, arguments, completer);
+    setState(() {});
+
+    // 用户取消 run 时自动拒绝并关闭审批条
+    final cancelToken = component.di.agentService.currentCancelToken;
+    if (cancelToken != null) {
+      unawaited(cancelToken.whenCancelled.then((_) {
+        if (!completer.isCompleted) {
+          completer.complete(const PermissionDecision(approved: false));
+          _permissionRequest = null;
+          setState(() {});
+        }
+      }));
+    }
+    return completer.future;
+  }
+
+  void _resolvePermission(bool approved, bool persistExact) {
+    final request = _permissionRequest;
+    if (request == null) return;
+    request.completer.complete(
+      PermissionDecision(approved: approved, persistExact: persistExact),
+    );
+    _permissionRequest = null;
+    setState(() {});
+  }
+
+  Future<bool> _handleSkillTrust(String dir, List<String> names) async {
+    final completer = Completer<bool>();
+    _skillTrustRequest = _SkillTrustRequest(dir, names, completer);
+    setState(() {});
+    return completer.future;
+  }
+
+  // ─── 构建 ────────────────────────────────────────────────
+
+  @override
+  Component build(BuildContext context) {
+    return Focusable(
+      focused: true,
+      onKeyEvent: _handleGlobalKey,
+      // crossAxisAlignment.stretch:nocterm Flex 默认 center,消息列表
+      // (内容宽 < 终端宽)会被水平居中;stretch 让子项撑满宽度后,
+      // 列表内容按各自 Column 的 start 对齐,实现左对齐
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          StatusBar(controller: _controller),
+          Expanded(
+            child: MessageList(
+              controller: _controller,
+              scrollController: _scrollController,
+            ),
+          ),
+          if (_permissionRequest != null)
+            PermissionBar(
+              title: '权限请求',
+              detail: '${_permissionRequest!.toolName}: '
+                  '${_permissionRequest!.arguments}',
+              hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
+            ),
+          if (_skillTrustRequest != null)
+            PermissionBar(
+              title: '信任项目级 Skill',
+              detail: '${_skillTrustRequest!.dir}\n'
+                  '${_skillTrustRequest!.names.join(', ')}',
+              hint: '[y] 信任  [n] 拒绝',
+            ),
+          // 常驻组件:children 数量恒定,visible 控制显隐
+          PickerOverlay(
+            visible: _picker != null,
+            title: _picker?.title ?? '',
+            labels: _picker?.labels ?? const [],
+            selectedIndex: _picker?.index ?? 0,
+          ),
+          InputArea(
+            controller: _controller,
+            textController: _textController,
+            onSubmitted: _submit,
+            placeholder: _keyInputProvider == null
+                ? '输入消息…'
+                : '为 ${_keyInputProvider!.name} 输入 API key…',
+            statusText: _keyInputProvider == null
+                ? ''
+                : 'API key 输入中:回车保存 · 留空/ Esc 取消',
+            onKeyEvent: (event) {
+              // 审批模态(权限/Skill 信任):所有按键交给全局处理器
+              // (y/n/a 决策)。必须返回其结果(true)—— 若返回 false,
+              // TextField 内部会把 'y' 当作字符插入输入框,事件永远
+              // 冒泡不到根 Focusable 的 _handleGlobalKey(审批无响应)。
+              if (_permissionRequest != null || _skillTrustRequest != null) {
+                return _handleGlobalKey(event);
+              }
+              // API key 输入模式:仅 Esc 退出,其余按键正常输入
+              if (_keyInputProvider != null) {
+                if (event.logicalKey == LogicalKey.escape) {
+                  setState(() => _keyInputProvider = null);
+                  _pushSystemMessage('已取消配置。');
+                  return true;
+                }
+                return false;
+              }
+              // 模态期间:输入框让路给 picker(TextField 会先调本回调,
+              // 返回 true 即拦截方向键,不移动光标)
+              if (_picker != null) {
+                return _handlePickerKey(event);
+              }
+              // 输入框内按键:Esc 停止生成(其余由 TextField 处理/上抛)
+              if (event.logicalKey == LogicalKey.escape &&
+                  _controller.isStreaming.value) {
+                _controller.stopGenerating();
+                return true;
+              }
+              return false;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionRequest {
+  final String toolName;
+  final String arguments;
+  final Completer<PermissionDecision> completer;
+  _PermissionRequest(this.toolName, this.arguments, this.completer);
+}
+
+class _SkillTrustRequest {
+  final String dir;
+  final List<String> names;
+  final Completer<bool> completer;
+  _SkillTrustRequest(this.dir, this.names, this.completer);
+}
+
+class _PickerState {
+  final String title;
+  final List<String> labels;
+  final Completer<int?> completer;
+  int index;
+  _PickerState({
+    required this.title,
+    required this.labels,
+    required this.index,
+    required this.completer,
+  });
+}
