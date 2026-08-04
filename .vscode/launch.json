@@ -5,20 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "athena",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "athena (profile mode)",
+            "name": "athena_gui",
             "request": "launch",
             "type": "dart",
+            "program": "packages/athena_gui/lib/main.dart"
+        },
+        {
+            "name": "athena_gui (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "program": "packages/athena_gui/lib/main.dart",
             "flutterMode": "profile"
         },
         {
-            "name": "athena (release mode)",
+            "name": "athena_gui (release mode)",
             "request": "launch",
             "type": "dart",
+            "program": "packages/athena_gui/lib/main.dart",
             "flutterMode": "release"
         }
     ]

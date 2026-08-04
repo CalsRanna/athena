@@ -75,7 +75,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 
 ## 4. 依赖注入（DI）
 
-`lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
+`packages/athena_gui/lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
 
 1. **Repository**（无依赖，8 个 LazySingleton）
 2. **Service**（依赖 Repository，12 个 LazySingleton）
@@ -201,7 +201,7 @@ abstract class Tool {
 - 桌面端注册 11 个工具（bash 与 powershell 按操作系统互斥），移动端仅 3 个（WebFetchTool、WebSearchTool、SkillTool）
 - 在 `di.dart` 中按平台注册不同的工具集合
 
-完整的工具实现文件（`lib/agent/tool/`）：
+完整的工具实现文件（`packages/athena_core/lib/agent/tool/`）：
 
 | 文件 | 工具类 | 说明 |
 |------|--------|------|
@@ -529,17 +529,22 @@ FFE0E0E0  // Tag 选中背景
 
 ### 测试模式
 
-- 使用 `test/test_utils/fakes.dart` 中的 Fake Repository（内存实现）
+- GUI 使用 `packages/athena_gui/test/test_utils/fakes.dart` 中的 Fake Repository（内存实现）
 - `setupMobileTestDI()` 注册最小化 DI 依赖，不访问真实数据库
 - Widget 测试使用 `Watch` 包裹以支持 Signals
-- Agent 层测试直接实例化工具类进行单元测试
+- Agent 层测试（在 athena_core）直接实例化工具类进行单元测试
 
 ### 运行测试
 
 ```bash
-flutter test                          # 全部测试
-flutter test test/agent/tool/         # Agent 工具测试
-flutter test test/service/            # 服务层测试
+# 核心包（Agent 引擎、服务、工具——纯 Dart）
+cd packages/athena_core
+dart test                          # 全部核心测试
+dart test test/agent/tool/         # Agent 工具测试
+
+# GUI 包（Flutter）
+cd packages/athena_gui
+flutter test                       # GUI 测试（页面/ViewModel/数据库）
 ```
 
 ---
@@ -608,30 +613,31 @@ PlatformUtil.isWindows  // 特定平台
 
 ### 添加新工具
 
-1. 创建 `lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口
-2. 在 `lib/di.dart` 的 `ToolRegistry` 注册中添加到合适的平台列表
+1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口
+2. 在 `packages/athena_gui/lib/di.dart` 的 `ToolRegistry` 注册中添加到合适的平台列表
 3. 如需权限控制，在 `PermissionService._primaryArg()` 和 `PermissionRule._isFilePathTool()` 中添加模式
-4. 添加单元测试 `test/agent/tool/xxx_tool_test.dart`
+4. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`
 
 ### 添加新 Entity
 
-1. 创建 `lib/entity/xxx_entity.dart`（包含 fromJson/toJson/copyWith）
-2. 创建 `lib/repository/xxx_repository.dart`
-3. 创建数据库迁移 `lib/database/migration/migration_YYYYMMDD001_xxx.dart`
-4. 在 `lib/database/database.dart` 的 `_migrate()` 中添加迁移调用
-5. 在 `lib/di.dart` 中注册 Repository LazySingleton
+1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（包含 fromJson/toJson/copyWith）
+2. 创建 `packages/athena_core/lib/repository/xxx_repository.dart`（存储接口）
+3. 在 `packages/athena_gui/lib/repository/` 添加 SQLite 实现类
+4. 创建数据库迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDD001_xxx.dart`
+5. 在 `packages/athena_gui/lib/database/database.dart` 的 `_migrate()` 中添加迁移调用
+6. 在 `packages/athena_gui/lib/di.dart` 中注册 Repository LazySingleton
 
 ### 添加新 Service
 
-1. 创建 Service 类，通过构造函数注入依赖的 Repository
-2. 在 `lib/di.dart` 中注册为 LazySingleton
+1. 创建 Service 类（核心逻辑放 `packages/athena_core/lib/service/`），通过构造函数注入依赖的 Repository 接口
+2. 在 `packages/athena_gui/lib/di.dart` 中注册为 LazySingleton
 3. 如需在 ViewModel 中使用，在 ViewModel 构造函数中注入
 
 ### 修改预设数据（Provider / Model / Sentinel）
 
 1. 修改数据（新增模型、更新定价/上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
-2. 创建数据库迁移 `lib/database/migration/migration_YYYYMMDD001_xxx.dart`
-3. 在 `lib/database/database.dart` 的 `_migrate()` 中注册迁移（**排在 seed migration 之后**）
+2. 创建数据库迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDD001_xxx.dart`
+3. 在 `packages/athena_gui/lib/database/database.dart` 的 `_migrate()` 中注册迁移（**排在 seed migration 之后**）
 4. 迁移规则：
    - **幂等**：INSERT 使用 `WHERE NOT EXISTS` 防重复；UPDATE 无条件执行
    - **不删除**：废弃 preset 条目时用 `UPDATE ... SET is_preset = 0`，保留数据供已有 chat 引用
