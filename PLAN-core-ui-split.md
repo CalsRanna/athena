@@ -41,13 +41,15 @@ toolCall / toolResult / done / usage …）对外输出，并提供了 `onPermis
 |---|------|---------|---------|
 | C1 | `agent/agent_service.dart` L15 | `package:flutter/foundation.dart`（仅用 `@protected`/`@visibleForTesting`） | 换成 `package:meta/meta.dart`（纯 Dart，语义一致） |
 | C2 | `service/llm_client.dart` L5 | 同上（`@visibleForTesting`） | 同上 |
-| C3 | `service/model_catalog_service.dart` L11 | 同上（6 处 `@visibleForTesting`） | 同上 |
+| C3 | `service/model_catalog_service.dart` L11,13 | `flutter/foundation.dart`（6 处 `@visibleForTesting`）+ `path_provider`（L164 取缓存目录存 models.dev JSON） | foundation → `meta`；缓存目录改为**注入 `cacheDir`**（或默认用 `Directory.systemTemp` 的子目录） |
 | C4 | `database/database.dart` L32 | `path_provider`（Flutter 插件）取数据库路径 | `Database.ensureInitialized({required String dbPath})` 改为**路径注入**，路径发现逻辑移交给各 App |
 | C5 | `database/database.dart` L30 | `laconic_sqlite` → `sqflite`（Flutter 插件） | 抽象出 `SqlDriver` 接口（或注入 `DatabaseFactory`）。GUI 用 sqflite，TUI 用 `sqflite_common_ffi`（纯 Dart FFI，桌面可用，零迁移成本） |
-| C6 | `util/shared_preference_util.dart` | `shared_preferences`（Flutter 插件） | 定义核心 `KeyValueStore` 接口（get/set/remove/keys）。GUI 实现包 SharedPreferences；TUI 实现为 JSON 文件。`maxAgentIterations` 等设置项迁入核心 `AppSettings`（signals + KeyValueStore） |
-| C7 | `view_model/delegate/agent_stream_delegate.dart` | 混入 GUI 对话框（`showPermissionDialog`、`showSkillTrustDialog`、router） | 拆出核心编排层 `AgentRunCoordinator`（消息落库/占位消息/压缩/用量记录，无 UI），对话框通过回调注入（详见 §4.2） |
+| C6 | `util/shared_preference_util.dart` | `shared_preferences`（Flutter 插件） | 定义核心 `KeyValueStore` 接口（get/set/remove/keys）。GUI 实现包 SharedPreferences；TUI 实现为 JSON 文件。其中 4 个 model id key（`chat_model_id`/`chat_naming_model_id`/`sentinel_metadata_generation_model_id`/`short_model_id`）与 `maxAgentIterations` 等设置项迁入核心 `AppSettings`（signals + KeyValueStore）；`window_height`/`window_width` 属窗口状态，留在 GUI |
+| C7 | `view_model/delegate/agent_stream_delegate.dart` | 混入 GUI 对话框（L263 `showSkillTrustDialog`、L550 `showPermissionDialog`、L560 `router.navigatorKey`） | 拆出核心编排层 `AgentRunCoordinator`（消息落库/占位消息/压缩/用量记录，无 UI），对话框通过回调注入（详见 §4.2） |
 | C8 | `util/` 混合 | `color_util`、`window_util`、`system_tray_util` 是 UI | 留在 GUI；`logger_util`、`retry`、`context_window_util`、`tool_args_formatter` 归核心 |
 | C9 | `di.dart` | 应用级装配 | 拆成 `CoreContainer`（核心服务） + 各 App 自己的 DI 扩展 |
+| C10 | `agent/tool/web_search_tool.dart` L4 | `shared_preferences`（存 `brave_api_key`） | 工具构造函数注入 `KeyValueStore`（与 C6 同一接口） |
+| C11 | `service/chat_support_service.dart` L14 | `path_provider`（L75 图片导出目录，仅移动端分支使用） | 改为注入 `Directory exportDir`（移动端由 GUI 传 documents 目录；TUI 无需此功能，可注入临时目录或将该分支标记为不可用） |
 
 **注意**：`PermissionService`/`PermissionStore`、`SkillTrustStore` 已经用 `dart:io` 文件持久化，
 不依赖 Flutter，天然可进核心，无需改动。
@@ -83,6 +85,8 @@ athena/                          # monorepo 根
 │   │   │   ├── view_model/              # signals 状态（保留）
 │   │   │   ├── delegate/                # GuiAgentStreamDelegate（对话框实现）
 │   │   │   └── platform/                # KeyValueStore(SharedPrefs)、SqlDriver(sqflite)
+│   │   ├── android/  ios/  macos/  linux/  windows/  web/  # 平台目录整体随 GUI 迁移
+│   │   ├── asset/  .metadata
 │   │   └── pubspec.yaml                 # 依赖 athena_core (path)
 │   └── athena_tui/              # ★ 新建，纯 Dart 终端应用
 │       ├── lib/
@@ -200,19 +204,25 @@ class Database {
 3. 创建 monorepo 目录骨架（`packages/` 三个占位目录 + `melos.yaml` 可后补）。
 
 ### Phase 1 — 核心去 Flutter 化（1–2 天，不动目录）
-1. C1/C2/C3：3 个文件的 `flutter/foundation.dart` → `package:meta/meta.dart`。
+1. C1/C2/C3：3 个文件的 `flutter/foundation.dart` → `package:meta/meta.dart`；C3 的缓存目录改为注入。
 2. C4/C5：`Database.ensureInitialized` 支持路径注入；引入驱动抽象。
-3. C6：新增 `KeyValueStore` 接口 + 核心 `AppSettings`；`SharedPreferenceUtil` 收敛为 GUI 实现。
-4. 验证：`grep -rn "package:flutter" lib/agent lib/entity lib/repository lib/database lib/service lib/model lib/preset` → **零结果**（view_model/util 暂不算）。
+3. C6：新增 `KeyValueStore` 接口 + 核心 `AppSettings`；`SharedPreferenceUtil` 收敛为 GUI 实现；C10/C11 的注入随之落地。
+4. 验证：
+   ```bash
+   grep -rn "package:flutter" lib/agent lib/entity lib/repository lib/database lib/service lib/model lib/preset lib/extension   # 期望零结果
+   grep -rn "path_provider\|shared_preferences\|sqflite\|laconic_sqlite" lib/agent lib/entity lib/repository lib/database lib/service lib/model lib/preset lib/extension   # 期望零结果
+   ```
+   （view_model/util 暂不算，Phase 2 提取时再次核验。）
 
 ### Phase 2 — 提取 athena_core 包（2–3 天）
 1. `git mv` 以下目录到 `packages/athena_core/lib/src/`：
    `agent/ entity/ model/ repository/ service/ database/ preset/ extension/`
    + 核心 util（`logger_util` `retry` `context_window_util` `tool_args_formatter` `platform_util`）。
-2. 新建 `packages/athena_core/pubspec.yaml`（纯 Dart 依赖）。
+2. 新建 `packages/athena_core/pubspec.yaml`（纯 Dart 依赖，从根 pubspec 迁移：`async http openai_dart yaml logger markdown html path process signals synchronized uuid meta`；`laconic` 视驱动抽象结果定归属，`laconic_sqlite` 留在 GUI 或下沉为可选依赖）。
 3. 批量改写 import：`package:athena/...` → `package:athena_core/...`（用脚本 + `dart analyze` 迭代）。
-4. 迁移核心测试（`test/agent/` `test/service/` `test/repository/` `test/database/` `test/util/` 中核心部分）。
-5. GUI 改为 `path` 依赖 athena_core，跑通 `flutter analyze` + `flutter test`。
+4. 迁移核心测试（`test/agent/` `test/service/` `test/repository/` `test/database/` `test/util/` 中核心部分），测试内用到 sqflite 的改为注入 ffi 驱动。
+5. 剩余部分 `git mv` 到 `packages/athena_gui/`：`lib/`（page/widget/component/router/view_model/util 的 UI 部分）、`main.dart`、平台目录（`android/ ios/ macos/ linux/ windows/ web/`）、`asset/`、`.metadata`、`pubspec.yaml`（保留 flutter 相关依赖）。
+6. GUI 改为 `path` 依赖 athena_core，跑通 `flutter analyze` + `flutter test`（注意：根目录不再有 `lib/`，`flutter run` 需在 `packages/athena_gui/` 下执行；IDE 打开根目录时打开 `packages/athena_gui` 作为 Flutter 项目）。
 
 ### Phase 3 — 提取编排层（2–3 天）
 1. 从 `AgentStreamDelegate` 抽出 `AgentRunCoordinator` 进核心，`RunEvent` 定义好。
@@ -266,9 +276,14 @@ class Database {
   事件模型完备：text / reasoning / toolCall / toolCallArgs / toolResult / iterationComplete /
   done / turnStart / toolExecutionStart / toolExecutionUpdate / usage。
 - `AgentStreamDelegate`（`lib/view_model/delegate/agent_stream_delegate.dart`）是 GUI 与 Agent
-  的唯一桥，其中 UI 耦合仅限权限对话框（L518 `showPermissionDialog`）与 Skill 信任对话框
-  （L243 `showSkillTrustDialog`），其余（落库/压缩/用量）均为可上提的逻辑。
-- 核心目录对 Flutter 的依赖仅 3 处 `flutter/foundation.dart`（均为注解），
-  以及 `database.dart` 的 `path_provider` + `laconic_sqlite`(sqflite) 与
-  `shared_preference_util.dart` 的 `shared_preferences`。
+  的唯一桥，其中 UI 耦合仅限权限对话框（L550 `showPermissionDialog`）与 Skill 信任对话框
+  （L263 `showSkillTrustDialog`）及 L560 `router.navigatorKey`，其余（落库/压缩/用量）均为可上提的逻辑。
+- 核心目录（`agent/ entity/ model/ repository/ service/ database/ preset/ extension/`）对
+  Flutter 的依赖**共 5 个文件、7 处引用**，已逐一核实：
+  1. `agent/agent_service.dart:15` — `flutter/foundation.dart`（注解）
+  2. `service/llm_client.dart:5` — `flutter/foundation.dart`（注解）
+  3. `service/model_catalog_service.dart:11,13` — `flutter/foundation.dart`（注解）+ `path_provider`（缓存目录）
+  4. `agent/tool/web_search_tool.dart:4` — `shared_preferences`（brave_api_key）
+  5. `database/database.dart:30,32` — `laconic_sqlite`(sqflite) + `path_provider`（库路径）
+  （`util/shared_preference_util.dart` 的 `shared_preferences` 另计，见 C6。）
 - `PermissionStore` / `SkillTrustStore` 已用 `dart:io` 文件持久化，无需改造。
