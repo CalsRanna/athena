@@ -1,0 +1,91 @@
+import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/dialog.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+
+@RoutePage()
+class DesktopSettingAdvancedPage extends StatefulWidget {
+  const DesktopSettingAdvancedPage({super.key});
+
+  @override
+  State<DesktopSettingAdvancedPage> createState() =>
+      _DesktopSettingAdvancedPageState();
+}
+
+class _DesktopSettingAdvancedPageState
+    extends State<DesktopSettingAdvancedPage> {
+  final viewModel = GetIt.instance.get<SettingViewModel>();
+
+  @override
+  Widget build(BuildContext context) {
+    var titleTextStyle = TextStyle(
+      color: ColorUtil.FFFFFFFF,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
+    var databaseTitle = Text('Database', style: titleTextStyle);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 12,
+        children: [
+          databaseTitle,
+          Row(
+            spacing: 16,
+            children: [
+              AthenaSecondaryButton(
+                onTap: _handleExport,
+                child: Text('Export'),
+              ),
+              AthenaSecondaryButton(
+                onTap: _handleImport,
+                child: Text('Import'),
+              ),
+              AthenaSecondaryButton(onTap: _handleReset, child: Text('Reset')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleExport() async {
+    AthenaDialog.loading();
+    final success = await viewModel.exportData();
+    AthenaDialog.dismiss();
+    if (!mounted) return;
+    if (success) {
+      AthenaDialog.success('导出成功');
+    } else {
+      AthenaDialog.info('导出已取消');
+    }
+  }
+
+  Future<void> _handleImport() async {
+    AthenaDialog.loading();
+    final success = await viewModel.importData();
+    AthenaDialog.dismiss();
+    if (!mounted) return;
+    if (success) {
+      AthenaDialog.success('导入成功');
+    } else {
+      AthenaDialog.info('导入已取消');
+    }
+  }
+
+  Future<void> _handleReset() async {
+    AthenaDialog.loading();
+    final success = await viewModel.resetData();
+    AthenaDialog.dismiss();
+    if (!mounted) return;
+    if (success) {
+      AthenaDialog.success('重置成功');
+    } else {
+      AthenaDialog.info('重置已取消');
+    }
+  }
+}

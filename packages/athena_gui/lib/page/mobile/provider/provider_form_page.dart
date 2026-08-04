@@ -1,0 +1,235 @@
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
+import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/view_model/provider_view_model.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
+import 'package:athena_gui/widget/app_bar.dart';
+import 'package:athena_gui/widget/bottom_sheet_tile.dart';
+import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/form_tile_label.dart';
+import 'package:athena_gui/widget/input.dart';
+import 'package:athena_gui/widget/scaffold.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
+import 'package:hugeicons/hugeicons.dart';
+
+@RoutePage()
+class MobileProviderFormPage extends StatefulWidget {
+  final ProviderEntity provider;
+  const MobileProviderFormPage({super.key, required this.provider});
+
+  @override
+  State<MobileProviderFormPage> createState() => _MobileProviderFormPageState();
+}
+
+class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
+  final keyController = TextEditingController();
+  final urlController = TextEditingController();
+  var _obscureKey = true;
+
+  @override
+  Widget build(BuildContext context) {
+    var keyVisibilityToggle = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _obscureKey = !_obscureKey),
+      child: Icon(
+        _obscureKey
+            ? HugeIcons.strokeRoundedView
+            : HugeIcons.strokeRoundedViewOff,
+        size: 18,
+        color: ColorUtil.FFC2C2C2,
+      ),
+    );
+    var children = [
+      AthenaFormTileLabel.large(title: 'API Key'),
+      SizedBox(height: 12),
+      AthenaInput(
+        controller: keyController,
+        obscureText: _obscureKey,
+        suffix: keyVisibilityToggle,
+      ),
+      SizedBox(height: 16),
+      AthenaFormTileLabel.large(title: 'API Url'),
+      SizedBox(height: 12),
+      AthenaInput(controller: urlController),
+    ];
+    var column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+    var labels = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: column,
+    );
+    var modelListView = MobileModelListView(
+      onLongPress: openBottomSheet,
+      onTap: editModel,
+      provider: widget.provider,
+      modelViewModel: GetIt.instance<ModelViewModel>(),
+    );
+    var listViewChildren = [
+      labels,
+      SizedBox(height: 16),
+      _buildModelFormLabel(context),
+      SizedBox(height: 12),
+      modelListView,
+      if (widget.provider.isPreset) SizedBox(height: 16),
+      if (widget.provider.isPreset) _buildTip(),
+    ];
+    var listView = ListView(
+      padding: EdgeInsets.zero,
+      children: listViewChildren,
+    );
+    var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
+    return AthenaScaffold(
+      appBar: AthenaAppBar(title: Text(widget.provider.name)),
+      body: SafeArea(top: false, child: Column(children: columnChildren)),
+    );
+  }
+
+  Future<void> checkConnection(ModelEntity model) async {
+    AthenaDialog.dismiss();
+    AthenaDialog.loading();
+    var viewModel = GetIt.instance<ModelViewModel>();
+    try {
+      var result = await viewModel.checkConnection(model);
+      if (!result.isSuccess) {
+        AthenaDialog.error(result.detail ?? result.message);
+        return;
+      }
+      AthenaDialog.success(result.message);
+    } catch (e) {
+      AthenaDialog.error('Connection error: $e');
+    } finally {
+      AthenaDialog.dismiss();
+    }
+  }
+
+  void createModel(BuildContext context) {
+    MobileModelFormRoute(provider: widget.provider).push(context);
+  }
+
+  void destroyModel(ModelEntity model) {
+    AthenaDialog.dismiss();
+    GetIt.instance<ModelViewModel>().deleteModel(model);
+  }
+
+  @override
+  void dispose() {
+    keyController.dispose();
+    urlController.dispose();
+    super.dispose();
+  }
+
+  void editModel(ModelEntity model) {
+    if (model.isPreset) return;
+    MobileModelFormRoute(model: model).push(context);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    keyController.text = widget.provider.apiKey;
+    urlController.text = widget.provider.baseUrl;
+    _initializeModels();
+  }
+
+  Future<void> _initializeModels() async {
+    try {
+      await GetIt.instance<ModelViewModel>().initSignals();
+    } catch (e) {
+      if (mounted) {
+        AthenaDialog.error('Failed to load models. Please try again.');
+      }
+    }
+  }
+
+  void openBottomSheet(ModelEntity model) {
+    HapticFeedback.heavyImpact();
+    var connectTile = AthenaBottomSheetTile(
+      leading: Icon(HugeIcons.strokeRoundedConnect),
+      title: 'Connect',
+      onTap: () => checkConnection(model),
+    );
+    var children = <Widget>[connectTile];
+    if (!model.isPreset) {
+      var editTile = AthenaBottomSheetTile(
+        leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+        title: 'Edit',
+        onTap: () => editModel(model),
+      );
+      var deleteTile = AthenaBottomSheetTile(
+        leading: Icon(HugeIcons.strokeRoundedDelete02),
+        title: 'Delete',
+        onTap: () => destroyModel(model),
+      );
+      children.addAll([editTile, deleteTile]);
+    }
+    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    var padding = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: column,
+    );
+    AthenaDialog.show(SafeArea(child: padding));
+  }
+
+  Future<void> updateProvider() async {
+    var viewModel = GetIt.instance<ProviderViewModel>();
+    var provider = widget.provider.copyWith(
+      enabled: true,
+      apiKey: keyController.text,
+      baseUrl: urlController.text,
+    );
+    await viewModel.updateProvider(provider);
+  }
+
+  Widget _buildModelFormLabel(BuildContext context) {
+    var newModelButton = AthenaTextButton(
+      onTap: () => createModel(context),
+      text: 'New',
+    );
+    var label = AthenaFormTileLabel.large(
+      title: 'Models',
+      trailing: newModelButton,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: label,
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    var textStyle = TextStyle(
+      color: ColorUtil.FF161616,
+      fontSize: 14,
+      fontWeight: FontWeight.w500,
+    );
+    var button = AthenaPrimaryButton(
+      onTap: updateProvider,
+      child: Center(child: Text('Update', style: textStyle)),
+    );
+    return Padding(padding: const EdgeInsets.all(16), child: button);
+  }
+
+  Widget _buildTip() {
+    var tipTextStyle = TextStyle(
+      color: ColorUtil.FFC2C2C2,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+    );
+    var tipText = Text(
+      'See ${widget.provider.name} documentation for more details',
+      style: tipTextStyle,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: tipText,
+    );
+  }
+}
