@@ -132,9 +132,11 @@ Agent 可通过三个机制持续改进自身：
 
 ### 安装与运行
 
+项目为 monorepo 多包结构：`athena_core`（纯 Dart 核心）与 `athena_gui`（Flutter 应用）。
+
 ```bash
 git clone https://github.com/CalsRanna/athena.git
-cd athena
+cd athena/packages/athena_gui
 flutter pub get
 flutter pub run build_runner build --delete-conflicting-outputs
 flutter run -d <device>
@@ -143,85 +145,77 @@ flutter run -d <device>
 ### 开发命令
 
 ```bash
+# GUI（Flutter 应用）
+cd packages/athena_gui
 flutter analyze       # 静态代码分析
-flutter test          # 运行全部测试
-flutter test test/agent/tool/  # 运行 Agent 工具测试
+flutter test          # 运行 GUI 测试
+
+# 核心（纯 Dart，无 Flutter 依赖）
+cd packages/athena_core
+dart analyze
+dart test             # 运行核心测试（Agent 引擎、服务、工具等）
 ```
 
 ## 架构
 
+项目拆分为两个 package，依赖方向严格单向：`athena_gui → athena_core`。
+
 ```
-lib/
-├── agent/               # Agent 层
-│   ├── tool/            #   12 个工具实现文件（11 个工具类 + 辅助文件）
-│   ├── permission/      #   权限服务 + 持久化规则
-│   ├── skill/           #   Skill 加载、注册、信任
-│   └── evolution/       #   自我进化提示词
-├── page/                # UI 层
-│   ├── desktop/         #   桌面端页面（多区工作台）
-│   └── mobile/          #   移动端页面（分段浏览）
-├── view_model/          # 视图模型层（Signals 状态管理 + Delegate 委托）
-│   └── delegate/        #   业务逻辑委托（3 个：流式、重命名、多选）
-├── service/             # 服务层（12 个服务）
-│   ├── chat_service.dart         # AI 网络通信（OpenAI 客户端生命周期 + 重试）
-│   ├── llm_client.dart           # 统一 LLM API 客户端封装
-│   ├── chat_message_service.dart # 消息格式转换（Entity → ChatMessage）
-│   ├── chat_manage_service.dart  # 会话/消息持久化编排
-│   ├── chat_support_service.dart  # UI 辅助操作（重命名、配置更新、图片导出）
-│   ├── token_usage_service.dart  # Token 用量追踪（原子累加 + 快照覆盖写）
-│   ├── data_migration_service.dart # 数据导入/导出、数据库重置
-│   ├── model_resolver.dart       # 模型/Provider 解析 + fallback 逻辑
-│   ├── sentinel_service.dart     # Sentinel 元数据 AI 生成
-│   ├── summary_service.dart      # 网页摘要
-│   ├── translation_service.dart  # 翻译
-│   └── trpg_service.dart         # TRPG 游戏
-├── repository/          # 数据访问层（8 个 repository）
-├── entity/              # 数据库实体（11 个 entity）
-├── database/            # SQLite + Laconic ORM + 迁移
-├── router/              # AutoRoute 路由配置
-├── widget/              # 可复用组件（20+ 组件，含设计系统）
-├── component/           # 业务组件
-├── util/                # 工具类（重试、日志、平台检测等）
-├── extension/           # Dart 扩展方法
-├── preset/              # 预设提示词模板（运行时使用）
-└── model/               # 普通数据类（TokenUsage 等）
+packages/
+├── athena_core/         # ★ 纯 Dart 核心，零 Flutter / 零 SQL 依赖
+│   ├── agent/           #   Agent 引擎：工具、权限、Skill、进化、取消令牌
+│   ├── coordinator/     #   AgentRunCoordinator：UI 无关的 run 编排层（RunEvent 流）
+│   ├── service/         #   LlmClient、Chat、Summary、Translation、TRPG 等
+│   ├── repository/      #   存储接口（Chat/Message/Model/Provider/...）
+│   ├── entity/ model/ preset/ extension/ util/
+│   └── storage/         #   KeyValueStore 接口 + AgentSettings
+└── athena_gui/          # ★ Flutter 应用
+    ├── page/            #   UI 层（desktop 多区工作台 / mobile 分段浏览）
+    ├── view_model/      #   Signals 状态管理
+    │   └── delegate/    #   AgentStreamDelegate：包装核心协调层 + 对话框注入
+    ├── repository/      #   SQLite 实现（SqliteChatRepository 等）
+    ├── database/        #   SQLite + Laconic ORM + 迁移
+    ├── router/ widget/ component/ util/
+    └── storage/         #   KeyValueStore 的 SharedPreferences 实现
 ```
+
+核心通过**存储接口**（`repository/`）与**注入回调**（权限审批、Skill 信任）
+与持久化策略解耦：GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组
+接口用 JSONL/文件存储。
 
 ### 技术栈
 
 | 层 | 技术 |
 |----|------|
-| UI | Flutter |
+| UI | Flutter（athena_gui） |
+| 核心 | 纯 Dart（athena_core，零 Flutter 依赖） |
 | 状态管理 | Signals（Computed、Signal、listSignal、setSignal） |
-| 依赖注入 | GetIt（LazySingleton） |
+| 依赖注入 | GetIt（LazySingleton，仅 GUI 装配层） |
 | 路由 | AutoRoute（桌面无过渡，移动标准过渡） |
-| 数据库 | SQLite + Laconic ORM（单一持久连接，PRAGMA foreign_keys = ON） |
+| 数据库 | SQLite + Laconic ORM（GUI 侧实现，PRAGMA foreign_keys = ON） |
 | AI API | openai_dart v5.0.0（流式 + 工具调用 + 推理） |
 | HTTP | http v1.x（web_fetch、web_search） |
-| 测试 | flutter_test + 内存 fake repository |
+| 测试 | athena_core：`dart test`；athena_gui：`flutter test` |
 
 ### 分层架构
 
 ```
-┌─────────────────────────────────────┐
-│               UI Layer               │
-│   page/desktop/    page/mobile/      │
-│   widget/          component/        │
-├─────────────────────────────────────┤
-│          ViewModel Layer             │
-│   signals (响应式) + Delegate 委托  │
-├─────────────────────────────────────┤
-│           Service Layer              │
-│   网络通信 / 数据转换 / 持久化编排   │
-├─────────────────────────────────────┤
-│          Repository Layer            │
-│   数据库访问封装（Laconic ORM）      │
-├─────────────────────────────────────┤
-│            Data Layer                │
-│   Entity / Database / Migration      │
-└─────────────────────────────────────┘
-         ↕（通过 GetIt DI 垂直穿透）
-   Agent Layer（Agent Service / Tool / Permission / Skill）
+┌─────────────────────────────────────────────┐
+│            athena_gui（Flutter）             │
+│  UI Layer（page / widget / component）      │
+│  ViewModel Layer（signals + Delegate 委托） │
+│  SQLite 实现（repository / database）       │
+├─────────────────────────────────────────────┤
+│            athena_core（纯 Dart）            │
+│  AgentRunCoordinator（run 编排层，RunEvent）│
+│  Service Layer（LLM 通信 / 数据转换 / 编排）│
+│  Repository 接口（存储抽象，port）          │
+│  Agent Layer（Agent Service / Tool /        │
+│              Permission / Skill）           │
+│  Entity / Storage / Util                    │
+└─────────────────────────────────────────────┘
+   GUI 通过 GetIt 装配：注入 SQLite 实现 +
+   权限弹窗 / Skill 信任回调（TUI 可注入替代实现）
 ```
 
 ## 配置
