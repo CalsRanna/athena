@@ -1,0 +1,21 @@
+name: athena_core
+description: Athena agent core - UI-agnostic agent engine, domain models, and services.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  http: ^1.1.0
+  html: ^0.15.5
+  logger: ^2.0.2+1
+  meta: ^1.16.0
+  openai_dart: ^5.0.0
+  path: ^1.8.0
+  signals: ^6.2.0
+  yaml: ^3.1.2
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
