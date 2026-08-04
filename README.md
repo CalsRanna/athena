@@ -17,10 +17,14 @@
 Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 - **推理-工具循环**：Agent 在每轮迭代中进行推理、调用工具、获取结果、再推理，最大 100 轮可配置
-- **流式响应**：文本和推理过程（reasoning）实时流式呈现
+- **并行工具执行**：同一轮内可并行的工具调用（只读/已放行）自动分组并发执行，最多 8 个并发，信号量限流，取消优先响应
+- **流式响应**：文本和推理过程（reasoning）实时流式呈现，工具调用卡片随流实时产出（参数增量逐片追加）
+- **参数校验**：工具调用参数在执行前经过 JSON Schema 校验，非法参数直接拒绝并返回错误信息
+- **截断保护**：响应被输出 token 上限切断时拒绝执行工具调用，防止截断参数被误执行
 - **工具输出保护**：工具结果超过 12000 字符时自动保留头尾、截断中间，防止过长输出挤占上下文
 - **取消令牌**：支持随时中断 Agent 运行，取消时保留已生成内容并标记 `[Cancelled]`
-- **自动压缩**：上下文接近窗口上限时自动压缩早期对话为摘要，保持长对话可继续
+- **自动压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention = -1` 模式），保持长对话可继续
+- **消息注入**：支持运行时注入 steering 消息（当前轮工具执行后、下一轮推理前）与 followUp 消息（Agent 停止后继续运行）
 
 #### 内置工具（桌面端 11 个，移动端 3 个）
 
@@ -40,10 +44,13 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 #### 权限模型
 
-两层决策，简洁明了：
+三层决策，自动放行绝大多数调用：
 
-1. **用户持久化规则**：`~/.athena/permissions.json` 存储路径/命令前缀匹配规则，支持 `*` 和 `?` 通配符。命中则直接放行，不弹窗。
-2. **审批弹窗**：无匹配规则时弹出完整命令预览弹窗（shell 命令全文展示不截断），用户可选 Allow/Deny 并决定是否记忆为持久化规则。弹窗不可被空白点击关闭。
+1. **只读短路**：只读工具（file_read、web_fetch、web_search）和只读 shell 命令（ls、git status 等）永不弹窗
+2. **会话级缓存**：当前对话中已批准过的调用直接放行，同一轮内不再重复弹窗
+3. **用户持久化规则**：`~/.athena/permissions.json` 存储匹配规则，支持 `*` 和 `?` 通配符；shell 命令可记忆为动作级规则（如 `git push*`）。命中则直接放行，不弹窗。
+
+未命中时弹出完整命令预览弹窗（shell 命令全文展示不截断），用户可选 Allow/Deny，并可将本次批准记忆为会话级或持久化规则。弹窗不可被空白点击关闭。
 
 #### 工具自我保护
 
@@ -59,7 +66,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 | 层级 | 内容 | 加载时机 | Token 消耗 |
 |------|------|---------|-----------|
-| Level 1 | name + description | 会话启动时全量注入系统提示词 | ~100 token/skill |
+| Level 1 | name + description（最近使用 Top 20，按访问时间排序） | 由 `skill` 工具按名加载时提示可用技能清单（当前版本未在会话启动时自动注入） | 按需 |
 | Level 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 | 按需 |
 | Level 3 | scripts/references 等资源 | Level 2 指令引用时加载 | 按需 |
 
@@ -105,11 +112,18 @@ Agent 可通过三个机制持续改进自身：
 ### 核心功能
 
 - **Sentinel 系统**：预定义角色和系统提示词，支持 AI 元数据生成（名称、描述、标签、头像 Emoji），内置默认 "Athena" Sentinel
-- **多 AI 提供商管理**：支持 OpenAI API 兼容的任何提供商，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
+- **多 AI 提供商管理**：支持 OpenAI API 兼容的任何提供商，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax；启动时后台自动从 models.dev 同步模型元数据（7 天缓存，失败降级）
 - **重试机制**：指数退避 + 随机抖动，可重试网络错误（连接异常、超时、限流、5xx），不重试业务错误（4xx、解析错误）
-- **聊天管理**：会话置顶、批量删除、AI 自动命名、上下文截断、温度参数调整、Token 用量追踪
+- **聊天管理**：会话置顶、批量删除、AI 自动命名、上下文管理（零上下文 / 自动压缩 / 全量）、温度参数调整、Token 用量追踪
 - **视觉与推理**：支持视觉模型（图片附件）和推理模型（DeepSeek-R1 等 reasoning 展示）
 - **数据导入/导出**：JSON 格式完整数据迁移，自动重整悬空引用
+
+### 快捷入口（Shortcut）
+
+内置 5 个场景化快捷入口（Translation、Summary、Food、Code、TRPG），每个绑定独立的专属 Sentinel（能力配置）：
+
+- 点击后以其绑定 Sentinel 身份发起对话，支持**场景级 JSON 输出模式**（模型直接产出结构化 JSON）
+- Translation / Summary / TRPG 快捷入口直接打开对应的定制功能页，Food / Code 进入默认聊天页
 
 ### 扩展功能
 
@@ -138,7 +152,7 @@ Agent 可通过三个机制持续改进自身：
 git clone https://github.com/CalsRanna/athena.git
 cd athena/packages/athena_gui
 flutter pub get
-flutter pub run build_runner build --delete-conflicting-outputs
+dart run build_runner build --delete-conflicting-outputs
 flutter run -d <device>
 ```
 
@@ -234,6 +248,8 @@ packages/
 | 智谱 | GLM 系列 |
 | MiniMax | MiniMax-Text-01 |
 
+> 模型元数据（名称、上下文窗口、价格、reasoning/vision 标志）由应用启动时后台从 [models.dev](https://models.dev) 自动同步，预设模型列表随上游更新，无需手工维护。
+
 ### Skill 开发
 
 1. 创建 `SKILL.md` 文件，包含 YAML front matter 和 Markdown body
@@ -246,24 +262,35 @@ packages/
 ```json
 {
   "rules": [
-    {"tool": "bash", "pattern": "git *"},
-    {"tool": "file_read", "pattern": "/home/user/projects/*"}
+    {"tool": "bash", "action": "git", "pattern": "push*"},
+    {"tool": "bash", "pattern": "ls *"},
+    {"tool": "file_read", "pattern": "/home/user/projects/*"},
+    {"tool": "web_fetch", "pattern": "https://example.com"}
   ]
 }
 ```
 
+- 文件类工具（file_read / file_write / file_update）：pattern 为路径，支持 `*` / `?` 通配符
+- Shell 工具（bash / powershell）：action 为命令动作（git、ls、npm…），pattern 为参数模式；不加通配符时按前缀匹配
+- web_fetch：pattern 为 URL origin（scheme://host[:port]）
+- pattern 为空表示允许该工具（及 action，若指定）的所有调用
+
 ## 测试
 
-项目包含约 30 个测试文件，覆盖：
+项目为双包结构，共 35 个测试文件，覆盖：
 
-- **Agent 层**：工具执行、权限规则、Skill 加载与信任、Shell 进程管理
-- **Service 层**：消息转换、聊天服务、会话管理
-- **ViewModel 层**：聊天流、设置、摘要、翻译、TRPG
-- **UI 层**：移动端主页和聊天页 widget 测试
-- **数据库**：迁移、CASCADE 行为验证
+- **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载与信任、Shell 进程管理、Schema 校验
+- **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
+- **ViewModel 层**（athena_gui）：聊天流、设置、摘要、翻译、TRPG
+- **UI 层**（athena_gui）：移动端主页和聊天页 widget 测试
+- **数据库**（athena_gui）：迁移、CASCADE 行为验证
 
 ```bash
-flutter test  # 运行全部测试
+# 核心包（纯 Dart）
+cd packages/athena_core && dart test
+
+# GUI 包（Flutter）
+cd packages/athena_gui && flutter test
 ```
 
 ## 贡献

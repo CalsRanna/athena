@@ -8,50 +8,63 @@
 
 Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter 构建。核心能力包括：
 
-- **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置）
-- **内置工具系统**：12 个工具实现类（桌面端运行时 11 个，移动端 3 个）
-- **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3）
-- **两层权限模型**：用户持久化规则、审批弹窗
+- **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
+- **Monorepo 双包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 应用），依赖方向严格单向 `athena_gui → athena_core`，为未来 TUI 客户端共用同一套 Agent 引擎做准备
+- **内置工具系统**：12 个工具实现类（桌面端运行时 11 个，移动端 3 个），带危险等级（readOnly/dangerous）与执行模式（串行/并行）
+- **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3）+ 项目级信任模型
+- **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、Sentinel 系统提示词优化
+- **Shortcut 快捷入口系统**：绑定额外 Sentinel 的一等公民实体，支持场景级 JSON 输出模式
+- **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
+- **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
 - **多模型提供商**：OpenAI API 兼容，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
 
 ---
 
-## 2. 项目结构
+## 2. 仓库结构（Monorepo）
 
 ```
-lib/
-├── main.dart                    # 应用入口，初始化 DB/DI/Window/Tray
-├── di.dart                      # GetIt 依赖注入：注册所有 Repository/Service/ViewModel/Agent
-├── agent/                       # Agent 层
-│   ├── agent_service.dart       #   核心 Agent 循环（流式推理-工具调用迭代）
-│   ├── cancel_token.dart        #   取消令牌（取消流/等待取消）
-│   ├── evolution/               #   自我进化提示词
-│   ├── permission/              #   权限服务 + 持久化规则
-│   ├── skill/                   #   Skill 加载/注册/信任
-│   └── tool/                    #   12 个工具实现 + 辅助文件 + 工具注册表
-├── page/                        # UI 层（桌面端 DesktopRoute / 移动端 AutoRoute）
-│   ├── desktop/                 #   桌面端（多区工作台：侧栏+顶栏context+主内容区+底部composer）
-│   └── mobile/                  #   移动端（分段浏览 + Bottom Sheet）
-├── view_model/                  # Signals 状态管理 + Delegate 委托
-│   ├── delegate/                #   业务逻辑委托（纯逻辑，不持有 Signal）
-│   │   ├── agent_stream_delegate.dart
-│   │   ├── chat_rename_delegate.dart
-│   │   └── chat_selection_delegate.dart
-│   ├── chat_view_model.dart     #   ChatViewModel（Signal 持有者 + 跨委托编排）
-│   └── ...                      #   其他 ViewModel
-├── service/                     # 服务层（网络通信/消息转换/持久化编排/UI辅助操作）
-├── repository/                  # 数据访问层（Laconic ORM 封装）
-├── entity/                      # 数据库实体（11 个 entity）
-├── database/                    # SQLite + Laconic ORM + 迁移
-├── router/                      # AutoRoute 路由配置
-├── widget/                      # 通用组件（20+ 组件，含设计系统）
-├── component/                   # 业务组件（消息列表项、工具卡片、翻译列表项等）
-├── util/                        # 工具类（重试、日志、平台检测、颜色等）
-├── preset/                      # 预设提示词模板（运行时使用，非 DB 种子数据）
-├── extension/                   # Dart 扩展方法
-└── model/                       # 普通数据类（TokenUsage 等）
+D:\Code\athena\
+├── AGENTS.md / README.md / DESIGN.md
+└── packages/
+    ├── athena_core/             # ★ 纯 Dart 核心（零 Flutter / 零 SQL 依赖）
+    │   ├── lib/
+    │   │   ├── agent/
+    │   │   │   ├── agent_service.dart        # 核心 Agent 循环 + AgentEvent sealed class
+    │   │   │   ├── cancel_token.dart         # 取消令牌
+    │   │   │   ├── evolution/                # 自我进化提示词（hint + fullBody）
+    │   │   │   ├── permission/               # permission_service / permission_rule / command_analyzer
+    │   │   │   ├── skill/                    # skill_loader / skill_registry / skill_trust_store
+    │   │   │   └── tool/                     # 12 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
+    │   │   ├── coordinator/
+    │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
+    │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
+    │   │   ├── entity/          # 11 个实体（纯数据类）
+    │   │   ├── model/           # TokenUsage / Shortcut / ActionSuggestion（普通数据类）
+    │   │   ├── preset/          # model_catalog_config.dart + prompt.dart（运行时模板，非 DB 种子）
+    │   │   ├── repository/      # 9 个存储接口（抽象，GUI 用 SQLite 实现）
+    │   │   ├── service/         # LlmClient / Chat / ModelCatalog / TRPG 等 12 个服务
+    │   │   ├── storage/         # KeyValueStore 接口 + AgentSettings
+    │   │   ├── extension/       # json_map_extension / list_signal_extension
+    │   │   └── util/            # platform_util / retry / logger_util / context_window_util / tool_args_formatter
+    │   └── test/                # dart test（Agent 引擎 / 工具 / 权限 / Skill / 服务）
+    └── athena_gui/              # ★ Flutter 应用
+        ├── lib/
+        │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
+        │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
+        │   ├── database/        # SQLite + Laconic ORM + 26 个迁移
+        │   ├── repository/      # 8 个 SqliteXxxRepository（核心接口的 SQLite 实现）
+        │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
+        │   ├── view_model/      # 9 个 ViewModel（Signals）+ delegate/（3 个委托）
+        │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
+        │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
+        │   ├── widget/          # 设计系统组件（20+）
+        │   ├── component/       # 业务组件（消息列表项、工具卡片等）
+        │   └── util/            # color_util / window_util / system_tray_util / shared_preference_util
+        └── test/                # flutter test（页面 / ViewModel / 数据库迁移）
 ```
+
+> 根目录无 pubspec；两个 package 各自独立 `pub get`。
 
 ---
 
@@ -60,16 +73,20 @@ lib/
 ```
 UI Layer (page/widget/component)
     ↓ 读取 Signal / 调用 ViewModel 方法
-ViewModel Layer (signals 响应式 + 业务逻辑)
-    ↓ 编排调用
-Service Layer (chat_service / chat_message_service / chat_manage_service / chat_support_service)
-    ↓ 调用 Repository 持久化 / 调用 ChatService 网络请求
-Repository Layer (Laconic ORM 封装)
+ViewModel Layer (signals 响应式 + 业务逻辑 + UI 状态)
+    ↓ 编排调用（委托）
+Coordinator Layer (athena_core/coordinator)  ← AgentRunCoordinator：UI 无关的 run 编排
+    ↓ 消费/驱动
+Service Layer (chat_service / chat_manage_service / chat_message_service / ...)
+    ↓ 调用 Repository 接口
+Repository Layer (接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository)
     ↓ 直接访问 Database.instance.laconic
 Data Layer (Entity / Database / Migration)
 ```
 
 Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
+
+**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`、Skill 信任 `SkillTrustPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组接口用 JSONL/文件存储。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
 ---
 
@@ -77,22 +94,14 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 
 `packages/athena_gui/lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
 
-1. **Repository**（无依赖，8 个 LazySingleton）
-2. **Service**（依赖 Repository，12 个 LazySingleton）
-3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate）
-4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel 等，依赖 Delegate/Service）
-5. **Agent**（PermissionService → SkillRegistry → ToolRegistry → AgentService）
+1. **Repository**（9 个 LazySingleton：8 个 Sqlite 实现 + ExperienceRepository）
+2. **Service**（LlmClient → ChatService / ChatMessageService / ChatManageService / ChatSupportService / SentinelService / SummaryService / TranslationService / TRPGService / DataMigrationService / ModelCatalogService）
+3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
+4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、ShortcutViewModel、ModelResolver、SummaryViewModel、TranslationViewModel、TRPGViewModel）
+5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillTrustStore → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
 6. **ChatViewModel**（最后注册，依赖最多）
 
-> 所有注册使用 `registerLazySingleton`，实例化延迟到首次访问，
-> 因此声明顺序不影响运行时依赖解析——Agent 虽在 ViewModel 之后声明，
-> 但 ViewModel Delegate 依赖 AgentService 时，AgentService 会在首次被访问时才创建。
-
-**重要规则**：
-- 所有注册使用 `registerLazySingleton`（首次访问时才实例化）
-- DI 初始化在 `main()` 中调用 `DI.ensureInitialized(dataDirectory: ...)`
-- 页面组件通过 `GetIt.instance<ChatViewModel>()` 获取 ViewModel 实例
-- 测试中使用 `GetIt.instance.reset()` + `registerSingleton` 替换为 Fake 实现
+> 所有注册使用 `registerLazySingleton`（首次访问时才实例化），声明顺序不影响运行时依赖解析。**注意**：DI 是 GUI 独有的装配层——athena_core 无任何 GetIt 引用，测试中构造服务时直接 `new` 并注入 Fake Repository。
 
 ---
 
@@ -102,9 +111,9 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 
 - `signal<T>(initialValue)` - 可读写响应式值
 - `listSignal<T>([])` - 响应式列表
-- `setSignal<T>({})` - 响应式集合
-- `computed(() => ...)` - 派生信号，依赖其他信号自动更新
+- `computed(() => ...)` - 派生信号
 - `Watch((context) { ... })` - Flutter Widget 中自动订阅信号变化
+- `athena_core` 提供 `list_signal_extension.dart`：`replaceWhere` 等便捷方法（ViewModel 消息/会话更新使用）
 
 ChatViewModel 的主要信号：
 
@@ -120,16 +129,19 @@ final error = signal<String?>(null);
 final currentModel = signal<ModelEntity?>(null);
 final currentProvider = signal<ProviderEntity?>(null);
 final currentSentinel = signal<SentinelEntity?>(null);
-final currentRetention = signal(defaultDraftRetention);
-final currentTemperature = signal(defaultDraftTemperature);
+final currentRetention = signal(defaultDraftRetention);   // -1 = 自动管理
+final currentTemperature = signal(defaultDraftTemperature); // 1.0
 final currentIteration = signal(0);
 final currentToolName = signal<String?>(null);
 final currentTokenUsage = signal<TokenUsage?>(null);
 final cumulativeTokenTotal = signal(0);
 final pendingImages = listSignal<String>([]);
+// Computed
+final recentChats = computed(() => chats.value.take(10).toList());
+final pinnedChats = computed(() => chats.value.where((c) => c.pinned).toList());
 ```
 
-**关键模式**：更新列表信号时，不要在原有列表上直接修改，而是创建新列表再赋值：
+**关键模式**：更新列表信号时，不要在原有列表上直接修改，而是创建新列表再赋值（或使用 `replaceWhere` 扩展）：
 
 ```dart
 // 正确
@@ -142,15 +154,14 @@ messages.value.add(newMessage);
 
 ## 6. 数据库
 
-- **引擎**：SQLite，通过 `laconic` + `laconic_sqlite` 包访问
+- **引擎**：SQLite，通过 `laconic` + `laconic_sqlite` 包访问（非 sqlite3 原生绑定）
 - **路径**：`{app_support_dir}/athena.db`
 - **初始化**：`Database.instance.ensureInitialized()` 在 `main()` 中调用
-- **外键**：迁移完成后执行 `PRAGMA foreign_keys = ON`
-- **迁移**：按时间顺序执行，每个迁移通过检查 `migrations` 表判断是否已执行
-- **预设**：通过 `migrations` 表中的 marker 控制预设数据只插入一次
-- **重置**：`Database.instance.reset()` 删除所有表并重新迁移+预设
+- **外键**：迁移全部完成后执行 `PRAGMA foreign_keys = ON`（确保孤儿数据已清理）
+- **迁移**：按时间顺序执行（当前 26 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_shortcuts_v1`）控制只插入一次
+- **重置**：`Database.instance.reset()` DROP 所有表（不含 `sqlite_%`）后重新迁移+预设
 
-实体类模式：所有 Entity 都实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`。
+实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
 
 ---
 
@@ -160,126 +171,185 @@ messages.value.add(newMessage);
 
 `AgentService.run()` 是核心，返回 `Stream<AgentEvent>`：
 
-1. 每轮迭代开始：注入 skill prompt（首轮）和 evolution prompt（始终）
-2. 通过 `ChatService.getCompletion()` 流式获取模型响应
-3. 解析流中的 text delta 和 reasoning delta
-4. 流结束后检查 tool calls：
+1. **双层循环**：内层是工具调用迭代（`maxIterations` 轮，默认 100，来自 `AgentSettings.maxAgentIterations`）；外层检查 `_followUpQueue`——有 followUp 消息则注入并重启内层循环
+2. 每轮迭代开始注入 `EvolutionPrompt.hint`（~30 token）；`_steerQueue` 中的 steering 消息在当前轮工具执行完后、下一轮 LLM 调用前插入
+3. 通过 `ChatService.getCompletion()` 流式获取模型响应（`streamOptions.includeUsage: true`）
+4. 流式解析 text / reasoning / tool_calls（**工具卡片实时产出**：id+name 齐备即发 `AgentToolCallEvent`，后续参数分片发 `AgentToolCallArgsEvent`）
+5. 流结束后检查 tool calls：
    - 无 tool call → `AgentDoneEvent`，结束
-   - 有 tool call → 依次执行每个工具
-5. 执行前检查权限（持久化规则 → 审批弹窗）
-6. 工具结果超过 12000 字符时 `smartTruncate` 保留头尾截断中间
-   （辅助模型摘要尚未接线，见 `agent_service.dart` 的 afterToolCall hook）
-7. 工具结果消息加入消息列表，进入下一轮迭代
+   - 有 tool call → 先做**截断保护**：`finishReason == length`（输出被 token 限制切断）时拒绝执行所有工具并提示重新调用
+6. **串行 + 并行混合执行**：`selectParallelCalls()` 预检分级——参数可解析、工具存在、`canExecuteParallel(args)` 且权限预检通过（`check() == true`，即不需要弹窗）的调用进并行组，其余进串行组。并行组用信号量限流（最多 8 个并发），`Future.any` 优先响应取消信号，结果渐进式产出
+7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → `beforeToolCall` hook → 权限检查 → 执行 → `afterToolCall` hook → `smartTruncate`（超 12000 字符保留头尾截断中间）
+8. 工具结果消息加入消息列表，进入下一轮迭代；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
 
 ### 7.2 AgentEvent 类型
 
 ```dart
 sealed class AgentEvent {
-  AgentTextEvent        // 文本 delta（流式）
-  AgentReasoningEvent   // 推理过程 delta（流式）
-  AgentToolCallEvent    // 工具调用声明（id/name/arguments）
-  AgentToolResultEvent  // 工具执行结果（id/name/result）
-  AgentIterationCompleteEvent // 一轮迭代完成
-  AgentDoneEvent        // Agent 完成（最终 content）
-  AgentUsageEvent       // Token 使用量统计
+  AgentTextEvent               // 文本 delta（流式）
+  AgentReasoningEvent          // 推理过程 delta（流式）
+  AgentToolCallEvent           // 工具调用声明（id+name 齐备即产出，arguments 为首片）
+  AgentToolCallArgsEvent       // 工具调用参数增量（按 id 追加）
+  AgentToolResultEvent         // 工具执行结果（id/name/result）
+  AgentIterationCompleteEvent  // 一轮迭代完成（含全部 toolCalls 记录）
+  AgentDoneEvent               // Agent 完成（最终 content）
+  AgentTurnStartEvent          // 每轮迭代开始
+  AgentToolExecutionStartEvent // 单个工具开始执行（串行/并行均发）
+  AgentToolExecutionUpdateEvent// 工具部分结果进度（预留，shell 实时 stdout）
+  AgentUsageEvent              // Token 使用量统计
 }
 ```
 
 ### 7.3 工具系统
 
-所有工具实现 `Tool` 接口：
+`Tool` 抽象接口（`tool_interface.dart`）：
 
 ```dart
 abstract class Tool {
   String get name;
   String get description;
   Map<String, dynamic> get parameters; // JSON Schema
-  Future<String> execute(Map<String, dynamic> args);
+
+  ExecutionMode get executionMode => ExecutionMode.sequential;
+  bool canExecuteParallel(Map<String, dynamic> args) =>
+      executionMode == ExecutionMode.parallel;
+  ToolRisk get risk => ToolRisk.dangerous; // 默认保守
+
+  Future<String> execute(Map<String, dynamic> args,
+      {void Function(String partialResult)? onUpdate});
 }
+
+enum ExecutionMode { sequential, parallel }
+enum ToolRisk { readOnly, dangerous }
 ```
 
-- `ToolRegistry` 管理所有工具，提供 `register()`、`get()`、`definitions`（OpenAI tool definitions）
+- `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
+- `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
 - 桌面端注册 11 个工具（bash 与 powershell 按操作系统互斥），移动端仅 3 个（WebFetchTool、WebSearchTool、SkillTool）
-- 在 `di.dart` 中按平台注册不同的工具集合
+- 注册在 `di.dart` 的 ToolRegistry 工厂中按 `PlatformUtil.isMobile` 分支完成
 
-完整的工具实现文件（`packages/athena_core/lib/agent/tool/`）：
+工具实现文件（`packages/athena_core/lib/agent/tool/`）：
 
-| 文件 | 工具类 | 说明 |
-|------|--------|------|
-| `bash_shell_tool.dart` | BashShellTool | Linux/macOS Shell 命令执行 |
-| `powershell_shell_tool.dart` | PowerShellShellTool | Windows PowerShell 命令执行 |
-| `file_read_tool.dart` | FileReadTool | 文件读取，支持 offset/limit 分页 |
-| `file_write_tool.dart` | FileWriteTool | 文件创建/覆写 |
-| `file_update_tool.dart` | FileUpdateTool | 精确字符串替换，含外部修改检测 |
-| `web_fetch_tool.dart` | WebFetchTool | HTTP GET/POST 抓取（200KB 上限） |
-| `web_search_tool.dart` | WebSearchTool | Brave Search API 搜索 |
-| `skill_tool.dart` | SkillTool | 加载 Skill Level 2 指令 |
-| `skill_evolve_tool.dart` | SkillEvolveTool | 创建/更新 Skill |
-| `experience_learn_tool.dart` | ExperienceLearnTool, ExperienceRecallTool | 经验学习与回忆 |
-| `sentinel_evolve_tool.dart` | SentinelEvolveTool | Sentinel 系统提示词优化 |
-| `shell_runner.dart` | (辅助) | Shell 进程启动/管理（超时、kill） |
-| `html_to_markdown.dart` | (辅助) | HTML 转 Markdown 工具函数 |
-| `tool_interface.dart` | Tool (抽象接口) | 工具接口定义 |
-| `tool_registry.dart` | ToolRegistry | 工具注册与查询 |
-
-**已废弃文件**（仅保留注释，未注册）：
-| 文件 | 说明 |
-|------|------|
-| `list_directory_tool.dart` | 已由 bash/powershell 替代 |
-| `unix_search_tool.dart` | 已由 bash 替代 |
-| `powershell_search_tool.dart` | 已由 powershell 替代 |
+| 文件 | 工具类 | 风险/模式 | 说明 |
+|------|--------|----------|------|
+| `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时 600s 上限，超时 SIGTERM→SIGKILL |
+| `powershell_shell_tool.dart` | PowerShellShellTool | dangerous/串行 | Windows PowerShell 命令 |
+| `file_read_tool.dart` | FileReadTool | **readOnly/并行** | 文件读取，offset/limit 分页 + 行号 |
+| `file_write_tool.dart` | FileWriteTool | dangerous/串行 | 创建/覆写，递归建父目录 |
+| `file_update_tool.dart` | FileUpdateTool | dangerous/串行 | 精确字符串替换，mtime 外部修改检测，replace_all、行号前缀剥离 |
+| `web_fetch_tool.dart` | WebFetchTool | **readOnly/并行** | HTTP GET/POST（200KB 上限，仅 http/https），HTML→Markdown |
+| `web_search_tool.dart` | WebSearchTool | **readOnly/并行** | Brave Search API（API key 存 KeyValueStore，key: `brave_api_key`） |
+| `skill_tool.dart` | SkillTool | dangerous/串行 | 加载 Skill Level 2 指令，校验 allowed-tools |
+| `skill_evolve_tool.dart` | SkillEvolveTool | dangerous/串行 | 创建/更新 Skill（SKILL.md） |
+| `experience_learn_tool.dart` | ExperienceLearnTool | dangerous/串行 | 经验学习（`~/.athena/experiences/`，Sentinel 私有或共享） |
+| `experience_learn_tool.dart` | ExperienceRecallTool | dangerous/串行 | 经验检索 |
+| `sentinel_evolve_tool.dart` | SentinelEvolveTool | dangerous/串行 | 改进 Sentinel 提示词（内置 Sentinel 不可改名），onChanged 回调刷新列表 |
+| `shell_runner.dart` | (辅助) | - | Shell 进程启动/管理（超时、kill） |
+| `html_to_markdown.dart` | (辅助) | - | HTML 转 Markdown |
+| `schema_validator.dart` | (辅助) | - | JSON Schema 参数校验（类型/必填/枚举/数值范围） |
 
 ### 7.4 权限系统
 
-两层检查（在 `AgentService.run()` 中按顺序）：
+`PermissionService.check()` 三层判定（返回 `true` = 放行，`null` = 需要弹窗）：
 
-1. **用户持久化规则**：`~/.athena/permissions.json` 中的通配符匹配规则，命中直接放行
-2. **审批弹窗**：无匹配规则时弹出完整命令预览，用户可选 Allow/Deny + 记忆选项（精确/通配符模式），弹窗不可被空白点击关闭
+1. **readOnly 短路**：工具 `risk == readOnly` 永不弹窗；shell 工具中只读命令（`CommandAnalyzer.isReadOnlyCommand`：ls、git status 等）也不弹窗
+2. **会话级缓存**：当前 run 内已批准的调用直接放行（`approveForSession`，run 开始时 `resetSession()`）
+3. **持久化规则**：`~/.athena/permissions.json` 中的 `PermissionRule`（tool + action + pattern，支持 `*`/`?` 通配符，无通配符时按前缀匹配）命中则放行
+
+未命中 → 调用方通过 `PermissionPrompt` 回调弹窗（GUI 对话框 / 未来 TUI stdin）。用户选择：
+- **Allow**：写会话级缓存（同一 run 内不再弹）
+- **Always Allow**：持久化规则——shell 命令用 `CommandAnalyzer.parseRulePattern` 解析为 **动作级规则**（action=git, pattern=push*），非 shell 存 keyArg（文件路径 / URL origin）
+- 弹窗不可被空白点击关闭（`barrierDismissible: false`）
 
 工具自我保护（在工具 `execute()` 内部，独立于权限系统）：
-
-- bash/powershell：递归删除命令（rm -rf 变体）被检测到时拒绝执行
+- bash/powershell：递归删除命令（rm -rf 变体 / del /s）被检测到拒绝执行
 - file_update：写入前校验文件 mtime，防止覆盖外部并发修改
 - web_fetch：仅允许 http/https scheme
 
 ### 7.5 Skill 系统
 
-三级加载：
+三级渐进式加载：
 
 | Level | 内容 | 加载时机 |
 |-------|------|---------|
-| 1 | name + description | 会话启动时注入系统提示词 |
-| 2 | SKILL.md 完整指令 | Agent 调用 `skill(name)` 时 |
-| 3 | scripts/references 等资源 | Level 2 指令引用时 |
+| 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 已实现，**但当前 run 流程未注入**（AgentRunCoordinator 只注入 sentinel prompt + evolution hint） |
+| 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 |
+| 3 | scripts/references 等资源 | Level 2 指令引用时加载 |
 
-Skill 文件格式：
+Skill 文件格式（YAML front matter + Markdown body）：
 
 ```markdown
 ---
 name: my-skill
-description: What this skill does
+description: What this skill does and when to use it
 allowed-tools: file_read, web_search
+disable-model-invocation: false
 ---
 ## Process
 1. Step one
 ```
 
-放置位置：
-- `~/.athena/skills/` - 用户级（始终信任）
-- `.athena/skills/` - 项目级（需用户确认信任）
+放置位置与信任模型：
+- `~/.athena/skills/` - 用户级（始终信任，所有项目可用）
+- `.athena/skills/` - 项目级（未信任时保持 **INERT**：不解析进列表、不可加载、不覆盖用户级同名 Skill），首次使用时弹信任确认（每会话仅一次，`AgentRunCoordinator._skillTrustPrompted` 守卫），信任持久化到 `~/.athena/trusted_skill_dirs.json`
+- 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
 
-内置 `self-evolve` Skill 提供完整的自我进化指导。
+### 7.6 自我进化
+
+- **Sentinel 优化**（`sentinel_evolve`）：基于使用反馈优化系统提示词
+- **Skill Evolution**（`skill_evolve`）：创建/改进 Skill 扩展能力
+- **Experience Learning**（`experience_learn` / `experience_recall`）：长期经验记忆（`~/.athena/experiences/`），带标签与上下文，支持 Sentinel 私有或全局共享
+- 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
+
+### 7.7 Shortcut 系统（v3.4.4 新增）
+
+- `Shortcut`（`athena_core/lib/model/shortcut.dart`）：name/description/icon/pageTarget/sentinelId；绑定一个 `is_preset` 的专属 Sentinel
+- 迁移 `202608040001_create_shortcuts` + `202608040002_seed_shortcuts` 播种 5 个内置 Shortcut（Translation/Summary/Food/Code/TRPG），每个带专属 preset Sentinel
+- 点击 Shortcut → 以其绑定 Sentinel 身份发起 run，`jsonMode: true`（ResponseFormat jsonObject）用于场景页
+- `pageTarget` 通过 `ShortcutPageRegistry`（纯查找表，非插件机制）映射到移动端路由（translation/summary/trpg；Food/Code 无目标页走默认聊天页）
 
 ---
 
-## 8. 实体与数据模型
+## 8. Coordinator 层（run 编排）
+
+`AgentRunCoordinator`（athena_core，UI 无关）是 **AgentStreamDelegate 的实际实现体**。职责：
+
+1. Skill 信任检查（每会话一次）→ 2. 用户消息落库 → 3. 自动重命名触发判断（首条用户消息）→ 4. 解析 model/provider/sentinel → 5. 构建上下文（`ChatMessageService.buildMessages`）→ 6. **自动压缩**（`retention == -1` 且 `contextTokens/contextWindow > 80%` 时：前 60% 消息由辅助模型压缩为 system summary 消息，原消息 `markAsCompacted`，压缩失败降级全量）→ 7. 追加 assistant 占位消息 → 8. 启动 AgentService.run → 9. 消费事件流落库 → 10. 用量 `recordUsage` + 刷新会话 → 11. 收尾/取消/错误落库
+
+产出 `RunEvent` 纯数据流（无 UI 类型）：
+
+```dart
+sealed class RunEvent {
+  RunMessageStored      // 用户消息已落库
+  RunAssistantAppended  // Assistant 占位消息已追加（含新迭代消息）
+  RunMessageUpdated     // 消息增量更新
+  RunIterationChanged   // 迭代轮次变化
+  RunToolNameChanged    // 当前工具名称变化
+  RunUsageChanged       // Token 使用量 + 最新 ChatEntity
+  RunAutoRename         // 触发自动重命名
+  RunListReload         // 触发会话列表刷新
+  RunError              // 错误
+}
+```
+
+关键实现细节：
+- **思考卡片展开状态保留**：`updateExpanded(messageId, expanded)` 记录用户展开选择，`_consumeStream` 的 copyWith 链应用 override，防止流式增量把刚展开的卡片重新折叠
+- **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
+- **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
+- **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
+
+GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps`（12 个依赖）构造 Coordinator，注入 `showPermissionDialog` / `showSkillTrustDialog` 实现，事件原样转发。权限弹窗与取消令牌用 `Future.any` 竞速——取消时自动 pop 对话框。
+
+---
+
+## 9. 实体与数据模型
 
 | Entity | 关键字段 | 说明 |
 |--------|---------|------|
-| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens | 聊天会话 |
+| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens, createdAt, updatedAt | 聊天会话 |
 | ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
-| MessageEntity | chatId, role, content, reasoningContent, toolCalls, toolResults, compacted | 聊天消息 |
-| ModelEntity | name, modelId, providerId, reasoning, vision, isPreset | AI 模型 |
+| MessageEntity | chatId, role, content, reasoningContent, reasoning, expanded, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
+| ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
 | ProviderEntity | name, baseUrl, apiKey, enabled, isPreset | AI 提供商 |
 | SentinelEntity | name, avatar, description, prompt, tags, isPreset | Agent 角色 |
 | ExperienceEntity | name, description, tags, context, scope | Agent 经验记忆 |
@@ -287,192 +357,83 @@ allowed-tools: file_read, web_search
 | SummaryEntity | url, content, summary, modelId | 网页摘要记录 |
 | TRPGGameEntity | name, systemPrompt, modelId | TRPG 游戏 |
 | TRPGMessageEntity | gameId, role, content, suggestions | TRPG 消息 |
+| Shortcut（在 `model/` 而非 `entity/`） | name, description, icon, pageTarget, sentinelId | 快捷入口 |
 
-所有实体使用 `copyWith()` 进行不可变更新，布尔值在数据库中存储为 0/1。
+所有实体使用 `copyWith()` 进行不可变更新；布尔值存储为 0/1。`MessageEntity.toolCalls` / `toolResults` 是 JSON 编码字符串，转换在 `ChatMessageService._convertMessages` 展开为 OpenAI `ToolCall` / tool 消息。
 
 ---
 
-## 9. 服务层详解
+## 10. 服务层详解
 
 ### 服务概览
 
 | 服务 | 文件 | 职责 |
 |------|------|------|
-| ChatService | `chat_service.dart` | AI 网络请求（流式/非流式/标题生成/连接测试），封装 OpenAI 客户端生命周期 |
-| ChatMessageService | `chat_message_service.dart` | 消息格式转换（Entity → ChatMessage），含 system prompt 注入、上下文截断、图片处理 |
-| ChatManageService | `chat_manage_service.dart` | 会话 CRUD、消息删除/占位/最终化、取消/错误标记 |
-| ChatSupportService | `chat_support_service.dart` | UI 辅助：重命名、配置更新、Provider 解析、消息折叠、图片导出 |
-| LlmClient | `llm_client.dart` | 统一 LLM API 客户端，封装 OpenAIClient 创建/请求/重试/关闭 |
-| DataMigrationService | `data_migration_service.dart` | 数据导入/导出（JSON）、数据库重置、悬空引用重整 |
-| ModelResolver | `model_resolver.dart` | 模型/Provider 解析 + fallback 逻辑（优先指定模型 → 回退第一个可用） |
-| SentinelService | `sentinel_service.dart` | Sentinel 元数据 AI 生成（名称、描述、标签、头像） |
-| SummaryService | `summary_service.dart` | 网页摘要 AI 生成 |
-| TranslationService | `translation_service.dart` | 文本翻译 |
-| TRPGService | `trpg_service.dart` | TRPG 游戏 AI 逻辑 |
-| TokenUsageService | `token_usage_service.dart` | Token 用量追踪（原子累加 + 快照覆盖写） |
+| LlmClient | `service/llm_client.dart` | 统一 LLM API 客户端：每次调用创建 OpenAIClient → 请求 → `close()`；内建重试（`retry()` / `retryStream()`，指数退避 + 随机抖动） |
+| ChatService | `service/chat_service.dart` | AI 网络请求：`getCompletion()`（流式，含 includeUsage）、`complete()`（非流式，辅助模型摘要用）、`connect()`（测试连接）、`getTitle()`（标题生成） |
+| ChatMessageService | `service/chat_message_service.dart` | Entity → OpenAI ChatMessage 转换、system prompt 注入、tool_calls/tool_results 展开、图片 ContentPart（base64）、retention 处理 |
+| ChatManageService | `service/chat_manage_service.dart` | 会话/消息持久化编排：CRUD、占位消息、finalize、`recordCancelledOnMessage`、`recordErrorOnMessage`、`deleteMessagesFromIndex` |
+| ChatSupportService | `service/chat_support_service.dart` | UI 辅助：重命名、模型/哨兵/上下文/温度更新、图片保存、`getProviderForModel`、`updateExpanded` 落库 |
+| DataMigrationService | `service/data_migration_service.dart` | 数据导入/导出（JSON）、数据库重置、悬空引用重整 |
+| ModelResolver | `service/model_resolver.dart` | 模型/Provider 解析 + fallback（优先指定模型 → 回退第一个可用） |
+| ModelCatalogService | `service/model_catalog_service.dart` | 从 models.dev/api.json 同步模型元数据（TTL 7 天缓存、失败降级缓存、只删除未被 chat 引用的 preset 模型） |
+| SentinelService | `service/sentinel_service.dart` | Sentinel 元数据 AI 生成 |
+| SummaryService / TranslationService / TRPGService | 各自文件 | 网页摘要 / 翻译 / TRPG（均走 LlmClient） |
 
-### ChatService
-- 封装 `openai_dart` 包的 `OpenAIClient` 生命周期
-- 提供 `getCompletion()`（流式）、`complete()`（非流式）、`getTitle()`（标题生成）、`connect()`（测试连接）
-- 每次调用创建新客户端，完成后 `close()`
-- 内建重试：`retry()` / `retryStream()`，指数退避 + 随机抖动
+### Retention 语义（ChatMessageService + Coordinator）
 
-### ChatMessageService
-- `MessageEntity` 列表转 `ChatMessage` 列表（OpenAI 格式）
-- 负责系统提示词注入（Sentinel prompt）、上下文截断、tool_calls/tool_results JSON 展开、图片 ContentPart 处理
-- 处理三种 retention 模式：0=零上下文、正数=手动截断、-1=自动 compact
+- `retention == 0`：零上下文模式，只携带最后一条用户消息（+ sentinel prompt）
+- `retention == -1`：自动管理——返回全部消息，Coordinator 在占用 >80% 窗口时自动 compact
+- `retention > 0`：当前实现**不截断**，返回全部消息（旧的手动轮数截断已移除，正数语义等同全量）
 
-### ChatManageService
-- 会话/消息持久化编排：创建/删除/更新/选择会话
-- 消息占位创建、最终化、取消/错误标记
-- 所有写操作直接落库
+### Token 用量
 
-### ChatSupportService
-- UI 辅助操作：重命名、模型/哨兵/上下文/温度更新、图片保存、消息折叠
-- 是 ViewModel 与 Repository/网络层之间的薄胶水层
+`ChatRepository.recordUsage(chatId, total, prompt, cached)` 独立增量写入路径；`ChatRepository.updateChat()` 显式排除 `token_total` / `context_tokens` / `cached_tokens` 字段，防止并发覆盖。旧的 TokenUsageService 已移除。
 
 ---
 
-## 10. ViewModel 详解
+## 11. ViewModel 与 Delegate
 
 ### 架构模式：ViewModel + Delegate
 
-ChatViewModel 采用委托模式拆分。当前实现有 3 个 Delegate：
-
 ```
-ChatViewModel（Signal 唯一持有者 + 编排层，~612 行）
-├── AgentStreamDelegate   — Agent 流式交互（~526 行）
-├── ChatRenameDelegate    — 自动/手动重命名（~92 行）
-└── ChatSelectionDelegate — 多选 UI 交互状态（~99 行）
+ChatViewModel（Signal 唯一持有者 + 编排层）
+├── AgentStreamDelegate    — 薄桥包装 AgentRunCoordinator（真实逻辑在 core）
+├── ChatRenameDelegate     — 自动/手动重命名（CancelToken 防写入已删会话）
+└── ChatSelectionDelegate  — 多选/重命名 UI 交互状态（纯信号，无数据访问）
 ```
 
-> **注意**：AGENTS.md 此前描述的 `ChatListDelegate` 和 `ChatConfigDelegate` 尚未实现。会话列表 CRUD 和配置更新逻辑当前直接写在 `ChatViewModel` 中。
+### ChatViewModel 直接操作（未委托部分）
 
-### AgentStreamDelegate
+`createChat` / `deleteChat` / `deleteChats` / `selectChat` / `togglePin` / `updateModel` / `updateSentinel` / `updateRetention` / `updateTemperature` / `updateExpanded` / `sendMessage` / `stopGenerating` / `deleteMessage` / `renameChat` / `exportImage` / `addPendingImage` / `prepareNewChatDraft` / `_syncDraftDefaults` 等。
 
-最复杂的委托（~526 行），封装完整的 sendMessage 流程：准备上下文 → 启动 Agent → 消费流 → 落库。
-
-```dart
-class AgentStreamDelegate {
-  int? get streamingChatId;
-  Future<void>? get settled;
-
-  Stream<AgentStreamEvent> send({
-    required MessageEntity message,
-    required ChatEntity chat,
-  });
-  void stop();
-}
-```
-
-AgentStreamEvent 类型（ViewModel 层事件，与 Agent 层的 AgentEvent 对应）：
-
-| 事件 | 说明 |
-|------|------|
-| StreamMessageStored | 用户消息已落库 |
-| StreamAssistantAppended | Assistant 占位消息已追加 |
-| StreamMessageUpdated | 消息内容增量更新 |
-| StreamIterationChanged | 迭代轮次变化 |
-| StreamToolNameChanged | 当前工具名称变化 |
-| StreamUsageChanged | Token 使用量更新 |
-| StreamAutoRename | 触发自动重命名 |
-| StreamListReload | 触发会话列表刷新 |
-| StreamError | 错误事件 |
-
-内部状态（每次 `send` 调用时创建，结束后清理）：`_cancelToken`、`_streamingChatId`、`_settled`、`_skillTrustPrompted`。
-
-依赖：`AgentService`、`ChatManageService`、`ChatMessageService`、`ChatService`、`MessageRepository`、`ModelRepository`、`SentinelRepository`、`ChatSupportService`、`TokenUsageService`、`SettingViewModel`、`PermissionService`、`SkillRegistry`。
-
-### ChatRenameDelegate
-
-```dart
-class ChatRenameDelegate {
-  Future<ChatEntity?> rename({
-    required ChatEntity chat,
-    required void Function(String title) onTitle,
-  });
-  Future<ChatEntity> renameManually({required ChatEntity chat, required String title});
-  void cancel(int chatId);
-}
-```
-
-依赖：`MessageRepository`、`ModelRepository`、`ChatSupportService`。
-
-内部状态：`_tokens: Map<int, CancelToken>`（管理进行中的重命名流，供 deleteChat 取消）。
-
-### ChatSelectionDelegate
-
-```dart
-class ChatSelectionDelegate {
-  final selectedChatIds = setSignal<int>({});
-  final lastSelectedIndex = signal<int?>(null);
-  final renamingChatIds = setSignal<int>({});
-  final renamingTitle = signal<String>('');
-
-  void clearSelection();
-  void toggleChatSelection(int chatId, int index);
-  void rangeSelectChats(int endIndex, List<ChatEntity> chats);
-  void initLastSelectedIndex(ChatEntity? currentChat, List<ChatEntity> chats);
-  void startRenaming(int chatId);
-  void stopRenaming(int chatId);
-}
-```
-
-仅管理 UI 交互状态，不涉及数据访问。
-
-### ChatViewModel 作为编排层
-
-ChatViewModel 不是纯编排层——它直接处理部分 CRUD（createChat、deleteChat、selectChat、updateModel 等），同时将流式和重命名委托出去。
-
-```dart
-class ChatViewModel {
-  // 全部 Signal（16 个）
-  final chats = listSignal<ChatEntity>([]);
-  // ...
-
-  // 委托（3 个）
-  final AgentStreamDelegate _stream;
-  final ChatRenameDelegate _rename;
-  final ChatSelectionDelegate _selection;
-
-  // 直接操作（未委托部分）
-  Future<ChatEntity?> createChat() { /* ... */ }
-  Future<void> deleteChat(ChatEntity chat) { /* ... */ }
-  Future<void> selectChat(ChatEntity chat) { /* ... */ }
-  Future<void> updateModel(...) { /* ... */ }
-  // ...
-}
-```
-
-流式处理的核心约束由 `AgentStreamDelegate` 统一管理：
-
-1. **取消安全性**：`AgentStreamDelegate._cancelToken` 控制流取消；`ChatViewModel.deleteChat` 通过 `_stream.settled` 等待流完全 settle 后再删除数据
-2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 已被删除后写入
-3. **迭代管理**：每轮 tool result 后 `_consumeStream` 最终化上一条 assistant 消息并 append 新占位消息
-4. **Skill 信任弹窗**：`AgentStreamDelegate._skillTrustPrompted` 守卫确保每会话只弹一次
+流式约束：
+1. **取消安全性**：`AgentStreamDelegate.settled`（实为 `AgentService.settled`）等待流完全 settle 后再删除数据
+2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 删除后写入
+3. **Skill 信任弹窗**：`AgentRunCoordinator._skillTrustPrompted` 每会话只弹一次
 
 ### 其他 ViewModel
 
-| ViewModel | 文件 | 说明 |
-|-----------|------|------|
-| ModelViewModel | `model_view_model.dart` | 管理模型列表、启用/禁用、连接测试 |
-| ProviderViewModel | `provider_view_model.dart` | 管理提供商列表、启用/禁用 |
-| SentinelViewModel | `sentinel_view_model.dart` | 管理 Sentinel 列表、默认选择、元数据生成 |
-| SettingViewModel | `setting_view_model.dart` | 全局设置（默认模型、最大迭代、辅助模型、窗口尺寸等） |
-| SummaryViewModel | `summary_view_model.dart` | 网页摘要功能 |
-| TranslationViewModel | `translation_view_model.dart` | 翻译功能 |
-| TRPGViewModel | `trpg_view_model.dart` | TRPG 游戏功能 |
+| ViewModel | 说明 |
+|-----------|------|
+| ModelViewModel | 模型列表、启用/禁用、连接测试 |
+| ProviderViewModel | 提供商列表、启用/禁用 |
+| SentinelViewModel | Sentinel 列表、默认选择、元数据生成 |
+| SettingViewModel | 全局设置（默认模型、最大迭代、辅助模型、窗口尺寸、数据迁移） |
+| ShortcutViewModel | Shortcut 列表 CRUD（v3.4.4 新增） |
+| SummaryViewModel / TranslationViewModel | 摘要 / 翻译功能（可注入 agentService） |
+| TRPGViewModel | TRPG 游戏功能 |
 
 ---
 
-## 11. 设计系统
+## 12. 设计系统
 
 详见 `DESIGN.md`。关键元素：
 
 ### 颜色系统
 
 ```dart
-// ColorUtil 中定义
+// athena_gui/lib/util/color_util.dart 中定义
 FF282828  // 桌面主背景
 FF282F32  // 移动端背景 / 对话框背景
 FF161616  // 深层容器 / Tag 未选中
@@ -483,19 +444,18 @@ FFEAEAEA  // Tag 渐变边框起点
 FFE0E0E0  // Tag 选中背景
 ```
 
-### 核心组件（lib/widget/）
+### 核心组件（athena_gui/lib/widget/）
 
 | 组件 | 用途 |
 |------|------|
 | `AthenaTag` / `AthenaTagButton` | 渐变边框 pill 标签（品牌签名） |
-| `AthenaPrimaryButton` | 白色 CTA 按钮，带柔光阴影 |
-| `AthenaSecondaryButton` | 透明底 + 灰色描边按钮 |
-| `AthenaIconButton` | 白色圆形图标按钮 |
-| `AthenaTextButton` | 透明文本按钮 |
+| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
 | `AthenaInput` | 半透明深色输入框 |
 | `AthenaScaffold` | 深色背景页面骨架 |
-| `AthenaDialog` | 对话框系统（桌面居中 Dialog / 移动 Bottom Sheet） |
-| `AthenaSwitch` | 自定义开关 |
+| `AthenaDialog` | 对话框系统（桌面居中 Dialog / 移动 Bottom Sheet，内部自动判断） |
+| `AthenaSwitch` / `Checkbox` / `ContextMenu` / `Menu` / `Tile` / `Divider` / `AppBar` / `WindowButton` | 通用组件 |
+| `PermissionDialog` / `SkillTrustDialog` | 权限/信任弹窗（不可空白点击关闭） |
+| `ErrorBoundary` | 错误边界 |
 
 ### 桌面布局约定
 
@@ -505,35 +465,38 @@ FFE0E0E0  // Tag 选中背景
 
 ---
 
-## 12. 路由
+## 13. 路由
 
-使用 `auto_route` 包，配置在 `lib/router/router.dart`：
+使用 `auto_route` 包，配置在 `athena_gui/lib/router/router.dart`：
 
-- 桌面端使用 `DesktopRoute(CustomRoute)`，过渡时间为 0（无动画）
+- 桌面端使用 `DesktopRoute(CustomRoute)`，过渡时间为 0（无动画）；`initial: isDesktop`
 - 移动端使用标准 `AutoRoute`，带过渡动画
-- 全局 `scaffoldMessengerKey` 用于 SnackBar 显示
-- `router.navigatorKey.currentContext` 用于不依赖 Widget 树的全局导航
+- **路由代码生成**：`router.gr.dart` 由 build_runner 生成，修改 router.dart 后需运行 `flutter pub run build_runner build --delete-conflicting-outputs`
+- 全局 `scaffoldMessengerKey` 用于 SnackBar；`router.navigatorKey.currentContext` 用于不依赖 Widget 树的全局导航（如取消时 pop 权限弹窗）
 
 ---
 
-## 13. 测试
+## 14. 测试
 
-### 测试结构（`test/` 目录，约 30 个测试文件）
+### 测试结构
 
-- `test/agent/` - Agent 层单元测试（工具、权限、Skill）
-- `test/service/` - 服务层单元测试（消息转换、聊天服务）
-- `test/view_model/` - ViewModel 测试（聊天流、设置、摘要、翻译）
-- `test/page/mobile/` - 移动端 widget 测试
-- `test/database/` - 数据库迁移和级联行为测试
-- `test/widget/` - 自定义 widget 测试
-- `test/util/` - 工具函数测试
+- `packages/athena_core/test/`（纯 Dart，`dart test`）
+  - `agent/` - AgentService 循环、cancel_token、**parallel_execution**、permission/（analyzer/rule/service）、skill/（loader/registry/trust）、tool/（bash/powershell/file_update/shell_runner/web_fetch/schema_validator）
+  - `service/` - chat_manage_helpers、chat_message_service、chat_service、chat_support_touch、model_catalog_service
+  - `util/` - retry、tool_args_formatter；`extension/` - json_map_extension
+- `packages/athena_gui/test/`（Flutter，`flutter test`）
+  - `database/` - migration_test、cascade_characterization_test
+  - `view_model/` - chat_view_model_stream_test、setting/summary/translation/trpg、view_model_defaults_test
+  - `page/mobile/` - chat_page_test、home_page_test
+  - `repository/` - trpg_message_repository_test；`widget/` - skill_trust_dialog_test
+  - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
 
 ### 测试模式
 
-- GUI 使用 `packages/athena_gui/test/test_utils/fakes.dart` 中的 Fake Repository（内存实现）
-- `setupMobileTestDI()` 注册最小化 DI 依赖，不访问真实数据库
+- GUI 使用 `GetIt.instance.reset()` + `registerSingleton` 替换为 Fake 实现
 - Widget 测试使用 `Watch` 包裹以支持 Signals
-- Agent 层测试（在 athena_core）直接实例化工具类进行单元测试
+- Agent 层测试（athena_core）直接实例化工具类/服务进行单元测试（无 DI）
+- AgentService 暴露 `@visibleForTesting` 成员：`selectParallelCalls`、`ToolCallResultInternal`、`currentCancelTokenInternal` 等
 
 ### 运行测试
 
@@ -546,23 +509,23 @@ dart test test/agent/tool/         # Agent 工具测试
 # GUI 包（Flutter）
 cd packages/athena_gui
 flutter test                       # GUI 测试（页面/ViewModel/数据库）
+flutter analyze                    # 静态分析
 ```
 
 ---
 
-## 14. 开发约定
+## 15. 开发约定
 
 ### 代码风格
 
-- Dart 3.8+，使用 `flutter_lints` 默认规则
-- 分析选项：`analysis_options.yaml`（基于 `flutter_lints/flutter.yaml`）
-- 优先使用 `const` 构造函数
+- Dart 3.8+；athena_core 用 `lints`，athena_gui 用 `flutter_lints`
+- 优先使用 `const` 构造函数；变量声明优先 `final`
 - 实体类使用 `copyWith()` 模式
-- 变量声明优先使用 `final`，确实需要重新赋值才用 `var`
+- 注释语言：中文/英文混合（历史代码中文居多，新代码趋向英文）；代码标识符一律英文
 
 ### 平台检测
 
-使用 `PlatformUtil` 而非直接使用 `dart:io` 的 `Platform`：
+使用 `PlatformUtil`（athena_core）而非直接使用 `dart:io` 的 `Platform`：
 
 ```dart
 PlatformUtil.isDesktop  // macOS || Linux || Windows
@@ -574,112 +537,109 @@ PlatformUtil.isWindows  // 特定平台
 
 使用 `ColorUtil` 中的预定义常量，不要直接写 `Color(0xFF...)`。
 
-### 对话框
+### 对话框与消息提示
 
-桌面端使用 `AthenaDialog` 静态方法或 `showDialog()`，移动端使用 `showModalBottomSheet()`。平台判断已封装在 `AthenaDialog` 内部。
-
-### 消息提示
-
-使用 `AthenaDialog.message()` / `.info()` / `.success()` / `.warning()` / `.error()`，桌面端显示 Overlay 消息（3 秒自动消失），移动端显示 SnackBar。
+- 桌面端 `AthenaDialog` 静态方法或 `showDialog()`，移动端 `showModalBottomSheet()`，平台判断已封装在 `AthenaDialog` 内部
+- 消息提示：`AthenaDialog.message()` / `.info()` / `.success()` / `.warning()` / `.error()`（桌面 Overlay 3 秒自动消失，移动 SnackBar）
 
 ---
 
-## 15. 重要约束与注意事项
+## 16. 重要约束与注意事项
 
-1. **DI 初始化顺序**：Repository → Service → ViewModel Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 注册之后。所有注册使用 `registerLazySingleton`，声明顺序仅影响可读性，不影响运行时依赖解析
-
-2. **数据库单例**：`Database.instance` 是全局单例，所有 Repository 直接访问 `.instance.laconic`
-
-3. **外键级联**：`PRAGMA foreign_keys = ON` 在所有迁移之后执行（确保孤儿数据已清理）
-
-4. **OpenAI Client 生命周期**：每次 API 调用创建新的 `OpenAIClient`，`finally` 块中 `close()`
-
-5. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用，确保取消即时响应
-
-6. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），流结束后调用 `finalizeAssistantMessage()` 最终落库
-
-7. **上下文截断**：`chat.retention` 为 0 时仅保留最后一条用户消息；正数时保留对应轮数；-1 时由 compact 自动管理
-
-8. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
-
-9. **预设数据完全走 migration 机制**：首次安装由 `migration_202606240005_seed_presets` 插入初始数据（provider/model/sentinel）；后续每次修改预设数据都新增一条幂等 migration，不再使用独立的 preset 数据文件
-
-10. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false` / `isDismissible: false`
-
-11. **Token 写入**：`ChatRepository.updateChat()` 显式排除 `token_total`、`context_tokens`、`cached_tokens`，这些值由独立的增量写入路径（`recordUsage`）管理，防止并发覆盖
+1. **包依赖方向**：`athena_gui → athena_core` 单向；**athena_core 禁止引入 Flutter / SQL / GetIt**（它是 TUI 与 GUI 共用的核心）
+2. **DI 初始化顺序**：Repository → Service → Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 之后注册；全部 `registerLazySingleton`
+3. **数据库单例**：`Database.instance` 全局单例，所有 Sqlite Repository 直接访问 `.instance.laconic`
+4. **外键级联**：`PRAGMA foreign_keys = ON` 必须在所有迁移之后执行
+5. **OpenAI Client 生命周期**：每次 API 调用创建新 `OpenAIClient`，`finally` 中 `close()`；重试只覆盖网络错误（连接/超时/限流/5xx），不重试业务错误（4xx/解析）
+6. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用；权限弹窗与取消用 `Future.any` 竞速
+7. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），迭代结束/流结束时 `finalizeAssistantMessage()` 落库；取消标 `[Cancelled]`，错误写进消息内容
+8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（>80% 窗口触发）、正数 = 当前不截断
+9. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
+10. **预设数据完全走 migration 机制**：新预设修改 = 新增幂等迁移（INSERT 用 `WHERE NOT EXISTS` / marker 去重，UPDATE 无条件执行，不删除条目只用 `is_preset = 0`，不覆盖用户 api_key/enabled）
+11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`
+12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 字段，只能走 `recordUsage()` 增量路径
+13. **列表信号更新**：赋值新列表或 `replaceWhere`，禁止原地 `add()` 修改
+14. **AgentService 单实例运行**：`run()` 已运行时再次调用抛 `StateError`，需先 `abort()` / 等待 `settled`
+15. **思考卡片展开状态**：流式更新时显式传 `expanded: current.expanded` 并通过 Coordinator 的 override 机制保留用户选择
 
 ---
 
-## 16. 常见任务模式
+## 17. 常见任务模式
 
 ### 添加新工具
 
-1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口
-2. 在 `packages/athena_gui/lib/di.dart` 的 `ToolRegistry` 注册中添加到合适的平台列表
-3. 如需权限控制，在 `PermissionService._primaryArg()` 和 `PermissionRule._isFilePathTool()` 中添加模式
-4. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`
+1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口（声明 `executionMode`、`risk`，只读/并行能力按需覆写 `canExecuteParallel`）
+2. 在 `di.dart` 的 ToolRegistry 注册中添加到合适的平台列表
+3. 权限相关：`PermissionRule._isFilePathTool()` 与 `PermissionService.primaryArg()` 中按需添加模式
+4. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`，运行 `dart test`
 
-### 添加新 Entity
+### 添加新 Entity（含新表）
 
-1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（包含 fromJson/toJson/copyWith）
-2. 创建 `packages/athena_core/lib/repository/xxx_repository.dart`（存储接口）
+1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（fromJson/toJson/copyWith）或 `model/`（非 DB 数据类）
+2. 创建 `packages/athena_core/lib/repository/xxx_repository.dart`（存储接口，纯抽象）
 3. 在 `packages/athena_gui/lib/repository/` 添加 SQLite 实现类
-4. 创建数据库迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDD001_xxx.dart`
-5. 在 `packages/athena_gui/lib/database/database.dart` 的 `_migrate()` 中添加迁移调用
-6. 在 `packages/athena_gui/lib/di.dart` 中注册 Repository LazySingleton
+4. 创建迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDDNNN_xxx.dart`
+5. 在 `database.dart` 的 `_migrate()` 中追加迁移调用
+6. 在 `di.dart` 注册 Repository LazySingleton
 
 ### 添加新 Service
 
-1. 创建 Service 类（核心逻辑放 `packages/athena_core/lib/service/`），通过构造函数注入依赖的 Repository 接口
-2. 在 `packages/athena_gui/lib/di.dart` 中注册为 LazySingleton
-3. 如需在 ViewModel 中使用，在 ViewModel 构造函数中注入
+1. 核心逻辑放 `packages/athena_core/lib/service/`，构造函数注入 Repository 接口
+2. 在 `di.dart` 注册为 LazySingleton
+3. ViewModel 中通过构造函数注入使用
 
-### 修改预设数据（Provider / Model / Sentinel）
+### 修改预设数据（Provider / Model / Sentinel / Shortcut）
 
-1. 修改数据（新增模型、更新定价/上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
-2. 创建数据库迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDD001_xxx.dart`
-3. 在 `packages/athena_gui/lib/database/database.dart` 的 `_migrate()` 中注册迁移（**排在 seed migration 之后**）
-4. 迁移规则：
-   - **幂等**：INSERT 使用 `WHERE NOT EXISTS` 防重复；UPDATE 无条件执行
-   - **不删除**：废弃 preset 条目时用 `UPDATE ... SET is_preset = 0`，保留数据供已有 chat 引用
-   - **保留用户字段**：provider 的 `api_key`、`enabled` 不覆盖
-   - **模型关联**：新增模型时通过 provider name 查找正确的 `provider_id`
-5. 无论新安装还是老用户升级，迁移都必须能正确处理（幂等保证）
-6. 添加单元测试 `test/database/migration/xxx_test.dart`
+1. 修改数据（新增模型、更新上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
+2. 创建幂等迁移并注册到 `_migrate()`（排在 seed migration 之后）
+3. 规则：幂等（marker 或 `WHERE NOT EXISTS`）、不删除（`is_preset = 0`）、保留用户字段、模型通过 provider name 关联 `provider_id`
+4. 模型元数据（名称/窗口/价格/reasoning/vision）**优先考虑走 ModelCatalogService 的 models.dev 同步**，手工迁移只用于 models.dev 没有的 provider
+5. 添加单元测试 `test/database/migration/xxx_test.dart`
 
 ### 修改设计系统组件
 
-1. 所有组件在 `lib/widget/` 目录
+1. 组件在 `athena_gui/lib/widget/`
 2. 颜色从 `ColorUtil` 获取，不要硬编码
-3. 遵循 `DESIGN.md` 中的组件规范（Tag 渐变边框、CTA 光晕等）
-4. 确保桌面和移动端视觉一致（弹窗形式可不同，但视觉语言一致）
+3. 遵循 `DESIGN.md` 规范（Tag 渐变边框、CTA 光晕等），桌面/移动视觉一致
 
 ---
 
-## 17. 依赖包说明
+## 18. 依赖包说明
+
+### athena_core（纯 Dart）
 
 | 包 | 用途 |
 |----|------|
 | `openai_dart` v5.0.0 | OpenAI API 客户端（流式 + 工具调用 + 推理） |
-| `signals` / `signals_flutter` v6.2.0 | 响应式状态管理 |
+| `signals` v6.2.0 | 响应式状态管理（AgentSettings 等） |
+| `http` v1.x | web_fetch/web_search 的 HTTP 客户端 + models.dev 同步 |
+| `yaml` v3.1.2 | Skill 文件 front matter 解析 |
+| `html` | HTML→Markdown 转换 |
+| `logger` | LoggerUtil 封装 |
+
+### athena_gui（Flutter）
+
+| 包 | 用途 |
+|----|------|
+| `athena_core`（path 依赖） | 核心包 |
+| `signals_flutter` v6.2.0 | Widget 响应式订阅（Watch） |
 | `get_it` v8.0.3 | 依赖注入 |
-| `auto_route` v9.2.2 | 路由管理 + 代码生成 |
-| `laconic` / `laconic_sqlite` | SQLite ORM（非 sqlite3 原生绑定） |
-| `yaml` v3.1.2 | Skill 文件 YAML Front Matter 解析 |
+| `auto_route` v9.2.2 | 路由 + 代码生成 |
+| `laconic` / `laconic_sqlite` | SQLite ORM |
 | `hugeicons` | 图标库 |
-| `google_fonts` | 等宽字体（Fira Code） |
-| `flutter_markdown` + `gpt_markdown` | Markdown 渲染 |
+| `google_fonts` | 字体 |
+| `flutter_markdown` + `gpt_markdown` + `flutter_markdown_latex` | Markdown/LaTeX 渲染 |
 | `window_manager` + `tray_manager` | 桌面窗口和系统托盘 |
-| `http` v1.x | web_fetch/web_search 的 HTTP 客户端 |
 | `process` v5.0.3 | Shell 工具进程管理 |
-| `shared_preferences` | 用户设置持久化 |
-| `file_picker` | 数据导入文件选择 |
+| `shared_preferences` | KeyValueStore 实现 |
+| `file_picker` / `image_gallery_saver_plus` | 数据导入 / 图片保存 |
+| `cached_network_image` / `flutter_slidable` / `flutter_staggered_grid_view` / `visibility_detector` / `device_info_plus` / `package_info_plus` / `url_launcher` / `uuid` / `synchronized` | UI 辅助 |
 
 ---
 
-## 18. 版本信息
+## 19. 版本信息
 
-- 当前版本：3.3.0+732
-- Flutter SDK：>= 3.8.0
-- Dart SDK：>= 3.8.0
+- 当前版本：**3.4.4+797**（`athena_gui/pubspec.yaml`）
+- Flutter SDK：>= 3.8.0；Dart SDK：>= 3.8.0
 - 平台：iOS / Android / macOS / Windows / Linux
+- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、Shortcut 系统 + JSON 模式（fcc0968 → 5e3ae04）、跨平台运行加固（cbec2be）
