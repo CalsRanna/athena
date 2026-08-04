@@ -155,6 +155,7 @@ class DI {
         service: getIt<SummaryService>(),
         modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
+        agentService: getIt<AgentService>(),
       ),
     );
 
@@ -163,6 +164,7 @@ class DI {
         service: getIt<TranslationService>(),
         modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
+        agentService: getIt<AgentService>(),
       ),
     );
 
@@ -172,9 +174,9 @@ class DI {
         messageRepository: getIt<TRPGMessageRepository>(),
         modelRepository: getIt<ModelRepository>(),
         providerRepository: getIt<ProviderRepository>(),
-        service: getIt<TRPGService>(),
         settingViewModel: getIt<SettingViewModel>(),
         modelResolver: getIt<ModelResolver>(),
+        agentService: getIt<AgentService>(),
       ),
     );
 

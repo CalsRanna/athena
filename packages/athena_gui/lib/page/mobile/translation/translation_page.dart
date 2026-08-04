@@ -1,5 +1,6 @@
 import 'package:athena_gui/component/language_selector.dart';
 import 'package:athena_gui/component/translation_list_tile.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/translation_entity.dart';
 import 'package:athena_gui/util/color_util.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
@@ -17,7 +18,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileTranslationPage extends StatefulWidget {
-  const MobileTranslationPage({super.key});
+  /// 从 Shortcut 进入时绑定的专属 Sentinel（能力配置）。
+  final SentinelEntity? sentinel;
+  const MobileTranslationPage({super.key, this.sentinel});
 
   @override
   State<MobileTranslationPage> createState() => _MobileTranslationPageState();
@@ -30,6 +33,13 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
   final _translationId = signal('');
   final _source = signal('Chinese');
   final _target = signal('English');
+
+  @override
+  void initState() {
+    super.initState();
+    // Shortcut 入口：注入绑定的专属 Sentinel 作为翻译能力配置
+    viewModel.setBoundSentinel(widget.sentinel);
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,10 @@
+import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/data_migration_service.dart';
 import 'package:athena_core/service/summary_service.dart';
@@ -147,6 +150,10 @@ void main() {
           providerRepo: _FakeProviderRepository(),
         ),
         settingViewModel: GetIt.instance<SettingViewModel>(),
+        agentService: AgentService(
+          chatService: ChatService(llmClient: LlmClient()),
+          toolRegistry: ToolRegistry(),
+        ),
       );
 
   test('C7: createSummary 生成的 id 为唯一 String（同毫秒不碰撞）', () async {

@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/trpg_message_entity.dart';
 import 'package:athena_core/repository/trpg_game_repository.dart';
 import 'package:athena_gui/util/color_util.dart';
@@ -14,7 +15,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileTRPGPage extends StatefulWidget {
-  const MobileTRPGPage({super.key});
+  /// 从 Shortcut 进入时绑定的专属 Sentinel（能力配置）。
+  final SentinelEntity? sentinel;
+  const MobileTRPGPage({super.key, this.sentinel});
 
   @override
   State<MobileTRPGPage> createState() => _MobileTRPGPageState();
@@ -31,6 +34,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
 
   final _isCreatingGame = signal(false);
   final _isLoadingGame = signal(false);
+
+  @override
+  void initState() {
+    super.initState();
+    // Shortcut 入口：注入绑定的专属 Sentinel 作为 DM 能力配置
+    viewModel.setBoundSentinel(widget.sentinel);
+  }
 
   @override
   Widget build(BuildContext context) {

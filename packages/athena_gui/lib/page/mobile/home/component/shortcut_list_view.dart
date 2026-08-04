@@ -43,17 +43,22 @@ class ShortcutListView extends StatelessWidget {
   }
 
   void navigate(BuildContext context, Shortcut shortcut) {
-    final route = ShortcutPageRegistry.routeFor(shortcut.pageTarget);
+    // 解析绑定的专属 Sentinel（能力配置）
+    final sentinel = sentinelViewModel.sentinels.value
+        .where((s) => s.id == shortcut.sentinelId)
+        .firstOrNull;
+
+    // 有目标页 → 跳转定制 UI，传入绑定 Sentinel
+    final route = ShortcutPageRegistry.routeFor(
+      shortcut.pageTarget,
+      sentinel: sentinel,
+    );
     if (route != null) {
-      // 有目标页 → 跳转定制 UI
       route.push(context);
       return;
     }
 
     // 无目标页 → 默认聊天页，绑定专属 Sentinel + JSON 输出场景
-    final sentinel = sentinelViewModel.sentinels.value
-        .where((s) => s.id == shortcut.sentinelId)
-        .firstOrNull;
     MobileChatRoute(sentinel: sentinel, jsonMode: true).push(context);
   }
 }

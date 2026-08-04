@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +7,9 @@ import 'package:hugeicons/hugeicons.dart';
 /// 一个 [Shortcut] 的目标页定义。
 class ShortcutPageDef {
   final IconData icon;
-  final PageRouteInfo Function() routeBuilder;
+
+  /// 构建目标页路由；[sentinel] 为 Shortcut 绑定的专属 Sentinel（能力配置）。
+  final PageRouteInfo Function(SentinelEntity? sentinel) routeBuilder;
 
   const ShortcutPageDef({
     required this.icon,
@@ -24,22 +27,25 @@ class ShortcutPageRegistry {
   static final Map<String, ShortcutPageDef> _pages = {
     'translation': ShortcutPageDef(
       icon: HugeIcons.strokeRoundedTranslate,
-      routeBuilder: MobileTranslationRoute.new,
+      routeBuilder: (sentinel) => MobileTranslationRoute(sentinel: sentinel),
     ),
     'summary': ShortcutPageDef(
       icon: HugeIcons.strokeRoundedAiBrowser,
-      routeBuilder: MobileSummaryRoute.new,
+      routeBuilder: (sentinel) => MobileSummaryRoute(sentinel: sentinel),
     ),
     'trpg': ShortcutPageDef(
       icon: HugeIcons.strokeRoundedGame,
-      routeBuilder: MobileTRPGRoute.new,
+      routeBuilder: (sentinel) => MobileTRPGRoute(sentinel: sentinel),
     ),
   };
 
   /// 返回目标页路由；[pageTarget] 为空（默认聊天页）或未注册时返回 null。
-  static PageRouteInfo? routeFor(String? pageTarget) {
+  static PageRouteInfo? routeFor(
+    String? pageTarget, {
+    SentinelEntity? sentinel,
+  }) {
     final def = pageTarget == null ? null : _pages[pageTarget];
-    return def?.routeBuilder();
+    return def?.routeBuilder(sentinel);
   }
 
   /// 返回目标页图标；未注册或为空时返回 null（由调用方提供兜底图标）。

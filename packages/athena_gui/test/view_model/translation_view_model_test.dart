@@ -1,15 +1,21 @@
 import 'dart:async';
 
+import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/translation_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/data_migration_service.dart';
-import 'package:athena_core/service/translation_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
+import 'package:athena_core/service/translation_service.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
 import 'package:athena_gui/repository/sqlite_chat_repository.dart';
@@ -22,7 +28,7 @@ import 'package:openai_dart/openai_dart.dart';
 // 这些测试针对审计 C5：performTranslation 在流式期间从未更新 translatedText 信号，
 // 导致翻译面板在整段响应到达前一直空白。修复后应在每个 chunk 后实时更新信号。
 //
-// 方案：注入伪 TranslationService 产出可控的 ChatDelta 流；伪 Provider/Model
+// 方案：注入伪 AgentService 产出可控的 AgentTextEvent 流；伪 Provider/Model
 // 仓库返回固定的启用 provider 与模型；通过 GetIt 注册 SettingViewModel
 // （performTranslation 体内直接经 GetIt 解析），并在 tearDown 中 reset。
 
@@ -44,17 +50,32 @@ ProviderEntity _provider() => ProviderEntity(
       createdAt: DateTime(2024),
     );
 
-/// 伪翻译服务：将外部提供的 [stream] 原样返回，便于控制 chunk 时序。
-class _FakeTranslationService extends TranslationService {
-  _FakeTranslationService(this.stream) : super(llmClient: LlmClient());
+/// 伪 Agent 服务：将外部提供的 [stream] 原样返回，便于控制 chunk 时序。
+class _FakeAgentService extends AgentService {
+  _FakeAgentService(this.stream)
+    : super(
+        chatService: ChatService(llmClient: LlmClient()),
+        toolRegistry: ToolRegistry(),
+      );
 
-  final Stream<ChatDelta> stream;
+  final Stream<AgentEvent> stream;
 
   @override
-  Stream<ChatDelta> translate({
-    required List<ChatMessage> messages,
-    required ModelEntity model,
+  Stream<AgentEvent> run({
+    required ChatEntity chat,
     required ProviderEntity provider,
+    required ModelEntity model,
+    required List<ChatMessage> baseMessages,
+    String? skillPrompt,
+    String? evolutionPrompt,
+    String? sentinelId,
+    PermissionCallback? onPermission,
+    PermissionService? permissionService,
+    int maxIterations = 100,
+    CancelToken? cancelToken,
+    BeforeToolCallHook? beforeToolCall,
+    AfterToolCallHook? afterToolCall,
+    bool jsonMode = false,
   }) =>
       stream;
 }
@@ -208,20 +229,21 @@ void main() {
     final emittedFirst = Completer<void>();
     final emittedSecond = Completer<void>();
 
-    Stream<ChatDelta> events() async* {
-      yield const ChatDelta(content: '你好');
+    Stream<AgentEvent> events() async* {
+      yield AgentEvent.text('你好');
       if (!emittedFirst.isCompleted) emittedFirst.complete();
       await gate1.future;
-      yield const ChatDelta(content: '，世界');
+      yield AgentEvent.text('，世界');
       if (!emittedSecond.isCompleted) emittedSecond.complete();
       await gate2.future;
     }
 
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
-      service: _FakeTranslationService(events()),
-      
-      
+      service: TranslationService(llmClient: LlmClient()),
+      agentService: _FakeAgentService(events()),
+
+
       modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
@@ -245,16 +267,17 @@ void main() {
   });
 
   test('C5: performTranslation 完成后将完整译文写回 translations 列表', () async {
-    Stream<ChatDelta> events() async* {
-      yield const ChatDelta(content: '你好');
-      yield const ChatDelta(content: '，世界');
+    Stream<AgentEvent> events() async* {
+      yield AgentEvent.text('你好');
+      yield AgentEvent.text('，世界');
     }
 
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
-      service: _FakeTranslationService(events()),
-      
-      
+      service: TranslationService(llmClient: LlmClient()),
+      agentService: _FakeAgentService(events()),
+
+
       modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
@@ -271,9 +294,10 @@ void main() {
   test('C7: createTranslation 生成的 id 为唯一 String（同毫秒不碰撞）', () async {
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
-      service: _FakeTranslationService(const Stream.empty()),
-      
-      
+      service: TranslationService(llmClient: LlmClient()),
+      agentService: _FakeAgentService(const Stream.empty()),
+
+
       modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
@@ -289,15 +313,16 @@ void main() {
   });
 
   test('C7: 两条记录并存时写回正确记录（无 id 碰撞误写）', () async {
-    Stream<ChatDelta> events() async* {
-      yield const ChatDelta(content: 'world');
+    Stream<AgentEvent> events() async* {
+      yield AgentEvent.text('world');
     }
 
     final vm = TranslationViewModel(
       settingViewModel: GetIt.instance<SettingViewModel>(),
-      service: _FakeTranslationService(events()),
-      
-      
+      service: TranslationService(llmClient: LlmClient()),
+      agentService: _FakeAgentService(events()),
+
+
       modelResolver: ModelResolver(modelRepo: _FakeModelRepository(), providerRepo: _FakeProviderRepository()),
     );
 
