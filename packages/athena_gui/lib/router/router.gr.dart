@@ -724,10 +724,17 @@ class MobileSummaryDetailRouteArgs {
 
 /// generated route for
 /// [_i25.MobileSummaryPage]
-class MobileSummaryRoute extends _i29.PageRouteInfo<void> {
-  const MobileSummaryRoute({List<_i29.PageRouteInfo>? children})
-      : super(
+class MobileSummaryRoute extends _i29.PageRouteInfo<MobileSummaryRouteArgs> {
+  MobileSummaryRoute({
+    _i30.Key? key,
+    _i32.SentinelEntity? sentinel,
+    List<_i29.PageRouteInfo>? children,
+  }) : super(
           MobileSummaryRoute.name,
+          args: MobileSummaryRouteArgs(
+            key: key,
+            sentinel: sentinel,
+          ),
           initialChildren: children,
         );
 
@@ -736,17 +743,45 @@ class MobileSummaryRoute extends _i29.PageRouteInfo<void> {
   static _i29.PageInfo page = _i29.PageInfo(
     name,
     builder: (data) {
-      return const _i25.MobileSummaryPage();
+      final args = data.argsAs<MobileSummaryRouteArgs>(
+          orElse: () => const MobileSummaryRouteArgs());
+      return _i25.MobileSummaryPage(
+        key: args.key,
+        sentinel: args.sentinel,
+      );
     },
   );
 }
 
+class MobileSummaryRouteArgs {
+  const MobileSummaryRouteArgs({
+    this.key,
+    this.sentinel,
+  });
+
+  final _i30.Key? key;
+
+  final _i32.SentinelEntity? sentinel;
+
+  @override
+  String toString() {
+    return 'MobileSummaryRouteArgs{key: $key, sentinel: $sentinel}';
+  }
+}
+
 /// generated route for
 /// [_i26.MobileTRPGPage]
-class MobileTRPGRoute extends _i29.PageRouteInfo<void> {
-  const MobileTRPGRoute({List<_i29.PageRouteInfo>? children})
-      : super(
+class MobileTRPGRoute extends _i29.PageRouteInfo<MobileTRPGRouteArgs> {
+  MobileTRPGRoute({
+    _i30.Key? key,
+    _i32.SentinelEntity? sentinel,
+    List<_i29.PageRouteInfo>? children,
+  }) : super(
           MobileTRPGRoute.name,
+          args: MobileTRPGRouteArgs(
+            key: key,
+            sentinel: sentinel,
+          ),
           initialChildren: children,
         );
 
@@ -755,17 +790,46 @@ class MobileTRPGRoute extends _i29.PageRouteInfo<void> {
   static _i29.PageInfo page = _i29.PageInfo(
     name,
     builder: (data) {
-      return const _i26.MobileTRPGPage();
+      final args = data.argsAs<MobileTRPGRouteArgs>(
+          orElse: () => const MobileTRPGRouteArgs());
+      return _i26.MobileTRPGPage(
+        key: args.key,
+        sentinel: args.sentinel,
+      );
     },
   );
 }
 
+class MobileTRPGRouteArgs {
+  const MobileTRPGRouteArgs({
+    this.key,
+    this.sentinel,
+  });
+
+  final _i30.Key? key;
+
+  final _i32.SentinelEntity? sentinel;
+
+  @override
+  String toString() {
+    return 'MobileTRPGRouteArgs{key: $key, sentinel: $sentinel}';
+  }
+}
+
 /// generated route for
 /// [_i27.MobileTranslationPage]
-class MobileTranslationRoute extends _i29.PageRouteInfo<void> {
-  const MobileTranslationRoute({List<_i29.PageRouteInfo>? children})
-      : super(
+class MobileTranslationRoute
+    extends _i29.PageRouteInfo<MobileTranslationRouteArgs> {
+  MobileTranslationRoute({
+    _i30.Key? key,
+    _i32.SentinelEntity? sentinel,
+    List<_i29.PageRouteInfo>? children,
+  }) : super(
           MobileTranslationRoute.name,
+          args: MobileTranslationRouteArgs(
+            key: key,
+            sentinel: sentinel,
+          ),
           initialChildren: children,
         );
 
@@ -774,9 +838,30 @@ class MobileTranslationRoute extends _i29.PageRouteInfo<void> {
   static _i29.PageInfo page = _i29.PageInfo(
     name,
     builder: (data) {
-      return const _i27.MobileTranslationPage();
+      final args = data.argsAs<MobileTranslationRouteArgs>(
+          orElse: () => const MobileTranslationRouteArgs());
+      return _i27.MobileTranslationPage(
+        key: args.key,
+        sentinel: args.sentinel,
+      );
     },
   );
+}
+
+class MobileTranslationRouteArgs {
+  const MobileTranslationRouteArgs({
+    this.key,
+    this.sentinel,
+  });
+
+  final _i30.Key? key;
+
+  final _i32.SentinelEntity? sentinel;
+
+  @override
+  String toString() {
+    return 'MobileTranslationRouteArgs{key: $key, sentinel: $sentinel}';
+  }
 }
 
 /// generated route for

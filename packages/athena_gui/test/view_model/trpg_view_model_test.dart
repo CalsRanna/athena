@@ -1,9 +1,11 @@
+import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/trpg_game_entity.dart';
 import 'package:athena_core/entity/trpg_message_entity.dart';
 import 'package:athena_core/repository/trpg_message_repository.dart';
+import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/data_migration_service.dart';
-import 'package:athena_core/service/trpg_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/view_model/trpg_view_model.dart';
@@ -72,11 +74,14 @@ void main() {
       messageRepository: messageRepository,
       modelRepository: SqliteModelRepository(),
       providerRepository: SqliteProviderRepository(),
-      service: TRPGService(llmClient: LlmClient()),
       settingViewModel: getIt<SettingViewModel>(),
       modelResolver: ModelResolver(
         modelRepo: SqliteModelRepository(),
         providerRepo: SqliteProviderRepository(),
+      ),
+      agentService: AgentService(
+        chatService: ChatService(llmClient: LlmClient()),
+        toolRegistry: ToolRegistry(),
       ),
     );
 

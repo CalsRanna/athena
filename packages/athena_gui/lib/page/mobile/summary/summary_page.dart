@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/summary_entity.dart';
 import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
@@ -15,7 +16,9 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class MobileSummaryPage extends StatefulWidget {
-  const MobileSummaryPage({super.key});
+  /// 从 Shortcut 进入时绑定的专属 Sentinel（能力配置）。
+  final SentinelEntity? sentinel;
+  const MobileSummaryPage({super.key, this.sentinel});
 
   @override
   State<MobileSummaryPage> createState() => _MobileSummaryPageState();
@@ -24,6 +27,13 @@ class MobileSummaryPage extends StatefulWidget {
 class _MobileSummaryPageState extends State<MobileSummaryPage> {
   final controller = TextEditingController();
   late final viewModel = GetIt.instance<SummaryViewModel>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Shortcut 入口：注入绑定的专属 Sentinel 作为摘要能力配置
+    viewModel.setBoundSentinel(widget.sentinel);
+  }
 
   @override
   void dispose() {
