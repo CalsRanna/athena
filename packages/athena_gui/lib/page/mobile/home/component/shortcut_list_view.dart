@@ -1,62 +1,59 @@
 import 'package:athena_core/model/shortcut.dart';
+import 'package:athena_gui/page/mobile/home/component/shortcut_page_registry.dart';
 import 'package:athena_gui/page/mobile/home/component/shortcut_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:auto_route/auto_route.dart';
+import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/shortcut_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
+/// 首页 Shortcut 卡片行：从 [ShortcutViewModel] 读取，用 [ShortcutPageRegistry]
+/// 解析目标页。数据来自 shortcuts 表（绑定 is_preset Sentinel），而非硬编码。
 class ShortcutListView extends StatelessWidget {
-  const ShortcutListView({super.key});
+  final ShortcutViewModel shortcutViewModel;
+  final SentinelViewModel sentinelViewModel;
+  const ShortcutListView({
+    super.key,
+    required this.shortcutViewModel,
+    required this.sentinelViewModel,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final icons = [
-      HugeIcons.strokeRoundedTranslate,
-      HugeIcons.strokeRoundedAiBrowser,
-      HugeIcons.strokeRoundedCookBook,
-      HugeIcons.strokeRoundedCode,
-      HugeIcons.strokeRoundedGame,
-    ];
-    final shortcuts = [
-      Shortcut()
-        ..name = 'Translation'
-        ..description = 'Translate input into selected language',
-      Shortcut()
-        ..name = 'Summary'
-        ..description = 'Summary the content in the internet link',
-      Shortcut()
-        ..name = 'Food'
-        ..description = 'Give you a recipe suggestion of healthy food',
-      Shortcut()
-        ..name = 'Code'
-        ..description =
-            'Give you a code suggestion about variables, functions, etc',
-      Shortcut()
-        ..name = 'TRPG'
-        ..description = 'Play an unique tabletop role-playing game.',
-    ];
-    return ListView.separated(
-      itemBuilder: (_, index) => ShortcutTile(
-        icon: icons[index],
-        onTap: () => navigate(context, shortcuts[index]),
-        shortcut: shortcuts[index],
-      ),
-      itemCount: shortcuts.length,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      separatorBuilder: (context, index) => const SizedBox(width: 12),
-    );
+    return Watch((context) {
+      var shortcuts = shortcutViewModel.shortcuts.value;
+      if (shortcuts.isEmpty) return const SizedBox();
+      return ListView.separated(
+        itemBuilder: (_, index) {
+          final shortcut = shortcuts[index];
+          return ShortcutTile(
+            icon: ShortcutPageRegistry.iconFor(shortcut.pageTarget) ??
+                HugeIcons.strokeRoundedSparkles,
+            onTap: () => navigate(context, shortcut),
+            shortcut: shortcut,
+          );
+        },
+        itemCount: shortcuts.length,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+      );
+    });
   }
 
   void navigate(BuildContext context, Shortcut shortcut) {
-    PageRouteInfo? route = switch (shortcut.name) {
-      'Translation' => MobileTranslationRoute(),
-      'Summary' => MobileSummaryRoute(),
-      'TRPG' => MobileTRPGRoute(),
-      'Food' => MobileChatRoute(),
-      'Code' => MobileChatRoute(),
-      _ => null,
-    };
-    if (route != null) route.push(context);
+    final route = ShortcutPageRegistry.routeFor(shortcut.pageTarget);
+    if (route != null) {
+      // 有目标页 → 跳转定制 UI
+      route.push(context);
+      return;
+    }
+
+    // 无目标页 → 默认聊天页，绑定专属 Sentinel + JSON 输出场景
+    final sentinel = sentinelViewModel.sentinels.value
+        .where((s) => s.id == shortcut.sentinelId)
+        .firstOrNull;
+    MobileChatRoute(sentinel: sentinel, jsonMode: true).push(context);
   }
 }

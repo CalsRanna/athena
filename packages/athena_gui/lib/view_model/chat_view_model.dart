@@ -188,7 +188,10 @@ class ChatViewModel {
       if (_sentinelViewModel.sentinels.value.isEmpty) {
         await _sentinelViewModel.getSentinels();
       }
-      final sentinel = _sentinelViewModel.defaultSentinel.value;
+      // 优先使用当前选中角色（Shortcut/Sentinel 入口设置的绑定角色），
+      // 无选中时回退默认角色。
+      final sentinel = currentSentinel.value ??
+          _sentinelViewModel.defaultSentinel.value;
 
       final chat = await _manageService.createChat(
         model: model,
@@ -437,6 +440,7 @@ class ChatViewModel {
   Future<void> sendMessage(
     MessageEntity message, {
     required ChatEntity chat,
+    bool jsonMode = false,
   }) async {
     if (isStreaming.value) return;
 
@@ -444,7 +448,11 @@ class ChatViewModel {
     currentTokenUsage.value = null;
 
     try {
-      final eventStream = _stream.send(message: message, chat: chat);
+      final eventStream = _stream.send(
+        message: message,
+        chat: chat,
+        jsonMode: jsonMode,
+      );
       await for (final event in eventStream) {
         switch (event) {
           case RunMessageStored(:final message):

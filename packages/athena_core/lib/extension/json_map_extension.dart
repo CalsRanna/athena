@@ -8,6 +8,13 @@ extension JsonMapExtension on Map<String, dynamic> {
     return value.toString();
   }
 
+  String? getStringOrNull(String key) {
+    final value = this[key];
+    if (value == null) return null;
+    if (value is String && value.isNotEmpty) return value;
+    return null;
+  }
+
   int getInt(String key, {int defaultValue = 0}) {
     final value = this[key];
     if (value == null) return defaultValue;

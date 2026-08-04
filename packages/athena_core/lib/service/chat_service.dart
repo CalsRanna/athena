@@ -43,12 +43,14 @@ class ChatService {
     required ProviderEntity provider,
     required ModelEntity model,
     List<Tool>? tools,
+    ResponseFormat? responseFormat,
   }) async* {
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
       temperature: chat.temperature,
       tools: tools,
+      responseFormat: responseFormat,
       streamOptions: const StreamOptions(includeUsage: true),
     );
     yield* _llmClient.stream(provider: provider, request: request);

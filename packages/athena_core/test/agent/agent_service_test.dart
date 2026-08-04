@@ -1,10 +1,14 @@
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as athena;
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:test/test.dart';
-import 'package:openai_dart/openai_dart.dart' show FunctionCall, ToolCall;
+import 'package:openai_dart/openai_dart.dart'
+    show ChatMessage, ChatStreamEvent, FunctionCall, JsonObjectResponseFormat, ResponseFormat, Tool, ToolCall;
 
 /// 返回固定字符串的伪工具。
 class _EchoTool extends athena.Tool {
@@ -113,5 +117,96 @@ void main() {
     );
 
     expect(result.processedResult, 'final: echo: hello');
+  });
+
+  _jsonModeTests();
+}
+
+/// 记录 getCompletion 收到的 responseFormat 的伪 ChatService。
+class _RecordingChatService extends ChatService {
+  _RecordingChatService() : super(llmClient: LlmClient());
+
+  ResponseFormat? lastResponseFormat;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+  }) async* {
+    lastResponseFormat = responseFormat;
+    // 空流：让 run 正常走完（toolCalls 为空 → done）
+  }
+}
+
+ChatEntity _chat() => ChatEntity(
+  id: 1,
+  title: 'Test',
+  sentinelId: 1,
+  modelId: 1,
+  retention: -1,
+  temperature: 1.0,
+  createdAt: DateTime(2025),
+  updatedAt: DateTime(2025),
+);
+
+ProviderEntity _provider() => ProviderEntity(
+  name: 'Test',
+  baseUrl: 'http://localhost',
+  apiKey: '',
+  enabled: true,
+  isPreset: false,
+  createdAt: DateTime(2025),
+);
+
+ModelEntity _model() => ModelEntity(
+  name: 'Test',
+  modelId: 'test-model',
+  providerId: 1,
+  createdAt: DateTime(2025),
+  updatedAt: DateTime(2025),
+);
+
+void _jsonModeTests() {
+  test('jsonMode: true 时请求带 response_format json_object', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [ChatMessage.user('hi')],
+          jsonMode: true,
+        )
+        .toList();
+
+    expect(recording.lastResponseFormat, isA<JsonObjectResponseFormat>());
+  });
+
+  test('jsonMode: false（默认）时请求不带 response_format', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [ChatMessage.user('hi')],
+        )
+        .toList();
+
+    expect(recording.lastResponseFormat, isNull);
   });
 }

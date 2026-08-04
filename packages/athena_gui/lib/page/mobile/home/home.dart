@@ -7,6 +7,7 @@ import 'package:athena_gui/page/mobile/home/component/welcome.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/shortcut_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/error_boundary.dart';
@@ -27,6 +28,7 @@ class MobileHomePage extends StatefulWidget {
 class _MobileHomePageState extends State<MobileHomePage> {
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  final shortcutViewModel = GetIt.instance<ShortcutViewModel>();
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       await GetIt.instance<SettingViewModel>().initSignals();
       await chatViewModel.getChats();
       await sentinelViewModel.getSentinels();
+      await shortcutViewModel.getShortcuts();
     } catch (e) {
       if (mounted) {
         AthenaDialog.error('Failed to load home data. Please try again.');
@@ -83,7 +86,13 @@ class _MobileHomePageState extends State<MobileHomePage> {
       spacing: 8,
       children: [
         const SectionTitle('Shortcut'),
-        const SizedBox(height: 160, child: ShortcutListView()),
+        SizedBox(
+          height: 160,
+          child: ShortcutListView(
+            shortcutViewModel: shortcutViewModel,
+            sentinelViewModel: sentinelViewModel,
+          ),
+        ),
       ],
     );
   }

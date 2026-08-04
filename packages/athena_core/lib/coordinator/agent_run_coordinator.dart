@@ -124,6 +124,7 @@ class AgentRunCoordinator {
   Stream<RunEvent> send({
     required MessageEntity message,
     required ChatEntity chat,
+    bool jsonMode = false,
   }) async* {
     await _maybePromptSkillTrust();
 
@@ -190,6 +191,7 @@ class AgentRunCoordinator {
         permissionService: _permissionService,
         onPermission: (toolName, arguments) =>
             _askPermission(toolName, arguments),
+        jsonMode: jsonMode,
       );
 
       // 5. 消费流（取消/错误均在 _consumeStream 内部处理并落库）

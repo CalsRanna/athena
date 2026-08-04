@@ -16,6 +16,8 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/repository/shortcut_repository.dart';
+import 'package:athena_core/model/shortcut.dart';
 import 'package:athena_core/service/chat_manage_service.dart';
 import 'package:athena_core/service/chat_message_service.dart';
 import 'package:athena_core/service/chat_service.dart';
@@ -30,6 +32,7 @@ import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/shortcut_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -51,6 +54,7 @@ void setupMobileTestDI() {
   getIt.registerSingleton<ModelRepository>(_FakeModelRepository());
   getIt.registerSingleton<ProviderRepository>(_FakeProviderRepository());
   getIt.registerSingleton<SentinelRepository>(_FakeSentinelRepository());
+  getIt.registerSingleton<ShortcutRepository>(_FakeShortcutRepository());
 
   // Services
   getIt.registerSingleton<LlmClient>(LlmClient());
@@ -137,6 +141,12 @@ void setupMobileTestDI() {
       providerRepository: getIt<ProviderRepository>(),
       modelRepository: getIt<ModelRepository>(),
       sentinelService: getIt<SentinelService>(),
+    ),
+  );
+
+  getIt.registerSingleton<ShortcutViewModel>(
+    ShortcutViewModel(
+      shortcutRepository: getIt<ShortcutRepository>(),
     ),
   );
 
@@ -397,4 +407,21 @@ class _FakeSentinelRepository implements SentinelRepository {
   Future<SentinelEntity?> getSentinelByName(String name) async => null;
   @override
   Future<void> importSentinels(List<SentinelEntity> sentinels) async {}
+}
+
+class _FakeShortcutRepository implements ShortcutRepository {
+  @override
+  Future<List<Shortcut>> getAllShortcuts() async => [];
+  @override
+  Future<Shortcut?> getShortcutById(int id) async => null;
+  @override
+  Future<int> createShortcut(Shortcut shortcut) async => 1;
+  @override
+  Future<void> updateShortcut(Shortcut shortcut) async {}
+  @override
+  Future<void> deleteShortcut(int id) async {}
+  @override
+  Future<void> batchCreateShortcuts(List<Shortcut> shortcuts) async {}
+  @override
+  Future<Shortcut?> getShortcutBySentinelId(int sentinelId) async => null;
 }

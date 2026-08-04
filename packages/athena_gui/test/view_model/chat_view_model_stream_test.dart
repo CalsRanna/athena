@@ -381,6 +381,7 @@ class _FakeAgentService extends AgentService {
     CancelToken? cancelToken,
     BeforeToolCallHook? beforeToolCall,
     AfterToolCallHook? afterToolCall,
+    bool jsonMode = false,
   }) async* {
     // 模拟基类的状态管理
     isRunningInternal = true;
