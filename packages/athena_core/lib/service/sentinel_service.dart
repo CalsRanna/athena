@@ -1,0 +1,97 @@
+import 'dart:convert';
+
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/preset/prompt.dart';
+import 'package:athena_core/service/llm_client.dart';
+import 'package:openai_dart/openai_dart.dart';
+
+/// SentinelService 负责 Sentinel 生成相关的网络请求
+class SentinelService {
+  final LlmClient _llmClient;
+
+  SentinelService({required LlmClient llmClient}) : _llmClient = llmClient;
+
+  /// 仅生成 Sentinel 名称
+  Future<String> generateName(
+    String prompt, {
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    final sentinel = await _generateWithPrompt(
+      prompt: prompt,
+      systemPrompt: PresetPrompt.nameGenerationPrompt,
+      provider: provider,
+      model: model,
+    );
+    return sentinel.name;
+  }
+
+  /// 仅生成 Sentinel 描述，可传入已有名称作为上下文
+  Future<String> generateDescription(
+    String prompt, {
+    required ProviderEntity provider,
+    required ModelEntity model,
+    String existingName = '',
+  }) async {
+    final userContent = existingName.isNotEmpty
+        ? '已有名称: $existingName\n$prompt'
+        : prompt;
+    final sentinel = await _generateWithPrompt(
+      prompt: userContent,
+      systemPrompt: PresetPrompt.descriptionGenerationPrompt,
+      provider: provider,
+      model: model,
+    );
+    return sentinel.description;
+  }
+
+  /// 内部通用方法：使用指定的 system prompt 调用 LLM 生成
+  Future<SentinelEntity> _generateWithPrompt({
+    required String prompt,
+    required String systemPrompt,
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    var messages = [
+      ChatMessage.system(systemPrompt),
+      ChatMessage.user(prompt),
+    ];
+    var request = ChatCompletionCreateRequest(
+      model: model.modelId,
+      messages: messages,
+      responseFormat: ResponseFormat.jsonObject(),
+    );
+    var response = await _llmClient.fetch(
+      provider: provider,
+      request: request,
+    );
+    final content = response.text ?? '';
+    final formatted = jsonDecode(content);
+    final tags = formatted['tags'] is List
+        ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
+        : (formatted['tags']?.toString() ?? '');
+    return SentinelEntity(
+      name: formatted['name'] ?? '',
+      description: formatted['description'] ?? '',
+      tags: tags,
+      avatar: formatted['avatar']?.toString() ?? '',
+      prompt: prompt,
+    );
+  }
+
+  /// 基于用户输入的 prompt 生成完整 Sentinel 元数据（名称、描述、标签、头像）
+  Future<SentinelEntity> generate(
+    String prompt, {
+    required ProviderEntity provider,
+    required ModelEntity model,
+  }) async {
+    return _generateWithPrompt(
+      prompt: prompt,
+      systemPrompt: PresetPrompt.metadataGenerationPrompt,
+      provider: provider,
+      model: model,
+    );
+  }
+}
