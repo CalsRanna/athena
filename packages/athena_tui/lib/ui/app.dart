@@ -547,7 +547,11 @@ class _AthenaAppState extends State<AthenaApp> {
       if (binding is SchedulerBinding) {
         binding.addPostFrameCallback((_) {
           if (!mounted) return;
-          _scrollController.jumpTo(_scrollController.maxScrollExtent);
+          // 已在底部则跳过:jumpTo 会触发列表重排(可见项重算),
+          // 流式期间每次 flush 都跳是重复开销
+          final controller = _scrollController;
+          if (controller.offset >= controller.maxScrollExtent) return;
+          controller.jumpTo(controller.maxScrollExtent);
         });
       }
     }
@@ -555,6 +559,41 @@ class _AthenaAppState extends State<AthenaApp> {
 
   void _onScrollChanged() {
     _stickToBottom = _scrollController.atEnd;
+    // 滚动到顶且还有更早消息 → 分页加载(消息窗口化:内存只持有
+    // 最近 N 条,向上翻阅历史时按需加载更早批次)
+    if (_scrollController.offset <= 1 &&
+        _controller.hasOlder &&
+        !_loadingOlder) {
+      unawaited(_loadOlder());
+    }
+  }
+
+  /// 分页加载进行中(防重入:滚动事件高频触发,加载是异步 IO)。
+  bool _loadingOlder = false;
+
+  /// 向上加载更早的消息,并保持用户正在看的内容位置不变。
+  Future<void> _loadOlder() async {
+    if (_loadingOlder) return;
+    _loadingOlder = true;
+    try {
+      final beforeOffset = _scrollController.offset;
+      final beforeMax = _scrollController.maxScrollExtent;
+      final added = await _controller.loadOlderMessages();
+      if (added == 0 || !mounted) return;
+      // 新消息插入头部后,当前内容被往下推「新增总高」;布局后
+      // maxScrollExtent 精确(lazy:false),其差值即新增高度,
+      // jumpTo 回原位保证用户视角不跳动
+      final binding = NoctermBinding.instance;
+      if (binding is SchedulerBinding) {
+        binding.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final afterMax = _scrollController.maxScrollExtent;
+          _scrollController.jumpTo(beforeOffset + (afterMax - beforeMax));
+        });
+      }
+    } finally {
+      _loadingOlder = false;
+    }
   }
 
   // ─── 选择模态(常驻组件,visible 切换;不用 Overlay ─────────

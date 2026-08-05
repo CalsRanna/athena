@@ -17,6 +17,7 @@ import 'package:athena_core/service/chat_manage_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
+import 'package:athena_tui/storage/jsonl_message_repository.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:signals/signals.dart';
 
@@ -63,6 +64,80 @@ class ChatController {
   /// 设置默认模型 modelId(启动时从 setting.yaml 导入后调用)。
   void setDefaultModelId(String? modelId) {
     _defaultModelId = modelId;
+  }
+
+  // ─── 消息窗口化 ─────────────────────────────────────────
+
+  /// 内存中最多持有的消息条数(长对话分页加载的窗口大小)。
+  ///
+  /// 历史聊天可达几百 MB 消息,全量加载既占内存又拖慢每次 flush 的
+  /// 全树 build。只持有最近 N 条,向上滚动到顶时按 id 边界加载更早
+  /// 批次。500 条约几 MB,每次 flush 的 build 成本约 1-2ms。
+  static const int messageWindowSize = 500;
+
+  /// 窗口最旧消息的 id;null = 已加载到文件头,没有更早的消息了。
+  int? _windowMinId;
+
+  /// 是否还有更早的消息可加载(UI 滚动到顶时据此触发分页)。
+  bool get hasOlder => _windowMinId != null;
+
+  /// 分页加载进行中(UI 防重入)。
+  bool _loadingOlder = false;
+
+  /// 加载最近窗口大小的消息(JSONL 实现走尾部扫描,不读整个文件;
+  /// 其他实现防御性全量后取末尾)。
+  Future<List<MessageEntity>> _loadRecentMessages(int chatId) async {
+    final repo = _messageRepo;
+    if (repo is JsonlMessageRepository) {
+      return repo.loadRecentMessages(chatId, count: messageWindowSize);
+    }
+    final all = await repo.getMessagesByChatId(chatId);
+    return all.length <= messageWindowSize
+        ? all
+        : all.sublist(all.length - messageWindowSize);
+  }
+
+  /// 向上加载更早的一批消息(插入列表头部),返回新增条数。
+  ///
+  /// 已到文件头(_windowMinId == null)或加载进行中时返回 0。
+  Future<int> loadOlderMessages() async {
+    final minId = _windowMinId;
+    final chat = currentChat.value;
+    if (!_active || _loadingOlder || minId == null || chat?.id == null) {
+      return 0;
+    }
+    _loadingOlder = true;
+    try {
+      final repo = _messageRepo;
+      final older = repo is JsonlMessageRepository
+          ? await repo.loadRecentMessages(
+              chat!.id!,
+              count: messageWindowSize,
+              beforeId: minId,
+            )
+          : <MessageEntity>[]; // 非 JSONL 实现不支持分页,不再加载
+      if (older.isEmpty) {
+        _windowMinId = null; // 没有更早的消息了
+        return 0;
+      }
+      messages.value = [...older, ...messages.value];
+      // 返回不足窗口 → 扫描已到文件头,没有更早的了;正好满窗口 → 还有
+      _windowMinId =
+          older.length >= messageWindowSize ? older.first.id : null;
+      return older.length;
+    } finally {
+      _loadingOlder = false;
+    }
+  }
+
+  /// 窗口超限时从头部裁掉多余消息(流式增量只加尾部,裁头部历史;
+  /// 被裁消息可随时通过 loadOlderMessages 重新加载)。
+  List<MessageEntity> _trimWindow(List<MessageEntity> list) {
+    if (list.length <= messageWindowSize) return list;
+    final dropped = list.length - messageWindowSize;
+    final trimmed = list.sublist(dropped);
+    _windowMinId = trimmed.first.id;
+    return trimmed;
   }
 
   // ─── 状态 ────────────────────────────────────────────────
@@ -275,34 +350,49 @@ class ChatController {
     if (!_active) return;
     final pending = _pendingList;
     if (pending == null) {
-      // 无流式增量:同步写入,不留 50ms 定时器(定时器会越过
-      // UI 拆解边界,拆解后触发写信号)
-      messages.value = [...messages.value, message];
+      // 无流式增量:同步写入,不留定时器(定时器会越过 UI 拆解边界,
+      // 拆解后触发写信号)
+      messages.value = _trimWindow([...messages.value, message]);
     } else {
       // 流式增量在 pending 中:并入同一批 flush(直接写 messages.value
-      // 会被 pending 整体覆盖丢弃);flush 定时器已由流式事件创建
-      _pendingList = [...pending, message];
+      // 会被 pending 整体覆盖丢弃);flush 定时器已由流式事件创建。
+      // pending 私有且与 messages.value 分离,可直接变异零复制
+      pending.add(message);
     }
   }
 
   /// 选中聊天并加载其消息。
+  ///
+  /// 消息分页加载最近 [messageWindowSize] 条(不走 manageService.selectChat
+  /// 的全量加载——历史聊天可达几百 MB,全量读既慢又占内存);model /
+  /// provider / sentinel 单独查。向上滚动到顶时经 [loadOlderMessages]
+  /// 按 id 边界加载更早批次。
   Future<void> selectChat(ChatEntity chat) async {
     // 流式期间禁止切换:旧聊天的 RunEvent 增量会写进新聊天列表
     // (与 GUI ChatViewModel.selectChat 的保护一致)
     if (isStreaming.value) return;
     if (!_active) return;
-    // 清掉未 flush 的 pending(瞬态消息/流式增量):否则 50ms 后 flush
+    // 清掉未 flush 的 pending(瞬态消息/流式增量):否则 100ms 后 flush
     // 会用旧聊天的 pending 整体覆盖新聊天列表
     _pendingList = null;
     _flushTimer?.cancel();
     _flushTimer = null;
-    final result = await _manageService.selectChat(chat);
+    final messages = await _loadRecentMessages(chat.id!);
     if (!_active) return; // 等待 IO 期间 UI 拆解
+    // 返回满窗口 → 文件里可能还有更早的;不足 → 已到文件头
+    _windowMinId =
+        messages.length >= messageWindowSize ? messages.first.id : null;
+    final model = await _modelRepo.getModelById(chat.modelId);
+    final provider = model == null
+        ? null
+        : await _supportService.getProviderForModel(model.providerId);
+    final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+    if (!_active) return;
     currentChat.value = chat;
-    messages.value = result.messages;
-    currentModel.value = result.model;
-    currentProvider.value = result.provider;
-    currentSentinel.value = result.sentinel;
+    this.messages.value = messages;
+    currentModel.value = model;
+    currentProvider.value = provider;
+    currentSentinel.value = sentinel;
   }
 
   Future<void> deleteCurrentChat() async {
@@ -513,15 +603,26 @@ class ChatController {
     // 此过滤兜底未来的新调用路径,与 RunUsageChanged 的 chat.id 检查一致)
     if (message.chatId != currentChat.value?.id) return;
     // 基础是"待 flush 的 pending(若有)",不能直接用 messages.value:
-    // 未 flush 时 value 还是旧列表,会把 pending 中未推送的消息丢掉
-    final base = _pendingList ?? messages.value;
-    _pendingList = [...base, message];
+    // 未 flush 时 value 还是旧列表,会把 pending 中未推送的消息丢掉。
+    // pending 首次创建时与 messages.value 分离(复制),之后直接变异
+    // 零复制——消息数 N 时每事件 O(1) 而非 O(N)(LLM 每 token 一事件,
+    // 长对话时每事件复制整个列表是显著开销)。
+    final pending = _pendingList;
+    if (pending == null) {
+      _pendingList = [...messages.value, message];
+    } else {
+      pending.add(message);
+    }
     _flushSoon();
   }
 
   void _applyMessageUpdate(MessageEntity message) {
     // 同上:跨聊天更新(如旧聊天 finalize 的落库回读)不得污染当前列表
     if (message.chatId != currentChat.value?.id) return;
+    final minId = _windowMinId;
+    // 已被窗口裁掉的旧消息(如长时间流式后 finalize 的早期占位消息):
+    // 丢弃,不 add——否则会错位插到列表尾部
+    if (minId != null && (message.id ?? 0) < minId) return;
     final pending = _pendingList ?? List<MessageEntity>.of(messages.value);
     final index = pending.indexWhere((m) => m.id == message.id);
     if (index >= 0) {
@@ -536,14 +637,20 @@ class ChatController {
   List<MessageEntity>? _pendingList;
   Timer? _flushTimer;
 
-  /// 流式高频更新合并:50ms 内多次更新只通知 UI 一次。
+  /// 流式高频更新合并:窗口内多次更新只通知 UI 一次。
+  ///
+  /// 100ms 而非 50ms:一次 flush 帧的成本 = 全树 build + 流式消息全量
+  /// layout(TextLayoutEngine 超线性,10k+ 字符时 10-30ms)+ 全树 paint。
+  /// 帧率减半直接减半 CPU 占用;LLM 输出 ~10-50 token/s,100ms 窗口
+  /// 每次 flush 仍包含多个 token,视觉上无感。
   void _flushSoon() {
-    _flushTimer ??= Timer(const Duration(milliseconds: 50), () {
+    _flushTimer ??= Timer(const Duration(milliseconds: 100), () {
       _flushTimer = null;
       // UI 拆解后(dispose 已 cancel timer,此处兜底)不再写信号
       if (!_active) return;
       if (_pendingList != null) {
-        messages.value = _pendingList!;
+        // 窗口截头:流式增量只加尾部,超窗时裁掉头部历史(可重新加载)
+        messages.value = _trimWindow(_pendingList!);
         _pendingList = null;
       }
     });
