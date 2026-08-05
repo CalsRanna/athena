@@ -63,6 +63,52 @@ void main() {
       expect(providers.single.name, '硅基流动');
     });
 
+    test('数字/布尔/null/日期样式的 apiKey 往返一致(引号策略)', () async {
+      // 回归:旧 _escapeScalar 白名单对纯数字/true/null 不加引号,
+      // YAML 解析成非字符串,loadProviders 的 as String 抛类型错误,
+      // 整个 provider 配置静默丢失
+      await store.saveProviders([
+        provider('数字', '123456', id: 1),
+        provider('布尔', 'true', id: 2),
+        provider('null', 'null', id: 3),
+        provider('日期', '2024-01-01', id: 4),
+      ]);
+
+      final providers = await store.loadProviders();
+      expect(providers, hasLength(4));
+      expect(providers[0].apiKey, '123456');
+      expect(providers[1].apiKey, 'true');
+      expect(providers[2].apiKey, 'null');
+      expect(providers[3].apiKey, '2024-01-01');
+      // id 保持 int 类型(YAML 裸值,不受引号策略影响)
+      expect(providers.map((p) => p.id), [1, 2, 3, 4]);
+    });
+
+    test('apiKey 含引号/反斜杠/换行正确转义与读回', () async {
+      await store.saveProviders([
+        provider('引号', 'sk-a"b\\c', id: 1),
+        provider('换行', 'line1\nline2', id: 2),
+      ]);
+
+      final providers = await store.loadProviders();
+      expect(providers[0].apiKey, 'sk-a"b\\c');
+      expect(providers[1].apiKey, 'line1\nline2');
+    });
+
+    test('yaml 中的非字符串值按空串降级,不炸掉整个配置', () async {
+      // 手工编辑的 yaml:apiKey 是裸数字(YAML 解析为 int)
+      await file.writeAsString(
+        'providers:\n'
+        '  - id: 1\n'
+        '    name: Deep Seek\n'
+        '    apiKey: 123456\n',
+      );
+      final providers = await store.loadProviders();
+      expect(providers, hasLength(1));
+      expect(providers.single.name, 'Deep Seek');
+      expect(providers.single.apiKey, '');
+    });
+
     test('model 保存/读回(modelId 字符串)', () async {
       expect(await store.loadModelId(), isNull);
 

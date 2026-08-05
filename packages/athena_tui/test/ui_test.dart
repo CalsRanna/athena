@@ -1,5 +1,14 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/app.dart';
 import 'package:athena_tui/ui/widgets/permission_bar.dart';
@@ -7,7 +16,42 @@ import 'package:athena_tui/ui/widgets/permission_bar.dart';
 // 统一用别名访问
 import 'package:nocterm/nocterm.dart' as nocterm;
 import 'package:nocterm/nocterm_test.dart' as nocterm_test;
+import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
+
+/// 假 Agent 服务:run 返回受控事件流,不发起任何网络请求。
+///
+/// ui_test 的"发送"类测试用真实 AgentService 会打到真实 LLM API
+/// (无 key 时收到 401,网络时序不定导致测试抖动/收尾竞态)。
+class _FakeAgentService extends AgentService {
+  _FakeAgentService()
+      : super(
+          chatService: ChatService(llmClient: LlmClient()),
+          toolRegistry: ToolRegistry(),
+        );
+
+  @override
+  Stream<AgentEvent> run({
+    required ChatEntity chat,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    required List<ChatMessage> baseMessages,
+    String? skillPrompt,
+    String? evolutionPrompt,
+    String? sentinelId,
+    PermissionCallback? onPermission,
+    PermissionService? permissionService,
+    int maxIterations = 100,
+    CancelToken? cancelToken,
+    BeforeToolCallHook? beforeToolCall,
+    AfterToolCallHook? afterToolCall,
+    bool jsonMode = false,
+  }) async* {
+    yield AgentEvent.turnStart(iteration: 0);
+    yield AgentEvent.text('模拟回复');
+    yield AgentEvent.done(content: '模拟回复');
+  }
+}
 
 void main() {
   late Directory tempDir;
@@ -22,11 +66,31 @@ void main() {
 
   Future<TuiDi> createDi() async {
     // homeDir 注入 tempDir:避免读到用户真实 ~/.athena/setting.yaml
-    final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
+    final di = TuiDi(
+      dataDirectory: tempDir.path,
+      homeDir: tempDir.path,
+      // 假 Agent:发送类测试不发起真实网络请求
+      agentServiceOverride: _FakeAgentService(),
+    );
     await di.initialize(syncModels: false);
     // 预加载聊天列表(AthenaApp.initState 会再次调用,幂等)
     await di.chatController.initialize();
     return di;
+  }
+
+  /// 等待条件满足(最多 [timeout])。替代固定延迟:发送类测试等待
+  /// 流式 run 结束,避免收尾工作越过测试/teardown 边界。
+  Future<void> waitUntil(
+    bool Function() condition, {
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (!condition()) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail('waitUntil 超时:条件 5s 内未满足');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
   }
 
   // testNocterm 是普通异步函数(非 package:test 注册),必须用 test() 包装
@@ -220,11 +284,11 @@ void main() {
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
-      // 普通文本发送会走 Agent 流(无 API key → 最终显示错误),验证不崩溃。
-      // RunMessageStored 在网络调用前就产出,等消息落库 + 50ms 渲染节流
+      // 普通文本发送走 Agent 流(FakeAgentService,无网络)。
+      // 等待 run 完全结束(含 finally/flush),收尾不越过测试边界
       await tester.enterText('hello');
       await tester.sendEnter();
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await waitUntil(() => !di.chatController.isStreaming.value);
       await tester.pump();
 
       // 用户消息应已进入列表(role 断言不依赖渲染时序)
@@ -234,6 +298,8 @@ void main() {
       );
       final state = tester.terminalState;
       expect(state.containsText('hello'), isTrue);
+      // 假 Agent 的回复也已渲染
+      expect(state.containsText('模拟回复'), isTrue);
     });
   });
 
@@ -563,9 +629,10 @@ void main() {
         await tester.pump();
 
         // 执行的是 /json 测试(JSON 模式发送),而非"未知命令:/j 测试"。
-        // 命令执行同步生效,不依赖网络往返(Agent 流的 401 错误
-        // 到达时机不定,不作为断言)。
+        // 命令执行同步生效,不依赖 Agent 流结果(不作为断言)。
         expect(tester.terminalState.containsText('未知命令'), isFalse);
+        // 等待 run 完全结束(FakeAgentService,无网络),收尾不越过测试边界
+        await waitUntil(() => !di.chatController.isStreaming.value);
       });
     });
 

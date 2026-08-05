@@ -33,6 +33,20 @@ class JsonlMessageRepository implements MessageRepository {
     );
   }
 
+  /// 按文件获取共享 store:文件名即 {chatId}.jsonl,解析后复用
+  /// [_storeFor] 的缓存实例——同一文件的锁必须共享,文件扫描操作
+  /// (读-改-整文件重写)与流式 append/update 才能真正串行。文件名
+  /// 解析失败(非标准命名)时退回独立实例,仅影响该文件自身的并发。
+  JsonlFileStore _storeForFile(File file) {
+    final name = file.uri.pathSegments.last;
+    final chatId = int.tryParse(name.endsWith('.jsonl')
+        ? name.substring(0, name.length - '.jsonl'.length)
+        : name);
+    return chatId == null
+        ? JsonlFileStore(file: file, idAllocator: _idAllocator)
+        : _storeFor(chatId);
+  }
+
   @override
   Future<List<MessageEntity>> getMessagesByChatId(
     int chatId, {
@@ -54,11 +68,7 @@ class JsonlMessageRepository implements MessageRepository {
     if (!await _messagesDir.exists()) return null;
     await for (final entry in _messagesDir.list()) {
       if (entry is! File || !entry.path.endsWith('.jsonl')) continue;
-      final store = JsonlFileStore(
-        file: entry,
-        idAllocator: _idAllocator,
-      );
-      final row = await store.readById(id);
+      final row = await _storeForFile(entry).readById(id);
       if (row != null) return MessageEntity.fromJson(row);
     }
     return null;
@@ -81,10 +91,7 @@ class JsonlMessageRepository implements MessageRepository {
     if (!await _messagesDir.exists()) return;
     await for (final entry in _messagesDir.list()) {
       if (entry is! File || !entry.path.endsWith('.jsonl')) continue;
-      final store = JsonlFileStore(
-        file: entry,
-        idAllocator: _idAllocator,
-      );
+      final store = _storeForFile(entry);
       final row = await store.readById(id);
       if (row != null) {
         await store.deleteById(id);
@@ -95,6 +102,7 @@ class JsonlMessageRepository implements MessageRepository {
 
   @override
   Future<void> deleteMessagesByChatId(int chatId) {
+    _stores.remove(chatId);
     return _storeFor(chatId).deleteFile();
   }
 
@@ -107,11 +115,7 @@ class JsonlMessageRepository implements MessageRepository {
     if (!await _messagesDir.exists()) return;
     await for (final entry in _messagesDir.list()) {
       if (entry is! File || !entry.path.endsWith('.jsonl')) continue;
-      final store = JsonlFileStore(
-        file: entry,
-        idAllocator: _idAllocator,
-      );
-      await store.updateWhere(
+      await _storeForFile(entry).updateWhere(
         (row) => ids.contains(row['id']),
         (row) => {...row, 'compacted': 1},
       );

@@ -15,7 +15,6 @@ import 'package:athena_core/service/chat_message_service.dart';
 import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
-import 'package:openai_dart/openai_dart.dart';
 
 /// 权限审批回调:由 TUI UI 层注册(终端内模态)。
 typedef TuiPermissionHandler = Future<PermissionDecision> Function(
@@ -73,13 +72,7 @@ class TuiAgentBridge {
     );
   }
 
-  int? get streamingChatId => _coordinator.streamingChatId;
   Future<void>? get settled => _coordinator.settled;
-
-  /// 用户切换思考卡片展开状态,转发给核心协调层(流式增量保留状态)。
-  void updateExpanded(int messageId, bool expanded) {
-    _coordinator.updateExpanded(messageId, expanded);
-  }
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -95,18 +88,6 @@ class TuiAgentBridge {
 
   void stop() {
     _coordinator.stop();
-  }
-
-  void steer(ChatMessage message) {
-    _coordinator.steer(message);
-  }
-
-  void followUp(ChatMessage message) {
-    _coordinator.followUp(message);
-  }
-
-  void clearQueues() {
-    _coordinator.clearQueues();
   }
 
   // ─── TUI 侧实现:终端内模态 ─────────────────────────────

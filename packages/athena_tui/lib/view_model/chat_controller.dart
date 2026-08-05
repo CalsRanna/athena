@@ -17,6 +17,7 @@ import 'package:athena_core/service/chat_manage_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
+import 'package:athena_tui/ui/text_util.dart';
 import 'package:signals/signals.dart';
 
 /// TUI 聊天控制器:持有全部 UI 状态(signals),消费 [RunEvent] 事件流。
@@ -76,12 +77,52 @@ class ChatController {
   final currentSentinel = signal<SentinelEntity?>(null);
 
   final isStreaming = signal(false);
-  final currentIteration = signal(0);
-  final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
   final error = signal<String?>(null);
 
   TuiAgentBridge get bridge => _bridge;
+
+  // ─── 生命周期 ────────────────────────────────────────────
+
+  /// 组件树已拆解:异步延续(流式收尾、后台 IO)不再写信号。
+  ///
+  /// 背景:sendMessage 的 finally / 50ms flush 可能在 UI 拆解之后才执行
+  /// (测试 binding 拆解不卸载组件树,订阅仍挂接;生产退出路径同样存在
+  /// 该窗口),写信号会触发已失效订阅的 setState 抛 SignalEffectException。
+  /// 用户主动操作(newChat/switchModel 等)无需 guard——退出后不可能有
+  /// 用户输入,仅异步延续需要。
+  bool _disposed = false;
+
+  /// dispose 后为 false:异步延续入口用它在写信号前早退。
+  bool get _active => !_disposed;
+
+  /// 当前 sendMessage 的 in-flight future(退出路径等待其收尾完成)。
+  Future<void>? _sendFuture;
+
+  /// run 触发的后台 IO(列表重载/自动重命名),收尾前等待其完成:
+  /// 让 isStreaming=false 成为"全部副作用已落定"的信号,退出/测试
+  /// 边界不再与未完成的文件 IO 竞态(如测试 tearDown 删除目录时
+  /// 撞上 Windows 文件锁)。
+  Future<void>? _backgroundWork;
+
+  /// 登记一段后台工作,并入 sendMessage 的收尾等待链。
+  void _trackBackground(Future<void> work) {
+    final tracked = work.catchError((Object e) {
+      LoggerUtil.e('Background work failed: $e');
+    });
+    final previous = _backgroundWork;
+    _backgroundWork = previous == null ? tracked : previous.then((_) => tracked);
+  }
+
+  /// 释放资源并阻止后续信号写入。幂等;由 AthenaApp.dispose 调用。
+  void dispose() {
+    _disposed = true;
+    _flushTimer?.cancel();
+    _flushTimer = null;
+  }
+
+  /// 等待当前 sendMessage 完全结束(含 finally 与 flush)。无 in-flight 时立即返回。
+  Future<void> waitForSend() => _sendFuture ?? Future.value();
 
   // ─── 初始化与聊天管理 ────────────────────────────────────
 
@@ -105,7 +146,9 @@ class ChatController {
   }
 
   Future<void> _reloadChats() async {
+    if (!_active) return;
     final (_, histories) = await _manageService.getChats();
+    if (!_active) return; // 等待 IO 期间 UI 拆解
     chatList.value = histories;
   }
 
@@ -203,6 +246,7 @@ class ChatController {
     ProviderEntity provider,
     String apiKey,
   ) async {
+    if (!_active) return;
     final trimmed = apiKey.trim();
     // 配置了 key 即视为启用(enabled 为种子默认 false,若不置 true,
     // provider 检查会永远报"未配置 API key")
@@ -228,7 +272,17 @@ class ChatController {
   /// 向消息区推入一条临时消息(不落库,如 /help 输出)。
   /// 切换聊天后消失,仅内存展示。
   void pushTransientMessage(MessageEntity message) {
-    messages.value = [...messages.value, message];
+    if (!_active) return;
+    final pending = _pendingList;
+    if (pending == null) {
+      // 无流式增量:同步写入,不留 50ms 定时器(定时器会越过
+      // UI 拆解边界,拆解后触发写信号)
+      messages.value = [...messages.value, message];
+    } else {
+      // 流式增量在 pending 中:并入同一批 flush(直接写 messages.value
+      // 会被 pending 整体覆盖丢弃);flush 定时器已由流式事件创建
+      _pendingList = [...pending, message];
+    }
   }
 
   /// 选中聊天并加载其消息。
@@ -236,14 +290,19 @@ class ChatController {
     // 流式期间禁止切换:旧聊天的 RunEvent 增量会写进新聊天列表
     // (与 GUI ChatViewModel.selectChat 的保护一致)
     if (isStreaming.value) return;
+    if (!_active) return;
+    // 清掉未 flush 的 pending(瞬态消息/流式增量):否则 50ms 后 flush
+    // 会用旧聊天的 pending 整体覆盖新聊天列表
+    _pendingList = null;
+    _flushTimer?.cancel();
+    _flushTimer = null;
     final result = await _manageService.selectChat(chat);
+    if (!_active) return; // 等待 IO 期间 UI 拆解
     currentChat.value = chat;
     messages.value = result.messages;
     currentModel.value = result.model;
     currentProvider.value = result.provider;
     currentSentinel.value = result.sentinel;
-    currentIteration.value = 0;
-    currentToolName.value = null;
   }
 
   Future<void> deleteCurrentChat() async {
@@ -302,26 +361,53 @@ class ChatController {
     isStreaming.value = true;
     currentTokenUsage.value = null;
     _pendingList = null;
+    _backgroundWork = null;
     _flushTimer?.cancel();
     _flushTimer = null;
 
+    // 记录 in-flight future:退出路径(waitForSend)等待收尾完全结束。
+    // _doSend 在首个 await 处挂起,此处赋值无竞态;identical 兜底防
+    // 极端情况下已完成才赋值导致悬挂旧引用。
+    final future = _doSend(message, chat, jsonMode);
+    _sendFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_sendFuture, future)) _sendFuture = null;
+    }
+  }
+
+  Future<void> _doSend(
+    MessageEntity message,
+    ChatEntity chat,
+    bool jsonMode,
+  ) async {
+    if (!_active) return;
     try {
       final stream = _bridge.send(message: message, chat: chat, jsonMode: jsonMode);
       await for (final event in stream) {
         handleRunEvent(event);
       }
+      // 等待 run 触发的后台 IO(列表重载/自动重命名)完成(内部已
+      // catchError,不会抛),收尾信号 isStreaming=false 前全部落定
+      final background = _backgroundWork;
+      _backgroundWork = null;
+      if (background != null) {
+        await background;
+      }
     } catch (e) {
-      error.value = e.toString();
+      if (_active) error.value = e.toString();
     } finally {
       _flushTimer?.cancel();
       _flushTimer = null;
-      if (_pendingList != null) {
-        messages.value = _pendingList!;
-        _pendingList = null;
+      // UI 已拆解:不再写信号(订阅已失效,写了会抛 SignalEffectException)
+      if (_active) {
+        if (_pendingList != null) {
+          messages.value = _pendingList!;
+          _pendingList = null;
+        }
+        isStreaming.value = false;
       }
-      isStreaming.value = false;
-      currentIteration.value = 0;
-      currentToolName.value = null;
     }
   }
 
@@ -333,6 +419,7 @@ class ChatController {
   /// 跨聊天过滤与列表更新,不依赖真实 Agent 流)。
   @visibleForTesting
   void handleRunEvent(RunEvent event) {
+    if (!_active) return; // UI 拆解后的流式收尾事件不再写信号
     switch (event) {
       case RunMessageStored(:final message):
         _pushMessage(message);
@@ -340,33 +427,37 @@ class ChatController {
         _pushMessage(message);
       case RunMessageUpdated(:final message):
         _applyMessageUpdate(message);
-      case RunIterationChanged(:final iteration):
-        currentIteration.value = iteration;
-      case RunToolNameChanged(:final toolName):
-        currentToolName.value = toolName;
+      // TUI 无迭代/工具状态显示(与 GUI 不同),事件有意忽略
+      case RunIterationChanged() || RunToolNameChanged():
+        break;
       case RunUsageChanged(:final usage, :final chat):
         if (chat.id == currentChat.value?.id) {
           currentTokenUsage.value = usage;
-          _reloadChats();
+          // 事件已带最新 ChatEntity:原位更新,避免每次 usage 事件
+          // 全量重读所有聊天的消息文件(lastMessageContent 不受影响;
+          // 排序字段 pinned/updatedAt 不随 usage 变化)
+          final list = chatList.value;
+          final index = list.indexWhere((h) => h.chat.id == chat.id);
+          if (index >= 0) {
+            final updated = [...list];
+            updated[index] = ChatHistoryEntity(
+              chat: chat,
+              lastMessageContent: list[index].lastMessageContent,
+            );
+            chatList.value = updated;
+          }
         }
       case RunAutoRename():
         final chat = currentChat.value;
-        if (chat != null) unawaited(_autoRename(chat));
+        if (chat != null) {
+          _trackBackground(_autoRename(chat));
+        }
       case RunListReload():
-        unawaited(_reloadChats());
+        _trackBackground(_reloadChats());
       case RunError(:final message):
         LoggerUtil.e('sendMessage RunError: $message');
         error.value = message;
     }
-  }
-
-  /// 思考卡片展开/折叠切换,转发给核心协调层。
-  Future<void> toggleExpanded(MessageEntity message) async {
-    if (message.id != null) {
-      _bridge.updateExpanded(message.id!, !message.expanded);
-    }
-    final updated = await _supportService.updateExpanded(message);
-    _applyMessageUpdate(updated);
   }
 
   /// 自动重命名:取首个用户消息前 30 字符。
@@ -377,6 +468,7 @@ class ChatController {
   /// 等价;但该时序属隐式契约,这里做防御性查找:遍历该聊天的全部
   /// 消息取第一条非空 user 消息,不依赖消息写入顺序。
   Future<void> _autoRename(ChatEntity chat) async {
+    if (!_active) return;
     final messages = await _messageRepo.getMessagesByChatId(chat.id!);
     String? text;
     for (final m in messages) {
@@ -389,6 +481,7 @@ class ChatController {
     final title = _titleFromText(text);
     await _supportService.renameChatManually(chat, title);
     await _reloadChats();
+    if (!_active) return;
     // 同步本地 currentChat 的 title
     final current = currentChat.value;
     if (current?.id == chat.id) {
@@ -397,9 +490,12 @@ class ChatController {
   }
 
   /// 从消息文本截取聊天标题:取前 30 字符,超长加省略号。
+  ///
+  /// 标题取自不可信的用户消息,却会渲染在状态栏、/list、/switch 弹层,
+  /// 出口统一清洗 ANSI(与消息内容渲染一致)。
   static String _titleFromText(String text) {
-    final trimmed = text.trim();
-    return trimmed.length > 30 ? '${trimmed.substring(0, 30)}…' : trimmed;
+    final clean = sanitizeAnsi(text).trim();
+    return clean.length > 30 ? '${clean.substring(0, 30)}…' : clean;
   }
 
   /// 测试入口:暴露 [_titleFromText] 的纯函数语义。
@@ -444,6 +540,8 @@ class ChatController {
   void _flushSoon() {
     _flushTimer ??= Timer(const Duration(milliseconds: 50), () {
       _flushTimer = null;
+      // UI 拆解后(dispose 已 cancel timer,此处兜底)不再写信号
+      if (!_active) return;
       if (_pendingList != null) {
         messages.value = _pendingList!;
         _pendingList = null;
