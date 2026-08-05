@@ -13,6 +13,7 @@ dependencies:
   nocterm: ^0.8.0
   openai_dart: ^5.0.0
   signals: ^6.2.0
+  yaml: ^3.1.2
 
 dev_dependencies:
   lints: ^5.0.0

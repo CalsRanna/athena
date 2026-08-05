@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_tui/storage/serial_lock.dart';
+
 /// 跨文件共享的自增 id 分配器。
 ///
 /// 计数持久化在 meta.json(GUI 用 SQLite 自增主键,TUI 用此等价物)。
@@ -40,7 +42,7 @@ class IdAllocator {
   }
 
   Future<T> _serialized<T>(Future<T> Function() action) {
-    return _locked(_pending, action, (f) => _pending = f);
+    return serialLock(_pending, action, (f) => _pending = f);
   }
 }
 
@@ -119,7 +121,7 @@ class JsonlFileStore {
   ///
   /// [action] 只允许使用 [view] 的原始读写方法。
   Future<T> inLock<T>(Future<T> Function(JsonlStoreView view) action) {
-    return _locked(_lock, () async {
+    return serialLock(_lock, () async {
       final result = await action(_view);
       return result;
     }, (f) => _lock = f);
@@ -217,15 +219,4 @@ extension on JsonlStoreView {
       await _file.delete();
     }
   }
-}
-
-/// 通用串行锁:保证同一资源上的操作按提交顺序执行。
-Future<T> _locked<T>(
-  Future<void>? previous,
-  Future<T> Function() action,
-  void Function(Future<void>) setter,
-) {
-  final result = (previous ?? Future<void>.value()).then((_) => action());
-  setter(result.then((_) {}, onError: (_) {}));
-  return result;
 }

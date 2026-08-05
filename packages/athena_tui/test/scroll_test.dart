@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/app.dart';
+import 'package:nocterm/nocterm.dart' as nocterm;
 import 'package:nocterm/nocterm_test.dart' as nocterm_test;
 import 'package:test/test.dart';
 
@@ -18,7 +19,8 @@ void main() {
   });
 
   Future<TuiDi> createDi() async {
-    final di = TuiDi(dataDirectory: tempDir.path);
+    // homeDir 注入 tempDir:避免读到用户真实 ~/.athena/setting.yaml
+    final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
     await di.initialize(syncModels: false);
     await di.chatController.initialize();
     return di;
@@ -76,10 +78,12 @@ void main() {
     });
   });
 
-  test('用户向上翻阅后新消息不打扰', () {
+  test('用户向上翻阅后新消息不自动滚底', () {
     return nocterm_test.testNocterm('不打扰滚动', (tester) async {
       final di = await createDi();
-      await tester.pumpComponent(AthenaApp(di: di));
+      // 注入外部 controller:测试中模拟用户滚动后仍能读取其状态
+      final scroll = nocterm.ScrollController();
+      await tester.pumpComponent(AthenaApp(di: di, scrollController: scroll));
       await tester.pump();
 
       final c = di.chatController;
@@ -93,21 +97,23 @@ void main() {
           ),
       ];
       await tester.pump();
+      await tester.pump(); // 滚到底
+
+      // 用户向上翻阅(回顶部):触发 listener → sticky=false
+      scroll.jumpTo(0);
       await tester.pump();
 
-      // 用户向上滚动(在消息列表组件上,通过 scrollController 模拟,
-      // 这里直接触发列表的键盘滚动路径 —— keyboardScrollable 已关闭,
-      // 所以用 controller 手动设置 offset 再通知)
-      // 由于 SingleChildScrollView 的 controller 在 app 内部,这里用
-      // 状态验证:向上滚后 sticky=false,追加消息不跳转
-      // 简化:先滚到底(触发 atEnd → sticky=true),再回顶部
+      // 追加新消息:不应打扰用户,仍在顶部附近
+      c.messages.value = [
+        ...c.messages.value,
+        MessageEntity(id: 21, chatId: 1, role: 'user', content: '最后一条'),
+      ];
       await tester.pump();
-      c.messages.value = [...c.messages.value,
-        MessageEntity(id: 21, chatId: 1, role: 'user', content: '最后一条')];
-      await tester.pump();
-      await tester.pump();
-      // 默认 sticky=true(用户未翻动),应滚到底
-      expect(tester.terminalState.containsText('最后一条'), isTrue);
+      await tester.pump(); // postFrame 若无 jumpTo 则位置不变
+
+      final s = tester.terminalState;
+      expect(s.containsText('最后一条'), isFalse, reason: '用户上翻后不应自动滚底');
+      expect(s.containsText('消息 0'), isTrue, reason: '视口应停留在顶部');
     });
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
@@ -24,6 +25,7 @@ import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
+import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/service/chat_manage_service.dart';
@@ -41,26 +43,40 @@ import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_tui/seed/preset_seed.dart';
 import 'package:athena_tui/storage/json_file_key_value_store.dart';
 import 'package:athena_tui/storage/jsonl_chat_repository.dart';
+import 'package:athena_tui/storage/user_settings_store.dart';
 import 'package:athena_tui/storage/jsonl_message_repository.dart';
 import 'package:athena_tui/storage/jsonl_model_repository.dart';
-import 'package:athena_tui/storage/jsonl_provider_repository.dart';
 import 'package:athena_tui/storage/jsonl_sentinel_repository.dart';
 import 'package:athena_tui/storage/jsonl_store.dart';
+import 'package:athena_tui/storage/yaml_provider_repository.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 
 /// TUI 组合根:手写依赖装配(镜像 athena_gui 的 di.dart,不用 GetIt)。
 ///
 /// 数据目录默认 `~/.athena/tui/`,可通过 [dataDirectory] 覆盖(测试用)。
 class TuiDi {
-  TuiDi({String? dataDirectory}) {
+  TuiDi({String? dataDirectory, String? workspace, String? homeDir}) {
+    _homeDir = homeDir ??
+        Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '/';
     _dataDir = Directory(
-      dataDirectory ??
-          '${Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '/'}/.athena/tui',
+      dataDirectory ?? '$_homeDir/.athena/tui',
     );
+    _workspace = workspace ?? Directory.current.path;
     _build();
   }
 
+  late final String _homeDir;
+
   late final Directory _dataDir;
+  late final String _workspace;
+
+  /// 启动时从 setting.yaml 导入的持久化模型 modelId(null = 未配置)。
+  String? currentModelId;
+
+  /// 当前工作区目录(Agent 工具的工作根目录)。
+  String get workspace => _workspace;
 
   // Repositories
   late final ChatRepository chatRepo;
@@ -72,6 +88,8 @@ class TuiDi {
 
   // Storage
   late final KeyValueStore keyValueStore;
+  late final UserSettingsStore userSettings;
+  late final File userSettingsFile;
 
   // Agent 基础
   late final AgentSettings agentSettings;
@@ -104,6 +122,9 @@ class TuiDi {
   Future<void> initialize({bool syncModels = true}) async {
     await permissionService.load();
     await agentSettings.init();
+    // 先迁移旧 providers.jsonl(若有),再种子:避免种子写入 yaml 后
+    // 迁移被"yaml 非空"跳过
+    await _importUserSettings();
     await const PresetSeed().applyIfNeeded(
       providerRepo: providerRepo,
       modelRepo: modelRepo,
@@ -120,6 +141,83 @@ class TuiDi {
         LoggerUtil.w('Model catalog sync timeout: $e');
       }
     }
+  }
+
+  /// 启动时加载用户配置:
+  /// - 读 yaml 用户配置的 provider(配过 key 的)到内存
+  /// - 旧版 providers.jsonl(历史存储)合并:以旧文件的 id/baseUrl 为主,
+  ///   用户 yaml 的 apiKey 覆盖;只把配了 key 的写回 yaml
+  /// - 读取持久化的默认模型 modelId,供 ChatController 启动时选中
+  Future<void> _importUserSettings() async {
+    try {
+      if (providerRepo is YamlProviderRepository) {
+        await (providerRepo as YamlProviderRepository).load();
+      }
+      await _migrateLegacyProviders();
+      currentModelId = await userSettings.loadModelId();
+      // ChatController 在 _build(构造)时创建,此时 yaml 尚未读;
+      // 导入完成后注入默认模型
+      chatController.setDefaultModelId(currentModelId);
+    } catch (e) {
+      LoggerUtil.w('Import user settings failed: $e');
+    }
+  }
+
+  /// 合并迁移:旧 providers.jsonl → 内存(仅首次,jsonl 存在时)。
+  ///
+  /// 以旧文件的 id/baseUrl 为主,内存(yaml 已 load 的用户配置)的
+  /// apiKey 覆盖;经 [importProviders] 只把配了 key 的写回 yaml。
+  /// 合并后删除旧 jsonl(避免每次启动重复迁移)。
+  Future<void> _migrateLegacyProviders() async {
+    final legacy = File('${_dataDir.path}/providers.jsonl');
+    if (!await legacy.exists()) return;
+
+    final legacyProviders = <ProviderEntity>[];
+    for (final line in await legacy.readAsLines()) {
+      if (line.trim().isEmpty) continue;
+      try {
+        legacyProviders.add(
+          ProviderEntity.fromJson(jsonDecode(line) as Map<String, dynamic>),
+        );
+      } catch (_) {
+        // 跳过损坏行
+      }
+    }
+    if (legacyProviders.isEmpty) return;
+
+    final memoryProviders = await providerRepo.getAllProviders();
+    final memoryByName = {
+      for (final p in memoryProviders) p.name: p,
+    };
+    final merged = <ProviderEntity>[];
+    for (final legacyProvider in legacyProviders) {
+      final memory = memoryByName[legacyProvider.name];
+      merged.add(legacyProvider.copyWith(
+        apiKey: memory?.apiKey.isNotEmpty == true
+            ? memory!.apiKey
+            : legacyProvider.apiKey,
+      ));
+    }
+    // 内存中独有(旧文件没有,如用户新配的)也保留
+    final legacyByName = {for (final p in legacyProviders) p.name: p};
+    for (final memory in memoryProviders) {
+      if (!legacyByName.containsKey(memory.name)) {
+        merged.add(memory);
+      }
+    }
+    await providerRepo.importProviders(merged);
+    LoggerUtil.i(
+      'Merged ${merged.length} providers from legacy providers.jsonl',
+    );
+    // 迁移完成删除旧文件,避免重复合并
+    try {
+      await legacy.delete();
+    } catch (_) {}
+  }
+
+  /// 持久化默认模型(modelId 字符串)到 yaml(/model 切换后调用)。
+  Future<void> persistCurrentModelId(String modelId) async {
+    await userSettings.saveModelId(modelId);
   }
 
   void _build() {
@@ -140,10 +238,10 @@ class TuiDi {
       file: File('${_dataDir.path}/models.jsonl'),
       idAllocator: idAllocator,
     );
-    providerRepo = JsonlProviderRepository(
-      file: File('${_dataDir.path}/providers.jsonl'),
-      idAllocator: idAllocator,
-    );
+    // yaml 用户配置(provider 权威存储)须在 providerRepo 之前初始化
+    userSettingsFile = File('$_homeDir/.athena/setting.yaml');
+    userSettings = UserSettingsStore(file: userSettingsFile);
+    providerRepo = YamlProviderRepository(store: userSettings);
     sentinelRepo = JsonlSentinelRepository(
       file: File('${_dataDir.path}/sentinels.jsonl'),
       idAllocator: idAllocator,
@@ -246,6 +344,9 @@ class TuiDi {
       providerRepo: providerRepo,
       sentinelRepo: sentinelRepo,
       supportService: supportService,
+      // 模型切换 / apiKey 变更写回 setting.yaml
+      // 模型切换写回 yaml(provider 由 YamlProviderRepository 直接持久化)
+      onModelSwitched: persistCurrentModelId,
     );
   }
 }
