@@ -85,7 +85,7 @@ void main() {
         role: 'assistant',
         content: '旧聊天的回复',
       )));
-      await Future<void>.delayed(const Duration(milliseconds: 80)); // 等 50ms flush
+      await Future<void>.delayed(const Duration(milliseconds: 150)); // 等 100ms flush
       expect(
         c.messages.value.where((m) => m.content == '旧聊天的回复'),
         isEmpty,
@@ -97,7 +97,7 @@ void main() {
         role: 'assistant',
         content: '当前聊天的回复',
       )));
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(
         c.messages.value.where((m) => m.content == '当前聊天的回复'),
         hasLength(1),
@@ -241,6 +241,118 @@ void main() {
     });
   });
 
+  group('消息窗口化', () {
+    /// 直写 repo 造 [count] 条消息(绕过窗口,模拟长对话落盘)。
+    Future<void> seedMessages(TuiDi di, int count, {int start = 0}) async {
+      final chatId = di.chatController.currentChat.value!.id!;
+      for (var i = start; i < start + count; i++) {
+        await di.messageRepo.storeMessage(MessageEntity(
+          chatId: chatId,
+          role: 'user',
+          content: '消息 $i',
+        ));
+      }
+    }
+
+    test('selectChat 只加载最近窗口大小条,hasOlder 为 true', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, 1200);
+
+      await c.selectChat(chat);
+      expect(c.messages.value.length, ChatController.messageWindowSize);
+      expect(c.messages.value.last.content, '消息 1199');
+      expect(c.messages.value.first.content, '消息 700');
+      expect(c.hasOlder, isTrue);
+    });
+
+    test('消息数不超过窗口时全部加载,hasOlder 为 false', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, 300);
+
+      await c.selectChat(chat);
+      expect(c.messages.value.length, 300);
+      expect(c.messages.value.last.content, '消息 299');
+      expect(c.hasOlder, isFalse);
+    });
+
+    test('loadOlderMessages 加载更早批次并保持 id 衔接', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, 1200);
+      await c.selectChat(chat); // 窗口 [700..1199]
+
+      final added = await c.loadOlderMessages();
+      expect(added, ChatController.messageWindowSize);
+      expect(c.messages.value.length, 1000);
+      // 衔接:新窗口 [200..1199],批次边界无缝
+      expect(c.messages.value.first.content, '消息 200');
+      expect(c.messages.value[499].content, '消息 699');
+      expect(c.messages.value[500].content, '消息 700');
+    });
+
+    test('加载到底后 hasOlder 为 false,再次调用返回 0', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, 1200);
+      await c.selectChat(chat); // [700..1199]
+
+      expect(c.hasOlder, isTrue);
+      await c.loadOlderMessages(); // [200..1199]
+      expect(c.hasOlder, isTrue);
+      await c.loadOlderMessages(); // [0..1199]
+      expect(c.hasOlder, isFalse);
+      expect(c.messages.value.first.content, '消息 0');
+      expect(c.messages.value.length, 1200);
+      // 已到文件头:再次调用不再加载
+      expect(await c.loadOlderMessages(), 0);
+    });
+
+    test('窗口截头:流式 flush 后长度不超过窗口', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, ChatController.messageWindowSize);
+      await c.selectChat(chat); // 恰好满窗口
+
+      // 流式增量超出窗口:flush 时裁掉头部,保持内存有界
+      c.handleRunEvent(RunMessageStored(MessageEntity(
+        chatId: chat.id!,
+        role: 'assistant',
+        content: '流式回复',
+      )));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(c.messages.value.length, ChatController.messageWindowSize);
+      expect(c.messages.value.last.content, '流式回复');
+      expect(c.messages.value.first.content, '消息 1'); // 头部"消息 0"被裁
+      expect(c.hasOlder, isTrue); // 被裁的历史仍可向上加载
+    });
+
+    test('窗口裁掉的消息收到更新事件时被丢弃,不插入尾部', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      await seedMessages(di, ChatController.messageWindowSize + 5);
+      await c.selectChat(chat); // 窗口取最近 500 条(消息 5..504)
+
+      // 消息 0..4 已被窗口裁掉;其 finalize 更新事件(如流式收尾落库
+      // 回读)不得错位插到列表尾部
+      final oldest = (await di.messageRepo.getMessagesByChatId(chat.id!)).first;
+      c.handleRunEvent(RunMessageUpdated(oldest.copyWith(
+        role: 'assistant',
+        content: '不该出现',
+      )));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(c.messages.value.map((m) => m.content), isNot(contains('不该出现')));
+      expect(c.messages.value.length, ChatController.messageWindowSize);
+    });
+  });
+
   group('生命周期与消息缓冲', () {
     test('dispose 后信号写入被静默忽略(异步延续不再抛异常)', () async {
       final di = await createDi();
@@ -252,7 +364,7 @@ void main() {
         MessageEntity(chatId: chat.id!, role: 'assistant', content: '未flush'),
       ));
       c.dispose(); // 应 cancel timer
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(c.messages.value, isEmpty, reason: 'dispose 取消 flush timer,不落盘');
       expect(c.messages.value, isNot(contains('未flush')));
 
@@ -265,7 +377,7 @@ void main() {
       c.handleRunEvent(RunMessageStored(
         MessageEntity(chatId: chat.id!, role: 'assistant', content: '流式'),
       ));
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
       // 不抛异常即通过
     });
 
@@ -284,7 +396,7 @@ void main() {
       c.pushTransientMessage(
         MessageEntity(chatId: chat.id!, role: 'system', content: '瞬态消息'),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       expect(c.messages.value, hasLength(before + 2));
       expect(
@@ -308,7 +420,7 @@ void main() {
       ));
       await c.selectChat(second);
       // 50ms 后若 pending 未被清空,flush 会用旧聊天的消息覆盖新列表
-      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
 
       expect(c.messages.value.map((m) => m.chatId), everyElement(second.id));
       expect(

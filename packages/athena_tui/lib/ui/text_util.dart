@@ -19,8 +19,16 @@ String truncateText(String text, int max, {String suffix = '…'}) {
 /// - C1 控制区（U+0080-U+009F，含 8 位 CSI 0x9B；CJK 从 U+2E80 起不受影响）
 ///
 /// 只在渲染入口应用，不破坏存储原文（ChatController 层不调用）。
+///
+/// 结果缓存：消息列表每次 flush 全树重建，历史消息的文本不变却会被
+/// 反复清洗（每次 build 全量扫描）。纯函数 + 消息文本不可变 → 按值
+/// 缓存安全；容量有界(128 条)，超过即清空重建。流式消息每帧换字符串
+/// → miss → 全量清洗（无法避免，但只有一条；高频流式会周期性占满
+/// 缓存触发清空，历史消息随之重扫一次，成本可接受）。
 String sanitizeAnsi(String text) {
   if (text.isEmpty) return text;
+  final cached = _sanitizeCache[text];
+  if (cached != null) return cached;
   final out = StringBuffer();
   var i = 0;
   while (i < text.length) {
@@ -45,8 +53,14 @@ String sanitizeAnsi(String text) {
     out.writeCharCode(c);
     i++;
   }
-  return out.toString();
+  final result = out.toString();
+  if (_sanitizeCache.length >= 128) _sanitizeCache.clear();
+  _sanitizeCache[text] = result;
+  return result;
 }
+
+/// sanitize 结果缓存:key = 原文本(值相等,字符串 hash 有惰性缓存)。
+final Map<String, String> _sanitizeCache = {};
 
 /// 跳过从 [start]（指向 ESC）开始的转义序列，返回下一个应处理的索引。
 ///

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -127,5 +129,90 @@ class JsonlMessageRepository implements MessageRepository {
     final rows = await _storeFor(chatId).readAll();
     if (rows.isEmpty) return null;
     return MessageEntity.fromJson(rows.last);
+  }
+
+  /// 从文件**尾部向前**扫描读取消息,不读整个文件。
+  ///
+  /// 长对话的 JSONL 可达几百 MB,`readAll` 全量读 + 逐行 jsonDecode 既慢
+  /// 又占内存;窗口化(消息列表只持有最近 N 条,向上滚动加载更早)需要
+  /// 「读最近 [count] 条」与「读 id < [beforeId] 的最近 [count] 条」两个
+  /// 原语,这里用 RandomAccessFile 从末尾向前读块实现,读取量 ≈ 需要
+  /// 的字节数,与文件总大小无关。
+  ///
+  /// 文件行序即消息序(id 升序,IdAllocator 全局递增),从尾部向前遍历
+  /// 即按 id 降序。块边界可能切断 UTF-8 多字节字符——只切「以 \n 结尾
+  /// 的完整行段」解码,块首到第一个 \n 之间的悬浮半行留在缓冲里等更早
+  /// 的块拼全,保证解码的行字节总是完整的。文件末尾无换行的最后一行
+  /// 按完整行处理。损坏行(空行/非法 JSON/非法 UTF-8)跳过,与 readRows
+  /// 的容错一致。
+  ///
+  /// 全程走该文件的串行锁:与 append/整文件重写(update)互斥,避免
+  /// 重写窗口内读到中间状态。
+  Future<List<MessageEntity>> loadRecentMessages(
+    int chatId, {
+    required int count,
+    int? beforeId,
+  }) {
+    final store = _storeFor(chatId);
+    final file = store.file;
+    return store.inLock((_) async {
+      if (count <= 0 || !await file.exists()) return const [];
+      final raf = await file.open();
+      try {
+        final length = await raf.length();
+        final result = <MessageEntity>[];
+        // 已读未切出完整行的字节:开头方向 = 更早,末尾方向 = 更晚
+        var buffer = <int>[];
+        var pos = length;
+        while (pos > 0 && result.length < count) {
+          final blockSize = math.min(65536, pos);
+          final start = pos - blockSize;
+          await raf.setPosition(start);
+          final block = await raf.read(blockSize);
+          pos = start;
+          final combined = [...block, ...buffer];
+          // 从末尾向前切完整行,直到块内没有可切的(悬浮行首留到下一轮)。
+          // 索引指针 [end) 单调前移,整块一次线性扫描(不反复 lastIndexOf
+          // + sublist 复制,避免 O(n²)——每行只复制行字节本身)
+          var end = combined.length;
+          while (end > 0 && result.length < count) {
+            final nl = combined.lastIndexOf(0x0A, end - 1);
+            if (nl < 0) break;
+            final lineBytes = combined.sublist(nl + 1, end);
+            end = nl;
+            if (lineBytes.isNotEmpty) {
+              final entity = _decodeLine(lineBytes);
+              if (entity != null &&
+                  (beforeId == null || entity.id! < beforeId)) {
+                result.add(entity);
+              }
+            }
+          }
+          buffer = combined.sublist(0, end);
+        }
+        // 所有块读完:缓冲里剩的是文件第一行(文件头即行首,无 \n 前缀)
+        if (pos == 0 && buffer.isNotEmpty && result.length < count) {
+          final entity = _decodeLine(buffer);
+          if (entity != null && (beforeId == null || entity.id! < beforeId)) {
+            result.add(entity);
+          }
+        }
+        // 逆序收集(最新在前),翻转为升序
+        return result.reversed.toList();
+      } finally {
+        await raf.close();
+      }
+    });
+  }
+
+  /// 解码单行字节为 [MessageEntity];损坏行返回 null(与 readRows 一致)。
+  MessageEntity? _decodeLine(List<int> lineBytes) {
+    try {
+      final line = utf8.decode(lineBytes);
+      if (line.trim().isEmpty) return null;
+      return MessageEntity.fromJson(jsonDecode(line) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
   }
 }
