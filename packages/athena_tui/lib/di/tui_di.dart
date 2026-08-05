@@ -275,7 +275,9 @@ class TuiDi {
         FileReadTool(),
         FileWriteTool(),
         FileUpdateTool(),
-        isWindows ? PowerShellShellTool() : BashShellTool(),
+        isWindows
+            ? PowerShellShellTool(defaultWorkdir: _workspace)
+            : BashShellTool(defaultWorkdir: _workspace),
         WebFetchTool(),
         WebSearchTool(store: keyValueStore),
         SkillTool(skillRegistry),

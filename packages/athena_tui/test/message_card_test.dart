@@ -149,5 +149,82 @@ void main() {
         size: const nocterm.Size(20, 24),
       );
     });
+
+    test('相同内容重复渲染竖条行数一致(缓存不改变结果)', () {
+      return nocterm_test.testNocterm('竖条缓存一致', (tester) async {
+        final content = 'a' * 60;
+        await tester.pumpComponent(
+          MessageCard(
+            color: nocterm.Color.fromRGB(106, 190, 185),
+            child: nocterm.Text(content, softWrap: true),
+          ),
+        );
+        await tester.pump();
+        final firstLines = _barLines(tester);
+
+        // 再次渲染相同内容(模拟流式帧:历史消息内容引用不变,重建)
+        await tester.pumpComponent(
+          MessageCard(
+            color: nocterm.Color.fromRGB(106, 190, 185),
+            child: nocterm.Text(content, softWrap: true),
+          ),
+        );
+        await tester.pump();
+        final secondLines = _barLines(tester);
+
+        expect(secondLines, firstLines,
+            reason: '相同内容不同实例渲染竖条行数应一致(缓存命中且结果不变)');
+      }, size: const nocterm.Size(20, 24));
+    });
+
+    test('多 Text 卡片(工具调用结构)竖条行数不串扰', () {
+      return nocterm_test.testNocterm(
+        '竖条多Text',
+        (tester) async {
+          // 工具调用卡片结构:Column(⚙ 名称 + 参数),两个 Text 不同长度。
+          // 若缓存按单值(不按路径)实现,第二个 Text 会覆盖第一个的缓存,
+          // 竖条行数可能算错 —— 必须确保路径缓存正确处理多 Text。
+          final name = 'bash';
+          final args = 'ls -la ' * 5; // 40 字符 → 17 列宽软换行约 3 行
+          await tester.pumpComponent(
+            MessageCard(
+              color: nocterm.Color.fromRGB(106, 190, 185),
+              child: nocterm.Column(
+                crossAxisAlignment: nocterm.CrossAxisAlignment.start,
+                children: [
+                  nocterm.Text('⚙ $name', style: const nocterm.TextStyle(
+                    color: nocterm.Color.fromRGB(100, 100, 100),
+                    fontWeight: nocterm.FontWeight.bold,
+                  )),
+                  nocterm.Text(args, softWrap: true),
+                ],
+              ),
+            ),
+          );
+          await tester.pump();
+
+          // 第一行:⚙ bash(1 行);第二行起:参数软换行。
+          // 竖条 = 1(标题) + 3(参数换行) + 上下 padding 各 1 = 6 行。
+          expect(tester.terminalState.getCellAt(0, 0)?.char, '▌',
+              reason: '标题行竖条');
+          expect(tester.terminalState.getCellAt(0, 1)?.char, '▌',
+              reason: '参数第一行竖条');
+          final barLines = _barLines(tester);
+          expect(barLines, 6,
+              reason: '两个 Text 的竖条行数应正确相加,不串扰');
+        },
+        size: const nocterm.Size(20, 24),
+      );
+    });
   });
+}
+
+/// 从终端状态数出竖条(第 0 列)的行数。
+int _barLines(nocterm_test.NoctermTester tester) {
+  var lines = 0;
+  for (var y = 0; y < tester.terminalState.size.height; y++) {
+    final cell = tester.terminalState.getCellAt(0, y);
+    if (cell?.char == '▌') lines++;
+  }
+  return lines;
 }

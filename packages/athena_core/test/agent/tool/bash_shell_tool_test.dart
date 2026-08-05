@@ -60,5 +60,29 @@ void main() {
       });
       expect(result, contains('[exit code:'));
     });
+
+    test('defaultWorkdir is used when workdir arg is absent', () async {
+      final tool = BashShellTool(defaultWorkdir: '/tmp');
+      final result = await tool.execute({'command': 'pwd'});
+      expect(result, contains('/tmp'));
+      expect(result, contains('[exit code: 0]'));
+    });
+
+    test('explicit workdir arg overrides defaultWorkdir', () async {
+      final tool = BashShellTool(defaultWorkdir: '/tmp');
+      final result = await tool.execute({
+        'command': 'pwd',
+        'workdir': '/',
+      });
+      expect(result, startsWith('/\n'));
+    });
+
+    test('defaultWorkdir appears in workdir param description', () {
+      final tool = BashShellTool(defaultWorkdir: '/tmp');
+      final properties = tool.parameters['properties'] as Map<String, dynamic>;
+      final workdirDesc = (properties['workdir'] as Map<String, dynamic>)['description']
+          as String;
+      expect(workdirDesc, contains('/tmp'));
+    });
   });
 }

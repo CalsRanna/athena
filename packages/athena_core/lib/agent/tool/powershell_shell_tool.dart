@@ -6,10 +6,14 @@ import 'package:athena_core/agent/tool/shell_runner.dart';
 import 'tool_interface.dart';
 
 class PowerShellShellTool implements Tool {
+  /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
+  /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
+  PowerShellShellTool({String? defaultWorkdir}) : _defaultWorkdir = defaultWorkdir;
+
+  final String? _defaultWorkdir;
+
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
-
-  PowerShellShellTool();
 
   @override
   ToolRisk get risk => ToolRisk.dangerous;
@@ -36,7 +40,7 @@ class PowerShellShellTool implements Tool {
       '- Deleting: ONLY delete single files (Remove-Item path). '
       'NEVER use Remove-Item -Recurse or del /s.\n'
       'For long-running tasks, pass a larger "timeout" value. '
-      'Commands run in the user home directory by default.';
+      'Commands run in the ${_defaultWorkdir ?? 'user home'} directory by default.';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -55,7 +59,7 @@ class PowerShellShellTool implements Tool {
           },
           'workdir': {
             'type': 'string',
-            'description': shellWorkdirParamDescription(),
+            'description': shellWorkdirParamDescription(_defaultWorkdir),
           },
         },
         'required': ['command'],
@@ -68,7 +72,8 @@ class PowerShellShellTool implements Tool {
     final home = Platform.environment['USERPROFILE'] ??
         Platform.environment['HOME'] ??
         Directory.current.path;
-    final workdir = args['workdir'] as String? ?? home;
+    // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
+    final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
 
     // 递归删除拦截
     if (_isRecursiveDelete(command)) {

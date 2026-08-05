@@ -40,8 +40,11 @@ String shellTimeoutParamDescription() => 'Timeout in seconds. '
     'If a previous call returned a timeout error, retry with a larger '
     'value (up to ${ShellTimeoutPolicy.maxSeconds}s) before giving up.';
 
-String shellWorkdirParamDescription() =>
-    'Working directory for the command. Defaults to the user home directory.';
+String shellWorkdirParamDescription([String? defaultWorkdir]) =>
+    defaultWorkdir == null
+        ? 'Working directory for the command. '
+            'Defaults to the user home directory.'
+        : 'Working directory for the command. Defaults to $defaultWorkdir.';
 
 /// 输出截断上限。超过任一条目即触发头尾保留 + 中间省略。
 class OutputLimit {
