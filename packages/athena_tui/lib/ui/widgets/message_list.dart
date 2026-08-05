@@ -9,7 +9,11 @@ import 'package:nocterm/nocterm.dart';
 /// ListView 在父级组件树动态变化(如 Overlay 插入)时会触发元素复用
 /// 断言(`newComponent != component`);消息量级下整树构建开销可接受。
 class MessageList extends StatelessComponent {
-  const MessageList({super.key, required this.controller, required this.scrollController});
+  const MessageList({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+  });
 
   final ChatController controller;
   final ScrollController scrollController;

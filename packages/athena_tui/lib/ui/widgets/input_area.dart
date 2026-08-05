@@ -1,4 +1,5 @@
 import 'package:athena_tui/ui/theme.dart';
+import 'package:athena_tui/ui/widgets/streaming_progress_bar.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -28,52 +29,45 @@ class InputArea extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     final isStreaming = controller.isStreaming.value;
-    final iteration = controller.currentIteration.value;
-    final toolName = controller.currentToolName.value;
 
-    String status;
-    TextStyle statusStyle;
-    if (statusText.isNotEmpty) {
-      status = statusText;
-      statusStyle = AthenaTextStyles.info;
-    } else if (isStreaming) {
-      final parts = <String>[];
-      if (iteration > 0) parts.add('迭代 $iteration');
-      if (toolName != null) parts.add('工具: $toolName');
-      parts.add('Esc 停止');
-      status = '⏳ ${parts.join('  ·  ')}';
-      statusStyle = AthenaTextStyles.warning;
-    } else {
-      status = 'Enter 发送 · 输入 /help 查看命令';
-      statusStyle = AthenaTextStyles.dim;
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        border: BoxBorder.all(color: AthenaColors.toolBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // onKeyEvent 必须传给 TextField 自身:它在 TextField 内部按键
-          // 处理(含 Enter 提交、方向键移动光标)之前被调用,返回 true 即
-          // 拦截。包在外层 Focusable 上收不到被 TextField 消费的按键。
-          TextField(
-            controller: textController,
-            focused: true,
-            maxLines: 4,
-            minLines: 1,
-            placeholder: placeholder,
-            placeholderStyle: AthenaTextStyles.dim,
-            onKeyEvent: onKeyEvent,
-            onSubmitted: onSubmitted,
-          ),
+    return Column(
+      children: [
+        if (isStreaming)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 1),
-            child: Text(status, style: statusStyle),
+            child: Row(
+              children: [
+                // 流式生成时:循环动画进度条 + Esc 停止提示
+                const StreamingProgressBar(),
+                const Spacer(),
+                Text('Esc 停止', style: AthenaTextStyles.warning),
+              ],
+            ),
           ),
-        ],
-      ),
+        Container(
+          decoration: BoxDecoration(
+            border: BoxBorder.all(color: AthenaColors.toolBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // onKeyEvent 必须传给 TextField 自身:它在 TextField 内部按键
+              // 处理(含 Enter 提交、方向键移动光标)之前被调用,返回 true 即
+              // 拦截。包在外层 Focusable 上收不到被 TextField 消费的按键。
+              TextField(
+                controller: textController,
+                focused: true,
+                maxLines: 4,
+                minLines: 1,
+                placeholder: placeholder,
+                placeholderStyle: AthenaTextStyles.dim,
+                onKeyEvent: onKeyEvent,
+                onSubmitted: onSubmitted,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

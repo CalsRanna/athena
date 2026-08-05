@@ -398,10 +398,10 @@ void main() {
       await tester.pump();
 
       expect(tester.terminalState.containsText('已取消配置'), isTrue);
-      // 退出 key 模式:状态行恢复默认(statusText 为空;注意系统消息
-      // "为 xx 输入 API key(回车保存…)"会留在消息列表,不能断言其消失)
-      expect(tester.terminalState.containsText('API key 输入中'), isFalse);
-      expect(tester.terminalState.containsText('Enter 发送'), isTrue);
+      // 退出 key 模式:输入框 placeholder 恢复默认提示
+      // (系统消息 "为 xx 输入 API key(回车保存…)" 会留在消息列表,
+      // 不能断言 '输入 API key' 全局消失,只查输入框区域已恢复)
+      expect(tester.terminalState.containsText('输入消息…'), isTrue);
     });
   });
 

@@ -3,9 +3,13 @@ import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// 顶部状态栏:应用名 | 工作区 | 模型 | 角色 | 右侧:迭代/工具状态 + token 用量。
+/// 底部状态栏: 模型 | 角色 ｜ 工作区 | 右侧:迭代/工具状态 + token 用量。
 class StatusBar extends StatelessComponent {
-  const StatusBar({super.key, required this.controller, required this.workspace});
+  const StatusBar({
+    super.key,
+    required this.controller,
+    required this.workspace,
+  });
 
   final ChatController controller;
 
@@ -16,8 +20,6 @@ class StatusBar extends StatelessComponent {
   Component build(BuildContext context) {
     final model = controller.currentModel.value;
     final sentinel = controller.currentSentinel.value;
-    final iteration = controller.currentIteration.value;
-    final toolName = controller.currentToolName.value;
     final usage = controller.currentTokenUsage.value;
     final chat = controller.currentChat.value;
 
@@ -27,28 +29,24 @@ class StatusBar extends StatelessComponent {
     final workspaceName = workspace.split('/').last;
 
     final rightParts = <String>[];
-    if (iteration > 0) rightParts.add('迭代 $iteration');
-    if (toolName != null) rightParts.add('工具: $toolName');
     if (usage != null) {
       final total = _formatTokens(usage.totalTokens);
       rightParts.add('tokens: $total');
     }
-    final right = rightParts.isEmpty ? '按 /help 查看命令' : rightParts.join('  ');
+    final right = rightParts.isEmpty ? '按 /help 查看命令' : rightParts.join(' | ');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: Row(
         children: [
-          const Text('● Athena', style: AthenaTextStyles.statusBar),
-          const Text('  '),
           Expanded(
             child: Text(
-              '$workspaceName  |  $modelName  |  $sentinelName  |  $title',
+              '$sentinelName | $modelName | $workspaceName | $title',
               style: AthenaTextStyles.dim,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(' $right ', style: AthenaTextStyles.dim),
+          Text(right, style: AthenaTextStyles.dim),
         ],
       ),
     );
