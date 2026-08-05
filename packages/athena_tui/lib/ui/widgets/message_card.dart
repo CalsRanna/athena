@@ -26,7 +26,7 @@ import 'package:nocterm/src/text/text_layout_engine.dart';
 /// 实际约束宽度 + TextLayoutEngine(与 RenderText 共用)算出精确行数,
 /// 而非按固定宽度估算。终端尺寸变化时 LayoutBuilder 自动用新约束
 /// 重建,竖条行数随之精确更新。
-class MessageCard extends StatelessComponent {
+class MessageCard extends StatefulComponent {
   const MessageCard({
     super.key,
     required this.color,
@@ -48,6 +48,13 @@ class MessageCard extends StatelessComponent {
   /// 卡片整体上下内边距(行数,取整)。估算竖条长度时计入。
   final double verticalPadding;
 
+  @override
+  State<MessageCard> createState() => _MessageCardState();
+}
+
+/// State:持有竖条行数缓存,流式期间历史消息内容引用不变时直接命中,
+/// 跳过 build 阶段的全文 TextLayoutEngine.layout(渲染层按值去重不覆盖 build)。
+class _MessageCardState extends State<MessageCard> {
   /// 半块色块字符(按覆盖比例从宽到窄)。
   static const _barChars = <(double, String)>[
     (1.0, '█'),
@@ -65,32 +72,55 @@ class MessageCard extends StatelessComponent {
   /// 兜底文本宽度。
   static const _fallbackTextWidth = 80;
 
+  /// 文本测量缓存:key = (Text 在卡片树中的索引路径, 字符串引用, 宽度),
+  /// value = 排版行数。
+  ///
+  /// 流式更新时 `_pendingList = [...base, message]` 只换列表、元素与
+  /// 字符串引用原样,`identical()` 命中 → 复用行数。内容真的变了
+  /// (新字符串)或宽度变了 → 重新排版。
+  ///
+  /// 为什么按索引路径区分而不是单值:一张卡片内可能有多个 Text
+  /// (工具调用 = ⚙ 名称 + 参数),单值缓存会让第二个 Text 覆盖第一个,
+  /// 下次渲染时第一个误命中第二个的高度。索引路径 + 字符串引用 +
+  /// 宽度三元组唯一确定一次排版,互不串扰。
+  final Map<(String, String, int), double> _measureCache = {};
+
+  @override
+  void didUpdateComponent(MessageCard oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    // 组件配置变化(内容/宽度/颜色)时清空缓存,避免复用旧测量值。
+    // nocterm 更新组件时保留 State 对象但不会自动重置缓存字段。
+    _measureCache.clear();
+  }
+
   @override
   Component build(BuildContext context) {
     final barChar = _barChars
-        .firstWhere((c) => borderWidth >= c.$1, orElse: () => _barChars.last)
+        .firstWhere((c) => component.borderWidth >= c.$1,
+            orElse: () => _barChars.last)
         .$2;
 
     // 布局阶段才构建 Row:此时拿到真实约束宽度,竖条行数精确可算。
     return LayoutBuilder(
       builder: (context, constraints) {
-        final barLines = _calculateBarLines(child, constraints.maxWidth);
+        final barLines =
+            _calculateBarLines(component.child, constraints.maxWidth);
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 半块色块竖条:前景色 + 按行数重复的半块字符
             Text(
               List.generate(math.max(1, barLines), (_) => barChar).join('\n'),
-              style: TextStyle(color: color),
+              style: TextStyle(color: component.color),
             ),
             // padding 包内容(不在 Row 外层),竖条才能贯穿 padding 行
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: 1,
-                  vertical: verticalPadding,
+                  vertical: component.verticalPadding,
                 ),
-                child: child,
+                child: component.child,
               ),
             ),
           ],
@@ -114,46 +144,60 @@ class MessageCard extends StatelessComponent {
             (maxWidth - _barColumnWidth - _horizontalPadding * 2).toInt(),
           )
         : _fallbackTextWidth;
-    final totalHeight =
-        _measureHeight(component, textWidth.toDouble()) + verticalPadding * 2;
+    final totalHeight = _measureHeight(component, textWidth.toDouble()) +
+        this.component.verticalPadding * 2;
     return math.max(1, totalHeight.ceil());
   }
 
   /// 精确测量子组件高度(行数,float 累积、不在中间取整)。
   ///
+  /// [path] 是 Text 在卡片树中的索引路径(如 Column 第 1 个子项 → "1"),
+  /// 用于多 Text 卡片时区分不同 Text 的缓存项。
+  ///
   /// - [Text]:用 TextLayoutEngine 按实际文本宽度计算,配置(softWrap /
   ///   overflow / maxLines / maxWidth 取整)与 RenderText.performLayout
-  ///   完全一致,结果与渲染行数严格相同;
+  ///   完全一致,结果与渲染行数严格相同;同一路径 + 同一字符串引用 +
+  ///   同一宽度时命中缓存直接复用,不做排版;
   /// - [Column]:子组件高度之和;
   /// - [Padding]:累加垂直 padding,水平 padding 缩减文本可用宽度
   ///   (浮点减法链与布局的 constraints.deflate 一致);
   /// - 其他组件:1 行兜底(当前调用处只用到 Text/Column/Padding)。
-  static double _measureHeight(Component component, double textWidth) {
+  double _measureHeight(Component component, double textWidth,
+      {String path = ''}) {
     if (component is Padding) {
       final horizontal = component.padding.left + component.padding.right;
       final vertical = component.padding.top + component.padding.bottom;
       final child = component.child;
       return (child == null
               ? 0.0
-              : _measureHeight(child, textWidth - horizontal)) +
+              : _measureHeight(child, textWidth - horizontal, path: path)) +
           vertical;
     }
     if (component is Text) {
+      final width = textWidth.toInt();
+      // 同一路径 + 同一字符串引用 + 同一宽度 → 命中,跳过排版(流式
+      // 历史消息热路径)。identical 只认引用:内容编辑过但列表换新
+      // (引用相同)时走真排版,绝不误命中内容已变的情形。
+      final key = (path, component.data, width);
+      final cached = _measureCache[key];
+      if (cached != null) return cached;
       final result = TextLayoutEngine.layout(
         component.data,
         TextLayoutConfig(
           softWrap: component.softWrap,
           overflow: component.overflow,
           maxLines: component.maxLines,
-          maxWidth: textWidth.toInt(),
+          maxWidth: width,
         ),
       );
-      return result.actualHeight.toDouble();
+      _measureCache[key] = result.actualHeight.toDouble();
+      return _measureCache[key]!;
     }
     if (component is Column) {
       var height = 0.0;
-      for (final c in component.children) {
-        height += _measureHeight(c, textWidth);
+      for (var i = 0; i < component.children.length; i++) {
+        height += _measureHeight(component.children[i], textWidth,
+            path: '$path/$i');
       }
       return height;
     }

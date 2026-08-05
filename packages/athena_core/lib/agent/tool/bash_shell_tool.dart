@@ -6,6 +6,12 @@ import 'shell_runner.dart';
 import 'tool_interface.dart';
 
 class BashShellTool implements Tool {
+  /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
+  /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
+  BashShellTool({String? defaultWorkdir}) : _defaultWorkdir = defaultWorkdir;
+
+  final String? _defaultWorkdir;
+
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
   @override
@@ -34,7 +40,7 @@ class BashShellTool implements Tool {
       '- Deleting: ONLY delete single files (rm path/to/file). '
       'NEVER use rm -rf or any recursive delete.\n'
       'For long-running tasks, pass a larger "timeout" value. '
-      'Commands run in the user home directory by default.';
+      'Commands run in the ${_defaultWorkdir ?? 'user home'} directory by default.';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -53,7 +59,7 @@ class BashShellTool implements Tool {
           },
           'workdir': {
             'type': 'string',
-            'description': shellWorkdirParamDescription(),
+            'description': shellWorkdirParamDescription(_defaultWorkdir),
           },
         },
         'required': ['command'],
@@ -66,7 +72,8 @@ class BashShellTool implements Tool {
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         Directory.current.path;
-    final workdir = args['workdir'] as String? ?? home;
+    // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
+    final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
 
     // 递归删除拦截：用户在弹窗中可以看到完整命令并决定是否放行
     if (_isRecursiveDelete(command)) {
