@@ -1,3 +1,4 @@
+import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -98,7 +99,7 @@ class _PickerOverlayState extends State<PickerOverlay> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 1),
                   child: Text(
-                    component.labels[i],
+                    sanitizeAnsi(component.labels[i]),
                     style: i == component.selectedIndex
                         ? const TextStyle(
                             reverse: true,

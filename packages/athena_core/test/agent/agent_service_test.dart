@@ -136,6 +136,7 @@ class _RecordingChatService extends ChatService {
     required ModelEntity model,
     List<Tool>? tools,
     ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
   }) async* {
     lastResponseFormat = responseFormat;
     // 空流：让 run 正常走完（toolCalls 为空 → done）

@@ -308,10 +308,25 @@ class _AthenaAppState extends State<AthenaApp> {
           await _controller.sendMessage(args, jsonMode: true);
         }
       case '/quit':
-        shutdownApp();
+        await _quitApp();
       default:
         _pushSystemMessage('未知命令:$command。输入 /help 查看命令。');
     }
+  }
+
+  /// 退出前收尾：流式进行中先停止并等待 run 完全落库（最多 3s），
+  /// 避免退出时留下未 finalize 的空占位消息、丢失已生成内容与
+  /// [Cancelled] 标记。
+  Future<void> _quitApp() async {
+    if (_controller.isStreaming.value) {
+      _controller.stopGenerating();
+      try {
+        await _controller.bridge.settled?.timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // 超时/异常不阻塞退出
+      }
+    }
+    shutdownApp();
   }
 
   // ─── 全局按键 ────────────────────────────────────────────
@@ -704,7 +719,7 @@ class _AthenaAppState extends State<AthenaApp> {
       labels: [
         for (final h in chats)
           '#${h.chat.id} ${h.chat.title} — '
-              '${truncateText(h.lastMessageContent, 24)}',
+              '${truncateText(sanitizeAnsi(h.lastMessageContent), 24)}',
       ],
       initialIndex: initial < 0 ? 0 : initial,
     );

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:athena_core/util/path_normalizer.dart';
+
 import 'tool_interface.dart';
 
 class FileWriteTool implements Tool {
@@ -39,7 +41,12 @@ class FileWriteTool implements Tool {
     final path = args['path'] as String;
     final content = args['content'] as String;
 
-    final file = File(path);
+    // 归一化（词法）→ canonicalize 已存在部分（best-effort）：
+    // 与权限层 PermissionRule 匹配使用同一路径，堵住 `..` 穿越
+    // 在「规则命中」与「实际写入」之间不一致的问题。
+    final normalized = await canonicalizePathForExecution(path);
+
+    final file = File(normalized);
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
 

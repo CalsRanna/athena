@@ -44,6 +44,7 @@ class ChatService {
     required ModelEntity model,
     List<Tool>? tools,
     ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
   }) async* {
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
@@ -53,7 +54,11 @@ class ChatService {
       responseFormat: responseFormat,
       streamOptions: const StreamOptions(includeUsage: true),
     );
-    yield* _llmClient.stream(provider: provider, request: request);
+    yield* _llmClient.stream(
+      provider: provider,
+      request: request,
+      cancelSignal: cancelSignal,
+    );
   }
 
   /// 非流式完成，用于辅助模型摘要等场景

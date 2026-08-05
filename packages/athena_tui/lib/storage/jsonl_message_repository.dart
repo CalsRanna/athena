@@ -18,10 +18,18 @@ class JsonlMessageRepository implements MessageRepository {
   final Directory _messagesDir;
   final IdAllocator _idAllocator;
 
+  /// 按 chatId 缓存共享的 store：JsonlFileStore 的串行锁是实例字段，
+  /// 若每次调用新建实例则锁不跨调用生效（「单写者」注释名存实亡），
+  /// 同一文件的 update（读-改-整文件重写）与 append 之间可能交错丢行。
+  final Map<int, JsonlFileStore> _stores = {};
+
   JsonlFileStore _storeFor(int chatId) {
-    return JsonlFileStore(
-      file: File('${_messagesDir.path}/$chatId.jsonl'),
-      idAllocator: _idAllocator,
+    return _stores.putIfAbsent(
+      chatId,
+      () => JsonlFileStore(
+        file: File('${_messagesDir.path}/$chatId.jsonl'),
+        idAllocator: _idAllocator,
+      ),
     );
   }
 

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:athena_core/util/path_normalizer.dart';
+
 import 'tool_interface.dart';
 
 class FileUpdateTool implements Tool {
@@ -68,7 +70,9 @@ class FileUpdateTool implements Tool {
       return 'Error: old_string must not be empty';
     }
 
-    final file = File(path);
+    // 归一化路径：与权限层 PermissionRule 匹配一致，堵住 `..` 穿越
+    final resolvedPath = await canonicalizePathForExecution(path);
+    final file = File(resolvedPath);
     if (!await file.exists()) {
       return 'Error: File not found: $path';
     }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:test/test.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -170,6 +171,50 @@ void main() {
         throwsA(isA<RequestTimeoutException>()),
       );
       expect(calls, 3);
+    });
+
+    test('abort during backoff interrupts retry with CancelledException',
+        () async {
+      var calls = 0;
+      final token = CancelToken();
+      // 用真实退避（baseDelay 200ms）验证：abort 在退避期间完成时
+      // 立即抛 CancelledException，且不再发起下一次尝试。
+      final future = retry<int>(
+        () async {
+          calls++;
+          throw const SocketException('connection reset');
+        },
+        config: const RetryConfig(
+          maxAttempts: 5,
+          baseDelay: Duration(milliseconds: 500),
+          maxDelay: Duration(milliseconds: 500),
+        ),
+        abort: token.whenCancelled,
+      );
+      // 第一次尝试立即失败并进入退避；此时取消
+      await Future.delayed(const Duration(milliseconds: 50));
+      token.cancel();
+      await expectLater(future, throwsA(isA<CancelledException>()));
+      expect(calls, 1, reason: '取消后不应发起新的重试请求');
+    });
+
+    test('abort already completed before first attempt cancels immediately',
+        () async {
+      var calls = 0;
+      final token = CancelToken()..cancel();
+      await expectLater(
+        retry<int>(
+          () async {
+            calls++;
+            throw const SocketException('connection reset');
+          },
+          config: _fastConfig,
+          abort: token.whenCancelled,
+        ),
+        throwsA(isA<CancelledException>()),
+      );
+      // 第一次尝试成功或失败后进入退避时 abort 已触发
+      expect(calls, 1);
     });
   });
 

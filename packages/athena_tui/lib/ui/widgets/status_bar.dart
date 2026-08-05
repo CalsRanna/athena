@@ -26,7 +26,8 @@ class StatusBar extends StatelessComponent {
     final title = truncateText(chat?.title ?? 'Athena', 24);
     final modelName = truncateText(model?.name ?? '未选模型', 20);
     final sentinelName = truncateText(sentinel?.name ?? '未选角色', 12);
-    final workspaceName = workspace.split('/').last;
+    // Windows 路径用反斜杠：统一转 / 再取末段
+    final workspaceName = workspace.replaceAll('\\', '/').split('/').last;
 
     final rightParts = <String>[];
     if (usage != null) {

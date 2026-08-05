@@ -5,6 +5,52 @@ import 'package:athena_core/util/retry.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+/// 给 [source] 加「事件间隙空闲超时」：两次事件间隔超过 [timeout] 时
+/// 抛 [TimeoutException] 并终止流。
+///
+/// 注意：不能用 `Stream.timeout`——Dart 3.12 中它对「async* 生成器 +
+/// `await for` 订阅流」的组合不触发（SDK 行为差异），这里用 Timer 手动
+/// 实现，语义相同且与源流结构无关。
+Stream<T> withIdleTimeout<T>(Stream<T> source, Duration timeout) {
+  late StreamSubscription<T> sub;
+  final controller = StreamController<T>();
+  Timer? timer;
+
+  void resetTimer() {
+    timer?.cancel();
+    timer = Timer(timeout, () {
+      controller.addError(
+        TimeoutException('Stream idle timeout after $timeout'),
+      );
+      unawaited(sub.cancel());
+      unawaited(controller.close());
+    });
+  }
+
+  controller.onListen = () {
+    resetTimer();
+    sub = source.listen(
+      (event) {
+        resetTimer();
+        controller.add(event);
+      },
+      onError: (Object e, StackTrace st) {
+        timer?.cancel();
+        controller.addError(e, st);
+      },
+      onDone: () {
+        timer?.cancel();
+        unawaited(controller.close());
+      },
+    );
+  };
+  controller.onCancel = () {
+    timer?.cancel();
+    unawaited(sub.cancel());
+  };
+  return controller.stream;
+}
+
 /// 创建 [OpenAIClient] 的工厂签名。可通过构造参数注入，便于测试。
 typedef OpenAIClientFactory = OpenAIClient Function({
   required String apiKey,
@@ -18,12 +64,19 @@ typedef OpenAIClientFactory = OpenAIClient Function({
 class LlmClient {
   final OpenAIClientFactory _clientFactory;
   RetryConfig _retryConfig;
+  final Duration _streamIdleTimeout;
+
+  /// 流式 chunk 之间的空闲超时：连接保持但无数据到达（WiFi 断流、
+  /// 代理挂起等）时终止流，避免 `await for` 永久挂起。
+  static const streamIdleTimeout = Duration(minutes: 2);
 
   LlmClient({
     RetryConfig retryConfig = const RetryConfig(),
     @visibleForTesting OpenAIClientFactory? clientFactory,
+    Duration streamIdleTimeout = streamIdleTimeout,
   })  : _retryConfig = retryConfig,
-        _clientFactory = clientFactory ?? _defaultClientFactory;
+        _clientFactory = clientFactory ?? _defaultClientFactory,
+        _streamIdleTimeout = streamIdleTimeout;
 
   void updateRetryConfig(RetryConfig config) {
     _retryConfig = config;
@@ -48,15 +101,26 @@ class LlmClient {
   }
 
   /// 流式完成请求。自动创建 client → 重试 → close。
+  ///
+  /// [cancelSignal] 完成时：中断底层请求（openai_dart abortTrigger，
+  /// 关闭专用流客户端）并让重试退避立即终止。
   Stream<ChatStreamEvent> stream({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
+    Future<void>? cancelSignal,
   }) async* {
     var client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       yield* retryStream(
-        () => client.chat.completions.createStream(request),
+        () => withIdleTimeout(
+          client.chat.completions.createStream(
+            request,
+            abortTrigger: cancelSignal,
+          ),
+          _streamIdleTimeout,
+        ),
         config: _retryConfig,
+        abort: cancelSignal,
       );
     } finally {
       client.close();

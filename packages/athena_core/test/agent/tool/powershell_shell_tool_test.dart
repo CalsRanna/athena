@@ -29,5 +29,21 @@ void main() {
       });
       expect(result, contains('Warning'));
     });
+
+    test('blocks recursive delete variants (short flags, aliases)', () async {
+      for (final cmd in [
+        'Remove-Item -Path C:\\test -Recurse',
+        'Remove-Item -R C:\\test',
+        'Remove-Item -r C:\\test',
+        'ri -Recurse C:\\test',
+        'ri -R C:\\test',
+        'rd -r C:\\test',
+        'rd -Recurse C:\\test',
+        'rmdir C:\\test',
+      ]) {
+        final result = await tool.execute({'command': cmd});
+        expect(result, contains('Warning'), reason: '应拦截: $cmd');
+      }
+    });
   });
 }

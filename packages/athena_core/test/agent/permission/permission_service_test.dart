@@ -119,6 +119,55 @@ void main() {
       );
     });
 
+    test('web_fetch POST / custom headers require approval', () {
+      final service = PermissionService(store: PermissionStore());
+      // GET 无自定义 headers：readOnly 短路放行
+      expect(
+        service.check(
+          'web_fetch',
+          {'url': 'https://a.com/path'},
+          risk: ToolRisk.readOnly,
+        ),
+        isTrue,
+      );
+      // POST：即使工具声明 readOnly 也需弹窗
+      expect(
+        service.check(
+          'web_fetch',
+          {'url': 'https://a.com/path', 'method': 'POST', 'body': 'x=1'},
+          risk: ToolRisk.readOnly,
+        ),
+        isNull,
+      );
+      // 自定义 headers：需弹窗
+      expect(
+        service.check(
+          'web_fetch',
+          {'url': 'https://a.com/path', 'headers': {'X-Token': 'abc'}},
+          risk: ToolRisk.readOnly,
+        ),
+        isNull,
+      );
+      // 显式 GET 仍放行
+      expect(
+        service.check(
+          'web_fetch',
+          {'url': 'https://a.com/path', 'method': 'GET'},
+          risk: ToolRisk.readOnly,
+        ),
+        isTrue,
+      );
+      // 非 web_fetch 工具不受影响
+      expect(
+        service.check(
+          'web_search',
+          {'q': 'x'},
+          risk: ToolRisk.readOnly,
+        ),
+        isTrue,
+      );
+    });
+
     test('readOnly shell command bypasses rules', () {
       final service = PermissionService(store: PermissionStore());
       expect(service.check('bash', {'command': 'ls -la'}), isTrue);
@@ -143,7 +192,7 @@ void main() {
       expect(service.check('bash', {'command': 'git push'}), isNull);
 
       await service.approveForSession('bash', {'command': 'git push'});
-      // 同动作其他参数也放行
+      // 同动作同子命令放行（含参数变体）
       expect(service.check('bash', {'command': 'git push'}), isTrue);
       expect(
         service.check('bash', {'command': 'git push origin main'}),
@@ -151,6 +200,28 @@ void main() {
       );
       // 其他动作不放行
       expect(service.check('bash', {'command': 'npm install'}), isNull);
+    });
+
+    test('session approval is subcommand-granular (not whole action)', () async {
+      final service = PermissionService(store: PermissionStore());
+
+      await service.approveForSession('bash', {'command': 'git push'});
+      // 同子命令放行
+      expect(service.check('bash', {'command': 'git push --force origin main'}),
+          isTrue);
+      // 不同子命令仍需弹窗——批准 git push 不得放行 git reset --hard
+      expect(service.check('bash', {'command': 'git reset --hard'}), isNull);
+      expect(service.check('bash', {'command': 'git clean -fdx'}), isNull);
+      expect(service.check('bash', {'command': 'git push2'}), isNull);
+    });
+
+    test('bash and powershell do not share session approval', () async {
+      final service = PermissionService(store: PermissionStore());
+
+      await service.approveForSession('bash', {'command': 'rm file.txt'});
+      // powershell 的 rm 需要单独审批
+      expect(service.check('powershell', {'command': 'rm file.txt'}), isNull);
+      expect(service.check('bash', {'command': 'rm file.txt'}), isTrue);
     });
 
     test('resetSession clears session approvals', () async {

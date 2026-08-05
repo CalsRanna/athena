@@ -297,6 +297,12 @@ class AgentRunCoordinator {
         _agentService.currentCancelToken?.throwIfCancelled();
 
         if (event is AgentTurnStartEvent) {
+          // 迭代边界以 turnStart 为准：上一轮以工具结果结束（或截断保护
+          // 置位）后，新一轮即使纯 tool_calls 开场（无文本/推理前缀）
+          // 也必须切到新消息，否则会与上一轮合并进同一条消息。
+          // beginNewIteration 内部会复位 hasCompletedIteration，
+          // 与 reasoning/text 守卫不会重复触发。
+          if (hasCompletedIteration) yield* beginNewIteration();
           yield RunIterationChanged(event.iteration);
         } else if (event is AgentToolExecutionStartEvent) {
           yield RunToolNameChanged(event.name);
@@ -373,19 +379,55 @@ class AgentRunCoordinator {
         yield RunMessageUpdated(current);
       }
 
+      // 防御：流正常结束但仍有已宣布未执行的工具调用（异常场景），
+      // 合成结果保证 tool_calls 与 tool 消息闭合。
+      current = _closeOpenToolCalls(current, 'run ended before execution', toolCallsJson, toolResultsJson);
+
       await _manageService.finalizeAssistantMessage(current);
     } on CancelledException {
-      // 取消：保留已累积内容并落库
+      // 取消：保留已累积内容并落库。
+      // 先为已宣布但未执行/未完成的工具调用合成结果——否则消息带有
+      // tool_calls 却缺 tool 响应，下一轮 buildMessages 重建时
+      // OpenAI 兼容端会 400 拒绝，该聊天将无法继续。
+      current = _closeOpenToolCalls(current, 'execution cancelled (run interrupted)', toolCallsJson, toolResultsJson);
       yield RunMessageUpdated(
         await _manageService.recordCancelledOnMessage(current),
       );
     } catch (e) {
-      // 错误已记录到消息内容中
+      // 错误已记录到消息内容中；同样先闭合工具调用
+      current = _closeOpenToolCalls(current, 'run aborted by error: $e', toolCallsJson, toolResultsJson);
       yield RunMessageUpdated(
         await _manageService.recordErrorOnMessage(current, e),
       );
       yield RunError(e.toString());
     }
+  }
+
+  /// 为已宣布但无对应结果的工具调用合成结果（追加到 [toolResultsJson]），
+  /// 保证落库的 assistant 消息 tool_calls 永远被 tool 消息全覆盖。
+  ///
+  /// [toolCallsJson]/[toolResultsJson] 是 `_consumeStream` 的流式累积缓冲。
+  MessageEntity _closeOpenToolCalls(
+    MessageEntity msg,
+    String reason,
+    List<Map<String, dynamic>> toolCallsJson,
+    List<Map<String, dynamic>> toolResultsJson,
+  ) {
+    final covered = toolResultsJson.map((t) => t['id']).toSet();
+    var changed = false;
+    for (final tc in toolCallsJson) {
+      final id = tc['id'] as String;
+      if (!covered.contains(id)) {
+        toolResultsJson.add({
+          'id': id,
+          'name': tc['name'],
+          'result': 'Error: $reason',
+        });
+        changed = true;
+      }
+    }
+    if (!changed) return msg;
+    return msg.copyWith(toolResults: jsonEncode(toolResultsJson));
   }
 
   // ─── Compact ───────────────────────────────────────────────
@@ -451,17 +493,25 @@ class AgentRunCoordinator {
           .map((e) => e.id!)
           .toSet();
 
-      if (toCompactIds.isNotEmpty) {
-        await _messageRepo.markAsCompacted(toCompactIds);
-      }
-
       final summaryEntity = MessageEntity(
         chatId: chatId,
         role: 'system',
         content: 'Previous conversation summary:\n$summary',
       );
+      // 先落库摘要，再标记压缩：若 storeMessage 失败走 catch 降级全量，
+      // 历史消息保持完整；若 markAsCompacted 失败（低概率），摘要已
+      // 入库但消息未压缩——下次 run 会重复压缩一遍，数据不丢。
       final summaryId = await _messageRepo.storeMessage(summaryEntity);
       final persistedSummary = summaryEntity.copyWith(id: summaryId);
+
+      if (toCompactIds.isNotEmpty) {
+        try {
+          await _messageRepo.markAsCompacted(toCompactIds);
+        } catch (e) {
+          LoggerUtil.w('Compact: markAsCompacted failed '
+              '(${toCompactIds.length} ids), summary kept: $e');
+        }
+      }
 
       LoggerUtil.i(
         'Compact: ${toCompactIds.length} messages compacted → '

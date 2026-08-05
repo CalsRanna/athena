@@ -180,6 +180,39 @@ void main() {
       expect(messages.length, 1);
       expect(messages.first.content, '第 5 次');
     });
+
+    test('并发 update（整文件重写）与 append 不丢行（单写者锁生效）', () async {
+      final chatId = await chatRepo.createChat(chat());
+      final id = await messageRepo.storeMessage(MessageEntity(
+        chatId: chatId,
+        role: 'assistant',
+        content: 'base',
+      ));
+
+      // update 是读-改-整文件重写，append 是追加——若锁不跨调用生效，
+      // 重写会吞掉并发追加的行。
+      await Future.wait([
+        for (var i = 0; i < 5; i++)
+          messageRepo.updateMessage(MessageEntity(
+            id: id,
+            chatId: chatId,
+            role: 'assistant',
+            content: 'updated$i',
+          )),
+        for (var i = 0; i < 5; i++)
+          messageRepo.storeMessage(MessageEntity(
+            chatId: chatId,
+            role: 'user',
+            content: 'appended$i',
+          )),
+      ]);
+
+      final messages = await messageRepo.getMessagesByChatId(chatId);
+      // 1 条更新（最终内容任意一次）+ 5 条追加，全部保留
+      expect(messages.length, 6);
+      expect(messages.where((m) => m.role == 'user'), hasLength(5));
+      expect(messages.where((m) => m.role == 'assistant'), hasLength(1));
+    });
   });
 
   group('JsonlFileStore 容错', () {

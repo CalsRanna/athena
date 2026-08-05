@@ -47,15 +47,24 @@ class CommandAnalyzer {
   static bool isReadOnlyCommand(String command) {
     final trimmed = command.trim();
     if (trimmed.isEmpty) return false;
-    // 重定向与管道都可能引入副作用或后续危险命令
+    // 重定向、管道、分隔符都可能引入副作用或后续危险命令；
+    // 命令替换 $(...) / 反引号 / 参数与花括号展开会执行任意命令，
+    // 一律不算只读（如 `echo $(git push --force)`、`` echo `rm -f /tmp/x` ``）。
     if (trimmed.contains('>') ||
         trimmed.contains('<') ||
         trimmed.contains('|') ||
         trimmed.contains(';') ||
         trimmed.contains('&&') ||
-        trimmed.contains('||')) {
+        trimmed.contains('||') ||
+        trimmed.contains(r'$') ||
+        trimmed.contains('`') ||
+        trimmed.contains('{') ||
+        trimmed.contains('(')) {
       return false;
     }
+
+    // 敏感路径:即便命中只读白名单,读取凭据类文件也需人工审批
+    if (containsSensitivePath(trimmed)) return false;
 
     final action = extractAction(trimmed);
     if (action == null) return false;
@@ -91,4 +100,28 @@ class CommandAnalyzer {
         return false;
     }
   }
+
+  /// 判断命令文本是否涉及敏感路径(凭据/密钥类)。
+  ///
+  /// 命中时即使命令属于只读白名单也不放行,改走人工审批。
+  /// 这是缓解而非完备拦截(bash 读取文件的方式无法穷举),
+  /// 目的是把"免审批读取敏感文件"收窄为"需弹窗"。
+  static bool containsSensitivePath(String command) {
+    final lower = command.toLowerCase();
+    return _sensitivePathMarkers.any(lower.contains);
+  }
+
+  /// 敏感路径标记(小写子串)。覆盖文件与目录名,含 Windows 形态。
+  static const _sensitivePathMarkers = [
+    '.ssh/',
+    r'.ssh\',
+    '.aws/',
+    r'.aws\',
+    '.athena/',
+    r'.athena\',
+    '.env',
+    'credentials',
+    'id_rsa',
+    'id_ed25519',
+  ];
 }

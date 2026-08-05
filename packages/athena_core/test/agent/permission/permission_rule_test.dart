@@ -35,6 +35,37 @@ void main() {
       expect(restored.pattern, '/a/b/');
     });
 
+    test('path traversal does not escape the allowed directory', () {
+      final rule = PermissionRule(
+        tool: 'file_read',
+        pattern: '/Users/x/proj/',
+      );
+      // 词法解析 .. 后落在规则目录之外，不再命中
+      expect(
+        rule.matches('file_read', '/Users/x/proj/../../.ssh/authorized_keys'),
+        isFalse,
+      );
+      expect(
+        rule.matches('file_read', '/Users/x/proj/../.env'),
+        isFalse,
+      );
+      // 目录内的路径仍命中
+      expect(
+        rule.matches('file_read', '/Users/x/proj/sub/a.txt'),
+        isTrue,
+      );
+    });
+
+    test('path rules match regardless of trailing-slash form', () {
+      final rule = PermissionRule(
+        tool: 'file_read',
+        pattern: '/Users/x/proj',
+      );
+      expect(rule.matches('file_read', '/Users/x/proj/a.txt'), isTrue);
+      expect(rule.matches('file_read', '/Users/x/proj'), isTrue);
+      expect(rule.matches('file_read', '/Users/x/projects/a.txt'), isFalse);
+    });
+
     test('fromJson handles missing pattern', () {
       final rule = PermissionRule.fromJson({'tool': 'bash'});
       expect(rule.tool, 'bash');

@@ -70,10 +70,21 @@ class ChatMessageService {
         return [ChatMessage.system(msg.content)];
       case 'assistant':
         final messages = <ChatMessage>[];
+        // 解析 tool 结果 id 集合，用于过滤悬空的 tool_calls。
+        final resultIds = <String>{};
+        if (msg.toolResults.isNotEmpty) {
+          final parsed = jsonDecode(msg.toolResults) as List<dynamic>;
+          for (final tr in parsed) {
+            final m = tr as Map<String, dynamic>;
+            resultIds.add(m['id'] as String);
+          }
+        }
         List<ToolCall>? toolCalls;
         if (msg.toolCalls.isNotEmpty) {
           final parsed = jsonDecode(msg.toolCalls) as List<dynamic>;
-          toolCalls = parsed.map((tc) {
+          toolCalls = parsed
+              .where((tc) => resultIds.contains((tc as Map<String, dynamic>)['id']))
+              .map((tc) {
             final m = tc as Map<String, dynamic>;
             return ToolCall(
               id: m['id'] as String,
@@ -84,12 +95,18 @@ class ChatMessageService {
               ),
             );
           }).toList();
+          // 防御：全部 tool_calls 都无对应结果时（异常取消残留），
+          // 不携带 tool_calls 字段——带 tool_calls 却无 tool 响应
+          // 会被 OpenAI 兼容端 400 拒绝。
+          if (toolCalls.isEmpty) toolCalls = null;
         }
         final reasoning = includeReasoning && msg.reasoningContent.isNotEmpty
             ? msg.reasoningContent
             : null;
         messages.add(AssistantMessage(
-          content: msg.content,
+          // 与 agent_service 当轮构建一致：空 content 序列化为 null，
+          // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
+          content: msg.content.isEmpty ? null : msg.content,
           toolCalls: toolCalls,
           reasoningContent: reasoning,
         ));
