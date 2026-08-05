@@ -69,12 +69,18 @@ class MessageItem extends StatelessComponent {
     }
 
     // 正文卡片:仅正文内容,不含工具调用/结果。
+    // 渲染前清洗 ANSI 转义（模型输出为不可信文本，直接写入终端可
+    // 清屏/伪造提示/篡改标题/覆写剪贴板）；存储原文不受影响。
     if (message.content.isNotEmpty) {
       children.add(
         _Card(
           color: borderColor,
           borderStyle: borderStyle,
-          child: Text(message.content, style: contentStyle, softWrap: true),
+          child: Text(
+            sanitizeAnsi(message.content),
+            style: contentStyle,
+            softWrap: true,
+          ),
         ),
       );
     }
@@ -118,7 +124,11 @@ class MessageItem extends StatelessComponent {
                   ),
                 ),
                 if (arguments.isNotEmpty)
-                  Text(arguments, style: AthenaTextStyles.dim, softWrap: true),
+                  Text(
+                    sanitizeAnsi(arguments),
+                    style: AthenaTextStyles.dim,
+                    softWrap: true,
+                  ),
               ],
             ),
           ),
@@ -143,7 +153,7 @@ class MessageItem extends StatelessComponent {
           _Card(
             color: AthenaCardColors.toolResult,
             child: Text(
-              '↩ $name: ${truncateText(result, 2000, suffix: '…(截断)')}',
+              '↩ $name: ${sanitizeAnsi(truncateText(result, 2000, suffix: '…(截断)'))}',
               style: AthenaTextStyles.dim,
               softWrap: true,
             ),
@@ -192,7 +202,7 @@ class _ReasoningCard extends StatelessComponent {
     return _Card(
       color: AthenaCardColors.reasoning,
       child: content.isNotEmpty
-          ? Text(content, style: AthenaTextStyles.dim, softWrap: true)
+          ? Text(sanitizeAnsi(content), style: AthenaTextStyles.dim, softWrap: true)
           : // 流式刚开始、内容未到时用省略号占位
             const Text('Thinking…', style: AthenaTextStyles.warning),
     );

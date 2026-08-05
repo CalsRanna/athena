@@ -100,9 +100,15 @@ class PowerShellShellTool implements Tool {
 
   bool _isRecursiveDelete(String command) {
     final patterns = [
-      RegExp(r'Remove-Item\s+.*-Recurse'),
-      RegExp(r'\brm\s+.*(?:-[a-zA-Z]*[rR]|--recursive)'),
+      // Remove-Item / ri 别名：-Recurse 与短参数 -R/-r 均拦截
+      RegExp(r'\bRemove-Item\b\s+.*-Recurse', caseSensitive: false),
+      RegExp(r'\bRemove-Item\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
+      RegExp(r'\bri\b\s+.*-Recurse', caseSensitive: false),
+      RegExp(r'\bri\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
+      // rd / rmdir 别名
+      RegExp(r'\brd\b\s+.*(?:-Recurse|-[a-zA-Z]*[rR]\b)', caseSensitive: false),
       RegExp(r'\brmdir\b'),
+      RegExp(r'\brm\s+.*(?:-[a-zA-Z]*[rR]|--recursive)'),
       RegExp(r'\bdel\b\s+/[sS]'),
     ];
     return patterns.any((p) => p.hasMatch(command));

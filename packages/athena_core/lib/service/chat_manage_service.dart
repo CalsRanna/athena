@@ -85,7 +85,12 @@ class ChatManageService {
   }
 
   Future<void> togglePin(ChatEntity chat) async {
-    await _chatRepository.updateChat(chat.copyWith(pinned: !chat.pinned));
+    // 先读最新行再改 pinned，避免整行覆盖写回旧快照
+    final latest = await _chatRepository.getChatById(chat.id!);
+    if (latest == null) return;
+    await _chatRepository.updateChat(
+      latest.copyWith(pinned: !latest.pinned, updatedAt: DateTime.now()),
+    );
   }
 
   Future<void> deleteMessagesFromIndex(

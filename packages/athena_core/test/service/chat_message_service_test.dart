@@ -206,14 +206,8 @@ void main() {
     });
   });
 
-  // Observation-only: an assistant entity persisted mid-flight with tool_calls
-  // but EMPTY tool_results. This is OUTSIDE C10's truncation scope (it is not
-  // caused by truncation), documented here as a characterization of current
-  // behavior: such an entity yields an assistant-with-tool_calls and NO tool
-  // results, which would be rejected by strict endpoints regardless of
-  // truncation.
-  group('observation: empty tool_results (non-truncation pairing risk)', () {
-    test('assistant with tool_calls but empty tool_results yields no results',
+  group('dangling tool_calls without tool_results (cancelled runs)', () {
+    test('assistant tool_calls with no results are dropped (no 400 on replay)',
         () async {
       final orphan = MessageEntity(
         chatId: 1,
@@ -221,7 +215,7 @@ void main() {
         toolCalls: jsonEncode([
           {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
         ]),
-        // toolResults intentionally empty (mid-flight persistence).
+        // toolResults intentionally empty (cancelled mid-flight).
       );
       final service = ChatMessageService(
           messageRepository: _FakeMessageRepository([_user('q'), orphan]));
@@ -230,9 +224,70 @@ void main() {
         sentinel: null,
       );
       final assistant = result.whereType<AssistantMessage>().single;
-      expect(assistant.hasToolCalls, isTrue);
-      // Demonstrates the gap: tool_calls present, but zero tool results.
-      expect(result.whereType<ToolMessage>(), isEmpty);
+      // 无对应 tool 响应时丢弃 tool_calls——带 tool_calls 却无 tool
+      // 消息会被 OpenAI 兼容端 400 拒绝，该聊天将无法继续。
+      expect(assistant.hasToolCalls, isFalse);
+      expect(assistant.content, isNull);
+    });
+
+    test('tool_calls with no result are dropped, covered ones are kept',
+        () async {
+      final partial = MessageEntity(
+        chatId: 1,
+        role: 'assistant',
+        toolCalls: jsonEncode([
+          {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
+          {'id': 'call_b', 'name': 'write', 'arguments': '{}'},
+        ]),
+        toolResults: jsonEncode([
+          {'id': 'call_a', 'name': 'search', 'result': 'ok'},
+        ]),
+      );
+      final service = ChatMessageService(
+          messageRepository: _FakeMessageRepository([_user('q'), partial]));
+      final result = await service.buildMessages(
+        chat: _chat(retention: -1),
+        sentinel: null,
+      );
+      final assistant = result.whereType<AssistantMessage>().single;
+      expect(assistant.toolCalls, hasLength(1));
+      expect(assistant.toolCalls!.single.id, 'call_a');
+      expect(result.whereType<ToolMessage>().single.toolCallId, 'call_a');
+    });
+  });
+
+  group('empty assistant content serialization', () {
+    test('empty content becomes null (avoids content:"" with tool_calls)',
+        () async {
+      final msg = MessageEntity(
+        chatId: 1,
+        role: 'assistant',
+        content: '',
+      );
+      final service = ChatMessageService(
+          messageRepository: _FakeMessageRepository([_user('q'), msg]));
+      final result = await service.buildMessages(
+        chat: _chat(retention: -1),
+        sentinel: null,
+      );
+      final assistant = result.whereType<AssistantMessage>().single;
+      expect(assistant.content, isNull);
+    });
+
+    test('non-empty content is preserved', () async {
+      final msg = MessageEntity(
+        chatId: 1,
+        role: 'assistant',
+        content: 'hello',
+      );
+      final service = ChatMessageService(
+          messageRepository: _FakeMessageRepository([_user('q'), msg]));
+      final result = await service.buildMessages(
+        chat: _chat(retention: -1),
+        sentinel: null,
+      );
+      final assistant = result.whereType<AssistantMessage>().single;
+      expect(assistant.content, 'hello');
     });
   });
 }

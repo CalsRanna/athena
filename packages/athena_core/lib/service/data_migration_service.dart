@@ -103,7 +103,10 @@ class DataMigrationService {
     final chats = await _chatRepo.getAllChats();
     for (final chat in chats) {
       if (!validIds.contains(chat.modelId)) {
-        await _chatRepo.updateChat(chat.copyWith(modelId: defaultId));
+        // 先读最新行再单字段写回（避免覆盖并发更新的其他字段）
+        final latest = await _chatRepo.getChatById(chat.id!);
+        if (latest == null) continue;
+        await _chatRepo.updateChat(latest.copyWith(modelId: defaultId));
       }
     }
   }

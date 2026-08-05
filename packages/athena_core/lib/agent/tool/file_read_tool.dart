@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/util/path_normalizer.dart';
+
 import 'tool_interface.dart';
 
 class FileReadTool implements Tool {
@@ -61,7 +63,15 @@ class FileReadTool implements Tool {
     final offset = args['offset'] as int? ?? 0;
     final limit = args['limit'] as int?;
 
-    final file = File(path);
+    // 归一化（词法）→ canonicalize（真实路径）→ 敏感路径检查。
+    // 与权限层 PermissionRule 使用同一归一化函数，保证匹配与执行一致。
+    final normalized = await canonicalizePathForExecution(path);
+    if (isSensitivePath(normalized)) {
+      return 'Error: Blocked: reading sensitive credential paths '
+          '($path) requires approval';
+    }
+
+    final file = File(normalized);
     if (!await file.exists()) {
       return 'Error: File not found: $path';
     }

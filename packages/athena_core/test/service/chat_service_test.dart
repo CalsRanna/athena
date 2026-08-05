@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/util/retry.dart';
@@ -20,6 +21,27 @@ class _ObservableClient extends OpenAIClient {
       : super(
           config: const OpenAIConfig(baseUrl: 'https://example.test/v1'),
           httpClient: httpClient,
+          // abort 路径使用独立的专用 client；注入同一 mock 使测试
+          // 不依赖真实网络。
+          streamClientFactory: () => httpClient,
+        );
+
+  @override
+  void close() {
+    closeCount++;
+    super.close();
+  }
+}
+
+/// A client pointing at an unroutable local port: connection fails
+/// immediately (no DNS), used to exercise the abort path deterministically.
+class _AbortClient extends OpenAIClient {
+  int closeCount = 0;
+  _AbortClient()
+      : super(
+          config: const OpenAIConfig(
+            baseUrl: 'http://127.0.0.1:9/v1', // discard 端口，通常无监听
+          ),
         );
 
   @override
@@ -202,5 +224,83 @@ void main() {
     expect(observed.closeCount, 1);
 
     await bodyController.close();
+  });
+
+  test('stream() idle timeout aborts a stalled stream (no infinite hang)',
+      () async {
+    late _ObservableClient observed;
+    // 流保持打开但不产出任何数据（网络静默场景）。
+    final bodyController = StreamController<List<int>>();
+    final mock = MockClient.streaming((request, bodyStream) async {
+      return http.StreamedResponse(
+        bodyController.stream,
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    });
+    final llmClient = LlmClient(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _ObservableClient(mock);
+        return observed;
+      },
+      streamIdleTimeout: const Duration(milliseconds: 100),
+    );
+
+    await expectLater(
+      llmClient.stream(provider: _provider(), request: _streamRequest()).toList(),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(observed.closeCount, 1);
+    await bodyController.close();
+  });
+
+  test('stream() cancelSignal aborts the underlying request', () async {
+    // abort 路径使用 openai_dart 的专用 client（不经注入的 mock），
+    // 因此这里用真实 client 连 127.0.0.1 未监听端口：连接立即失败、
+    // 无 DNS 参与，行为确定且快。
+    late _AbortClient observed;
+    final llmClient = LlmClient(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) {
+        observed = _AbortClient();
+        return observed;
+      },
+    );
+
+    final token = CancelToken();
+    final terminated = Completer<void>();
+    llmClient
+        .stream(
+          provider: ProviderEntity(
+            name: 't',
+            baseUrl: 'http://127.0.0.1:9/v1',
+            apiKey: 'k',
+            createdAt: DateTime(2024),
+          ),
+          request: _streamRequest(),
+          cancelSignal: token.whenCancelled,
+        )
+        .listen(
+      (_) {},
+      onError: (Object e) {
+        if (!terminated.isCompleted) terminated.complete();
+      },
+      onDone: () {
+        if (!terminated.isCompleted) terminated.complete();
+      },
+    );
+    await Future.delayed(const Duration(milliseconds: 50));
+    token.cancel();
+    // abort 触发后底层请求被取消，流应终止（不永久挂起）。
+    await terminated.future.timeout(const Duration(seconds: 2), onTimeout: () {
+      fail('stream did not terminate after cancelSignal fired');
+    });
+    // onError 先于 generator 的 finally 传播，轮询等待 client 被关闭。
+    for (var i = 0; i < 50 && observed.closeCount == 0; i++) {
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+    expect(observed.closeCount, 1,
+        reason: '取消后 LlmClient.stream 的 finally 应关闭 client');
   });
 }

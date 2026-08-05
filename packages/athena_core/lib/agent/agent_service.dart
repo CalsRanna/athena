@@ -192,6 +192,7 @@ class AgentService {
           model: model,
           tools: request.tools,
           responseFormat: request.responseFormat,
+          cancelSignal: token.whenCancelled,
         );
 
         final accumulator = ChatStreamAccumulator();
@@ -201,9 +202,10 @@ class AgentService {
         final streamingCalls = <int, _StreamingToolCall>{};
         final announcedIds = <String>{};
 
-        await for (final chunk in stream) {
-          token.throwIfCancelled();
-          accumulator.add(chunk);
+        try {
+          await for (final chunk in stream) {
+            token.throwIfCancelled();
+            accumulator.add(chunk);
 
           final delta = chunk.firstChoice?.delta;
           if (delta != null) {
@@ -255,6 +257,12 @@ class AgentService {
           if (td != null && td.isNotEmpty) {
             yield AgentEvent.text(td);
           }
+          }
+        } catch (e) {
+          // 流异常（超时/网络/abort 触发）：若 token 已取消则统一以
+          // CancelledException 呈现（取消优先于底层错误），否则原样抛出。
+          token.throwIfCancelled();
+          rethrow;
         }
 
         _logUsage(accumulator.usage);
@@ -382,7 +390,15 @@ class AgentService {
               for (final f in futures) f.then((r) => (f: f, r: r)),
               token.whenCancelled.then((_) => null),
             ]);
-            if (first == null) token.throwIfCancelled();
+            if (first == null) {
+              // 取消：排空在飞的工具 Future（最多 2s），吞掉结果与错误，
+              // 避免孤立 Future 继续执行副作用或产生未处理异常；
+              // 已在执行的工具无法中断（工具级取消另行排期）。
+              await Future.wait(
+                futures.map((f) => f.then((_) {}, onError: (_) {})),
+              ).timeout(const Duration(seconds: 2), onTimeout: () => []);
+              token.throwIfCancelled();
+            }
             futures.remove(first!.f);
             yield first.r.event;
             messages.add(first.r.toolMessage);

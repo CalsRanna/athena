@@ -51,25 +51,25 @@ class ChatSupportService {
   }
 
   Future<ChatEntity> renameChatManually(ChatEntity chat, String title) {
-    return _touchChat(chat.copyWith(title: title));
+    return _applyField(chat, (c) => c.copyWith(title: title));
   }
 
   // ─── 配置更新 ───────────────────────────────────────────
 
   Future<ChatEntity> updateModel(ChatEntity chat, int modelId) {
-    return _touchChat(chat.copyWith(modelId: modelId));
+    return _applyField(chat, (c) => c.copyWith(modelId: modelId));
   }
 
   Future<ChatEntity> updateSentinel(ChatEntity chat, int sentinelId) {
-    return _touchChat(chat.copyWith(sentinelId: sentinelId));
+    return _applyField(chat, (c) => c.copyWith(sentinelId: sentinelId));
   }
 
   Future<ChatEntity> updateRetention(ChatEntity chat, int retention) {
-    return _touchChat(chat.copyWith(retention: retention));
+    return _applyField(chat, (c) => c.copyWith(retention: retention));
   }
 
   Future<ChatEntity> updateTemperature(ChatEntity chat, double temperature) {
-    return _touchChat(chat.copyWith(temperature: temperature));
+    return _applyField(chat, (c) => c.copyWith(temperature: temperature));
   }
 
   // ─── 图片 ───────────────────────────────────────────────
@@ -116,9 +116,20 @@ class ChatSupportService {
 
   // ─── 内部 ───────────────────────────────────────────────
 
-  Future<ChatEntity> _touchChat(ChatEntity updated) async {
-    final touched = updated.copyWith(updatedAt: DateTime.now());
-    await _chatRepository.updateChat(touched);
-    return touched;
+  /// 单字段变更写入：先读最新行，再应用 [mutator] 后写回。
+  ///
+  /// 避免整行覆盖写回调用方持有的旧快照（如设置对话框打开时持有
+  /// 旧 chat，期间自动重命名把新标题落库；随后保存温度会把旧标题
+  /// 一并写回，造成跨操作 lost update）。与 updateChatTimestamp 的
+  /// 「先读最新再写」一致。
+  Future<ChatEntity> _applyField(
+    ChatEntity chat,
+    ChatEntity Function(ChatEntity) mutator,
+  ) async {
+    final latest = await _chatRepository.getChatById(chat.id!);
+    if (latest == null) return chat;
+    final updated = mutator(latest).copyWith(updatedAt: DateTime.now());
+    await _chatRepository.updateChat(updated);
+    return updated;
   }
 }

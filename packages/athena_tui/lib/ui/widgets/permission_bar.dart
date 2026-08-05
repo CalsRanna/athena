@@ -1,3 +1,4 @@
+import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -31,7 +32,7 @@ class PermissionBar extends StatelessComponent {
             color: AthenaColors.warning,
             fontWeight: FontWeight.bold,
           )),
-          Text(detail, softWrap: true),
+          Text(sanitizeAnsi(detail), softWrap: true),
           Text(hint, style: AthenaTextStyles.dim),
         ],
       ),

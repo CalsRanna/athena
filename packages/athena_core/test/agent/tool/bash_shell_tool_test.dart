@@ -39,6 +39,14 @@ void main() {
         'Remove-Item -Recurse C:\\Temp',
         'remove-item -recurse C:\\Temp',
         'rd /s C:\\Temp',
+        // 绕过变体：find -delete、PowerShell 短参数与别名、rd -R
+        'find . -delete',
+        'find . -name "*.tmp" -delete',
+        'find . -ok rm {} \\;',
+        'ri -r C:\\Temp',
+        'rd -r C:\\Temp',
+        'Remove-Item -R C:\\Temp',
+        'rd -Recurse C:\\Temp',
       ]) {
         final result = await tool.execute({'command': cmd});
         expect(result, contains('Warning'), reason: '应拦截: $cmd');

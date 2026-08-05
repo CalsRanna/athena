@@ -25,7 +25,10 @@ class PermissionService {
     ToolRisk? risk,
   }) {
     // ① readOnly 短路:只读工具永不弹窗
-    if (risk == ToolRisk.readOnly) return true;
+    // 例外:web_fetch 的 POST / 自定义 headers 可驱动内网接口,需弹窗
+    if (risk == ToolRisk.readOnly && !_readOnlyOverride(toolName, args)) {
+      return true;
+    }
 
     // 只读 shell 命令(ls、git status...)也不弹窗
     if (_isShellTool(toolName)) {
@@ -99,15 +102,36 @@ class PermissionService {
   static bool _isShellTool(String toolName) =>
       toolName == 'bash' || toolName == 'powershell';
 
+  /// readOnly 工具在特定参数下仍需弹窗的例外。
+  ///
+  /// web_fetch 的 POST 或自定义 headers 可向任意地址提交数据
+  /// （包括内网接口），不能按只读无条件放行。
+  static bool _readOnlyOverride(String toolName, Map<String, dynamic> args) {
+    if (toolName != 'web_fetch') return false;
+    final method = args['method'] as String?;
+    if (method != null && method.toUpperCase() != 'GET') return true;
+    final headers = args['headers'];
+    if (headers is Map && headers.isNotEmpty) return true;
+    return false;
+  }
+
   /// 会话级缓存 key:
-  /// - shell:按动作缓存(git status 批准 → git status -s 也放行,git push 不放行)
+  /// - shell:按「工具 + 动作 + 子命令」缓存——批准 `git push` 后
+  ///   `git push --force origin main` 放行（同子命令），但
+  ///   `git reset --hard`、`git clean -fdx` 仍需弹窗；
+  ///   bash 与 powershell 不共享缓存（key 含工具名）
   /// - 其他:按 toolName + keyArg 精确缓存
   String? _sessionKey(String toolName, Map<String, dynamic> args) {
     final keyArg = _primaryArg(toolName, args);
     if (_isShellTool(toolName)) {
-      final action = CommandAnalyzer.extractAction(keyArg ?? '');
-      if (action != null) return 'shell:$action';
-      return keyArg == null ? null : 'shell:$keyArg';
+      if (keyArg == null) return null;
+      final action = CommandAnalyzer.extractAction(keyArg);
+      if (action == null) return 'shell:$toolName:$keyArg';
+      final rest =
+          keyArg.substring(keyArg.indexOf(action) + action.length).trim();
+      final words = rest.isEmpty ? <String>[] : rest.split(RegExp(r'\s+'));
+      final sub = words.isEmpty ? null : words.first;
+      return 'shell:$toolName:$action${sub != null ? ':$sub' : ''}';
     }
     return keyArg == null ? null : '$toolName:$keyArg';
   }

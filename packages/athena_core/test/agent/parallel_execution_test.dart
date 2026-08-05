@@ -481,8 +481,67 @@ void main() {
       sw.stop();
 
       expect(error, isA<CancelledException>());
-      expect(sw.elapsedMilliseconds, lessThan(500),
-          reason: '慢工具 600ms 才完成，取消后应立即结束');
+      // 取消后排空在飞工具（最多 2s）：600ms 工具完成即返回，
+      // 不应等满工具的原始超时。
+      expect(sw.elapsedMilliseconds, lessThan(2500),
+          reason: '排空窗口 2s，慢工具 600ms 完成后取消应立即结束');
+      await sub.cancel();
+    });
+
+    test('取消后排空在飞工具：结果被吞、不产出事件、无未处理错误',
+        () async {
+      final parTool = _ParTool(delay: const Duration(milliseconds: 120));
+      final registry = ToolRegistry()..register(parTool);
+      final service = buildService(registry, toolScript([
+        _toolCallChunk(0, 'c1', 'par_tool', '{"id": "1"}'),
+        _finishChunk(FinishReason.toolCalls),
+      ]));
+
+      final cancelToken = CancelToken();
+      final events = <AgentEvent>[];
+      final errorCompleter = Completer<Object?>();
+      final startCompleter = Completer<void>();
+
+      final sub = service
+          .run(
+            chat: _chat(),
+            provider: _provider(),
+            model: _model(),
+            baseMessages: [ChatMessage.user('hi')],
+            cancelToken: cancelToken,
+          )
+          .listen(
+            (e) {
+              events.add(e);
+              if (e is AgentToolExecutionStartEvent &&
+                  !startCompleter.isCompleted) {
+                startCompleter.complete();
+              }
+            },
+            onError: (Object e) {
+              if (!errorCompleter.isCompleted) errorCompleter.complete(e);
+            },
+            onDone: () {
+              if (!errorCompleter.isCompleted) errorCompleter.complete(null);
+            },
+          );
+
+      await startCompleter.future
+          .timeout(const Duration(seconds: 2), onTimeout: () {
+        fail('tool start event never arrived');
+      });
+      cancelToken.cancel();
+      final error = await errorCompleter.future
+          .timeout(const Duration(seconds: 5));
+
+      // 取消以 CancelledException 呈现；在飞工具完成后的结果事件
+      // 被排空丢弃（120ms 工具在排空窗口内完成，但其结果不再产出）。
+      expect(error, isA<CancelledException>());
+      expect(
+        events.whereType<AgentToolResultEvent>().isEmpty,
+        isTrue,
+        reason: '取消后工具结果不应继续产出',
+      );
       await sub.cancel();
     });
   });

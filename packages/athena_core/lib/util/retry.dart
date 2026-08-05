@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:http/http.dart' as http;
 import 'package:openai_dart/openai_dart.dart';
@@ -22,9 +23,13 @@ class RetryConfig {
 ///
 /// Only retries on network-related exceptions. Non-retryable exceptions
 /// (e.g. FormatException) are rethrown immediately.
+///
+/// [abort] 完成（取消信号）时退避立即中断并抛 [CancelledException]，
+/// 不再发起新的重试请求。
 Future<T> retry<T>(
   Future<T> Function() operation, {
   RetryConfig config = const RetryConfig(),
+  Future<void>? abort,
 }) async {
   final random = Random();
   var attempt = 0;
@@ -43,18 +48,37 @@ Future<T> retry<T>(
           config.maxDelay.inMilliseconds);
       LoggerUtil.w('Retry attempt $attempt/${config.maxAttempts} '
           'after ${delayMs}ms: ${e.runtimeType}');
-      await Future.delayed(Duration(milliseconds: delayMs));
+      await _waitBackoff(delayMs, abort);
     }
   }
+}
+
+/// 等待退避；[abort] 提前完成则抛 [CancelledException] 中断重试。
+Future<void> _waitBackoff(int delayMs, Future<void>? abort) async {
+  if (abort == null) {
+    await Future.delayed(Duration(milliseconds: delayMs));
+    return;
+  }
+  var aborted = false;
+  final abortFlag = abort.then((_) => aborted = true, onError: (_) {});
+  await Future.any([
+    Future.delayed(Duration(milliseconds: delayMs)),
+    abortFlag,
+  ]);
+  if (aborted) throw const CancelledException();
 }
 
 /// Retry a stream-returning operation.
 ///
 /// If the stream fails before yielding any data, retries the operation.
 /// Once data has started flowing, failures are propagated.
+///
+/// [abort] 完成（取消信号）时退避立即中断并抛 [CancelledException]，
+/// 不再发起新的重试请求。
 Stream<T> retryStream<T>(
   Stream<T> Function() operation, {
   RetryConfig config = const RetryConfig(),
+  Future<void>? abort,
 }) async* {
   final random = Random();
   var attempt = 0;
@@ -78,7 +102,7 @@ Stream<T> retryStream<T>(
           min(backoff + random.nextInt(500), config.maxDelay.inMilliseconds);
       LoggerUtil.w('Stream retry attempt $attempt/${config.maxAttempts} '
           'after ${delayMs}ms: ${e.runtimeType}');
-      await Future.delayed(Duration(milliseconds: delayMs));
+      await _waitBackoff(delayMs, abort);
     }
   }
 }

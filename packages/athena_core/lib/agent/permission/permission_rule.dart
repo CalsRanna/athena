@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/util/path_normalizer.dart';
+
 /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
 const kFileToolNames = {'file_read', 'file_write', 'file_update'};
 
@@ -77,9 +79,12 @@ class PermissionRule {
     if (keyArg == null) return false;
 
     if (kFileToolNames.contains(tool)) {
-      var p = pattern;
+      // 匹配前把目标路径与规则都归一化（分隔符统一 /、词法解析 ..、
+      // 相对路径绝对化）——与工具执行（file_read 等）使用同一函数，
+      // 堵住 `allowed_dir/../../.ssh/x` 型路径穿越绕过规则。
+      var p = normalizePathForMatch(pattern);
+      var k = normalizePathForMatch(keyArg);
       if (p.endsWith('/')) p = p.substring(0, p.length - 1);
-      var k = keyArg;
       if (k.endsWith('/')) k = k.substring(0, k.length - 1);
       // 路径类:使用通配符匹配 + 向下兼容的目录前缀匹配
       if (p.contains('*') || p.contains('?')) {
