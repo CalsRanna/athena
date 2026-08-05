@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
+import 'package:athena_tui/ui/widgets/message_card.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -89,7 +90,6 @@ class MessageItem extends StatelessComponent {
       children.addAll(_buildToolResults(message));
     }
 
-    // 多卡片连排:nocterm 边框布局上下各留 1 行,天然形成卡片间距。
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
@@ -158,7 +158,8 @@ class MessageItem extends StatelessComponent {
   }
 }
 
-/// 消息卡片:纯色左边框 + 内边距,颜色与线型由消息类型决定。
+/// 消息卡片:左侧彩色竖条区分消息类型,颜色由消息类型决定。
+/// 卡片间距由外层 margin 精确控制(竖条方案无边框占位)。
 class _Card extends StatelessComponent {
   const _Card({
     required this.color,
@@ -172,16 +173,9 @@ class _Card extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      decoration: BoxDecoration(
-        border: BoxBorder(
-          left: BorderSide(color: color, style: borderStyle),
-        ),
-      ),
-      child: child,
-    );
+    // 竖条方案:取消消息的虚线无法在 Container 背景上实现,
+    // 此处仅用颜色区分(实线颜色即可)。
+    return MessageCard(color: color, child: child);
   }
 }
 
@@ -200,7 +194,7 @@ class _ReasoningCard extends StatelessComponent {
       child: content.isNotEmpty
           ? Text(content, style: AthenaTextStyles.dim, softWrap: true)
           : // 流式刚开始、内容未到时用省略号占位
-            const Text('…', style: AthenaTextStyles.warning),
+            const Text('Thinking…', style: AthenaTextStyles.warning),
     );
   }
 }
