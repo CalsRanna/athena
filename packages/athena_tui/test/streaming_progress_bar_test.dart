@@ -1,5 +1,5 @@
 import 'package:athena_tui/ui/widgets/streaming_progress_bar.dart';
-import 'package:nocterm/nocterm.dart' as nocterm;
+
 import 'package:nocterm/nocterm_test.dart' as nocterm_test;
 import 'package:test/test.dart';
 

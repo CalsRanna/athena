@@ -21,32 +21,26 @@ class MessageList extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     final messages = controller.messages.value;
+    if (messages.isEmpty) return _buildEmptyTip();
 
-    return SingleChildScrollView(
+    return ListView.separated(
       controller: scrollController,
       // 关闭键盘滚动:nocterm 的按键分发是深度优先全树,滚动组件会先于
       // TextField 消费方向键,导致选择模态(picker)收不到 ↑↓
       keyboardScrollable: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (messages.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: const Center(
-                child: Text(
-                  '在下方输入消息开始对话。\n输入 /help 查看命令。',
-                  style: AthenaTextStyles.dim,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          else
-            for (final message in messages)
-              MessageItem(message: message, controller: controller),
-          // 底部留白,让输入区与最后一条消息之间有呼吸感
-          const SizedBox(height: 1),
-        ],
+      itemBuilder: (context, index) =>
+          MessageItem(message: messages[index], controller: controller),
+      itemCount: messages.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 1),
+    );
+  }
+
+  Component _buildEmptyTip() {
+    return const Center(
+      child: Text(
+        '在下方输入消息开始对话。\n输入 /help 查看命令。',
+        style: AthenaTextStyles.dim,
+        textAlign: TextAlign.center,
       ),
     );
   }
