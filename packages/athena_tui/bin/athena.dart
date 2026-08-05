@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_tui/di/tui_di.dart';
+import 'package:athena_tui/no_clipboard_backend.dart';
 import 'package:athena_tui/ui/app.dart';
 import 'package:nocterm/nocterm.dart';
 
@@ -25,5 +26,11 @@ Future<void> main(List<String> args) async {
   await di.initialize();
   stdout.writeln('Athena TUI 就绪。');
 
-  await runApp(AthenaApp(di: di));
+  // 包装 StdioBackend:过滤 OSC 52 剪贴板写入,避免 macOS 26.4+ 在
+  // 终端粘贴内容时弹出 "tried to write to your clipboard" 安全警告
+  // (nocterm 会在粘贴事件里把内容写回系统剪贴板)。
+  await runApp(
+    AthenaApp(di: di),
+    backend: NoClipboardBackend(StdioBackend()),
+  );
 }

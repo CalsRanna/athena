@@ -6,15 +6,21 @@ import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// 单条消息渲染:推理与实际输出拆分为两张独立卡片,
+/// 单条消息渲染:推理、正文、每次工具调用、每次工具结果各为独立卡片,
 /// 通过不同颜色的左边框区分类型(不再使用 "你"/"Athena"/"[思考]" 等文字前缀):
-/// - 推理卡片:黄色实线,内容弱化(灰),与正文明显区分
+/// - 推理卡片:黄色实线,内容弱化(灰)
 /// - 正文卡片:按消息类型 —— 用户 teal、助手白、系统灰、错误红、取消灰虚线
+/// - 工具调用卡片:蓝色实线,每次调用一张卡(⚙ 工具名 + 参数)
+/// - 工具结果卡片:绿色实线,每次结果一张卡(↩ 工具名: 结果)
 ///
 /// 边框必须是纯色(不透明):nocterm 的 `_blendStyle` 会对半透明颜色做
 /// alpha 混合,多行换行处边框段叠色会发暗。纯色则连续无接缝。
 class MessageItem extends StatelessComponent {
-  const MessageItem({super.key, required this.message, required this.controller});
+  const MessageItem({
+    super.key,
+    required this.message,
+    required this.controller,
+  });
 
   final MessageEntity message;
   final ChatController controller;
@@ -23,7 +29,8 @@ class MessageItem extends StatelessComponent {
   Component build(BuildContext context) {
     final isUser = message.role == 'user';
     final isCancelled = message.content.contains('[Cancelled]');
-    final isError = message.content.startsWith('Error:') ||
+    final isError =
+        message.content.startsWith('Error:') ||
         message.content.contains('[Error:');
     final isSystem = message.role == 'system';
 
@@ -31,12 +38,12 @@ class MessageItem extends StatelessComponent {
     var borderColor = isUser
         ? AthenaCardColors.user
         : isSystem
-            ? AthenaCardColors.system
-            : isError
-                ? AthenaCardColors.error
-                : isCancelled
-                    ? AthenaCardColors.cancelled
-                    : AthenaCardColors.assistant;
+        ? AthenaCardColors.system
+        : isError
+        ? AthenaCardColors.error
+        : isCancelled
+        ? AthenaCardColors.cancelled
+        : AthenaCardColors.assistant;
     var borderStyle = BoxBorderStyle.solid;
     TextStyle? contentStyle;
     if (isCancelled) {
@@ -52,102 +59,102 @@ class MessageItem extends StatelessComponent {
     // 顺序在正文之前:思考是"如何得出答案"的过程,应显示在回答之前
     // (与 LLM 流式输出顺序一致:先推理、后正文)。
     if (message.reasoningContent.isNotEmpty || message.reasoning) {
-      children.add(_ReasoningCard(
-        content: message.reasoningContent,
-        reasoning: message.reasoning,
-      ));
-    }
-
-    // 正文卡片:正文 + 工具调用 + 工具结果
-    if (message.content.isNotEmpty ||
-        message.toolCalls.isNotEmpty ||
-        message.toolResults.isNotEmpty) {
-      final body = <Component>[];
-      if (message.content.isNotEmpty) {
-        body.add(Text(message.content, style: contentStyle, softWrap: true));
-      }
-      // 工具块只在有内容时解析:空字符串直接跳过,避免 jsonDecode('')
-      // 抛异常后 catch 分支追加空 Text 导致卡片多出空白行。
-      if (message.toolCalls.isNotEmpty) {
-        body.addAll(_buildToolCalls(message));
-      }
-      if (message.toolResults.isNotEmpty) {
-        body.addAll(_buildToolResults(message));
-      }
-
-      children.add(_Card(
-        color: borderColor,
-        borderStyle: borderStyle,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: _withGaps(body),
+      children.add(
+        _ReasoningCard(
+          content: message.reasoningContent,
+          reasoning: message.reasoning,
         ),
-      ));
+      );
     }
 
-    // 两张卡片连排:nocterm 边框布局上下各留 1 行,天然形成卡片间距。
+    // 正文卡片:仅正文内容,不含工具调用/结果。
+    if (message.content.isNotEmpty) {
+      children.add(
+        _Card(
+          color: borderColor,
+          borderStyle: borderStyle,
+          child: Text(message.content, style: contentStyle, softWrap: true),
+        ),
+      );
+    }
+
+    // 工具调用卡片:每次调用一张独立卡片。仅在解析成功且调用数 > 0
+    // 时生成,解析失败时原样显示在正文卡片中。
+    if (message.toolCalls.isNotEmpty) {
+      children.addAll(_buildToolCalls(message));
+    }
+
+    // 工具结果卡片:每次结果一张独立卡片。
+    if (message.toolResults.isNotEmpty) {
+      children.addAll(_buildToolResults(message));
+    }
+
+    // 多卡片连排:nocterm 边框布局上下各留 1 行,天然形成卡片间距。
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
   }
 
-  /// 在相邻子块之间插入 1 行间距,区分卡片内的不同内容块。
-  static List<Component> _withGaps(List<Component> children) {
-    if (children.length < 2) return children;
-    return [
-      for (var i = 0; i < children.length; i++) ...[
-        if (i > 0) const SizedBox(height: 1),
-        children[i],
-      ],
-    ];
-  }
-
   List<Component> _buildToolCalls(MessageEntity message) {
-    final blocks = <Component>[];
+    final cards = <Component>[];
     try {
       final calls = jsonDecode(message.toolCalls) as List;
       for (final call in calls) {
         final map = call as Map<String, dynamic>;
         final name = map['name'] as String? ?? 'tool';
         final arguments = map['arguments'] as String? ?? '';
-        blocks.add(Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('⚙ $name', style: const TextStyle(
-              color: AthenaColors.info,
-              fontWeight: FontWeight.bold,
-            )),
-            if (arguments.isNotEmpty)
-              Text(arguments, style: AthenaTextStyles.dim, softWrap: true),
-          ],
-        ));
+        cards.add(
+          _Card(
+            color: AthenaCardColors.toolCall,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '⚙ $name',
+                  style: const TextStyle(
+                    color: AthenaColors.info,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (arguments.isNotEmpty)
+                  Text(arguments, style: AthenaTextStyles.dim, softWrap: true),
+              ],
+            ),
+          ),
+        );
       }
     } catch (_) {
       // 解析失败时原样显示,不中断渲染
-      blocks.add(Text(message.toolCalls, style: AthenaTextStyles.dim));
+      cards.add(Text(message.toolCalls, style: AthenaTextStyles.dim));
     }
-    return blocks;
+    return cards;
   }
 
   List<Component> _buildToolResults(MessageEntity message) {
-    final blocks = <Component>[];
+    final cards = <Component>[];
     try {
       final list = jsonDecode(message.toolResults) as List;
       for (final item in list) {
         final map = item as Map<String, dynamic>;
         final name = map['name'] as String? ?? 'tool';
         final result = map['result'] as String? ?? '';
-        blocks.add(Text(
-          '↩ $name: ${truncateText(result, 2000, suffix: '…(截断)')}',
-          style: AthenaTextStyles.dim,
-          softWrap: true,
-        ));
+        cards.add(
+          _Card(
+            color: AthenaCardColors.toolResult,
+            child: Text(
+              '↩ $name: ${truncateText(result, 2000, suffix: '…(截断)')}',
+              style: AthenaTextStyles.dim,
+              softWrap: true,
+            ),
+          ),
+        );
       }
     } catch (_) {
-      blocks.add(Text(message.toolResults, style: AthenaTextStyles.dim));
+      // 解析失败时原样显示,不中断渲染
+      cards.add(Text(message.toolResults, style: AthenaTextStyles.dim));
     }
-    return blocks;
+    return cards;
   }
 }
 
@@ -166,9 +173,8 @@ class _Card extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return Container(
-      // 不加 margin:nocterm 边框按四边 1 单位布局,上下各留 1 行,
-      // 天然形成卡片间距与垂直内边距。
-      padding: const EdgeInsets.only(left: 2, right: 1),
+      margin: const EdgeInsets.only(bottom: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 1),
       decoration: BoxDecoration(
         border: BoxBorder(
           left: BorderSide(color: color, style: borderStyle),
@@ -194,7 +200,7 @@ class _ReasoningCard extends StatelessComponent {
       child: content.isNotEmpty
           ? Text(content, style: AthenaTextStyles.dim, softWrap: true)
           : // 流式刚开始、内容未到时用省略号占位
-          const Text('…', style: AthenaTextStyles.warning),
+            const Text('…', style: AthenaTextStyles.warning),
     );
   }
 }

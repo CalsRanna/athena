@@ -34,6 +34,12 @@ abstract class AthenaCardColors {
   /// 推理卡片(思考过程)。
   static const Color reasoning = AthenaColors.warning;
 
+  /// 工具调用卡片。
+  static const Color toolCall = AthenaColors.info;
+
+  /// 工具结果卡片。
+  static const Color toolResult = AthenaColors.success;
+
   /// 错误消息。
   static const Color error = AthenaColors.error;
 

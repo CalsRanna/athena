@@ -25,7 +25,7 @@ class ErrorBar extends StatelessComponent {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '⚠ 错误',
+            '错误',
             style: TextStyle(
               color: AthenaColors.error,
               fontWeight: FontWeight.bold,
