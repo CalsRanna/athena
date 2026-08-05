@@ -209,6 +209,10 @@ class _AthenaAppState extends State<AthenaApp> {
       _scrollController.dispose();
     }
     _textController.dispose();
+    // 生产树拆解时同步收尾 controller:后续异步延续(流式 finally/flush、
+    // 后台 IO)经 _active guard 静默退出,不再写已失效的订阅。
+    // 测试不拆树,此方法不会在测试中执行,controller 仍可继续使用。
+    _controller.dispose();
     super.dispose();
   }
 
@@ -229,8 +233,6 @@ class _AthenaAppState extends State<AthenaApp> {
     _disposers.add(_controller.currentProvider.subscribe((_) => _refresh()));
     _disposers.add(_controller.currentSentinel.subscribe((_) => _refresh()));
     _disposers.add(_controller.isStreaming.subscribe((_) => _refresh()));
-    _disposers.add(_controller.currentIteration.subscribe((_) => _refresh()));
-    _disposers.add(_controller.currentToolName.subscribe((_) => _refresh()));
     _disposers.add(_controller.currentTokenUsage.subscribe((_) => _refresh()));
     _disposers.add(_controller.error.subscribe((_) => _refresh()));
 
@@ -325,6 +327,13 @@ class _AthenaAppState extends State<AthenaApp> {
       } catch (_) {
         // 超时/异常不阻塞退出
       }
+      // settled 只代表 Agent 循环结束;sendMessage 的 finally/50ms flush
+      // 在其后才执行,拆解前再等一轮,避免拆解后写已失效的信号订阅
+      try {
+        await _controller.waitForSend().timeout(const Duration(seconds: 2));
+      } catch (_) {
+        // 超时/异常不阻塞退出
+      }
     }
     shutdownApp();
   }
@@ -393,17 +402,17 @@ class _AthenaAppState extends State<AthenaApp> {
       switch (event.logicalKey) {
         case LogicalKey.keyN:
           if (_streamingGuard()) return true;
-          unawaited(_controller.newChat());
+          _runGuarded(_controller.newChat);
           return true;
         case LogicalKey.keyP:
           if (_streamingGuard()) return true;
-          unawaited(_switchChat(-1));
+          _runGuarded(() => _switchChat(-1));
           return true;
         case LogicalKey.keyM:
-          unawaited(_pickModel());
+          _runGuarded(_pickModel);
           return true;
         case LogicalKey.keyS:
-          unawaited(_pickSentinel());
+          _runGuarded(_pickSentinel);
           return true;
       }
     }
@@ -624,6 +633,17 @@ class _AthenaAppState extends State<AthenaApp> {
     setState(() {});
   }
 
+  /// 执行用户触发的异步动作,失败写入错误条。
+  ///
+  /// 替代裸 `unawaited`:底层是文件 IO(建聊天/切模型/存 key),任何
+  /// 一步抛错(磁盘满、目录被删)都会成为未处理异步异常——CLI 默认
+  /// zone 直接打印堆栈,nocterm 事件循环中可能中断渲染。
+  void _runGuarded(Future<void> Function() action) {
+    unawaited(action().catchError((Object e) {
+      if (mounted) _controller.error.value = e.toString();
+    }));
+  }
+
   void _resolvePermission(bool approved, bool persistExact) {
     final request = _permissionRequest;
     if (request == null) return;
@@ -661,7 +681,7 @@ class _AthenaAppState extends State<AthenaApp> {
       if (trimmed.isEmpty) {
         _pushSystemMessage('已取消配置 ${keyProvider.name} 的 API key。');
       } else {
-        unawaited(_saveApiKey(keyProvider, trimmed));
+        _runGuarded(() => _saveApiKey(keyProvider, trimmed));
       }
       setState(() {});
       return;
@@ -690,12 +710,12 @@ class _AthenaAppState extends State<AthenaApp> {
       if (singleCommand != null) {
         final spaceIndex = trimmed.indexOf(' ');
         final rest = spaceIndex >= 0 ? trimmed.substring(spaceIndex) : '';
-        unawaited(_handleCommand(singleCommand + rest));
+        _runGuarded(() => _handleCommand(singleCommand + rest));
         return;
       }
-      unawaited(_handleCommand(trimmed));
+      _runGuarded(() => _handleCommand(trimmed));
     } else {
-      unawaited(_controller.sendMessage(trimmed));
+      _runGuarded(() => _controller.sendMessage(trimmed));
     }
   }
 

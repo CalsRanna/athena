@@ -16,6 +16,7 @@ String truncateText(String text, int max, {String suffix = '…'}) {
 /// - ESC 及其后的 CSI 序列（`ESC [ ... final-byte`，清屏/光标移动/颜色）
 /// - OSC 序列（`ESC ] ... BEL|ST`，可篡改终端标题、覆写剪贴板 OSC 52）
 /// - 其余 C0 控制字符（BEL、BS 等）与其他 ESC 序列
+/// - C1 控制区（U+0080-U+009F，含 8 位 CSI 0x9B；CJK 从 U+2E80 起不受影响）
 ///
 /// 只在渲染入口应用，不破坏存储原文（ChatController 层不调用）。
 String sanitizeAnsi(String text) {
@@ -35,6 +36,10 @@ String sanitizeAnsi(String text) {
     }
     if (c == 0x7F) {
       i++; // DEL
+      continue;
+    }
+    if (c >= 0x80 && c <= 0x9F) {
+      i++; // 剥离 C1 控制区（部分终端可识别 8 位 CSI 等）
       continue;
     }
     out.writeCharCode(c);

@@ -55,7 +55,12 @@ import 'package:athena_tui/view_model/chat_controller.dart';
 ///
 /// 数据目录默认 `~/.athena/tui/`,可通过 [dataDirectory] 覆盖(测试用)。
 class TuiDi {
-  TuiDi({String? dataDirectory, String? workspace, String? homeDir}) {
+  TuiDi({
+    String? dataDirectory,
+    String? workspace,
+    String? homeDir,
+    this.agentServiceOverride,
+  }) {
     _homeDir = homeDir ??
         Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
@@ -66,6 +71,10 @@ class TuiDi {
     _workspace = workspace ?? Directory.current.path;
     _build();
   }
+
+  /// 测试注入的假 Agent 服务(ui_test 用,避免发送测试触发真实网络)。
+  /// 为 null 时 _build 构造真实 [AgentService]。
+  final AgentService? agentServiceOverride;
 
   late final String _homeDir;
 
@@ -317,11 +326,12 @@ class TuiDi {
       providerRepo: providerRepo,
     );
 
-    agentService = AgentService(
-      chatService: chatService,
-      toolRegistry: toolRegistry,
-      skillRegistry: skillRegistry,
-    );
+    agentService = agentServiceOverride ??
+        AgentService(
+          chatService: chatService,
+          toolRegistry: toolRegistry,
+          skillRegistry: skillRegistry,
+        );
 
     // ── Bridge + Controller ──
     agentBridge = TuiAgentBridge(

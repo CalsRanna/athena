@@ -44,9 +44,11 @@ class UserSettingsStore {
       if (entry is! Map) continue;
       result.add(ProviderEntity(
         id: entry['id'] is int ? entry['id'] as int : null,
-        name: entry['name'] as String? ?? '',
-        baseUrl: entry['baseUrl'] as String? ?? '',
-        apiKey: entry['apiKey'] as String? ?? '',
+        // 防御:手工编辑/历史数据可能写入非字符串值(如裸数字被 YAML
+        // 解析为 int),降级为空字符串而不是抛类型错误炸掉整个配置
+        name: entry['name'] is String ? entry['name'] as String : '',
+        baseUrl: entry['baseUrl'] is String ? entry['baseUrl'] as String : '',
+        apiKey: entry['apiKey'] is String ? entry['apiKey'] as String : '',
         enabled: entry['enabled'] == true,
         isPreset: entry['isPreset'] == true,
         createdAt: entry['createdAt'] is String
@@ -151,10 +153,31 @@ class UserSettingsStore {
 
   static String _escapeScalar(Object? value) {
     if (value == null) return '""';
+    if (value is int) return value.toString();
     final s = value.toString();
     if (s.isEmpty) return '""';
-    // 需要引号:含特殊字符或可能被解析为其他类型
-    if (RegExp(r'^[A-Za-z0-9_./:+-]+$').hasMatch(s)) return s;
-    return '"${s.replaceAll('"', '\\"')}"';
+    // 字符串总是双引号:不引号的标量会被 YAML 解析为 int/bool/null/日期,
+    // 读回时类型不符导致配置整体丢失(如纯数字 API key、'true'、'null')。
+    // id 是唯一的 int 字段,走上面的分支保持裸值。
+    final buf = StringBuffer('"');
+    for (final unit in s.codeUnits) {
+      if (unit == 0x5C) {
+        buf.write(r'\\');
+      } else if (unit == 0x22) {
+        buf.write(r'\"');
+      } else if (unit == 0x0A) {
+        buf.write(r'\n');
+      } else if (unit == 0x09) {
+        buf.write(r'\t');
+      } else if (unit == 0x0D) {
+        buf.write(r'\r');
+      } else if (unit < 0x20) {
+        buf.write('\\u${unit.toRadixString(16).padLeft(4, '0')}');
+      } else {
+        buf.writeCharCode(unit);
+      }
+    }
+    buf.write('"');
+    return buf.toString();
   }
 }

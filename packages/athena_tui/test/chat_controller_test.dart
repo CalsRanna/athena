@@ -240,4 +240,81 @@ void main() {
       expect(updated!.title, '帮我写一个排序算法');
     });
   });
+
+  group('生命周期与消息缓冲', () {
+    test('dispose 后信号写入被静默忽略(异步延续不再抛异常)', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+
+      // 先造 pending + 已启动的 50ms flush timer(对应拆解前未 flush 的流式增量)
+      c.handleRunEvent(RunMessageStored(
+        MessageEntity(chatId: chat.id!, role: 'assistant', content: '未flush'),
+      ));
+      c.dispose(); // 应 cancel timer
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(c.messages.value, isEmpty, reason: 'dispose 取消 flush timer,不落盘');
+      expect(c.messages.value, isNot(contains('未flush')));
+
+      // dispose 后再写入:对应拆解后仍在执行的异步延续
+      // (旧实现会触发已失效订阅的 setState 抛 SignalEffectException)
+      c.pushTransientMessage(
+        MessageEntity(chatId: chat.id!, role: 'system', content: '瞬态'),
+      );
+      c.handleRunEvent(const RunError('模拟错误'));
+      c.handleRunEvent(RunMessageStored(
+        MessageEntity(chatId: chat.id!, role: 'assistant', content: '流式'),
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      // 不抛异常即通过
+    });
+
+    test('瞬态消息与流式增量在同一 flush 中保留', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final chat = c.currentChat.value!;
+      final before = c.messages.value.length;
+
+      // 流式事件进入 pending(50ms 节流窗口内)
+      c.handleRunEvent(RunMessageStored(
+        MessageEntity(chatId: chat.id!, role: 'user', content: '流式消息'),
+      ));
+      // 窗口内插入瞬态消息:旧实现直接写 messages.value,下一次 flush
+      // 用 pending 整体覆盖时被丢弃(/help 等瞬态卡片丢失)
+      c.pushTransientMessage(
+        MessageEntity(chatId: chat.id!, role: 'system', content: '瞬态消息'),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      expect(c.messages.value, hasLength(before + 2));
+      expect(
+        c.messages.value.map((m) => m.content),
+        containsAll(['流式消息', '瞬态消息']),
+      );
+    });
+
+    test('selectChat 清空未 flush 的 pending,不污染新聊天列表', () async {
+      final di = await createDi();
+      final c = di.chatController;
+      final first = c.currentChat.value!;
+      final second = await di.manageService.createChat(
+        model: (await c.availableModels).first,
+        sentinel: (await c.availableSentinels).first,
+      );
+
+      // 当前聊天注入未 flush 的流式增量
+      c.handleRunEvent(RunMessageStored(
+        MessageEntity(chatId: first.id!, role: 'user', content: '旧聊天增量'),
+      ));
+      await c.selectChat(second);
+      // 50ms 后若 pending 未被清空,flush 会用旧聊天的消息覆盖新列表
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      expect(c.messages.value.map((m) => m.chatId), everyElement(second.id));
+      expect(
+        c.messages.value.map((m) => m.content),
+        isNot(contains('旧聊天增量')),
+      );
+    });
+  });
 }

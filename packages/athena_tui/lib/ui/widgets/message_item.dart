@@ -29,10 +29,14 @@ class MessageItem extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     final isUser = message.role == 'user';
-    final isCancelled = message.content.contains('[Cancelled]');
-    final isError =
-        message.content.startsWith('Error:') ||
-        message.content.contains('[Error:');
+    final isAssistant = message.role == 'assistant';
+    // 取消/错误标记只由核心层追加在 assistant 占位消息上;加角色门槛
+    // 避免用户消息内容含字面 "[Cancelled]" 或 "Error:" 开头被误渲染
+    // 成取消/错误卡片(灰色虚线/红卡)
+    final isCancelled = isAssistant && message.content.endsWith('[Cancelled]');
+    final isError = isAssistant &&
+        (message.content.startsWith('Error:') ||
+            message.content.contains('[Error:'));
     final isSystem = message.role == 'system';
 
     // 正文卡片边框颜色与样式由消息类型决定

@@ -72,26 +72,25 @@ class _MessageCardState extends State<MessageCard> {
   /// 兜底文本宽度。
   static const _fallbackTextWidth = 80;
 
-  /// 文本测量缓存:key = (Text 在卡片树中的索引路径, 字符串引用, 宽度),
+  /// 文本测量缓存:key = (Text 在卡片树中的索引路径, 文本值, 宽度),
   /// value = 排版行数。
   ///
-  /// 流式更新时 `_pendingList = [...base, message]` 只换列表、元素与
-  /// 字符串引用原样,`identical()` 命中 → 复用行数。内容真的变了
-  /// (新字符串)或宽度变了 → 重新排版。
+  /// 流式更新时 `_pendingList = [...base, message]` 只换列表、元素重建,
+  /// 同位置 Text 的**字符串值**不变 → 记录按值相等(`==`)命中 → 复用行数,
+  /// 跳过整段 TextLayoutEngine.layout(长消息热路径的主要成本)。
+  /// 内容真的变了(新字符串)或宽度变了 → key 不同 → 重新排版。
+  ///
+  /// 注意:nocterm 每次父重建都会调 didUpdateComponent,因此这里**不能**
+  /// 清空缓存(旧实现导致缓存跨 build 永不命中,优化形同虚设)。
+  /// 安全性不变量:同路径 Text 的 softWrap/overflow/maxLines 在卡片类型间
+  /// 恒定(所有内容 Text 均 softWrap: true),布局只依赖 (路径, 值, 宽度)
+  /// 三元组——值不变即行数不变。
   ///
   /// 为什么按索引路径区分而不是单值:一张卡片内可能有多个 Text
   /// (工具调用 = ⚙ 名称 + 参数),单值缓存会让第二个 Text 覆盖第一个,
-  /// 下次渲染时第一个误命中第二个的高度。索引路径 + 字符串引用 +
-  /// 宽度三元组唯一确定一次排版,互不串扰。
+  /// 下次渲染时第一个误命中第二个的高度。索引路径 + 文本值 + 宽度
+  /// 三元组唯一确定一次排版,互不串扰。
   final Map<(String, String, int), double> _measureCache = {};
-
-  @override
-  void didUpdateComponent(MessageCard oldComponent) {
-    super.didUpdateComponent(oldComponent);
-    // 组件配置变化(内容/宽度/颜色)时清空缓存,避免复用旧测量值。
-    // nocterm 更新组件时保留 State 对象但不会自动重置缓存字段。
-    _measureCache.clear();
-  }
 
   @override
   Component build(BuildContext context) {
@@ -175,9 +174,9 @@ class _MessageCardState extends State<MessageCard> {
     }
     if (component is Text) {
       final width = textWidth.toInt();
-      // 同一路径 + 同一字符串引用 + 同一宽度 → 命中,跳过排版(流式
-      // 历史消息热路径)。identical 只认引用:内容编辑过但列表换新
-      // (引用相同)时走真排版,绝不误命中内容已变的情形。
+      // 同一路径 + 同一文本值 + 同一宽度 → 命中,跳过排版(流式历史
+      // 消息热路径)。记录按值相等比较:字符串不可变,值相同即内容
+      // 未变,行数必然相同;内容变了则 key 不同,绝不误命中。
       final key = (path, component.data, width);
       final cached = _measureCache[key];
       if (cached != null) return cached;

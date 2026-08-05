@@ -3,7 +3,7 @@ import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// 底部状态栏: 模型 | 角色 ｜ 工作区 | 右侧:迭代/工具状态 + token 用量。
+/// 底部状态栏: 模型 | 角色 ｜ 工作区 | 右侧:token 用量。
 class StatusBar extends StatelessComponent {
   const StatusBar({
     super.key,
