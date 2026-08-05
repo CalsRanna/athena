@@ -1,12 +1,16 @@
+import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// 顶部状态栏:应用名 | 模型 | 角色 | 右侧:迭代/工具状态 + token 用量。
+/// 顶部状态栏:应用名 | 工作区 | 模型 | 角色 | 右侧:迭代/工具状态 + token 用量。
 class StatusBar extends StatelessComponent {
-  const StatusBar({super.key, required this.controller});
+  const StatusBar({super.key, required this.controller, required this.workspace});
 
   final ChatController controller;
+
+  /// 当前工作区目录名(Agent 工具的工作根目录)。
+  final String workspace;
 
   @override
   Component build(BuildContext context) {
@@ -17,9 +21,10 @@ class StatusBar extends StatelessComponent {
     final usage = controller.currentTokenUsage.value;
     final chat = controller.currentChat.value;
 
-    final title = _truncate(chat?.title ?? 'Athena', 24);
-    final modelName = _truncate(model?.name ?? '未选模型', 20);
-    final sentinelName = _truncate(sentinel?.name ?? '未选角色', 12);
+    final title = truncateText(chat?.title ?? 'Athena', 24);
+    final modelName = truncateText(model?.name ?? '未选模型', 20);
+    final sentinelName = truncateText(sentinel?.name ?? '未选角色', 12);
+    final workspaceName = workspace.split('/').last;
 
     final rightParts = <String>[];
     if (iteration > 0) rightParts.add('迭代 $iteration');
@@ -38,7 +43,7 @@ class StatusBar extends StatelessComponent {
           const Text('  '),
           Expanded(
             child: Text(
-              ' $modelName  |  $sentinelName  |  $title',
+              '$workspaceName  |  $modelName  |  $sentinelName  |  $title',
               style: AthenaTextStyles.dim,
               overflow: TextOverflow.ellipsis,
             ),
@@ -47,11 +52,6 @@ class StatusBar extends StatelessComponent {
         ],
       ),
     );
-  }
-
-  static String _truncate(String text, int max) {
-    if (text.length <= max) return text;
-    return '${text.substring(0, max - 1)}…';
   }
 
   static String _formatTokens(int tokens) {

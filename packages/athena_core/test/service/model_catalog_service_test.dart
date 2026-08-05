@@ -232,6 +232,114 @@ void main() {
     });
   });
 
+  group('familyKey', () {
+    test('剥代际数字:同家族版本归一键', () {
+      expect(ModelCatalogService.familyKey('anthropic/claude-sonnet-5'),
+          'claude-sonnet');
+      expect(ModelCatalogService.familyKey('anthropic/claude-sonnet-4.6'),
+          'claude-sonnet');
+      expect(ModelCatalogService.familyKey('anthropic/claude-3-haiku'),
+          'claude-haiku');
+      expect(ModelCatalogService.familyKey('anthropic/claude-haiku-4.5'),
+          'claude-haiku');
+    });
+
+    test('剥日期戳与 v 前缀版本', () {
+      expect(ModelCatalogService.familyKey('deepseek/deepseek-chat-v3-0324'),
+          'deepseek-chat');
+      expect(ModelCatalogService.familyKey('deepseek/deepseek-chat'),
+          'deepseek-chat');
+      // V 线主模型同族(V3.2 与 V3 归 deepseek),留 release 最新;
+      // V4-Flash/Pro 是独立规格族
+      expect(ModelCatalogService.familyKey('deepseek/deepseek-v4-flash'),
+          'deepseek-flash');
+      expect(ModelCatalogService.familyKey('google/gemini-2.5-flash'),
+          'gemini-flash');
+      expect(ModelCatalogService.familyKey('google/gemini-3.6-flash'),
+          'gemini-flash');
+    });
+
+    test('尺寸规格保留:不同大小视为不同家族', () {
+      expect(ModelCatalogService.familyKey('qwen/qwen3-8b'), 'qwen-8b');
+      expect(ModelCatalogService.familyKey('qwen/qwen3-235b-a22b'),
+          'qwen-235b-a22b');
+      expect(ModelCatalogService.familyKey('qwen/qwen3.5-122b-a10b'),
+          'qwen-122b-a10b');
+      expect(ModelCatalogService.familyKey('qwen/qwen3.6-35b-a3b'),
+          'qwen-35b-a3b');
+    });
+
+    test('能力后缀保留(视觉/推理/速度变体)', () {
+      expect(ModelCatalogService.familyKey('z-ai/glm-4.5v'), 'glm-v');
+      expect(ModelCatalogService.familyKey('z-ai/glm-4.6v'), 'glm-v');
+      expect(ModelCatalogService.familyKey('minimax/minimax-m2.5-highspeed'),
+          'minimax-m-highspeed');
+      expect(ModelCatalogService.familyKey('openai/gpt-5-image'), 'gpt-image');
+    });
+
+    test('实验版后缀并入主族', () {
+      expect(ModelCatalogService.familyKey('deepseek/deepseek-v3.2-exp'),
+          'deepseek');
+      expect(ModelCatalogService.familyKey('deepseek-ai/DeepSeek-V3.2-Exp'),
+          'deepseek');
+      expect(ModelCatalogService.familyKey('deepseek-ai/DeepSeek-V4-Flash'),
+          'deepseek-flash');
+    });
+
+    test('openrouter 规格变体(o3/o4、gpt 系列)', () {
+      expect(ModelCatalogService.familyKey('openai/o3-mini'), 'o-mini');
+      expect(ModelCatalogService.familyKey('openai/o4-mini'), 'o-mini');
+      expect(ModelCatalogService.familyKey('openai/gpt-4.1'), 'gpt');
+      expect(ModelCatalogService.familyKey('openai/gpt-5.5'), 'gpt');
+      expect(ModelCatalogService.familyKey('openai/gpt-5.6-sol'), 'gpt-sol');
+      expect(ModelCatalogService.familyKey('x-ai/grok-4.5'), 'grok');
+    });
+  });
+
+  group('latestPerFamily', () {
+    Map<String, dynamic> model(String release) =>
+        {'name': 'M', if (release.isNotEmpty) 'release_date': release};
+
+    test('同家族多版本只留 release_date 最新', () {
+      final result = ModelCatalogService.latestPerFamily({
+        'anthropic/claude-sonnet-4.6': model('2026-02-17'),
+        'anthropic/claude-sonnet-5': model('2026-06-30'),
+        'anthropic/claude-sonnet-4.5': model('2025-10-15'),
+      });
+      expect(result.keys, ['anthropic/claude-sonnet-5']);
+    });
+
+    test('不同家族/不同尺寸全部保留', () {
+      final result = ModelCatalogService.latestPerFamily({
+        'qwen/qwen3-8b': model('2025-06-01'),
+        'qwen/qwen3-235b-a22b': model('2025-06-01'),
+        'google/gemini-3.6-flash': model('2026-07-21'),
+      });
+      expect(result.keys.toSet(), {
+        'qwen/qwen3-8b',
+        'qwen/qwen3-235b-a22b',
+        'google/gemini-3.6-flash',
+      });
+    });
+
+    test('无 release_date 视为较旧', () {
+      final result = ModelCatalogService.latestPerFamily({
+        'deepseek/deepseek-chat-v3-0324': model('2025-03-24'),
+        'deepseek/deepseek-chat': model(''), // 无日期
+        'deepseek/deepseek-chat-v3.1': model(''),
+      });
+      expect(result.keys, ['deepseek/deepseek-chat-v3-0324']);
+    });
+
+    test('release_date 相同时保留先出现的', () {
+      final result = ModelCatalogService.latestPerFamily({
+        'deepseek/deepseek-v4-flash': model('2026-07-31'),
+        'deepseek/deepseek-v4-flash-0731': model('2026-07-31'),
+      });
+      expect(result.keys, ['deepseek/deepseek-v4-flash']);
+    });
+  });
+
   group('mapModel', () {
     test('完整字段映射', () {
       final json = {
@@ -386,6 +494,123 @@ void main() {
         modelRepo.models.map((m) => m.modelId),
         contains('deepseek-chat'),
       );
+    });
+
+    test('家族去重:同家族只插入最新版', () async {
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            // deepseek-chat 家族:三个版本,只应保留 release 最新
+            'deepseek-chat-v3-0324': {
+              'name': 'DeepSeek Chat V3',
+              'release_date': '2025-03-24',
+            },
+            'deepseek-chat-v3.1': {
+              'name': 'DeepSeek Chat V3.1',
+              'release_date': '2025-12-01',
+            },
+            'deepseek-chat': {
+              'name': 'DeepSeek Chat',
+              'release_date': '2026-02-01',
+            },
+            // reasoner 独立家族,保留
+            'deepseek-reasoner': {
+              'name': 'DeepSeek Reasoner',
+              'release_date': '2025-12-01',
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
+
+      expect(modelRepo.models.map((m) => m.modelId).toSet(), {
+        'deepseek-chat',
+        'deepseek-reasoner',
+      });
+    });
+
+    test('家族去重:被淘汰的老版本从未被 chat 引用的模型中被清理', () async {
+      // 第一轮:chat 家族只有 v3-0324(唯一成员),正常入库
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-chat-v3-0324': {
+              'name': 'Old',
+              'release_date': '2025-03-24',
+            },
+          },
+        },
+      };
+      final service = _service(modelRepo, providerRepo, chatRepo);
+      await service.applyCatalog(catalog);
+      expect(
+        modelRepo.models.map((m) => m.modelId),
+        contains('deepseek-chat-v3-0324'),
+      );
+
+      // 第二轮:同家族上架新版本 v4 → v3-0324 被家族去重淘汰
+      final evolved = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-chat-v3-0324': {
+              'name': 'Old',
+              'release_date': '2025-03-24',
+            },
+            'deepseek-chat-v4': {
+              'name': 'Newest',
+              'release_date': '2026-06-01',
+            },
+          },
+        },
+      };
+      await service.applyCatalog(evolved);
+
+      final ids = modelRepo.models.map((m) => m.modelId).toList();
+      expect(ids, contains('deepseek-chat-v4'));
+      expect(ids, isNot(contains('deepseek-chat-v3-0324')),
+          reason: '家族淘汰的老版本应被自动清理');
+    });
+
+    test('家族去重:被 chat 引用的老版本保留', () async {
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-chat-v3-0324': {
+              'name': 'Old',
+              'release_date': '2025-03-24',
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
+      final oldModel =
+          modelRepo.models.firstWhere((m) => m.modelId == 'deepseek-chat-v3-0324');
+      chatRepo.chatCounts[oldModel.id!] = 1;
+
+      // 新版本上架,老版本被家族去重淘汰但被 chat 引用 → 保留
+      final evolved = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-chat-v3-0324': {
+              'name': 'Old',
+              'release_date': '2025-03-24',
+            },
+            'deepseek-chat-v4': {
+              'name': 'Newest',
+              'release_date': '2026-06-01',
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(evolved);
+
+      expect(modelRepo.models.map((m) => m.modelId).toSet(),
+          containsAll(['deepseek-chat-v3-0324', 'deepseek-chat-v4']));
     });
 
     test('catalog 中不存在的 provider 不处理', () async {

@@ -43,7 +43,8 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     localBaseUrl: 'https://api.deepseek.com/v1',
   ),
 
-  // ---- Open Router(336 个中挑主流子集 ~80 个) ----
+  // ---- Open Router(每模型家族只留最新版,家族去重由
+  // ModelCatalogService.latestPerFamily 完成) ----
   CatalogProviderConfig(
     sourceId: 'openrouter',
     localName: 'Open Router',
@@ -52,7 +53,6 @@ const modelCatalogConfig = <CatalogProviderConfig>[
       'anthropic/claude-*',
       'google/gemini-*',
       'openai/gpt-5*',
-      'openai/gpt-4.1*',
       'openai/o3*',
       'openai/o4*',
       'deepseek/*',
@@ -61,21 +61,15 @@ const modelCatalogConfig = <CatalogProviderConfig>[
       'minimax/MiniMax-M*',
     ],
     exclude: [
-      // 变体噪音:preview/image/特殊模型/免费档/快照
+      // 变体噪音:家族去重只管理"新旧版本",这些是不同模型形态
+      // (preview/image/audio/codex 专用版/免费档/快照/别名),不会被去重
       '*-preview*', '*image*', '*customtools*', '*:free', '*multi-agent*',
       'openai/gpt-chat-latest', 'openai/gpt-audio*', 'openai/gpt-oss*',
-      'openai/gpt-5.6-*', 'openai/gpt-5-image*', 'openai/gpt-5.1-codex*',
-      'openai/gpt-5.2-codex', 'openai/gpt-5.3-codex', 'openai/gpt-5-nano',
-      'openai/gpt-5-mini', 'openai/gpt-4.1-nano',
-      'qwen/qwen3-*-2507', 'qwen/qwen3-next-*',
-      'qwen/qwen3.5-flash-*', 'qwen/qwen3.5-plus-*',
       'x-ai/grok-build*',
-      // 已过时模型
-      'openai/gpt-3.5*', 'openai/gpt-4o*', 'openai/gpt-4-*', 'openai/o1*',
-      'anthropic/claude-3-haiku',
-      'deepseek/deepseek-r1*', 'deepseek/deepseek-chat-v3-0324',
-      'deepseek/deepseek-chat-v3.1', 'deepseek/deepseek-v3.1-terminus',
-      'deepseek/deepseek-v3.2', 'deepseek/deepseek-v3.2-exp',
+      // qwen 日期快照与 next 实验代(独立家族,去重不覆盖)
+      'qwen/qwen3-*-2507', 'qwen/qwen3-next-*',
+      // deepseek 蒸馏版与特殊版本(独立家族)
+      'deepseek/deepseek-r1-distill*', 'deepseek/deepseek-v3.1-terminus',
     ],
   ),
 
@@ -94,6 +88,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     exclude: [
       // 专用场景模型(语音/OCR/实时翻译等),不适合通用聊天
       '*realtime*', '*asr*', '*ocr*', '*character*', '*livetranslate*',
+      '*-preview*', // 预览版(如 qwen3.6-max-preview)由正式版家族替代
     ],
   ),
 
@@ -110,6 +105,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     exclude: [
       'Qwen/Qwen2.5*', // 旧代 Qwen 已由 Qwen3+ 替代
       '*Realtime*',
+      'deepseek-ai/DeepSeek-V3.1-Terminus', // 特殊开源版,家族去重不覆盖
     ],
   ),
 

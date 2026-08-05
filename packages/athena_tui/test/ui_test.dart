@@ -21,7 +21,8 @@ void main() {
   });
 
   Future<TuiDi> createDi() async {
-    final di = TuiDi(dataDirectory: tempDir.path);
+    // homeDir 注入 tempDir:避免读到用户真实 ~/.athena/setting.yaml
+    final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
     await di.initialize(syncModels: false);
     // 预加载聊天列表(AthenaApp.initState 会再次调用,幂等)
     await di.chatController.initialize();
@@ -47,6 +48,9 @@ void main() {
   test('/help 命令渲染帮助文本', () {
     return nocterm_test.testNocterm('/help 命令', (tester) async {
       final di = await createDi();
+      // 清除 Provider 引导错误:ErrorBar 占行会挤压消息列表视口,
+      // 帮助文本首行被滚出(与 /help 渲染本身无关)
+      di.chatController.error.value = null;
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
@@ -66,14 +70,22 @@ void main() {
     expect(di.chatController.currentChat.value, isNotNull);
   });
 
-  test('/models 选择弹层:方向键移动 + Enter 确认切换模型', () {
+  /// 给指定名称的 provider 配置 API key(seed 全部无 key,过滤后模型为空)。
+  Future<void> configureKey(TuiDi di, String providerName) async {
+    final providers = await di.chatController.availableProviders;
+    final target = providers.firstWhere((p) => p.name == providerName);
+    await di.chatController.updateProviderApiKey(target, 'sk-test-123');
+  }
+
+  test('/model 选择弹层:方向键移动 + Enter 确认切换模型', () {
     return nocterm_test.testNocterm('模型选择', (tester) async {
       final di = await createDi();
+      await configureKey(di, 'Deep Seek');
       final before = di.chatController.currentModel.value;
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
-      await tester.enterText('/models');
+      await tester.enterText('/model');
       await tester.sendEnter();
       // 命令处理是异步链(读取模型列表 IO 后打开弹层)
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -98,14 +110,15 @@ void main() {
     });
   });
 
-  test('/models 弹层 Esc 取消不切换', () {
+  test('/model 弹层 Esc 取消不切换', () {
     return nocterm_test.testNocterm('模型选择取消', (tester) async {
       final di = await createDi();
+      await configureKey(di, 'Deep Seek');
       final before = di.chatController.currentModel.value;
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
-      await tester.enterText('/models');
+      await tester.enterText('/model');
       await tester.sendEnter();
       await Future<void>.delayed(const Duration(milliseconds: 100));
       await tester.pump();
@@ -116,6 +129,88 @@ void main() {
 
       expect(di.chatController.currentModel.value?.id, before?.id);
       expect(tester.terminalState.containsText('选择模型'), isFalse);
+    });
+  });
+
+  test('/model 弹层模型多时方向键滚动,选中项始终可见', () {
+    return nocterm_test.testNocterm('模型弹层滚动', (tester) async {
+      final di = await createDi();
+      // 配置两个 provider 的 key:13 个模型,超过弹层 12 行视口
+      await configureKey(di, 'Deep Seek');
+      await configureKey(di, 'Open Router');
+      // 清掉配置前 newChat 写入的引导错误:ErrorBar 文本含模型名
+      // (如"当前模型 DeepSeek-R1-0528 的 Provider…"),会污染可见性断言
+      di.chatController.error.value = null;
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      await tester.enterText('/model');
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // 初始:首项(DeepSeek-R1-0528,带提供商名括号以区别于状态栏
+      // 的模型名——状态栏始终显示当前模型名)可见
+      expect(
+        tester.terminalState.containsText('DeepSeek-R1-0528 (Deep Seek)'),
+        isTrue,
+      );
+
+      // 一直下移到最后一项(xAI: Grok 4,index 12)
+      for (var i = 0; i < 12; i++) {
+        await tester.sendArrowDown();
+        await tester.pump();
+        await tester.pump(); // postFrame 里的 ensureVisible 应用
+      }
+
+      final state = tester.terminalState;
+      // 最后一项被滚动进视口(修复前不可见)
+      expect(state.containsText('xAI: Grok 4'), isTrue);
+      // 首项(弹层标签,含提供商名)已被滚出视口,证明弹层真的滚动了
+      expect(
+        state.containsText('DeepSeek-R1-0528 (Deep Seek)'),
+        isFalse,
+      );
+    });
+  });
+
+  test('/model 只展示已配置 API key 的模型', () {
+    return nocterm_test.testNocterm('模型过滤', (tester) async {
+      final di = await createDi();
+      // 只给 Deep Seek 配 key;Open Router 的模型不应出现
+      await configureKey(di, 'Deep Seek');
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      await tester.enterText('/model');
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      final state = tester.terminalState;
+      expect(state.containsText('选择模型'), isTrue);
+      // Deep Seek 已配 key → 模型可见
+      expect(state.containsText('DeepSeek'), isTrue);
+      // Open Router 未配 key → 其模型(Claude/Gemini)不可见
+      expect(state.containsText('Claude'), isFalse);
+      expect(state.containsText('Gemini'), isFalse);
+    });
+  });
+
+  test('/model 无已配置 key 时提示配置', () {
+    return nocterm_test.testNocterm('模型空列表', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      await tester.enterText('/model');
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      final state = tester.terminalState;
+      expect(state.containsText('选择模型'), isFalse, reason: '无可选模型,不打开弹层');
+      expect(state.containsText('暂无模型'), isTrue);
     });
   });
 
@@ -256,6 +351,259 @@ void main() {
 
       final decision = await future;
       expect(decision.approved, isFalse);
+    });
+  });
+
+  test('ErrorBar 渲染错误信息', () {
+    return nocterm_test.testNocterm('错误条', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      di.chatController.error.value = '测试错误:网络不可达';
+      await tester.pump();
+
+      expect(tester.terminalState.containsText('测试错误:网络不可达'), isTrue);
+    });
+  });
+
+  test('新目录初始化显示 Provider 未配置引导', () async {
+    final di = await createDi();
+    // 种子 provider 无 API key → 自动建聊天时写入引导错误
+    final error = di.chatController.error.value;
+    expect(error, isNotNull);
+    expect(error, contains('未配置 API key'));
+  });
+
+  test('/providers 留空回车取消 API key 输入', () {
+    return nocterm_test.testNocterm('key 留空取消', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      await tester.enterText('/providers');
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // 选中第一个 provider,进入 key 输入模式
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+      expect(tester.terminalState.containsText('输入 API key'), isTrue);
+
+      // 留空回车 = 取消
+      await tester.sendEnter();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      expect(tester.terminalState.containsText('已取消配置'), isTrue);
+      // 退出 key 模式:状态行恢复默认(statusText 为空;注意系统消息
+      // "为 xx 输入 API key(回车保存…)"会留在消息列表,不能断言其消失)
+      expect(tester.terminalState.containsText('API key 输入中'), isFalse);
+      expect(tester.terminalState.containsText('Enter 发送'), isTrue);
+    });
+  });
+
+  group('斜杠命令实时建议', () {
+    test('输入 / 显示全部命令', () {
+      return nocterm_test.testNocterm('建议-全部', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/');
+        await tester.pump();
+
+        final state = tester.terminalState;
+        expect(state.containsText('命令提示'), isTrue);
+        expect(state.containsText('/new'), isTrue);
+        expect(state.containsText('/quit'), isTrue);
+      });
+    });
+
+    test('输入 /m 只匹配 model 命令,实时过滤', () {
+      return nocterm_test.testNocterm('建议-过滤', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        // enterText 是逐字符插入,直接一次输入 /m
+        // (不要连续 enterText('/') + enterText('/m'),会拼成 //m)
+        await tester.enterText('/m');
+        await tester.pump();
+        final state = tester.terminalState;
+        expect(state.containsText('/model'), isTrue);
+        expect(state.containsText('/new'), isFalse);
+        expect(state.containsText('/switch'), isFalse);
+      });
+    });
+
+    test('命令带参数仍匹配(/json xxx)', () {
+      return nocterm_test.testNocterm('建议-带参数', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/json 输出 JSON');
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('/json'), isTrue);
+      });
+    });
+
+    test('普通文本不显示建议', () {
+      return nocterm_test.testNocterm('建议-普通文本', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('hello');
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('命令提示'), isFalse);
+      });
+    });
+
+    test('Tab 补全第一个匹配命令', () {
+      return nocterm_test.testNocterm('建议-Tab补全', (tester) async {
+        final di = await createDi();
+        await configureKey(di, 'Deep Seek');
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/m');
+        await tester.pump();
+        expect(tester.terminalState.containsText('/model'), isTrue);
+
+        // Tab 补全 → 输入框变为 /model;回车应执行命令打开弹层
+        // (而非发送普通文本),证明补全写入的是命令
+        await tester.sendKey(nocterm.LogicalKey.tab);
+        await tester.pump();
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('选择模型'), isTrue);
+      });
+    });
+
+    test('清空输入后建议消失', () {
+      return nocterm_test.testNocterm('建议-清空', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/m');
+        await tester.pump();
+        expect(tester.terminalState.containsText('命令提示'), isTrue);
+
+        // 逐字符删除(enterText('') 不发按键,需 backspace)
+        await tester.sendKey(nocterm.LogicalKey.backspace);
+        await tester.sendKey(nocterm.LogicalKey.backspace);
+        await tester.pump();
+        expect(tester.terminalState.containsText('命令提示'), isFalse);
+      });
+    });
+  });
+
+  group('唯一匹配回车执行', () {
+    test('输入 /m 回车直接执行 /model 命令', () {
+      return nocterm_test.testNocterm('唯一匹配-回车', (tester) async {
+        final di = await createDi();
+        await configureKey(di, 'Deep Seek');
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/m');
+        await tester.pump();
+        expect(tester.terminalState.containsText('/model'), isTrue);
+
+        // 唯一匹配(/model)时回车 = 执行命令,打开模型选择弹层
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('选择模型'), isTrue);
+      });
+    });
+
+    test('输入 /j 回车执行 /json 命令(无参数提示用法)', () {
+      return nocterm_test.testNocterm('唯一匹配-json', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/j');
+        await tester.pump();
+        expect(tester.terminalState.containsText('/json'), isTrue);
+
+        // 唯一匹配 /json,回车执行 → 无参数时提示用法
+        // (而非"未知命令:/j")
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('用法:/json'), isTrue);
+      });
+    });
+
+    test('唯一匹配带参数回车:执行命令并保留参数', () {
+      return nocterm_test.testNocterm('唯一匹配-带参数', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/j 测试');
+        await tester.pump();
+        expect(tester.terminalState.containsText('/json'), isTrue);
+
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        // 执行的是 /json 测试(JSON 模式发送),而非"未知命令:/j 测试"。
+        // 命令执行同步生效,不依赖网络往返(Agent 流的 401 错误
+        // 到达时机不定,不作为断言)。
+        expect(tester.terminalState.containsText('未知命令'), isFalse);
+      });
+    });
+
+    test('多匹配时回车不执行(仍走未知命令提示)', () {
+      return nocterm_test.testNocterm('多匹配-回车', (tester) async {
+        final di = await createDi();
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/');
+        await tester.pump();
+        expect(tester.terminalState.containsText('命令提示'), isTrue);
+
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        // 未执行任何命令:弹层不出现,提示未知命令
+        expect(tester.terminalState.containsText('选择模型'), isFalse);
+        expect(tester.terminalState.containsText('未知命令:/'), isTrue);
+      });
+    });
+
+    test('输入完整命令回车行为不变', () {
+      return nocterm_test.testNocterm('完整命令-回车', (tester) async {
+        final di = await createDi();
+        await configureKey(di, 'Deep Seek');
+        await tester.pumpComponent(AthenaApp(di: di));
+        await tester.pump();
+
+        await tester.enterText('/model');
+        await tester.pump();
+        await tester.sendEnter();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+
+        expect(tester.terminalState.containsText('选择模型'), isTrue);
+      });
     });
   });
 }

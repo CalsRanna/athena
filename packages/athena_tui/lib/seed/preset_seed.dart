@@ -21,32 +21,34 @@ class PresetSeed {
   }) async {
     final now = DateTime.now();
 
-    if (await providerRepo.getProvidersCount() == 0) {
-      for (final p in _providers) {
-        final id = await providerRepo.storeProvider(ProviderEntity(
-          name: p.name,
-          baseUrl: p.baseUrl,
-          apiKey: '',
-          enabled: false,
+    // 按缺失补齐:yaml 只存用户配置的 provider,模板 provider 可能缺失;
+    // 对每个模板 provider,内存中不存在(按 name)则创建(空 key,不落 yaml)
+    final existing = await providerRepo.getAllProviders();
+    for (final p in _providers) {
+      if (existing.any((e) => e.name == p.name)) continue;
+      final id = await providerRepo.storeProvider(ProviderEntity(
+        name: p.name,
+        baseUrl: p.baseUrl,
+        apiKey: '',
+        enabled: false,
+        isPreset: true,
+        createdAt: now,
+      ));
+      for (final m in p.models) {
+        await modelRepo.createModel(ModelEntity(
+          name: m.name,
+          modelId: m.modelId,
+          providerId: id,
+          contextWindow: m.contextWindow,
+          inputPrice: m.inputPrice,
+          outputPrice: m.outputPrice,
+          releasedAt: m.releasedAt,
+          reasoning: m.reasoning,
+          vision: m.vision,
           isPreset: true,
           createdAt: now,
+          updatedAt: now,
         ));
-        for (final m in p.models) {
-          await modelRepo.createModel(ModelEntity(
-            name: m.name,
-            modelId: m.modelId,
-            providerId: id,
-            contextWindow: m.contextWindow,
-            inputPrice: m.inputPrice,
-            outputPrice: m.outputPrice,
-            releasedAt: m.releasedAt,
-            reasoning: m.reasoning,
-            vision: m.vision,
-            isPreset: true,
-            createdAt: now,
-            updatedAt: now,
-          ));
-        }
       }
     }
 

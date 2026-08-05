@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_tui/storage/json_file_key_value_store.dart';
 import 'package:athena_tui/storage/jsonl_chat_repository.dart';
 import 'package:athena_tui/storage/jsonl_message_repository.dart';
 import 'package:athena_tui/storage/jsonl_store.dart';
@@ -188,6 +189,44 @@ void main() {
       final store = JsonlFileStore(file: file, idAllocator: idAllocator);
       final rows = await store.readAll();
       expect(rows.length, 2);
+    });
+  });
+
+  group('JsonFileKeyValueStore', () {
+    test('并发写入不丢 key(串行锁)', () async {
+      final store = JsonFileKeyValueStore(
+        file: File('${tempDir.path}/kv.json'),
+      );
+
+      // 模拟 WebSearchTool 计数与 AgentSettings 并发写:整文件写路径
+      // 无锁时后写覆盖先写,随机丢 key
+      await Future.wait([
+        for (var i = 0; i < 10; i++) store.setString('str_$i', 'value_$i'),
+        for (var i = 0; i < 10; i++) store.setInt('int_$i', i),
+      ]);
+
+      final keys = await store.getKeys();
+      expect(keys.length, 20);
+      for (var i = 0; i < 10; i++) {
+        expect(await store.getString('str_$i'), 'value_$i');
+        expect(await store.getInt('int_$i'), i);
+      }
+    });
+
+    test('remove 与 set 并发后状态一致', () async {
+      final store = JsonFileKeyValueStore(
+        file: File('${tempDir.path}/kv2.json'),
+      );
+      await store.setString('keep', '1');
+      await store.setString('remove_me', '2');
+
+      await Future.wait([
+        store.remove('remove_me'),
+        store.setString('keep', 'updated'),
+      ]);
+
+      expect(await store.getString('keep'), 'updated');
+      expect(await store.getString('remove_me'), isNull);
     });
   });
 }

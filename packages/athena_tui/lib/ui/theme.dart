@@ -20,6 +20,27 @@ abstract class AthenaColors {
   static const Color toolBorder = Color.fromRGB(88, 102, 130);
 }
 
+/// 消息卡片左侧竖线色:按消息类型分色,替代文字前缀标记。
+abstract class AthenaCardColors {
+  /// 用户消息:品牌 teal。
+  static const Color user = AthenaColors.teal;
+
+  /// 助手消息:主要内容,最亮。
+  static const Color assistant = Colors.white;
+
+  /// 系统消息:弱化。
+  static const Color system = AthenaColors.dim;
+
+  /// 推理卡片(思考过程)。
+  static const Color reasoning = AthenaColors.warning;
+
+  /// 错误消息。
+  static const Color error = AthenaColors.error;
+
+  /// 已取消消息。
+  static const Color cancelled = Colors.gray;
+}
+
 /// 常见文本样式。
 abstract class AthenaTextStyles {
   static const TextStyle dim = TextStyle(color: AthenaColors.dim);
