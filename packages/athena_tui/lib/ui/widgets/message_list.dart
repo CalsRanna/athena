@@ -5,9 +5,10 @@ import 'package:nocterm/nocterm.dart';
 
 /// 消息列表:滚动显示全部消息,新消息/流式更新时自动滚底。
 ///
-/// 用 SingleChildScrollView + Column 而非 ListView:nocterm 0.8.0 的
-/// ListView 在父级组件树动态变化(如 Overlay 插入)时会触发元素复用
-/// 断言(`newComponent != component`);消息量级下整树构建开销可接受。
+/// 用 ListView.separated 虚拟化:消息量大时只构建可见项。
+/// nocterm 0.8.0 的已知坑:父级组件树动态变化(如 Overlay 插入)时
+/// 会触发元素复用断言,只要 separator 每次返回**新实例**(而非 const)
+/// 即可规避(见下方 separatorBuilder 注释)。
 class MessageList extends StatelessComponent {
   const MessageList({
     super.key,
@@ -31,7 +32,11 @@ class MessageList extends StatelessComponent {
       itemBuilder: (context, index) =>
           MessageItem(message: messages[index], controller: controller),
       itemCount: messages.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 1),
+      // 注意:separator 不能返回 const 实例——nocterm 0.8.0 的
+      // ListView.buildSeparator 复用同一实例 update 时会触发
+      // Element.update 的 `newComponent != component` 断言,
+      // 每次构造新实例才能让 canUpdate → update 走通。
+      separatorBuilder: (_, _) => SizedBox(height: 1),
     );
   }
 

@@ -1,6 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:nocterm/nocterm.dart';
+// 说明:TextLayoutEngine 是 nocterm 内部 API(nocterm.dart 未导出),但
+// RenderText 布局时用的正是这个引擎——import 内部路径使行数计算与
+// 实际渲染共用同一换行与字符宽度算法,保证精确一致,而非另写一套
+// 换行逻辑产生偏差。升级 nocterm 时若该路径变化,编译错误会立即暴露。
+// ignore: implementation_imports
+import 'package:nocterm/src/text/text_layout_engine.dart';
 
 /// 消息卡片:用左侧彩色竖条(纯色色块)区分消息类型,
 /// 不使用文字前缀("你"/"Athena"/"[思考]"),也不使用 DecoratedBox 边框。
@@ -14,6 +20,12 @@ import 'package:nocterm/nocterm.dart';
 /// 半块字符本身就在 cell 内只涂部分宽度(█ 100%、▌ 50%、▎ 25%、
 /// ▏ 12.5%),因此用不同字符即可自定义纯色竖条的视觉宽度。
 /// 多行内容时竖条字符按行数重复(`▌\n▌\n…`),贯穿所有行。
+///
+/// 竖条行数的精确计算:build 阶段拿不到布局宽度,无法知道软换行后
+/// 的精确行数,所以用 LayoutBuilder 把 Row 的构建推迟到布局阶段,按
+/// 实际约束宽度 + TextLayoutEngine(与 RenderText 共用)算出精确行数,
+/// 而非按固定宽度估算。终端尺寸变化时 LayoutBuilder 自动用新约束
+/// 重建,竖条行数随之精确更新。
 class MessageCard extends StatelessComponent {
   const MessageCard({
     super.key,
@@ -44,62 +56,106 @@ class MessageCard extends StatelessComponent {
     (0.125, '▏'),
   ];
 
+  /// 竖条占 1 列;水平 padding 左右各 1 列。计算文本可用宽度时的
+  /// 扣除项,与实际布局链(Row → Expanded → Padding)保持一致。
+  static const _barColumnWidth = 1.0;
+  static const _horizontalPadding = 1.0;
+
+  /// 宽度约束无界时(Row + Expanded 需要有限宽度,正常不会发生)的
+  /// 兜底文本宽度。
+  static const _fallbackTextWidth = 80;
+
   @override
   Component build(BuildContext context) {
     final barChar = _barChars
         .firstWhere((c) => borderWidth >= c.$1, orElse: () => _barChars.last)
         .$2;
 
-    // 估算总行数:内容行数 + 上下 padding(各自取整为行数,
-    // 0.5 上下各取整 1 行 = 2 行,不能合并后取整)。
-    final estimatedLines = _estimateLines(child) + verticalPadding.round() * 2;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 半块色块竖条:前景色 + 按行数重复的半块字符
-        Text(
-          List.generate(math.max(1, estimatedLines), (_) => barChar).join('\n'),
-          style: TextStyle(color: color),
-        ),
-        // padding 包内容(不在 Row 外层),竖条才能贯穿 padding 行
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 1,
-              vertical: verticalPadding,
+    // 布局阶段才构建 Row:此时拿到真实约束宽度,竖条行数精确可算。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final barLines = _calculateBarLines(child, constraints.maxWidth);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 半块色块竖条:前景色 + 按行数重复的半块字符
+            Text(
+              List.generate(math.max(1, barLines), (_) => barChar).join('\n'),
+              style: TextStyle(color: color),
             ),
-            child: child,
-          ),
-        ),
-      ],
+            // padding 包内容(不在 Row 外层),竖条才能贯穿 padding 行
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 1,
+                  vertical: verticalPadding,
+                ),
+                child: child,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  /// 估算子组件占用的行数。支持 Text(按显式换行 + 软换行估算)、
-  /// Column(子组件行数之和)与 Padding(垂直 padding 取整为行数),
-  /// 其他组件按 1 行处理。
-  static int _estimateLines(Component component) {
+  /// 竖条行数 = ceil(内容精确总高)。
+  ///
+  /// 内容高度由 [_measureHeight] 按实际文本宽度精确计算:文本可用宽度 =
+  /// 卡片宽 - 竖条 1 列 - 水平 padding 2 列,浮点值沿链传播、最终
+  /// toInt() 与 RenderText 的 `constraints.maxWidth.toInt()` 取整完全
+  /// 一致。ceil 是因为竖条只能整行重复;内容高度为整数(常见情形,
+  /// Text 行数 + 整数 padding)时竖条行数与卡片高度严格相等,既贯穿
+  /// 全部内容又不撑高卡片。
+  int _calculateBarLines(Component component, double maxWidth) {
+    final textWidth = maxWidth.isFinite
+        ? math.max(
+            1,
+            (maxWidth - _barColumnWidth - _horizontalPadding * 2).toInt(),
+          )
+        : _fallbackTextWidth;
+    final totalHeight =
+        _measureHeight(component, textWidth.toDouble()) + verticalPadding * 2;
+    return math.max(1, totalHeight.ceil());
+  }
+
+  /// 精确测量子组件高度(行数,float 累积、不在中间取整)。
+  ///
+  /// - [Text]:用 TextLayoutEngine 按实际文本宽度计算,配置(softWrap /
+  ///   overflow / maxLines / maxWidth 取整)与 RenderText.performLayout
+  ///   完全一致,结果与渲染行数严格相同;
+  /// - [Column]:子组件高度之和;
+  /// - [Padding]:累加垂直 padding,水平 padding 缩减文本可用宽度
+  ///   (浮点减法链与布局的 constraints.deflate 一致);
+  /// - 其他组件:1 行兜底(当前调用处只用到 Text/Column/Padding)。
+  static double _measureHeight(Component component, double textWidth) {
     if (component is Padding) {
-      // 垂直 padding 在终端按 cell 取整,各占 1 行(0.5 也取整为 1)
-      final v = component.padding.top + component.padding.bottom;
+      final horizontal = component.padding.left + component.padding.right;
+      final vertical = component.padding.top + component.padding.bottom;
       final child = component.child;
-      return (child == null ? 0 : _estimateLines(child)) + v.round();
+      return (child == null
+              ? 0.0
+              : _measureHeight(child, textWidth - horizontal)) +
+          vertical;
     }
     if (component is Text) {
-      final text = component.data;
-      var count = 0;
-      for (final para in text.split('\n')) {
-        // 软换行:按可用宽度(约 60 字符)保守估算,向上取整
-        count += math.max(1, (para.length / 60).ceil());
-      }
-      return count;
+      final result = TextLayoutEngine.layout(
+        component.data,
+        TextLayoutConfig(
+          softWrap: component.softWrap,
+          overflow: component.overflow,
+          maxLines: component.maxLines,
+          maxWidth: textWidth.toInt(),
+        ),
+      );
+      return result.actualHeight.toDouble();
     }
     if (component is Column) {
-      var count = 0;
+      var height = 0.0;
       for (final c in component.children) {
-        count += _estimateLines(c);
+        height += _measureHeight(c, textWidth);
       }
-      return count;
+      return height;
     }
     return 1;
   }
