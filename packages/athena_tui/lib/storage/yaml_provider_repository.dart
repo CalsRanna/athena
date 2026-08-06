@@ -15,7 +15,7 @@ import 'package:athena_tui/storage/user_settings_store.dart';
 /// - 所有操作经 [serialLock] 串行化(防并发写覆盖)
 ///
 /// id 分配:复用已有 provider 的 id,新 provider 取 max(id)+1——
-/// 与 models.jsonl 的 providerId 引用保持一致。
+/// 与 models.json 的 providerId 引用保持一致。
 class YamlProviderRepository implements ProviderRepository {
   YamlProviderRepository({required UserSettingsStore store}) : _store = store;
 

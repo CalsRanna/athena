@@ -17,7 +17,7 @@ import 'package:yaml/yaml.dart';
 /// # Athena TUI 用户配置
 /// model: deepseek-v4-flash      # 默认模型(modelId,可选)
 /// providers:
-///   - id: 1                     # 与 models.jsonl 的 providerId 对应
+///   - id: 1                     # 与 models.json 的 providerId 对应
 ///     name: Deep Seek
 ///     baseUrl: https://api.deepseek.com/v1
 ///     apiKey: sk-xxx

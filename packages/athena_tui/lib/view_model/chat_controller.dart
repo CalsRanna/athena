@@ -17,7 +17,7 @@ import 'package:athena_core/service/chat_manage_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
-import 'package:athena_tui/storage/jsonl_message_repository.dart';
+import 'package:athena_tui/storage/jsonl_session_repository.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:signals/signals.dart';
 
@@ -88,7 +88,7 @@ class ChatController {
   /// 其他实现防御性全量后取末尾)。
   Future<List<MessageEntity>> _loadRecentMessages(int chatId) async {
     final repo = _messageRepo;
-    if (repo is JsonlMessageRepository) {
+    if (repo is JsonlSessionRepository) {
       return repo.loadRecentMessages(chatId, count: messageWindowSize);
     }
     final all = await repo.getMessagesByChatId(chatId);
@@ -109,7 +109,7 @@ class ChatController {
     _loadingOlder = true;
     try {
       final repo = _messageRepo;
-      final older = repo is JsonlMessageRepository
+      final older = repo is JsonlSessionRepository
           ? await repo.loadRecentMessages(
               chat!.id!,
               count: messageWindowSize,

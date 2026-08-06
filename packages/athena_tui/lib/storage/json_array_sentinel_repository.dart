@@ -2,16 +2,19 @@ import 'dart:io';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_tui/storage/jsonl_store.dart';
+import 'package:athena_tui/storage/id_allocator.dart';
+import 'package:athena_tui/storage/json_array_store.dart';
 
-/// SentinelRepository 的 JSONL 实现(`~/.athena/tui/sentinels.jsonl`)。
-class JsonlSentinelRepository implements SentinelRepository {
-  JsonlSentinelRepository({
+/// SentinelRepository 的 JSON 数组实现(`~/.athena/tui/sentinels.json`)。
+///
+/// 角色列表是整读整写的列表数据,JSON 数组文件比 JSONL 更合适。
+class JsonArraySentinelRepository implements SentinelRepository {
+  JsonArraySentinelRepository({
     required File file,
     required IdAllocator idAllocator,
-  }) : _store = JsonlFileStore(file: file, idAllocator: idAllocator);
+  }) : _store = JsonArrayStore(file: file, idAllocator: idAllocator);
 
-  final JsonlFileStore _store;
+  final JsonArrayStore _store;
 
   @override
   Future<List<SentinelEntity>> getAllSentinels() async {
@@ -21,8 +24,11 @@ class JsonlSentinelRepository implements SentinelRepository {
 
   @override
   Future<SentinelEntity?> getSentinelById(int id) async {
-    final row = await _store.readById(id);
-    return row == null ? null : SentinelEntity.fromJson(row);
+    final rows = await _store.readAll();
+    for (final row in rows) {
+      if (row['id'] == id) return SentinelEntity.fromJson(row);
+    }
+    return null;
   }
 
   @override

@@ -2,14 +2,20 @@ import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_tui/storage/jsonl_store.dart';
+import 'package:athena_tui/storage/id_allocator.dart';
+import 'package:athena_tui/storage/json_array_store.dart';
 
-/// ModelRepository 的 JSONL 实现(`~/.athena/tui/models.jsonl`)。
-class JsonlModelRepository implements ModelRepository {
-  JsonlModelRepository({required File file, required IdAllocator idAllocator})
-    : _store = JsonlFileStore(file: file, idAllocator: idAllocator);
+/// ModelRepository 的 JSON 数组实现(`~/.athena/tui/models.json`)。
+///
+/// 模型列表是整读整写的列表数据,JSON 数组文件比 JSONL 更合适
+/// (与 GUI 的 models.json 对齐)。
+class JsonArrayModelRepository implements ModelRepository {
+  JsonArrayModelRepository({
+    required File file,
+    required IdAllocator idAllocator,
+  }) : _store = JsonArrayStore(file: file, idAllocator: idAllocator);
 
-  final JsonlFileStore _store;
+  final JsonArrayStore _store;
 
   @override
   Future<List<ModelEntity>> getAllModels() async {
@@ -19,8 +25,11 @@ class JsonlModelRepository implements ModelRepository {
 
   @override
   Future<ModelEntity?> getModelById(int id) async {
-    final row = await _store.readById(id);
-    return row == null ? null : ModelEntity.fromJson(row);
+    final rows = await _store.readAll();
+    for (final row in rows) {
+      if (row['id'] == id) return ModelEntity.fromJson(row);
+    }
+    return null;
   }
 
   @override
