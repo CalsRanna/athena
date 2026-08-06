@@ -1,3 +1,5 @@
+import 'package:athena_gui/database/migration/athena_preset_prompt.dart';
+import 'package:athena_gui/database/migration/migration_202608060001_update_athena_sentinel_prompt.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -43,6 +45,7 @@ Future<Laconic> _buildSchema() async {
       avatar TEXT DEFAULT '',
       prompt TEXT NOT NULL,
       tags TEXT DEFAULT '',
+      is_preset INTEGER DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )
@@ -444,6 +447,94 @@ void main() {
       expect(names, contains(expected),
           reason: 'table "$expected" should exist after migrations');
     }
+  });
+
+  // ---------- Athena sentinel prompt upgrade ----------
+
+  Future<Laconic> schemaWithMigrationsTable() async {
+    final laconic = await _buildSchema();
+    await laconic.statement('CREATE TABLE migrations(name TEXT NOT NULL)');
+    return laconic;
+  }
+
+  Future<int> insertSentinel(
+    Laconic laconic, {
+    required String name,
+    required String prompt,
+    int isPreset = 0,
+  }) {
+    return laconic.table('sentinels').insertGetId(<String, dynamic>{
+      'name': name,
+      'description': '',
+      'avatar': '',
+      'prompt': prompt,
+      'tags': '',
+      'is_preset': isPreset,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+  }
+
+  Future<String> promptOf(Laconic laconic, int id) async {
+    final rows =
+        await laconic.select('SELECT prompt FROM sentinels WHERE id = ?', [id]);
+    return rows.first.toMap()['prompt'] as String;
+  }
+
+  test('built-in Athena with legacy prompt is upgraded to Agent-mode prompt',
+      () async {
+    final laconic = await schemaWithMigrationsTable();
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: legacyAthenaPresetPrompt, isPreset: 1);
+
+    await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
+
+    expect(await promptOf(laconic, id), athenaPresetPrompt);
+  });
+
+  test('evolved Athena keeps its customized prompt', () async {
+    final laconic = await schemaWithMigrationsTable();
+    final customized = 'custom evolved prompt, not the default';
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: customized, isPreset: 1);
+
+    await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
+
+    expect(await promptOf(laconic, id), customized,
+        reason: 'sentinel_evolve 定制过的提示词不应被覆盖');
+  });
+
+  test('non-preset or non-Athena sentinels are untouched', () async {
+    final laconic = await schemaWithMigrationsTable();
+    final nonPresetId = await insertSentinel(laconic,
+        name: 'Athena', prompt: legacyAthenaPresetPrompt, isPreset: 0);
+    final otherId = await insertSentinel(laconic,
+        name: 'Minerva', prompt: legacyAthenaPresetPrompt, isPreset: 1);
+
+    await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
+
+    expect(await promptOf(laconic, nonPresetId), legacyAthenaPresetPrompt);
+    expect(await promptOf(laconic, otherId), legacyAthenaPresetPrompt);
+  });
+
+  test('upgrade migration runs only once via marker', () async {
+    final laconic = await schemaWithMigrationsTable();
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: legacyAthenaPresetPrompt, isPreset: 1);
+
+    await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
+    expect(await promptOf(laconic, id), athenaPresetPrompt);
+
+    // 模拟用户此后又进化了 Athena
+    final evolved = 'evolved after upgrade';
+    await laconic
+        .table('sentinels')
+        .where('id', id)
+        .update({'prompt': evolved});
+
+    // 第二次运行(如重启)不应覆盖
+    await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
+    expect(await promptOf(laconic, id), evolved);
   });
 }
 
