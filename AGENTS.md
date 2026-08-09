@@ -232,7 +232,7 @@ enum ToolRisk { readOnly, dangerous }
 
 | 文件 | 工具类 | 风险/模式 | 说明 |
 |------|--------|----------|------|
-| `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时 600s 上限，超时 SIGTERM→SIGKILL |
+| `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时默认上限 3600s（`ATHENA_SHELL_MAX_TIMEOUT` 可覆盖），超时 SIGTERM→SIGKILL |
 | `powershell_shell_tool.dart` | PowerShellShellTool | dangerous/串行 | Windows PowerShell 命令 |
 | `file_read_tool.dart` | FileReadTool | **readOnly/并行** | 文件读取，offset/limit 分页 + 行号 |
 | `file_write_tool.dart` | FileWriteTool | dangerous/串行 | 创建/覆写，递归建父目录 |

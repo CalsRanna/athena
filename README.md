@@ -30,7 +30,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 
 | 工具 | 说明 |
 |------|------|
-| `bash` / `powershell` | 执行终端命令，支持自定义工作目录和超时（最高 600s），超时自动 kill 进程 |
+| `bash` / `powershell` | 执行终端命令，支持自定义工作目录和超时（默认上限 3600s，可用环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 覆盖），超时自动 kill 进程 |
 | `file_read` | 读取文件，支持 offset/limit 分段读取和行号输出 |
 | `file_write` | 创建或覆写文件，自动递归创建父目录 |
 | `file_update` | 精确字符串替换编辑文件，支持 replace_all、自动去除行号前缀、智能引号归一化、外部修改检测 |
