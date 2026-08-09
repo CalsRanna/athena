@@ -46,6 +46,44 @@ void main() {
     });
   });
 
+  group('ShellTimeoutPolicy.resolveMaxSeconds', () {
+    test('absent env uses default max (3600s)', () {
+      expect(ShellTimeoutPolicy.resolveMaxSeconds({}), 3600);
+    });
+
+    test('valid env value is used', () {
+      expect(
+        ShellTimeoutPolicy.resolveMaxSeconds(
+            {ShellTimeoutPolicy.maxTimeoutEnvVar: '7200'}),
+        7200,
+      );
+    });
+
+    test('surrounding whitespace is tolerated', () {
+      expect(
+        ShellTimeoutPolicy.resolveMaxSeconds(
+            {ShellTimeoutPolicy.maxTimeoutEnvVar: ' 9000 '}),
+        9000,
+      );
+    });
+
+    test('non-numeric value falls back to default', () {
+      expect(
+        ShellTimeoutPolicy.resolveMaxSeconds(
+            {ShellTimeoutPolicy.maxTimeoutEnvVar: 'abc'}),
+        ShellTimeoutPolicy.resolveMaxSeconds({}),
+      );
+    });
+
+    test('value below default falls back to default', () {
+      expect(
+        ShellTimeoutPolicy.resolveMaxSeconds(
+            {ShellTimeoutPolicy.maxTimeoutEnvVar: '60'}),
+        ShellTimeoutPolicy.resolveMaxSeconds({}),
+      );
+    });
+  });
+
   group('truncateOutput edge cases', () {
     test('within both limits returns output unchanged', () {
       final output = List.generate(10, (i) => 'line $i').join('\n');

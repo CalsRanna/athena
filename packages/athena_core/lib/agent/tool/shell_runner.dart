@@ -5,10 +5,28 @@ import 'dart:math';
 import 'package:path/path.dart' as p;
 
 /// Shell 工具共享配置：默认与最大超时（秒）。
+///
+/// 最大超时默认 3600s，可用环境变量 `ATHENA_SHELL_MAX_TIMEOUT`（秒）覆盖，
+/// 以便在需要真正长时间运行的任务（大构建、长测试、数据迁移）时无需改代码。
 class ShellTimeoutPolicy {
   static const int defaultSeconds = 120;
-  static const int maxSeconds = 600;
   static const int minSeconds = 1;
+
+  static const int _defaultMaxSeconds = 3600;
+  static const String maxTimeoutEnvVar = 'ATHENA_SHELL_MAX_TIMEOUT';
+
+  /// 解析最大超时：环境变量优先，非法值（非数字或小于默认值）回退默认。
+  /// 独立成纯函数便于测试。
+  static int resolveMaxSeconds(Map<String, String> env) {
+    final raw = env[maxTimeoutEnvVar];
+    if (raw == null) return _defaultMaxSeconds;
+    final parsed = int.tryParse(raw.trim());
+    if (parsed == null || parsed < _defaultMaxSeconds) return _defaultMaxSeconds;
+    return parsed;
+  }
+
+  static final int maxSeconds =
+      resolveMaxSeconds(Platform.environment);
 
   /// 把 LLM 传入的 timeout 值 clamp 到 [minSeconds, maxSeconds]，并返回是否做了截断。
   static ({int effective, bool clamped, int? requested}) normalize(int? raw) {
@@ -36,7 +54,9 @@ String shellTimeoutParamDescription() => 'Timeout in seconds. '
     'Pick a value based on the command: short queries (git status, ls, '
     'pwd) need ${ShellTimeoutPolicy.defaultSeconds}s; package installs '
     '(npm install, pub get, pip install) typically need 180-300s; full '
-    'builds (flutter build, cargo build) often need 300-600s. '
+    'builds (flutter build, cargo build) often need 300-600s; very long '
+    'tasks (large migrations, full test suites) may need up to '
+    '${ShellTimeoutPolicy.maxSeconds}s. '
     'If a previous call returned a timeout error, retry with a larger '
     'value (up to ${ShellTimeoutPolicy.maxSeconds}s) before giving up.';
 
