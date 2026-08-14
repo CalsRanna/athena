@@ -66,7 +66,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
         child: Column(
           children: [
             Expanded(child: _buildContent()),
-            _buildProgressBar(),
             _buildInput(),
           ],
         ),
@@ -260,36 +259,6 @@ class _MobileChatPageState extends State<MobileChatPage> {
     } else {
       viewModel.updateCurrentTemperature(value);
     }
-  }
-
-  Widget _buildProgressBar() {
-    return Watch((context) {
-      final iteration = viewModel.currentIteration.value;
-      if (iteration <= 0) return const SizedBox();
-
-      final toolName = viewModel.currentToolName.value ?? '';
-      final text = toolName.isNotEmpty
-          ? 'Step $iteration · $toolName'
-          : 'Step $iteration';
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 12,
-              height: 12,
-              child: CircularProgressIndicator(strokeWidth: 1.5),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: const TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 12),
-            ),
-          ],
-        ),
-      );
-    });
   }
 
   Widget _buildInput() {

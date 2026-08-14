@@ -55,6 +55,14 @@ class ChatViewModel {
   final currentModel = signal<ModelEntity?>(null);
   final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
+
+  /// 新建对话时使用的角色（仅草稿态有效）。
+  ///
+  /// 与 [currentSentinel]（当前选中对话的角色）解耦：Shortcut 入口注入
+  /// 绑定角色或用户在无选中对话时显式选择角色才会设置它；为空时
+  /// [createChat] 回退默认角色 Athena，不复用上一个对话的角色。
+  final draftSentinel = signal<SentinelEntity?>(null);
+
   final currentRetention = signal(defaultDraftRetention);
   final currentTemperature = signal(defaultDraftTemperature);
   final currentIteration = signal(0);
@@ -188,10 +196,10 @@ class ChatViewModel {
       if (_sentinelViewModel.sentinels.value.isEmpty) {
         await _sentinelViewModel.getSentinels();
       }
-      // 优先使用当前选中角色（Shortcut/Sentinel 入口设置的绑定角色），
-      // 无选中时回退默认角色。
-      final sentinel = currentSentinel.value ??
-          _sentinelViewModel.defaultSentinel.value;
+      // 默认角色 Athena；仅当草稿态显式选定了角色
+      // （Shortcut 入口注入或用户在无选中对话时选择）时使用选定角色。
+      final sentinel =
+          draftSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
 
       final chat = await _manageService.createChat(
         model: model,
@@ -215,6 +223,8 @@ class ChatViewModel {
       currentTemperature.value = chat.temperature;
       pendingImages.value = [];
       messages.value = [];
+      // 草稿角色是一次性设定，消费后清空，避免下次新建对话复用。
+      draftSentinel.value = null;
 
       clearSelection();
       _selection.lastSelectedIndex.value = pinned.length;
@@ -423,6 +433,9 @@ class ChatViewModel {
 
   void updateCurrentSentinel(SentinelEntity sentinel) {
     currentSentinel.value = sentinel;
+    // 无选中对话时的显式选择（含 Shortcut 入口注入的绑定角色），
+    // 作为下一次新建对话的角色。
+    draftSentinel.value = sentinel;
   }
 
   void updateCurrentRetention(int retention) {
@@ -622,6 +635,7 @@ class ChatViewModel {
       await _sentinelViewModel.getSentinels();
     }
     currentSentinel.value = _sentinelViewModel.defaultSentinel.value;
+    draftSentinel.value = null;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
   }

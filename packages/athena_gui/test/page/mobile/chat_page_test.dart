@@ -129,5 +129,22 @@ void main() {
       // Progress bar should be hidden when iteration <= 0
       expect(find.textContaining('Step'), findsNothing);
     });
+
+    testWidgets('no agent progress info while streaming', (tester) async {
+      final sentinel = testSentinel(name: 'Athena');
+      final chat = testChat();
+      sentinelViewModel.sentinels.value = [sentinel];
+      chatViewModel.currentChat.value = chat;
+
+      await pumpChatPage(tester, chat: chat);
+
+      // Agent 工作期间也不展示步骤与工具调用等辅助信息。
+      chatViewModel.currentIteration.value = 3;
+      chatViewModel.currentToolName.value = 'read_file';
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Step'), findsNothing);
+      expect(find.textContaining('read_file'), findsNothing);
+    });
   });
 }
