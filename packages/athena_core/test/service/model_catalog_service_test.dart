@@ -123,14 +123,14 @@ Map<String, dynamic> _fixtureCatalog() => {
         },
         'reasoning': true,
         'attachment': true,
-        'release_date': '2025-12-01',
+        'release_date': '2026-05-01',
       },
       'deepseek-reasoner': {
         'name': 'DeepSeek Reasoner',
         'limit': {'context': 1000000},
         'cost': {'input': 0.14, 'output': 0.28},
         'reasoning': true,
-        'release_date': '2025-05-28',
+        'release_date': '2026-03-15',
       },
     },
   },
@@ -274,6 +274,40 @@ void main() {
         ModelCatalogService.filterReasoning(family),
       );
       expect(result.keys, ['anthropic/claude-sonnet-5']);
+    });
+  });
+
+  group('filterByReleaseDate', () {
+    Map<String, dynamic> model(String? release) => {
+      'name': 'M',
+      if (release != null) 'release_date': release,
+    };
+
+    test('只保留 minDate 及之后发布(ISO 字符串比较)', () {
+      final result = ModelCatalogService.filterByReleaseDate({
+        'a': model('2026-01-01'),
+        'b': model('2026-08-12'),
+        'c': model('2025-12-31'),
+        'd': model('2025-04'),
+      });
+      expect(result.keys.toSet(), {'a', 'b'});
+    });
+
+    test('缺失 release_date 的模型被剔除', () {
+      final result = ModelCatalogService.filterByReleaseDate({
+        'with-date': model('2026-05-01'),
+        'no-date': model(null),
+        'non-string': {'name': 'X', 'release_date': 20260101},
+      });
+      expect(result.keys, ['with-date']);
+    });
+
+    test('minDate 为空时不过滤', () {
+      final result = ModelCatalogService.filterByReleaseDate(
+        {'old': model('2020-01-01')},
+        minDate: '',
+      );
+      expect(result.keys, ['old']);
     });
   });
 
@@ -476,7 +510,7 @@ void main() {
       expect(chat.providerId, provider.id);
       expect(chat.contextWindow, 1000000);
       expect(chat.inputPrice, r'$0.14/M input tokens');
-      expect(chat.releasedAt, 'Released 2025-12-01');
+      expect(chat.releasedAt, 'Released 2026-05-01');
       expect(chat.vision, isTrue);
 
       // 统计:新增 1 provider + 2 模型
@@ -566,23 +600,23 @@ void main() {
             // deepseek-chat 家族:三个版本,只应保留 release 最新
             'deepseek-chat-v3-0324': {
               'name': 'DeepSeek Chat V3',
-              'release_date': '2025-03-24',
+              'release_date': '2026-01-10',
               'reasoning': true,
             },
             'deepseek-chat-v3.1': {
               'name': 'DeepSeek Chat V3.1',
-              'release_date': '2025-12-01',
+              'release_date': '2026-02-10',
               'reasoning': true,
             },
             'deepseek-chat': {
               'name': 'DeepSeek Chat',
-              'release_date': '2026-02-01',
+              'release_date': '2026-03-01',
               'reasoning': true,
             },
             // reasoner 独立家族,保留
             'deepseek-reasoner': {
               'name': 'DeepSeek Reasoner',
-              'release_date': '2025-12-01',
+              'release_date': '2026-01-15',
               'reasoning': true,
             },
           },
@@ -604,7 +638,7 @@ void main() {
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2025-03-24',
+              'release_date': '2026-01-10',
               'reasoning': true,
             },
           },
@@ -624,7 +658,7 @@ void main() {
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2025-03-24',
+              'release_date': '2026-01-10',
               'reasoning': true,
             },
             'deepseek-chat-v4': {
@@ -650,7 +684,7 @@ void main() {
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2025-03-24',
+              'release_date': '2026-01-10',
               'reasoning': true,
             },
           },
@@ -668,7 +702,7 @@ void main() {
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2025-03-24',
+              'release_date': '2026-01-10',
               'reasoning': true,
             },
             'deepseek-chat-v4': {
@@ -697,6 +731,30 @@ void main() {
       expect(modelRepo.models, isEmpty);
     });
 
+    test('2026 年之前发布的模型不导入', () async {
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-reasoner': {
+              'name': 'DeepSeek Reasoner',
+              'reasoning': true,
+              'release_date': '2026-01-01',
+            },
+            'deepseek-chat': {
+              'name': 'DeepSeek Chat',
+              'reasoning': true,
+              'release_date': '2025-12-01',
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
+
+      expect(modelRepo.models.map((m) => m.modelId).toList(),
+          ['deepseek-reasoner']);
+    });
+
     test('默认变体排除生效:preview/免费档/快照等被剔除', () async {
       final catalog = {
         'deepseek': {
@@ -705,7 +763,7 @@ void main() {
             'deepseek-reasoner': {
               'name': 'DeepSeek Reasoner',
               'reasoning': true,
-              'release_date': '2025-05-28',
+              'release_date': '2026-01-20',
             },
             // 变体噪声:不在 include 中也能被 defaultCatalogExcludes 剔除
             'deepseek-reasoner-preview': {
