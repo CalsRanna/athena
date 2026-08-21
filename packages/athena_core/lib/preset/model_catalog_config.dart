@@ -22,8 +22,13 @@ class CatalogProviderConfig {
   /// 模型 id 通配符白名单(`*` 通配),空列表 = 导入全部模型
   final List<String> include;
 
-  /// 模型 id 通配符排除列表,优先级高于 [include]
+  /// 模型 id 通配符排除列表,优先级高于 [include]。
+  /// 空列表 = 使用共享默认排除 [defaultCatalogExcludes](追加在 exclude 前)
   final List<String> exclude;
+
+  /// 仅同步支持推理(reasoning = true)的模型。
+  /// 默认 true:预设 provider 面向"常用推理模型",非推理模型不再维护。
+  final bool reasoningOnly;
 
   const CatalogProviderConfig({
     required this.sourceId,
@@ -31,10 +36,32 @@ class CatalogProviderConfig {
     required this.localBaseUrl,
     this.include = const [],
     this.exclude = const [],
+    this.reasoningOnly = true,
   });
+
+  /// 生效的排除列表:显式 exclude + 共享默认(默认排除放在前面,
+  /// 显式排除可覆盖——glob 匹配只做判断,不要求唯一,顺序无实际影响)
+  List<String> get effectiveExcludes => [...defaultCatalogExcludes, ...exclude];
 }
 
+/// 共享默认排除:各 provider 通用的变体噪声模型。
+///
+/// 这些是不同模型形态(preview/image/audio/realtime/免费档/快照/蒸馏版等),
+/// 家族去重管不到,必须在筛选时剔除。
+const defaultCatalogExcludes = <String>[
+  '*-preview*', '*image*', '*audio*', '*video*', '*realtime*', '*:free',
+  '*-free*', '*snapshot*', '*distill*', '*customtools*', '*multi-agent*',
+  // 别名模型(指向当前版本,如 gpt-5.2-chat-latest / gemini-flash-latest)
+  '*-latest',
+  // OpenAI codex 专用模型(仅 codex 产品端点可用,通用 API 调不通)
+  '*codex*',
+];
+
 /// models.dev provider key → 本地预设 provider 配置
+///
+/// 名单面向"常用推理模型"([CatalogProviderConfig.reasoningOnly] 默认 true):
+/// 主流可直连的推理服务商 + Open Router 聚合器。新增 provider 只需在此
+/// 加一条配置,include 留空即全量导入其推理模型。
 const modelCatalogConfig = <CatalogProviderConfig>[
   // ---- Deep Seek(4 个模型,全导入) ----
   CatalogProviderConfig(
@@ -43,8 +70,8 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     localBaseUrl: 'https://api.deepseek.com/v1',
   ),
 
-  // ---- Open Router(每模型家族只留最新版,家族去重由
-  // ModelCatalogService.latestPerFamily 完成) ----
+  // ---- Open Router(聚合器,保留白名单:每模型家族只留最新版,
+  // 家族去重由 ModelCatalogService.latestPerFamily 完成) ----
   CatalogProviderConfig(
     sourceId: 'openrouter',
     localName: 'Open Router',
@@ -61,10 +88,9 @@ const modelCatalogConfig = <CatalogProviderConfig>[
       'minimax/MiniMax-M*',
     ],
     exclude: [
-      // 变体噪音:家族去重只管理"新旧版本",这些是不同模型形态
-      // (preview/image/audio/codex 专用版/免费档/快照/别名),不会被去重
-      '*-preview*', '*image*', '*customtools*', '*:free', '*multi-agent*',
+      // 特定变体(其余变体由 defaultCatalogExcludes 覆盖)
       'openai/gpt-chat-latest', 'openai/gpt-audio*', 'openai/gpt-oss*',
+      'openai/gpt-*-pro', 'openai/o*-pro', // Pro 档需订阅,普通 key 不可用
       'x-ai/grok-build*',
       // qwen 日期快照与 next 实验代(独立家族,去重不覆盖)
       'qwen/qwen3-*-2507', 'qwen/qwen3-next-*',
@@ -87,8 +113,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     ],
     exclude: [
       // 专用场景模型(语音/OCR/实时翻译等),不适合通用聊天
-      '*realtime*', '*asr*', '*ocr*', '*character*', '*livetranslate*',
-      '*-preview*', // 预览版(如 qwen3.6-max-preview)由正式版家族替代
+      '*asr*', '*ocr*', '*character*', '*livetranslate*',
     ],
   ),
 
@@ -104,7 +129,6 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     ],
     exclude: [
       'Qwen/Qwen2.5*', // 旧代 Qwen 已由 Qwen3+ 替代
-      '*Realtime*',
       'deepseek-ai/DeepSeek-V3.1-Terminus', // 特殊开源版,家族去重不覆盖
     ],
   ),
@@ -122,5 +146,46 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     localName: '智谱AI',
     localBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     include: ['glm-*'],
+  ),
+
+  // ---- OpenAI(官方直连;models.dev 无 api 字段,base_url 内置覆盖) ----
+  CatalogProviderConfig(
+    sourceId: 'openai',
+    localName: 'OpenAI',
+    localBaseUrl: 'https://api.openai.com/v1',
+    exclude: [
+      'gpt-*-pro', 'o*-pro', // Pro 档需订阅,普通 key 不可用
+    ],
+  ),
+
+  // ---- Google(官方 OpenAI 兼容端点) ----
+  CatalogProviderConfig(
+    sourceId: 'google',
+    localName: 'Google',
+    localBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  ),
+
+  // ---- xAI(官方直连;models.dev 无 api 字段) ----
+  CatalogProviderConfig(
+    sourceId: 'xai',
+    localName: 'xAI',
+    localBaseUrl: 'https://api.x.ai/v1',
+    exclude: [
+      'grok-build*', // build 专用模型,通用 API 不可用
+    ],
+  ),
+
+  // ---- 月之暗面 Kimi(国内版 base_url,models.dev 是国际版) ----
+  CatalogProviderConfig(
+    sourceId: 'moonshotai',
+    localName: '月之暗面 Kimi',
+    localBaseUrl: 'https://api.moonshot.cn/v1',
+  ),
+
+  // ---- 阶跃星辰 ----
+  CatalogProviderConfig(
+    sourceId: 'stepfun',
+    localName: '阶跃星辰',
+    localBaseUrl: 'https://api.stepfun.com/v1',
   ),
 ];

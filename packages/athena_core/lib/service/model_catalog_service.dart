@@ -59,49 +59,60 @@ class ModelCatalogService {
   final Duration _cacheTtl;
   final Duration _fetchTimeout;
 
-  /// 启动时调用。TTL 内直接返回;过期则拉取 → 缓存 → 同步,失败降级缓存。
-  Future<void> syncIfNeeded() async {
+  /// 同步模型目录并返回统计。TTL 内直接返回空结果(除非 [force]);
+  /// 过期则拉取 → 缓存 → 同步,失败降级缓存。
+  ///
+  /// [force] 用于用户手动触发(设置页"同步"按钮):忽略 TTL 强制拉取。
+  Future<CatalogSyncResult> syncIfNeeded({bool force = false}) async {
     try {
       final cachePath = await _resolveCachePath();
       final cached = await _readCache(cachePath);
-      final needFetch =
-          cached == null || !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
+      final needFetch = force ||
+          cached == null ||
+          !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
       if (!needFetch) {
         LoggerUtil.d('Model catalog: cache fresh, skip sync');
-        return;
+        return const CatalogSyncResult();
       }
 
       final data = await _fetchCatalog();
       await _writeCache(cachePath, data, DateTime.now());
-      await applyCatalog(data);
+      final result = await applyCatalog(data);
       LoggerUtil.i('Model catalog: synced from models.dev');
+      return result;
     } catch (e) {
       LoggerUtil.w('Model catalog sync failed: $e, falling back to cache');
       try {
         final cachePath = await _resolveCachePath();
         final cached = await _readCache(cachePath);
         if (cached != null) {
-          await applyCatalog(cached.data);
+          final result = await applyCatalog(cached.data);
           LoggerUtil.i('Model catalog: synced from cached data');
-        } else {
-          LoggerUtil.w('Model catalog: no cache available, skipped');
+          return result;
         }
+        LoggerUtil.w('Model catalog: no cache available, skipped');
       } catch (e2) {
         LoggerUtil.w('Model catalog fallback sync failed: $e2');
       }
+      return const CatalogSyncResult();
     }
   }
 
-  /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行)。
+  /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行),返回统计。
   ///
   /// 对每个 [modelCatalogConfig] 配置:
   /// 1. 按名字查找 preset provider,不存在则创建
-  /// 2. 按 include/exclude 白名单筛选模型,再按家族去重(每家族只留
-  ///    release_date 最新的一个),逐模型插入或更新元数据
-  /// 3. 清理下架模型:白名单外、家族去重淘汰的老版本,若未被 chat
-  ///    引用则删除
+  /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤([reasoningOnly])
+  ///    → 家族去重(每家族只留 release_date 最新的一个),逐模型插入或更新
+  /// 3. 清理下架模型:白名单外、reasoning 过滤淘汰、家族去重淘汰的老版本,
+  ///    若未被 chat 引用则删除
   @visibleForTesting
-  Future<void> applyCatalog(Map<String, dynamic> catalog) async {
+  Future<CatalogSyncResult> applyCatalog(Map<String, dynamic> catalog) async {
+    var createdProviders = 0;
+    var createdModels = 0;
+    var updatedModels = 0;
+    var removedModels = 0;
+
     for (var config in modelCatalogConfig) {
       final providerJson = catalog[config.sourceId];
       if (providerJson is! Map<String, dynamic>) continue;
@@ -109,10 +120,13 @@ class ModelCatalogService {
       if (modelsJson is! Map<String, dynamic>) continue;
 
       final selected = latestPerFamily(
-        selectModels(
-          modelsJson,
-          include: config.include,
-          exclude: config.exclude,
+        filterReasoning(
+          selectModels(
+            modelsJson,
+            include: config.include,
+            exclude: config.effectiveExcludes,
+          ),
+          reasoningOnly: config.reasoningOnly,
         ),
       );
       if (selected.isEmpty) continue;
@@ -132,6 +146,7 @@ class ModelCatalogService {
             ),
           );
       if (provider == null) {
+        createdProviders++;
         LoggerUtil.i(
           'Model catalog: created provider ${config.localName} (id=$providerId)',
         );
@@ -147,8 +162,10 @@ class ModelCatalogService {
         final mapped = mapModel(entry.key, modelJson, providerId);
         if (existing == null) {
           await _modelRepository.createModel(mapped);
+          createdModels++;
         } else {
           await _modelRepository.updateModel(mapped.copyWith(id: existing.id));
+          updatedModels++;
         }
       }
 
@@ -160,11 +177,19 @@ class ModelCatalogService {
         final chatCount = await _chatRepository.getChatCountByModelId(model.id!);
         if (chatCount > 0) continue;
         await _modelRepository.deleteModel(model.id!);
+        removedModels++;
         LoggerUtil.i(
           'Model catalog: removed ${config.localName}/${model.modelId}',
         );
       }
     }
+
+    return CatalogSyncResult(
+      createdProviders: createdProviders,
+      createdModels: createdModels,
+      updatedModels: updatedModels,
+      removedModels: removedModels,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -276,6 +301,24 @@ class ModelCatalogService {
     };
   }
 
+  /// 推理模型过滤:仅保留 `reasoning == true` 的模型。
+  ///
+  /// 必须在家族去重之前执行:reasoning 是"能力"维度,先按能力过滤再
+  /// 按家族取最新,保证家族里留下的是最新的推理版。
+  @visibleForTesting
+  static Map<String, dynamic> filterReasoning(
+    Map<String, dynamic> models, {
+    bool reasoningOnly = true,
+  }) {
+    if (!reasoningOnly) return models;
+    return {
+      for (final entry in models.entries)
+        if (entry.value is Map<String, dynamic> &&
+            entry.value['reasoning'] == true)
+          entry.key: entry.value,
+    };
+  }
+
   /// 模型家族键:把 modelId 中的"版本信息"归一化,同家族的版本得到
   /// 相同键,不同家族/不同规格得到不同键。
   ///
@@ -379,4 +422,19 @@ class _CachedCatalog {
   final Map<String, dynamic> data;
 
   _CachedCatalog({required this.fetchedAt, required this.data});
+}
+
+/// 一次目录同步的统计结果,供 UI 展示摘要(如"新增 X provider、更新 Y 模型")。
+class CatalogSyncResult {
+  final int createdProviders;
+  final int createdModels;
+  final int updatedModels;
+  final int removedModels;
+
+  const CatalogSyncResult({
+    this.createdProviders = 0,
+    this.createdModels = 0,
+    this.updatedModels = 0,
+    this.removedModels = 0,
+  });
 }
