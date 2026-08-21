@@ -12,6 +12,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/service/chat_manage_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
+import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -49,7 +50,24 @@ class ChatViewModel {
   final currentChat = signal<ChatEntity?>(null);
   final messages = listSignal<MessageEntity>([]);
   final isLoading = signal(false);
-  final isStreaming = signal(false);
+
+  /// 正在流式运行的对话 id 集合（多对话可同时运行）。
+  final streamingChatIds = listSignal<int>([]);
+
+  /// 是否有任一对话正在流式。
+  late final isStreaming = computed(
+    () => streamingChatIds.value.isNotEmpty,
+  );
+
+  /// 当前显示的对话是否正在流式（用于输入框/消息列表的流式状态展示）。
+  late final isCurrentChatStreaming = computed(() {
+    final id = currentChat.value?.id;
+    return id != null && streamingChatIds.value.contains(id);
+  });
+
+  /// 挂起的权限审批请求（按对话渲染为会话内卡片）。
+  final pendingApprovals = listSignal<ApprovalRequest>([]);
+
   final error = signal<String?>(null);
 
   final currentModel = signal<ModelEntity?>(null);
@@ -133,7 +151,18 @@ class ChatViewModel {
         _modelResolver = modelResolver,
         _settingViewModel = settingViewModel,
         _modelViewModel = modelViewModel,
-        _sentinelViewModel = sentinelViewModel;
+        _sentinelViewModel = sentinelViewModel {
+    // 审批请求 → 会话内卡片；决策完成（含 run 取消自动拒绝）后自动移除。
+    // VM 与应用同生命周期，订阅无需取消。
+    streamDelegate.approvalRequests.listen((request) {
+      pendingApprovals.value = [...pendingApprovals.value, request];
+      unawaited(request.completer.future.whenComplete(() {
+        pendingApprovals.value = pendingApprovals.value
+            .where((r) => !identical(r, request))
+            .toList();
+      }));
+    });
+  }
 
   // ═══════════════════════════════════════════════════════════════
   // 会话列表操作
@@ -242,9 +271,9 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      if (isStreaming.value && _stream.streamingChatId == chat.id) {
-        final done = _stream.settled;
-        _stream.stop();
+      if (isStreamingChat(chat.id!)) {
+        final done = _stream.settledOf(chat.id!);
+        _stream.stop(chat.id!);
         if (done != null) await done;
       }
       _rename.cancel(chat.id!);
@@ -271,12 +300,12 @@ class ChatViewModel {
     try {
       final ids = chatsToDelete.map((c) => c.id!).toSet();
 
-      if (isStreaming.value &&
-          _stream.streamingChatId != null &&
-          ids.contains(_stream.streamingChatId)) {
-        final done = _stream.settled;
-        _stream.stop();
-        if (done != null) await done;
+      for (final id in ids) {
+        if (streamingChatIds.value.contains(id)) {
+          final done = _stream.settledOf(id);
+          _stream.stop(id);
+          if (done != null) await done;
+        }
       }
       for (final id in ids) {
         _rename.cancel(id);
@@ -321,8 +350,6 @@ class ChatViewModel {
   }
 
   Future<void> selectChat(ChatEntity chat) async {
-    if (isStreaming.value) return;
-
     currentChat.value = chat;
 
     final result = await _manageService.selectChat(chat);
@@ -335,6 +362,18 @@ class ChatViewModel {
     pendingImages.value = [];
     currentTokenUsage.value = null;
     cumulativeTokenTotal.value = chat.tokenTotal;
+
+    // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
+    _mergeLiveMessage(chat.id!);
+  }
+
+  /// 若 [chatId] 正在流式,用 coordinator 的内存快照覆盖/追加最后一条消息。
+  ///
+  /// 幂等：快照消息已存在于列表（id 相同）则替换，否则追加
+  /// （竞态：快照对应的占位消息可能尚未落库）。
+  void _mergeLiveMessage(int chatId) {
+    final live = _stream.liveMessage(chatId);
+    if (live != null) _appendOrReplaceMessage(live);
   }
 
   Future<void> togglePin(ChatEntity chat) async {
@@ -455,9 +494,10 @@ class ChatViewModel {
     required ChatEntity chat,
     bool jsonMode = false,
   }) async {
-    if (isStreaming.value) return;
+    // 仅阻止同一对话的重复运行；其他对话可并发
+    if (isStreamingChat(chat.id!)) return;
 
-    isStreaming.value = true;
+    streamingChatIds.value = [...streamingChatIds.value, chat.id!];
     currentTokenUsage.value = null;
 
     try {
@@ -467,13 +507,22 @@ class ChatViewModel {
         jsonMode: jsonMode,
       );
       await for (final event in eventStream) {
+        // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
+        // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
+        final belongsToCurrent = chat.id == currentChat.value?.id;
         switch (event) {
           case RunMessageStored(:final message):
-            messages.value = [...messages.value, message];
+            if (belongsToCurrent) {
+              messages.value = [...messages.value, message];
+            }
           case RunAssistantAppended(:final message):
-            messages.value = [...messages.value, message];
+            if (belongsToCurrent) {
+              _appendOrReplaceMessage(message);
+            }
           case RunMessageUpdated(:final message):
-            _updateMessageInList(message);
+            if (belongsToCurrent) {
+              _updateMessageInList(message);
+            }
           case RunIterationChanged(:final iteration):
             currentIteration.value = iteration;
           case RunToolNameChanged(:final toolName):
@@ -496,14 +545,38 @@ class ChatViewModel {
     } catch (e) {
       error.value = e.toString();
     } finally {
-      isStreaming.value = false;
+      streamingChatIds.value = streamingChatIds.value
+          .where((id) => id != chat.id)
+          .toList();
       currentIteration.value = 0;
       currentToolName.value = null;
     }
   }
 
-  void stopGenerating() {
-    _stream.stop();
+  /// 追加或替换消息：切换对话的竞态下占位消息可能已在列表中
+  /// （快照合并或 DB 预读），避免重复追加。
+  void _appendOrReplaceMessage(MessageEntity message) {
+    final index = messages.value.indexWhere((m) => m.id == message.id);
+    if (index >= 0) {
+      final copy = List<MessageEntity>.from(messages.value);
+      copy[index] = message;
+      messages.value = copy;
+    } else {
+      messages.value = [...messages.value, message];
+    }
+  }
+
+  /// 指定对话是否正在流式运行。
+  bool isStreamingChat(int chatId) => streamingChatIds.value.contains(chatId);
+
+  /// 停止指定对话的 Agent 运行。
+  void stopGenerating(int chatId) {
+    _stream.stop(chatId);
+  }
+
+  /// 用户对审批请求做出决策（Allow Once / Always Allow / Deny）。
+  void respondApproval(ApprovalRequest request, PermissionDecision decision) {
+    _stream.respondApproval(request, decision);
   }
 
   Future<void> deleteMessage(MessageEntity message) async {

@@ -212,7 +212,9 @@ class _SendButton extends StatelessWidget {
     );
 
     return Watch((context) {
-      var streaming = chatViewModel.isStreaming.value;
+      // 仅当"当前显示的对话"正在流式时才显示 Stop；
+      // 切到其他对话时恢复发送按钮（后台任务不受影响）
+      var streaming = chatViewModel.isCurrentChatStreaming.value;
       var iconData = HugeIcons.strokeRoundedSent;
       if (streaming) iconData = HugeIcons.strokeRoundedStop;
       var innerContainer = Container(

@@ -4,6 +4,7 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -357,8 +358,10 @@ class _FakeChatMessageService extends ChatMessageService {
 }
 
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
+///
+/// 自包含的 per-run 状态（取消令牌/落定 Future），模拟多 run 并发语义。
 class _FakeAgentService extends AgentService {
-  _FakeAgentService(this.stream)
+  _FakeAgentService(this.stream, {this.streamForChat})
     : super(
         chatService: ChatService(llmClient: LlmClient()),
         toolRegistry: ToolRegistry(),
@@ -366,8 +369,30 @@ class _FakeAgentService extends AgentService {
 
   final Stream<AgentEvent> stream;
 
+  /// 按对话分发事件流（并发测试用）；[onPermission] 供测试直接触发
+  /// 权限审批链路（模拟 agent 等待用户审批）。
+  final Stream<AgentEvent> Function(
+    ChatEntity chat,
+    PermissionCallback? onPermission,
+  )? streamForChat;
+
+  final Map<int, CancelToken> _tokens = {};
+  final Map<int, Completer<void>> _settled = {};
+
+  @override
+  CancelToken? cancelTokenOf(int runId) => _tokens[runId];
+
+  @override
+  Future<void>? settledOf(int runId) => _settled[runId]?.future;
+
+  @override
+  void abort(int runId) {
+    _tokens[runId]?.cancel();
+  }
+
   @override
   Stream<AgentEvent> run({
+    required int runId,
     required ChatEntity chat,
     required ProviderEntity provider,
     required ModelEntity model,
@@ -383,19 +408,17 @@ class _FakeAgentService extends AgentService {
     AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
-    // 模拟基类的状态管理
-    isRunningInternal = true;
-    currentCancelTokenInternal = cancelToken ?? CancelToken();
-    settledInternal = Completer<void>();
+    final token = cancelToken ?? CancelToken();
+    _tokens[runId] = token;
+    final settled = Completer<void>();
+    _settled[runId] = settled;
     try {
-      yield* stream;
+      final s = streamForChat?.call(chat, onPermission) ?? stream;
+      yield* s;
     } finally {
-      isRunningInternal = false;
-      currentCancelTokenInternal = null;
-      if (settledInternal != null && !settledInternal!.isCompleted) {
-        settledInternal!.complete();
-      }
-      settledInternal = null;
+      _tokens.remove(runId);
+      if (!settled.isCompleted) settled.complete();
+      _settled.remove(runId);
     }
   }
 }
@@ -530,12 +553,14 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    // 事件只渲染到当前显示的对话；模拟用户在选中对话中发送消息
+    vm.currentChat.value = _chat();
 
     final future = vm.sendMessage(_userMessage(), chat: _chat());
 
     // 等待前两段文本被消费后再取消。
     await emittedSome.future;
-    vm.stopGenerating();
+    vm.stopGenerating(1);
     gate.complete();
 
     await future;
@@ -577,7 +602,7 @@ void main() {
     final future = vm.sendMessage(_userMessage(), chat: _chat());
 
     await reachedSecond.future;
-    vm.stopGenerating();
+    vm.stopGenerating(1);
     gate.complete();
 
     await future;
@@ -604,6 +629,8 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    // 事件只渲染到当前显示的对话；模拟用户在选中对话中发送消息
+    vm.currentChat.value = _chat();
 
     await vm.sendMessage(_userMessage(), chat: _chat());
 
@@ -632,6 +659,8 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    // 事件只渲染到当前显示的对话；模拟用户在选中对话中发送消息
+    vm.currentChat.value = _chat();
 
     await vm.sendMessage(_userMessage(), chat: _chat());
 
@@ -665,6 +694,8 @@ void main() {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(events());
     final vm = _buildViewModel(manage: manage, agent: agent);
+    // 事件只渲染到当前显示的对话；模拟用户在选中对话中发送消息
+    vm.currentChat.value = _chat();
 
     final future = vm.sendMessage(_userMessage(), chat: _chat());
 
@@ -819,7 +850,7 @@ void main() {
     expect(vm.isStreaming.value, isTrue, reason: 'A 仍在流式');
 
     // 清理：结束 A 的流。
-    vm.stopGenerating();
+    vm.stopGenerating(1);
     gate.complete();
     await sendFuture;
   });
@@ -993,6 +1024,234 @@ void main() {
       );
     },
   );
+
+  // 后台运行：流式中途切换到其他对话，事件不得污染新对话的列表；
+  // 切回原对话时通过 coordinator 的内存快照恢复实时进度。
+  test('流式中途切换对话：事件不污染新对话，切回时快照恢复实时进度', () async {
+    final gate = Completer<void>();
+    final emittedSome = Completer<void>();
+
+    Stream<AgentEvent> events() async* {
+      yield const AgentTextEvent('Hello');
+      yield const AgentTextEvent(', world');
+      if (!emittedSome.isCompleted) emittedSome.complete();
+      await gate.future;
+      yield const AgentTextEvent(' more');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(events());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    final chatA = _chat(id: 1);
+
+    // 用户当前在对话 A 中发送消息
+    vm.currentChat.value = chatA;
+    final sendFuture = vm.sendMessage(_userMessage(), chat: chatA);
+
+    // 前两段文本已消费并实时渲染到 A
+    await emittedSome.future;
+    expect(
+      vm.messages.value
+          .any((m) => m.role == 'assistant' && m.content == 'Hello, world'),
+      isTrue,
+      reason: 'A 的流式内容应实时渲染到当前列表',
+    );
+    expect(vm.isCurrentChatStreaming.value, isTrue);
+    expect(vm.streamingChatIds.value, [chatA.id]);
+
+    // 流式期间切换到对话 B：加载 B 的消息，A 的事件不得写入
+    final chatB = _chat(id: 2);
+    await vm.selectChat(chatB);
+    expect(vm.isCurrentChatStreaming.value, isFalse,
+        reason: 'B 不在流式中，输入框不应显示 Stop');
+    expect(
+      vm.messages.value.every((m) => m.role != 'assistant'),
+      isTrue,
+      reason: '切换到 B 后 B 的列表不应出现 A 的 assistant 卡片',
+    );
+
+    // 切回 A：DB 里无 finalize 的 assistant 消息（伪 manage 空实现），
+    // 实时内容唯一来源是 coordinator 的内存快照
+    await vm.selectChat(chatA);
+    expect(vm.isCurrentChatStreaming.value, isTrue);
+    expect(
+      vm.messages.value.lastWhere((m) => m.role == 'assistant').content,
+      'Hello, world',
+      reason: '切回运行中的对话应通过快照恢复实时进度',
+    );
+
+    // 放行流：后续事件继续实时渲染到 A（已回到当前显示）
+    gate.complete();
+    await sendFuture;
+    expect(vm.isStreaming.value, isFalse);
+    expect(vm.streamingChatIds.value, isEmpty);
+    expect(
+      vm.messages.value.lastWhere((m) => m.role == 'assistant').content,
+      'Hello, world more',
+      reason: '切回后事件应继续实时更新',
+    );
+  });
+
+  // 第二步：多对话并发运行，两个 Agent 同时流式互不干扰，取消各自独立。
+  test('并发：两个对话同时运行，各自取消互不影响', () async {
+    final gateA = Completer<void>();
+    final gateB = Completer<void>();
+    final emittedA = Completer<void>();
+    final emittedB = Completer<void>();
+
+    Stream<AgentEvent> streamA() async* {
+      yield const AgentTextEvent('reply-A');
+      if (!emittedA.isCompleted) emittedA.complete();
+      await gateA.future;
+      yield const AgentTextEvent('-more');
+    }
+
+    Stream<AgentEvent> streamB() async* {
+      yield const AgentTextEvent('reply-B');
+      if (!emittedB.isCompleted) emittedB.complete();
+      await gateB.future;
+      yield const AgentTextEvent('-more');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(
+      const Stream<AgentEvent>.empty(),
+      streamForChat: (chat, onPermission) =>
+          chat.id == 1 ? streamA() : streamB(),
+    );
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    final chatA = _chat(id: 1);
+    final chatB = _chat(id: 2);
+
+    // 对话 A 开始流式
+    vm.currentChat.value = chatA;
+    final sendFutureA = vm.sendMessage(
+      MessageEntity(chatId: 1, role: 'user', content: 'a'),
+      chat: chatA,
+    );
+    await emittedA.future;
+    expect(vm.isStreamingChat(1), isTrue);
+
+    // 切换到 B 并发起第二个任务（此前被全局锁禁止，现在允许）
+    await vm.selectChat(chatB);
+    final sendFutureB = vm.sendMessage(
+      MessageEntity(chatId: 2, role: 'user', content: 'b'),
+      chat: chatB,
+    );
+    await emittedB.future;
+    expect(vm.isStreamingChat(1), isTrue, reason: 'A 仍在运行');
+    expect(vm.isStreamingChat(2), isTrue, reason: 'B 同时运行');
+    expect(vm.isCurrentChatStreaming.value, isTrue, reason: '当前显示 B');
+
+    // 取消 B：A 不受影响
+    vm.stopGenerating(2);
+    gateB.complete();
+    await sendFutureB;
+    expect(vm.isStreamingChat(1), isTrue, reason: 'A 不受 B 取消影响');
+    expect(vm.isStreamingChat(2), isFalse);
+    // B 的取消落库携带 B 的内容（而非 A 的）
+    expect(manage.cancelledArg, isNotNull);
+    expect(manage.cancelledArg!.content, contains('reply-B'));
+
+    // 清理：结束 A
+    vm.stopGenerating(1);
+    gateA.complete();
+    await sendFutureA;
+    expect(vm.isStreaming.value, isFalse);
+    expect(vm.streamingChatIds.value, isEmpty);
+  });
+
+  // 第二步：审批请求发布到对应会话的卡片列表，决策后 run 继续。
+  test('审批请求按会话发布，Allow 决策后 Agent 继续', () async {
+    var approvedResult = false;
+
+    Stream<AgentEvent> events(ChatEntity chat, PermissionCallback? onPermission) async* {
+      yield const AgentTextEvent('before');
+      // 模拟 agent 等待权限审批（触发 coordinator → delegate 的审批链路）。
+      // onPermission 在用户决策（或 run 取消）前不会返回——fake 在此挂起。
+      approvedResult = await onPermission?.call(
+            'bash',
+            '{"command": "git push"}',
+          ) ??
+          false;
+      yield const AgentTextEvent('after');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(
+      const Stream<AgentEvent>.empty(),
+      streamForChat: (chat, onPermission) => events(chat, onPermission),
+    );
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    vm.currentChat.value = _chat();
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await _waitFor(() => vm.pendingApprovals.value.isNotEmpty);
+
+    // 审批请求已发布到对应会话（chatId=1），Agent 停在等待审批
+    final approvals =
+        vm.pendingApprovals.value.where((r) => r.chatId == 1).toList();
+    expect(approvals, hasLength(1));
+    expect(approvals.first.toolName, 'bash');
+    expect(approvals.first.arguments, contains('git push'));
+
+    // 用户 Allow Once
+    vm.respondApproval(
+      approvals.first,
+      const PermissionDecision(approved: true),
+    );
+    await _waitFor(() => vm.pendingApprovals.value.isEmpty);
+    expect(approvedResult, isTrue, reason: 'Agent 收到批准后继续执行');
+
+    await sendFuture;
+  });
+
+  // 第二步：审批挂起时取消 run，审批被自动拒绝并从卡片列表移除。
+  test('审批挂起时取消 run：自动拒绝并移除卡片', () async {
+    var approvedResult = true;
+
+    Stream<AgentEvent> events(ChatEntity chat, PermissionCallback? onPermission) async* {
+      yield const AgentTextEvent('before');
+      approvedResult = await onPermission?.call(
+            'bash',
+            '{"command": "git push"}',
+          ) ??
+          false;
+      yield const AgentTextEvent('after');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(
+      const Stream<AgentEvent>.empty(),
+      streamForChat: (chat, onPermission) => events(chat, onPermission),
+    );
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    vm.currentChat.value = _chat();
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await _waitFor(() => vm.pendingApprovals.value.isNotEmpty);
+
+    // 用户没有决策，直接取消 run：审批自动拒绝并移除卡片
+    vm.stopGenerating(1);
+    await sendFuture;
+    expect(approvedResult, isFalse, reason: '取消时审批被自动拒绝');
+    await _waitFor(() => vm.pendingApprovals.value.isEmpty);
+    expect(manage.cancelledArg, isNotNull);
+  });
+}
+
+/// 轮询等待条件成立（审批卡片经 broadcast controller → VM 订阅的异步链发布）。
+Future<void> _waitFor(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail('Timed out waiting for condition');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
 }
 
 /// ProviderRepository 的最小桩；SettingViewModel 仅在构造时持有引用，

@@ -181,6 +181,7 @@ void _jsonModeTests() {
 
     await service
         .run(
+          runId: 1,
           chat: _chat(),
           provider: _provider(),
           model: _model(),
@@ -201,6 +202,7 @@ void _jsonModeTests() {
 
     await service
         .run(
+          runId: 1,
           chat: _chat(),
           provider: _provider(),
           model: _model(),

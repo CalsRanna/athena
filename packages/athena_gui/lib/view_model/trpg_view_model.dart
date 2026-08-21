@@ -28,6 +28,7 @@ class TRPGViewModel {
   final SettingViewModel _settingViewModel;
   final ModelResolver _modelResolver;
   final AgentService _agentService;
+  int _nextRunId = 0;
 
   /// 绑定的专属 Sentinel（Shortcut 入口传入）。null 时回退旧 dungeonPrompt。
   SentinelEntity? _boundSentinel;
@@ -202,6 +203,8 @@ class TRPGViewModel {
       // 一次 Agent run 输出全部（回复 + 建议），response_format 声明 JSON。
       var fullContent = '';
       var agentStream = _agentService.run(
+        // TRPG 单任务：使用独立递增 runId，与聊天 run 互不冲突
+        runId: _nextRunId++,
         chat: _dummyChat(game),
         provider: provider,
         model: model,

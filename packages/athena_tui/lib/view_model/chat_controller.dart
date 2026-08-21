@@ -502,7 +502,8 @@ class ChatController {
   }
 
   void stopGenerating() {
-    _bridge.stop();
+    final chatId = currentChat.value?.id;
+    if (chatId != null) _bridge.stop(chatId);
   }
 
   /// 消费单个 [RunEvent](sendMessage 的事件分发;测试可注入事件验证

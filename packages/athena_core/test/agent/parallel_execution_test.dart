@@ -261,7 +261,9 @@ void main() {
     });
 
     test('无权限系统时 parallel 工具进并行组', () {
-      final parallel = service.selectParallelCalls([
+      final parallel = service.selectParallelCalls(
+          runId: 1,
+        [
         _call('a', 'par_tool'),
         _call('b', 'par_tool'),
       ]);
@@ -273,6 +275,7 @@ void main() {
         store: PermissionStore()..rules = [],
       );
       final parallel = service.selectParallelCalls(
+          runId: 1,
         [
           _call('a', 'par_danger'), // dangerous 无规则 → 降级
           _call('b', 'par_tool'), // readOnly → 保留
@@ -285,6 +288,7 @@ void main() {
 
     test('无 permissionService 但配置 onPermission 时保守全部串行', () {
       final parallel = service.selectParallelCalls(
+          runId: 1,
         [_call('a', 'par_tool')],
         onPermission: (name, args) async => true,
       );
@@ -292,12 +296,16 @@ void main() {
     });
 
     test('无权限系统（两者皆空）时不做预检降级', () {
-      final parallel = service.selectParallelCalls([_call('a', 'par_tool')]);
+      final parallel = service.selectParallelCalls(
+          runId: 1,
+        [_call('a', 'par_tool')]);
       expect(parallel.length, 1);
     });
 
     test('bash 只读命令可并行、有副作用命令串行', () {
-      final parallel = service.selectParallelCalls([
+      final parallel = service.selectParallelCalls(
+          runId: 1,
+        [
         _call('a', 'bash', '{"command": "ls -la"}'),
         _call('b', 'bash', '{"command": "rm foo"}'),
       ]);
@@ -305,14 +313,18 @@ void main() {
     });
 
     test('参数解析失败自动归入串行', () {
-      final parallel = service.selectParallelCalls([
+      final parallel = service.selectParallelCalls(
+          runId: 1,
+        [
         _call('a', 'par_tool', 'not-json'),
       ]);
       expect(parallel, isEmpty);
     });
 
     test('未知工具不进并行组', () {
-      final parallel = service.selectParallelCalls([
+      final parallel = service.selectParallelCalls(
+          runId: 1,
+        [
         _call('a', 'no_such_tool'),
       ]);
       expect(parallel, isEmpty);
@@ -350,6 +362,7 @@ void main() {
       final sw = Stopwatch()..start();
       final events = await service
           .run(
+            runId: 1,
             chat: _chat(),
             provider: _provider(),
             model: _model(),
@@ -378,6 +391,7 @@ void main() {
       final sw = Stopwatch()..start();
       await service
           .run(
+            runId: 1,
             chat: _chat(),
             provider: _provider(),
             model: _model(),
@@ -411,6 +425,7 @@ void main() {
 
       await service
           .run(
+            runId: 1,
             chat: _chat(),
             provider: _provider(),
             model: _model(),
@@ -452,6 +467,7 @@ void main() {
 
       final sub = service
           .run(
+            runId: 1,
             chat: _chat(),
             provider: _provider(),
             model: _model(),
@@ -504,6 +520,7 @@ void main() {
 
       final sub = service
           .run(
+            runId: 1,
             chat: _chat(),
             provider: _provider(),
             model: _model(),

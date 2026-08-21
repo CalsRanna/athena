@@ -18,6 +18,7 @@ class TranslationViewModel {
   final ModelResolver _modelResolver;
   final SettingViewModel _settingViewModel;
   final AgentService _agentService;
+  int _nextRunId = 0;
 
   /// 绑定的专属 Sentinel（Shortcut 入口传入）。null 时回退旧 prompt。
   SentinelEntity? _boundSentinel;
@@ -137,6 +138,7 @@ class TranslationViewModel {
       // 走 Agent run 流式输出（翻译是自由文本，不需要 jsonMode）
       var buffer = StringBuffer();
       var agentStream = _agentService.run(
+        runId: _nextRunId++,
         chat: _dummyChat(),
         provider: provider,
         model: model,

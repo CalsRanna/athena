@@ -130,6 +130,7 @@ class DesktopChatListView extends StatelessWidget {
         active: selectedChat?.id == chat.id,
         chat: chat,
         isRenaming: renamingIds.contains(chat.id),
+        streaming: chatViewModel.isStreamingChat(chat.id!),
         onTap: () => _handleTap(chatViewModel, chat, index),
         onSecondaryTap: (details) =>
             _openContextMenu(context, details, chat, chats),
@@ -143,6 +144,9 @@ class _ChatTile extends StatefulWidget {
   final bool active;
   final ChatEntity chat;
   final bool isRenaming;
+
+  /// 该对话的 Agent 正在后台运行（在列表上持续可见的指示）。
+  final bool streaming;
   final void Function()? onTap;
   final void Function(TapUpDetails)? onSecondaryTap;
   final bool selected;
@@ -150,6 +154,7 @@ class _ChatTile extends StatefulWidget {
     this.active = false,
     required this.chat,
     this.isRenaming = false,
+    this.streaming = false,
     this.onTap,
     this.onSecondaryTap,
     this.selected = false,
@@ -170,6 +175,15 @@ class _ChatTileState extends State<_ChatTile> {
         child: CircularProgressIndicator(
           strokeWidth: 2,
           color: ColorUtil.FFFFFFFF,
+        ),
+      );
+    } else if (widget.streaming) {
+      trailing = SizedBox(
+        width: 16,
+        height: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: ColorUtil.FF6ABEB9,
         ),
       );
     } else if (widget.chat.pinned) {

@@ -6,9 +6,12 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 /// 1. readOnly 短路:只读工具/只读命令默认放行,永不弹窗
 /// 2. 会话级缓存:当前 run 内已批准的动作直接放行
 /// 3. 持久规则:命中则自动放行;未命中 → 需要弹窗(由调用方处理)
+///
+/// 会话级缓存按 [runId] 隔离:多个 Agent 并发运行时,
+/// A 任务批准的命令不会被 B 任务自动放行。
 class PermissionService {
   final PermissionStore _store;
-  final Map<String, bool> _sessionApprovals = {};
+  final Map<int, Map<String, bool>> _sessionApprovals = {};
 
   PermissionService({required PermissionStore store}) : _store = store;
 
@@ -17,9 +20,11 @@ class PermissionService {
   /// - `true`  → 放行(只读 / 会话级命中 / 规则命中),无需弹窗
   /// - `null`  → 需要弹出审批弹窗
   ///
+  /// [runId] 为本次 Agent run 的标识(会话级缓存按 run 隔离);
   /// [risk] 为工具的危险等级(由调用方从 ToolRegistry 查询);
   /// 只读工具或只读 shell 命令直接放行。
   bool? check(
+    int runId,
     String toolName,
     Map<String, dynamic> args, {
     ToolRisk? risk,
@@ -40,7 +45,8 @@ class PermissionService {
 
     // ② 会话级缓存:当前 run 内已批准的动作直接放行
     final sessionKey = _sessionKey(toolName, args);
-    if (sessionKey != null && _sessionApprovals[sessionKey] == true) {
+    if (sessionKey != null &&
+        _sessionApprovals[runId]?[sessionKey] == true) {
       return true;
     }
 
@@ -52,16 +58,18 @@ class PermissionService {
 
   /// 记录一次会话级放行(弹窗批准后调用)。
   Future<void> approveForSession(
+    int runId,
     String toolName,
     Map<String, dynamic> args,
   ) async {
     final key = _sessionKey(toolName, args);
-    if (key != null) _sessionApprovals[key] = true;
+    if (key == null) return;
+    (_sessionApprovals[runId] ??= {})[key] = true;
   }
 
-  /// 清空会话级缓存(agent run 开始/结束时调用)。
-  void resetSession() {
-    _sessionApprovals.clear();
+  /// 清空指定 run 的会话级缓存(run 结束/取消时调用)。
+  void resetSession(int runId) {
+    _sessionApprovals.remove(runId);
   }
 
   /// 持久化一条规则。

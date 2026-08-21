@@ -72,29 +72,29 @@ void main() {
       final service = serviceWithRule(
         PermissionRule(tool: 'file_read', pattern: '/a/b/'),
       );
-      expect(service.check('file_read', {'path': '/a/b/c.txt'}), isTrue);
+      expect(service.check(1, 'file_read', {'path': '/a/b/c.txt'}), isTrue);
     });
 
     test('no rule returns null (needs approval)', () {
       final store = PermissionStore();
       final service = PermissionService(store: store);
-      expect(service.check('file_read', {'path': '/a/b/c.txt'}), isNull);
+      expect(service.check(1, 'file_read', {'path': '/a/b/c.txt'}), isNull);
     });
 
     test('all paths allowed without sandbox', () {
       final store = PermissionStore();
       final service = PermissionService(store: store);
       // No sandbox: even sensitive paths need user approval, not auto-denied
-      expect(service.check('file_read', {'path': '/etc/passwd'}), isNull);
+      expect(service.check(1, 'file_read', {'path': '/etc/passwd'}), isNull);
     });
 
     test('web_fetch origin matching', () {
       final service = serviceWithRule(
         PermissionRule(tool: 'web_fetch', pattern: 'https://a.com'),
       );
-      expect(service.check('web_fetch', {'url': 'https://a.com/path'}), isTrue);
-      expect(service.check('web_fetch', {'url': 'https://b.com/path'}), isNull);
-      expect(service.check('web_fetch', {'url': 'http://a.com/path'}), isNull);
+      expect(service.check(1, 'web_fetch', {'url': 'https://a.com/path'}), isTrue);
+      expect(service.check(1, 'web_fetch', {'url': 'https://b.com/path'}), isNull);
+      expect(service.check(1, 'web_fetch', {'url': 'http://a.com/path'}), isNull);
     });
 
     test('shell command prefix matching', () {
@@ -102,16 +102,15 @@ void main() {
         PermissionRule(tool: 'bash', pattern: 'git '),
       );
       // git status 是只读命令,直接短路放行
-      expect(service.check('bash', {'command': 'git status'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'git status'}), isTrue);
       // 有副作用命令(无规则)需要审批
-      expect(service.check('bash', {'command': 'npm install'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'npm install'}), isNull);
     });
 
     test('readOnly tool bypasses rules entirely', () {
       final service = PermissionService(store: PermissionStore());
       expect(
-        service.check(
-          'web_fetch',
+        service.check(1, 'web_fetch',
           {'url': 'https://a.com/path'},
           risk: ToolRisk.readOnly,
         ),
@@ -123,8 +122,7 @@ void main() {
       final service = PermissionService(store: PermissionStore());
       // GET 无自定义 headers：readOnly 短路放行
       expect(
-        service.check(
-          'web_fetch',
+        service.check(1, 'web_fetch',
           {'url': 'https://a.com/path'},
           risk: ToolRisk.readOnly,
         ),
@@ -132,8 +130,7 @@ void main() {
       );
       // POST：即使工具声明 readOnly 也需弹窗
       expect(
-        service.check(
-          'web_fetch',
+        service.check(1, 'web_fetch',
           {'url': 'https://a.com/path', 'method': 'POST', 'body': 'x=1'},
           risk: ToolRisk.readOnly,
         ),
@@ -141,8 +138,7 @@ void main() {
       );
       // 自定义 headers：需弹窗
       expect(
-        service.check(
-          'web_fetch',
+        service.check(1, 'web_fetch',
           {'url': 'https://a.com/path', 'headers': {'X-Token': 'abc'}},
           risk: ToolRisk.readOnly,
         ),
@@ -150,8 +146,7 @@ void main() {
       );
       // 显式 GET 仍放行
       expect(
-        service.check(
-          'web_fetch',
+        service.check(1, 'web_fetch',
           {'url': 'https://a.com/path', 'method': 'GET'},
           risk: ToolRisk.readOnly,
         ),
@@ -159,8 +154,7 @@ void main() {
       );
       // 非 web_fetch 工具不受影响
       expect(
-        service.check(
-          'web_search',
+        service.check(1, 'web_search',
           {'q': 'x'},
           risk: ToolRisk.readOnly,
         ),
@@ -170,67 +164,67 @@ void main() {
 
     test('readOnly shell command bypasses rules', () {
       final service = PermissionService(store: PermissionStore());
-      expect(service.check('bash', {'command': 'ls -la'}), isTrue);
-      expect(service.check('bash', {'command': 'cat README.md'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'ls -la'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'cat README.md'}), isTrue);
       // 有副作用命令仍需审批
-      expect(service.check('bash', {'command': 'rm file.txt'}), isNull);
-      expect(service.check('bash', {'command': 'git push'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'rm file.txt'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'git push'}), isNull);
     });
 
     test('action-level rule matches by action', () {
       final service = serviceWithRule(
         PermissionRule(tool: 'bash', action: 'git'),
       );
-      expect(service.check('bash', {'command': 'git status'}), isTrue);
-      expect(service.check('bash', {'command': 'git push origin main'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'git status'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'git push origin main'}), isTrue);
       // 其他动作不匹配
-      expect(service.check('bash', {'command': 'npm install'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'npm install'}), isNull);
     });
 
     test('session approval bypasses rules within same run', () async {
       final service = PermissionService(store: PermissionStore());
-      expect(service.check('bash', {'command': 'git push'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'git push'}), isNull);
 
-      await service.approveForSession('bash', {'command': 'git push'});
+      await service.approveForSession(1, 'bash', {'command': 'git push'});
       // 同动作同子命令放行（含参数变体）
-      expect(service.check('bash', {'command': 'git push'}), isTrue);
+      expect(service.check(1, 'bash', {'command': 'git push'}), isTrue);
       expect(
-        service.check('bash', {'command': 'git push origin main'}),
+        service.check(1, 'bash', {'command': 'git push origin main'}),
         isTrue,
       );
       // 其他动作不放行
-      expect(service.check('bash', {'command': 'npm install'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'npm install'}), isNull);
     });
 
     test('session approval is subcommand-granular (not whole action)', () async {
       final service = PermissionService(store: PermissionStore());
 
-      await service.approveForSession('bash', {'command': 'git push'});
+      await service.approveForSession(1, 'bash', {'command': 'git push'});
       // 同子命令放行
-      expect(service.check('bash', {'command': 'git push --force origin main'}),
+      expect(service.check(1, 'bash', {'command': 'git push --force origin main'}),
           isTrue);
       // 不同子命令仍需弹窗——批准 git push 不得放行 git reset --hard
-      expect(service.check('bash', {'command': 'git reset --hard'}), isNull);
-      expect(service.check('bash', {'command': 'git clean -fdx'}), isNull);
-      expect(service.check('bash', {'command': 'git push2'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'git reset --hard'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'git clean -fdx'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'git push2'}), isNull);
     });
 
     test('bash and powershell do not share session approval', () async {
       final service = PermissionService(store: PermissionStore());
 
-      await service.approveForSession('bash', {'command': 'rm file.txt'});
+      await service.approveForSession(1, 'bash', {'command': 'rm file.txt'});
       // powershell 的 rm 需要单独审批
-      expect(service.check('powershell', {'command': 'rm file.txt'}), isNull);
-      expect(service.check('bash', {'command': 'rm file.txt'}), isTrue);
+      expect(service.check(1, 'powershell', {'command': 'rm file.txt'}), isNull);
+      expect(service.check(1, 'bash', {'command': 'rm file.txt'}), isTrue);
     });
 
     test('resetSession clears session approvals', () async {
       final service = PermissionService(store: PermissionStore());
-      await service.approveForSession('bash', {'command': 'git push'});
-      expect(service.check('bash', {'command': 'git push'}), isTrue);
+      await service.approveForSession(1, 'bash', {'command': 'git push'});
+      expect(service.check(1, 'bash', {'command': 'git push'}), isTrue);
 
-      service.resetSession();
-      expect(service.check('bash', {'command': 'git push'}), isNull);
+      service.resetSession(1);
+      expect(service.check(1, 'bash', {'command': 'git push'}), isNull);
     });
   });
 

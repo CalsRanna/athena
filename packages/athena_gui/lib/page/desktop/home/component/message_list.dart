@@ -6,6 +6,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -67,16 +68,37 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   Widget _buildData(List<MessageEntity> messages) {
     var sentinel = chatViewModel.currentSentinel.value;
     var defaultSentinel = sentinelViewModel.defaultSentinel.value;
-    if (messages.isEmpty == true) {
-      return DesktopSentinelPlaceholder(sentinel: sentinel ?? defaultSentinel);
-    }
-    return ListView.separated(
-      controller: widget.controller,
-      itemBuilder: (_, index) => _itemBuilder(messages, index),
-      itemCount: messages.length,
-      reverse: true,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+    // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
+    final approvals = chatViewModel.pendingApprovals.value
+        .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
+        .toList();
+    final list = messages.isEmpty
+        ? DesktopSentinelPlaceholder(sentinel: sentinel ?? defaultSentinel)
+        : ListView.separated(
+            controller: widget.controller,
+            itemBuilder: (_, index) => _itemBuilder(messages, index),
+            itemCount: messages.length,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+          );
+    if (approvals.isEmpty) return list;
+    return Column(
+      children: [
+        Expanded(child: list),
+        for (final request in approvals)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+            child: PermissionApprovalCard(
+              request: request,
+              onDecision: (approved, persistExact) => chatViewModel
+                  .respondApproval(
+                    request,
+                    permissionDecisionOf(approved, persistExact),
+                  ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -88,7 +110,8 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     // 只有第一项需要监听 streaming 状态
     if (index == 0) {
       return Watch((context) {
-        var loading = chatViewModel.isStreaming.value;
+        // 仅当前显示的对话流式时展示 loading 态
+        var loading = chatViewModel.isCurrentChatStreaming.value;
         return MessageListTile(
           loading: loading,
           message: message,
