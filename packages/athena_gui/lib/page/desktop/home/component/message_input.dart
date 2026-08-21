@@ -53,7 +53,7 @@ class DesktopMessageInput extends StatelessWidget {
       ];
       var inputRow = Row(children: inputChildren);
       var borderSide = BorderSide(
-        color: colors.textPrimary.withValues(alpha: 0.2),
+        color: colors.borderFaint.withValues(alpha: 0.2),
       );
       var children = [toolbar, const SizedBox(height: 12), inputRow];
       return Container(

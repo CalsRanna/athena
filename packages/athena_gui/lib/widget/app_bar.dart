@@ -97,7 +97,7 @@ class _DesktopAppBar extends StatelessWidget {
     ];
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var borderSide = BorderSide(
-      color: colors.textPrimary.withValues(alpha: 0.2),
+      color: colors.borderFaint.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
     var container = Container(

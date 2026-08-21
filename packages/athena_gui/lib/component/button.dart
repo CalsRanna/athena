@@ -1,5 +1,6 @@
 import 'package:athena_core/util/platform_util.dart';
 
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -16,8 +17,8 @@ class _CopyButtonState extends State<CopyButton> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.4);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final color = colors.textOnRaised.withValues(alpha: 0.4);
     Widget child = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,
@@ -36,8 +37,8 @@ class _CopyButtonState extends State<CopyButton> {
   }
 
   Widget _buildCopiedRow() {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = colorScheme.onSurface.withValues(alpha: 0.4);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final color = colors.textOnRaised.withValues(alpha: 0.4);
     var hugeIcon = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedTick01,

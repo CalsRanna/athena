@@ -125,6 +125,7 @@ class _ToolCardState extends State<ToolCard> {
               style: GoogleFonts.firaCode(
                 fontSize: _fontSize,
                 fontWeight: FontWeight.w500,
+                color: colors.textOnRaised,
               ),
             ),
             SizedBox(width: 8),

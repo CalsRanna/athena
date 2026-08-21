@@ -30,8 +30,8 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     const duration = Duration(milliseconds: 200);
-    // 选中态为深底白字（明暗反转），未选中为主文字色
-    var contentColor = widget.active ? Colors.white : colors.textPrimary;
+    // 选中态为浅灰底 + 深字（与 Tag 选中语言一致），未选中为主文字色
+    var contentColor = widget.active ? colors.textSelected : colors.textPrimary;
     var textStyle = TextStyle(
       color: contentColor,
       fontSize: 14,
@@ -46,7 +46,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     );
     var innerShapeDecoration = ShapeDecoration(
       color: widget.active
-          ? colors.textSecondary
+          ? colors.tagSelectedBackground
           : colors.surfaceButtonSecondary,
       shape: StadiumBorder(),
     );

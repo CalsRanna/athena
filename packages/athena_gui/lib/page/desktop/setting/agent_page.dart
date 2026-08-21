@@ -54,7 +54,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var items = ['General', 'Tools'];
     var borderSide = BorderSide(
-      color: colors.textPrimary.withValues(alpha: 0.2),
+      color: colors.borderFaint.withValues(alpha: 0.2),
     );
     Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),

@@ -109,7 +109,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
     var borderSide = BorderSide(
-      color: colors.textPrimary.withValues(alpha: 0.2),
+      color: colors.borderFaint.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(decoration: boxDecoration, width: 240, child: listView);

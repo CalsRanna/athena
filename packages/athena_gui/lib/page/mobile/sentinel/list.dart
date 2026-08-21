@@ -53,7 +53,11 @@ class MobileSentinelListPage extends StatelessWidget {
                         ),
                         height: 24,
                         width: 24,
-                        child: Icon(HugeIcons.strokeRoundedAdd01, size: 12),
+                        child: Icon(
+                          HugeIcons.strokeRoundedAdd01,
+                          size: 12,
+                          color: colors.iconOnRaised,
+                        ),
                       ),
                       SizedBox(width: 8),
                       Text(

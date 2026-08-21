@@ -68,7 +68,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
       SizedBox(height: 4),
       _buildTargetText(),
       SizedBox(height: 16),
-      AthenaDivider(color: colors.textPrimary.withValues(alpha: 0.2)),
+      AthenaDivider(color: colors.borderFaint.withValues(alpha: 0.2)),
       ..._buildTranslationListView(),
     ];
     var listView = ListView(
