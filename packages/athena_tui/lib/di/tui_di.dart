@@ -40,7 +40,7 @@ import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
-import 'package:athena_tui/seed/preset_seed.dart';
+import 'package:athena_tui/seed/sentinel_seed.dart';
 import 'package:athena_tui/storage/id_allocator.dart';
 import 'package:athena_tui/storage/json_array_model_repository.dart';
 import 'package:athena_tui/storage/json_array_sentinel_repository.dart';
@@ -125,8 +125,8 @@ class TuiDi {
   /// 在 runApp 前 await。
   ///
   /// [syncModels] 置 true(默认)时**阻塞等待**同步:模型元数据(名称、
-  /// 上下文窗口、价格、reasoning/vision)来自 models.dev 权威数据源,
-  /// 种子数据仅作离线兜底。TTL(7 天)内缓存新鲜则秒返回。
+  /// 上下文窗口、价格、reasoning/vision)来自 models.dev 权威数据源。
+  /// TTL(7 天)内缓存新鲜则秒返回。
   /// [syncModels] 在测试中置 false,避免发起网络请求。
   Future<void> initialize({bool syncModels = true}) async {
     await permissionService.load();
@@ -138,11 +138,9 @@ class TuiDi {
     // 再迁移旧 providers.jsonl(若有),再种子:避免种子写入 yaml 后
     // 迁移被"yaml 非空"跳过
     await _importUserSettings();
-    await const PresetSeed().applyIfNeeded(
-      providerRepo: providerRepo,
-      modelRepo: modelRepo,
-      sentinelRepo: sentinelRepo,
-    );
+    // 预设 provider/模型由 ModelCatalogService 从 models.dev 同步,
+    // 这里只种子 Athena 角色(无外部数据源)
+    await const SentinelSeed().applyIfNeeded(sentinelRepo: sentinelRepo);
     if (syncModels) {
       // 最多等 30s;同步失败(无网/超时)内部降级缓存,模型为空时
       // ChatController 会提示用户重试,不阻塞启动崩溃

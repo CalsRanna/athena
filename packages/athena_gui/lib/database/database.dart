@@ -16,18 +16,10 @@ import 'package:athena_gui/database/migration/migration_202606240001_context_win
 import 'package:athena_gui/database/migration/migration_202606240002_add_chat_token_snapshots.dart';
 import 'package:athena_gui/database/migration/migration_202606240003_rename_context_to_retention.dart';
 import 'package:athena_gui/database/migration/migration_202606240004_add_compacted_to_messages.dart';
-import 'package:athena_gui/database/migration/migration_202606240005_seed_presets.dart';
-import 'package:athena_gui/database/migration/migration_202606240006_update_deepseek_models.dart';
-import 'package:athena_gui/database/migration/migration_202606240007_update_openrouter_models.dart';
-import 'package:athena_gui/database/migration/migration_202606240008_add_zhipu_provider.dart';
-import 'package:athena_gui/database/migration/migration_202606240009_add_minimax_provider.dart';
-import 'package:athena_gui/database/migration/migration_202606240010_update_aliyun_models.dart';
-import 'package:athena_gui/database/migration/migration_202606240011_update_siliconflow_models.dart';
-import 'package:athena_gui/database/migration/migration_202606240012_update_volcano_models.dart';
-import 'package:athena_gui/database/migration/migration_202606240013_clean_openrouter_models.dart';
 import 'package:athena_gui/database/migration/migration_202608040001_create_shortcuts.dart';
 import 'package:athena_gui/database/migration/migration_202608040002_seed_shortcuts.dart';
 import 'package:athena_gui/database/migration/migration_202608060001_update_athena_sentinel_prompt.dart';
+import 'package:athena_gui/database/migration/migration_202608210001_seed_sentinel.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -96,18 +88,10 @@ class Database {
     await Migration202606240002AddChatTokenSnapshots().migrate();
     await Migration202606240003RenameContextToRetention().migrate();
     await Migration202606240004AddCompactedToMessages().migrate();
-    await Migration202606240005SeedPresets().migrate();
-    await Migration202606240006UpdateDeepSeekModels().migrate();
-    await Migration202606240007UpdateOpenRouterModels().migrate();
-    await Migration202606240008AddZhipuProvider().migrate();
-    await Migration202606240009AddMinimaxProvider().migrate();
-    await Migration202606240010UpdateAliyunModels().migrate();
-    await Migration202606240011UpdateSiliconFlowModels().migrate();
-    await Migration202606240012UpdateVolcanoModels().migrate();
-    await Migration202606240013CleanOpenRouterModels().migrate();
     await Migration202608040001CreateShortcuts().migrate();
     await Migration202608040002SeedShortcuts().migrate();
     await Migration202608060001UpdateAthenaSentinelPrompt().migrate();
+    await Migration202608210001SeedSentinel().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设

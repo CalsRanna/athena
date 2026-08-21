@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 import 'package:test/test.dart';
@@ -17,10 +19,68 @@ void main() {
     await tempDir.delete(recursive: true);
   });
 
+  /// 种入测试 provider + 模型(替代已删除的 PresetSeed;
+  /// 预设 provider/模型现由 models.dev 同步,测试不联网自行造数据)。
+  /// 必须在 chatController.initialize() 之前调用(建聊天需要模型存在)。
+  Future<void> seedTestData(TuiDi di) async {
+    final now = DateTime.now();
+    final dsId = await di.providerRepo.storeProvider(ProviderEntity(
+      name: 'Deep Seek',
+      baseUrl: 'https://api.deepseek.com/v1',
+      apiKey: '',
+      enabled: false,
+      isPreset: true,
+      createdAt: now,
+    ));
+    final orId = await di.providerRepo.storeProvider(ProviderEntity(
+      name: 'Open Router',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKey: '',
+      enabled: false,
+      isPreset: true,
+      createdAt: now,
+    ));
+    ModelEntity model(String name, String modelId, int providerId) =>
+        ModelEntity(
+          name: name,
+          modelId: modelId,
+          providerId: providerId,
+          isPreset: true,
+          createdAt: now,
+          updatedAt: now,
+        );
+    await di.modelRepo
+        .createModel(model('DeepSeek-V3-0324', 'deepseek-chat', dsId));
+    await di.modelRepo
+        .createModel(model('DeepSeek-R1-0528', 'deepseek-reasoner', dsId));
+    await di.modelRepo
+        .createModel(model('Anthropic: Claude Opus 4', 'anthropic/claude-opus-4', orId));
+    await di.modelRepo
+        .createModel(model('Anthropic: Claude Sonnet 4', 'anthropic/claude-sonnet-4', orId));
+    await di.modelRepo.createModel(
+      model('DeepSeek: DeepSeek V3 0324', 'deepseek/deepseek-chat-v3-0324', orId),
+    );
+    await di.modelRepo
+        .createModel(model('DeepSeek: R1 0528', 'deepseek/deepseek-r1-0528', orId));
+    await di.modelRepo
+        .createModel(model('Google: Gemini 2.5 Flash', 'google/gemini-2.5-flash', orId));
+    await di.modelRepo
+        .createModel(model('Google: Gemini 2.5 Pro', 'google/gemini-2.5-pro', orId));
+    await di.modelRepo
+        .createModel(model('OpenAI: GPT-4.1', 'openai/gpt-4.1', orId));
+    await di.modelRepo
+        .createModel(model('OpenAI: GPT-5 Chat', 'openai/gpt-5', orId));
+    await di.modelRepo.createModel(model('OpenAI: o3', 'openai/o3', orId));
+    await di.modelRepo
+        .createModel(model('Qwen: Qwen3 235B A22B', 'qwen/qwen3-235b-a22b', orId));
+    await di.modelRepo.createModel(model('xAI: Grok 4', 'x-ai/grok-4', orId));
+  }
+
   Future<TuiDi> createDi() async {
     // homeDir 注入 tempDir:避免读到用户真实 ~/.athena/setting.yaml
     final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
     await di.initialize(syncModels: false);
+    await seedTestData(di);
     await di.chatController.initialize();
     // availableModels 现在只返回已配 key 的 provider 的模型;
     // 测试建第二个聊天需要模型,给 Deep Seek 配 key
@@ -136,6 +196,7 @@ void main() {
     test('启动用持久化模型建聊天,provider 检查针对该模型', () async {
       final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
       await di.initialize(syncModels: false);
+      await seedTestData(di);
       // 给 Deep Seek 配 key,并持久化一个 Deep Seek 模型为默认模型
       // (测试种子无 v4-flash,用 deepseek-chat)
       final providers = await di.chatController.availableProviders;
@@ -175,6 +236,7 @@ void main() {
     test('配置 key 与切换模型均清除"未配置 key"引导错误', () async {
       final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
       await di.initialize(syncModels: false);
+      await seedTestData(di);
       await di.chatController.initialize();
 
       // 路径 1:配 key 清除。
