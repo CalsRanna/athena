@@ -279,7 +279,7 @@ class ChatController {
   }
 
   Future<SentinelEntity?> _defaultSentinel() async {
-    final sentinels = await _sentinelRepo.getAllSentinels();
+    final sentinels = await availableSentinels;
     if (sentinels.isEmpty) return null;
     return sentinels.first;
   }
@@ -309,8 +309,13 @@ class ChatController {
   }
 
   /// 全部可用角色(供选择弹层使用)。
-  Future<List<SentinelEntity>> get availableSentinels =>
-      _sentinelRepo.getAllSentinels();
+  ///
+  /// 预设角色仅 Athena 展示([SentinelEntity.isListVisible]),
+  /// 其余预设角色隐藏;数据仍在库中,已存聊天引用不受影响。
+  Future<List<SentinelEntity>> get availableSentinels async {
+    final all = await _sentinelRepo.getAllSentinels();
+    return all.where((s) => s.isListVisible).toList();
+  }
 
   /// 全部 provider(供 /providers 配置)。
   Future<List<ProviderEntity>> get availableProviders =>
