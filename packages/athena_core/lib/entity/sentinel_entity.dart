@@ -43,6 +43,15 @@ class SentinelEntity {
     };
   }
 
+  /// 内置角色名:预设角色中唯一对外展示的一个。
+  static const athenaName = 'Athena';
+
+  /// 是否在角色列表/选择器中展示。
+  ///
+  /// 非预设角色全部展示;预设角色仅 [athenaName] 展示,其余预设
+  /// (如未来新增的内置角色)隐藏——数据仍保留在库中供聊天引用解析。
+  bool get isListVisible => !isPreset || name == athenaName;
+
   /// 将 tags 字符串转换为列表，用于页面渲染
   List<String> get tagList {
     if (tags.isEmpty) return [];

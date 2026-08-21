@@ -30,11 +30,13 @@ class SentinelViewModel {
 
   // Computed signals
   late final defaultSentinel = computed(() {
-    return sentinels.value.where((s) => s.name == defaultName).firstOrNull ??
+    return sentinels.value
+            .where((s) => s.name == SentinelEntity.athenaName)
+            .firstOrNull ??
         defaultSentinelEntity;
   });
 
-  static const defaultName = 'Athena';
+  static const defaultName = SentinelEntity.athenaName;
 
   static SentinelEntity get defaultSentinelEntity => SentinelEntity(
         name: defaultName,
@@ -66,6 +68,12 @@ class SentinelViewModel {
         var id = await _sentinelRepository.createSentinel(entity);
         entity = entity.copyWith(id: id);
         loadedSentinels = [entity];
+      } else {
+        // 预设角色仅 Athena 展示,其余隐藏(数据仍在库中,聊天引用可解析);
+        // 过滤后为空时用默认实体兜底,保证聊天页始终有可选角色
+        var visible = loadedSentinels.where((s) => s.isListVisible).toList();
+        if (visible.isEmpty) visible = [defaultSentinelEntity];
+        loadedSentinels = visible;
       }
 
       sentinels.value = loadedSentinels;
