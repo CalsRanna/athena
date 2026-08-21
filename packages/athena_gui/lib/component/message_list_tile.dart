@@ -330,9 +330,33 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
     var durationText = 'Thought for ${duration.toStringAsFixed(1)} seconds';
     var text = message.reasoning ? 'Thinking' : durationText;
+    // 状态指示与 ToolCard 对齐：思考中 spinner，完成后绿色对勾
+    const doneColor = Color(0xFF8AA371);
     var children = [
+      Icon(
+        HugeIcons.strokeRoundedAiBrain01,
+        size: 15,
+        color: ColorUtil.FF616161,
+      ),
+      const SizedBox(width: 8),
       Text(text, style: textStyle),
       const Spacer(),
+      if (message.reasoning)
+        SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 1.5,
+            color: ColorUtil.FF616161,
+          ),
+        )
+      else
+        Icon(
+          HugeIcons.strokeRoundedTick02,
+          size: 15,
+          color: doneColor,
+        ),
+      const SizedBox(width: 4),
       Icon(iconData, size: 16),
     ];
     return Container(

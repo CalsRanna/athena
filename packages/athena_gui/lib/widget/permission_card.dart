@@ -1,14 +1,15 @@
+import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_gui/util/color_util.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
-import 'package:athena_gui/widget/permission_dialog.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
-/// 与模态弹窗的差异：多个对话的审批请求各自挂在自己的会话里，
-/// 用户可自由切换对话处理，互不阻塞。
+/// 容器对齐 Agent 消息卡片（白色圆角 24）；内部结构复用 ToolCard 的
+/// 标题行语言（工具图标 + 工具名 + 参数预览 + 运行状态），命令完整
+/// 展示，按钮为浅色卡片上的胶囊体系（深色实心主按钮 + 描边次按钮）。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
 
@@ -23,50 +24,207 @@ class PermissionApprovalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
+    // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildAvatar(),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 8),
+                _buildCommand(),
+                const SizedBox(height: 12),
+                _buildActions(context),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 头像：灰圆底 + 工具图标（对齐工具消息卡片的头像样式）。
+  Widget _buildAvatar() {
+    return Container(
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: ColorUtil.FFCACACA,
+      ),
+      height: 36,
+      width: 36,
+      child: Icon(
+        ToolCard.toolIcon(request.toolName),
+        color: ColorUtil.FFFFFFFF,
+        size: 20,
+      ),
+    );
+  }
+
+  /// 标题行：工具名 + 参数预览（单行省略）。
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Text(
+          request.toolName,
+          style: GoogleFonts.firaCode(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: ColorUtil.FF282F32,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            ToolCard.argPreview(request.toolName, request.arguments),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.firaCode(
+              fontSize: 12,
+              color: ColorUtil.FF616161,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 完整命令/参数展示：无背景的直接文字（与消息正文一致）。
+  Widget _buildCommand() {
+    return Text(
+      request.arguments,
+      style: GoogleFonts.firaCode(
+        fontSize: 12,
+        color: ColorUtil.FF282F32,
+        height: 1.6,
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context) {
     final platform = Theme.of(context).platform;
     final mobile = platform == TargetPlatform.android ||
         platform == TargetPlatform.iOS;
 
-    return Container(
-      constraints: const BoxConstraints(minWidth: 400, maxWidth: 560),
-      decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: ColorUtil.FF6ABEB9.withValues(alpha: 0.4),
-        ),
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (mobile) {
+      // 移动：全宽按钮，主操作（Allow Once）在最上
+      return Column(
         children: [
-          Row(
-            children: [
-              const Icon(
-                HugeIcons.strokeRoundedAlert02,
-                size: 16,
-                color: ColorUtil.FF6ABEB9,
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Waiting for approval',
-                  style: TextStyle(
-                    color: ColorUtil.FF9E9E9E,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+          _CardPrimaryButton(
+            label: 'Allow Once',
+            onTap: () => onDecision(true, false),
           ),
           const SizedBox(height: 8),
-          PermissionDialogContent(
-            toolName: request.toolName,
-            description: request.arguments,
-            mobile: mobile,
-            onDecision: onDecision,
+          _CardSecondaryButton(
+            label: 'Always Allow',
+            onTap: () => onDecision(true, true),
+          ),
+          const SizedBox(height: 8),
+          _CardSecondaryButton(
+            label: 'Deny',
+            onTap: () => onDecision(false, false),
           ),
         ],
+      );
+    }
+
+    // 桌面：行内按钮，主操作（Allow Once）在最右
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        _CardSecondaryButton(
+          label: 'Deny',
+          onTap: () => onDecision(false, false),
+        ),
+        const SizedBox(width: 12),
+        _CardSecondaryButton(
+          label: 'Always Allow',
+          onTap: () => onDecision(true, true),
+        ),
+        const SizedBox(width: 12),
+        _CardPrimaryButton(
+          label: 'Allow Once',
+          onTap: () => onDecision(true, false),
+        ),
+      ],
+    );
+  }
+}
+
+/// 浅色卡片上的主按钮：深色实心胶囊 + 白字。
+class _CardPrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CardPrimaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: const ShapeDecoration(
+            color: ColorUtil.FF282F32,
+            shape: StadiumBorder(),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: ColorUtil.FFFFFFFF,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 浅色卡片上的次按钮：描边胶囊 + 深色文字。
+class _CardSecondaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _CardSecondaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: ShapeDecoration(
+            shape: StadiumBorder(
+              side: const BorderSide(color: ColorUtil.FFC2C2C2),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: ColorUtil.FF282F32,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
       ),
     );
   }

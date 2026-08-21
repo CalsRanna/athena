@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:athena_gui/util/color_util.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -69,36 +68,36 @@ class ToolCard extends StatefulWidget {
 class _ToolCardState extends State<ToolCard> {
   bool _expanded = false;
 
-  bool get _isDesktop => PlatformUtil.isDesktop;
+  // 样式与 ThinkingPart（消息列表中的思考卡片）统一：
+  // 圆角 8、浅灰背景、firaCode 12，不区分桌面/移动端。
+  static const _radius = 8.0;
+  static const _fontSize = 12.0;
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(_isDesktop ? 8 : 12);
-    final cardBgColor = _isDesktop ? ColorUtil.FFEDEDED : ColorUtil.FF616161;
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(borderRadius: borderRadius, color: cardBgColor),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_radius),
+        color: ColorUtil.FFEDEDED,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(borderRadius),
+          _buildHeader(),
           if (widget.hasResult && _expanded) _buildContent(),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BorderRadius outerRadius) {
-    final collapsedRadius = BorderRadius.circular(_isDesktop ? 8 : 12);
-    final expandedRadius = BorderRadius.only(
-      topLeft: Radius.circular(_isDesktop ? 8 : 12),
-      topRight: Radius.circular(_isDesktop ? 8 : 12),
-    );
+  Widget _buildHeader() {
     final borderRadius = (widget.hasResult && _expanded)
-        ? expandedRadius
-        : collapsedRadius;
-    final headerBgColor = _isDesktop ? ColorUtil.FFE0E0E0 : ColorUtil.FF757575;
-    final fontSize = _isDesktop ? 12.0 : 11.0;
+        ? BorderRadius.only(
+            topLeft: Radius.circular(_radius),
+            topRight: Radius.circular(_radius),
+          )
+        : BorderRadius.circular(_radius);
     final status = _status;
 
     return GestureDetector(
@@ -108,23 +107,21 @@ class _ToolCardState extends State<ToolCard> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          color: headerBgColor,
+          color: ColorUtil.FFE0E0E0,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Icon(
               ToolCard.toolIcon(widget.toolName),
-              size: _isDesktop ? 15 : 13,
-              color: _isDesktop
-                  ? ColorUtil.FF616161
-                  : ColorUtil.FFE0E0E0,
+              size: 15,
+              color: ColorUtil.FF616161,
             ),
             const SizedBox(width: 8),
             Text(
               widget.toolName,
               style: GoogleFonts.firaCode(
-                fontSize: fontSize,
+                fontSize: _fontSize,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -135,10 +132,8 @@ class _ToolCardState extends State<ToolCard> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.firaCode(
-                  fontSize: fontSize,
-                  color: _isDesktop
-                      ? ColorUtil.FF616161
-                      : ColorUtil.FFC2C2C2,
+                  fontSize: _fontSize,
+                  color: ColorUtil.FF616161,
                 ),
               ),
             ),
@@ -150,10 +145,8 @@ class _ToolCardState extends State<ToolCard> {
                 _expanded
                     ? HugeIcons.strokeRoundedArrowDown01
                     : HugeIcons.strokeRoundedArrowRight01,
-                size: _isDesktop ? 16 : 14,
-                color: _isDesktop
-                    ? ColorUtil.FF616161
-                    : ColorUtil.FFE0E0E0,
+                size: 16,
+                color: ColorUtil.FF616161,
               ),
             ],
           ],
@@ -170,14 +163,11 @@ class _ToolCardState extends State<ToolCard> {
   }
 
   Widget _buildStatus(_ToolStatus status) {
-    final fontSize = _isDesktop ? 12.0 : 11.0;
     // 状态色为 accent 色（绿 A7BA88 / 红 E38B8B）的加深变体，
     // 保证在浅灰 header 上的可读性。
     const doneColor = Color(0xFF8AA371);
     const errorColor = Color(0xFFC05555);
-    final runningColor = _isDesktop
-        ? ColorUtil.FF616161
-        : ColorUtil.FFC2C2C2;
+    const runningColor = ColorUtil.FF616161;
     final iconColor = switch (status) {
       _ToolStatus.running => runningColor,
       _ToolStatus.done => doneColor,
@@ -211,14 +201,14 @@ class _ToolCardState extends State<ToolCard> {
             status == _ToolStatus.done
                 ? HugeIcons.strokeRoundedTick02
                 : HugeIcons.strokeRoundedCancelCircle,
-            size: _isDesktop ? 15 : 13,
+            size: 15,
             color: iconColor,
           ),
         const SizedBox(width: 4),
         Text(
           label,
           style: GoogleFonts.firaCode(
-            fontSize: fontSize,
+            fontSize: _fontSize,
             color: labelColor,
           ),
         ),
@@ -227,7 +217,6 @@ class _ToolCardState extends State<ToolCard> {
   }
 
   Widget _buildContent() {
-    final fontSize = _isDesktop ? 12.0 : 11.0;
     final isError = _status == _ToolStatus.error;
     return GestureDetector(
       onTap: widget.hasResult
@@ -238,8 +227,8 @@ class _ToolCardState extends State<ToolCard> {
         decoration: BoxDecoration(
           color: ColorUtil.FFEDEDED,
           borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(_isDesktop ? 8 : 12),
-            bottomRight: Radius.circular(_isDesktop ? 8 : 12),
+            bottomLeft: Radius.circular(_radius),
+            bottomRight: Radius.circular(_radius),
           ),
         ),
         padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
@@ -250,7 +239,7 @@ class _ToolCardState extends State<ToolCard> {
             maxLines: 10,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.firaCode(
-              fontSize: fontSize,
+              fontSize: _fontSize,
               color: isError ? const Color(0xFFC05555) : ColorUtil.FF282F32,
               height: 1.6,
             ),
