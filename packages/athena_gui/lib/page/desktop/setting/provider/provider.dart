@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/util/context_window_util.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
@@ -179,6 +180,28 @@ class _DesktopSettingProviderPageState
     await providerViewModel.updateProvider(copiedProvider);
   }
 
+  /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
+  Future<void> syncFromModelsDev() async {
+    AthenaDialog.loading();
+    try {
+      final service = GetIt.instance<ModelCatalogService>();
+      final result = await service.syncIfNeeded(force: true);
+      await providerViewModel.initSignals();
+      await modelViewModel.initSignals();
+      if (!mounted) return;
+      AthenaDialog.dismiss();
+      AthenaDialog.success(
+        'models.dev synced: +${result.createdProviders} providers, '
+        '+${result.createdModels} models, ${result.updatedModels} updated, '
+        '${result.removedModels} removed',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AthenaDialog.dismiss();
+      AthenaDialog.error('Sync failed: $e');
+    }
+  }
+
   List<Widget> _buildModelListView(List<ModelEntity>? models) {
     if (models == null) return [const SizedBox()];
     if (models.isEmpty) return [const SizedBox()];
@@ -210,10 +233,20 @@ class _DesktopSettingProviderPageState
         itemCount: providers.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
+      var syncButton = Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+        child: AthenaTextButton(
+          onTap: syncFromModelsDev,
+          text: 'Sync models.dev',
+        ),
+      );
       return Container(
         decoration: BoxDecoration(border: Border(right: borderSide)),
         width: 240,
-        child: listView,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [syncButton, Expanded(child: listView)],
+        ),
       );
     });
   }
