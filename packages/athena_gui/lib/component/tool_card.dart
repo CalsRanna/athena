@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:athena_gui/util/color_util.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -69,7 +68,6 @@ class ToolCard extends StatefulWidget {
 
 class _ToolCardState extends State<ToolCard> {
   bool _expanded = false;
-  bool _copied = false;
 
   bool get _isDesktop => PlatformUtil.isDesktop;
 
@@ -150,8 +148,8 @@ class _ToolCardState extends State<ToolCard> {
               const SizedBox(width: 4),
               Icon(
                 _expanded
-                    ? HugeIcons.strokeRoundedArrowUp01
-                    : HugeIcons.strokeRoundedArrowDown01,
+                    ? HugeIcons.strokeRoundedArrowDown01
+                    : HugeIcons.strokeRoundedArrowRight01,
                 size: _isDesktop ? 16 : 14,
                 color: _isDesktop
                     ? ColorUtil.FF616161
@@ -231,71 +229,34 @@ class _ToolCardState extends State<ToolCard> {
   Widget _buildContent() {
     final fontSize = _isDesktop ? 12.0 : 11.0;
     final isError = _status == _ToolStatus.error;
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: ColorUtil.FFEDEDED,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(_isDesktop ? 8 : 12),
-          bottomRight: Radius.circular(_isDesktop ? 8 : 12),
+    return GestureDetector(
+      onTap: widget.hasResult
+          ? () => setState(() => _expanded = !_expanded)
+          : null,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: ColorUtil.FFEDEDED,
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(_isDesktop ? 8 : 12),
+            bottomRight: Radius.circular(_isDesktop ? 8 : 12),
+          ),
         ),
-      ),
-      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Text(
-                widget.result!,
-                maxLines: 10,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.firaCode(
-                  fontSize: fontSize,
-                  color: isError
-                      ? const Color(0xFFC05555)
-                      : ColorUtil.FF282F32,
-                  height: 1.6,
-                ),
-              ),
+        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: Text(
+            widget.result!,
+            maxLines: 10,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.firaCode(
+              fontSize: fontSize,
+              color: isError ? const Color(0xFFC05555) : ColorUtil.FF282F32,
+              height: 1.6,
             ),
           ),
-          _buildCopyButton(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCopyButton() {
-    final icon = _copied
-        ? HugeIcons.strokeRoundedTick02
-        : HugeIcons.strokeRoundedCopy01;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _copyResult,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(
-            icon,
-            size: 14,
-            color: ColorUtil.FF616161.withValues(alpha: 0.6),
-          ),
         ),
       ),
     );
-  }
-
-  void _copyResult() {
-    final result = widget.result;
-    if (result == null || _copied) return;
-    Clipboard.setData(ClipboardData(text: result));
-    setState(() => _copied = true);
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      setState(() => _copied = false);
-    });
   }
 }

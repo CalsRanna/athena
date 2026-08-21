@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:meta/meta.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -66,13 +67,14 @@ class TuiAgentBridge {
       agentSettings: agentSettings,
       permissionService: permissionService,
       skillRegistry: skillRegistry,
-      permissionPrompt: (toolName, arguments) =>
-          _askPermission(toolName, arguments),
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
+          _askPermission(toolName, arguments, cancelToken),
       skillTrustPrompt: (dir, names) => _askSkillTrust(dir, names),
     );
   }
 
-  Future<void>? get settled => _coordinator.settled;
+  /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
+  Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -86,8 +88,8 @@ class TuiAgentBridge {
     );
   }
 
-  void stop() {
-    _coordinator.stop();
+  void stop(int chatId) {
+    _coordinator.stop(chatId);
   }
 
   // ─── TUI 侧实现:终端内模态 ─────────────────────────────
@@ -98,19 +100,26 @@ class TuiAgentBridge {
     String toolName,
     String arguments,
   ) {
-    return _askPermission(toolName, arguments);
+    return _askPermission(toolName, arguments, CancelToken());
   }
 
   Future<PermissionDecision> _askPermission(
     String toolName,
     String arguments,
+    CancelToken cancelToken,
   ) async {
     final handler = permissionHandler;
     if (handler == null) {
       // UI 未就绪时拒绝,避免 Agent 挂起等待
       return const PermissionDecision(approved: false);
     }
-    return handler(toolName, arguments);
+    // run 取消时自动拒绝,避免审批请求挂起导致 Agent 卡死
+    return Future.any<PermissionDecision>([
+      handler(toolName, arguments),
+      cancelToken.whenCancelled.then(
+        (_) => const PermissionDecision(approved: false),
+      ),
+    ]);
   }
 
   Future<bool> _askSkillTrust(String dir, List<String> names) async {

@@ -9,6 +9,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -60,23 +61,49 @@ class _MessageListViewState extends State<MessageListView> {
       var messages = viewModel.messages.value
           .where((m) => m.chatId == widget.chat.id)
           .toList();
-      if (messages.isEmpty) return SentinelPlaceholder(sentinel: sentinel);
+      // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
+      final approvals = viewModel.pendingApprovals.value
+          .where((r) => r.chatId == widget.chat.id)
+          .toList();
+      if (messages.isEmpty && approvals.isEmpty) {
+        return SentinelPlaceholder(sentinel: sentinel);
+      }
 
-      var loading = viewModel.isStreaming.value;
+      var loading = viewModel.isCurrentChatStreaming.value;
 
       final reversedMessages = messages.reversed.toList();
-      return ListView.separated(
-        controller: controller,
-        itemBuilder: (_, index) => _itemBuilder(
-          reversedMessages[index],
-          sentinel,
-          loading && index == 0,
-          key: ValueKey(reversedMessages[index].id),
-        ),
-        itemCount: messages.length,
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        reverse: true,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+      final list = messages.isEmpty
+          ? const SizedBox.shrink()
+          : ListView.separated(
+              controller: controller,
+              itemBuilder: (_, index) => _itemBuilder(
+                reversedMessages[index],
+                sentinel,
+                loading && index == 0,
+                key: ValueKey(reversedMessages[index].id),
+              ),
+              itemCount: messages.length,
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              reverse: true,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+            );
+      if (approvals.isEmpty) return list;
+      return Column(
+        children: [
+          Expanded(child: list),
+          for (final request in approvals)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: PermissionApprovalCard(
+                request: request,
+                onDecision: (approved, persistExact) => viewModel
+                    .respondApproval(
+                      request,
+                      permissionDecisionOf(approved, persistExact),
+                    ),
+              ),
+            ),
+        ],
       );
     });
   }

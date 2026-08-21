@@ -203,12 +203,13 @@ class _MobileChatPageState extends State<MobileChatPage> {
   Future<void> sendMessage(ChatEntity? chat) async {
     final text = controller.text;
     if (text.isEmpty) return;
-    controller.clear();
 
     if (chat == null) {
       chat = await viewModel.createChat();
       if (chat == null) return;
     }
+
+    controller.clear();
 
     var message = MessageEntity(
       id: 0,
@@ -222,7 +223,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   void terminateStreaming() {
-    viewModel.stopGenerating();
+    final chat = viewModel.currentChat.value;
+    if (chat != null) viewModel.stopGenerating(chat.id!);
   }
 
   Future<void> updateRetention(int value) async {
@@ -266,7 +268,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       final chat = viewModel.currentChat.value ?? widget.chat;
       var userInput = UserInput(
         controller: controller,
-        isStreaming: viewModel.isStreaming.value,
+        isStreaming: viewModel.isCurrentChatStreaming.value,
         onSubmitted: () => sendMessage(chat),
         onTerminated: terminateStreaming,
       );

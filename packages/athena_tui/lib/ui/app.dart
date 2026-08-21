@@ -321,9 +321,14 @@ class _AthenaAppState extends State<AthenaApp> {
   /// [Cancelled] 标记。
   Future<void> _quitApp() async {
     if (_controller.isStreaming.value) {
+      final chatId = _controller.currentChat.value?.id;
       _controller.stopGenerating();
       try {
-        await _controller.bridge.settled?.timeout(const Duration(seconds: 3));
+        if (chatId != null) {
+          await _controller.bridge
+              .settledOf(chatId)
+              ?.timeout(const Duration(seconds: 3));
+        }
       } catch (_) {
         // 超时/异常不阻塞退出
       }
@@ -429,26 +434,8 @@ class _AthenaAppState extends State<AthenaApp> {
     _permissionRequest = _PermissionRequest(toolName, arguments, completer);
     setState(() {});
 
-    // 用户取消 run 时自动拒绝并关闭审批条。
-    // 身份检查:取消回调只清理"自己的"请求——若旧请求未决期间
-    // 新权限请求已到达,无条件置 null 会清掉新请求的显示,
-    // 其 completer 将永远挂起(Agent 卡死)。mounted 检查:
-    // app 退出瞬间取消回调触发时避免 dispose 后 setState。
-    final cancelToken = component.di.agentService.currentCancelToken;
-    if (cancelToken != null) {
-      unawaited(
-        cancelToken.whenCancelled.then((_) {
-          if (!mounted) return;
-          if (!completer.isCompleted) {
-            completer.complete(const PermissionDecision(approved: false));
-            if (identical(_permissionRequest?.completer, completer)) {
-              _permissionRequest = null;
-            }
-            setState(() {});
-          }
-        }),
-      );
-    }
+    // 取消联动已由 TuiAgentBridge._askPermission 处理
+    // (cancelToken.whenCancelled → 自动拒绝)，此处只等用户决策。
     return completer.future;
   }
 

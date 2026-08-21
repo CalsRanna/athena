@@ -62,6 +62,7 @@ class _FakeAgentService extends AgentService {
 
   @override
   Stream<AgentEvent> run({
+    required int runId,
     required ChatEntity chat,
     required ProviderEntity provider,
     required ModelEntity model,

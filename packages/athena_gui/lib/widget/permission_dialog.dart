@@ -1,6 +1,4 @@
-import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/util/color_util.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -8,132 +6,29 @@ import 'package:hugeicons/hugeicons.dart';
 /// 错误色（对齐 AthenaMessageType.error）。
 const _accentError = Color(0xFFE38B8B);
 
-class PermissionDialogResult {
-  final bool approved;
-
-  /// Always Allow：持久化规则（shell 存动作级规则，其他存精确 keyArg）。
-  final bool persistExact;
-
-  const PermissionDialogResult({
-    required this.approved,
-    this.persistExact = false,
-  });
-}
-
-Future<PermissionDialogResult> showPermissionDialog({
-  required String toolName,
-  required String description,
-  String? warning,
-}) async {
-  final context = router.navigatorKey.currentContext!;
-  if (PlatformUtil.isDesktop) {
-    final result = await showDialog<PermissionDialogResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _DesktopPermissionDialog(
-        toolName: toolName,
-        description: description,
-        warning: warning,
-      ),
-    );
-    return result ?? const PermissionDialogResult(approved: false);
-  } else {
-    final result = await showModalBottomSheet<PermissionDialogResult>(
-      context: context,
-      backgroundColor: ColorUtil.FF282F32,
-      isDismissible: false,
-      enableDrag: false,
-      builder: (_) => _MobilePermissionDialog(
-        toolName: toolName,
-        description: description,
-        warning: warning,
-      ),
-    );
-    return result ?? const PermissionDialogResult(approved: false);
-  }
-}
-
-class _DesktopPermissionDialog extends StatelessWidget {
-  final String toolName;
-  final String description;
-  final String? warning;
-
-  const _DesktopPermissionDialog({
-    required this.toolName,
-    required this.description,
-    this.warning,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 400, maxWidth: 560),
-        decoration: BoxDecoration(
-          color: ColorUtil.FF282F32,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: _PermissionDialogContent(
-          toolName: toolName,
-          description: description,
-          warning: warning,
-          mobile: false,
-        ),
-      ),
-    );
-  }
-}
-
-class _MobilePermissionDialog extends StatelessWidget {
-  final String toolName;
-  final String description;
-  final String? warning;
-
-  const _MobilePermissionDialog({
-    required this.toolName,
-    required this.description,
-    this.warning,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: ColorUtil.FF282F32,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        child: _PermissionDialogContent(
-          toolName: toolName,
-          description: description,
-          warning: warning,
-          mobile: true,
-        ),
-      ),
-    );
-  }
-}
-
-/// 桌面/移动共享的对话框内容：标题行 + 请求内容 + 三个操作按钮。
+/// 权限审批内容组件：标题行 + 请求内容 + 三个操作按钮。
 ///
-/// 三个按钮即三种决策，无需额外步骤：
+/// 宿主无关（模态弹窗 / 会话内卡片均可复用），决策通过 [onDecision]
+/// 回调返回：
 /// - Allow Once：仅放行本次
 /// - Always Allow：放行并持久化规则
 /// - Deny：拒绝
-class _PermissionDialogContent extends StatelessWidget {
+class PermissionDialogContent extends StatelessWidget {
   final String toolName;
   final String description;
   final String? warning;
-  final bool mobile;
 
-  const _PermissionDialogContent({
+  /// 是否移动端布局（全宽胶囊按钮，主操作在最上）。
+  final bool mobile;
+  final void Function(bool approved, bool persistExact) onDecision;
+
+  const PermissionDialogContent({
+    super.key,
     required this.toolName,
     required this.description,
-    required this.warning,
-    required this.mobile,
+    required this.onDecision,
+    this.warning,
+    this.mobile = false,
   });
 
   @override
@@ -227,27 +122,6 @@ class _PermissionDialogContent extends StatelessWidget {
     );
   }
 
-  void _allowOnce(BuildContext context) {
-    Navigator.pop(
-      context,
-      const PermissionDialogResult(approved: true),
-    );
-  }
-
-  void _alwaysAllow(BuildContext context) {
-    Navigator.pop(
-      context,
-      const PermissionDialogResult(approved: true, persistExact: true),
-    );
-  }
-
-  void _deny(BuildContext context) {
-    Navigator.pop(
-      context,
-      const PermissionDialogResult(approved: false),
-    );
-  }
-
   Widget _buildButtons(BuildContext context) {
     if (!mobile) {
       // 桌面：行内按钮，主操作（Allow Once）在最右
@@ -255,7 +129,7 @@ class _PermissionDialogContent extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AthenaSecondaryButton(
-            onTap: () => _deny(context),
+            onTap: () => onDecision(false, false),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text('Deny'),
@@ -263,7 +137,7 @@ class _PermissionDialogContent extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           AthenaSecondaryButton(
-            onTap: () => _alwaysAllow(context),
+            onTap: () => onDecision(true, true),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text('Always Allow'),
@@ -271,7 +145,7 @@ class _PermissionDialogContent extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           AthenaPrimaryButton(
-            onTap: () => _allowOnce(context),
+            onTap: () => onDecision(true, false),
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text('Allow Once'),
@@ -286,7 +160,7 @@ class _PermissionDialogContent extends StatelessWidget {
       children: [
         _buildMobileButton(
           label: 'Allow Once',
-          onTap: () => _allowOnce(context),
+          onTap: () => onDecision(true, false),
           background: ColorUtil.FFFFFFFF,
           foreground: ColorUtil.FF161616,
           bordered: false,
@@ -294,7 +168,7 @@ class _PermissionDialogContent extends StatelessWidget {
         const SizedBox(height: 12),
         _buildMobileButton(
           label: 'Always Allow',
-          onTap: () => _alwaysAllow(context),
+          onTap: () => onDecision(true, true),
           background: Colors.transparent,
           foreground: ColorUtil.FFFFFFFF,
           bordered: true,
@@ -302,7 +176,7 @@ class _PermissionDialogContent extends StatelessWidget {
         const SizedBox(height: 12),
         _buildMobileButton(
           label: 'Deny',
-          onTap: () => _deny(context),
+          onTap: () => onDecision(false, false),
           background: ColorUtil.FF616161,
           foreground: ColorUtil.FFFFFFFF,
           bordered: false,

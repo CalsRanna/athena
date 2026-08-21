@@ -33,10 +33,15 @@ class PermissionDecision {
   const PermissionDecision({required this.approved, this.persistExact = false});
 }
 
-/// 权限审批回调：由各 App 注入（GUI=对话框，TUI=stdin 提示）。
+/// 权限审批回调：由各 App 注入（GUI=会话内审批卡片，TUI=终端提示）。
+///
+/// [chatId] 标识请求所属对话（GUI 据此把审批渲染到对应会话）；
+/// [cancelToken] 供调用方在 run 取消时自动拒绝审批。
 typedef PermissionPrompt = Future<PermissionDecision> Function(
+  int chatId,
   String toolName,
   String arguments,
+  CancelToken cancelToken,
 );
 
 /// Skill 信任回调：由各 App 注入（GUI=对话框，TUI=stdin 提示）。
@@ -66,8 +71,22 @@ class AgentRunCoordinator {
   final PermissionPrompt _permissionPrompt;
   final SkillTrustPrompt _skillTrustPrompt;
 
-  int? _streamingChatId;
+  /// 下一个 run 的自增 id（多 run 并发的隔离标识）。
+  int _nextRunId = 0;
+
+  /// 正在流式运行的对话 id 集合（支持多对话同时运行）。
+  final Set<int> _streamingChatIds = {};
+
+  /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
+  final Map<int, int> _runIdByChat = {};
+
   bool _skillTrustPrompted = false;
+
+  /// 流式运行中的消息快照（chatId → 当前正在生成的 assistant 消息）。
+  ///
+  /// 流式中间态只存在于内存（迭代边界才落库），UI 切换到正在运行的对话时
+  /// 需要据此恢复实时进度；run 结束时移除（届时 DB 已是最终态）。
+  final Map<int, MessageEntity> _liveMessages = {};
 
   /// 用户点击思考卡片切换的展开状态(messageId → expanded)。
   ///
@@ -118,8 +137,22 @@ class AgentRunCoordinator {
         _permissionPrompt = permissionPrompt,
         _skillTrustPrompt = skillTrustPrompt;
 
-  int? get streamingChatId => _streamingChatId;
-  Future<void>? get settled => _agentService.settled;
+  /// 正在流式运行的对话 id 集合（多对话可同时运行）。
+  Set<int> get streamingChatIds => _streamingChatIds;
+
+  /// 指定对话是否正在流式运行。
+  bool isStreamingChat(int chatId) => _streamingChatIds.contains(chatId);
+
+  /// 等待指定对话的 run 完成后 resolve 的 Future（无运行返回 null）。
+  Future<void>? settledOf(int chatId) {
+    final runId = _runIdByChat[chatId];
+    return runId == null ? null : _agentService.settledOf(runId);
+  }
+
+  /// 指定对话当前正在流式生成的消息快照；未在流式中返回 null。
+  ///
+  /// 用于 UI 切换到运行中的对话时恢复实时进度（DB 里只有迭代边界前的旧态）。
+  MessageEntity? liveMessage(int chatId) => _liveMessages[chatId];
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -128,7 +161,9 @@ class AgentRunCoordinator {
   }) async* {
     await _maybePromptSkillTrust();
 
-    _streamingChatId = chat.id;
+    final runId = ++_nextRunId;
+    _streamingChatIds.add(chat.id!);
+    _runIdByChat[chat.id!] = runId;
     yield const RunIterationChanged(0);
     yield const RunToolNameChanged(null);
 
@@ -189,8 +224,9 @@ class AgentRunCoordinator {
       );
       yield RunAssistantAppended(assistantMessage);
 
-      // 4. 启动 Agent 循环
+      // 4. 启动 Agent 循环（runId 隔离，多个对话可同时运行）
       final agentStream = _agentService.run(
+        runId: runId,
         chat: chat,
         provider: provider,
         model: model,
@@ -200,38 +236,46 @@ class AgentRunCoordinator {
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         onPermission: (toolName, arguments) =>
-            _askPermission(toolName, arguments),
+            _askPermission(runId, chat.id!, toolName, arguments),
         jsonMode: jsonMode,
       );
 
       // 5. 消费流（取消/错误均在 _consumeStream 内部处理并落库）
-      yield* _consumeStream(chat, assistantMessage, agentStream);
+      yield* _consumeStream(runId, chat, assistantMessage, agentStream);
 
       await _manageService.updateChatTimestamp(chat);
       yield const RunListReload();
     } finally {
-      _streamingChatId = null;
-      _expandedOverrides.clear();
+      _streamingChatIds.remove(chat.id);
+      _runIdByChat.remove(chat.id);
+      _liveMessages.remove(chat.id);
+      // 注意：_expandedOverrides 不在全局清理——finalize 时已按消息逐个
+      // 移除，多 run 并发时全局 clear 会误删其他 run 的展开状态。
     }
   }
 
-  void stop() {
-    _agentService.abort();
+  /// 停止指定对话的 Agent 循环。
+  void stop(int chatId) {
+    final runId = _runIdByChat[chatId];
+    if (runId != null) _agentService.abort(runId);
   }
 
   /// 注入一条 steering 消息：当前轮工具执行完后、下一轮 LLM 调用前插入。
-  void steer(ChatMessage message) {
-    _agentService.steer(message);
+  void steer(int chatId, ChatMessage message) {
+    final runId = _runIdByChat[chatId];
+    if (runId != null) _agentService.steer(runId, message);
   }
 
   /// 注入一条 followUp 消息：Agent 停止后作为新用户输入继续运行。
-  void followUp(ChatMessage message) {
-    _agentService.followUp(message);
+  void followUp(int chatId, ChatMessage message) {
+    final runId = _runIdByChat[chatId];
+    if (runId != null) _agentService.followUp(runId, message);
   }
 
-  /// 清空所有待注入消息队列。
-  void clearQueues() {
-    _agentService.clearQueues();
+  /// 清空指定对话所有待注入消息队列。
+  void clearQueues(int chatId) {
+    final runId = _runIdByChat[chatId];
+    if (runId != null) _agentService.clearQueues(runId);
   }
 
   // ─── 内部 ─────────────────────────────────────────────────
@@ -256,6 +300,7 @@ class AgentRunCoordinator {
   ///
   /// CancelledException 在内部捕获并落库后，流正常结束（不向外抛）。
   Stream<RunEvent> _consumeStream(
+    int runId,
     ChatEntity chat,
     MessageEntity assistantMessage,
     Stream<AgentEvent> agentStream,
@@ -294,7 +339,7 @@ class AgentRunCoordinator {
 
     try {
       await for (final event in agentStream) {
-        _agentService.currentCancelToken?.throwIfCancelled();
+        _agentService.cancelTokenOf(runId)?.throwIfCancelled();
 
         if (event is AgentTurnStartEvent) {
           // 迭代边界以 turnStart 为准：上一轮以工具结果结束（或截断保护
@@ -365,17 +410,20 @@ class AgentRunCoordinator {
         }
 
         if (appendedNewMessage) {
+          _liveMessages[chat.id!] = current;
           yield RunAssistantAppended(current);
           appendedNewMessage = false;
         }
         // 应用用户最近的展开选择:增量 copyWith 链基于本地缓存 current,
         // 若不在此覆盖,刚展开的卡片会被下一次增量重新折叠
         current = _withExpandedOverride(current);
+        _liveMessages[chat.id!] = current;
         yield RunMessageUpdated(current);
       }
 
       if (current.reasoning) {
         current = current.copyWith(reasoning: false);
+        _liveMessages[chat.id!] = current;
         yield RunMessageUpdated(current);
       }
 
@@ -390,15 +438,15 @@ class AgentRunCoordinator {
       // tool_calls 却缺 tool 响应，下一轮 buildMessages 重建时
       // OpenAI 兼容端会 400 拒绝，该聊天将无法继续。
       current = _closeOpenToolCalls(current, 'execution cancelled (run interrupted)', toolCallsJson, toolResultsJson);
-      yield RunMessageUpdated(
-        await _manageService.recordCancelledOnMessage(current),
-      );
+      final cancelled = await _manageService.recordCancelledOnMessage(current);
+      _liveMessages[chat.id!] = cancelled;
+      yield RunMessageUpdated(cancelled);
     } catch (e) {
       // 错误已记录到消息内容中；同样先闭合工具调用
       current = _closeOpenToolCalls(current, 'run aborted by error: $e', toolCallsJson, toolResultsJson);
-      yield RunMessageUpdated(
-        await _manageService.recordErrorOnMessage(current, e),
-      );
+      final failed = await _manageService.recordErrorOnMessage(current, e);
+      _liveMessages[chat.id!] = failed;
+      yield RunMessageUpdated(failed);
       yield RunError(e.toString());
     }
   }
@@ -567,10 +615,14 @@ class AgentRunCoordinator {
   // ─── 权限 ──────────────────────────────────────────────────
 
   Future<bool> _askPermission(
+    int runId,
+    int chatId,
     String toolName,
     String arguments,
   ) async {
-    final decision = await _permissionPrompt(toolName, arguments);
+    final token = _agentService.cancelTokenOf(runId);
+    final decision =
+        await _permissionPrompt(chatId, toolName, arguments, token!);
 
     if (decision.approved) {
       Map<String, dynamic> args;
@@ -580,8 +632,9 @@ class AgentRunCoordinator {
         args = {};
       }
 
-      // 任何批准模式都先写入会话级缓存:同一 run 内不再重复弹窗
-      await _permissionService.approveForSession(toolName, args);
+      // 任何批准模式都先写入本 run 的会话级缓存（按 run 隔离）:
+      // 同一 run 内不再重复弹窗，其他 run 不受影响
+      await _permissionService.approveForSession(runId, toolName, args);
 
       if (decision.persistExact) {
         // "Always Allow" 对 shell 命令存动作级规则(如 git push → action git,

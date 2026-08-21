@@ -49,6 +49,16 @@ typedef AfterToolCallHook = Future<AfterToolCallResult> Function(
   AfterToolCallContext ctx,
 );
 
+/// 单个 Agent run 的运行时状态（按 [runId] 隔离，支持多 run 并发）。
+class _AgentRunState {
+  _AgentRunState({CancelToken? token}) : cancelToken = token ?? CancelToken();
+
+  final CancelToken cancelToken;
+  final Completer<void> settled = Completer<void>();
+  final List<ChatMessage> steerQueue = [];
+  final List<ChatMessage> followUpQueue = [];
+}
+
 class AgentService {
   /// 并行工具执行的并发上限，防止模型一轮发大量并行调用时瞬时打爆。
   static const _maxParallelTools = 8;
@@ -57,41 +67,33 @@ class AgentService {
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
 
-  // ─── 运行时状态 ──────────────────────────────────────────
-  @protected
-  CancelToken? currentCancelTokenInternal;
-  @protected
-  Completer<void>? settledInternal;
-  @protected
-  bool isRunningInternal = false;
+  // ─── 运行时状态（按 runId 隔离，多 run 可并发）────────────────
+  final Map<int, _AgentRunState> _runs = {};
 
-  /// 当前是否正在执行 Agent 循环。
-  bool get isRunning => isRunningInternal;
+  /// 当前是否有 Agent 循环在运行（任一 run）。
+  bool get isRunning => _runs.isNotEmpty;
 
-  /// 当前运行的取消令牌（可能为 null）。
-  CancelToken? get currentCancelToken => currentCancelTokenInternal;
+  /// 指定 run 的取消令牌（可能为 null）。
+  CancelToken? cancelTokenOf(int runId) => _runs[runId]?.cancelToken;
 
-  /// 等待当前运行完成后 resolve 的 Future。
-  Future<void>? get settled => settledInternal?.future;
-
-  // ─── 消息注入队列 ───────────────────────────────────────
-  final List<ChatMessage> _steerQueue = [];
-  final List<ChatMessage> _followUpQueue = [];
+  /// 等待指定 run 完成后 resolve 的 Future。
+  Future<void>? settledOf(int runId) => _runs[runId]?.settled.future;
 
   /// 注入一条 steering 消息：在当前轮工具执行完成后、下一轮 LLM 调用前插入。
-  void steer(ChatMessage message) {
-    _steerQueue.add(message);
+  void steer(int runId, ChatMessage message) {
+    _runs[runId]?.steerQueue.add(message);
   }
 
   /// 注入一条 followUp 消息：在 Agent 停止后作为新用户输入继续运行。
-  void followUp(ChatMessage message) {
-    _followUpQueue.add(message);
+  void followUp(int runId, ChatMessage message) {
+    _runs[runId]?.followUpQueue.add(message);
   }
 
-  /// 清空所有待注入的消息。
-  void clearQueues() {
-    _steerQueue.clear();
-    _followUpQueue.clear();
+  /// 清空指定 run 所有待注入的消息。
+  void clearQueues(int runId) {
+    final state = _runs[runId];
+    state?.steerQueue.clear();
+    state?.followUpQueue.clear();
   }
 
   AgentService({
@@ -102,17 +104,13 @@ class AgentService {
         _toolRegistry = toolRegistry,
         _skillRegistry = skillRegistry;
 
-  /// 取消当前正在进行的 Agent 循环。
-  void abort() {
-    currentCancelTokenInternal?.cancel();
-  }
-
-  /// 等待当前运行结束（如果正在运行）。
-  Future<void> waitForIdle() async {
-    await (settledInternal?.future ?? Future.value());
+  /// 取消指定 run 的 Agent 循环。
+  void abort(int runId) {
+    _runs[runId]?.cancelToken.cancel();
   }
 
   Stream<AgentEvent> run({
+    required int runId,
     required ChatEntity chat,
     required ProviderEntity provider,
     required ModelEntity model,
@@ -128,17 +126,16 @@ class AgentService {
     AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
-    if (isRunningInternal) {
-      throw StateError('Agent is already processing. Wait for completion or abort first.');
+    if (_runs.containsKey(runId)) {
+      throw StateError('Agent run $runId is already active.');
     }
 
-    isRunningInternal = true;
-    currentCancelTokenInternal = cancelToken ?? CancelToken();
-    settledInternal = Completer<void>();
-    final token = currentCancelTokenInternal!;
+    final state = _AgentRunState(token: cancelToken);
+    _runs[runId] = state;
+    final token = state.cancelToken;
 
-    // 新 run 开始:清空上一步的会话级权限缓存
-    permissionService?.resetSession();
+    // 会话级权限缓存按 run 隔离：仅清空本 run 的
+    permissionService?.resetSession(runId);
 
     var messages = _injectPrompts(baseMessages, skillPrompt, evolutionPrompt);
     _skillRegistry?.clearContext();
@@ -146,6 +143,7 @@ class AgentService {
     // 构建复合 beforeToolCall：用户 hook → 权限检查
     final compositeBeforeToolCall = _buildCompositeBeforeHook(
       userHook: beforeToolCall,
+      runId: runId,
       permissionService: permissionService,
       onPermission: onPermission,
       cancelToken: token,
@@ -168,9 +166,9 @@ class AgentService {
           token.throwIfCancelled();
 
           // 注入 steering 消息
-          if (_steerQueue.isNotEmpty) {
-            final steerMessages = List<ChatMessage>.from(_steerQueue);
-            _steerQueue.clear();
+          if (state.steerQueue.isNotEmpty) {
+            final steerMessages = List<ChatMessage>.from(state.steerQueue);
+            state.steerQueue.clear();
             messages.addAll(steerMessages);
           }
 
@@ -334,6 +332,7 @@ class AgentService {
         // 审批的调用）进入串行组
         final parallelCalls = selectParallelCalls(
           toolCalls,
+          runId: runId,
           permissionService: permissionService,
           onPermission: onPermission,
         );
@@ -413,9 +412,9 @@ class AgentService {
       }
 
         // 检查 followUp 消息：有则注入并重启内层循环
-        if (_followUpQueue.isNotEmpty) {
-          final followUps = List<ChatMessage>.from(_followUpQueue);
-          _followUpQueue.clear();
+        if (state.followUpQueue.isNotEmpty) {
+          final followUps = List<ChatMessage>.from(state.followUpQueue);
+          state.followUpQueue.clear();
           messages.addAll(followUps);
         } else {
           break; // 无 followUp，退出外层循环
@@ -423,18 +422,15 @@ class AgentService {
       }
     } finally {
       _skillRegistry?.clearContext();
-      isRunningInternal = false;
-      currentCancelTokenInternal = null;
-      if (settledInternal != null && !settledInternal!.isCompleted) {
-        settledInternal!.complete();
-      }
-      settledInternal = null;
+      _runs.remove(runId);
+      if (!state.settled.isCompleted) state.settled.complete();
     }
   }
 
   /// 构建复合 beforeToolCall：用户 hook + 权限检查串联。
   BeforeToolCallHook? _buildCompositeBeforeHook({
     BeforeToolCallHook? userHook,
+    required int runId,
     PermissionService? permissionService,
     PermissionCallback? onPermission,
     required CancelToken cancelToken,
@@ -454,6 +450,7 @@ class AgentService {
       }
 
       final ruleMatched = permissionService?.check(
+            runId,
             ctx.name,
             ctx.args,
             risk: _toolRegistry.get(ctx.name)?.risk,
@@ -663,6 +660,7 @@ class AgentService {
   @visibleForTesting
   List<ToolCall> selectParallelCalls(
     List<ToolCall> toolCalls, {
+    required int runId,
     PermissionService? permissionService,
     PermissionCallback? onPermission,
   }) {
@@ -683,6 +681,7 @@ class AgentService {
       // 权限预检分级：需弹窗的调用降级串行
       if (permissionService != null) {
         if (permissionService.check(
+                runId,
                 tc.function.name,
                 args,
                 risk: tool.risk,

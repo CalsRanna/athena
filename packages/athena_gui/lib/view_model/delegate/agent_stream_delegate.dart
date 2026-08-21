@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
@@ -17,37 +18,67 @@ import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
-import 'package:athena_gui/router/router.dart';
-import 'package:athena_gui/widget/permission_dialog.dart';
 import 'package:athena_gui/widget/skill_trust_dialog.dart';
 import 'package:openai_dart/openai_dart.dart';
 
+/// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
+class ApprovalRequest {
+  final int chatId;
+  final String toolName;
+
+  /// 审批内容（shell 为完整命令，其他为参数键值），已格式化。
+  final String arguments;
+  final Completer<PermissionDecision> completer;
+
+  ApprovalRequest({
+    required this.chatId,
+    required this.toolName,
+    required this.arguments,
+    required this.completer,
+  });
+}
+
 /// GUI 侧的 Agent 流桥：包装核心 [AgentRunCoordinator]，
-/// 注入权限/Skill 信任对话框实现，事件原样转发。
+/// 权限审批以会话内卡片（非模态）呈现，事件原样转发。
 class AgentStreamDelegate {
-  final AgentRunCoordinator _coordinator;
+  late final AgentRunCoordinator _coordinator;
 
-  AgentStreamDelegate({required AgentServiceCoordinatorDeps deps})
-    : _coordinator = AgentRunCoordinator(
-        agentService: deps.agentService,
-        manageService: deps.manageService,
-        messageService: deps.messageService,
-        chatService: deps.chatService,
-        messageRepo: deps.messageRepo,
-        modelRepo: deps.modelRepo,
-        sentinelRepo: deps.sentinelRepo,
-        chatRepo: deps.chatRepo,
-        supportService: deps.supportService,
-        agentSettings: deps.agentSettings,
-        permissionService: deps.permissionService,
-        skillRegistry: deps.skillRegistry,
-        permissionPrompt: (toolName, arguments) =>
-            _askPermission(deps, toolName, arguments),
-        skillTrustPrompt: _askSkillTrust,
-      );
+  final _approvalController = StreamController<ApprovalRequest>.broadcast();
 
-  int? get streamingChatId => _coordinator.streamingChatId;
-  Future<void>? get settled => _coordinator.settled;
+  /// 挂起的权限审批请求流（ChatViewModel 订阅后渲染为会话内卡片）。
+  Stream<ApprovalRequest> get approvalRequests => _approvalController.stream;
+
+  AgentStreamDelegate({required AgentServiceCoordinatorDeps deps}) {
+    _coordinator = AgentRunCoordinator(
+      agentService: deps.agentService,
+      manageService: deps.manageService,
+      messageService: deps.messageService,
+      chatService: deps.chatService,
+      messageRepo: deps.messageRepo,
+      modelRepo: deps.modelRepo,
+      sentinelRepo: deps.sentinelRepo,
+      chatRepo: deps.chatRepo,
+      supportService: deps.supportService,
+      agentSettings: deps.agentSettings,
+      permissionService: deps.permissionService,
+      skillRegistry: deps.skillRegistry,
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
+          _askPermission(chatId, toolName, arguments, cancelToken),
+      skillTrustPrompt: _askSkillTrust,
+    );
+  }
+
+  /// 正在流式运行的对话 id 集合（多对话可同时运行）。
+  Set<int> get streamingChatIds => _coordinator.streamingChatIds;
+
+  /// 指定对话是否正在流式运行。
+  bool isStreamingChat(int chatId) => _coordinator.isStreamingChat(chatId);
+
+  /// 等待指定对话的 run 完成后 resolve 的 Future。
+  Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
+
+  /// 指定对话当前流式中的消息快照（用于切换到运行中的对话时恢复进度）。
+  MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
 
   /// 用户点击思考卡片切换的展开状态，转发给核心协调层。
   void updateExpanded(int messageId, bool expanded) {
@@ -66,51 +97,56 @@ class AgentStreamDelegate {
     );
   }
 
-  void stop() {
-    _coordinator.stop();
+  void stop(int chatId) {
+    _coordinator.stop(chatId);
   }
 
-  void steer(ChatMessage message) {
-    _coordinator.steer(message);
+  void steer(int chatId, ChatMessage message) {
+    _coordinator.steer(chatId, message);
   }
 
-  void followUp(ChatMessage message) {
-    _coordinator.followUp(message);
+  void followUp(int chatId, ChatMessage message) {
+    _coordinator.followUp(chatId, message);
   }
 
-  void clearQueues() {
-    _coordinator.clearQueues();
+  void clearQueues(int chatId) {
+    _coordinator.clearQueues(chatId);
   }
 
-  // ─── GUI 侧实现：对话框 ─────────────────────────────────
+  /// 用户对某个审批请求做出决策（由 UI 卡片调用）。
+  void respondApproval(ApprovalRequest request, PermissionDecision decision) {
+    if (!request.completer.isCompleted) {
+      request.completer.complete(decision);
+    }
+  }
 
-  static Future<PermissionDecision> _askPermission(
-    AgentServiceCoordinatorDeps deps,
+  // ─── GUI 侧实现：会话内审批卡片（非模态） ────────────────
+
+  Future<PermissionDecision> _askPermission(
+    int chatId,
     String toolName,
     String arguments,
+    CancelToken cancelToken,
   ) async {
-    final description = formatToolArgsForApproval(toolName, arguments);
-
-    final dialogFuture = showPermissionDialog(
-      toolName: toolName,
-      description: description,
+    final completer = Completer<PermissionDecision>();
+    _approvalController.add(
+      ApprovalRequest(
+        chatId: chatId,
+        toolName: toolName,
+        arguments: formatToolArgsForApproval(toolName, arguments),
+        completer: completer,
+      ),
     );
 
-    final cancelToken = deps.agentService.currentCancelToken;
-    final result = await Future.any<PermissionDialogResult>([
-      dialogFuture,
-      if (cancelToken != null)
-        cancelToken.whenCancelled.then((_) {
-          final nav = router.navigatorKey.currentState;
-          if (nav?.canPop() ?? false) nav!.pop();
-          return const PermissionDialogResult(approved: false);
-        }),
+    // run 取消时自动拒绝；同时完成 completer 让 UI 卡片自动移除
+    final result = await Future.any<PermissionDecision>([
+      completer.future,
+      cancelToken.whenCancelled.then(
+        (_) => const PermissionDecision(approved: false),
+      ),
     ]);
-
-    return PermissionDecision(
-      approved: result.approved,
-      persistExact: result.persistExact,
-    );
+    if (!completer.isCompleted) completer.complete(result);
+    return result;
   }
 
   static Future<bool> _askSkillTrust(String dir, List<String> names) {
