@@ -233,11 +233,13 @@ class _DesktopSettingProviderPageState
         itemCount: providers.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
-      var syncButton = Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-        child: AthenaTextButton(
+      // 与 provider item 同款样式(DesktopMenuTile),固定列底部
+      var syncTile = Padding(
+        padding: const EdgeInsets.all(12),
+        child: DesktopMenuTile(
+          active: false,
+          label: 'Sync models.dev',
           onTap: syncFromModelsDev,
-          text: 'Sync models.dev',
         ),
       );
       return Container(
@@ -245,7 +247,7 @@ class _DesktopSettingProviderPageState
         width: 240,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [syncButton, Expanded(child: listView)],
+          children: [Expanded(child: listView), syncTile],
         ),
       );
     });
