@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/storage/user_settings_store.dart';
@@ -27,6 +28,36 @@ void main() {
         isPreset: true,
         createdAt: DateTime(2026, 1, 1),
       );
+
+  /// 种入测试 provider + 模型(替代已删除的 PresetSeed;
+  /// 预设 provider/模型现由 models.dev 同步,测试不联网自行造数据)。
+  Future<void> seedTestData(TuiDi di) async {
+    final now = DateTime.now();
+    final providerId = await di.providerRepo.storeProvider(ProviderEntity(
+      name: 'Deep Seek',
+      baseUrl: 'https://api.deepseek.com/v1',
+      apiKey: '',
+      enabled: false,
+      isPreset: true,
+      createdAt: now,
+    ));
+    await di.modelRepo.createModel(ModelEntity(
+      name: 'DeepSeek-V3-0324',
+      modelId: 'deepseek-chat',
+      providerId: providerId,
+      isPreset: true,
+      createdAt: now,
+      updatedAt: now,
+    ));
+    await di.modelRepo.createModel(ModelEntity(
+      name: 'DeepSeek-R1-0528',
+      modelId: 'deepseek-reasoner',
+      providerId: providerId,
+      isPreset: true,
+      createdAt: now,
+      updatedAt: now,
+    ));
+  }
 
   group('UserSettingsStore', () {
     late File file;
@@ -235,13 +266,12 @@ void main() {
       );
       await di.initialize(syncModels: false);
 
-      // 内存:迁移的 Deep Seek + seed 补齐的模板 provider
+      // 内存:迁移的 Deep Seek(模板 provider 已无种子,由 models.dev 同步补齐)
       final providers = await di.providerRepo.getAllProviders();
       final deepSeek = providers.firstWhere((p) => p.name == 'Deep Seek');
       expect(deepSeek.apiKey, 'sk-legacy');
       expect(deepSeek.id, 1);
-      // seed 补齐了模板 provider(空 key)
-      expect(providers.length, greaterThanOrEqualTo(2));
+      expect(providers, hasLength(1));
 
       // yaml 只存配了 key 的(Deep Seek),空 key 的模板不落盘
       final store = UserSettingsStore(file: File(di.userSettingsFile.path));
@@ -256,6 +286,7 @@ void main() {
     test('switchModel 后 yaml 持久化 modelId', () async {
       final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
       await di.initialize(syncModels: false);
+      await seedTestData(di);
       await di.chatController.initialize();
 
       // availableModels 只含已配 key 的 provider 的模型:先给 Deep Seek 配 key
@@ -277,6 +308,7 @@ void main() {
     test('updateProviderApiKey 直接持久化到 yaml(无需额外写回)', () async {
       final di = TuiDi(dataDirectory: tempDir.path, homeDir: tempDir.path);
       await di.initialize(syncModels: false);
+      await seedTestData(di);
       await di.chatController.initialize();
 
       final providers = await di.chatController.availableProviders;

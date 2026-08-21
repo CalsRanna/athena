@@ -9,7 +9,7 @@ import 'package:athena_tui/storage/user_settings_store.dart';
 /// provider 的 api key(或清空 key 后移除)时才修改 yaml。
 ///
 /// - **内存 `_all` 是运行时权威**:启动时由 [load](读 yaml 用户配置)+
-///   PresetSeed / ModelCatalogService(模板 provider)填充
+///   ModelCatalogService(模板 provider)填充
 /// - **yaml 只存用户配置的子集**:apiKey 非空的 provider;
 ///   种子/同步创建的 provider(空 key)不落 yaml
 /// - 所有操作经 [serialLock] 串行化(防并发写覆盖)
