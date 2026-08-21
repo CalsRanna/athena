@@ -260,6 +260,11 @@ class _DesktopSettingProviderPageState
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var provider = providers[index];
+    // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
+    // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
+    var trailingColor = this.index == index
+        ? colors.textSelected
+        : colors.iconSecondary;
     var trailing = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -267,14 +272,14 @@ class _DesktopSettingProviderPageState
           Icon(
             HugeIcons.strokeRoundedToggleOn,
             size: 10,
-            color: colors.iconSecondary,
+            color: trailingColor,
           ),
         if (provider.isPreset) SizedBox(width: 4),
         if (provider.isPreset)
           Icon(
             HugeIcons.strokeRoundedCircleLock01,
             size: 10,
-            color: colors.iconSecondary,
+            color: trailingColor,
           ),
       ],
     );

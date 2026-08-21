@@ -214,11 +214,16 @@ class _DesktopSettingSentinelPageState
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var sentinel = sentinels[index];
+    // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
+    // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
+    var trailingColor = this.index == index
+        ? colors.textSelected
+        : colors.iconSecondary;
     var trailing = sentinel.isPreset
         ? Icon(
             HugeIcons.strokeRoundedCircleLock01,
             size: 10,
-            color: colors.iconSecondary,
+            color: trailingColor,
           )
         : null;
     return DesktopMenuTile(
