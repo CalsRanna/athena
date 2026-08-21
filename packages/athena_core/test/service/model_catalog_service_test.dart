@@ -121,7 +121,7 @@ Map<String, dynamic> _fixtureCatalog() => {
           'output': 0.28,
           'cache_read': 0.0028,
         },
-        'reasoning': false,
+        'reasoning': true,
         'attachment': true,
         'release_date': '2025-12-01',
       },
@@ -229,6 +229,51 @@ void main() {
       );
       expect(result.keys, isNot(contains('qwen/qwen3-14b')));
       expect(result.length, 2);
+    });
+  });
+
+  group('filterReasoning', () {
+    final models = {
+      'openai/gpt-5': {'name': 'A', 'reasoning': true},
+      'openai/gpt-4o': {'name': 'B', 'reasoning': false},
+      'anthropic/claude-sonnet-5': {'name': 'C', 'reasoning': true},
+      'bare-model': {'name': 'D'}, // reasoning 缺失 → 视为非推理
+    };
+
+    test('默认只保留 reasoning=true', () {
+      final result = ModelCatalogService.filterReasoning(models);
+      expect(result.keys.toSet(), {
+        'openai/gpt-5',
+        'anthropic/claude-sonnet-5',
+      });
+    });
+
+    test('reasoningOnly=false 时不过滤', () {
+      final result = ModelCatalogService.filterReasoning(
+        models,
+        reasoningOnly: false,
+      );
+      expect(result.keys.toSet(), models.keys.toSet());
+    });
+
+    test('过滤发生在家族去重之前:家族内非推理版本被剔,推理版保留', () {
+      final family = {
+        // claude-sonnet 家族:5(推理)与 4.6(非推理)
+        'anthropic/claude-sonnet-5': {
+          'name': 'New',
+          'reasoning': true,
+          'release_date': '2026-06-30',
+        },
+        'anthropic/claude-sonnet-4.6': {
+          'name': 'Old',
+          'reasoning': false,
+          'release_date': '2026-02-17',
+        },
+      };
+      final result = ModelCatalogService.latestPerFamily(
+        ModelCatalogService.filterReasoning(family),
+      );
+      expect(result.keys, ['anthropic/claude-sonnet-5']);
     });
   });
 
@@ -417,7 +462,7 @@ void main() {
     });
 
     test('创建缺失的 provider 并插入模型', () async {
-      await _service(modelRepo, providerRepo, chatRepo)
+      final result = await _service(modelRepo, providerRepo, chatRepo)
           .applyCatalog(_fixtureCatalog());
 
       expect(providerRepo.providers, hasLength(1));
@@ -433,6 +478,23 @@ void main() {
       expect(chat.inputPrice, r'$0.14/M input tokens');
       expect(chat.releasedAt, 'Released 2025-12-01');
       expect(chat.vision, isTrue);
+
+      // 统计:新增 1 provider + 2 模型
+      expect(result.createdProviders, 1);
+      expect(result.createdModels, 2);
+      expect(result.updatedModels, 0);
+      expect(result.removedModels, 0);
+    });
+
+    test('二次同步:模型更新元数据并计入统计', () async {
+      final service = _service(modelRepo, providerRepo, chatRepo);
+      await service.applyCatalog(_fixtureCatalog());
+
+      final result = await service.applyCatalog(_fixtureCatalog());
+      expect(result.createdProviders, 0);
+      expect(result.createdModels, 0);
+      expect(result.updatedModels, 2);
+      expect(result.removedModels, 0);
     });
 
     test('已有模型更新元数据,不重复插入', () async {
@@ -505,19 +567,23 @@ void main() {
             'deepseek-chat-v3-0324': {
               'name': 'DeepSeek Chat V3',
               'release_date': '2025-03-24',
+              'reasoning': true,
             },
             'deepseek-chat-v3.1': {
               'name': 'DeepSeek Chat V3.1',
               'release_date': '2025-12-01',
+              'reasoning': true,
             },
             'deepseek-chat': {
               'name': 'DeepSeek Chat',
               'release_date': '2026-02-01',
+              'reasoning': true,
             },
             // reasoner 独立家族,保留
             'deepseek-reasoner': {
               'name': 'DeepSeek Reasoner',
               'release_date': '2025-12-01',
+              'reasoning': true,
             },
           },
         },
@@ -539,6 +605,7 @@ void main() {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
               'release_date': '2025-03-24',
+              'reasoning': true,
             },
           },
         },
@@ -558,10 +625,12 @@ void main() {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
               'release_date': '2025-03-24',
+              'reasoning': true,
             },
             'deepseek-chat-v4': {
               'name': 'Newest',
               'release_date': '2026-06-01',
+              'reasoning': true,
             },
           },
         },
@@ -582,6 +651,7 @@ void main() {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
               'release_date': '2025-03-24',
+              'reasoning': true,
             },
           },
         },
@@ -599,10 +669,12 @@ void main() {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
               'release_date': '2025-03-24',
+              'reasoning': true,
             },
             'deepseek-chat-v4': {
               'name': 'Newest',
               'release_date': '2026-06-01',
+              'reasoning': true,
             },
           },
         },
@@ -623,6 +695,36 @@ void main() {
           .applyCatalog(noProvider);
       expect(providerRepo.providers, isEmpty);
       expect(modelRepo.models, isEmpty);
+    });
+
+    test('默认变体排除生效:preview/免费档/快照等被剔除', () async {
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-reasoner': {
+              'name': 'DeepSeek Reasoner',
+              'reasoning': true,
+              'release_date': '2025-05-28',
+            },
+            // 变体噪声:不在 include 中也能被 defaultCatalogExcludes 剔除
+            'deepseek-reasoner-preview': {
+              'name': 'Preview',
+              'reasoning': true,
+              'release_date': '2026-01-01',
+            },
+            'deepseek-chat:free': {
+              'name': 'Free',
+              'reasoning': true,
+              'release_date': '2026-01-01',
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
+
+      expect(modelRepo.models.map((m) => m.modelId).toList(),
+          ['deepseek-reasoner']);
     });
   });
 
@@ -659,6 +761,25 @@ void main() {
       ).syncIfNeeded();
 
       expect(client.requestCount, 0);
+    });
+
+    test('force 时忽略 TTL 强制拉取', () async {
+      writeCache(_fixtureCatalog(), DateTime.now());
+      final client = _FakeHttpClient(200, jsonEncode(_fixtureCatalog()));
+
+      final modelRepo = _FakeModelRepository();
+      final providerRepo = _FakeProviderRepository();
+      await _service(
+        modelRepo,
+        providerRepo,
+        _FakeChatRepository(),
+        httpClient: client,
+        cacheFilePath: cachePath,
+      ).syncIfNeeded(force: true);
+
+      expect(client.requestCount, 1, reason: 'force 应绕过 TTL 直接拉取');
+      expect(modelRepo.models, hasLength(2));
+      expect(providerRepo.providers, hasLength(1));
     });
 
     test('缓存过期时拉取并写缓存、同步 DB', () async {
