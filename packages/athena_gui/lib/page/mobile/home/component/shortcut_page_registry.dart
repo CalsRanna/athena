@@ -11,10 +11,7 @@ class ShortcutPageDef {
   /// 构建目标页路由；[sentinel] 为 Shortcut 绑定的专属 Sentinel（能力配置）。
   final PageRouteInfo Function(SentinelEntity? sentinel) routeBuilder;
 
-  const ShortcutPageDef({
-    required this.icon,
-    required this.routeBuilder,
-  });
+  const ShortcutPageDef({required this.icon, required this.routeBuilder});
 }
 
 /// Shortcut 目标页注册表：把 `page_target` 字符串映射到路由 + 图标。

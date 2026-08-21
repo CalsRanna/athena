@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -35,8 +35,8 @@ class _DesktopSettingDefaultModelPageState
   @override
   Widget build(BuildContext context) {
     var children = [
-      _buildDefaultModelListView(),
-      Expanded(child: _buildDefaultModelView()),
+      _buildDefaultModelListView(context),
+      Expanded(child: _buildDefaultModelView(context)),
     ];
     return Row(children: children);
   }
@@ -47,10 +47,11 @@ class _DesktopSettingDefaultModelPageState
     });
   }
 
-  Widget _buildDefaultModelListView() {
+  Widget _buildDefaultModelListView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var models = ['Agent', 'Topic Naming', 'Sentinel Metadata Generation'];
     var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),
@@ -74,9 +75,10 @@ class _DesktopSettingDefaultModelPageState
     );
   }
 
-  Widget _buildDefaultModelView() {
+  Widget _buildDefaultModelView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -107,7 +109,7 @@ class _DesktopSettingDefaultModelPageState
       );
 
       var tipTextStyle = TextStyle(
-        color: ColorUtil.FFC2C2C2,
+        color: colors.border,
         fontSize: 12,
         fontWeight: FontWeight.w400,
         height: 1.5,
@@ -168,16 +170,17 @@ class _ModelDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      color: colors.inputBackground.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(24),
     );
     var icon = Icon(
       HugeIcons.strokeRoundedFilterHorizontal,
-      color: ColorUtil.FFF5F5F5,
+      color: colors.textInput,
       size: 20,
     );
-    var children = [Expanded(child: _buildText()), icon];
+    var children = [Expanded(child: _buildText(context)), icon];
     var row = Row(children: children);
     var container = Container(
       decoration: boxDecoration,
@@ -207,9 +210,10 @@ class _ModelDropdown extends StatelessWidget {
     );
   }
 
-  Widget _buildText() {
-    const textStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
+  Widget _buildText(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final textStyle = TextStyle(
+      color: colors.textInput,
       fontSize: 14,
       height: 1.7,
     );

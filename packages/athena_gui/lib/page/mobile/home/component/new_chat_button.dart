@@ -1,5 +1,5 @@
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 
 import 'package:flutter/material.dart';
 
@@ -8,13 +8,14 @@ class NewChatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     const textStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.w500);
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+      color: colors.ctaGlow.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       shadows: [boxShadow],
       shape: StadiumBorder(),
     );

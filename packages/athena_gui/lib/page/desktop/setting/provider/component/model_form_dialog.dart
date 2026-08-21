@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/util/context_window_util.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/checkbox.dart';
@@ -35,14 +35,15 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     var closeButton = GestureDetector(
@@ -88,11 +89,11 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     ];
     var children = [
       Row(children: titleChildren),
-      const SizedBox(height: 24),
+      SizedBox(height: 24),
       Row(children: valueChildren),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       Row(children: nameChildren),
-      Divider(color: ColorUtil.FFFFFFFF, height: 48, thickness: 1),
+      Divider(color: colors.textPrimary, height: 48, thickness: 1),
       Row(children: releasedAtChildren),
       const SizedBox(height: 12),
       Row(children: contextChildren),
@@ -101,7 +102,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       const SizedBox(height: 12),
       Row(children: outputChildren),
       const SizedBox(height: 12),
-      _buildSupports(),
+      _buildSupports(context),
       const SizedBox(height: 12),
       _buildButtons(),
     ];
@@ -112,7 +113,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
     );
     var container = Container(
       decoration: boxDecoration,
@@ -212,7 +213,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 
-  Widget _buildSupports() {
+  Widget _buildSupports(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var reasoningCheckbox = AthenaCheckbox(
       value: supportReasoning,
       onChanged: updateSupportReasoning,
@@ -222,7 +224,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       onChanged: updateSupportVisual,
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,

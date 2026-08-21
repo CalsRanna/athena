@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class AthenaInput extends StatefulWidget {
@@ -56,12 +56,13 @@ class _AthenaInputState extends State<AthenaInput> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      color: colors.inputBackground.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(widget.radius ?? 24),
     );
     var hintTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 14,
       height: 1.75,
     );
@@ -69,15 +70,15 @@ class _AthenaInputState extends State<AthenaInput> {
       hintText: widget.placeholder,
       hintStyle: hintTextStyle,
     );
-    const inputTextStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
+    final inputTextStyle = TextStyle(
+      color: colors.textInput,
       fontSize: 14,
       height: 1.7,
     );
     var textField = TextField(
       controller: widget.controller,
       cursorHeight: 16,
-      cursorColor: ColorUtil.FFF5F5F5,
+      cursorColor: colors.textInput,
       decoration: inputDecoration,
       enabled: widget.enabled,
       focusNode: focusNode,
@@ -89,7 +90,13 @@ class _AthenaInputState extends State<AthenaInput> {
       style: inputTextStyle,
     );
     var child = widget.suffix != null
-        ? Row(children: [Expanded(child: textField), const SizedBox(width: 8), widget.suffix!])
+        ? Row(
+            children: [
+              Expanded(child: textField),
+              const SizedBox(width: 8),
+              widget.suffix!,
+            ],
+          )
         : textField;
     return Container(
       decoration: boxDecoration,

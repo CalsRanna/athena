@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -34,8 +34,9 @@ class DesktopContextMenu extends StatelessWidget {
   }
 
   Widget _buildMenu(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
     var column = Column(
@@ -92,7 +93,8 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
 
   @override
   Widget build(BuildContext context) {
-    var textColor = widget.enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var textColor = widget.enabled ? colors.textPrimary : colors.textSecondary;
     var textStyle = TextStyle(
       color: textColor,
       decoration: TextDecoration.none,
@@ -101,7 +103,7 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover && widget.enabled ? ColorUtil.FF616161 : null,
+      color: hover && widget.enabled ? colors.surfaceButtonSecondary : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var container = Container(
@@ -160,15 +162,16 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover ? colors.surfaceButtonSecondary : null,
     );
     var container = Container(
       alignment: Alignment.centerLeft,
@@ -231,7 +234,8 @@ class _DesktopContextMenuTileWithSubmenuState
 
   @override
   Widget build(BuildContext context) {
-    var textColor = widget.enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var textColor = widget.enabled ? colors.textPrimary : colors.textSecondary;
     var textStyle = TextStyle(
       color: textColor,
       decoration: TextDecoration.none,
@@ -240,7 +244,7 @@ class _DesktopContextMenuTileWithSubmenuState
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover && widget.enabled ? ColorUtil.FF616161 : null,
+      color: hover && widget.enabled ? colors.surfaceButtonSecondary : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var row = Row(
@@ -298,8 +302,9 @@ class _DesktopContextMenuTileWithSubmenuState
     final offset = renderBox.localToGlobal(Offset.zero);
     final width = DesktopContextMenuConfiguration.widthOf(context);
 
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
     var column = Column(

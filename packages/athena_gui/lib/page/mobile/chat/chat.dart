@@ -6,7 +6,7 @@ import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
@@ -75,6 +75,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Widget _buildTitle() {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var chat = _resolveChat();
       var isRenaming =
           chat != null &&
@@ -92,13 +93,13 @@ class _MobileChatPageState extends State<MobileChatPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(child: Text(title, textAlign: TextAlign.center)),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             SizedBox(
               width: 12,
               height: 12,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: ColorUtil.FFFFFFFF,
+                color: colors.textPrimary,
               ),
             ),
           ],

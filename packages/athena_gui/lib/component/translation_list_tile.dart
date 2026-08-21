@@ -1,6 +1,6 @@
 import 'package:athena_gui/component/button.dart';
 import 'package:athena_core/entity/translation_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -32,15 +32,16 @@ class _SourceText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 14,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      color: colors.inputBackground.withValues(alpha: 0.6),
     );
     return Container(
       alignment: Alignment.centerLeft,
@@ -57,8 +58,9 @@ class _TargetText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -73,7 +75,7 @@ class _TargetText extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+      color: colors.surfaceRaised.withValues(alpha: 0.95),
     );
     var stackChildren = [
       messageRow,

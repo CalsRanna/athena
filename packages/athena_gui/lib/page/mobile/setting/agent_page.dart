@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -48,9 +48,9 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 12),
-            _buildGeneralSection(),
+            _buildGeneralSection(context),
             const SizedBox(height: 32),
-            _buildToolsSection(),
+            _buildToolsSection(context),
             SafeArea(top: false, child: const SizedBox()),
           ],
         ),
@@ -58,9 +58,10 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     );
   }
 
-  Widget _buildGeneralSection() {
-    const tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+  Widget _buildGeneralSection(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final tipTextStyle = TextStyle(
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -70,10 +71,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
       children: [
         AthenaFormTileLabel.large(title: 'Max Iterations'),
         const SizedBox(height: 12),
-        AthenaInput(
-          controller: iterationsController,
-          placeholder: '100',
-        ),
+        AthenaInput(controller: iterationsController, placeholder: '100'),
         const SizedBox(height: 4),
         Text(
           'Maximum number of agent loop iterations (default: 100)',
@@ -82,10 +80,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         const SizedBox(height: 16),
         AthenaFormTileLabel.large(title: 'Max Retries'),
         const SizedBox(height: 12),
-        AthenaInput(
-          controller: retriesController,
-          placeholder: '10',
-        ),
+        AthenaInput(controller: retriesController, placeholder: '10'),
         const SizedBox(height: 4),
         Text(
           'Maximum network retry attempts for LLM API calls (default: 10)',
@@ -106,9 +101,10 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     );
   }
 
-  Widget _buildToolsSection() {
-    const tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+  Widget _buildToolsSection(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final tipTextStyle = TextStyle(
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -118,10 +114,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
       children: [
         AthenaFormTileLabel.large(title: 'Brave API Key'),
         const SizedBox(height: 12),
-        AthenaInput(
-          controller: braveApiKeyController,
-          placeholder: 'BSA...',
-        ),
+        AthenaInput(controller: braveApiKeyController, placeholder: 'BSA...'),
         const SizedBox(height: 8),
         Text(
           'Required for web_search. Get a free key at brave.com/search/api/',

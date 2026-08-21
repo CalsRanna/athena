@@ -4,7 +4,7 @@ import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -20,20 +20,21 @@ class DesktopImageExportDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
 
     return Watch((context) {
       var messages = chatViewModel.messages.value;
-      var child = _buildData(messages);
+      var child = _buildData(context, messages);
       var container = Container(decoration: boxDecoration, child: child);
       return UnconstrainedBox(child: container);
     });
   }
 
-  Widget _buildData(List<MessageEntity> messages) {
+  Widget _buildData(BuildContext context, List<MessageEntity> messages) {
     if (messages.isEmpty == true) return const SizedBox();
     List<Widget> children = [];
     var emptySentinel = SentinelEntity(
@@ -54,8 +55,9 @@ class DesktopImageExportDialog extends StatelessWidget {
       children.add(const SizedBox(height: 12));
     }
     children.removeLast();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var container = Container(
-      decoration: BoxDecoration(color: ColorUtil.FF282F32),
+      decoration: BoxDecoration(color: colors.surfaceMobile),
       padding: const EdgeInsets.all(64),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
@@ -74,7 +76,7 @@ class DesktopImageExportDialog extends StatelessWidget {
     );
     var linearGradient = LinearGradient(
       begin: Alignment.topCenter,
-      colors: [Colors.transparent, ColorUtil.FF282F32],
+      colors: [Colors.transparent, colors.surfaceMobile],
       end: Alignment.bottomCenter,
     );
     var padding = Padding(

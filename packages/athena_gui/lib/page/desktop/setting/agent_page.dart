@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -42,16 +42,19 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(children: [
-      _buildListView(),
-      Expanded(child: _buildContentView()),
-    ]);
+    return Row(
+      children: [
+        _buildListView(context),
+        Expanded(child: _buildContentView(context)),
+      ],
+    );
   }
 
-  Widget _buildListView() {
+  Widget _buildListView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var items = ['General', 'Tools'];
     var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),
@@ -70,32 +73,43 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     );
   }
 
-  Widget _buildContentView() {
+  Widget _buildContentView(BuildContext context) {
     return switch (index) {
-      0 => _buildGeneralView(),
-      1 => _buildToolsView(),
+      0 => _buildGeneralView(context),
+      1 => _buildToolsView(context),
       _ => const SizedBox(),
     };
   }
 
-  Widget _buildGeneralView() {
+  Widget _buildGeneralView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var iterationsRow = Row(children: [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Max Iterations')),
-      Expanded(
-        child: AthenaInput(controller: iterationsController, placeholder: '100'),
-      ),
-    ]);
-    var retriesRow = Row(children: [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Max Retries')),
-      Expanded(
-        child: AthenaInput(controller: retriesController, placeholder: '10'),
-      ),
-    ]);
+    var iterationsRow = Row(
+      children: [
+        SizedBox(
+          width: 120,
+          child: AthenaFormTileLabel(title: 'Max Iterations'),
+        ),
+        Expanded(
+          child: AthenaInput(
+            controller: iterationsController,
+            placeholder: '100',
+          ),
+        ),
+      ],
+    );
+    var retriesRow = Row(
+      children: [
+        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Max Retries')),
+        Expanded(
+          child: AthenaInput(controller: retriesController, placeholder: '10'),
+        ),
+      ],
+    );
     const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
     var saveButton = AthenaPrimaryButton(
       onTap: _saveGeneral,
@@ -115,23 +129,29 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     );
   }
 
-  Widget _buildToolsView() {
+  Widget _buildToolsView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
-    var braveApiRow = Row(children: [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Brave API Key')),
-      Expanded(
-        child: AthenaInput(
-          controller: braveApiKeyController,
-          placeholder: 'BSA...',
+    var braveApiRow = Row(
+      children: [
+        SizedBox(
+          width: 120,
+          child: AthenaFormTileLabel(title: 'Brave API Key'),
         ),
-      ),
-    ]);
+        Expanded(
+          child: AthenaInput(
+            controller: braveApiKeyController,
+            placeholder: 'BSA...',
+          ),
+        ),
+      ],
+    );
     var tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

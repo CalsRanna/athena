@@ -2,7 +2,7 @@ import 'package:athena_gui/component/language_selector.dart';
 import 'package:athena_gui/component/translation_list_tile.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/translation_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -43,6 +43,7 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var exchangeButton = AthenaIconButton(
       icon: HugeIcons.strokeRoundedArrowDataTransferHorizontal,
       onTap: exchangeSourceTarget,
@@ -62,12 +63,12 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     );
     var listViewChildren = [
       Row(children: rowChildren),
-      const SizedBox(height: 16),
+      SizedBox(height: 16),
       sourceTextInput,
-      const SizedBox(height: 4),
+      SizedBox(height: 4),
       _buildTargetText(),
-      const SizedBox(height: 16),
-      AthenaDivider(color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2)),
+      SizedBox(height: 16),
+      AthenaDivider(color: colors.textPrimary.withValues(alpha: 0.2)),
       ..._buildTranslationListView(),
     ];
     var listView = ListView(
@@ -166,9 +167,10 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
     });
   }
 
-  Widget _buildTitle() {
-    const titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+  Widget _buildTitle(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final titleTextStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
@@ -206,18 +208,19 @@ class _MobileTranslationPageState extends State<MobileTranslationPage> {
       Watch((context) {
         var translations = viewModel.translations.value;
         if (translations.isEmpty) return const SizedBox();
+        final colors = Theme.of(context).extension<AthenaColors>()!;
         var children = <Widget>[];
-        children.add(_buildTitle());
+        children.add(_buildTitle(context));
         children.add(const SizedBox(height: 12));
-        const labelTextStyle = TextStyle(
-          color: ColorUtil.FFFFFFFF,
+        final labelTextStyle = TextStyle(
+          color: colors.textPrimary,
           fontSize: 14,
           fontWeight: FontWeight.w400,
         );
         for (var translation in translations) {
           var icon = Icon(
             HugeIcons.strokeRoundedArrowRight02,
-            color: ColorUtil.FFFFFFFF,
+            color: colors.textPrimary,
             size: 16,
           );
           var rowChildren = [

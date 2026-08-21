@@ -1,5 +1,5 @@
 import 'package:athena_gui/page/mobile/chat/component/send_button.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class UserInput extends StatelessWidget {
@@ -17,23 +17,24 @@ class UserInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const hintTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final hintTextStyle = TextStyle(
+      color: colors.border,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
-    const inputDecoration = InputDecoration.collapsed(
+    final inputDecoration = InputDecoration.collapsed(
       hintText: 'Send a message',
       hintStyle: hintTextStyle,
     );
-    const textStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
+    final textStyle = TextStyle(
+      color: colors.textInput,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
     final textField = TextField(
       controller: controller,
-      cursorColor: ColorUtil.FFFFFFFF,
+      cursorColor: colors.textInput,
       decoration: inputDecoration,
       maxLines: 2,
       minLines: 2,
@@ -47,7 +48,7 @@ class UserInput extends StatelessWidget {
       isStreaming: isStreaming,
     );
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      color: colors.inputBackground.withValues(alpha: 0.6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     );
     var rowChildren = [

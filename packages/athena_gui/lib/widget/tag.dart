@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -24,8 +24,9 @@ class AthenaTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: selected ? ColorUtil.FF161616 : ColorUtil.FFFFFFFF,
+      color: selected ? colors.textSelected : colors.textPrimary,
       fontSize: fontSize,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -37,7 +38,7 @@ class AthenaTag extends StatelessWidget {
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(44),
-      color: selected ? ColorUtil.FFE0E0E0 : ColorUtil.FF161616,
+      color: selected ? colors.tagSelectedBackground : colors.surfaceDeep,
     );
     var innerContainer = AnimatedContainer(
       decoration: innerBoxDecoration,
@@ -45,13 +46,13 @@ class AthenaTag extends StatelessWidget {
       padding: padding,
       child: animatedText,
     );
-    var colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
-      ColorUtil.FFFFFFFF.withValues(alpha: 0),
+    var gradientColors = [
+      colors.tagBorderStart.withValues(alpha: 0.17),
+      colors.textPrimary.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.bottomRight,
     );
     var outerBoxDecoration = BoxDecoration(
@@ -95,14 +96,17 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var selected = widget.selected;
-    var foregroundColor = selected ? ColorUtil.FF161616 : ColorUtil.FFFFFFFF;
-    var innerColor = selected ? ColorUtil.FFE0E0E0 : ColorUtil.FF161616;
+    var foregroundColor = selected ? colors.textSelected : colors.textPrimary;
+    var innerColor = selected
+        ? colors.tagSelectedBackground
+        : colors.surfaceDeep;
     var gradient = LinearGradient(
       begin: Alignment.topLeft,
       colors: [
-        ColorUtil.FFEAEAEA.withValues(alpha: hover ? 0.28 : 0.17),
-        ColorUtil.FFFFFFFF.withValues(alpha: hover ? 0.04 : 0),
+        colors.tagBorderStart.withValues(alpha: hover ? 0.28 : 0.17),
+        colors.textPrimary.withValues(alpha: hover ? 0.04 : 0),
       ],
       end: Alignment.bottomRight,
     );

@@ -1,6 +1,6 @@
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,27 +24,28 @@ class PermissionApprovalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
     // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+        color: colors.surfaceRaised.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(24),
       ),
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildAvatar(),
+          _buildAvatar(context),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(),
+                _buildHeader(context),
                 const SizedBox(height: 8),
-                _buildCommand(),
+                _buildCommand(context),
                 const SizedBox(height: 12),
                 _buildActions(context),
               ],
@@ -56,25 +57,24 @@ class PermissionApprovalCard extends StatelessWidget {
   }
 
   /// 头像：灰圆底 + 工具图标（对齐工具消息卡片的头像样式）。
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Container(
       alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: ColorUtil.FFCACACA,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textWeak),
       height: 36,
       width: 36,
       child: Icon(
         ToolCard.toolIcon(request.toolName),
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         size: 20,
       ),
     );
   }
 
   /// 标题行：工具名 + 参数预览（单行省略）。
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Row(
       children: [
         Text(
@@ -82,10 +82,10 @@ class PermissionApprovalCard extends StatelessWidget {
           style: GoogleFonts.firaCode(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: ColorUtil.FF282F32,
+            color: colors.textOnRaised,
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: Text(
             ToolCard.argPreview(request.toolName, request.arguments),
@@ -93,7 +93,7 @@ class PermissionApprovalCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.firaCode(
               fontSize: 12,
-              color: ColorUtil.FF616161,
+              color: colors.textOnRaised,
             ),
           ),
         ),
@@ -102,12 +102,13 @@ class PermissionApprovalCard extends StatelessWidget {
   }
 
   /// 完整命令/参数展示：无背景的直接文字（与消息正文一致）。
-  Widget _buildCommand() {
+  Widget _buildCommand(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
       request.arguments,
       style: GoogleFonts.firaCode(
         fontSize: 12,
-        color: ColorUtil.FF282F32,
+        color: colors.textOnRaised,
         height: 1.6,
       ),
     );
@@ -115,8 +116,8 @@ class PermissionApprovalCard extends StatelessWidget {
 
   Widget _buildActions(BuildContext context) {
     final platform = Theme.of(context).platform;
-    final mobile = platform == TargetPlatform.android ||
-        platform == TargetPlatform.iOS;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
 
     if (mobile) {
       // 移动：全宽按钮，主操作（Allow Once）在最上
@@ -171,21 +172,22 @@ class _CardPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: Container(
-          decoration: const ShapeDecoration(
-            color: ColorUtil.FF282F32,
+          decoration: ShapeDecoration(
+            color: colors.cardPrimaryBackground,
             shape: StadiumBorder(),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Text(
             label,
-            style: const TextStyle(
-              color: ColorUtil.FFFFFFFF,
+            style: TextStyle(
+              color: colors.cardPrimaryText,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -204,6 +206,7 @@ class _CardSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -211,15 +214,13 @@ class _CardSecondaryButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Container(
           decoration: ShapeDecoration(
-            shape: StadiumBorder(
-              side: const BorderSide(color: ColorUtil.FFC2C2C2),
-            ),
+            shape: StadiumBorder(side: BorderSide(color: colors.border)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Text(
             label,
-            style: const TextStyle(
-              color: ColorUtil.FF282F32,
+            style: TextStyle(
+              color: colors.textOnRaised,
               fontSize: 13,
               fontWeight: FontWeight.w400,
             ),
@@ -232,7 +233,4 @@ class _CardSecondaryButton extends StatelessWidget {
 
 /// 把卡片决策转换为 core 的 [PermissionDecision]。
 PermissionDecision permissionDecisionOf(bool approved, bool persistExact) =>
-    PermissionDecision(
-      approved: approved,
-      persistExact: persistExact,
-    );
+    PermissionDecision(approved: approved, persistExact: persistExact);

@@ -42,9 +42,9 @@ class SystemTrayUtil with TrayListener {
   }
 
   Future<void> _setContextMenu() async {
-    final menu = Menu(items: [
-      MenuItem(key: 'quit', label: '退出'),
-    ]);
+    final menu = Menu(
+      items: [MenuItem(key: 'quit', label: '退出')],
+    );
     await trayManager.setContextMenu(menu);
   }
 

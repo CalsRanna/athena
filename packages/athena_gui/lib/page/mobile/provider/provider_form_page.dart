@@ -2,7 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -34,6 +34,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var keyVisibilityToggle = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _obscureKey = !_obscureKey),
@@ -42,7 +43,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
             ? HugeIcons.strokeRoundedView
             : HugeIcons.strokeRoundedViewOff,
         size: 18,
-        color: ColorUtil.FFC2C2C2,
+        color: colors.border,
       ),
     );
     var children = [
@@ -79,13 +80,16 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       SizedBox(height: 12),
       modelListView,
       if (widget.provider.isPreset) SizedBox(height: 16),
-      if (widget.provider.isPreset) _buildTip(),
+      if (widget.provider.isPreset) _buildTip(context),
     ];
     var listView = ListView(
       padding: EdgeInsets.zero,
       children: listViewChildren,
     );
-    var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
+    var columnChildren = [
+      Expanded(child: listView),
+      _buildSubmitButton(context),
+    ];
     return AthenaScaffold(
       appBar: AthenaAppBar(title: Text(widget.provider.name)),
       body: SafeArea(top: false, child: Column(children: columnChildren)),
@@ -203,9 +207,10 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -216,9 +221,10 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }
 
-  Widget _buildTip() {
+  Widget _buildTip(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var tipTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

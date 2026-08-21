@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 
 import 'package:flutter/material.dart';
 
@@ -10,12 +10,13 @@ class SentinelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const innerDecoration = ShapeDecoration(
-      color: ColorUtil.FF161616,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final innerDecoration = ShapeDecoration(
+      color: colors.surfaceDeep,
       shape: StadiumBorder(),
     );
-    const textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+    final textStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
@@ -25,13 +26,13 @@ class SentinelTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
       child: Text(sentinel.name, style: textStyle),
     );
-    final colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
+    final gradientColors = [
+      colors.tagBorderStart.withValues(alpha: 0.17),
       Colors.transparent,
     ];
     final linearGradient = LinearGradient(
       begin: Alignment.topLeft,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.bottomRight,
     );
     final shapeDecoration = ShapeDecoration(

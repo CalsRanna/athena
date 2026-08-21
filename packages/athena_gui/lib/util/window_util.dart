@@ -21,7 +21,9 @@ class WindowUtil {
     await windowManager.destroy();
   }
 
-  Future<void> ensureInitialized() async {
+  /// [backgroundColor] 窗口原生背景色（需与当前主题背景一致，
+  /// 浅色主题下避免露出默认黑底）。
+  Future<void> ensureInitialized({Color? backgroundColor}) async {
     if (Platform.isAndroid || Platform.isIOS) return;
     var instance = SharedPreferenceUtil.instance;
     var height = await instance.getWindowHeight();
@@ -34,6 +36,7 @@ class WindowUtil {
       minimumSize: const Size(1080, 720),
       size: Size(width, height),
       windowButtonVisibility: false,
+      backgroundColor: backgroundColor,
       title: 'Athena',
     );
     bool isPreventClose = true;

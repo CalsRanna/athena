@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
 
@@ -22,21 +22,22 @@ class _DesktopScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var children = [
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
     ];
     var innerDecoratedBox = DecoratedBox(
-      decoration: BoxDecoration(color: ColorUtil.FF282828),
+      decoration: BoxDecoration(color: colors.surface),
       child: Column(children: children),
     );
-    var colors = [
-      ColorUtil.FF6ABEB9.withValues(alpha: 0.2),
+    var gradientColors = [
+      colors.teal.withValues(alpha: 0.2),
       Colors.transparent,
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topRight,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.bottomLeft,
     );
     var outerDecoratedBox = DecoratedBox(
@@ -59,8 +60,9 @@ class _MobileScaffold extends StatelessWidget {
       Expanded(child: body ?? const SizedBox()),
     ];
     final mediaQuery = MediaQuery.of(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final container = Container(
-      decoration: const BoxDecoration(color: ColorUtil.FF282F32),
+      decoration: BoxDecoration(color: colors.surfaceMobile),
       padding: EdgeInsets.only(top: mediaQuery.padding.top),
       child: Column(children: children),
     );

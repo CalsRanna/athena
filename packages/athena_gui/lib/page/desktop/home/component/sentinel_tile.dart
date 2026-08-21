@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -33,16 +33,17 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var children = [
-      Icon(icon, color: ColorUtil.FFFFFFFF, size: 24),
-      const SizedBox(width: 12),
+      Icon(icon, color: colors.textPrimary, size: 24),
+      SizedBox(width: 12),
       Expanded(
-        child: Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF)),
+        child: Text(title, style: TextStyle(color: colors.textPrimary)),
       ),
-      const SizedBox(width: 12),
+      SizedBox(width: 12),
       Icon(
         HugeIcons.strokeRoundedArrowRight01,
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         size: 16,
       ),
     ];

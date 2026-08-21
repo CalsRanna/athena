@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/switch.dart';
@@ -38,10 +38,11 @@ class DesktopConfigurationButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (compact) return _buildCompactButton();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    if (compact) return _buildCompactButton(context);
     var icon = Icon(
       HugeIcons.strokeRoundedSlidersHorizontal,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     return GestureDetector(
@@ -51,13 +52,14 @@ class DesktopConfigurationButton extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactButton() {
+  Widget _buildCompactButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           HugeIcons.strokeRoundedSlidersHorizontal,
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
           size: 14,
         ),
         const SizedBox(width: 8),
@@ -139,8 +141,9 @@ class _DesktopConfigurationDialogState
       constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
     var container = Container(
@@ -171,21 +174,22 @@ class _DesktopConfigurationDialogTemperatureSliderState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var slider = Slider(
-      activeColor: ColorUtil.FFA7BA88,
-      inactiveColor: ColorUtil.FFFFFFFF,
+      activeColor: colors.sage,
+      inactiveColor: colors.textPrimary,
       label: value.toStringAsFixed(1),
       max: 2,
       onChanged: _updateValue,
       onChangeEnd: (value) => widget.onChange?.call(value),
       padding: EdgeInsets.symmetric(horizontal: 4),
-      thumbColor: ColorUtil.FFA7BA88,
+      thumbColor: colors.sage,
       value: value,
     );
     var text = Text(
@@ -242,15 +246,16 @@ class _DesktopConfigurationDialogTileState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover ? colors.surfaceButtonSecondary : null,
     );
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,
@@ -264,7 +269,7 @@ class _DesktopConfigurationDialogTileState
               spacing: 4,
               children: [
                 Flexible(child: Text(widget.title, style: textStyle)),
-                if (widget.help != null) _buildTooltip(),
+                if (widget.help != null) _buildTooltip(context),
               ],
             ),
           ),
@@ -281,16 +286,17 @@ class _DesktopConfigurationDialogTileState
     return Material(color: Colors.transparent, child: mouseRegion);
   }
 
-  Widget _buildTooltip() {
+  Widget _buildTooltip(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedHelpCircle,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 14,
     );
     return Tooltip(
       constraints: BoxConstraints(maxWidth: 300),
       decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
         borderRadius: BorderRadius.circular(8),
       ),
       message: widget.help,

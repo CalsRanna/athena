@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class AthenaSwitch extends StatelessWidget {
@@ -8,12 +8,13 @@ class AthenaSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var outerShapeDecoration = ShapeDecoration(
-      color: value ? ColorUtil.FFA7BA88 : ColorUtil.FFC2C9D1,
+      color: value ? colors.sage : colors.slate,
       shape: StadiumBorder(),
     );
     var innerBoxDecoration = BoxDecoration(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       shape: BoxShape.circle,
     );
     var container = Container(

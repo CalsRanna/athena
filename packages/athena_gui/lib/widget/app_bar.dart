@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/material.dart';
@@ -26,9 +26,10 @@ class DesktopPopButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     return GestureDetector(
@@ -48,13 +49,14 @@ class MobilePopButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const hugeIcon = Icon(
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final hugeIcon = Icon(
       HugeIcons.strokeRoundedArrowLeft02,
-      color: ColorUtil.FF000000,
+      color: colors.iconOnRaised,
       size: 16,
     );
-    const boxDecoration = BoxDecoration(
-      color: ColorUtil.FFFFFFFF,
+    final boxDecoration = BoxDecoration(
+      color: colors.surfaceRaised,
       shape: BoxShape.circle,
     );
     final button = Container(
@@ -93,8 +95,9 @@ class _DesktopAppBar extends StatelessWidget {
       action ?? const SizedBox(),
       const SizedBox(width: 16),
     ];
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
     var container = Container(
@@ -125,8 +128,9 @@ class _MobileAppBar extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: MobilePopButton(),
     );
-    const textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final textStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 20,
       height: 1.2,
     );

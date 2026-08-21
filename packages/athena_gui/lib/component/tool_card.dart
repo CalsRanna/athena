@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -36,8 +36,8 @@ class ToolCard extends StatefulWidget {
       'web_fetch' => HugeIcons.strokeRoundedGlobe,
       'web_search' => HugeIcons.strokeRoundedSearch01,
       'skill' => HugeIcons.strokeRoundedBook01,
-      'sentinel_evolve' || 'experience_learn' =>
-        HugeIcons.strokeRoundedAiBrain01,
+      'sentinel_evolve' => HugeIcons.strokeRoundedAiBrain01,
+      'experience_learn' => HugeIcons.strokeRoundedAiBrain02,
       _ => HugeIcons.strokeRoundedTools,
     };
   }
@@ -75,23 +75,25 @@ class _ToolCardState extends State<ToolCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Container(
-      margin: const EdgeInsets.only(top: 8),
+      margin: EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(_radius),
-        color: ColorUtil.FFEDEDED,
+        color: colors.codeBackground,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
-          if (widget.hasResult && _expanded) _buildContent(),
+          if (widget.hasResult && _expanded) _buildContent(context),
         ],
       ),
     );
   }
 
   Widget _buildHeader() {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final borderRadius = (widget.hasResult && _expanded)
         ? BorderRadius.only(
             topLeft: Radius.circular(_radius),
@@ -107,17 +109,17 @@ class _ToolCardState extends State<ToolCard> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          color: ColorUtil.FFE0E0E0,
+          color: colors.cardHeader,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Icon(
               ToolCard.toolIcon(widget.toolName),
               size: 15,
-              color: ColorUtil.FF616161,
+              color: colors.textOnRaised,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               widget.toolName,
               style: GoogleFonts.firaCode(
@@ -125,7 +127,7 @@ class _ToolCardState extends State<ToolCard> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Expanded(
               child: Text(
                 ToolCard.argPreview(widget.toolName, widget.arguments),
@@ -133,20 +135,20 @@ class _ToolCardState extends State<ToolCard> {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.firaCode(
                   fontSize: _fontSize,
-                  color: ColorUtil.FF616161,
+                  color: colors.textOnRaised,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            _buildStatus(status),
+            SizedBox(width: 8),
+            _buildStatus(context, status),
             if (widget.hasResult) ...[
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Icon(
                 _expanded
                     ? HugeIcons.strokeRoundedArrowDown01
                     : HugeIcons.strokeRoundedArrowRight01,
                 size: 16,
-                color: ColorUtil.FF616161,
+                color: colors.textOnRaised,
               ),
             ],
           ],
@@ -162,12 +164,13 @@ class _ToolCardState extends State<ToolCard> {
     return _ToolStatus.done;
   }
 
-  Widget _buildStatus(_ToolStatus status) {
+  Widget _buildStatus(BuildContext context, _ToolStatus status) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     // 状态色为 accent 色（绿 A7BA88 / 红 E38B8B）的加深变体，
     // 保证在浅灰 header 上的可读性。
     const doneColor = Color(0xFF8AA371);
     const errorColor = Color(0xFFC05555);
-    const runningColor = ColorUtil.FF616161;
+    final runningColor = colors.textOnRaised;
     final iconColor = switch (status) {
       _ToolStatus.running => runningColor,
       _ToolStatus.done => doneColor,
@@ -207,16 +210,14 @@ class _ToolCardState extends State<ToolCard> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.firaCode(
-            fontSize: _fontSize,
-            color: labelColor,
-          ),
+          style: GoogleFonts.firaCode(fontSize: _fontSize, color: labelColor),
         ),
       ],
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final isError = _status == _ToolStatus.error;
     return GestureDetector(
       onTap: widget.hasResult
@@ -225,22 +226,22 @@ class _ToolCardState extends State<ToolCard> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: ColorUtil.FFEDEDED,
+          color: colors.codeBackground,
           borderRadius: BorderRadius.only(
             bottomLeft: Radius.circular(_radius),
             bottomRight: Radius.circular(_radius),
           ),
         ),
-        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        padding: EdgeInsets.fromLTRB(12, 10, 4, 10),
         child: Padding(
-          padding: const EdgeInsets.only(right: 4),
+          padding: EdgeInsets.only(right: 4),
           child: Text(
             widget.result!,
             maxLines: 10,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.firaCode(
               fontSize: _fontSize,
-              color: isError ? const Color(0xFFC05555) : ColorUtil.FF282F32,
+              color: isError ? Color(0xFFC05555) : colors.textOnRaised,
               height: 1.6,
             ),
           ),

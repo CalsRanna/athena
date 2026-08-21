@@ -7,7 +7,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
 import 'package:athena_gui/component/tool_card.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/markdown.dart';
@@ -71,18 +71,19 @@ class _AssistantMessageListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      _buildAvatar(),
+      _buildAvatar(context),
       const SizedBox(width: 12),
-      _buildContent(),
+      _buildContent(context),
       _buildTrailingSpace(),
     ];
     var messageRow = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+      color: colors.surfaceRaised.withValues(alpha: 0.95),
     );
     var stackChildren = [
       messageRow,
@@ -99,10 +100,11 @@ class _AssistantMessageListTile extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: message.content));
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
     if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
-      const textStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
+      final colors = Theme.of(context).extension<AthenaColors>()!;
+      final textStyle = TextStyle(
+        color: colors.textPrimary,
         fontSize: 20,
         height: 1,
       );
@@ -115,7 +117,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       );
       var boxDecoration = BoxDecoration(
         shape: BoxShape.circle,
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
       );
       return Container(
         alignment: Alignment.center,
@@ -135,7 +137,7 @@ class _AssistantMessageListTile extends StatelessWidget {
     return ClipOval(child: image);
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
     final toolCards = _buildToolCards();
 
     var children = [
@@ -233,9 +235,10 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
         spacing: 4,
         children: children,
       );
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var boxDecoration = BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: ColorUtil.FFEDEDED,
+        color: colors.divider,
       );
       var textStyle = GoogleFonts.firaCode(fontWeight: FontWeight.w500);
       return Container(
@@ -278,15 +281,16 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     if (message.reasoningContent.isEmpty) return const SizedBox();
     var borderRadius = BorderRadius.circular(8);
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: ColorUtil.FFEDEDED,
+      color: colors.cardHeader,
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildTitle(), _buildContent()],
+      children: [_buildTitle(context), _buildContent()],
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -310,7 +314,8 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     );
   }
 
-  Widget _buildTitle() {
+  Widget _buildTitle(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var borderRadius = BorderRadius.only(
       bottomLeft: message.expanded ? Radius.zero : Radius.circular(8),
       bottomRight: message.expanded ? Radius.zero : Radius.circular(8),
@@ -319,7 +324,7 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var iconData = HugeIcons.strokeRoundedArrowRight01;
@@ -334,28 +339,24 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     const doneColor = Color(0xFF8AA371);
     var children = [
       Icon(
-        HugeIcons.strokeRoundedAiBrain01,
+        HugeIcons.strokeRoundedSparkles,
         size: 15,
-        color: ColorUtil.FF616161,
+        color: colors.textOnRaised,
       ),
-      const SizedBox(width: 8),
+      SizedBox(width: 8),
       Text(text, style: textStyle),
-      const Spacer(),
+      Spacer(),
       if (message.reasoning)
         SizedBox(
           width: 12,
           height: 12,
           child: CircularProgressIndicator(
             strokeWidth: 1.5,
-            color: ColorUtil.FF616161,
+            color: colors.textOnRaised,
           ),
         )
       else
-        Icon(
-          HugeIcons.strokeRoundedTick02,
-          size: 15,
-          color: doneColor,
-        ),
+        Icon(HugeIcons.strokeRoundedTick02, size: 15, color: doneColor),
       const SizedBox(width: 4),
       Icon(iconData, size: 16),
     ];
@@ -375,9 +376,9 @@ class _ToolMessageListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = [
-      _buildAvatar(),
+      _buildAvatar(context),
       const SizedBox(width: 12),
-      _buildContent(),
+      _buildContent(context),
       _buildTrailingSpace(),
     ];
     var messageRow = Row(
@@ -391,15 +392,16 @@ class _ToolMessageListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var hugeIcon = Icon(
       HugeIcons.strokeRoundedTools,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 20,
     );
     var boxDecoration = BoxDecoration(
       shape: BoxShape.circle,
-      color: ColorUtil.FFCACACA,
+      color: colors.textWeak,
     );
     return Container(
       alignment: Alignment.center,
@@ -410,21 +412,22 @@ class _ToolMessageListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     // 工具消息没有工具名可用（MessageEntity 无 tool_call_id），
     // 内容以浅灰代码块样式呈现，与 ToolCard 展开区呼应。
     var textStyle = GoogleFonts.firaCode(
       fontSize: 12,
-      color: ColorUtil.FF282F32,
+      color: colors.textOnRaised,
       height: 1.6,
     );
     var text = Text(message.content, style: textStyle);
     return Expanded(
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: ColorUtil.FFEDEDED,
+          color: colors.codeBackground,
           borderRadius: BorderRadius.circular(8),
         ),
         child: text,
@@ -485,7 +488,8 @@ class _UserMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    var textStyle = TextStyle(color: ColorUtil.FFCACACA);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var textStyle = TextStyle(color: colors.textWeak);
     var text = Text(message.content, style: textStyle);
     var images = message.imageUrls.isNotEmpty
         ? message.imageUrls.split(',')
@@ -524,9 +528,10 @@ class _UserMessageListTile extends StatelessWidget {
   }
 
   Widget _buildResendButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       shape: BoxShape.circle,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
     );
     var container = Container(
       decoration: boxDecoration,

@@ -26,6 +26,7 @@ import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/service/data_migration_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/service/sentinel_service.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -263,7 +264,10 @@ ModelEntity testModel({
 Widget wrapWithApp(Widget child) {
   return MaterialApp(
     home: Scaffold(body: child),
-    theme: ThemeData(useMaterial3: true),
+    theme: ThemeData(
+      useMaterial3: true,
+      extensions: [AthenaColors.dark],
+    ),
   );
 }
 

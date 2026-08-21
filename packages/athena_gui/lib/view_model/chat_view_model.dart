@@ -55,9 +55,7 @@ class ChatViewModel {
   final streamingChatIds = listSignal<int>([]);
 
   /// 是否有任一对话正在流式。
-  late final isStreaming = computed(
-    () => streamingChatIds.value.isNotEmpty,
-  );
+  late final isStreaming = computed(() => streamingChatIds.value.isNotEmpty);
 
   /// 当前显示的对话是否正在流式（用于输入框/消息列表的流式状态展示）。
   late final isCurrentChatStreaming = computed(() {
@@ -142,25 +140,27 @@ class ChatViewModel {
     required SettingViewModel settingViewModel,
     required ModelViewModel modelViewModel,
     required SentinelViewModel sentinelViewModel,
-  })  : _manageService = manageService,
-        _stream = streamDelegate,
-        _rename = renameDelegate,
-        _selection = selectionDelegate ?? ChatSelectionDelegate(),
-        _supportService = supportService,
-        _messageRepo = messageRepo,
-        _modelResolver = modelResolver,
-        _settingViewModel = settingViewModel,
-        _modelViewModel = modelViewModel,
-        _sentinelViewModel = sentinelViewModel {
+  }) : _manageService = manageService,
+       _stream = streamDelegate,
+       _rename = renameDelegate,
+       _selection = selectionDelegate ?? ChatSelectionDelegate(),
+       _supportService = supportService,
+       _messageRepo = messageRepo,
+       _modelResolver = modelResolver,
+       _settingViewModel = settingViewModel,
+       _modelViewModel = modelViewModel,
+       _sentinelViewModel = sentinelViewModel {
     // 审批请求 → 会话内卡片；决策完成（含 run 取消自动拒绝）后自动移除。
     // VM 与应用同生命周期，订阅无需取消。
     streamDelegate.approvalRequests.listen((request) {
       pendingApprovals.value = [...pendingApprovals.value, request];
-      unawaited(request.completer.future.whenComplete(() {
-        pendingApprovals.value = pendingApprovals.value
-            .where((r) => !identical(r, request))
-            .toList();
-      }));
+      unawaited(
+        request.completer.future.whenComplete(() {
+          pendingApprovals.value = pendingApprovals.value
+              .where((r) => !identical(r, request))
+              .toList();
+        }),
+      );
     });
   }
 
@@ -281,8 +281,9 @@ class ChatViewModel {
       await _manageService.deleteChat(chat.id!);
 
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
-      chatHistories.value =
-          chatHistories.value.where((h) => h.chat.id != chat.id).toList();
+      chatHistories.value = chatHistories.value
+          .where((h) => h.chat.id != chat.id)
+          .toList();
 
       if (currentChat.value?.id == chat.id) {
         await _selectFirstChatOrClear();
@@ -314,8 +315,9 @@ class ChatViewModel {
       await _manageService.deleteChats(ids);
 
       chats.value = chats.value.where((c) => !ids.contains(c.id)).toList();
-      chatHistories.value =
-          chatHistories.value.where((h) => !ids.contains(h.chat.id)).toList();
+      chatHistories.value = chatHistories.value
+          .where((h) => !ids.contains(h.chat.id))
+          .toList();
 
       if (currentChat.value != null && ids.contains(currentChat.value!.id)) {
         await _selectFirstChatOrClear();
@@ -398,26 +400,30 @@ class ChatViewModel {
   // 会话参数操作
   // ═══════════════════════════════════════════════════════════════
 
-  Future<void> updateModel(ModelEntity model, {required ChatEntity chat}) async {
+  Future<void> updateModel(
+    ModelEntity model, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
-      final updated =
-          await _supportService.updateModel(chat, model.id!);
+      final updated = await _supportService.updateModel(chat, model.id!);
       _updateChatInLists(updated);
       currentModel.value = model;
-      currentProvider.value =
-          await _supportService.getProviderForModel(model.providerId);
+      currentProvider.value = await _supportService.getProviderForModel(
+        model.providerId,
+      );
     } catch (e) {
       error.value = e.toString();
     }
   }
 
   Future<void> updateSentinel(
-      SentinelEntity sentinel, {required ChatEntity chat}) async {
+    SentinelEntity sentinel, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
-      final updated =
-          await _supportService.updateSentinel(chat, sentinel.id!);
+      final updated = await _supportService.updateSentinel(chat, sentinel.id!);
       _updateChatInLists(updated);
       currentSentinel.value = sentinel;
     } catch (e) {
@@ -425,11 +431,13 @@ class ChatViewModel {
     }
   }
 
-  Future<void> updateRetention(int retention, {required ChatEntity chat}) async {
+  Future<void> updateRetention(
+    int retention, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
-      final updated =
-          await _supportService.updateRetention(chat, retention);
+      final updated = await _supportService.updateRetention(chat, retention);
       _updateChatInLists(updated);
       currentRetention.value = updated.retention;
     } catch (e) {
@@ -438,11 +446,15 @@ class ChatViewModel {
   }
 
   Future<void> updateTemperature(
-      double temperature, {required ChatEntity chat}) async {
+    double temperature, {
+    required ChatEntity chat,
+  }) async {
     error.value = null;
     try {
-      final updated =
-          await _supportService.updateTemperature(chat, temperature);
+      final updated = await _supportService.updateTemperature(
+        chat,
+        temperature,
+      );
       _updateChatInLists(updated);
       currentTemperature.value = updated.temperature;
     } catch (e) {
@@ -466,8 +478,9 @@ class ChatViewModel {
 
   Future<void> updateCurrentModel(ModelEntity model) async {
     currentModel.value = model;
-    currentProvider.value =
-        await _supportService.getProviderForModel(model.providerId);
+    currentProvider.value = await _supportService.getProviderForModel(
+      model.providerId,
+    );
   }
 
   void updateCurrentSentinel(SentinelEntity sentinel) {
@@ -583,8 +596,7 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      final index =
-          messages.value.indexWhere((item) => item.id == message.id);
+      final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         await _manageService.deleteMessagesFromIndex(messages.value, index);
         messages.value = await _messageRepo.getMessagesByChatId(message.chatId);

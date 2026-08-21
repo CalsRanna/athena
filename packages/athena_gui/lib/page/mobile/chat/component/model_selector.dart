@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
 
@@ -15,8 +15,9 @@ class MobileModelSelectDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (groupedModels.isEmpty) return const SizedBox();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

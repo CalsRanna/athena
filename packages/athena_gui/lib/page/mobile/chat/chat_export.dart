@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -30,7 +30,10 @@ class MobileChatExportPage extends StatelessWidget {
           .toList();
 
       var appBar = AthenaAppBar(title: Text('Export Image'));
-      return AthenaScaffold(appBar: appBar, body: _buildData(messages));
+      return AthenaScaffold(
+        appBar: appBar,
+        body: _buildData(context, messages),
+      );
     });
   }
 
@@ -51,10 +54,11 @@ class MobileChatExportPage extends StatelessWidget {
     }
   }
 
-  Widget _buildBarrier(GlobalKey repaintBoundaryKey) {
+  Widget _buildBarrier(BuildContext context, GlobalKey repaintBoundaryKey) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var linearGradient = LinearGradient(
       begin: Alignment.topCenter,
-      colors: [Colors.transparent, ColorUtil.FF282F32],
+      colors: [Colors.transparent, colors.surfaceMobile],
       end: Alignment.bottomCenter,
     );
     var padding = Padding(
@@ -73,11 +77,12 @@ class MobileChatExportPage extends StatelessWidget {
     );
   }
 
-  Widget _buildData(List<MessageEntity> messages) {
+  Widget _buildData(BuildContext context, List<MessageEntity> messages) {
     if (messages.isEmpty == true) return const SizedBox();
     var repaintBoundaryKey = GlobalKey();
-    var barrier = _buildBarrier(repaintBoundaryKey);
+    var barrier = _buildBarrier(context, repaintBoundaryKey);
     var listView = _buildRenderListView(
+      context,
       messages,
       repaintBoundaryKey: repaintBoundaryKey,
     );
@@ -90,9 +95,11 @@ class MobileChatExportPage extends StatelessWidget {
   }
 
   Widget _buildRenderListView(
+    BuildContext context,
     List<MessageEntity> messages, {
     required GlobalKey repaintBoundaryKey,
   }) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     List<Widget> children = [];
     var emptySentinel = SentinelEntity(
       id: 0,
@@ -112,7 +119,7 @@ class MobileChatExportPage extends StatelessWidget {
     }
     children.removeLast();
     var container = Container(
-      decoration: BoxDecoration(color: ColorUtil.FF282F32),
+      decoration: BoxDecoration(color: colors.surfaceMobile),
       padding: const EdgeInsets.all(16),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );

@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -23,10 +23,11 @@ class DesktopImageSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (compact) return _buildCompactButton();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    if (compact) return _buildCompactButton(context);
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedImage01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     return GestureDetector(
@@ -35,13 +36,14 @@ class DesktopImageSelector extends StatelessWidget {
     );
   }
 
-  Widget _buildCompactButton() {
+  Widget _buildCompactButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           HugeIcons.strokeRoundedImage01,
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
           size: 14,
         ),
         const SizedBox(width: 8),

@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -19,9 +19,10 @@ class DesktopSentinelSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedArtificialIntelligence03,
-      color: enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E,
+      color: enabled ? colors.textPrimary : colors.textSecondary,
       size: 24,
     );
     return GestureDetector(
@@ -59,15 +60,16 @@ class _DesktopSentinelSelectDialogTileState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover ? colors.surfaceButtonSecondary : null,
     );
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,
@@ -109,8 +111,9 @@ class DesktopSentinelSelectDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
 

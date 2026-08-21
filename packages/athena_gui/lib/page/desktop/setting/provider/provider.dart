@@ -5,7 +5,7 @@ import 'package:athena_gui/page/desktop/setting/provider/component/model_context
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -197,14 +197,16 @@ class _DesktopSettingProviderPageState
 
   Widget _buildProviderListView() {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var providers = providerViewModel.providers.value;
       if (providers.isEmpty) return const SizedBox();
       var borderSide = BorderSide(
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+        color: colors.textPrimary.withValues(alpha: 0.2),
       );
       var listView = ListView.separated(
         padding: const EdgeInsets.all(12),
-        itemBuilder: (context, index) => _buildProviderTile(providers, index),
+        itemBuilder: (context, index) =>
+            _buildProviderTile(context, providers, index),
         itemCount: providers.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
@@ -216,7 +218,12 @@ class _DesktopSettingProviderPageState
     });
   }
 
-  Widget _buildProviderTile(List<ProviderEntity> providers, int index) {
+  Widget _buildProviderTile(
+    BuildContext context,
+    List<ProviderEntity> providers,
+    int index,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var provider = providers[index];
     var trailing = Row(
       mainAxisSize: MainAxisSize.min,
@@ -225,14 +232,14 @@ class _DesktopSettingProviderPageState
           Icon(
             HugeIcons.strokeRoundedToggleOn,
             size: 10,
-            color: ColorUtil.FFE0E0E0,
+            color: colors.iconSecondary,
           ),
-        if (provider.isPreset) const SizedBox(width: 4),
+        if (provider.isPreset) SizedBox(width: 4),
         if (provider.isPreset)
           Icon(
             HugeIcons.strokeRoundedCircleLock01,
             size: 10,
-            color: ColorUtil.FFE0E0E0,
+            color: colors.iconSecondary,
           ),
       ],
     );
@@ -247,12 +254,13 @@ class _DesktopSettingProviderPageState
 
   Widget _buildProviderView() {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var providers = providerViewModel.providers.value;
       if (providers.isEmpty) return const SizedBox();
       if (index >= providers.length) return const SizedBox();
 
       var nameTextStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w500,
       );
@@ -278,7 +286,7 @@ class _DesktopSettingProviderPageState
         ),
       ];
       var modelTextStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         fontSize: 16,
         fontWeight: FontWeight.w500,
       );
@@ -346,8 +354,9 @@ class _ModelListTileState extends State<_ModelListTile> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 16,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -360,28 +369,28 @@ class _ModelListTileState extends State<_ModelListTile> {
     );
     var nameChildren = [
       Flexible(child: nameText),
-      if (widget.model.isPreset) const SizedBox(width: 8),
+      if (widget.model.isPreset) SizedBox(width: 8),
       if (widget.model.isPreset)
         Icon(
           HugeIcons.strokeRoundedCircleLock01,
           size: 14,
-          color: ColorUtil.FFE0E0E0,
+          color: colors.iconSecondary,
         ),
       const SizedBox(width: 8),
       AthenaTag.small(text: widget.model.modelId),
     ];
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var subtitleChildren = [
-      _buildSubtitle(),
+      _buildSubtitle(context),
       if (widget.model.reasoning) thinkIcon,
       if (widget.model.vision) visualIcon,
     ];
@@ -397,8 +406,8 @@ class _ModelListTileState extends State<_ModelListTile> {
     var paddedContent = Container(
       decoration: BoxDecoration(
         color: hover
-            ? ColorUtil.FF9E9E9E
-            : ColorUtil.FFADADAD.withValues(alpha: 0.6),
+            ? colors.textSecondary
+            : colors.inputBackground.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -425,19 +434,20 @@ class _ModelListTileState extends State<_ModelListTile> {
     setState(() => hover = false);
   }
 
-  Widget _buildSubtitle() {
+  Widget _buildSubtitle(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var releasedAt = widget.model.releasedAt;
-    var context = widget.model.contextWindow;
+    var contextWindow = widget.model.contextWindow;
     var inputPrice = widget.model.inputPrice;
     var outputPrice = widget.model.outputPrice;
     var parts = <String>[
       if (releasedAt.isNotEmpty) releasedAt,
-      if (context > 0) formatContextWindow(context),
+      if (contextWindow > 0) formatContextWindow(contextWindow),
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];
     var textStyle = TextStyle(
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

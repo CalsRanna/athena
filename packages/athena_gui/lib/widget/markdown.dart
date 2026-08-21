@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:athena_gui/component/button.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,9 +44,10 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FFE0E0E0,
+      color: colors.cardHeader,
     );
     var text = Text(
       'Call tool: ${element.textContent}',
@@ -103,9 +104,10 @@ class _CodeBuilder extends MarkdownElementBuilder {
       padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     }
     final width = multipleLines ? double.infinity : null;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: ColorUtil.FFEDEDED,
+      color: colors.codeBackground,
     );
     var textStyle = GoogleFonts.firaCode(fontSize: 12, height: 1.5);
     var contentText = Padding(
@@ -113,7 +115,8 @@ class _CodeBuilder extends MarkdownElementBuilder {
       child: Text(element.textContent, style: textStyle),
     );
     var children = [
-      if (element.attributes['class'] != null) _buildAttribute(element),
+      if (element.attributes['class'] != null)
+        _buildAttribute(context, element),
       contentText,
     ];
     var column = Column(
@@ -133,14 +136,15 @@ class _CodeBuilder extends MarkdownElementBuilder {
     return RichText(text: TextSpan(children: [widgetSpan]));
   }
 
-  Widget _buildAttribute(md.Element element) {
+  Widget _buildAttribute(BuildContext context, md.Element element) {
     var borderRadius = BorderRadius.only(
       topLeft: Radius.circular(8),
       topRight: Radius.circular(8),
     );
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -186,7 +190,8 @@ class _FlutterMarkdown extends StatelessWidget {
     inlineSyntaxes.add(_ReferenceSyntax());
     inlineSyntaxes.add(_CallToolRequestSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    var borderSide = BorderSide(color: ColorUtil.FFC2C2C2, width: 1);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var borderSide = BorderSide(color: colors.border, width: 1);
     var markdownStyleSheet = MarkdownStyleSheet(
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
       horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
@@ -232,8 +237,9 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FFEDEDED,
+      color: colors.codeBackground,
       shape: BoxShape.circle,
     );
     var text = Text(
@@ -294,7 +300,7 @@ class _ReferenceSyntax extends md.InlineSyntax {
 //     );
 //     var boxDecoration = BoxDecoration(
 //       borderRadius: borderRadius,
-//       color: ColorUtil.FFE0E0E0,
+//       color: Colors.white,
 //     );
 //     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -317,7 +323,7 @@ class _ReferenceSyntax extends md.InlineSyntax {
 //     bool closed,
 //   ) {
 //     var borderRadius = BorderRadius.circular(8);
-//     var color = ColorUtil.FFEAECF0;
+//     var color = Colors.white;
 //     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
 //     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -338,7 +344,7 @@ class _ReferenceSyntax extends md.InlineSyntax {
 
 //   Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
 //     var borderRadius = BorderRadius.circular(4);
-//     var color = ColorUtil.FFEAECF0;
+//     var color = Colors.white;
 //     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
 //     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
 //     var textStyle = GoogleFonts.firaCode(fontSize: 12);
@@ -360,8 +366,9 @@ class _SupBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FFEDEDED,
+      color: colors.codeBackground,
       shape: BoxShape.circle,
     );
     var text = Text(

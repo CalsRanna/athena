@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -28,9 +28,12 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     const duration = Duration(milliseconds: 200);
+    // 选中态为深底白字（明暗反转），未选中为主文字色
+    var contentColor = widget.active ? Colors.white : colors.textPrimary;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: contentColor,
       fontSize: 14,
       fontWeight: FontWeight.w600,
       height: 1.5,
@@ -42,10 +45,12 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
       style: textStyle,
     );
     var innerShapeDecoration = ShapeDecoration(
-      color: widget.active ? ColorUtil.FF9E9E9E : ColorUtil.FF616161,
+      color: widget.active
+          ? colors.textSecondary
+          : colors.surfaceButtonSecondary,
       shape: StadiumBorder(),
     );
-    var iconThemeData = IconThemeData(color: ColorUtil.FFFFFFFF, size: 16);
+    var iconThemeData = IconThemeData(color: contentColor, size: 16);
     var iconTheme = IconTheme(
       data: iconThemeData,
       child: widget.leading ?? const SizedBox(),
@@ -64,11 +69,14 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     );
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,
-      colors: [ColorUtil.FFEAEAEA.withValues(alpha: 0.17), Colors.transparent],
+      colors: [
+        colors.tagBorderStart.withValues(alpha: 0.17),
+        Colors.transparent,
+      ],
       end: Alignment.bottomRight,
     );
     var outerShapeDecoration = ShapeDecoration(
-      color: widget.active || hover ? ColorUtil.FFC2C2C2 : null,
+      color: widget.active || hover ? colors.border : null,
       shape: StadiumBorder(),
       gradient: widget.active || hover ? null : linearGradient,
     );

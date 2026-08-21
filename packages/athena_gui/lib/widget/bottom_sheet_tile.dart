@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class AthenaBottomSheetTile extends StatelessWidget {
@@ -18,7 +18,8 @@ class AthenaBottomSheetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var textColor = enabled ? ColorUtil.FFFFFFFF : ColorUtil.FF9E9E9E;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var textColor = enabled ? colors.textPrimary : colors.textSecondary;
     var textStyle = TextStyle(
       color: textColor,
       fontSize: 14,
@@ -31,7 +32,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
-    var iconColor = enabled ? ColorUtil.FFE0E0E0 : ColorUtil.FF9E9E9E;
+    var iconColor = enabled ? colors.iconSecondary : colors.textSecondary;
     var leadingIconThemeData = IconThemeData(color: iconColor);
     var trailingIconThemeData = IconThemeData(color: textColor);
     var trailingIconTheme = IconTheme(

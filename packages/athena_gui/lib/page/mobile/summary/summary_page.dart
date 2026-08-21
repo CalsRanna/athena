@@ -2,7 +2,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/summary_entity.dart';
 import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/summary_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -55,7 +55,7 @@ class _MobileSummaryPageState extends State<MobileSummaryPage> {
             onSubmitted: handleSubmit,
           ),
           SizedBox(height: 24),
-          _buildTitle(),
+          _buildTitle(context),
           SizedBox(height: 16),
           ..._buildSummaryListView(),
         ],
@@ -107,9 +107,10 @@ class _MobileSummaryPageState extends State<MobileSummaryPage> {
     await viewModel.parse(summary);
   }
 
-  Widget _buildTitle() {
-    const titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+  Widget _buildTitle(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final titleTextStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
