@@ -50,6 +50,15 @@ class ModelCatalogService {
   static const _cacheFileName = 'models_dev_cache.json';
   static const _catalogUrl = 'https://models.dev/api.json';
 
+  /// 发布时间下限:只同步 release_date >= 此值(ISO 字符串比较)的模型。
+  /// release_date 缺失或格式不完整(如 '2025-04')的模型不满足条件,剔除。
+  @visibleForTesting
+  static const kMinReleaseDate = '2026-01-01';
+
+  /// 推理模型开关:true 时仅同步 reasoning = true 的模型。
+  @visibleForTesting
+  static const kReasoningOnly = true;
+
   final ModelRepository _modelRepository;
   final ProviderRepository _providerRepository;
   final ChatRepository _chatRepository;
@@ -103,7 +112,8 @@ class ModelCatalogService {
   /// 对每个 [modelCatalogConfig] 配置:
   /// 1. 按名字查找 preset provider,不存在则创建
   /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤([reasoningOnly])
-  ///    → 家族去重(每家族只留 release_date 最新的一个),逐模型插入或更新
+  ///    → 发布时间过滤([kMinReleaseDate]) → 家族去重(每家族只留
+  ///    release_date 最新的一个),逐模型插入或更新
   /// 3. 清理下架模型:白名单外、reasoning 过滤淘汰、家族去重淘汰的老版本,
   ///    若未被 chat 引用则删除
   @visibleForTesting
@@ -120,13 +130,15 @@ class ModelCatalogService {
       if (modelsJson is! Map<String, dynamic>) continue;
 
       final selected = latestPerFamily(
-        filterReasoning(
-          selectModels(
-            modelsJson,
-            include: config.include,
-            exclude: config.effectiveExcludes,
+        filterByReleaseDate(
+          filterReasoning(
+            selectModels(
+              modelsJson,
+              include: config.include,
+              exclude: config.effectiveExcludes,
+            ),
+            reasoningOnly: config.reasoningOnly,
           ),
-          reasoningOnly: config.reasoningOnly,
         ),
       );
       if (selected.isEmpty) continue;
@@ -308,13 +320,32 @@ class ModelCatalogService {
   @visibleForTesting
   static Map<String, dynamic> filterReasoning(
     Map<String, dynamic> models, {
-    bool reasoningOnly = true,
+    bool reasoningOnly = kReasoningOnly,
   }) {
     if (!reasoningOnly) return models;
     return {
       for (final entry in models.entries)
         if (entry.value is Map<String, dynamic> &&
             entry.value['reasoning'] == true)
+          entry.key: entry.value,
+    };
+  }
+
+  /// 发布时间过滤:仅保留 release_date >= [minDate](ISO 字符串比较)的模型。
+  ///
+  /// 缺失 release_date 或格式不完整('2025-04' 等前缀较短)的模型
+  /// 无法确认发布时间,一并剔除。同样须在家族去重之前执行。
+  @visibleForTesting
+  static Map<String, dynamic> filterByReleaseDate(
+    Map<String, dynamic> models, {
+    String minDate = kMinReleaseDate,
+  }) {
+    if (minDate.isEmpty) return models;
+    return {
+      for (final entry in models.entries)
+        if (entry.value is Map<String, dynamic> &&
+            entry.value['release_date'] is String &&
+            (entry.value['release_date'] as String).compareTo(minDate) >= 0)
           entry.key: entry.value,
     };
   }
