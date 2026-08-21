@@ -287,7 +287,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onSelected: chatViewModel.selectChat,
     );
     var borderSide = BorderSide(
-      color: colors.textPrimary.withValues(alpha: 0.2),
+      color: colors.borderFaint.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(

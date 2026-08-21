@@ -51,7 +51,7 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       'Call tool: ${element.textContent}',
-      style: GoogleFonts.firaCode(fontSize: 12),
+      style: GoogleFonts.firaCode(fontSize: 12, color: colors.textOnRaised),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -109,7 +109,11 @@ class _CodeBuilder extends MarkdownElementBuilder {
       borderRadius: borderRadius,
       color: colors.codeBackground,
     );
-    var textStyle = GoogleFonts.firaCode(fontSize: 12, height: 1.5);
+    var textStyle = GoogleFonts.firaCode(
+      fontSize: 12,
+      height: 1.5,
+      color: colors.textOnRaised,
+    );
     var contentText = Padding(
       padding: padding,
       child: Text(element.textContent, style: textStyle),
@@ -125,6 +129,8 @@ class _CodeBuilder extends MarkdownElementBuilder {
     );
     var container = Container(
       decoration: boxDecoration,
+      // 裁剪内层背景（语言标签行等），避免从圆角处漏出背景色
+      clipBehavior: Clip.antiAlias,
       width: width,
       child: column,
     );
@@ -147,7 +153,10 @@ class _CodeBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var textStyle = GoogleFonts.firaCode(
+      fontSize: 12,
+      color: colors.textOnRaised,
+    );
     var attribute = element.attributes['class'] ?? '';
     var text = Text(
       attribute.replaceAll('language-', ''),
@@ -192,9 +201,35 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var borderSide = BorderSide(color: colors.border, width: 1);
-    var markdownStyleSheet = MarkdownStyleSheet(
+    // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
+    // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
+    var base = MarkdownStyleSheet.fromTheme(Theme.of(context));
+    var markdownStyleSheet = base.copyWith(
+      a: TextStyle(color: colors.teal, fontWeight: FontWeight.w500),
+      // 消息卡为浅底（恒白），文字用恒深色保持可读
+      p: base.p?.copyWith(color: colors.textOnRaised, height: 1.6),
+      code: base.code?.copyWith(color: colors.textOnRaised),
+      h1: base.h1?.copyWith(color: colors.textOnRaised),
+      h2: base.h2?.copyWith(color: colors.textOnRaised),
+      h3: base.h3?.copyWith(color: colors.textOnRaised),
+      h4: base.h4?.copyWith(color: colors.textOnRaised),
+      h5: base.h5?.copyWith(color: colors.textOnRaised),
+      h6: base.h6?.copyWith(color: colors.textOnRaised),
+      blockquote: base.blockquote?.copyWith(color: colors.textOnRaised),
+      img: base.img?.copyWith(color: colors.textOnRaised),
+      listBullet: base.listBullet?.copyWith(color: colors.textOnRaised),
+      tableHead: base.tableHead?.copyWith(color: colors.textOnRaised),
+      tableBody: base.tableBody?.copyWith(color: colors.textOnRaised),
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
       horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
+      tableBorder: TableBorder.all(color: colors.border),
+      // 多行代码块（fenced code block）背景：覆盖 flutter_markdown 默认的
+      // cardColor（深色模式下为暗色，在浅色消息卡上突兀）
+      codeblockDecoration: BoxDecoration(
+        color: colors.codeBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      codeblockPadding: const EdgeInsets.all(8),
     );
     return MarkdownBody(
       builders: builders,
@@ -244,7 +279,7 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10),
+      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnRaised),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -373,7 +408,7 @@ class _SupBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10),
+      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnRaised),
     );
     var container = Container(
       decoration: boxDecoration,

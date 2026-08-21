@@ -533,7 +533,7 @@ class _DesktopLoadingDialog extends StatelessWidget {
       fontWeight: FontWeight.w400,
     );
     final borderSide = BorderSide(
-      color: colors.textPrimary.withValues(alpha: 0.2),
+      color: colors.borderFaint.withValues(alpha: 0.2),
     );
     final children = [
       indicator,

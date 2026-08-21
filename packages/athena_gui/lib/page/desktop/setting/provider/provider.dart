@@ -201,7 +201,7 @@ class _DesktopSettingProviderPageState
       var providers = providerViewModel.providers.value;
       if (providers.isEmpty) return const SizedBox();
       var borderSide = BorderSide(
-        color: colors.textPrimary.withValues(alpha: 0.2),
+        color: colors.borderFaint.withValues(alpha: 0.2),
       );
       var listView = ListView.separated(
         padding: const EdgeInsets.all(12),
@@ -406,7 +406,7 @@ class _ModelListTileState extends State<_ModelListTile> {
     var paddedContent = Container(
       decoration: BoxDecoration(
         color: hover
-            ? colors.textSecondary
+            ? colors.surfaceButtonSecondary
             : colors.inputBackground.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
       ),

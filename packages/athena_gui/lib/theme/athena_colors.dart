@@ -32,6 +32,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 边框 / 分隔 ----
   final Color border; // 占位符 / 边框 / 弱图标
   final Color borderStrong; // 输入框描边 / 较强轮廓线
+  final Color borderFaint; // 模块分割线 / 淡边框（使用点带 alpha）
   final Color divider; // 分隔线
 
   // ---- 输入 ----
@@ -47,6 +48,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color tagBorderStart; // Tag 渐变边框起点（使用点带 alpha）
   final Color tagSelectedBackground; // Tag 选中背景
   final Color cardHeader; // 工具卡 / 思考卡 header 底
+  final Color avatarBackground; // 头像圆底（两种模式下均需与卡底区分）
   final Color codeBackground; // 代码块 / 浅色容器填充
   final Color checkboxOff; // Checkbox 未选中勾色
   final Color iconSecondary; // 次级图标
@@ -68,6 +70,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.textSelected,
     required this.border,
     required this.borderStrong,
+    required this.borderFaint,
     required this.divider,
     required this.inputBackground,
     required this.teal,
@@ -77,6 +80,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.tagBorderStart,
     required this.tagSelectedBackground,
     required this.cardHeader,
+    required this.avatarBackground,
     required this.codeBackground,
     required this.checkboxOff,
     required this.iconSecondary,
@@ -100,6 +104,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textSelected: Color(0xFF161616),
     border: Color(0xFFC2C2C2),
     borderStrong: Color(0xFF757575),
+    borderFaint: Color(0xFFFFFFFF),
     divider: Color(0xFFEDEDED),
     inputBackground: Color(0xFFADADAD),
     teal: Color(0xFF6ABEB9),
@@ -109,6 +114,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     tagBorderStart: Color(0xFFEAEAEA),
     tagSelectedBackground: Color(0xFFE0E0E0),
     cardHeader: Color(0xFFE0E0E0),
+    avatarBackground: Color(0xFF282F32),
     codeBackground: Color(0xFFEDEDED),
     checkboxOff: Color(0xFFD0D5DD),
     iconSecondary: Color(0xFFE0E0E0),
@@ -119,29 +125,32 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
 
   /// 浅色（从现有 token 按角色推导）。
   static const light = AthenaColors(
-    surface: Color(0xFFF2F3F5),
-    surfaceMobile: Color(0xFFF8F9FA),
+    surface: Color(0xFFFAFBFC),
+    surfaceMobile: Color(0xFFFDFDFE),
     surfaceDeep: Color(0xFFFFFFFF),
     surfaceRaised: Color(0xFFFFFFFF),
-    surfaceButtonSecondary: Color(0xFFE5E7EB),
+    surfaceButtonSecondary: Color(0xFFF2F3F5),
     textPrimary: Color(0xFF1C1C1C),
     textInput: Color(0xFF333333),
     textSecondary: Color(0xFF6E6E6E),
     textWeak: Color(0xFF757575),
     textOnRaised: Color(0xFF161616),
-    textSelected: Color(0xFFFFFFFF),
-    border: Color(0xFF8A8A8A),
-    borderStrong: Color(0xFFB8B8B8),
-    divider: Color(0xFFDDDDDD),
-    inputBackground: Color(0xFFE8EAED),
+    textSelected: Color(0xFF161616),
+    border: Color(0xFFB0B0B0),
+    borderStrong: Color(0xFFC2C2C2),
+    borderFaint: Color(0xFF8A8A8A),
+    divider: Color(0xFFE8E9EB),
+    inputBackground: Color(0xFFF3F4F6),
     teal: Color(0xFF4FA8A3),
     sage: Color(0xFF7E9A5F),
     slate: Color(0xFFB0B8C0),
-    ctaGlow: Color(0xFF757575),
+    ctaGlow: Color(0xFFADADAD),
     tagBorderStart: Color(0xFF1C1C1C),
-    tagSelectedBackground: Color(0xFF4D4D4D),
-    cardHeader: Color(0xFFDDDDDD),
-    codeBackground: Color(0xFFDDDDDD),
+    tagSelectedBackground: Color(0xFFE0E0E0),
+    // header（cardHeader）比正文（codeBackground）略深，保持层次区分
+    cardHeader: Color(0xFFE9EAEC),
+    avatarBackground: Color(0xFFE0E0E0),
+    codeBackground: Color(0xFFEFF0F2),
     checkboxOff: Color(0xFFB8C0C8),
     iconSecondary: Color(0xFF4D4D4D),
     iconOnRaised: Color(0xFF000000),
@@ -164,6 +173,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? textSelected,
     Color? border,
     Color? borderStrong,
+    Color? borderFaint,
     Color? divider,
     Color? inputBackground,
     Color? teal,
@@ -173,6 +183,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? tagBorderStart,
     Color? tagSelectedBackground,
     Color? cardHeader,
+    Color? avatarBackground,
     Color? codeBackground,
     Color? checkboxOff,
     Color? iconSecondary,
@@ -195,6 +206,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSelected: textSelected ?? this.textSelected,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
+      borderFaint: borderFaint ?? this.borderFaint,
       divider: divider ?? this.divider,
       inputBackground: inputBackground ?? this.inputBackground,
       teal: teal ?? this.teal,
@@ -205,6 +217,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       tagSelectedBackground:
           tagSelectedBackground ?? this.tagSelectedBackground,
       cardHeader: cardHeader ?? this.cardHeader,
+      avatarBackground: avatarBackground ?? this.avatarBackground,
       codeBackground: codeBackground ?? this.codeBackground,
       checkboxOff: checkboxOff ?? this.checkboxOff,
       iconSecondary: iconSecondary ?? this.iconSecondary,
@@ -236,6 +249,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSelected: Color.lerp(textSelected, other.textSelected, t)!,
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
+      borderFaint: Color.lerp(borderFaint, other.borderFaint, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
       teal: Color.lerp(teal, other.teal, t)!,
@@ -249,6 +263,11 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         t,
       )!,
       cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
+      avatarBackground: Color.lerp(
+        avatarBackground,
+        other.avatarBackground,
+        t,
+      )!,
       codeBackground: Color.lerp(codeBackground, other.codeBackground, t)!,
       checkboxOff: Color.lerp(checkboxOff, other.checkboxOff, t)!,
       iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
@@ -262,4 +281,3 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     );
   }
 }
-

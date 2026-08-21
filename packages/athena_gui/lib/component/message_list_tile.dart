@@ -81,6 +81,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       children: children,
     );
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // AGENT 消息卡片为浅底（两种模式下保持白色），文字用深色（textOnRaised）
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
       color: colors.surfaceRaised.withValues(alpha: 0.95),
@@ -117,7 +118,7 @@ class _AssistantMessageListTile extends StatelessWidget {
       );
       var boxDecoration = BoxDecoration(
         shape: BoxShape.circle,
-        color: colors.surfaceMobile,
+        color: colors.avatarBackground,
       );
       return Container(
         alignment: Alignment.center,
@@ -227,7 +228,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
       var references = jsonDecode(message.reference);
       List<Widget> referenceWidgets = [];
       for (var i = 0; i < references.length; i++) {
-        referenceWidgets.add(_buildReference(references[i], index: i));
+        referenceWidgets.add(_buildReference(context, references[i], index: i));
       }
       var children = [Text('References:'), ...referenceWidgets];
       var column = Column(
@@ -240,7 +241,10 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         color: colors.divider,
       );
-      var textStyle = GoogleFonts.firaCode(fontWeight: FontWeight.w500);
+      var textStyle = GoogleFonts.firaCode(
+        fontWeight: FontWeight.w500,
+        color: colors.textOnRaised,
+      );
       return Container(
         decoration: boxDecoration,
         margin: const EdgeInsets.only(top: 16),
@@ -262,12 +266,17 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     launchUrl(uri);
   }
 
-  Widget _buildReference(Map<String, dynamic> reference, {required int index}) {
+  Widget _buildReference(
+    BuildContext context,
+    Map<String, dynamic> reference, {
+    required int index,
+  }) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var url = reference['url'];
     var title = reference['title'];
     var textSpan = TextSpan(
       text: title,
-      style: const TextStyle(color: Colors.blue),
+      style: TextStyle(color: colors.teal),
       recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
     );
     var children = [TextSpan(text: '${index + 1}. '), textSpan];
@@ -284,13 +293,14 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (message.reasoningContent.isEmpty) return const SizedBox();
     var borderRadius = BorderRadius.circular(8);
+    // 正文区底色比 header 略浅，保持层次（与 markdown 代码块一致）
     var boxDecoration = BoxDecoration(
       borderRadius: borderRadius,
-      color: colors.cardHeader,
+      color: colors.codeBackground,
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildTitle(context), _buildContent()],
+      children: [_buildTitle(context), _buildContent(context)],
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -304,10 +314,14 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     GetIt.instance<ChatViewModel>().updateExpanded(message);
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
     if (!message.expanded) return const SizedBox();
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var textStyle = GoogleFonts.firaCode(
+      fontSize: 12,
+      color: colors.textOnRaised,
+    );
     return Padding(
       padding: padding,
       child: Text(message.reasoningContent, style: textStyle),
@@ -329,7 +343,10 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var iconData = HugeIcons.strokeRoundedArrowRight01;
     if (message.expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
-    var textStyle = GoogleFonts.firaCode(fontSize: 12);
+    var textStyle = GoogleFonts.firaCode(
+      fontSize: 12,
+      color: colors.textOnRaised,
+    );
     var startedAt = message.reasoningStartedAt;
     var updatedAt = message.reasoningUpdatedAt;
     var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
@@ -358,7 +375,7 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
       else
         Icon(HugeIcons.strokeRoundedTick02, size: 15, color: doneColor),
       const SizedBox(width: 4),
-      Icon(iconData, size: 16),
+      Icon(iconData, size: 16, color: colors.textOnRaised),
     ];
     return Container(
       decoration: boxDecoration,
@@ -489,7 +506,8 @@ class _UserMessageListTile extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(color: colors.textWeak);
+    // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）
+    var textStyle = TextStyle(color: colors.textPrimary);
     var text = Text(message.content, style: textStyle);
     var images = message.imageUrls.isNotEmpty
         ? message.imageUrls.split(',')
@@ -536,7 +554,11 @@ class _UserMessageListTile extends StatelessWidget {
     var container = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(6),
-      child: Icon(HugeIcons.strokeRoundedRefresh, size: 12),
+      child: Icon(
+        HugeIcons.strokeRoundedRefresh,
+        size: 12,
+        color: colors.iconOnRaised,
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
