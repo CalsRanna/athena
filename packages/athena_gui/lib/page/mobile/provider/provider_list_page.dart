@@ -1,6 +1,8 @@
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -42,13 +44,25 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   @override
   Widget build(BuildContext context) {
-    var button = AthenaIconButton(
+    var syncButton = AthenaIconButton(
+      icon: HugeIcons.strokeRoundedRefresh,
+      onTap: () => syncFromModelsDev(context),
+    );
+    var addButton = AthenaIconButton(
       icon: HugeIcons.strokeRoundedAdd01,
       onTap: () => navigateProviderNamePage(context),
     );
+    var actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        syncButton,
+        const SizedBox(width: 8),
+        addButton,
+      ],
+    );
     return Watch((context) {
       return AthenaScaffold(
-        appBar: AthenaAppBar(action: button, title: const Text('Provider')),
+        appBar: AthenaAppBar(action: actions, title: const Text('Provider')),
         body: Watch((context) => _buildBody(context)),
       );
     });
@@ -56,6 +70,28 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   void navigateProviderNamePage(BuildContext context) {
     MobileProviderNameRoute().push(context);
+  }
+
+  /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
+  Future<void> syncFromModelsDev(BuildContext context) async {
+    AthenaDialog.loading();
+    try {
+      final service = GetIt.instance<ModelCatalogService>();
+      final result = await service.syncIfNeeded(force: true);
+      await viewModel.initSignals();
+      await GetIt.instance<ModelViewModel>().initSignals();
+      if (!context.mounted) return;
+      AthenaDialog.dismiss();
+      AthenaDialog.success(
+        'models.dev synced: +${result.createdProviders} providers, '
+        '+${result.createdModels} models, ${result.updatedModels} updated, '
+        '${result.removedModels} removed',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      AthenaDialog.dismiss();
+      AthenaDialog.error('Sync failed: $e');
+    }
   }
 
   Widget _buildBody(BuildContext context) {
