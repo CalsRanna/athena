@@ -2,7 +2,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_core/service/model_resolver.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -152,13 +152,15 @@ class _DesktopSettingSentinelPageState
     AthenaDialog.success('Sentinel updated');
   }
 
-  Widget _buildButtons() {
+  Widget _buildButtons(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var indicator = CircularProgressIndicator(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       strokeWidth: 2,
     );
     var generateChildren = [
-      if (viewModel.isGenerating.value) SizedBox(height: 16, width: 16, child: indicator),
+      if (viewModel.isGenerating.value)
+        SizedBox(height: 16, width: 16, child: indicator),
       AthenaTextButton(text: 'Generate', onTap: generateSentinel),
     ];
     var generateButton = Row(
@@ -176,19 +178,21 @@ class _DesktopSettingSentinelPageState
 
   Widget _buildSentinelListView() {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var sentinels = viewModel.sentinels.value;
       var borderSide = BorderSide(
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+        color: colors.textPrimary.withValues(alpha: 0.2),
       );
       Widget child = ListView.separated(
         padding: const EdgeInsets.all(12),
-        itemBuilder: (context, index) => _buildSentinelTile(sentinels, index),
+        itemBuilder: (context, index) =>
+            _buildSentinelTile(context, sentinels, index),
         itemCount: sentinels.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
       );
       if (sentinels.isEmpty) {
         var textStyle = TextStyle(
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
           decoration: TextDecoration.none,
           fontSize: 14,
           fontWeight: FontWeight.w400,
@@ -203,11 +207,19 @@ class _DesktopSettingSentinelPageState
     });
   }
 
-  Widget _buildSentinelTile(List<SentinelEntity> sentinels, int index) {
+  Widget _buildSentinelTile(
+    BuildContext context,
+    List<SentinelEntity> sentinels,
+    int index,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var sentinel = sentinels[index];
     var trailing = sentinel.isPreset
-        ? Icon(HugeIcons.strokeRoundedCircleLock01,
-            size: 10, color: ColorUtil.FFE0E0E0)
+        ? Icon(
+            HugeIcons.strokeRoundedCircleLock01,
+            size: 10,
+            color: colors.iconSecondary,
+          )
         : null;
     return DesktopMenuTile(
       active: this.index == index,
@@ -220,10 +232,11 @@ class _DesktopSettingSentinelPageState
 
   Widget _buildSentinelView() {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var sentinels = viewModel.sentinels.value;
       if (sentinels.isEmpty) return const SizedBox();
       var nameTextStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w500,
       );
@@ -281,7 +294,7 @@ class _DesktopSettingSentinelPageState
           children: promptChildren,
         ),
         const SizedBox(height: 12),
-        if (!isPreset) _buildButtons(),
+        if (!isPreset) _buildButtons(context),
       ];
       return ListView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -305,7 +318,8 @@ class _DesktopSettingSentinelPageState
     final settingViewModel = GetIt.instance<SettingViewModel>();
     final modelResolver = GetIt.instance<ModelResolver>();
     final model = await modelResolver.resolveModel(
-      preferredModelId: settingViewModel.sentinelMetadataGenerationModelId.value,
+      preferredModelId:
+          settingViewModel.sentinelMetadataGenerationModelId.value,
     );
     if (model == null) {
       AthenaDialog.warning('No enabled models found');

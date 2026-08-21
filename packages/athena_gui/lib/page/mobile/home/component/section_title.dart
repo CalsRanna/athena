@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -9,14 +9,15 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final textStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
     var children = [
       Expanded(child: Text(title, style: textStyle)),
-      _buildMoreButton(),
+      _buildMoreButton(context),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -24,11 +25,12 @@ class SectionTitle extends StatelessWidget {
     );
   }
 
-  Widget _buildMoreButton() {
+  Widget _buildMoreButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var container = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: ColorUtil.FFFFFFFF,
+        color: colors.surfaceRaised,
       ),
       padding: EdgeInsets.all(12),
       child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),

@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -21,6 +21,7 @@ class MobileSentinelListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var sentinelViewModel = GetIt.instance<SentinelViewModel>();
       var sentinels = sentinelViewModel.sentinels.value;
       return AthenaScaffold(
@@ -35,7 +36,7 @@ class MobileSentinelListPage extends StatelessWidget {
                 onTap: () => navigateSentinelFormPage(context),
                 child: Container(
                   decoration: ShapeDecoration(
-                    color: ColorUtil.FF161616,
+                    color: colors.surfaceDeep,
                     shape: StadiumBorder(),
                   ),
                   padding: EdgeInsets.fromLTRB(8, 12, 12, 12),
@@ -47,18 +48,18 @@ class MobileSentinelListPage extends StatelessWidget {
                     children: [
                       Container(
                         decoration: BoxDecoration(
-                          color: ColorUtil.FFFFFFFF,
+                          color: colors.surfaceRaised,
                           shape: BoxShape.circle,
                         ),
                         height: 24,
                         width: 24,
                         child: Icon(HugeIcons.strokeRoundedAdd01, size: 12),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: 8),
+                      Text(
                         'Add a sentinel',
                         style: TextStyle(
-                          color: ColorUtil.FFFFFFFF,
+                          color: colors.textPrimary,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -95,13 +96,14 @@ class _Tile extends StatelessWidget {
   const _Tile({required this.sentinel});
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     const nameTextStyle = TextStyle(
       color: Colors.black,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
-    const descriptionTextStyle = TextStyle(
-      color: ColorUtil.FF616161,
+    final descriptionTextStyle = TextStyle(
+      color: colors.textOnRaised,
       fontSize: 12,
     );
     var children = [
@@ -114,7 +116,7 @@ class _Tile extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
     );
     var container = Container(
       decoration: boxDecoration,

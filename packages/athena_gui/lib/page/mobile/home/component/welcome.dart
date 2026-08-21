@@ -1,5 +1,5 @@
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -15,7 +15,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   Widget build(BuildContext context) {
     var padding = Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(children: [_buildText(), _buildAvatar(context)]),
+      child: Row(children: [_buildText(context), _buildAvatar(context)]),
     );
     // Rebuild when page becomes visible to update the time-based greeting.
     return VisibilityDetector(
@@ -47,10 +47,11 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   }
 
   Widget _buildAvatar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var circleAvatar = Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.5),
+        color: colors.textPrimary.withValues(alpha: 0.5),
       ),
       padding: EdgeInsets.all(4),
       child: CircleAvatar(
@@ -66,9 +67,10 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
     return gestureDetector;
   }
 
-  Widget _buildText() {
-    const welcomeTextStyle = TextStyle(
-      color: ColorUtil.FFA7BA88,
+  Widget _buildText(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final welcomeTextStyle = TextStyle(
+      color: colors.sage,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );

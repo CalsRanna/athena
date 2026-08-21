@@ -14,6 +14,7 @@ import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
 import 'package:window_manager/window_manager.dart';
@@ -32,6 +33,7 @@ class SettingViewModel {
   static const String _keyShortModelId = 'short_model_id';
   static const String _keyMaxRetries = 'max_retries';
   static const String _keyBraveApiKey = 'brave_api_key';
+  static const String _keyThemeMode = 'theme_mode';
   // Window 尺寸
   final windowHeight = signal(720.0);
   final windowWidth = signal(960.0);
@@ -49,10 +51,13 @@ class SettingViewModel {
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
   final shortModelProvider = signal<ProviderEntity?>(null);
+
   /// 委托核心 [AgentSettings]（持久化走 KeyValueStore）。
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
   final maxRetries = signal(10);
   final braveApiKey = signal('');
+  // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统
+  final themeMode = signal<ThemeMode>(ThemeMode.dark);
 
   final ModelRepository _modelRepository;
   final ProviderRepository _providerRepository;
@@ -120,6 +125,21 @@ class SettingViewModel {
         shortModel.value!.providerId,
       );
     }
+    await initThemeMode();
+  }
+
+  /// 从 SharedPreferences 加载主题模式（启动时调用）。
+  Future<void> initThemeMode() async {
+    final instance = await SharedPreferences.getInstance();
+    final saved = instance.getString(_keyThemeMode);
+    themeMode.value = ThemeMode.values.asNameMap()[saved] ?? ThemeMode.dark;
+  }
+
+  /// 切换主题模式并持久化。
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.setString(_keyThemeMode, mode.name);
+    themeMode.value = mode;
   }
 
   /// 更新聊天模型 ID

@@ -2,7 +2,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/trpg_message_entity.dart';
 import 'package:athena_core/repository/trpg_game_repository.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/trpg_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/markdown.dart';
@@ -47,15 +47,15 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     return PopScope(
       canPop: false,
       child: AthenaScaffold(
-        appBar: _buildAppBar(),
-        body: Watch((_) {
+        appBar: _buildAppBar(context),
+        body: Watch((context) {
           switch (pageState.value) {
             case TRPGPageState.init:
-              return _buildInitView();
+              return _buildInitView(context);
             case TRPGPageState.savedGames:
-              return _buildSavedGamesView();
+              return _buildSavedGamesView(context);
             case TRPGPageState.playing:
-              return _buildGameView();
+              return _buildGameView(context);
           }
         }),
       ),
@@ -69,12 +69,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     super.dispose();
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return AthenaAppBar(
-      leading: const SizedBox.shrink(),
+      leading: SizedBox.shrink(),
       action: Container(
         decoration: ShapeDecoration(
-          color: ColorUtil.FFFFFFFF,
+          color: colors.surfaceRaised,
           shape: StadiumBorder(),
         ),
         padding: EdgeInsets.all(12),
@@ -87,7 +88,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               height: 12,
               child: VerticalDivider(
                 thickness: 1,
-                color: ColorUtil.FF757575,
+                color: colors.borderStrong,
                 indent: 0,
                 endIndent: 0,
                 width: 1,
@@ -103,7 +104,8 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildInitView() {
+  Widget _buildInitView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -116,8 +118,8 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               padding: EdgeInsets.symmetric(horizontal: 48, vertical: 16),
               decoration: BoxDecoration(
                 color: _isCreatingGame.value
-                    ? ColorUtil.FF757575
-                    : ColorUtil.FFFFFFFF,
+                    ? colors.surfaceButtonSecondary
+                    : colors.surfaceRaised,
                 borderRadius: BorderRadius.circular(32),
               ),
               child: _isCreatingGame.value
@@ -126,13 +128,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: ColorUtil.FF282828,
+                        color: colors.textOnRaised,
                       ),
                     )
                   : Text(
                       'START GAME',
                       style: TextStyle(
-                        color: ColorUtil.FF282828,
+                        color: colors.textOnRaised,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -147,12 +149,12 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               decoration: BoxDecoration(
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: ColorUtil.FFFFFFFF, width: 1),
+                border: Border.all(color: colors.textPrimary, width: 1),
               ),
               child: Text(
                 'LOAD GAME',
                 style: TextStyle(
-                  color: ColorUtil.FFFFFFFF,
+                  color: colors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -164,7 +166,8 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildSavedGamesView() {
+  Widget _buildSavedGamesView(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -176,14 +179,14 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                 onTap: () => pageState.value = TRPGPageState.init,
                 child: Icon(
                   HugeIcons.strokeRoundedArrowLeft01,
-                  color: ColorUtil.FFFFFFFF,
+                  color: colors.textPrimary,
                 ),
               ),
               SizedBox(width: 12),
               Text(
                 'Saved Games',
                 style: TextStyle(
-                  color: ColorUtil.FFFFFFFF,
+                  color: colors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -193,12 +196,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         ),
         Expanded(
           child: Watch((_) {
+            final colors = Theme.of(context).extension<AthenaColors>()!;
             var games = viewModel.savedGames.value;
             if (games.isEmpty) {
               return Center(
                 child: Text(
                   'No saved games',
-                  style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 16),
+                  style: TextStyle(color: colors.border, fontSize: 16),
                 ),
               );
             }
@@ -207,7 +211,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               itemCount: games.length,
               separatorBuilder: (_, __) => SizedBox(height: 12),
               itemBuilder: (context, index) {
-                return _buildSavedGameTile(games[index]);
+                return _buildSavedGameTile(context, games[index]);
               },
             );
           }),
@@ -216,7 +220,11 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildSavedGameTile(TRPGGameWithPreview gameWithPreview) {
+  Widget _buildSavedGameTile(
+    BuildContext context,
+    TRPGGameWithPreview gameWithPreview,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var game = gameWithPreview.game;
     var date = game.updatedAt;
     var dateStr =
@@ -228,7 +236,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: ColorUtil.FFFFFFFF.withValues(alpha: 0.1),
+          color: colors.textPrimary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -241,7 +249,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                   child: Text(
                     dateStr,
                     style: TextStyle(
-                      color: ColorUtil.FFFFFFFF,
+                      color: colors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -253,7 +261,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: ColorUtil.FFFFFFFF,
+                      color: colors.textPrimary,
                     ),
                   ),
               ],
@@ -262,7 +270,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               gameWithPreview.previewContent.isNotEmpty
                   ? gameWithPreview.previewContent
                   : 'No preview available',
-              style: TextStyle(color: ColorUtil.FFC2C2C2, fontSize: 12),
+              style: TextStyle(color: colors.border, fontSize: 12),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
@@ -299,7 +307,12 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     });
   }
 
-  Widget _buildDMMessageBubble(TRPGMessageEntity message, bool isStreaming) {
+  Widget _buildDMMessageBubble(
+    BuildContext context,
+    TRPGMessageEntity message,
+    bool isStreaming,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: 8,
@@ -307,7 +320,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         Container(
           constraints: BoxConstraints(minWidth: double.infinity),
           decoration: BoxDecoration(
-            color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+            color: colors.surfaceRaised.withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(16),
           ),
           padding: EdgeInsets.all(16),
@@ -345,9 +358,12 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
               separatorBuilder: (_, __) => SizedBox(width: 8),
               itemBuilder: (context, index) {
                 if (index == message.suggestions.length) {
-                  return _buildSomethingElseButton();
+                  return _buildSomethingElseButton(context);
                 }
-                return _buildSuggestionButton(message.suggestions[index]);
+                return _buildSuggestionButton(
+                  context,
+                  message.suggestions[index],
+                );
               },
             ),
           ),
@@ -355,17 +371,18 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildGameView() {
+  Widget _buildGameView(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: _buildMessageList()),
-        _buildInputPanel(),
+        Expanded(child: _buildMessageList(context)),
+        _buildInputPanel(context),
       ],
     );
   }
 
-  Widget _buildSuggestionButton(String suggestion) {
+  Widget _buildSuggestionButton(BuildContext context, String suggestion) {
     return _buildActionButton(
+      context,
       text: suggestion,
       onTap: () {
         inputController.text = suggestion;
@@ -374,8 +391,9 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildSomethingElseButton() {
+  Widget _buildSomethingElseButton(BuildContext context) {
     return _buildActionButton(
+      context,
       text: 'Something else...',
       onTap: () {
         viewModel.showInputPanel.value = true;
@@ -383,22 +401,24 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildActionButton(
+    BuildContext context, {
     required String text,
     required VoidCallback onTap,
   }) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     // 内层容器：深色背景
     final innerContainer = Container(
       alignment: Alignment.center,
       decoration: ShapeDecoration(
-        color: ColorUtil.FF161616,
+        color: colors.surfaceDeep,
         shape: StadiumBorder(),
       ),
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Text(
         text,
         style: TextStyle(
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
@@ -406,13 +426,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
 
     // 外层容器：渐变边框效果
-    final colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
+    final gradientColors = [
+      colors.tagBorderStart.withValues(alpha: 0.17),
       Colors.transparent,
     ];
     final linearGradient = LinearGradient(
       begin: Alignment.topLeft,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.bottomRight,
     );
     final shapeDecoration = ShapeDecoration(
@@ -431,36 +451,37 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildInputPanel() {
+  Widget _buildInputPanel(BuildContext context) {
     return Watch((_) {
       final showInput = viewModel.showInputPanel.value;
 
       // 如果不显示输入框，返回空组件
       if (!showInput) return SizedBox.shrink();
 
-      return _buildInputPanelContent();
+      return _buildInputPanelContent(context);
     });
   }
 
-  Widget _buildInputPanelContent() {
+  Widget _buildInputPanelContent(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final inputField = Container(
       decoration: ShapeDecoration(
-        color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+        color: colors.inputBackground.withValues(alpha: 0.6),
         shape: StadiumBorder(),
       ),
       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: TextField(
         controller: inputController,
         style: TextStyle(
-          color: ColorUtil.FFF5F5F5,
+          color: colors.textInput,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
-        cursorColor: ColorUtil.FFFFFFFF,
+        cursorColor: colors.textInput,
         decoration: InputDecoration.collapsed(
           hintText: 'What will you do?',
           hintStyle: TextStyle(
-            color: ColorUtil.FFC2C2C2,
+            color: colors.border,
             fontSize: 14,
             fontWeight: FontWeight.w400,
           ),
@@ -471,6 +492,7 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
 
     final sendButton = Watch((_) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       final isStreaming = viewModel.isStreaming.value;
       final iconData = isStreaming
           ? HugeIcons.strokeRoundedStop
@@ -481,17 +503,17 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         onTap: _handleSendOrStop,
         child: Container(
           decoration: ShapeDecoration(
-            color: ColorUtil.FFFFFFFF,
+            color: colors.surfaceRaised,
             shape: StadiumBorder(),
             shadows: [
               BoxShadow(
                 blurRadius: 16,
-                color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+                color: colors.ctaGlow.withValues(alpha: 0.5),
               ),
             ],
           ),
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Icon(iconData, color: ColorUtil.FF161616),
+          child: Icon(iconData, color: colors.textOnRaised),
         ),
       );
     });
@@ -511,8 +533,9 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
     );
   }
 
-  Widget _buildMessageList() {
+  Widget _buildMessageList(BuildContext context) {
     return Watch((_) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       final messages = viewModel.messages.value;
       final streamingMessage = viewModel.streamingMessage.value;
       final isStreaming = viewModel.isStreaming.value;
@@ -527,13 +550,13 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
         itemBuilder: (context, index) {
           if (isStreaming && index == 0) {
             if (streamingMessage != null) {
-              return _buildDMMessageBubble(streamingMessage, true);
+              return _buildDMMessageBubble(context, streamingMessage, true);
             }
             // streamingMessage 为空时显示加载指示器
             return Container(
               constraints: BoxConstraints(minWidth: double.infinity),
               decoration: BoxDecoration(
-                color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+                color: colors.surfaceRaised.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(16),
               ),
               padding: EdgeInsets.all(16),
@@ -547,15 +570,19 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
           final messageIndex = isStreaming ? index - 1 : index;
           final message = reversedMessages[messageIndex];
           if (message.role == 'dm') {
-            return _buildDMMessageBubble(message, false);
+            return _buildDMMessageBubble(context, message, false);
           }
-          return _buildPlayerMessageBubble(message);
+          return _buildPlayerMessageBubble(context, message);
         },
       );
     });
   }
 
-  Widget _buildPlayerMessageBubble(TRPGMessageEntity message) {
+  Widget _buildPlayerMessageBubble(
+    BuildContext context,
+    TRPGMessageEntity message,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -565,23 +592,23 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
             constraints: BoxConstraints(minHeight: 36),
             child: Text(
               message.content,
-              style: TextStyle(color: ColorUtil.FFCACACA, fontSize: 14),
+              style: TextStyle(color: colors.textWeak, fontSize: 14),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         GestureDetector(
           onTap: () => _resendMessage(message),
           child: Container(
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: ColorUtil.FFFFFFFF,
+              color: colors.surfaceRaised,
               shape: BoxShape.circle,
             ),
             child: Icon(
               HugeIcons.strokeRoundedRefresh,
               size: 12,
-              color: ColorUtil.FF282828,
+              color: colors.iconOnRaised,
             ),
           ),
         ),

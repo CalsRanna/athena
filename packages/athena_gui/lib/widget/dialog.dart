@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/router/router.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +15,10 @@ class AthenaDialog {
   static OverlayEntry? _messageOverlay;
   static Timer? _messageTimer;
 
+  /// 静态方法取色：通过全局导航 context 获取当前主题扩展。
+  static AthenaColors get _colors =>
+      Theme.of(router.navigatorKey.currentContext!).extension<AthenaColors>()!;
+
   static Future<bool?> confirm(String text, {bool dismissible = true}) async {
     if (PlatformUtil.isDesktop) {
       return showDialog<bool>(
@@ -24,7 +28,7 @@ class AthenaDialog {
       );
     } else {
       return showModalBottomSheet<bool>(
-        backgroundColor: ColorUtil.FF282F32,
+        backgroundColor: _colors.surfaceMobile,
         isDismissible: dismissible,
         enableDrag: dismissible,
         builder: (_) => _ConfirmDialog(text: text),
@@ -42,7 +46,7 @@ class AthenaDialog {
       );
     } else {
       return showModalBottomSheet<String>(
-        backgroundColor: ColorUtil.FF282F32,
+        backgroundColor: _colors.surfaceMobile,
         isScrollControlled: true,
         builder: (_) => _InputDialog(title: title, initialValue: initialValue),
         context: router.navigatorKey.currentContext!,
@@ -73,8 +77,8 @@ class AthenaDialog {
     }
     final messenger = scaffoldMessengerKey.currentState;
     if (messenger == null) return;
-    final style = _AthenaMessageVisualStyle.fromType(type);
-    var textStyle = const TextStyle(color: ColorUtil.FFFFFFFF);
+    final style = _AthenaMessageVisualStyle.fromType(type, _colors);
+    var textStyle = TextStyle(color: _colors.textPrimary);
     var content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -84,7 +88,7 @@ class AthenaDialog {
       ],
     );
     var snackBar = SnackBar(
-      backgroundColor: ColorUtil.FF282F32,
+      backgroundColor: _colors.surfaceMobile,
       behavior: SnackBarBehavior.floating,
       content: content,
     );
@@ -101,7 +105,7 @@ class AthenaDialog {
       );
     } else {
       showModalBottomSheet(
-        backgroundColor: ColorUtil.FF282F32,
+        backgroundColor: _colors.surfaceMobile,
         builder: (_) => child,
         context: router.navigatorKey.currentContext!,
       );
@@ -157,14 +161,17 @@ class _AthenaMessageVisualStyle {
     required this.icon,
   });
 
-  factory _AthenaMessageVisualStyle.fromType(AthenaMessageType type) {
+  factory _AthenaMessageVisualStyle.fromType(
+    AthenaMessageType type,
+    AthenaColors colors,
+  ) {
     return switch (type) {
-      AthenaMessageType.info => const _AthenaMessageVisualStyle(
-        accentColor: ColorUtil.FFC2C2C2,
+      AthenaMessageType.info => _AthenaMessageVisualStyle(
+        accentColor: colors.border,
         icon: HugeIcons.strokeRoundedInformationCircle,
       ),
-      AthenaMessageType.success => const _AthenaMessageVisualStyle(
-        accentColor: ColorUtil.FFA7BA88,
+      AthenaMessageType.success => _AthenaMessageVisualStyle(
+        accentColor: colors.sage,
         icon: HugeIcons.strokeRoundedTick02,
       ),
       AthenaMessageType.warning => const _AthenaMessageVisualStyle(
@@ -185,8 +192,9 @@ class _ConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 24,
       fontWeight: FontWeight.w500,
     );
@@ -213,12 +221,13 @@ class _ConfirmDialog extends StatelessWidget {
   }
 
   Widget _buildCancelButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FF616161,
+      color: colors.surfaceButtonSecondary,
       shape: StadiumBorder(),
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -236,17 +245,18 @@ class _ConfirmDialog extends StatelessWidget {
   }
 
   Widget _buildConfirmButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+      color: colors.ctaGlow.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -271,13 +281,14 @@ class _DesktopConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
     var messageStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.8),
+      color: colors.textPrimary.withValues(alpha: 0.8),
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
@@ -294,7 +305,7 @@ class _DesktopConfirmDialog extends StatelessWidget {
       children: children,
     );
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
     var container = Container(
@@ -348,8 +359,9 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -366,7 +378,7 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
       children: children,
     );
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
     var container = Container(
@@ -424,8 +436,9 @@ class _InputDialogState extends State<_InputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
@@ -447,12 +460,13 @@ class _InputDialogState extends State<_InputDialog> {
   }
 
   Widget _buildCancelButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FF616161,
+      color: colors.surfaceButtonSecondary,
       shape: StadiumBorder(),
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -470,17 +484,18 @@ class _InputDialogState extends State<_InputDialog> {
   }
 
   Widget _buildConfirmButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+      color: colors.ctaGlow.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
       shape: StadiumBorder(),
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       shadows: [boxShadow],
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -502,22 +517,23 @@ class _DesktopLoadingDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final indicator = SizedBox(
       height: 20,
       width: 20,
       child: CircularProgressIndicator(
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         strokeWidth: 2,
       ),
     );
     final textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.8),
+      color: colors.textPrimary.withValues(alpha: 0.8),
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     final borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     final children = [
       indicator,
@@ -531,7 +547,7 @@ class _DesktopLoadingDialog extends StatelessWidget {
     );
     final container = Container(
       decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
         border: Border.fromBorderSide(borderSide),
         borderRadius: BorderRadius.circular(24),
       ),
@@ -555,9 +571,10 @@ class _DesktopMessageOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = _AthenaMessageVisualStyle.fromType(type);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final style = _AthenaMessageVisualStyle.fromType(type, colors);
     final textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -575,7 +592,7 @@ class _DesktopMessageOverlay extends StatelessWidget {
     final container = Container(
       constraints: BoxConstraints(maxWidth: screenWidth - 32),
       decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
         border: Border.fromBorderSide(borderSide),
         borderRadius: BorderRadius.circular(24),
       ),

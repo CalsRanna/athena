@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class SentinelPlaceholder extends StatelessWidget {
@@ -8,13 +8,14 @@ class SentinelPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final nameTextStyle = TextStyle(
+      color: colors.textPrimary,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );
-    const descriptionTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+    final descriptionTextStyle = TextStyle(
+      color: colors.border,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );

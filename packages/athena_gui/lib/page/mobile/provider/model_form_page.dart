@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -53,13 +53,16 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       SizedBox(height: 16),
       AthenaFormTileLabel.large(title: 'Features'),
       SizedBox(height: 12),
-      _buildFeatures(),
+      _buildFeatures(context),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),
       children: listViewChildren,
     );
-    var columnChildren = [Expanded(child: listView), _buildSubmitButton()];
+    var columnChildren = [
+      Expanded(child: listView),
+      _buildSubmitButton(context),
+    ];
     return AthenaScaffold(
       appBar: AthenaAppBar(title: Text(widget.model?.name ?? 'New Model')),
       body: SafeArea(top: false, child: Column(children: columnChildren)),
@@ -131,7 +134,8 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     });
   }
 
-  Widget _buildFeatures() {
+  Widget _buildFeatures(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var reasoningCheckbox = AthenaCheckbox(
       value: supportReasoning,
       onChanged: updateSupportReasoning,
@@ -141,7 +145,7 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       onChanged: updateSupportVisual,
     );
     var trailingTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -164,9 +168,10 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     return Row(children: children);
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

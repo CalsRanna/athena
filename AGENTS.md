@@ -432,17 +432,31 @@ ChatViewModel（Signal 唯一持有者 + 编排层）
 
 ### 颜色系统
 
+品牌语义色定义在 `athena_gui/lib/theme/athena_colors.dart`：
+
 ```dart
-// athena_gui/lib/util/color_util.dart 中定义
-FF282828  // 桌面主背景
-FF282F32  // 移动端背景 / 对话框背景
-FF161616  // 深层容器 / Tag 未选中
-FFFFFFFF  // 主文字 / 主按钮
-FF6ABEB9  // Athena Teal 品牌色
-FFCED2C7  // CTA 光晕基色
-FFEAEAEA  // Tag 渐变边框起点
-FFE0E0E0  // Tag 选中背景
+// AthenaColors extends ThemeExtension，挂载于 ThemeData.extensions
+surface          // 桌面主背景
+surfaceMobile    // 移动端背景 / 对话框 / sheet
+surfaceDeep      // 深层容器 / Tag 未选中内层
+surfaceRaised    // 白卡 / 白色按钮底（深浅同值）
+textPrimary      // 主文字 / 关键图标
+textInput        // 输入框文字
+textSecondary    // 次级辅助文字
+textWeak         // 弱文字 / 时间戳
+textOnRaised     // 白卡 / 白按钮上的深色文字（深浅同值）
+textSelected     // 选中态文字（Tag 选中反转）
+border / borderStrong / divider / inputBackground
+teal / sage / slate / ctaGlow
+tagBorderStart / tagSelectedBackground / cardHeader / codeBackground
+checkboxOff / iconSecondary / iconOnRaised
+cardPrimaryBackground / cardPrimaryText
 ```
+
+字段按**语义角色**划分（一个角色一个字段，避免一个色值多角色冲突）。
+深/浅两套值（`AthenaColors.dark` / `AthenaColors.light`），浅色值从现有 token
+按角色推导（灰阶镜像 / 透明度变体），不新增品牌色。主题切换入口在
+设置 → Advanced → Appearance（`ThemeMode`，默认深色）。
 
 ### 核心组件（athena_gui/lib/widget/）
 
@@ -535,7 +549,18 @@ PlatformUtil.isWindows  // 特定平台
 
 ### 颜色使用
 
-使用 `ColorUtil` 中的预定义常量，不要直接写 `Color(0xFF...)`。
+从 ThemeExtension 取色，不要直接写 `Color(0xFF...)`：
+
+```dart
+final colors = Theme.of(context).extension<AthenaColors>()!;
+Text('x', style: TextStyle(color: colors.textPrimary));
+```
+
+无 `BuildContext` 的辅助方法：加 `BuildContext context` 参数并在调用处传参；
+顶层/静态方法用 `router.navigatorKey.currentContext!`（参考 `widget/dialog.dart`
+的 `_colors` getter）。新增颜色时在 `theme/athena_colors.dart` 的**深/浅两套
+值同时定义**（浅色值从现有 token 推导），并确认该字段只承担一个语义角色。
+含 `colors.xxx` 的表达式不能使用 `const`。
 
 ### 对话框与消息提示
 

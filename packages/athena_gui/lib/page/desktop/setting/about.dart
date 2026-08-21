@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -24,8 +24,9 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -57,5 +58,3 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
     });
   }
 }
-
-

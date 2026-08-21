@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
@@ -29,21 +29,22 @@ class _MobileChatConfigurationPageState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var children = [
       AthenaFormTileLabel.large(title: 'Temperature'),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       _buildTemperatureSlider(),
-      const SizedBox(height: 24),
+      SizedBox(height: 24),
       AthenaFormTileLabel.large(title: 'Zero Context'),
-      const SizedBox(height: 12),
+      SizedBox(height: 12),
       _buildRetentionSwitch(),
       Padding(
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: 8),
         child: Text(
           'When enabled, each message is sent independently '
           'without any conversation history.',
           style: TextStyle(
-            color: ColorUtil.FFFFFFFF.withValues(alpha: 0.6),
+            color: colors.textPrimary.withValues(alpha: 0.6),
             fontSize: 13,
             height: 1.5,
           ),
@@ -81,16 +82,17 @@ class _MobileChatConfigurationPageState
   }
 
   Widget _buildTemperatureSlider() {
-    return Watch((_) {
+    return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       return Slider(
-        activeColor: ColorUtil.FFA7BA88,
-        inactiveColor: ColorUtil.FF757575,
+        activeColor: colors.sage,
+        inactiveColor: colors.borderStrong,
         label: _temperature.value.toStringAsFixed(1),
         max: 2,
         onChanged: (v) => _temperature.value = v,
         onChangeEnd: _storeTemperature,
         padding: EdgeInsets.symmetric(horizontal: 4),
-        thumbColor: ColorUtil.FFA7BA88,
+        thumbColor: colors.sage,
         value: _temperature.value,
       );
     });

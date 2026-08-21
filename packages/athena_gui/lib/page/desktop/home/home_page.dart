@@ -15,7 +15,7 @@ import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_selector.dart';
 
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -50,9 +50,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var children = [_buildLeftBar(), Expanded(child: _buildWorkspace())];
+      var children = [
+        _buildLeftBar(context),
+        Expanded(child: _buildWorkspace()),
+      ];
       return AthenaScaffold(
-        appBar: _buildAppBar(),
+        appBar: _buildAppBar(context),
         body: Row(children: children),
       );
     });
@@ -238,10 +241,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateTemperature(temperature, chat: chat);
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     var chatCreateButton = GestureDetector(
@@ -250,7 +254,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
     );
     return AthenaAppBar(
-      action: _buildSettingButton(),
+      action: _buildSettingButton(context),
       leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
       title: Padding(
         padding: const EdgeInsets.only(left: 8),
@@ -271,7 +275,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  Widget _buildLeftBar() {
+  Widget _buildLeftBar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var chatListView = DesktopChatListView(
       onAutoRenamed: chatViewModel.renameChat,
       onBatchDestroyed: batchDestroyChats,
@@ -282,7 +287,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onSelected: chatViewModel.selectChat,
     );
     var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
@@ -293,10 +298,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  Widget _buildSettingButton() {
-    const icon = Icon(
+  Widget _buildSettingButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final icon = Icon(
       HugeIcons.strokeRoundedSettings01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -350,10 +356,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     // }
     await modelViewModel.loadEnabledModels();
     await sentinelViewModel.getSentinels();
-
   }
 
   Widget _itemBuilder(context, index) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var images = chatViewModel.pendingImages.value;
     var image = Image.file(
       File(images[index]),
@@ -363,12 +369,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 12,
     );
     var decoration = BoxDecoration(
       shape: BoxShape.circle,
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
     );
     var container = Container(
       decoration: decoration,
@@ -422,5 +428,4 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       barrierDismissible: true,
     );
   }
-
 }

@@ -1,5 +1,5 @@
 import 'package:athena_core/model/shortcut.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class ShortcutTile extends StatelessWidget {
@@ -14,16 +14,16 @@ class ShortcutTile extends StatelessWidget {
     required this.shortcut,
   });
 
-
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
-          color: ColorUtil.FF616161,
+          color: colors.surfaceButtonSecondary,
         ),
         padding: EdgeInsets.all(12),
         height: 160,
@@ -31,22 +31,22 @@ class ShortcutTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: ColorUtil.FFFFFFFF),
-            const SizedBox(height: 4),
+            Icon(icon, color: colors.textPrimary),
+            SizedBox(height: 4),
             Text(
               shortcut.name,
-              style: const TextStyle(
-                color: ColorUtil.FFFFFFFF,
+              style: TextStyle(
+                color: colors.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Expanded(
               child: Text(
                 shortcut.description,
-                style: const TextStyle(
-                  color: ColorUtil.FFE0E0E0,
+                style: TextStyle(
+                  color: colors.iconSecondary,
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
                 ),

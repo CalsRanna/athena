@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -49,7 +49,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     return Watch((context) {
       return AthenaScaffold(
         appBar: AthenaAppBar(action: button, title: const Text('Provider')),
-        body: Watch((_) => _buildBody()),
+        body: Watch((context) => _buildBody(context)),
       );
     });
   }
@@ -58,20 +58,21 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     MobileProviderNameRoute().push(context);
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     var providers = viewModel.providers.value;
     if (providers.isEmpty) return const SizedBox();
     return ListView.separated(
       itemCount: providers.length,
       itemBuilder: (_, index) => _ProviderListTile(providers[index]),
       padding: EdgeInsets.zero,
-      separatorBuilder: (_, __) => _buildSeparator(),
+      separatorBuilder: (_, __) => _buildSeparator(context),
     );
   }
 
-  Widget _buildSeparator() {
+  Widget _buildSeparator(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var divider = Divider(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
       height: 1,
       thickness: 1,
     );
@@ -88,31 +89,32 @@ class _ProviderListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const titleTextStyle = TextStyle(
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final titleTextStyle = TextStyle(
       fontSize: 16,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    const subtitleTextStyle = TextStyle(
+    final subtitleTextStyle = TextStyle(
       fontSize: 12,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),
-      if (provider.enabled) const SizedBox(width: 8),
+      if (provider.enabled) SizedBox(width: 8),
       if (provider.enabled)
         Icon(
           HugeIcons.strokeRoundedToggleOn,
           size: 16,
-          color: ColorUtil.FFE0E0E0,
+          color: colors.iconSecondary,
         ),
     ];
     var icon = Icon(
       HugeIcons.strokeRoundedMoreHorizontal,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 16,
     );
     var actionButton = GestureDetector(

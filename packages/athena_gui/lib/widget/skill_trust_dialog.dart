@@ -1,5 +1,5 @@
 import 'package:athena_gui/router/router.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +28,9 @@ Future<bool> showSkillTrustDialog({
   } else {
     final result = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: ColorUtil.FF282F32,
+      backgroundColor: Theme.of(
+        context,
+      ).extension<AthenaColors>()!.surfaceMobile,
       isDismissible: false,
       enableDrag: false,
       builder: (_) => _MobileSkillTrustDialog(
@@ -40,7 +42,8 @@ Future<bool> showSkillTrustDialog({
   }
 }
 
-Widget _buildTitleRow() {
+Widget _buildTitleRow(BuildContext context) {
+  final colors = Theme.of(context).extension<AthenaColors>()!;
   return Row(
     children: [
       Icon(
@@ -48,12 +51,12 @@ Widget _buildTitleRow() {
         size: 20,
         color: const Color(0xFFE8B86D),
       ),
-      const SizedBox(width: 8),
+      SizedBox(width: 8),
       Text(
         'Trust project skills?',
         style: GoogleFonts.firaCode(
           fontSize: 16,
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -61,14 +64,19 @@ Widget _buildTitleRow() {
   );
 }
 
-Widget _buildBody(String projectDir, List<String> skillNames) {
+Widget _buildBody(
+  BuildContext context,
+  String projectDir,
+  List<String> skillNames,
+) {
+  final colors = Theme.of(context).extension<AthenaColors>()!;
   var descriptionText = Text(
     'The current working directory ships project skills. Trusting them will '
     'inject their instructions into the AI\'s system prompt. '
     'Only trust directories you control.',
     style: GoogleFonts.firaCode(
       fontSize: 13,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       height: 1.6,
     ),
   );
@@ -76,7 +84,7 @@ Widget _buildBody(String projectDir, List<String> skillNames) {
     projectDir,
     style: GoogleFonts.firaCode(
       fontSize: 12,
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       height: 1.5,
     ),
   );
@@ -84,7 +92,7 @@ Widget _buildBody(String projectDir, List<String> skillNames) {
     'Skills:',
     style: GoogleFonts.firaCode(
       fontSize: 13,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontWeight: FontWeight.w500,
     ),
   );
@@ -97,7 +105,7 @@ Widget _buildBody(String projectDir, List<String> skillNames) {
           '- $name',
           style: GoogleFonts.firaCode(
             fontSize: 12,
-            color: ColorUtil.FFC2C2C2,
+            color: colors.border,
             height: 1.5,
           ),
         ),
@@ -129,21 +137,22 @@ class _DesktopSkillTrustDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildTitleRow(),
+        _buildTitleRow(context),
         const SizedBox(height: 16),
-        _buildBody(projectDir, skillNames),
+        _buildBody(context, projectDir, skillNames),
         const SizedBox(height: 24),
         _buildButtons(context),
       ],
     );
     var container = Container(
-      constraints: const BoxConstraints(minWidth: 360, maxWidth: 520),
+      constraints: BoxConstraints(minWidth: 360, maxWidth: 520),
       decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
         borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(24),
@@ -181,9 +190,9 @@ class _MobileSkillTrustDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var children = <Widget>[
-      _buildTitleRow(),
+      _buildTitleRow(context),
       const SizedBox(height: 16),
-      _buildBody(projectDir, skillNames),
+      _buildBody(context, projectDir, skillNames),
       const SizedBox(height: 24),
       _buildAllowButton(context),
       const SizedBox(height: 12),
@@ -197,18 +206,16 @@ class _MobileSkillTrustDialog extends StatelessWidget {
   }
 
   Widget _buildAllowButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var shapeDecoration = ShapeDecoration(
-      shape: const StadiumBorder(),
-      color: ColorUtil.FFFFFFFF,
+      shape: StadiumBorder(),
+      color: colors.surfaceRaised,
       shadows: [
-        BoxShadow(
-          blurRadius: 16,
-          color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
-        ),
+        BoxShadow(blurRadius: 16, color: colors.ctaGlow.withValues(alpha: 0.5)),
       ],
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -225,12 +232,13 @@ class _MobileSkillTrustDialog extends StatelessWidget {
   }
 
   Widget _buildDenyButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FF616161,
+      color: colors.surfaceButtonSecondary,
       shape: const StadiumBorder(),
     );
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
@@ -15,14 +15,15 @@ class DesktopModelSelectDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final modelViewModel = GetIt.instance<ModelViewModel>();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      color: ColorUtil.FF282F32,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
     );
 
     return Watch((context) {
       var models = modelViewModel.groupedEnabledModels.value;
-      var child = _buildData(models);
+      var child = _buildData(context, models);
       var container = Container(
         decoration: boxDecoration,
         padding: EdgeInsets.all(8),
@@ -32,11 +33,14 @@ class DesktopModelSelectDialog extends StatelessWidget {
     });
   }
 
-  Widget _buildData(Map<String, List<ModelEntity>> models) {
+  Widget _buildData(
+    BuildContext context,
+    Map<String, List<ModelEntity>> models,
+  ) {
     if (models.isEmpty) return const SizedBox();
     List<Widget> children = [];
     for (var entry in models.entries) {
-      children.add(_buildItemGroupTitle(entry.key));
+      children.add(_buildItemGroupTitle(context, entry.key));
       children.addAll(entry.value.map(_itemBuilder));
     }
     return ConstrainedBox(
@@ -45,9 +49,10 @@ class DesktopModelSelectDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildItemGroupTitle(String title) {
+  Widget _buildItemGroupTitle(BuildContext context, String title) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -72,9 +77,10 @@ class DesktopModelSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedAiBrain01,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     return GestureDetector(
@@ -118,20 +124,21 @@ class _DesktopModelSelectDialogTileState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var children = [
@@ -141,7 +148,7 @@ class _DesktopModelSelectDialogTileState
     ];
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: hover ? ColorUtil.FF616161 : null,
+      color: hover ? colors.surfaceButtonSecondary : null,
     );
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,

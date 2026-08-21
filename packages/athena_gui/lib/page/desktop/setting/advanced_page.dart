@@ -1,10 +1,12 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
 class DesktopSettingAdvancedPage extends StatefulWidget {
@@ -21,18 +23,45 @@ class _DesktopSettingAdvancedPageState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 20,
       fontWeight: FontWeight.w500,
     );
     var databaseTitle = Text('Database', style: titleTextStyle);
+    var appearanceTitle = Text('Appearance', style: titleTextStyle);
+    var appearanceRow = Watch((context) {
+      final mode = viewModel.themeMode.value;
+      return Row(
+        spacing: 12,
+        children: [
+          AthenaTagButton(
+            selected: mode == ThemeMode.dark,
+            onTap: () => viewModel.setThemeMode(ThemeMode.dark),
+            child: Text('Dark'),
+          ),
+          AthenaTagButton(
+            selected: mode == ThemeMode.light,
+            onTap: () => viewModel.setThemeMode(ThemeMode.light),
+            child: Text('Light'),
+          ),
+          AthenaTagButton(
+            selected: mode == ThemeMode.system,
+            onTap: () => viewModel.setThemeMode(ThemeMode.system),
+            child: Text('System'),
+          ),
+        ],
+      );
+    });
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 12,
         children: [
+          appearanceTitle,
+          appearanceRow,
           databaseTitle,
           Row(
             spacing: 16,

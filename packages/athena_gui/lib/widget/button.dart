@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class AthenaIconButton extends StatelessWidget {
@@ -14,9 +14,10 @@ class AthenaIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hugeIcon = Icon(icon, color: ColorUtil.FF000000, size: 16);
-    const boxDecoration = BoxDecoration(
-      color: ColorUtil.FFFFFFFF,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final hugeIcon = Icon(icon, color: colors.iconOnRaised, size: 16);
+    final boxDecoration = BoxDecoration(
+      color: colors.surfaceRaised,
       shape: BoxShape.circle,
     );
     final button = Container(
@@ -45,12 +46,13 @@ class AthenaPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+      color: colors.ctaGlow.withValues(alpha: 0.5),
     );
     var shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       shape: StadiumBorder(),
       shadows: showShadow ? [boxShadow] : null,
     );
@@ -89,10 +91,11 @@ class AthenaSecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var shapeDecoration = ShapeDecoration(
-      shape: StadiumBorder(side: BorderSide(color: ColorUtil.FFC2C2C2)),
+      shape: StadiumBorder(side: BorderSide(color: colors.border)),
     );
-    const defaultTextStyle = TextStyle(color: ColorUtil.FFFFFFFF);
+    var defaultTextStyle = TextStyle(color: colors.textPrimary);
     var container = Container(
       decoration: shapeDecoration,
       padding: padding,
@@ -113,7 +116,8 @@ class AthenaTextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const defaultTextStyle = TextStyle(color: ColorUtil.FFFFFFFF);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var defaultTextStyle = TextStyle(color: colors.textPrimary);
     var container = Container(
       decoration: ShapeDecoration(shape: StadiumBorder()),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),

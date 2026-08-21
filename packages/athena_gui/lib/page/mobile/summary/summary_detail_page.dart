@@ -2,7 +2,7 @@ import 'package:athena_gui/component/button.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/summary_entity.dart';
 import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/summary_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -50,10 +50,11 @@ class MobileSummaryDetailPage extends StatelessWidget {
 
   Widget _buildTitle(SummaryEntity summary) {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var viewModel = GetIt.instance<SummaryViewModel>();
       var streaming = viewModel.streaming.value;
-      const titleTextStyle = TextStyle(
-        color: ColorUtil.FFFFFFFF,
+      final titleTextStyle = TextStyle(
+        color: colors.textPrimary,
         fontSize: 24,
         fontWeight: FontWeight.w500,
       );
@@ -88,6 +89,7 @@ class _SummaryContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var children = [
       _buildAvatar(),
       const SizedBox(width: 12),
@@ -100,7 +102,7 @@ class _SummaryContent extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.95),
+      color: colors.surfaceRaised.withValues(alpha: 0.95),
     );
     var stackChildren = [
       messageRow,

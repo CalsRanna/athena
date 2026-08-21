@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/util/context_window_util.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
@@ -53,8 +53,9 @@ class _ModelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 16,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -67,25 +68,28 @@ class _ModelTile extends StatelessWidget {
     );
     var nameChildren = [
       Flexible(child: nameText),
-      if (model.isPreset) const SizedBox(width: 8),
+      if (model.isPreset) SizedBox(width: 8),
       if (model.isPreset)
-        Icon(HugeIcons.strokeRoundedCircleLock01,
-            size: 16, color: ColorUtil.FFE0E0E0),
+        Icon(
+          HugeIcons.strokeRoundedCircleLock01,
+          size: 16,
+          color: colors.iconSecondary,
+        ),
       const SizedBox(width: 8),
       AthenaTag.small(text: model.modelId),
     ];
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var visualIcon = Icon(
       HugeIcons.strokeRoundedVision,
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       size: 18,
     );
     var subtitleChildren = [
-      _buildSubtitle(),
+      _buildSubtitle(context),
       if (model.reasoning) thinkIcon,
       if (model.vision) visualIcon,
     ];
@@ -110,17 +114,18 @@ class _ModelTile extends StatelessWidget {
     );
   }
 
-  Widget _buildSubtitle() {
-    var context = model.contextWindow;
+  Widget _buildSubtitle(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var contextWindow = model.contextWindow;
     var inputPrice = model.inputPrice;
     var outputPrice = model.outputPrice;
     var parts = [
-      if (context > 0) formatContextWindow(context),
+      if (contextWindow > 0) formatContextWindow(contextWindow),
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];
     var textStyle = TextStyle(
-      color: ColorUtil.FFE0E0E0,
+      color: colors.iconSecondary,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,

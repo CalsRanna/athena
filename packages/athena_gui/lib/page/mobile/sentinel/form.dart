@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -43,11 +43,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         enabled: !isPreset,
       ),
       const SizedBox(height: 32),
-      _buildNameLabel(),
+      _buildNameLabel(context),
       const SizedBox(height: 12),
       AthenaInput(controller: nameController, enabled: !isPreset),
       const SizedBox(height: 16),
-      _buildDescriptionLabel(),
+      _buildDescriptionLabel(context),
       const SizedBox(height: 12),
       AthenaInput(
         controller: descriptionController,
@@ -62,7 +62,7 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     );
     var columnChildren = [
       Expanded(child: listView),
-      if (!isPreset) _buildButtons(),
+      if (!isPreset) _buildButtons(context),
     ];
     var column = Column(children: columnChildren);
     return AthenaScaffold(
@@ -73,11 +73,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     );
   }
 
-  Widget _buildButtons() {
+  Widget _buildButtons(BuildContext context) {
     var children = [
-      Expanded(child: _buildStoreButton()),
+      Expanded(child: _buildStoreButton(context)),
       const SizedBox(width: 8),
-      Expanded(child: _buildGenerateButton()),
+      Expanded(child: _buildGenerateButton(context)),
     ];
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -179,10 +179,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     _update();
   }
 
-  Widget _buildDescriptionLabel() {
-    const icon = Icon(
+  Widget _buildDescriptionLabel(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final icon = Icon(
       HugeIcons.strokeRoundedAiBeautify,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 16,
     );
     var gestureDetector = GestureDetector(
@@ -196,9 +197,10 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     );
   }
 
-  Widget _buildGenerateButton() {
+  Widget _buildGenerateButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );
@@ -208,10 +210,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     );
   }
 
-  Widget _buildNameLabel() {
-    const icon = Icon(
+  Widget _buildNameLabel(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final icon = Icon(
       HugeIcons.strokeRoundedAiBeautify,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 16,
     );
     var gestureDetector = GestureDetector(
@@ -222,9 +225,10 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     return AthenaFormTileLabel.large(title: 'Name', trailing: gestureDetector);
   }
 
-  Widget _buildStoreButton() {
+  Widget _buildStoreButton(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FF161616,
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/widget/skill_trust_dialog.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +23,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         navigatorKey: router.navigatorKey,
+        theme: ThemeData(extensions: [AthenaColors.dark]),
         home: const Scaffold(body: SizedBox.shrink()),
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +29,7 @@ class DesktopMessageInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Watch((context) {
       var chat = chatViewModel.currentChat.value;
       var toolbarChildren = [
@@ -52,7 +53,7 @@ class DesktopMessageInput extends StatelessWidget {
       ];
       var inputRow = Row(children: inputChildren);
       var borderSide = BorderSide(
-        color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+        color: colors.textPrimary.withValues(alpha: 0.2),
       );
       var children = [toolbar, const SizedBox(height: 12), inputRow];
       return Container(
@@ -84,13 +85,14 @@ class _NewlineIntent extends Intent {
 class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      border: Border.all(color: ColorUtil.FF757575),
+      border: Border.all(color: colors.borderStrong),
       borderRadius: BorderRadius.circular(24),
-      color: ColorUtil.FFADADAD.withValues(alpha: 0.6),
+      color: colors.inputBackground.withValues(alpha: 0.6),
     );
     var hintTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 14,
       height: 1.5,
     );
@@ -98,15 +100,15 @@ class _InputState extends State<_Input> {
       hintText: 'Ask me anything',
       hintStyle: hintTextStyle,
     );
-    const inputTextStyle = TextStyle(
-      color: ColorUtil.FFF5F5F5,
+    final inputTextStyle = TextStyle(
+      color: colors.textInput,
       fontSize: 14,
       height: 1.5,
     );
     var textField = TextField(
       controller: widget.controller,
       cursorHeight: 16,
-      cursorColor: ColorUtil.FFF5F5F5,
+      cursorColor: colors.textInput,
       decoration: inputDecoration,
       style: inputTextStyle,
       maxLines: 4,
@@ -155,29 +157,28 @@ class _InputState extends State<_Input> {
 
 class _SendActivator extends SingleActivator {
   const _SendActivator()
-      : super(
-          LogicalKeyboardKey.enter,
-          shift: false,
-          control: false,
-          alt: false,
-          meta: false,
-        );
+    : super(
+        LogicalKeyboardKey.enter,
+        shift: false,
+        control: false,
+        alt: false,
+        meta: false,
+      );
 }
 
 class _SendNumpadActivator extends SingleActivator {
   const _SendNumpadActivator()
-      : super(
-          LogicalKeyboardKey.numpadEnter,
-          shift: false,
-          control: false,
-          alt: false,
-          meta: false,
-        );
+    : super(
+        LogicalKeyboardKey.numpadEnter,
+        shift: false,
+        control: false,
+        alt: false,
+        meta: false,
+      );
 }
 
 class _NewlineActivator extends SingleActivator {
-  const _NewlineActivator()
-      : super(LogicalKeyboardKey.enter, shift: true);
+  const _NewlineActivator() : super(LogicalKeyboardKey.enter, shift: true);
 }
 
 class _SendButton extends StatelessWidget {
@@ -188,13 +189,14 @@ class _SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
-    var colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var gradientColors = [
+      colors.tagBorderStart.withValues(alpha: 0.17),
       Colors.transparent,
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.centerLeft,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.centerRight,
     );
     var boxDecoration = BoxDecoration(
@@ -203,11 +205,11 @@ class _SendButton extends StatelessWidget {
     );
     var boxShadow = BoxShadow(
       blurRadius: 16,
-      color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+      color: colors.ctaGlow.withValues(alpha: 0.5),
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(55),
-      color: ColorUtil.FFFFFFFF,
+      color: colors.surfaceRaised,
       boxShadow: [boxShadow],
     );
 

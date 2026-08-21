@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class DesktopSentinelPlaceholder extends StatelessWidget {
@@ -8,13 +8,14 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var nameTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 28,
       fontWeight: FontWeight.w700,
     );
     var descriptionTextStyle = TextStyle(
-      color: ColorUtil.FFC2C2C2,
+      color: colors.border,
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
@@ -52,32 +53,35 @@ class _TagWrap extends StatelessWidget {
       alignment: WrapAlignment.center,
       runSpacing: 12,
       spacing: 12,
-      children: sentinel.tagList.map(_buildTile).toList(),
+      children: sentinel.tagList
+          .map((tag) => _buildTile(context, tag))
+          .toList(),
     );
   }
 
-  Widget _buildTile(String tag) {
+  Widget _buildTile(BuildContext context, String tag) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 12,
       fontWeight: FontWeight.w500,
     );
     var innerBoxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(36),
-      color: ColorUtil.FF161616,
+      color: colors.surfaceDeep,
     );
     var innerContainer = Container(
       decoration: innerBoxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
       child: Text(tag, style: textStyle),
     );
-    var colors = [
-      ColorUtil.FFEAEAEA.withValues(alpha: 0.17),
-      ColorUtil.FFFFFFFF.withValues(alpha: 0),
+    var gradientColors = [
+      colors.tagBorderStart.withValues(alpha: 0.17),
+      colors.textPrimary.withValues(alpha: 0),
     ];
     var linearGradient = LinearGradient(
       begin: Alignment.topLeft,
-      colors: colors,
+      colors: gradientColors,
       end: Alignment.bottomRight,
     );
     var outerBoxDecoration = BoxDecoration(

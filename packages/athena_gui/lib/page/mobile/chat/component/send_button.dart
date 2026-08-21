@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -17,19 +17,20 @@ class SendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       var boxShadow = BoxShadow(
         blurRadius: 16,
-        color: ColorUtil.FFCED2C7.withValues(alpha: 0.5),
+        color: colors.ctaGlow.withValues(alpha: 0.5),
       );
       var shapeDecoration = ShapeDecoration(
-        color: ColorUtil.FFFFFFFF,
+        color: colors.surfaceRaised,
         shape: StadiumBorder(),
         shadows: [boxShadow],
       );
       final streaming = isStreaming;
       var iconData = HugeIcons.strokeRoundedSent;
       if (streaming) iconData = HugeIcons.strokeRoundedStop;
-      var icon = Icon(iconData, color: ColorUtil.FF161616, size: 16);
+      var icon = Icon(iconData, color: colors.textOnRaised, size: 16);
       var container = Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(12),

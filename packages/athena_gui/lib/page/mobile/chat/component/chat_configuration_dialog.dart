@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
@@ -37,7 +37,10 @@ class _MobileConfigurationDialogState
         title: 'Temperature',
         trailing: _buildTemperatureSlider(),
       ),
-      AthenaBottomSheetTile(title: 'Zero Context', trailing: _buildRetentionSwitch()),
+      AthenaBottomSheetTile(
+        title: 'Zero Context',
+        trailing: _buildRetentionSwitch(),
+      ),
     ];
     return ListView(
       padding: EdgeInsets.symmetric(vertical: 16),
@@ -67,16 +70,17 @@ class _MobileConfigurationDialogState
   }
 
   Widget _buildTemperatureSlider() {
-    return Watch((_) {
+    return Watch((context) {
+      final colors = Theme.of(context).extension<AthenaColors>()!;
       return Slider(
-        activeColor: ColorUtil.FFA7BA88,
-        inactiveColor: ColorUtil.FF757575,
+        activeColor: colors.sage,
+        inactiveColor: colors.borderStrong,
         label: _temperature.value.toStringAsFixed(1),
         max: 2,
         onChanged: (v) => _temperature.value = v,
         onChangeEnd: _storeTemperature,
         padding: EdgeInsets.symmetric(horizontal: 4),
-        thumbColor: ColorUtil.FFA7BA88,
+        thumbColor: colors.sage,
         value: _temperature.value,
       );
     });

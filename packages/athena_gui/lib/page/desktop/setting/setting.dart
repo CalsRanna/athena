@@ -2,7 +2,7 @@ import 'package:athena_gui/page/desktop/setting/provider/component/provider_form
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/menu.dart';
@@ -43,10 +43,13 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   Widget build(BuildContext context) {
     var appBar = AthenaAppBar(
       action: DesktopPopButton(),
-      leading: _buildCreateButton(),
+      leading: _buildCreateButton(context),
       title: _buildPageHeader(context),
     );
-    var children = [_buildLeftBar(), const Expanded(child: AutoRouter())];
+    var children = [
+      _buildLeftBar(context),
+      const Expanded(child: AutoRouter()),
+    ];
     return AthenaScaffold(
       appBar: appBar,
       body: Row(children: children),
@@ -81,11 +84,12 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     }
   }
 
-  Widget _buildCreateButton() {
+  Widget _buildCreateButton(BuildContext context) {
     if (![0, 1].contains(index)) return const SizedBox();
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 24,
     );
     var createButton = GestureDetector(
@@ -96,7 +100,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     return Align(alignment: Alignment.centerRight, child: createButton);
   }
 
-  Widget _buildLeftBar() {
+  Widget _buildLeftBar(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var listView = ListView.separated(
       itemBuilder: (_, index) => _itemBuilder(index),
       itemCount: _menus.length,
@@ -104,17 +109,18 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
     );
     var borderSide = BorderSide(
-      color: ColorUtil.FFFFFFFF.withValues(alpha: 0.2),
+      color: colors.textPrimary.withValues(alpha: 0.2),
     );
     var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(decoration: boxDecoration, width: 240, child: listView);
   }
 
   Widget _buildPageHeader(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var title = 'Setting / ${_menus[index]}';
     var rowChildren = [
-      const SizedBox(width: 16),
-      Text(title, style: TextStyle(color: ColorUtil.FFFFFFFF)),
+      SizedBox(width: 16),
+      Text(title, style: TextStyle(color: colors.textPrimary)),
     ];
     return Row(children: rowChildren);
   }

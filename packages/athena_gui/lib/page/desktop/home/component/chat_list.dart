@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/menu.dart';
@@ -36,7 +36,7 @@ class DesktopChatListView extends StatelessWidget {
     return Watch((context) {
       var chats = chatViewModel.chats.value;
       chatViewModel.initLastSelectedIndex();
-      if (chats.isEmpty) return _buildEmpty();
+      if (chats.isEmpty) return _buildEmpty(context);
       return ListView.separated(
         itemBuilder: (context, index) => _itemBuilder(context, chats, index),
         itemCount: chats.length,
@@ -109,9 +109,10 @@ class DesktopChatListView extends StatelessWidget {
     }
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -167,6 +168,7 @@ class _ChatTile extends StatefulWidget {
 class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     Widget? trailing;
     if (widget.isRenaming) {
       trailing = SizedBox(
@@ -174,22 +176,19 @@ class _ChatTileState extends State<_ChatTile> {
         height: 16,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          color: ColorUtil.FFFFFFFF,
+          color: colors.textPrimary,
         ),
       );
     } else if (widget.streaming) {
       trailing = SizedBox(
         width: 16,
         height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: ColorUtil.FF6ABEB9,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2, color: colors.teal),
       );
     } else if (widget.chat.pinned) {
       trailing = Icon(
         HugeIcons.strokeRoundedPinLocation03,
-        color: ColorUtil.FFFFFFFF,
+        color: colors.textPrimary,
         size: 16,
       );
     }

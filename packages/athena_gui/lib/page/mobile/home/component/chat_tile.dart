@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -19,8 +19,9 @@ class ChatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const shapeDecoration = ShapeDecoration(
-      color: ColorUtil.FFFFFFFF,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final shapeDecoration = ShapeDecoration(
+      color: colors.surfaceRaised,
       shape: StadiumBorder(),
     );
     final body = Container(

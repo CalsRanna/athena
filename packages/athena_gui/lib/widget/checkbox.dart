@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -48,11 +48,12 @@ class AthenaCheckboxGroup extends StatelessWidget {
 class _AthenaCheckboxState extends State<AthenaCheckbox> {
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var border = Border.all(
-      color: widget.value ? ColorUtil.FFA7BA88 : ColorUtil.FFD0D5DD,
+      color: widget.value ? colors.sage : colors.checkboxOff,
       width: 2,
     );
-    var color = widget.value ? ColorUtil.FFA7BA88 : Colors.transparent;
+    var color = widget.value ? colors.sage : Colors.transparent;
     var boxDecoration = BoxDecoration(
       border: border,
       borderRadius: BorderRadius.circular(4),
@@ -77,10 +78,6 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   }
 
   Widget _buildCheckIcon() {
-    return const Icon(
-      HugeIcons.strokeRoundedTick02,
-      color: ColorUtil.FFFFFFFF,
-      size: 12,
-    );
+    return Icon(HugeIcons.strokeRoundedTick02, color: Colors.white, size: 12);
   }
 }

@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/summary_entity.dart';
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -12,8 +12,9 @@ class MobileSummaryListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 14,
       fontWeight: FontWeight.w500,
       height: 1.5,
@@ -25,7 +26,7 @@ class MobileSummaryListTile extends StatelessWidget {
       style: titleTextStyle,
     );
     var linkTextStyle = TextStyle(
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       fontSize: 12,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -41,7 +42,7 @@ class MobileSummaryListTile extends StatelessWidget {
       children: [titleText, linkText],
     );
     var rowChildren = [
-      _buildLogo(),
+      _buildLogo(context),
       SizedBox(width: 20),
       Expanded(child: column),
     ];
@@ -56,10 +57,11 @@ class MobileSummaryListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildLogo() {
+  Widget _buildLogo(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedAiBrowser,
-      color: ColorUtil.FFFFFFFF,
+      color: colors.textPrimary,
       size: 32,
     );
     Widget child = icon;
@@ -77,7 +79,7 @@ class MobileSummaryListTile extends StatelessWidget {
     }
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
-      color: ColorUtil.FFADADAD,
+      color: colors.inputBackground,
     );
     return Container(
       decoration: boxDecoration,

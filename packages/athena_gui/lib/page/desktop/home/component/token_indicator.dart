@@ -1,4 +1,4 @@
-import 'package:athena_gui/util/color_util.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -37,6 +37,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       if (!hasCtx && cumulative == 0) return const SizedBox.shrink();
 
       return _buildIndicator(
+        context,
         cumulative: cumulative,
         ctxTokens: ctxTokens,
         ctxWindow: ctxWindow,
@@ -47,7 +48,8 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     });
   }
 
-  Widget _buildIndicator({
+  Widget _buildIndicator(
+    BuildContext context, {
     required int cumulative,
     required int ctxTokens,
     required int ctxWindow,
@@ -55,20 +57,21 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     required bool hasCtx,
     required bool hasCache,
   }) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final style = TextStyle(
-      color: ColorUtil.FFF5F5F5,
+      color: colors.textInput,
       fontSize: 12,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
     final accentStyle = TextStyle(
-      color: ColorUtil.FF6ABEB9,
+      color: colors.teal,
       fontSize: 12,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
     // 超过 80% 用暖色提醒窗口即将耗尽。
     final over80 = hasCtx && ctxTokens / ctxWindow >= 0.8;
     final ctxPctStyle = over80
-        ? accentStyle.copyWith(color: ColorUtil.FFC2C2C2)
+        ? accentStyle.copyWith(color: colors.border)
         : accentStyle;
 
     final ctxPct = hasCtx
@@ -94,6 +97,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     final child = Row(mainAxisSize: MainAxisSize.min, children: children);
     final tooltip = Tooltip(
       richMessage: _tooltip(
+        context,
         cumulative: cumulative,
         ctxTokens: ctxTokens,
         ctxWindow: ctxWindow,
@@ -102,7 +106,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         hasCache: hasCache,
       ),
       decoration: BoxDecoration(
-        color: ColorUtil.FF282F32,
+        color: colors.surfaceMobile,
         borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.all(10),
@@ -112,7 +116,8 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     return MouseRegion(cursor: SystemMouseCursors.click, child: tooltip);
   }
 
-  TextSpan _tooltip({
+  TextSpan _tooltip(
+    BuildContext context, {
     required int cumulative,
     required int ctxTokens,
     required int ctxWindow,
@@ -120,14 +125,15 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     required bool hasCtx,
     required bool hasCache,
   }) {
-    final ts = TextStyle(color: ColorUtil.FFF5F5F5, fontSize: 12, height: 1.5);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final ts = TextStyle(color: colors.textInput, fontSize: 12, height: 1.5);
     final children = <InlineSpan>[
-      const TextSpan(text: '上下文窗口'),
+      TextSpan(text: '上下文窗口'),
       TextSpan(
         text: hasCtx
             ? '\n${_format(ctxTokens)} / ${_format(ctxWindow)}'
             : '\n暂无数据',
-        style: TextStyle(color: ColorUtil.FF6ABEB9),
+        style: TextStyle(color: colors.teal),
       ),
     ];
     if (hasCache) {
@@ -136,20 +142,20 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
           text:
               '\n缓存命中 ${_cacheRate(cachedTokens, ctxTokens)}%'
               '（${_brk(cachedTokens)} / ${_brk(ctxTokens)}）',
-          style: TextStyle(color: ColorUtil.FF6ABEB9),
+          style: TextStyle(color: colors.teal),
         ),
       );
     }
     children.addAll([
-      const TextSpan(text: '\n\n会话累计'),
+      TextSpan(text: '\n\n会话累计'),
       TextSpan(
         text: '\n${_brk(cumulative)}',
-        style: TextStyle(color: ColorUtil.FF6ABEB9),
+        style: TextStyle(color: colors.teal),
       ),
       TextSpan(
         text: '\n口径：每轮 usage.total 都计入，含 prompt 重复计费',
         style: TextStyle(
-          color: ColorUtil.FFF5F5F5.withValues(alpha: 0.45),
+          color: colors.textInput.withValues(alpha: 0.45),
           fontSize: 11,
         ),
       ),
