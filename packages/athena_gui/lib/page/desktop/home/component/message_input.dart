@@ -221,7 +221,7 @@ class _SendButton extends StatelessWidget {
       if (streaming) iconData = HugeIcons.strokeRoundedStop;
       var innerContainer = Container(
         decoration: innerBoxDecoration,
-        child: Icon(iconData),
+        child: Icon(iconData, color: colors.iconOnRaised),
       );
       var outerContainer = Container(
         decoration: boxDecoration,
