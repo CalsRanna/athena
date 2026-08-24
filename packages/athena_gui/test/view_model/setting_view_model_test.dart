@@ -102,7 +102,12 @@ class _FakeChatRepository extends ChatRepository {
   }
 
   @override
-  Future<ChatEntity?> getChatById(int id) async => null;
+  Future<ChatEntity?> getChatById(int id) async {
+    for (final chat in chats) {
+      if (chat.id == id) return chat;
+    }
+    return null;
+  }
 
   @override
   Future<int> createChat(ChatEntity chat) async => 0;

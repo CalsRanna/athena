@@ -1,0 +1,27 @@
+# Tapster Configuration File
+# This file defines how your package should be built and published
+
+# 配置生成后无需再修改：版本来自远端 Release tag（tapster publish 自动解析），
+# checksum 来自远端 asset digest。发版流程：改代码 → 打 tag → CI 构建 → tapster publish
+name: athena
+description: Cross-platform AI Agent app (Flutter) with a full agent loop, built-in tools, self-evolving skills, and a strict permission model.
+homepage: https://github.com/CalsRanna/athena
+repository: https://github.com/CalsRanna/athena.git
+license: MIT
+
+cask:
+  # brew tap CalsRanna/tap → 仓库 CalsRanna/homebrew-tap
+  tap: CalsRanna/tap
+  asset: Athena-macOS.zip
+  app_name: Athena.app
+  # checksum 由远端 Release asset digest 权威解析（tapster publish 自动填充）
+
+scoop:
+  # scoop bucket add scoop-bucket <url> → 仓库 CalsRanna/scoop-bucket
+  bucket: CalsRanna/scoop-bucket
+  asset: Athena-Windows.zip
+  arch: 64bit
+  # zip 内 exe 名与 asset 基名一致（Athena-Windows.zip → Athena-Windows.exe）
+  # checksum 由远端 Release asset digest 权威解析（tapster publish 自动填充）
+  shortcuts:
+    - Athena

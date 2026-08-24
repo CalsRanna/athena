@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 与 ci workflow 及代码库目标版本保持一致
+          flutter-version: 3.41.4
+          cache: true
+
+      - name: Pub get
+        working-directory: packages/athena_gui
+        run: flutter pub get
+
+      - name: Generate code
+        working-directory: packages/athena_gui
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build macOS app
+        working-directory: packages/athena_gui
+        run: flutter build macos
+
+      - name: Package macOS app
+        working-directory: packages/athena_gui/build/macos/Build/Products/Release
+        run: |
+          APP_BUNDLE="$(find . -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$APP_BUNDLE" ]; then
+            echo "No .app bundle found in $(pwd)"
+            ls -la
+            exit 1
+          fi
+          zip -r -y Athena-macOS.zip "$APP_BUNDLE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Athena-macOS
+          path: packages/athena_gui/build/macos/Build/Products/Release/Athena-macOS.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 与 ci workflow 及代码库目标版本保持一致
+          flutter-version: 3.41.4
+          cache: true
+
+      - name: Pub get
+        working-directory: packages/athena_gui
+        run: flutter pub get
+
+      - name: Generate code
+        working-directory: packages/athena_gui
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build Windows app
+        working-directory: packages/athena_gui
+        run: flutter build windows
+
+      - name: Package Windows app
+        working-directory: packages/athena_gui
+        shell: pwsh
+        run: |
+          # zip 内 exe 名必须与 asset 名匹配（scoop manifest 按 asset 基名解析 bin 字段）
+          Rename-Item build/windows/x64/runner/Release/athena.exe Athena-Windows.exe
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath Athena-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Athena-Windows
+          path: packages/athena_gui/Athena-Windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libsqlite3-dev \
+            libayatana-appindicator3-dev \
+            libnotify-dev \
+            ninja-build \
+            pkg-config \
+            cmake
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 与 ci workflow 及代码库目标版本保持一致
+          flutter-version: 3.41.4
+          cache: true
+
+      - name: Pub get
+        working-directory: packages/athena_gui
+        run: flutter pub get
+
+      - name: Generate code
+        working-directory: packages/athena_gui
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build Linux app
+        working-directory: packages/athena_gui
+        run: flutter build linux
+
+      - name: Package Linux app
+        working-directory: packages/athena_gui
+        run: tar -czf Athena-Linux.tar.gz -C build/linux/x64/release/bundle .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Athena-Linux
+          path: packages/athena_gui/Athena-Linux.tar.gz
+
+  release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Athena-macOS.zip
+            Athena-Windows.zip
+            Athena-Linux.tar.gz
+          generate_release_notes: true
