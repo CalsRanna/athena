@@ -6,6 +6,9 @@ class ChatEntity {
   final int modelId;
   final int sentinelId;
   final double temperature;
+  /// OpenAI 官方推理强度值（low/medium/high/none/minimal/xhigh）。
+  /// null = 不传参，使用模型默认推理强度。
+  final String? reasoningEffort;
   /// 上下文保留策略。0 = 无历史（每次独立请求），-1 = 自动管理（compact）。
   final int retention;
   final bool pinned;
@@ -24,6 +27,7 @@ class ChatEntity {
     required this.modelId,
     required this.sentinelId,
     this.temperature = 1.0,
+    this.reasoningEffort,
     this.retention = -1,
     this.pinned = false,
     this.tokenTotal = 0,
@@ -40,6 +44,7 @@ class ChatEntity {
       modelId: json.getInt('model_id'),
       sentinelId: json.getInt('sentinel_id'),
       temperature: json.getDouble('temperature', defaultValue: 1.0),
+      reasoningEffort: json.getStringOrNull('reasoning_effort'),
       retention: json.getInt('retention', defaultValue: -1),
       pinned: json.getBool('pinned'),
       tokenTotal: json.getInt('token_total', defaultValue: 0),
@@ -57,6 +62,7 @@ class ChatEntity {
       'model_id': modelId,
       'sentinel_id': sentinelId,
       'temperature': temperature,
+      if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
       'retention': retention,
       'pinned': pinned ? 1 : 0,
       'token_total': tokenTotal,
@@ -67,12 +73,16 @@ class ChatEntity {
     };
   }
 
+  /// 哨兵:区分「未传参(保留原值)」与「显式置 null」。
+  static const _unset = Object();
+
   ChatEntity copyWith({
     int? id,
     String? title,
     int? modelId,
     int? sentinelId,
     double? temperature,
+    Object? reasoningEffort = _unset,
     int? retention,
     bool? pinned,
     int? tokenTotal,
@@ -87,6 +97,9 @@ class ChatEntity {
       modelId: modelId ?? this.modelId,
       sentinelId: sentinelId ?? this.sentinelId,
       temperature: temperature ?? this.temperature,
+      reasoningEffort: identical(reasoningEffort, _unset)
+          ? this.reasoningEffort
+          : reasoningEffort as String?,
       retention: retention ?? this.retention,
       pinned: pinned ?? this.pinned,
       tokenTotal: tokenTotal ?? this.tokenTotal,

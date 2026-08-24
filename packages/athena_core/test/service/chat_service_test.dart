@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:test/test.dart';
@@ -302,5 +305,74 @@ void main() {
     }
     expect(observed.closeCount, 1,
         reason: '取消后 LlmClient.stream 的 finally 应关闭 client');
+  });
+
+  // ---------- ChatService.reasoningEffort 传递 ----------
+
+  ChatEntity chatWithEffort(String? effort) => ChatEntity(
+        title: 'test chat',
+        modelId: 1,
+        sentinelId: 1,
+        reasoningEffort: effort,
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      );
+
+  ModelEntity model() => ModelEntity(
+        name: 'test model',
+        modelId: 'gpt-test',
+        providerId: 1,
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      );
+
+  /// 捕获 ChatService.getCompletion 发出的请求体。
+  Future<Map<String, dynamic>> captureRequest(ChatEntity chat) async {
+    final captured = Completer<Map<String, dynamic>>();
+    final mock = MockClient.streaming((request, bodyStream) async {
+      final body = await utf8.decodeStream(bodyStream);
+      captured.complete(jsonDecode(body) as Map<String, dynamic>);
+      return http.StreamedResponse(
+        Stream.value(utf8.encode('${_sseChunk('hi')}data: [DONE]\n\n')),
+        200,
+        headers: {'content-type': 'text/event-stream'},
+      );
+    });
+    final llmClient = LlmClient(
+      retryConfig: fastRetry,
+      clientFactory: ({required apiKey, baseUrl}) => _ObservableClient(mock),
+    );
+    final service = ChatService(llmClient: llmClient);
+    await service
+        .getCompletion(
+          chat: chat,
+          messages: [ChatMessage.user('hi')],
+          provider: _provider(),
+          model: model(),
+        )
+        .toList();
+    return captured.future;
+  }
+
+  test('getCompletion() passes reasoningEffort to the request', () async {
+    final body = await captureRequest(chatWithEffort('high'));
+    expect(body['reasoning_effort'], 'high');
+  });
+
+  test('getCompletion() passes max even though SDK enum lacks it', () async {
+    final body = await captureRequest(chatWithEffort('max'));
+    expect(body['reasoning_effort'], 'max');
+  });
+
+  test('getCompletion() omits reasoning_effort when chat effort is null',
+      () async {
+    final body = await captureRequest(chatWithEffort(null));
+    expect(body.containsKey('reasoning_effort'), isFalse);
+  });
+
+  test('getCompletion() omits reasoning_effort for unrecognized values',
+      () async {
+    final body = await captureRequest(chatWithEffort('super-duper'));
+    expect(body.containsKey('reasoning_effort'), isFalse);
   });
 }

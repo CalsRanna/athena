@@ -218,10 +218,10 @@ packages:
     dependency: "direct main"
     description:
       name: meta
-      sha256: "1741988757a65eb6b36abe716829688cf01910bbf91c34354ff7ec1c3de2b349"
+      sha256: "23f08335362185a5ea2ad3a4e597f1375e78bce8a040df5c600c8d3552ef2394"
       url: "https://pub.dev"
     source: hosted
-    version: "1.18.0"
+    version: "1.17.0"
   mime:
     dependency: transitive
     description:
@@ -241,10 +241,9 @@ packages:
   openai_dart:
     dependency: "direct main"
     description:
-      name: openai_dart
-      sha256: "96f86ce316c92e5198550168235782ba84695808d85d8b971592c43826d65fba"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../third_party/openai_dart"
+      relative: true
+    source: path
     version: "5.0.0"
   package_config:
     dependency: transitive

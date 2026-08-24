@@ -50,6 +50,7 @@ class ChatService {
       model: model.modelId,
       messages: messages,
       temperature: chat.temperature,
+      reasoningEffort: _parseReasoningEffort(chat.reasoningEffort),
       tools: tools,
       responseFormat: responseFormat,
       streamOptions: const StreamOptions(includeUsage: true),
@@ -97,4 +98,15 @@ class ChatService {
       yield chunk.choices!.first.delta.content ?? '';
     }
   }
+}
+
+/// 解析会话存储的推理强度字符串为官方枚举；非法/未识别值返回 null
+/// （不传参，交由模型决定），避免把 unknown 发送到 API。
+///
+/// max 为 vendored openai_dart 的 [Athena fork] 补充值，见
+/// third_party/openai_dart 的 ReasoningEffort 枚举。
+ReasoningEffort? _parseReasoningEffort(String? value) {
+  if (value == null) return null;
+  final parsed = ReasoningEffort.fromJson(value);
+  return parsed == ReasoningEffort.unknown ? null : parsed;
 }
