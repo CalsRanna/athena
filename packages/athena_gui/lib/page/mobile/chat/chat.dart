@@ -197,6 +197,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       onModelChanged: (model) => updateModel(model),
       onSentinelChanged: (sentinel) => updateSentinel(sentinel),
       onTemperatureChanged: (value) => updateTemperature(value),
+      onReasoningEffortChanged: (value) => updateReasoningEffort(value),
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
@@ -261,6 +262,15 @@ class _MobileChatPageState extends State<MobileChatPage> {
       await viewModel.updateTemperature(value, chat: chat);
     } else {
       viewModel.updateCurrentTemperature(value);
+    }
+  }
+
+  Future<void> updateReasoningEffort(String? value) async {
+    final chat = viewModel.currentChat.value;
+    if (chat != null) {
+      await viewModel.updateReasoningEffort(value, chat: chat);
+    } else {
+      viewModel.updateCurrentReasoningEffort(value);
     }
   }
 

@@ -81,6 +81,9 @@ class ChatViewModel {
 
   final currentRetention = signal(defaultDraftRetention);
   final currentTemperature = signal(defaultDraftTemperature);
+
+  /// 当前对话（或草稿态）的推理强度。null = 不传参、使用模型默认。
+  final currentReasoningEffort = signal<String?>(null);
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
@@ -201,6 +204,7 @@ class ChatViewModel {
       currentSentinel.value = selected.sentinel;
       currentRetention.value = currentChat.value!.retention;
       currentTemperature.value = currentChat.value!.temperature;
+      currentReasoningEffort.value = currentChat.value!.reasoningEffort;
       cumulativeTokenTotal.value = currentChat.value!.tokenTotal;
     } else {
       await prepareNewChatDraft();
@@ -250,6 +254,7 @@ class ChatViewModel {
       currentSentinel.value = sentinel;
       currentRetention.value = chat.retention;
       currentTemperature.value = chat.temperature;
+      currentReasoningEffort.value = chat.reasoningEffort;
       pendingImages.value = [];
       messages.value = [];
       // 草稿角色是一次性设定，消费后清空，避免下次新建对话复用。
@@ -340,6 +345,7 @@ class ChatViewModel {
       currentSentinel.value = result.sentinel;
       currentRetention.value = first.retention;
       currentTemperature.value = first.temperature;
+      currentReasoningEffort.value = first.reasoningEffort;
       cumulativeTokenTotal.value = first.tokenTotal;
       _selection.lastSelectedIndex.value = 0;
     } else {
@@ -361,6 +367,7 @@ class ChatViewModel {
     currentSentinel.value = result.sentinel;
     currentRetention.value = chat.retention;
     currentTemperature.value = chat.temperature;
+    currentReasoningEffort.value = chat.reasoningEffort;
     pendingImages.value = [];
     currentTokenUsage.value = null;
     cumulativeTokenTotal.value = chat.tokenTotal;
@@ -462,6 +469,20 @@ class ChatViewModel {
     }
   }
 
+  Future<void> updateReasoningEffort(
+    String? effort, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      final updated = await _supportService.updateReasoningEffort(chat, effort);
+      _updateChatInLists(updated);
+      currentReasoningEffort.value = updated.reasoningEffort;
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
+
   Future<void> updateExpanded(MessageEntity message) async {
     try {
       // 先同步通知流式代理:思考/生成期间流式增量基于 delegate 的本地缓存,
@@ -496,6 +517,10 @@ class ChatViewModel {
 
   void updateCurrentTemperature(double temperature) {
     currentTemperature.value = temperature;
+  }
+
+  void updateCurrentReasoningEffort(String? effort) {
+    currentReasoningEffort.value = effort;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -723,5 +748,6 @@ class ChatViewModel {
     draftSentinel.value = null;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
+    currentReasoningEffort.value = null;
   }
 }

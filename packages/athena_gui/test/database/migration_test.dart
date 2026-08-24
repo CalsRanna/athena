@@ -1,5 +1,6 @@
 import 'package:athena_gui/database/migration/athena_preset_prompt.dart';
 import 'package:athena_gui/database/migration/migration_202608060001_update_athena_sentinel_prompt.dart';
+import 'package:athena_gui/database/migration/migration_202608240001_add_chat_reasoning_effort.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -535,6 +536,34 @@ void main() {
     // 第二次运行(如重启)不应覆盖
     await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
     expect(await promptOf(laconic, id), evolved);
+  });
+
+  // ---------- chats.reasoning_effort ----------
+
+  test('adds reasoning_effort column to chats', () async {
+    final laconic = await schemaWithMigrationsTable();
+
+    await Migration202608240001AddChatReasoningEffort(laconic: laconic)
+        .migrate();
+
+    final result = await laconic.select('PRAGMA table_info(chats)');
+    final columns = result.map((r) => r.toMap()['name']).toList();
+    expect(columns, contains('reasoning_effort'));
+  });
+
+  test('reasoning_effort migration runs only once via marker', () async {
+    final laconic = await schemaWithMigrationsTable();
+
+    await Migration202608240001AddChatReasoningEffort(laconic: laconic)
+        .migrate();
+    await Migration202608240001AddChatReasoningEffort(laconic: laconic)
+        .migrate();
+
+    final result = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202608240001AddChatReasoningEffort.name],
+    );
+    expect(result.first.toMap()['c'], 1);
   });
 }
 

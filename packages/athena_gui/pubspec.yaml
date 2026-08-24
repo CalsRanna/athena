@@ -45,7 +45,8 @@ dependencies:
   # mcp_dart:
   #   git:
   #     url: git@github.com:CalsRanna/mcp_dart.git
-  openai_dart: ^5.0.0
+  openai_dart:
+    path: ../../third_party/openai_dart
   package_info_plus: ^8.2.1
   path_provider: ^2.0.15
   process: ^5.0.3

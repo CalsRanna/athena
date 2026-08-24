@@ -154,6 +154,11 @@ void main() {
         viewModel.currentTemperature.value,
         ChatViewModel.defaultDraftTemperature,
       );
+      expect(
+        viewModel.currentReasoningEffort.value,
+        isNull,
+        reason: '默认不传 reasoning_effort，使用模型默认强度',
+      );
     });
   });
 }
