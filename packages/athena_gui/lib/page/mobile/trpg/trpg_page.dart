@@ -83,7 +83,11 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
           spacing: 12,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(HugeIcons.strokeRoundedMoreHorizontal, size: 16),
+            Icon(
+              HugeIcons.strokeRoundedMoreHorizontal,
+              size: 16,
+              color: colors.iconOnRaised,
+            ),
             SizedBox(
               height: 12,
               child: VerticalDivider(
@@ -96,7 +100,11 @@ class _MobileTRPGPageState extends State<MobileTRPGPage> {
             ),
             GestureDetector(
               onTap: () => Navigator.of(context).pop(),
-              child: Icon(HugeIcons.strokeRoundedCancel01, size: 16),
+              child: Icon(
+                HugeIcons.strokeRoundedCancel01,
+                size: 16,
+                color: colors.iconOnRaised,
+              ),
             ),
           ],
         ),

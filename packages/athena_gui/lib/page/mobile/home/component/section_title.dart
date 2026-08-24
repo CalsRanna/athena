@@ -33,7 +33,11 @@ class SectionTitle extends StatelessWidget {
         color: colors.surfaceRaised,
       ),
       padding: EdgeInsets.all(12),
-      child: Icon(HugeIcons.strokeRoundedArrowRight02, size: 16),
+      child: Icon(
+        HugeIcons.strokeRoundedArrowRight02,
+        size: 16,
+        color: colors.iconOnRaised,
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
