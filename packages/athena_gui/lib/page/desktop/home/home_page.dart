@@ -241,6 +241,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateTemperature(temperature, chat: chat);
   }
 
+  Future<void> updateReasoningEffort(String? effort) async {
+    var chat = chatViewModel.currentChat.value;
+    if (chat == null) {
+      chatViewModel.updateCurrentReasoningEffort(effort);
+      return;
+    }
+    await chatViewModel.updateReasoningEffort(effort, chat: chat);
+  }
+
   Widget _buildAppBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
@@ -335,6 +344,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onImageSelected: updateImage,
       onSubmitted: sendMessage,
       onTemperatureChange: updateTemperature,
+      onReasoningEffortChange: updateReasoningEffort,
       onTerminated: terminateStreaming,
     );
     return Column(

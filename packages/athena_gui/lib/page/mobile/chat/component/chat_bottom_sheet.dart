@@ -11,6 +11,7 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
 import 'package:flutter/material.dart';
 
 import 'package:hugeicons/hugeicons.dart';
@@ -26,6 +27,7 @@ class MobileChatBottomSheet extends StatefulWidget {
   final void Function(ModelEntity)? onModelChanged;
   final void Function(SentinelEntity)? onSentinelChanged;
   final void Function(double)? onTemperatureChanged;
+  final void Function(String?)? onReasoningEffortChanged;
   const MobileChatBottomSheet({
     super.key,
     this.chat,
@@ -37,6 +39,7 @@ class MobileChatBottomSheet extends StatefulWidget {
     this.onModelChanged,
     this.onSentinelChanged,
     this.onTemperatureChanged,
+    this.onReasoningEffortChanged,
   });
 
   @override
@@ -53,6 +56,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final _modelId = signal<int>(0);
   late final _temperature = signal<double>(1.0);
   late final _retention = signal<int>(-1);
+  late final _reasoningEffort = signal<String?>(null);
 
   @override
   void initState() {
@@ -63,6 +67,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _modelId.value = widget.chat!.modelId;
       _temperature.value = widget.chat!.temperature;
       _retention.value = widget.chat!.retention;
+      _reasoningEffort.value = widget.chat!.reasoningEffort;
     } else {
       _sentinelId.value = sentinelViewModel.defaultSentinel.value.id ?? 0;
       _modelId.value =
@@ -71,6 +76,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
           0;
       _temperature.value = chatViewModel.currentTemperature.value;
       _retention.value = chatViewModel.currentRetention.value;
+      _reasoningEffort.value = chatViewModel.currentReasoningEffort.value;
     }
   }
 
@@ -111,6 +117,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         title: 'Model',
         trailing: Text(modelFullName),
       );
+      var reasoningEffortSheetTile = AthenaBottomSheetTile(
+        leading: Icon(HugeIcons.strokeRoundedBrain02),
+        onTap: openReasoningEffortDialog,
+        title: 'Reasoning Effort',
+        trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
+      );
       var chatConfigurationSheetTile = AthenaBottomSheetTile(
         leading: Icon(HugeIcons.strokeRoundedSlidersHorizontal),
         onTap: openConfigurationDialog,
@@ -130,6 +142,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var children = <Widget>[
         sentinelSheetTile,
         modelSheetTile,
+        reasoningEffortSheetTile,
         chatConfigurationSheetTile,
         exportImageSheetTile,
       ];
@@ -176,6 +189,20 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       },
     );
     AthenaDialog.show(dialog);
+  }
+
+  void openReasoningEffortDialog() {
+    var dialog = MobileReasoningEffortSelectDialog(
+      current: _reasoningEffort.value,
+      onTap: _updateReasoningEffort,
+    );
+    AthenaDialog.show(dialog);
+  }
+
+  void _updateReasoningEffort(String? value) {
+    widget.onReasoningEffortChanged?.call(value);
+    _reasoningEffort.value = value;
+    AthenaDialog.dismiss();
   }
 
   void openSentinelSelectorDialog() {

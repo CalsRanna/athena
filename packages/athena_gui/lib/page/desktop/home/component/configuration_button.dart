@@ -113,6 +113,7 @@ class _DesktopConfigurationDialogState
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var retentionTile = _DesktopConfigurationDialogTile(
       help:
           'When enabled, each message is sent independently without any '
@@ -141,17 +142,16 @@ class _DesktopConfigurationDialogState
       constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),
     );
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
+    // Material 包裹:Slider/pill 等 Material 组件需要 Material 环境;
+    // 改用 Material 而非自绘 BoxDecoration,避免 dialog 默认白色
+    // Material 表面从容器边缘露出。
+    var material = Material(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(padding: EdgeInsets.all(8), child: child),
     );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(8),
-      child: child,
-    );
-    return UnconstrainedBox(child: container);
+    return UnconstrainedBox(child: material);
   }
 }
 

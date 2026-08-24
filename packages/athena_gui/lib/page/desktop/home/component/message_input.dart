@@ -1,5 +1,6 @@
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
+import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -15,6 +16,7 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(List<String>)? onImageSelected;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
+  final void Function(String?)? onReasoningEffortChange;
   final void Function()? onTerminated;
   const DesktopMessageInput({
     super.key,
@@ -23,6 +25,7 @@ class DesktopMessageInput extends StatelessWidget {
     this.onImageSelected,
     this.onSubmitted,
     this.onTemperatureChange,
+    this.onReasoningEffortChange,
     this.onTerminated,
   });
 
@@ -41,6 +44,10 @@ class DesktopMessageInput extends StatelessWidget {
           onTemperatureChange: onTemperatureChange,
         ),
         DesktopImageSelector(onSelected: onImageSelected),
+        DesktopReasoningEffortButton(
+          current: chatViewModel.currentReasoningEffort.value,
+          onSelected: onReasoningEffortChange,
+        ),
         const Spacer(),
         const DesktopTokenIndicator(),
       ];
