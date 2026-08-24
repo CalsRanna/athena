@@ -312,10 +312,9 @@ packages:
   openai_dart:
     dependency: "direct main"
     description:
-      name: openai_dart
-      sha256: "96f86ce316c92e5198550168235782ba84695808d85d8b971592c43826d65fba"
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../third_party/openai_dart"
+      relative: true
+    source: path
     version: "5.0.0"
   package_config:
     dependency: transitive

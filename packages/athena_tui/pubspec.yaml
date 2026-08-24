@@ -11,7 +11,8 @@ dependencies:
     path: ../athena_core
   meta: ^1.16.0
   nocterm: ^0.8.0
-  openai_dart: ^5.0.0
+  openai_dart:
+    path: ../../third_party/openai_dart
   signals: ^6.2.0
   yaml: ^3.1.2
 
