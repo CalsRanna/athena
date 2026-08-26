@@ -21,7 +21,9 @@ scoop:
   bucket: CalsRanna/scoop-bucket
   asset: Athena-Windows.zip
   arch: 64bit
-  # zip 内 exe 名与 asset 基名一致（Athena-Windows.zip → Athena-Windows.exe）
+  # zip 内 exe 名沿用 Flutter 原生产物 athena.exe（与 asset 基名不一致，
+  # 故必须显式声明；名字等于包名，scoop 无需重命名安装）
+  bin: athena.exe
   # checksum 由远端 Release asset digest 权威解析（tapster publish 自动填充）
   shortcuts:
     - Athena
