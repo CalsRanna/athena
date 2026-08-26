@@ -48,3 +48,6 @@ app.*.map.json
 *.key
 .claude/
 CLAUDE.md
+
+# tapster publish 的中转暂存产物（生成后即推送到 bucket/tap 仓库，无需入库）
+dist/

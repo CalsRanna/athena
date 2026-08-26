@@ -77,8 +77,8 @@ jobs:
         working-directory: packages/athena_gui
         shell: pwsh
         run: |
-          # zip 内 exe 名必须与 asset 名匹配（scoop manifest 按 asset 基名解析 bin 字段）
-          Rename-Item build/windows/x64/runner/Release/athena.exe Athena-Windows.exe
+          # 保留 Flutter 原生 exe 名（athena.exe，与包名一致）；
+          # zip 内 exe 名与 asset 基名不同，由 .tapster.yaml 的 bin 字段显式声明
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath Athena-Windows.zip
 
       - uses: actions/upload-artifact@v4
