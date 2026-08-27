@@ -56,10 +56,11 @@ class AthenaPrimaryButton extends StatelessWidget {
       shape: StadiumBorder(),
       shadows: showShadow ? [boxShadow] : null,
     );
+    var defaultTextStyle = TextStyle(color: colors.textOnRaised);
     var container = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      child: child,
+      child: DefaultTextStyle(style: defaultTextStyle, child: child),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
