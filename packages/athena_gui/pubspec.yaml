@@ -57,6 +57,10 @@ dependencies:
   uuid: ^3.0.7
   visibility_detector: ^0.4.0+2
   window_manager: ^0.5.1
+  # 1.2.0 需要 win32 ^6，与 package_info_plus 8.x 的 win32 ^5.5.3 冲突，
+  # pub 会回退到 1.1.x；两者仅差 win32 API 迁移，native 实现完全相同。
+  # 待 package_info_plus 升到 10.x 后此约束会自动解析到 1.2.0。
+  windows_single_instance: ^1.1.0
 
 dependency_overrides:
   flutter_math_fork: ^0.7.4
