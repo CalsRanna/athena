@@ -8,6 +8,7 @@ import 'package:athena_gui/router/router.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
+import 'package:athena_gui/util/single_instance_util.dart';
 import 'package:athena_gui/util/system_tray_util.dart';
 import 'package:athena_gui/util/window_util.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -18,8 +19,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 必须先于数据库初始化：重复启动的进程在此直接退出，不会碰 SQLite
+  await SingleInstanceUtil.instance.ensureInitialized(args);
   await Database.instance.ensureInitialized();
   final supportDir = await getApplicationSupportDirectory();
   DI.ensureInitialized(dataDirectory: supportDir.path);
