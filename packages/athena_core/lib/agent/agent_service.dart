@@ -449,15 +449,22 @@ class AgentService {
         return (block: false, reason: '');
       }
 
-      final ruleMatched = permissionService?.check(
+      final verdict = permissionService?.check(
             runId,
             ctx.name,
             ctx.args,
             risk: _toolRegistry.get(ctx.name)?.risk,
-          ) ==
-          true;
+          ) ??
+          PermissionVerdict.prompt;
 
-      if (!ruleMatched) {
+      if (verdict == PermissionVerdict.deny) {
+        return (
+          block: true,
+          reason: 'Tool call denied by a permission rule.',
+        );
+      }
+
+      if (verdict == PermissionVerdict.prompt) {
         if (onPermission == null) {
           return (
             block: true,
@@ -650,8 +657,9 @@ class AgentService {
   ///
   /// 预检目的：并行组内不得出现需要审批弹窗的调用（多个模态 dialog
   /// 同时弹出会互相覆盖），因此：
-  /// - [permissionService] 非空时，`check` 返回 `true`（readOnly / 会话
-  ///   缓存 / 持久规则命中）才留在并行组，需弹窗（返回 `null`）的降级串行；
+  /// - [permissionService] 非空时，`check` 返回 [PermissionVerdict.allow]
+  ///   （readOnly / 会话缓存 / 持久规则命中）才留在并行组，
+  ///   需弹窗或拒绝（[PermissionVerdict.prompt] / [deny]）的降级串行;
   /// - [permissionService] 为空但 [onPermission] 非空（无预检能力）时，
   ///   候选并行调用全部降级串行（保守）；
   /// - 两者皆空（无权限系统）时不做降级。
@@ -681,12 +689,12 @@ class AgentService {
       // 权限预检分级：需弹窗的调用降级串行
       if (permissionService != null) {
         if (permissionService.check(
-                runId,
-                tc.function.name,
-                args,
-                risk: tool.risk,
-              ) !=
-            true) {
+              runId,
+              tc.function.name,
+              args,
+              risk: tool.risk,
+            ) !=
+            PermissionVerdict.allow) {
           continue;
         }
       } else if (onPermission != null) {

@@ -1,11 +1,29 @@
 import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/util/logger_util.dart';
 
-/// 权限编排(三层判定):
-/// 1. readOnly 短路:只读工具/只读命令默认放行,永不弹窗
-/// 2. 会话级缓存:当前 run 内已批准的动作直接放行
-/// 3. 持久规则:命中则自动放行;未命中 → 需要弹窗(由调用方处理)
+/// 权限检查结论。
+enum PermissionVerdict {
+  /// 放行(只读 / 会话级命中 / 规则命中)
+  allow,
+
+  /// 需要弹人工审批
+  prompt,
+
+  /// 被 deny 规则直接拒绝(不弹窗,调用被 block)
+  deny,
+}
+
+/// 权限编排(判定顺序,与 Claude Code 的 deny→ask→allow 优先级对齐):
+/// 1. deny 规则扫描:整条或复合命令任一子命令命中 → 直接拒绝,
+///    优先于只读短路、会话缓存与 allow 规则
+/// 2. readOnly 短路:只读工具/只读命令默认放行,永不弹窗
+/// 3. 会话级缓存:当前 run 内已批准的动作直接放行
+/// 4. 持久 allow 规则:命中则放行;未命中 → 需要弹窗(由调用方处理)
+///
+/// 复合命令(`a && b`):整条规则(exact)先行,否则每个子命令独立
+/// 判定(只读短路或 allow 规则),全部放行才放行,任一需要审批则弹窗。
 ///
 /// 会话级缓存按 [runId] 隔离:多个 Agent 并发运行时,
 /// A 任务批准的命令不会被 B 任务自动放行。
@@ -17,43 +35,68 @@ class PermissionService {
 
   /// 检查工具调用是否需要弹窗。
   ///
-  /// - `true`  → 放行(只读 / 会话级命中 / 规则命中),无需弹窗
-  /// - `null`  → 需要弹出审批弹窗
+  /// - [allow] → 放行,无需弹窗
+  /// - [prompt] → 需要弹出审批弹窗
+  /// - [deny] → 被 deny 规则拒绝,调用方应直接 block
   ///
   /// [runId] 为本次 Agent run 的标识(会话级缓存按 run 隔离);
-  /// [risk] 为工具的危险等级(由调用方从 ToolRegistry 查询);
-  /// 只读工具或只读 shell 命令直接放行。
-  bool? check(
+  /// [risk] 为工具的危险等级(由调用方从 ToolRegistry 查询)。
+  PermissionVerdict check(
     int runId,
     String toolName,
     Map<String, dynamic> args, {
     ToolRisk? risk,
   }) {
-    // ① readOnly 短路:只读工具永不弹窗
+    // ① deny 优先:整条或任一子命令命中 deny 规则 → 直接拒绝
+    if (_ruleDenied(toolName, args)) return PermissionVerdict.deny;
+
+    // ② readOnly 短路:只读工具永不弹窗
     // 例外:web_fetch 的 POST / 自定义 headers 可驱动内网接口,需弹窗
     if (risk == ToolRisk.readOnly && !_readOnlyOverride(toolName, args)) {
-      return true;
+      return PermissionVerdict.allow;
     }
 
     // 只读 shell 命令(ls、git status...)也不弹窗
     if (_isShellTool(toolName)) {
       final command = args['command'] as String?;
       if (command != null && CommandAnalyzer.isReadOnlyCommand(command)) {
-        return true;
+        return PermissionVerdict.allow;
       }
     }
 
-    // ② 会话级缓存:当前 run 内已批准的动作直接放行
+    // ③ 会话级缓存:当前 run 内已批准的动作直接放行
     final sessionKey = _sessionKey(toolName, args);
     if (sessionKey != null &&
         _sessionApprovals[runId]?[sessionKey] == true) {
-      return true;
+      return PermissionVerdict.allow;
     }
 
-    // ③ 持久规则:命中则放行
-    if (_ruleMatched(toolName, args)) return true;
+    // ④ 复合命令:整条规则(exact)先行;否则每个子命令独立判定,
+    //    全部放行才放行
+    if (_isShellTool(toolName)) {
+      final command = args['command'] as String?;
+      if (command != null) {
+        final subs = CommandAnalyzer.splitSubcommands(command);
+        if (subs.length > 1) {
+          if (_ruleHits(toolName, command, effect: RuleEffect.allow)) {
+            return PermissionVerdict.allow;
+          }
+          for (final sub in subs) {
+            if (_singleCommandAllowed(toolName, sub)) continue;
+            return PermissionVerdict.prompt;
+          }
+          return PermissionVerdict.allow;
+        }
+      }
+    }
 
-    return null;
+    // ⑤ 单命令(或非 shell 工具):持久 allow 规则命中则放行
+    final keyArg = _primaryArg(toolName, args);
+    if (keyArg != null &&
+        _ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
+      return PermissionVerdict.allow;
+    }
+    return PermissionVerdict.prompt;
   }
 
   /// 记录一次会话级放行(弹窗批准后调用)。
@@ -94,15 +137,39 @@ class PermissionService {
     };
   }
 
-  bool _ruleMatched(String toolName, Map<String, dynamic> args) {
+  /// deny 扫描:整条或复合命令的任一子命令命中 deny 规则即拒绝。
+  bool _ruleDenied(String toolName, Map<String, dynamic> args) {
     final keyArg = _primaryArg(toolName, args);
-    // shell 工具解析动作,用于动作级规则匹配
-    final action = _isShellTool(toolName)
-        ? CommandAnalyzer.extractAction(keyArg ?? '')
-        : null;
+    if (keyArg == null) return false;
+    if (_ruleHits(toolName, keyArg, effect: RuleEffect.deny)) return true;
+    if (_isShellTool(toolName)) {
+      for (final sub in CommandAnalyzer.splitSubcommands(keyArg)) {
+        if (_ruleHits(toolName, sub, effect: RuleEffect.deny)) return true;
+      }
+    }
+    return false;
+  }
 
+  /// 单条(子)命令的放行判定:只读短路或命中 allow 规则。
+  bool _singleCommandAllowed(String toolName, String command) {
+    if (CommandAnalyzer.isReadOnlyCommand(command)) return true;
+    return _ruleHits(toolName, command, effect: RuleEffect.allow);
+  }
+
+  /// 是否存在命中的持久规则(按 effect 过滤)。
+  ///
+  /// 单条损坏规则(畸形 glob 等)只跳过、记日志,不能炸掉
+  /// 所有工具调用(历史上一条坏规则曾让所有 bash 报错)。
+  bool _ruleHits(String toolName, String keyArg, {required RuleEffect effect}) {
+    final action =
+        _isShellTool(toolName) ? CommandAnalyzer.extractAction(keyArg) : null;
     for (final rule in _store.rules) {
-      if (rule.matches(toolName, keyArg, action: action)) return true;
+      if (rule.effect != effect) continue;
+      try {
+        if (rule.matches(toolName, keyArg, action: action)) return true;
+      } catch (e) {
+        LoggerUtil.w('Permission rule skipped (${rule.toJson()}): $e');
+      }
     }
     return false;
   }
