@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
-import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
@@ -637,30 +636,38 @@ class AgentRunCoordinator {
       await _permissionService.approveForSession(runId, toolName, args);
 
       if (decision.persistExact) {
-        // "Always Allow" 对 shell 命令存动作级规则(如 git push → action git,
-        // pattern push*),这样记住后同类调用真正放行;非 shell 存精确路径/URL。
+        // "Always Allow" 落库:shell 命令按 动作+参数(前缀/glob/exact)
+        // 建模(PermissionRule.fromCommand),文件工具存路径规则,
+        // web_fetch 存 origin 规则;keyArg 缺失时存空 pattern = 整工具放行。
         final keyArg = _permissionService.primaryArg(toolName, args);
         final isShell = toolName == 'bash' || toolName == 'powershell';
         if (isShell && keyArg != null) {
-          // 直接解析完整命令为 动作+参数 规则，不要追加 " *"：glob 要求
-          // '*' 前必须有一个空格，导致被记忆的命令本身永远不匹配
-          // （如记住 git status 后，放行的是 git status -s 而非 git status）。
-          // 无通配符时按前缀匹配，裸命令与其带参变体都能命中。
-          final parsed = CommandAnalyzer.parseRulePattern(keyArg);
-          await _permissionService.persistRule(PermissionRule(
-            tool: toolName,
-            action: parsed.action,
-            pattern: parsed.pattern,
-          ));
+          // 复合命令按子命令分别建模(最多 5 条),逐条落库
+          for (final rule in PermissionRule.fromCommand(toolName, keyArg)) {
+            await _permissionService.persistRule(rule);
+          }
         } else {
-          await _permissionService.persistRule(PermissionRule(
-            tool: toolName,
-            pattern: keyArg ?? '',
-          ));
+          final PermissionRule rule;
+          if (kFileToolNames.contains(toolName) && keyArg != null) {
+            rule = PermissionRule(
+              tool: toolName,
+              kind: RuleKind.path,
+              pattern: keyArg,
+            );
+          } else if (toolName == 'web_fetch' && keyArg != null) {
+            rule = PermissionRule(
+              tool: toolName,
+              kind: RuleKind.origin,
+              pattern: keyArg,
+            );
+          } else {
+            rule = PermissionRule(tool: toolName, kind: RuleKind.exact);
+          }
+          await _permissionService.persistRule(rule);
         }
-      }
     }
 
+    }
     return decision.approved;
   }
 }

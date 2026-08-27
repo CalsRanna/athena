@@ -6,38 +6,124 @@ class CommandAnalyzer {
   ///
   /// - `'git status'` → `'git'`
   /// - `'ls -la'`    → `'ls'`
+  /// - `'grep -n "a|b" f'` → `'grep'`(引号内分隔符不算复合)
   /// - 空命令、含管道/分隔符的复合命令 → `null`(无法可靠解析,降级)
   static String? extractAction(String command) {
     final trimmed = command.trim();
     if (trimmed.isEmpty) return null;
-    // 复合命令(管道、&&、||、;、重定向)无法用单个动作表示
-    if (trimmed.contains('|') ||
-        trimmed.contains(';') ||
-        trimmed.contains('&&') ||
-        trimmed.contains('||')) {
-      return null;
-    }
+    // 引号/括号感知:复合命令(引号外的 && || ; | 等)无法用单个动作表示
+    final subs = splitSubcommands(trimmed);
+    if (subs.length > 1) return null;
     final first = trimmed.split(RegExp(r'\s+')).first;
     return first.isEmpty ? null : first;
   }
 
-  /// 解析用户输入的规则模式,拆分为动作 + 参数模式。
+  /// 把复合命令拆成子命令(引号/括号感知,纯字符串处理不执行 shell)。
   ///
-  /// - `'git *'`  → `(action: 'git', pattern: '*')`
-  /// - `'git'`    → `(action: 'git', pattern: '')`(允许所有 git 命令)
-  /// - `'/a/b/'`  → `(action: null, pattern: '/a/b/')`(非 shell 或无法解析,按旧规则)
-  static ({String? action, String pattern}) parseRulePattern(String input) {
-    final trimmed = input.trim();
-    if (trimmed.isEmpty) return (action: null, pattern: '');
-    final action = extractAction(trimmed);
-    if (action == null) return (action: null, pattern: trimmed);
-    // 路径(/ 开头)或 URL(含 ://)不被当作动作,整串作为 pattern 保存
-    if (action.startsWith('/') || action.contains('://')) {
-      return (action: null, pattern: trimmed);
+  /// 分隔符:`&&` `||` `;` `|` `|&` `&` 与换行。引号内(`'` `"`,支持
+  /// `\"` 转义)与 `$()` / `()` 括号深度内的分隔符不切:
+  /// `grep -n "a | b"`、`echo $(git push || true)` 保持为一个子命令。
+  /// 括号不平衡/无法可靠解析时退化为整条一个子命令(宁窄勿宽)。
+  static List<String> splitSubcommands(String command) {
+    final parts = <String>[];
+    final buf = StringBuffer();
+    var singleQuote = false;
+    var doubleQuote = false;
+    var parenDepth = 0;
+    var i = 0;
+
+    void flush() {
+      final seg = buf.toString().trim();
+      if (seg.isNotEmpty) parts.add(seg);
+      buf.clear();
     }
-    final rest =
-        trimmed.substring(trimmed.indexOf(action) + action.length).trim();
-    return (action: action, pattern: rest);
+
+    while (i < command.length) {
+      final c = command[i];
+      if (singleQuote) {
+        buf.write(c);
+        if (c == "'") singleQuote = false;
+        i++;
+        continue;
+      }
+      if (doubleQuote) {
+        buf.write(c);
+        if (c == r'\' && i + 1 < command.length) {
+          buf.write(command[i + 1]);
+          i += 2;
+          continue;
+        }
+        if (c == '"') doubleQuote = false;
+        i++;
+        continue;
+      }
+      if (c == "'") {
+        singleQuote = true;
+        buf.write(c);
+        i++;
+        continue;
+      }
+      if (c == '"') {
+        doubleQuote = true;
+        buf.write(c);
+        i++;
+        continue;
+      }
+      // $() 与 () 内部的命令替换/子 shell:深度内的分隔符不切
+      if (c == r'$' && i + 1 < command.length && command[i + 1] == '(') {
+        parenDepth++;
+        buf.write(c);
+        buf.write('(');
+        i += 2;
+        continue;
+      }
+      if (c == '(') {
+        parenDepth++;
+        buf.write(c);
+        i++;
+        continue;
+      }
+      if (c == ')' && parenDepth > 0) {
+        parenDepth--;
+        buf.write(c);
+        i++;
+        continue;
+      }
+      if (parenDepth > 0) {
+        buf.write(c);
+        i++;
+        continue;
+      }
+      final isAmpOrPipe = c == '&' || c == '|';
+      if (isAmpOrPipe) {
+        final two =
+            command.substring(i, i + 2 > command.length ? command.length : i + 2);
+        // && || |& 双字符分隔符
+        if (two == '&&' || two == '||' || two == '|&') {
+          flush();
+          i += 2;
+          continue;
+        }
+        if (c == '&' || c == '|') {
+          flush();
+          i++;
+          continue;
+        }
+      }
+      if (c == ';' || c == '\n') {
+        flush();
+        i++;
+        continue;
+      }
+      buf.write(c);
+      i++;
+    }
+    if (parenDepth > 0) {
+      // 括号不平衡:无法可靠解析,整条作为单个子命令(保守)
+      return [command.trim()]..removeWhere((s) => s.isEmpty);
+    }
+    flush();
+    return parts;
   }
 
   /// 判断命令是否为只读(无副作用),命中则权限层默认放行。
@@ -83,6 +169,9 @@ class CommandAnalyzer {
       case 'echo':
       case 'which':
       case 'whoami':
+      case 'cd':
+        // cd 本身无副作用;复合命令(cd x && cmd)按子命令判定时,
+        // cd 子命令不应造成弹窗(敏感路径已在上面的检查拦截)
         return true;
       case 'git':
         // 裸 git 打开交互界面,不算只读;只读子命令才放行

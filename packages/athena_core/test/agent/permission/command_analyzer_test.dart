@@ -39,6 +39,9 @@ void main() {
         'npm list',
         'npm list --depth=0',
         'find . -name "*.dart"',
+        'cd',
+        'cd /Users/x/proj',
+        'cd ..',
       ]) {
         expect(
           CommandAnalyzer.isReadOnlyCommand(cmd),
@@ -105,6 +108,7 @@ void main() {
         'cat .env.local',
         'grep secret ~/.athena/permissions.json',
         'ls ~/.aws/',
+        'cd ~/.ssh/',
       ]) {
         expect(
           CommandAnalyzer.isReadOnlyCommand(cmd),
@@ -124,36 +128,43 @@ void main() {
     });
   });
 
-  group('CommandAnalyzer.parseRulePattern', () {
-    test('splits action and pattern', () {
-      expect(CommandAnalyzer.parseRulePattern('git *'),
-          (action: 'git', pattern: '*'));
-      expect(CommandAnalyzer.parseRulePattern('git'),
-          (action: 'git', pattern: ''));
-      expect(CommandAnalyzer.parseRulePattern('npm install *'),
-          (action: 'npm', pattern: 'install *'));
+  group('CommandAnalyzer.splitSubcommands', () {
+    test('splits on shell operators', () {
+      expect(CommandAnalyzer.splitSubcommands('git status && npm test'),
+          ['git status', 'npm test']);
+      expect(CommandAnalyzer.splitSubcommands('ls | grep foo'),
+          ['ls', 'grep foo']);
+      expect(CommandAnalyzer.splitSubcommands('a; b; c'), ['a', 'b', 'c']);
+      expect(CommandAnalyzer.splitSubcommands('a || b'), ['a', 'b']);
+      expect(CommandAnalyzer.splitSubcommands('a |& b'), ['a', 'b']);
+      expect(CommandAnalyzer.splitSubcommands('a & b'), ['a', 'b']);
+      expect(CommandAnalyzer.splitSubcommands('a\nb'), ['a', 'b']);
     });
 
-    test('non-shell input falls back to plain pattern', () {
-      expect(CommandAnalyzer.parseRulePattern('/a/b/'),
-          (action: null, pattern: '/a/b/'));
-      expect(CommandAnalyzer.parseRulePattern('https://a.com'),
-          (action: null, pattern: 'https://a.com'));
-      expect(CommandAnalyzer.parseRulePattern(''),
-          (action: null, pattern: ''));
+    test('keeps quoted operators intact', () {
+      expect(CommandAnalyzer.splitSubcommands(r'grep -n "a | b" file'),
+          [r'grep -n "a | b" file']);
+      expect(CommandAnalyzer.splitSubcommands(r"grep 'x && y' f"),
+          [r"grep 'x && y' f"]);
+      expect(CommandAnalyzer.splitSubcommands(r'echo "a \" ; b"'),
+          [r'echo "a \" ; b"']);
     });
 
-    test('composite command falls back to plain pattern', () {
-      expect(CommandAnalyzer.parseRulePattern('ls | head'),
-          (action: null, pattern: 'ls | head'));
+    test('keeps command substitution and subshell intact', () {
+      expect(CommandAnalyzer.splitSubcommands(r'echo $(git push || true)'),
+          [r'echo $(git push || true)']);
+      expect(CommandAnalyzer.splitSubcommands('(a; b) && c'),
+          ['(a; b)', 'c']);
     });
 
-    test('exact-call pattern parses to action-level rule', () {
-      // 弹窗 "Exactly this call" 对 shell 存 'git push *' → 动作级规则
-      expect(CommandAnalyzer.parseRulePattern('git push *'),
-          (action: 'git', pattern: 'push *'));
-      expect(CommandAnalyzer.parseRulePattern('npm install *'),
-          (action: 'npm', pattern: 'install *'));
+    test('unbalanced paren falls back to single part', () {
+      expect(CommandAnalyzer.splitSubcommands(r'echo $(foo'),
+          [r'echo $(foo']);
+    });
+
+    test('empty input yields no parts', () {
+      expect(CommandAnalyzer.splitSubcommands(''), isEmpty);
+      expect(CommandAnalyzer.splitSubcommands('   '), isEmpty);
     });
   });
 }
