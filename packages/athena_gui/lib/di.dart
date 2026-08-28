@@ -2,21 +2,10 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/skill/skill_trust_store.dart';
-import 'package:athena_core/agent/tool/bash_shell_tool.dart';
-import 'package:athena_core/agent/tool/experience_learn_tool.dart';
-import 'package:athena_core/agent/tool/file_read_tool.dart';
-import 'package:athena_core/agent/tool/file_update_tool.dart';
-import 'package:athena_core/agent/tool/file_write_tool.dart';
-import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
-import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
-import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
-import 'package:athena_core/agent/tool/web_fetch_tool.dart';
-import 'package:athena_core/agent/tool/web_search_tool.dart';
+import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/repository/sqlite_chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
@@ -49,7 +38,6 @@ import 'package:athena_core/service/trpg_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_gui/storage/shared_prefs_key_value_store.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -200,53 +188,21 @@ class DI {
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
       registry.loadAll();
-      registry.registerBuiltin(
-        const Skill(
-          name: 'self-evolve',
-          description:
-              'Guidance on self-evolution: creating skills, recording '
-              'experiences, and optimizing sentinels to improve over time',
-          body: EvolutionPrompt.fullBody,
-          sourcePath: '(builtin)',
-        ),
-      );
+      registry.registerBuiltin(kSelfEvolveSkill);
       return registry;
     });
 
-    getIt.registerLazySingleton(() {
-      final skillRegistry = getIt<SkillRegistry>();
-      final experienceRepository = getIt<ExperienceRepository>();
-      final isWindows = PlatformUtil.isWindows;
-      final isMobile = PlatformUtil.isMobile;
-      final toolRegistry = ToolRegistry();
-
-      if (isMobile) {
-        toolRegistry.registerAll([
-          WebFetchTool(),
-          WebSearchTool(store: getIt<KeyValueStore>()),
-          SkillTool(skillRegistry),
-        ]);
-      } else {
-        toolRegistry.registerAll([
-          FileReadTool(),
-          FileWriteTool(),
-          FileUpdateTool(),
-          isWindows ? PowerShellShellTool() : BashShellTool(),
-          WebFetchTool(),
-          WebSearchTool(store: getIt<KeyValueStore>()),
-          SkillTool(skillRegistry),
-          SkillEvolveTool(skillRegistry: skillRegistry),
-          ExperienceLearnTool(repository: experienceRepository),
-          ExperienceRecallTool(repository: experienceRepository),
-          SentinelEvolveTool(
-            repository: getIt<SentinelRepository>(),
-            onChanged: () => getIt<SentinelViewModel>().getSentinels(),
-          ),
-        ]);
-      }
-
-      return toolRegistry;
-    });
+    // 工具清单是引擎的事实，统一在 athena_core 的 buildToolRegistry 里；
+    // 这里只提供 GUI 特有的差异项。
+    getIt.registerLazySingleton(
+      () => buildToolRegistry(
+        skillRegistry: getIt<SkillRegistry>(),
+        experienceRepository: getIt<ExperienceRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
+        store: getIt<KeyValueStore>(),
+        onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
+      ),
+    );
 
     getIt.registerLazySingleton(
       () => AgentService(
