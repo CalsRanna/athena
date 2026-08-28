@@ -61,7 +61,7 @@ class MobileSummaryListTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedAiBrowser,
-      color: colors.textPrimary,
+      color: colors.iconOnRaised,
       size: 32,
     );
     Widget child = icon;

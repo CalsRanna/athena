@@ -49,7 +49,7 @@ Widget _buildTitleRow(BuildContext context) {
       Icon(
         HugeIcons.strokeRoundedAlert02,
         size: 20,
-        color: const Color(0xFFE8B86D),
+        color: colors.statusWarning,
       ),
       SizedBox(width: 8),
       Text(

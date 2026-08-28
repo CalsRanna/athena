@@ -9,7 +9,11 @@ class NewChatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    const textStyle = TextStyle(fontSize: 20, fontWeight: FontWeight.w500);
+    final textStyle = TextStyle(
+      color: colors.textOnRaised,
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
     var boxShadow = BoxShadow(
       blurRadius: 16,
       color: colors.ctaGlow.withValues(alpha: 0.5),

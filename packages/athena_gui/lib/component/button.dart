@@ -38,7 +38,7 @@ class _CopyButtonState extends State<CopyButton> {
 
   Widget _buildCopiedRow() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final color = colors.textSecondary;
+    final color = colors.textSecondaryOnRaised;
     var hugeIcon = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedTick01,

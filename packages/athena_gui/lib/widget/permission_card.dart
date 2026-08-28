@@ -61,7 +61,10 @@ class PermissionApprovalCard extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Container(
       alignment: Alignment.center,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textWeak),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colors.avatarBackground,
+      ),
       height: 36,
       width: 36,
       child: Icon(
