@@ -55,6 +55,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color iconOnRaised; // 白底上的图标（两种模式同值）
   final Color cardPrimaryBackground; // 白卡上的主按钮底（两种模式同值）
   final Color cardPrimaryText; // 白卡主按钮文字（两种模式同值）
+  final Color markdownLink; // Markdown 链接文字
+  final Color markdownStrikethrough; // Markdown 删除线文字与装饰线
+  final Color markdownMath; // Markdown 数学公式
 
   const AthenaColors({
     required this.surface,
@@ -87,6 +90,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.iconOnRaised,
     required this.cardPrimaryBackground,
     required this.cardPrimaryText,
+    required this.markdownLink,
+    required this.markdownStrikethrough,
+    required this.markdownMath,
   });
 
   /// 深色（默认，保持历史色值逐字节不变）。
@@ -121,6 +127,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     iconOnRaised: Color(0xFF000000),
     cardPrimaryBackground: Color(0xFF282F32),
     cardPrimaryText: Color(0xFFFFFFFF),
+    markdownLink: Color(0xFF6ABEB9),
+    markdownStrikethrough: Color(0xFF9E9E9E),
+    markdownMath: Color(0xFF161616),
   );
 
   /// 浅色（从现有 token 按角色推导）。
@@ -156,6 +165,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     iconOnRaised: Color(0xFF000000),
     cardPrimaryBackground: Color(0xFF282F32),
     cardPrimaryText: Color(0xFFFFFFFF),
+    markdownLink: Color(0xFF4FA8A3),
+    markdownStrikethrough: Color(0xFF757575),
+    markdownMath: Color(0xFF333333),
   );
 
   @override
@@ -190,6 +202,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? iconOnRaised,
     Color? cardPrimaryBackground,
     Color? cardPrimaryText,
+    Color? markdownLink,
+    Color? markdownStrikethrough,
+    Color? markdownMath,
   }) {
     return AthenaColors(
       surface: surface ?? this.surface,
@@ -225,6 +240,10 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       cardPrimaryBackground:
           cardPrimaryBackground ?? this.cardPrimaryBackground,
       cardPrimaryText: cardPrimaryText ?? this.cardPrimaryText,
+      markdownLink: markdownLink ?? this.markdownLink,
+      markdownStrikethrough:
+          markdownStrikethrough ?? this.markdownStrikethrough,
+      markdownMath: markdownMath ?? this.markdownMath,
     );
   }
 
@@ -278,6 +297,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         t,
       )!,
       cardPrimaryText: Color.lerp(cardPrimaryText, other.cardPrimaryText, t)!,
+      markdownLink: Color.lerp(markdownLink, other.markdownLink, t)!,
+      markdownStrikethrough: Color.lerp(
+        markdownStrikethrough,
+        other.markdownStrikethrough,
+        t,
+      )!,
+      markdownMath: Color.lerp(markdownMath, other.markdownMath, t)!,
     );
   }
 }
