@@ -128,8 +128,102 @@ class ChatViewModel {
     }
   }
 
-  void _updateMessageInList(MessageEntity updated) {
-    messages.replaceWhere((m) => m.id == updated.id, updated);
+  // ─── 流式增量合并 ───────────────────────────────────────────────
+  //
+  // LLM 每个 token 产生一个 RunMessageUpdated，直写 messages 信号会让
+  // 每个 delta 触发「整表复制 + 整个 ListView 重建 + markdown 全量重解析」，
+  // 消息数 M、输出 N token 时是 O(N·M) 复制加 O(N²) 解析。
+  //
+  // 这里把窗口内的增量合并成一次信号写入（athena_tui 的 ChatController
+  // 已用同一方案，见其 _flushSoon 注释）：追加与更新共用同一个 pending
+  // 列表，保证「先追加占位、再更新内容」的顺序不被打乱——顺序一旦反转，
+  // replaceWhere 找不到目标就会静默丢弃增量。
+
+  /// 待冲刷的消息列表；null 表示无挂起增量。
+  List<MessageEntity>? _pendingMessages;
+
+  /// [_pendingMessages] 所属对话；切换对话后残留的缓冲不得写入新列表。
+  int? _pendingChatId;
+
+  Timer? _flushTimer;
+
+  /// 合并窗口。窗口内到达的所有增量只触发一次信号写入。
+  ///
+  /// 100ms 的取舍与 token 速率无关，取决于一次 flush 的成本：全树 build +
+  /// 流式长文本 layout + markdown 全量重解析，20KB 正文约几毫秒。10fps
+  /// 的文本刷新在视觉上已是连续的，再快只是徒增 CPU。
+  ///
+  /// 速率越高这里越关键：600 tok/s 时不合并就是每秒 600 次全量重解析，
+  /// 直接把 UI 线程打满；合并后恒定 10 次/秒，与 token 速率解耦。
+  final Duration _flushInterval;
+
+  /// 取出可变的 pending 列表（首次从当前信号值复制一份，之后原地变异，
+  /// 省掉每个事件一次的整表复制）。
+  List<MessageEntity> _pendingFor(int chatId) {
+    if (_pendingMessages == null || _pendingChatId != chatId) {
+      _pendingMessages = List<MessageEntity>.of(messages.value);
+      _pendingChatId = chatId;
+    }
+    return _pendingMessages!;
+  }
+
+  /// 流式追加/替换（占位消息、用户消息、内容增量）。
+  ///
+  /// 流式增量几乎总是命中最后一条消息，先按尾部快速判定，避免每个事件
+  /// 都对整个列表做一次 indexWhere——高 token 速率下这是每秒上千次
+  /// O(消息数) 扫描。
+  void _bufferAppendMessage(MessageEntity message, int chatId) {
+    final pending = _pendingFor(chatId);
+    if (pending.isNotEmpty && pending.last.id == message.id) {
+      pending[pending.length - 1] = message;
+      _scheduleFlush();
+      return;
+    }
+    final index = pending.indexWhere((m) => m.id == message.id);
+    if (index >= 0) {
+      pending[index] = message;
+    } else {
+      pending.add(message);
+    }
+    _scheduleFlush();
+  }
+
+  /// 流式内容增量。目标不在列表时追加——占位消息可能尚未落库。
+  void _bufferUpdateMessage(MessageEntity message, int chatId) {
+    _bufferAppendMessage(message, chatId);
+  }
+
+  void _scheduleFlush() {
+    _flushTimer ??= Timer(_flushInterval, () {
+      _flushTimer = null;
+      _flushMessages();
+    });
+  }
+
+  /// 立即把挂起增量写入信号。收尾、以及任何需要读到最新列表的用户
+  /// 操作（删除、展开）之前必须调用，否则会读到过期的 messages.value。
+  void _flushMessages() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    final pending = _pendingMessages;
+    if (pending == null) return;
+    _pendingMessages = null;
+    _pendingChatId = null;
+    messages.value = pending;
+  }
+
+  /// 丢弃挂起增量。整表被替换（切换对话、新建草稿）时使用——此时
+  /// 冲刷旧缓冲只会把上一个对话的消息写进新列表。
+  void _discardPendingMessages() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _pendingMessages = null;
+    _pendingChatId = null;
+  }
+
+  /// 测试与热重载收尾：释放合并定时器。
+  void dispose() {
+    _discardPendingMessages();
   }
 
   ChatViewModel({
@@ -143,6 +237,7 @@ class ChatViewModel {
     required SettingViewModel settingViewModel,
     required ModelViewModel modelViewModel,
     required SentinelViewModel sentinelViewModel,
+    Duration streamFlushInterval = const Duration(milliseconds: 100),
   }) : _manageService = manageService,
        _stream = streamDelegate,
        _rename = renameDelegate,
@@ -152,7 +247,8 @@ class ChatViewModel {
        _modelResolver = modelResolver,
        _settingViewModel = settingViewModel,
        _modelViewModel = modelViewModel,
-       _sentinelViewModel = sentinelViewModel {
+       _sentinelViewModel = sentinelViewModel,
+       _flushInterval = streamFlushInterval {
     // 审批请求 → 会话内卡片；决策完成（含 run 取消自动拒绝）后自动移除。
     // VM 与应用同生命周期，订阅无需取消。
     streamDelegate.approvalRequests.listen((request) {
@@ -192,6 +288,7 @@ class ChatViewModel {
 
     if (currentChat.value != null) {
       final selected = await _manageService.selectChat(currentChat.value!);
+      _discardPendingMessages();
       messages.value = selected.messages;
       currentModel.value = selected.model;
       currentProvider.value = selected.provider;
@@ -250,6 +347,7 @@ class ChatViewModel {
       currentTemperature.value = chat.temperature;
       currentReasoningEffort.value = chat.reasoningEffort;
       pendingImages.value = [];
+      _discardPendingMessages();
       messages.value = [];
       // 草稿角色是一次性设定，消费后清空，避免下次新建对话复用。
       draftSentinel.value = null;
@@ -333,6 +431,7 @@ class ChatViewModel {
       final first = chats.value.first;
       final result = await _manageService.selectChat(first);
       currentChat.value = first;
+      _discardPendingMessages();
       messages.value = result.messages;
       currentModel.value = result.model;
       currentProvider.value = result.provider;
@@ -344,6 +443,7 @@ class ChatViewModel {
       _selection.lastSelectedIndex.value = 0;
     } else {
       await prepareNewChatDraft();
+      _discardPendingMessages();
       messages.value = [];
       currentTokenUsage.value = null;
       cumulativeTokenTotal.value = 0;
@@ -355,6 +455,8 @@ class ChatViewModel {
     currentChat.value = chat;
 
     final result = await _manageService.selectChat(chat);
+    // 切走后旧对话的挂起增量不得写进新列表
+    _discardPendingMessages();
     messages.value = result.messages;
     currentModel.value = result.model;
     currentProvider.value = result.provider;
@@ -485,6 +587,8 @@ class ChatViewModel {
         _stream.updateExpanded(message.id!, !message.expanded);
       }
       final updated = await _supportService.updateExpanded(message);
+      // 先落地挂起增量：否则这次改写会被下一次 flush 的旧快照覆盖
+      _flushMessages();
       messages.replaceWhere((m) => m.id == message.id, updated);
     } catch (e) {
       error.value = e.toString();
@@ -545,15 +649,15 @@ class ChatViewModel {
         switch (event) {
           case RunMessageStored(:final message):
             if (belongsToCurrent) {
-              messages.value = [...messages.value, message];
+              _bufferAppendMessage(message, chat.id!);
             }
           case RunAssistantAppended(:final message):
             if (belongsToCurrent) {
-              _appendOrReplaceMessage(message);
+              _bufferAppendMessage(message, chat.id!);
             }
           case RunMessageUpdated(:final message):
             if (belongsToCurrent) {
-              _updateMessageInList(message);
+              _bufferUpdateMessage(message, chat.id!);
             }
           case RunIterationChanged(:final iteration):
             currentIteration.value = iteration;
@@ -577,6 +681,8 @@ class ChatViewModel {
     } catch (e) {
       error.value = e.toString();
     } finally {
+      // 收尾前把窗口内剩余增量落到信号上，否则最后一段文本会丢失
+      _flushMessages();
       streamingChatIds.value = streamingChatIds.value
           .where((id) => id != chat.id)
           .toList();
@@ -610,9 +716,12 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
+      // 定位 index 前先落地挂起增量，否则读到的是过期列表
+      _flushMessages();
       final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         await _manageService.deleteMessagesFromIndex(messages.value, index);
+        _discardPendingMessages();
         messages.value = await _messageRepo.getMessagesByChatId(message.chatId);
       }
     } catch (e) {
@@ -623,7 +732,9 @@ class ChatViewModel {
   }
 
   Future<void> refreshMessages(int chatId) async {
-    messages.value = await _messageRepo.getMessagesByChatId(chatId);
+    final loaded = await _messageRepo.getMessagesByChatId(chatId);
+    _discardPendingMessages();
+    messages.value = loaded;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -709,6 +820,7 @@ class ChatViewModel {
 
   Future<void> prepareNewChatDraft() async {
     currentChat.value = null;
+    _discardPendingMessages();
     messages.value = [];
     pendingImages.value = [];
     currentTokenUsage.value = null;
