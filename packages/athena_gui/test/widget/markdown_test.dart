@@ -79,6 +79,15 @@ void main() {
     expect(find.text('plain text'), findsNothing);
   });
 
+  testWidgets('does not render the parser-added trailing code block line', (
+    tester,
+  ) async {
+    await pumpMarkdown(tester, '```\nhello\n```');
+
+    expect(find.text('hello'), findsOneWidget);
+    expect(find.text('hello\n'), findsNothing);
+  });
+
   testWidgets('does not add a language label to inline code', (tester) async {
     await pumpMarkdown(tester, 'Use `inline code` here.');
 

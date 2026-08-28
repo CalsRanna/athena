@@ -96,7 +96,11 @@ class _CodeBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final multipleLines = element.textContent.split('\n').length > 1;
+    final rawText = element.textContent;
+    final displayText = rawText.endsWith('\n')
+        ? rawText.substring(0, rawText.length - 1)
+        : rawText;
+    final multipleLines = rawText.split('\n').length > 1;
     var borderRadius = BorderRadius.circular(4);
     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
     if (multipleLines) {
@@ -116,12 +120,12 @@ class _CodeBuilder extends MarkdownElementBuilder {
     );
     var contentText = Padding(
       padding: padding,
-      child: Text(element.textContent, style: textStyle),
+      child: Text(displayText, style: textStyle),
     );
     final isCodeBlock =
         multipleLines || element.attributes.containsKey('class');
     var children = [
-      if (isCodeBlock) _buildAttribute(context, element),
+      if (isCodeBlock) _buildAttribute(context, element, displayText),
       contentText,
     ];
     var column = Column(
@@ -143,7 +147,11 @@ class _CodeBuilder extends MarkdownElementBuilder {
     return RichText(text: TextSpan(children: [widgetSpan]));
   }
 
-  Widget _buildAttribute(BuildContext context, md.Element element) {
+  Widget _buildAttribute(
+    BuildContext context,
+    md.Element element,
+    String displayText,
+  ) {
     var borderRadius = BorderRadius.only(
       topLeft: Radius.circular(8),
       topRight: Radius.circular(8),
@@ -170,7 +178,7 @@ class _CodeBuilder extends MarkdownElementBuilder {
     var children = [
       Expanded(child: text),
       const SizedBox(width: 12),
-      CopyButton(onTap: () => handleTap(element.textContent)),
+      CopyButton(onTap: () => handleTap(displayText)),
     ];
     return Container(
       decoration: boxDecoration,
