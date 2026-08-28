@@ -202,6 +202,126 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
   }
 }
 
+bool _hasClass(md.Element element, String className) {
+  final classes = element.attributes['class']?.split(RegExp(r'\s+'));
+  return classes?.contains(className) ?? false;
+}
+
+class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
+  final void Function(String?)? onTap;
+
+  _FootnoteBackrefBuilder({this.onTap});
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    if (!_hasClass(element, 'footnote-backref')) return null;
+
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var button = Tooltip(
+      message: 'Back to reference',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap?.call(element.attributes['href']),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            margin: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: colors.cardHeader,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              Icons.arrow_upward_rounded,
+              size: 12,
+              color: colors.textSecondaryOnRaised,
+            ),
+          ),
+        ),
+      ),
+    );
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: button,
+    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+}
+
+class _FootnotesMarkdownBody extends MarkdownBody {
+  final bool hasFootnotes;
+  final AthenaColors colors;
+
+  const _FootnotesMarkdownBody({
+    required super.data,
+    required super.builders,
+    required super.extensionSet,
+    required super.onTapLink,
+    required super.styleSheet,
+    required this.hasFootnotes,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context, List<Widget>? children) {
+    final content = children ?? const <Widget>[];
+    if (!hasFootnotes || content.isEmpty) {
+      return super.build(context, content);
+    }
+
+    final footnotes = Container(
+      key: const ValueKey('markdown-footnotes'),
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.codeBackground,
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            color: colors.cardHeader,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.format_list_numbered_rounded,
+                  size: 14,
+                  color: colors.textSecondaryOnRaised,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Footnotes',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colors.textOnRaised,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            child: content.last,
+          ),
+        ],
+      ),
+    );
+    return super.build(context, [
+      ...content.take(content.length - 1),
+      footnotes,
+    ]);
+  }
+}
+
 class _FlutterMarkdown extends StatelessWidget {
   final MessageEntity message;
 
@@ -215,6 +335,7 @@ class _FlutterMarkdown extends StatelessWidget {
     Map<String, MarkdownElementBuilder> builders = {};
     builders['pre'] = _CodeBlockBuilder();
     builders['code'] = _InlineCodeBuilder();
+    builders['a'] = _FootnoteBackrefBuilder(onTap: openLink);
     builders['latex'] = LatexElementBuilder(
       textStyle: base.p?.copyWith(color: colors.markdownMath),
     );
@@ -230,6 +351,7 @@ class _FlutterMarkdown extends StatelessWidget {
     inlineSyntaxes.add(_ReferenceSyntax());
     inlineSyntaxes.add(_CallToolRequestSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
+    final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
@@ -268,13 +390,31 @@ class _FlutterMarkdown extends StatelessWidget {
       ),
       codeblockPadding: const EdgeInsets.all(8),
     );
-    return MarkdownBody(
+    return _FootnotesMarkdownBody(
       builders: builders,
+      colors: colors,
       data: message.content,
       extensionSet: extensions,
+      hasFootnotes: hasFootnotes,
       onTapLink: (text, href, title) => openLink(href),
       styleSheet: markdownStyleSheet,
     );
+  }
+
+  bool _hasFootnoteSection(String data, md.ExtensionSet extensions) {
+    final hasDefinition = RegExp(
+      r'^[ ]{0,3}\[\^[^\] \r\n\t]+\]:',
+      multiLine: true,
+    ).hasMatch(data);
+    if (!hasDefinition) return false;
+
+    final document = md.Document(extensionSet: extensions, encodeHtml: false);
+    final nodes = document.parseLines(const LineSplitter().convert(data));
+    if (nodes.isEmpty) return false;
+    final last = nodes.last;
+    return last is md.Element &&
+        last.tag == 'section' &&
+        _hasClass(last, 'footnotes');
   }
 
   Future<void> openLink(String? url) async {
