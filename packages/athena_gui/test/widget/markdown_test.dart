@@ -26,7 +26,9 @@ Color _renderedTextColor(WidgetTester tester, String text) {
 }
 
 Color? _renderedMathColor(WidgetTester tester) {
-  final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+  final markdown = tester.widget<MarkdownBody>(
+    find.byWidgetPredicate((widget) => widget is MarkdownBody),
+  );
   final builder = markdown.builders['latex'] as LatexElementBuilder;
   return builder.textStyle?.color;
 }
@@ -101,6 +103,39 @@ void main() {
 
     expect(find.text('plain text'), findsNothing);
     expect(find.text('inline code'), findsOneWidget);
+  });
+
+  testWidgets('styles generated footnotes as a dedicated region', (
+    tester,
+  ) async {
+    const markdown = '''
+First reference[^one] and second reference[^two].
+
+[^one]: First footnote.
+[^two]: Second footnote.
+''';
+
+    await pumpMarkdown(tester, markdown);
+
+    final regionFinder = find.byKey(const ValueKey('markdown-footnotes'));
+    final region = tester.widget<Container>(regionFinder);
+    final decoration = region.decoration! as BoxDecoration;
+
+    expect(regionFinder, findsOneWidget);
+    expect(find.text('Footnotes'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_upward_rounded), findsNWidgets(2));
+    expect(decoration.color, AthenaColors.dark.codeBackground);
+    expect(decoration.border, isNotNull);
+    expect(decoration.borderRadius, BorderRadius.circular(8));
+  });
+
+  testWidgets('does not style an ordinary ordered list as footnotes', (
+    tester,
+  ) async {
+    await pumpMarkdown(tester, '1. First item\n2. Second item');
+
+    expect(find.byKey(const ValueKey('markdown-footnotes')), findsNothing);
+    expect(find.text('Footnotes'), findsNothing);
   });
 
   testWidgets('uses theme colors for links, strikethrough, and math', (
