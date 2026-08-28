@@ -81,8 +81,42 @@ class _CallToolRequestSyntax extends md.InlineSyntax {
   }
 }
 
-class _CodeBuilder extends MarkdownElementBuilder {
-  _CodeBuilder();
+class _InlineCodeBuilder extends MarkdownElementBuilder {
+  _InlineCodeBuilder();
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var container = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        color: colors.codeBackground,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Text(
+        element.textContent,
+        style: GoogleFonts.firaCode(
+          fontSize: 12,
+          height: 1.5,
+          color: colors.textOnRaised,
+        ),
+      ),
+    );
+    var widgetSpan = WidgetSpan(
+      alignment: PlaceholderAlignment.middle,
+      child: container,
+    );
+    return RichText(text: TextSpan(children: [widgetSpan]));
+  }
+}
+
+class _CodeBlockBuilder extends MarkdownElementBuilder {
+  _CodeBlockBuilder();
 
   void handleTap(String text) {
     final data = ClipboardData(text: text);
@@ -96,21 +130,21 @@ class _CodeBuilder extends MarkdownElementBuilder {
     TextStyle? preferredStyle,
     TextStyle? parentStyle,
   ) {
-    final rawText = element.textContent;
+    final elementChildren = element.children;
+    if (elementChildren == null ||
+        elementChildren.length != 1 ||
+        elementChildren.single is! md.Element ||
+        (elementChildren.single as md.Element).tag != 'code') {
+      return null;
+    }
+    final codeElement = elementChildren.single as md.Element;
+    final rawText = codeElement.textContent;
     final displayText = rawText.endsWith('\n')
         ? rawText.substring(0, rawText.length - 1)
         : rawText;
-    final multipleLines = rawText.split('\n').length > 1;
-    var borderRadius = BorderRadius.circular(4);
-    var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-    if (multipleLines) {
-      borderRadius = BorderRadius.circular(8);
-      padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    }
-    final width = multipleLines ? double.infinity : null;
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
+      borderRadius: BorderRadius.circular(8),
       color: colors.codeBackground,
     );
     var textStyle = GoogleFonts.firaCode(
@@ -119,13 +153,11 @@ class _CodeBuilder extends MarkdownElementBuilder {
       color: colors.textOnRaised,
     );
     var contentText = Padding(
-      padding: padding,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
     );
-    final isCodeBlock =
-        multipleLines || element.attributes.containsKey('class');
     var children = [
-      if (isCodeBlock) _buildAttribute(context, element, displayText),
+      _buildHeader(context, codeElement, displayText),
       contentText,
     ];
     var column = Column(
@@ -136,18 +168,13 @@ class _CodeBuilder extends MarkdownElementBuilder {
       decoration: boxDecoration,
       // 裁剪内层背景（语言标签行等），避免从圆角处漏出背景色
       clipBehavior: Clip.antiAlias,
-      width: width,
+      width: double.infinity,
       child: column,
     );
-    if (multipleLines) return container;
-    var widgetSpan = WidgetSpan(
-      alignment: PlaceholderAlignment.middle,
-      child: container,
-    );
-    return RichText(text: TextSpan(children: [widgetSpan]));
+    return container;
   }
 
-  Widget _buildAttribute(
+  Widget _buildHeader(
     BuildContext context,
     md.Element element,
     String displayText,
@@ -199,7 +226,8 @@ class _FlutterMarkdown extends StatelessWidget {
     final colors = theme.extension<AthenaColors>()!;
     final base = MarkdownStyleSheet.fromTheme(theme);
     Map<String, MarkdownElementBuilder> builders = {};
-    builders['code'] = _CodeBuilder();
+    builders['pre'] = _CodeBlockBuilder();
+    builders['code'] = _InlineCodeBuilder();
     builders['latex'] = LatexElementBuilder(
       textStyle: base.p?.copyWith(color: colors.markdownMath),
     );
