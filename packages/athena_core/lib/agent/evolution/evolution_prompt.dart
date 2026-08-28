@@ -1,3 +1,5 @@
+import 'package:athena_core/agent/skill/skill_loader.dart';
+
 /// Agent 自我进化系统的引导提示词。
 ///
 /// 设计原则：避免 prompt 膨胀。
@@ -58,3 +60,16 @@ You can permanently improve your capabilities through three mechanisms:
 - **Scope discipline**: Keep private experiences private; only share truly universal insights
 ''';
 }
+
+/// 内置 `self-evolve` Skill：代码注册，不来自磁盘。
+///
+/// 每个前端的装配层都要注册它（GUI 的 `di.dart`、TUI 的 `tui_di.dart`），
+/// 定义放这里而不是各写一份，避免描述文案在两处漂移。
+const Skill kSelfEvolveSkill = Skill(
+  name: 'self-evolve',
+  description:
+      'Guidance on self-evolution: creating skills, recording '
+      'experiences, and optimizing sentinels to improve over time',
+  body: EvolutionPrompt.fullBody,
+  sourcePath: '(builtin)',
+);

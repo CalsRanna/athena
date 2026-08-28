@@ -6,21 +6,10 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/skill/skill_trust_store.dart';
-import 'package:athena_core/agent/tool/bash_shell_tool.dart';
-import 'package:athena_core/agent/tool/experience_learn_tool.dart';
-import 'package:athena_core/agent/tool/file_read_tool.dart';
-import 'package:athena_core/agent/tool/file_update_tool.dart';
-import 'package:athena_core/agent/tool/file_write_tool.dart';
-import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
-import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
-import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
-import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
-import 'package:athena_core/agent/tool/web_fetch_tool.dart';
-import 'package:athena_core/agent/tool/web_search_tool.dart';
+import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -38,7 +27,6 @@ import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
-import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_tui/seed/sentinel_seed.dart';
 import 'package:athena_tui/storage/id_allocator.dart';
@@ -405,35 +393,17 @@ class TuiDi {
     permissionService = PermissionService(store: PermissionStore());
     skillRegistry = SkillRegistry(trustStore: SkillTrustStore());
     skillRegistry.loadAll();
-    skillRegistry.registerBuiltin(
-      const Skill(
-        name: 'self-evolve',
-        description:
-            'Guidance on self-evolution: creating skills, recording '
-            'experiences, and optimizing sentinels to improve over time',
-        body: EvolutionPrompt.fullBody,
-        sourcePath: '(builtin)',
-      ),
-    );
+    skillRegistry.registerBuiltin(kSelfEvolveSkill);
 
-    // ── 工具(桌面运行时 11 个,与 GUI 一致) ──
-    final isWindows = PlatformUtil.isWindows;
-    toolRegistry = ToolRegistry()
-      ..registerAll([
-        FileReadTool(),
-        FileWriteTool(),
-        FileUpdateTool(),
-        isWindows
-            ? PowerShellShellTool(defaultWorkdir: _workspace)
-            : BashShellTool(defaultWorkdir: _workspace),
-        WebFetchTool(),
-        WebSearchTool(store: keyValueStore),
-        SkillTool(skillRegistry),
-        SkillEvolveTool(skillRegistry: skillRegistry),
-        ExperienceLearnTool(repository: experienceRepo),
-        ExperienceRecallTool(repository: experienceRepo),
-        SentinelEvolveTool(repository: sentinelRepo),
-      ]);
+    // ── 工具 ──
+    // 清单在 athena_core 的 buildToolRegistry;TUI 只额外指定工作目录。
+    toolRegistry = buildToolRegistry(
+      skillRegistry: skillRegistry,
+      experienceRepository: experienceRepo,
+      sentinelRepository: sentinelRepo,
+      store: keyValueStore,
+      defaultWorkdir: _workspace,
+    );
 
     // ── Services ──
     final llmClient = LlmClient();
