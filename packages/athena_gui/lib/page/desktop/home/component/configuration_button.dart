@@ -302,6 +302,9 @@ class _DesktopConfigurationDialogTileState
       message: widget.help,
       padding: EdgeInsets.all(8),
       preferBelow: false,
+      textStyle: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: colors.textPrimary),
       child: icon,
     );
   }

@@ -46,7 +46,7 @@ void main() {
       brightness: Brightness.dark,
     );
     final darkColor = await copiedColor(tester);
-    expect(darkColor, AthenaColors.dark.textSecondary);
+    expect(darkColor, AthenaColors.dark.textSecondaryOnRaised);
     await finishCopiedState(tester);
 
     await pumpButton(
@@ -55,7 +55,7 @@ void main() {
       brightness: Brightness.light,
     );
     final lightColor = await copiedColor(tester);
-    expect(lightColor, AthenaColors.light.textSecondary);
+    expect(lightColor, AthenaColors.light.textSecondaryOnRaised);
     expect(darkColor, isNot(lightColor));
     await finishCopiedState(tester);
   });

@@ -101,8 +101,8 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    const nameTextStyle = TextStyle(
-      color: Colors.black,
+    final nameTextStyle = TextStyle(
+      color: colors.textOnRaised,
       fontSize: 14,
       fontWeight: FontWeight.w500,
     );

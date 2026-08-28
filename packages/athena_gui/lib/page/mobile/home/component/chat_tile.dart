@@ -27,7 +27,10 @@ class ChatTile extends StatelessWidget {
     final body = Container(
       decoration: shapeDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Text(chat.title.isNotEmpty ? chat.title.trim() : 'New Chat'),
+      child: Text(
+        chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
+        style: TextStyle(color: colors.textOnRaised),
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

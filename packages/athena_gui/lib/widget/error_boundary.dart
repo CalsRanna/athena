@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 
@@ -29,22 +30,23 @@ class _AthenaErrorBoundaryState extends State<AthenaErrorBoundary> {
   }
 
   Widget _buildErrorView() {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            Icon(Icons.error_outline, size: 48, color: colors.statusError),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Something went wrong',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(color: colors.textPrimary, fontSize: 18),
             ),
             const SizedBox(height: 8),
             Text(
               widget.message ?? 'An unexpected error occurred',
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(color: colors.textSecondary, fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

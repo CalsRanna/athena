@@ -27,6 +27,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color textSecondary; // 次级辅助文字
   final Color textWeak; // 弱文字 / 时间戳
   final Color textOnRaised; // 白卡 / 白按钮上的深色文字（两种模式同值）
+  final Color textSecondaryOnRaised; // 白卡上的次级辅助文字
   final Color textSelected; // 选中态文字（Tag 选中时反转）
 
   // ---- 边框 / 分隔 ----
@@ -43,6 +44,10 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color sage; // 开关开启底色
   final Color slate; // 开关关闭底色
   final Color ctaGlow; // CTA 光晕阴影基色（使用点带 alpha）
+
+  // ---- 状态 ----
+  final Color statusWarning; // 警告图标 / 边框
+  final Color statusError; // 错误图标 / 边框
 
   // ---- 组件 ----
   final Color tagBorderStart; // Tag 渐变边框起点（使用点带 alpha）
@@ -70,6 +75,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.textSecondary,
     required this.textWeak,
     required this.textOnRaised,
+    required this.textSecondaryOnRaised,
     required this.textSelected,
     required this.border,
     required this.borderStrong,
@@ -80,6 +86,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.sage,
     required this.slate,
     required this.ctaGlow,
+    required this.statusWarning,
+    required this.statusError,
     required this.tagBorderStart,
     required this.tagSelectedBackground,
     required this.cardHeader,
@@ -107,6 +115,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textSecondary: Color(0xFF9E9E9E),
     textWeak: Color(0xFFCACACA),
     textOnRaised: Color(0xFF161616),
+    textSecondaryOnRaised: Color(0xFF616161),
     textSelected: Color(0xFF161616),
     border: Color(0xFFC2C2C2),
     borderStrong: Color(0xFF757575),
@@ -117,6 +126,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     sage: Color(0xFFA7BA88),
     slate: Color(0xFFC2C9D1),
     ctaGlow: Color(0xFFCED2C7),
+    statusWarning: Color(0xFFE8B86D),
+    statusError: Color(0xFFE38B8B),
     tagBorderStart: Color(0xFFEAEAEA),
     tagSelectedBackground: Color(0xFFE0E0E0),
     cardHeader: Color(0xFFE0E0E0),
@@ -144,6 +155,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textSecondary: Color(0xFF6E6E6E),
     textWeak: Color(0xFF757575),
     textOnRaised: Color(0xFF161616),
+    textSecondaryOnRaised: Color(0xFF6E6E6E),
     textSelected: Color(0xFF161616),
     border: Color(0xFFB0B0B0),
     borderStrong: Color(0xFFC2C2C2),
@@ -154,6 +166,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     sage: Color(0xFF7E9A5F),
     slate: Color(0xFFB0B8C0),
     ctaGlow: Color(0xFFADADAD),
+    statusWarning: Color(0xFF9A650F),
+    statusError: Color(0xFFC05555),
     tagBorderStart: Color(0xFF1C1C1C),
     tagSelectedBackground: Color(0xFFE0E0E0),
     // header（cardHeader）比正文（codeBackground）略深，保持层次区分
@@ -182,6 +196,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? textSecondary,
     Color? textWeak,
     Color? textOnRaised,
+    Color? textSecondaryOnRaised,
     Color? textSelected,
     Color? border,
     Color? borderStrong,
@@ -192,6 +207,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? sage,
     Color? slate,
     Color? ctaGlow,
+    Color? statusWarning,
+    Color? statusError,
     Color? tagBorderStart,
     Color? tagSelectedBackground,
     Color? cardHeader,
@@ -218,6 +235,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       textWeak: textWeak ?? this.textWeak,
       textOnRaised: textOnRaised ?? this.textOnRaised,
+      textSecondaryOnRaised:
+          textSecondaryOnRaised ?? this.textSecondaryOnRaised,
       textSelected: textSelected ?? this.textSelected,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
@@ -228,6 +247,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       sage: sage ?? this.sage,
       slate: slate ?? this.slate,
       ctaGlow: ctaGlow ?? this.ctaGlow,
+      statusWarning: statusWarning ?? this.statusWarning,
+      statusError: statusError ?? this.statusError,
       tagBorderStart: tagBorderStart ?? this.tagBorderStart,
       tagSelectedBackground:
           tagSelectedBackground ?? this.tagSelectedBackground,
@@ -265,6 +286,11 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textWeak: Color.lerp(textWeak, other.textWeak, t)!,
       textOnRaised: Color.lerp(textOnRaised, other.textOnRaised, t)!,
+      textSecondaryOnRaised: Color.lerp(
+        textSecondaryOnRaised,
+        other.textSecondaryOnRaised,
+        t,
+      )!,
       textSelected: Color.lerp(textSelected, other.textSelected, t)!,
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
@@ -275,6 +301,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       sage: Color.lerp(sage, other.sage, t)!,
       slate: Color.lerp(slate, other.slate, t)!,
       ctaGlow: Color.lerp(ctaGlow, other.ctaGlow, t)!,
+      statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
+      statusError: Color.lerp(statusError, other.statusError, t)!,
       tagBorderStart: Color.lerp(tagBorderStart, other.tagBorderStart, t)!,
       tagSelectedBackground: Color.lerp(
         tagSelectedBackground,

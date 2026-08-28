@@ -174,12 +174,12 @@ class _AthenaMessageVisualStyle {
         accentColor: colors.sage,
         icon: HugeIcons.strokeRoundedTick02,
       ),
-      AthenaMessageType.warning => const _AthenaMessageVisualStyle(
-        accentColor: Color(0xFFE8B86D),
+      AthenaMessageType.warning => _AthenaMessageVisualStyle(
+        accentColor: colors.statusWarning,
         icon: HugeIcons.strokeRoundedAlert02,
       ),
-      AthenaMessageType.error => const _AthenaMessageVisualStyle(
-        accentColor: Color(0xFFE38B8B),
+      AthenaMessageType.error => _AthenaMessageVisualStyle(
+        accentColor: colors.statusError,
         icon: HugeIcons.strokeRoundedCancelCircle,
       ),
     };

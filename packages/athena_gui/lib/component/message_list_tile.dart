@@ -418,7 +418,7 @@ class _ToolMessageListTile extends StatelessWidget {
     );
     var boxDecoration = BoxDecoration(
       shape: BoxShape.circle,
-      color: colors.textWeak,
+      color: colors.avatarBackground,
     );
     return Container(
       alignment: Alignment.center,
