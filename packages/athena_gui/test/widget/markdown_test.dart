@@ -88,10 +88,19 @@ void main() {
     expect(find.text('hello\n'), findsNothing);
   });
 
+  testWidgets('recognizes an empty unlabeled fenced code block', (
+    tester,
+  ) async {
+    await pumpMarkdown(tester, '```\n```');
+
+    expect(find.text('plain text'), findsOneWidget);
+  });
+
   testWidgets('does not add a language label to inline code', (tester) async {
     await pumpMarkdown(tester, 'Use `inline code` here.');
 
     expect(find.text('plain text'), findsNothing);
+    expect(find.text('inline code'), findsOneWidget);
   });
 
   testWidgets('uses theme colors for links, strikethrough, and math', (
