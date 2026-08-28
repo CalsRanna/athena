@@ -118,9 +118,10 @@ class _CodeBuilder extends MarkdownElementBuilder {
       padding: padding,
       child: Text(element.textContent, style: textStyle),
     );
+    final isCodeBlock =
+        multipleLines || element.attributes.containsKey('class');
     var children = [
-      if (element.attributes['class'] != null)
-        _buildAttribute(context, element),
+      if (isCodeBlock) _buildAttribute(context, element),
       contentText,
     ];
     var column = Column(
@@ -157,9 +158,11 @@ class _CodeBuilder extends MarkdownElementBuilder {
       fontSize: 12,
       color: colors.textOnRaised,
     );
-    var attribute = element.attributes['class'] ?? '';
+    final language =
+        element.attributes['class']?.replaceFirst('language-', '') ??
+        'plain text';
     var text = Text(
-      attribute.replaceAll('language-', ''),
+      language,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: textStyle,
@@ -184,9 +187,14 @@ class _FlutterMarkdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<AthenaColors>()!;
+    final base = MarkdownStyleSheet.fromTheme(theme);
     Map<String, MarkdownElementBuilder> builders = {};
     builders['code'] = _CodeBuilder();
-    builders['latex'] = LatexElementBuilder();
+    builders['latex'] = LatexElementBuilder(
+      textStyle: base.p?.copyWith(color: colors.markdownMath),
+    );
     builders['sup'] = _SupBuilder();
     builders['reference'] = _ReferenceBuilder(onTap: openReference);
     builders['call_tool_request'] = _CallToolRequestBuilder();
@@ -199,13 +207,19 @@ class _FlutterMarkdown extends StatelessWidget {
     inlineSyntaxes.add(_ReferenceSyntax());
     inlineSyntaxes.add(_CallToolRequestSyntax());
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     var borderSide = BorderSide(color: colors.border, width: 1);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
-    var base = MarkdownStyleSheet.fromTheme(Theme.of(context));
     var markdownStyleSheet = base.copyWith(
-      a: TextStyle(color: colors.teal, fontWeight: FontWeight.w500),
+      a: base.a?.copyWith(
+        color: colors.markdownLink,
+        fontWeight: FontWeight.w500,
+      ),
+      del: base.del?.copyWith(
+        color: colors.markdownStrikethrough,
+        decoration: TextDecoration.lineThrough,
+        decorationColor: colors.markdownStrikethrough,
+      ),
       // 消息卡为浅底（恒白），文字用恒深色保持可读
       p: base.p?.copyWith(color: colors.textOnRaised, height: 1.6),
       code: base.code?.copyWith(color: colors.textOnRaised),
@@ -254,7 +268,7 @@ class _FlutterMarkdown extends StatelessWidget {
       var references = jsonDecode(message.reference);
       var reference = references[index - 1];
       var url = reference['url'];
-      openLink(url);
+      openLink(url as String?);
     } catch (error) {
       AthenaDialog.error(error.toString());
     }
