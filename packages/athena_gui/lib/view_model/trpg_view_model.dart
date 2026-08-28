@@ -201,7 +201,7 @@ class TRPGViewModel {
       isStreaming.value = true;
 
       // 一次 Agent run 输出全部（回复 + 建议），response_format 声明 JSON。
-      var fullContent = '';
+      final fullContent = StringBuffer();
       var agentStream = _agentService.run(
         // TRPG 单任务：使用独立递增 runId，与聊天 run 互不冲突
         runId: _nextRunId++,
@@ -213,13 +213,13 @@ class TRPGViewModel {
       );
       await for (var event in agentStream) {
         if (event is AgentTextEvent) {
-          fullContent += event.delta;
+          fullContent.write(event.delta);
         }
         // TRPG 主对话是玩家行动 → DM 回复，不需要工具调用展示。
       }
 
       // 解析 { reply, suggestions } JSON
-      var (reply, suggestions) = _parseDMOutput(fullContent);
+      var (reply, suggestions) = _parseDMOutput(fullContent.toString());
 
       var dmMessage = TRPGMessageEntity(
         gameId: game.id!,

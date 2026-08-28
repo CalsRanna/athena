@@ -45,7 +45,7 @@ void main() {
     );
   });
 
-  ToolCall _toolCall([String args = '{"message": "hello"}']) => ToolCall(
+  ToolCall buildToolCall([String args = '{"message": "hello"}']) => ToolCall(
     id: 'c1',
     type: 'function',
     function: FunctionCall(name: 'echo', arguments: args),
@@ -53,7 +53,7 @@ void main() {
 
   test('beforeToolCall block: true 拒绝执行', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
       beforeToolCall: (ctx) async => (block: true, reason: 'blocked'),
     );
@@ -63,7 +63,7 @@ void main() {
 
   test('beforeToolCall block: false 允许执行', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
       beforeToolCall: (ctx) async => (block: false, reason: ''),
     );
@@ -73,7 +73,7 @@ void main() {
 
   test('不提供 beforeToolCall 时正常执行', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
     );
 
@@ -82,7 +82,7 @@ void main() {
 
   test('afterToolCall 可覆写结果', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
       afterToolCall: (ctx) async => (
         content: 'overridden',
@@ -95,7 +95,7 @@ void main() {
 
   test('不提供 afterToolCall 时使用原始结果', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
     );
 
@@ -104,7 +104,7 @@ void main() {
 
   test('beforeToolCall + afterToolCall 串联', () async {
     final result = await agentService.executeToolCallInternal(
-      toolCall: _toolCall(),
+      toolCall: buildToolCall(),
       cancelToken: null,
       beforeToolCall: (ctx) async {
         expect(ctx.args['message'], 'hello');

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/permission/permission_rule.dart';
+
 /// Builds the content shown in the permission approval dialog for a tool the
 /// Agent wants to run. The tool name itself is rendered by the dialog header,
 /// so this function only produces the request payload.
@@ -13,7 +15,7 @@ import 'dart:convert';
 /// arguments keep a 120-character truncation to keep the dialog readable.
 String formatToolArgsForApproval(String toolName, String arguments) {
   // Shell：命令是唯一的审批内容，完整展示不截断
-  if (toolName == 'bash' || toolName == 'powershell') {
+  if (kShellToolNames.contains(toolName)) {
     try {
       final args = jsonDecode(arguments) as Map<String, dynamic>;
       final command = args['command'];

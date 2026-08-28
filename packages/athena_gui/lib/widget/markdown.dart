@@ -9,30 +9,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:google_fonts/google_fonts.dart';
-// import 'package:gpt_markdown/gpt_markdown.dart' as gpt;
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 class AthenaMarkdown extends StatelessWidget {
-  final AthenaMarkdownEngine engine;
   final MessageEntity message;
 
-  const AthenaMarkdown({
-    super.key,
-    this.engine = AthenaMarkdownEngine.flutter,
-    required this.message,
-  });
+  const AthenaMarkdown({super.key, required this.message});
 
   @override
-  Widget build(BuildContext context) {
-    return switch (engine) {
-      AthenaMarkdownEngine.flutter => _FlutterMarkdown(message: message),
-      _ => const SizedBox(),
-    };
-  }
+  Widget build(BuildContext context) => _FlutterMarkdown(message: message);
 }
-
-enum AthenaMarkdownEngine { flutter, gpt }
 
 class _CallToolRequestBuilder extends MarkdownElementBuilder {
   _CallToolRequestBuilder();
@@ -359,87 +346,6 @@ class _ReferenceSyntax extends md.InlineSyntax {
     return true;
   }
 }
-
-// class _GptMarkdown extends StatelessWidget {
-//   final MessageEntity message;
-//   const _GptMarkdown({required this.message});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return gpt.GptMarkdown(
-//       message.content,
-//       codeBuilder: _buildCode,
-//       highlightBuilder: _buildHighlight,
-//     );
-//   }
-
-//   void handleTap(String text) {
-//     final data = ClipboardData(text: text);
-//     Clipboard.setData(data);
-//   }
-
-//   Widget _buildAttribute(String attribute, String code) {
-//     var borderRadius = BorderRadius.only(
-//       topLeft: Radius.circular(8),
-//       topRight: Radius.circular(8),
-//     );
-//     var boxDecoration = BoxDecoration(
-//       borderRadius: borderRadius,
-//       color: Colors.white,
-//     );
-//     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
-//     var children = [
-//       Text(attribute.replaceAll('language-', ''), style: textStyle),
-//       Spacer(),
-//       CopyButton(onTap: () => handleTap(code)),
-//     ];
-//     return Container(
-//       decoration: boxDecoration,
-//       padding: padding,
-//       child: Row(children: children),
-//     );
-//   }
-
-//   Widget _buildCode(
-//     BuildContext context,
-//     String name,
-//     String code,
-//     bool closed,
-//   ) {
-//     var borderRadius = BorderRadius.circular(8);
-//     var color = Colors.white;
-//     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-//     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
-//     var children = [
-//       _buildAttribute(name, code),
-//       Padding(padding: padding, child: Text(code, style: textStyle)),
-//     ];
-//     var column = Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: children,
-//     );
-//     return Container(
-//       decoration: boxDecoration,
-//       width: double.infinity,
-//       child: column,
-//     );
-//   }
-
-//   Widget _buildHighlight(BuildContext context, String text, TextStyle style) {
-//     var borderRadius = BorderRadius.circular(4);
-//     var color = Colors.white;
-//     var boxDecoration = BoxDecoration(borderRadius: borderRadius, color: color);
-//     var padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 2);
-//     var textStyle = GoogleFonts.firaCode(fontSize: 12);
-//     return Container(
-//       decoration: boxDecoration,
-//       padding: padding,
-//       child: Text(text, style: textStyle),
-//     );
-//   }
-// }
 
 class _SupBuilder extends MarkdownElementBuilder {
   _SupBuilder();

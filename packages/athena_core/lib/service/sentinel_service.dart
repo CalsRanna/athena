@@ -68,13 +68,15 @@ class SentinelService {
       request: request,
     );
     final content = response.text ?? '';
-    final formatted = jsonDecode(content);
+    final decoded = jsonDecode(content);
+    final formatted =
+        decoded is Map<String, dynamic> ? decoded : const <String, dynamic>{};
     final tags = formatted['tags'] is List
         ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
         : (formatted['tags']?.toString() ?? '');
     return SentinelEntity(
-      name: formatted['name'] ?? '',
-      description: formatted['description'] ?? '',
+      name: formatted['name']?.toString() ?? '',
+      description: formatted['description']?.toString() ?? '',
       tags: tags,
       avatar: formatted['avatar']?.toString() ?? '',
       prompt: prompt,

@@ -1,4 +1,5 @@
 import 'package:athena_gui/database/database.dart';
+import 'package:laconic/laconic.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 为 models 和 sentinels 表添加 is_preset 列，并回溯标记已有的预设数据。
@@ -54,7 +55,7 @@ class Migration202606170001AddPresetFlag {
 
   /// 安全添加列：先检查列是否已存在，避免重复执行报错
   Future<void> _addColumnIfNotExists(
-    dynamic laconic, {
+    Laconic laconic, {
     required String table,
     required String column,
     required String definition,

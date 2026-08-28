@@ -184,12 +184,6 @@ class ChatViewModel {
     }
   }
 
-  Future<ChatEntity?> getFirstChat() async {
-    if (chats.value.isEmpty) await getChats();
-    if (chats.value.isEmpty) return await createChat();
-    return chats.value.first;
-  }
-
   Future<void> initSignals() async {
     final (chatsList, histories) = await _manageService.getChats();
     chats.value = chatsList;
@@ -594,12 +588,7 @@ class ChatViewModel {
   /// 追加或替换消息：切换对话的竞态下占位消息可能已在列表中
   /// （快照合并或 DB 预读），避免重复追加。
   void _appendOrReplaceMessage(MessageEntity message) {
-    final index = messages.value.indexWhere((m) => m.id == message.id);
-    if (index >= 0) {
-      final copy = List<MessageEntity>.from(messages.value);
-      copy[index] = message;
-      messages.value = copy;
-    } else {
+    if (!messages.replaceWhere((m) => m.id == message.id, message)) {
       messages.value = [...messages.value, message];
     }
   }

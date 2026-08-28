@@ -149,10 +149,8 @@ class AgentService {
       cancelToken: token,
     );
 
-    // 构建复合 afterToolCall：用户 hook
-    final compositeAfterToolCall = _buildCompositeAfterHook(
-      userHook: afterToolCall,
-    );
+    // afterToolCall 无附加行为（权限判定在 before hook 内），直接透传
+    final compositeAfterToolCall = afterToolCall;
 
     try {
       // 外层循环：followUp 消息可重启内层循环
@@ -483,23 +481,6 @@ class AgentService {
       }
 
       return (block: false, reason: '');
-    };
-  }
-
-  /// 构建复合 afterToolCall：用户 hook。
-  AfterToolCallHook? _buildCompositeAfterHook({
-    AfterToolCallHook? userHook,
-  }) {
-    if (userHook == null) return null;
-
-    return (ctx) async {
-      return userHook((
-        name: ctx.name,
-        arguments: ctx.arguments,
-        args: ctx.args,
-        rawResult: ctx.rawResult,
-        processedResult: ctx.processedResult,
-      ));
     };
   }
 

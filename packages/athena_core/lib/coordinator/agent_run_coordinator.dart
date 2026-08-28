@@ -636,38 +636,16 @@ class AgentRunCoordinator {
       await _permissionService.approveForSession(runId, toolName, args);
 
       if (decision.persistExact) {
-        // "Always Allow" 落库:shell 命令按 动作+参数(前缀/glob/exact)
-        // 建模(PermissionRule.fromCommand),文件工具存路径规则,
-        // web_fetch 存 origin 规则;keyArg 缺失时存空 pattern = 整工具放行。
+        // "Always Allow" 落库:规则形态由 PermissionRule.forToolCall 决定
+        // (shell 按动作+参数、复合命令拆子命令;文件走路径;web_fetch 走
+        // origin;其余整工具放行)。
         final keyArg = _permissionService.primaryArg(toolName, args);
-        final isShell = toolName == 'bash' || toolName == 'powershell';
-        if (isShell && keyArg != null) {
-          // 复合命令按子命令分别建模(最多 5 条),逐条落库
-          for (final rule in PermissionRule.fromCommand(toolName, keyArg)) {
-            await _permissionService.persistRule(rule);
-          }
-        } else {
-          final PermissionRule rule;
-          if (kFileToolNames.contains(toolName) && keyArg != null) {
-            rule = PermissionRule(
-              tool: toolName,
-              kind: RuleKind.path,
-              pattern: keyArg,
-            );
-          } else if (toolName == 'web_fetch' && keyArg != null) {
-            rule = PermissionRule(
-              tool: toolName,
-              kind: RuleKind.origin,
-              pattern: keyArg,
-            );
-          } else {
-            rule = PermissionRule(tool: toolName, kind: RuleKind.exact);
-          }
+        for (final rule in PermissionRule.forToolCall(toolName, keyArg)) {
           await _permissionService.persistRule(rule);
         }
+      }
     }
 
-    }
     return decision.approved;
   }
 }

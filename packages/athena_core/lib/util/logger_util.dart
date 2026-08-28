@@ -53,7 +53,7 @@ class PlainPrinter extends LogPrinter {
     return raw.substring(1, raw.length - 1).replaceFirst('package:', '');
   }
 
-  bool _excludePrinter(trace) {
+  bool _excludePrinter(String trace) {
     return !trace.contains('Printer') && !trace.contains('Logger');
   }
 

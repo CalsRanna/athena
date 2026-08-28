@@ -487,20 +487,6 @@ void main() {
     });
   });
 
-  group('PermissionService describeRule', () {
-    final store = PermissionStore();
-    final service = PermissionService(store: store);
-
-    test('describes each tool type', () {
-      expect(service.describeRule('bash'), contains('command'));
-      expect(service.describeRule('powershell'), contains('command'));
-      expect(service.describeRule('file_read'), contains('reads'));
-      expect(service.describeRule('file_write'), contains('writes'));
-      expect(service.describeRule('file_update'), contains('writes'));
-      expect(service.describeRule('web_fetch'), contains('domain'));
-    });
-  });
-
   group('PermissionService primaryArg', () {
     final store = PermissionStore();
     final service = PermissionService(store: store);

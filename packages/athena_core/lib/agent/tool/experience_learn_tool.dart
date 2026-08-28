@@ -169,7 +169,7 @@ class ExperienceRecallTool implements Tool {
                 'experiences.',
           },
         },
-        'required': [],
+        'required': <String>[],
       };
 
   @override

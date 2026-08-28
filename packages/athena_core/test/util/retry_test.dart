@@ -192,7 +192,7 @@ void main() {
         abort: token.whenCancelled,
       );
       // 第一次尝试立即失败并进入退避；此时取消
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
       token.cancel();
       await expectLater(future, throwsA(isA<CancelledException>()));
       expect(calls, 1, reason: '取消后不应发起新的重试请求');

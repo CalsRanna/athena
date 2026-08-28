@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/widgets/command_suggestions.dart';
@@ -119,9 +120,11 @@ class _AthenaAppState extends State<AthenaApp> {
           if (_permissionRequest != null)
             PermissionBar(
               title: '权限请求',
+              // 与 GUI 共用同一个格式化器：shell 命令完整展示不截断，
+              // 避免被截断的尾部藏住危险操作（如 `...; rm -rf ~/x`）。
               detail:
                   '${_permissionRequest!.toolName}: '
-                  '${_permissionRequest!.arguments}',
+                  '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
               hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
             ),
           if (_skillTrustRequest != null)

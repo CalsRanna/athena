@@ -1,0 +1,9 @@
+# athena_core 分析配置:纯 Dart 核心,与 athena_tui 保持一致的 lints 包。
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - build/**
+  language:
+    strict-casts: true
+    strict-inference: true

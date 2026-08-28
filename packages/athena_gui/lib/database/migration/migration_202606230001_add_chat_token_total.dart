@@ -1,4 +1,5 @@
 import 'package:athena_gui/database/database.dart';
+import 'package:laconic/laconic.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 为 chats 表添加 token_total 列，持久化每个会话累计消耗的 token 总量。
@@ -31,7 +32,7 @@ class Migration202606230001AddChatTokenTotal {
   }
 
   Future<void> _addColumnIfNotExists(
-    dynamic laconic, {
+    Laconic laconic, {
     required String table,
     required String column,
     required String definition,

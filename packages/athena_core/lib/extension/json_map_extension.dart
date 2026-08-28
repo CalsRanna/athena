@@ -65,7 +65,8 @@ extension JsonMapExtension on Map<String, dynamic> {
     if (value is String) {
       if (value.isEmpty) return [];
       try {
-        return List<T>.from(jsonDecode(value));
+        final decoded = jsonDecode(value);
+        return decoded is List ? List<T>.from(decoded) : [];
       } catch (e) {
         return [];
       }
@@ -82,7 +83,8 @@ extension JsonMapExtension on Map<String, dynamic> {
     if (value is String) {
       if (value.isEmpty) return {};
       try {
-        return Map<K, V>.from(jsonDecode(value));
+        final decoded = jsonDecode(value);
+        return decoded is Map ? Map<K, V>.from(decoded) : {};
       } catch (e) {
         return {};
       }

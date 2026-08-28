@@ -360,15 +360,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Future<void> _initState() async {
     await settingViewModel.initSignals();
     await chatViewModel.initSignals();
-    // var chat = await chatViewModel.getFirstChat();
-    // if (chat != null) {
-    //   await chatViewModel.selectChat(chat);
-    // }
     await modelViewModel.loadEnabledModels();
     await sentinelViewModel.getSentinels();
   }
 
-  Widget _itemBuilder(context, index) {
+  Widget _itemBuilder(BuildContext context, int index) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var images = chatViewModel.pendingImages.value;
     var image = Image.file(

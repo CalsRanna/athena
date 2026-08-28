@@ -70,15 +70,16 @@ class ChatMessageService {
         return [ChatMessage.system(msg.content)];
       case 'assistant':
         final messages = <ChatMessage>[];
-        // 解析 tool 结果 id 集合，用于过滤悬空的 tool_calls。
-        final resultIds = <String>{};
-        if (msg.toolResults.isNotEmpty) {
-          final parsed = jsonDecode(msg.toolResults) as List<dynamic>;
-          for (final tr in parsed) {
-            final m = tr as Map<String, dynamic>;
-            resultIds.add(m['id'] as String);
-          }
-        }
+        // tool 结果只解析一次：既用于过滤悬空 tool_calls，也用于生成 tool
+        // 消息。单条结果可达 12000 字符，而 buildMessages 每次发送都会
+        // 遍历整个会话，重复 jsonDecode 的代价随会话长度线性累积。
+        final toolResults = msg.toolResults.isEmpty
+            ? const <dynamic>[]
+            : jsonDecode(msg.toolResults) as List<dynamic>;
+        final resultIds = <String>{
+          for (final tr in toolResults)
+            (tr as Map<String, dynamic>)['id'] as String,
+        };
         List<ToolCall>? toolCalls;
         if (msg.toolCalls.isNotEmpty) {
           final parsed = jsonDecode(msg.toolCalls) as List<dynamic>;
@@ -110,15 +111,12 @@ class ChatMessageService {
           toolCalls: toolCalls,
           reasoningContent: reasoning,
         ));
-        if (msg.toolResults.isNotEmpty) {
-          final parsed = jsonDecode(msg.toolResults) as List<dynamic>;
-          for (final tr in parsed) {
-            final m = tr as Map<String, dynamic>;
-            messages.add(ChatMessage.tool(
-              toolCallId: m['id'] as String,
-              content: m['result'] as String,
-            ));
-          }
+        for (final tr in toolResults) {
+          final m = tr as Map<String, dynamic>;
+          messages.add(ChatMessage.tool(
+            toolCallId: m['id'] as String,
+            content: m['result'] as String,
+          ));
         }
         return messages;
       default:

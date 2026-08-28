@@ -76,7 +76,7 @@ class PowerShellShellTool implements Tool {
     final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
 
     // 递归删除拦截
-    if (_isRecursiveDelete(command)) {
+    if (CommandAnalyzer.isRecursiveDelete(command)) {
       return 'Warning: This command contains potentially dangerous '
           'recursive delete patterns and was blocked by safety checks. '
           'To delete files, use explicit commands targeting specific files '
@@ -98,20 +98,5 @@ class PowerShellShellTool implements Tool {
     return result;
   }
 
-  bool _isRecursiveDelete(String command) {
-    final patterns = [
-      // Remove-Item / ri 别名：-Recurse 与短参数 -R/-r 均拦截
-      RegExp(r'\bRemove-Item\b\s+.*-Recurse', caseSensitive: false),
-      RegExp(r'\bRemove-Item\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-      RegExp(r'\bri\b\s+.*-Recurse', caseSensitive: false),
-      RegExp(r'\bri\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-      // rd / rmdir 别名
-      RegExp(r'\brd\b\s+.*(?:-Recurse|-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-      RegExp(r'\brmdir\b'),
-      RegExp(r'\brm\s+.*(?:-[a-zA-Z]*[rR]|--recursive)'),
-      RegExp(r'\bdel\b\s+/[sS]'),
-    ];
-    return patterns.any((p) => p.hasMatch(command));
-  }
 
 }
