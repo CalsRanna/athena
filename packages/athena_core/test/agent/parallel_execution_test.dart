@@ -38,7 +38,7 @@ import 'package:openai_dart/src/client/request_builder.dart';
 
 /// 记录每次 createStream 调用，按次序执行预设脚本。
 class _FakeCompletions extends ChatCompletionsResource {
-  final List<Function()> _script;
+  final List<List<ChatStreamEvent> Function()> _script;
   int calls = 0;
 
   _FakeCompletions(this._script)
@@ -173,7 +173,7 @@ class _ParTool extends athena.Tool {
     active++;
     if (active > maxActive) maxActive = active;
     if (delay > Duration.zero) {
-      await Future.delayed(delay);
+      await Future<void>.delayed(delay);
     }
     active--;
     return 'done:${args['id']}';
@@ -236,7 +236,7 @@ ModelEntity _model() => ModelEntity(
 /// [_FakeCompletions] 必须在 factory 之外共享：LlmClient 每轮请求都会
 /// 新建客户端实例，若在 factory 内创建，calls 计数器会每次归零，
 /// 导致所有轮次都返回同一脚本。
-LlmClient _fakeLlm(List<Function()> script) {
+LlmClient _fakeLlm(List<List<ChatStreamEvent> Function()> script) {
   final completions = _FakeCompletions(script);
   return LlmClient(
     clientFactory: ({required String apiKey, required String? baseUrl}) =>
@@ -335,7 +335,7 @@ void main() {
   group('run() 并行执行', () {
     AgentService buildService(
       ToolRegistry registry,
-      List<Function()> script, {
+      List<List<ChatStreamEvent> Function()> script, {
       PermissionService? permissionService,
     }) {
       return AgentService(
@@ -344,7 +344,7 @@ void main() {
       );
     }
 
-    List<Function()> toolScript(List<ChatStreamEvent> firstRound) => [
+    List<List<ChatStreamEvent> Function()> toolScript(List<ChatStreamEvent> firstRound) => [
           () => firstRound,
           () => [_textChunk('done'), _finishChunk(FinishReason.stop)],
         ];
@@ -439,7 +439,7 @@ void main() {
               if (permissionActive > permissionMaxActive) {
                 permissionMaxActive = permissionActive;
               }
-              await Future.delayed(const Duration(milliseconds: 20));
+              await Future<void>.delayed(const Duration(milliseconds: 20));
               permissionActive--;
               return true;
             },

@@ -48,7 +48,7 @@ class MessageListTile extends StatelessWidget {
       );
     }
     if (message.role == 'tool') {
-      return _ToolMessageListTile(message: message, sentinel: sentinel);
+      return _ToolMessageListTile(message: message);
     }
     return _AssistantMessageListTile(
       loading: loading,
@@ -144,10 +144,10 @@ class _AssistantMessageListTile extends StatelessWidget {
     var children = [
       _AssistantMessageListTileThinkingPart(message: message),
       if (message.content.isNotEmpty) SizedBox(height: 8),
-      AthenaMarkdown(engine: AthenaMarkdownEngine.flutter, message: message),
+      AthenaMarkdown(message: message),
       ...toolCards,
       _AssistantMessageListTileReferencePart(message: message),
-      _AssistantMessageListTileLoadingPart(loading: loading, message: message),
+      _AssistantMessageListTileLoadingPart(loading: loading),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,8 +181,8 @@ class _AssistantMessageListTile extends StatelessWidget {
           final id = call['id'] as String;
           cards.add(
             ToolCard(
-              toolName: call['name'] ?? '',
-              arguments: call['arguments'] ?? '',
+              toolName: call['name'] as String? ?? '',
+              arguments: call['arguments'] as String? ?? '',
               result: results[id],
             ),
           );
@@ -201,11 +201,7 @@ class _AssistantMessageListTile extends StatelessWidget {
 
 class _AssistantMessageListTileLoadingPart extends StatelessWidget {
   final bool loading;
-  final MessageEntity message;
-  const _AssistantMessageListTileLoadingPart({
-    required this.loading,
-    required this.message,
-  });
+  const _AssistantMessageListTileLoadingPart({required this.loading});
 
   @override
   Widget build(BuildContext context) {
@@ -225,10 +221,13 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
   Widget build(BuildContext context) {
     if (message.reference.isEmpty) return const SizedBox();
     try {
-      var references = jsonDecode(message.reference);
+      final decoded = jsonDecode(message.reference);
+      final references = decoded is List ? decoded : const <dynamic>[];
       List<Widget> referenceWidgets = [];
       for (var i = 0; i < references.length; i++) {
-        referenceWidgets.add(_buildReference(context, references[i], index: i));
+        final reference = references[i];
+        if (reference is! Map<String, dynamic>) continue;
+        referenceWidgets.add(_buildReference(context, reference, index: i));
       }
       var children = [Text('References:'), ...referenceWidgets];
       var column = Column(
@@ -272,8 +271,8 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     required int index,
   }) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var url = reference['url'];
-    var title = reference['title'];
+    var url = reference['url'] as String?;
+    var title = reference['title'] as String?;
     var textSpan = TextSpan(
       text: title,
       style: TextStyle(color: colors.teal),
@@ -387,8 +386,7 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
 
 class _ToolMessageListTile extends StatelessWidget {
   final MessageEntity message;
-  final SentinelEntity sentinel;
-  const _ToolMessageListTile({required this.message, required this.sentinel});
+  const _ToolMessageListTile({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -487,10 +485,6 @@ class _UserMessageListTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: row,
     );
-  }
-
-  void handleTap() {
-    Clipboard.setData(ClipboardData(text: message.content));
   }
 
   Widget _buildAvatar() {

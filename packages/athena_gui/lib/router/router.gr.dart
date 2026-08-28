@@ -26,7 +26,7 @@ import 'package:athena_gui/page/mobile/chat/chat.dart' as _i14;
 import 'package:athena_gui/page/mobile/chat/chat_configuration.dart' as _i11;
 import 'package:athena_gui/page/mobile/chat/chat_export.dart' as _i12;
 import 'package:athena_gui/page/mobile/chat/list.dart' as _i13;
-import 'package:athena_gui/page/mobile/default_model.dart/default_model_form_page.dart'
+import 'package:athena_gui/page/mobile/default_model/default_model_form_page.dart'
     as _i16;
 import 'package:athena_gui/page/mobile/home/home.dart' as _i17;
 import 'package:athena_gui/page/mobile/provider/model_form_page.dart' as _i18;

@@ -7,6 +7,12 @@ import 'package:athena_core/util/path_normalizer.dart';
 /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
 const kFileToolNames = {'file_read', 'file_write', 'file_update'};
 
+/// Shell 类工具:规则按「动作 + 参数」匹配,命令文本走 [CommandAnalyzer]。
+///
+/// 与 [kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
+/// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
+const kShellToolNames = {'bash', 'powershell'};
+
 /// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
 ///
 /// - [action]:shell 工具。匹配命令首个动作(词),pattern 匹配动作后的参数
@@ -73,7 +79,7 @@ class PermissionRule {
     // - wildcard 仅对 action 规则有意义
     if (kind == RuleKind.action) {
       if ((action == null || action.isEmpty) ||
-          (tool != 'bash' && tool != 'powershell')) {
+          !kShellToolNames.contains(tool)) {
         return null;
       }
     } else if (kind == RuleKind.origin && tool != 'web_fetch') {
@@ -131,6 +137,29 @@ class PermissionRule {
       return rules;
     }
     return [_ruleForSingleCommand(tool, trimmed)];
+  }
+
+  /// 「始终允许」落库用:按工具类别选择规则形态。
+  ///
+  /// - shell 工具 → [fromCommand](复合命令按子命令拆成多条)
+  /// - 文件工具   → [RuleKind.path](归一化路径前缀 / glob)
+  /// - web_fetch  → [RuleKind.origin](scheme://host[:port])
+  /// - 其余工具,或 [keyArg] 缺失 → 空 pattern 的 [RuleKind.exact],
+  ///   即放行该工具的所有调用
+  static List<PermissionRule> forToolCall(String tool, String? keyArg) {
+    if (keyArg == null) {
+      return [PermissionRule(tool: tool, kind: RuleKind.exact)];
+    }
+    if (kShellToolNames.contains(tool)) return fromCommand(tool, keyArg);
+    if (kFileToolNames.contains(tool)) {
+      return [PermissionRule(tool: tool, kind: RuleKind.path, pattern: keyArg)];
+    }
+    if (tool == 'web_fetch') {
+      return [
+        PermissionRule(tool: tool, kind: RuleKind.origin, pattern: keyArg),
+      ];
+    }
+    return [PermissionRule(tool: tool, kind: RuleKind.exact)];
   }
 
   static PermissionRule _ruleForSingleCommand(String tool, String command) {

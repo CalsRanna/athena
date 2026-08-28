@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -52,8 +53,8 @@ class ToolCard extends StatefulWidget {
     }
 
     final keyField = switch (toolName) {
-      'bash' || 'powershell' => 'command',
-      'file_read' || 'file_write' || 'file_update' => 'path',
+      _ when kShellToolNames.contains(toolName) => 'command',
+      _ when kFileToolNames.contains(toolName) => 'path',
       'web_fetch' => 'url',
       'web_search' => 'query',
       _ => null,

@@ -56,13 +56,13 @@ Future<T> retry<T>(
 /// 等待退避；[abort] 提前完成则抛 [CancelledException] 中断重试。
 Future<void> _waitBackoff(int delayMs, Future<void>? abort) async {
   if (abort == null) {
-    await Future.delayed(Duration(milliseconds: delayMs));
+    await Future<void>.delayed(Duration(milliseconds: delayMs));
     return;
   }
   var aborted = false;
   final abortFlag = abort.then((_) => aborted = true, onError: (_) {});
   await Future.any([
-    Future.delayed(Duration(milliseconds: delayMs)),
+    Future<void>.delayed(Duration(milliseconds: delayMs)),
     abortFlag,
   ]);
   if (aborted) throw const CancelledException();

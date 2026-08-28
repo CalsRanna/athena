@@ -213,4 +213,38 @@ class CommandAnalyzer {
     'id_rsa',
     'id_ed25519',
   ];
+
+  /// 命令是否包含递归删除模式,命中则 shell 工具拒绝执行。
+  ///
+  /// 这是 **shell 命令语义**而非某个工具的实现细节,因此与
+  /// [isReadOnlyCommand] / [containsSensitivePath] 同处一层:
+  /// bash 与 powershell 共用同一份模式表,避免两份列表各自漂移
+  /// (历史上 powershell 侧漏了 `find . -delete` 与 cmd 的 `rd /s`)。
+  ///
+  /// 同时覆盖 POSIX 与 Windows 两套语法——用户可能在任一 shell 里
+  /// 调用另一套工具链(WSL、Git Bash、pwsh on Linux)。
+  static bool isRecursiveDelete(String command) =>
+      _recursiveDeletePatterns.any((p) => p.hasMatch(command));
+
+  /// 递归删除模式表(`static final`:只编译一次,不随每次调用重建)。
+  static final _recursiveDeletePatterns = [
+    // POSIX
+    RegExp(r'\brm\s+.*(?:-[a-zA-Z]*[rR]|--recursive)'),
+    RegExp(r'\brmdir\b'),
+    RegExp(r'\bfind\b.*\brm\b'),
+    // find . -delete / -ok —— 无 rm 字面量也能递归删除
+    RegExp(r'\bfind\b.*(?:-delete|-ok\b)'),
+    // cmd
+    RegExp(r'\bdel\b\s+/[sS]'),
+    // cmd 的 rd /s(rmdir 别名;要求 rd 与 /s 之间有空白,
+    // 避免误伤 "ls rd/s" 这类路径写法)
+    RegExp(r'\brd\b\s+/\s*[sS]'),
+    // PowerShell:Remove-Item 及别名 ri / rd(命令不区分大小写);
+    // 覆盖 -Recurse 与短参数 -R/-r
+    RegExp(r'\bRemove-Item\b\s+.*-Recurse', caseSensitive: false),
+    RegExp(r'\bRemove-Item\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
+    RegExp(r'\bri\b\s+.*-Recurse', caseSensitive: false),
+    RegExp(r'\bri\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
+    RegExp(r'\brd\b\s+.*(?:-Recurse|-[a-zA-Z]*[rR]\b)', caseSensitive: false),
+  ];
 }

@@ -386,10 +386,13 @@ class ModelCatalogService {
   ) {
     final latest = <String, (String, Map<String, dynamic>)>{};
     for (final entry in models.entries) {
+      // 与 filterReasoning / filterByReleaseDate 一致:非 Map 值跳过
+      final value = entry.value;
+      if (value is! Map<String, dynamic>) continue;
       final key = familyKey(entry.key);
       final current = latest[key];
-      if (current == null || _isNewerThan(entry.value, current.$2)) {
-        latest[key] = (entry.key, entry.value);
+      if (current == null || _isNewerThan(value, current.$2)) {
+        latest[key] = (entry.key, value);
       }
     }
     return {for (final entry in latest.values) entry.$1: entry.$2};

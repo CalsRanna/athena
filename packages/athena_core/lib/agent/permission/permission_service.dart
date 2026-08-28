@@ -126,17 +126,6 @@ class PermissionService {
     return _primaryArg(toolName, args);
   }
 
-  /// 生成"始终允许" checkbox 的描述文案。
-  String describeRule(String toolName) {
-    return switch (toolName) {
-      'bash' || 'powershell' => 'Always allow this command pattern',
-      'file_read' => 'Always allow reads matching this path',
-      'file_write' || 'file_update' => 'Always allow writes matching this path',
-      'web_fetch' => 'Always allow this domain',
-      _ => 'Always allow $toolName',
-    };
-  }
-
   /// deny 扫描:整条或复合命令的任一子命令命中 deny 规则即拒绝。
   bool _ruleDenied(String toolName, Map<String, dynamic> args) {
     final keyArg = _primaryArg(toolName, args);
@@ -175,7 +164,7 @@ class PermissionService {
   }
 
   static bool _isShellTool(String toolName) =>
-      toolName == 'bash' || toolName == 'powershell';
+      kShellToolNames.contains(toolName);
 
   /// readOnly 工具在特定参数下仍需弹窗的例外。
   ///
@@ -212,12 +201,10 @@ class PermissionService {
   }
 
   String? _primaryArg(String toolName, Map<String, dynamic> args) {
-    // 文件工具集合统一来自 kFileToolNames,避免多处硬编码不一致
+    // 工具集合统一来自 kFileToolNames / kShellToolNames,避免多处硬编码不一致
     if (kFileToolNames.contains(toolName)) return args['path'] as String?;
+    if (kShellToolNames.contains(toolName)) return args['command'] as String?;
     switch (toolName) {
-      case 'bash':
-      case 'powershell':
-        return args['command'] as String?;
       case 'web_fetch':
         final url = args['url'] as String?;
         if (url == null) return null;

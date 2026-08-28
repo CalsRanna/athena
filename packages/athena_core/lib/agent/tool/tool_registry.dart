@@ -5,8 +5,13 @@ export 'tool_interface.dart' show ExecutionMode;
 class ToolRegistry {
   final Map<String, Tool> _tools = {};
 
+  /// OpenAI tool definitions 缓存：工具集在一次 run 内不变，而 Agent
+  /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。
+  List<Map<String, dynamic>>? _definitions;
+
   void register(Tool tool) {
     _tools[tool.name] = tool;
+    _definitions = null;
   }
 
   void registerAll(Iterable<Tool> tools) {
@@ -19,12 +24,17 @@ class ToolRegistry {
 
   List<Tool> get all => _tools.values.toList();
 
-  List<Map<String, dynamic>> get definitions => _tools.values.map((t) => {
-    'type': 'function',
-    'function': {
-      'name': t.name,
-      'description': t.description,
-      'parameters': t.parameters,
-    },
-  }).toList();
+  List<Map<String, dynamic>> get definitions =>
+      _definitions ??= _tools.values
+          .map(
+            (t) => {
+              'type': 'function',
+              'function': {
+                'name': t.name,
+                'description': t.description,
+                'parameters': t.parameters,
+              },
+            },
+          )
+          .toList();
 }

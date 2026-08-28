@@ -76,7 +76,7 @@ class BashShellTool implements Tool {
     final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
 
     // 递归删除拦截：用户在弹窗中可以看到完整命令并决定是否放行
-    if (_isRecursiveDelete(command)) {
+    if (CommandAnalyzer.isRecursiveDelete(command)) {
       return 'Warning: This command contains potentially dangerous '
           'recursive delete patterns and was blocked by safety checks. '
           'To delete files, use explicit commands targeting specific files '
@@ -128,28 +128,5 @@ class BashShellTool implements Tool {
     return '/bin/sh';
   }
 
-  /// 检测递归删除命令模式。
-  bool _isRecursiveDelete(String command) {
-    final patterns = [
-      RegExp(r'\brm\s+.*(?:-[a-zA-Z]*[rR]|--recursive)'),
-      RegExp(r'\brmdir\b'),
-      RegExp(r'\bfind\b.*\brm\b'),
-      // find . -delete / -ok —— 无 rm 字面量也能递归删除
-      RegExp(r'\bfind\b.*(?:-delete|-ok\b)'),
-      RegExp(r'\bdel\b\s+/[sS]'),
-      // Remove-Item 大小写均可（PowerShell 命令不区分大小写）；
-      // 覆盖短参数 -R/-r 与别名 ri/rd
-      RegExp(r'\bRemove-Item\b\s+.*-Recurse', caseSensitive: false),
-      RegExp(r'\bRemove-Item\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-      RegExp(r'\bri\b\s+.*-Recurse', caseSensitive: false),
-      RegExp(r'\bri\b\s+.*(?:-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-      // cmd 的 rd /s（rmdir 别名；要求 rd 与 /s 之间有空白，
-      // 避免误伤 "ls rd/s" 这类路径写法）
-      RegExp(r'\brd\b\s+/\s*[sS]'),
-      // PowerShell 的 rd -R / rd -Recurse（rmdir 别名）
-      RegExp(r'\brd\b\s+.*(?:-Recurse|-[a-zA-Z]*[rR]\b)', caseSensitive: false),
-    ];
-    return patterns.any((p) => p.hasMatch(command));
-  }
 
 }

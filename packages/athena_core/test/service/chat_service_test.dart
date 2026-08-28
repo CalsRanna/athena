@@ -293,7 +293,7 @@ void main() {
         if (!terminated.isCompleted) terminated.complete();
       },
     );
-    await Future.delayed(const Duration(milliseconds: 50));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
     token.cancel();
     // abort 触发后底层请求被取消，流应终止（不永久挂起）。
     await terminated.future.timeout(const Duration(seconds: 2), onTimeout: () {
@@ -301,7 +301,7 @@ void main() {
     });
     // onError 先于 generator 的 finally 传播，轮询等待 client 被关闭。
     for (var i = 0; i < 50 && observed.closeCount == 0; i++) {
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
     }
     expect(observed.closeCount, 1,
         reason: '取消后 LlmClient.stream 的 finally 应关闭 client');

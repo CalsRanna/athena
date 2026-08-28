@@ -147,7 +147,6 @@ class _SummaryContent extends StatelessWidget {
         content: displayContent,
       );
       var markdown = AthenaMarkdown(
-        engine: AthenaMarkdownEngine.flutter,
         message: wrappedMessage,
       );
       var container = Container(

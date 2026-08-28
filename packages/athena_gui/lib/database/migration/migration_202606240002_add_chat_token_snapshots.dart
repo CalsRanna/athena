@@ -1,4 +1,5 @@
 import 'package:athena_gui/database/database.dart';
+import 'package:laconic/laconic.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 为 chats 表添加上下文窗口占用与缓存命中率的快照列。
@@ -38,7 +39,7 @@ class Migration202606240002AddChatTokenSnapshots {
   }
 
   Future<void> _addColumnIfNotExists(
-    dynamic laconic, {
+    Laconic laconic, {
     required String table,
     required String column,
     required String definition,
