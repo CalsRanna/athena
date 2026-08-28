@@ -482,8 +482,14 @@ ChatViewModel _buildViewModel({
     settingViewModel: GetIt.instance<SettingViewModel>(),
     modelViewModel: GetIt.instance<ModelViewModel>(),
     sentinelViewModel: GetIt.instance<SentinelViewModel>(),
+    // 零窗口：仍走真实的合并缓冲路径，但断言前只需让出一次事件循环，
+    // 不必为每个中途断言等 100ms。
+    streamFlushInterval: Duration.zero,
   );
 }
+
+/// 让流式合并缓冲完成一次 flush（零窗口下 Timer 在下一个事件循环触发）。
+Future<void> _settleFlush() => Future<void>.delayed(Duration.zero);
 
 void main() {
   setUp(() {
@@ -700,6 +706,7 @@ void main() {
     final future = vm.sendMessage(_userMessage(), chat: _chat());
 
     await expanded.future;
+    await _settleFlush();
     // 找到正在思考的卡片并展开
     final thinking =
         vm.messages.value.lastWhere((m) => m.role == 'assistant');
@@ -1050,6 +1057,7 @@ void main() {
 
     // 前两段文本已消费并实时渲染到 A
     await emittedSome.future;
+    await _settleFlush();
     expect(
       vm.messages.value
           .any((m) => m.role == 'assistant' && m.content == 'Hello, world'),
