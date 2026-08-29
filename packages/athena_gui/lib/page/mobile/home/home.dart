@@ -61,7 +61,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
     var body = AthenaErrorBoundary(
       message: 'Home page encountered an error',
       onRetry: _initializeViewModels,
-      child: Column(spacing: 24, children: children),
+      child: SingleChildScrollView(
+        child: Column(spacing: 24, children: children),
+      ),
     );
     return AthenaScaffold(body: body);
   }
