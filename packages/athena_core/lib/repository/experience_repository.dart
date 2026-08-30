@@ -14,9 +14,17 @@ import 'package:athena_core/entity/experience_entity.dart';
 /// ```
 ///
 /// 每个经验一个 `.json` 文件。文件名格式：`{timestamp}_{randomSuffix}.json`。
+///
+/// [homeDir] 可覆盖 `.athena` 的根目录（移动端沙盒没有可靠 `$HOME`，
+/// 由 GUI 装配层传入 Application Support 目录；桌面端不传，维持 `$HOME`）。
 class ExperienceRepository {
+  ExperienceRepository({String? homeDir}) : _homeDir = homeDir;
+
+  final String? _homeDir;
+
   String get _basePath {
-    final home = Platform.environment['HOME'] ??
+    final home = _homeDir ??
+        Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '/';
     return '$home/.athena/experiences';

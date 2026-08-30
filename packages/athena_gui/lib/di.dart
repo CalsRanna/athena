@@ -37,6 +37,7 @@ import 'package:athena_core/service/translation_service.dart';
 import 'package:athena_core/service/trpg_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
+import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/storage/shared_prefs_key_value_store.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -57,7 +58,7 @@ class DI {
     final getIt = GetIt.instance;
 
     // Repositories (no dependencies)
-    _registerRepositories();
+    _registerRepositories(dataDirectory);
 
     // Services
     _registerServices();
@@ -187,7 +188,10 @@ class DI {
     getIt.registerLazySingleton(() => SkillTrustStore());
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
-      registry.loadAll();
+      // 移动端无可靠 $HOME，进化数据根目录用 Application Support（与 athena.db 同根）；
+      // 写入端（skill_evolve / experience 工具）必须与这里读同一目录，
+      // reloadSkill 才能把写的技能归类为用户级而不是项目级 pending。
+      registry.loadAll(homeDir: PlatformUtil.isMobile ? dataDirectory : null);
       registry.registerBuiltin(kSelfEvolveSkill);
       return registry;
     });
@@ -201,6 +205,7 @@ class DI {
         sentinelRepository: getIt<SentinelRepository>(),
         store: getIt<KeyValueStore>(),
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
+        mobileHomeDir: dataDirectory,
       ),
     );
 
@@ -228,7 +233,7 @@ class DI {
     );
   }
 
-  static void _registerRepositories() {
+  static void _registerRepositories(String? dataDirectory) {
     final getIt = GetIt.instance;
     getIt.registerLazySingleton<ChatRepository>(() => SqliteChatRepository());
     getIt.registerLazySingleton<MessageRepository>(
@@ -241,7 +246,11 @@ class DI {
     getIt.registerLazySingleton<SentinelRepository>(
       () => SqliteSentinelRepository(),
     );
-    getIt.registerLazySingleton(() => ExperienceRepository());
+    getIt.registerLazySingleton(
+      () => ExperienceRepository(
+        homeDir: PlatformUtil.isMobile ? dataDirectory : null,
+      ),
+    );
     getIt.registerLazySingleton<TRPGGameRepository>(
       () => SqliteTRPGGameRepository(),
     );
