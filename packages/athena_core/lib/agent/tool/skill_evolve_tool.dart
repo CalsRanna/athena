@@ -17,9 +17,20 @@ class SkillEvolveTool implements Tool {
   bool canExecuteParallel(Map<String, dynamic> args) => false;
   final SkillRegistry _skillRegistry;
 
+  /// 用户级 `.athena` 根目录。空 = 使用 `$HOME`（桌面端）。
+  final String? _homeDir;
+
+  /// 移动端没有"项目"概念：默认 scope 为 user，显式 project 也映射为 user，
+  /// 保证目标目录始终落在沙盒内（iOS 默认目录是 `/`，项目级会写失败）。
+  final bool _mobile;
+
   SkillEvolveTool({
     required SkillRegistry skillRegistry,
-  }) : _skillRegistry = skillRegistry;
+    String? homeDir,
+    bool mobile = false,
+  })  : _skillRegistry = skillRegistry,
+        _homeDir = homeDir,
+        _mobile = mobile;
 
   @override
   ToolRisk get risk => ToolRisk.dangerous;
@@ -77,11 +88,14 @@ class SkillEvolveTool implements Tool {
           'scope': {
             'type': 'string',
             'enum': ['project', 'user'],
-            'description':
-                'Where to save the skill. "project" saves to .athena/skills/ '
-                'in the current project (shared via version control). "user" '
-                'saves to ~/.athena/skills/ (private, available in all projects). '
-                'Default: "project" when working in a project, "user" otherwise.',
+            'description': _mobile
+                ? 'Where to save the skill. On this device there is no '
+                    'project concept, so both "project" and "user" save to '
+                    'the app\'s own data directory. Default: "user".'
+                : 'Where to save the skill. "project" saves to .athena/skills/ '
+                    'in the current project (shared via version control). "user" '
+                    'saves to ~/.athena/skills/ (private, available in all projects). '
+                    'Default: "project" when working in a project, "user" otherwise.',
           },
         },
         'required': ['name', 'action', 'body'],
@@ -94,7 +108,10 @@ class SkillEvolveTool implements Tool {
     final description = args['description'] as String? ?? '';
     final allowedTools = args['allowed_tools'] as String? ?? '';
     final body = args['body'] as String;
-    final scope = args['scope'] as String? ?? 'project';
+    // 移动端没有项目概念：默认 user，显式 project 也映射为 user
+    final scope = _mobile
+        ? 'user'
+        : (args['scope'] as String? ?? 'project');
 
     if (!_isValidSkillName(skillName)) {
       return 'Error: Invalid skill name "$skillName". '
@@ -127,7 +144,8 @@ class SkillEvolveTool implements Tool {
 
     String targetDir;
     if (scope == 'user') {
-      final home = Platform.environment['HOME'] ??
+      final home = _homeDir ??
+          Platform.environment['HOME'] ??
           Platform.environment['USERPROFILE'] ??
           '/';
       targetDir = '$home/.athena/skills/$skillName';

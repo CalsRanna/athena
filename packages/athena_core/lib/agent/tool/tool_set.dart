@@ -36,18 +36,34 @@ ToolRegistry buildToolRegistry({
   /// Sentinel 被 `sentinel_evolve` 改写后的回调（GUI 用它刷新角色列表）。
   void Function()? onSentinelChanged,
 
+  /// 移动端 `.athena` 根目录（进化数据根目录；移动端无可靠 `$HOME`，由
+  /// GUI 装配层传入沙盒内 Application Support 目录）。
+  String? mobileHomeDir,
+
   /// 覆盖平台判定，仅供测试。
   bool? mobile,
 }) {
   final isMobile = mobile ?? PlatformUtil.isMobile;
   final registry = ToolRegistry();
 
-  // 移动端只注册无本地文件/进程依赖的三个工具
+  // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
+  // 属于移动端可用能力；skill_evolve 在移动端默认（且只能）写 user 级。
   if (isMobile) {
     registry.registerAll([
       WebFetchTool(),
       WebSearchTool(store: store),
       SkillTool(skillRegistry),
+      SkillEvolveTool(
+        skillRegistry: skillRegistry,
+        homeDir: mobileHomeDir,
+        mobile: true,
+      ),
+      ExperienceLearnTool(repository: experienceRepository),
+      ExperienceRecallTool(repository: experienceRepository),
+      SentinelEvolveTool(
+        repository: sentinelRepository,
+        onChanged: onSentinelChanged,
+      ),
     ]);
     return registry;
   }

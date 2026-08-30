@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -53,6 +55,7 @@ void main() {
       sentinelRepository: _FakeSentinelRepository(),
       store: _FakeKeyValueStore(),
       defaultWorkdir: workdir,
+      mobileHomeDir: mobile == true ? '${Directory.systemTemp.path}/mobile-home' : null,
       mobile: mobile,
     );
     return registry.all.map((t) => t.name).toList();
@@ -82,11 +85,20 @@ void main() {
     expect(names, isNot(contains(absentShell)));
   });
 
-  test('移动端只注册无本地文件/进程依赖的 3 个工具', () {
+  test('移动端注册无本地文件/进程依赖的 7 个工具(含进化)', () {
     final names = toolNames(mobile: true);
 
-    expect(names, hasLength(3));
-    expect(names, containsAll(<String>['web_fetch', 'web_search', 'skill']));
+    expect(names, hasLength(7));
+    expect(names, containsAll(<String>[
+      'web_fetch',
+      'web_search',
+      'skill',
+      // 进化工具只写自己的 .athena 沙盒目录,移动端可用
+      'skill_evolve',
+      'experience_learn',
+      'experience_recall',
+      'sentinel_evolve',
+    ]));
     // 文件与 shell 工具在移动端不可用
     for (final absent in const [
       'file_read',
@@ -94,7 +106,6 @@ void main() {
       'file_update',
       'bash',
       'powershell',
-      'sentinel_evolve',
     ]) {
       expect(names, isNot(contains(absent)), reason: '$absent 不应出现在移动端');
     }
