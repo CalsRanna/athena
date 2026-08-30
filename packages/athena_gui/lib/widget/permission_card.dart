@@ -125,6 +125,7 @@ class PermissionApprovalCard extends StatelessWidget {
     if (mobile) {
       // 移动：全宽按钮，主操作（Allow Once）在最上
       return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _CardPrimaryButton(
             label: 'Allow Once',
@@ -187,6 +188,7 @@ class _CardPrimaryButton extends StatelessWidget {
             shape: StadiumBorder(),
           ),
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
@@ -220,6 +222,7 @@ class _CardSecondaryButton extends StatelessWidget {
             shape: StadiumBorder(side: BorderSide(color: colors.border)),
           ),
           padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
