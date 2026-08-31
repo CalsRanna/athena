@@ -2,7 +2,7 @@
 
 Athena 的终端客户端(TUI),基于 [nocterm](https://pub.dev/packages/nocterm)(Flutter-like 终端 UI 框架),复用 `athena_core` 的 Agent 引擎。
 
-与 GUI 共享同一套核心:完整的 Agent 循环(推理 → 工具调用 → 结果 → 再推理)、12 个工具、三层权限模型、Skill 系统、经验与自我进化。数据独立存储于 `~/.athena/tui/`(JSONL),与 GUI 的 SQLite 互不干扰。
+与 GUI 共享同一套核心:完整的 Agent 循环(推理 → 工具调用 → 结果 → 再推理)、13 个工具、三层权限模型、Skill 系统、经验与自我进化。数据独立存储于 `~/.athena/tui/`(JSONL),与 GUI 的 SQLite 互不干扰。
 
 ## 运行
 

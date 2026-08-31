@@ -2,9 +2,9 @@
 
 <div align="center">
 
-一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 12 个工具实现类（桌面端运行时 11 个、移动端 3 个）、可自我进化的 Skill 系统、以及严谨的权限与安全模型。
+一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 13 个工具实现类（桌面端注册 13 个、移动端 9 个）、可自我进化的 Skill 系统、以及严谨的权限与安全模型。桌面端（GUI）、移动端（GUI）与终端（TUI）三种客户端共用同一套 Agent 引擎。
 
-![Version](https://img.shields.io/badge/version-3.4.4-blue)
+![Version](https://img.shields.io/badge/version-3.6.1-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 
@@ -26,7 +26,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 - **自动压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention = -1` 模式），保持长对话可继续
 - **消息注入**：支持运行时注入 steering 消息（当前轮工具执行后、下一轮推理前）与 followUp 消息（Agent 停止后继续运行）
 
-#### 内置工具（桌面端 11 个，移动端 3 个）
+#### 内置工具（桌面端 13 个，移动端 9 个）
 
 | 工具 | 说明 |
 |------|------|
@@ -40,7 +40,9 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 | `skill_evolve` | Agent 自我进化：创建/更新 Skill（SKILL.md），扩展未来能力 |
 | `experience_learn` | 记录经验教训到长期记忆，支持标签和上下文、Sentinel 私有或全局共享 |
 | `experience_recall` | 检索过往经验以指导当前任务 |
+| `experience_review` | 回顾并提炼经验库，生成记忆消化摘要（含免责声明与匹配质量日志） |
 | `sentinel_evolve` | 改进当前角色（系统提示词），支持重命名、原地更新，内置 Sentinel 不可改名 |
+| `sentinel_revert` | 回滚 Sentinel 最近一次演进，恢复历史快照 |
 
 #### 权限模型
 
@@ -93,11 +95,13 @@ Skill 指令会注入系统提示词，但工具调用仍需经过权限检查�
 
 ### Agent 自我进化
 
-Agent 可通过三个机制持续改进自身：
+Agent 可通过以下机制持续改进自身：
 
 - **Skill Evolution**（`skill_evolve`）：创建或改进 Skill，扩展未来能力
 - **Experience Learning**（`experience_learn` / `experience_recall`）：构建长期经验记忆，存储在 `~/.athena/experiences/`
+- **Experience Review**（`experience_review`）：回顾经验库，生成记忆消化摘要与匹配质量日志
 - **Sentinel Optimization**（`sentinel_evolve`）：基于使用反馈优化系统提示词
+- **Sentinel Revert**（`sentinel_revert`）：回滚最近一次演进（`.athena` 沙盒内的历史快照）
 
 每次对话自动注入极简进化提示（~30 token），完整指南通过内置 `self-evolve` Skill 按需加载。
 
@@ -128,6 +132,7 @@ Agent 可通过三个机制持续改进自身：
 
 - **桌面端**：macOS、Windows、Linux。窗口管理、系统托盘、全局快捷键（Meta+W 隐藏）
 - **移动端**：iOS、Android。触摸优化界面
+- **终端**：athena_tui（nocterm），数据独立存储于 `~/.athena/tui/`（JSONL），与 GUI 的 SQLite 互不干扰
 
 ## 快速开始
 
@@ -138,14 +143,20 @@ Agent 可通过三个机制持续改进自身：
 
 ### 安装与运行
 
-项目为 monorepo 多包结构：`athena_core`（纯 Dart 核心）与 `athena_gui`（Flutter 应用）。
+项目为 monorepo 多包结构：`athena_core`（纯 Dart 核心）、`athena_gui`（Flutter 桌面/移动应用）与 `athena_tui`（终端客户端）。
 
 ```bash
+# GUI（桌面 / 移动）
 git clone https://github.com/CalsRanna/athena.git
 cd athena/packages/athena_gui
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter run -d <device>
+
+# TUI（终端）
+cd ../athena_tui
+dart pub get
+dart run bin/athena.dart
 ```
 
 ### 开发命令
@@ -164,7 +175,7 @@ dart test             # 运行核心测试（Agent 引擎、服务、工具等�
 
 ## 架构
 
-项目拆分为两个 package，依赖方向严格单向：`athena_gui → athena_core`。
+项目拆分为三个 package，依赖方向严格单向：`athena_gui → athena_core`、`athena_tui → athena_core`。
 
 ```
 packages/
@@ -175,31 +186,36 @@ packages/
 │   ├── repository/      #   存储接口（Chat/Message/Model/Provider/...）
 │   ├── entity/ model/ preset/ extension/ util/
 │   └── storage/         #   KeyValueStore 接口 + AgentSettings
-└── athena_gui/          # ★ Flutter 应用
-    ├── page/            #   UI 层（desktop 多区工作台 / mobile 分段浏览）
-    ├── view_model/      #   Signals 状态管理
-    │   └── delegate/    #   AgentStreamDelegate：包装核心协调层 + 对话框注入
-    ├── repository/      #   SQLite 实现（SqliteChatRepository 等）
-    ├── database/        #   SQLite + Laconic ORM + 迁移
-    ├── router/ widget/ component/ util/
-    └── storage/         #   KeyValueStore 的 SharedPreferences 实现
+├── athena_gui/          # ★ Flutter 桌面/移动应用
+│   ├── page/            #   UI 层（desktop 多区工作台 / mobile 分段浏览）
+│   ├── view_model/      #   Signals 状态管理
+│   │   └── delegate/    #   AgentStreamDelegate：包装核心协调层 + 对话框注入
+│   ├── repository/      #   SQLite 实现（SqliteChatRepository 等）
+│   ├── database/        #   SQLite + Laconic ORM + 迁移
+│   ├── router/ widget/ component/ util/
+│   └── storage/         #   KeyValueStore 的 SharedPreferences 实现
+└── athena_tui/          # ★ 终端客户端（nocterm）
+    ├── bin/athena.dart  #   CLI 入口
+    ├── bridge/          #   tui_agent_bridge：Agent 引擎 → TUI 状态桥
+    ├── ui/ view_model/  #   终端 UI 与响应式层
+    └── storage/         #   JSONL/JSON 文件存储（会话 / 模型 / 角色）
 ```
 
 核心通过**存储接口**（`repository/`）与**注入回调**（权限审批）
-与持久化策略解耦：GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组
-接口用 JSONL/文件存储。
+与持久化策略解耦：GUI 用 SQLite + SharedPreferences；TUI 已实现同一组
+接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。
 
 ### 技术栈
 
 | 层 | 技术 |
 |----|------|
-| UI | Flutter（athena_gui） |
+| UI | Flutter（athena_gui）/ nocterm（athena_tui） |
 | 核心 | 纯 Dart（athena_core，零 Flutter 依赖） |
 | 状态管理 | Signals（Computed、Signal、listSignal、setSignal） |
-| 依赖注入 | GetIt（LazySingleton，仅 GUI 装配层） |
+| 依赖注入 | GetIt（LazySingleton，仅客户端装配层） |
 | 路由 | AutoRoute（桌面无过渡，移动标准过渡） |
 | 数据库 | SQLite + Laconic ORM（GUI 侧实现，PRAGMA foreign_keys = ON） |
-| AI API | openai_dart v5.0.0（流式 + 工具调用 + 推理） |
+| AI API | openai_dart（path 依赖 `third_party/openai_dart`，流式 + 工具调用 + 推理） |
 | HTTP | http v1.x（web_fetch、web_search） |
 | 测试 | athena_core：`dart test`；athena_gui：`flutter test` |
 
@@ -220,8 +236,8 @@ packages/
 │              Permission / Skill）           │
 │  Entity / Storage / Util                    │
 └─────────────────────────────────────────────┘
-   GUI 通过 GetIt 装配：注入 SQLite 实现 +
-   权限弹窗（TUI 可注入替代实现）
+   GUI 通过 GetIt 装配：注入 SQLite 实现 + 权限弹窗；
+   TUI 注入 JSONL/文件存储 + stdin 权限审批
 ```
 
 ## 配置
@@ -233,7 +249,7 @@ packages/
 | 提供商 | 内置模型示例 |
 |--------|---------|
 | DeepSeek | deepseek-chat, deepseek-reasoner |
-| OpenRouter | Claude 3.5 Sonnet, GPT-4o, Gemini 2.0 Flash, Llama 3.3 等 |
+| OpenRouter | Claude 系列、Gemini 系列、GPT-5 / o3 / o4 系列、DeepSeek、Qwen3、Grok、MiniMax（按家族保留最新版） |
 | 阿里云百炼 | 通义千问系列, DeepSeek 系列 |
 | 硅基流动 | DeepSeek 系列 |
 | 火山方舟 | 豆包系列, DeepSeek 系列 |
@@ -269,7 +285,7 @@ packages/
 
 ## 测试
 
-项目为双包结构，测试覆盖：
+项目为三包结构，测试覆盖：
 
 - **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载、Shell 进程管理、Schema 校验
 - **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
@@ -283,6 +299,9 @@ cd packages/athena_core && dart test
 
 # GUI 包（Flutter）
 cd packages/athena_gui && flutter test
+
+# TUI 包
+cd packages/athena_tui && dart test
 ```
 
 ## 贡献
