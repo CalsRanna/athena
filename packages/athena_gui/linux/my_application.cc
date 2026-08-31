@@ -44,7 +44,8 @@ static gchar* path_get_extension(const gchar* path) {
 
 // 读取系统剪贴板中的图片：
 // - {"base64": <PNG base64>}：剪贴板中是图片数据（如截图工具）
-// - {"path": <文件路径>}：剪贴板中是图片文件（如文件管理器复制）
+// - {"paths": [<文件路径>, ...]}：剪贴板中是多个图片文件（如文件管理器多选复制）
+// - {"base64s": [<PNG base64>, ...]}：上述场景中非兼容格式转成 PNG
 // - null：剪贴板中没有图片
 static void clipboard_image_method_call_cb(FlMethodChannel*,
                                            FlMethodCall* method_call,
@@ -64,7 +65,10 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
   //    此时应以文件本身为准，否则发送的是图标而不是图片内容。
   //    注意浏览器复制图片时也会带 text/uri-list（图片网页 URL，非 file://），
   //    只有 file:// 前缀的 URI 才算文件复制场景。
+  //    多选复制时收集全部图片文件。
   gboolean has_file_uris = FALSE;
+  FlValue* paths_array = NULL;
+  FlValue* base64s_array = NULL;
   gchar** uris = gtk_clipboard_wait_for_uris(clipboard);
   if (uris != NULL) {
     for (gint i = 0; uris[i] != NULL; i++) {
@@ -91,10 +95,11 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
       // API 只接受 png/gif/webp：兼容格式直接给路径，其他转 PNG
       if (g_strcmp0(ext_lower, "png") == 0 || g_strcmp0(ext_lower, "gif") == 0 ||
           g_strcmp0(ext_lower, "webp") == 0) {
-        g_autoptr(FlValue) map = fl_value_new_map();
-        fl_value_set_string_take(map, "path", fl_value_new_string(path));
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(map));
-        break;
+        if (paths_array == NULL) {
+          paths_array = fl_value_new_list();
+        }
+        fl_value_append_take(paths_array, fl_value_new_string(path));
+        continue;
       }
       g_autoptr(GdkPixbuf) pixbuf = gdk_pixbuf_new_from_file(path, NULL);
       if (pixbuf != NULL) {
@@ -105,10 +110,10 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
           g_autofree gchar* b64 =
               g_base64_encode((const guchar*)buffer, buffer_size);
           g_free(buffer);
-          g_autoptr(FlValue) map = fl_value_new_map();
-          fl_value_set_string_take(map, "base64", fl_value_new_string(b64));
-          response = FL_METHOD_RESPONSE(fl_method_success_response_new(map));
-          break;
+          if (base64s_array == NULL) {
+            base64s_array = fl_value_new_list();
+          }
+          fl_value_append_take(base64s_array, fl_value_new_string(b64));
         }
       }
     }
@@ -117,7 +122,7 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
 
   // 2. 剪贴板中的图片数据（截图等），统一转成 PNG；
   //    文件复制场景（含 file:// URI）中图标预览数据不作为图片内容。
-  if (response == NULL && !has_file_uris &&
+  if (paths_array == NULL && base64s_array == NULL && !has_file_uris &&
       gtk_clipboard_wait_is_image_available(clipboard)) {
     GdkPixbuf* pixbuf = gtk_clipboard_wait_for_image(clipboard);
     if (pixbuf != NULL) {
@@ -128,12 +133,28 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
         g_autofree gchar* b64 =
             g_base64_encode((const guchar*)buffer, buffer_size);
         g_free(buffer);
-        g_autoptr(FlValue) map = fl_value_new_map();
-        fl_value_set_string_take(map, "base64", fl_value_new_string(b64));
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(map));
+        if (base64s_array == NULL) {
+          base64s_array = fl_value_new_list();
+        }
+        fl_value_append_take(base64s_array, fl_value_new_string(b64));
       }
       g_object_unref(pixbuf);
     }
+  }
+
+  // 构建返回：paths / base64s（多图复制场景）。
+  // 数组所有权移交 map（take），移交后不再单独释放。
+  if (paths_array != NULL || base64s_array != NULL) {
+    g_autoptr(FlValue) map = fl_value_new_map();
+    if (paths_array != NULL) {
+      fl_value_set_string_take(map, "paths", paths_array);
+      paths_array = NULL;
+    }
+    if (base64s_array != NULL) {
+      fl_value_set_string_take(map, "base64s", base64s_array);
+      base64s_array = NULL;
+    }
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(map));
   }
 
   if (response == NULL) {

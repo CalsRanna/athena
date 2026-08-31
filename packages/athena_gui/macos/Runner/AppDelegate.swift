@@ -46,15 +46,23 @@ class AppDelegate: FlutterAppDelegate {
         result(FlutterMethodNotImplemented)
         return
       }
-      result(self.readClipboardImage())
+      // 剪贴板中的非兼容格式（jpg 等）需要转成 PNG base64，
+      // 可能耗时上百毫秒甚至更久，放到后台队列避免阻塞主线程（UI 卡顿）
+      DispatchQueue.global(qos: .userInitiated).async {
+        let value = self.readClipboardImage()
+        DispatchQueue.main.async {
+          result(value)
+        }
+      }
     }
   }
 
   /// 读取剪贴板中的图片：
-  /// - ["path": ...]：剪贴板中是 png/gif/webp 图片文件（如 Finder 复制图片）
+  /// - ["paths": [...] ]：剪贴板中是多个 png/gif/webp 图片文件（如 Finder 多选复制）
+  /// - ["base64s": [...]]：上述场景中非兼容格式（jpg/heic/tiff 等）转为 PNG base64
   /// - ["base64": ...]：剪贴板中是图片数据（如 Cmd+Shift+4 截图），转为 PNG base64
   /// - nil：剪贴板中没有图片
-  private func readClipboardImage() -> [String: String]? {
+  private func readClipboardImage() -> [String: Any]? {
     let pasteboard = NSPasteboard.general
     // 文件优先：Finder 复制文件时剪贴板会同时携带文件图标预览数据，
     // 此时应以文件本身为准，否则发送的是图标而不是图片内容。
@@ -63,18 +71,26 @@ class AppDelegate: FlutterAppDelegate {
       options: [.urlReadingFileURLsOnly: true]
     ) as? [URL]
     if let urls, !urls.isEmpty {
-      guard
-        let url = urls.first(where: { AppDelegate.isImageFilePath($0.pathExtension) })
-      else {
+      let imageUrls = urls.filter { AppDelegate.isImageFilePath($0.pathExtension) }
+      if imageUrls.isEmpty {
         // 非图片文件：图标预览数据不作为图片内容
         return nil
       }
-      // API 只接受 png/gif/webp；其他格式（jpg/heic/tiff 等）转成 PNG
-      if AppDelegate.apiCompatibleExtensions.contains(url.pathExtension.lowercased()) {
-        return ["path": url.path]
+      // 多选复制时收集全部图片；API 只接受 png/gif/webp，
+      // 其他格式（jpg/heic/tiff 等）转成 PNG
+      var paths: [String] = []
+      var base64s: [String] = []
+      for url in imageUrls {
+        if AppDelegate.apiCompatibleExtensions.contains(url.pathExtension.lowercased()) {
+          paths.append(url.path)
+        } else if let png = AppDelegate.loadImageAsPng(url: url) {
+          base64s.append(png)
+        }
       }
-      guard let png = AppDelegate.loadImageAsPng(url: url) else { return nil }
-      return ["base64": png]
+      var result: [String: Any] = [:]
+      if !paths.isEmpty { result["paths"] = paths }
+      if !base64s.isEmpty { result["base64s"] = base64s }
+      return result.isEmpty ? nil : result
     }
     if let data = pasteboard.data(forType: .png) {
       return ["base64": data.base64EncodedString()]

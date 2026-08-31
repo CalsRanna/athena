@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
@@ -16,6 +18,7 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(int)? onRetentionChange;
   final void Function(List<String>)? onImageSelected;
   final void Function(String)? onImagePasted;
+  final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
   final void Function(String?)? onReasoningEffortChange;
@@ -26,6 +29,7 @@ class DesktopMessageInput extends StatelessWidget {
     this.onRetentionChange,
     this.onImageSelected,
     this.onImagePasted,
+    this.onImageRemoved,
     this.onSubmitted,
     this.onTemperatureChange,
     this.onReasoningEffortChange,
@@ -57,7 +61,9 @@ class DesktopMessageInput extends StatelessWidget {
       var toolbar = Row(spacing: 12, children: toolbarChildren);
       var input = _Input(
         controller: controller,
+        images: chatViewModel.pendingImages.value,
         onImagePasted: onImagePasted,
+        onImageRemoved: onImageRemoved,
         onSubmitted: onSubmitted,
       );
       var inputChildren = [
@@ -81,11 +87,15 @@ class DesktopMessageInput extends StatelessWidget {
 
 class _Input extends StatefulWidget {
   final TextEditingController controller;
+  final List<String> images;
   final void Function(String)? onImagePasted;
+  final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   const _Input({
     required this.controller,
+    this.images = const [],
     this.onImagePasted,
+    this.onImageRemoved,
     this.onSubmitted,
   });
 
@@ -164,10 +174,25 @@ class _InputState extends State<_Input> {
         child: textField,
       ),
     );
+    // 待发送图片属于输入内容，展示在输入框边框内部（文字上方）
+    var content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.images.isNotEmpty) ...[
+          _PendingImageStrip(
+            images: widget.images,
+            onRemoved: widget.onImageRemoved,
+          ),
+          const SizedBox(height: 10),
+        ],
+        shortcuts,
+      ],
+    );
     return Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
-      child: shortcuts,
+      child: content,
     );
   }
 
@@ -183,17 +208,20 @@ class _InputState extends State<_Input> {
     );
   }
 
-  /// 图片感知粘贴：剪贴板中是图片时贴入待发送列表，
+  /// 图片感知粘贴：剪贴板中有图片时全部贴入待发送列表
+  /// （文件管理器多选复制可能有多个图片文件），
   /// 否则回退到默认的文本粘贴行为。
   Future<void> _pasteImageAware() async {
     if (_pasting) return;
     _pasting = true;
+    var pasted = false;
     try {
-      final path = await ClipboardImageService.readClipboardImage();
-      if (path != null) {
+      // 文件路径先回调（占位立即出现），转换数据逐张回填
+      await ClipboardImageService.readClipboardImages((path) {
+        pasted = true;
         widget.onImagePasted?.call(path);
-        return;
-      }
+      });
+      if (pasted) return;
       await _pasteClipboardText();
     } finally {
       _pasting = false;
@@ -214,6 +242,85 @@ class _InputState extends State<_Input> {
     controller.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+}
+
+class _PendingImageStrip extends StatelessWidget {
+  final List<String> images;
+  final void Function(int)? onRemoved;
+  const _PendingImageStrip({required this.images, this.onRemoved});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: images.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => _buildItem(context, index),
+      ),
+    );
+  }
+
+  Widget _buildItem(BuildContext context, int index) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    // 缩略图只按 2x 显示尺寸解码（48x48 ≈ 96），避免大图全尺寸解码卡顿；
+    // frameBuilder 在图片数据就绪前渲染占位底色，避免整块空白后突然弹出
+    var image = Image.file(
+      File(images[index]),
+      fit: BoxFit.cover,
+      height: double.infinity,
+      width: double.infinity,
+      cacheWidth: 96,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) return child;
+        return ColoredBox(
+          color: colors.inputBackground,
+          child: Center(
+            child: Icon(
+              HugeIcons.strokeRoundedImage01,
+              color: colors.border,
+              size: 16,
+            ),
+          ),
+        );
+      },
+    );
+    var icon = Icon(
+      HugeIcons.strokeRoundedCancel01,
+      color: colors.textPrimary,
+      size: 12,
+    );
+    var decoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: colors.surfaceMobile,
+    );
+    var removeButton = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onRemoved?.call(index),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: decoration,
+          padding: EdgeInsets.all(2),
+          child: icon,
+        ),
+      ),
+    );
+    return SizedBox.square(
+      dimension: 48,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            image,
+            Positioned(right: 2, top: 2, child: removeButton),
+          ],
+        ),
+      ),
     );
   }
 }
