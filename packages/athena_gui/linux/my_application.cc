@@ -1,6 +1,7 @@
 #include "my_application.h"
 
-#include <glib.h>
+#include <string.h>
+
 #include <flutter_linux/flutter_linux.h>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
@@ -22,6 +23,23 @@ static gboolean is_image_extension(const gchar* ext) {
     }
   }
   return FALSE;
+}
+
+// 返回路径扩展名（含点，如 ".png"）；无扩展名返回 NULL。
+// GLib 已不提供 g_path_get_extension，此处为等价实现（语义同旧 GLib：
+// 只取 basename 中最后一个 '.'，隐藏文件如 ".bashrc" 视为无扩展名）。
+// 返回值为复制结果，调用方负责释放。
+static gchar* path_get_extension(const gchar* path) {
+  const gchar* name = path;
+  const gchar* slash = strrchr(path, '/');
+  if (slash != NULL) {
+    name = slash + 1;
+  }
+  const gchar* dot = strrchr(name, '.');
+  if (dot == NULL || dot == name) {
+    return NULL;
+  }
+  return g_strdup(dot);
 }
 
 // 读取系统剪贴板中的图片：
@@ -58,7 +76,7 @@ static void clipboard_image_method_call_cb(FlMethodChannel*,
       if (path == NULL) {
         continue;
       }
-      g_autofree gchar* ext = g_path_get_extension(path);
+      g_autofree gchar* ext = path_get_extension(path);
       if (ext == NULL || *ext == '\0') {
         continue;
       }
