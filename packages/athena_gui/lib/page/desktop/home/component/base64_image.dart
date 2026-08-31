@@ -60,6 +60,16 @@ class _DesktopBase64ImageState extends State<DesktopBase64Image> {
     bytes = base64Decode(widget.base64);
   }
 
+  @override
+  void didUpdateWidget(DesktopBase64Image oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 同一位置复用（列表更新）时 base64 可能变化，必须重新解码，
+    // 否则会一直渲染旧消息的图片
+    if (oldWidget.base64 != widget.base64) {
+      bytes = base64Decode(widget.base64);
+    }
+  }
+
   void _openPreviewDialog() {
     AthenaDialog.show(
       _DesktopBase64ImagePreviewDialog(bytes: bytes),

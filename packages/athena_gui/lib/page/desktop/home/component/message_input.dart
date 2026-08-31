@@ -3,6 +3,7 @@ import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,7 @@ class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
   final void Function(int)? onRetentionChange;
   final void Function(List<String>)? onImageSelected;
+  final void Function(String)? onImagePasted;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
   final void Function(String?)? onReasoningEffortChange;
@@ -23,6 +25,7 @@ class DesktopMessageInput extends StatelessWidget {
     required this.controller,
     this.onRetentionChange,
     this.onImageSelected,
+    this.onImagePasted,
     this.onSubmitted,
     this.onTemperatureChange,
     this.onReasoningEffortChange,
@@ -52,7 +55,11 @@ class DesktopMessageInput extends StatelessWidget {
         const DesktopTokenIndicator(),
       ];
       var toolbar = Row(spacing: 12, children: toolbarChildren);
-      var input = _Input(controller: controller, onSubmitted: onSubmitted);
+      var input = _Input(
+        controller: controller,
+        onImagePasted: onImagePasted,
+        onSubmitted: onSubmitted,
+      );
       var inputChildren = [
         Expanded(child: input),
         const SizedBox(width: 8),
@@ -74,8 +81,13 @@ class DesktopMessageInput extends StatelessWidget {
 
 class _Input extends StatefulWidget {
   final TextEditingController controller;
+  final void Function(String)? onImagePasted;
   final void Function()? onSubmitted;
-  const _Input({required this.controller, this.onSubmitted});
+  const _Input({
+    required this.controller,
+    this.onImagePasted,
+    this.onSubmitted,
+  });
 
   @override
   State<_Input> createState() => _InputState();
@@ -89,7 +101,12 @@ class _NewlineIntent extends Intent {
   const _NewlineIntent();
 }
 
+class _PasteIntent extends Intent {
+  const _PasteIntent();
+}
+
 class _InputState extends State<_Input> {
+  bool _pasting = false;
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -126,6 +143,8 @@ class _InputState extends State<_Input> {
         _SendActivator(): _SendIntent(),
         _SendNumpadActivator(): _SendIntent(),
         _NewlineActivator(): _NewlineIntent(),
+        _PasteMacActivator(): _PasteIntent(),
+        _PasteCtrlActivator(): _PasteIntent(),
       },
       child: Actions(
         actions: {
@@ -137,6 +156,9 @@ class _InputState extends State<_Input> {
           ),
           _NewlineIntent: CallbackAction<_NewlineIntent>(
             onInvoke: (_) => _insertNewline(),
+          ),
+          _PasteIntent: CallbackAction<_PasteIntent>(
+            onInvoke: (_) => _pasteImageAware(),
           ),
         },
         child: textField,
@@ -160,6 +182,50 @@ class _InputState extends State<_Input> {
       selection: TextSelection.collapsed(offset: selection.start + 1),
     );
   }
+
+  /// 图片感知粘贴：剪贴板中是图片时贴入待发送列表，
+  /// 否则回退到默认的文本粘贴行为。
+  Future<void> _pasteImageAware() async {
+    if (_pasting) return;
+    _pasting = true;
+    try {
+      final path = await ClipboardImageService.readClipboardImage();
+      if (path != null) {
+        widget.onImagePasted?.call(path);
+        return;
+      }
+      await _pasteClipboardText();
+    } finally {
+      _pasting = false;
+    }
+  }
+
+  Future<void> _pasteClipboardText() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) return;
+    final controller = widget.controller;
+    final value = controller.value;
+    final selection = value.selection;
+    // 无有效选区时在末尾追加，避免 substring 越界
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final newText = value.text.replaceRange(start, end, text);
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: start + text.length),
+    );
+  }
+}
+
+class _PasteMacActivator extends SingleActivator {
+  const _PasteMacActivator()
+    : super(LogicalKeyboardKey.keyV, meta: true, control: false);
+}
+
+class _PasteCtrlActivator extends SingleActivator {
+  const _PasteCtrlActivator()
+    : super(LogicalKeyboardKey.keyV, meta: false, control: true);
 }
 
 class _SendActivator extends SingleActivator {

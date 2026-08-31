@@ -342,6 +342,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       controller: controller,
       onRetentionChange: updateRetention,
       onImageSelected: updateImage,
+      onImagePasted: chatViewModel.addPendingImage,
       onSubmitted: sendMessage,
       onTemperatureChange: updateTemperature,
       onReasoningEffortChange: updateReasoningEffort,

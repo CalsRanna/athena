@@ -518,7 +518,10 @@ class _UserMessageListTile extends StatelessWidget {
     );
     var gridView = GridView.builder(
       gridDelegate: delegate,
+      // 以 base64 为 key：同一网格位置的元素在不同消息间复用时，
+      // 避免渲染出上一条消息的图片
       itemBuilder: (context, index) => DesktopBase64Image(
+        key: ValueKey(images[index]),
         base64: images[index],
         fit: BoxFit.cover,
         width: double.infinity,
