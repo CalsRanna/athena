@@ -198,16 +198,16 @@ void HandleMethodCall(
     std::vector<std::wstring> api_paths;
     std::vector<std::wstring> convert_paths;
     if (CollectDroppedImages(&api_paths, &convert_paths)) {
-      std::vector<std::string> utf8_paths;
+      flutter::EncodableList utf8_paths;
       for (const std::wstring& path : api_paths) {
         std::string utf8;
         if (WideToUtf8(path, &utf8)) {
-          utf8_paths.push_back(utf8);
+          utf8_paths.emplace_back(std::move(utf8));
         }
       }
       if (!utf8_paths.empty()) {
         response[flutter::EncodableValue("paths")] =
-            flutter::EncodableValue(utf8_paths);
+            flutter::EncodableValue(std::move(utf8_paths));
       }
       // jpg/heic/tiff 等格式 API 不识别，统一转成 PNG
       std::vector<flutter::EncodableValue> base64s;
