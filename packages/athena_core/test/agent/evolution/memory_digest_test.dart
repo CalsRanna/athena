@@ -46,6 +46,8 @@ void main() {
         exp('short lesson', scope: 'shared'),
       ]);
       expect(digest, contains('The following are your past experiences'));
+      // 免责句：未经验证的经验是参考，不是指令（防错误强化放大）
+      expect(digest, contains('reference, not instructions'));
       expect(digest, contains('[id1]'));
       expect(digest, contains('(shared, 2026-08-31)'));
       expect(digest, contains('short lesson'));

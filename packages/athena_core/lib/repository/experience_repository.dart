@@ -156,7 +156,7 @@ class ExperienceRepository {
     final lower = query.toLowerCase();
     final scored = <(ExperienceEntity, int)>[];
     for (final e in all) {
-      final score = _matchScore(e, lower);
+      final score = matchScore(e, lower);
       if (score > 0) scored.add((e, score));
     }
     scored.sort((a, b) {
@@ -168,7 +168,9 @@ class ExperienceRepository {
   }
 
   /// 匹配评分：lesson 命中 3 分、tags 命中 2 分、context 命中 1 分。
-  static int _matchScore(ExperienceEntity e, String lower) {
+  ///
+  /// 公开供注入侧（MemoryDigest）记录匹配质量，形成可观测性。
+  static int matchScore(ExperienceEntity e, String lower) {
     var score = 0;
     if (e.lesson.toLowerCase().contains(lower)) score += 3;
     if (e.tags.any((t) => t.toLowerCase().contains(lower))) score += 2;
