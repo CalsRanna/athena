@@ -1,11 +1,14 @@
+import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
+import 'package:athena_core/agent/tool/experience_review_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
+import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
@@ -45,6 +48,8 @@ ToolRegistry buildToolRegistry({
 }) {
   final isMobile = mobile ?? PlatformUtil.isMobile;
   final registry = ToolRegistry();
+  // sentinel 演进历史快照：与经验/技能同根的 .athena 沙盒目录
+  final historyStore = SentinelHistoryStore(homeDir: mobileHomeDir);
 
   // 移动端不注册任意文件/进程工具，但进化工具只写自己的 .athena 沙盒目录，
   // 属于移动端可用能力；skill_evolve 在移动端写沙盒内用户级目录。
@@ -59,8 +64,15 @@ ToolRegistry buildToolRegistry({
       ),
       ExperienceLearnTool(repository: experienceRepository),
       ExperienceRecallTool(repository: experienceRepository),
+      ExperienceReviewTool(repository: experienceRepository),
       SentinelEvolveTool(
         repository: sentinelRepository,
+        historyStore: historyStore,
+        onChanged: onSentinelChanged,
+      ),
+      SentinelRevertTool(
+        repository: sentinelRepository,
+        historyStore: historyStore,
         onChanged: onSentinelChanged,
       ),
     ]);
@@ -81,8 +93,15 @@ ToolRegistry buildToolRegistry({
     SkillEvolveTool(skillRegistry: skillRegistry),
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
+    ExperienceReviewTool(repository: experienceRepository),
     SentinelEvolveTool(
       repository: sentinelRepository,
+      historyStore: historyStore,
+      onChanged: onSentinelChanged,
+    ),
+    SentinelRevertTool(
+      repository: sentinelRepository,
+      historyStore: historyStore,
       onChanged: onSentinelChanged,
     ),
   ]);

@@ -85,6 +85,7 @@ class DI {
           supportService: getIt<ChatSupportService>(),
           agentSettings: getIt<AgentSettings>(),
           permissionService: getIt<PermissionService>(),
+          experienceRepository: getIt<ExperienceRepository>(),
         ),
       ),
     );

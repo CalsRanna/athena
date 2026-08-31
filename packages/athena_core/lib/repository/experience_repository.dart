@@ -79,57 +79,101 @@ class ExperienceRepository {
   // === 检索 ===
 
   /// 列出指定 Sentinel 的私有经验（仅 scope="self"），按时间倒序。
-  Future<List<ExperienceEntity>> _listPrivate(String sentinelId) {
+  Future<List<ExperienceEntity>> _listPrivate(
+    String sentinelId, {
+    bool includeArchived = false,
+  }) {
     final dir = Directory('$_basePath/$sentinelId');
-    return _listDir(dir);
+    return _filterArchived(_listDir(dir), includeArchived);
   }
 
   /// 列出所有 shared 经验，按时间倒序。
-  Future<List<ExperienceEntity>> listShared() {
+  Future<List<ExperienceEntity>> listShared({bool includeArchived = false}) {
     final dir = Directory(_sharedPath);
-    return _listDir(dir);
+    return _filterArchived(_listDir(dir), includeArchived);
+  }
+
+  /// 默认过滤 archived 经验（保留为反例，但不参与常规检索）。
+  Future<List<ExperienceEntity>> _filterArchived(
+    Future<List<ExperienceEntity>> future,
+    bool includeArchived,
+  ) async {
+    final all = await future;
+    if (includeArchived) return all;
+    return all
+        .where((e) => e.status != ExperienceEntity.statusArchived)
+        .toList();
   }
 
   /// 获取当前 Sentinel 的所有私有经验 + 所有 shared 经验。
-  Future<List<ExperienceEntity>> listForSentinel(String sentinelId) async {
+  Future<List<ExperienceEntity>> listForSentinel(
+    String sentinelId, {
+    bool includeArchived = false,
+  }) async {
     final results = <ExperienceEntity>[];
-    results.addAll(await _listPrivate(sentinelId));
-    results.addAll(await listShared());
+    results.addAll(await _listPrivate(sentinelId, includeArchived: includeArchived));
+    results.addAll(
+        await listShared(includeArchived: includeArchived));
     results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return results;
   }
 
   /// 在当前 Sentinel 私有经验 + shared 经验中搜索。
+  ///
+  /// 结果按匹配质量排序（lesson 命中 3 分、tags 命中 2 分、context 命中
+  /// 1 分），同分时按时间倒序——相关但旧的条目不会被新条目挤到后面。
   Future<List<ExperienceEntity>> searchForSentinel(
-      String sentinelId, String query) async {
-    final all = await listForSentinel(sentinelId);
-    if (query.trim().isEmpty) return all;
-    final lower = query.toLowerCase();
-    return all.where((e) {
-      if (e.lesson.toLowerCase().contains(lower)) return true;
-      if (e.context.toLowerCase().contains(lower)) return true;
-      if (e.tags.any((t) => t.toLowerCase().contains(lower))) return true;
-      return false;
-    }).toList();
+    String sentinelId,
+    String query, {
+    bool includeArchived = false,
+  }) async {
+    final all = await listForSentinel(sentinelId, includeArchived: includeArchived);
+    return _rankByScore(all, query);
   }
 
   /// 获取指定 Sentinel 的私有经验（不含 shared）。
-  Future<List<ExperienceEntity>> listPrivate(String sentinelId) {
-    return _listPrivate(sentinelId);
+  Future<List<ExperienceEntity>> listPrivate(
+    String sentinelId, {
+    bool includeArchived = false,
+  }) {
+    return _listPrivate(sentinelId, includeArchived: includeArchived);
   }
 
-  /// 在指定 Sentinel 的私有经验中搜索（不含 shared）。
+  /// 在指定 Sentinel 的私有经验中搜索（不含 shared），排序规则同
+  /// [searchForSentinel]。
   Future<List<ExperienceEntity>> searchPrivate(
-      String sentinelId, String query) async {
-    final all = await listPrivate(sentinelId);
+    String sentinelId,
+    String query, {
+    bool includeArchived = false,
+  }) async {
+    final all = await listPrivate(sentinelId, includeArchived: includeArchived);
+    return _rankByScore(all, query);
+  }
+
+  /// 按匹配质量评分排序：匹配字段越多、权重越高的排前面。
+  List<ExperienceEntity> _rankByScore(List<ExperienceEntity> all, String query) {
     if (query.trim().isEmpty) return all;
     final lower = query.toLowerCase();
-    return all.where((e) {
-      if (e.lesson.toLowerCase().contains(lower)) return true;
-      if (e.context.toLowerCase().contains(lower)) return true;
-      if (e.tags.any((t) => t.toLowerCase().contains(lower))) return true;
-      return false;
-    }).toList();
+    final scored = <(ExperienceEntity, int)>[];
+    for (final e in all) {
+      final score = _matchScore(e, lower);
+      if (score > 0) scored.add((e, score));
+    }
+    scored.sort((a, b) {
+      final byScore = b.$2.compareTo(a.$2);
+      if (byScore != 0) return byScore;
+      return b.$1.createdAt.compareTo(a.$1.createdAt);
+    });
+    return scored.map((e) => e.$1).toList();
+  }
+
+  /// 匹配评分：lesson 命中 3 分、tags 命中 2 分、context 命中 1 分。
+  static int _matchScore(ExperienceEntity e, String lower) {
+    var score = 0;
+    if (e.lesson.toLowerCase().contains(lower)) score += 3;
+    if (e.tags.any((t) => t.toLowerCase().contains(lower))) score += 2;
+    if (e.context.toLowerCase().contains(lower)) score += 1;
+    return score;
   }
 
   Future<List<ExperienceEntity>> _listDir(Directory dir) async {
@@ -147,6 +191,113 @@ class ExperienceRepository {
     }
     entities.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return entities;
+  }
+
+  // === 更新 ===
+
+  /// 定位经验的 JSON 文件：当前 Sentinel 私有目录与 shared 目录各试一次。
+  /// 返回 null 表示未找到。
+  File? _locateFile(String sentinelId, String id) {
+    for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
+      final file = File('$dirPath/$id.json');
+      if (file.existsSync()) return file;
+    }
+    return null;
+  }
+
+  /// 读取单个经验文件；文件损坏返回 null（与 [_listDir] 的容错一致）。
+  ExperienceEntity? _readFile(File file) {
+    try {
+      final json = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      return ExperienceEntity.fromJson(json);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 更新一条经验：仅覆盖提供的字段（未提供的保持原值）。
+  ///
+  /// scope 变更时把文件迁移到目标目录（旧文件删除）——修复误写为
+  /// shared 的经验无需"删除后重建"。
+  /// 返回更新后的实体；未找到或文件损坏返回 null。
+  Future<ExperienceEntity?> update({
+    required String sentinelId,
+    required String id,
+    String? lesson,
+    String? context,
+    List<String>? tags,
+    String? scope,
+    String? status,
+  }) async {
+    final file = _locateFile(sentinelId, id);
+    if (file == null) return null;
+    final original = _readFile(file);
+    if (original == null) return null;
+
+    final targetScope = scope ?? original.scope;
+    final entity = ExperienceEntity(
+      id: original.id,
+      createdAt: original.createdAt,
+      lesson: (lesson != null && lesson.trim().isNotEmpty)
+          ? lesson.trim()
+          : original.lesson,
+      context: context ?? original.context,
+      tags: tags ?? original.tags,
+      source: original.source,
+      scope: targetScope,
+      sentinelId: targetScope == 'shared' ? 'shared' : sentinelId,
+      status: status ?? original.status,
+      userVerdict: original.userVerdict,
+      lastVerdictAt: original.lastVerdictAt,
+      lastVerdictNote: original.lastVerdictNote,
+      updatedAt: DateTime.now(),
+    );
+
+    final targetDir =
+        targetScope == 'shared' ? _sharedPath : '$_basePath/$sentinelId';
+    _ensureDir(targetDir);
+    final targetFile = File('$targetDir/${entity.id}.json');
+    await targetFile.writeAsString(_prettyJson(entity.toJson()));
+    if (file.path != targetFile.path) {
+      await file.delete();
+    }
+    return entity;
+  }
+
+  /// 记录用户对经验的验证结论（confirmed / refuted）。
+  ///
+  /// 信号必须来自用户（Agent 在用户明确认可/纠正时调用），
+  /// 避免 Agent 用自评结果给自己的经验"盖章"。
+  Future<ExperienceEntity?> recordVerdict({
+    required String sentinelId,
+    required String id,
+    required String verdict,
+    String? note,
+  }) async {
+    final file = _locateFile(sentinelId, id);
+    if (file == null) return null;
+    final original = _readFile(file);
+    if (original == null) return null;
+
+    final trimmedNote = note?.trim() ?? '';
+    final entity = ExperienceEntity(
+      id: original.id,
+      createdAt: original.createdAt,
+      lesson: original.lesson,
+      context: original.context,
+      tags: original.tags,
+      source: original.source,
+      scope: original.scope,
+      sentinelId: original.sentinelId,
+      status: original.status,
+      userVerdict: verdict,
+      lastVerdictAt: DateTime.now(),
+      lastVerdictNote: trimmedNote.isEmpty ? null : trimmedNote,
+      updatedAt: DateTime.now(),
+    );
+
+    await file.writeAsString(_prettyJson(entity.toJson()));
+    return entity;
   }
 
   // === 管理 ===

@@ -7,6 +7,7 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
@@ -44,6 +45,7 @@ class TuiAgentBridge {
     required ChatSupportService supportService,
     required AgentSettings agentSettings,
     required PermissionService permissionService,
+    required ExperienceRepository experienceRepository,
   }) {
     _coordinator = AgentRunCoordinator(
       agentService: agentService,
@@ -59,6 +61,7 @@ class TuiAgentBridge {
       permissionService: permissionService,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(toolName, arguments, cancelToken),
+      experienceRepository: experienceRepository,
     );
   }
 

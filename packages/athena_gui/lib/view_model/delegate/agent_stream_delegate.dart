@@ -8,6 +8,7 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
@@ -61,6 +62,7 @@ class AgentStreamDelegate {
       permissionService: deps.permissionService,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(chatId, toolName, arguments, cancelToken),
+      experienceRepository: deps.experienceRepository,
     );
   }
 
@@ -159,6 +161,7 @@ class AgentServiceCoordinatorDeps {
   final ChatSupportService supportService;
   final AgentSettings agentSettings;
   final PermissionService permissionService;
+  final ExperienceRepository experienceRepository;
 
   AgentServiceCoordinatorDeps({
     required this.agentService,
@@ -172,5 +175,6 @@ class AgentServiceCoordinatorDeps {
     required this.supportService,
     required this.agentSettings,
     required this.permissionService,
+    required this.experienceRepository,
   });
 }

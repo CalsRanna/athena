@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -11,6 +13,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
@@ -55,6 +58,11 @@ void setupMobileTestDI() {
   getIt.registerSingleton<ProviderRepository>(_FakeProviderRepository());
   getIt.registerSingleton<SentinelRepository>(_FakeSentinelRepository());
   getIt.registerSingleton<ShortcutRepository>(_FakeShortcutRepository());
+  getIt.registerSingleton<ExperienceRepository>(
+    ExperienceRepository(
+      homeDir: Directory.systemTemp.createTempSync('athena-test-exp').path,
+    ),
+  );
 
   // Services
   getIt.registerSingleton<LlmClient>(LlmClient());
@@ -178,6 +186,7 @@ void setupMobileTestDI() {
         chatRepo: getIt<ChatRepository>(),
         agentSettings: getIt<AgentSettings>(),
         permissionService: getIt<PermissionService>(),
+        experienceRepository: getIt<ExperienceRepository>(),
       ),
     ),
   );

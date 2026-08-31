@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
+import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/coordinator/run_event.dart';
@@ -13,6 +14,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
@@ -61,6 +63,9 @@ class AgentRunCoordinator {
   final PermissionService _permissionService;
   final PermissionPrompt _permissionPrompt;
 
+  /// 经验仓库：每次 run 开始时注入相关经验的摘要（见 [MemoryDigest]）。
+  final ExperienceRepository _experienceRepository;
+
   /// 下一个 run 的自增 id（多 run 并发的隔离标识）。
   int _nextRunId = 0;
 
@@ -108,6 +113,7 @@ class AgentRunCoordinator {
     required AgentSettings agentSettings,
     required PermissionService permissionService,
     required PermissionPrompt permissionPrompt,
+    required ExperienceRepository experienceRepository,
   })  : _agentService = agentService,
         _manageService = manageService,
         _messageService = messageService,
@@ -119,7 +125,8 @@ class AgentRunCoordinator {
         _supportService = supportService,
         _agentSettings = agentSettings,
         _permissionService = permissionService,
-        _permissionPrompt = permissionPrompt;
+        _permissionPrompt = permissionPrompt,
+        _experienceRepository = experienceRepository;
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   Set<int> get streamingChatIds => _streamingChatIds;
@@ -200,6 +207,18 @@ class AgentRunCoordinator {
             )
           : wrappedMessages;
 
+      // 2.5 记忆摘要注入：相关经验的摘要确定性进入上下文
+      // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
+      // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
+      final digestMessages = await MemoryDigest.messagesFor(
+        repository: _experienceRepository,
+        query: message.content,
+        sentinelId: chat.sentinelId.toString(),
+      );
+      final baseMessages = digestMessages != null
+          ? [...digestMessages, ...compactedMessages]
+          : compactedMessages;
+
       // 3. 追加 assistant 占位消息
       final assistantMessage = await _manageService.appendAssistantPlaceholder(
         chat.id!,
@@ -212,7 +231,7 @@ class AgentRunCoordinator {
         chat: chat,
         provider: provider,
         model: model,
-        baseMessages: compactedMessages,
+        baseMessages: baseMessages,
         evolutionPrompt: EvolutionPrompt.hint,
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _agentSettings.maxAgentIterations.value,
