@@ -9,8 +9,8 @@
 Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter 构建。核心能力包括：
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
-- **Monorepo 双包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 应用），依赖方向严格单向 `athena_gui → athena_core`，为未来 TUI 客户端共用同一套 Agent 引擎做准备
-- **内置工具系统**：12 个工具实现类（桌面端运行时 11 个，移动端 3 个），带危险等级（readOnly/dangerous）与执行模式（串行/并行）
+- **Monorepo 三包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
+- **内置工具系统**：13 个工具实现类（桌面端注册 13 个，移动端 9 个），带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、Sentinel 系统提示词优化
@@ -24,8 +24,10 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 ## 2. 仓库结构（Monorepo）
 
 ```
-D:\Code\athena\
+athena/
 ├── AGENTS.md / README.md / DESIGN.md
+├── .github/workflows/          # ci + release（tag v* 触发的三平台构建）
+├── third_party/                # fork 的 openai_dart 等 path 依赖
 └── packages/
     ├── athena_core/             # ★ 纯 Dart 核心（零 Flutter / 零 SQL 依赖）
     │   ├── lib/
@@ -35,7 +37,7 @@ D:\Code\athena\
     │   │   │   ├── evolution/                # 自我进化提示词（hint + fullBody）
     │   │   │   ├── permission/               # permission_service / permission_rule / command_analyzer
     │   │   │   ├── skill/                    # skill_loader / skill_registry
-    │   │   │   └── tool/                     # 12 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
+    │   │   │   └── tool/                     # 13 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
     │   │   ├── coordinator/
     │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
     │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
@@ -48,23 +50,33 @@ D:\Code\athena\
     │   │   ├── extension/       # json_map_extension / list_signal_extension
     │   │   └── util/            # platform_util / retry / logger_util / context_window_util / tool_args_formatter
     │   └── test/                # dart test（Agent 引擎 / 工具 / 权限 / Skill / 服务）
-    └── athena_gui/              # ★ Flutter 应用
+    ├── athena_gui/              # ★ Flutter 桌面/移动应用
+    │   ├── lib/
+    │   │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
+    │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
+    │   │   ├── database/        # SQLite + Laconic ORM + 26 个迁移
+    │   │   ├── repository/      # 8 个 SqliteXxxRepository（核心接口的 SQLite 实现）
+    │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
+    │   │   ├── view_model/      # 9 个 ViewModel（Signals）+ delegate/（3 个委托）
+    │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
+    │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
+    │   │   ├── widget/          # 设计系统组件（20+）
+    │   │   ├── component/       # 业务组件（消息列表项、工具卡片等）
+    │   │   └── util/            # color_util / window_util / system_tray_util / shared_preference_util
+    │   └── test/                # flutter test（页面 / ViewModel / 数据库迁移）
+    └── athena_tui/              # nocterm 终端客户端
+        ├── bin/athena.dart      # CLI 入口
         ├── lib/
-        │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
-        │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
-        │   ├── database/        # SQLite + Laconic ORM + 26 个迁移
-        │   ├── repository/      # 8 个 SqliteXxxRepository（核心接口的 SQLite 实现）
-        │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
-        │   ├── view_model/      # 9 个 ViewModel（Signals）+ delegate/（3 个委托）
-        │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
-        │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
-        │   ├── widget/          # 设计系统组件（20+）
-        │   ├── component/       # 业务组件（消息列表项、工具卡片等）
-        │   └── util/            # color_util / window_util / system_tray_util / shared_preference_util
-        └── test/                # flutter test（页面 / ViewModel / 数据库迁移）
+        │   ├── bridge/          # tui_agent_bridge.dart（Agent 引擎 → TUI 状态桥）
+        │   ├── di/              # tui_di.dart（GetIt 手动装配）
+        │   ├── seed/            # sentinel_seed.dart（首次运行植入）
+        │   ├── storage/         # JSONL/JSON 文件存储（会话 / 模型 / 角色）
+        │   ├── ui/              # nocterm 终端组件
+        │   └── view_model/      # 终端响应式层
+        └── test/
 ```
 
-> 根目录无 pubspec；两个 package 各自独立 `pub get`。
+> 根目录无 pubspec；三个 package 各自独立 `pub get`。
 
 ---
 
@@ -86,7 +98,7 @@ Data Layer (Entity / Database / Migration)
 
 Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
 
-**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组接口用 JSONL/文件存储。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
+**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；TUI 已实现同一组接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
 ---
 
@@ -256,7 +268,7 @@ enum ToolRisk { readOnly, dangerous }
 2. **会话级缓存**：当前 run 内已批准的调用直接放行（`approveForSession`，run 开始时 `resetSession()`）
 3. **持久化规则**：`~/.athena/permissions.json` 中的 `PermissionRule`（tool + action + pattern，支持 `*`/`?` 通配符，无通配符时按前缀匹配）命中则放行
 
-未命中 → 调用方通过 `PermissionPrompt` 回调弹窗（GUI 对话框 / 未来 TUI stdin）。用户选择：
+未命中 → 调用方通过 `PermissionPrompt` 回调弹窗（GUI 对话框 / TUI stdin 输入）。用户选择：
 - **Allow**：写会话级缓存（同一 run 内不再弹）
 - **Always Allow**：持久化规则——shell 命令用 `CommandAnalyzer.parseRulePattern` 解析为 **动作级规则**（action=git, pattern=push*），非 shell 存 keyArg（文件路径 / URL origin）
 - 弹窗不可被空白点击关闭（`barrierDismissible: false`）
@@ -634,7 +646,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 
 | 包 | 用途 |
 |----|------|
-| `openai_dart` v5.0.0 | OpenAI API 客户端（流式 + 工具调用 + 推理） |
+| `openai_dart`（path 依赖 `third_party/openai_dart`） | OpenAI API 客户端（流式 + 工具调用 + 推理），三包共用 |
 | `signals` v6.2.0 | 响应式状态管理（AgentSettings 等） |
 | `http` v1.x | web_fetch/web_search 的 HTTP 客户端 + models.dev 同步 |
 | `yaml` v3.1.2 | Skill 文件 front matter 解析 |
@@ -652,18 +664,29 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | `laconic` / `laconic_sqlite` | SQLite ORM |
 | `hugeicons` | 图标库 |
 | `google_fonts` | 字体 |
-| `flutter_markdown` + `gpt_markdown` + `flutter_markdown_latex` | Markdown/LaTeX 渲染 |
+| `flutter_markdown` + `flutter_markdown_latex` | Markdown/LaTeX 渲染 |
 | `window_manager` + `tray_manager` | 桌面窗口和系统托盘 |
 | `process` v5.0.3 | Shell 工具进程管理 |
 | `shared_preferences` | KeyValueStore 实现 |
+| `html` / `html_parser_plus` / `markdown` | 网页摘要、HTML→Markdown |
 | `file_picker` / `image_gallery_saver_plus` | 数据导入 / 图片保存 |
+| `path_provider` / `stream_channel` | 沙盒路径解析 / 进程流 |
 | `cached_network_image` / `flutter_slidable` / `flutter_staggered_grid_view` / `visibility_detector` / `device_info_plus` / `package_info_plus` / `url_launcher` / `uuid` / `synchronized` | UI 辅助 |
+
+### athena_tui（nocterm 终端客户端）
+
+| 包 | 用途 |
+|----|------|
+| `athena_core`（path 依赖） | 核心包 |
+| `nocterm` ^0.8.0 | 终端 UI（TUI 运行时） |
+| `openai_dart`（path 依赖） | 与 core 同源 |
+| `signals` / `yaml` | 响应式状态 / 配置解析 |
 
 ---
 
 ## 19. 版本信息
 
-- 当前版本：**3.4.4+797**（`athena_gui/pubspec.yaml`）
+- 当前版本：**3.6.1+864**（`athena_gui/pubspec.yaml`）
 - Flutter SDK：>= 3.8.0；Dart SDK：>= 3.8.0
 - 平台：iOS / Android / macOS / Windows / Linux
-- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、Shortcut 系统 + JSON 模式（fcc0968 → 5e3ae04）、跨平台运行加固（cbec2be）
+- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、Shortcut 系统 + JSON 模式（fcc0968 → 5e3ae04）、跨平台运行加固（cbec2be）、athena_tui 终端客户端（f65e8a7）、Sentinel 进化/回滚 + 经验回顾与记忆消化（886e0b5）、移动端沙盒进化工具（f28d6f8）
