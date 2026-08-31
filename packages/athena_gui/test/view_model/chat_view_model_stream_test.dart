@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
@@ -16,6 +17,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
@@ -465,6 +467,7 @@ ChatViewModel _buildViewModel({
         supportService: effectiveSvc,
         agentSettings: GetIt.instance<AgentSettings>(),
         permissionService: GetIt.instance<PermissionService>(),
+        experienceRepository: GetIt.instance<ExperienceRepository>(),
       ),
     ),
     renameDelegate: ChatRenameDelegate(
@@ -505,6 +508,11 @@ void main() {
       PermissionService(store: PermissionStore()),
     );
     getIt.registerSingleton<AgentSettings>(AgentSettings());
+    getIt.registerSingleton<ExperienceRepository>(
+      ExperienceRepository(
+        homeDir: Directory.systemTemp.createTempSync('athena-test-exp').path,
+      ),
+    );
     getIt.registerSingleton<SettingViewModel>(
       SettingViewModel(
         modelRepository: _FakeModelRepository(),

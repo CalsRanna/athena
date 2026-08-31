@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/repository/sqlite_chat_repository.dart';
@@ -109,6 +112,9 @@ void main() {
             supportService: supportService,
             agentSettings: AgentSettings(),
             permissionService: PermissionService(store: PermissionStore()),
+            experienceRepository: ExperienceRepository(
+              homeDir: Directory.systemTemp.path,
+            ),
           ),
         ),
         renameDelegate: ChatRenameDelegate(

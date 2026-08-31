@@ -13,7 +13,9 @@ class EvolutionPrompt {
   /// 详细指导通过内置 `self-evolve` skill 按需加载。
   static const String hint =
       'You have self-evolution tools: skill_evolve, experience_learn, '
-      'experience_recall, sentinel_evolve. '
+      'experience_recall, experience_review, sentinel_evolve, sentinel_revert. '
+      'Relevant past experiences are injected at the start of each task — '
+      'call experience_recall for the full lessons when they matter. '
       'Load the "self-evolve" skill for guidance on when and how to improve yourself. '
       'Experiences are per-Sentinel by default; use scope="shared" only for '
       'universal user preferences or communication style.';
@@ -43,14 +45,32 @@ You can permanently improve your capabilities through three mechanisms:
   you identify a recurring pattern; you learn user preferences
 - **When to recall**: Before starting complex/familiar tasks;
   when context suggests past learnings apply
+  (relevant experience summaries are auto-injected at task start — recall
+  the full lesson when a summary looks relevant)
 - **Format**: Be specific and actionable. Include context, what happened,
   what to do differently
-- **Economy**: Experiences only load on explicit recall — no prompt bloat
+- **Economy**: Only summaries (~3 items) are auto-injected; full lessons load
+  on explicit recall — no prompt bloat
 
-### Sentinel Optimization (`sentinel_evolve`)
+### Experience Verification (`experience_review`)
+- **Purpose**: Record the user's verdict on a past experience — the only
+  external validation signal for your memory
+- **When to use**: The user explicitly validates a lesson (confirm) or
+  explicitly corrects it (refute). The verdict must come from the user,
+  never from your own assessment
+- **After refute**: Archive the experience with `experience_learn`
+  (action="archive") so it stops influencing your recall
+- **External grounding**: Before recording fact-based or time-sensitive
+  conclusions as experiences, verify them with web_search — experiences
+  from your own practice alone risk reinforcing your own blind spots
+
+### Sentinel Optimization (`sentinel_evolve` / `sentinel_revert`)
 - **Purpose**: Refine your role definition (system prompt) based on usage patterns
 - **When to optimize**: Current role has gaps; user feedback indicates misalignment; you find better ways to structure your behavior
 - **How**: Analyze what works/doesn't work, update the current sentinel in place (optionally rename it)
+- **Rollback**: Every change is snapshotted before writing — a failed
+  optimization can be rolled back with `sentinel_revert` (which itself
+  is snapshotted, so reverts are reversible too)
 
 ### Guidelines
 - **Be proactive but conservative**: Act on clear improvements, don't evolve for its own sake

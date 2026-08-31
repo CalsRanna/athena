@@ -454,6 +454,7 @@ class TuiDi {
       supportService: supportService,
       agentSettings: agentSettings,
       permissionService: permissionService,
+      experienceRepository: experienceRepo,
     );
     chatController = ChatController(
       manageService: manageService,
