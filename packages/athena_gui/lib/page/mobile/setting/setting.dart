@@ -1,10 +1,9 @@
 import 'package:athena_gui/router/router.gr.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
+import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
-import 'package:athena_gui/widget/tag.dart';
 import 'package:athena_gui/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -86,57 +85,35 @@ class SettingPage extends StatelessWidget {
     };
   }
 
-  /// 外观选择：bottom sheet 内使用 Athena Tag 三选一。
+  /// 外观选择：bottom sheet 内使用行列表三选一,样式与其他移动端
+  /// 选择弹窗一致。
   void _showAppearanceSheet(BuildContext context) {
     final viewModel = GetIt.instance<SettingViewModel>();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
     AthenaDialog.show(
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      ListView(
+        shrinkWrap: true,
         children: [
-          Text('Appearance', style: titleStyle),
-          const SizedBox(height: 16),
-          Watch((context) {
-            final mode = viewModel.themeMode.value;
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                AthenaTagButton(
-                  selected: mode == ThemeMode.dark,
-                  onTap: () {
-                    viewModel.setThemeMode(ThemeMode.dark);
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('Dark'),
-                ),
-                AthenaTagButton(
-                  selected: mode == ThemeMode.light,
-                  onTap: () {
-                    viewModel.setThemeMode(ThemeMode.light);
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('Light'),
-                ),
-                AthenaTagButton(
-                  selected: mode == ThemeMode.system,
-                  onTap: () {
-                    viewModel.setThemeMode(ThemeMode.system);
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('System'),
-                ),
-              ],
-            );
-          }),
+          const SizedBox(height: 8),
+          _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
+          _appearanceTile(viewModel, ThemeMode.light, 'Light'),
+          _appearanceTile(viewModel, ThemeMode.system, 'System'),
         ],
       ),
+    );
+  }
+
+  Widget _appearanceTile(
+    SettingViewModel viewModel,
+    ThemeMode mode,
+    String label,
+  ) {
+    return AthenaBottomSheetTile(
+      selected: viewModel.themeMode.value == mode,
+      onTap: () {
+        viewModel.setThemeMode(mode);
+        AthenaDialog.dismiss();
+      },
+      title: label,
     );
   }
 }

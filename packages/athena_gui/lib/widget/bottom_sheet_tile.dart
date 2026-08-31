@@ -5,6 +5,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
   final bool enabled;
   final Widget? leading;
   final void Function()? onTap;
+  final bool selected;
   final String title;
   final Widget? trailing;
   const AthenaBottomSheetTile({
@@ -12,6 +13,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
     this.enabled = true,
     this.leading,
     this.onTap,
+    this.selected = false,
     required this.title,
     this.trailing,
   });
@@ -23,7 +25,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
     var textStyle = TextStyle(
       color: textColor,
       fontSize: 14,
-      fontWeight: FontWeight.w500,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       height: 1.5,
     );
     var trailingTextStyle = TextStyle(
