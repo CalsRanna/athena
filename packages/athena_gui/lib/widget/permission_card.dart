@@ -25,6 +25,13 @@ class PermissionApprovalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    final platform = Theme.of(context).platform;
+    final mobile =
+        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
+    // 右侧留白对齐消息卡片的正文右缘:消息卡正文尾部有 CopyButton
+    // 悬浮占位(移动 24 / 桌面 48),正文实际距卡片右为 16 + 该尾随位;
+    // 审核卡片没有 CopyButton,右侧直接加大容器 padding 达到同等留白。
+    final rightPadding = mobile ? 40.0 : 64.0;
     // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
     // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
     return Container(
@@ -33,7 +40,7 @@ class PermissionApprovalCard extends StatelessWidget {
         color: colors.surfaceRaised.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(24),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 12, 16, 16),
+      padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

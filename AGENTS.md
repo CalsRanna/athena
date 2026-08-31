@@ -11,7 +11,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
 - **Monorepo 双包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 应用），依赖方向严格单向 `athena_gui → athena_core`，为未来 TUI 客户端共用同一套 Agent 引擎做准备
 - **内置工具系统**：12 个工具实现类（桌面端运行时 11 个，移动端 3 个），带危险等级（readOnly/dangerous）与执行模式（串行/并行）
-- **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3）+ 项目级信任模型
+- **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、Sentinel 系统提示词优化
 - **Shortcut 快捷入口系统**：绑定额外 Sentinel 的一等公民实体，支持场景级 JSON 输出模式
@@ -34,7 +34,7 @@ D:\Code\athena\
     │   │   │   ├── cancel_token.dart         # 取消令牌
     │   │   │   ├── evolution/                # 自我进化提示词（hint + fullBody）
     │   │   │   ├── permission/               # permission_service / permission_rule / command_analyzer
-    │   │   │   ├── skill/                    # skill_loader / skill_registry / skill_trust_store
+    │   │   │   ├── skill/                    # skill_loader / skill_registry
     │   │   │   └── tool/                     # 12 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
     │   │   ├── coordinator/
     │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
@@ -86,7 +86,7 @@ Data Layer (Entity / Database / Migration)
 
 Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
 
-**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`、Skill 信任 `SkillTrustPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组接口用 JSONL/文件存储。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
+**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组接口用 JSONL/文件存储。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
 ---
 
@@ -98,7 +98,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 2. **Service**（LlmClient → ChatService / ChatMessageService / ChatManageService / ChatSupportService / SentinelService / SummaryService / TranslationService / TRPGService / DataMigrationService / ModelCatalogService）
 3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
 4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、ShortcutViewModel、ModelResolver、SummaryViewModel、TranslationViewModel、TRPGViewModel）
-5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillTrustStore → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
+5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
 6. **ChatViewModel**（最后注册，依赖最多）
 
 > 所有注册使用 `registerLazySingleton`（首次访问时才实例化），声明顺序不影响运行时依赖解析。**注意**：DI 是 GUI 独有的装配层——athena_core 无任何 GetIt 引用，测试中构造服务时直接 `new` 并注入 Fake Repository。
@@ -289,10 +289,10 @@ disable-model-invocation: false
 1. Step one
 ```
 
-放置位置与信任模型：
-- `~/.athena/skills/` - 用户级（始终信任，所有项目可用）
-- `.athena/skills/` - 项目级（未信任时保持 **INERT**：不解析进列表、不可加载、不覆盖用户级同名 Skill），首次使用时弹信任确认（每会话仅一次，`AgentRunCoordinator._skillTrustPrompted` 守卫），信任持久化到 `~/.athena/trusted_skill_dirs.json`
+放置位置：
+- `~/.athena/skills/` - 用户级（移动端为应用沙盒内目录），对所有对话可用
 - 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
+- Skill 指令会注入系统提示词，但工具调用仍需经过权限检查
 
 ### 7.6 自我进化
 
@@ -314,7 +314,7 @@ disable-model-invocation: false
 
 `AgentRunCoordinator`（athena_core，UI 无关）是 **AgentStreamDelegate 的实际实现体**。职责：
 
-1. Skill 信任检查（每会话一次）→ 2. 用户消息落库 → 3. 自动重命名触发判断（首条用户消息）→ 4. 解析 model/provider/sentinel → 5. 构建上下文（`ChatMessageService.buildMessages`）→ 6. **自动压缩**（`retention == -1` 且 `contextTokens/contextWindow > 80%` 时：前 60% 消息由辅助模型压缩为 system summary 消息，原消息 `markAsCompacted`，压缩失败降级全量）→ 7. 追加 assistant 占位消息 → 8. 启动 AgentService.run → 9. 消费事件流落库 → 10. 用量 `recordUsage` + 刷新会话 → 11. 收尾/取消/错误落库
+1. 用户消息落库 → 2. 自动重命名触发判断（首条用户消息）→ 3. 解析 model/provider/sentinel → 4. 构建上下文（`ChatMessageService.buildMessages`）→ 5. **自动压缩**（`retention == -1` 且 `contextTokens/contextWindow > 80%` 时：前 60% 消息由辅助模型压缩为 system summary 消息，原消息 `markAsCompacted`，压缩失败降级全量）→ 6. 追加 assistant 占位消息 → 7. 启动 AgentService.run → 8. 消费事件流落库 → 9. 用量 `recordUsage` + 刷新会话 → 10. 收尾/取消/错误落库
 
 产出 `RunEvent` 纯数据流（无 UI 类型）：
 
@@ -338,7 +338,7 @@ sealed class RunEvent {
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
 
-GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps`（12 个依赖）构造 Coordinator，注入 `showPermissionDialog` / `showSkillTrustDialog` 实现，事件原样转发。权限弹窗与取消令牌用 `Future.any` 竞速——取消时自动 pop 对话框。
+GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps`（11 个依赖）构造 Coordinator，注入 `showPermissionDialog` 实现，事件原样转发。权限弹窗与取消令牌用 `Future.any` 竞速——取消时自动 pop 对话框。
 
 ---
 
@@ -410,7 +410,6 @@ ChatViewModel（Signal 唯一持有者 + 编排层）
 流式约束：
 1. **取消安全性**：`AgentStreamDelegate.settled`（实为 `AgentService.settled`）等待流完全 settle 后再删除数据
 2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 删除后写入
-3. **Skill 信任弹窗**：`AgentRunCoordinator._skillTrustPrompted` 每会话只弹一次
 
 ### 其他 ViewModel
 
@@ -468,7 +467,7 @@ cardPrimaryBackground / cardPrimaryText
 | `AthenaScaffold` | 深色背景页面骨架 |
 | `AthenaDialog` | 对话框系统（桌面居中 Dialog / 移动 Bottom Sheet，内部自动判断） |
 | `AthenaSwitch` / `Checkbox` / `ContextMenu` / `Menu` / `Tile` / `Divider` / `AppBar` / `WindowButton` | 通用组件 |
-| `PermissionDialog` / `SkillTrustDialog` | 权限/信任弹窗（不可空白点击关闭） |
+| `PermissionDialog` | 权限审批弹窗（不可空白点击关闭） |
 | `ErrorBoundary` | 错误边界 |
 
 ### 桌面布局约定
@@ -495,14 +494,14 @@ cardPrimaryBackground / cardPrimaryText
 ### 测试结构
 
 - `packages/athena_core/test/`（纯 Dart，`dart test`）
-  - `agent/` - AgentService 循环、cancel_token、**parallel_execution**、permission/（analyzer/rule/service）、skill/（loader/registry/trust）、tool/（bash/powershell/file_update/shell_runner/web_fetch/schema_validator）
+  - `agent/` - AgentService 循环、cancel_token、**parallel_execution**、permission/（analyzer/rule/service）、skill/（loader/registry）、tool/（bash/powershell/file_update/shell_runner/web_fetch/schema_validator）
   - `service/` - chat_manage_helpers、chat_message_service、chat_service、chat_support_touch、model_catalog_service
   - `util/` - retry、tool_args_formatter；`extension/` - json_map_extension
 - `packages/athena_gui/test/`（Flutter，`flutter test`）
   - `database/` - migration_test、cascade_characterization_test
   - `view_model/` - chat_view_model_stream_test、setting/summary/translation/trpg、view_model_defaults_test
   - `page/mobile/` - chat_page_test、home_page_test
-  - `repository/` - trpg_message_repository_test；`widget/` - skill_trust_dialog_test
+  - `repository/` - trpg_message_repository_test
   - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
 
 ### 测试模式

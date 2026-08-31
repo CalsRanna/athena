@@ -42,7 +42,7 @@ athena_tui ──→ athena_core(纯 Dart Agent 引擎) ──→ nocterm(终端
 ```
 
 - `lib/storage/` — 5 个 repository 的 JSONL 实现 + KeyValueStore 文件实现。单写者锁保证 `updateChat` 与 `recordUsage` 并发写同一行不丢数据;`updateChat` 显式保留 token 三列(与核心接口契约对齐)
-- `lib/bridge/tui_agent_bridge.dart` — 包装 `AgentRunCoordinator`,注入 TUI 的权限/Skill 信任回调(镜像 GUI 的 `AgentStreamDelegate`)
+- `lib/bridge/tui_agent_bridge.dart` — 包装 `AgentRunCoordinator`,注入 TUI 的权限回调(镜像 GUI 的 `AgentStreamDelegate`)
 - `lib/view_model/chat_controller.dart` — signals 状态 + `RunEvent` 事件流消费(50ms 节流合并流式更新)
 - `lib/ui/` — nocterm 组件树:状态栏 / 消息列表(思考折叠、工具卡片)/ 输入区 / 权限条 / 选择弹层
 

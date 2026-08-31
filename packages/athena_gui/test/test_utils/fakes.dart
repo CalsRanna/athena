@@ -2,7 +2,6 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
-import 'package:athena_core/agent/skill/skill_trust_store.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
@@ -104,9 +103,7 @@ void setupMobileTestDI() {
   getIt.registerSingleton<PermissionService>(
     PermissionService(store: PermissionStore()),
   );
-  getIt.registerSingleton<SkillRegistry>(
-    SkillRegistry(trustStore: SkillTrustStore()),
-  );
+  getIt.registerSingleton<SkillRegistry>(SkillRegistry());
   getIt.registerSingleton<ToolRegistry>(ToolRegistry());
   getIt.registerSingleton<AgentService>(
     AgentService(
@@ -181,7 +178,6 @@ void setupMobileTestDI() {
         chatRepo: getIt<ChatRepository>(),
         agentSettings: getIt<AgentSettings>(),
         permissionService: getIt<PermissionService>(),
-        skillRegistry: getIt<SkillRegistry>(),
       ),
     ),
   );

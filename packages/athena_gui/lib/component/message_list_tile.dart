@@ -360,8 +360,15 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
         color: colors.textOnRaised,
       ),
       SizedBox(width: 8),
-      Text(text, style: textStyle),
-      Spacer(),
+      // 思考时长文案可能撑满标题行，超出时省略而非溢出
+      Expanded(
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textStyle,
+        ),
+      ),
       if (message.reasoning)
         SizedBox(
           width: 12,

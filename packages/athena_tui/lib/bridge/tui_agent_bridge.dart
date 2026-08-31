@@ -2,7 +2,6 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:meta/meta.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -23,22 +22,15 @@ typedef TuiPermissionHandler = Future<PermissionDecision> Function(
   String arguments,
 );
 
-/// Skill 信任回调:由 TUI UI 层注册(终端内模态)。
-typedef TuiSkillTrustHandler = Future<bool> Function(
-  String dir,
-  List<String> names,
-);
-
 /// TUI 侧的 Agent 流桥:包装核心 [AgentRunCoordinator]。
 ///
 /// 结构与 GUI 的 AgentStreamDelegate 对称:事件原样转发,
-/// 权限/Skill 信任由 [permissionHandler]/[skillTrustHandler] 注入。
+/// 权限审批由 [permissionHandler] 注入。
 class TuiAgentBridge {
   late final AgentRunCoordinator _coordinator;
 
   /// UI 层在启动时注册(尚未注册时拒绝权限请求,保证 Agent 不卡死)。
   TuiPermissionHandler? permissionHandler;
-  TuiSkillTrustHandler? skillTrustHandler;
 
   TuiAgentBridge({
     required AgentService agentService,
@@ -52,7 +44,6 @@ class TuiAgentBridge {
     required ChatSupportService supportService,
     required AgentSettings agentSettings,
     required PermissionService permissionService,
-    required SkillRegistry skillRegistry,
   }) {
     _coordinator = AgentRunCoordinator(
       agentService: agentService,
@@ -66,10 +57,8 @@ class TuiAgentBridge {
       supportService: supportService,
       agentSettings: agentSettings,
       permissionService: permissionService,
-      skillRegistry: skillRegistry,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(toolName, arguments, cancelToken),
-      skillTrustPrompt: (dir, names) => _askSkillTrust(dir, names),
     );
   }
 
@@ -122,9 +111,4 @@ class TuiAgentBridge {
     ]);
   }
 
-  Future<bool> _askSkillTrust(String dir, List<String> names) async {
-    final handler = skillTrustHandler;
-    if (handler == null) return false;
-    return handler(dir, names);
-  }
 }

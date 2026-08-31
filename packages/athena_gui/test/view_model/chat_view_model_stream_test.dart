@@ -465,7 +465,6 @@ ChatViewModel _buildViewModel({
         supportService: effectiveSvc,
         agentSettings: GetIt.instance<AgentSettings>(),
         permissionService: GetIt.instance<PermissionService>(),
-        skillRegistry: GetIt.instance<SkillRegistry>(),
       ),
     ),
     renameDelegate: ChatRenameDelegate(

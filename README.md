@@ -87,17 +87,9 @@ allowed-tools: file_read, web_search
 
 #### 放置位置
 
-- `~/.athena/skills/` — 用户级（始终信任，所有项目可用）
-- `.athena/skills/` — 项目级（可随版本控制，首次加载需用户确认信任）
+- `~/.athena/skills/` — 用户级（移动端为应用沙盒内目录），对所有对话可用
 
-项目级 Skill 在信任后可覆盖同名用户级 Skill。内置 `self-evolve` Skill 提供完整的自我进化指导。
-
-#### 信任模型
-
-- 未信任的项目级 Skill 不出现在 Level 1 列表，不可通过 `skill` 工具加载
-- 信任状态持久化到 `~/.athena/trusted_skill_dirs.json`
-- 每次会话仅提示一次信任弹窗
-- 信任后 Skill 指令会注入系统提示词，但工具调用仍需经过权限检查
+Skill 指令会注入系统提示词，但工具调用仍需经过权限检查。内置 `self-evolve` Skill 提供完整的自我进化指导。
 
 ### Agent 自我进化
 
@@ -193,7 +185,7 @@ packages/
     └── storage/         #   KeyValueStore 的 SharedPreferences 实现
 ```
 
-核心通过**存储接口**（`repository/`）与**注入回调**（权限审批、Skill 信任）
+核心通过**存储接口**（`repository/`）与**注入回调**（权限审批）
 与持久化策略解耦：GUI 用 SQLite + SharedPreferences；未来 TUI 可实现同一组
 接口用 JSONL/文件存储。
 
@@ -229,7 +221,7 @@ packages/
 │  Entity / Storage / Util                    │
 └─────────────────────────────────────────────┘
    GUI 通过 GetIt 装配：注入 SQLite 实现 +
-   权限弹窗 / Skill 信任回调（TUI 可注入替代实现）
+   权限弹窗（TUI 可注入替代实现）
 ```
 
 ## 配置
@@ -253,7 +245,7 @@ packages/
 ### Skill 开发
 
 1. 创建 `SKILL.md` 文件，包含 YAML front matter 和 Markdown body
-2. 放入 `~/.athena/skills/<skill-name>/`（用户级）或 `.athena/skills/<skill-name>/`（项目级）
+2. 放入 `~/.athena/skills/<skill-name>/`（移动端为应用沙盒内目录）
 3. 重启应用或新开会话即可发现
 
 ### 权限管理
@@ -277,9 +269,9 @@ packages/
 
 ## 测试
 
-项目为双包结构，共 35 个测试文件，覆盖：
+项目为双包结构，测试覆盖：
 
-- **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载与信任、Shell 进程管理、Schema 校验
+- **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载、Shell 进程管理、Schema 校验
 - **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
 - **ViewModel 层**（athena_gui）：聊天流、设置、摘要、翻译、TRPG
 - **UI 层**（athena_gui）：移动端主页和聊天页 widget 测试

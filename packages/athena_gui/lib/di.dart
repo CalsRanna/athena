@@ -3,7 +3,6 @@ import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
-import 'package:athena_core/agent/skill/skill_trust_store.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -86,7 +85,6 @@ class DI {
           supportService: getIt<ChatSupportService>(),
           agentSettings: getIt<AgentSettings>(),
           permissionService: getIt<PermissionService>(),
-          skillRegistry: getIt<SkillRegistry>(),
         ),
       ),
     );
@@ -185,12 +183,10 @@ class DI {
       () => AgentSettings(store: getIt<KeyValueStore>()),
     );
 
-    getIt.registerLazySingleton(() => SkillTrustStore());
     getIt.registerLazySingleton(() {
-      final registry = SkillRegistry(trustStore: getIt<SkillTrustStore>());
-      // 移动端无可靠 $HOME，进化数据根目录用 Application Support（与 athena.db 同根）；
-      // 写入端（skill_evolve / experience 工具）必须与这里读同一目录，
-      // reloadSkill 才能把写的技能归类为用户级而不是项目级 pending。
+      final registry = SkillRegistry();
+      // 移动端无可靠 $HOME，用户级数据根目录用 Application Support（与 athena.db
+      // 同根）；写入端（skill_evolve / experience 工具）必须与这里读同一目录。
       registry.loadAll(homeDir: PlatformUtil.isMobile ? dataDirectory : null);
       registry.registerBuiltin(kSelfEvolveSkill);
       return registry;

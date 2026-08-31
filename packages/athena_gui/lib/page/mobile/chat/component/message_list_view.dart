@@ -91,9 +91,19 @@ class _MessageListViewState extends State<MessageListView> {
       return Column(
         children: [
           Expanded(child: list),
-          for (final request in approvals)
+          // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
+          // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
+          const SizedBox(height: 12),
+          for (final (index, request) in approvals.indexed)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              // 最后一张审批卡无需底部间距：输入框区域自带 16 外边距
+              // （chat.dart _buildInput），与无审批时消息→输入框的间距一致
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                index == approvals.length - 1 ? 0 : 12,
+              ),
               child: PermissionApprovalCard(
                 request: request,
                 onDecision: (approved, persistExact) => viewModel
