@@ -2,7 +2,7 @@ import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:nocterm/nocterm.dart';
 
-/// 审批条:输入区上方的模态提示(权限请求 / Skill 信任)。
+/// 审批条:输入区上方的模态提示(权限请求)。
 ///
 /// 显示期间全局按键被 app 层接管,输入区不接收输入。
 class PermissionBar extends StatelessComponent {

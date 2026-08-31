@@ -1,7 +1,6 @@
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -110,7 +109,6 @@ void main() {
             supportService: supportService,
             agentSettings: AgentSettings(),
             permissionService: PermissionService(store: PermissionStore()),
-            skillRegistry: SkillRegistry(),
           ),
         ),
         renameDelegate: ChatRenameDelegate(

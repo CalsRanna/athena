@@ -6,7 +6,6 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -43,12 +42,6 @@ typedef PermissionPrompt = Future<PermissionDecision> Function(
   CancelToken cancelToken,
 );
 
-/// Skill 信任回调：由各 App 注入（GUI=对话框，TUI=stdin 提示）。
-typedef SkillTrustPrompt = Future<bool> Function(
-  String dir,
-  List<String> names,
-);
-
 /// UI 无关的 Agent run 编排层。
 ///
 /// 职责：用户消息落库 → 构建上下文（含压缩）→ 追加占位消息 →
@@ -66,9 +59,7 @@ class AgentRunCoordinator {
   final ChatSupportService _supportService;
   final AgentSettings _agentSettings;
   final PermissionService _permissionService;
-  final SkillRegistry _skillRegistry;
   final PermissionPrompt _permissionPrompt;
-  final SkillTrustPrompt _skillTrustPrompt;
 
   /// 下一个 run 的自增 id（多 run 并发的隔离标识）。
   int _nextRunId = 0;
@@ -78,8 +69,6 @@ class AgentRunCoordinator {
 
   /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
   final Map<int, int> _runIdByChat = {};
-
-  bool _skillTrustPrompted = false;
 
   /// 流式运行中的消息快照（chatId → 当前正在生成的 assistant 消息）。
   ///
@@ -118,9 +107,7 @@ class AgentRunCoordinator {
     required ChatSupportService supportService,
     required AgentSettings agentSettings,
     required PermissionService permissionService,
-    required SkillRegistry skillRegistry,
     required PermissionPrompt permissionPrompt,
-    required SkillTrustPrompt skillTrustPrompt,
   })  : _agentService = agentService,
         _manageService = manageService,
         _messageService = messageService,
@@ -132,9 +119,7 @@ class AgentRunCoordinator {
         _supportService = supportService,
         _agentSettings = agentSettings,
         _permissionService = permissionService,
-        _skillRegistry = skillRegistry,
-        _permissionPrompt = permissionPrompt,
-        _skillTrustPrompt = skillTrustPrompt;
+        _permissionPrompt = permissionPrompt;
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   Set<int> get streamingChatIds => _streamingChatIds;
@@ -158,8 +143,6 @@ class AgentRunCoordinator {
     required ChatEntity chat,
     bool jsonMode = false,
   }) async* {
-    await _maybePromptSkillTrust();
-
     final runId = ++_nextRunId;
     _streamingChatIds.add(chat.id!);
     _runIdByChat[chat.id!] = runId;
@@ -278,22 +261,6 @@ class AgentRunCoordinator {
   }
 
   // ─── 内部 ─────────────────────────────────────────────────
-
-  Future<void> _maybePromptSkillTrust() async {
-    if (_skillTrustPrompted) return;
-    if (!_skillRegistry.hasPendingProjectSkills) return;
-    _skillTrustPrompted = true;
-
-    final dir = _skillRegistry.pendingProjectDir;
-    if (dir == null) return;
-
-    final names =
-        _skillRegistry.pendingProjectSkills.map((s) => s.name).toList();
-    final trusted = await _skillTrustPrompt(dir, names);
-    if (trusted) {
-      await _skillRegistry.trustCurrentProject();
-    }
-  }
 
   /// 消费 Agent 流，产出 [RunEvent]。
   ///

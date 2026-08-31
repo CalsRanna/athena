@@ -7,7 +7,6 @@ import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
-import 'package:athena_core/agent/skill/skill_trust_store.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -391,7 +390,7 @@ class TuiDi {
     // ── Agent 基础 ──
     agentSettings = AgentSettings(store: keyValueStore);
     permissionService = PermissionService(store: PermissionStore());
-    skillRegistry = SkillRegistry(trustStore: SkillTrustStore());
+    skillRegistry = SkillRegistry();
     skillRegistry.loadAll();
     skillRegistry.registerBuiltin(kSelfEvolveSkill);
 
@@ -455,7 +454,6 @@ class TuiDi {
       supportService: supportService,
       agentSettings: agentSettings,
       permissionService: permissionService,
-      skillRegistry: skillRegistry,
     );
     chatController = ChatController(
       manageService: manageService,

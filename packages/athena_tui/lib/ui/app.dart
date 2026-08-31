@@ -68,10 +68,8 @@ class _AthenaAppState extends State<AthenaApp> {
   final _textController = TextEditingController();
   final List<void Function()> _disposers = [];
 
-  // 权限 / Skill 信任审批请求(M3 模态)
+  // 权限审批请求(M3 模态)
   _PermissionRequest? _permissionRequest;
-
-  _SkillTrustRequest? _skillTrustRequest;
 
   // 选择模态(模型 / 角色 / 聊天)
   _PickerState? _picker;
@@ -93,7 +91,6 @@ class _AthenaAppState extends State<AthenaApp> {
   bool get _showCommandSuggestions =>
       _commandSuggestions.isNotEmpty &&
       _permissionRequest == null &&
-      _skillTrustRequest == null &&
       _picker == null &&
       _keyInputProvider == null;
 
@@ -127,14 +124,6 @@ class _AthenaAppState extends State<AthenaApp> {
                   '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
               hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
             ),
-          if (_skillTrustRequest != null)
-            PermissionBar(
-              title: '信任项目级 Skill',
-              detail:
-                  '${_skillTrustRequest!.dir}\n'
-                  '${_skillTrustRequest!.names.join(', ')}',
-              hint: '[y] 信任  [n] 拒绝',
-            ),
           // 常驻组件:children 数量恒定,visible 控制显隐
           PickerOverlay(
             visible: _picker != null,
@@ -158,11 +147,11 @@ class _AthenaAppState extends State<AthenaApp> {
                 ? ''
                 : 'API key 输入中:回车保存 · 留空/ Esc 取消',
             onKeyEvent: (event) {
-              // 审批模态(权限/Skill 信任):所有按键交给全局处理器
+              // 审批模态(权限):所有按键交给全局处理器
               // (y/n/a 决策)。必须返回其结果(true)—— 若返回 false,
               // TextField 内部会把 'y' 当作字符插入输入框,事件永远
               // 冒泡不到根 Focusable 的 _handleGlobalKey(审批无响应)。
-              if (_permissionRequest != null || _skillTrustRequest != null) {
+              if (_permissionRequest != null) {
                 return _handleGlobalKey(event);
               }
               // API key 输入模式:仅 Esc 退出,其余按键正常输入
@@ -227,7 +216,6 @@ class _AthenaAppState extends State<AthenaApp> {
 
     // UI 层注册审批实现(bridge 在 UI 未就绪时拒绝请求)
     component.di.agentBridge.permissionHandler = _handlePermission;
-    component.di.agentBridge.skillTrustHandler = _handleSkillTrust;
 
     _disposers.add(_controller.chatList.subscribe((_) => _refresh()));
     _disposers.add(_controller.currentChat.subscribe((_) => _refresh()));
@@ -371,27 +359,6 @@ class _AthenaAppState extends State<AthenaApp> {
       }
       return true; // 模态期间吞掉所有按键,防止误操作
     }
-    final skillTrust = _skillTrustRequest;
-    if (skillTrust != null) {
-      switch (event.logicalKey) {
-        case LogicalKey.keyY:
-          skillTrust.completer.complete(true);
-          _skillTrustRequest = null;
-          setState(() {});
-          return true;
-        case LogicalKey.keyN:
-          skillTrust.completer.complete(false);
-          _skillTrustRequest = null;
-          setState(() {});
-          return true;
-        case LogicalKey.escape:
-          skillTrust.completer.complete(false);
-          _skillTrustRequest = null;
-          setState(() {});
-          return true;
-      }
-      return true;
-    }
 
     // 选择模态
     if (_picker != null) {
@@ -464,13 +431,6 @@ class _AthenaAppState extends State<AthenaApp> {
         return true;
     }
     return true; // 模态期间吞掉其他按键,防止误操作
-  }
-
-  Future<bool> _handleSkillTrust(String dir, List<String> names) async {
-    final completer = Completer<bool>();
-    _skillTrustRequest = _SkillTrustRequest(dir, names, completer);
-    setState(() {});
-    return completer.future;
   }
 
   /// /providers:选择 provider 后进入 API key 输入模式。
@@ -807,11 +767,4 @@ class _PickerState {
     required this.index,
     required this.completer,
   });
-}
-
-class _SkillTrustRequest {
-  final String dir;
-  final List<String> names;
-  final Completer<bool> completer;
-  _SkillTrustRequest(this.dir, this.names, this.completer);
 }

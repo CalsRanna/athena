@@ -55,7 +55,7 @@ void main() {
     // 三个按钮同宽（stretch）
     expect(allowOnce, alwaysAllow);
     expect(alwaysAllow, deny);
-    // 按钮撑满卡片内容宽度（测试面宽 800，内容区约 724）
+    // 按钮撑满卡片内容宽度（测试面宽 800，内容区约 716）
     expect(deny, greaterThan(600));
 
     // 文字在按钮内水平居中

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -18,7 +17,6 @@ import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
-import 'package:athena_gui/widget/skill_trust_dialog.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
@@ -61,10 +59,8 @@ class AgentStreamDelegate {
       supportService: deps.supportService,
       agentSettings: deps.agentSettings,
       permissionService: deps.permissionService,
-      skillRegistry: deps.skillRegistry,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(chatId, toolName, arguments, cancelToken),
-      skillTrustPrompt: _askSkillTrust,
     );
   }
 
@@ -148,10 +144,6 @@ class AgentStreamDelegate {
     if (!completer.isCompleted) completer.complete(result);
     return result;
   }
-
-  static Future<bool> _askSkillTrust(String dir, List<String> names) {
-    return showSkillTrustDialog(projectDir: dir, skillNames: names);
-  }
 }
 
 /// 组装 [AgentRunCoordinator] 所需依赖的载体（由 di.dart 构造）。
@@ -167,7 +159,6 @@ class AgentServiceCoordinatorDeps {
   final ChatSupportService supportService;
   final AgentSettings agentSettings;
   final PermissionService permissionService;
-  final SkillRegistry skillRegistry;
 
   AgentServiceCoordinatorDeps({
     required this.agentService,
@@ -181,6 +172,5 @@ class AgentServiceCoordinatorDeps {
     required this.supportService,
     required this.agentSettings,
     required this.permissionService,
-    required this.skillRegistry,
   });
 }

@@ -121,24 +121,38 @@ class _ToolCardState extends State<ToolCard> {
               color: colors.textOnRaised,
             ),
             SizedBox(width: 8),
-            Text(
-              widget.toolName,
-              style: GoogleFonts.firaCode(
-                fontSize: _fontSize,
-                fontWeight: FontWeight.w500,
-                color: colors.textOnRaised,
-              ),
-            ),
-            SizedBox(width: 8),
+            // 工具名 + 参数预览共享剩余空间：任一过长时省略而非溢出
             Expanded(
-              child: Text(
-                ToolCard.argPreview(widget.toolName, widget.arguments),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.firaCode(
-                  fontSize: _fontSize,
-                  color: colors.textOnRaised,
-                ),
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.toolName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.firaCode(
+                        fontSize: _fontSize,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textOnRaised,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      ToolCard.argPreview(
+                        widget.toolName,
+                        widget.arguments,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.firaCode(
+                        fontSize: _fontSize,
+                        color: colors.textOnRaised,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(width: 8),

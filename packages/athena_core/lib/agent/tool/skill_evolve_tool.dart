@@ -8,8 +8,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 /// Agent 可以在遇到无法很好处理的任务时，创建一个新的 Skill
 /// 来扩展自己的能力；也可以改进已有的 Skill。
 ///
-/// Skill 保存在项目级（`.athena/skills/`）或用户级（`~/.athena/skills/`）
-/// 目录下，以 `SKILL.md` 文件形式存在。
+/// Skill 统一保存在用户级目录（`~/.athena/skills/`，移动端为沙盒内
+/// `.athena/skills/`），以 `SKILL.md` 文件形式存在，对所有会话可用。
 class SkillEvolveTool implements Tool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
@@ -20,17 +20,11 @@ class SkillEvolveTool implements Tool {
   /// 用户级 `.athena` 根目录。空 = 使用 `$HOME`（桌面端）。
   final String? _homeDir;
 
-  /// 移动端没有"项目"概念：默认 scope 为 user，显式 project 也映射为 user，
-  /// 保证目标目录始终落在沙盒内（iOS 默认目录是 `/`，项目级会写失败）。
-  final bool _mobile;
-
   SkillEvolveTool({
     required SkillRegistry skillRegistry,
     String? homeDir,
-    bool mobile = false,
   })  : _skillRegistry = skillRegistry,
-        _homeDir = homeDir,
-        _mobile = mobile;
+        _homeDir = homeDir;
 
   @override
   ToolRisk get risk => ToolRisk.dangerous;
@@ -48,8 +42,8 @@ class SkillEvolveTool implements Tool {
       '- Update an existing skill when you discover better approaches or need '
       'to fix issues.\n'
       '- Evolve your capabilities over time based on experience.\n'
-      'Skills are saved as SKILL.md files and become available in future '
-      'conversations.';
+      'Skills are saved as SKILL.md files in ~/.athena/skills/ and become '
+      'available in all future conversations.';
 
   @override
   Map<String, dynamic> get parameters => {
@@ -85,18 +79,6 @@ class SkillEvolveTool implements Tool {
                 'and guidance that define how the skill operates. Use Markdown. '
                 'For updates, provide the complete new body.',
           },
-          'scope': {
-            'type': 'string',
-            'enum': ['project', 'user'],
-            'description': _mobile
-                ? 'Where to save the skill. On this device there is no '
-                    'project concept, so both "project" and "user" save to '
-                    'the app\'s own data directory. Default: "user".'
-                : 'Where to save the skill. "project" saves to .athena/skills/ '
-                    'in the current project (shared via version control). "user" '
-                    'saves to ~/.athena/skills/ (private, available in all projects). '
-                    'Default: "project" when working in a project, "user" otherwise.',
-          },
         },
         'required': ['name', 'action', 'body'],
       };
@@ -108,10 +90,6 @@ class SkillEvolveTool implements Tool {
     final description = args['description'] as String? ?? '';
     final allowedTools = args['allowed_tools'] as String? ?? '';
     final body = args['body'] as String;
-    // 移动端没有项目概念：默认 user，显式 project 也映射为 user
-    final scope = _mobile
-        ? 'user'
-        : (args['scope'] as String? ?? 'project');
 
     if (!_isValidSkillName(skillName)) {
       return 'Error: Invalid skill name "$skillName". '
@@ -142,16 +120,11 @@ class SkillEvolveTool implements Tool {
       return 'Error: description is required when creating a new skill.';
     }
 
-    String targetDir;
-    if (scope == 'user') {
-      final home = _homeDir ??
-          Platform.environment['HOME'] ??
-          Platform.environment['USERPROFILE'] ??
-          '/';
-      targetDir = '$home/.athena/skills/$skillName';
-    } else {
-      targetDir = '${Directory.current.path}/.athena/skills/$skillName';
-    }
+    final home = _homeDir ??
+        Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        '/';
+    final targetDir = '$home/.athena/skills/$skillName';
 
     return _writeSkill(
       skillName: skillName,
