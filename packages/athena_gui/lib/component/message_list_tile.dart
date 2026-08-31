@@ -530,7 +530,8 @@ class _UserMessageListTile extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
     );
-    var children = [text, if (images.isNotEmpty) gridView];
+    // 图片是用户输入内容的一部分，渲染在文字之前
+    var children = [if (images.isNotEmpty) gridView, text];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,

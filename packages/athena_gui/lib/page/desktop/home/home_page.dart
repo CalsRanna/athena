@@ -323,26 +323,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   Widget _buildWorkspace() {
-    var images = chatViewModel.pendingImages.value;
-
     var workspace = DesktopMessageList(
       controller: scrollController,
       onResend: resendMessage,
-    );
-    var imageList = Container(
-      height: 64,
-      padding: EdgeInsets.symmetric(horizontal: 32),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: images.length,
-        itemBuilder: _itemBuilder,
-      ),
     );
     var desktopMessageInput = DesktopMessageInput(
       controller: controller,
       onRetentionChange: updateRetention,
       onImageSelected: updateImage,
       onImagePasted: chatViewModel.addPendingImage,
+      onImageRemoved: chatViewModel.removePendingImage,
       onSubmitted: sendMessage,
       onTemperatureChange: updateTemperature,
       onReasoningEffortChange: updateReasoningEffort,
@@ -352,7 +342,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: workspace),
-        if (images.isNotEmpty) imageList,
         desktopMessageInput,
       ],
     );
@@ -363,41 +352,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.initSignals();
     await modelViewModel.loadEnabledModels();
     await sentinelViewModel.getSentinels();
-  }
-
-  Widget _itemBuilder(BuildContext context, int index) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var images = chatViewModel.pendingImages.value;
-    var image = Image.file(
-      File(images[index]),
-      fit: BoxFit.cover,
-      height: double.infinity,
-      width: double.infinity,
-    );
-    var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
-      color: colors.textPrimary,
-      size: 12,
-    );
-    var decoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: colors.surfaceMobile,
-    );
-    var container = Container(
-      decoration: decoration,
-      padding: EdgeInsets.all(2),
-      child: icon,
-    );
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => chatViewModel.removePendingImage(index),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: container),
-    );
-    var children = [
-      image,
-      Positioned(right: 2, top: 2, child: gestureDetector),
-    ];
-    return AspectRatio(aspectRatio: 1, child: Stack(children: children));
   }
 
   void _openModelSelector() async {

@@ -127,13 +127,17 @@ bool IsApiCompatibleExtension(const std::wstring& extension) {
   return extension == L"png" || extension == L"gif" || extension == L"webp";
 }
 
-// 剪贴板中的文件列表（CF_HDROP）里第一个图片文件的路径与扩展名。
-bool HandleDroppedFiles(std::wstring* out_path, std::wstring* out_ext) {
+// 剪贴板中的文件列表（CF_HDROP）里所有图片文件：
+// 兼容格式路径收集到 out_api_paths，其余格式路径收集到 out_convert_paths
+// （由调用方转成 PNG）。返回是否找到至少一个图片文件。
+bool CollectDroppedImages(std::vector<std::wstring>* out_api_paths,
+                          std::vector<std::wstring>* out_convert_paths) {
   const HDROP drop = static_cast<HDROP>(GetClipboardData(CF_HDROP));
   if (drop == nullptr) {
     return false;
   }
   const UINT count = DragQueryFile(drop, 0xFFFFFFFF, nullptr, 0);
+  bool found = false;
   for (UINT i = 0; i < count; ++i) {
     wchar_t path[MAX_PATH] = {};
     if (DragQueryFile(drop, i, path, MAX_PATH) == 0) {
@@ -151,12 +155,15 @@ bool HandleDroppedFiles(std::wstring* out_path, std::wstring* out_ext) {
       c = towlower(c);
     }
     if (IsImageExtension(ext)) {
-      *out_path = full_path;
-      *out_ext = ext;
-      return true;
+      found = true;
+      if (IsApiCompatibleExtension(ext)) {
+        out_api_paths->push_back(full_path);
+      } else {
+        out_convert_paths->push_back(full_path);
+      }
     }
   }
-  return false;
+  return found;
 }
 
 bool WideToUtf8(const std::wstring& wide, std::string* out) {
@@ -187,22 +194,32 @@ void HandleMethodCall(
   if (OpenClipboard(nullptr)) {
     // 文件优先：文件管理器复制文件时剪贴板可能同时携带文件图标预览数据
     // （CF_DIB），此时应以文件本身为准，否则发送的是图标而不是图片内容。
-    std::wstring path;
-    std::wstring ext;
-    if (HandleDroppedFiles(&path, &ext)) {
-      if (IsApiCompatibleExtension(ext)) {
+    // 多选复制时收集全部图片文件。
+    std::vector<std::wstring> api_paths;
+    std::vector<std::wstring> convert_paths;
+    if (CollectDroppedImages(&api_paths, &convert_paths)) {
+      std::vector<std::string> utf8_paths;
+      for (const std::wstring& path : api_paths) {
         std::string utf8;
         if (WideToUtf8(path, &utf8)) {
-          response[flutter::EncodableValue("path")] =
-              flutter::EncodableValue(utf8);
+          utf8_paths.push_back(utf8);
         }
-      } else {
-        // jpg/heic/tiff 等格式 API 不识别，统一转成 PNG
+      }
+      if (!utf8_paths.empty()) {
+        response[flutter::EncodableValue("paths")] =
+            flutter::EncodableValue(utf8_paths);
+      }
+      // jpg/heic/tiff 等格式 API 不识别，统一转成 PNG
+      std::vector<flutter::EncodableValue> base64s;
+      for (const std::wstring& path : convert_paths) {
         std::vector<uint8_t> png;
         if (FileToPngBytes(path, &png)) {
-          response[flutter::EncodableValue("base64")] =
-              flutter::EncodableValue(png);
+          base64s.push_back(flutter::EncodableValue(png));
         }
+      }
+      if (!base64s.empty()) {
+        response[flutter::EncodableValue("base64s")] =
+            flutter::EncodableValue(base64s);
       }
     }
     if (response.empty() && !IsClipboardFormatAvailable(CF_HDROP)) {
