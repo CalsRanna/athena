@@ -29,7 +29,7 @@ class AthenaDialog {
     } else {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
-      FocusScope.of(router.navigatorKey.currentContext!).unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
       return showModalBottomSheet<bool>(
         backgroundColor: _colors.surfaceMobile,
         isDismissible: dismissible,
@@ -50,7 +50,7 @@ class AthenaDialog {
     } else {
       // 打开弹窗前释放焦点,防止关闭弹窗后焦点回落到输入框导致
       // 键盘自动弹出;弹窗内的输入框自身会重新申请焦点。
-      FocusScope.of(router.navigatorKey.currentContext!).unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
       return showModalBottomSheet<String>(
         backgroundColor: _colors.surfaceMobile,
         isScrollControlled: true,
@@ -112,7 +112,7 @@ class AthenaDialog {
     } else {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
-      FocusScope.of(router.navigatorKey.currentContext!).unfocus();
+      FocusManager.instance.primaryFocus?.unfocus();
       showModalBottomSheet(
         backgroundColor: _colors.surfaceMobile,
         builder: (_) => child,

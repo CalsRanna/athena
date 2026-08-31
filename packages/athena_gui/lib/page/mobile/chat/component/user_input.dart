@@ -67,6 +67,8 @@ class UserInput extends StatelessWidget {
   }
 
   void handleTapOutside(BuildContext context) {
-    FocusScope.of(context).unfocus();
+    // FocusScope.of(context) 在焦点位于输入框自身时自身并不持焦,
+    // unfocus 会直接返回;必须对实际持焦节点释放焦点。
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 }
