@@ -50,7 +50,6 @@ import 'package:athena_gui/view_model/summary_view_model.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
 import 'package:athena_gui/view_model/trpg_view_model.dart';
 import 'package:get_it/get_it.dart';
-import 'package:path_provider/path_provider.dart';
 
 class DI {
   static void ensureInitialized({String? dataDirectory}) {
@@ -287,8 +286,6 @@ class DI {
         messageRepository: getIt<MessageRepository>(),
         providerRepository: getIt<ProviderRepository>(),
         chatService: getIt<ChatService>(),
-        mobileExportDirProvider: getApplicationDocumentsDirectory,
-        downloadsDirProvider: getDownloadsDirectory,
       ),
     );
 

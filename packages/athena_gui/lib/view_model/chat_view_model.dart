@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
@@ -800,17 +799,6 @@ class ChatViewModel {
     if (index >= 0 && index < images.length) {
       images.removeAt(index);
       pendingImages.value = images;
-    }
-  }
-
-  Future<void> exportImage({
-    required ChatEntity chat,
-    required Uint8List bytes,
-  }) async {
-    try {
-      await _supportService.saveImageFile(bytes, chat.id!);
-    } catch (e) {
-      error.value = e.toString();
     }
   }
 

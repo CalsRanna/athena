@@ -8,7 +8,6 @@ class DesktopChatContextMenu extends StatelessWidget {
   final Offset offset;
   final void Function()? onAutoRenamed;
   final void Function()? onDestroyed;
-  final void Function()? onExportedImage;
   final void Function()? onManualRenamed;
   final void Function()? onPinned;
   final int selectedCount;
@@ -21,7 +20,6 @@ class DesktopChatContextMenu extends StatelessWidget {
     required this.offset,
     this.onAutoRenamed,
     this.onDestroyed,
-    this.onExportedImage,
     this.onManualRenamed,
     this.onPinned,
     this.selectedCount = 1,
@@ -50,11 +48,6 @@ class DesktopChatContextMenu extends StatelessWidget {
       ),
       renameSubmenu,
       DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
-      DesktopContextMenuTile(
-        text: 'Export Image',
-        onTap: onExportedImage,
-        enabled: !multiSelect,
-      ),
     ];
     return DesktopContextMenu(offset: offset, width: 140, children: children);
   }
