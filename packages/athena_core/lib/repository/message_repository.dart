@@ -25,3 +25,15 @@ abstract class MessageRepository {
 
   Future<MessageEntity?> getLatestMessageByChatId(int chatId);
 }
+
+/// 可选的消息游标分页能力。
+///
+/// 返回 [beforeId] 之前、最接近游标的最近 [count] 条消息；未提供游标时
+/// 返回会话最新的 [count] 条。结果始终按 id 升序排列。
+abstract interface class RecentMessageRepository {
+  Future<List<MessageEntity>> loadRecentMessages(
+    int chatId, {
+    required int count,
+    int? beforeId,
+  });
+}

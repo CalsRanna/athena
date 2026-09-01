@@ -23,7 +23,8 @@ import 'package:athena_tui/storage/session_jsonl_store.dart';
 /// id 分配(与旧版行为一致,meta.json 计数 key 对应迁移):
 /// - chat id:会话目录路径为 key,所有会话共享递增计数
 /// - message id:会话文件路径为 key,每个会话独立递增计数
-class JsonlSessionRepository implements ChatRepository, MessageRepository {
+class JsonlSessionRepository
+    implements ChatRepository, MessageRepository, RecentMessageRepository {
   JsonlSessionRepository({
     required Directory sessionsDir,
     required IdAllocator idAllocator,
@@ -304,6 +305,7 @@ class JsonlSessionRepository implements ChatRepository, MessageRepository {
   /// 内存;窗口化(消息列表只持有最近 N 条,向上滚动加载更早)需要
   /// 「读最近 [count] 条」与「读 id < [beforeId] 的最近 [count] 条」两个
   /// 原语,底层由 [SessionJsonlStore.loadRecentRows] 实现。
+  @override
   Future<List<MessageEntity>> loadRecentMessages(
     int chatId, {
     required int count,

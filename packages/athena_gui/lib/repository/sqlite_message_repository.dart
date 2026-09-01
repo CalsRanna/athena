@@ -3,7 +3,8 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
 
 /// [MessageRepository] 的 SQLite 实现（GUI 侧）。
-class SqliteMessageRepository implements MessageRepository {
+class SqliteMessageRepository
+    implements MessageRepository, RecentMessageRepository {
   @override
   Future<List<MessageEntity>> getMessagesByChatId(
     int chatId, {
@@ -16,6 +17,29 @@ class SqliteMessageRepository implements MessageRepository {
     }
     var results = await query.orderBy('id').get();
     return results.map((r) => MessageEntity.fromJson(r.toMap())).toList();
+  }
+
+  @override
+  Future<List<MessageEntity>> loadRecentMessages(
+    int chatId, {
+    required int count,
+    int? beforeId,
+  }) async {
+    if (count <= 0) return [];
+
+    var query = Database.instance.laconic
+        .table('messages')
+        .where('chat_id', chatId);
+    if (beforeId != null) {
+      query = query.where('id', beforeId, comparator: '<');
+    }
+    final results = await query
+        .orderBy('id', direction: 'desc')
+        .limit(count)
+        .get();
+    return results.reversed
+        .map((result) => MessageEntity.fromJson(result.toMap()))
+        .toList();
   }
 
   @override

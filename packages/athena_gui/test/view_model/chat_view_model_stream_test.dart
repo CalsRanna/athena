@@ -155,6 +155,70 @@ class _NoopMessageRepository extends MessageRepository {
   Future<MessageEntity?> getLatestMessageByChatId(int chatId) async => null;
 }
 
+class _PagedMessageRepository extends MessageRepository
+    implements RecentMessageRepository {
+  final Map<int, List<MessageEntity>> messagesByChat;
+  final Map<int, Completer<void>> gates;
+
+  _PagedMessageRepository(this.messagesByChat, {this.gates = const {}});
+
+  int fullLoadCount = 0;
+  int recentLoadCount = 0;
+
+  @override
+  Future<List<MessageEntity>> loadRecentMessages(
+    int chatId, {
+    required int count,
+    int? beforeId,
+  }) async {
+    recentLoadCount++;
+    final gate = gates[chatId];
+    if (gate != null) await gate.future;
+    final eligible = (messagesByChat[chatId] ?? const <MessageEntity>[])
+        .where((message) => beforeId == null || message.id! < beforeId)
+        .toList();
+    if (eligible.length <= count) return eligible;
+    return eligible.sublist(eligible.length - count);
+  }
+
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async {
+    fullLoadCount++;
+    return messagesByChat[chatId] ?? [];
+  }
+
+  @override
+  Future<int> storeMessage(MessageEntity message) async => message.id ?? 0;
+
+  @override
+  Future<void> updateMessage(MessageEntity message) async {}
+
+  @override
+  Future<void> markAsCompacted(Set<int> ids) async {}
+
+  @override
+  Future<MessageEntity?> getMessageById(int id) async => null;
+
+  @override
+  Future<void> deleteMessage(int id) async {}
+
+  @override
+  Future<void> deleteMessagesByChatId(int chatId) async {}
+
+  @override
+  Future<int> getMessagesCount(int chatId) async =>
+      messagesByChat[chatId]?.length ?? 0;
+
+  @override
+  Future<MessageEntity?> getLatestMessageByChatId(int chatId) async {
+    final messages = messagesByChat[chatId];
+    return messages == null || messages.isEmpty ? null : messages.last;
+  }
+}
+
 class _FakeModelRepository extends ModelRepository {
   @override
   Future<ModelEntity?> getModelById(int id) async => ModelEntity(
@@ -445,6 +509,7 @@ ChatViewModel _buildViewModel({
   _FakeSupportService? support,
   ChatMessageService? messageService,
   _FakeTokenTrackingChatRepo? tokenUsage,
+  MessageRepository? messageRepository,
 }) {
   final tUsage = tokenUsage ?? _FakeTokenTrackingChatRepo();
   final svc = support;
@@ -454,6 +519,7 @@ ChatViewModel _buildViewModel({
   }
   final effectiveSvc = svc ?? _FakeSupportService(tokenUsage: tUsage);
   final messages = messageService ?? _FakeChatMessageService();
+  final messageRepo = messageRepository ?? _NoopMessageRepository();
   return ChatViewModel(
     manageService: manage,
     streamDelegate: AgentStreamDelegate(
@@ -463,7 +529,7 @@ ChatViewModel _buildViewModel({
         messageService: messages,
         chatService: ChatService(llmClient: LlmClient()),
         chatRepo: tUsage,
-        messageRepo: _NoopMessageRepository(),
+        messageRepo: messageRepo,
         modelRepo: _FakeModelRepository(),
         sentinelRepo: _FakeSentinelRepository(),
         supportService: effectiveSvc,
@@ -473,12 +539,12 @@ ChatViewModel _buildViewModel({
       ),
     ),
     renameDelegate: ChatRenameDelegate(
-      messageRepo: _NoopMessageRepository(),
+      messageRepo: messageRepo,
       modelRepo: _FakeModelRepository(),
       supportService: effectiveSvc,
     ),
     supportService: effectiveSvc,
-    messageRepo: _NoopMessageRepository(),
+    messageRepo: messageRepo,
     modelResolver: ModelResolver(
       modelRepo: _FakeModelRepository(),
       providerRepo: ProviderRepositoryStub(),
@@ -548,6 +614,79 @@ void main() {
 
   tearDown(() async {
     await GetIt.instance.reset();
+  });
+
+  test('长对话首次只加载最新一页，向上滚动按游标补齐更早消息', () async {
+    final stored = List.generate(
+      125,
+      (index) => MessageEntity(
+        id: index + 1,
+        chatId: 1,
+        role: index.isEven ? 'user' : 'assistant',
+        content: 'message ${index + 1}',
+      ),
+    );
+    final repository = _PagedMessageRepository({1: stored});
+    final vm = _buildViewModel(
+      manage: _RecordingManageService(),
+      agent: _FakeAgentService(const Stream<AgentEvent>.empty()),
+      messageRepository: repository,
+    );
+
+    await vm.selectChat(_chat());
+
+    expect(vm.messages.value, hasLength(ChatViewModel.messagePageSize));
+    expect(vm.messages.value.first.id, 76);
+    expect(vm.messages.value.last.id, 125);
+    expect(vm.hasOlderMessages, isTrue);
+    expect(repository.fullLoadCount, 0, reason: '选择对话不应再全量读取历史消息');
+
+    expect(await vm.loadOlderMessages(), ChatViewModel.messagePageSize);
+    expect(vm.messages.value, hasLength(100));
+    expect(vm.messages.value.first.id, 26);
+    expect(vm.messages.value[49].id, 75);
+    expect(vm.messages.value[50].id, 76);
+    expect(vm.hasOlderMessages, isTrue);
+
+    expect(await vm.loadOlderMessages(), 25);
+    expect(vm.messages.value, hasLength(125));
+    expect(vm.messages.value.first.id, 1);
+    expect(vm.hasOlderMessages, isFalse);
+    expect(await vm.loadOlderMessages(), 0);
+  });
+
+  test('切换长对话时先卸载旧消息，较早请求不会覆盖后来选择', () async {
+    final firstGate = Completer<void>();
+    final firstMessages = [
+      MessageEntity(id: 1, chatId: 1, role: 'user', content: 'first'),
+    ];
+    final secondMessages = [
+      MessageEntity(id: 2, chatId: 2, role: 'user', content: 'second'),
+    ];
+    final repository = _PagedMessageRepository(
+      {1: firstMessages, 2: secondMessages},
+      gates: {1: firstGate},
+    );
+    final vm = _buildViewModel(
+      manage: _RecordingManageService(),
+      agent: _FakeAgentService(const Stream<AgentEvent>.empty()),
+      messageRepository: repository,
+    );
+    vm.messages.value = [
+      MessageEntity(id: 99, chatId: 99, role: 'user', content: 'old'),
+    ];
+
+    final firstSelection = vm.selectChat(_chat(id: 1));
+    expect(vm.currentChat.value?.id, 1);
+    expect(vm.messages.value, isEmpty, reason: '等待 IO 时不应重建旧长列表');
+
+    await vm.selectChat(_chat(id: 2));
+    expect(vm.messages.value.single.content, 'second');
+
+    firstGate.complete();
+    await firstSelection;
+    expect(vm.currentChat.value?.id, 2);
+    expect(vm.messages.value.single.content, 'second');
   });
 
   test('C2: 单轮流式中途取消，落库的是携带已生成内容的最新消息（非空占位）', () async {
