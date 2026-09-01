@@ -837,6 +837,56 @@ void main() {
     expect(manage.deleteChatCalled, isTrue);
   });
 
+  test('删除当前 chat 后选择列表中的上一条，而不是第一条', () async {
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    final chatList = [_chat(id: 1), _chat(id: 2), _chat(id: 3), _chat(id: 4)];
+    vm.chats.value = chatList;
+    vm.currentChat.value = chatList[2];
+
+    await vm.deleteChat(chatList[2]);
+
+    expect(vm.chats.value.map((chat) => chat.id), [1, 2, 4]);
+    expect(vm.currentChat.value?.id, 2);
+    expect(vm.selection.lastSelectedIndex.value, 1);
+  });
+
+  test('批量删除当前 chat 及其相邻上一条后，选择再上一条', () async {
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    final chatList = [
+      _chat(id: 1),
+      _chat(id: 2),
+      _chat(id: 3),
+      _chat(id: 4),
+      _chat(id: 5),
+    ];
+    vm.chats.value = chatList;
+    vm.currentChat.value = chatList[3];
+
+    await vm.deleteChats([chatList[2], chatList[3]]);
+
+    expect(vm.chats.value.map((chat) => chat.id), [1, 2, 5]);
+    expect(vm.currentChat.value?.id, 2);
+    expect(vm.selection.lastSelectedIndex.value, 1);
+  });
+
+  test('删除第一条当前 chat 时选择删除后的第一条', () async {
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    final chatList = [_chat(id: 1), _chat(id: 2), _chat(id: 3)];
+    vm.chats.value = chatList;
+    vm.currentChat.value = chatList.first;
+
+    await vm.deleteChat(chatList.first);
+
+    expect(vm.currentChat.value?.id, 2);
+    expect(vm.selection.lastSelectedIndex.value, 0);
+  });
+
   test('C12: 删除非流式 chat 不会阻塞等待进行中的其他流', () async {
     // chat A(id=1) 正在流式且不结束（gate 不打开）；删除另一个 chat B(id=2)
     // 不应等待 A 的流 settle，应立即完成且不触发 A 的取消落库。

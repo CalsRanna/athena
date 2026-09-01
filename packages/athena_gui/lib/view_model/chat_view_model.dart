@@ -383,13 +383,17 @@ class ChatViewModel {
 
       await _manageService.deleteChat(chat.id!);
 
+      final shouldSelectReplacement = currentChat.value?.id == chat.id;
+      final replacement = shouldSelectReplacement
+          ? _replacementChatAfterDeleting({chat.id!})
+          : null;
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
       chatHistories.value = chatHistories.value
           .where((h) => h.chat.id != chat.id)
           .toList();
 
-      if (currentChat.value?.id == chat.id) {
-        await _selectFirstChatOrClear();
+      if (shouldSelectReplacement) {
+        await _selectChatOrClear(replacement);
       }
     } catch (e) {
       error.value = e.toString();
@@ -417,13 +421,18 @@ class ChatViewModel {
 
       await _manageService.deleteChats(ids);
 
+      final shouldSelectReplacement =
+          currentChat.value != null && ids.contains(currentChat.value!.id);
+      final replacement = shouldSelectReplacement
+          ? _replacementChatAfterDeleting(ids)
+          : null;
       chats.value = chats.value.where((c) => !ids.contains(c.id)).toList();
       chatHistories.value = chatHistories.value
           .where((h) => !ids.contains(h.chat.id))
           .toList();
 
-      if (currentChat.value != null && ids.contains(currentChat.value!.id)) {
-        await _selectFirstChatOrClear();
+      if (shouldSelectReplacement) {
+        await _selectChatOrClear(replacement);
       }
     } catch (e) {
       error.value = e.toString();
@@ -432,21 +441,35 @@ class ChatViewModel {
     }
   }
 
-  Future<void> _selectFirstChatOrClear() async {
-    if (chats.value.isNotEmpty) {
-      final first = chats.value.first;
-      final result = await _manageService.selectChat(first);
-      currentChat.value = first;
+  ChatEntity? _replacementChatAfterDeleting(Set<int> deletedIds) {
+    final currentIndex = chats.value.indexWhere(
+      (chat) => chat.id == currentChat.value?.id,
+    );
+    for (var index = currentIndex - 1; index >= 0; index--) {
+      final candidate = chats.value[index];
+      if (!deletedIds.contains(candidate.id)) return candidate;
+    }
+    return chats.value
+        .where((chat) => !deletedIds.contains(chat.id))
+        .firstOrNull;
+  }
+
+  Future<void> _selectChatOrClear(ChatEntity? chat) async {
+    if (chat != null) {
+      final result = await _manageService.selectChat(chat);
+      currentChat.value = chat;
       _discardPendingMessages();
       messages.value = result.messages;
       currentModel.value = result.model;
       currentProvider.value = result.provider;
-      currentSentinel.value = _displaySentinel(first, result.sentinel);
-      currentRetention.value = first.retention;
-      currentTemperature.value = first.temperature;
-      currentReasoningEffort.value = first.reasoningEffort;
-      cumulativeTokenTotal.value = first.tokenTotal;
-      _selection.lastSelectedIndex.value = 0;
+      currentSentinel.value = _displaySentinel(chat, result.sentinel);
+      currentRetention.value = chat.retention;
+      currentTemperature.value = chat.temperature;
+      currentReasoningEffort.value = chat.reasoningEffort;
+      cumulativeTokenTotal.value = chat.tokenTotal;
+      _selection.lastSelectedIndex.value = chats.value.indexWhere(
+        (candidate) => candidate.id == chat.id,
+      );
     } else {
       await prepareNewChatDraft();
       _discardPendingMessages();
