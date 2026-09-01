@@ -42,3 +42,15 @@ abstract class Tool {
     void Function(String partialResult)? onUpdate,
   });
 }
+
+/// 可在 run 停止时主动释放外部资源的工具。
+///
+/// 单独建模，避免所有短暂的本地工具都被迫实现取消参数。Shell、网络请求等
+/// 可能长时间阻塞的工具实现此接口，由 Agent 在执行时传入 run 的取消信号。
+abstract interface class CancellableTool {
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String partialResult)? onUpdate,
+    required Future<void> cancelSignal,
+  });
+}

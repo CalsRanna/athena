@@ -5,7 +5,7 @@ import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'shell_runner.dart';
 import 'tool_interface.dart';
 
-class BashShellTool implements Tool {
+class BashShellTool implements Tool, CancellableTool {
   /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
   /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
   BashShellTool({String? defaultWorkdir}) : _defaultWorkdir = defaultWorkdir;
@@ -66,7 +66,28 @@ class BashShellTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) =>
+      _execute(args, onUpdate: onUpdate);
+
+  @override
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) =>
+      _execute(
+        args,
+        onUpdate: onUpdate,
+        cancelSignal: cancelSignal,
+      );
+
+  Future<String> _execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    Future<void>? cancelSignal,
+  }) async {
     final command = args['command'] as String;
     final timeout = ShellTimeoutPolicy.normalize(args['timeout'] as int?);
     final home = Platform.environment['HOME'] ??
@@ -90,6 +111,7 @@ class BashShellTool implements Tool {
       arguments: ['-c', command],
       workdir: workdir,
       timeoutSeconds: timeout.effective,
+      cancelSignal: cancelSignal,
       command: command,
       clamped: timeout.clamped,
       requestedTimeout: timeout.requested,

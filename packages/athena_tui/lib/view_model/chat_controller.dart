@@ -174,6 +174,10 @@ class ChatController {
   /// 当前 sendMessage 的 in-flight future(退出路径等待其收尾完成)。
   Future<void>? _sendFuture;
 
+  /// UI 停止后旧 run 仍可能在后台终止工具并落库；新发送等待该 Future，
+  /// 防止同一聊天的两轮写入交叉。
+  Completer<void>? _runSettled;
+
   /// run 触发的后台 IO(列表重载/自动重命名),收尾前等待其完成:
   /// 让 isStreaming=false 成为"全部副作用已落定"的信号,退出/测试
   /// 边界不再与未完成的文件 IO 竞态(如测试 tearDown 删除目录时
@@ -197,7 +201,8 @@ class ChatController {
   }
 
   /// 等待当前 sendMessage 完全结束(含 finally 与 flush)。无 in-flight 时立即返回。
-  Future<void> waitForSend() => _sendFuture ?? Future.value();
+  Future<void> waitForSend() =>
+      _runSettled?.future ?? _sendFuture ?? Future.value();
 
   // ─── 初始化与聊天管理 ────────────────────────────────────
 
@@ -451,6 +456,12 @@ class ChatController {
     final chat = currentChat.value;
     if (chat?.id == null || isStreaming.value) return;
 
+    // Stop 会立即恢复输入；旧 run 的工具终止与落库仍在后台收尾。
+    // 同一 TUI 会话的新发送排在旧 run 后面，避免两轮写入交叉。
+    final previous = _runSettled;
+    if (previous != null) await previous.future;
+    if (!_active || isStreaming.value || _runSettled != null) return;
+
     error.value = null;
     final message = MessageEntity(chatId: chat!.id!, role: 'user', content: text);
     isStreaming.value = true;
@@ -463,12 +474,16 @@ class ChatController {
     // 记录 in-flight future:退出路径(waitForSend)等待收尾完全结束。
     // _doSend 在首个 await 处挂起,此处赋值无竞态;identical 兜底防
     // 极端情况下已完成才赋值导致悬挂旧引用。
+    final settled = Completer<void>();
+    _runSettled = settled;
     final future = _doSend(message, chat, jsonMode);
     _sendFuture = future;
     try {
       await future;
     } finally {
       if (identical(_sendFuture, future)) _sendFuture = null;
+      if (identical(_runSettled, settled)) _runSettled = null;
+      if (!settled.isCompleted) settled.complete();
     }
   }
 
@@ -508,7 +523,17 @@ class ChatController {
 
   void stopGenerating() {
     final chatId = currentChat.value?.id;
-    if (chatId != null) _bridge.stop(chatId);
+    if (chatId == null) return;
+    _bridge.stop(chatId);
+
+    // 可见状态立即停止；_doSend 继续在后台接收取消收尾事件并持久化。
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    if (_pendingList != null) {
+      messages.value = _pendingList!;
+      _pendingList = null;
+    }
+    isStreaming.value = false;
   }
 
   /// 消费单个 [RunEvent](sendMessage 的事件分发;测试可注入事件验证

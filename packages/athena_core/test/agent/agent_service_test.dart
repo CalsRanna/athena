@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as athena;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -40,6 +43,36 @@ class _EchoTool extends athena.Tool {
   @override
   Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
     return 'echo: ${args['message']}';
+  }
+}
+
+class _BlockingTool extends athena.Tool implements athena.CancellableTool {
+  final entered = Completer<void>();
+
+  @override
+  String get name => 'blocking';
+
+  @override
+  String get description => 'Waits for cancellation';
+
+  @override
+  Map<String, dynamic> get parameters => {'type': 'object'};
+
+  @override
+  Future<String> execute(Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async =>
+      'unexpected';
+
+  @override
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) async {
+    entered.complete();
+    await cancelSignal;
+    throw const CancelledException();
   }
 }
 
@@ -127,6 +160,29 @@ void main() {
     );
 
     expect(result.processedResult, 'final: echo: hello');
+  });
+
+  test('可取消工具会收到 run 的取消信号', () async {
+    final tool = _BlockingTool();
+    final registry = ToolRegistry()..register(tool);
+    final service = AgentService(
+      chatService: ChatService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+    final token = CancelToken();
+    final future = service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'c1',
+        type: 'function',
+        function: const FunctionCall(name: 'blocking', arguments: '{}'),
+      ),
+      cancelToken: token,
+    );
+
+    await tool.entered.future;
+    token.cancel();
+
+    await expectLater(future, throwsA(isA<CancelledException>()));
   });
 
   _jsonModeTests();

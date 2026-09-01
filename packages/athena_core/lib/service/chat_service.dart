@@ -67,6 +67,7 @@ class ChatService {
     required List<ChatMessage> messages,
     required ProviderEntity provider,
     required ModelEntity model,
+    Future<void>? cancelSignal,
   }) async {
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
@@ -75,6 +76,7 @@ class ChatService {
     var response = await _llmClient.fetch(
       provider: provider,
       request: request,
+      cancelSignal: cancelSignal,
     );
     return response.text ?? '';
   }
