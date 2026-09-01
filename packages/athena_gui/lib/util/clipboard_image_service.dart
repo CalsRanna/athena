@@ -1,100 +1,89 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// 读取系统剪贴板中的图片（桌面端粘贴图片功能）。
 ///
-/// 原生层通过 `athena/clipboard_image` channel 返回：
-/// - `{'paths': ['<文件路径>', ...]}`：剪贴板中是多个图片文件
-///   （如文件管理器多选复制；兼容格式直接给路径）
-/// - `{'base64s': ['<PNG base64>', ...]}`：上述场景中非兼容格式转成 PNG
-/// - `{'path': '<文件路径>'}` / `{'base64': '<PNG base64>'}`：
-///   旧协议的单值返回（兼容，如系统截图）
-/// - null：剪贴板中没有图片
+/// 底层使用 pasteboard 插件（macOS/Linux/Windows/iOS/Android 全平台）：
+/// - [Pasteboard.files]：剪贴板中的文件列表（文件管理器多选复制等）
+/// - [Pasteboard.image]：剪贴板中的图片数据（系统截图、浏览器复制图片等）
+///
+/// 语义约定（与各平台 LLM 支持的图片格式保持一致）：
+/// - 支持 png/jpg/jpeg/gif/webp，直接使用原始文件，不做格式转换
+/// - heic/tiff 等模型不支持的格式直接忽略（与"复制了 txt"行为一致）
+/// - 文件优先：剪贴板中存在本地文件时不读取图片数据，
+///   否则会把文件管理器附带的图标预览当成图片粘贴
 ///
 /// 图片数据会先写入临时目录再返回路径，
 /// 与 [Image.file] / 发送流程（按路径读取文件）保持一致。
 class ClipboardImageService {
   ClipboardImageService._();
 
-  static const MethodChannel _channel = MethodChannel('athena/clipboard_image');
+  /// 模型通用的图片格式白名单（粘贴时按此过滤）。
+  @visibleForTesting
+  static const Set<String> supportedExtensions = {
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+    'webp',
+  };
 
   /// 测试注入：临时目录提供者，默认使用系统临时目录。
   @visibleForTesting
   static Future<Directory> Function() tempDirProvider = getTemporaryDirectory;
 
   /// 读取剪贴板中的全部图片并按就绪顺序回调：
-  /// 文件路径立即回调（UI 可马上渲染占位），需要转换的数据
-  /// 每张处理完回调一次，避免一次性解码全部造成的卡顿；
-  /// 剪贴板中没有图片、平台不支持或读取失败时不做任何回调。
+  /// 文件路径立即回调（UI 可马上渲染占位），图片数据
+  /// 处理完回调一次，避免一次性解码全部造成的卡顿；
+  /// 剪贴板中没有可发送的图片时不做任何回调。
   static Future<void> readClipboardImages(
     void Function(String path) onImage,
   ) async {
-    Map<Object?, Object?>? result;
+    // 文件优先：文件管理器复制文件时剪贴板会同时携带图标预览数据，
+    // 此时应以文件本身为准，否则发送的是图标而不是图片内容。
+    final existingFiles = <String>[];
     try {
-      result = await _channel
-          .invokeMethod<Map<Object?, Object?>>('readClipboardImage');
-    } on MissingPluginException {
-      // 平台未注册 channel（如移动端），按无图片处理
-      return;
-    } on PlatformException {
-      // 原生读取失败（如剪贴板被占用），回退到文本粘贴
-      return;
-    }
-    if (result == null) return;
-
-    // 新协议：文件路径无需转换，立即回调
-    for (final path in _stringList(result['paths'])) {
-      if (await File(path).exists()) onImage(path);
-    }
-    // base64 数据逐张解码写入后回调，每张之间让出事件循环，
-    // 使 UI 可以先显示占位再逐步填充
-    for (final bytes in _base64List(result['base64s'])) {
-      await Future<void>.delayed(Duration.zero);
-      onImage(await _writeTempFile(bytes));
-    }
-
-    // 旧协议兼容：单值返回
-    final path = result['path'];
-    if (path is String && path.isNotEmpty && await File(path).exists()) {
-      onImage(path);
-      return;
-    }
-    final bytes = _decodeBase64(result['base64']);
-    if (bytes != null) {
-      await Future<void>.delayed(Duration.zero);
-      onImage(await _writeTempFile(bytes));
-    }
-  }
-
-  static List<String> _stringList(Object? value) {
-    if (value is! List) return const [];
-    return value.whereType<String>().where((s) => s.isNotEmpty).toList();
-  }
-
-  static List<Uint8List> _base64List(Object? value) {
-    if (value is! List) return const [];
-    final result = <Uint8List>[];
-    for (final item in value) {
-      final bytes = _decodeBase64(item);
-      if (bytes != null) result.add(bytes);
-    }
-    return result;
-  }
-
-  static Uint8List? _decodeBase64(Object? value) {
-    if (value is Uint8List) return value;
-    if (value is String) {
-      try {
-        return base64Decode(value);
-      } on FormatException {
-        return null;
+      for (final path in await Pasteboard.files()) {
+        if (await File(path).exists()) existingFiles.add(path);
       }
+    } catch (_) {
+      // 平台不支持或读取失败（如移动端部分场景），按无图片处理
+      return;
     }
-    return null;
+
+    final ready = existingFiles
+        .where((path) =>
+            supportedExtensions.contains(_extensionOf(path).toLowerCase()))
+        .toList();
+    if (ready.isNotEmpty) {
+      for (final path in ready) {
+        onImage(path);
+      }
+      return;
+    }
+    // 剪贴板中存在本地文件但格式均不支持时，与"复制了 txt"一致，
+    // 不再读取图片数据（避免把图标预览当作图片）
+    if (existingFiles.isNotEmpty) return;
+
+    // 无本地文件：读取图片数据（系统截图、浏览器复制图片等）
+    Uint8List? bytes;
+    try {
+      bytes = await Pasteboard.image;
+    } catch (_) {
+      return;
+    }
+    if (bytes == null || bytes.isEmpty) return;
+    onImage(await _writeTempFile(bytes));
+  }
+
+  static String _extensionOf(String path) {
+    final dot = path.lastIndexOf('.');
+    final slash = path.lastIndexOf(Platform.pathSeparator);
+    if (dot < 0 || (slash >= 0 && dot < slash)) return '';
+    return path.substring(dot + 1);
   }
 
   static Future<String> _writeTempFile(Uint8List bytes) async {

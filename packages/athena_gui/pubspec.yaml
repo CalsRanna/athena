@@ -33,6 +33,7 @@ dependencies:
   image_gallery_saver_plus: ^4.0.1
   laconic: ^2.2.0
   laconic_sqlite: ^1.1.0
+  pasteboard: ^0.5.0
   logger: ^2.0.2+1
   markdown: ^7.2.2
   meta: ^1.16.0
@@ -53,7 +54,7 @@ dependencies:
   synchronized: ^3.3.1
   tray_manager: ^0.5.2
   url_launcher: ^6.3.1
-  uuid: ^3.0.7
+  uuid: ^4.6.0
   visibility_detector: ^0.4.0+2
   window_manager: ^0.5.1
   # 1.2.0 需要 win32 ^6，与 package_info_plus 8.x 的 win32 ^5.5.3 冲突，
