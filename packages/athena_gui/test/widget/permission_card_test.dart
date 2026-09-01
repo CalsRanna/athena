@@ -9,15 +9,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   ApprovalRequest makeRequest() => ApprovalRequest(
-        chatId: 1,
-        toolName: 'sentinel_evolve',
-        arguments: 'sentinel_name: Athena\nimprovements: ...',
-        completer: Completer<PermissionDecision>(),
-      );
+    chatId: 1,
+    toolName: 'sentinel_evolve',
+    arguments: 'sentinel_name: Athena\nimprovements: ...',
+    completer: Completer<PermissionDecision>(),
+  );
 
   Future<void> pumpCard(
     WidgetTester tester, {
     required TargetPlatform platform,
+    ApprovalRequest? request,
+    double maxHeight = 300,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -26,10 +28,16 @@ void main() {
           platform: platform,
           extensions: [AthenaColors.dark],
         ),
-        home: Scaffold(body: PermissionApprovalCard(
-          request: makeRequest(),
-          onDecision: (_, __) {},
-        )),
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: PermissionApprovalCard(
+              request: request ?? makeRequest(),
+              maxHeight: maxHeight,
+              onDecision: (_, __) {},
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -37,10 +45,12 @@ void main() {
   double buttonWidth(WidgetTester tester, String label) {
     return tester
         .getSize(
-          find.ancestor(
-            of: find.text(label),
-            matching: find.byType(GestureDetector),
-          ).first,
+          find
+              .ancestor(
+                of: find.text(label),
+                matching: find.byType(GestureDetector),
+              )
+              .first,
         )
         .width;
   }
@@ -60,13 +70,12 @@ void main() {
 
     // 文字在按钮内水平居中
     final denyButton = find
-        .ancestor(
-          of: find.text('Deny'),
-          matching: find.byType(GestureDetector),
-        )
+        .ancestor(of: find.text('Deny'), matching: find.byType(GestureDetector))
         .first;
-    expect(tester.getCenter(find.text('Deny')).dx,
-        closeTo(tester.getCenter(denyButton).dx, 1.0));
+    expect(
+      tester.getCenter(find.text('Deny')).dx,
+      closeTo(tester.getCenter(denyButton).dx, 1.0),
+    );
   });
 
   testWidgets('桌面端三个按钮保持行内紧凑布局', (tester) async {
@@ -75,5 +84,30 @@ void main() {
     final deny = buttonWidth(tester, 'Deny');
     // 桌面端按钮按内容宽度收缩，不撑满卡片
     expect(deny, lessThan(200));
+  });
+
+  testWidgets('超长参数受最大高度限制并在卡片内滚动', (tester) async {
+    final request = ApprovalRequest(
+      chatId: 1,
+      toolName: 'bash',
+      arguments: List.generate(80, (index) => 'command line $index').join('\n'),
+      completer: Completer<PermissionDecision>(),
+    );
+
+    await pumpCard(
+      tester,
+      platform: TargetPlatform.macOS,
+      request: request,
+      maxHeight: 300,
+    );
+
+    expect(
+      tester.getSize(find.byType(PermissionApprovalCard)).height,
+      lessThanOrEqualTo(300),
+    );
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    expect(find.text('Allow Once'), findsOneWidget);
   });
 }

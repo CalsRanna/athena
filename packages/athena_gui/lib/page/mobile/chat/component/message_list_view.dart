@@ -90,32 +90,36 @@ class _MessageListViewState extends State<MessageListView> {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
             );
       if (approvals.isEmpty) return list;
-      return Column(
-        children: [
-          Expanded(child: list),
-          // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
-          // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
-          const SizedBox(height: 12),
-          for (final (index, request) in approvals.indexed)
-            Padding(
-              // 最后一张审批卡无需底部间距：输入框区域自带 16 外边距
-              // （chat.dart _buildInput），与无审批时消息→输入框的间距一致
-              padding: EdgeInsets.fromLTRB(
-                16,
-                0,
-                16,
-                index == approvals.length - 1 ? 0 : 12,
+      return LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            Expanded(child: list),
+            // 消息列表自身无垂直 padding（区别于桌面端），这里补 12，
+            // 使最后一条消息与权限卡片之间的间距与消息间/权限卡间一致
+            const SizedBox(height: 12),
+            for (final (index, request) in approvals.indexed)
+              Padding(
+                // 最后一张审批卡无需底部间距：输入框区域自带 16 外边距
+                // （chat.dart _buildInput），与无审批时消息→输入框的间距一致
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  index == approvals.length - 1 ? 0 : 12,
+                ),
+                child: PermissionApprovalCard(
+                  request: request,
+                  maxHeight:
+                      constraints.maxHeight * permissionCardMaxHeightFraction,
+                  onDecision: (approved, persistExact) =>
+                      viewModel.respondApproval(
+                        request,
+                        permissionDecisionOf(approved, persistExact),
+                      ),
+                ),
               ),
-              child: PermissionApprovalCard(
-                request: request,
-                onDecision: (approved, persistExact) => viewModel
-                    .respondApproval(
-                      request,
-                      permissionDecisionOf(approved, persistExact),
-                    ),
-              ),
-            ),
-        ],
+          ],
+        ),
       );
     });
   }
