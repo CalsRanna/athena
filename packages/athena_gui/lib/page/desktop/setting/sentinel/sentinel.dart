@@ -246,26 +246,17 @@ class _DesktopSettingSentinelPageState
         fontWeight: FontWeight.w500,
       );
       var isPreset = index < sentinels.length && sentinels[index].isPreset;
-      var avatarInput = AthenaInput(
-        controller: avatarController,
-        enabled: !isPreset,
-      );
+      var avatarInput = AthenaInput(controller: avatarController);
       var avatarChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Avatar')),
         Expanded(child: avatarInput),
       ];
-      var descriptionInput = AthenaInput(
-        controller: descriptionController,
-        enabled: !isPreset,
-      );
+      var descriptionInput = AthenaInput(controller: descriptionController);
       var descriptionChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
         Expanded(child: descriptionInput),
       ];
-      var tagsInput = AthenaInput(
-        controller: tagsController,
-        enabled: !isPreset,
-      );
+      var tagsInput = AthenaInput(controller: tagsController);
       var tagsChildren = [
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Tags')),
         Expanded(child: tagsInput),
@@ -274,7 +265,6 @@ class _DesktopSettingSentinelPageState
         controller: promptController,
         maxLines: 20,
         minLines: 20,
-        enabled: !isPreset,
       );
       const edgeInsets = EdgeInsets.symmetric(vertical: 16);
       var promptLabel = SizedBox(
