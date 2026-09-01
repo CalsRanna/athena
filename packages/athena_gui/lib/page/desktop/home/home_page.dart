@@ -6,6 +6,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
@@ -40,7 +41,7 @@ class DesktopHomePage extends StatefulWidget {
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
   final controller = TextEditingController();
-  final scrollController = ScrollController();
+  final scrollController = MessageListScrollController();
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final modelViewModel = GetIt.instance<ModelViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
@@ -76,10 +77,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       'Do you want to delete ${chats.length} chats?',
     );
     if (result == true) {
-      var duration = Duration(milliseconds: 300);
-      if (scrollController.hasClients) {
-        scrollController.animateTo(0, curve: Curves.linear, duration: duration);
-      }
+      scrollController.followBottom();
       await chatViewModel.deleteChats(chats);
     }
     chatViewModel.clearSelection();
@@ -88,10 +86,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Future<void> destroyChat(ChatEntity chat) async {
     var result = await AthenaDialog.confirm('Do you want to delete this chat?');
     if (result == true) {
-      var duration = Duration(milliseconds: 300);
-      if (scrollController.hasClients) {
-        scrollController.animateTo(0, curve: Curves.linear, duration: duration);
-      }
+      scrollController.followBottom();
       await chatViewModel.deleteChat(chat);
     }
   }
@@ -127,10 +122,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       AthenaDialog.info('Please wait for the current chat to finish.');
       return;
     }
-    var duration = Duration(milliseconds: 300);
-    if (scrollController.hasClients) {
-      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
-    }
+    scrollController.followBottom();
     await chatViewModel.deleteMessage(message);
     await chatViewModel.sendMessage(message, chat: chat);
   }
@@ -161,10 +153,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
 
     controller.clear();
-    var duration = Duration(milliseconds: 300);
-    if (scrollController.hasClients) {
-      scrollController.animateTo(0, curve: Curves.linear, duration: duration);
-    }
+    scrollController.followBottom();
     var imageUrls = <String>[];
     var images = chatViewModel.pendingImages.value;
     for (var image in images) {

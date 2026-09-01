@@ -13,10 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 Future<Uint8List> makePng(Color color) async {
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  canvas.drawRect(
-    const Rect.fromLTWH(0, 0, 4, 4),
-    Paint()..color = color,
-  );
+  canvas.drawRect(const Rect.fromLTWH(0, 0, 4, 4), Paint()..color = color);
   final picture = recorder.endRecording();
   final image = await picture.toImage(4, 4);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -48,10 +45,9 @@ void main() {
         ),
         home: Scaffold(
           body: ListView.separated(
-            reverse: true,
             itemBuilder: (_, index) => MessageListTile(
               loading: false,
-              message: messages.reversed.elementAt(index),
+              message: messages[index],
               onResend: () {},
               onSecondaryTapUp: (_) {},
               sentinel: SentinelEntity(id: 1, name: 'athena'),
@@ -65,9 +61,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // 取出用户消息图片当前渲染进 Image.memory 的字节
-  Uint8List renderedBytes(WidgetTester tester) {
-    for (final element in find.byType(Image).evaluate()) {
+  // 按图片 key 取出对应 Image.memory 当前渲染的字节。
+  Uint8List renderedBytes(WidgetTester tester, Uint8List expected) {
+    final imageFinder = find.descendant(
+      of: find.byKey(ValueKey(base64Encode(expected))),
+      matching: find.byType(Image),
+    );
+    for (final element in imageFinder.evaluate()) {
       final image = element.widget as Image;
       if (image.image is MemoryImage) {
         return (image.image as MemoryImage).bytes;
@@ -77,24 +77,34 @@ void main() {
   }
 
   testWidgets('列表增长后最新用户消息渲染的是自己的图片', (tester) async {
-    final imageA = (await tester.runAsync(() => makePng(const Color(0xFFCCCCCC))))!; // 旧消息的图（占位图标类）
-    final imageB = (await tester.runAsync(() => makePng(const Color(0xFF3366FF))))!; // 新消息的图（截图类）
+    final imageA = (await tester.runAsync(
+      () => makePng(const Color(0xFFCCCCCC)),
+    ))!; // 旧消息的图（占位图标类）
+    final imageB = (await tester.runAsync(
+      () => makePng(const Color(0xFF3366FF)),
+    ))!; // 新消息的图（截图类）
 
     // 初始：旧消息 + assistant
-    await pumpList(tester, messages: [
-      userMessage(1, imageA),
-      MessageEntity(id: 2, chatId: 1, role: 'assistant', content: 'a'),
-    ]);
-    expect(renderedBytes(tester), imageA);
+    await pumpList(
+      tester,
+      messages: [
+        userMessage(1, imageA),
+        MessageEntity(id: 2, chatId: 1, role: 'assistant', content: 'a'),
+      ],
+    );
+    expect(renderedBytes(tester, imageA), imageA);
 
-    // 新用户消息（图 B）追加到列表末尾（reverse 后为 index 0）
-    await pumpList(tester, messages: [
-      userMessage(1, imageA),
-      MessageEntity(id: 2, chatId: 1, role: 'assistant', content: 'a'),
-      userMessage(3, imageB),
-    ]);
+    // 正向列表中，新用户消息（图 B）追加到列表末尾。
+    await pumpList(
+      tester,
+      messages: [
+        userMessage(1, imageA),
+        MessageEntity(id: 2, chatId: 1, role: 'assistant', content: 'a'),
+        userMessage(3, imageB),
+      ],
+    );
 
-    // 最新消息（index 0）的图应当是图 B，而不是复用旧图 A
-    expect(renderedBytes(tester), imageB);
+    // 最新消息的图应当是图 B，而不是复用旧图 A。
+    expect(renderedBytes(tester, imageB), imageB);
   });
 }

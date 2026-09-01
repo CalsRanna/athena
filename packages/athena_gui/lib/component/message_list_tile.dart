@@ -63,13 +63,13 @@ class MessageListTile extends StatelessWidget {
 class _AssistantMessageRenderData {
   final MessageEntity message;
   final List<MessageEntity> toolMessages;
-  final bool loading;
+  final bool waitingForFirstDelta;
   final bool addBoundarySpacing;
 
   const _AssistantMessageRenderData({
     required this.message,
     required this.toolMessages,
-    required this.loading,
+    this.waitingForFirstDelta = false,
     required this.addBoundarySpacing,
   });
 }
@@ -127,7 +127,7 @@ class MessageCardListSliver extends StatelessWidget {
     final renderItems = _buildMessageListRenderItems(
       messages,
       loading: loading,
-    ).reversed.toList(growable: false);
+    );
     final itemIndices = <String, int>{
       for (final (index, item) in renderItems.indexed) item.key: index,
     };
@@ -228,6 +228,7 @@ class _AssistantMessageListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final renderData = _buildAssistantRenderData([message], loading: loading);
+    if (renderData.isEmpty) return const SizedBox.shrink();
     return _AssistantMessageCardSegment(
       data: renderData.first,
       isCardStart: true,
@@ -306,7 +307,8 @@ class _AssistantMessageSegment extends StatelessWidget {
         _buildAssistantTrailingSpace(),
       ],
     );
-    Widget result = isCardHeader
+    final showCopyButton = isCardHeader && !data.waitingForFirstDelta;
+    Widget result = showCopyButton
         ? Stack(
             children: [
               row,
@@ -335,6 +337,9 @@ class _AssistantMessageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = data.message;
     final children = <Widget>[];
+    if (data.waitingForFirstDelta) {
+      children.add(const _AssistantMessageWaitingPart());
+    }
     if (message.reasoningContent.isNotEmpty) {
       children.add(_AssistantMessageListTileThinkingPart(message: message));
     }
@@ -349,9 +354,6 @@ class _AssistantMessageContent extends StatelessWidget {
     }
     if (message.reference.isNotEmpty) {
       children.add(_AssistantMessageListTileReferencePart(message: message));
-    }
-    if (data.loading) {
-      children.add(const _AssistantMessageListTileLoadingPart(loading: true));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,11 +419,10 @@ List<_AssistantMessageRenderData> _buildAssistantRenderData(
   int? openToolOwner;
 
   for (final (index, message) in messages.indexed) {
-    final itemLoading = loading && index == messages.length - 1;
     final hasTools = message.toolCalls.isNotEmpty;
     final hasContentBeforeTools =
         message.reasoningContent.isNotEmpty || message.content.isNotEmpty;
-    final hasContentAfterTools = message.reference.isNotEmpty || itemLoading;
+    final hasContentAfterTools = message.reference.isNotEmpty;
 
     if (hasTools) {
       var owner = index;
@@ -443,14 +444,12 @@ List<_AssistantMessageRenderData> _buildAssistantRenderData(
 
   final result = <_AssistantMessageRenderData>[];
   for (final (index, message) in messages.indexed) {
-    final itemLoading = loading && index == messages.length - 1;
     final effectiveTools = toolMessages[index];
     final visible =
         message.reasoningContent.isNotEmpty ||
         message.content.isNotEmpty ||
         effectiveTools.isNotEmpty ||
-        message.reference.isNotEmpty ||
-        itemLoading;
+        message.reference.isNotEmpty;
     if (!visible) continue;
 
     final toolsMergedIntoPrevious =
@@ -465,18 +464,18 @@ List<_AssistantMessageRenderData> _buildAssistantRenderData(
       _AssistantMessageRenderData(
         message: message,
         toolMessages: effectiveTools,
-        loading: itemLoading,
         addBoundarySpacing: result.isNotEmpty && !firstPartHasLeadingSpacing,
       ),
     );
   }
 
-  if (result.isEmpty) {
+  // 首个 delta 到达前保留当前 Assistant 占位卡，并标记为一次性等待态。
+  if (result.isEmpty && loading) {
     result.add(
       _AssistantMessageRenderData(
         message: messages.first,
         toolMessages: const [],
-        loading: false,
+        waitingForFirstDelta: true,
         addBoundarySpacing: false,
       ),
     );
@@ -552,17 +551,30 @@ Widget _buildAssistantTrailingSpace() {
   return SizedBox(width: isDesktop ? 48 : 24);
 }
 
-class _AssistantMessageListTileLoadingPart extends StatelessWidget {
-  final bool loading;
-  const _AssistantMessageListTileLoadingPart({required this.loading});
+class _AssistantMessageWaitingPart extends StatelessWidget {
+  const _AssistantMessageWaitingPart();
 
   @override
   Widget build(BuildContext context) {
-    if (!loading) return const SizedBox();
-    var indicator = CircularProgressIndicator(strokeWidth: 1);
-    var sizedBox = SizedBox(height: 12, width: 12, child: indicator);
-    var align = Align(alignment: Alignment.centerLeft, child: sizedBox);
-    return SizedBox.square(dimension: 28, child: align);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final foreground = colors.textSecondaryOnRaised;
+    return ToolHeaderShimmer(
+      active: true,
+      child: Row(
+        children: [
+          Icon(HugeIcons.strokeRoundedSparkles, size: 15, color: foreground),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Working…',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.firaCode(fontSize: 12, color: foreground),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

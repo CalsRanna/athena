@@ -3,6 +3,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
@@ -42,6 +43,7 @@ class MobileChatPage extends StatefulWidget {
 
 class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
+  final scrollController = MessageListScrollController();
 
   late final viewModel = GetIt.instance<ChatViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
@@ -119,9 +121,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
             .where((m) => m.id == chat.modelId)
             .firstOrNull;
         return MessageListView(
+          key: ValueKey(chat.id),
           chat: chat,
           viewModel: viewModel,
           sentinelViewModel: sentinelViewModel,
+          controller: scrollController,
           model: model,
           onChatTitleChanged: (_) {},
         );
@@ -160,6 +164,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   void dispose() {
     controller.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -215,6 +220,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     }
 
     controller.clear();
+    scrollController.followBottom();
 
     var message = MessageEntity(
       id: 0,

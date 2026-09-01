@@ -1,4 +1,5 @@
 import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart';
@@ -14,7 +15,7 @@ import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageList extends StatefulWidget {
-  final ScrollController? controller;
+  final MessageListScrollController? controller;
   final void Function(MessageEntity message) onResend;
   const DesktopMessageList({
     super.key,
@@ -29,6 +30,7 @@ class DesktopMessageList extends StatefulWidget {
 class _DesktopMessageListState extends State<DesktopMessageList> {
   late final ChatViewModel chatViewModel;
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  int? _displayedChatId;
 
   @override
   void initState() {
@@ -79,28 +81,37 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   Widget _buildData(List<MessageEntity> messages, {required bool loading}) {
     var sentinel = _displaySentinel();
+    final chatId = chatViewModel.currentChat.value?.id;
+    if (_displayedChatId != chatId) {
+      _displayedChatId = chatId;
+      widget.controller?.followBottom();
+    } else {
+      widget.controller?.maintainBottom();
+    }
     // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
     final approvals = chatViewModel.pendingApprovals.value
         .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
         .toList();
     final list = messages.isEmpty
         ? DesktopSentinelPlaceholder(sentinel: sentinel)
-        : CustomScrollView(
-            controller: widget.controller,
-            reverse: true,
-            slivers: [
-              MessageCardListSliver(
-                messages: messages,
-                loading: loading,
-                sentinel: sentinel,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
+        : NotificationListener<ScrollMetricsNotification>(
+            onNotification: widget.controller?.handleMetricsNotification,
+            child: CustomScrollView(
+              controller: widget.controller,
+              slivers: [
+                MessageCardListSliver(
+                  messages: messages,
+                  loading: loading,
+                  sentinel: sentinel,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                  onResend: widget.onResend,
+                  onSecondaryTapUp: openContextMenu,
                 ),
-                onResend: widget.onResend,
-                onSecondaryTapUp: openContextMenu,
-              ),
-            ],
+              ],
+            ),
           );
     if (approvals.isEmpty) return list;
     return LayoutBuilder(

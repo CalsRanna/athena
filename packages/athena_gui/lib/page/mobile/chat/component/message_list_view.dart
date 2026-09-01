@@ -1,4 +1,5 @@
 import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -19,12 +20,14 @@ class MessageListView extends StatefulWidget {
   final ChatViewModel viewModel;
   final SentinelViewModel sentinelViewModel;
   final ModelEntity? model;
+  final MessageListScrollController controller;
   final void Function(ChatEntity)? onChatTitleChanged;
   const MessageListView({
     super.key,
     required this.chat,
     required this.viewModel,
     required this.sentinelViewModel,
+    required this.controller,
     this.model,
     this.onChatTitleChanged,
   });
@@ -34,10 +37,10 @@ class MessageListView extends StatefulWidget {
 }
 
 class _MessageListViewState extends State<MessageListView> {
-  final controller = ScrollController();
-
   ChatViewModel get viewModel => widget.viewModel;
   SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
+  MessageListScrollController get controller => widget.controller;
+  int? _displayedChatId;
 
   @override
   void initState() {
@@ -46,7 +49,9 @@ class _MessageListViewState extends State<MessageListView> {
   }
 
   Future<void> _loadMessages() async {
+    final chatId = widget.chat.id!;
     await viewModel.refreshMessages(widget.chat.id!);
+    if (mounted && widget.chat.id == chatId) controller.maintainBottom();
   }
 
   @override
@@ -62,6 +67,12 @@ class _MessageListViewState extends State<MessageListView> {
       var messages = viewModel.messages.value
           .where((m) => m.chatId == widget.chat.id)
           .toList();
+      if (_displayedChatId != widget.chat.id) {
+        _displayedChatId = widget.chat.id;
+        controller.followBottom();
+      } else {
+        controller.maintainBottom();
+      }
       // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
       final approvals = viewModel.pendingApprovals.value
           .where((r) => r.chatId == widget.chat.id)
@@ -74,19 +85,21 @@ class _MessageListViewState extends State<MessageListView> {
 
       final list = messages.isEmpty
           ? const SizedBox.shrink()
-          : CustomScrollView(
-              controller: controller,
-              reverse: true,
-              slivers: [
-                MessageCardListSliver(
-                  messages: messages,
-                  loading: loading,
-                  sentinel: sentinel,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  onLongPress: openBottomSheet,
-                  onResend: resendMessage,
-                ),
-              ],
+          : NotificationListener<ScrollMetricsNotification>(
+              onNotification: controller.handleMetricsNotification,
+              child: CustomScrollView(
+                controller: controller,
+                slivers: [
+                  MessageCardListSliver(
+                    messages: messages,
+                    loading: loading,
+                    sentinel: sentinel,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    onLongPress: openBottomSheet,
+                    onResend: resendMessage,
+                  ),
+                ],
+              ),
             );
       if (approvals.isEmpty) return list;
       return LayoutBuilder(
@@ -124,25 +137,13 @@ class _MessageListViewState extends State<MessageListView> {
   }
 
   void destroyMessage(MessageEntity message) {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
+    controller.followBottom();
     viewModel.deleteMessage(message);
     AthenaDialog.dismiss();
   }
 
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
   void editMessage(MessageEntity message) {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
+    controller.followBottom();
     viewModel.deleteMessage(message);
   }
 
@@ -182,10 +183,7 @@ class _MessageListViewState extends State<MessageListView> {
   }
 
   Future<void> resendMessage(MessageEntity message) async {
-    var duration = Duration(milliseconds: 300);
-    if (controller.hasClients) {
-      controller.animateTo(0, curve: Curves.linear, duration: duration);
-    }
+    controller.followBottom();
     await viewModel.deleteMessage(message);
     await viewModel.sendMessage(message, chat: widget.chat);
   }

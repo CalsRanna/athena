@@ -18,6 +18,7 @@ void main() {
     WidgetTester tester,
     List<MessageEntity> messages, {
     double height = 700,
+    bool loading = false,
   }) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -30,9 +31,12 @@ void main() {
             width: 700,
             height: height,
             child: CustomScrollView(
-              reverse: true,
               slivers: [
-                MessageCardListSliver(messages: messages, sentinel: sentinel),
+                MessageCardListSliver(
+                  messages: messages,
+                  sentinel: sentinel,
+                  loading: loading,
+                ),
               ],
             ),
           ),
@@ -70,6 +74,34 @@ void main() {
     );
     await tester.pump();
   }
+
+  testWidgets('短对话从视口顶部开始布局', (tester) async {
+    await pumpAssistantMessages(tester, [
+      MessageEntity(
+        id: 1,
+        chatId: 1,
+        role: 'assistant',
+        content: 'first response',
+      ),
+    ]);
+
+    expect(tester.getTopLeft(find.text('first response')).dy, lessThan(100));
+  });
+
+  testWidgets('同一 Assistant 卡片开始输出后不再重复显示 Working', (tester) async {
+    await pumpAssistantMessages(tester, [
+      MessageEntity(
+        id: 1,
+        chatId: 1,
+        role: 'assistant',
+        content: 'first response',
+      ),
+      MessageEntity(id: 2, chatId: 1, role: 'assistant'),
+    ], loading: true);
+
+    expect(find.text('first response'), findsOneWidget);
+    expect(find.text('Working…'), findsNothing);
+  });
 
   testWidgets('单个工具调用继续使用 ToolCard', (tester) async {
     await pumpMessage(
