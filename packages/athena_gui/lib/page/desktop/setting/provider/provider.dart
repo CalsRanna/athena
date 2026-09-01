@@ -114,10 +114,24 @@ class _DesktopSettingProviderPageState
       'Do you want to delete this provider?',
     );
     if (result == true) {
+      final providers = providerViewModel.providers.value;
+      final deletedIndex = providers.indexWhere((p) => p.id == provider.id);
+      final selectedProviderId = index < providers.length
+          ? providers[index].id
+          : null;
       await providerViewModel.deleteProvider(provider);
-      setState(() {
-        index = 0;
-      });
+      final remaining = providerViewModel.providers.value;
+      if (remaining.any((p) => p.id == provider.id)) return;
+      if (remaining.isEmpty) {
+        setState(() => index = 0);
+        return;
+      }
+
+      var nextIndex = remaining.indexWhere((p) => p.id == selectedProviderId);
+      if (selectedProviderId == provider.id || nextIndex < 0) {
+        nextIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
+      }
+      await changeProvider(nextIndex);
     }
   }
 

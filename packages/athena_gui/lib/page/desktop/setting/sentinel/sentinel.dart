@@ -64,17 +64,24 @@ class _DesktopSettingSentinelPageState
       'Do you want to delete this sentinel?',
     );
     if (result == true) {
+      final sentinels = viewModel.sentinels.value;
+      final deletedIndex = sentinels.indexWhere((s) => s.id == sentinel.id);
+      final selectedSentinelId = index < sentinels.length
+          ? sentinels[index].id
+          : null;
       await viewModel.deleteSentinel(sentinel);
-      setState(() {
-        index = 0;
-      });
-      var sentinels = viewModel.sentinels.value;
-      if (sentinels.isEmpty) return;
-      nameController.text = sentinels[index].name;
-      avatarController.text = sentinels[index].avatar;
-      descriptionController.text = sentinels[index].description;
-      tagsController.text = sentinels[index].tags;
-      promptController.text = sentinels[index].prompt;
+      final remaining = viewModel.sentinels.value;
+      if (remaining.any((s) => s.id == sentinel.id)) return;
+      if (remaining.isEmpty) {
+        setState(() => index = 0);
+        return;
+      }
+
+      var nextIndex = remaining.indexWhere((s) => s.id == selectedSentinelId);
+      if (selectedSentinelId == sentinel.id || nextIndex < 0) {
+        nextIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
+      }
+      await changeSentinel(nextIndex);
     }
   }
 
