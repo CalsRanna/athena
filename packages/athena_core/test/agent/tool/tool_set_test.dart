@@ -61,14 +61,14 @@ void main() {
     return registry.all.map((t) => t.name).toList();
   }
 
-  test('桌面端注册 13 个工具，shell 按操作系统二选一', () {
+  test('桌面端注册 15 个工具，shell 按操作系统二选一', () {
     final names = toolNames(mobile: false);
 
     // bash 与 powershell 互斥：运行时只存在其中一个
     final shell = PlatformUtil.isWindows ? 'powershell' : 'bash';
     final absentShell = PlatformUtil.isWindows ? 'bash' : 'powershell';
 
-    expect(names, hasLength(13));
+    expect(names, hasLength(15));
     expect(names, containsAll(<String>[
       'file_read',
       'file_write',
@@ -81,16 +81,18 @@ void main() {
       'experience_learn',
       'experience_recall',
       'experience_review',
+      'sentinel_list',
+      'sentinel_get',
       'sentinel_evolve',
       'sentinel_revert',
     ]));
     expect(names, isNot(contains(absentShell)));
   });
 
-  test('移动端注册无本地文件/进程依赖的 9 个工具(含进化)', () {
+  test('移动端注册无本地文件/进程依赖的 11 个工具(含进化)', () {
     final names = toolNames(mobile: true);
 
-    expect(names, hasLength(9));
+    expect(names, hasLength(11));
     expect(names, containsAll(<String>[
       'web_fetch',
       'web_search',
@@ -100,6 +102,8 @@ void main() {
       'experience_learn',
       'experience_recall',
       'experience_review',
+      'sentinel_list',
+      'sentinel_get',
       'sentinel_evolve',
       'sentinel_revert',
     ]));

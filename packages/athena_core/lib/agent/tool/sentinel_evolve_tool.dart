@@ -49,6 +49,8 @@ class SentinelEvolveTool implements Tool {
       '- Adapting the role based on user feedback patterns\n'
       '- Optionally renaming the sentinel\n'
       'The sentinel is updated directly — no duplicate is created. '
+      'Workflow: call sentinel_list to see available sentinels, '
+      'sentinel_get <name> to read the current prompt before rewriting it. '
       'Always explain what changes you made and why.';
 
   @override
@@ -59,7 +61,7 @@ class SentinelEvolveTool implements Tool {
             'type': 'string',
             'description':
                 'The name of the existing sentinel to improve. Use the exact '
-                'name as shown in the sentinel list.',
+                'name as returned by sentinel_list.',
           },
           'new_name': {
             'type': 'string',
@@ -115,8 +117,8 @@ class SentinelEvolveTool implements Tool {
     final original = await _repository.getSentinelByName(sentinelName);
     if (original == null) {
       return 'Error: Sentinel "$sentinelName" not found. '
-          'Check the name spelling. Available sentinels can be listed in the '
-          'settings.';
+          'Check the name spelling. Run sentinel_list to see available '
+          'sentinels.';
     }
 
     if (newPrompt.trim().isEmpty) {
