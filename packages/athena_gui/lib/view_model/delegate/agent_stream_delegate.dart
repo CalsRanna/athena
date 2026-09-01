@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -63,6 +64,7 @@ class AgentStreamDelegate {
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(chatId, toolName, arguments, cancelToken),
       experienceRepository: deps.experienceRepository,
+      runtimeEnvironment: RuntimeEnvironment.gui,
     );
   }
 

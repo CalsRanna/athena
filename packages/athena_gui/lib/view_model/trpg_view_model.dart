@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/trpg_game_entity.dart';
@@ -209,6 +210,7 @@ class TRPGViewModel {
         provider: provider,
         model: model,
         baseMessages: chatMessages,
+        runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
         jsonMode: true,
       );
       await for (var event in agentStream) {

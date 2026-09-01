@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/summary_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -129,6 +130,7 @@ class SummaryViewModel {
         provider: provider,
         model: model,
         baseMessages: messages,
+        runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
         jsonMode: false,
       );
       await for (final event in agentStream) {

@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/translation_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -143,6 +144,7 @@ class TranslationViewModel {
         provider: provider,
         model: model,
         baseMessages: messages,
+        runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
         jsonMode: false,
       );
       await for (final event in agentStream) {

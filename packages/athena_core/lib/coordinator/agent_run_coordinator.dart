@@ -6,6 +6,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -66,6 +67,9 @@ class AgentRunCoordinator {
   /// 经验仓库：每次 run 开始时注入相关经验的摘要（见 [MemoryDigest]）。
   final ExperienceRepository _experienceRepository;
 
+  /// Agent 运行环境（GUI/TUI）；null = 不注入运行时上下文提示。
+  final RuntimeEnvironment? _runtimeEnvironment;
+
   /// 下一个 run 的自增 id（多 run 并发的隔离标识）。
   int _nextRunId = 0;
 
@@ -114,7 +118,12 @@ class AgentRunCoordinator {
     required PermissionService permissionService,
     required PermissionPrompt permissionPrompt,
     required ExperienceRepository experienceRepository,
-  })  : _agentService = agentService,
+
+    /// Agent 运行环境（GUI/TUI），由前端装配层注入；null = 不注入
+    /// 运行时上下文提示（测试与未支持的环境）。
+    RuntimeEnvironment? runtimeEnvironment,
+  })  : _runtimeEnvironment = runtimeEnvironment,
+        _agentService = agentService,
         _manageService = manageService,
         _messageService = messageService,
         _chatService = chatService,
@@ -233,6 +242,9 @@ class AgentRunCoordinator {
         model: model,
         baseMessages: baseMessages,
         evolutionPrompt: EvolutionPrompt.hint,
+        runtimePrompt: _runtimeEnvironment == null
+            ? null
+            : runtimeContextPrompt(_runtimeEnvironment),
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
