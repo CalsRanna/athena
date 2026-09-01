@@ -7,8 +7,18 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:test/test.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:openai_dart/openai_dart.dart'
-    show ChatMessage, ChatStreamEvent, FunctionCall, JsonObjectResponseFormat, ResponseFormat, Tool, ToolCall;
+    show
+        ChatMessage,
+        ChatStreamEvent,
+        FunctionCall,
+        JsonObjectResponseFormat,
+        ResponseFormat,
+        SystemMessage,
+        Tool,
+        ToolCall,
+        UserMessage;
 
 /// 返回固定字符串的伪工具。
 class _EchoTool extends athena.Tool {
@@ -120,6 +130,7 @@ void main() {
   });
 
   _jsonModeTests();
+  _runtimePromptTests();
 }
 
 /// 记录 getCompletion 收到的 responseFormat 的伪 ChatService。
@@ -127,6 +138,7 @@ class _RecordingChatService extends ChatService {
   _RecordingChatService() : super(llmClient: LlmClient());
 
   ResponseFormat? lastResponseFormat;
+  List<ChatMessage>? lastMessages;
 
   @override
   Stream<ChatStreamEvent> getCompletion({
@@ -139,6 +151,7 @@ class _RecordingChatService extends ChatService {
     Future<void>? cancelSignal,
   }) async* {
     lastResponseFormat = responseFormat;
+    lastMessages = messages;
     // 空流：让 run 正常走完（toolCalls 为空 → done）
   }
 }
@@ -211,5 +224,91 @@ void _jsonModeTests() {
         .toList();
 
     expect(recording.lastResponseFormat, isNull);
+  });
+}
+
+void _runtimePromptTests() {
+  test('runtimePrompt 注入在系统提示词之后、历史消息之前', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [
+            ChatMessage.system('SENTINEL'),
+            ChatMessage.user('hello'),
+          ],
+          runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    expect((messages[0] as SystemMessage).content, 'SENTINEL');
+    expect(
+      (messages[1] as SystemMessage).content,
+      contains('Athena GUI application'),
+    );
+    expect(messages[2], isA<UserMessage>());
+  });
+
+  test('runtimePrompt 在 memory digest 与 sentinel 两组 system 消息之后', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [
+            ChatMessage.system('DIGEST'),
+            ChatMessage.system('SENTINEL'),
+            ChatMessage.user('hello'),
+          ],
+          runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.tui),
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    expect((messages[0] as SystemMessage).content, 'DIGEST');
+    expect((messages[1] as SystemMessage).content, 'SENTINEL');
+    expect(
+      (messages[2] as SystemMessage).content,
+      contains('Athena TUI (terminal)'),
+    );
+    expect(messages[3], isA<UserMessage>());
+  });
+
+  test('不提供 runtimePrompt 时不注入 system 消息', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [ChatMessage.system('SENTINEL'), ChatMessage.user('hi')],
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    expect(messages, hasLength(2));
+    expect(messages[1], isA<UserMessage>());
   });
 }

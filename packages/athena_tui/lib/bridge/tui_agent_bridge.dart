@@ -2,6 +2,7 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:meta/meta.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -62,6 +63,7 @@ class TuiAgentBridge {
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(toolName, arguments, cancelToken),
       experienceRepository: experienceRepository,
+      runtimeEnvironment: RuntimeEnvironment.tui,
     );
   }
 

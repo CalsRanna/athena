@@ -117,6 +117,7 @@ class AgentService {
     required List<ChatMessage> baseMessages,
     String? skillPrompt,
     String? evolutionPrompt,
+    String? runtimePrompt,
     String? sentinelId,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
@@ -137,7 +138,8 @@ class AgentService {
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
 
-    var messages = _injectPrompts(baseMessages, skillPrompt, evolutionPrompt);
+    var messages =
+        _injectPrompts(baseMessages, skillPrompt, evolutionPrompt, runtimePrompt);
     _skillRegistry?.clearContext();
 
     // 构建复合 beforeToolCall：用户 hook → 权限检查
@@ -484,11 +486,16 @@ class AgentService {
     };
   }
 
-  /// 首轮注入 skill / evolution prompt。
+  /// 首轮注入 skill / evolution / runtime prompt。
+  ///
+  /// runtimePrompt（运行环境事实）插入在所有 system 提示（sentinel、
+  /// 记忆摘要、压缩摘要）之后、首个非 system 消息之前——即"系统提示词
+  /// 后面"，与历史消息隔开，compact 时随 system 块完整保留。
   List<ChatMessage> _injectPrompts(
     List<ChatMessage> base,
     String? skillPrompt,
     String? evolutionPrompt,
+    String? runtimePrompt,
   ) {
     var messages = List<ChatMessage>.from(base);
     if (skillPrompt != null && skillPrompt.isNotEmpty) {
@@ -496,6 +503,15 @@ class AgentService {
     }
     if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
       messages = [ChatMessage.system(evolutionPrompt), ...messages];
+    }
+    if (runtimePrompt != null && runtimePrompt.isNotEmpty) {
+      final index = messages.indexWhere((m) => m is! SystemMessage);
+      final runtimeMessage = ChatMessage.system(runtimePrompt);
+      if (index == -1) {
+        messages.add(runtimeMessage);
+      } else {
+        messages.insert(index, runtimeMessage);
+      }
     }
     return messages;
   }
