@@ -119,6 +119,7 @@ class AgentService {
     String? evolutionPrompt,
     String? runtimePrompt,
     String? sentinelId,
+    bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,
@@ -138,8 +139,13 @@ class AgentService {
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
 
-    var messages =
-        _injectPrompts(baseMessages, skillPrompt, evolutionPrompt, runtimePrompt);
+    var messages = _injectPrompts(
+      baseMessages,
+      skillPrompt,
+      evolutionPrompt,
+      runtimePrompt,
+      hasSentinelPrompt: hasSentinelPrompt,
+    );
     _skillRegistry?.clearContext();
 
     // 构建复合 beforeToolCall：用户 hook → 权限检查
@@ -491,22 +497,26 @@ class AgentService {
   /// 目标布局（按语义分层，缓存前缀稳定）：
   ///   [sentinel, runtime, evolution, system-summaries?, history...]
   ///
-  /// base 约定（ChatMessageService.buildMessages）：首个 system 是 sentinel，
-  /// 其后的 system 是历史类摘要（memory digest / compact 摘要——对话内
-  /// 恒定，随消息历史自然在场），非 system 是对话历史。
+  /// base 约定（ChatMessageService.buildMessages）：[hasSentinelPrompt] 为
+  /// true 时首个 system 是 sentinel，其后的 system 是历史类摘要（memory
+  /// digest / compact 摘要——对话内恒定，随消息历史自然在场）；为 false
+  /// 时所有 system 都是历史类摘要。非 system 是对话历史。
   /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
   ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
   List<ChatMessage> _injectPrompts(
     List<ChatMessage> base,
     String? skillPrompt,
     String? evolutionPrompt,
-    String? runtimePrompt,
-  ) {
+    String? runtimePrompt, {
+    required bool hasSentinelPrompt,
+  }) {
     var sentinelEnd = -1;
-    for (var i = 0; i < base.length; i++) {
-      if (base[i] is SystemMessage) {
-        sentinelEnd = i;
-        break;
+    if (hasSentinelPrompt) {
+      for (var i = 0; i < base.length; i++) {
+        if (base[i] is SystemMessage) {
+          sentinelEnd = i;
+          break;
+        }
       }
     }
 
@@ -995,4 +1005,3 @@ class AgentToolExecutionUpdateEvent extends AgentEvent {
     required this.partialResult,
   });
 }
-

@@ -46,8 +46,13 @@ class DesktopSentinelSelector extends StatelessWidget {
 
 class _DesktopSentinelSelectDialogTile extends StatefulWidget {
   final SentinelEntity sentinel;
+  final String? label;
   final void Function()? onTap;
-  const _DesktopSentinelSelectDialogTile({required this.sentinel, this.onTap});
+  const _DesktopSentinelSelectDialogTile({
+    required this.sentinel,
+    this.label,
+    this.onTap,
+  });
 
   @override
   State<_DesktopSentinelSelectDialogTile> createState() =>
@@ -76,7 +81,7 @@ class _DesktopSentinelSelectDialogTileState
       decoration: boxDecoration,
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Text(widget.sentinel.name, style: textStyle),
+      child: Text(widget.label ?? widget.sentinel.name, style: textStyle),
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -130,8 +135,14 @@ class DesktopSentinelSelectDialog extends StatelessWidget {
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {
-    if (sentinels.isEmpty) return const SizedBox();
-    List<Widget> children = sentinels.map(_itemBuilder).toList();
+    List<Widget> children = [
+      _DesktopSentinelSelectDialogTile(
+        sentinel: SentinelViewModel.directChatSentinel,
+        label: SentinelViewModel.directChatOptionLabel,
+        onTap: () => onTap?.call(SentinelViewModel.directChatSentinel),
+      ),
+      ...sentinels.map(_itemBuilder),
+    ];
     return ConstrainedBox(
       constraints: BoxConstraints.loose(Size(520, 640)),
       child: ListView(shrinkWrap: true, children: children),

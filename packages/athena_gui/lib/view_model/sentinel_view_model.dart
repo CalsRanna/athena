@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
@@ -7,6 +8,20 @@ import 'package:athena_core/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
+  static const directChatName = 'Direct chat';
+  static const directChatOptionLabel = 'No Sentinel (Direct chat)';
+
+  /// 仅用于 GUI 状态与渲染，不写入 sentinels 表。
+  /// ChatManageService 只会读取其保留 ID 并写入 chats.sentinel_id。
+  static final directChatSentinel = SentinelEntity(
+    id: ChatEntity.noSentinelId,
+    name: directChatName,
+    avatar: '💬',
+    description: 'Talk directly to the model without a Sentinel prompt.',
+    prompt: '',
+    isPreset: true,
+  );
+
   final SentinelRepository _sentinelRepository;
   final ProviderRepository _providerRepository;
   final ModelRepository _modelRepository;

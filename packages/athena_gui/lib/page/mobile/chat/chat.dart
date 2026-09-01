@@ -141,6 +141,9 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   SentinelEntity? _resolveSentinel(ChatEntity? chat) {
+    if (chat != null && !chat.hasSentinel) {
+      return SentinelViewModel.directChatSentinel;
+    }
     SentinelEntity? sentinel;
     if (chat != null) {
       sentinel = sentinelViewModel.sentinels.value

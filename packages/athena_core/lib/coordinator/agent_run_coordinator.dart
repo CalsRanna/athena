@@ -51,6 +51,8 @@ typedef PermissionPrompt = Future<PermissionDecision> Function(
 /// 消费 [AgentService] 事件流 → 流式更新 [MessageEntity] → 用量落库 →
 /// 收尾/取消/错误落库。产出 [RunEvent] 纯数据流，无任何 UI 类型。
 class AgentRunCoordinator {
+  static const _directChatSentinelKey = 'direct';
+
   final AgentService _agentService;
   final ChatManageService _manageService;
   final ChatMessageService _messageService;
@@ -196,6 +198,12 @@ class AgentRunCoordinator {
         return;
       }
 
+      // 无 Sentinel 的直接对话使用独立记忆作用域，既不污染 Athena 的
+      // 私有经验，也不落入 experience 工具的隐式 "default" 作用域。
+      final sentinelKey = chat.hasSentinel
+          ? chat.sentinelId.toString()
+          : _directChatSentinelKey;
+
       // 2.5 记忆摘要注入（仅首轮）：相关经验的摘要确定性进入上下文
       // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
       // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
@@ -210,7 +218,7 @@ class AgentRunCoordinator {
         final digestMessages = await MemoryDigest.messagesFor(
           repository: _experienceRepository,
           query: message.content,
-          sentinelId: chat.sentinelId.toString(),
+          sentinelId: sentinelKey,
         );
         if (digestMessages != null) {
           for (final m in digestMessages) {
@@ -262,7 +270,8 @@ class AgentRunCoordinator {
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment),
-        sentinelId: chat.sentinelId.toString(),
+        sentinelId: sentinelKey,
+        hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         onPermission: (toolName, arguments) =>

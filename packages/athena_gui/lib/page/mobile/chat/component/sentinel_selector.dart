@@ -22,12 +22,16 @@ class MobileSentinelSelectDialog extends StatelessWidget {
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {
-    if (sentinels.isEmpty) return const SizedBox();
-    return ListView.builder(
-      itemBuilder: (context, index) => _itemBuilder(sentinels[index]),
-      itemCount: sentinels.length,
+    return ListView(
       padding: EdgeInsets.symmetric(vertical: 16),
       shrinkWrap: true,
+      children: [
+        AthenaBottomSheetTile(
+          onTap: () => onTap?.call(SentinelViewModel.directChatSentinel),
+          title: SentinelViewModel.directChatOptionLabel,
+        ),
+        ...sentinels.map(_itemBuilder),
+      ],
     );
   }
 

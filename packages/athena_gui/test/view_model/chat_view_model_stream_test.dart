@@ -403,6 +403,7 @@ class _FakeAgentService extends AgentService {
     String? evolutionPrompt,
     String? runtimePrompt,
     String? sentinelId,
+    bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     int maxIterations = 100,

@@ -1,4 +1,5 @@
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -15,6 +16,10 @@ class DesktopSentinelIndicator extends StatelessWidget {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     return Watch((context) {
       var sentinel = chatViewModel.currentSentinel.value;
+      if (chatViewModel.currentChat.value?.hasSentinel == false ||
+          sentinel?.id == SentinelViewModel.directChatSentinel.id) {
+        sentinel = SentinelViewModel.directChatSentinel;
+      }
       var label = sentinel?.name ?? 'Athena';
       var row = Row(
         mainAxisSize: MainAxisSize.min,
