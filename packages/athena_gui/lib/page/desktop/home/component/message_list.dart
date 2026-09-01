@@ -1,4 +1,5 @@
 import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_placeholder.dart';
@@ -65,15 +66,24 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
+  SentinelEntity _displaySentinel() {
+    if (chatViewModel.currentChat.value?.hasSentinel == false ||
+        chatViewModel.currentSentinel.value?.id ==
+            SentinelViewModel.directChatSentinel.id) {
+      return SentinelViewModel.directChatSentinel;
+    }
+    return chatViewModel.currentSentinel.value ??
+        sentinelViewModel.defaultSentinel.value;
+  }
+
   Widget _buildData(List<MessageEntity> messages) {
-    var sentinel = chatViewModel.currentSentinel.value;
-    var defaultSentinel = sentinelViewModel.defaultSentinel.value;
+    var sentinel = _displaySentinel();
     // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
     final approvals = chatViewModel.pendingApprovals.value
         .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
         .toList();
     final list = messages.isEmpty
-        ? DesktopSentinelPlaceholder(sentinel: sentinel ?? defaultSentinel)
+        ? DesktopSentinelPlaceholder(sentinel: sentinel)
         : ListView.separated(
             controller: widget.controller,
             itemBuilder: (_, index) => _itemBuilder(messages, index),
@@ -104,8 +114,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   Widget _itemBuilder(List<MessageEntity> messages, int index) {
     final message = messages.reversed.elementAt(index);
-    var defaultSentinel = sentinelViewModel.defaultSentinel.value;
-    var sentinel = chatViewModel.currentSentinel.value ?? defaultSentinel;
+    var sentinel = _displaySentinel();
 
     // 只有第一项需要监听 streaming 状态
     if (index == 0) {

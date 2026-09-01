@@ -69,7 +69,10 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _retention.value = widget.chat!.retention;
       _reasoningEffort.value = widget.chat!.reasoningEffort;
     } else {
-      _sentinelId.value = sentinelViewModel.defaultSentinel.value.id ?? 0;
+      _sentinelId.value =
+          chatViewModel.currentSentinel.value?.id ??
+          sentinelViewModel.defaultSentinel.value.id ??
+          ChatEntity.noSentinelId;
       _modelId.value =
           chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
@@ -83,11 +86,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var hasChat = widget.chat != null;
-      var sentinel = sentinelViewModel.sentinels.value
-          .where((s) => s.id == _sentinelId.value)
-          .firstOrNull;
-      // Fallback to first sentinel if not found
+      var sentinel = _sentinelId.value == ChatEntity.noSentinelId
+          ? SentinelViewModel.directChatSentinel
+          : sentinelViewModel.sentinels.value
+                .where((s) => s.id == _sentinelId.value)
+                .firstOrNull;
+      // 非 0 的悬空引用仍沿用原有兜底；0 是用户显式选择，不能回退。
       sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
       var model = modelViewModel.models.value
@@ -105,9 +109,8 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var modelFullName =
           '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
       var sentinelSheetTile = AthenaBottomSheetTile(
-        enabled: hasChat,
         leading: Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
-        onTap: hasChat ? openSentinelSelectorDialog : null,
+        onTap: openSentinelSelectorDialog,
         title: 'Sentinel',
         trailing: Text(sentinel?.name ?? ''),
       );

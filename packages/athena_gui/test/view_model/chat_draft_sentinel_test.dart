@@ -35,7 +35,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 // 新建对话的角色选择规则：
 // 默认使用 Athena（不复用 currentSentinel 中残留的上一个对话角色）；
-// 仅草稿态显式选定（含 Shortcut 入口注入）时使用选定角色，且一次性消费。
+// 仅草稿态显式选定（含 Shortcut 入口注入）时使用选定角色，且一次性消费；
+// 显式选择“直接对话”时写入 sentinelId=0，不触发默认角色兜底。
 
 void main() {
   late _RecordingChatRepository chatRepo;
@@ -146,6 +147,19 @@ void main() {
       expect(chatRepo.createdChats.single.sentinelId, custom.id);
     });
 
+    test('uses sentinelId 0 when direct chat is explicitly chosen', () async {
+      sentinelViewModel.sentinels.value = [athena, custom];
+
+      viewModel.updateCurrentSentinel(SentinelViewModel.directChatSentinel);
+      await viewModel.createChat();
+
+      expect(chatRepo.createdChats.single.sentinelId, ChatEntity.noSentinelId);
+      expect(
+        viewModel.currentSentinel.value,
+        same(SentinelViewModel.directChatSentinel),
+      );
+    });
+
     test('draft sentinel is consumed once', () async {
       sentinelViewModel.sentinels.value = [athena, custom];
 
@@ -158,6 +172,25 @@ void main() {
       await viewModel.createChat();
       expect(chatRepo.createdChats.last.sentinelId, athena.id);
     });
+  });
+
+  test('selecting a persisted direct chat restores its display state', () async {
+    final chat = ChatEntity(
+      id: 7,
+      title: 'Direct',
+      modelId: 1,
+      sentinelId: ChatEntity.noSentinelId,
+      createdAt: DateTime(2025),
+      updatedAt: DateTime(2025),
+    );
+
+    await viewModel.selectChat(chat);
+
+    expect(viewModel.currentChat.value, chat);
+    expect(
+      viewModel.currentSentinel.value,
+      same(SentinelViewModel.directChatSentinel),
+    );
   });
 }
 

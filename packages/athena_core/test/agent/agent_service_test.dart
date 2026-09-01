@@ -390,6 +390,40 @@ void _runtimePromptTests() {
     expect(messages.last, isA<UserMessage>());
   });
 
+  test('无 sentinel 时 runtime 和 evolution 位于历史摘要之前', () async {
+    final recording = _RecordingChatService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [
+            ChatMessage.system('DIGEST'),
+            ChatMessage.user('hello'),
+          ],
+          runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
+          evolutionPrompt: 'EVOLUTION',
+          hasSentinelPrompt: false,
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    final contents = messages
+        .whereType<SystemMessage>()
+        .map((m) => m.content)
+        .toList();
+    expect(contents[0], contains('Athena GUI application'));
+    expect(contents[1], 'EVOLUTION');
+    expect(contents[2], 'DIGEST');
+    expect(messages.last, isA<UserMessage>());
+  });
+
   test('不提供 runtimePrompt 时不注入 system 消息', () async {
     final recording = _RecordingChatService();
     final service = AgentService(

@@ -53,9 +53,11 @@ class _MessageListViewState extends State<MessageListView> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var sentinel = sentinelViewModel.sentinels.value
-          .where((s) => s.id == widget.chat.sentinelId)
-          .firstOrNull;
+      var sentinel = widget.chat.hasSentinel
+          ? sentinelViewModel.sentinels.value
+                .where((s) => s.id == widget.chat.sentinelId)
+                .firstOrNull
+          : SentinelViewModel.directChatSentinel;
       if (sentinel == null) return const SizedBox();
 
       var messages = viewModel.messages.value

@@ -1,6 +1,11 @@
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class ChatEntity {
+  /// `sentinel_id == 0` 表示用户显式选择不使用 Sentinel。
+  ///
+  /// 持久化 Sentinel 使用正整数 ID，因此 0 可作为无需额外实体的保留值。
+  static const int noSentinelId = 0;
+
   final int? id;
   final String title;
   final int modelId;
@@ -20,6 +25,8 @@ class ChatEntity {
   final int cachedTokens;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  bool get hasSentinel => sentinelId != noSentinelId;
 
   ChatEntity({
     this.id,

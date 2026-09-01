@@ -127,6 +127,10 @@ class ChatViewModel {
     }
   }
 
+  SentinelEntity? _displaySentinel(ChatEntity chat, SentinelEntity? sentinel) {
+    return chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
+  }
+
   // ─── 流式增量合并 ───────────────────────────────────────────────
   //
   // LLM 每个 token 产生一个 RunMessageUpdated，直写 messages 信号会让
@@ -291,7 +295,10 @@ class ChatViewModel {
       messages.value = selected.messages;
       currentModel.value = selected.model;
       currentProvider.value = selected.provider;
-      currentSentinel.value = selected.sentinel;
+      currentSentinel.value = _displaySentinel(
+        currentChat.value!,
+        selected.sentinel,
+      );
       currentRetention.value = currentChat.value!.retention;
       currentTemperature.value = currentChat.value!.temperature;
       currentReasoningEffort.value = currentChat.value!.reasoningEffort;
@@ -434,7 +441,7 @@ class ChatViewModel {
       messages.value = result.messages;
       currentModel.value = result.model;
       currentProvider.value = result.provider;
-      currentSentinel.value = result.sentinel;
+      currentSentinel.value = _displaySentinel(first, result.sentinel);
       currentRetention.value = first.retention;
       currentTemperature.value = first.temperature;
       currentReasoningEffort.value = first.reasoningEffort;
@@ -459,7 +466,7 @@ class ChatViewModel {
     messages.value = result.messages;
     currentModel.value = result.model;
     currentProvider.value = result.provider;
-    currentSentinel.value = result.sentinel;
+    currentSentinel.value = _displaySentinel(chat, result.sentinel);
     currentRetention.value = chat.retention;
     currentTemperature.value = chat.temperature;
     currentReasoningEffort.value = chat.reasoningEffort;

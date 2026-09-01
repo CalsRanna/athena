@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/chat.dart';
+import 'package:athena_gui/page/mobile/chat/component/sentinel_selector.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:flutter/material.dart';
@@ -118,6 +119,20 @@ void main() {
       expect(find.byType(MobileChatPage), findsOneWidget);
     });
 
+    testWidgets('shows direct chat instead of hiding a sentinelId 0 chat', (
+      tester,
+    ) async {
+      final sentinel = testSentinel(name: 'Athena');
+      final chat = testChat(sentinelId: ChatEntity.noSentinelId);
+      sentinelViewModel.sentinels.value = [sentinel];
+      chatViewModel.currentChat.value = chat;
+
+      await pumpChatPage(tester, chat: chat);
+
+      expect(find.text(SentinelViewModel.directChatName), findsOneWidget);
+      expect(find.text('Athena'), findsNothing);
+    });
+
     testWidgets('no progress bar when agent is idle', (tester) async {
       final sentinel = testSentinel(name: 'Athena');
       final chat = testChat();
@@ -146,5 +161,35 @@ void main() {
       expect(find.textContaining('Step'), findsNothing);
       expect(find.textContaining('read_file'), findsNothing);
     });
+  });
+
+  testWidgets('sentinel selector puts direct chat before stored sentinels', (
+    tester,
+  ) async {
+    final sentinel = testSentinel(name: 'Athena');
+    sentinelViewModel.sentinels.value = [sentinel];
+    SentinelEntity? selected;
+
+    await tester.pumpWidget(
+      wrapWithApp(
+        MobileSentinelSelectDialog(
+          sentinelViewModel: sentinelViewModel,
+          onTap: (value) => selected = value,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final direct = find.text(SentinelViewModel.directChatOptionLabel);
+    final athena = find.text('Athena');
+    expect(direct, findsOneWidget);
+    expect(athena, findsOneWidget);
+    expect(
+      tester.getTopLeft(direct).dy,
+      lessThan(tester.getTopLeft(athena).dy),
+    );
+
+    await tester.tap(direct);
+    expect(selected?.id, ChatEntity.noSentinelId);
   });
 }
