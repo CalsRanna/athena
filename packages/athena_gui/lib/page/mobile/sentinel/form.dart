@@ -40,12 +40,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         controller: promptController,
         maxLines: 8,
         minLines: 8,
-        enabled: !isPreset,
       ),
       const SizedBox(height: 32),
       _buildNameLabel(context),
       const SizedBox(height: 12),
-      AthenaInput(controller: nameController, enabled: !isPreset),
+      AthenaInput(controller: nameController),
       const SizedBox(height: 16),
       _buildDescriptionLabel(context),
       const SizedBox(height: 12),
@@ -53,7 +52,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
         controller: descriptionController,
         maxLines: 4,
         minLines: 4,
-        enabled: !isPreset,
       ),
     ];
     var listView = ListView(
