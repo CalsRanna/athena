@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/component/button.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
@@ -13,11 +14,13 @@ void main() {
     WidgetTester tester, {
     required bool reasoning,
     required bool expanded,
+    bool loading = false,
+    String reasoningContent = 'reasoning details',
   }) async {
     final message = MessageEntity(
       chatId: 1,
       role: 'assistant',
-      reasoningContent: 'reasoning details',
+      reasoningContent: reasoningContent,
       reasoning: reasoning,
       expanded: expanded,
       reasoningStartedAt: DateTime(2026),
@@ -33,7 +36,11 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 700,
-            child: MessageListTile(message: message, sentinel: sentinel),
+            child: MessageListTile(
+              message: message,
+              sentinel: sentinel,
+              loading: loading,
+            ),
           ),
         ),
       ),
@@ -90,7 +97,7 @@ void main() {
   });
 
   testWidgets('推理中的 Header 只使用 shimmer 表达运行状态', (tester) async {
-    await pumpMessage(tester, reasoning: true, expanded: false);
+    await pumpMessage(tester, reasoning: true, expanded: false, loading: true);
 
     expect(find.text('Thinking'), findsOneWidget);
     expect(find.byType(ShaderMask), findsOneWidget);
@@ -99,5 +106,21 @@ void main() {
     expect(find.byIcon(HugeIcons.strokeRoundedArrowRight01), findsNothing);
     expect(find.byIcon(HugeIcons.strokeRoundedArrowDown01), findsNothing);
     expect(find.text('reasoning details'), findsNothing);
+  });
+
+  testWidgets('首个 delta 前只显示 Working shimmer 且隐藏复制按钮', (tester) async {
+    await pumpMessage(
+      tester,
+      reasoning: false,
+      expanded: false,
+      loading: true,
+      reasoningContent: '',
+    );
+
+    expect(find.text('Working…'), findsOneWidget);
+    expect(find.byType(ShaderMask), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(CopyButton), findsNothing);
+    expect(find.text('Thinking'), findsNothing);
   });
 }
