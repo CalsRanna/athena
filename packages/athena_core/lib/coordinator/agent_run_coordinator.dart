@@ -219,14 +219,17 @@ class AgentRunCoordinator {
       // 2.5 记忆摘要注入：相关经验的摘要确定性进入上下文
       // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
       // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
+      //
+      // 注意：digest 不拼进 baseMessages 而是作为参数传给 AgentService——
+      // 它是唯一"每次 send 内容都变"的 system 段，必须在静态段
+      // （sentinel / runtime / evolution）之后、历史消息之前垫入，
+      // 保持消息前缀稳定以命中 prompt cache。
       final digestMessages = await MemoryDigest.messagesFor(
         repository: _experienceRepository,
         query: message.content,
         sentinelId: chat.sentinelId.toString(),
       );
-      final baseMessages = digestMessages != null
-          ? [...digestMessages, ...compactedMessages]
-          : compactedMessages;
+      final baseMessages = compactedMessages;
 
       // 3. 追加 assistant 占位消息
       final assistantMessage = await _manageService.appendAssistantPlaceholder(
@@ -245,6 +248,7 @@ class AgentRunCoordinator {
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment),
+        digestMessages: digestMessages,
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
