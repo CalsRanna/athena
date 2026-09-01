@@ -5,6 +5,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart' show CancellableTool;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -636,9 +637,18 @@ class AgentService {
       args['_sentinel_id'] = sentinelId;
     }
 
-    final rawResult = tool != null
-        ? await tool.execute(args)
-        : 'Error: Unknown tool "${toolCall.function.name}"';
+    final String rawResult;
+    if (tool == null) {
+      rawResult = 'Error: Unknown tool "${toolCall.function.name}"';
+    } else if (cancelToken != null && tool is CancellableTool) {
+      rawResult = await (tool as CancellableTool).executeCancellable(
+        args,
+        cancelSignal: cancelToken.whenCancelled,
+      );
+    } else {
+      rawResult = await tool.execute(args);
+    }
+    cancelToken?.throwIfCancelled();
 
     var processed = smartTruncate(rawResult);
 

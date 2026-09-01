@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:http/http.dart' as http;
 
 import 'tool_interface.dart';
 
-class WebSearchTool implements Tool {
+class WebSearchTool implements Tool, CancellableTool {
   /// API key 存放依赖注入的 [KeyValueStore]（GUI=SharedPreferences，TUI=JSON 文件）。
   WebSearchTool({KeyValueStore? store}) : _store = store;
 
@@ -46,7 +48,28 @@ class WebSearchTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) =>
+      _execute(args, onUpdate: onUpdate);
+
+  @override
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) =>
+      _execute(
+        args,
+        onUpdate: onUpdate,
+        cancelSignal: cancelSignal,
+      );
+
+  Future<String> _execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    Future<void>? cancelSignal,
+  }) async {
     final query = args['query'] as String;
 
     final store = _store;
@@ -66,8 +89,16 @@ class WebSearchTool implements Tool {
       {'q': query, 'count': _maxResults.toString()},
     );
 
+    var cancelled = false;
     try {
       final client = http.Client();
+      var completed = false;
+      if (cancelSignal != null) {
+        unawaited(cancelSignal.then((_) {
+          cancelled = true;
+          if (!completed) client.close();
+        }));
+      }
       http.Response response;
       try {
         response = await client
@@ -78,6 +109,7 @@ class WebSearchTool implements Tool {
             })
             .timeout(_defaultTimeout);
       } finally {
+        completed = true;
         client.close();
       }
 
@@ -108,8 +140,10 @@ class WebSearchTool implements Tool {
       }
       return buffer.toString().trim();
     } on http.ClientException catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: Search request failed: ${e.message}';
     } catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: $e';
     }
   }

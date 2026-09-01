@@ -136,12 +136,16 @@ class LlmClient {
   Future<ChatCompletion> fetch({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
+    Future<void>? cancelSignal,
   }) async {
     var client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       return await retry(
-        () => client.chat.completions.create(request).timeout(fetchTimeout),
+        () => client.chat.completions
+            .create(request, abortTrigger: cancelSignal)
+            .timeout(fetchTimeout),
         config: _retryConfig,
+        abort: cancelSignal,
       );
     } finally {
       client.close();

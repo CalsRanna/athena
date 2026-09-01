@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/tool/shell_runner.dart';
 import 'package:test/test.dart';
 
@@ -194,6 +195,40 @@ void main() {
       // 进程应在大约 2-3 秒内被杀掉（不应等到 60 秒）。
       expect(stopwatch.elapsed.inSeconds, lessThan(10));
     }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('cancel signal promptly kills the shell process tree', () async {
+      final temp = Directory.systemTemp.createTempSync('athena-shell-cancel-');
+      addTearDown(() {
+        if (temp.existsSync()) temp.deleteSync(recursive: true);
+      });
+      final marker = File('${temp.path}/should-not-exist');
+      final args = Platform.isWindows
+          ? [
+              '-Command',
+              "Start-Sleep -Seconds 2; Set-Content -Path '${marker.path}' -Value done",
+            ]
+          : ['-c', 'sleep 2; touch "${marker.path}"'];
+      final token = CancelToken();
+      final stopwatch = Stopwatch()..start();
+
+      final future = runShellProcess(
+        executable: executable,
+        arguments: args,
+        workdir: temp.path,
+        timeoutSeconds: 60,
+        cancelSignal: token.whenCancelled,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      token.cancel();
+
+      await expectLater(future, throwsA(isA<CancelledException>()));
+      stopwatch.stop();
+      expect(stopwatch.elapsed.inSeconds, lessThan(5));
+
+      // 若只杀 shell 而遗留 sleep 子进程，两秒后仍会创建 marker。
+      await Future<void>.delayed(const Duration(milliseconds: 2200));
+      expect(marker.existsSync(), isFalse);
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     test('clamped timeout includes a note in the output', () async {
       final result = await runShellProcess(

@@ -81,6 +81,13 @@ class AgentRunCoordinator {
   /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
   final Map<int, int> _runIdByChat = {};
 
+  /// Coordinator 从 run 建立的第一刻就持有取消令牌。此前令牌直到
+  /// AgentService.run 才创建，用户在上下文构建/自动压缩期间点击停止会丢失。
+  final Map<int, CancelToken> _cancelTokenByChat = {};
+
+  /// 完整 run（含取消落库和时间戳收尾）结束后完成，而非仅 Agent 内循环结束。
+  final Map<int, Completer<void>> _settledByChat = {};
+
   /// 流式运行中的消息快照（chatId → 当前正在生成的 assistant 消息）。
   ///
   /// 流式中间态只存在于内存（迭代边界才落库），UI 切换到正在运行的对话时
@@ -147,8 +154,7 @@ class AgentRunCoordinator {
 
   /// 等待指定对话的 run 完成后 resolve 的 Future（无运行返回 null）。
   Future<void>? settledOf(int chatId) {
-    final runId = _runIdByChat[chatId];
-    return runId == null ? null : _agentService.settledOf(runId);
+    return _settledByChat[chatId]?.future;
   }
 
   /// 指定对话当前正在流式生成的消息快照；未在流式中返回 null。
@@ -161,40 +167,63 @@ class AgentRunCoordinator {
     required ChatEntity chat,
     bool jsonMode = false,
   }) async* {
-    final runId = ++_nextRunId;
-    _streamingChatIds.add(chat.id!);
-    _runIdByChat[chat.id!] = runId;
-    yield const RunIterationChanged(0);
-    yield const RunToolNameChanged(null);
+    final chatId = chat.id!;
+    if (_runIdByChat.containsKey(chatId)) {
+      throw StateError('Chat $chatId already has an active Agent run.');
+    }
 
+    final runId = ++_nextRunId;
+    final cancelToken = CancelToken();
+    final settled = Completer<void>();
+    _streamingChatIds.add(chatId);
+    _runIdByChat[chatId] = runId;
+    _cancelTokenByChat[chatId] = cancelToken;
+    _settledByChat[chatId] = settled;
+
+    var userMessageStored = false;
+    MessageEntity? assistantMessage;
     try {
+      yield const RunIterationChanged(0);
+      yield const RunToolNameChanged(null);
+
       // 1. 保存用户消息
       final id = await _messageRepo.storeMessage(message);
       final userMessage = message.copyWith(id: id);
+      userMessageStored = true;
       yield RunMessageStored(userMessage);
+      cancelToken.throwIfCancelled();
 
       // 首条用户消息时触发自动命名
       final isDefaultTitle = chat.title.isEmpty || chat.title == 'New Chat';
       if (isDefaultTitle) {
-        if (await _messageService.isFirstUserMessage(chat.id!)) {
+        final isFirst = await _messageService.isFirstUserMessage(chatId);
+        cancelToken.throwIfCancelled();
+        if (isFirst) {
           yield const RunAutoRename();
         }
       }
 
       // 2. 准备上下文
       final model = await _modelRepo.getModelById(chat.modelId);
+      cancelToken.throwIfCancelled();
       if (model == null) {
         // 用户消息已落库；必须发错误事件，否则 UI 侧静默无响应
-        yield RunError('Model not found (id: ${chat.modelId}). '
-            'Please select a valid model and retry.');
+        yield RunError(
+          'Model not found (id: ${chat.modelId}). '
+          'Please select a valid model and retry.',
+        );
         return;
       }
 
-      final provider =
-          await _supportService.getProviderForModel(model.providerId);
+      final provider = await _supportService.getProviderForModel(
+        model.providerId,
+      );
+      cancelToken.throwIfCancelled();
       if (provider == null) {
-        yield RunError('Provider not found for model "${model.modelId}". '
-            'Please check provider configuration and retry.');
+        yield RunError(
+          'Provider not found for model "${model.modelId}". '
+          'Please check provider configuration and retry.',
+        );
         return;
       }
 
@@ -214,30 +243,40 @@ class AgentRunCoordinator {
       // 紧跟 sentinel，位于 compact 摘要与保留历史之前）。
       // 仅当这是对话的第一条用户消息时检索——后续任务的"相关经验"
       // 由 experience_recall 按需覆盖，摘要不随任务刷新。
-      if (await _messageService.isFirstUserMessage(chat.id!)) {
+      final isFirstUserMessage = await _messageService.isFirstUserMessage(
+        chatId,
+      );
+      cancelToken.throwIfCancelled();
+      if (isFirstUserMessage) {
         final digestMessages = await MemoryDigest.messagesFor(
           repository: _experienceRepository,
           query: message.content,
           sentinelId: sentinelKey,
         );
+        cancelToken.throwIfCancelled();
         if (digestMessages != null) {
           for (final m in digestMessages) {
-            await _messageRepo.storeMessage(MessageEntity(
-              chatId: chat.id!,
-              role: m.role,
-              content: m is SystemMessage ? m.content : '',
-            ));
+            cancelToken.throwIfCancelled();
+            await _messageRepo.storeMessage(
+              MessageEntity(
+                chatId: chatId,
+                role: m.role,
+                content: m is SystemMessage ? m.content : '',
+              ),
+            );
           }
         }
       }
 
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+      cancelToken.throwIfCancelled();
       final includeReasoning = model.reasoning;
       final wrappedMessages = await _messageService.buildMessages(
         chat: chat,
         sentinel: sentinel,
         includeReasoning: includeReasoning,
       );
+      cancelToken.throwIfCancelled();
 
       final compactedMessages = chat.retention == -1
           ? await _prepareMessagesWithCompact(
@@ -248,16 +287,19 @@ class AgentRunCoordinator {
               currentTokens: chat.contextTokens,
               provider: provider,
               model: model,
+              cancelToken: cancelToken,
             )
           : wrappedMessages;
+      cancelToken.throwIfCancelled();
 
       final baseMessages = compactedMessages;
 
       // 3. 追加 assistant 占位消息
-      final assistantMessage = await _manageService.appendAssistantPlaceholder(
-        chat.id!,
+      assistantMessage = await _manageService.appendAssistantPlaceholder(
+        chatId,
       );
       yield RunAssistantAppended(assistantMessage);
+      cancelToken.throwIfCancelled();
 
       // 4. 启动 Agent 循环（runId 隔离，多个对话可同时运行）
       final agentStream = _agentService.run(
@@ -275,19 +317,51 @@ class AgentRunCoordinator {
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         onPermission: (toolName, arguments) =>
-            _askPermission(runId, chat.id!, toolName, arguments),
+            _askPermission(runId, chatId, toolName, arguments, cancelToken),
         jsonMode: jsonMode,
+        cancelToken: cancelToken,
       );
 
       // 5. 消费流（取消/错误均在 _consumeStream 内部处理并落库）
-      yield* _consumeStream(runId, chat, assistantMessage, agentStream);
+      yield* _consumeStream(chat, assistantMessage, agentStream, cancelToken);
 
       await _manageService.updateChatTimestamp(chat);
       yield const RunListReload();
+    } on CancelledException {
+      // Agent 尚未启动时也要正常结束：补一条取消消息，避免用户消息后没有
+      // assistant 收尾；不把用户主动停止显示为错误。
+      var cancelledTarget = assistantMessage;
+      var appended = false;
+      if (cancelledTarget == null && userMessageStored) {
+        cancelledTarget = await _manageService.appendAssistantPlaceholder(
+          chatId,
+        );
+        appended = true;
+      }
+      if (cancelledTarget != null) {
+        final cancelled = await _manageService.recordCancelledOnMessage(
+          cancelledTarget,
+        );
+        _liveMessages[chatId] = cancelled;
+        if (appended) {
+          yield RunAssistantAppended(cancelled);
+        } else {
+          yield RunMessageUpdated(cancelled);
+        }
+      }
+      if (userMessageStored) {
+        await _manageService.updateChatTimestamp(chat);
+        yield const RunListReload();
+      }
     } finally {
-      _streamingChatIds.remove(chat.id);
-      _runIdByChat.remove(chat.id);
-      _liveMessages.remove(chat.id);
+      if (_runIdByChat[chatId] == runId) {
+        _streamingChatIds.remove(chatId);
+        _runIdByChat.remove(chatId);
+        _cancelTokenByChat.remove(chatId);
+        _settledByChat.remove(chatId);
+        _liveMessages.remove(chatId);
+      }
+      if (!settled.isCompleted) settled.complete();
       // 注意：_expandedOverrides 不在全局清理——finalize 时已按消息逐个
       // 移除，多 run 并发时全局 clear 会误删其他 run 的展开状态。
     }
@@ -296,6 +370,7 @@ class AgentRunCoordinator {
   /// 停止指定对话的 Agent 循环。
   void stop(int chatId) {
     final runId = _runIdByChat[chatId];
+    _cancelTokenByChat[chatId]?.cancel();
     if (runId != null) _agentService.abort(runId);
   }
 
@@ -323,10 +398,10 @@ class AgentRunCoordinator {
   ///
   /// CancelledException 在内部捕获并落库后，流正常结束（不向外抛）。
   Stream<RunEvent> _consumeStream(
-    int runId,
     ChatEntity chat,
     MessageEntity assistantMessage,
     Stream<AgentEvent> agentStream,
+    CancelToken cancelToken,
   ) async* {
     var current = assistantMessage;
     var contentBuffer = StringBuffer();
@@ -362,7 +437,7 @@ class AgentRunCoordinator {
 
     try {
       await for (final event in agentStream) {
-        _agentService.cancelTokenOf(runId)?.throwIfCancelled();
+        cancelToken.throwIfCancelled();
 
         if (event is AgentTurnStartEvent) {
           // 迭代边界以 turnStart 为准：上一轮以工具结果结束（或截断保护
@@ -398,8 +473,7 @@ class AgentRunCoordinator {
           current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
         } else if (event is AgentToolCallArgsEvent) {
           // 流式参数增量：按 id 找到已建卡的工具调用并追加 arguments
-          final index =
-              toolCallsJson.indexWhere((c) => c['id'] == event.id);
+          final index = toolCallsJson.indexWhere((c) => c['id'] == event.id);
           if (index >= 0) {
             toolCallsJson[index] = {
               ...toolCallsJson[index],
@@ -425,8 +499,7 @@ class AgentRunCoordinator {
             event.usage.promptTokens,
             event.usage.cachedTokens ?? 0,
           );
-          final updated =
-              await _chatRepo.getChatById(chat.id!);
+          final updated = await _chatRepo.getChatById(chat.id!);
           if (updated != null) {
             yield RunUsageChanged(event.usage, updated);
           }
@@ -452,7 +525,12 @@ class AgentRunCoordinator {
 
       // 防御：流正常结束但仍有已宣布未执行的工具调用（异常场景），
       // 合成结果保证 tool_calls 与 tool 消息闭合。
-      current = _closeOpenToolCalls(current, 'run ended before execution', toolCallsJson, toolResultsJson);
+      current = _closeOpenToolCalls(
+        current,
+        'run ended before execution',
+        toolCallsJson,
+        toolResultsJson,
+      );
 
       await _manageService.finalizeAssistantMessage(current);
     } on CancelledException {
@@ -460,13 +538,23 @@ class AgentRunCoordinator {
       // 先为已宣布但未执行/未完成的工具调用合成结果——否则消息带有
       // tool_calls 却缺 tool 响应，下一轮 buildMessages 重建时
       // OpenAI 兼容端会 400 拒绝，该聊天将无法继续。
-      current = _closeOpenToolCalls(current, 'execution cancelled (run interrupted)', toolCallsJson, toolResultsJson);
+      current = _closeOpenToolCalls(
+        current,
+        'execution cancelled (run interrupted)',
+        toolCallsJson,
+        toolResultsJson,
+      );
       final cancelled = await _manageService.recordCancelledOnMessage(current);
       _liveMessages[chat.id!] = cancelled;
       yield RunMessageUpdated(cancelled);
     } catch (e) {
       // 错误已记录到消息内容中；同样先闭合工具调用
-      current = _closeOpenToolCalls(current, 'run aborted by error: $e', toolCallsJson, toolResultsJson);
+      current = _closeOpenToolCalls(
+        current,
+        'run aborted by error: $e',
+        toolCallsJson,
+        toolResultsJson,
+      );
       final failed = await _manageService.recordErrorOnMessage(current, e);
       _liveMessages[chat.id!] = failed;
       yield RunMessageUpdated(failed);
@@ -511,7 +599,9 @@ class AgentRunCoordinator {
     required int currentTokens,
     required ProviderEntity provider,
     required ModelEntity model,
+    required CancelToken cancelToken,
   }) async {
+    cancelToken.throwIfCancelled();
     if (contextWindow <= 0 ||
         currentTokens <= 0 ||
         currentTokens / contextWindow <= 0.8) {
@@ -542,13 +632,18 @@ class AgentRunCoordinator {
         ],
         provider: provider,
         model: model,
+        cancelSignal: cancelToken.whenCancelled,
       );
+      cancelToken.throwIfCancelled();
       if (summary.isEmpty) return wrappedMessages;
 
       final chatId = chat.id!;
 
-      final activeMessages =
-          await _messageRepo.getMessagesByChatId(chatId, includeCompacted: false);
+      final activeMessages = await _messageRepo.getMessagesByChatId(
+        chatId,
+        includeCompacted: false,
+      );
+      cancelToken.throwIfCancelled();
 
       final nonSystemEntities = <MessageEntity>[];
       for (final entity in activeMessages) {
@@ -573,14 +668,19 @@ class AgentRunCoordinator {
       // 历史消息保持完整；若 markAsCompacted 失败（低概率），摘要已
       // 入库但消息未压缩——下次 run 会重复压缩一遍，数据不丢。
       final summaryId = await _messageRepo.storeMessage(summaryEntity);
+      cancelToken.throwIfCancelled();
       final persistedSummary = summaryEntity.copyWith(id: summaryId);
 
       if (toCompactIds.isNotEmpty) {
         try {
           await _messageRepo.markAsCompacted(toCompactIds);
+          cancelToken.throwIfCancelled();
         } catch (e) {
-          LoggerUtil.w('Compact: markAsCompacted failed '
-              '(${toCompactIds.length} ids), summary kept: $e');
+          cancelToken.throwIfCancelled();
+          LoggerUtil.w(
+            'Compact: markAsCompacted failed '
+            '(${toCompactIds.length} ids), summary kept: $e',
+          );
         }
       }
 
@@ -596,6 +696,7 @@ class AgentRunCoordinator {
         ...keep,
       ];
     } catch (e) {
+      cancelToken.throwIfCancelled();
       LoggerUtil.w('Compact failed, falling back to full messages: $e');
       return wrappedMessages;
     }
@@ -642,10 +743,14 @@ class AgentRunCoordinator {
     int chatId,
     String toolName,
     String arguments,
+    CancelToken cancelToken,
   ) async {
-    final token = _agentService.cancelTokenOf(runId);
-    final decision =
-        await _permissionPrompt(chatId, toolName, arguments, token!);
+    final decision = await _permissionPrompt(
+      chatId,
+      toolName,
+      arguments,
+      cancelToken,
+    );
 
     if (decision.approved) {
       Map<String, dynamic> args;

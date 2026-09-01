@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:athena_core/agent/cancel_token.dart';
 import 'package:path/path.dart' as p;
 
 /// Shell 工具共享配置：默认与最大超时（秒）。
@@ -166,6 +167,7 @@ Future<String> runShellProcess({
   required List<String> arguments,
   required String workdir,
   required int timeoutSeconds,
+  Future<void>? cancelSignal,
   String? command,
   bool clamped = false,
   int? requestedTimeout,
@@ -194,25 +196,30 @@ Future<String> runShellProcess({
       .asFuture<void>();
 
   var timedOut = false;
+  var cancelled = false;
   int? exitCode;
-  try {
-    exitCode = await process.exitCode.timeout(
+  final outcome =
+      await Future.any<({bool cancelled, int? exitCode, bool timedOut})>([
+    process.exitCode.then(
+      (code) => (cancelled: false, exitCode: code, timedOut: false),
+    ),
+    Future.delayed(
       Duration(seconds: timeoutSeconds),
-    );
-  } on TimeoutException {
-    timedOut = true;
-    // 主动杀掉进程，避免孤儿。先 SIGTERM，给一秒清理时间再 SIGKILL。
-    process.kill(ProcessSignal.sigterm);
-    try {
-      exitCode = await process.exitCode.timeout(const Duration(seconds: 1));
-    } on TimeoutException {
-      process.kill(ProcessSignal.sigkill);
-      try {
-        exitCode = await process.exitCode;
-      } catch (_) {
-        exitCode = -1;
-      }
-    }
+      () => (cancelled: false, exitCode: null, timedOut: true),
+    ),
+    if (cancelSignal != null)
+      cancelSignal.then(
+        (_) => (cancelled: true, exitCode: null, timedOut: false),
+      ),
+  ]);
+  exitCode = outcome.exitCode;
+  timedOut = outcome.timedOut;
+  cancelled = outcome.cancelled;
+
+  if (timedOut || cancelled) {
+    // 停止与超时使用同一条进程树终止路径：先温和结束，1 秒后强杀。
+    // 仅 kill shell 本身会遗留 sleep/build 等子进程，因此必须处理整棵树。
+    exitCode = await _terminateProcessTree(process);
   }
 
   // 等待 stdout/stderr 流的完成，最多再给 500ms 兜底（防止极端情况下挂住）。
@@ -222,6 +229,8 @@ Future<String> runShellProcess({
   } catch (_) {
     // 忽略：流读取失败不该阻塞结果返回。
   }
+
+  if (cancelled) throw const CancelledException();
 
   final stdout = stdoutBuffer.toString().trim();
   final stderr = stderrBuffer.toString().trim();
@@ -252,4 +261,79 @@ Future<String> runShellProcess({
   }
   buffer.writeln('[exit code: $exitCode]');
   return truncateOutput(buffer.toString().trim(), command);
+}
+
+/// 终止 shell 及其子进程。Windows 用 taskkill /T；Unix 先通过 ps 快照收集
+/// 后代 PID，再从叶子到根发送信号，避免只杀 shell 留下构建/测试孤儿进程。
+Future<int> _terminateProcessTree(Process process) async {
+  await _signalProcessTree(process, force: false);
+  try {
+    return await process.exitCode.timeout(const Duration(seconds: 1));
+  } on TimeoutException {
+    await _signalProcessTree(process, force: true);
+    try {
+      return await process.exitCode.timeout(const Duration(seconds: 1));
+    } catch (_) {
+      return -1;
+    }
+  }
+}
+
+Future<void> _signalProcessTree(Process process, {required bool force}) async {
+  if (Platform.isWindows) {
+    try {
+      await Process.run('taskkill', [
+        '/PID',
+        '${process.pid}',
+        '/T',
+        if (force) '/F',
+      ]).timeout(const Duration(seconds: 1));
+    } catch (_) {
+      process.kill();
+    }
+    return;
+  }
+
+  final descendants = await _unixDescendantPids(process.pid);
+  final signal = force ? ProcessSignal.sigkill : ProcessSignal.sigterm;
+  for (final pid in descendants.reversed) {
+    try {
+      Process.killPid(pid, signal);
+    } catch (_) {
+      // 进程可能已自行退出；继续处理剩余进程。
+    }
+  }
+  process.kill(signal);
+}
+
+Future<List<int>> _unixDescendantPids(int rootPid) async {
+  try {
+    final result = await Process.run('ps', [
+      '-axo',
+      'pid=,ppid=',
+    ]).timeout(const Duration(seconds: 1));
+    if (result.exitCode != 0) return const [];
+
+    final childrenByParent = <int, List<int>>{};
+    for (final line in result.stdout.toString().split('\n')) {
+      final columns = line.trim().split(RegExp(r'\s+'));
+      if (columns.length < 2) continue;
+      final pid = int.tryParse(columns[0]);
+      final parent = int.tryParse(columns[1]);
+      if (pid == null || parent == null) continue;
+      childrenByParent.putIfAbsent(parent, () => []).add(pid);
+    }
+
+    final descendants = <int>[];
+    final pending = <int>[rootPid];
+    while (pending.isNotEmpty) {
+      final parent = pending.removeLast();
+      final children = childrenByParent[parent] ?? const <int>[];
+      descendants.addAll(children);
+      pending.addAll(children);
+    }
+    return descendants;
+  } catch (_) {
+    return const [];
+  }
 }

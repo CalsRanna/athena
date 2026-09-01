@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:athena_core/agent/cancel_token.dart';
+
 import 'html_to_markdown.dart';
 import 'tool_interface.dart';
 
-class WebFetchTool implements Tool {
+class WebFetchTool implements Tool, CancellableTool {
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
   @override
@@ -66,7 +68,28 @@ class WebFetchTool implements Tool {
       };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) =>
+      _execute(args, onUpdate: onUpdate);
+
+  @override
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) =>
+      _execute(
+        args,
+        onUpdate: onUpdate,
+        cancelSignal: cancelSignal,
+      );
+
+  Future<String> _execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    Future<void>? cancelSignal,
+  }) async {
     final url = args['url'] as String;
     final method = args['method'] as String? ?? 'GET';
     final format = args['format'] as String? ?? 'markdown';
@@ -82,6 +105,7 @@ class WebFetchTool implements Tool {
     if (uri.scheme != 'http' && uri.scheme != 'https') {
       return 'Error: Only http and https URLs are allowed';
     }
+    var cancelled = false;
     try {
       final methodUpper = method.toUpperCase();
       if (methodUpper != 'GET' && methodUpper != 'POST') {
@@ -89,6 +113,13 @@ class WebFetchTool implements Tool {
       }
 
       final client = HttpClient();
+      var completed = false;
+      if (cancelSignal != null) {
+        unawaited(cancelSignal.then((_) {
+          cancelled = true;
+          if (!completed) client.close(force: true);
+        }));
+      }
       late HttpClientResponse response;
       try {
         var currentUri = uri;
@@ -97,6 +128,8 @@ class WebFetchTool implements Tool {
         while (true) {
           final blocked = _blockedReason(currentUri);
           if (blocked != null) {
+            completed = true;
+            client.close();
             return 'Error: Blocked: $blocked ($url)';
           }
           final request = await client
@@ -130,6 +163,7 @@ class WebFetchTool implements Tool {
           break;
         }
       } catch (_) {
+        completed = true;
         client.close();
         rethrow;
       }
@@ -150,7 +184,8 @@ class WebFetchTool implements Tool {
               : chunk.sublist(0, remaining));
         }
       } finally {
-        client.close();
+        completed = true;
+        client.close(force: cancelled);
       }
 
       // dart:io 无 content-length 时为 -1
@@ -198,12 +233,16 @@ class WebFetchTool implements Tool {
 
       return result.toString();
     } on SocketException catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: Request failed: ${e.message}';
     } on HttpException catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: Request failed: ${e.message}';
     } on TimeoutException catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: Request timed out: ${e.message}';
     } catch (e) {
+      if (cancelled) throw const CancelledException();
       return 'Error: $e';
     }
   }

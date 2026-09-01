@@ -198,6 +198,14 @@ class _FakeBashTool extends BashShellTool {
   }) async {
     return 'ok:${args['command']}';
   }
+
+  @override
+  Future<String> executeCancellable(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+    required Future<void> cancelSignal,
+  }) =>
+      execute(args, onUpdate: onUpdate);
 }
 
 // ─── 通用构造 ───────────────────────────────────────────────

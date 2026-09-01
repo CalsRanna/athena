@@ -423,6 +423,22 @@ class _FakeChatMessageService extends ChatMessageService {
   Future<bool> isFirstUserMessage(int chatId) async => firstUserMessage;
 }
 
+class _GatedChatMessageService extends _FakeChatMessageService {
+  final entered = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<List<ChatMessage>> buildMessages({
+    required ChatEntity chat,
+    SentinelEntity? sentinel,
+    bool includeReasoning = false,
+  }) async {
+    if (!entered.isCompleted) entered.complete();
+    await release.future;
+    return [ChatMessage.user('hi')];
+  }
+}
+
 /// 伪 AgentService：把外部提供的 [stream] 原样返回，便于测试控制事件时序。
 ///
 /// 自包含的 per-run 状态（取消令牌/落定 Future），模拟多 run 并发语义。
@@ -444,6 +460,9 @@ class _FakeAgentService extends AgentService {
 
   final Map<int, CancelToken> _tokens = {};
   final Map<int, Completer<void>> _settled = {};
+  int runCalls = 0;
+  int activeRuns = 0;
+  int maxActiveRuns = 0;
 
   @override
   CancelToken? cancelTokenOf(int runId) => _tokens[runId];
@@ -476,6 +495,9 @@ class _FakeAgentService extends AgentService {
     AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
+    runCalls++;
+    activeRuns++;
+    if (activeRuns > maxActiveRuns) maxActiveRuns = activeRuns;
     final token = cancelToken ?? CancelToken();
     _tokens[runId] = token;
     final settled = Completer<void>();
@@ -484,6 +506,7 @@ class _FakeAgentService extends AgentService {
       final s = streamForChat?.call(chat, onPermission) ?? stream;
       yield* s;
     } finally {
+      activeRuns--;
       _tokens.remove(runId);
       if (!settled.isCompleted) settled.complete();
       _settled.remove(runId);
@@ -722,6 +745,8 @@ void main() {
     // 等待前两段文本被消费后再取消。
     await emittedSome.future;
     vm.stopGenerating(1);
+    expect(vm.isCurrentChatStreaming.value, isFalse,
+        reason: '点击停止后 UI 应同步退出运行态');
     gate.complete();
 
     await future;
@@ -736,6 +761,76 @@ void main() {
     final shown = vm.messages.value.lastWhere((m) => m.role == 'assistant');
     expect(shown.content, contains('Hello, world'));
     expect(shown.content, contains('[Cancelled]'));
+  });
+
+  test('停止发生在 Agent 启动前也不会丢失', () async {
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+    final messages = _GatedChatMessageService();
+    final vm = _buildViewModel(
+      manage: manage,
+      agent: agent,
+      messageService: messages,
+    );
+    vm.currentChat.value = _chat();
+
+    final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
+    await messages.entered.future;
+
+    vm.stopGenerating(1);
+    expect(vm.isCurrentChatStreaming.value, isFalse);
+    messages.release.complete();
+    await sendFuture;
+
+    expect(agent.runCalls, 0, reason: '上下文准备期间取消后不应再启动 Agent');
+    expect(manage.cancelledArg, isNotNull);
+    expect(
+      vm.messages.value.lastWhere((m) => m.role == 'assistant').content,
+      contains('[Cancelled]'),
+    );
+    expect(vm.error.value, isNull);
+  });
+
+  test('停止后立即发送会等待旧 run 收尾，不会产生同聊天并发', () async {
+    final firstGate = Completer<void>();
+    final firstEmitted = Completer<void>();
+    var invocation = 0;
+
+    Stream<AgentEvent> firstRun() async* {
+      yield const AgentTextEvent('first');
+      if (!firstEmitted.isCompleted) firstEmitted.complete();
+      await firstGate.future;
+      yield const AgentTextEvent('late');
+    }
+
+    Stream<AgentEvent> nextRun() async* {
+      yield const AgentTextEvent('second');
+      yield const AgentDoneEvent(content: 'second');
+    }
+
+    final manage = _RecordingManageService();
+    final agent = _FakeAgentService(
+      const Stream<AgentEvent>.empty(),
+      streamForChat: (chat, onPermission) =>
+          invocation++ == 0 ? firstRun() : nextRun(),
+    );
+    final vm = _buildViewModel(manage: manage, agent: agent);
+    vm.currentChat.value = _chat();
+
+    final first = vm.sendMessage(_userMessage(), chat: _chat());
+    await firstEmitted.future;
+    vm.stopGenerating(1);
+    expect(vm.isCurrentChatStreaming.value, isFalse);
+
+    final second = vm.sendMessage(_userMessage(), chat: _chat());
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(agent.runCalls, 1, reason: '旧 run 未落定时新 run 应等待');
+
+    firstGate.complete();
+    await Future.wait([first, second]);
+    expect(agent.runCalls, 2);
+    expect(agent.maxActiveRuns, 1);
+    expect(vm.error.value, isNull);
   });
 
   test('C2: 多轮流式中途取消，落库目标是进行中的第二轮消息（非首轮占位 id）', () async {

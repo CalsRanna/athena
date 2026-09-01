@@ -250,6 +250,11 @@ class ChatViewModel {
 
   Timer? _flushTimer;
 
+  /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出
+  /// streaming，但同一对话的新消息要在旧 run 落库完成后再启动，避免迟到
+  /// 事件/工具结果覆盖新一轮。
+  final Map<int, Completer<void>> _runSettledByChat = {};
+
   /// 合并窗口。窗口内到达的所有增量只触发一次信号写入。
   ///
   /// 100ms 的取舍与 token 速率无关，取决于一次 flush 的成本：全树 build +
@@ -465,10 +470,11 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      if (isStreamingChat(chat.id!)) {
-        final done = _stream.settledOf(chat.id!);
+      final done =
+          _runSettledByChat[chat.id!]?.future ?? _stream.settledOf(chat.id!);
+      if (done != null) {
         _stream.stop(chat.id!);
-        if (done != null) await done;
+        await done;
       }
       _rename.cancel(chat.id!);
 
@@ -499,13 +505,15 @@ class ChatViewModel {
     try {
       final ids = chatsToDelete.map((c) => c.id!).toSet();
 
+      final settling = <Future<void>>[];
       for (final id in ids) {
-        if (streamingChatIds.value.contains(id)) {
-          final done = _stream.settledOf(id);
+        final done = _runSettledByChat[id]?.future ?? _stream.settledOf(id);
+        if (done != null) {
           _stream.stop(id);
-          if (done != null) await done;
+          settling.add(done);
         }
       }
+      await Future.wait(settling);
       for (final id in ids) {
         _rename.cancel(id);
       }
@@ -759,10 +767,24 @@ class ChatViewModel {
     required ChatEntity chat,
     bool jsonMode = false,
   }) async {
+    final chatId = chat.id!;
     // 仅阻止同一对话的重复运行；其他对话可并发
-    if (isStreamingChat(chat.id!)) return;
+    if (isStreamingChat(chatId)) return;
 
-    streamingChatIds.value = [...streamingChatIds.value, chat.id!];
+    // Stop 后 UI 已立即恢复发送态；若旧 run 仍在后台收尾，则把新消息
+    // 排在它后面。同一等待点上的并发发送者只有第一个能建立新 run。
+    final previous =
+        _runSettledByChat[chatId]?.future ?? _stream.settledOf(chatId);
+    if (previous != null) await previous;
+    if (isStreamingChat(chatId) ||
+        _runSettledByChat.containsKey(chatId) ||
+        _stream.isStreamingChat(chatId)) {
+      return;
+    }
+
+    final settled = Completer<void>();
+    _runSettledByChat[chatId] = settled;
+    streamingChatIds.value = [...streamingChatIds.value, chatId];
     currentTokenUsage.value = null;
 
     try {
@@ -778,20 +800,24 @@ class ChatViewModel {
         switch (event) {
           case RunMessageStored(:final message):
             if (belongsToCurrent) {
-              _bufferAppendMessage(message, chat.id!);
+              _bufferAppendMessage(message, chatId);
             }
           case RunAssistantAppended(:final message):
             if (belongsToCurrent) {
-              _bufferAppendMessage(message, chat.id!);
+              _bufferAppendMessage(message, chatId);
             }
           case RunMessageUpdated(:final message):
             if (belongsToCurrent) {
-              _bufferUpdateMessage(message, chat.id!);
+              _bufferUpdateMessage(message, chatId);
             }
           case RunIterationChanged(:final iteration):
-            currentIteration.value = iteration;
+            if (belongsToCurrent && isStreamingChat(chatId)) {
+              currentIteration.value = iteration;
+            }
           case RunToolNameChanged(:final toolName):
-            currentToolName.value = toolName;
+            if (belongsToCurrent && isStreamingChat(chatId)) {
+              currentToolName.value = toolName;
+            }
           case RunUsageChanged(:final usage, :final chat):
             if (chat.id == currentChat.value?.id) {
               currentTokenUsage.value = usage;
@@ -813,10 +839,16 @@ class ChatViewModel {
       // 收尾前把窗口内剩余增量落到信号上，否则最后一段文本会丢失
       _flushMessages();
       streamingChatIds.value = streamingChatIds.value
-          .where((id) => id != chat.id)
+          .where((id) => id != chatId)
           .toList();
-      currentIteration.value = 0;
-      currentToolName.value = null;
+      if (currentChat.value?.id == chatId) {
+        currentIteration.value = 0;
+        currentToolName.value = null;
+      }
+      if (identical(_runSettledByChat[chatId], settled)) {
+        _runSettledByChat.remove(chatId);
+      }
+      if (!settled.isCompleted) settled.complete();
     }
   }
 
@@ -834,6 +866,15 @@ class ChatViewModel {
   /// 停止指定对话的 Agent 运行。
   void stopGenerating(int chatId) {
     _stream.stop(chatId);
+    // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
+    // 完成。新发送会等待 [_runSettledByChat]，不会与旧 run 交叉写入。
+    if (_pendingChatId == chatId) _flushMessages();
+    streamingChatIds.value =
+        streamingChatIds.value.where((id) => id != chatId).toList();
+    if (currentChat.value?.id == chatId) {
+      currentIteration.value = 0;
+      currentToolName.value = null;
+    }
   }
 
   /// 用户对审批请求做出决策（Allow Once / Always Allow / Deny）。
