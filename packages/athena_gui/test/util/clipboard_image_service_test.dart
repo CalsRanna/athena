@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_gui/util/clipboard_image_service.dart';
@@ -8,21 +7,40 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channel = MethodChannel('athena/clipboard_image');
+  const channel = MethodChannel('pasteboard');
   late Directory tempDir;
+  var imageCallCount = 0;
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('clipboard_image_test');
     ClipboardImageService.tempDirProvider = () async => tempDir;
+    imageCallCount = 0;
   });
 
   tearDown(() async {
     await tempDir.delete(recursive: true);
   });
 
-  void mockNative(Object? Function(MethodCall call) handler) {
+  /// mock pasteboard 插件：files 返回文件列表，image 返回图片数据。
+  void mockPasteboard({
+    List<String> files = const [],
+    Uint8List? image,
+    bool throwError = false,
+  }) {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async => handler(call));
+        .setMockMethodCallHandler(channel, (call) async {
+      if (throwError) {
+        throw PlatformException(code: 'test');
+      }
+      switch (call.method) {
+        case 'files':
+          return files;
+        case 'image':
+          imageCallCount++;
+          return image;
+      }
+      return null;
+    });
   }
 
   tearDown(() {
@@ -38,90 +56,90 @@ void main() {
   }
 
   test('剪贴板中没有图片时不回调', () async {
-    mockNative((_) => null);
+    mockPasteboard();
     expect(await readAll(), isEmpty);
   });
 
-  test('剪贴板中是图片文件时回调其路径', () async {
-    final file = File('${tempDir.path}/screenshot.png');
-    await file.writeAsBytes([1, 2, 3]);
-    mockNative((_) => {'path': file.path});
-    expect(await readAll(), [file.path]);
-  });
-
-  test('返回的文件不存在时视为无图片', () async {
-    mockNative((_) => {'path': '${tempDir.path}/missing.png'});
-    expect(await readAll(), isEmpty);
-  });
-
-  test('剪贴板中是图片数据（base64 字符串）时写入临时文件并回调', () async {
-    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 1, 2, 3]);
-    mockNative((_) => {'base64': base64Encode(bytes)});
-    final paths = await readAll();
-    expect(paths, hasLength(1));
-    expect(await File(paths.single).readAsBytes(), bytes);
-  });
-
-  test('剪贴板中是图片数据（Windows Uint8List）时写入临时文件并回调', () async {
-    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 4, 5, 6]);
-    mockNative((_) => {'base64': bytes});
-    final paths = await readAll();
-    expect(paths, hasLength(1));
-    expect(await File(paths.single).readAsBytes(), bytes);
-  });
-
-  test('多选复制时全部图片文件路径按序回调', () async {
+  test('多选复制的图片文件按序回调', () async {
     final files = [
       for (var i = 0; i < 3; i++)
         File('${tempDir.path}/img_$i.png')..writeAsBytesSync([i]),
     ];
-    mockNative(
-      (_) => {'paths': [for (final f in files) f.path]},
-    );
+    mockPasteboard(files: [for (final f in files) f.path]);
     expect(await readAll(), [for (final f in files) f.path]);
   });
 
-  test('paths 中不存在的文件被跳过', () async {
-    final file = File('${tempDir.path}/exists.png')..writeAsBytesSync([1]);
-    mockNative((_) => {'paths': [file.path, '${tempDir.path}/missing.png']});
+  test('png/jpg/jpeg/gif/webp 均支持', () async {
+    final files = [
+      for (final ext in ['png', 'jpg', 'jpeg', 'gif', 'webp'])
+        File('${tempDir.path}/img.$ext')..writeAsBytesSync([1]),
+    ];
+    mockPasteboard(files: [for (final f in files) f.path]);
+    expect(await readAll(), [for (final f in files) f.path]);
+  });
+
+  test('大小写扩展名不敏感', () async {
+    final file = File('${tempDir.path}/IMG.PNG')..writeAsBytesSync([1]);
+    mockPasteboard(files: [file.path]);
     expect(await readAll(), [file.path]);
   });
 
-  test('paths 与 base64s 混合时文件路径先回调', () async {
-    final file = File('${tempDir.path}/a.png')..writeAsBytesSync([1]);
-    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 9]);
-    mockNative(
-      (_) => {'paths': [file.path], 'base64s': [base64Encode(bytes)]},
+  test('不存在的文件被跳过', () async {
+    final file = File('${tempDir.path}/exists.png')..writeAsBytesSync([1]);
+    mockPasteboard(files: [file.path, '${tempDir.path}/missing.png']);
+    expect(await readAll(), [file.path]);
+  });
+
+  test('浏览器复制（http URL 伪路径 + 图片数据）走图片数据', () async {
+    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 1]);
+    mockPasteboard(
+      files: ['https://example.com/image.png', 'data:image/png;base64,xxx'],
+      image: bytes,
     );
     final paths = await readAll();
-    expect(paths, hasLength(2));
-    expect(paths.first, file.path);
-    expect(await File(paths.last).readAsBytes(), bytes);
+    expect(paths, hasLength(1));
+    expect(await File(paths.single).readAsBytes(), bytes);
   });
 
-  test('base64s 为字符串数组时全部写入临时文件', () async {
-    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 7]);
-    mockNative((_) => {'base64s': [base64Encode(bytes), base64Encode(bytes)]});
+  test('剪贴板中是本地文件但不支持的格式（heic/tiff）时不回调也不读图片数据',
+      () async {
+    final heic = File('${tempDir.path}/photo.heic')..writeAsBytesSync([1]);
+    final tiff = File('${tempDir.path}/scan.tiff')..writeAsBytesSync([1]);
+    mockPasteboard(
+      files: [heic.path, tiff.path],
+      image: Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]),
+    );
+    expect(await readAll(), isEmpty);
+    // 文件优先：本地文件存在时绝不读取图片数据（否则会读到图标预览）
+    expect(imageCallCount, 0);
+  });
+
+  test('图片文件与非图片文件混合时只回调图片且不读图片数据', () async {
+    final png = File('${tempDir.path}/a.png')..writeAsBytesSync([1]);
+    final txt = File('${tempDir.path}/b.txt')..writeAsBytesSync([1]);
+    mockPasteboard(
+      files: [txt.path, png.path],
+      image: Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]),
+    );
+    expect(await readAll(), [png.path]);
+    expect(imageCallCount, 0);
+  });
+
+  test('截图（无文件、有图片数据）时写入临时文件并回调', () async {
+    final bytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 2]);
+    mockPasteboard(image: bytes);
     final paths = await readAll();
-    expect(paths, hasLength(2));
-    for (final path in paths) {
-      expect(await File(path).readAsBytes(), bytes);
-    }
+    expect(paths, hasLength(1));
+    expect(await File(paths.single).readAsBytes(), bytes);
   });
 
-  test('平台未注册 channel 时不回调', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null);
+  test('平台读取失败时不回调', () async {
+    mockPasteboard(throwError: true);
     expect(await readAll(), isEmpty);
   });
 
-  test('非法 base64 不回调', () async {
-    mockNative((_) => {'base64': 'not a base64!!'});
-    expect(await readAll(), isEmpty);
-  });
-
-  test('原生返回空 map 视为无图片', () async {
-    mockNative((_) => <Object, Object>{});
+  test('空截图数据视为无图片', () async {
+    mockPasteboard(image: Uint8List(0));
     expect(await readAll(), isEmpty);
   });
 }
