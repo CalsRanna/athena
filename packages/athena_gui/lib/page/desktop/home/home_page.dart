@@ -6,7 +6,6 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
-import 'package:athena_gui/page/desktop/home/component/image_export.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
@@ -102,13 +101,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     controller.dispose();
     scrollController.dispose();
     super.dispose();
-  }
-
-  void exportImage(ChatEntity chat) {
-    AthenaDialog.show(
-      DesktopImageExportDialog(chat: chat),
-      barrierDismissible: true,
-    );
   }
 
   @override
@@ -290,7 +282,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onAutoRenamed: chatViewModel.renameChat,
       onBatchDestroyed: batchDestroyChats,
       onDestroyed: destroyChat,
-      onExportedImage: exportImage,
       onManualRenamed: manualRenameChat,
       onPinned: chatViewModel.togglePin,
       onSelected: chatViewModel.selectChat,

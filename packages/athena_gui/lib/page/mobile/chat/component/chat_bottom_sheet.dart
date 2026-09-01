@@ -130,21 +130,11 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
       );
 
-      // Export image is disabled when no chat exists.
-      var exportImageSheetTile = AthenaBottomSheetTile(
-        enabled: hasChat,
-        leading: Icon(HugeIcons.strokeRoundedFileExport),
-        onTap: hasChat ? navigateImageExport : null,
-        title: 'Export Image',
-        trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
-      );
-
       var children = <Widget>[
         sentinelSheetTile,
         modelSheetTile,
         reasoningEffortSheetTile,
         chatConfigurationSheetTile,
-        exportImageSheetTile,
       ];
 
       var padding = Padding(
@@ -153,12 +143,6 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       );
       return SafeArea(child: padding);
     });
-  }
-
-  void navigateImageExport() {
-    if (widget.chat == null) return;
-    AthenaDialog.dismiss();
-    MobileChatExportRoute(chat: widget.chat!).push(context);
   }
 
   void navigateChatConfiguration() {

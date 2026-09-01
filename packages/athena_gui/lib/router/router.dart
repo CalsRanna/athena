@@ -33,7 +33,6 @@ class AthenaRouter extends RootStackRouter {
       AutoRoute(page: MobileHomeRoute.page, initial: !isDesktop),
       AutoRoute(page: MobileChatRoute.page),
       AutoRoute(page: MobileChatConfigurationRoute.page),
-      AutoRoute(page: MobileChatExportRoute.page),
       AutoRoute(page: MobileChatListRoute.page),
       AutoRoute(page: MobileTranslationRoute.page),
       AutoRoute(page: MobileSummaryRoute.page),

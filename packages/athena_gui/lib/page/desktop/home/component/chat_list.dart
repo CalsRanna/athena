@@ -14,7 +14,6 @@ class DesktopChatListView extends StatelessWidget {
   final void Function(ChatEntity)? onAutoRenamed;
   final void Function(List<ChatEntity>)? onBatchDestroyed;
   final void Function(ChatEntity)? onDestroyed;
-  final void Function(ChatEntity)? onExportedImage;
   final void Function(ChatEntity)? onManualRenamed;
   final void Function(ChatEntity)? onPinned;
   final void Function(ChatEntity)? onSelected;
@@ -24,7 +23,6 @@ class DesktopChatListView extends StatelessWidget {
     this.onAutoRenamed,
     this.onBatchDestroyed,
     this.onDestroyed,
-    this.onExportedImage,
     this.onManualRenamed,
     this.onPinned,
     this.onSelected,
@@ -101,7 +99,6 @@ class DesktopChatListView extends StatelessWidget {
         offset: details.globalPosition,
         onAutoRenamed: () => onAutoRenamed?.call(chat),
         onDestroyed: () => onDestroyed?.call(chat),
-        onExportedImage: () => onExportedImage?.call(chat),
         onManualRenamed: () => onManualRenamed?.call(chat),
         onPinned: () => onPinned?.call(chat),
       );
