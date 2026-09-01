@@ -258,7 +258,7 @@ void _runtimePromptTests() {
     expect(messages[2], isA<UserMessage>());
   });
 
-  test('sentinel 保持首位，digest 垫在 runtime 之后、历史消息之前', () async {
+  test('sentinel 保持首位，历史类摘要（digest）紧跟 runtime', () async {
     final recording = _RecordingChatService();
     final service = AgentService(
       chatService: recording,
@@ -273,10 +273,10 @@ void _runtimePromptTests() {
           model: _model(),
           baseMessages: [
             ChatMessage.system('SENTINEL'),
+            ChatMessage.system('DIGEST'),
             ChatMessage.user('hello'),
           ],
           runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.tui),
-          digestMessages: [ChatMessage.system('DIGEST')],
         )
         .toList();
 
@@ -317,7 +317,7 @@ void _runtimePromptTests() {
     expect(messages[2], isA<UserMessage>());
   });
 
-  test('全量注入顺序：sentinel → runtime → evolution → digest → history', () async {
+  test('含 base 摘要（digest）：sentinel → runtime → evolution → digest', () async {
     final recording = _RecordingChatService();
     final service = AgentService(
       chatService: recording,
@@ -332,11 +332,11 @@ void _runtimePromptTests() {
           model: _model(),
           baseMessages: [
             ChatMessage.system('SENTINEL'),
+            ChatMessage.system('DIGEST'),
             ChatMessage.user('hello'),
           ],
           runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
           evolutionPrompt: 'EVOLUTION',
-          digestMessages: [ChatMessage.system('DIGEST')],
         )
         .toList();
 
@@ -353,8 +353,7 @@ void _runtimePromptTests() {
     expect(messages.last, isA<UserMessage>());
   });
 
-  test('含 compact 摘要：sentinel → runtime → evolution → summary → digest',
-      () async {
+  test('含 compact 摘要：sentinel → runtime → evolution → summary', () async {
     final recording = _RecordingChatService();
     final service = AgentService(
       chatService: recording,
@@ -370,11 +369,11 @@ void _runtimePromptTests() {
           baseMessages: [
             ChatMessage.system('SENTINEL'),
             ChatMessage.system('Previous conversation summary:\nk'),
+            ChatMessage.system('DIGEST'),
             ChatMessage.user('hello'),
           ],
           runtimePrompt: runtimeContextPrompt(RuntimeEnvironment.gui),
           evolutionPrompt: 'EVOLUTION',
-          digestMessages: [ChatMessage.system('DIGEST')],
         )
         .toList();
 
@@ -386,8 +385,7 @@ void _runtimePromptTests() {
     expect(contents[0], 'SENTINEL');
     expect(contents[1], contains('Athena GUI application'));
     expect(contents[2], 'EVOLUTION');
-    expect(contents[3],
-        startsWith('Previous conversation summary:'));
+    expect(contents[3], startsWith('Previous conversation summary:'));
     expect(contents[4], 'DIGEST');
     expect(messages.last, isA<UserMessage>());
   });

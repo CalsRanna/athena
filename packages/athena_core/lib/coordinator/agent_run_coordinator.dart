@@ -196,6 +196,33 @@ class AgentRunCoordinator {
         return;
       }
 
+      // 2.5 记忆摘要注入（仅首轮）：相关经验的摘要确定性进入上下文
+      // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
+      // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
+      //
+      // 落库为一条 system 消息，此后随消息历史自然在场：无需每次
+      // send 重算（会话结构稳定、重启后仍在），删除会话时级联清理。
+      // buildMessages 会把历史中的 system 消息归位到历史区开头（摘要
+      // 紧跟 sentinel，位于 compact 摘要与保留历史之前）。
+      // 仅当这是对话的第一条用户消息时检索——后续任务的"相关经验"
+      // 由 experience_recall 按需覆盖，摘要不随任务刷新。
+      if (await _messageService.isFirstUserMessage(chat.id!)) {
+        final digestMessages = await MemoryDigest.messagesFor(
+          repository: _experienceRepository,
+          query: message.content,
+          sentinelId: chat.sentinelId.toString(),
+        );
+        if (digestMessages != null) {
+          for (final m in digestMessages) {
+            await _messageRepo.storeMessage(MessageEntity(
+              chatId: chat.id!,
+              role: m.role,
+              content: m is SystemMessage ? m.content : '',
+            ));
+          }
+        }
+      }
+
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
       final includeReasoning = model.reasoning;
       final wrappedMessages = await _messageService.buildMessages(
@@ -216,19 +243,6 @@ class AgentRunCoordinator {
             )
           : wrappedMessages;
 
-      // 2.5 记忆摘要注入：相关经验的摘要确定性进入上下文
-      // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
-      // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
-      //
-      // 注意：digest 不拼进 baseMessages 而是作为参数传给 AgentService——
-      // 它是唯一"每次 send 内容都变"的 system 段，必须在静态段
-      // （sentinel / runtime / evolution）之后、历史消息之前垫入，
-      // 保持消息前缀稳定以命中 prompt cache。
-      final digestMessages = await MemoryDigest.messagesFor(
-        repository: _experienceRepository,
-        query: message.content,
-        sentinelId: chat.sentinelId.toString(),
-      );
       final baseMessages = compactedMessages;
 
       // 3. 追加 assistant 占位消息
@@ -248,7 +262,6 @@ class AgentRunCoordinator {
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment),
-        digestMessages: digestMessages,
         sentinelId: chat.sentinelId.toString(),
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,

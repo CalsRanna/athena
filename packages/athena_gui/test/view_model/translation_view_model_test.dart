@@ -70,7 +70,6 @@ class _FakeAgentService extends AgentService {
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
-    List<ChatMessage>? digestMessages,
     String? sentinelId,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
