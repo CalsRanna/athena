@@ -84,14 +84,13 @@ class _MessageListViewState extends State<MessageListView> {
       final approvals = viewModel.pendingApprovals.value
           .where((r) => r.chatId == widget.chat.id)
           .toList();
-      if (messages.isEmpty && approvals.isEmpty) {
-        return SentinelPlaceholder(sentinel: sentinel);
-      }
 
       var loading = viewModel.isCurrentChatStreaming.value;
+      final loadingHistory = viewModel.isLoadingMessages.value &&
+          viewModel.currentChat.value?.id == widget.chat.id;
 
-      final list = messages.isEmpty
-          ? const SizedBox.shrink()
+      final content = messages.isEmpty
+          ? SentinelPlaceholder(sentinel: sentinel)
           : NotificationListener<ScrollNotification>(
               onNotification: _handleScrollNotification,
               child: NotificationListener<ScrollMetricsNotification>(
@@ -111,6 +110,7 @@ class _MessageListViewState extends State<MessageListView> {
                 ),
               ),
             );
+      final list = loadingHistory ? const SizedBox.expand() : content;
       if (approvals.isEmpty) return list;
       return LayoutBuilder(
         builder: (context, constraints) => Column(

@@ -47,7 +47,12 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     return Watch((context) {
       var messages = chatViewModel.messages.value;
       final loading = chatViewModel.isCurrentChatStreaming.value;
-      return _buildData(messages, loading: loading);
+      final loadingHistory = chatViewModel.isLoadingMessages.value;
+      return _buildData(
+        messages,
+        loading: loading,
+        loadingHistory: loadingHistory,
+      );
     });
   }
 
@@ -105,7 +110,11 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         sentinelViewModel.defaultSentinel.value;
   }
 
-  Widget _buildData(List<MessageEntity> messages, {required bool loading}) {
+  Widget _buildData(
+    List<MessageEntity> messages, {
+    required bool loading,
+    required bool loadingHistory,
+  }) {
     var sentinel = _displaySentinel();
     final chatId = chatViewModel.currentChat.value?.id;
     if (_displayedChatId != chatId) {
@@ -118,7 +127,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     final approvals = chatViewModel.pendingApprovals.value
         .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
         .toList();
-    final list = messages.isEmpty
+    final content = messages.isEmpty
         ? DesktopSentinelPlaceholder(sentinel: sentinel)
         : NotificationListener<ScrollNotification>(
             onNotification: _handleScrollNotification,
@@ -142,6 +151,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
               ),
             ),
           );
+    final list = loadingHistory ? const SizedBox.expand() : content;
     if (approvals.isEmpty) return list;
     return LayoutBuilder(
       builder: (context, constraints) => Column(
