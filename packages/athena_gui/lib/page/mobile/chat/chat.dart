@@ -135,13 +135,15 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   ChatEntity? _resolveChat() {
-    ChatEntity? chat = viewModel.currentChat.value;
-    if (chat == null && widget.chat != null) {
-      chat = viewModel.chats.value
-          .where((c) => c.id == widget.chat!.id)
-          .firstOrNull;
+    final requestedChat = widget.chat;
+    final currentChat = viewModel.currentChat.value;
+    if (requestedChat != null && currentChat?.id != requestedChat.id) {
+      return viewModel.chats.value
+              .where((chat) => chat.id == requestedChat.id)
+              .firstOrNull ??
+          requestedChat;
     }
-    return chat;
+    return currentChat;
   }
 
   SentinelEntity? _resolveSentinel(ChatEntity? chat) {

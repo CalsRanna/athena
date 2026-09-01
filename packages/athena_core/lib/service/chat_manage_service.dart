@@ -74,8 +74,12 @@ class ChatManageService {
     ModelEntity? model,
     ProviderEntity? provider,
     SentinelEntity? sentinel,
-  })> selectChat(ChatEntity chat) async {
-    final messages = await _messageRepository.getMessagesByChatId(chat.id!);
+  })> selectChat(
+    ChatEntity chat, {
+    List<MessageEntity>? preloadedMessages,
+  }) async {
+    final messages = preloadedMessages ??
+        await _messageRepository.getMessagesByChatId(chat.id!);
     final model = await _modelRepository.getModelById(chat.modelId);
     final provider = model != null
         ? await _providerRepository.getProviderById(model.providerId)

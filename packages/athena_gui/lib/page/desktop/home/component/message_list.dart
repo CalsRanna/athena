@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -28,6 +30,8 @@ class DesktopMessageList extends StatefulWidget {
 }
 
 class _DesktopMessageListState extends State<DesktopMessageList> {
+  static const double _loadOlderThreshold = 120;
+
   late final ChatViewModel chatViewModel;
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   int? _displayedChatId;
@@ -69,6 +73,28 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0 ||
+        notification is! ScrollUpdateNotification ||
+        (notification.scrollDelta ?? 0) >= 0 ||
+        notification.metrics.extentBefore > _loadOlderThreshold ||
+        !chatViewModel.hasOlderMessages) {
+      return false;
+    }
+
+    final controller = widget.controller;
+    if (controller == null) {
+      unawaited(chatViewModel.loadOlderMessages());
+    } else {
+      unawaited(
+        controller.preservePositionWhilePrepending(
+          chatViewModel.loadOlderMessages,
+        ),
+      );
+    }
+    return false;
+  }
+
   SentinelEntity _displaySentinel() {
     if (chatViewModel.currentChat.value?.hasSentinel == false ||
         chatViewModel.currentSentinel.value?.id ==
@@ -94,23 +120,26 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         .toList();
     final list = messages.isEmpty
         ? DesktopSentinelPlaceholder(sentinel: sentinel)
-        : NotificationListener<ScrollMetricsNotification>(
-            onNotification: widget.controller?.handleMetricsNotification,
-            child: CustomScrollView(
-              controller: widget.controller,
-              slivers: [
-                MessageCardListSliver(
-                  messages: messages,
-                  loading: loading,
-                  sentinel: sentinel,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
+        : NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: widget.controller?.handleMetricsNotification,
+              child: CustomScrollView(
+                controller: widget.controller,
+                slivers: [
+                  MessageCardListSliver(
+                    messages: messages,
+                    loading: loading,
+                    sentinel: sentinel,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                    onResend: widget.onResend,
+                    onSecondaryTapUp: openContextMenu,
                   ),
-                  onResend: widget.onResend,
-                  onSecondaryTapUp: openContextMenu,
-                ),
-              ],
+                ],
+              ),
             ),
           );
     if (approvals.isEmpty) return list;

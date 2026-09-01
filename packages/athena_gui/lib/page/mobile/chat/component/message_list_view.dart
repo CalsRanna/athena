@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -37,21 +39,26 @@ class MessageListView extends StatefulWidget {
 }
 
 class _MessageListViewState extends State<MessageListView> {
+  static const double _loadOlderThreshold = 120;
+
   ChatViewModel get viewModel => widget.viewModel;
   SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
   MessageListScrollController get controller => widget.controller;
   int? _displayedChatId;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadMessages();
-  }
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0 ||
+        notification is! ScrollUpdateNotification ||
+        (notification.scrollDelta ?? 0) >= 0 ||
+        notification.metrics.extentBefore > _loadOlderThreshold ||
+        !viewModel.hasOlderMessages) {
+      return false;
+    }
 
-  Future<void> _loadMessages() async {
-    final chatId = widget.chat.id!;
-    await viewModel.refreshMessages(widget.chat.id!);
-    if (mounted && widget.chat.id == chatId) controller.maintainBottom();
+    unawaited(
+      controller.preservePositionWhilePrepending(viewModel.loadOlderMessages),
+    );
+    return false;
   }
 
   @override
@@ -85,20 +92,23 @@ class _MessageListViewState extends State<MessageListView> {
 
       final list = messages.isEmpty
           ? const SizedBox.shrink()
-          : NotificationListener<ScrollMetricsNotification>(
-              onNotification: controller.handleMetricsNotification,
-              child: CustomScrollView(
-                controller: controller,
-                slivers: [
-                  MessageCardListSliver(
-                    messages: messages,
-                    loading: loading,
-                    sentinel: sentinel,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    onLongPress: openBottomSheet,
-                    onResend: resendMessage,
-                  ),
-                ],
+          : NotificationListener<ScrollNotification>(
+              onNotification: _handleScrollNotification,
+              child: NotificationListener<ScrollMetricsNotification>(
+                onNotification: controller.handleMetricsNotification,
+                child: CustomScrollView(
+                  controller: controller,
+                  slivers: [
+                    MessageCardListSliver(
+                      messages: messages,
+                      loading: loading,
+                      sentinel: sentinel,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      onLongPress: openBottomSheet,
+                      onResend: resendMessage,
+                    ),
+                  ],
+                ),
               ),
             );
       if (approvals.isEmpty) return list;

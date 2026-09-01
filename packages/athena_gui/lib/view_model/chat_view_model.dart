@@ -23,6 +23,8 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
+typedef _MessagePage = ({bool hasOlder, List<MessageEntity> messages});
+
 /// ChatViewModel 负责聊天会话的业务逻辑。
 ///
 /// 持有全部 UI 状态（Signal），直接调用 Service/Repository 完成简单操作，
@@ -30,6 +32,9 @@ import 'package:signals/signals.dart';
 class ChatViewModel {
   static const int defaultDraftRetention = -1;
   static const double defaultDraftTemperature = 1.0;
+
+  /// 历史对话首次及每次向上翻页加载的原始消息数。
+  static const int messagePageSize = 50;
 
   final ChatManageService _manageService;
   final AgentStreamDelegate _stream;
@@ -41,6 +46,13 @@ class ChatViewModel {
   final SettingViewModel _settingViewModel;
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
+
+  int? _oldestLoadedMessageId;
+  bool _loadingOlderMessages = false;
+  int _messageLoadGeneration = 0;
+  int _olderLoadGeneration = 0;
+
+  bool get hasOlderMessages => _oldestLoadedMessageId != null;
 
   // ─── Signals ───
 
@@ -129,6 +141,89 @@ class ChatViewModel {
 
   SentinelEntity? _displaySentinel(ChatEntity chat, SentinelEntity? sentinel) {
     return chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
+  }
+
+  void _resetMessagePagination() {
+    _oldestLoadedMessageId = null;
+    _loadingOlderMessages = false;
+    _olderLoadGeneration++;
+  }
+
+  Future<List<MessageEntity>> _loadRecentMessages(
+    int chatId, {
+    required int count,
+    int? beforeId,
+  }) async {
+    final repository = _messageRepo;
+    if (repository is RecentMessageRepository) {
+      return (repository as RecentMessageRepository).loadRecentMessages(
+        chatId,
+        count: count,
+        beforeId: beforeId,
+      );
+    }
+
+    final all = await repository.getMessagesByChatId(chatId);
+    final eligible = beforeId == null
+        ? all
+        : all.where((message) => (message.id ?? 0) < beforeId).toList();
+    if (eligible.length <= count) return eligible;
+    return eligible.sublist(eligible.length - count);
+  }
+
+  Future<_MessagePage> _loadMessagePage(int chatId, {int? beforeId}) async {
+    final loaded = await _loadRecentMessages(
+      chatId,
+      count: messagePageSize + 1,
+      beforeId: beforeId,
+    );
+    final hasOlder = loaded.length > messagePageSize;
+    final page = hasOlder
+        ? loaded.sublist(loaded.length - messagePageSize)
+        : loaded;
+    return (hasOlder: hasOlder, messages: page);
+  }
+
+  void _applyMessagePage(_MessagePage page) {
+    _discardPendingMessages();
+    messages.value = page.messages;
+    _oldestLoadedMessageId = page.hasOlder && page.messages.isNotEmpty
+        ? page.messages.first.id
+        : null;
+  }
+
+  /// 向列表顶部追加一页更早的消息，返回实际新增条数。
+  Future<int> loadOlderMessages() async {
+    final chatId = currentChat.value?.id;
+    final beforeId = _oldestLoadedMessageId;
+    if (_loadingOlderMessages || chatId == null || beforeId == null) return 0;
+
+    _loadingOlderMessages = true;
+    final selectionGeneration = _messageLoadGeneration;
+    final loadGeneration = ++_olderLoadGeneration;
+    try {
+      final page = await _loadMessagePage(chatId, beforeId: beforeId);
+      if (selectionGeneration != _messageLoadGeneration ||
+          loadGeneration != _olderLoadGeneration ||
+          currentChat.value?.id != chatId) {
+        return 0;
+      }
+
+      // 分页 IO 期间可能收到了流式增量，合并旧消息前先把增量冲刷到当前列表。
+      _flushMessages();
+      if (page.messages.isEmpty) {
+        _oldestLoadedMessageId = null;
+        return 0;
+      }
+
+      messages.value = [...page.messages, ...messages.value];
+      _oldestLoadedMessageId = page.hasOlder ? page.messages.first.id : null;
+      return page.messages.length;
+    } finally {
+      if (loadGeneration == _olderLoadGeneration) {
+        _loadingOlderMessages = false;
+      }
+    }
   }
 
   // ─── 流式增量合并 ───────────────────────────────────────────────
@@ -287,22 +382,10 @@ class ChatViewModel {
     final (chatsList, histories) = await _manageService.getChats();
     chats.value = chatsList;
     chatHistories.value = histories;
-    currentChat.value = chats.value.firstOrNull;
+    final initialChat = chats.value.firstOrNull;
 
-    if (currentChat.value != null) {
-      final selected = await _manageService.selectChat(currentChat.value!);
-      _discardPendingMessages();
-      messages.value = selected.messages;
-      currentModel.value = selected.model;
-      currentProvider.value = selected.provider;
-      currentSentinel.value = _displaySentinel(
-        currentChat.value!,
-        selected.sentinel,
-      );
-      currentRetention.value = currentChat.value!.retention;
-      currentTemperature.value = currentChat.value!.temperature;
-      currentReasoningEffort.value = currentChat.value!.reasoningEffort;
-      cumulativeTokenTotal.value = currentChat.value!.tokenTotal;
+    if (initialChat != null) {
+      await selectChat(initialChat);
     } else {
       await prepareNewChatDraft();
     }
@@ -345,6 +428,8 @@ class ChatViewModel {
       final unpinned = chats.value.where((c) => !c.pinned).toList();
       chats.value = [...pinned, chat, ...unpinned];
 
+      _messageLoadGeneration++;
+      _resetMessagePagination();
       currentChat.value = chat;
       currentModel.value = model;
       currentProvider.value = provider;
@@ -456,37 +541,38 @@ class ChatViewModel {
 
   Future<void> _selectChatOrClear(ChatEntity? chat) async {
     if (chat != null) {
-      final result = await _manageService.selectChat(chat);
-      currentChat.value = chat;
-      _discardPendingMessages();
-      messages.value = result.messages;
-      currentModel.value = result.model;
-      currentProvider.value = result.provider;
-      currentSentinel.value = _displaySentinel(chat, result.sentinel);
-      currentRetention.value = chat.retention;
-      currentTemperature.value = chat.temperature;
-      currentReasoningEffort.value = chat.reasoningEffort;
-      cumulativeTokenTotal.value = chat.tokenTotal;
-      _selection.lastSelectedIndex.value = chats.value.indexWhere(
-        (candidate) => candidate.id == chat.id,
-      );
+      await selectChat(chat);
+      if (currentChat.value?.id == chat.id) {
+        _selection.lastSelectedIndex.value = chats.value.indexWhere(
+          (candidate) => candidate.id == chat.id,
+        );
+      }
     } else {
       await prepareNewChatDraft();
-      _discardPendingMessages();
-      messages.value = [];
-      currentTokenUsage.value = null;
-      cumulativeTokenTotal.value = 0;
       _selection.lastSelectedIndex.value = null;
     }
   }
 
   Future<void> selectChat(ChatEntity chat) async {
+    final loadGeneration = ++_messageLoadGeneration;
+    _resetMessagePagination();
     currentChat.value = chat;
-
-    final result = await _manageService.selectChat(chat);
-    // 切走后旧对话的挂起增量不得写进新列表
+    // 新会话的 IO 返回前先卸载旧消息，避免用新 chatId 将旧长列表重建并回底。
     _discardPendingMessages();
-    messages.value = result.messages;
+    messages.value = [];
+
+    final page = await _loadMessagePage(chat.id!);
+    final result = await _manageService.selectChat(
+      chat,
+      preloadedMessages: page.messages,
+    );
+    if (loadGeneration != _messageLoadGeneration ||
+        currentChat.value?.id != chat.id) {
+      return;
+    }
+
+    // 切走后旧对话的挂起增量不得写进新列表
+    _applyMessagePage((hasOlder: page.hasOlder, messages: result.messages));
     currentModel.value = result.model;
     currentProvider.value = result.provider;
     currentSentinel.value = _displaySentinel(chat, result.sentinel);
@@ -750,8 +836,7 @@ class ChatViewModel {
       final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         await _manageService.deleteMessagesFromIndex(messages.value, index);
-        _discardPendingMessages();
-        messages.value = await _messageRepo.getMessagesByChatId(message.chatId);
+        await refreshMessages(message.chatId);
       }
     } catch (e) {
       error.value = e.toString();
@@ -761,9 +846,15 @@ class ChatViewModel {
   }
 
   Future<void> refreshMessages(int chatId) async {
-    final loaded = await _messageRepo.getMessagesByChatId(chatId);
-    _discardPendingMessages();
-    messages.value = loaded;
+    if (currentChat.value?.id != chatId) return;
+    final loadGeneration = ++_messageLoadGeneration;
+    _resetMessagePagination();
+    final page = await _loadMessagePage(chatId);
+    if (loadGeneration != _messageLoadGeneration ||
+        currentChat.value?.id != chatId) {
+      return;
+    }
+    _applyMessagePage(page);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -837,6 +928,8 @@ class ChatViewModel {
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> prepareNewChatDraft() async {
+    _messageLoadGeneration++;
+    _resetMessagePagination();
     currentChat.value = null;
     _discardPendingMessages();
     messages.value = [];
