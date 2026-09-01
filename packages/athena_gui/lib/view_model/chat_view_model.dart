@@ -62,6 +62,11 @@ class ChatViewModel {
   final messages = listSignal<MessageEntity>([]);
   final isLoading = signal(false);
 
+  /// 当前选中对话的首屏历史正在读取。
+  ///
+  /// 与通用 CRUD loading、LLM 流式状态分离，仅用于切换对话时的消息区反馈。
+  final isLoadingMessages = signal(false);
+
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   final streamingChatIds = listSignal<int>([]);
 
@@ -430,6 +435,7 @@ class ChatViewModel {
 
       _messageLoadGeneration++;
       _resetMessagePagination();
+      isLoadingMessages.value = false;
       currentChat.value = chat;
       currentModel.value = model;
       currentProvider.value = provider;
@@ -557,34 +563,42 @@ class ChatViewModel {
     final loadGeneration = ++_messageLoadGeneration;
     _resetMessagePagination();
     currentChat.value = chat;
+    isLoadingMessages.value = true;
     // 新会话的 IO 返回前先卸载旧消息，避免用新 chatId 将旧长列表重建并回底。
     _discardPendingMessages();
     messages.value = [];
 
-    final page = await _loadMessagePage(chat.id!);
-    final result = await _manageService.selectChat(
-      chat,
-      preloadedMessages: page.messages,
-    );
-    if (loadGeneration != _messageLoadGeneration ||
-        currentChat.value?.id != chat.id) {
-      return;
+    try {
+      final page = await _loadMessagePage(chat.id!);
+      final result = await _manageService.selectChat(
+        chat,
+        preloadedMessages: page.messages,
+      );
+      if (loadGeneration != _messageLoadGeneration ||
+          currentChat.value?.id != chat.id) {
+        return;
+      }
+
+      // 切走后旧对话的挂起增量不得写进新列表
+      _applyMessagePage((hasOlder: page.hasOlder, messages: result.messages));
+      currentModel.value = result.model;
+      currentProvider.value = result.provider;
+      currentSentinel.value = _displaySentinel(chat, result.sentinel);
+      currentRetention.value = chat.retention;
+      currentTemperature.value = chat.temperature;
+      currentReasoningEffort.value = chat.reasoningEffort;
+      pendingImages.value = [];
+      currentTokenUsage.value = null;
+      cumulativeTokenTotal.value = chat.tokenTotal;
+
+      // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
+      _mergeLiveMessage(chat.id!);
+    } finally {
+      if (loadGeneration == _messageLoadGeneration &&
+          currentChat.value?.id == chat.id) {
+        isLoadingMessages.value = false;
+      }
     }
-
-    // 切走后旧对话的挂起增量不得写进新列表
-    _applyMessagePage((hasOlder: page.hasOlder, messages: result.messages));
-    currentModel.value = result.model;
-    currentProvider.value = result.provider;
-    currentSentinel.value = _displaySentinel(chat, result.sentinel);
-    currentRetention.value = chat.retention;
-    currentTemperature.value = chat.temperature;
-    currentReasoningEffort.value = chat.reasoningEffort;
-    pendingImages.value = [];
-    currentTokenUsage.value = null;
-    cumulativeTokenTotal.value = chat.tokenTotal;
-
-    // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
-    _mergeLiveMessage(chat.id!);
   }
 
   /// 若 [chatId] 正在流式,用 coordinator 的内存快照覆盖/追加最后一条消息。
@@ -930,6 +944,7 @@ class ChatViewModel {
   Future<void> prepareNewChatDraft() async {
     _messageLoadGeneration++;
     _resetMessagePagination();
+    isLoadingMessages.value = false;
     currentChat.value = null;
     _discardPendingMessages();
     messages.value = [];

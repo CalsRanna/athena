@@ -639,6 +639,7 @@ void main() {
     expect(vm.messages.value.first.id, 76);
     expect(vm.messages.value.last.id, 125);
     expect(vm.hasOlderMessages, isTrue);
+    expect(vm.isLoadingMessages.value, isFalse);
     expect(repository.fullLoadCount, 0, reason: '选择对话不应再全量读取历史消息');
 
     expect(await vm.loadOlderMessages(), ChatViewModel.messagePageSize);
@@ -678,15 +679,21 @@ void main() {
 
     final firstSelection = vm.selectChat(_chat(id: 1));
     expect(vm.currentChat.value?.id, 1);
+    expect(vm.isLoadingMessages.value, isTrue);
     expect(vm.messages.value, isEmpty, reason: '等待 IO 时不应重建旧长列表');
 
-    await vm.selectChat(_chat(id: 2));
+    final secondSelection = vm.selectChat(_chat(id: 2));
+    expect(vm.currentChat.value?.id, 2, reason: '选中态应在历史 IO 完成前更新');
+    expect(vm.isLoadingMessages.value, isTrue);
+    await secondSelection;
     expect(vm.messages.value.single.content, 'second');
+    expect(vm.isLoadingMessages.value, isFalse);
 
     firstGate.complete();
     await firstSelection;
     expect(vm.currentChat.value?.id, 2);
     expect(vm.messages.value.single.content, 'second');
+    expect(vm.isLoadingMessages.value, isFalse, reason: '过期请求不能改写新会话的加载状态');
   });
 
   test('C2: 单轮流式中途取消，落库的是携带已生成内容的最新消息（非空占位）', () async {
