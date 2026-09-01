@@ -9,6 +9,7 @@ import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/component/tool_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/markdown.dart';
@@ -23,7 +24,6 @@ import 'package:url_launcher/url_launcher.dart';
 class MessageListTile extends StatelessWidget {
   final bool loading;
   final MessageEntity message;
-  final List<MessageEntity> assistantMessages;
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
   final void Function()? onResend;
@@ -33,7 +33,6 @@ class MessageListTile extends StatelessWidget {
     super.key,
     this.loading = false,
     required this.message,
-    this.assistantMessages = const [],
     this.onLongPress,
     this.onResend,
     this.onSecondaryTapUp,
@@ -55,206 +54,327 @@ class MessageListTile extends StatelessWidget {
     }
     return _AssistantMessageListTile(
       loading: loading,
-      messages: assistantMessages.isEmpty ? [message] : assistantMessages,
+      message: message,
       sentinel: sentinel,
     );
   }
 }
 
-class _AssistantRenderPart {
-  final Widget? widget;
-  final List<ToolGroupCardItem>? toolItems;
-  final bool hasLeadingSpacing;
+class _AssistantMessageRenderData {
+  final MessageEntity message;
+  final List<MessageEntity> toolMessages;
+  final bool loading;
+  final bool addBoundarySpacing;
 
-  const _AssistantRenderPart.widget(
-    this.widget, {
-    this.hasLeadingSpacing = false,
-  }) : toolItems = null;
+  const _AssistantMessageRenderData({
+    required this.message,
+    required this.toolMessages,
+    required this.loading,
+    required this.addBoundarySpacing,
+  });
+}
 
-  _AssistantRenderPart.tools(List<ToolGroupCardItem> items)
-    : widget = null,
-      toolItems = items,
-      hasLeadingSpacing = true;
+class _MessageListRenderItem {
+  final MessageEntity message;
+  final _AssistantMessageRenderData? assistantData;
+  final List<MessageEntity> cardMessages;
+  final bool isAssistantCardStart;
+  final bool isAssistantCardEnd;
+  final bool addCardSpacing;
 
-  bool get isTools => toolItems != null;
+  const _MessageListRenderItem({
+    required this.message,
+    this.assistantData,
+    this.cardMessages = const [],
+    this.isAssistantCardStart = false,
+    this.isAssistantCardEnd = false,
+    required this.addCardSpacing,
+  });
+
+  String get key {
+    final identity = message.id ?? identityHashCode(message);
+    return assistantData == null ? 'message-$identity' : 'assistant-$identity';
+  }
+}
+
+/// 整个聊天共用的懒加载消息 Sliver。
+///
+/// 连续 Assistant 回复仍按原始消息逐项懒构建；每项绘制同色、无间隔的背景
+/// 片段，首尾片段分别绘制上/下圆角，视觉上组成一张卡片。这样无需嵌套滚动，
+/// 也不会依赖可变高度 Sliver 的估算 scrollExtent。
+class MessageCardListSliver extends StatelessWidget {
+  final bool loading;
+  final List<MessageEntity> messages;
+  final SentinelEntity sentinel;
+  final EdgeInsetsGeometry padding;
+  final void Function(MessageEntity)? onLongPress;
+  final void Function(TapUpDetails, MessageEntity)? onSecondaryTapUp;
+  final void Function(MessageEntity)? onResend;
+
+  const MessageCardListSliver({
+    super.key,
+    this.loading = false,
+    required this.messages,
+    required this.sentinel,
+    this.padding = EdgeInsets.zero,
+    this.onLongPress,
+    this.onSecondaryTapUp,
+    this.onResend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final renderItems = _buildMessageListRenderItems(
+      messages,
+      loading: loading,
+    ).reversed.toList(growable: false);
+    final itemIndices = <String, int>{
+      for (final (index, item) in renderItems.indexed) item.key: index,
+    };
+    return SliverPadding(
+      padding: padding,
+      sliver: SliverList.builder(
+        itemCount: renderItems.length,
+        findChildIndexCallback: (key) {
+          if (key is! ValueKey<String>) return null;
+          return itemIndices[key.value];
+        },
+        itemBuilder: (context, index) {
+          final item = renderItems[index];
+          Widget child;
+          final assistantData = item.assistantData;
+          if (assistantData != null) {
+            child = _AssistantMessageCardSegment(
+              data: assistantData,
+              isCardStart: item.isAssistantCardStart,
+              isCardEnd: item.isAssistantCardEnd,
+              cardMessages: item.cardMessages,
+              sentinel: sentinel,
+            );
+          } else {
+            child = MessageListTile(
+              message: item.message,
+              onLongPress: onLongPress == null
+                  ? null
+                  : () => onLongPress!(item.message),
+              onSecondaryTapUp: onSecondaryTapUp == null
+                  ? null
+                  : (details) => onSecondaryTapUp!(details, item.message),
+              onResend: onResend == null ? null : () => onResend!(item.message),
+              sentinel: sentinel,
+            );
+          }
+          if (item.addCardSpacing) {
+            child = Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: child,
+            );
+          }
+          return KeyedSubtree(key: ValueKey(item.key), child: child);
+        },
+      ),
+    );
+  }
+}
+
+List<_MessageListRenderItem> _buildMessageListRenderItems(
+  List<MessageEntity> messages, {
+  required bool loading,
+}) {
+  final cards = buildMessageDisplayCards(messages);
+  final result = <_MessageListRenderItem>[];
+
+  for (final (cardIndex, cardMessages) in cards.indexed) {
+    final message = cardMessages.first;
+    if (message.role != 'assistant') {
+      result.add(
+        _MessageListRenderItem(message: message, addCardSpacing: cardIndex > 0),
+      );
+      continue;
+    }
+
+    final renderData = _buildAssistantRenderData(
+      cardMessages,
+      loading: loading && cardIndex == cards.length - 1,
+    );
+    for (final (itemIndex, data) in renderData.indexed) {
+      result.add(
+        _MessageListRenderItem(
+          message: data.message,
+          assistantData: data,
+          cardMessages: cardMessages,
+          isAssistantCardStart: itemIndex == 0,
+          isAssistantCardEnd: itemIndex == renderData.length - 1,
+          addCardSpacing: cardIndex > 0 && itemIndex == 0,
+        ),
+      );
+    }
+  }
+
+  return result;
 }
 
 class _AssistantMessageListTile extends StatelessWidget {
   final bool loading;
-  final List<MessageEntity> messages;
+  final MessageEntity message;
   final SentinelEntity sentinel;
+
   const _AssistantMessageListTile({
     this.loading = false,
-    required this.messages,
+    required this.message,
     required this.sentinel,
   });
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      _buildAvatar(context),
-      const SizedBox(width: 12),
-      _buildContent(context),
-      _buildTrailingSpace(),
-    ];
-    var messageRow = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    final renderData = _buildAssistantRenderData([message], loading: loading);
+    return _AssistantMessageCardSegment(
+      data: renderData.first,
+      isCardStart: true,
+      isCardEnd: true,
+      cardMessages: [message],
+      sentinel: sentinel,
     );
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // AGENT 消息卡片为浅底（两种模式下保持白色），文字用深色（textOnRaised）
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(24),
-      color: colors.surfaceRaised.withValues(alpha: 0.95),
-    );
-    var stackChildren = [
-      messageRow,
-      Positioned(right: 0, child: CopyButton(onTap: handleCopy)),
-    ];
+  }
+}
+
+class _AssistantMessageCardSegment extends StatelessWidget {
+  final _AssistantMessageRenderData data;
+  final bool isCardStart;
+  final bool isCardEnd;
+  final List<MessageEntity> cardMessages;
+  final SentinelEntity sentinel;
+
+  const _AssistantMessageCardSegment({
+    required this.data,
+    required this.isCardStart,
+    required this.isCardEnd,
+    required this.cardMessages,
+    required this.sentinel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
-      child: Stack(children: stackChildren),
+      key: ValueKey(
+        'assistant-card-segment-${data.message.id ?? identityHashCode(data.message)}',
+      ),
+      decoration: _assistantCardDecoration(
+        context,
+        isCardStart: isCardStart,
+        isCardEnd: isCardEnd,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        isCardStart ? 12 : 0,
+        16,
+        isCardEnd ? 16 : 0,
+      ),
+      child: _AssistantMessageSegment(
+        data: data,
+        isCardHeader: isCardStart,
+        cardMessages: cardMessages,
+        sentinel: sentinel,
+      ),
     );
   }
+}
 
-  void handleCopy() {
-    final content = messages
-        .map((message) => message.content)
-        .where((content) => content.isNotEmpty)
-        .join('\n\n');
-    Clipboard.setData(ClipboardData(text: content));
-  }
+class _AssistantMessageSegment extends StatelessWidget {
+  final _AssistantMessageRenderData data;
+  final bool isCardHeader;
+  final List<MessageEntity> cardMessages;
+  final SentinelEntity sentinel;
 
-  Widget _buildAvatar(BuildContext context) {
-    if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
-      final textStyle = TextStyle(
-        color: colors.textPrimary,
-        fontSize: 20,
-        height: 1,
-      );
-      var text = Text(
-        sentinel.avatar,
-        maxLines: 1,
-        overflow: TextOverflow.clip,
-        style: textStyle,
-        textAlign: TextAlign.center,
-      );
-      var boxDecoration = BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.avatarBackground,
-      );
-      return Container(
-        alignment: Alignment.center,
-        decoration: boxDecoration,
-        height: 36,
-        width: 36,
-        child: text,
-      );
-    }
-    var image = Image.asset(
-      'asset/image/launcher_icon_ios_512x512.jpg',
-      fit: BoxFit.cover,
-      filterQuality: FilterQuality.medium,
-      height: 36,
-      width: 36,
-    );
-    return ClipOval(child: image);
-  }
+  const _AssistantMessageSegment({
+    required this.data,
+    required this.isCardHeader,
+    required this.cardMessages,
+    required this.sentinel,
+  });
 
-  Widget _buildContent(BuildContext context) {
-    final parts = <_AssistantRenderPart>[];
-    for (final (index, message) in messages.indexed) {
-      final messageParts = _buildMessageParts(
-        message,
-        loading: loading && index == messages.length - 1,
-      );
-      if (messageParts.isEmpty) continue;
-
-      // 相邻原始消息的边界恰好是 tool → tool 时，中间没有 reasoning、
-      // 正文或引用，合并为同一张 ToolGroupCard；其他片段顺序保持不变。
-      if (parts.isNotEmpty &&
-          parts.last.isTools &&
-          messageParts.first.isTools) {
-        parts.last.toolItems!.addAll(messageParts.removeAt(0).toolItems!);
-      } else if (parts.isNotEmpty && !messageParts.first.hasLeadingSpacing) {
-        parts.add(const _AssistantRenderPart.widget(SizedBox(height: 12)));
-      }
-      parts.addAll(messageParts);
-    }
-    final children = parts.map(_buildRenderPart).toList();
-    var column = Column(
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+      children: [
+        isCardHeader
+            ? _buildAssistantAvatar(context, sentinel)
+            : const SizedBox(width: 36),
+        const SizedBox(width: 12),
+        Expanded(child: _AssistantMessageContent(data: data)),
+        _buildAssistantTrailingSpace(),
+      ],
     );
-    var container = Container(
-      alignment: Alignment.centerLeft,
-      constraints: const BoxConstraints(minHeight: 36),
-      child: column,
-    );
-    return Expanded(child: container);
+    Widget result = isCardHeader
+        ? Stack(
+            children: [
+              row,
+              Positioned(
+                right: 0,
+                child: CopyButton(
+                  onTap: () => _copyAssistantMessages(cardMessages),
+                ),
+              ),
+            ],
+          )
+        : row;
+    if (data.addBoundarySpacing) {
+      result = Padding(padding: const EdgeInsets.only(top: 12), child: result);
+    }
+    return result;
   }
+}
 
-  List<_AssistantRenderPart> _buildMessageParts(
-    MessageEntity message, {
-    required bool loading,
-  }) {
-    final parts = <_AssistantRenderPart>[];
+class _AssistantMessageContent extends StatelessWidget {
+  final _AssistantMessageRenderData data;
+
+  const _AssistantMessageContent({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final message = data.message;
+    final children = <Widget>[];
     if (message.reasoningContent.isNotEmpty) {
-      parts.add(
-        _AssistantRenderPart.widget(
-          _AssistantMessageListTileThinkingPart(message: message),
-        ),
-      );
+      children.add(_AssistantMessageListTileThinkingPart(message: message));
     }
     if (message.content.isNotEmpty) {
-      parts.add(
-        const _AssistantRenderPart.widget(
-          SizedBox(height: 8),
-          hasLeadingSpacing: true,
-        ),
-      );
-      parts.add(_AssistantRenderPart.widget(AthenaMarkdown(message: message)));
+      children.add(const SizedBox(height: 8));
+      children.add(AthenaMarkdown(message: message));
     }
 
-    final toolItems = _buildToolItems(message);
+    final toolItems = _buildToolItems(data.toolMessages);
     if (toolItems.isNotEmpty) {
-      parts.add(_AssistantRenderPart.tools(toolItems));
+      children.add(_buildToolPart(toolItems));
     }
     if (message.reference.isNotEmpty) {
-      parts.add(
-        _AssistantRenderPart.widget(
-          _AssistantMessageListTileReferencePart(message: message),
-          hasLeadingSpacing: true,
-        ),
-      );
+      children.add(_AssistantMessageListTileReferencePart(message: message));
     }
-    if (loading) {
-      parts.add(
-        const _AssistantRenderPart.widget(
-          _AssistantMessageListTileLoadingPart(loading: true),
-        ),
-      );
+    if (data.loading) {
+      children.add(const _AssistantMessageListTileLoadingPart(loading: true));
     }
-    return parts;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
   }
 
-  List<ToolGroupCardItem> _buildToolItems(MessageEntity message) {
-    Map<String, String> results = {};
-    if (message.toolResults.isNotEmpty) {
-      try {
-        final list = jsonDecode(message.toolResults) as List<dynamic>;
-        for (final r in list) {
-          results[r['id'] as String] = r['result'] as String;
-        }
-      } catch (_) {}
-    }
+  List<ToolGroupCardItem> _buildToolItems(List<MessageEntity> toolMessages) {
+    final items = <ToolGroupCardItem>[];
+    for (final message in toolMessages) {
+      final results = <String, String>{};
+      if (message.toolResults.isNotEmpty) {
+        try {
+          final list = jsonDecode(message.toolResults) as List<dynamic>;
+          for (final result in list) {
+            results[result['id'] as String] = result['result'] as String;
+          }
+        } catch (_) {}
+      }
 
-    if (message.toolCalls.isNotEmpty) {
+      if (message.toolCalls.isEmpty) continue;
       try {
         final calls = jsonDecode(message.toolCalls) as List<dynamic>;
-        final items = <ToolGroupCardItem>[];
         for (final call in calls) {
           final id = call['id'] as String;
           items.add(
@@ -266,31 +386,170 @@ class _AssistantMessageListTile extends StatelessWidget {
             ),
           );
         }
-        return items;
       } catch (_) {}
     }
-
-    return [];
+    return items;
   }
 
-  Widget _buildRenderPart(_AssistantRenderPart part) {
-    final items = part.toolItems;
-    if (items == null) return part.widget!;
+  Widget _buildToolPart(List<ToolGroupCardItem> items) {
     if (items.length == 1) {
       final item = items.single;
       return ToolCard(
+        key: ValueKey('tool-${item.id}'),
         toolName: item.toolName,
         arguments: item.arguments,
         result: item.result,
       );
     }
-    return ToolGroupCard(items: items);
+    return ToolGroupCard(
+      key: ValueKey('tool-group-${items.first.id}'),
+      items: items,
+    );
+  }
+}
+
+List<_AssistantMessageRenderData> _buildAssistantRenderData(
+  List<MessageEntity> messages, {
+  required bool loading,
+}) {
+  assert(messages.isNotEmpty);
+  final toolMessages = List.generate(messages.length, (_) => <MessageEntity>[]);
+  int? openToolOwner;
+
+  for (final (index, message) in messages.indexed) {
+    final itemLoading = loading && index == messages.length - 1;
+    final hasTools = message.toolCalls.isNotEmpty;
+    final hasContentBeforeTools =
+        message.reasoningContent.isNotEmpty || message.content.isNotEmpty;
+    final hasContentAfterTools = message.reference.isNotEmpty || itemLoading;
+
+    if (hasTools) {
+      var owner = index;
+      if (!hasContentBeforeTools && openToolOwner != null) {
+        owner = openToolOwner;
+        toolMessages[owner].add(message);
+      } else {
+        toolMessages[index].add(message);
+      }
+      openToolOwner = hasContentAfterTools ? null : owner;
+      continue;
+    }
+
+    // 完全空的占位记录与旧实现一致，不打断跨消息工具组。
+    if (hasContentBeforeTools || hasContentAfterTools) {
+      openToolOwner = null;
+    }
   }
 
-  Widget _buildTrailingSpace() {
-    var isDesktop = PlatformUtil.isDesktop;
-    return SizedBox(width: isDesktop ? 48 : 24);
+  final result = <_AssistantMessageRenderData>[];
+  for (final (index, message) in messages.indexed) {
+    final itemLoading = loading && index == messages.length - 1;
+    final effectiveTools = toolMessages[index];
+    final visible =
+        message.reasoningContent.isNotEmpty ||
+        message.content.isNotEmpty ||
+        effectiveTools.isNotEmpty ||
+        message.reference.isNotEmpty ||
+        itemLoading;
+    if (!visible) continue;
+
+    final toolsMergedIntoPrevious =
+        message.toolCalls.isNotEmpty && effectiveTools.isEmpty;
+    final firstPartHasLeadingSpacing =
+        message.reasoningContent.isEmpty &&
+        (message.content.isNotEmpty ||
+            effectiveTools.isNotEmpty ||
+            message.reference.isNotEmpty ||
+            toolsMergedIntoPrevious);
+    result.add(
+      _AssistantMessageRenderData(
+        message: message,
+        toolMessages: effectiveTools,
+        loading: itemLoading,
+        addBoundarySpacing: result.isNotEmpty && !firstPartHasLeadingSpacing,
+      ),
+    );
   }
+
+  if (result.isEmpty) {
+    result.add(
+      _AssistantMessageRenderData(
+        message: messages.first,
+        toolMessages: const [],
+        loading: false,
+        addBoundarySpacing: false,
+      ),
+    );
+  }
+  return result;
+}
+
+BoxDecoration _assistantCardDecoration(
+  BuildContext context, {
+  required bool isCardStart,
+  required bool isCardEnd,
+}) {
+  final colors = Theme.of(context).extension<AthenaColors>()!;
+  const radius = Radius.circular(24);
+  return BoxDecoration(
+    borderRadius: BorderRadius.only(
+      topLeft: isCardStart ? radius : Radius.zero,
+      topRight: isCardStart ? radius : Radius.zero,
+      bottomLeft: isCardEnd ? radius : Radius.zero,
+      bottomRight: isCardEnd ? radius : Radius.zero,
+    ),
+    color: colors.surfaceRaised.withValues(alpha: 0.95),
+  );
+}
+
+void _copyAssistantMessages(List<MessageEntity> messages) {
+  final content = messages
+      .map((message) => message.content)
+      .where((content) => content.isNotEmpty)
+      .join('\n\n');
+  Clipboard.setData(ClipboardData(text: content));
+}
+
+Widget _buildAssistantAvatar(BuildContext context, SentinelEntity sentinel) {
+  if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final textStyle = TextStyle(
+      color: colors.textPrimary,
+      fontSize: 20,
+      height: 1,
+    );
+    var text = Text(
+      sentinel.avatar,
+      maxLines: 1,
+      overflow: TextOverflow.clip,
+      style: textStyle,
+      textAlign: TextAlign.center,
+    );
+    var boxDecoration = BoxDecoration(
+      shape: BoxShape.circle,
+      color: colors.avatarBackground,
+    );
+    return Container(
+      alignment: Alignment.center,
+      decoration: boxDecoration,
+      height: 36,
+      width: 36,
+      child: text,
+    );
+  }
+  var image = Image.asset(
+    'asset/image/launcher_icon_ios_512x512.jpg',
+    fit: BoxFit.cover,
+    filterQuality: FilterQuality.medium,
+    height: 36,
+    width: 36,
+  );
+  return ClipOval(child: image);
+}
+
+Widget _buildAssistantTrailingSpace() {
+  var isDesktop = PlatformUtil.isDesktop;
+  return SizedBox(width: isDesktop ? 48 : 24);
 }
 
 class _AssistantMessageListTileLoadingPart extends StatelessWidget {

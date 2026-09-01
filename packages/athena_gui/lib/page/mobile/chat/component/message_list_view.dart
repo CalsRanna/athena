@@ -2,10 +2,8 @@ import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
-import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -74,22 +72,21 @@ class _MessageListViewState extends State<MessageListView> {
 
       var loading = viewModel.isCurrentChatStreaming.value;
 
-      final displayCards = buildMessageDisplayCards(messages);
-      final reversedCards = displayCards.reversed.toList();
       final list = messages.isEmpty
           ? const SizedBox.shrink()
-          : ListView.separated(
+          : CustomScrollView(
               controller: controller,
-              itemBuilder: (_, index) => _itemBuilder(
-                reversedCards[index],
-                sentinel,
-                loading && index == 0,
-                key: ValueKey(reversedCards[index].first.id),
-              ),
-              itemCount: displayCards.length,
-              padding: EdgeInsets.symmetric(horizontal: 16),
               reverse: true,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              slivers: [
+                MessageCardListSliver(
+                  messages: messages,
+                  loading: loading,
+                  sentinel: sentinel,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  onLongPress: openBottomSheet,
+                  onResend: resendMessage,
+                ),
+              ],
             );
       if (approvals.isEmpty) return list;
       return LayoutBuilder(
@@ -191,23 +188,5 @@ class _MessageListViewState extends State<MessageListView> {
     }
     await viewModel.deleteMessage(message);
     await viewModel.sendMessage(message, chat: widget.chat);
-  }
-
-  Widget _itemBuilder(
-    List<MessageEntity> cardMessages,
-    SentinelEntity sentinel,
-    bool loading, {
-    Key? key,
-  }) {
-    final message = cardMessages.first;
-    return MessageListTile(
-      key: key,
-      loading: loading,
-      message: message,
-      assistantMessages: message.role == 'assistant' ? cardMessages : const [],
-      onLongPress: () => openBottomSheet(message),
-      onResend: () => resendMessage(message),
-      sentinel: sentinel,
-    );
   }
 }
