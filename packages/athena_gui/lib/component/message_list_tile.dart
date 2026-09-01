@@ -23,6 +23,7 @@ import 'package:url_launcher/url_launcher.dart';
 class MessageListTile extends StatelessWidget {
   final bool loading;
   final MessageEntity message;
+  final List<MessageEntity> assistantMessages;
   final void Function()? onLongPress;
   final void Function(TapUpDetails)? onSecondaryTapUp;
   final void Function()? onResend;
@@ -32,6 +33,7 @@ class MessageListTile extends StatelessWidget {
     super.key,
     this.loading = false,
     required this.message,
+    this.assistantMessages = const [],
     this.onLongPress,
     this.onResend,
     this.onSecondaryTapUp,
@@ -53,19 +55,37 @@ class MessageListTile extends StatelessWidget {
     }
     return _AssistantMessageListTile(
       loading: loading,
-      message: message,
+      messages: assistantMessages.isEmpty ? [message] : assistantMessages,
       sentinel: sentinel,
     );
   }
 }
 
+class _AssistantRenderPart {
+  final Widget? widget;
+  final List<ToolGroupCardItem>? toolItems;
+  final bool hasLeadingSpacing;
+
+  const _AssistantRenderPart.widget(
+    this.widget, {
+    this.hasLeadingSpacing = false,
+  }) : toolItems = null;
+
+  _AssistantRenderPart.tools(List<ToolGroupCardItem> items)
+    : widget = null,
+      toolItems = items,
+      hasLeadingSpacing = true;
+
+  bool get isTools => toolItems != null;
+}
+
 class _AssistantMessageListTile extends StatelessWidget {
   final bool loading;
-  final MessageEntity message;
+  final List<MessageEntity> messages;
   final SentinelEntity sentinel;
   const _AssistantMessageListTile({
     this.loading = false,
-    required this.message,
+    required this.messages,
     required this.sentinel,
   });
 
@@ -99,7 +119,11 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   void handleCopy() {
-    Clipboard.setData(ClipboardData(text: message.content));
+    final content = messages
+        .map((message) => message.content)
+        .where((content) => content.isNotEmpty)
+        .join('\n\n');
+    Clipboard.setData(ClipboardData(text: content));
   }
 
   Widget _buildAvatar(BuildContext context) {
@@ -140,16 +164,26 @@ class _AssistantMessageListTile extends StatelessWidget {
   }
 
   Widget _buildContent(BuildContext context) {
-    final toolCards = _buildToolCards();
+    final parts = <_AssistantRenderPart>[];
+    for (final (index, message) in messages.indexed) {
+      final messageParts = _buildMessageParts(
+        message,
+        loading: loading && index == messages.length - 1,
+      );
+      if (messageParts.isEmpty) continue;
 
-    var children = [
-      _AssistantMessageListTileThinkingPart(message: message),
-      if (message.content.isNotEmpty) SizedBox(height: 8),
-      AthenaMarkdown(message: message),
-      ...toolCards,
-      _AssistantMessageListTileReferencePart(message: message),
-      _AssistantMessageListTileLoadingPart(loading: loading),
-    ];
+      // 相邻原始消息的边界恰好是 tool → tool 时，中间没有 reasoning、
+      // 正文或引用，合并为同一张 ToolGroupCard；其他片段顺序保持不变。
+      if (parts.isNotEmpty &&
+          parts.last.isTools &&
+          messageParts.first.isTools) {
+        parts.last.toolItems!.addAll(messageParts.removeAt(0).toolItems!);
+      } else if (parts.isNotEmpty && !messageParts.first.hasLeadingSpacing) {
+        parts.add(const _AssistantRenderPart.widget(SizedBox(height: 12)));
+      }
+      parts.addAll(messageParts);
+    }
+    final children = parts.map(_buildRenderPart).toList();
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
@@ -162,9 +196,51 @@ class _AssistantMessageListTile extends StatelessWidget {
     return Expanded(child: container);
   }
 
-  List<Widget> _buildToolCards() {
-    final cards = <Widget>[];
+  List<_AssistantRenderPart> _buildMessageParts(
+    MessageEntity message, {
+    required bool loading,
+  }) {
+    final parts = <_AssistantRenderPart>[];
+    if (message.reasoningContent.isNotEmpty) {
+      parts.add(
+        _AssistantRenderPart.widget(
+          _AssistantMessageListTileThinkingPart(message: message),
+        ),
+      );
+    }
+    if (message.content.isNotEmpty) {
+      parts.add(
+        const _AssistantRenderPart.widget(
+          SizedBox(height: 8),
+          hasLeadingSpacing: true,
+        ),
+      );
+      parts.add(_AssistantRenderPart.widget(AthenaMarkdown(message: message)));
+    }
 
+    final toolItems = _buildToolItems(message);
+    if (toolItems.isNotEmpty) {
+      parts.add(_AssistantRenderPart.tools(toolItems));
+    }
+    if (message.reference.isNotEmpty) {
+      parts.add(
+        _AssistantRenderPart.widget(
+          _AssistantMessageListTileReferencePart(message: message),
+          hasLeadingSpacing: true,
+        ),
+      );
+    }
+    if (loading) {
+      parts.add(
+        const _AssistantRenderPart.widget(
+          _AssistantMessageListTileLoadingPart(loading: true),
+        ),
+      );
+    }
+    return parts;
+  }
+
+  List<ToolGroupCardItem> _buildToolItems(MessageEntity message) {
     Map<String, String> results = {};
     if (message.toolResults.isNotEmpty) {
       try {
@@ -190,22 +266,25 @@ class _AssistantMessageListTile extends StatelessWidget {
             ),
           );
         }
-        if (items.length == 1) {
-          final item = items.single;
-          cards.add(
-            ToolCard(
-              toolName: item.toolName,
-              arguments: item.arguments,
-              result: item.result,
-            ),
-          );
-        } else if (items.length > 1) {
-          cards.add(ToolGroupCard(items: items));
-        }
+        return items;
       } catch (_) {}
     }
 
-    return cards;
+    return [];
+  }
+
+  Widget _buildRenderPart(_AssistantRenderPart part) {
+    final items = part.toolItems;
+    if (items == null) return part.widget!;
+    if (items.length == 1) {
+      final item = items.single;
+      return ToolCard(
+        toolName: item.toolName,
+        arguments: item.arguments,
+        result: item.result,
+      );
+    }
+    return ToolGroupCard(items: items);
   }
 
   Widget _buildTrailingSpace() {
