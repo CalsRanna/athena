@@ -6,12 +6,41 @@ import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/component/tool_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 void main() {
   final sentinel = SentinelEntity(name: 'Test', avatar: 'T');
+
+  Future<void> pumpAssistantMessages(
+    WidgetTester tester,
+    List<MessageEntity> messages, {
+    double height = 700,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          useMaterial3: true,
+          extensions: const [AthenaColors.dark],
+        ),
+        home: Scaffold(
+          body: SizedBox(
+            width: 700,
+            height: height,
+            child: CustomScrollView(
+              reverse: true,
+              slivers: [
+                MessageCardListSliver(messages: messages, sentinel: sentinel),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
 
   Future<void> pumpMessage(
     WidgetTester tester, {
@@ -138,25 +167,7 @@ void main() {
       ]),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          extensions: const [AthenaColors.dark],
-        ),
-        home: Scaffold(
-          body: SizedBox(
-            width: 700,
-            child: MessageListTile(
-              message: first,
-              assistantMessages: [first, second],
-              sentinel: sentinel,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
+    await pumpAssistantMessages(tester, [first, second]);
 
     expect(find.text('first response'), findsOneWidget);
     expect(find.text('second response'), findsOneWidget);
@@ -165,17 +176,48 @@ void main() {
     expect(find.byType(ToolCard), findsNWidgets(2));
     expect(find.byType(ToolGroupCard), findsNothing);
     expect(find.text('References:'), findsNWidgets(2));
+    expect(
+      tester.getTopLeft(find.text('first response')).dy,
+      lessThan(tester.getTopLeft(find.text('second response')).dy),
+    );
 
-    final backgroundCards = tester
-        .widgetList<Container>(find.byType(Container))
-        .where((container) {
-          final decoration = container.decoration;
-          return decoration is BoxDecoration &&
-              decoration.borderRadius == BorderRadius.circular(24) &&
-              decoration.color ==
-                  AthenaColors.dark.surfaceRaised.withValues(alpha: 0.95);
-        });
-    expect(backgroundCards, hasLength(1));
+    expect(find.byType(DecoratedSliver), findsNothing);
+    final firstBackground = tester.widget<Container>(
+      find.byKey(const ValueKey('assistant-card-segment-1')),
+    );
+    final secondBackground = tester.widget<Container>(
+      find.byKey(const ValueKey('assistant-card-segment-2')),
+    );
+    final firstDecoration = firstBackground.decoration as BoxDecoration;
+    final secondDecoration = secondBackground.decoration as BoxDecoration;
+    const radius = Radius.circular(24);
+    expect(
+      firstDecoration.borderRadius,
+      const BorderRadius.only(topLeft: radius, topRight: radius),
+    );
+    expect(
+      secondDecoration.borderRadius,
+      const BorderRadius.only(bottomLeft: radius, bottomRight: radius),
+    );
+    expect(
+      firstDecoration.color,
+      AthenaColors.dark.surfaceRaised.withValues(alpha: 0.95),
+    );
+    expect(
+      secondDecoration.color,
+      AthenaColors.dark.surfaceRaised.withValues(alpha: 0.95),
+    );
+    expect(
+      tester
+          .getBottomLeft(find.byKey(const ValueKey('assistant-card-segment-1')))
+          .dy,
+      closeTo(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('assistant-card-segment-2')))
+            .dy,
+        0.01,
+      ),
+    );
   });
 
   testWidgets('跨原始消息的工具调用仅在无推理间隔时合并', (tester) async {
@@ -212,25 +254,7 @@ void main() {
     );
 
     Future<void> pumpMessages(List<MessageEntity> messages) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(
-            useMaterial3: true,
-            extensions: const [AthenaColors.dark],
-          ),
-          home: Scaffold(
-            body: SizedBox(
-              width: 700,
-              child: MessageListTile(
-                message: messages.first,
-                assistantMessages: messages,
-                sentinel: sentinel,
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
+      await pumpAssistantMessages(tester, messages);
     }
 
     await pumpMessages([first, second]);
@@ -271,25 +295,7 @@ void main() {
       ]),
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          extensions: const [AthenaColors.dark],
-        ),
-        home: Scaffold(
-          body: SizedBox(
-            width: 700,
-            child: MessageListTile(
-              message: textMessage,
-              assistantMessages: [textMessage, toolMessage],
-              sentinel: sentinel,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
+    await pumpAssistantMessages(tester, [textMessage, toolMessage]);
 
     expect(find.byType(ToolCard), findsOneWidget);
     expect(
@@ -324,25 +330,7 @@ void main() {
       content: 'response after tool',
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          extensions: const [AthenaColors.dark],
-        ),
-        home: Scaffold(
-          body: SizedBox(
-            width: 700,
-            child: MessageListTile(
-              message: toolMessage,
-              assistantMessages: [toolMessage, textMessage],
-              sentinel: sentinel,
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
+    await pumpAssistantMessages(tester, [toolMessage, textMessage]);
 
     expect(find.byType(ToolCard), findsOneWidget);
     expect(find.text('response after tool'), findsOneWidget);
@@ -353,6 +341,73 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('追加新轮次后保留历史工具卡的展开状态', (tester) async {
+    final toolMessage = MessageEntity(
+      id: 1,
+      chatId: 1,
+      role: 'assistant',
+      toolCalls: jsonEncode([
+        {
+          'id': 'call-1',
+          'name': 'file_read',
+          'arguments': jsonEncode({'path': '/tmp/a.dart'}),
+        },
+      ]),
+      toolResults: jsonEncode([
+        {'id': 'call-1', 'name': 'file_read', 'result': 'file contents'},
+      ]),
+    );
+    final nextMessage = MessageEntity(
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      content: 'next response',
+    );
+
+    await pumpAssistantMessages(tester, [toolMessage]);
+    await tester.tap(find.text('file_read'));
+    await tester.pump();
+    expect(find.text('file contents'), findsOneWidget);
+
+    await pumpAssistantMessages(tester, [toolMessage, nextMessage]);
+
+    expect(find.text('file contents'), findsOneWidget);
+    expect(find.text('next response'), findsOneWidget);
+  });
+
+  testWidgets('长 Assistant 卡片由外层视口懒构建且没有内部滚动', (tester) async {
+    final messages = List.generate(
+      100,
+      (index) => MessageEntity(
+        id: index,
+        chatId: 1,
+        role: 'assistant',
+        content: 'response $index',
+        reasoningContent: 'reasoning $index',
+        reasoningStartedAt: DateTime(2026),
+        reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 1)),
+        toolCalls: jsonEncode([
+          {
+            'id': 'call-$index',
+            'name': 'bash',
+            'arguments': jsonEncode({'command': 'echo $index'}),
+          },
+        ]),
+        toolResults: jsonEncode([
+          {'id': 'call-$index', 'name': 'bash', 'result': 'result $index'},
+        ]),
+      ),
+    );
+
+    await pumpAssistantMessages(tester, messages, height: 300);
+
+    expect(find.byType(DecoratedSliver), findsNothing);
+    expect(find.byType(SliverList), findsOneWidget);
+    expect(find.byType(Scrollable), findsOneWidget);
+    expect(find.byType(AthenaMarkdown), findsWidgets);
+    expect(find.byType(AthenaMarkdown).evaluate().length, lessThan(20));
   });
 
   testWidgets('多个工具调用默认折叠在同一张 ToolGroupCard 中', (tester) async {
