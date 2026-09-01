@@ -8,6 +8,8 @@ import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
 import 'package:athena_core/agent/tool/powershell_shell_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_evolve_tool.dart';
+import 'package:athena_core/agent/tool/sentinel_get_tool.dart';
+import 'package:athena_core/agent/tool/sentinel_list_tool.dart';
 import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
@@ -65,6 +67,8 @@ ToolRegistry buildToolRegistry({
       ExperienceLearnTool(repository: experienceRepository),
       ExperienceRecallTool(repository: experienceRepository),
       ExperienceReviewTool(repository: experienceRepository),
+      SentinelListTool(repository: sentinelRepository),
+      SentinelGetTool(repository: sentinelRepository),
       SentinelEvolveTool(
         repository: sentinelRepository,
         historyStore: historyStore,
@@ -94,6 +98,8 @@ ToolRegistry buildToolRegistry({
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
     ExperienceReviewTool(repository: experienceRepository),
+    SentinelListTool(repository: sentinelRepository),
+    SentinelGetTool(repository: sentinelRepository),
     SentinelEvolveTool(
       repository: sentinelRepository,
       historyStore: historyStore,
