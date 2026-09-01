@@ -118,7 +118,6 @@ class AgentService {
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
-    List<ChatMessage>? digestMessages,
     String? sentinelId,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
@@ -139,13 +138,8 @@ class AgentService {
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
 
-    var messages = _injectPrompts(
-      baseMessages,
-      skillPrompt,
-      evolutionPrompt,
-      runtimePrompt,
-      digestMessages,
-    );
+    var messages =
+        _injectPrompts(baseMessages, skillPrompt, evolutionPrompt, runtimePrompt);
     _skillRegistry?.clearContext();
 
     // 构建复合 beforeToolCall：用户 hook → 权限检查
@@ -492,23 +486,21 @@ class AgentService {
     };
   }
 
-  /// 首轮注入 runtime / evolution / skill / digest prompt。
+  /// 首轮注入 runtime / evolution / skill prompt。
   ///
   /// 目标布局（按语义分层，缓存前缀稳定）：
-  ///   [sentinel, runtime, evolution, compact-summary, digest?, history...]
+  ///   [sentinel, runtime, evolution, system-summaries?, history...]
   ///
   /// base 约定（ChatMessageService.buildMessages）：首个 system 是 sentinel，
-  /// 其后的 system 是 compact 摘要（历史浓缩），非 system 是对话历史。
+  /// 其后的 system 是历史类摘要（memory digest / compact 摘要——对话内
+  /// 恒定，随消息历史自然在场），非 system 是对话历史。
   /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
-  ///   之后、compact 摘要之前——指令层连续，紧凑摘要保持"历史区头部"；
-  /// - 动态注入段（digestMessages，每次 run 重新检索、内容必变）插在
-  ///   system 块之后、历史消息之前——垫底不打断缓存前缀。
+  ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
   List<ChatMessage> _injectPrompts(
     List<ChatMessage> base,
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
-    List<ChatMessage>? digestMessages,
   ) {
     var sentinelEnd = -1;
     for (var i = 0; i < base.length; i++) {
@@ -535,7 +527,7 @@ class AgentService {
       if (i == sentinelEnd) {
         head.add(m); // sentinel
       } else if (m is SystemMessage) {
-        summaries.add(m); // compact 摘要
+        summaries.add(m); // 历史类摘要（memory digest / compact）
       } else {
         history.add(m);
       }
@@ -544,7 +536,6 @@ class AgentService {
       ...head,
       ...staticBlocks,
       ...summaries,
-      ...?digestMessages, // 动态段垫底：紧贴历史，不打断缓存前缀
       ...history,
     ];
   }
