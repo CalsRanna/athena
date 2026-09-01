@@ -118,6 +118,7 @@ class AgentService {
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
+    List<ChatMessage>? digestMessages,
     String? sentinelId,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
@@ -138,8 +139,13 @@ class AgentService {
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
 
-    var messages =
-        _injectPrompts(baseMessages, skillPrompt, evolutionPrompt, runtimePrompt);
+    var messages = _injectPrompts(
+      baseMessages,
+      skillPrompt,
+      evolutionPrompt,
+      runtimePrompt,
+      digestMessages,
+    );
     _skillRegistry?.clearContext();
 
     // 构建复合 beforeToolCall：用户 hook → 权限检查
@@ -486,34 +492,61 @@ class AgentService {
     };
   }
 
-  /// 首轮注入 skill / evolution / runtime prompt。
+  /// 首轮注入 runtime / evolution / skill / digest prompt。
   ///
-  /// runtimePrompt（运行环境事实）插入在所有 system 提示（sentinel、
-  /// 记忆摘要、压缩摘要）之后、首个非 system 消息之前——即"系统提示词
-  /// 后面"，与历史消息隔开，compact 时随 system 块完整保留。
+  /// 目标布局（按语义分层，缓存前缀稳定）：
+  ///   [sentinel, runtime, evolution, compact-summary, digest?, history...]
+  ///
+  /// base 约定（ChatMessageService.buildMessages）：首个 system 是 sentinel，
+  /// 其后的 system 是 compact 摘要（历史浓缩），非 system 是对话历史。
+  /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
+  ///   之后、compact 摘要之前——指令层连续，紧凑摘要保持"历史区头部"；
+  /// - 动态注入段（digestMessages，每次 run 重新检索、内容必变）插在
+  ///   system 块之后、历史消息之前——垫底不打断缓存前缀。
   List<ChatMessage> _injectPrompts(
     List<ChatMessage> base,
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
+    List<ChatMessage>? digestMessages,
   ) {
-    var messages = List<ChatMessage>.from(base);
-    if (skillPrompt != null && skillPrompt.isNotEmpty) {
-      messages = [ChatMessage.system(skillPrompt), ...messages];
-    }
-    if (evolutionPrompt != null && evolutionPrompt.isNotEmpty) {
-      messages = [ChatMessage.system(evolutionPrompt), ...messages];
-    }
-    if (runtimePrompt != null && runtimePrompt.isNotEmpty) {
-      final index = messages.indexWhere((m) => m is! SystemMessage);
-      final runtimeMessage = ChatMessage.system(runtimePrompt);
-      if (index == -1) {
-        messages.add(runtimeMessage);
-      } else {
-        messages.insert(index, runtimeMessage);
+    var sentinelEnd = -1;
+    for (var i = 0; i < base.length; i++) {
+      if (base[i] is SystemMessage) {
+        sentinelEnd = i;
+        break;
       }
     }
-    return messages;
+
+    final staticBlocks = <ChatMessage>[
+      if (runtimePrompt != null && runtimePrompt.isNotEmpty)
+        ChatMessage.system(runtimePrompt),
+      if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
+        ChatMessage.system(evolutionPrompt),
+      if (skillPrompt != null && skillPrompt.isNotEmpty)
+        ChatMessage.system(skillPrompt),
+    ];
+
+    final head = <ChatMessage>[];
+    final summaries = <ChatMessage>[];
+    final history = <ChatMessage>[];
+    for (var i = 0; i < base.length; i++) {
+      final m = base[i];
+      if (i == sentinelEnd) {
+        head.add(m); // sentinel
+      } else if (m is SystemMessage) {
+        summaries.add(m); // compact 摘要
+      } else {
+        history.add(m);
+      }
+    }
+    return [
+      ...head,
+      ...staticBlocks,
+      ...summaries,
+      ...?digestMessages, // 动态段垫底：紧贴历史，不打断缓存前缀
+      ...history,
+    ];
   }
 
   /// 从 ToolRegistry 构建 OpenAI Tool 列表。

@@ -51,9 +51,22 @@ class ChatMessageService {
       wrapped.add(ChatMessage.system(sentinel.prompt));
     }
 
+    // 历史中 role=system 的消息是 compact 摘要。它们落库时被追加到
+    // compact 时刻的末尾，按 id 排序读回后会夹在对话中间——system
+    // 消息只在消息流头部才符合惯例，且摘要语义上替代的是被压缩的早
+    // 期历史。因此归位：summary 全部放在历史区开头（sentinel 之后）。
+    final summaries = <ChatMessage>[];
+    final history = <ChatMessage>[];
     for (final msg in chatMessages) {
-      wrapped.addAll(_convertMessages(msg, includeReasoning: includeReasoning));
+      if (msg.role == 'system') {
+        summaries.addAll(
+            _convertMessages(msg, includeReasoning: includeReasoning));
+      } else {
+        history.addAll(
+            _convertMessages(msg, includeReasoning: includeReasoning));
+      }
     }
+    wrapped.addAll([...summaries, ...history]);
 
     return wrapped;
   }

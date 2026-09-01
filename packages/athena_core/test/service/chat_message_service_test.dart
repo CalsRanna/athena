@@ -204,6 +204,40 @@ void main() {
       expect(result.first, isA<SystemMessage>());
       _assertPairingValid(result.sublist(1));
     });
+
+    // compact 摘要在 DB 中按 id 排位（compact 时刻追加），可能夹在
+    // 对话中间。buildMessages 必须把它归位到历史区开头（sentinel 之后）。
+    test('compact summary is hoisted to the head of history (sentinel after)',
+        () async {
+      final summary = MessageEntity(
+        chatId: 1,
+        role: 'system',
+        content: 'Previous conversation summary:\nkey facts',
+        compacted: false,
+      );
+      final messages = [
+        _user('q1'),
+        _assistantText('a1'),
+        summary, // DB 中位于所有历史之后（compact 时追加）
+        _user('q2'),
+        _assistantText('a2'),
+      ];
+      final service =
+          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+      final result = await service.buildMessages(
+        chat: _chat(retention: -1),
+        sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
+      );
+
+      // [sentinel, summary, history...] —— summary 紧跟 sentinel，
+      // 而不是夹在 q2/a2 中间。
+      expect(result, hasLength(6));
+      expect(result[0], isA<SystemMessage>());
+      expect((result[0] as SystemMessage).content, 'you are a bot');
+      expect((result[1] as SystemMessage).content,
+          startsWith('Previous conversation summary:'));
+      expect(result[2], isA<UserMessage>());
+    });
   });
 
   group('dangling tool_calls without tool_results (cancelled runs)', () {
