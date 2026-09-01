@@ -117,6 +117,14 @@ class _PasteIntent extends Intent {
 
 class _InputState extends State<_Input> {
   bool _pasting = false;
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -141,12 +149,14 @@ class _InputState extends State<_Input> {
     );
     var textField = TextField(
       controller: widget.controller,
+      scrollController: _scrollController,
       cursorHeight: 16,
       cursorColor: colors.textInput,
       decoration: inputDecoration,
       style: inputTextStyle,
       maxLines: 4,
       minLines: 1,
+      onChanged: (_) => _scrollToCaret(),
     );
     var shortcuts = Shortcuts(
       shortcuts: const {
@@ -206,6 +216,19 @@ class _InputState extends State<_Input> {
       text: newText,
       selection: TextSelection.collapsed(offset: selection.start + 1),
     );
+    _scrollToCaret();
+  }
+
+  /// 多行输入超过可视高度时滚动到光标所在的最新一行
+  /// （TextField 不会自动跟随光标，需在文本变化后手动滚动）。
+  void _scrollToCaret() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.maxScrollExtent > 0) {
+        _scrollController.jumpTo(position.maxScrollExtent);
+      }
+    });
   }
 
   /// 图片感知粘贴：剪贴板中有图片时全部贴入待发送列表
@@ -243,6 +266,7 @@ class _InputState extends State<_Input> {
       text: newText,
       selection: TextSelection.collapsed(offset: start + text.length),
     );
+    _scrollToCaret();
   }
 }
 
