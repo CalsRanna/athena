@@ -128,29 +128,24 @@ class CommandAnalyzer {
 
   /// 判断命令是否为只读(无副作用),命中则权限层默认放行。
   ///
-  /// 保守策略:任何复合形式(管道/重定向/分隔符)一律不算只读,
-  /// 只有单个简单命令且动作在白名单内才算。
+  /// 保守策略:重定向、命令替换($()/反引号)一律不算只读;"纯只读链"
+  /// (滤波器管道 `ls | head -100`、`a && b` 的每个子段都只读)按子段
+  /// 逐段判定,全部只读才放行;单个简单命令动作在白名单内才算。
   static bool isReadOnlyCommand(String command) {
     final trimmed = command.trim();
     if (trimmed.isEmpty) return false;
-    // 重定向、管道、分隔符都可能引入副作用或后续危险命令；
-    // 命令替换 $(...) / 反引号 / 参数与花括号展开会执行任意命令，
-    // 一律不算只读（如 `echo $(git push --force)`、`` echo `rm -f /tmp/x` ``）。
-    if (trimmed.contains('>') ||
-        trimmed.contains('<') ||
-        trimmed.contains('|') ||
-        trimmed.contains(';') ||
-        trimmed.contains('&&') ||
-        trimmed.contains('||') ||
-        trimmed.contains(r'$') ||
-        trimmed.contains('`') ||
-        trimmed.contains('{') ||
-        trimmed.contains('(')) {
-      return false;
-    }
 
     // 敏感路径:即便命中只读白名单,读取凭据类文件也需人工审批
     if (containsSensitivePath(trimmed)) return false;
+
+    // 复合命令:引号/括号感知拆段后逐段判定(如 `ls -la | head -100`、
+    // `cd /a && git status`)。任一段非只读(`a && rm b`、`ls | tee out`)
+    // 则整体弹窗。sed/awk 的脚本参数($、{}、()、正则交替)是常规
+    // 语法,由各自分支豁免处理,不在此处拦截。
+    final subs = splitSubcommands(trimmed);
+    if (subs.length > 1) {
+      return subs.every(isReadOnlyCommand);
+    }
 
     final action = extractAction(trimmed);
     if (action == null) return false;
@@ -159,12 +154,29 @@ class CommandAnalyzer {
         trimmed.substring(trimmed.indexOf(action) + action.length).trim();
     final args = rest.isEmpty ? <String>[] : rest.split(RegExp(r'\s+'));
 
+    if (action == 'sed') return _isReadOnlySed(args);
+    if (action == 'awk') return _isReadOnlyAwk(args);
+
+    // 常规命令:重定向与命令替换/参数展开是危险形态,先拦
+    if (trimmed.contains('>') ||
+        trimmed.contains('<') ||
+        trimmed.contains(r'$') ||
+        trimmed.contains('`')) {
+      return false;
+    }
+
     switch (action) {
       case 'ls':
       case 'cat':
       case 'grep':
       case 'head':
       case 'tail':
+      case 'sort':
+      case 'wc':
+      case 'uniq':
+      case 'cut':
+      case 'nl':
+      case 'tr':
       case 'pwd':
       case 'echo':
       case 'which':
@@ -172,12 +184,16 @@ class CommandAnalyzer {
       case 'cd':
         // cd 本身无副作用;复合命令(cd x && cmd)按子命令判定时,
         // cd 子命令不应造成弹窗(敏感路径已在上面的检查拦截)
+        // sort/wc/uniq/cut/nl/tr 为纯滤波器,常出现在只读管道右段
         return true;
       case 'git':
-        // 裸 git 打开交互界面,不算只读;只读子命令才放行
-        if (args.isEmpty) return false;
-        final sub = args.first;
-        return sub == 'status' || sub == 'log' || sub == 'diff';
+        return _gitReadOnly(args);
+      case 'dart':
+      case 'flutter':
+        // 分析/跑测试无文件副作用;run(执行代码)、format(改写文件)、
+        // pub(更新锁文件)等仍走人工审批
+        return args.isNotEmpty &&
+            (args.first == 'test' || args.first == 'analyze');
       case 'npm':
         return args.isNotEmpty && args.first == 'list';
       case 'find':
@@ -185,6 +201,76 @@ class CommandAnalyzer {
         return !args.any(
           (a) => a == '-delete' || a == '-exec' || a == '-execdir',
         );
+      default:
+        return false;
+    }
+  }
+
+  /// sed 的只读判定。脚本内 `$`、`()`、`{}`(行锚/反向引用/地址分组)
+  /// 是常规语法,不走通用拦截;唯二危险形态是原地写文件
+  /// (-i / --in-place)与输出重定向(> 写文件)。
+  static bool _isReadOnlySed(List<String> args) {
+    return !args.any(
+      (a) => a.startsWith('-i') || a == '--in-place' || a.contains('>'),
+    );
+  }
+
+  /// awk 的只读判定。`$1`/`$NF`、函数括号、花括号是常规语法,不走
+  /// 通用拦截;危险源是脚本内执行外部命令(system())或重定向写文件
+  /// (>)/管道到外部命令(|)。注意 awk 脚本内正则交替 `/a|b/` 会被
+  /// 误判为管道而弹窗 —— 宁可多弹一次,不可静默放行 shell 管道。
+  static bool _isReadOnlyAwk(List<String> args) {
+    return !args.any(
+      (a) => a.contains('system(') || a.contains('>') || a.contains('|'),
+    );
+  }
+
+  /// git 的只读判定。支持 `git -C <dir>` / `--no-pager` 前缀(agent
+  /// 在工作区外查看仓库的常用形态);只读子命令才放行。
+  static bool _gitReadOnly(List<String> args) {
+    var i = 0;
+    while (i < args.length) {
+      if (args[i] == '--no-pager') {
+        i++;
+        continue;
+      }
+      if (args[i] == '-C' && i + 1 < args.length) {
+        i += 2;
+        continue;
+      }
+      break;
+    }
+    if (i >= args.length) return false;
+    final sub = args[i];
+    final rest = args.sublist(i + 1);
+    switch (sub) {
+      case 'status':
+      case 'log':
+      case 'diff':
+      case 'show':
+        return true;
+      case 'branch':
+        // 裸 branch(列本地分支)或纯展示 flag;创建/重命名/删除
+        // (-c/-C/-d/-D/-m/-M)拦截
+        if (rest.isEmpty) return true;
+        if (rest.every((a) => a.startsWith('-'))) return true;
+        return rest.contains('--list') || rest.contains('-l');
+      case 'tag':
+        // 裸 tag(列标签)或纯展示 flag(-n/-l/--list/--sort);
+        // `tag v1.0`(创建)、`tag -d`(删除)、`tag -a`(annotated)拦截
+        if (rest.isEmpty) return true;
+        if (rest.every((a) => a.startsWith('-'))) return true;
+        return rest.contains('-l') || rest.contains('--list');
+      case 'remote':
+        // `git remote -v`、`git remote show <name>` 等展示形态;
+        // add/set-url 等写配置拦截
+        if (rest.isEmpty) return true;
+        if (rest.first == 'show') return true;
+        return rest.every((a) => a == '-v' || a == '-vv');
+      case 'stash':
+        // 裸 stash 进入交互界面;只放行 list / show
+        return rest.isNotEmpty &&
+            (rest.first == 'list' || rest.first == 'show');
       default:
         return false;
     }
