@@ -70,6 +70,11 @@ class LlmClient {
   /// 代理挂起等）时终止流，避免 `await for` 永久挂起。
   static const streamIdleTimeout = Duration(minutes: 2);
 
+  /// 非流式请求总超时：与流式空闲超时保持一致。无此超时时，
+  /// 连接建立但服务端无响应（代理/中转挂起）会让请求永不返回，
+  /// 造成上游 `isGenerating` 等状态永久卡死。
+  static const fetchTimeout = Duration(minutes: 2);
+
   LlmClient({
     RetryConfig retryConfig = const RetryConfig(),
     @visibleForTesting OpenAIClientFactory? clientFactory,
@@ -135,7 +140,7 @@ class LlmClient {
     var client = _createClient(provider.apiKey, provider.baseUrl);
     try {
       return await retry(
-        () => client.chat.completions.create(request),
+        () => client.chat.completions.create(request).timeout(fetchTimeout),
         config: _retryConfig,
       );
     } finally {

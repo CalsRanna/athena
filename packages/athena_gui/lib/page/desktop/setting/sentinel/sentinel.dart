@@ -94,6 +94,9 @@ class _DesktopSettingSentinelPageState
       AthenaDialog.warning('Prompt is required');
       return;
     }
+    // 与移动端一致：生成期间显示 loading 弹窗，避免请求慢时
+    // 页面看起来「没反应」（按钮旁的小 spinner 不易察觉）
+    AthenaDialog.loading();
     try {
       var modelId = await _getModelId();
       if (modelId == null) return;
@@ -101,16 +104,20 @@ class _DesktopSettingSentinelPageState
         promptController.text,
         modelId: modelId,
       );
-      if (generatedSentinel != null && nameController.text != 'Athena') {
+      if (generatedSentinel != null) {
+        // 名字由 ValueListenableBuilder 直连 controller 自动刷新，
+        // 其余字段是 TextField（controller 驱动），无需 setState
         nameController.text = generatedSentinel.name;
         avatarController.text = generatedSentinel.avatar;
         descriptionController.text = generatedSentinel.description;
         tagsController.text = generatedSentinel.tags;
-      } else if (generatedSentinel == null) {
+      } else {
         AthenaDialog.error(viewModel.error.value ?? 'Generation failed');
       }
     } catch (error) {
       AthenaDialog.error(error.toString());
+    } finally {
+      AthenaDialog.dismiss();
     }
   }
 
@@ -276,7 +283,13 @@ class _DesktopSettingSentinelPageState
         Expanded(child: promptInput),
       ];
       var listChildren = [
-        Text(nameController.text, style: nameTextStyle),
+        // 名字不监听 controller 的 Widget 不会自动刷新；
+        // 用 ValueListenableBuilder 直连 controller，controller 一变即更新
+        ValueListenableBuilder(
+          valueListenable: nameController,
+          builder: (context, value, _) =>
+              Text(value.text, style: nameTextStyle),
+        ),
         const SizedBox(height: 12),
         if (!isPreset) Row(children: avatarChildren),
         if (!isPreset) const SizedBox(height: 12),
