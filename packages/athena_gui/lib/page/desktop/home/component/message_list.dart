@@ -93,22 +93,26 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
           );
     if (approvals.isEmpty) return list;
-    return Column(
-      children: [
-        Expanded(child: list),
-        for (final request in approvals)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
-            child: PermissionApprovalCard(
-              request: request,
-              onDecision: (approved, persistExact) => chatViewModel
-                  .respondApproval(
-                    request,
-                    permissionDecisionOf(approved, persistExact),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        children: [
+          Expanded(child: list),
+          for (final request in approvals)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+              child: PermissionApprovalCard(
+                request: request,
+                maxHeight:
+                    constraints.maxHeight * permissionCardMaxHeightFraction,
+                onDecision: (approved, persistExact) =>
+                    chatViewModel.respondApproval(
+                      request,
+                      permissionDecisionOf(approved, persistExact),
+                    ),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 

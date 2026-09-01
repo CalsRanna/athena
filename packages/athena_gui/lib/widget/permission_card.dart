@@ -5,6 +5,8 @@ import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+const permissionCardMaxHeightFraction = 0.5;
+
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
 /// 容器对齐 Agent 消息卡片（白色圆角 24）；内部结构复用 ToolCard 的
@@ -12,6 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 /// 展示，按钮为浅色卡片上的胶囊体系（深色实心主按钮 + 描边次按钮）。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
+  final double maxHeight;
 
   /// 决策回调（approved + persistExact）。
   final void Function(bool approved, bool persistExact) onDecision;
@@ -19,6 +22,7 @@ class PermissionApprovalCard extends StatelessWidget {
   const PermissionApprovalCard({
     super.key,
     required this.request,
+    required this.maxHeight,
     required this.onDecision,
   });
 
@@ -34,31 +38,35 @@ class PermissionApprovalCard extends StatelessWidget {
     final rightPadding = mobile ? 40.0 : 64.0;
     // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
     // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: colors.surfaceRaised.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildAvatar(context),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 8),
-                _buildCommand(context),
-                const SizedBox(height: 12),
-                _buildActions(context),
-              ],
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: colors.surfaceRaised.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildAvatar(context),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 8),
+                  Flexible(child: _buildCommand(context)),
+                  const SizedBox(height: 12),
+                  _buildActions(context),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -114,12 +122,17 @@ class PermissionApprovalCard extends StatelessWidget {
   /// 完整命令/参数展示：无背景的直接文字（与消息正文一致）。
   Widget _buildCommand(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Text(
-      request.arguments,
-      style: GoogleFonts.firaCode(
-        fontSize: 12,
-        color: colors.textOnRaised,
-        height: 1.6,
+    return Scrollbar(
+      child: SingleChildScrollView(
+        primary: false,
+        child: Text(
+          request.arguments,
+          style: GoogleFonts.firaCode(
+            fontSize: 12,
+            color: colors.textOnRaised,
+            height: 1.6,
+          ),
+        ),
       ),
     );
   }
