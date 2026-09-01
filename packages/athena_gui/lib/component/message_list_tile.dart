@@ -7,6 +7,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
 import 'package:athena_gui/component/tool_card.dart';
+import 'package:athena_gui/component/tool_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -177,15 +178,29 @@ class _AssistantMessageListTile extends StatelessWidget {
     if (message.toolCalls.isNotEmpty) {
       try {
         final calls = jsonDecode(message.toolCalls) as List<dynamic>;
+        final items = <ToolGroupCardItem>[];
         for (final call in calls) {
           final id = call['id'] as String;
-          cards.add(
-            ToolCard(
+          items.add(
+            ToolGroupCardItem(
+              id: id,
               toolName: call['name'] as String? ?? '',
               arguments: call['arguments'] as String? ?? '',
               result: results[id],
             ),
           );
+        }
+        if (items.length == 1) {
+          final item = items.single;
+          cards.add(
+            ToolCard(
+              toolName: item.toolName,
+              arguments: item.arguments,
+              result: item.result,
+            ),
+          );
+        } else if (items.length > 1) {
+          cards.add(ToolGroupCard(items: items));
         }
       } catch (_) {}
     }
@@ -289,22 +304,10 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     if (message.reasoningContent.isEmpty) return const SizedBox();
-    var borderRadius = BorderRadius.circular(8);
-    // 正文区底色比 header 略浅，保持层次（与 markdown 代码块一致）
-    var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
-      color: colors.codeBackground,
-    );
-    var column = Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [_buildTitle(context), _buildContent(context)],
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: updateExpanded,
-      child: Container(decoration: boxDecoration, child: column),
     );
   }
 
@@ -315,78 +318,63 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     if (!message.expanded) return const SizedBox();
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = GoogleFonts.firaCode(
-      fontSize: 12,
-      color: colors.textOnRaised,
-    );
-    return Padding(
-      padding: padding,
-      child: Text(message.reasoningContent, style: textStyle),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: updateExpanded,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Text(
+          message.reasoningContent,
+          style: GoogleFonts.firaCode(
+            fontSize: 12,
+            color: colors.textSecondaryOnRaised,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildTitle(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var borderRadius = BorderRadius.only(
-      bottomLeft: message.expanded ? Radius.zero : Radius.circular(8),
-      bottomRight: message.expanded ? Radius.zero : Radius.circular(8),
-      topLeft: Radius.circular(8),
-      topRight: Radius.circular(8),
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: borderRadius,
-      color: colors.cardHeader,
-    );
-    var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var iconData = HugeIcons.strokeRoundedArrowRight01;
-    if (message.expanded) iconData = HugeIcons.strokeRoundedArrowDown01;
-    var textStyle = GoogleFonts.firaCode(
-      fontSize: 12,
-      color: colors.textOnRaised,
-    );
+    final foreground = colors.textSecondaryOnRaised;
     var startedAt = message.reasoningStartedAt;
     var updatedAt = message.reasoningUpdatedAt;
     var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
     var durationText = 'Thought for ${duration.toStringAsFixed(1)} seconds';
     var text = message.reasoning ? 'Thinking' : durationText;
-    // 状态指示与 ToolCard 对齐：思考中 spinner，完成后绿色对勾
-    const doneColor = Color(0xFF8AA371);
-    var children = [
-      Icon(
-        HugeIcons.strokeRoundedSparkles,
-        size: 15,
-        color: colors.textOnRaised,
-      ),
-      SizedBox(width: 8),
-      // 思考时长文案可能撑满标题行，超出时省略而非溢出
-      Expanded(
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: updateExpanded,
+        borderRadius: BorderRadius.circular(8),
+        mouseCursor: SystemMouseCursors.click,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        child: ToolHeaderShimmer(
+          active: message.reasoning,
+          child: Row(
+            children: [
+              Icon(
+                HugeIcons.strokeRoundedSparkles,
+                size: 15,
+                color: foreground,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.firaCode(fontSize: 12, color: foreground),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      if (message.reasoning)
-        SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(
-            strokeWidth: 1.5,
-            color: colors.textOnRaised,
-          ),
-        )
-      else
-        Icon(HugeIcons.strokeRoundedTick02, size: 15, color: doneColor),
-      const SizedBox(width: 4),
-      Icon(iconData, size: 16, color: colors.textOnRaised),
-    ];
-    return Container(
-      decoration: boxDecoration,
-      padding: padding,
-      child: Row(children: children),
     );
   }
 }

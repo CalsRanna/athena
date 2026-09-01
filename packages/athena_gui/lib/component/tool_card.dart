@@ -6,9 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-/// 工具状态：运行中（无结果）/ 成功 / 失败。
-enum _ToolStatus { running, done, error }
-
 class ToolCard extends StatefulWidget {
   final String toolName;
   final String arguments;
@@ -69,200 +66,194 @@ class ToolCard extends StatefulWidget {
 class _ToolCardState extends State<ToolCard> {
   bool _expanded = false;
 
-  // 样式与 ThinkingPart（消息列表中的思考卡片）统一：
-  // 圆角 8、浅灰背景、firaCode 12，不区分桌面/移动端。
   static const _radius = 8.0;
   static const _fontSize = 12.0;
 
+  bool get _running => !widget.hasResult;
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Container(
-      margin: EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(_radius),
-        color: colors.codeBackground,
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           if (widget.hasResult && _expanded) _buildContent(context),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final borderRadius = (widget.hasResult && _expanded)
-        ? BorderRadius.only(
-            topLeft: Radius.circular(_radius),
-            topRight: Radius.circular(_radius),
-          )
-        : BorderRadius.circular(_radius);
-    final status = _status;
+    final foreground = colors.textSecondaryOnRaised;
 
-    return GestureDetector(
-      onTap: widget.hasResult
-          ? () => setState(() => _expanded = !_expanded)
-          : null,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          color: colors.cardHeader,
-        ),
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(_radius),
+      child: InkWell(
+        onTap: widget.hasResult
+            ? () => setState(() => _expanded = !_expanded)
+            : null,
+        borderRadius: BorderRadius.circular(_radius),
+        mouseCursor: widget.hasResult
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
         child: Row(
           children: [
-            Icon(
-              ToolCard.toolIcon(widget.toolName),
-              size: 15,
-              color: colors.textOnRaised,
-            ),
-            SizedBox(width: 8),
-            // 工具名 + 参数预览共享剩余空间：任一过长时省略而非溢出
             Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      widget.toolName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.firaCode(
-                        fontSize: _fontSize,
-                        fontWeight: FontWeight.w500,
-                        color: colors.textOnRaised,
-                      ),
+              child: ToolHeaderShimmer(
+                active: _running,
+                child: Row(
+                  children: [
+                    Icon(
+                      ToolCard.toolIcon(widget.toolName),
+                      size: 15,
+                      color: foreground,
                     ),
-                  ),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      ToolCard.argPreview(
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
                         widget.toolName,
-                        widget.arguments,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.firaCode(
-                        fontSize: _fontSize,
-                        color: colors.textOnRaised,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.firaCode(
+                          fontSize: _fontSize,
+                          fontWeight: FontWeight.w500,
+                          color: foreground,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        ToolCard.argPreview(widget.toolName, widget.arguments),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.firaCode(
+                          fontSize: _fontSize,
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            SizedBox(width: 8),
-            _buildStatus(context, status),
-            if (widget.hasResult) ...[
-              SizedBox(width: 4),
-              Icon(
-                _expanded
-                    ? HugeIcons.strokeRoundedArrowDown01
-                    : HugeIcons.strokeRoundedArrowRight01,
-                size: 16,
-                color: colors.textOnRaised,
-              ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  _ToolStatus get _status {
-    final result = widget.result;
-    if (result == null) return _ToolStatus.running;
-    if (result.startsWith('Error:')) return _ToolStatus.error;
-    return _ToolStatus.done;
-  }
-
-  Widget _buildStatus(BuildContext context, _ToolStatus status) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 状态色为 accent 色（绿 A7BA88 / 红 E38B8B）的加深变体，
-    // 保证在浅灰 header 上的可读性。
-    const doneColor = Color(0xFF8AA371);
-    const errorColor = Color(0xFFC05555);
-    final runningColor = colors.textOnRaised;
-    final iconColor = switch (status) {
-      _ToolStatus.running => runningColor,
-      _ToolStatus.done => doneColor,
-      _ToolStatus.error => errorColor,
-    };
-    final label = switch (status) {
-      _ToolStatus.running => 'running',
-      _ToolStatus.done => 'done',
-      _ToolStatus.error => 'error',
-    };
-    final labelColor = switch (status) {
-      _ToolStatus.running => runningColor,
-      _ToolStatus.done => doneColor,
-      _ToolStatus.error => errorColor,
-    };
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (status == _ToolStatus.running)
-          SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: iconColor,
-            ),
-          )
-        else
-          Icon(
-            status == _ToolStatus.done
-                ? HugeIcons.strokeRoundedTick02
-                : HugeIcons.strokeRoundedCancelCircle,
-            size: 15,
-            color: iconColor,
-          ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: GoogleFonts.firaCode(fontSize: _fontSize, color: labelColor),
-        ),
-      ],
-    );
-  }
-
   Widget _buildContent(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final isError = _status == _ToolStatus.error;
+    final isError = widget.result!.startsWith('Error:');
     return GestureDetector(
-      onTap: widget.hasResult
-          ? () => setState(() => _expanded = !_expanded)
-          : null,
+      onTap: () => setState(() => _expanded = false),
       child: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
-          color: colors.codeBackground,
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(_radius),
-            bottomRight: Radius.circular(_radius),
-          ),
-        ),
-        padding: EdgeInsets.fromLTRB(12, 10, 4, 10),
-        child: Padding(
-          padding: EdgeInsets.only(right: 4),
-          child: Text(
-            widget.result!,
-            maxLines: 10,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.firaCode(
-              fontSize: _fontSize,
-              color: isError ? Color(0xFFC05555) : colors.textOnRaised,
-              height: 1.6,
-            ),
+        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        child: Text(
+          widget.result!,
+          maxLines: 10,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.firaCode(
+            fontSize: _fontSize,
+            color: isError ? colors.statusError : colors.textSecondaryOnRaised,
+            height: 1.6,
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 仅在工具执行期间为 Header 前景提供低对比度的流动高光。
+class ToolHeaderShimmer extends StatefulWidget {
+  final bool active;
+  final Widget child;
+
+  const ToolHeaderShimmer({
+    super.key,
+    required this.active,
+    required this.child,
+  });
+
+  @override
+  State<ToolHeaderShimmer> createState() => _ToolHeaderShimmerState();
+}
+
+class _ToolHeaderShimmerState extends State<ToolHeaderShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  bool _animationsDisabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _animationsDisabled =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(ToolHeaderShimmer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    if (widget.active && !_animationsDisabled) {
+      if (!_controller.isAnimating) _controller.repeat();
+      return;
+    }
+    _controller
+      ..stop()
+      ..value = 0;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active || _animationsDisabled) return widget.child;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final base = colors.textSecondaryOnRaised.withValues(alpha: 0.45);
+    final highlight = colors.textSecondaryOnRaised.withValues(alpha: 0.95);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final offset = -2.0 + (_controller.value * 4.0);
+        return ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) => LinearGradient(
+            begin: Alignment(offset - 1, 0),
+            end: Alignment(offset + 1, 0),
+            colors: [base, highlight, base],
+            stops: const [0.25, 0.5, 0.75],
+          ).createShader(bounds),
+          child: child,
+        );
+      },
     );
   }
 }
