@@ -215,7 +215,7 @@ packages/
 | 依赖注入 | GetIt（LazySingleton，仅客户端装配层） |
 | 路由 | AutoRoute（桌面无过渡，移动标准过渡） |
 | 数据库 | SQLite + Laconic ORM（GUI 侧实现，PRAGMA foreign_keys = ON） |
-| AI API | openai_dart（path 依赖 `third_party/openai_dart`，流式 + 工具调用 + 推理） |
+| AI API | openai_dart ^8.1.0（流式 + 工具调用 + 推理） |
 | HTTP | http v1.x（web_fetch、web_search） |
 | 测试 | athena_core：`dart test`；athena_gui：`flutter test` |
 

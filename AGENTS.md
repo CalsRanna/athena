@@ -27,7 +27,6 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 athena/
 ├── AGENTS.md / README.md / DESIGN.md
 ├── .github/workflows/          # ci + release（tag v* 触发的三平台构建）
-├── third_party/                # fork 的 openai_dart 等 path 依赖
 └── packages/
     ├── athena_core/             # ★ 纯 Dart 核心（零 Flutter / 零 SQL 依赖）
     │   ├── lib/
@@ -653,7 +652,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 
 | 包 | 用途 |
 |----|------|
-| `openai_dart`（path 依赖 `third_party/openai_dart`） | OpenAI API 客户端（流式 + 工具调用 + 推理），三包共用 |
+| `openai_dart` ^8.1.0 | OpenAI API 客户端（流式 + 工具调用 + 推理），三包共用 |
 | `signals` v6.2.0 | 响应式状态管理（AgentSettings 等） |
 | `http` v1.x | web_fetch/web_search 的 HTTP 客户端 + models.dev 同步 |
 | `yaml` v3.1.2 | Skill 文件 front matter 解析 |
@@ -686,7 +685,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 |----|------|
 | `athena_core`（path 依赖） | 核心包 |
 | `nocterm` ^0.8.0 | 终端 UI（TUI 运行时） |
-| `openai_dart`（path 依赖） | 与 core 同源 |
+| `openai_dart` ^8.1.0 | 与 core 同源 |
 | `signals` / `yaml` | 响应式状态 / 配置解析 |
 
 ---
