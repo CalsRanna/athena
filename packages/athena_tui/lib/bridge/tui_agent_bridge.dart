@@ -86,6 +86,11 @@ class TuiAgentBridge {
     _coordinator.stop(chatId);
   }
 
+  /// 运行中输入：落库排队，当前 run 结束后自动接续为新 run。
+  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) {
+    return _coordinator.queueInput(chatId, message);
+  }
+
   // ─── TUI 侧实现:终端内模态 ─────────────────────────────
 
   /// 测试入口:直接请求一次权限(走与 Agent 相同的 handler 逻辑)。

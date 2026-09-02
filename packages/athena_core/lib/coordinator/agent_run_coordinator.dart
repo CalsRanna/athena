@@ -90,6 +90,12 @@ class AgentRunCoordinator {
   /// 完整 run（含取消落库和时间戳收尾）结束后完成，而非仅 Agent 内循环结束。
   final Map<int, Completer<void>> _settledByChat = {};
 
+  /// 运行中输入队列（chatId → 待接续的落库消息）。
+  ///
+  /// 当前 run 结束后按序取出，以 [persistUserMessage: false] 自动接续为
+  /// 新 run——事件流连续，UI 方无需感知 run 边界。
+  final Map<int, List<MessageEntity>> _pendingInputs = {};
+
   /// 流式运行中的消息快照（chatId → 当前正在生成的 assistant 消息）。
   ///
   /// 流式中间态只存在于内存（迭代边界才落库），UI 切换到正在运行的对话时
@@ -168,6 +174,9 @@ class AgentRunCoordinator {
     required MessageEntity message,
     required ChatEntity chat,
     bool jsonMode = false,
+
+    /// 接续 run 传入 false：消息已在 [queueInput] 落库，跳过存储、直接发事件。
+    bool persistUserMessage = true,
   }) async* {
     final chatId = chat.id!;
     if (_runIdByChat.containsKey(chatId)) {
@@ -188,9 +197,14 @@ class AgentRunCoordinator {
       yield const RunIterationChanged(0);
       yield const RunToolNameChanged(null);
 
-      // 1. 保存用户消息
-      final id = await _messageRepo.storeMessage(message);
-      final userMessage = message.copyWith(id: id);
+      // 1. 保存用户消息（接续 run 的消息已在 queueInput 落库，跳过存储）
+      MessageEntity userMessage;
+      if (persistUserMessage) {
+        final id = await _messageRepo.storeMessage(message);
+        userMessage = message.copyWith(id: id);
+      } else {
+        userMessage = message;
+      }
       userMessageStored = true;
       yield RunMessageStored(userMessage);
       cancelToken.throwIfCancelled();
@@ -363,6 +377,26 @@ class AgentRunCoordinator {
       // 注意：_expandedOverrides 不在全局清理——finalize 时已按消息逐个
       // 移除，多 run 并发时全局 clear 会误删其他 run 的展开状态。
     }
+
+    // ─── 接续排队输入 ───
+    // 本 run 状态已在 finally 清理，递归 send 不会触发 already-active 保护；
+    // 事件流连续，UI 的一次 sendMessage await 覆盖整条 run 链。
+    // stop（取消）后同样接续：打断只作用于当前轮，排队消息照常进入下一轮。
+    final pending = _pendingInputs[chatId];
+    if (pending != null && pending.isNotEmpty) {
+      if (await _chatRepo.getChatById(chatId) != null) {
+        final next = pending.removeAt(0);
+        yield* send(
+          message: next,
+          chat: chat,
+          jsonMode: jsonMode,
+          persistUserMessage: false,
+        );
+      } else {
+        // 删除竞态防护：chat 已删除则丢弃排队消息
+        _pendingInputs.remove(chatId);
+      }
+    }
   }
 
   /// 停止指定对话的 Agent 循环。
@@ -372,22 +406,26 @@ class AgentRunCoordinator {
     if (runId != null) _agentService.abort(runId);
   }
 
-  /// 注入一条 steering 消息：当前轮工具执行完后、下一轮 LLM 调用前插入。
-  void steer(int chatId, ChatMessage message) {
-    final runId = _runIdByChat[chatId];
-    if (runId != null) _agentService.steer(runId, message);
-  }
-
-  /// 注入一条 followUp 消息：Agent 停止后作为新用户输入继续运行。
-  void followUp(int chatId, ChatMessage message) {
-    final runId = _runIdByChat[chatId];
-    if (runId != null) _agentService.followUp(runId, message);
-  }
-
-  /// 清空指定对话所有待注入消息队列。
-  void clearQueues(int chatId) {
-    final runId = _runIdByChat[chatId];
-    if (runId != null) _agentService.clearQueues(runId);
+  /// 运行中输入：落库并排队，当前 run 结束后自动接续为新 run。
+  ///
+  /// 返回落库后的消息（调用方据此立即显示）；无活跃 run 时返回 null，
+  /// 调用方应走 [send] 正常发送。
+  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) async {
+    if (!_runIdByChat.containsKey(chatId)) return null;
+    final id = await _messageRepo.storeMessage(message);
+    final stored = message.copyWith(id: id);
+    final pending = _pendingInputs.putIfAbsent(chatId, () => []);
+    pending.add(stored);
+    // 竞态：storeMessage 落库期间 run 可能已结束（接续检查已执行过），
+    // 队列里这条消息将无人消费——撤销落库并返回 null，交由调用方
+    // 等待收尾后走 send 正常路径（该路径只落库一次）。
+    if (!_runIdByChat.containsKey(chatId)) {
+      pending.remove(stored);
+      if (pending.isEmpty) _pendingInputs.remove(chatId);
+      await _messageRepo.deleteMessage(stored.id!);
+      return null;
+    }
+    return stored;
   }
 
   // ─── 内部 ─────────────────────────────────────────────────

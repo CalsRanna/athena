@@ -768,18 +768,29 @@ class ChatViewModel {
     bool jsonMode = false,
   }) async {
     final chatId = chat.id!;
-    // 仅阻止同一对话的重复运行；其他对话可并发
-    if (isStreamingChat(chatId)) return;
-
-    // Stop 后 UI 已立即恢复发送态；若旧 run 仍在后台收尾，则把新消息
-    // 排在它后面。同一等待点上的并发发送者只有第一个能建立新 run。
-    final previous =
-        _runSettledByChat[chatId]?.future ?? _stream.settledOf(chatId);
-    if (previous != null) await previous;
-    if (isStreamingChat(chatId) ||
-        _runSettledByChat.containsKey(chatId) ||
-        _stream.isStreamingChat(chatId)) {
-      return;
+    // 统一排队语义：运行中或旧 run 收尾期间的新消息不立即发送，等协调层
+    // 状态稳定后或排队（当前 run 结束后自动接续）或直接进入正常发送。
+    // UI 信号与协调层短暂脱节的窗口（run 已收尾而信号未清）通过等待
+    // 收尾后重新判定收敛——任何时序下消息不丢、不并发创建 run。
+    while (true) {
+      if (isStreamingChat(chatId)) {
+        // 运行中输入：落库排队（立即可见），当前 run 结束后由协调层自动
+        // 接续为新 run——不打断正在执行的 Agent（stop 才是打断）。
+        if (await _queueInput(chatId, message)) return;
+        // 窗口：协调层 run 已收尾而 UI 信号未清（事件流即将结束）。
+        // 消息尚未落库，等待旧流收尾后重新判定，安全。
+        await _runSettledByChat[chatId]?.future;
+        continue;
+      }
+      // Stop 后 UI 已立即恢复发送态；若旧 run 仍在后台收尾，则把新消息
+      // 排在它后面。同一等待点上的并发发送者只有第一个能建立新 run。
+      final previous =
+          _runSettledByChat[chatId]?.future ?? _stream.settledOf(chatId);
+      if (previous != null) {
+        await previous;
+        continue;
+      }
+      break;
     }
 
     final settled = Completer<void>();
@@ -861,6 +872,17 @@ class ChatViewModel {
     if (!messages.replaceWhere((m) => m.id == message.id, message)) {
       messages.value = [...messages.value, message];
     }
+  }
+
+  /// 运行中输入排队：落库（协调层）并立即显示在列表。返回 false 表示
+  /// run 恰好已结束、无排队可挂载——调用方应等待收尾后重新判定。
+  Future<bool> _queueInput(int chatId, MessageEntity message) async {
+    final stored = await _stream.queueInput(chatId, message);
+    if (stored == null) return false;
+    // 接续 run 启动时会再收到同 id 的 RunMessageStored，此处替换语义
+    // (append 若已存在则替换) 保证不重复显示
+    _bufferAppendMessage(stored, chatId);
+    return true;
   }
 
   /// 指定对话是否正在流式运行。
