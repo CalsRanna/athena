@@ -459,20 +459,34 @@ class ChatController {
   /// 发送用户消息并消费 [RunEvent] 事件流(镜像 GUI ChatViewModel.sendMessage)。
   Future<void> sendMessage(String text, {bool jsonMode = false}) async {
     final chat = currentChat.value;
-    if (chat?.id == null || isStreaming.value) return;
-
-    // Stop 会立即恢复输入；旧 run 的工具终止与落库仍在后台收尾。
-    // 同一 TUI 会话的新发送排在旧 run 后面，避免两轮写入交叉。
-    final previous = _runSettled;
-    if (previous != null) await previous.future;
-    if (!_active || isStreaming.value || _runSettled != null) return;
-
-    error.value = null;
+    if (chat?.id == null) return;
     final message = MessageEntity(
       chatId: chat!.id!,
       role: 'user',
       content: text,
     );
+
+    // 排队语义(与 GUI ChatViewModel.sendMessage 一致):运行中或旧 run 收尾
+    // 期间的新消息先落库排队,由协调层在当前 run 结束后自动接续为新 run;
+    // 信号与协调层短暂脱节的窗口通过等待收尾后重新判定收敛,消息不丢。
+    while (true) {
+      if (isStreaming.value) {
+        final stored = await _bridge.queueInput(chat.id!, message);
+        if (stored != null) {
+          _applyOrPushMessage(stored);
+          return;
+        }
+      }
+      final previous = _runSettled?.future ?? _bridge.settledOf(chat.id!);
+      if (previous != null) {
+        await previous;
+        continue;
+      }
+      break;
+    }
+    if (!_active) return;
+
+    error.value = null;
     isStreaming.value = true;
     currentTokenUsage.value = null;
     _pendingList = null;
@@ -656,6 +670,24 @@ class ChatController {
       _pendingList = [...messages.value, message];
     } else {
       pending.add(message);
+    }
+    _flushSoon();
+  }
+
+  /// 替换或追加消息(队列输入的本地显示与接续 run 的 RunMessageStored 幂等):
+  /// 同 id 替换,否则追加。
+  void _applyOrPushMessage(MessageEntity message) {
+    if (message.chatId != currentChat.value?.id) return;
+    final pending = _pendingList;
+    if (pending == null) {
+      _pendingList = [...messages.value, message];
+    } else {
+      final index = pending.indexWhere((m) => m.id == message.id);
+      if (index >= 0) {
+        pending[index] = message;
+      } else {
+        pending.add(message);
+      }
     }
     _flushSoon();
   }

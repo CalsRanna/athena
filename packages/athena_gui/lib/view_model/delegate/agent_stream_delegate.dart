@@ -19,7 +19,6 @@ import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/chat_support_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
-import 'package:openai_dart/openai_dart.dart';
 
 /// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
 class ApprovalRequest {
@@ -101,16 +100,9 @@ class AgentStreamDelegate {
     _coordinator.stop(chatId);
   }
 
-  void steer(int chatId, ChatMessage message) {
-    _coordinator.steer(chatId, message);
-  }
-
-  void followUp(int chatId, ChatMessage message) {
-    _coordinator.followUp(chatId, message);
-  }
-
-  void clearQueues(int chatId) {
-    _coordinator.clearQueues(chatId);
+  /// 运行中输入：落库排队，当前 run 结束后自动接续为新 run。
+  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) {
+    return _coordinator.queueInput(chatId, message);
   }
 
   /// 用户对某个审批请求做出决策（由 UI 卡片调用）。

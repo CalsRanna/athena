@@ -687,8 +687,8 @@ class _AthenaAppState extends State<AthenaApp> {
     _textController.clear();
 
     if (_controller.isStreaming.value) {
-      // 输入框已 clear,给出可见反馈避免"消息凭空消失"
-      _pushSystemMessage('正在生成中,请等待完成或按 Esc 停止。');
+      // 运行中输入:排队发送(消息落库可见,当前轮结束后自动接续为新轮)
+      _runGuarded(() => _controller.sendMessage(trimmed));
       return;
     }
 

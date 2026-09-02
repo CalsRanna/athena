@@ -58,8 +58,6 @@ class _AgentRunState {
 
   final CancelToken cancelToken;
   final Completer<void> settled = Completer<void>();
-  final List<ChatMessage> steerQueue = [];
-  final List<ChatMessage> followUpQueue = [];
 }
 
 class AgentService {
@@ -82,22 +80,6 @@ class AgentService {
   /// 等待指定 run 完成后 resolve 的 Future。
   Future<void>? settledOf(int runId) => _runs[runId]?.settled.future;
 
-  /// 注入一条 steering 消息：在当前轮工具执行完成后、下一轮 LLM 调用前插入。
-  void steer(int runId, ChatMessage message) {
-    _runs[runId]?.steerQueue.add(message);
-  }
-
-  /// 注入一条 followUp 消息：在 Agent 停止后作为新用户输入继续运行。
-  void followUp(int runId, ChatMessage message) {
-    _runs[runId]?.followUpQueue.add(message);
-  }
-
-  /// 清空指定 run 所有待注入的消息。
-  void clearQueues(int runId) {
-    final state = _runs[runId];
-    state?.steerQueue.clear();
-    state?.followUpQueue.clear();
-  }
 
   AgentService({
     required ChatService chatService,
@@ -586,38 +568,25 @@ class _AgentLoop {
   var _termination = AgentRunTermination.completed;
   var _reflectionAttempted = false;
 
-  /// 执行整个 run：外层 followUp 循环驱动内层迭代，结束后触发反思并产出 outcome。
+  /// 执行整个 run：单层工具迭代循环，结束后触发反思并产出 outcome。
+  ///
+  /// 运行中输入不在此层处理：协调层（AgentRunCoordinator）把运行中收到
+  /// 的用户消息落库排队，本 run 结束后作为新 run 自动接续。
   Stream<AgentEvent> run() async* {
     try {
-      // 外层循环：followUp 消息可重启内层循环
-      while (true) {
-        var done = false;
-
-        // 内层循环：工具调用迭代
-        for (
-          var iteration = 0;
-          iteration < _maxIterations && !done;
-          iteration++
-        ) {
-          final st = _TurnState();
-          yield* _runIteration(iteration, st);
-          done = st.done;
-        }
-
-        final hitIterationLimit = !done;
-
-        // 检查 followUp 消息：有则注入并重启内层循环
-        if (_state.followUpQueue.isNotEmpty) {
-          final followUps = List<ChatMessage>.from(_state.followUpQueue);
-          _state.followUpQueue.clear();
-          _messages.addAll(followUps);
-        } else {
-          _termination = hitIterationLimit
-              ? AgentRunTermination.maxIterations
-              : AgentRunTermination.completed;
-          break; // 无 followUp，退出外层循环
-        }
+      var done = false;
+      for (
+        var iteration = 0;
+        iteration < _maxIterations && !done;
+        iteration++
+      ) {
+        final st = _TurnState();
+        yield* _runIteration(iteration, st);
+        done = st.done;
       }
+      _termination = done
+          ? AgentRunTermination.completed
+          : AgentRunTermination.maxIterations;
 
       yield* _maybeReflect();
     } on CancelledException catch (e) {
@@ -645,19 +614,12 @@ class _AgentLoop {
     }
   }
 
-  /// 单轮迭代：取消检查 → steering 注入 → LLM 流式 → 追加 assistant 消息
+  /// 单轮迭代：取消检查 → LLM 流式 → 追加 assistant 消息
   /// → 截断保护 → 工具执行 → iterationComplete。
   ///
   /// 完成状态写入 [st]（done = 模型主动结束、无工具调用）。
   Stream<AgentEvent> _runIteration(int iteration, _TurnState st) async* {
     _token.throwIfCancelled();
-
-    // 注入 steering 消息
-    if (_state.steerQueue.isNotEmpty) {
-      final steerMessages = List<ChatMessage>.from(_state.steerQueue);
-      _state.steerQueue.clear();
-      _messages.addAll(steerMessages);
-    }
 
     yield AgentEvent.turnStart(iteration: iteration);
     _iterationsExecuted++;

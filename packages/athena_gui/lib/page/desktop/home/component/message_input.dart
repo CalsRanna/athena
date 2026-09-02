@@ -418,39 +418,42 @@ class _SendButton extends StatelessWidget {
     );
 
     return Watch((context) {
-      // 仅当"当前显示的对话"正在流式时才显示 Stop；
-      // 切到其他对话时恢复发送按钮（后台任务不受影响）
+      // 流式时发送按钮仍保留：点击 = 排队发送（落库可见，当前轮结束后
+      // 自动接续），并排显示 Stop = 打断当前轮（不阻塞排队消息接续）。
       var streaming = chatViewModel.isCurrentChatStreaming.value;
-      var iconData = HugeIcons.strokeRoundedSent;
-      if (streaming) iconData = HugeIcons.strokeRoundedStop;
-      var innerContainer = Container(
-        decoration: innerBoxDecoration,
-        child: Icon(iconData, color: colors.iconOnRaised),
+      Widget roundButton(IconData icon, VoidCallback? onTap) {
+        var innerContainer = Container(
+          decoration: innerBoxDecoration,
+          child: Icon(icon, color: colors.iconOnRaised),
+        );
+        var outerContainer = Container(
+          decoration: boxDecoration,
+          height: 55,
+          padding: EdgeInsets.all(1),
+          width: 55,
+          child: innerContainer,
+        );
+        var mouseRegion = MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: outerContainer,
+        );
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: mouseRegion,
+        );
+      }
+
+      var send = roundButton(HugeIcons.strokeRoundedSent, onSubmitted);
+      if (!streaming) return send;
+      var stop = roundButton(
+        HugeIcons.strokeRoundedStop,
+        onTerminated,
       );
-      var outerContainer = Container(
-        decoration: boxDecoration,
-        height: 55,
-        padding: EdgeInsets.all(1),
-        width: 55,
-        child: innerContainer,
-      );
-      var mouseRegion = MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: outerContainer,
-      );
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => handleTap(streaming),
-        child: mouseRegion,
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [stop, const SizedBox(width: 8), send],
       );
     });
-  }
-
-  void handleTap(bool streaming) {
-    if (!streaming) {
-      onSubmitted?.call();
-      return;
-    }
-    onTerminated?.call();
   }
 }
