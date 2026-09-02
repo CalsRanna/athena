@@ -26,7 +26,7 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 - **自动压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention = -1` 模式），保持长对话可继续
 - **消息注入**：支持运行时注入 steering 消息（当前轮工具执行后、下一轮推理前）与 followUp 消息（Agent 停止后继续运行）
 
-#### 内置工具（桌面端 13 个，移动端 9 个）
+#### 内置工具（桌面端 14 个，移动端 10 个）
 
 | 工具 | 说明 |
 |------|------|
@@ -38,9 +38,9 @@ Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
 | `web_search` | Brave Search API 网络搜索，为 Agent 提供实时信息 |
 | `skill` | 加载 Skill 的完整 Level 2 指令到当前上下文 |
 | `skill_evolve` | Agent 自我进化：创建/更新 Skill（SKILL.md），扩展未来能力 |
-| `experience_learn` | 记录经验教训到长期记忆，支持标签和上下文、Sentinel 私有或全局共享 |
+| `experience_learn` | 经现有危险工具审批后记录/更新/归档长期经验，支持 Sentinel 私有或全局共享 |
 | `experience_recall` | 检索过往经验以指导当前任务 |
-| `experience_review` | 回顾并提炼经验库，生成记忆消化摘要（含免责声明与匹配质量日志） |
+| `sentinel_list` / `sentinel_get` | 列出 Sentinel 或读取完整角色配置 |
 | `sentinel_evolve` | 改进当前角色（系统提示词），支持重命名、原地更新，内置 Sentinel 不可改名 |
 | `sentinel_revert` | 回滚 Sentinel 最近一次演进，恢复历史快照 |
 
@@ -98,12 +98,12 @@ Skill 指令会注入系统提示词，但工具调用仍需经过权限检查�
 Agent 可通过以下机制持续改进自身：
 
 - **Skill Evolution**（`skill_evolve`）：创建或改进 Skill，扩展未来能力
-- **Experience Learning**（`experience_learn` / `experience_recall`）：构建长期经验记忆，存储在 `~/.athena/experiences/`
-- **Experience Review**（`experience_review`）：回顾经验库，生成记忆消化摘要与匹配质量日志
+- **Experience Learning**（`experience_learn` / `experience_recall`）：经现有权限审批构建长期经验记忆，存储在 `~/.athena/experiences/`
+- **Failure Reflection**：最大迭代或同一工具重复失败时生成候选经验；候选仍以普通 `experience_learn` 调用进入现有审批和执行管线
 - **Sentinel Optimization**（`sentinel_evolve`）：基于使用反馈优化系统提示词
 - **Sentinel Revert**（`sentinel_revert`）：回滚最近一次演进（`.athena` 沙盒内的历史快照）
 
-每次对话自动注入极简进化提示（~30 token），完整指南通过内置 `self-evolve` Skill 按需加载。
+每次任务会重新检索并临时注入最多 3 条相关经验摘要（不写入消息历史），同时注入极简进化提示；完整指南通过内置 `self-evolve` Skill 按需加载。
 
 ### 核心功能
 

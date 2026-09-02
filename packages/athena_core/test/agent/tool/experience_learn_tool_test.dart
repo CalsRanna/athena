@@ -6,7 +6,7 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:test/test.dart';
 
 /// 锁定 experience_learn 的生命周期行为（create/update/archive）
-/// 与权限标记（readOnly —— 写本地沙盒记忆不弹审批窗）。
+/// 与权限标记（dangerous —— 持久写入必须走现有审批链路）。
 void main() {
   late Directory tempDir;
   late String rootHome;
@@ -28,8 +28,8 @@ void main() {
   ExperienceRecallTool newRecallTool() =>
       ExperienceRecallTool(repository: ExperienceRepository(homeDir: rootHome));
 
-  test('应标记为 readOnly（本地记忆写入不触发权限弹窗）', () {
-    expect(newLearnTool().risk, ToolRisk.readOnly);
+  test('写入标记为 dangerous，读取仍为 readOnly', () {
+    expect(newLearnTool().risk, ToolRisk.dangerous);
     expect(newRecallTool().risk, ToolRisk.readOnly);
   });
 
@@ -68,6 +68,22 @@ void main() {
     expect(result, contains('lesson must not be empty'));
   });
 
+  test('相同 lesson 不重复创建', () async {
+    final tool = newLearnTool();
+    const args = {
+      'lesson': 'Read the file before editing',
+      '_sentinel_id': 's1',
+    };
+    await tool.execute(args);
+    final duplicate = await tool.execute(args);
+
+    expect(duplicate, contains('already exists'));
+    final all = await ExperienceRepository(
+      homeDir: rootHome,
+    ).listForSentinel('s1');
+    expect(all, hasLength(1));
+  });
+
   test('update 修正经验内容，未提供字段保持原值', () async {
     final learn = newLearnTool();
     await learn.execute({
@@ -75,8 +91,9 @@ void main() {
       'context': 'ctx',
       '_sentinel_id': 's1',
     });
-    final all = await ExperienceRepository(homeDir: rootHome)
-        .listForSentinel('s1');
+    final all = await ExperienceRepository(
+      homeDir: rootHome,
+    ).listForSentinel('s1');
     final id = all.single.id;
 
     final result = await learn.execute({
@@ -112,8 +129,9 @@ void main() {
       'tags': 'retire-me',
       '_sentinel_id': 's1',
     });
-    final all = await ExperienceRepository(homeDir: rootHome)
-        .listForSentinel('s1');
+    final all = await ExperienceRepository(
+      homeDir: rootHome,
+    ).listForSentinel('s1');
     final id = all.single.id;
 
     final result = await learn.execute({

@@ -13,7 +13,7 @@ class EvolutionPrompt {
   /// 详细指导通过内置 `self-evolve` skill 按需加载。
   static const String hint =
       'You have self-evolution tools: skill_evolve, experience_learn, '
-      'experience_recall, experience_review, sentinel_evolve, sentinel_revert. '
+      'experience_recall, sentinel_evolve, sentinel_revert. '
       'Relevant past experiences are injected at the start of each task — '
       'call experience_recall for the full lessons when they matter. '
       'Load the "self-evolve" skill for guidance on when and how to improve yourself. '
@@ -52,17 +52,12 @@ You can permanently improve your capabilities through three mechanisms:
 - **Economy**: Only summaries (~3 items) are auto-injected; full lessons load
   on explicit recall — no prompt bloat
 
-### Experience Verification (`experience_review`)
-- **Purpose**: Record the user's verdict on a past experience — the only
-  external validation signal for your memory
-- **When to use**: The user explicitly validates a lesson (confirm) or
-  explicitly corrects it (refute). The verdict must come from the user,
-  never from your own assessment
-- **After refute**: Archive the experience with `experience_learn`
-  (action="archive") so it stops influencing your recall
-- **External grounding**: Before recording fact-based or time-sensitive
-  conclusions as experiences, verify them with web_search — experiences
-  from your own practice alone risk reinforcing your own blind spots
+### Experience Correction
+- When the user corrects an existing experience, use `experience_learn`
+  with `action="update"` to revise it or `action="archive"` to retire it.
+- Before recording fact-based or time-sensitive conclusions as experiences,
+  verify them with web_search — experiences from your own practice alone risk
+  reinforcing your own blind spots.
 
 ### Sentinel Optimization (`sentinel_evolve` / `sentinel_revert`)
 - **Purpose**: Refine your role definition (system prompt) based on usage patterns

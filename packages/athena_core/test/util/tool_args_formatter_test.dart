@@ -80,6 +80,24 @@ void main() {
       expect(output, isNot(contains(longPath)));
     });
 
+    for (final toolName in const [
+      'experience_learn',
+      'skill_evolve',
+      'sentinel_evolve',
+    ]) {
+      test('$toolName 在现有权限卡中完整展示自进化写入内容', () {
+        final content = '${'lesson ' * 30}must remain visible';
+        final output = formatToolArgsForApproval(
+          toolName,
+          jsonEncode({'content': content}),
+        );
+
+        expect(output, contains(content));
+        expect(output, contains('must remain visible'));
+        expect(output, isNot(contains('...')));
+      });
+    }
+
     test('falls back to raw arguments when JSON is invalid', () {
       final output = formatToolArgsForApproval('bash', 'not-json');
       expect(output, contains('not-json'));

@@ -55,58 +55,64 @@ void main() {
       sentinelRepository: _FakeSentinelRepository(),
       store: _FakeKeyValueStore(),
       defaultWorkdir: workdir,
-      mobileHomeDir: mobile == true ? '${Directory.systemTemp.path}/mobile-home' : null,
+      mobileHomeDir: mobile == true
+          ? '${Directory.systemTemp.path}/mobile-home'
+          : null,
       mobile: mobile,
     );
     return registry.all.map((t) => t.name).toList();
   }
 
-  test('桌面端注册 15 个工具，shell 按操作系统二选一', () {
+  test('桌面端注册 14 个工具，shell 按操作系统二选一', () {
     final names = toolNames(mobile: false);
 
     // bash 与 powershell 互斥：运行时只存在其中一个
     final shell = PlatformUtil.isWindows ? 'powershell' : 'bash';
     final absentShell = PlatformUtil.isWindows ? 'bash' : 'powershell';
 
-    expect(names, hasLength(15));
-    expect(names, containsAll(<String>[
-      'file_read',
-      'file_write',
-      'file_update',
-      shell,
-      'web_fetch',
-      'web_search',
-      'skill',
-      'skill_evolve',
-      'experience_learn',
-      'experience_recall',
-      'experience_review',
-      'sentinel_list',
-      'sentinel_get',
-      'sentinel_evolve',
-      'sentinel_revert',
-    ]));
+    expect(names, hasLength(14));
+    expect(
+      names,
+      containsAll(<String>[
+        'file_read',
+        'file_write',
+        'file_update',
+        shell,
+        'web_fetch',
+        'web_search',
+        'skill',
+        'skill_evolve',
+        'experience_learn',
+        'experience_recall',
+        'sentinel_list',
+        'sentinel_get',
+        'sentinel_evolve',
+        'sentinel_revert',
+      ]),
+    );
     expect(names, isNot(contains(absentShell)));
   });
 
-  test('移动端注册无本地文件/进程依赖的 11 个工具(含进化)', () {
+  test('移动端注册无本地文件/进程依赖的 10 个工具(含进化)', () {
     final names = toolNames(mobile: true);
 
-    expect(names, hasLength(11));
-    expect(names, containsAll(<String>[
-      'web_fetch',
-      'web_search',
-      'skill',
-      // 进化工具只写自己的 .athena 沙盒目录,移动端可用
-      'skill_evolve',
-      'experience_learn',
-      'experience_recall',
-      'experience_review',
-      'sentinel_list',
-      'sentinel_get',
-      'sentinel_evolve',
-      'sentinel_revert',
-    ]));
+    expect(names, hasLength(10));
+    expect(
+      names,
+      containsAll(<String>[
+        'web_fetch',
+        'web_search',
+        'skill',
+        // 进化工具只写自己的 .athena 沙盒目录,移动端可用
+        'skill_evolve',
+        'experience_learn',
+        'experience_recall',
+        'sentinel_list',
+        'sentinel_get',
+        'sentinel_evolve',
+        'sentinel_revert',
+      ]),
+    );
     // 文件与 shell 工具在移动端不可用
     for (final absent in const [
       'file_read',

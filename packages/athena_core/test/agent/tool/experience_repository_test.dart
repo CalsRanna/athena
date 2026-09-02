@@ -5,7 +5,7 @@ import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:test/test.dart';
 
-/// 锁定经验仓库生命周期：update/archive/用户验证、归档过滤与评分排序。
+/// 锁定经验仓库生命周期：update/archive、归档过滤与评分排序。
 void main() {
   late Directory tempDir;
   late String rootHome;
@@ -59,8 +59,9 @@ void main() {
 
       final file = File('$rootHome/.athena/experiences/s1/${e.id}.json');
       expect(file.existsSync(), isFalse, reason: '旧文件应被删除');
-      final sharedFile =
-          File('$rootHome/.athena/experiences/shared/${e.id}.json');
+      final sharedFile = File(
+        '$rootHome/.athena/experiences/shared/${e.id}.json',
+      );
       expect(sharedFile.existsSync(), isTrue);
       // 迁移后可被其他 sentinel 检索到
       final all = await repo.listForSentinel('other');
@@ -81,60 +82,33 @@ void main() {
   group('archive 与过滤', () {
     test('archived 经验默认不参与列表与搜索，includeArchived 可见', () async {
       final repo = newRepo();
-      final a = await repo.save(lesson: 'keep me', tags: ['x'], sentinelId: 's1');
-      final b = await repo.save(
-        lesson: 'refuted lesson',
+      final a = await repo.save(
+        lesson: 'keep me',
         tags: ['x'],
         sentinelId: 's1',
       );
-      await repo.update(sentinelId: 's1', id: b.id, status: ExperienceEntity.statusArchived);
+      final b = await repo.save(
+        lesson: 'retired lesson',
+        tags: ['x'],
+        sentinelId: 's1',
+      );
+      await repo.update(
+        sentinelId: 's1',
+        id: b.id,
+        status: ExperienceEntity.statusArchived,
+      );
 
       final active = await repo.listForSentinel('s1');
       expect(active.map((x) => x.id), [a.id], reason: 'archived 默认隐藏');
 
-      final withArchived =
-          await repo.listForSentinel('s1', includeArchived: true);
+      final withArchived = await repo.listForSentinel(
+        's1',
+        includeArchived: true,
+      );
       expect(withArchived.map((x) => x.id), containsAll([a.id, b.id]));
 
-      final search = await repo.searchForSentinel('s1', 'refuted');
+      final search = await repo.searchForSentinel('s1', 'retired');
       expect(search, isEmpty, reason: 'archived 不参与默认搜索');
-    });
-  });
-
-  group('recordVerdict', () {
-    test('记录用户结论、时间与备注', () async {
-      final repo = newRepo();
-      final e = await repo.save(lesson: 'lesson', sentinelId: 's1');
-
-      final updated = await repo.recordVerdict(
-        sentinelId: 's1',
-        id: e.id,
-        verdict: ExperienceEntity.verdictRefuted,
-        note: 'The user said this is wrong now',
-      );
-      expect(updated!.userVerdict, ExperienceEntity.verdictRefuted);
-      expect(updated.lastVerdictAt, isNotNull);
-      expect(updated.lastVerdictNote, 'The user said this is wrong now');
-      expect(updated.updatedAt, isNotNull);
-
-      // 结论可覆盖（重新确认）
-      final confirmed = await repo.recordVerdict(
-        sentinelId: 's1',
-        id: e.id,
-        verdict: ExperienceEntity.verdictConfirmed,
-      );
-      expect(confirmed!.userVerdict, ExperienceEntity.verdictConfirmed);
-      expect(confirmed.lastVerdictNote, isNull, reason: '空备注不落库');
-    });
-
-    test('不存在的经验返回 null', () async {
-      final repo = newRepo();
-      final result = await repo.recordVerdict(
-        sentinelId: 's1',
-        id: 'nope',
-        verdict: ExperienceEntity.verdictConfirmed,
-      );
-      expect(result, isNull);
     });
   });
 
@@ -156,8 +130,11 @@ void main() {
 
       final results = await repo.searchForSentinel('s1', 'flutter');
       expect(results, hasLength(2));
-      expect(results.first.lesson, contains('best practices'),
-          reason: 'lesson 命中权重更高，应排前（即使更旧）');
+      expect(
+        results.first.lesson,
+        contains('best practices'),
+        reason: 'lesson 命中权重更高，应排前（即使更旧）',
+      );
     });
 
     test('标签命中参与排序', () async {
@@ -170,6 +147,44 @@ void main() {
       );
       final results = await repo.searchForSentinel('s1', 'flutter');
       expect(results.single.lesson, 'lesson b');
+    });
+
+    test('连字符标签可被自然语言中的独立单词召回', () async {
+      final repo = newRepo();
+      await repo.save(
+        lesson: 're-read before replacement',
+        tags: const ['file-update'],
+        sentinelId: 's1',
+      );
+
+      final results = await repo.searchForSentinel('s1', 'file update');
+      expect(results.single.tags, contains('file-update'));
+    });
+
+    test('只重合常见虚词时不召回无关经验', () async {
+      final repo = newRepo();
+      await repo.save(lesson: 'Use the tool with care', sentinelId: 's1');
+
+      final results = await repo.searchForSentinel(
+        's1',
+        'Please help me use this',
+      );
+      expect(results, isEmpty);
+    });
+
+    test('中文长句按二元字组召回相关经验', () async {
+      final repo = newRepo();
+      await repo.save(
+        lesson: '修改文件之前必须重新读取最新内容',
+        tags: const ['文件修改'],
+        sentinelId: 's1',
+      );
+
+      final results = await repo.searchForSentinel(
+        's1',
+        '请帮我安全修改这个文件，先重新读取再替换',
+      );
+      expect(results.single.lesson, contains('重新读取'));
     });
   });
 
@@ -187,13 +202,37 @@ void main() {
       'scope': 'self',
       'sentinel_id': 's1',
     };
-    File('${dir.path}/legacy_1.json').writeAsStringSync(
-      const JsonEncoder.withIndent('  ').convert(legacyJson),
-    );
+    File(
+      '${dir.path}/legacy_1.json',
+    ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(legacyJson));
 
     final all = await repo.listForSentinel('s1', includeArchived: true);
     expect(all, hasLength(1));
     expect(all.single.status, ExperienceEntity.statusActive);
-    expect(all.single.userVerdict, ExperienceEntity.verdictNone);
+  });
+
+  test('旧 JSON 的 refuted verdict 读取时自动视为 archived', () async {
+    final repo = newRepo();
+    final dir = Directory('$rootHome/.athena/experiences/s1');
+    dir.createSync(recursive: true);
+    final legacyJson = {
+      'id': 'legacy_refuted',
+      'created_at': '2026-01-01T00:00:00.000',
+      'lesson': 'wrong lesson',
+      'context': '',
+      'tags': <String>[],
+      'source': 'auto',
+      'scope': 'self',
+      'sentinel_id': 's1',
+      'status': 'active',
+      'user_verdict': 'refuted',
+    };
+    File(
+      '${dir.path}/legacy_refuted.json',
+    ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(legacyJson));
+
+    expect(await repo.listForSentinel('s1'), isEmpty);
+    final archived = await repo.listForSentinel('s1', includeArchived: true);
+    expect(archived.single.status, ExperienceEntity.statusArchived);
   });
 }

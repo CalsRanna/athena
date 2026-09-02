@@ -8,6 +8,7 @@ import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -38,12 +39,13 @@ class PermissionDecision {
 ///
 /// [chatId] 标识请求所属对话（GUI 据此把审批渲染到对应会话）；
 /// [cancelToken] 供调用方在 run 取消时自动拒绝审批。
-typedef PermissionPrompt = Future<PermissionDecision> Function(
-  int chatId,
-  String toolName,
-  String arguments,
-  CancelToken cancelToken,
-);
+typedef PermissionPrompt =
+    Future<PermissionDecision> Function(
+      int chatId,
+      String toolName,
+      String arguments,
+      CancelToken cancelToken,
+    );
 
 /// UI 无关的 Agent run 编排层。
 ///
@@ -131,20 +133,20 @@ class AgentRunCoordinator {
     /// Agent 运行环境（GUI/TUI），由前端装配层注入；null = 不注入
     /// 运行时上下文提示（测试与未支持的环境）。
     RuntimeEnvironment? runtimeEnvironment,
-  })  : _runtimeEnvironment = runtimeEnvironment,
-        _agentService = agentService,
-        _manageService = manageService,
-        _messageService = messageService,
-        _chatService = chatService,
-        _messageRepo = messageRepo,
-        _modelRepo = modelRepo,
-        _sentinelRepo = sentinelRepo,
-        _chatRepo = chatRepo,
-        _supportService = supportService,
-        _agentSettings = agentSettings,
-        _permissionService = permissionService,
-        _permissionPrompt = permissionPrompt,
-        _experienceRepository = experienceRepository;
+  }) : _runtimeEnvironment = runtimeEnvironment,
+       _agentService = agentService,
+       _manageService = manageService,
+       _messageService = messageService,
+       _chatService = chatService,
+       _messageRepo = messageRepo,
+       _modelRepo = modelRepo,
+       _sentinelRepo = sentinelRepo,
+       _chatRepo = chatRepo,
+       _supportService = supportService,
+       _agentSettings = agentSettings,
+       _permissionService = permissionService,
+       _permissionPrompt = permissionPrompt,
+       _experienceRepository = experienceRepository;
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   Set<int> get streamingChatIds => _streamingChatIds;
@@ -212,6 +214,13 @@ class AgentRunCoordinator {
           'Model not found (id: ${chat.modelId}). '
           'Please select a valid model and retry.',
         );
+        yield const RunOutcomeChanged(
+          AgentRunOutcome(
+            termination: AgentRunTermination.error,
+            iterations: 0,
+            error: 'model_not_found',
+          ),
+        );
         return;
       }
 
@@ -224,6 +233,13 @@ class AgentRunCoordinator {
           'Provider not found for model "${model.modelId}". '
           'Please check provider configuration and retry.',
         );
+        yield const RunOutcomeChanged(
+          AgentRunOutcome(
+            termination: AgentRunTermination.error,
+            iterations: 0,
+            error: 'provider_not_found',
+          ),
+        );
         return;
       }
 
@@ -233,50 +249,29 @@ class AgentRunCoordinator {
           ? chat.sentinelId.toString()
           : _directChatSentinelKey;
 
-      // 2.5 记忆摘要注入（仅首轮）：相关经验的摘要确定性进入上下文
-      // （完整内容仍由 experience_recall 按需加载）——修复"经验从不
-      // 被检索"的断环：摘要保证 Agent 至少知道记忆的存在。
-      //
-      // 落库为一条 system 消息，此后随消息历史自然在场：无需每次
-      // send 重算（会话结构稳定、重启后仍在），删除会话时级联清理。
-      // buildMessages 会把历史中的 system 消息归位到历史区开头（摘要
-      // 紧跟 sentinel，位于 compact 摘要与保留历史之前）。
-      // 仅当这是对话的第一条用户消息时检索——后续任务的"相关经验"
-      // 由 experience_recall 按需覆盖，摘要不随任务刷新。
-      final isFirstUserMessage = await _messageService.isFirstUserMessage(
-        chatId,
+      // 2.5 每次顶层 send 都按当前任务重新检索。摘要只进入本次请求上下文，
+      // 不落库，避免会话长期携带首个任务的过期记忆。
+      final digestMessages = await MemoryDigest.messagesFor(
+        repository: _experienceRepository,
+        query: message.content,
+        sentinelId: sentinelKey,
       );
       cancelToken.throwIfCancelled();
-      if (isFirstUserMessage) {
-        final digestMessages = await MemoryDigest.messagesFor(
-          repository: _experienceRepository,
-          query: message.content,
-          sentinelId: sentinelKey,
-        );
-        cancelToken.throwIfCancelled();
-        if (digestMessages != null) {
-          for (final m in digestMessages) {
-            cancelToken.throwIfCancelled();
-            await _messageRepo.storeMessage(
-              MessageEntity(
-                chatId: chatId,
-                role: m.role,
-                content: m is SystemMessage ? m.content : '',
-              ),
-            );
-          }
-        }
-      }
 
       final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
       cancelToken.throwIfCancelled();
       final includeReasoning = model.reasoning;
-      final wrappedMessages = await _messageService.buildMessages(
+      final persistedMessages = await _messageService.buildMessages(
         chat: chat,
         sentinel: sentinel,
         includeReasoning: includeReasoning,
       );
       cancelToken.throwIfCancelled();
+      // 兼容旧版：过滤曾落库的 stale digest，再追加当前任务的临时摘要。
+      final wrappedMessages = MemoryDigest.replaceInContext(
+        persistedMessages,
+        digestMessages,
+      );
 
       final compactedMessages = chat.retention == -1
           ? await _prepareMessagesWithCompact(
@@ -349,6 +344,12 @@ class AgentRunCoordinator {
           yield RunMessageUpdated(cancelled);
         }
       }
+      yield const RunOutcomeChanged(
+        AgentRunOutcome(
+          termination: AgentRunTermination.cancelled,
+          iterations: 0,
+        ),
+      );
       if (userMessageStored) {
         await _manageService.updateChatTimestamp(chat);
         yield const RunListReload();
@@ -413,6 +414,8 @@ class AgentRunCoordinator {
     // RunAssistantAppended 把新卡片加入 UI 列表，否则仅有 id 不同的新
     // 消息走 RunMessageUpdated 时 replaceWhere 找不到匹配而被丢弃。
     var appendedNewMessage = false;
+    var sawOutcome = false;
+    var turns = 0;
 
     Stream<RunEvent> beginNewIteration() async* {
       // 迭代结束:清除 reasoning 标记(流式期间一直为 true),避免该卡片在
@@ -440,6 +443,7 @@ class AgentRunCoordinator {
         cancelToken.throwIfCancelled();
 
         if (event is AgentTurnStartEvent) {
+          turns++;
           // 迭代边界以 turnStart 为准：上一轮以工具结果结束（或截断保护
           // 置位）后，新一轮即使纯 tool_calls 开场（无文本/推理前缀）
           // 也必须切到新消息，否则会与上一轮合并进同一条消息。
@@ -503,6 +507,9 @@ class AgentRunCoordinator {
           if (updated != null) {
             yield RunUsageChanged(event.usage, updated);
           }
+        } else if (event is AgentRunOutcomeEvent) {
+          sawOutcome = true;
+          yield RunOutcomeChanged(event.outcome);
         }
 
         if (appendedNewMessage) {
@@ -533,6 +540,14 @@ class AgentRunCoordinator {
       );
 
       await _manageService.finalizeAssistantMessage(current);
+      if (!sawOutcome) {
+        yield RunOutcomeChanged(
+          AgentRunOutcome(
+            termination: AgentRunTermination.completed,
+            iterations: turns,
+          ),
+        );
+      }
     } on CancelledException {
       // 取消：保留已累积内容并落库。
       // 先为已宣布但未执行/未完成的工具调用合成结果——否则消息带有
@@ -547,6 +562,14 @@ class AgentRunCoordinator {
       final cancelled = await _manageService.recordCancelledOnMessage(current);
       _liveMessages[chat.id!] = cancelled;
       yield RunMessageUpdated(cancelled);
+      if (!sawOutcome) {
+        yield RunOutcomeChanged(
+          AgentRunOutcome(
+            termination: AgentRunTermination.cancelled,
+            iterations: turns,
+          ),
+        );
+      }
     } catch (e) {
       // 错误已记录到消息内容中；同样先闭合工具调用
       current = _closeOpenToolCalls(
@@ -558,6 +581,15 @@ class AgentRunCoordinator {
       final failed = await _manageService.recordErrorOnMessage(current, e);
       _liveMessages[chat.id!] = failed;
       yield RunMessageUpdated(failed);
+      if (!sawOutcome) {
+        yield RunOutcomeChanged(
+          AgentRunOutcome(
+            termination: AgentRunTermination.error,
+            iterations: turns,
+            error: e.toString(),
+          ),
+        );
+      }
       yield RunError(e.toString());
     }
   }
@@ -709,10 +741,10 @@ class AgentRunCoordinator {
       final role = m is UserMessage
           ? 'User'
           : m is AssistantMessage
-              ? 'Assistant'
-              : m is ToolMessage
-                  ? 'Tool'
-                  : 'System';
+          ? 'Assistant'
+          : m is ToolMessage
+          ? 'Tool'
+          : 'System';
       String content;
       if (m is ToolMessage) {
         content = 'tool_call_id=${m.toolCallId} result=${m.content}';

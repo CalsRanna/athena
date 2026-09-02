@@ -23,7 +23,8 @@ class ExperienceRepository {
   final String? _homeDir;
 
   String get _basePath {
-    final home = _homeDir ??
+    final home =
+        _homeDir ??
         Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '/';
@@ -111,9 +112,10 @@ class ExperienceRepository {
     bool includeArchived = false,
   }) async {
     final results = <ExperienceEntity>[];
-    results.addAll(await _listPrivate(sentinelId, includeArchived: includeArchived));
     results.addAll(
-        await listShared(includeArchived: includeArchived));
+      await _listPrivate(sentinelId, includeArchived: includeArchived),
+    );
+    results.addAll(await listShared(includeArchived: includeArchived));
     results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return results;
   }
@@ -127,7 +129,10 @@ class ExperienceRepository {
     String query, {
     bool includeArchived = false,
   }) async {
-    final all = await listForSentinel(sentinelId, includeArchived: includeArchived);
+    final all = await listForSentinel(
+      sentinelId,
+      includeArchived: includeArchived,
+    );
     return _rankByScore(all, query);
   }
 
@@ -150,13 +155,15 @@ class ExperienceRepository {
     return _rankByScore(all, query);
   }
 
-  /// 按匹配质量评分排序：匹配字段越多、权重越高的排前面。
-  List<ExperienceEntity> _rankByScore(List<ExperienceEntity> all, String query) {
+  /// 按分词后的匹配质量评分排序：匹配字段越多、权重越高的排前面。
+  List<ExperienceEntity> _rankByScore(
+    List<ExperienceEntity> all,
+    String query,
+  ) {
     if (query.trim().isEmpty) return all;
-    final lower = query.toLowerCase();
     final scored = <(ExperienceEntity, int)>[];
     for (final e in all) {
-      final score = matchScore(e, lower);
+      final score = matchScore(e, query);
       if (score > 0) scored.add((e, score));
     }
     scored.sort((a, b) {
@@ -167,16 +174,112 @@ class ExperienceRepository {
     return scored.map((e) => e.$1).toList();
   }
 
-  /// 匹配评分：lesson 命中 3 分、tags 命中 2 分、context 命中 1 分。
+  /// 匹配评分：lesson token 命中 3 分、tags 命中 2 分、context 命中 1 分。
   ///
   /// 公开供注入侧（MemoryDigest）记录匹配质量，形成可观测性。
-  static int matchScore(ExperienceEntity e, String lower) {
+  static int matchScore(ExperienceEntity e, String query) {
+    final queryTerms = _searchTerms(query);
+    if (queryTerms.isEmpty) return 0;
+
+    final lessonTerms = _searchTerms(e.lesson);
+    final tagTerms = _searchTerms(e.tags.join(' '));
+    final contextTerms = _searchTerms(e.context);
     var score = 0;
-    if (e.lesson.toLowerCase().contains(lower)) score += 3;
-    if (e.tags.any((t) => t.toLowerCase().contains(lower))) score += 2;
-    if (e.context.toLowerCase().contains(lower)) score += 1;
+    for (final term in queryTerms) {
+      if (lessonTerms.contains(term)) score += 3;
+      if (tagTerms.contains(term)) score += 2;
+      if (contextTerms.contains(term)) score += 1;
+    }
     return score;
   }
+
+  /// 英文按词、中文按二元字组切分，并丢弃常见虚词。此前用完整用户消息做
+  /// substring，真实长句几乎无法命中短经验；不过直接做所有 token overlap
+  /// 又会因 `please/use/这个` 等词召回无关记忆，因此这里保持轻量但偏保守。
+  static Set<String> _searchTerms(String value) {
+    final terms = <String>{};
+    final matches = RegExp(
+      r'[a-z0-9]+|[\u3400-\u9fff]+',
+      caseSensitive: false,
+    ).allMatches(value.toLowerCase());
+    for (final match in matches) {
+      final token = match.group(0)!;
+      final chinese = token.codeUnitAt(0) >= 0x3400;
+      if (!chinese) {
+        if (token.length >= 2 && !_englishStopTerms.contains(token)) {
+          terms.add(token);
+        }
+        continue;
+      }
+      if (token.length <= 2) {
+        if (!_chineseStopTerms.contains(token)) terms.add(token);
+      } else {
+        for (var i = 0; i < token.length - 1; i++) {
+          final pair = token.substring(i, i + 2);
+          if (!_chineseStopTerms.contains(pair)) terms.add(pair);
+        }
+      }
+    }
+    return terms;
+  }
+
+  static const _englishStopTerms = {
+    'a',
+    'an',
+    'and',
+    'are',
+    'be',
+    'been',
+    'being',
+    'can',
+    'could',
+    'did',
+    'do',
+    'does',
+    'for',
+    'from',
+    'help',
+    'i',
+    'in',
+    'is',
+    'it',
+    'me',
+    'my',
+    'of',
+    'on',
+    'or',
+    'our',
+    'please',
+    'should',
+    'that',
+    'the',
+    'their',
+    'these',
+    'they',
+    'this',
+    'those',
+    'to',
+    'use',
+    'using',
+    'was',
+    'we',
+    'were',
+    'with',
+    'would',
+    'you',
+    'your',
+  };
+
+  static const _chineseStopTerms = {
+    '帮我',
+    '这个',
+    '一下',
+    '如何',
+    '怎么',
+    '是否',
+    '可以',
+    '需要',
+  };
 
   Future<List<ExperienceEntity>> _listDir(Directory dir) async {
     final entities = <ExperienceEntity>[];
@@ -184,8 +287,7 @@ class ExperienceRepository {
     await for (final f in dir.list()) {
       if (f is! File || !f.path.endsWith('.json')) continue;
       try {
-        final json =
-            jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+        final json = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
         entities.add(ExperienceEntity.fromJson(json));
       } catch (_) {
         // 跳过损坏文件
@@ -249,56 +351,18 @@ class ExperienceRepository {
       scope: targetScope,
       sentinelId: targetScope == 'shared' ? 'shared' : sentinelId,
       status: status ?? original.status,
-      userVerdict: original.userVerdict,
-      lastVerdictAt: original.lastVerdictAt,
-      lastVerdictNote: original.lastVerdictNote,
       updatedAt: DateTime.now(),
     );
 
-    final targetDir =
-        targetScope == 'shared' ? _sharedPath : '$_basePath/$sentinelId';
+    final targetDir = targetScope == 'shared'
+        ? _sharedPath
+        : '$_basePath/$sentinelId';
     _ensureDir(targetDir);
     final targetFile = File('$targetDir/${entity.id}.json');
     await targetFile.writeAsString(_prettyJson(entity.toJson()));
     if (file.path != targetFile.path) {
       await file.delete();
     }
-    return entity;
-  }
-
-  /// 记录用户对经验的验证结论（confirmed / refuted）。
-  ///
-  /// 信号必须来自用户（Agent 在用户明确认可/纠正时调用），
-  /// 避免 Agent 用自评结果给自己的经验"盖章"。
-  Future<ExperienceEntity?> recordVerdict({
-    required String sentinelId,
-    required String id,
-    required String verdict,
-    String? note,
-  }) async {
-    final file = _locateFile(sentinelId, id);
-    if (file == null) return null;
-    final original = _readFile(file);
-    if (original == null) return null;
-
-    final trimmedNote = note?.trim() ?? '';
-    final entity = ExperienceEntity(
-      id: original.id,
-      createdAt: original.createdAt,
-      lesson: original.lesson,
-      context: original.context,
-      tags: original.tags,
-      source: original.source,
-      scope: original.scope,
-      sentinelId: original.sentinelId,
-      status: original.status,
-      userVerdict: verdict,
-      lastVerdictAt: DateTime.now(),
-      lastVerdictNote: trimmedNote.isEmpty ? null : trimmedNote,
-      updatedAt: DateTime.now(),
-    );
-
-    await file.writeAsString(_prettyJson(entity.toJson()));
     return entity;
   }
 
@@ -365,8 +429,7 @@ class ExperienceRepository {
   /// 兜底重试（同毫秒连续碰撞时退回到更长后缀）。
   static Future<String> _uniqueId(String dir) async {
     for (var attempt = 0; attempt < 3; attempt++) {
-      final id =
-          '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(6)}';
+      final id = '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(6)}';
       if (!await File('$dir/$id.json').exists()) return id;
     }
     return '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(12)}';

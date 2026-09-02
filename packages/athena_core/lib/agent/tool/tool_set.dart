@@ -2,7 +2,6 @@ import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
-import 'package:athena_core/agent/tool/experience_review_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
 import 'package:athena_core/agent/tool/file_update_tool.dart';
 import 'package:athena_core/agent/tool/file_write_tool.dart';
@@ -60,13 +59,9 @@ ToolRegistry buildToolRegistry({
       WebFetchTool(),
       WebSearchTool(store: store),
       SkillTool(skillRegistry),
-      SkillEvolveTool(
-        skillRegistry: skillRegistry,
-        homeDir: mobileHomeDir,
-      ),
+      SkillEvolveTool(skillRegistry: skillRegistry, homeDir: mobileHomeDir),
       ExperienceLearnTool(repository: experienceRepository),
       ExperienceRecallTool(repository: experienceRepository),
-      ExperienceReviewTool(repository: experienceRepository),
       SentinelListTool(repository: sentinelRepository),
       SentinelGetTool(repository: sentinelRepository),
       SentinelEvolveTool(
@@ -97,7 +92,6 @@ ToolRegistry buildToolRegistry({
     SkillEvolveTool(skillRegistry: skillRegistry),
     ExperienceLearnTool(repository: experienceRepository),
     ExperienceRecallTool(repository: experienceRepository),
-    ExperienceReviewTool(repository: experienceRepository),
     SentinelListTool(repository: sentinelRepository),
     SentinelGetTool(repository: sentinelRepository),
     SentinelEvolveTool(

@@ -824,6 +824,9 @@ class ChatViewModel {
               cumulativeTokenTotal.value = chat.tokenTotal;
               _updateChatInLists(chat);
             }
+          case RunOutcomeChanged():
+            // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
+            break;
           case RunAutoRename():
             unawaited(renameChat(chat));
           case RunListReload():
@@ -869,8 +872,9 @@ class ChatViewModel {
     // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
     // 完成。新发送会等待 [_runSettledByChat]，不会与旧 run 交叉写入。
     if (_pendingChatId == chatId) _flushMessages();
-    streamingChatIds.value =
-        streamingChatIds.value.where((id) => id != chatId).toList();
+    streamingChatIds.value = streamingChatIds.value
+        .where((id) => id != chatId)
+        .toList();
     if (currentChat.value?.id == chatId) {
       currentIteration.value = 0;
       currentToolName.value = null;
