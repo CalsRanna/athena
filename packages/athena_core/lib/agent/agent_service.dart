@@ -162,570 +162,31 @@ class AgentService {
 
     // afterToolCall 无附加行为（权限判定在 before hook 内），直接透传
     final compositeAfterToolCall = afterToolCall;
-    var iterationsExecuted = 0;
-    final toolFailures = <ToolFailure>[];
-    var termination = AgentRunTermination.completed;
-    var reflectionAttempted = false;
 
     try {
-      // 外层循环：followUp 消息可重启内层循环
-      while (true) {
-        var done = false;
-
-        // 内层循环：工具调用迭代
-        for (
-          var iteration = 0;
-          iteration < maxIterations && !done;
-          iteration++
-        ) {
-          token.throwIfCancelled();
-
-          // 注入 steering 消息
-          if (state.steerQueue.isNotEmpty) {
-            final steerMessages = List<ChatMessage>.from(state.steerQueue);
-            state.steerQueue.clear();
-            messages.addAll(steerMessages);
-          }
-
-          yield AgentEvent.turnStart(iteration: iteration);
-          iterationsExecuted++;
-
-          final tools = _buildTools();
-          final request = ChatCompletionCreateRequest(
-            model: model.modelId,
-            messages: messages,
-            tools: tools,
-            // jsonMode 场景（Shortcut 发起）：声明模型输出 JSON 对象
-            responseFormat: jsonMode ? ResponseFormat.jsonObject() : null,
-          );
-
-          final stream = _chatService.getCompletion(
-            chat: chat,
-            messages: messages,
-            provider: provider,
-            model: model,
-            tools: request.tools,
-            responseFormat: request.responseFormat,
-            cancelSignal: token.whenCancelled,
-          );
-
-          final accumulator = ChatStreamAccumulator();
-
-          // 流式累积 tool_calls：id/name/arguments 分片到达，实时产出事件，
-          // 避免等整个流结束后才一次性出现所有工具卡片。
-          final streamingCalls = <int, _StreamingToolCall>{};
-          final announcedIds = <String>{};
-
-          try {
-            await for (final chunk in stream) {
-              token.throwIfCancelled();
-              accumulator.add(chunk);
-
-              final delta = chunk.firstChoice?.delta;
-              if (delta != null) {
-                final rc = delta.reasoningContent ?? delta.reasoning;
-                if (rc != null && rc.isNotEmpty) {
-                  yield AgentEvent.reasoning(rc);
-                }
-
-                if (delta.toolCalls != null) {
-                  for (final tcd in delta.toolCalls!) {
-                    final acc = streamingCalls.putIfAbsent(
-                      tcd.index,
-                      _StreamingToolCall.new,
-                    );
-                    if (tcd.id != null) acc.id = tcd.id;
-                    final fnName = tcd.function?.name;
-                    if (fnName != null) acc.name ??= fnName;
-
-                    // 卡片出现时机：id 与 name 齐备（与 accumulator 建卡条件一致）。
-                    // 先于参数增量产出，保证同 chunk 内参数不丢失。
-                    if (acc.id != null &&
-                        acc.name != null &&
-                        !announcedIds.contains(acc.id)) {
-                      announcedIds.add(acc.id!);
-                      yield AgentEvent.toolCall(
-                        id: acc.id!,
-                        name: acc.name!,
-                        arguments: acc.arguments,
-                      );
-                    }
-
-                    final argsDelta = tcd.function?.arguments;
-                    if (argsDelta != null && argsDelta.isNotEmpty) {
-                      acc.arguments += argsDelta;
-                      // 仅已建卡（announced）时产出增量事件；未建卡的分片
-                      // 已缓冲在 acc.arguments 中，由建卡事件一并携带。
-                      if (acc.id != null && announcedIds.contains(acc.id)) {
-                        yield AgentEvent.toolCallArgs(
-                          id: acc.id!,
-                          delta: argsDelta,
-                        );
-                      }
-                    }
-                  }
-                }
-              }
-
-              final td = chunk.textDelta;
-              if (td != null && td.isNotEmpty) {
-                yield AgentEvent.text(td);
-              }
-            }
-          } catch (e) {
-            // 流异常（超时/网络/abort 触发）：若 token 已取消则统一以
-            // CancelledException 呈现（取消优先于底层错误），否则原样抛出。
-            token.throwIfCancelled();
-            rethrow;
-          }
-
-          _logUsage(accumulator.usage);
-          final usage = accumulator.usage;
-          if (usage != null) {
-            yield AgentEvent.usage(
-              TokenUsage(
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
-                totalTokens: usage.totalTokens,
-                reasoningTokens: usage.completionTokensDetails?.reasoningTokens,
-                cachedTokens: usage.promptTokensDetails?.cachedTokens,
-              ),
-            );
-          }
-
-          final toolCalls = accumulator.toolCalls;
-          final truncated = accumulator.finishReason == FinishReason.length;
-
-          if (toolCalls.isEmpty) {
-            yield AgentEvent.done(content: accumulator.content);
-            done = true;
-            break;
-          }
-
-          // 追加 assistant 消息（含 tool_calls）
-          // 注意：toolCall 事件已由流式循环实时产出，此处不再重复 yield
-          final rc = model.reasoning && accumulator.reasoningContent.isNotEmpty
-              ? accumulator.reasoningContent
-              : null;
-          messages.add(
-            AssistantMessage(
-              content: accumulator.content.isNotEmpty
-                  ? accumulator.content
-                  : null,
-              toolCalls: toolCalls,
-              reasoningContent: rc,
-            ),
-          );
-
-          // 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用
-          if (truncated) {
-            final toolCallDataList = <Map<String, dynamic>>[];
-            for (final tc in toolCalls) {
-              const msg =
-                  'Error: Tool call was not executed because the '
-                  'response hit the output token limit. Its arguments may be '
-                  'truncated. Re-issue the tool call with complete arguments.';
-              yield AgentEvent.toolResult(
-                id: tc.id,
-                name: tc.function.name,
-                result: msg,
-                status: ToolResultStatus.modelTruncated,
-              );
-              toolFailures.add(
-                ToolFailure(
-                  toolName: tc.function.name,
-                  status: ToolResultStatus.modelTruncated,
-                  message: msg,
-                ),
-              );
-              messages.add(ChatMessage.tool(toolCallId: tc.id, content: msg));
-              toolCallDataList.add({
-                'id': tc.id,
-                'name': tc.function.name,
-                'arguments': tc.function.arguments,
-                'result': msg,
-              });
-            }
-            yield AgentEvent.iterationComplete(
-              toolCalls: toolCallDataList,
-              content: accumulator.content,
-            );
-            continue;
-          }
-
-          // 执行工具调用（串行 + 并行混合）
-          final toolCallDataList = <Map<String, dynamic>>[];
-
-          // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
-          // 审批的调用）进入串行组
-          final parallelCalls = selectParallelCalls(
-            toolCalls,
-            runId: runId,
-            permissionService: permissionService,
-            onPermission: onPermission,
-          );
-          final sequentialCalls = [
-            for (final tc in toolCalls)
-              if (!parallelCalls.contains(tc)) tc,
-          ];
-
-          // 串行执行（弹窗审批天然逐个出现）
-          for (final tc in sequentialCalls) {
-            yield AgentEvent.toolExecutionStart(
-              id: tc.id,
-              name: tc.function.name,
-              arguments: tc.function.arguments,
-            );
-            final data = await _executeOneTool(
-              tc: tc,
-              token: token,
-              sentinelId: sentinelId,
-              beforeHook: compositeBeforeToolCall,
-              afterHook: compositeAfterToolCall,
-            );
-            yield data.event;
-            messages.add(data.toolMessage);
-            toolCallDataList.add(data.record);
-            _recordFailure(toolFailures, data.event);
-          }
-
-          // 并行执行：信号量限流 + 取消优先 + 结果渐进式产出
-          if (parallelCalls.isNotEmpty) {
-            for (final tc in parallelCalls) {
-              yield AgentEvent.toolExecutionStart(
-                id: tc.id,
-                name: tc.function.name,
-                arguments: tc.function.arguments,
-              );
-            }
-
-            final semaphore = _AsyncSemaphore(_maxParallelTools);
-            final futures = <Future<_ToolExecutionData>>{
-              for (final tc in parallelCalls)
-                _executeParallelOne(
-                  tc: tc,
-                  token: token,
-                  sentinelId: sentinelId,
-                  beforeHook: compositeBeforeToolCall,
-                  afterHook: compositeAfterToolCall,
-                  semaphore: semaphore,
-                ),
-            };
-
-            while (futures.isNotEmpty) {
-              // 每轮取最快完成的工具；取消信号优先返回，不等待卡住的工具
-              final first = await Future.any([
-                for (final f in futures) f.then((r) => (f: f, r: r)),
-                token.whenCancelled.then((_) => null),
-              ]);
-              if (first == null) {
-                // 取消：排空在飞的工具 Future（最多 2s），吞掉结果与错误，
-                // 避免孤立 Future 继续执行副作用或产生未处理异常；
-                // 已在执行的工具无法中断（工具级取消另行排期）。
-                await Future.wait(
-                  futures.map((f) => f.then((_) {}, onError: (_) {})),
-                ).timeout(const Duration(seconds: 2), onTimeout: () => []);
-                token.throwIfCancelled();
-              }
-              futures.remove(first!.f);
-              yield first.r.event;
-              messages.add(first.r.toolMessage);
-              toolCallDataList.add(first.r.record);
-              _recordFailure(toolFailures, first.r.event);
-            }
-          }
-
-          yield AgentEvent.iterationComplete(
-            toolCalls: toolCallDataList,
-            content: accumulator.content,
-          );
-        }
-
-        final hitIterationLimit = !done;
-
-        // 检查 followUp 消息：有则注入并重启内层循环
-        if (state.followUpQueue.isNotEmpty) {
-          final followUps = List<ChatMessage>.from(state.followUpQueue);
-          state.followUpQueue.clear();
-          messages.addAll(followUps);
-        } else {
-          termination = hitIterationLimit
-              ? AgentRunTermination.maxIterations
-              : AgentRunTermination.completed;
-          break; // 无 followUp，退出外层循环
-        }
-      }
-
-      var outcome = AgentRunOutcome(
-        termination: termination,
-        iterations: iterationsExecuted,
-        toolFailures: List.unmodifiable(toolFailures),
-      );
-      if (ReflectionPolicy.shouldReflect(outcome) &&
-          _toolRegistry.get('experience_learn') != null) {
-        reflectionAttempted = true;
-        try {
-          yield* _runReflection(
-            outcome: outcome,
-            task: _latestUserTask(messages),
-            chat: chat,
-            provider: provider,
-            model: model,
-            token: token,
-            sentinelId: sentinelId,
-            beforeHook: compositeBeforeToolCall,
-            afterHook: compositeAfterToolCall,
-            iteration: iterationsExecuted,
-          );
-        } on CancelledException {
-          rethrow;
-        } catch (e) {
-          // Reflection 是附加学习路径；失败不能把原任务改写成运行错误。
-          LoggerUtil.w('Reflection skipped after failure: $e');
-        }
-      }
-      outcome = AgentRunOutcome(
-        termination: termination,
-        iterations: iterationsExecuted,
-        toolFailures: List.unmodifiable(toolFailures),
-        reflectionAttempted: reflectionAttempted,
-      );
-      yield AgentEvent.outcome(outcome);
-    } on CancelledException catch (e) {
-      yield AgentEvent.outcome(
-        AgentRunOutcome(
-          termination: AgentRunTermination.cancelled,
-          iterations: iterationsExecuted,
-          toolFailures: List.unmodifiable(toolFailures),
-          reflectionAttempted: reflectionAttempted,
-          error: e.toString(),
-        ),
-      );
-      rethrow;
-    } catch (e) {
-      yield AgentEvent.outcome(
-        AgentRunOutcome(
-          termination: AgentRunTermination.error,
-          iterations: iterationsExecuted,
-          toolFailures: List.unmodifiable(toolFailures),
-          reflectionAttempted: reflectionAttempted,
-          error: e.toString(),
-        ),
-      );
+      yield* _AgentLoop(
+        service: this,
+        state: state,
+        chat: chat,
+        provider: provider,
+        model: model,
+        messages: messages,
+        runId: runId,
+        sentinelId: sentinelId,
+        maxIterations: maxIterations,
+        jsonMode: jsonMode,
+        beforeHook: compositeBeforeToolCall,
+        afterHook: compositeAfterToolCall,
+        permissionService: permissionService,
+        onPermission: onPermission,
+      ).run();
+    } on CancelledException {
       rethrow;
     } finally {
       _skillRegistry?.clearContext();
       _runs.remove(runId);
       if (!state.settled.isCompleted) state.settled.complete();
     }
-  }
-
-  Stream<AgentEvent> _runReflection({
-    required AgentRunOutcome outcome,
-    required String task,
-    required ChatEntity chat,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    required CancelToken token,
-    required String? sentinelId,
-    required BeforeToolCallHook? beforeHook,
-    required AfterToolCallHook? afterHook,
-    required int iteration,
-  }) async* {
-    token.throwIfCancelled();
-    final response = await _chatService.complete(
-      messages: [
-        ChatMessage.system(ReflectionPrompt.system),
-        ChatMessage.user(ReflectionPrompt.input(outcome: outcome, task: task)),
-      ],
-      provider: provider,
-      model: model,
-      cancelSignal: token.whenCancelled,
-    );
-    token.throwIfCancelled();
-
-    final proposal = ReflectionProposal.tryParse(response);
-    if (proposal == null) return;
-
-    final arguments = jsonEncode(proposal.toToolArguments());
-    final id = 'reflection_$iteration';
-    final toolCall = ToolCall(
-      id: id,
-      type: 'function',
-      function: FunctionCall(name: 'experience_learn', arguments: arguments),
-    );
-
-    // Reflection 只生成标准工具调用；参数校验、权限审批与执行完全复用
-    // 普通 Agent 工具路径，不直接写 ExperienceRepository。
-    yield AgentEvent.turnStart(iteration: iteration);
-    yield AgentEvent.toolCall(
-      id: id,
-      name: 'experience_learn',
-      arguments: arguments,
-    );
-    yield AgentEvent.toolExecutionStart(
-      id: id,
-      name: 'experience_learn',
-      arguments: arguments,
-    );
-    final data = await _executeOneTool(
-      tc: toolCall,
-      token: token,
-      sentinelId: sentinelId,
-      beforeHook: beforeHook,
-      afterHook: afterHook,
-    );
-    yield data.event;
-    yield AgentEvent.iterationComplete(toolCalls: [data.record], content: '');
-  }
-
-  static void _recordFailure(
-    List<ToolFailure> failures,
-    AgentToolResultEvent event,
-  ) {
-    if (event.status == ToolResultStatus.success) {
-      return;
-    }
-    failures.add(
-      ToolFailure(
-        toolName: event.name,
-        status: event.status,
-        message: event.result,
-      ),
-    );
-  }
-
-  static String _latestUserTask(List<ChatMessage> messages) {
-    for (final message in messages.reversed) {
-      if (message is UserMessage) return '${message.content}';
-    }
-    return '';
-  }
-
-  /// 构建复合 beforeToolCall：用户 hook + 权限检查串联。
-  BeforeToolCallHook? _buildCompositeBeforeHook({
-    BeforeToolCallHook? userHook,
-    required int runId,
-    PermissionService? permissionService,
-    PermissionCallback? onPermission,
-    required CancelToken cancelToken,
-  }) {
-    if (userHook == null && permissionService == null && onPermission == null) {
-      return null;
-    }
-
-    return (ctx) async {
-      if (userHook != null) {
-        final result = await userHook(ctx);
-        if (result.block) return result;
-      }
-
-      if (permissionService == null && onPermission == null) {
-        return (block: false, reason: '');
-      }
-
-      final verdict =
-          permissionService?.check(
-            runId,
-            ctx.name,
-            ctx.args,
-            risk: _toolRegistry.get(ctx.name)?.risk,
-          ) ??
-          PermissionVerdict.prompt;
-
-      if (verdict == PermissionVerdict.deny) {
-        return (block: true, reason: 'Tool call denied by a permission rule.');
-      }
-
-      if (verdict == PermissionVerdict.prompt) {
-        if (onPermission == null) {
-          return (
-            block: true,
-            reason:
-                'Error: Tool requires user approval but no permission '
-                'callback is configured.',
-          );
-        }
-        final approved = await Future.any<bool>([
-          onPermission(ctx.name, ctx.arguments),
-          cancelToken.whenCancelled.then((_) => false),
-        ]);
-        cancelToken.throwIfCancelled();
-        if (!approved) {
-          return (block: true, reason: 'User denied the tool execution.');
-        }
-      }
-
-      return (block: false, reason: '');
-    };
-  }
-
-  /// 首轮注入 runtime / evolution / skill prompt。
-  ///
-  /// 目标布局（按语义分层，缓存前缀稳定）：
-  ///   [sentinel, runtime, evolution, system-summaries?, history...]
-  ///
-  /// base 约定（ChatMessageService.buildMessages）：[hasSentinelPrompt] 为
-  /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
-  /// active memory catalog 或历史 compact 摘要）；为 false 时所有 system
-  /// 都是上下文摘要。非 system 是对话历史。
-  /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
-  ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
-  List<ChatMessage> _injectPrompts(
-    List<ChatMessage> base,
-    String? skillPrompt,
-    String? evolutionPrompt,
-    String? runtimePrompt, {
-    required bool hasSentinelPrompt,
-  }) {
-    var sentinelEnd = -1;
-    if (hasSentinelPrompt) {
-      for (var i = 0; i < base.length; i++) {
-        if (base[i] is SystemMessage) {
-          sentinelEnd = i;
-          break;
-        }
-      }
-    }
-
-    final staticBlocks = <ChatMessage>[
-      if (runtimePrompt != null && runtimePrompt.isNotEmpty)
-        ChatMessage.system(runtimePrompt),
-      if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
-        ChatMessage.system(evolutionPrompt),
-      if (skillPrompt != null && skillPrompt.isNotEmpty)
-        ChatMessage.system(skillPrompt),
-    ];
-
-    final head = <ChatMessage>[];
-    final summaries = <ChatMessage>[];
-    final history = <ChatMessage>[];
-    for (var i = 0; i < base.length; i++) {
-      final m = base[i];
-      if (i == sentinelEnd) {
-        head.add(m); // sentinel
-      } else if (m is SystemMessage) {
-        summaries.add(m); // 历史类摘要（memory digest / compact）
-      } else {
-        history.add(m);
-      }
-    }
-    return [...head, ...staticBlocks, ...summaries, ...history];
-  }
-
-  /// 从 ToolRegistry 构建 OpenAI Tool 列表。
-  List<Tool>? _buildTools() {
-    final defs = _toolRegistry.definitions;
-    if (defs.isEmpty) return null;
-    return defs
-        .map(
-          (t) => Tool.function(
-            name: t['function']['name'] as String,
-            description: t['function']['description'] as String,
-            parameters: t['function']['parameters'] as Map<String, dynamic>,
-          ),
-        )
-        .toList();
   }
 
   /// 执行单个工具调用：校验 → beforeToolCall → 权限检查 → 执行 → afterToolCall。
@@ -928,43 +389,632 @@ class AgentService {
     return parallelCalls;
   }
 
-  /// 并行执行单个工具，受 [semaphore] 限流。
-  Future<_ToolExecutionData> _executeParallelOne({
-    required ToolCall tc,
-    required CancelToken token,
-    String? sentinelId,
-    BeforeToolCallHook? beforeHook,
-    AfterToolCallHook? afterHook,
-    required _AsyncSemaphore semaphore,
-  }) async {
-    await semaphore.acquire();
+  /// 构建复合 beforeToolCall：用户 hook + 权限检查串联。
+  BeforeToolCallHook? _buildCompositeBeforeHook({
+    BeforeToolCallHook? userHook,
+    required int runId,
+    PermissionService? permissionService,
+    PermissionCallback? onPermission,
+    required CancelToken cancelToken,
+  }) {
+    if (userHook == null && permissionService == null && onPermission == null) {
+      return null;
+    }
+
+    return (ctx) async {
+      if (userHook != null) {
+        final result = await userHook(ctx);
+        if (result.block) return result;
+      }
+
+      if (permissionService == null && onPermission == null) {
+        return (block: false, reason: '');
+      }
+
+      final verdict =
+          permissionService?.check(
+            runId,
+            ctx.name,
+            ctx.args,
+            risk: _toolRegistry.get(ctx.name)?.risk,
+          ) ??
+          PermissionVerdict.prompt;
+
+      if (verdict == PermissionVerdict.deny) {
+        return (block: true, reason: 'Tool call denied by a permission rule.');
+      }
+
+      if (verdict == PermissionVerdict.prompt) {
+        if (onPermission == null) {
+          return (
+            block: true,
+            reason:
+                'Error: Tool requires user approval but no permission '
+                'callback is configured.',
+          );
+        }
+        final approved = await Future.any<bool>([
+          onPermission(ctx.name, ctx.arguments),
+          cancelToken.whenCancelled.then((_) => false),
+        ]);
+        cancelToken.throwIfCancelled();
+        if (!approved) {
+          return (block: true, reason: 'User denied the tool execution.');
+        }
+      }
+
+      return (block: false, reason: '');
+    };
+  }
+
+  /// 首轮注入 runtime / evolution / skill prompt。
+  ///
+  /// 目标布局（按语义分层，缓存前缀稳定）：
+  ///   [sentinel, runtime, evolution, system-summaries?, history...]
+  ///
+  /// base 约定（ChatMessageService.buildMessages）：[hasSentinelPrompt] 为
+  /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
+  /// active memory catalog 或历史 compact 摘要）；为 false 时所有 system
+  /// 都是上下文摘要。非 system 是对话历史。
+  /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
+  ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
+  List<ChatMessage> _injectPrompts(
+    List<ChatMessage> base,
+    String? skillPrompt,
+    String? evolutionPrompt,
+    String? runtimePrompt, {
+    required bool hasSentinelPrompt,
+  }) {
+    var sentinelEnd = -1;
+    if (hasSentinelPrompt) {
+      for (var i = 0; i < base.length; i++) {
+        if (base[i] is SystemMessage) {
+          sentinelEnd = i;
+          break;
+        }
+      }
+    }
+
+    final staticBlocks = <ChatMessage>[
+      if (runtimePrompt != null && runtimePrompt.isNotEmpty)
+        ChatMessage.system(runtimePrompt),
+      if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
+        ChatMessage.system(evolutionPrompt),
+      if (skillPrompt != null && skillPrompt.isNotEmpty)
+        ChatMessage.system(skillPrompt),
+    ];
+
+    final head = <ChatMessage>[];
+    final summaries = <ChatMessage>[];
+    final history = <ChatMessage>[];
+    for (var i = 0; i < base.length; i++) {
+      final m = base[i];
+      if (i == sentinelEnd) {
+        head.add(m); // sentinel
+      } else if (m is SystemMessage) {
+        summaries.add(m); // 历史类摘要（memory digest / compact）
+      } else {
+        history.add(m);
+      }
+    }
+    return [...head, ...staticBlocks, ...summaries, ...history];
+  }
+
+  /// 从 ToolRegistry 构建 OpenAI Tool 列表。
+  List<Tool>? _buildTools() {
+    final defs = _toolRegistry.definitions;
+    if (defs.isEmpty) return null;
+    return defs
+        .map(
+          (t) => Tool.function(
+            name: t['function']['name'] as String,
+            description: t['function']['description'] as String,
+            parameters: t['function']['parameters'] as Map<String, dynamic>,
+          ),
+        )
+        .toList();
+  }
+
+  String smartTruncate(String result, {int threshold = 12000}) {
+    if (result.length <= threshold) return result;
+    final headLen = (threshold * 0.6).round();
+    final tailLen = threshold - headLen;
+    final head = result.substring(0, headLen);
+    final tail = result.substring(result.length - tailLen);
+    final skipped = result.length - headLen - tailLen;
+    return '$head\n\n... [truncated $skipped characters] ...\n\n$tail';
+  }
+}
+
+/// 单次 Agent run 的驱动循环（外层 followUp 循环 + 内层工具迭代）。
+///
+/// 从 [AgentService.run] 中独立出来，把一次 run 的完整生命周期
+/// （流式消费、截断保护、串行/并行执行、反思、outcome 汇总）收拢到
+/// 职责单一的私有类；[AgentService.run] 仅负责 run 状态注册与清理。
+class _AgentLoop {
+  _AgentLoop({
+    required AgentService service,
+    required _AgentRunState state,
+    required ChatEntity chat,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    required List<ChatMessage> messages,
+    required int runId,
+    required String? sentinelId,
+    required int maxIterations,
+    required bool jsonMode,
+    required BeforeToolCallHook? beforeHook,
+    required AfterToolCallHook? afterHook,
+    required PermissionService? permissionService,
+    required PermissionCallback? onPermission,
+  }) : _service = service,
+       _state = state,
+       _chat = chat,
+       _provider = provider,
+       _model = model,
+       _messages = messages,
+       _runId = runId,
+       _sentinelId = sentinelId,
+       _maxIterations = maxIterations,
+       _jsonMode = jsonMode,
+       _beforeHook = beforeHook,
+       _afterHook = afterHook,
+       _permissionService = permissionService,
+       _onPermission = onPermission;
+
+  final AgentService _service;
+  final _AgentRunState _state;
+  final ChatEntity _chat;
+  final ProviderEntity _provider;
+  final ModelEntity _model;
+
+  /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
+  final List<ChatMessage> _messages;
+  final int _runId;
+  final String? _sentinelId;
+  final int _maxIterations;
+  final bool _jsonMode;
+  final BeforeToolCallHook? _beforeHook;
+  final AfterToolCallHook? _afterHook;
+  final PermissionService? _permissionService;
+  final PermissionCallback? _onPermission;
+
+  CancelToken get _token => _state.cancelToken;
+
+  int _iterationsExecuted = 0;
+  final List<ToolFailure> _toolFailures = [];
+  var _termination = AgentRunTermination.completed;
+  var _reflectionAttempted = false;
+
+  /// 执行整个 run：外层 followUp 循环驱动内层迭代，结束后触发反思并产出 outcome。
+  Stream<AgentEvent> run() async* {
     try {
-      return await _executeOneTool(
-        tc: tc,
-        token: token,
-        sentinelId: sentinelId,
-        beforeHook: beforeHook,
-        afterHook: afterHook,
+      // 外层循环：followUp 消息可重启内层循环
+      while (true) {
+        var done = false;
+
+        // 内层循环：工具调用迭代
+        for (
+          var iteration = 0;
+          iteration < _maxIterations && !done;
+          iteration++
+        ) {
+          final st = _TurnState();
+          yield* _runIteration(iteration, st);
+          done = st.done;
+        }
+
+        final hitIterationLimit = !done;
+
+        // 检查 followUp 消息：有则注入并重启内层循环
+        if (_state.followUpQueue.isNotEmpty) {
+          final followUps = List<ChatMessage>.from(_state.followUpQueue);
+          _state.followUpQueue.clear();
+          _messages.addAll(followUps);
+        } else {
+          _termination = hitIterationLimit
+              ? AgentRunTermination.maxIterations
+              : AgentRunTermination.completed;
+          break; // 无 followUp，退出外层循环
+        }
+      }
+
+      yield* _maybeReflect();
+    } on CancelledException catch (e) {
+      yield AgentEvent.outcome(
+        AgentRunOutcome(
+          termination: AgentRunTermination.cancelled,
+          iterations: _iterationsExecuted,
+          toolFailures: List.unmodifiable(_toolFailures),
+          reflectionAttempted: _reflectionAttempted,
+          error: e.toString(),
+        ),
       );
-    } finally {
-      semaphore.release();
+      rethrow;
+    } catch (e) {
+      yield AgentEvent.outcome(
+        AgentRunOutcome(
+          termination: AgentRunTermination.error,
+          iterations: _iterationsExecuted,
+          toolFailures: List.unmodifiable(_toolFailures),
+          reflectionAttempted: _reflectionAttempted,
+          error: e.toString(),
+        ),
+      );
+      rethrow;
     }
   }
 
+  /// 单轮迭代：取消检查 → steering 注入 → LLM 流式 → 追加 assistant 消息
+  /// → 截断保护 → 工具执行 → iterationComplete。
+  ///
+  /// 完成状态写入 [st]（done = 模型主动结束、无工具调用）。
+  Stream<AgentEvent> _runIteration(int iteration, _TurnState st) async* {
+    _token.throwIfCancelled();
+
+    // 注入 steering 消息
+    if (_state.steerQueue.isNotEmpty) {
+      final steerMessages = List<ChatMessage>.from(_state.steerQueue);
+      _state.steerQueue.clear();
+      _messages.addAll(steerMessages);
+    }
+
+    yield AgentEvent.turnStart(iteration: iteration);
+    _iterationsExecuted++;
+
+    final tools = _service._buildTools();
+    final request = ChatCompletionCreateRequest(
+      model: _model.modelId,
+      messages: _messages,
+      tools: tools,
+      // jsonMode 场景（Shortcut 发起）：声明模型输出 JSON 对象
+      responseFormat: _jsonMode ? ResponseFormat.jsonObject() : null,
+    );
+
+    yield* _streamTurn(request, st);
+
+    final toolCalls = st.accumulator.toolCalls;
+    final truncated = st.accumulator.finishReason == FinishReason.length;
+
+    if (toolCalls.isEmpty) {
+      yield AgentEvent.done(content: st.accumulator.content);
+      st.done = true;
+      return;
+    }
+
+    // 追加 assistant 消息（含 tool_calls）
+    // 注意：toolCall 事件已由流式循环实时产出，此处不再重复 yield
+    final rc = _model.reasoning && st.accumulator.reasoningContent.isNotEmpty
+        ? st.accumulator.reasoningContent
+        : null;
+    _messages.add(
+      AssistantMessage(
+        content: st.accumulator.content.isNotEmpty
+            ? st.accumulator.content
+            : null,
+        toolCalls: toolCalls,
+        reasoningContent: rc,
+      ),
+    );
+
+    // 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用
+    if (truncated) {
+      yield* _handleTruncated(toolCalls, st.accumulator.content);
+      return;
+    }
+
+    // 执行工具调用（串行 + 并行混合）
+    yield* _executeToolCalls(toolCalls, st.accumulator.content);
+  }
+
+  /// 仅 LLM 流式消费：reasoning / tool_calls 分片 / text 实时产出事件，
+  /// 流异常归一化（取消优先于底层错误），累积结果写入 [st.accumulator]。
+  Stream<AgentEvent> _streamTurn(
+    ChatCompletionCreateRequest request,
+    _TurnState st,
+  ) async* {
+    final stream = _service._chatService.getCompletion(
+      chat: _chat,
+      messages: request.messages,
+      provider: _provider,
+      model: _model,
+      tools: request.tools,
+      responseFormat: request.responseFormat,
+      cancelSignal: _token.whenCancelled,
+    );
+
+    // 流式累积 tool_calls：id/name/arguments 分片到达，实时产出事件，
+    // 避免等整个流结束后才一次性出现所有工具卡片。
+    // streamingCalls / announcedIds 仅本轮流式期间使用，故作为局部状态。
+    final streamingCalls = <int, _StreamingToolCall>{};
+    final announcedIds = <String>{};
+
+    try {
+      await for (final chunk in stream) {
+        _token.throwIfCancelled();
+        st.accumulator.add(chunk);
+
+        final delta = chunk.firstChoice?.delta;
+        if (delta != null) {
+          final rc = delta.reasoningContent ?? delta.reasoning;
+          if (rc != null && rc.isNotEmpty) {
+            yield AgentEvent.reasoning(rc);
+          }
+
+          if (delta.toolCalls != null) {
+            for (final tcd in delta.toolCalls!) {
+              final acc = streamingCalls.putIfAbsent(
+                tcd.index,
+                _StreamingToolCall.new,
+              );
+              if (tcd.id != null) acc.id = tcd.id;
+              final fnName = tcd.function?.name;
+              if (fnName != null) acc.name ??= fnName;
+
+              // 卡片出现时机：id 与 name 齐备（与 accumulator 建卡条件一致）。
+              // 先于参数增量产出，保证同 chunk 内参数不丢失。
+              if (acc.id != null &&
+                  acc.name != null &&
+                  !announcedIds.contains(acc.id)) {
+                announcedIds.add(acc.id!);
+                yield AgentEvent.toolCall(
+                  id: acc.id!,
+                  name: acc.name!,
+                  arguments: acc.arguments,
+                );
+              }
+
+              final argsDelta = tcd.function?.arguments;
+              if (argsDelta != null && argsDelta.isNotEmpty) {
+                acc.arguments += argsDelta;
+                // 仅已建卡（announced）时产出增量事件；未建卡的分片
+                // 已缓冲在 acc.arguments 中，由建卡事件一并携带。
+                if (acc.id != null && announcedIds.contains(acc.id)) {
+                  yield AgentEvent.toolCallArgs(
+                    id: acc.id!,
+                    delta: argsDelta,
+                  );
+                }
+              }
+            }
+          }
+        }
+
+        final td = chunk.textDelta;
+        if (td != null && td.isNotEmpty) {
+          yield AgentEvent.text(td);
+        }
+      }
+    } catch (e) {
+      // 流异常（超时/网络/abort 触发）：若 token 已取消则统一以
+      // CancelledException 呈现（取消优先于底层错误），否则原样抛出。
+      _token.throwIfCancelled();
+      rethrow;
+    }
+
+    _service._logUsage(st.accumulator.usage);
+    final usage = st.accumulator.usage;
+    if (usage != null) {
+      yield AgentEvent.usage(
+        TokenUsage(
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          reasoningTokens: usage.completionTokensDetails?.reasoningTokens,
+          cachedTokens: usage.promptTokensDetails?.cachedTokens,
+        ),
+      );
+    }
+  }
+
+  /// 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用。
+  ///
+  /// 产出逐条的 modelTruncated 错误结果与 iterationComplete，
+  /// 供模型在下一轮以完整参数重新发起。
+  Stream<AgentEvent> _handleTruncated(
+    List<ToolCall> toolCalls,
+    String content,
+  ) async* {
+    final toolCallDataList = <Map<String, dynamic>>[];
+    for (final tc in toolCalls) {
+      const msg =
+          'Error: Tool call was not executed because the '
+          'response hit the output token limit. Its arguments may be '
+          'truncated. Re-issue the tool call with complete arguments.';
+      yield AgentEvent.toolResult(
+        id: tc.id,
+        name: tc.function.name,
+        result: msg,
+        status: ToolResultStatus.modelTruncated,
+      );
+      _toolFailures.add(
+        ToolFailure(
+          toolName: tc.function.name,
+          status: ToolResultStatus.modelTruncated,
+          message: msg,
+        ),
+      );
+      _messages.add(ChatMessage.tool(toolCallId: tc.id, content: msg));
+      toolCallDataList.add({
+        'id': tc.id,
+        'name': tc.function.name,
+        'arguments': tc.function.arguments,
+        'result': msg,
+      });
+    }
+    yield AgentEvent.iterationComplete(
+      toolCalls: toolCallDataList,
+      content: content,
+    );
+  }
+
+  /// 执行一轮的工具调用：分组（可并行 / 串行）→ 串行段 → 并行段 →
+  /// iterationComplete。
+  Stream<AgentEvent> _executeToolCalls(
+    List<ToolCall> toolCalls,
+    String content,
+  ) async* {
+    final toolCallDataList = <Map<String, dynamic>>[];
+
+    // 分组：可并行的调用经过权限预检后进入并行组，其余（含需弹窗
+    // 审批的调用）进入串行组
+    final parallelCalls = _service.selectParallelCalls(
+      toolCalls,
+      runId: _runId,
+      permissionService: _permissionService,
+      onPermission: _onPermission,
+    );
+    final sequentialCalls = [
+      for (final tc in toolCalls)
+        if (!parallelCalls.contains(tc)) tc,
+    ];
+
+    // 串行执行（弹窗审批天然逐个出现）
+    for (final tc in sequentialCalls) {
+      yield AgentEvent.toolExecutionStart(
+        id: tc.id,
+        name: tc.function.name,
+        arguments: tc.function.arguments,
+      );
+      final data = await _executeOneTool(tc: tc);
+      yield data.event;
+      _messages.add(data.toolMessage);
+      toolCallDataList.add(data.record);
+      _recordFailure(data.event);
+    }
+
+    // 并行执行：信号量限流 + 取消优先 + 结果渐进式产出
+    if (parallelCalls.isNotEmpty) {
+      for (final tc in parallelCalls) {
+        yield AgentEvent.toolExecutionStart(
+          id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        );
+      }
+
+      final semaphore = _AsyncSemaphore(AgentService._maxParallelTools);
+      final futures = <Future<_ToolExecutionData>>{
+        for (final tc in parallelCalls) _executeParallelOne(tc: tc, semaphore: semaphore),
+      };
+
+      while (futures.isNotEmpty) {
+        // 每轮取最快完成的工具；取消信号优先返回，不等待卡住的工具
+        final first = await Future.any([
+          for (final f in futures) f.then((r) => (f: f, r: r)),
+          _token.whenCancelled.then((_) => null),
+        ]);
+        if (first == null) {
+          // 取消：排空在飞的工具 Future（最多 2s），吞掉结果与错误，
+          // 避免孤立 Future 继续执行副作用或产生未处理异常；
+          // 已在执行的工具无法中断（工具级取消另行排期）。
+          await Future.wait(
+            futures.map((f) => f.then((_) {}, onError: (_) {})),
+          ).timeout(const Duration(seconds: 2), onTimeout: () => []);
+          _token.throwIfCancelled();
+        }
+        futures.remove(first!.f);
+        yield first.r.event;
+        _messages.add(first.r.toolMessage);
+        toolCallDataList.add(first.r.record);
+        _recordFailure(first.r.event);
+      }
+    }
+
+    yield AgentEvent.iterationComplete(
+      toolCalls: toolCallDataList,
+      content: content,
+    );
+  }
+
+  /// 反思通道：失败可归因时让模型提炼长期经验，
+  /// 经 experience_learn 标准工具路径（校验/审批/执行）写入。
+  Stream<AgentEvent> _maybeReflect() async* {
+    var outcome = AgentRunOutcome(
+      termination: _termination,
+      iterations: _iterationsExecuted,
+      toolFailures: List.unmodifiable(_toolFailures),
+    );
+    if (ReflectionPolicy.shouldReflect(outcome) &&
+        _service._toolRegistry.get('experience_learn') != null) {
+      _reflectionAttempted = true;
+      try {
+        yield* _runReflection(
+          outcome: outcome,
+          task: _latestUserTask(),
+          iteration: _iterationsExecuted,
+        );
+      } on CancelledException {
+        rethrow;
+      } catch (e) {
+        // Reflection 是附加学习路径；失败不能把原任务改写成运行错误。
+        LoggerUtil.w('Reflection skipped after failure: $e');
+      }
+    }
+    outcome = AgentRunOutcome(
+      termination: _termination,
+      iterations: _iterationsExecuted,
+      toolFailures: List.unmodifiable(_toolFailures),
+      reflectionAttempted: _reflectionAttempted,
+    );
+    yield AgentEvent.outcome(outcome);
+  }
+
+  /// 失败反思：仅做一次 LLM 提案调用，经验写入完全复用普通工具路径。
+  Stream<AgentEvent> _runReflection({
+    required AgentRunOutcome outcome,
+    required String task,
+    required int iteration,
+  }) async* {
+    _token.throwIfCancelled();
+    final response = await _service._chatService.complete(
+      messages: [
+        ChatMessage.system(ReflectionPrompt.system),
+        ChatMessage.user(ReflectionPrompt.input(outcome: outcome, task: task)),
+      ],
+      provider: _provider,
+      model: _model,
+      cancelSignal: _token.whenCancelled,
+    );
+    _token.throwIfCancelled();
+
+    final proposal = ReflectionProposal.tryParse(response);
+    if (proposal == null) return;
+
+    final arguments = jsonEncode(proposal.toToolArguments());
+    final id = 'reflection_$iteration';
+    final toolCall = ToolCall(
+      id: id,
+      type: 'function',
+      function: FunctionCall(name: 'experience_learn', arguments: arguments),
+    );
+
+    // Reflection 只生成标准工具调用；参数校验、权限审批与执行完全复用
+    // 普通 Agent 工具路径，不直接写 ExperienceRepository。
+    yield AgentEvent.turnStart(iteration: iteration);
+    yield AgentEvent.toolCall(
+      id: id,
+      name: 'experience_learn',
+      arguments: arguments,
+    );
+    yield AgentEvent.toolExecutionStart(
+      id: id,
+      name: 'experience_learn',
+      arguments: arguments,
+    );
+    final data = await _executeOneTool(tc: toolCall);
+    yield data.event;
+    yield AgentEvent.iterationComplete(toolCalls: [data.record], content: '');
+  }
+
   /// 执行单个工具并返回打包数据（供串行/并行执行复用）。
-  Future<_ToolExecutionData> _executeOneTool({
-    required ToolCall tc,
-    required CancelToken token,
-    String? sentinelId,
-    BeforeToolCallHook? beforeHook,
-    AfterToolCallHook? afterHook,
-  }) async {
-    final result = await executeToolCallInternal(
+  Future<_ToolExecutionData> _executeOneTool({required ToolCall tc}) async {
+    final result = await _service.executeToolCallInternal(
       toolCall: tc,
-      cancelToken: token,
-      sentinelId: sentinelId,
-      beforeToolCall: beforeHook,
-      afterToolCall: afterHook,
+      cancelToken: _token,
+      sentinelId: _sentinelId,
+      beforeToolCall: _beforeHook,
+      afterToolCall: _afterHook,
     );
     return _ToolExecutionData(
       event: AgentToolResultEvent(
@@ -987,15 +1037,49 @@ class AgentService {
     );
   }
 
-  String smartTruncate(String result, {int threshold = 12000}) {
-    if (result.length <= threshold) return result;
-    final headLen = (threshold * 0.6).round();
-    final tailLen = threshold - headLen;
-    final head = result.substring(0, headLen);
-    final tail = result.substring(result.length - tailLen);
-    final skipped = result.length - headLen - tailLen;
-    return '$head\n\n... [truncated $skipped characters] ...\n\n$tail';
+  /// 并行执行单个工具，受 [semaphore] 限流。
+  Future<_ToolExecutionData> _executeParallelOne({
+    required ToolCall tc,
+    required _AsyncSemaphore semaphore,
+  }) async {
+    await semaphore.acquire();
+    try {
+      return await _executeOneTool(tc: tc);
+    } finally {
+      semaphore.release();
+    }
   }
+
+  void _recordFailure(AgentToolResultEvent event) {
+    if (event.status == ToolResultStatus.success) {
+      return;
+    }
+    _toolFailures.add(
+      ToolFailure(
+        toolName: event.name,
+        status: event.status,
+        message: event.result,
+      ),
+    );
+  }
+
+  String _latestUserTask() {
+    for (final message in _messages.reversed) {
+      if (message is UserMessage) return '${message.content}';
+    }
+    return '';
+  }
+}
+
+/// 单轮迭代的局部状态：LLM 流累积器与"模型主动结束"标志。
+///
+/// [_AgentLoop._runIteration] 经 [_AgentLoop._streamTurn] 共享累积器,
+/// 避免把一轮的临时字段散落在循环类上。
+class _TurnState {
+  final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
+
+  /// 模型未发起工具调用、主动结束本轮。
+  bool done = false;
 }
 
 /// 简单的异步信号量，限制并发执行数（FIFO 公平）。
@@ -1033,7 +1117,7 @@ class _StreamingToolCall {
   String arguments = '';
 }
 
-/// 单个工具执行的结果打包。供 [_executeOneTool] 返回。
+/// 单个工具执行的结果打包。供 [_AgentLoop._executeOneTool] 返回。
 class _ToolExecutionData {
   final AgentToolResultEvent event;
   final ChatMessage toolMessage;
