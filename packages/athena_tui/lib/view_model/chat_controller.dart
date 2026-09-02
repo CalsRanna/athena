@@ -35,15 +35,15 @@ class ChatController {
     required ChatSupportService supportService,
     Future<void> Function(String modelId)? onModelSwitched,
     String? defaultModelId,
-  })  : _manageService = manageService,
-        _bridge = bridge,
-        _messageRepo = messageRepo,
-        _modelRepo = modelRepo,
-        _providerRepo = providerRepo,
-        _sentinelRepo = sentinelRepo,
-        _supportService = supportService,
-        _onModelSwitched = onModelSwitched,
-        _defaultModelId = defaultModelId;
+  }) : _manageService = manageService,
+       _bridge = bridge,
+       _messageRepo = messageRepo,
+       _modelRepo = modelRepo,
+       _providerRepo = providerRepo,
+       _sentinelRepo = sentinelRepo,
+       _supportService = supportService,
+       _onModelSwitched = onModelSwitched,
+       _defaultModelId = defaultModelId;
 
   final ChatManageService _manageService;
   final TuiAgentBridge _bridge;
@@ -122,8 +122,7 @@ class ChatController {
       }
       messages.value = [...older, ...messages.value];
       // 返回不足窗口 → 扫描已到文件头,没有更早的了;正好满窗口 → 还有
-      _windowMinId =
-          older.length >= messageWindowSize ? older.first.id : null;
+      _windowMinId = older.length >= messageWindowSize ? older.first.id : null;
       return older.length;
     } finally {
       _loadingOlder = false;
@@ -190,7 +189,9 @@ class ChatController {
       LoggerUtil.e('Background work failed: $e');
     });
     final previous = _backgroundWork;
-    _backgroundWork = previous == null ? tracked : previous.then((_) => tracked);
+    _backgroundWork = previous == null
+        ? tracked
+        : previous.then((_) => tracked);
   }
 
   /// 释放资源并阻止后续信号写入。幂等;由 AthenaApp.dispose 调用。
@@ -240,7 +241,8 @@ class ChatController {
     if (isStreaming.value) return;
     error.value = null;
     final models = await _modelRepo.getAllModels();
-    final resolvedModel = model ??
+    final resolvedModel =
+        model ??
         _resolveDefaultModel(models) ??
         (models.isEmpty ? null : models.first);
     final sentinel = await _defaultSentinel();
@@ -253,10 +255,12 @@ class ChatController {
     // 最常见的"发不出消息"原因。
     // 只检查 apiKey 非空,不检查 enabled:enabled 是种子默认 false,
     // 用户可能手工编辑 yaml 只填 key(不置 enabled),依赖它会误报。
-    final provider = await _supportService
-        .getProviderForModel(resolvedModel.providerId);
+    final provider = await _supportService.getProviderForModel(
+      resolvedModel.providerId,
+    );
     if (provider == null || provider.apiKey.isEmpty) {
-      error.value = '当前模型 ${resolvedModel.name} 的 Provider 未配置 API key。'
+      error.value =
+          '当前模型 ${resolvedModel.name} 的 Provider 未配置 API key。'
           '请运行 /providers 配置后重试。';
     }
     final chat = await _manageService.createChat(
@@ -390,8 +394,9 @@ class ChatController {
     final messages = await _loadRecentMessages(chat.id!);
     if (!_active) return; // 等待 IO 期间 UI 拆解
     // 返回满窗口 → 文件里可能还有更早的;不足 → 已到文件头
-    _windowMinId =
-        messages.length >= messageWindowSize ? messages.first.id : null;
+    _windowMinId = messages.length >= messageWindowSize
+        ? messages.first.id
+        : null;
     final model = await _modelRepo.getModelById(chat.modelId);
     final provider = model == null
         ? null
@@ -463,7 +468,11 @@ class ChatController {
     if (!_active || isStreaming.value || _runSettled != null) return;
 
     error.value = null;
-    final message = MessageEntity(chatId: chat!.id!, role: 'user', content: text);
+    final message = MessageEntity(
+      chatId: chat!.id!,
+      role: 'user',
+      content: text,
+    );
     isStreaming.value = true;
     currentTokenUsage.value = null;
     _pendingList = null;
@@ -494,7 +503,11 @@ class ChatController {
   ) async {
     if (!_active) return;
     try {
-      final stream = _bridge.send(message: message, chat: chat, jsonMode: jsonMode);
+      final stream = _bridge.send(
+        message: message,
+        chat: chat,
+        jsonMode: jsonMode,
+      );
       await for (final event in stream) {
         handleRunEvent(event);
       }
@@ -549,7 +562,7 @@ class ChatController {
       case RunMessageUpdated(:final message):
         _applyMessageUpdate(message);
       // TUI 无迭代/工具状态显示(与 GUI 不同),事件有意忽略
-      case RunIterationChanged() || RunToolNameChanged():
+      case RunIterationChanged() || RunToolNameChanged() || RunOutcomeChanged():
         break;
       case RunUsageChanged(:final usage, :final chat):
         if (chat.id == currentChat.value?.id) {

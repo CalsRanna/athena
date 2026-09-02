@@ -10,10 +10,10 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
 - **Monorepo 三包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
-- **内置工具系统**：13 个工具实现类（桌面端注册 13 个，移动端 9 个），带危险等级（readOnly/dangerous）与执行模式（串行/并行）
+- **内置工具系统**：桌面端注册 14 个工具、移动端 10 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
-- **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、Sentinel 系统提示词优化
+- **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
 - **Shortcut 快捷入口系统**：绑定额外 Sentinel 的一等公民实体，支持场景级 JSON 输出模式
 - **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
 - **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
@@ -209,6 +209,7 @@ sealed class AgentEvent {
   AgentToolExecutionStartEvent // 单个工具开始执行（串行/并行均发）
   AgentToolExecutionUpdateEvent// 工具部分结果进度（预留，shell 实时 stdout）
   AgentUsageEvent              // Token 使用量统计
+  AgentRunOutcomeEvent         // 结构化终止原因、迭代数与工具失败证据
 }
 ```
 
@@ -237,7 +238,7 @@ enum ToolRisk { readOnly, dangerous }
 
 - `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
 - `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
-- 桌面端注册 11 个工具（bash 与 powershell 按操作系统互斥），移动端仅 3 个（WebFetchTool、WebSearchTool、SkillTool）
+- 桌面端注册 14 个工具（bash 与 powershell 按操作系统互斥），移动端注册 10 个（无本地文件与进程工具）
 - 注册在 `di.dart` 的 ToolRegistry 工厂中按 `PlatformUtil.isMobile` 分支完成
 
 工具实现文件（`packages/athena_core/lib/agent/tool/`）：
@@ -254,8 +255,11 @@ enum ToolRisk { readOnly, dangerous }
 | `skill_tool.dart` | SkillTool | dangerous/串行 | 加载 Skill Level 2 指令，校验 allowed-tools |
 | `skill_evolve_tool.dart` | SkillEvolveTool | dangerous/串行 | 创建/更新 Skill（SKILL.md） |
 | `experience_learn_tool.dart` | ExperienceLearnTool | dangerous/串行 | 经验学习（`~/.athena/experiences/`，Sentinel 私有或共享） |
-| `experience_learn_tool.dart` | ExperienceRecallTool | dangerous/串行 | 经验检索 |
+| `experience_learn_tool.dart` | ExperienceRecallTool | **readOnly/串行** | 经验检索 |
+| `sentinel_list_tool.dart` | SentinelListTool | **readOnly/串行** | 列出 Sentinel 摘要 |
+| `sentinel_get_tool.dart` | SentinelGetTool | **readOnly/串行** | 获取 Sentinel 完整配置 |
 | `sentinel_evolve_tool.dart` | SentinelEvolveTool | dangerous/串行 | 改进 Sentinel 提示词（内置 Sentinel 不可改名），onChanged 回调刷新列表 |
+| `sentinel_revert_tool.dart` | SentinelRevertTool | dangerous/串行 | 从本地快照回滚 Sentinel |
 | `shell_runner.dart` | (辅助) | - | Shell 进程启动/管理（超时、kill） |
 | `html_to_markdown.dart` | (辅助) | - | HTML 转 Markdown |
 | `schema_validator.dart` | (辅助) | - | JSON Schema 参数校验（类型/必填/枚举/数值范围） |
@@ -310,7 +314,9 @@ disable-model-invocation: false
 
 - **Sentinel 优化**（`sentinel_evolve`）：基于使用反馈优化系统提示词
 - **Skill Evolution**（`skill_evolve`）：创建/改进 Skill 扩展能力
-- **Experience Learning**（`experience_learn` / `experience_recall`）：长期经验记忆（`~/.athena/experiences/`），带标签与上下文，支持 Sentinel 私有或全局共享
+- **Experience Learning**（`experience_learn` / `experience_recall`）：长期经验记忆（`~/.athena/experiences/`），写入走 dangerous 权限审批，支持 update/archive、Sentinel 私有或全局共享
+- **Failure Reflection**：最大迭代或同工具重复失败时生成候选经验，并转成标准 `experience_learn` 调用复用原参数校验、权限审批和执行路径
+- **Memory Digest**：每次顶层 send 按当前任务重新检索最多 3 条 active 经验并临时注入，不落库为历史消息
 - 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
 
 ### 7.7 Shortcut 系统（v3.4.4 新增）
@@ -338,6 +344,7 @@ sealed class RunEvent {
   RunIterationChanged   // 迭代轮次变化
   RunToolNameChanged    // 当前工具名称变化
   RunUsageChanged       // Token 使用量 + 最新 ChatEntity
+  RunOutcomeChanged     // 结构化运行结果（completed/maxIterations/cancelled/error）
   RunAutoRename         // 触发自动重命名
   RunListReload         // 触发会话列表刷新
   RunError              // 错误

@@ -27,18 +27,15 @@ void main() {
     String context = '',
     List<String> tags = const [],
     String scope = 'self',
-    String verdict = ExperienceEntity.verdictNone,
-  }) =>
-      ExperienceEntity(
-        id: 'id1',
-        createdAt: DateTime(2026, 8, 31),
-        lesson: lesson,
-        context: context,
-        tags: tags,
-        scope: scope,
-        sentinelId: scope == 'shared' ? 'shared' : 's1',
-        userVerdict: verdict,
-      );
+  }) => ExperienceEntity(
+    id: 'id1',
+    createdAt: DateTime(2026, 8, 31),
+    lesson: lesson,
+    context: context,
+    tags: tags,
+    scope: scope,
+    sentinelId: scope == 'shared' ? 'shared' : 's1',
+  );
 
   group('buildDigest', () {
     test('每条含 id / scope / 日期与截断后的 lesson', () {
@@ -46,11 +43,12 @@ void main() {
         exp('short lesson', scope: 'shared'),
       ]);
       expect(digest, contains('The following are your past experiences'));
-      // 免责句：未经验证的经验是参考，不是指令（防错误强化放大）
+      // 经验即使已审批也只是历史参考，不能覆盖当前指令。
       expect(digest, contains('reference, not instructions'));
       expect(digest, contains('[id1]'));
       expect(digest, contains('(shared, 2026-08-31)'));
       expect(digest, contains('short lesson'));
+      expect(MemoryDigest.isDigestMessage(digest), isTrue);
     });
 
     test('lesson 超过 80 字符时按词边界截断', () {
@@ -61,8 +59,7 @@ void main() {
       final entry = lines.firstWhere((l) => l.startsWith('- [id1]'));
       expect(entry, endsWith('…'));
       expect(longLesson.length, greaterThan(80));
-      expect(entry.length, lessThan(longLesson.length),
-          reason: '截断后长度应小于原文');
+      expect(entry.length, lessThan(longLesson.length), reason: '截断后长度应小于原文');
     });
 
     test('多行 lesson 单行化', () {
@@ -70,6 +67,25 @@ void main() {
       expect(digest, contains('line1 line2'));
       expect(digest, isNot(contains('\nline2')));
     });
+  });
+
+  test('replaceInContext 移除旧摘要并仅保留当前任务摘要', () {
+    final stale = ChatMessage.system(
+      MemoryDigest.buildDigest([exp('stale lesson')]),
+    );
+    final current = ChatMessage.system(
+      MemoryDigest.buildDigest([exp('current lesson')]),
+    );
+    final result = MemoryDigest.replaceInContext(
+      [ChatMessage.system('sentinel'), stale, ChatMessage.user('task')],
+      [current],
+    );
+
+    final systems = result.whereType<SystemMessage>().toList();
+    expect(systems, hasLength(2));
+    expect(systems.first.content, 'sentinel');
+    expect(systems.last.content, contains('current lesson'));
+    expect(systems.last.content, isNot(contains('stale lesson')));
   });
 
   group('messagesFor', () {
@@ -109,10 +125,7 @@ void main() {
 
     test('按相关度取前 limit 条（lesson 命中优先于 context 命中）', () async {
       final repo = ExperienceRepository(homeDir: rootHome);
-      await repo.save(
-        lesson: 'flutter state management',
-        sentinelId: 's1',
-      );
+      await repo.save(lesson: 'flutter state management', sentinelId: 's1');
       await Future<void>.delayed(const Duration(milliseconds: 2));
       await repo.save(
         lesson: 'unrelated',
@@ -127,6 +140,27 @@ void main() {
       );
       final content = (messages!.single as SystemMessage).content;
       expect(content, contains('flutter state management'));
+    });
+
+    test('完整自然语言任务可按关键词命中短经验', () async {
+      final repo = ExperienceRepository(homeDir: rootHome);
+      await repo.save(
+        lesson: 'Re-read files before exact replacement',
+        tags: const ['file-update'],
+        sentinelId: 's1',
+      );
+
+      final messages = await MemoryDigest.messagesFor(
+        repository: repo,
+        query:
+            'Please update this file safely and avoid a stale exact replacement',
+        sentinelId: 's1',
+      );
+      expect(messages, isNotNull);
+      expect(
+        (messages!.single as SystemMessage).content,
+        contains('Re-read files'),
+      );
     });
   });
 }

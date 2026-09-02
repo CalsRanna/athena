@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/evolution/reflection.dart';
+import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as athena;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/service/chat_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:test/test.dart';
@@ -41,7 +46,10 @@ class _EchoTool extends athena.Tool {
   };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     return 'echo: ${args['message']}';
   }
 }
@@ -59,10 +67,10 @@ class _BlockingTool extends athena.Tool implements athena.CancellableTool {
   Map<String, dynamic> get parameters => {'type': 'object'};
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {
+  Future<String> execute(
+    Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) async =>
-      'unexpected';
+  }) async => 'unexpected';
 
   @override
   Future<String> executeCancellable(
@@ -127,10 +135,7 @@ void main() {
     final result = await agentService.executeToolCallInternal(
       toolCall: buildToolCall(),
       cancelToken: null,
-      afterToolCall: (ctx) async => (
-        content: 'overridden',
-        isError: false,
-      ),
+      afterToolCall: (ctx) async => (content: 'overridden', isError: false),
     );
 
     expect(result.processedResult, 'overridden');
@@ -187,6 +192,197 @@ void main() {
 
   _jsonModeTests();
   _runtimePromptTests();
+  _reflectionTests();
+}
+
+class _ReflectionChatService extends ChatService {
+  _ReflectionChatService(this.reflectionResponse)
+    : super(llmClient: LlmClient());
+
+  final String reflectionResponse;
+  int completeCalls = 0;
+
+  @override
+  Stream<ChatStreamEvent> getCompletion({
+    required ChatEntity chat,
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    List<Tool>? tools,
+    ResponseFormat? responseFormat,
+    Future<void>? cancelSignal,
+  }) async* {}
+
+  @override
+  Future<String> complete({
+    required List<ChatMessage> messages,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    Future<void>? cancelSignal,
+  }) async {
+    completeCalls++;
+    return reflectionResponse;
+  }
+}
+
+void _reflectionTests() {
+  test('ReflectionPolicy 只接受最大迭代或同工具重复失败', () {
+    expect(
+      ReflectionPolicy.shouldReflect(
+        const AgentRunOutcome(
+          termination: AgentRunTermination.maxIterations,
+          iterations: 100,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      ReflectionPolicy.shouldReflect(
+        const AgentRunOutcome(
+          termination: AgentRunTermination.completed,
+          iterations: 2,
+          toolFailures: [
+            ToolFailure(
+              toolName: 'file_update',
+              status: ToolResultStatus.executionError,
+              message: 'first',
+            ),
+            ToolFailure(
+              toolName: 'file_update',
+              status: ToolResultStatus.executionError,
+              message: 'second',
+            ),
+          ],
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      ReflectionPolicy.shouldReflect(
+        const AgentRunOutcome(
+          termination: AgentRunTermination.cancelled,
+          iterations: 1,
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      ReflectionPolicy.shouldReflect(
+        const AgentRunOutcome(
+          termination: AgentRunTermination.maxIterations,
+          iterations: 100,
+          toolFailures: [
+            ToolFailure(
+              toolName: 'file_write',
+              status: ToolResultStatus.blocked,
+              message: 'User denied the tool execution.',
+            ),
+          ],
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      ReflectionPolicy.shouldReflect(
+        const AgentRunOutcome(
+          termination: AgentRunTermination.completed,
+          iterations: 2,
+          toolFailures: [
+            ToolFailure(
+              toolName: 'experience_learn',
+              status: ToolResultStatus.blocked,
+              message: 'denied',
+            ),
+            ToolFailure(
+              toolName: 'experience_learn',
+              status: ToolResultStatus.blocked,
+              message: 'denied again',
+            ),
+          ],
+        ),
+      ),
+      isFalse,
+    );
+  });
+
+  test('最大迭代后的 Reflection 复用 experience_learn 权限与执行链路', () async {
+    final temp = Directory.systemTemp.createTempSync('reflection_agent_test');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final repository = ExperienceRepository(homeDir: temp.path);
+    final registry = ToolRegistry()
+      ..register(ExperienceLearnTool(repository: repository));
+    final chatService = _ReflectionChatService('''
+{"should_learn":true,"lesson":"Re-read a file before exact replacement.","context":"Editing stale files","tags":["file-update"],"scope":"self","confidence":0.9}
+''');
+    final service = AgentService(
+      chatService: chatService,
+      toolRegistry: registry,
+    );
+    var approvals = 0;
+
+    final events = await service
+        .run(
+          runId: 41,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [ChatMessage.user('update this file')],
+          sentinelId: 's1',
+          maxIterations: 0,
+          onPermission: (name, arguments) async {
+            approvals++;
+            expect(name, 'experience_learn');
+            expect(arguments, contains('Re-read a file'));
+            return true;
+          },
+        )
+        .toList();
+
+    expect(chatService.completeCalls, 1);
+    expect(approvals, 1);
+    expect(
+      events.whereType<AgentToolCallEvent>().single.name,
+      'experience_learn',
+    );
+    final outcome = events.whereType<AgentRunOutcomeEvent>().single.outcome;
+    expect(outcome.termination, AgentRunTermination.maxIterations);
+    expect(outcome.reflectionAttempted, isTrue);
+    final stored = await repository.listForSentinel('s1');
+    expect(stored.single.lesson, 'Re-read a file before exact replacement.');
+  });
+
+  test('用户拒绝 Reflection 的普通工具审批时不写经验', () async {
+    final temp = Directory.systemTemp.createTempSync('reflection_deny_test');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final repository = ExperienceRepository(homeDir: temp.path);
+    final registry = ToolRegistry()
+      ..register(ExperienceLearnTool(repository: repository));
+    final service = AgentService(
+      chatService: _ReflectionChatService('''
+{"should_learn":true,"lesson":"A proposed lesson.","context":"test","tags":[],"scope":"self","confidence":0.9}
+'''),
+      toolRegistry: registry,
+    );
+
+    final events = await service
+        .run(
+          runId: 42,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [ChatMessage.user('task')],
+          sentinelId: 's1',
+          maxIterations: 0,
+          onPermission: (_, __) async => false,
+        )
+        .toList();
+
+    expect(await repository.listForSentinel('s1'), isEmpty);
+    expect(
+      events.whereType<AgentToolResultEvent>().single.status,
+      ToolResultStatus.blocked,
+    );
+  });
 }
 
 /// 记录 getCompletion 收到的 responseFormat 的伪 ChatService。
@@ -493,7 +689,10 @@ void _runtimePromptTests() {
           chat: _chat(),
           provider: _provider(),
           model: _model(),
-          baseMessages: [ChatMessage.system('SENTINEL'), ChatMessage.user('hi')],
+          baseMessages: [
+            ChatMessage.system('SENTINEL'),
+            ChatMessage.user('hi'),
+          ],
         )
         .toList();
 

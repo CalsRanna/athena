@@ -19,10 +19,10 @@ class ExperienceLearnTool implements Tool {
   final ExperienceRepository _repository;
 
   ExperienceLearnTool({required ExperienceRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   @override
-  ToolRisk get risk => ToolRisk.readOnly;
+  ToolRisk get risk => ToolRisk.dangerous;
 
   @override
   String get name => 'experience_learn';
@@ -37,7 +37,7 @@ class ExperienceLearnTool implements Tool {
       '- update: revise an existing experience (wrong or outdated lesson, '
       'missing tags). Requires experience_id.\n'
       '- archive: stop recalling an existing experience while keeping it as a '
-      'record (e.g. a lesson the user refuted). Requires experience_id.\n'
+      'record (e.g. a retired or superseded lesson). Requires experience_id.\n'
       'Use this when:\n'
       '- You discovered a better way to solve a type of problem\n'
       '- The user corrected your approach and you want to remember it\n'
@@ -50,67 +50,73 @@ class ExperienceLearnTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'action': {
-            'type': 'string',
-            'enum': ['create', 'update', 'archive'],
-            'description': 'What to do with the experience. create (default): '
-                'record a new one. update: fix an existing one (requires '
-                'experience_id). archive: stop recalling an existing one while '
-                'keeping it as a record (requires experience_id).',
-          },
-          'experience_id': {
-            'type': 'string',
-            'description': 'ID of the experience to update or archive. '
-                'Required when action is "update" or "archive"; must be '
-                'omitted when action is "create".',
-          },
-          'lesson': {
-            'type': 'string',
-            'description':
-                'For create: the lesson or insight to remember. Be specific '
-                'and actionable. Include the context: what was the situation, '
-                'what went wrong (or right), and what should be done '
-                'differently in the future.\n'
-                'For update: the revised lesson (omit to keep the current one).',
-          },
-          'context': {
-            'type': 'string',
-            'description':
-                'Brief description of the situation that led to this lesson '
-                '(e.g., "Building a Flutter widget", "Debugging API errors"). '
-                'Helps with future retrieval.',
-          },
-          'tags': {
-            'type': 'string',
-            'description':
-                'Comma-separated tags for categorization and retrieval '
-                '(e.g., "flutter, state-management, best-practice").',
-          },
-          'scope': {
-            'type': 'string',
-            'description':
-                'Scope of this experience. "self" (default): only visible to '
-                'your current Sentinel role. "shared": visible to all Sentinel '
-                'roles. Use "shared" for universal user preferences, '
-                'communication style, or personal info that applies across '
-                'contexts. Use "self" for tool-specific tricks or '
-                'domain-specific patterns.\n'
-                'For update: changing the scope moves the experience between '
-                'the private and shared store.',
-            'enum': ['self', 'shared'],
-          },
-        },
-        'required': ['lesson'],
-      };
+    'type': 'object',
+    'properties': {
+      'action': {
+        'type': 'string',
+        'enum': ['create', 'update', 'archive'],
+        'description':
+            'What to do with the experience. create (default): '
+            'record a new one. update: fix an existing one (requires '
+            'experience_id). archive: stop recalling an existing one while '
+            'keeping it as a record (requires experience_id).',
+      },
+      'experience_id': {
+        'type': 'string',
+        'description':
+            'ID of the experience to update or archive. '
+            'Required when action is "update" or "archive"; must be '
+            'omitted when action is "create".',
+      },
+      'lesson': {
+        'type': 'string',
+        'description':
+            'For create: the lesson or insight to remember. Be specific '
+            'and actionable. Include the context: what was the situation, '
+            'what went wrong (or right), and what should be done '
+            'differently in the future.\n'
+            'For update: the revised lesson (omit to keep the current one).',
+      },
+      'context': {
+        'type': 'string',
+        'description':
+            'Brief description of the situation that led to this lesson '
+            '(e.g., "Building a Flutter widget", "Debugging API errors"). '
+            'Helps with future retrieval.',
+      },
+      'tags': {
+        'type': 'string',
+        'description':
+            'Comma-separated tags for categorization and retrieval '
+            '(e.g., "flutter, state-management, best-practice").',
+      },
+      'scope': {
+        'type': 'string',
+        'description':
+            'Scope of this experience. "self" (default): only visible to '
+            'your current Sentinel role. "shared": visible to all Sentinel '
+            'roles. Use "shared" for universal user preferences, '
+            'communication style, or personal info that applies across '
+            'contexts. Use "self" for tool-specific tricks or '
+            'domain-specific patterns.\n'
+            'For update: changing the scope moves the experience between '
+            'the private and shared store.',
+        'enum': ['self', 'shared'],
+      },
+    },
+    // create/update/archive 的必填字段不同，交由 execute 做动作级校验。
+    'required': <String>[],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final lesson = args['lesson'] as String? ?? '';
     final context = args['context'] as String? ?? '';
     final tagsStr = args['tags'] as String? ?? '';
-    final scope = args['scope'] as String? ?? 'self';
+    final scope = args['scope'] as String?;
     final action = args['action'] as String? ?? 'create';
     final experienceId = args['experience_id'] as String?;
     final sentinelId = args['_sentinel_id'] as String? ?? 'default';
@@ -134,12 +140,20 @@ class ExperienceLearnTool implements Tool {
         if (lesson.trim().isEmpty) {
           return 'Error: lesson must not be empty when creating an experience.';
         }
+        final normalizedLesson = lesson.trim().toLowerCase();
+        final existing = await _repository.listForSentinel(sentinelId);
+        for (final item in existing) {
+          if (item.lesson.trim().toLowerCase() == normalizedLesson) {
+            return 'Experience already exists (id: ${item.id}, '
+                'scope: ${item.scope}). No duplicate was created.';
+          }
+        }
         final entity = await _repository.save(
           lesson: lesson.trim(),
           context: context.trim(),
           tags: tags,
           source: 'auto',
-          scope: scope,
+          scope: scope ?? 'self',
           sentinelId: sentinelId,
         );
         return 'Experience recorded successfully (id: ${entity.id}, '
@@ -201,7 +215,7 @@ class ExperienceRecallTool implements Tool {
   final ExperienceRepository _repository;
 
   ExperienceRecallTool({required ExperienceRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   @override
   ToolRisk get risk => ToolRisk.readOnly;
@@ -225,39 +239,41 @@ class ExperienceRecallTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'query': {
-            'type': 'string',
-            'description':
-                'Search query to find relevant experiences. Matches against '
-                'lesson text, context, and tags. Omit to list all experiences.',
-          },
-          'limit': {
-            'type': 'integer',
-            'description':
-                'Maximum number of experiences to return (default: 10).',
-          },
-          'include_shared': {
-            'type': 'boolean',
-            'description':
-                'Whether to include shared experiences in results '
-                '(default: true). Set to false to search only your private '
-                'experiences.',
-          },
-          'include_archived': {
-            'type': 'boolean',
-            'description':
-                'Whether to include archived (refuted or retired) experiences '
-                'in results (default: false). Archived experiences are kept as '
-                'records — mainly useful for reviewing what was rejected.',
-          },
-        },
-        'required': <String>[],
-      };
+    'type': 'object',
+    'properties': {
+      'query': {
+        'type': 'string',
+        'description':
+            'Search query to find relevant experiences. Matches against '
+            'lesson text, context, and tags. Omit to list all experiences.',
+      },
+      'limit': {
+        'type': 'integer',
+        'description': 'Maximum number of experiences to return (default: 10).',
+      },
+      'include_shared': {
+        'type': 'boolean',
+        'description':
+            'Whether to include shared experiences in results '
+            '(default: true). Set to false to search only your private '
+            'experiences.',
+      },
+      'include_archived': {
+        'type': 'boolean',
+        'description':
+            'Whether to include archived or retired experiences '
+            'in results (default: false). Archived experiences are kept as '
+            'records for later inspection.',
+      },
+    },
+    'required': <String>[],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final query = args['query'] as String? ?? '';
     final limit = args['limit'] as int? ?? 10;
     final includeShared = args['include_shared'] as bool? ?? true;
@@ -267,28 +283,39 @@ class ExperienceRecallTool implements Tool {
     try {
       final results = includeShared
           ? (query.trim().isEmpty
-              ? await _repository.listForSentinel(sentinelId,
-                  includeArchived: includeArchived)
-              : await _repository.searchForSentinel(sentinelId, query.trim(),
-                  includeArchived: includeArchived))
+                ? await _repository.listForSentinel(
+                    sentinelId,
+                    includeArchived: includeArchived,
+                  )
+                : await _repository.searchForSentinel(
+                    sentinelId,
+                    query.trim(),
+                    includeArchived: includeArchived,
+                  ))
           : (query.trim().isEmpty
-              ? await _repository.listPrivate(sentinelId,
-                  includeArchived: includeArchived)
-              : await _repository.searchPrivate(sentinelId, query.trim(),
-                  includeArchived: includeArchived));
+                ? await _repository.listPrivate(
+                    sentinelId,
+                    includeArchived: includeArchived,
+                  )
+                : await _repository.searchPrivate(
+                    sentinelId,
+                    query.trim(),
+                    includeArchived: includeArchived,
+                  ));
 
       if (results.isEmpty) {
         return query.isEmpty
             ? 'No active experiences recorded yet. Use experience_learn to '
-                'start building your knowledge base.'
+                  'start building your knowledge base.'
             : 'No active experiences found matching "$query".';
       }
 
       final buffer = StringBuffer();
       final display = results.take(limit).toList();
       buffer.writeln(
-          'Found ${results.length} experience(s)${query.isNotEmpty ? ' matching "$query"' : ''}'
-          '${results.length > limit ? ' (showing $limit)' : ''}:');
+        'Found ${results.length} experience(s)${query.isNotEmpty ? ' matching "$query"' : ''}'
+        '${results.length > limit ? ' (showing $limit)' : ''}:',
+      );
       buffer.writeln();
 
       for (var i = 0; i < display.length; i++) {
@@ -296,12 +323,8 @@ class ExperienceRecallTool implements Tool {
         final origin = e.scope == 'shared' ? 'shared' : 'private';
         final flags = <String>[
           if (e.status == ExperienceEntity.statusArchived) 'archived',
-          if (e.userVerdict == ExperienceEntity.verdictConfirmed)
-            'user-confirmed',
-          if (e.userVerdict == ExperienceEntity.verdictRefuted) 'user-refuted',
         ];
-        final annotation =
-            flags.isEmpty ? '' : ' [${flags.join(', ')}]';
+        final annotation = flags.isEmpty ? '' : ' [${flags.join(', ')}]';
         buffer.writeln('--- Experience ${i + 1} ($origin)$annotation ---');
         buffer.writeln('ID: ${e.id}');
         buffer.writeln('Date: ${_formatDate(e.createdAt)}');

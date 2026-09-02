@@ -13,6 +13,8 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 /// user always sees the complete command they are approving. A truncated
 /// preview could hide a dangerous tail (e.g. `...; rm -rf ~/x`). All other
 /// arguments keep a 120-character truncation to keep the dialog readable.
+/// Evolution writes are also shown in full because their content is the
+/// subject of the approval, not merely an execution parameter.
 String formatToolArgsForApproval(String toolName, String arguments) {
   // Shell：命令是唯一的审批内容，完整展示不截断
   if (kShellToolNames.contains(toolName)) {
@@ -24,22 +26,31 @@ String formatToolArgsForApproval(String toolName, String arguments) {
     return _truncateRaw(arguments);
   }
 
+  // 自进化写入：复用通用权限卡，但完整展示实际写入内容。
+  final showFullValues = _fullApprovalValueToolNames.contains(toolName);
+
   // 其他工具：参数键值逐行展示
   final buffer = StringBuffer();
   try {
     final args = jsonDecode(arguments) as Map<String, dynamic>;
     for (final entry in args.entries) {
       var value = entry.value.toString();
-      if (value.length > 120) {
+      if (!showFullValues && value.length > 120) {
         value = '${value.substring(0, 120)}...';
       }
       buffer.writeln('${entry.key}: $value');
     }
   } catch (_) {
-    buffer.write(_truncateRaw(arguments));
+    buffer.write(showFullValues ? arguments : _truncateRaw(arguments));
   }
   return buffer.toString();
 }
+
+const _fullApprovalValueToolNames = {
+  'experience_learn',
+  'skill_evolve',
+  'sentinel_evolve',
+};
 
 /// 原始字符串兜底截断（200 字符）。
 String _truncateRaw(String arguments) {

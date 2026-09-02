@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/model/token_usage.dart';
 
 /// Agent 一次 run 的对外事件契约（UI 无关）。
@@ -39,6 +40,11 @@ class RunUsageChanged extends RunEvent {
   final TokenUsage usage;
   final ChatEntity chat;
   const RunUsageChanged(this.usage, this.chat);
+}
+
+class RunOutcomeChanged extends RunEvent {
+  final AgentRunOutcome outcome;
+  const RunOutcomeChanged(this.outcome);
 }
 
 class RunAutoRename extends RunEvent {
