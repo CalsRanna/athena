@@ -14,8 +14,8 @@ class EvolutionPrompt {
   static const String hint =
       'You have self-evolution tools: skill_evolve, experience_learn, '
       'experience_recall, sentinel_evolve, sentinel_revert. '
-      'Relevant past experiences are injected at the start of each task — '
-      'call experience_recall for the full lessons when they matter. '
+      'Your complete active memory catalog is injected at the start of each '
+      'task — call experience_recall when supporting context or tags matter. '
       'Load the "self-evolve" skill for guidance on when and how to improve yourself. '
       'Experiences are per-Sentinel by default; use scope="shared" only for '
       'universal user preferences or communication style.';
@@ -45,12 +45,13 @@ You can permanently improve your capabilities through three mechanisms:
   you identify a recurring pattern; you learn user preferences
 - **When to recall**: Before starting complex/familiar tasks;
   when context suggests past learnings apply
-  (relevant experience summaries are auto-injected at task start — recall
-  the full lesson when a summary looks relevant)
+  (all active lesson summaries are auto-injected at task start — recall
+  supporting context and tags when a lesson applies)
 - **Format**: Be specific and actionable. Include context, what happened,
-  what to do differently
-- **Economy**: Only summaries (~3 items) are auto-injected; full lessons load
-  on explicit recall — no prompt bloat
+  what to do differently. Keep lesson within 500 characters and put supporting
+  detail in context
+- **Economy**: The stable catalog contains every active lesson summary;
+  supporting context and tags load only on explicit recall
 
 ### Experience Correction
 - When the user corrects an existing experience, use `experience_learn`

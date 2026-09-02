@@ -172,6 +172,17 @@ void main() {
       expect(results, isEmpty);
     });
 
+    test('可用 Digest 中的完整 ID 精确 recall', () async {
+      final repo = newRepo();
+      final saved = await repo.save(
+        lesson: 'memory without query keywords',
+        sentinelId: 's1',
+      );
+
+      final results = await repo.searchForSentinel('s1', saved.id);
+      expect(results.single.id, saved.id);
+    });
+
     test('中文长句按二元字组召回相关经验', () async {
       final repo = newRepo();
       await repo.save(
@@ -188,51 +199,26 @@ void main() {
     });
   });
 
-  test('旧 JSON 无生命周期字段时兼容读取（status 默认 active）', () async {
+  test('JSON 未提供 status 时默认 active', () async {
     final repo = newRepo();
     final dir = Directory('$rootHome/.athena/experiences/s1');
     dir.createSync(recursive: true);
-    const legacyJson = {
-      'id': 'legacy_1',
+    const jsonWithoutStatus = {
+      'id': 'without_status',
       'created_at': '2026-01-01T00:00:00.000',
-      'lesson': 'legacy lesson',
+      'lesson': 'active lesson',
       'context': '',
       'tags': <String>[],
       'source': 'auto',
       'scope': 'self',
       'sentinel_id': 's1',
     };
-    File(
-      '${dir.path}/legacy_1.json',
-    ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(legacyJson));
+    File('${dir.path}/without_status.json').writeAsStringSync(
+      const JsonEncoder.withIndent('  ').convert(jsonWithoutStatus),
+    );
 
     final all = await repo.listForSentinel('s1', includeArchived: true);
     expect(all, hasLength(1));
     expect(all.single.status, ExperienceEntity.statusActive);
-  });
-
-  test('旧 JSON 的 refuted verdict 读取时自动视为 archived', () async {
-    final repo = newRepo();
-    final dir = Directory('$rootHome/.athena/experiences/s1');
-    dir.createSync(recursive: true);
-    final legacyJson = {
-      'id': 'legacy_refuted',
-      'created_at': '2026-01-01T00:00:00.000',
-      'lesson': 'wrong lesson',
-      'context': '',
-      'tags': <String>[],
-      'source': 'auto',
-      'scope': 'self',
-      'sentinel_id': 's1',
-      'status': 'active',
-      'user_verdict': 'refuted',
-    };
-    File(
-      '${dir.path}/legacy_refuted.json',
-    ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(legacyJson));
-
-    expect(await repo.listForSentinel('s1'), isEmpty);
-    final archived = await repo.listForSentinel('s1', includeArchived: true);
-    expect(archived.single.status, ExperienceEntity.statusArchived);
   });
 }

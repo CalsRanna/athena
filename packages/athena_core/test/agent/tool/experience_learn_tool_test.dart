@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:test/test.dart';
 
@@ -66,6 +67,39 @@ void main() {
     final tool = newLearnTool();
     final result = await tool.execute({'lesson': '  ', '_sentinel_id': 's1'});
     expect(result, contains('lesson must not be empty'));
+  });
+
+  test('create/update 拒绝超过 500 字符的 lesson', () async {
+    final tool = newLearnTool();
+    final tooLong = 'x' * (ExperienceEntity.maxLessonLength + 1);
+    final createResult = await tool.execute({
+      'lesson': tooLong,
+      '_sentinel_id': 's1',
+    });
+    expect(createResult, contains('must not exceed 500 characters'));
+
+    await tool.execute({'lesson': 'original', '_sentinel_id': 's1'});
+    final stored = await ExperienceRepository(
+      homeDir: rootHome,
+    ).listForSentinel('s1');
+    final updateResult = await tool.execute({
+      'action': 'update',
+      'experience_id': stored.single.id,
+      'lesson': tooLong,
+      '_sentinel_id': 's1',
+    });
+    expect(updateResult, contains('must not exceed 500 characters'));
+    final unchanged = await ExperienceRepository(
+      homeDir: rootHome,
+    ).listForSentinel('s1');
+    expect(unchanged.single.lesson, 'original');
+  });
+
+  test('lesson schema 向模型声明 500 字符上限', () {
+    final lessonSchema =
+        newLearnTool().parameters['properties']['lesson']
+            as Map<String, dynamic>;
+    expect(lessonSchema['maxLength'], ExperienceEntity.maxLessonLength);
   });
 
   test('相同 lesson 不重复创建', () async {

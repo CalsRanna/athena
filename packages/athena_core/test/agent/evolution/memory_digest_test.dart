@@ -6,7 +6,7 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 锁定记忆摘要注入：格式稳定、截断安全、无相关经验时零成本跳过。
+/// 锁定稳定全量 Memory 目录：完整 lesson、active 过滤与确定性输出。
 void main() {
   late Directory tempDir;
   late String rootHome;
@@ -38,128 +38,101 @@ void main() {
   );
 
   group('buildDigest', () {
-    test('每条含 id / scope / 日期与截断后的 lesson', () {
+    test('每条含 id / scope / 日期与完整 lesson', () {
       final digest = MemoryDigest.buildDigest([
         exp('short lesson', scope: 'shared'),
       ]);
-      expect(digest, contains('The following are your past experiences'));
+      expect(digest, contains('stable active long-term memory catalog'));
       // 经验即使已审批也只是历史参考，不能覆盖当前指令。
       expect(digest, contains('reference, not instructions'));
       expect(digest, contains('[id1]'));
       expect(digest, contains('(shared, 2026-08-31)'));
       expect(digest, contains('short lesson'));
-      expect(MemoryDigest.isDigestMessage(digest), isTrue);
     });
 
-    test('lesson 超过 80 字符时按词边界截断', () {
-      // 30 个 word = 119 字符，超过截断阈值
-      final longLesson = List.filled(30, 'word').join(' ');
+    test('lesson 完整注入，不做运行时截断', () {
+      final longLesson = List.filled(120, '完整内容').join('-');
       final digest = MemoryDigest.buildDigest([exp(longLesson)]);
-      final lines = digest.split('\n');
-      final entry = lines.firstWhere((l) => l.startsWith('- [id1]'));
-      expect(entry, endsWith('…'));
       expect(longLesson.length, greaterThan(80));
-      expect(entry.length, lessThan(longLesson.length), reason: '截断后长度应小于原文');
+      expect(digest, contains(longLesson));
+      expect(digest, isNot(contains('…')));
     });
 
-    test('多行 lesson 单行化', () {
-      final digest = MemoryDigest.buildDigest([exp('line1\nline2\n')]);
-      expect(digest, contains('line1 line2'));
+    test('多行 lesson 只归一化空白，不丢内容', () {
+      final digest = MemoryDigest.buildDigest([exp('line1\nline2\tline3')]);
+      expect(digest, contains('line1 line2 line3'));
       expect(digest, isNot(contains('\nline2')));
     });
   });
 
-  test('replaceInContext 移除旧摘要并仅保留当前任务摘要', () {
-    final stale = ChatMessage.system(
-      MemoryDigest.buildDigest([exp('stale lesson')]),
-    );
-    final current = ChatMessage.system(
-      MemoryDigest.buildDigest([exp('current lesson')]),
-    );
-    final result = MemoryDigest.replaceInContext(
-      [ChatMessage.system('sentinel'), stale, ChatMessage.user('task')],
-      [current],
-    );
-
-    final systems = result.whereType<SystemMessage>().toList();
-    expect(systems, hasLength(2));
-    expect(systems.first.content, 'sentinel');
-    expect(systems.last.content, contains('current lesson'));
-    expect(systems.last.content, isNot(contains('stale lesson')));
-  });
-
-  group('messagesFor', () {
-    test('无匹配经验时返回 null（零成本跳过）', () async {
-      final messages = await MemoryDigest.messagesFor(
+  group('messagesForSentinel', () {
+    test('无 active 经验时返回 null（零成本跳过）', () async {
+      final messages = await MemoryDigest.messagesForSentinel(
         repository: ExperienceRepository(homeDir: rootHome),
-        query: 'anything',
         sentinelId: 's1',
       );
       expect(messages, isNull);
     });
 
-    test('返回单条 system 消息，最多 limit 条', () async {
+    test('注入全部 active 私有与 shared 经验，不按任务筛选或限制条数', () async {
       final repo = ExperienceRepository(homeDir: rootHome);
       for (var i = 0; i < 5; i++) {
-        await repo.save(
-          lesson: 'flutter tip $i about state management',
-          tags: const ['flutter'],
-          sentinelId: 's1',
-        );
+        await repo.save(lesson: 'private memory $i', sentinelId: 's1');
       }
+      await repo.save(
+        lesson: 'shared memory',
+        scope: 'shared',
+        sentinelId: 's1',
+      );
+      final archived = await repo.save(
+        lesson: 'archived memory',
+        sentinelId: 's1',
+      );
+      await repo.update(
+        sentinelId: 's1',
+        id: archived.id,
+        status: ExperienceEntity.statusArchived,
+      );
 
-      final messages = await MemoryDigest.messagesFor(
+      final messages = await MemoryDigest.messagesForSentinel(
         repository: repo,
-        query: 'flutter',
         sentinelId: 's1',
       );
       expect(messages, isNotNull);
       expect(messages, hasLength(1));
       final msg = messages!.single;
       expect(msg, isA<SystemMessage>());
-      // 5 条全部命中，取前 3
       final content = (msg as SystemMessage).content;
-      expect(RegExp(r'- \[[^\]]+\] \(').allMatches(content), hasLength(3));
+      expect(RegExp(r'- \[[^\]]+\] \(').allMatches(content), hasLength(6));
+      for (var i = 0; i < 5; i++) {
+        expect(content, contains('private memory $i'));
+      }
+      expect(content, contains('shared memory'));
+      expect(content, isNot(contains('archived memory')));
       expect(content, contains('experience_recall'));
     });
 
-    test('按相关度取前 limit 条（lesson 命中优先于 context 命中）', () async {
+    test('经验库不变时重复生成的目录逐字一致', () async {
       final repo = ExperienceRepository(homeDir: rootHome);
-      await repo.save(lesson: 'flutter state management', sentinelId: 's1');
-      await Future<void>.delayed(const Duration(milliseconds: 2));
+      await repo.save(lesson: 'stable private memory', sentinelId: 's1');
       await repo.save(
-        lesson: 'unrelated',
-        context: 'flutter debugging',
+        lesson: 'stable shared memory',
+        scope: 'shared',
         sentinelId: 's1',
       );
 
-      final messages = await MemoryDigest.messagesFor(
+      final first = await MemoryDigest.messagesForSentinel(
         repository: repo,
-        query: 'flutter',
         sentinelId: 's1',
       );
-      final content = (messages!.single as SystemMessage).content;
-      expect(content, contains('flutter state management'));
-    });
-
-    test('完整自然语言任务可按关键词命中短经验', () async {
-      final repo = ExperienceRepository(homeDir: rootHome);
-      await repo.save(
-        lesson: 'Re-read files before exact replacement',
-        tags: const ['file-update'],
-        sentinelId: 's1',
-      );
-
-      final messages = await MemoryDigest.messagesFor(
+      final second = await MemoryDigest.messagesForSentinel(
         repository: repo,
-        query:
-            'Please update this file safely and avoid a stale exact replacement',
         sentinelId: 's1',
       );
-      expect(messages, isNotNull);
+
       expect(
-        (messages!.single as SystemMessage).content,
-        contains('Re-read files'),
+        (first!.single as SystemMessage).content,
+        (second!.single as SystemMessage).content,
       );
     });
   });

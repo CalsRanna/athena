@@ -70,11 +70,14 @@ class ExperienceLearnTool implements Tool {
       },
       'lesson': {
         'type': 'string',
+        'maxLength': ExperienceEntity.maxLessonLength,
         'description':
             'For create: the lesson or insight to remember. Be specific '
             'and actionable. Include the context: what was the situation, '
             'what went wrong (or right), and what should be done '
-            'differently in the future.\n'
+            'differently in the future. Keep this distilled summary within '
+            '${ExperienceEntity.maxLessonLength} characters; put supporting '
+            'detail in context.\n'
             'For update: the revised lesson (omit to keep the current one).',
       },
       'context': {
@@ -140,6 +143,11 @@ class ExperienceLearnTool implements Tool {
         if (lesson.trim().isEmpty) {
           return 'Error: lesson must not be empty when creating an experience.';
         }
+        if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
+          return 'Error: lesson must not exceed '
+              '${ExperienceEntity.maxLessonLength} characters. Put supporting '
+              'detail in context.';
+        }
         final normalizedLesson = lesson.trim().toLowerCase();
         final existing = await _repository.listForSentinel(sentinelId);
         for (final item in existing) {
@@ -166,6 +174,11 @@ class ExperienceLearnTool implements Tool {
       }
 
       if (action == 'update') {
+        if (lesson.trim().length > ExperienceEntity.maxLessonLength) {
+          return 'Error: lesson must not exceed '
+              '${ExperienceEntity.maxLessonLength} characters. Put supporting '
+              'detail in context.';
+        }
         final updated = await _repository.update(
           sentinelId: sentinelId,
           id: experienceId,

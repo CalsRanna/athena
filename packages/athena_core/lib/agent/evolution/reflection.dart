@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/entity/experience_entity.dart';
 
 /// 失败后的轻量反思策略。
 ///
@@ -58,7 +59,11 @@ class ReflectionProposal {
       if (json['should_learn'] != true) return null;
       final lesson = (json['lesson'] as String? ?? '').trim();
       final confidence = (json['confidence'] as num?)?.toDouble() ?? 0;
-      if (lesson.isEmpty || confidence < 0.7) return null;
+      if (lesson.isEmpty ||
+          lesson.length > ExperienceEntity.maxLessonLength ||
+          confidence < 0.7) {
+        return null;
+      }
 
       final rawTags = json['tags'];
       final tags = rawTags is List
@@ -99,11 +104,14 @@ class ReflectionProposal {
 class ReflectionPrompt {
   ReflectionPrompt._();
 
-  static const system = '''
+  static const system =
+      '''
 Analyze the run outcome and decide whether it contains one durable, actionable
 lesson worth proposing as long-term memory. Do not record transient network or
 provider failures, user cancellation, permission denial, secrets, raw file
 contents, or task-specific facts. A raw error message is not a lesson.
+Keep lesson within ${ExperienceEntity.maxLessonLength} characters and put
+supporting detail in context.
 
 Return exactly one JSON object with:
 {"should_learn":false}
