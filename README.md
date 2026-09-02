@@ -103,7 +103,7 @@ Agent 可通过以下机制持续改进自身：
 - **Sentinel Optimization**（`sentinel_evolve`）：基于使用反馈优化系统提示词
 - **Sentinel Revert**（`sentinel_revert`）：回滚最近一次演进（`.athena` 沙盒内的历史快照）
 
-每次任务会重新检索并临时注入最多 3 条相关经验摘要（不写入消息历史），同时注入极简进化提示；完整指南通过内置 `self-evolve` Skill 按需加载。
+每次任务都会临时注入当前 Sentinel 可见的全部 active Memory lesson（不写入消息历史、不按当前任务动态筛选）；只有经验新增、更新或归档时目录才变化。`context` 与标签通过 `experience_recall` 按需读取，同时注入极简进化提示；完整指南通过内置 `self-evolve` Skill 按需加载。
 
 ### 核心功能
 

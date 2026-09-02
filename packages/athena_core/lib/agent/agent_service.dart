@@ -666,9 +666,9 @@ class AgentService {
   ///   [sentinel, runtime, evolution, system-summaries?, history...]
   ///
   /// base 约定（ChatMessageService.buildMessages）：[hasSentinelPrompt] 为
-  /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（本次任务
-  /// 临时生成的 memory digest 或历史 compact 摘要）；为 false 时所有
-  /// system 都是上下文摘要。非 system 是对话历史。
+  /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
+  /// active memory catalog 或历史 compact 摘要）；为 false 时所有 system
+  /// 都是上下文摘要。非 system 是对话历史。
   /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
   ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
   List<ChatMessage> _injectPrompts(

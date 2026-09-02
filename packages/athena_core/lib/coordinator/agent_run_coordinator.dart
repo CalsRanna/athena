@@ -68,7 +68,7 @@ class AgentRunCoordinator {
   final PermissionService _permissionService;
   final PermissionPrompt _permissionPrompt;
 
-  /// 经验仓库：每次 run 开始时注入相关经验的摘要（见 [MemoryDigest]）。
+  /// 经验仓库：每次 run 开始时注入稳定的全量 active 经验目录。
   final ExperienceRepository _experienceRepository;
 
   /// Agent 运行环境（GUI/TUI）；null = 不注入运行时上下文提示。
@@ -249,11 +249,11 @@ class AgentRunCoordinator {
           ? chat.sentinelId.toString()
           : _directChatSentinelKey;
 
-      // 2.5 每次顶层 send 都按当前任务重新检索。摘要只进入本次请求上下文，
-      // 不落库，避免会话长期携带首个任务的过期记忆。
-      final digestMessages = await MemoryDigest.messagesFor(
+      // 2.5 注入当前 Sentinel 的稳定全量 active Memory 目录。内容不依赖
+      // 当前用户消息；只有经验新增、更新或归档时才变化，保护 prompt cache。
+      // 目录只进入本次请求上下文，不落库为聊天历史。
+      final digestMessages = await MemoryDigest.messagesForSentinel(
         repository: _experienceRepository,
-        query: message.content,
         sentinelId: sentinelKey,
       );
       cancelToken.throwIfCancelled();
@@ -267,11 +267,8 @@ class AgentRunCoordinator {
         includeReasoning: includeReasoning,
       );
       cancelToken.throwIfCancelled();
-      // 兼容旧版：过滤曾落库的 stale digest，再追加当前任务的临时摘要。
-      final wrappedMessages = MemoryDigest.replaceInContext(
-        persistedMessages,
-        digestMessages,
-      );
+      // 稳定目录只拼入本次请求，不参与消息持久化。
+      final wrappedMessages = [...persistedMessages, ...?digestMessages];
 
       final compactedMessages = chat.retention == -1
           ? await _prepareMessagesWithCompact(

@@ -226,6 +226,14 @@ class _ReflectionChatService extends ChatService {
 }
 
 void _reflectionTests() {
+  test('Reflection 丢弃超过 Memory lesson 上限的候选', () {
+    final lesson = 'x' * 501;
+    final proposal = ReflectionProposal.tryParse(
+      '{"should_learn":true,"lesson":"$lesson","confidence":0.9}',
+    );
+    expect(proposal, isNull);
+  });
+
   test('ReflectionPolicy 只接受最大迭代或同工具重复失败', () {
     expect(
       ReflectionPolicy.shouldReflect(

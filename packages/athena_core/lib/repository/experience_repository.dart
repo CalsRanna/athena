@@ -178,6 +178,7 @@ class ExperienceRepository {
   ///
   /// 公开供注入侧（MemoryDigest）记录匹配质量，形成可观测性。
   static int matchScore(ExperienceEntity e, String query) {
+    if (e.id == query.trim()) return 1000;
     final queryTerms = _searchTerms(query);
     if (queryTerms.isEmpty) return 0;
 

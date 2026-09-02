@@ -316,7 +316,7 @@ disable-model-invocation: false
 - **Skill Evolution**（`skill_evolve`）：创建/改进 Skill 扩展能力
 - **Experience Learning**（`experience_learn` / `experience_recall`）：长期经验记忆（`~/.athena/experiences/`），写入走 dangerous 权限审批，支持 update/archive、Sentinel 私有或全局共享
 - **Failure Reflection**：最大迭代或同工具重复失败时生成候选经验，并转成标准 `experience_learn` 调用复用原参数校验、权限审批和执行路径
-- **Memory Digest**：每次顶层 send 按当前任务重新检索最多 3 条 active 经验并临时注入，不落库为历史消息
+- **Memory Digest**：每次顶层 send 临时注入当前 Sentinel 可见的全部 active lesson；目录不依赖当前任务，经验库不变时内容逐字稳定，context/tags 由 `experience_recall` 按需读取
 - 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
 
 ### 7.7 Shortcut 系统（v3.4.4 新增）
