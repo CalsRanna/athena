@@ -11,8 +11,7 @@ dependencies:
   html: ^0.15.5
   logger: ^2.0.2+1
   meta: ^1.16.0
-  openai_dart:
-    path: ../../third_party/openai_dart
+  openai_dart: ^8.1.0
   path: ^1.8.0
   signals: ^6.2.0
   yaml: ^3.1.2

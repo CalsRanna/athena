@@ -3,8 +3,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 /// OpenAI 官方推理强度全集(Default = 不传参、使用模型默认)。
-/// max 为 codex-max 系专属、SDK 枚举由 [Athena fork] 补充,由 ChatService
-/// 的解析层透传发送;选择模型不支持的档位会 400 报错(与官方一致)。
+/// max 为 codex-max 系模型专属,由 ChatService 的解析层透传发送;
+/// 选择模型不支持的档位会 400 报错(与官方一致)。
 const reasoningEffortOptions = <(String?, String)>[
   (null, 'Default'),
   ('none', 'None'),
