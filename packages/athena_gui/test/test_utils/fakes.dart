@@ -20,11 +20,11 @@ import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_gui/repository/shortcut_repository.dart';
 import 'package:athena_gui/model/shortcut.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
@@ -76,16 +76,16 @@ void setupMobileTestDI() {
     ),
   );
 
-  getIt.registerSingleton<ChatService>(
-    ChatService(llmClient: getIt<LlmClient>()),
+  getIt.registerSingleton<ChatCompletionsService>(
+    ChatCompletionsService(llmClient: getIt<LlmClient>()),
   );
 
-  getIt.registerSingleton<ChatMessageService>(
-    ChatMessageService(messageRepository: getIt<MessageRepository>()),
+  getIt.registerSingleton<ChatMessageConverter>(
+    ChatMessageConverter(messageRepository: getIt<MessageRepository>()),
   );
 
-  getIt.registerSingleton<ChatManageService>(
-    ChatManageService(
+  getIt.registerSingleton<ChatStoreService>(
+    ChatStoreService(
       chatRepository: getIt<ChatRepository>(),
       messageRepository: getIt<MessageRepository>(),
       modelRepository: getIt<ModelRepository>(),
@@ -94,12 +94,12 @@ void setupMobileTestDI() {
     ),
   );
 
-  getIt.registerSingleton<ChatSupportService>(
-    ChatSupportService(
+  getIt.registerSingleton<ChatUpdateService>(
+    ChatUpdateService(
       chatRepository: getIt<ChatRepository>(),
       messageRepository: getIt<MessageRepository>(),
       providerRepository: getIt<ProviderRepository>(),
-      chatService: getIt<ChatService>(),
+      chatService: getIt<ChatCompletionsService>(),
     ),
   );
 
@@ -115,7 +115,7 @@ void setupMobileTestDI() {
   getIt.registerSingleton<ToolRegistry>(ToolRegistry());
   getIt.registerSingleton<AgentService>(
     AgentService(
-      chatService: getIt<ChatService>(),
+      chatService: getIt<ChatCompletionsService>(),
       toolRegistry: getIt<ToolRegistry>(),
       skillRegistry: getIt<SkillRegistry>(),
     ),
@@ -137,7 +137,7 @@ void setupMobileTestDI() {
     ModelViewModel(
       repository: getIt<ModelRepository>(),
       providerRepository: getIt<ProviderRepository>(),
-      chatService: getIt<ChatService>(),
+      chatService: getIt<ChatCompletionsService>(),
     ),
   );
 
@@ -168,7 +168,7 @@ void setupMobileTestDI() {
     ChatRenameDelegate(
       messageRepo: getIt<MessageRepository>(),
       modelRepo: getIt<ModelRepository>(),
-      supportService: getIt<ChatSupportService>(),
+      supportService: getIt<ChatUpdateService>(),
     ),
   );
 
@@ -176,13 +176,13 @@ void setupMobileTestDI() {
     AgentStreamDelegate(
       deps: AgentServiceCoordinatorDeps(
         agentService: getIt<AgentService>(),
-        manageService: getIt<ChatManageService>(),
-        messageService: getIt<ChatMessageService>(),
-        chatService: getIt<ChatService>(),
+        manageService: getIt<ChatStoreService>(),
+        messageService: getIt<ChatMessageConverter>(),
+        chatService: getIt<ChatCompletionsService>(),
         messageRepo: getIt<MessageRepository>(),
         modelRepo: getIt<ModelRepository>(),
         sentinelRepo: getIt<SentinelRepository>(),
-        supportService: getIt<ChatSupportService>(),
+        supportService: getIt<ChatUpdateService>(),
         chatRepo: getIt<ChatRepository>(),
         agentSettings: getIt<AgentSettings>(),
         permissionService: getIt<PermissionService>(),
@@ -194,10 +194,10 @@ void setupMobileTestDI() {
   // ChatViewModel（依赖 AgentStreamDelegate，必须在它之后）
   getIt.registerSingleton<ChatViewModel>(
     ChatViewModel(
-      manageService: getIt<ChatManageService>(),
+      manageService: getIt<ChatStoreService>(),
       streamDelegate: getIt<AgentStreamDelegate>(),
       renameDelegate: getIt<ChatRenameDelegate>(),
-      supportService: getIt<ChatSupportService>(),
+      supportService: getIt<ChatUpdateService>(),
       messageRepo: getIt<MessageRepository>(),
       modelResolver: ModelResolver(
         modelRepo: getIt<ModelRepository>(),

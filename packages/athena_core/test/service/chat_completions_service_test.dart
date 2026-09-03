@@ -5,7 +5,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:test/test.dart';
@@ -307,7 +307,7 @@ void main() {
         reason: '取消后 LlmClient.stream 的 finally 应关闭 client');
   });
 
-  // ---------- ChatService.reasoningEffort 传递 ----------
+  // ---------- ChatCompletionsService.reasoningEffort 传递 ----------
 
   ChatEntity chatWithEffort(String? effort) => ChatEntity(
         title: 'test chat',
@@ -326,7 +326,7 @@ void main() {
         updatedAt: DateTime(2024),
       );
 
-  /// 捕获 ChatService.getCompletion 发出的请求体。
+  /// 捕获 ChatCompletionsService.getCompletion 发出的请求体。
   Future<Map<String, dynamic>> captureRequest(ChatEntity chat) async {
     final captured = Completer<Map<String, dynamic>>();
     final mock = MockClient.streaming((request, bodyStream) async {
@@ -342,7 +342,7 @@ void main() {
       retryConfig: fastRetry,
       clientFactory: ({required apiKey, baseUrl}) => _ObservableClient(mock),
     );
-    final service = ChatService(llmClient: llmClient);
+    final service = ChatCompletionsService(llmClient: llmClient);
     await service
         .getCompletion(
           chat: chat,

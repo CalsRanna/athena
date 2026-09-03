@@ -12,12 +12,12 @@ import 'package:athena_gui/repository/sqlite_message_repository.dart';
 import 'package:athena_gui/repository/sqlite_model_repository.dart';
 import 'package:athena_gui/repository/sqlite_provider_repository.dart';
 import 'package:athena_gui/repository/sqlite_sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -79,30 +79,30 @@ void main() {
 
   group('ChatViewModel draft defaults', () {
     test('start from the shared new chat defaults', () {
-      final manageService = ChatManageService(
+      final manageService = ChatStoreService(
             chatRepository: SqliteChatRepository(),
             messageRepository: SqliteMessageRepository(),
             modelRepository: SqliteModelRepository(),
             providerRepository: SqliteProviderRepository(),
             sentinelRepository: SqliteSentinelRepository(),
           );
-      final supportService = ChatSupportService(
+      final supportService = ChatUpdateService(
             chatRepository: SqliteChatRepository(),
             messageRepository: SqliteMessageRepository(),
             providerRepository: SqliteProviderRepository(),
-            chatService: ChatService(llmClient: LlmClient()),
+            chatService: ChatCompletionsService(llmClient: LlmClient()),
           );
       final viewModel = ChatViewModel(
         manageService: manageService,
         streamDelegate: AgentStreamDelegate(
           deps: AgentServiceCoordinatorDeps(
             agentService: AgentService(
-              chatService: ChatService(llmClient: LlmClient()),
+              chatService: ChatCompletionsService(llmClient: LlmClient()),
               toolRegistry: ToolRegistry(),
             ),
             manageService: manageService,
-            chatService: ChatService(llmClient: LlmClient()),
-            messageService: ChatMessageService(
+            chatService: ChatCompletionsService(llmClient: LlmClient()),
+            messageService: ChatMessageConverter(
               messageRepository: SqliteMessageRepository(),
             ),
             messageRepo: SqliteMessageRepository(),
@@ -143,7 +143,7 @@ void main() {
         modelViewModel: ModelViewModel(
           repository: SqliteModelRepository(),
           providerRepository: SqliteProviderRepository(),
-          chatService: ChatService(llmClient: LlmClient()),
+          chatService: ChatCompletionsService(llmClient: LlmClient()),
         ),
         sentinelViewModel: SentinelViewModel(
           sentinelRepository: SqliteSentinelRepository(),

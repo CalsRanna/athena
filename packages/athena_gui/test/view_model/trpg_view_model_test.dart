@@ -3,7 +3,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_gui/entity/trpg_game_entity.dart';
 import 'package:athena_gui/entity/trpg_message_entity.dart';
 import 'package:athena_gui/repository/trpg_message_repository.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
@@ -80,7 +80,7 @@ void main() {
         providerRepo: SqliteProviderRepository(),
       ),
       agentService: AgentService(
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
         toolRegistry: ToolRegistry(),
       ),
     );

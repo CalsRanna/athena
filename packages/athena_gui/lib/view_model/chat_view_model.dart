@@ -6,12 +6,12 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/model/token_usage.dart';
+import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
-import 'package:athena_core/coordinator/agent_run_coordinator.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -36,11 +36,11 @@ class ChatViewModel {
   /// 历史对话首次及每次向上翻页加载的原始消息数。
   static const int messagePageSize = 50;
 
-  final ChatManageService _manageService;
+  final ChatStoreService _manageService;
   final AgentStreamDelegate _stream;
   final ChatRenameDelegate _rename;
   final ChatSelectionDelegate _selection;
-  final ChatSupportService _supportService;
+  final ChatUpdateService _supportService;
   final MessageRepository _messageRepo;
   final ModelResolver _modelResolver;
   final SettingViewModel _settingViewModel;
@@ -335,11 +335,11 @@ class ChatViewModel {
   }
 
   ChatViewModel({
-    required ChatManageService manageService,
+    required ChatStoreService manageService,
     required AgentStreamDelegate streamDelegate,
     required ChatRenameDelegate renameDelegate,
     ChatSelectionDelegate? selectionDelegate,
-    required ChatSupportService supportService,
+    required ChatUpdateService supportService,
     required MessageRepository messageRepo,
     required ModelResolver modelResolver,
     required SettingViewModel settingViewModel,

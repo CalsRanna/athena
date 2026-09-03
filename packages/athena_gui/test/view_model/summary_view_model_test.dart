@@ -4,7 +4,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_gui/service/summary_service.dart';
@@ -151,7 +151,7 @@ void main() {
         ),
         settingViewModel: GetIt.instance<SettingViewModel>(),
         agentService: AgentService(
-          chatService: ChatService(llmClient: LlmClient()),
+          chatService: ChatCompletionsService(llmClient: LlmClient()),
           toolRegistry: ToolRegistry(),
         ),
       );

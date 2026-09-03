@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/agent/run_outcome.dart';
-import 'package:athena_core/model/token_usage.dart';
+import 'package:athena_core/entity/token_usage.dart';
 
 /// Agent 一次 run 的对外事件契约（UI 无关）。
 ///

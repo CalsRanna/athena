@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
@@ -20,12 +20,12 @@ class ConnectionCheckResult {
 class ModelViewModel {
   final ModelRepository _repository;
   final ProviderRepository _providerRepository;
-  final ChatService _chatService;
+  final ChatCompletionsService _chatService;
 
   ModelViewModel({
     required ModelRepository repository,
     required ProviderRepository providerRepository,
-    required ChatService chatService,
+    required ChatCompletionsService chatService,
   })  : _repository = repository,
         _providerRepository = providerRepository,
         _chatService = chatService;

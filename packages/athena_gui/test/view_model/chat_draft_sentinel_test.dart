@@ -16,10 +16,10 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/model_resolver.dart';
@@ -54,30 +54,30 @@ void main() {
       modelRepository: _FakeModelRepository(),
       sentinelService: SentinelService(llmClient: LlmClient()),
     );
-    final manageService = ChatManageService(
+    final manageService = ChatStoreService(
       chatRepository: chatRepo,
       messageRepository: _FakeMessageRepository(),
       modelRepository: _FakeModelRepository(),
       providerRepository: _FakeProviderRepository(),
       sentinelRepository: _FakeSentinelRepository(),
     );
-    final supportService = ChatSupportService(
+    final supportService = ChatUpdateService(
       chatRepository: chatRepo,
       messageRepository: _FakeMessageRepository(),
       providerRepository: _FakeProviderRepository(),
-      chatService: ChatService(llmClient: LlmClient()),
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
     );
     viewModel = ChatViewModel(
       manageService: manageService,
       streamDelegate: AgentStreamDelegate(
         deps: AgentServiceCoordinatorDeps(
           agentService: AgentService(
-            chatService: ChatService(llmClient: LlmClient()),
+            chatService: ChatCompletionsService(llmClient: LlmClient()),
             toolRegistry: ToolRegistry(),
           ),
           manageService: manageService,
-          chatService: ChatService(llmClient: LlmClient()),
-          messageService: ChatMessageService(
+          chatService: ChatCompletionsService(llmClient: LlmClient()),
+          messageService: ChatMessageConverter(
             messageRepository: _FakeMessageRepository(),
           ),
           messageRepo: _FakeMessageRepository(),
@@ -118,7 +118,7 @@ void main() {
       modelViewModel: ModelViewModel(
         repository: _FakeModelRepository(),
         providerRepository: _FakeProviderRepository(),
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
       ),
       sentinelViewModel: sentinelViewModel,
     );

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/preset/model_catalog_config.dart';
+import 'package:athena_core/service/model_catalog_config.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';

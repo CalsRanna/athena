@@ -12,15 +12,15 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 /// 会话与消息的持久化编排。
 ///
 /// 职责：会话 CRUD、消息删除/占位/最终化、取消/错误标记。
-/// 所有写操作直接落库；不涉及 AI 网络调用（→ [ChatService]）。
-class ChatManageService {
+/// 所有写操作直接落库；不涉及 AI 网络调用（→ [ChatCompletionsService]）。
+class ChatStoreService {
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
   final ModelRepository _modelRepository;
   final ProviderRepository _providerRepository;
   final SentinelRepository _sentinelRepository;
 
-  ChatManageService({
+  ChatStoreService({
     required ChatRepository chatRepository,
     required MessageRepository messageRepository,
     required ModelRepository modelRepository,

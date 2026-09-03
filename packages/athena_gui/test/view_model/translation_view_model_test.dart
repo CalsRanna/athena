@@ -11,7 +11,7 @@ import 'package:athena_gui/entity/translation_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
@@ -54,7 +54,7 @@ ProviderEntity _provider() => ProviderEntity(
 class _FakeAgentService extends AgentService {
   _FakeAgentService(this.stream)
     : super(
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
         toolRegistry: ToolRegistry(),
       );
 
@@ -76,8 +76,6 @@ class _FakeAgentService extends AgentService {
     PermissionService? permissionService,
     int maxIterations = 100,
     CancelToken? cancelToken,
-    BeforeToolCallHook? beforeToolCall,
-    AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) =>
       stream;

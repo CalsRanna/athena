@@ -8,13 +8,13 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/model/token_usage.dart';
+import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_tui/storage/jsonl_session_repository.dart';
@@ -26,13 +26,13 @@ import 'package:signals/signals.dart';
 /// 不依赖 nocterm,纯 Dart 可测试。事件处理与 GUI ChatViewModel 对齐。
 class ChatController {
   ChatController({
-    required ChatManageService manageService,
+    required ChatStoreService manageService,
     required TuiAgentBridge bridge,
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
     required ProviderRepository providerRepo,
     required SentinelRepository sentinelRepo,
-    required ChatSupportService supportService,
+    required ChatUpdateService supportService,
     Future<void> Function(String modelId)? onModelSwitched,
     String? defaultModelId,
   }) : _manageService = manageService,
@@ -45,13 +45,13 @@ class ChatController {
        _onModelSwitched = onModelSwitched,
        _defaultModelId = defaultModelId;
 
-  final ChatManageService _manageService;
+  final ChatStoreService _manageService;
   final TuiAgentBridge _bridge;
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
   final ProviderRepository _providerRepo;
   final SentinelRepository _sentinelRepo;
-  final ChatSupportService _supportService;
+  final ChatUpdateService _supportService;
 
   /// 模型切换后的持久化回调(写回 setting.yaml 的 model: modelId)。
   final Future<void> Function(String modelId)? _onModelSwitched;
@@ -277,7 +277,7 @@ class ChatController {
   /// (如 deepseek-v4-flash、anthropic/claude-sonnet-4)。目录中 modelId
   /// 全局唯一(不同提供商的同一模型是不同 modelId),因此按 modelId 匹配
   /// 即唯一确定"模型 + 其提供商";chat 落库引用该模型后,发送时
-  /// (ChatService)用的就是同一个 modelId,保证发给提供商的是正确模型。
+  /// (ChatCompletionsService)用的就是同一个 modelId,保证发给提供商的是正确模型。
   ModelEntity? _resolveDefaultModel(List<ModelEntity> models) {
     final defaultId = _defaultModelId;
     if (defaultId == null) return null;
