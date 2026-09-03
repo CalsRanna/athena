@@ -1,5 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/entity/summary_entity.dart';
+import 'package:athena_gui/entity/summary_entity.dart';
 import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';

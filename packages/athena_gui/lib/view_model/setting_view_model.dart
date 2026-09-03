@@ -7,7 +7,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_core/service/data_migration_service.dart';
+import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/platform_util.dart';

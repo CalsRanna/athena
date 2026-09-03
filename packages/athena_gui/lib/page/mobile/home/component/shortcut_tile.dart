@@ -1,4 +1,4 @@
-import 'package:athena_core/model/shortcut.dart';
+import 'package:athena_gui/model/shortcut.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 

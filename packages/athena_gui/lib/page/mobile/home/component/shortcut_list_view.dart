@@ -1,4 +1,4 @@
-import 'package:athena_core/model/shortcut.dart';
+import 'package:athena_gui/model/shortcut.dart';
 import 'package:athena_gui/page/mobile/home/component/shortcut_page_registry.dart';
 import 'package:athena_gui/page/mobile/home/component/shortcut_tile.dart';
 import 'package:athena_gui/router/router.gr.dart';

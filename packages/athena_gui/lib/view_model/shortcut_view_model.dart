@@ -1,5 +1,5 @@
-import 'package:athena_core/model/shortcut.dart';
-import 'package:athena_core/repository/shortcut_repository.dart';
+import 'package:athena_gui/model/shortcut.dart';
+import 'package:athena_gui/repository/shortcut_repository.dart';
 import 'package:signals/signals.dart';
 
 /// Shortcut（快捷入口）ViewModel：管理首页卡片行的数据。

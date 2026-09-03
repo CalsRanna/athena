@@ -1,4 +1,4 @@
-import 'package:athena_core/entity/trpg_game_entity.dart';
+import 'package:athena_gui/entity/trpg_game_entity.dart';
 
 /// 用于存档列表展示的数据类
 class TRPGGameWithPreview {

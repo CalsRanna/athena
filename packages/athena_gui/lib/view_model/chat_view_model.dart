@@ -20,7 +20,7 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/extension/list_signal_extension.dart';
+import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 typedef _MessagePage = ({bool hasOlder, List<MessageEntity> messages});

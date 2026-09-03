@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
-import 'package:athena_core/util/context_window_util.dart';
+import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_context_menu.dart';

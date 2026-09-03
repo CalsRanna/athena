@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/summary_entity.dart';
+import 'package:athena_gui/entity/summary_entity.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/mobile/home/component/chat_tile.dart';

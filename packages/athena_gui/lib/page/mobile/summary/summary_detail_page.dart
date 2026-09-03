@@ -1,6 +1,6 @@
 import 'package:athena_gui/component/button.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/summary_entity.dart';
+import 'package:athena_gui/entity/summary_entity.dart';
 import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/summary_view_model.dart';

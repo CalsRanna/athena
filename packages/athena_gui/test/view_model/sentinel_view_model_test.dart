@@ -3,7 +3,7 @@ import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/service/sentinel_service.dart';
+import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 

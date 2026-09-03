@@ -1,7 +1,7 @@
 import 'package:athena_gui/component/language_selector.dart';
 import 'package:athena_gui/component/translation_list_tile.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/entity/translation_entity.dart';
+import 'package:athena_gui/entity/translation_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/translation_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';

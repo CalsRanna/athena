@@ -1,4 +1,4 @@
-import 'package:athena_core/model/shortcut.dart';
+import 'package:athena_gui/model/shortcut.dart';
 
 /// Shortcut（快捷入口）存储接口。持久化策略由实现方决定。
 abstract class ShortcutRepository {

@@ -12,7 +12,7 @@ import 'package:athena_core/entity/chat_entity.dart' as _i30;
 import 'package:athena_core/entity/model_entity.dart' as _i32;
 import 'package:athena_core/entity/provider_entity.dart' as _i33;
 import 'package:athena_core/entity/sentinel_entity.dart' as _i31;
-import 'package:athena_core/entity/summary_entity.dart' as _i34;
+import 'package:athena_gui/entity/summary_entity.dart' as _i34;
 import 'package:athena_gui/page/desktop/home/home_page.dart' as _i1;
 import 'package:athena_gui/page/desktop/setting/about.dart' as _i2;
 import 'package:athena_gui/page/desktop/setting/advanced_page.dart' as _i3;
