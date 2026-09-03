@@ -685,7 +685,7 @@ class _AgentLoop {
       cancelSignal: _token.whenCancelled,
     );
 
-    // 流式累积 tool_calls：id/name/arguments 分片到达，实时产出事件，
+    // 流式累积 tool_calls: id/name/arguments 分片到达，实时产出事件，
     // 避免等整个流结束后才一次性出现所有工具卡片。
     // streamingCalls / announcedIds 仅本轮流式期间使用，故作为局部状态。
     final streamingCalls = <int, _StreamingToolCall>{};
@@ -1072,7 +1072,7 @@ class _AsyncSemaphore {
   }
 }
 
-/// 流式累积中的单个 tool_call：id/name/arguments 分片到达。
+/// 流式累积中的单个 tool_call: id/name/arguments 分片到达。
 class _StreamingToolCall {
   String? id;
   String? name;
