@@ -5,9 +5,10 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
-import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -20,32 +21,13 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:openai_dart/openai_dart.dart';
-
-/// 用户对权限弹窗的决策（GUI 弹窗 / TUI 终端提示由 [PermissionPrompt] 提供）。
-class PermissionDecision {
-  final bool approved;
-  final bool persistExact;
-  const PermissionDecision({required this.approved, this.persistExact = false});
-}
-
-/// 权限审批回调：由各 App 注入（GUI=会话内审批卡片，TUI=终端提示）。
-///
-/// [chatId] 标识请求所属对话（GUI 据此把审批渲染到对应会话）；
-/// [cancelToken] 供调用方在 run 取消时自动拒绝审批。
-typedef PermissionPrompt =
-    Future<PermissionDecision> Function(
-      int chatId,
-      String toolName,
-      String arguments,
-      CancelToken cancelToken,
-    );
 
 /// UI 无关的 Agent run 编排层。
 ///
@@ -56,14 +38,14 @@ class AgentRunCoordinator {
   static const _directChatSentinelKey = 'direct';
 
   final AgentService _agentService;
-  final ChatManageService _manageService;
-  final ChatMessageService _messageService;
-  final ChatService _chatService;
+  final ChatStoreService _manageService;
+  final ChatMessageConverter _messageService;
+  final ChatCompletionsService _chatService;
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
   final SentinelRepository _sentinelRepo;
   final ChatRepository _chatRepo;
-  final ChatSupportService _supportService;
+  final ChatUpdateService _supportService;
   final AgentSettings _agentSettings;
   final PermissionService _permissionService;
   final PermissionPrompt _permissionPrompt;
@@ -123,14 +105,14 @@ class AgentRunCoordinator {
 
   AgentRunCoordinator({
     required AgentService agentService,
-    required ChatManageService manageService,
-    required ChatMessageService messageService,
-    required ChatService chatService,
+    required ChatStoreService manageService,
+    required ChatMessageConverter messageService,
+    required ChatCompletionsService chatService,
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
     required SentinelRepository sentinelRepo,
     required ChatRepository chatRepo,
-    required ChatSupportService supportService,
+    required ChatUpdateService supportService,
     required AgentSettings agentSettings,
     required PermissionService permissionService,
     required PermissionPrompt permissionPrompt,

@@ -7,7 +7,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/app.dart';
@@ -26,7 +26,7 @@ import 'package:test/test.dart';
 class _FakeAgentService extends AgentService {
   _FakeAgentService()
       : super(
-          chatService: ChatService(llmClient: LlmClient()),
+          chatService: ChatCompletionsService(llmClient: LlmClient()),
           toolRegistry: ToolRegistry(),
         );
 
@@ -46,8 +46,6 @@ class _FakeAgentService extends AgentService {
     PermissionService? permissionService,
     int maxIterations = 100,
     CancelToken? cancelToken,
-    BeforeToolCallHook? beforeToolCall,
-    AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
     yield AgentEvent.turnStart(iteration: 0);

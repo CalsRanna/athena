@@ -5,6 +5,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
@@ -13,8 +14,8 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/model/token_usage.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/entity/token_usage.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -32,25 +33,9 @@ typedef BeforeToolCallContext = ({
 /// beforeToolCall 返回结果。
 typedef BeforeToolCallResult = ({bool block, String reason});
 
-/// beforeToolCall 回调：返回 { block: true } 则拒绝执行。
-typedef BeforeToolCallHook =
+/// 工具执行前的权限门：返回 { block: true } 则拒绝执行。
+typedef PermissionGate =
     Future<BeforeToolCallResult> Function(BeforeToolCallContext ctx);
-
-/// afterToolCall 上下文。
-typedef AfterToolCallContext = ({
-  String name,
-  String arguments,
-  Map<String, dynamic> args,
-  String rawResult,
-  String processedResult,
-});
-
-/// afterToolCall 返回结果：可覆写 content / isError。
-typedef AfterToolCallResult = ({String content, bool isError});
-
-/// afterToolCall 回调：工具执行后处理结果。
-typedef AfterToolCallHook =
-    Future<AfterToolCallResult> Function(AfterToolCallContext ctx);
 
 /// 单个 Agent run 的运行时状态（按 [runId] 隔离，支持多 run 并发）。
 class _AgentRunState {
@@ -64,7 +49,7 @@ class AgentService {
   /// 并行工具执行的并发上限，防止模型一轮发大量并行调用时瞬时打爆。
   static const _maxParallelTools = 8;
 
-  final ChatService _chatService;
+  final ChatCompletionsService _chatService;
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
 
@@ -82,7 +67,7 @@ class AgentService {
 
 
   AgentService({
-    required ChatService chatService,
+    required ChatCompletionsService chatService,
     required ToolRegistry toolRegistry,
     SkillRegistry? skillRegistry,
   }) : _chatService = chatService,
@@ -109,8 +94,6 @@ class AgentService {
     PermissionService? permissionService,
     int maxIterations = 100,
     CancelToken? cancelToken,
-    BeforeToolCallHook? beforeToolCall,
-    AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
     if (_runs.containsKey(runId)) {
@@ -133,17 +116,13 @@ class AgentService {
     );
     _skillRegistry?.clearContext();
 
-    // 构建复合 beforeToolCall：用户 hook → 权限检查
-    final compositeBeforeToolCall = _buildCompositeBeforeHook(
-      userHook: beforeToolCall,
+    // 权限门：权限检查 + 审批回调，工具执行前逐调用拦截
+    final permissionGate = _buildPermissionGate(
       runId: runId,
       permissionService: permissionService,
       onPermission: onPermission,
       cancelToken: token,
     );
-
-    // afterToolCall 无附加行为（权限判定在 before hook 内），直接透传
-    final compositeAfterToolCall = afterToolCall;
 
     try {
       yield* _AgentLoop(
@@ -157,8 +136,7 @@ class AgentService {
         sentinelId: sentinelId,
         maxIterations: maxIterations,
         jsonMode: jsonMode,
-        beforeHook: compositeBeforeToolCall,
-        afterHook: compositeAfterToolCall,
+        permissionGate: permissionGate,
         permissionService: permissionService,
         onPermission: onPermission,
       ).run();
@@ -171,13 +149,15 @@ class AgentService {
     }
   }
 
-  /// 执行单个工具调用：校验 → beforeToolCall → 权限检查 → 执行 → afterToolCall。
+  /// 执行单个工具调用：参数校验 → 权限门 → 执行。
+  ///
+  /// 供测试直接驱动工具执行路径（跳过 run 事件流）使用。
+  @visibleForTesting
   Future<ToolCallResultInternal> executeToolCallInternal({
     required ToolCall toolCall,
     required CancelToken? cancelToken,
     String? sentinelId,
-    BeforeToolCallHook? beforeToolCall,
-    AfterToolCallHook? afterToolCall,
+    PermissionGate? permissionGate,
   }) async {
     Map<String, dynamic> args;
     try {
@@ -222,17 +202,17 @@ class AgentService {
       }
     }
 
-    // beforeToolCall hook
-    if (beforeToolCall != null) {
-      final beforeResult = await beforeToolCall((
+    // 权限门（拦截或放行）
+    if (permissionGate != null) {
+      final gateResult = await permissionGate((
         name: toolCall.function.name,
         arguments: toolCall.function.arguments,
         args: args,
       ));
-      if (beforeResult.block) {
-        final msg = beforeResult.reason.isEmpty
-            ? 'Tool execution was blocked by beforeToolCall hook.'
-            : beforeResult.reason;
+      if (gateResult.block) {
+        final msg = gateResult.reason.isEmpty
+            ? 'Tool execution was blocked by the permission gate.'
+            : gateResult.reason;
         return ToolCallResultInternal(
           event: AgentToolResultEvent(
             id: toolCall.id,
@@ -272,20 +252,6 @@ class AgentService {
     }
 
     var processed = smartTruncate(rawResult);
-
-    // afterToolCall hook（摘要等可选后处理，由调用方注入；
-    // AgentRunCoordinator 当前未注入，实际生效的截断是上面的 smartTruncate）
-    if (afterToolCall != null) {
-      final afterResult = await afterToolCall((
-        name: toolCall.function.name,
-        arguments: toolCall.function.arguments,
-        args: args,
-        rawResult: rawResult,
-        processedResult: processed,
-      ));
-      processed = afterResult.content;
-      if (afterResult.isError) status = ToolResultStatus.executionError;
-    }
 
     return ToolCallResultInternal(
       event: AgentToolResultEvent(
@@ -371,28 +337,18 @@ class AgentService {
     return parallelCalls;
   }
 
-  /// 构建复合 beforeToolCall：用户 hook + 权限检查串联。
-  BeforeToolCallHook? _buildCompositeBeforeHook({
-    BeforeToolCallHook? userHook,
+  /// 构建工具执行前的权限门：权限检查 + 审批回调。
+  PermissionGate? _buildPermissionGate({
     required int runId,
     PermissionService? permissionService,
     PermissionCallback? onPermission,
     required CancelToken cancelToken,
   }) {
-    if (userHook == null && permissionService == null && onPermission == null) {
+    if (permissionService == null && onPermission == null) {
       return null;
     }
 
     return (ctx) async {
-      if (userHook != null) {
-        final result = await userHook(ctx);
-        if (result.block) return result;
-      }
-
-      if (permissionService == null && onPermission == null) {
-        return (block: false, reason: '');
-      }
-
       final verdict =
           permissionService?.check(
             runId,
@@ -434,7 +390,7 @@ class AgentService {
   /// 目标布局（按语义分层，缓存前缀稳定）：
   ///   [sentinel, runtime, evolution, system-summaries?, history...]
   ///
-  /// base 约定（ChatMessageService.buildMessages）：[hasSentinelPrompt] 为
+  /// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
   /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
   /// active memory catalog 或历史 compact 摘要）；为 false 时所有 system
   /// 都是上下文摘要。非 system 是对话历史。
@@ -525,8 +481,7 @@ class _AgentLoop {
     required String? sentinelId,
     required int maxIterations,
     required bool jsonMode,
-    required BeforeToolCallHook? beforeHook,
-    required AfterToolCallHook? afterHook,
+    required PermissionGate? permissionGate,
     required PermissionService? permissionService,
     required PermissionCallback? onPermission,
   }) : _service = service,
@@ -539,8 +494,7 @@ class _AgentLoop {
        _sentinelId = sentinelId,
        _maxIterations = maxIterations,
        _jsonMode = jsonMode,
-       _beforeHook = beforeHook,
-       _afterHook = afterHook,
+       _permissionGate = permissionGate,
        _permissionService = permissionService,
        _onPermission = onPermission;
 
@@ -556,8 +510,7 @@ class _AgentLoop {
   final String? _sentinelId;
   final int _maxIterations;
   final bool _jsonMode;
-  final BeforeToolCallHook? _beforeHook;
-  final AfterToolCallHook? _afterHook;
+  final PermissionGate? _permissionGate;
   final PermissionService? _permissionService;
   final PermissionCallback? _onPermission;
 
@@ -975,8 +928,7 @@ class _AgentLoop {
       toolCall: tc,
       cancelToken: _token,
       sentinelId: _sentinelId,
-      beforeToolCall: _beforeHook,
-      afterToolCall: _afterHook,
+      permissionGate: _permissionGate,
     );
     return _ToolExecutionData(
       event: AgentToolResultEvent(
@@ -1092,6 +1044,8 @@ class _ToolExecutionData {
 }
 
 /// 单个工具调用的执行结果。
+@visibleForTesting
+/// 工具执行内部结果：不进入公开事件流，仅供测试与循环内部复用。
 @visibleForTesting
 class ToolCallResultInternal {
   final AgentToolResultEvent event;

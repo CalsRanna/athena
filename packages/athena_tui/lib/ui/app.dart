@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:athena_core/coordinator/agent_run_coordinator.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';

@@ -4,12 +4,12 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/service/chat_message_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:test/test.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// A fake [MessageRepository] that returns a fixed list of [MessageEntity],
-/// allowing [ChatMessageService.buildMessages] to be driven deterministically
+/// allowing [ChatMessageConverter.buildMessages] to be driven deterministically
 /// without a database.
 class _FakeMessageRepository extends MessageRepository {
   _FakeMessageRepository(this._messages);
@@ -130,7 +130,7 @@ void _assertPairingValid(List<ChatMessage> messages) {
 }
 
 void main() {
-  group('ChatMessageService.buildMessages truncation', () {
+  group('ChatMessageConverter.buildMessages truncation', () {
     test('no truncation when context == 0 (unlimited)', () async {
       final messages = [
         _user('q1'),
@@ -139,7 +139,7 @@ void main() {
         _assistantText('done'),
       ];
       final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: null,
@@ -160,7 +160,7 @@ void main() {
         _user('q3'),
       ];
       final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: null,
@@ -180,7 +180,7 @@ void main() {
         _user('latest'),
       ];
       final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
         chat: _chat(retention: 0),
         sentinel: null,
@@ -196,7 +196,7 @@ void main() {
         _assistantWithTools(callIds: ['call_a']),
       ];
       final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
@@ -223,7 +223,7 @@ void main() {
         _assistantText('a2'),
       ];
       final service =
-          ChatMessageService(messageRepository: _FakeMessageRepository(messages));
+          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
@@ -251,7 +251,7 @@ void main() {
         ]),
         // toolResults intentionally empty (cancelled mid-flight).
       );
-      final service = ChatMessageService(
+      final service = ChatMessageConverter(
           messageRepository: _FakeMessageRepository([_user('q'), orphan]));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
@@ -277,7 +277,7 @@ void main() {
           {'id': 'call_a', 'name': 'search', 'result': 'ok'},
         ]),
       );
-      final service = ChatMessageService(
+      final service = ChatMessageConverter(
           messageRepository: _FakeMessageRepository([_user('q'), partial]));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
@@ -298,7 +298,7 @@ void main() {
         role: 'assistant',
         content: '',
       );
-      final service = ChatMessageService(
+      final service = ChatMessageConverter(
           messageRepository: _FakeMessageRepository([_user('q'), msg]));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
@@ -314,7 +314,7 @@ void main() {
         role: 'assistant',
         content: 'hello',
       );
-      final service = ChatMessageService(
+      final service = ChatMessageConverter(
           messageRepository: _FakeMessageRepository([_user('q'), msg]));
       final result = await service.buildMessages(
         chat: _chat(retention: -1),

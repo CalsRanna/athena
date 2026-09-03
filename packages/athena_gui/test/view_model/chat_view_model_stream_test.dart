@@ -5,14 +5,14 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
-import 'package:athena_core/coordinator/agent_run_coordinator.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/model/token_usage.dart';
+import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -21,12 +21,12 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -46,11 +46,11 @@ import 'package:openai_dart/openai_dart.dart';
 // 前序 iteration 已 finalize 的消息。
 //
 // 采用首选方案（驱动完整的 sendMessage）：注入伪 AgentService 产出可控的
-// 事件流，伪 ChatManageService 记录 recordCancelledOnMessage/
+// 事件流，伪 ChatStoreService 记录 recordCancelledOnMessage/
 // recordErrorOnMessage 收到的消息；其余依赖以最小化的伪实现注入。
 
 /// 记录每个占位消息分配的递增 id，并捕获取消/错误落库时收到的消息。
-class _RecordingManageService extends ChatManageService {
+class _RecordingManageService extends ChatStoreService {
   _RecordingManageService()
     : super(
         chatRepository: SqliteChatRepository(),
@@ -324,13 +324,13 @@ class _FakeSentinelRepository extends SentinelRepository {
   Future<List<SentinelEntity>> getAllSentinels() async => [];
 }
 
-class _FakeSupportService extends ChatSupportService {
+class _FakeSupportService extends ChatUpdateService {
   _FakeSupportService({this.renameStream, this.tokenUsage})
     : super(
         chatRepository: SqliteChatRepository(),
         messageRepository: _NoopMessageRepository(),
         providerRepository: ProviderRepositoryStub(),
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
       );
 
   /// 可选的伪标题流；为 null 时回退到空流。
@@ -432,8 +432,8 @@ class _FakeTokenTrackingChatRepo extends ChatRepository {
   Future<List<ChatHistoryEntity>> getAllChatsWithLastMessage() async => [];
 }
 
-class _FakeChatMessageService extends ChatMessageService {
-  _FakeChatMessageService({this.firstUserMessage = false})
+class _FakeChatMessageConverter extends ChatMessageConverter {
+  _FakeChatMessageConverter({this.firstUserMessage = false})
     : super(messageRepository: _NoopMessageRepository());
 
   final bool firstUserMessage;
@@ -449,7 +449,7 @@ class _FakeChatMessageService extends ChatMessageService {
   Future<bool> isFirstUserMessage(int chatId) async => firstUserMessage;
 }
 
-class _GatedChatMessageService extends _FakeChatMessageService {
+class _GatedChatMessageConverter extends _FakeChatMessageConverter {
   final entered = Completer<void>();
   final release = Completer<void>();
 
@@ -471,7 +471,7 @@ class _GatedChatMessageService extends _FakeChatMessageService {
 class _FakeAgentService extends AgentService {
   _FakeAgentService(this.stream, {this.streamForChat})
     : super(
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
         toolRegistry: ToolRegistry(),
       );
 
@@ -517,8 +517,6 @@ class _FakeAgentService extends AgentService {
     PermissionService? permissionService,
     int maxIterations = 100,
     CancelToken? cancelToken,
-    BeforeToolCallHook? beforeToolCall,
-    AfterToolCallHook? afterToolCall,
     bool jsonMode = false,
   }) async* {
     runCalls++;
@@ -556,7 +554,7 @@ ChatViewModel _buildViewModel({
   required _RecordingManageService manage,
   required _FakeAgentService agent,
   _FakeSupportService? support,
-  ChatMessageService? messageService,
+  ChatMessageConverter? messageService,
   _FakeTokenTrackingChatRepo? tokenUsage,
   MessageRepository? messageRepository,
 }) {
@@ -567,7 +565,7 @@ ChatViewModel _buildViewModel({
     svc.tokenUsage = tUsage;
   }
   final effectiveSvc = svc ?? _FakeSupportService(tokenUsage: tUsage);
-  final messages = messageService ?? _FakeChatMessageService();
+  final messages = messageService ?? _FakeChatMessageConverter();
   final messageRepo = messageRepository ?? _NoopMessageRepository();
   return ChatViewModel(
     manageService: manage,
@@ -576,7 +574,7 @@ ChatViewModel _buildViewModel({
         agentService: agent,
         manageService: manage,
         messageService: messages,
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
         chatRepo: tUsage,
         messageRepo: messageRepo,
         modelRepo: _FakeModelRepository(),
@@ -614,8 +612,8 @@ void main() {
   setUp(() {
     final getIt = GetIt.instance;
     getIt.registerSingleton<LlmClient>(LlmClient());
-    getIt.registerSingleton<ChatService>(
-      ChatService(llmClient: getIt<LlmClient>()),
+    getIt.registerSingleton<ChatCompletionsService>(
+      ChatCompletionsService(llmClient: getIt<LlmClient>()),
     );
     getIt.registerSingleton<SentinelService>(
       SentinelService(llmClient: getIt<LlmClient>()),
@@ -648,7 +646,7 @@ void main() {
       ModelViewModel(
         repository: _FakeModelRepository(),
         providerRepository: ProviderRepositoryStub(),
-        chatService: getIt<ChatService>(),
+        chatService: getIt<ChatCompletionsService>(),
       ),
     );
     getIt.registerSingleton<SentinelViewModel>(
@@ -792,7 +790,7 @@ void main() {
   test('停止发生在 Agent 启动前也不会丢失', () async {
     final manage = _RecordingManageService();
     final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
-    final messages = _GatedChatMessageService();
+    final messages = _GatedChatMessageConverter();
     final vm = _buildViewModel(
       manage: manage,
       agent: agent,
@@ -1304,7 +1302,7 @@ void main() {
       final support = _FakeSupportService(
         renameStream: Stream.value('New Title'),
       );
-      final messages = _FakeChatMessageService(firstUserMessage: true);
+      final messages = _FakeChatMessageConverter(firstUserMessage: true);
       // 主流：先发文本。发出 usage=N 之后 await gate。test 在 usage 落库后
       // 让标题流恰好结束（即命名写库发生在 usage 之后），再打开 gate 让主流结束。
       final gate = Completer<void>();

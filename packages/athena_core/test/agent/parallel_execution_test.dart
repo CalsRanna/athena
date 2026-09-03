@@ -10,7 +10,7 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/service/chat_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:test/test.dart';
 import 'package:http/http.dart' as http;
@@ -263,7 +263,7 @@ void main() {
         ..register(_ParDangerTool())
         ..register(_FakeBashTool());
       service = AgentService(
-        chatService: ChatService(llmClient: LlmClient()),
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
         toolRegistry: registry,
       );
     });
@@ -347,7 +347,7 @@ void main() {
       PermissionService? permissionService,
     }) {
       return AgentService(
-        chatService: ChatService(llmClient: _fakeLlm(script)),
+        chatService: ChatCompletionsService(llmClient: _fakeLlm(script)),
         toolRegistry: registry,
       );
     }

@@ -10,13 +10,13 @@ import 'package:openai_dart/openai_dart.dart';
 /// 聊天相关的 AI 网络请求。
 ///
 /// 在 [LlmClient] 之上提供 chat 特有的默认值（如 StreamOptions、temperature）。
-/// 不涉及消息格式转换（→ [ChatMessageService]）、
-/// 会话/消息持久化（→ [ChatManageService]）、
-/// 或 UI 辅助操作（→ [ChatSupportService]）。
-class ChatService {
+/// 不涉及消息格式转换（→ [ChatMessageConverter]）、
+/// 会话/消息持久化（→ [ChatStoreService]）、
+/// 或 UI 辅助操作（→ [ChatUpdateService]）。
+class ChatCompletionsService {
   final LlmClient _llmClient;
 
-  ChatService({
+  ChatCompletionsService({
     required LlmClient llmClient,
   }) : _llmClient = llmClient;
 

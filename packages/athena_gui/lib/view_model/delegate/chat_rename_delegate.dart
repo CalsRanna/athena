@@ -4,7 +4,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 
 /// 聊天自动/手动重命名的委托。
 ///
@@ -12,13 +12,13 @@ import 'package:athena_core/service/chat_support_service.dart';
 class ChatRenameDelegate {
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
-  final ChatSupportService _supportService;
+  final ChatUpdateService _supportService;
   final Map<int, CancelToken> _tokens = {};
 
   ChatRenameDelegate({
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
-    required ChatSupportService supportService,
+    required ChatUpdateService supportService,
   })  : _messageRepo = messageRepo,
         _modelRepo = modelRepo,
         _supportService = supportService;

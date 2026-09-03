@@ -4,6 +4,7 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -13,10 +14,10 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 
@@ -145,14 +146,14 @@ class AgentStreamDelegate {
 /// 组装 [AgentRunCoordinator] 所需依赖的载体（由 di.dart 构造）。
 class AgentServiceCoordinatorDeps {
   final AgentService agentService;
-  final ChatManageService manageService;
-  final ChatMessageService messageService;
-  final ChatService chatService;
+  final ChatStoreService manageService;
+  final ChatMessageConverter messageService;
+  final ChatCompletionsService chatService;
   final MessageRepository messageRepo;
   final ModelRepository modelRepo;
   final SentinelRepository sentinelRepo;
   final ChatRepository chatRepo;
-  final ChatSupportService supportService;
+  final ChatUpdateService supportService;
   final AgentSettings agentSettings;
   final PermissionService permissionService;
   final ExperienceRepository experienceRepository;

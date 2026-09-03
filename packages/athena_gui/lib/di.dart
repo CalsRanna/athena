@@ -22,10 +22,10 @@ import 'package:athena_gui/repository/trpg_game_repository.dart';
 import 'package:athena_gui/repository/sqlite_trpg_game_repository.dart';
 import 'package:athena_gui/repository/trpg_message_repository.dart';
 import 'package:athena_gui/repository/sqlite_trpg_message_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
@@ -66,7 +66,7 @@ class DI {
       () => ChatRenameDelegate(
         messageRepo: getIt<MessageRepository>(),
         modelRepo: getIt<ModelRepository>(),
-        supportService: getIt<ChatSupportService>(),
+        supportService: getIt<ChatUpdateService>(),
       ),
     );
 
@@ -74,14 +74,14 @@ class DI {
       () => AgentStreamDelegate(
         deps: AgentServiceCoordinatorDeps(
           agentService: getIt<AgentService>(),
-          manageService: getIt<ChatManageService>(),
-          messageService: getIt<ChatMessageService>(),
-          chatService: getIt<ChatService>(),
+          manageService: getIt<ChatStoreService>(),
+          messageService: getIt<ChatMessageConverter>(),
+          chatService: getIt<ChatCompletionsService>(),
           messageRepo: getIt<MessageRepository>(),
           modelRepo: getIt<ModelRepository>(),
           sentinelRepo: getIt<SentinelRepository>(),
           chatRepo: getIt<ChatRepository>(),
-          supportService: getIt<ChatSupportService>(),
+          supportService: getIt<ChatUpdateService>(),
           agentSettings: getIt<AgentSettings>(),
           permissionService: getIt<PermissionService>(),
           experienceRepository: getIt<ExperienceRepository>(),
@@ -94,7 +94,7 @@ class DI {
       () => ModelViewModel(
         repository: getIt<ModelRepository>(),
         providerRepository: getIt<ProviderRepository>(),
-        chatService: getIt<ChatService>(),
+        chatService: getIt<ChatCompletionsService>(),
       ),
     );
 
@@ -207,7 +207,7 @@ class DI {
 
     getIt.registerLazySingleton(
       () => AgentService(
-        chatService: getIt<ChatService>(),
+        chatService: getIt<ChatCompletionsService>(),
         toolRegistry: getIt<ToolRegistry>(),
         skillRegistry: getIt<SkillRegistry>(),
       ),
@@ -216,10 +216,10 @@ class DI {
     // ChatViewModel (depends on many things, registered last)
     getIt.registerLazySingleton(
       () => ChatViewModel(
-        manageService: getIt<ChatManageService>(),
+        manageService: getIt<ChatStoreService>(),
         streamDelegate: getIt<AgentStreamDelegate>(),
         renameDelegate: getIt<ChatRenameDelegate>(),
-        supportService: getIt<ChatSupportService>(),
+        supportService: getIt<ChatUpdateService>(),
         messageRepo: getIt<MessageRepository>(),
         modelResolver: getIt<ModelResolver>(),
         settingViewModel: getIt<SettingViewModel>(),
@@ -263,15 +263,15 @@ class DI {
     getIt.registerLazySingleton(() => LlmClient());
 
     getIt.registerLazySingleton(
-      () => ChatService(llmClient: getIt<LlmClient>()),
+      () => ChatCompletionsService(llmClient: getIt<LlmClient>()),
     );
 
     getIt.registerLazySingleton(
-      () => ChatMessageService(messageRepository: getIt<MessageRepository>()),
+      () => ChatMessageConverter(messageRepository: getIt<MessageRepository>()),
     );
 
     getIt.registerLazySingleton(
-      () => ChatManageService(
+      () => ChatStoreService(
         chatRepository: getIt<ChatRepository>(),
         messageRepository: getIt<MessageRepository>(),
         modelRepository: getIt<ModelRepository>(),
@@ -281,11 +281,11 @@ class DI {
     );
 
     getIt.registerLazySingleton(
-      () => ChatSupportService(
+      () => ChatUpdateService(
         chatRepository: getIt<ChatRepository>(),
         messageRepository: getIt<MessageRepository>(),
         providerRepository: getIt<ProviderRepository>(),
-        chatService: getIt<ChatService>(),
+        chatService: getIt<ChatCompletionsService>(),
       ),
     );
 

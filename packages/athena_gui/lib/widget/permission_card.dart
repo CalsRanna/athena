@@ -1,5 +1,5 @@
 import 'package:athena_gui/component/tool_card.dart';
-import 'package:athena_core/coordinator/agent_run_coordinator.dart';
+import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';

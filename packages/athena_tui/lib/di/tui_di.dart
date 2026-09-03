@@ -16,10 +16,10 @@ import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
-import 'package:athena_core/service/chat_message_service.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
@@ -95,10 +95,10 @@ class TuiDi {
   late final AgentService agentService;
 
   // Services
-  late final ChatService chatService;
-  late final ChatManageService manageService;
-  late final ChatMessageService messageService;
-  late final ChatSupportService supportService;
+  late final ChatCompletionsService chatService;
+  late final ChatStoreService manageService;
+  late final ChatMessageConverter messageService;
+  late final ChatUpdateService supportService;
   late final ModelCatalogService modelCatalogService;
   late final ModelResolver modelResolver;
 
@@ -406,16 +406,16 @@ class TuiDi {
 
     // ── Services ──
     final llmClient = LlmClient();
-    chatService = ChatService(llmClient: llmClient);
-    manageService = ChatManageService(
+    chatService = ChatCompletionsService(llmClient: llmClient);
+    manageService = ChatStoreService(
       chatRepository: chatRepo,
       messageRepository: messageRepo,
       modelRepository: modelRepo,
       providerRepository: providerRepo,
       sentinelRepository: sentinelRepo,
     );
-    messageService = ChatMessageService(messageRepository: messageRepo);
-    supportService = ChatSupportService(
+    messageService = ChatMessageConverter(messageRepository: messageRepo);
+    supportService = ChatUpdateService(
       chatRepository: chatRepo,
       messageRepository: messageRepo,
       providerRepository: providerRepo,

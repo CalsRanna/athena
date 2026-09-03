@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 
 /// 失败后的轻量反思策略。

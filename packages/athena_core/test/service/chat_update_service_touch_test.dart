@@ -2,8 +2,8 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_core/service/chat_service.dart';
-import 'package:athena_core/service/chat_support_service.dart';
+import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/chat_update_service.dart';
 import 'package:test/test.dart';
 
 class _FakeChatRepository implements ChatRepository {
@@ -35,24 +35,24 @@ class _FakeProviderRepository implements ProviderRepository {
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeChatService implements ChatService {
+class _FakeChatCompletionsService implements ChatCompletionsService {
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
-  group('ChatSupportService touches updated_at', () {
+  group('ChatUpdateService touches updated_at', () {
     late _FakeChatRepository fakeRepo;
-    late ChatSupportService service;
+    late ChatUpdateService service;
     late ChatEntity original;
 
     setUp(() {
       fakeRepo = _FakeChatRepository();
-      service = ChatSupportService(
+      service = ChatUpdateService(
         chatRepository: fakeRepo,
         messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
-        chatService: _FakeChatService(),
+        chatService: _FakeChatCompletionsService(),
       );
       original = ChatEntity(
         id: 1,
@@ -99,14 +99,14 @@ void main() {
     });
   });
 
-  group('ChatSupportService field-level updates (no lost update)', () {
+  group('ChatUpdateService field-level updates (no lost update)', () {
     test('update with stale snapshot does not clobber newer fields', () async {
       final fakeRepo = _FakeChatRepository();
-      final service = ChatSupportService(
+      final service = ChatUpdateService(
         chatRepository: fakeRepo,
         messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
-        chatService: _FakeChatService(),
+        chatService: _FakeChatCompletionsService(),
       );
       final original = ChatEntity(
         id: 1,
@@ -136,11 +136,11 @@ void main() {
 
     test('updateModel uses the latest row even with stale snapshot', () async {
       final fakeRepo = _FakeChatRepository();
-      final service = ChatSupportService(
+      final service = ChatUpdateService(
         chatRepository: fakeRepo,
         messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
-        chatService: _FakeChatService(),
+        chatService: _FakeChatCompletionsService(),
       );
       fakeRepo.stored = ChatEntity(
         id: 1,

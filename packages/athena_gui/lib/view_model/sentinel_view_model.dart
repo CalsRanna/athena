@@ -12,7 +12,7 @@ class SentinelViewModel {
   static const directChatOptionLabel = 'No Sentinel (Direct chat)';
 
   /// 仅用于 GUI 状态与渲染，不写入 sentinels 表。
-  /// ChatManageService 只会读取其保留 ID 并写入 chats.sentinel_id。
+  /// ChatStoreService 只会读取其保留 ID 并写入 chats.sentinel_id。
   static final directChatSentinel = SentinelEntity(
     id: ChatEntity.noSentinelId,
     name: directChatName,

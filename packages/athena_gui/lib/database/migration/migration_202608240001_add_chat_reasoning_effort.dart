@@ -7,7 +7,7 @@ import 'package:laconic/laconic.dart';
 /// - chats 表：新增 reasoning_effort TEXT（可空，NULL = 不传参、使用模型默认）
 ///
 /// 取值与 OpenAI 官方 reasoning_effort 一致（low/medium/high/none/minimal/xhigh），
-/// 由 ChatService.getCompletion 在请求时解析为 official 枚举。
+/// 由 ChatCompletionsService.getCompletion 在请求时解析为 official 枚举。
 class Migration202608240001AddChatReasoningEffort {
   static const name = 'migration_202608240001_add_chat_reasoning_effort';
 

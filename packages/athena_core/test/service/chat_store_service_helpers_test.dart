@@ -4,7 +4,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/service/chat_manage_service.dart';
+import 'package:athena_core/service/chat_store_service.dart';
 import 'package:test/test.dart';
 
 class _FakeMessageRepository implements MessageRepository {
@@ -49,13 +49,13 @@ class _StubSentinelRepository implements SentinelRepository {
 }
 
 void main() {
-  group('ChatManageService helpers', () {
+  group('ChatStoreService helpers', () {
     late _FakeMessageRepository fakeRepo;
-    late ChatManageService service;
+    late ChatStoreService service;
 
     setUp(() {
       fakeRepo = _FakeMessageRepository();
-      service = ChatManageService(
+      service = ChatStoreService(
         chatRepository: _StubChatRepository(),
         messageRepository: fakeRepo,
         modelRepository: _StubModelRepository(),
