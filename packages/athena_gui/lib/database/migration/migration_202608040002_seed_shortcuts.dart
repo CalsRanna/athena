@@ -1,6 +1,6 @@
 import 'package:athena_gui/database/database.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/model/shortcut.dart';
+import 'package:athena_gui/model/shortcut.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 内置 Shortcut seed：5 个内置快捷入口，每个绑定一个 is_preset 专属

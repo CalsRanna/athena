@@ -1,13 +1,13 @@
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_core/entity/summary_entity.dart';
+import 'package:athena_gui/entity/summary_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
-import 'package:athena_core/service/summary_service.dart';
+import 'package:athena_gui/service/summary_service.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:openai_dart/openai_dart.dart';
-import 'package:athena_core/extension/list_signal_extension.dart';
+import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 import 'package:uuid/uuid.dart';
 

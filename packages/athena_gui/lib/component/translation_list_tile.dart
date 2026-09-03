@@ -1,5 +1,5 @@
 import 'package:athena_gui/component/button.dart';
-import 'package:athena_core/entity/translation_entity.dart';
+import 'package:athena_gui/entity/translation_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

@@ -1,4 +1,4 @@
-import 'package:athena_core/entity/trpg_message_entity.dart';
+import 'package:athena_gui/entity/trpg_message_entity.dart';
 
 /// TRPG 消息存储接口。持久化策略由实现方决定。
 abstract class TRPGMessageRepository {

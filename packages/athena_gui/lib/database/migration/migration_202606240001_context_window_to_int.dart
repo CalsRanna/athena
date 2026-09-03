@@ -1,5 +1,5 @@
 import 'package:athena_gui/database/database.dart';
-import 'package:athena_core/util/context_window_util.dart';
+import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_core/util/logger_util.dart';
 
 /// 把 models.context_window 列从 TEXT（"64K context" / "200,000 context" /

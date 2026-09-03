@@ -1,6 +1,6 @@
 import 'package:athena_gui/database/database.dart';
-import 'package:athena_core/model/shortcut.dart';
-import 'package:athena_core/repository/shortcut_repository.dart';
+import 'package:athena_gui/model/shortcut.dart';
+import 'package:athena_gui/repository/shortcut_repository.dart';
 
 /// [ShortcutRepository] 的 SQLite 实现（GUI 侧）。
 class SqliteShortcutRepository implements ShortcutRepository {

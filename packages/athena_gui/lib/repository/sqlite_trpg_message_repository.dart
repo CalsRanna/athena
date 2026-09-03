@@ -1,6 +1,6 @@
 import 'package:athena_gui/database/database.dart';
-import 'package:athena_core/entity/trpg_message_entity.dart';
-import 'package:athena_core/repository/trpg_message_repository.dart';
+import 'package:athena_gui/entity/trpg_message_entity.dart';
+import 'package:athena_gui/repository/trpg_message_repository.dart';
 
 /// [TRPGMessageRepository] 的 SQLite 实现（GUI 侧）。
 class SqliteTRPGMessageRepository implements TRPGMessageRepository {

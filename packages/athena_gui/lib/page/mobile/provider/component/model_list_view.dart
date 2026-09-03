@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/util/context_window_util.dart';
+import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';

@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/entity/trpg_message_entity.dart';
-import 'package:athena_core/repository/trpg_game_repository.dart';
+import 'package:athena_gui/entity/trpg_message_entity.dart';
+import 'package:athena_gui/repository/trpg_game_repository.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/trpg_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';

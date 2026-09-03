@@ -2,7 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_core/extension/list_signal_extension.dart';
+import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class ProviderViewModel {

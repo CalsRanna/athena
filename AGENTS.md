@@ -9,7 +9,7 @@
 Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter 构建。核心能力包括：
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
-- **Monorepo 三包结构**：`athena_core`（纯 Dart 核心，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
+- **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：TRPG/翻译/摘要/Shortcut/Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
 - **内置工具系统**：桌面端注册 14 个工具、移动端 10 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
@@ -90,7 +90,7 @@ Coordinator Layer (athena_core/coordinator)  ← AgentRunCoordinator：UI 无关
     ↓ 消费/驱动
 Service Layer (chat_service / chat_manage_service / chat_message_service / ...)
     ↓ 调用 Repository 接口
-Repository Layer (接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository)
+Repository Layer (引擎存储接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository；GUI 业务接口如 shortcut/trpg 随业务在 athena_gui)
     ↓ 直接访问 Database.instance.laconic
 Data Layer (Entity / Database / Migration)
 ```
@@ -98,6 +98,8 @@ Data Layer (Entity / Database / Migration)
 Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
 
 **核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；TUI 已实现同一组接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
+
+**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（TRPG/翻译/摘要/Shortcut/Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。引擎与 GUI 共享的提示词常量可以留在 core（如 `preset/prompt.dart`），但纯 GUI 业务提示词随业务文件走。
 
 ---
 
@@ -124,7 +126,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatService（网络）、Tool
 - `listSignal<T>([])` - 响应式列表
 - `computed(() => ...)` - 派生信号
 - `Watch((context) { ... })` - Flutter Widget 中自动订阅信号变化
-- `athena_core` 提供 `list_signal_extension.dart`：`replaceWhere` 等便捷方法（ViewModel 消息/会话更新使用）
+- `athena_gui` 提供 `list_signal_extension.dart`：`replaceWhere` 等便捷方法（ViewModel 消息/会话更新使用）
 
 ChatViewModel 的主要信号：
 
@@ -320,7 +322,7 @@ disable-model-invocation: false
 
 ### 7.7 Shortcut 系统（v3.4.4 新增）
 
-- `Shortcut`（`athena_core/lib/model/shortcut.dart`）：name/description/icon/pageTarget/sentinelId；绑定一个 `is_preset` 的专属 Sentinel
+- `Shortcut`（`athena_gui/lib/model/shortcut.dart`）：name/description/icon/pageTarget/sentinelId；绑定一个 `is_preset` 的专属 Sentinel
 - 迁移 `202608040001_create_shortcuts` + `202608040002_seed_shortcuts` 播种 5 个内置 Shortcut（Translation/Summary/Food/Code/TRPG），每个带专属 preset Sentinel
 - 点击 Shortcut → 以其绑定 Sentinel 身份发起 run，`jsonMode: true`（ResponseFormat jsonObject）用于场景页
 - `pageTarget` 通过 `ShortcutPageRegistry`（纯查找表，非插件机制）映射到移动端路由（translation/summary/trpg；Food/Code 无目标页走默认聊天页）
@@ -588,7 +590,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 
 ## 16. 重要约束与注意事项
 
-1. **包依赖方向**：`athena_gui → athena_core` 单向；**athena_core 禁止引入 Flutter / SQL / GetIt**（它是 TUI 与 GUI 共用的核心）
+1. **包依赖方向**：`athena_gui → athena_core` 单向；**athena_core 禁止引入 Flutter / SQL / GetIt**（它是 TUI 与 GUI 共用的核心）。**GUI 专有业务不进 core**（见"核心解耦原则"后的准入标准）
 2. **DI 初始化顺序**：Repository → Service → Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 之后注册；全部 `registerLazySingleton`
 3. **数据库单例**：`Database.instance` 全局单例，所有 Sqlite Repository 直接访问 `.instance.laconic`
 4. **外键级联**：`PRAGMA foreign_keys = ON` 必须在所有迁移之后执行

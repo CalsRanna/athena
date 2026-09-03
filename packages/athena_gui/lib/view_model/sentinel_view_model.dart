@@ -3,8 +3,8 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_core/service/sentinel_service.dart';
-import 'package:athena_core/extension/list_signal_extension.dart';
+import 'package:athena_gui/service/sentinel_service.dart';
+import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
