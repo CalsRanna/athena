@@ -41,7 +41,6 @@ athena/
     │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
     │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
     │   │   ├── entity/          # 8 个实体（纯数据类，含 TokenUsage）
-    │   │   ├── preset/          # prompt.dart（运行时模板，非 DB 种子）
     │   │   ├── repository/      # 7 个存储接口（抽象，GUI 用 SQLite 实现）
     │   │   ├── service/         # LlmClient / ChatCompletions / ChatStore / ChatMessageConverter / ChatUpdate / ModelCatalog 等
     │   │   ├── storage/         # KeyValueStore 接口 + AgentSettings
@@ -98,7 +97,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网�
 
 **核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；TUI 已实现同一组接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
-**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（TRPG/翻译/摘要/Shortcut/Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。引擎与 GUI 共享的提示词常量可以留在 core（如 `preset/prompt.dart`），但纯 GUI 业务提示词随业务文件走。
+**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（TRPG/翻译/摘要/Shortcut/Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。提示词常量随使用者内联（引擎的放 core 服务、业务的放 GUI 服务），不设共享提示词文件。
 
 ---
 
