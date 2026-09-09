@@ -4,6 +4,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
 import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
@@ -294,7 +295,20 @@ class _MobileChatPageState extends State<MobileChatPage> {
         onSubmitted: () => sendMessage(chat),
         onTerminated: terminateStreaming,
       );
-      final padding = Padding(padding: EdgeInsets.all(16), child: userInput);
+      final queued = viewModel.queuedMessages.value;
+      final padding = Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (queued.isNotEmpty) ...[
+              QueuedMessages(messages: queued),
+              const SizedBox(height: 12),
+            ],
+            userInput,
+          ],
+        ),
+      );
       return SafeArea(top: false, child: padding);
     });
   }

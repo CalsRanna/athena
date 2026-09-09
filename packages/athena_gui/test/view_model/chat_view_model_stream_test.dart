@@ -162,23 +162,35 @@ class _NoopMessageRepository extends MessageRepository {
 /// 计数 storeMessage 调用次数（验证接续 run 不重复落库）。
 class _CountingMessageRepository extends _NoopMessageRepository {
   int storeCalls = 0;
+  final storedMessages = <MessageEntity>[];
 
   @override
   Future<int> storeMessage(MessageEntity message) async {
     storeCalls++;
-    return super.storeMessage(message);
+    final id = await super.storeMessage(message);
+    storedMessages.add(message.copyWith(id: id));
+    return id;
   }
+
+  @override
+  Future<List<MessageEntity>> getMessagesByChatId(
+    int chatId, {
+    bool includeCompacted = true,
+  }) async =>
+      storedMessages.where((message) => message.chatId == chatId).toList();
 }
 
-/// 可挂起某次 storeMessage（模拟 queueInput 落库期间 run 结束的竞态窗口）。
+/// Hold a queued input at the point it enters the next run's history.
 class _GatedStoreRepository extends _CountingMessageRepository {
   final storeGate = Completer<void>();
+  final storeEntered = Completer<void>();
   bool holdNext = false;
 
   @override
   Future<int> storeMessage(MessageEntity message) async {
     if (holdNext) {
       holdNext = false;
+      storeEntered.complete();
       await storeGate.future;
     }
     return super.storeMessage(message);
@@ -503,6 +515,8 @@ class _FakeAgentService extends AgentService {
   int runCalls = 0;
   int activeRuns = 0;
   int maxActiveRuns = 0;
+  final contexts = <List<ChatMessage>>[];
+  final jsonModes = <bool>[];
 
   @override
   CancelToken? cancelTokenOf(int runId) => _tokens[runId];
@@ -534,6 +548,8 @@ class _FakeAgentService extends AgentService {
     bool jsonMode = false,
   }) async* {
     runCalls++;
+    contexts.add(baseMessages);
+    jsonModes.add(jsonMode);
     activeRuns++;
     if (activeRuns > maxActiveRuns) maxActiveRuns = activeRuns;
     final token = cancelToken ?? CancelToken();
@@ -1089,6 +1105,13 @@ void main() {
     await emittedSome.future;
     expect(vm.isStreaming.value, isTrue);
 
+    vm.currentChat.value = chat;
+    await vm.sendMessage(
+      MessageEntity(chatId: 1, role: 'user', content: 'never-send'),
+      chat: chat,
+    );
+    expect(vm.queuedMessages.value, hasLength(1));
+
     // 删除正在流式输出的 chat：内部应 stopGenerating 并等待流 settle。
     final deleteFuture = vm.deleteChat(chat);
     // 打开 gate，让流到达循环顶部的 throwIfCancelled 后抛出取消。
@@ -1103,6 +1126,8 @@ void main() {
     // 取消落库发生在删除之前——证明 deleteChat 等待了流 settle。
     expect(manage.cancelledArg, isNotNull);
     expect(manage.events, ['cancel-persist', 'delete']);
+    expect(vm.queuedMessages.value, isEmpty);
+    expect(agent.runCalls, 1, reason: '删除会话应丢弃尚未发送的队列');
   });
 
   test('C12: 删除 chat 取消其后台自动重命名流，不再写入 renameChatManually', () async {
@@ -1622,7 +1647,7 @@ void main() {
     expect(manage.cancelledArg, isNotNull);
   });
 
-  test('运行中输入：落库排队并立即可见，run 结束后自动接续为新一轮', () async {
+  test('排队消息独立展示，上一轮结束后才进入历史并开始下一轮', () async {
     final firstGate = Completer<void>();
     final firstEmitted = Completer<void>();
     var invocation = 0;
@@ -1661,7 +1686,7 @@ void main() {
     await firstEmitted.future;
     expect(agent.runCalls, 1);
 
-    // 运行中发送：落库排队 + 立即可见，不打断当前 run
+    // 运行中发送：只出现在输入队列，不进入历史或打断当前 run。
     await vm.sendMessage(
       MessageEntity(chatId: 1, role: 'user', content: 'queued-input'),
       chat: _chat(),
@@ -1669,24 +1694,120 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(
       vm.messages.value.map((m) => m.content),
-      contains('queued-input'),
-      reason: '排队消息应立即可见',
+      isNot(contains('queued-input')),
     );
+    expect(vm.queuedMessages.value.map((m) => m.content), ['queued-input']);
     expect(agent.runCalls, 1, reason: '排队不启动新 run');
-    expect(messageRepo.storeCalls, 2, reason: '初始 + 排队各落库一次');
+    expect(messageRepo.storeCalls, 1, reason: '排队期间不写入聊天记录');
+
+    await vm.refreshMessages(1);
+    expect(
+      vm.messages.value.map((m) => m.content),
+      isNot(contains('queued-input')),
+    );
+    await vm.selectChat(_chat(id: 2));
+    expect(vm.queuedMessages.value, isEmpty);
+    await vm.selectChat(_chat());
+    expect(vm.queuedMessages.value.map((m) => m.content), ['queued-input']);
+    expect(
+      vm.messages.value.map((m) => m.content),
+      isNot(contains('queued-input')),
+    );
 
     // 第一轮结束 → 排队消息自动接续为第二轮（事件流连续）
     firstGate.complete();
     await sendFuture;
     expect(agent.runCalls, 2, reason: 'run 结束后自动接续');
     expect(messageRepo.storeCalls, 2, reason: '接续不重复落库');
+    expect(vm.queuedMessages.value, isEmpty);
     expect(
       vm.messages.value.where((m) => m.content == 'queued-input').length,
       1,
       reason: '接续的事件不重复显示',
     );
     expect(agent.maxActiveRuns, 1, reason: '接续与旧 run 不并发');
+    final contents = vm.messages.value.map((m) => m.content).toList();
+    expect(
+      contents.indexOf('round-onelate'),
+      lessThan(contents.indexOf('queued-input')),
+    );
     expect(vm.error.value, isNull);
+  });
+
+  test('多条排队消息逐条进入内容区，模型不会提前读到后续输入', () async {
+    final gates = List.generate(3, (_) => Completer<void>());
+    final started = List.generate(3, (_) => Completer<void>());
+    var invocation = 0;
+    Stream<AgentEvent> run() async* {
+      final index = invocation++;
+      yield AgentTextEvent('response-$index');
+      started[index].complete();
+      await gates[index].future;
+    }
+
+    final repository = _CountingMessageRepository();
+    final agent = _FakeAgentService(
+      const Stream<AgentEvent>.empty(),
+      streamForChat: (_, __) => run(),
+    );
+    final vm = _buildViewModel(
+      manage: _RecordingManageService(),
+      agent: agent,
+      messageRepository: repository,
+      messageService: ChatMessageConverter(messageRepository: repository),
+    );
+    final chat = _chat().copyWith(title: 'Queue test');
+    vm.currentChat.value = chat;
+    final sending = vm.sendMessage(_userMessage(), chat: chat);
+    await started[0].future;
+    final image = base64Encode([1, 2, 3]);
+    await vm.sendMessage(
+      MessageEntity(
+        chatId: 1,
+        role: 'user',
+        content: 'next-one',
+        imageUrls: image,
+      ),
+      chat: chat,
+      jsonMode: true,
+    );
+    await vm.sendMessage(
+      MessageEntity(chatId: 1, role: 'user', content: 'next-two'),
+      chat: chat,
+    );
+    expect(vm.queuedMessages.value.map((m) => m.content), [
+      'next-one',
+      'next-two',
+    ]);
+    expect(repository.storeCalls, 1);
+
+    gates[0].complete();
+    await started[1].future;
+    expect(vm.queuedMessages.value.map((m) => m.content), ['next-two']);
+    expect(vm.messages.value.map((m) => m.content), contains('next-one'));
+    expect(
+      vm.messages.value.map((m) => m.content),
+      isNot(contains('next-two')),
+    );
+    expect(
+      jsonEncode(agent.contexts[1].map((m) => m.toJson()).toList()),
+      isNot(contains('next-two')),
+    );
+    expect(repository.storedMessages.last.imageUrls, image);
+    expect(agent.jsonModes, [false, true]);
+
+    gates[1].complete();
+    await started[2].future;
+    expect(vm.queuedMessages.value, isEmpty);
+    expect(repository.storedMessages.map((m) => m.content), [
+      'hello',
+      'next-one',
+      'next-two',
+    ]);
+    expect(agent.jsonModes, [false, true, false]);
+    gates[2].complete();
+    await sending;
+    expect(agent.maxActiveRuns, 1);
   });
 
   test('stop 只打断当前轮：排队消息在取消收尾后仍接续启动', () async {
@@ -1730,6 +1851,7 @@ void main() {
     );
     vm.stopGenerating(1);
     expect(vm.isCurrentChatStreaming.value, isFalse);
+    expect(vm.queuedMessages.value.map((m) => m.content), ['after-stop']);
 
     firstGate.complete();
     await sendFuture;
@@ -1742,9 +1864,10 @@ void main() {
       reason: '排队消息在接续后仍只显示一条',
     );
     expect(vm.error.value, isNull);
+    expect(vm.queuedMessages.value, isEmpty);
   });
 
-  test('queueInput 竞态：落库期间 run 结束，撤销后经正常路径仅落库一次', () async {
+  test('下一轮落库前保留排队展示，落库期间的新输入继续按序等待', () async {
     final firstGate = Completer<void>();
     final firstEmitted = Completer<void>();
     var invocation = 0;
@@ -1780,22 +1903,41 @@ void main() {
     final sendFuture = vm.sendMessage(_userMessage(), chat: _chat());
     await firstEmitted.future;
 
-    // 排队消息的 storeMessage 挂起 —— 窗口内第一轮 run 结束
+    // 下一轮的落库挂起时，消息仍显示在队列中。
     messageRepo.holdNext = true;
-    final queuedFuture = vm.sendMessage(
+    await vm.sendMessage(
       MessageEntity(chatId: 1, role: 'user', content: 'queued-input'),
       chat: _chat(),
     );
-    await Future<void>.delayed(Duration.zero);
     firstGate.complete();
+    await messageRepo.storeEntered.future;
+    expect(vm.queuedMessages.value.map((m) => m.content), ['queued-input']);
+    expect(
+      vm.messages.value.map((m) => m.content),
+      isNot(contains('queued-input')),
+    );
+    await vm.sendMessage(
+      MessageEntity(chatId: 1, role: 'user', content: 'third-input'),
+      chat: _chat(),
+    );
+    expect(vm.queuedMessages.value.map((m) => m.content), [
+      'queued-input',
+      'third-input',
+    ]);
+
+    // 放行后所有消息各落库一次，按序执行。
+    messageRepo.storeGate.complete();
     await sendFuture;
 
-    // 放行挂起的落库：queueInput 发现 run 已结束 → 撤销并返回 null
-    messageRepo.storeGate.complete();
-    await queuedFuture;
-
-    expect(messageRepo.storeCalls, 3, reason: 'hello + 撤销的排队落库 + 重新走 send 落库');
-    expect(agent.runCalls, 2, reason: '撤销后消息经正常发送路径启动新 run');
+    expect(messageRepo.storeCalls, 3);
+    expect(agent.runCalls, 3);
+    expect(agent.maxActiveRuns, 1);
+    expect(vm.queuedMessages.value, isEmpty);
+    expect(messageRepo.storedMessages.map((m) => m.content), [
+      'hello',
+      'queued-input',
+      'third-input',
+    ]);
     expect(
       vm.messages.value.where((m) => m.content == 'queued-input').length,
       1,

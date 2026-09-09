@@ -432,6 +432,8 @@ ChatViewModel（Signal 唯一持有者 + 编排层）
 
 `createChat` / `deleteChat` / `deleteChats` / `selectChat` / `togglePin` / `updateModel` / `updateSentinel` / `updateRetention` / `updateTemperature` / `updateExpanded` / `sendMessage` / `stopGenerating` / `deleteMessage` / `renameChat` / `exportImage` / `addPendingImage` / `prepareNewChatDraft` / `_syncDraftDefaults` 等。
 
+GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，通过 `queuedMessages` 在桌面和移动端输入框上方的 `QueuedMessages` 组件展示。上一轮完整收尾后，按顺序调用 Coordinator 的正常 `send`，此时才落库并移入消息列表，未轮到的输入不进入历史或模型上下文。Stop 只取消当前轮，队列继续接续；删除会话会清空其待发送队列。GUI 不使用 Coordinator 的提前落库 `queueInput` 路径；待发送队列不跨应用重启恢复。
+
 流式约束：
 1. **取消安全性**：`AgentStreamDelegate.settled`（实为 `AgentService.settled`）等待流完全 settle 后再删除数据
 2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 删除后写入

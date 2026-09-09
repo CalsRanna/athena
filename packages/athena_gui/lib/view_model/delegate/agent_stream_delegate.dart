@@ -100,11 +100,6 @@ class AgentStreamDelegate {
     _coordinator.stop(chatId);
   }
 
-  /// 运行中输入：落库排队，当前 run 结束后自动接续为新 run。
-  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) {
-    return _coordinator.queueInput(chatId, message);
-  }
-
   /// 用户对某个审批请求做出决策（由 UI 卡片调用）。
   void respondApproval(ApprovalRequest request, PermissionDecision decision) {
     if (!request.completer.isCompleted) {
