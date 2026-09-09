@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:path/path.dart' as p;
@@ -22,12 +21,13 @@ class ShellTimeoutPolicy {
     final raw = env[maxTimeoutEnvVar];
     if (raw == null) return _defaultMaxSeconds;
     final parsed = int.tryParse(raw.trim());
-    if (parsed == null || parsed < _defaultMaxSeconds) return _defaultMaxSeconds;
+    if (parsed == null || parsed < _defaultMaxSeconds) {
+      return _defaultMaxSeconds;
+    }
     return parsed;
   }
 
-  static final int maxSeconds =
-      resolveMaxSeconds(Platform.environment);
+  static final int maxSeconds = resolveMaxSeconds(Platform.environment);
 
   /// 把 LLM 传入的 timeout 值 clamp 到 [minSeconds, maxSeconds]，并返回是否做了截断。
   static ({int effective, bool clamped, int? requested}) normalize(int? raw) {
@@ -49,7 +49,8 @@ String shellCommandParamDescription(String shellName) =>
     'The $shellName command to execute. Avoid commands that wait for '
     'interactive user input (they will hang until timeout).';
 
-String shellTimeoutParamDescription() => 'Timeout in seconds. '
+String shellTimeoutParamDescription() =>
+    'Timeout in seconds. '
     'Default ${ShellTimeoutPolicy.defaultSeconds}s. '
     'Maximum ${ShellTimeoutPolicy.maxSeconds}s. '
     'Pick a value based on the command: short queries (git status, ls, '
@@ -63,66 +64,9 @@ String shellTimeoutParamDescription() => 'Timeout in seconds. '
 
 String shellWorkdirParamDescription([String? defaultWorkdir]) =>
     defaultWorkdir == null
-        ? 'Working directory for the command. '
-            'Defaults to the user home directory.'
-        : 'Working directory for the command. Defaults to $defaultWorkdir.';
-
-/// 输出截断上限。超过任一条目即触发头尾保留 + 中间省略。
-class OutputLimit {
-  static const int maxLines = 100;
-  static const int maxChars = 5000;
-}
-
-/// 根据命令的第一个 token 推断缩小输出的建议。
-String _hintForCommand(String? command) {
-  if (command == null || command.isEmpty) return _defaultHint;
-  final firstWord = command.trim().split(RegExp(r'[\s|;&]')).first.toLowerCase();
-  return switch (firstWord) {
-    'grep' || 'rg' || 'select-string' || 'findstr' =>
-      'Pipe to head (| head -100) or add --include / --glob to narrow matches.',
-    'ls' || 'dir' || 'get-childitem' || 'find' =>
-      'Limit depth (e.g. -maxdepth 2 for find) or pipe to head.',
-    'cat' || 'type' || 'get-content' || 'tail' || 'head' =>
-      'Use offset/limit with file_read tool, or pipe to head/tail.',
-    _ => _defaultHint,
-  };
-}
-
-const _defaultHint =
-    'Narrow output with grep, head, tail, or redirect to a file and read with file_read.';
-
-/// 保留输出头尾，截断中间并告知 LLM 原因和缩小范围的建议。
-///
-/// 行数/字符数任一超限即触发。注意两个边界：
-/// - 行数不足以填满 head+tail 时，tail 与 head 重叠（或 skip 负数崩溃），
-///   此时 tail 只取 head 之后的剩余行，避免同一行输出两遍；
-/// - skipped 计数一律 clamp 到非负。
-String truncateOutput(String output, String? command) {
-  final lines = output.split('\n');
-  if (lines.length <= OutputLimit.maxLines &&
-      output.length <= OutputLimit.maxChars) {
-    return output;
-  }
-  final headLines = (OutputLimit.maxLines * 0.6).round();
-  final tailLines = OutputLimit.maxLines - headLines;
-  final head = lines.take(headLines).join('\n');
-  // tail 起点 = max(head 末尾, 倒数 tailLines 行起点)：行数不足时
-  // 不重复输出 head 已包含的行，也不产生负数 skip。
-  String tail = '';
-  if (lines.length > headLines) {
-    final tailStart = max(headLines, lines.length - tailLines);
-    tail = lines.skip(tailStart).join('\n');
-  }
-  final skippedLines = max(0, lines.length - headLines - tailLines);
-  final charsSkipped = max(0, output.length - OutputLimit.maxChars);
-  return '$head\n'
-      '\n'
-      '[output truncated: $skippedLines lines / $charsSkipped chars skipped '
-      '(limit ${OutputLimit.maxLines} lines / ${OutputLimit.maxChars} chars)]\n'
-      'Hint: ${_hintForCommand(command)}\n'
-      '\n'
-      '$tail';
-}
+    ? 'Working directory for the command. '
+          'Defaults to the user home directory.'
+    : 'Working directory for the command. Defaults to $defaultWorkdir.';
 
 /// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
 /// 确保 Homebrew、用户级二进制目录等常见安装路径可被找到。
@@ -200,18 +144,18 @@ Future<String> runShellProcess({
   int? exitCode;
   final outcome =
       await Future.any<({bool cancelled, int? exitCode, bool timedOut})>([
-    process.exitCode.then(
-      (code) => (cancelled: false, exitCode: code, timedOut: false),
-    ),
-    Future.delayed(
-      Duration(seconds: timeoutSeconds),
-      () => (cancelled: false, exitCode: null, timedOut: true),
-    ),
-    if (cancelSignal != null)
-      cancelSignal.then(
-        (_) => (cancelled: true, exitCode: null, timedOut: false),
-      ),
-  ]);
+        process.exitCode.then(
+          (code) => (cancelled: false, exitCode: code, timedOut: false),
+        ),
+        Future.delayed(
+          Duration(seconds: timeoutSeconds),
+          () => (cancelled: false, exitCode: null, timedOut: true),
+        ),
+        if (cancelSignal != null)
+          cancelSignal.then(
+            (_) => (cancelled: true, exitCode: null, timedOut: false),
+          ),
+      ]);
   exitCode = outcome.exitCode;
   timedOut = outcome.timedOut;
   cancelled = outcome.cancelled;
@@ -224,16 +168,18 @@ Future<String> runShellProcess({
 
   // 等待 stdout/stderr 流的完成，最多再给 500ms 兜底（防止极端情况下挂住）。
   try {
-    await Future.wait([stdoutDone, stderrDone])
-        .timeout(const Duration(milliseconds: 500));
+    await Future.wait([
+      stdoutDone,
+      stderrDone,
+    ]).timeout(const Duration(milliseconds: 500));
   } catch (_) {
     // 忽略：流读取失败不该阻塞结果返回。
   }
 
   if (cancelled) throw const CancelledException();
 
-  final stdout = stdoutBuffer.toString().trim();
-  final stderr = stderrBuffer.toString().trim();
+  final stdout = stdoutBuffer.toString();
+  final stderr = stderrBuffer.toString();
   final buffer = StringBuffer();
 
   if (timedOut) {
@@ -253,14 +199,17 @@ Future<String> runShellProcess({
   }
 
   if (stdout.isNotEmpty) {
-    buffer.writeln(stdout);
+    buffer.write(stdout);
+    if (!stdout.endsWith('\n')) buffer.writeln();
   }
   if (stderr.isNotEmpty) {
     buffer.writeln('[stderr]');
-    buffer.writeln(stderr);
+    buffer.write(stderr);
+    if (!stderr.endsWith('\n')) buffer.writeln();
   }
   buffer.writeln('[exit code: $exitCode]');
-  return truncateOutput(buffer.toString().trim(), command);
+  // Preserve full output; the Agent applies one recoverable output policy.
+  return buffer.toString();
 }
 
 /// 终止 shell 及其子进程。Windows 用 taskkill /T；Unix 先通过 ps 快照收集

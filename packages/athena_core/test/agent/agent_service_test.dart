@@ -60,7 +60,6 @@ class _BlockingTool extends athena.Tool implements athena.CancellableTool {
 }
 
 void main() {
-
   test('可取消工具会收到 run 的取消信号', () async {
     final tool = _BlockingTool();
     final registry = ToolRegistry()..register(tool);
@@ -409,7 +408,11 @@ void _runtimePromptTests() {
       (messages[1] as SystemMessage).content,
       contains('Athena GUI application'),
     );
-    expect(messages[2], isA<UserMessage>());
+    expect(
+      (messages[2] as SystemMessage).content,
+      startsWith('Current date: '),
+    );
+    expect(messages[3], isA<UserMessage>());
   });
 
   test('sentinel 保持首位，历史类摘要（digest）紧跟 runtime', () async {
@@ -441,7 +444,11 @@ void _runtimePromptTests() {
       contains('Athena TUI (terminal)'),
     );
     expect((messages[2] as SystemMessage).content, 'DIGEST');
-    expect(messages[3], isA<UserMessage>());
+    expect(
+      (messages[3] as SystemMessage).content,
+      startsWith('Current date: '),
+    );
+    expect(messages[4], isA<UserMessage>());
   });
 
   test('evolution 不再插顶：插在 sentinel 之后（sentinel 首位）', () async {
@@ -468,7 +475,11 @@ void _runtimePromptTests() {
     final messages = recording.lastMessages!;
     expect((messages[0] as SystemMessage).content, 'SENTINEL');
     expect((messages[1] as SystemMessage).content, 'EVOLUTION');
-    expect(messages[2], isA<UserMessage>());
+    expect(
+      (messages[2] as SystemMessage).content,
+      startsWith('Current date: '),
+    );
+    expect(messages[3], isA<UserMessage>());
   });
 
   test('含 base 摘要（digest）：sentinel → runtime → evolution → digest', () async {
@@ -578,7 +589,7 @@ void _runtimePromptTests() {
     expect(messages.last, isA<UserMessage>());
   });
 
-  test('不提供 runtimePrompt 时不注入 system 消息', () async {
+  test('不提供 runtimePrompt 时仍然提供当前日期', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -599,7 +610,11 @@ void _runtimePromptTests() {
         .toList();
 
     final messages = recording.lastMessages!;
-    expect(messages, hasLength(2));
-    expect(messages[1], isA<UserMessage>());
+    expect(messages, hasLength(3));
+    expect(
+      (messages[1] as SystemMessage).content,
+      startsWith('Current date: '),
+    );
+    expect(messages[2], isA<UserMessage>());
   });
 }

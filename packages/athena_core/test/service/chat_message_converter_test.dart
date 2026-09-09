@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -51,14 +52,14 @@ class _FakeMessageRepository extends MessageRepository {
 }
 
 ChatEntity _chat({required int retention}) => ChatEntity(
-      id: 1,
-      title: 'test',
-      modelId: 1,
-      sentinelId: 1,
-      retention: retention,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
-    );
+  id: 1,
+  title: 'test',
+  modelId: 1,
+  sentinelId: 1,
+  retention: retention,
+  createdAt: DateTime(2024),
+  updatedAt: DateTime(2024),
+);
 
 MessageEntity _user(String content) =>
     MessageEntity(chatId: 1, role: 'user', content: content);
@@ -73,17 +74,10 @@ MessageEntity _assistantWithTools({
   required List<String> callIds,
 }) {
   final toolCalls = callIds
-      .map((id) => {
-            'id': id,
-            'name': 'search',
-            'arguments': '{"q":"x"}',
-          })
+      .map((id) => {'id': id, 'name': 'search', 'arguments': '{"q":"x"}'})
       .toList();
   final toolResults = callIds
-      .map((id) => {
-            'id': id,
-            'result': 'result-for-$id',
-          })
+      .map((id) => {'id': id, 'result': 'result-for-$id'})
       .toList();
   return MessageEntity(
     chatId: 1,
@@ -103,33 +97,97 @@ void _assertPairingValid(List<ChatMessage> messages) {
   for (var i = 0; i < messages.length; i++) {
     final msg = messages[i];
     if (msg is ToolMessage) {
-      expect(i, greaterThan(0),
-          reason: 'tool message at index 0 has no preceding assistant');
+      expect(
+        i,
+        greaterThan(0),
+        reason: 'tool message at index 0 has no preceding assistant',
+      );
       // A tool message is valid if its predecessor is either the
       // assistant-with-tool_calls or another tool message of the same group.
       final prev = messages[i - 1];
       final precededByAssistantOrTool =
-          (prev is AssistantMessage && prev.hasToolCalls) || prev is ToolMessage;
-      expect(precededByAssistantOrTool, isTrue,
-          reason: 'tool message must be preceded by an assistant-with-tool_calls '
-              'or another tool of the same group; found ${prev.runtimeType}');
+          (prev is AssistantMessage && prev.hasToolCalls) ||
+          prev is ToolMessage;
+      expect(
+        precededByAssistantOrTool,
+        isTrue,
+        reason:
+            'tool message must be preceded by an assistant-with-tool_calls '
+            'or another tool of the same group; found ${prev.runtimeType}',
+      );
     }
     if (msg is AssistantMessage && msg.hasToolCalls) {
       final ids = msg.toolCalls!.map((tc) => tc.id).toList();
       // The next `ids.length` messages must be tool messages matching each id.
       for (var j = 0; j < ids.length; j++) {
         final follow = messages[i + 1 + j];
-        expect(follow, isA<ToolMessage>(),
-            reason:
-                'assistant tool_call ${ids[j]} not followed by a tool result');
-        expect((follow as ToolMessage).toolCallId, ids[j],
-            reason: 'tool result order/id mismatch for ${ids[j]}');
+        expect(
+          follow,
+          isA<ToolMessage>(),
+          reason: 'assistant tool_call ${ids[j]} not followed by a tool result',
+        );
+        expect(
+          (follow as ToolMessage).toolCallId,
+          ids[j],
+          reason: 'tool result order/id mismatch for ${ids[j]}',
+        );
       }
     }
   }
 }
 
 void main() {
+  group('tool output replay', () {
+    for (final legacy in [false, true]) {
+      test(
+        legacy
+            ? 'legacy large results use stable recoverable previews'
+            : 'saved model content survives rebuilding and lost artifacts',
+        () async {
+          final raw = 'start\n${'长行😀' * 10000}\nend';
+          final live = await ToolOutputStore().prepare(raw);
+          final message = _assistantWithTools(callIds: ['large']).copyWith(
+            toolResults: jsonEncode([
+              {
+                'id': 'large',
+                'result': raw,
+                if (!legacy) 'modelResult': live.modelResult,
+                if (!legacy) 'outputId': live.outputId,
+              },
+            ]),
+          );
+          final outputs = ToolOutputStore();
+          final converter = ChatMessageConverter(
+            messageRepository: _FakeMessageRepository([_user('task'), message]),
+            outputStore: outputs,
+          );
+          for (var i = 0; i < 2; i++) {
+            final messages = await converter.buildMessages(
+              chat: _chat(retention: -1),
+              sentinel: null,
+            );
+            _assertPairingValid(messages);
+            expect(
+              messages.whereType<ToolMessage>().single.content,
+              live.modelResult,
+            );
+            expect(
+              (await outputs.read(
+                live.outputId!,
+                offset: 24000,
+                limit: 200,
+              )).text,
+              String.fromCharCodes(raw.runes.skip(24000).take(200)),
+            );
+          }
+          expect(
+            (jsonDecode(message.toolResults) as List).single['result'],
+            raw,
+          );
+        },
+      );
+    }
+  });
   group('ChatMessageConverter.buildMessages truncation', () {
     test('no truncation when context == 0 (unlimited)', () async {
       final messages = [
@@ -138,8 +196,9 @@ void main() {
         _user('q2'),
         _assistantText('done'),
       ];
-      final service =
-          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
+      final service = ChatMessageConverter(
+        messageRepository: _FakeMessageRepository(messages),
+      );
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: null,
@@ -159,8 +218,9 @@ void main() {
         _assistantText('a2'),
         _user('q3'),
       ];
-      final service =
-          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
+      final service = ChatMessageConverter(
+        messageRepository: _FakeMessageRepository(messages),
+      );
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: null,
@@ -179,8 +239,9 @@ void main() {
         _assistantText('a2'),
         _user('latest'),
       ];
-      final service =
-          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
+      final service = ChatMessageConverter(
+        messageRepository: _FakeMessageRepository(messages),
+      );
       final result = await service.buildMessages(
         chat: _chat(retention: 0),
         sentinel: null,
@@ -189,133 +250,143 @@ void main() {
       expect(result.first, isA<UserMessage>());
     });
 
-    test('sentinel system prompt is prepended without breaking pairing',
-        () async {
-      final messages = [
-        _user('q1'),
-        _assistantWithTools(callIds: ['call_a']),
-      ];
-      final service =
-          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
-      final result = await service.buildMessages(
-        chat: _chat(retention: -1),
-        sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
-      );
-      expect(result.first, isA<SystemMessage>());
-      _assertPairingValid(result.sublist(1));
-    });
+    test(
+      'sentinel system prompt is prepended without breaking pairing',
+      () async {
+        final messages = [
+          _user('q1'),
+          _assistantWithTools(callIds: ['call_a']),
+        ];
+        final service = ChatMessageConverter(
+          messageRepository: _FakeMessageRepository(messages),
+        );
+        final result = await service.buildMessages(
+          chat: _chat(retention: -1),
+          sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
+        );
+        expect(result.first, isA<SystemMessage>());
+        _assertPairingValid(result.sublist(1));
+      },
+    );
 
     // compact 摘要在 DB 中按 id 排位（compact 时刻追加），可能夹在
     // 对话中间。buildMessages 必须把它归位到历史区开头（sentinel 之后）。
-    test('compact summary is hoisted to the head of history (sentinel after)',
-        () async {
-      final summary = MessageEntity(
-        chatId: 1,
-        role: 'system',
-        content: 'Previous conversation summary:\nkey facts',
-        compacted: false,
-      );
-      final messages = [
-        _user('q1'),
-        _assistantText('a1'),
-        summary, // DB 中位于所有历史之后（compact 时追加）
-        _user('q2'),
-        _assistantText('a2'),
-      ];
-      final service =
-          ChatMessageConverter(messageRepository: _FakeMessageRepository(messages));
-      final result = await service.buildMessages(
-        chat: _chat(retention: -1),
-        sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
-      );
+    test(
+      'compact summary is hoisted to the head of history (sentinel after)',
+      () async {
+        final summary = MessageEntity(
+          chatId: 1,
+          role: 'system',
+          content: 'Previous conversation summary:\nkey facts',
+          compacted: false,
+        );
+        final messages = [
+          _user('q1'),
+          _assistantText('a1'),
+          summary, // DB 中位于所有历史之后（compact 时追加）
+          _user('q2'),
+          _assistantText('a2'),
+        ];
+        final service = ChatMessageConverter(
+          messageRepository: _FakeMessageRepository(messages),
+        );
+        final result = await service.buildMessages(
+          chat: _chat(retention: -1),
+          sentinel: SentinelEntity(name: 'bot', prompt: 'you are a bot'),
+        );
 
-      // [sentinel, summary, history...] —— summary 紧跟 sentinel，
-      // 而不是夹在 q2/a2 中间。
-      expect(result, hasLength(6));
-      expect(result[0], isA<SystemMessage>());
-      expect((result[0] as SystemMessage).content, 'you are a bot');
-      expect((result[1] as SystemMessage).content,
-          startsWith('Previous conversation summary:'));
-      expect(result[2], isA<UserMessage>());
-    });
+        // [sentinel, summary, history...] —— summary 紧跟 sentinel，
+        // 而不是夹在 q2/a2 中间。
+        expect(result, hasLength(6));
+        expect(result[0], isA<SystemMessage>());
+        expect((result[0] as SystemMessage).content, 'you are a bot');
+        expect(
+          (result[1] as SystemMessage).content,
+          startsWith('Previous conversation summary:'),
+        );
+        expect(result[2], isA<UserMessage>());
+      },
+    );
   });
 
   group('dangling tool_calls without tool_results (cancelled runs)', () {
-    test('assistant tool_calls with no results are dropped (no 400 on replay)',
-        () async {
-      final orphan = MessageEntity(
-        chatId: 1,
-        role: 'assistant',
-        toolCalls: jsonEncode([
-          {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
-        ]),
-        // toolResults intentionally empty (cancelled mid-flight).
-      );
-      final service = ChatMessageConverter(
-          messageRepository: _FakeMessageRepository([_user('q'), orphan]));
-      final result = await service.buildMessages(
-        chat: _chat(retention: -1),
-        sentinel: null,
-      );
-      final assistant = result.whereType<AssistantMessage>().single;
-      // 无对应 tool 响应时丢弃 tool_calls——带 tool_calls 却无 tool
-      // 消息会被 OpenAI 兼容端 400 拒绝，该聊天将无法继续。
-      expect(assistant.hasToolCalls, isFalse);
-      expect(assistant.content, isNull);
-    });
+    test(
+      'assistant tool_calls with no results are dropped (no 400 on replay)',
+      () async {
+        final orphan = MessageEntity(
+          chatId: 1,
+          role: 'assistant',
+          toolCalls: jsonEncode([
+            {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
+          ]),
+          // toolResults intentionally empty (cancelled mid-flight).
+        );
+        final service = ChatMessageConverter(
+          messageRepository: _FakeMessageRepository([_user('q'), orphan]),
+        );
+        final result = await service.buildMessages(
+          chat: _chat(retention: -1),
+          sentinel: null,
+        );
+        final assistant = result.whereType<AssistantMessage>().single;
+        // 无对应 tool 响应时丢弃 tool_calls——带 tool_calls 却无 tool
+        // 消息会被 OpenAI 兼容端 400 拒绝，该聊天将无法继续。
+        expect(assistant.hasToolCalls, isFalse);
+        expect(assistant.content, isNull);
+      },
+    );
 
-    test('tool_calls with no result are dropped, covered ones are kept',
-        () async {
-      final partial = MessageEntity(
-        chatId: 1,
-        role: 'assistant',
-        toolCalls: jsonEncode([
-          {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
-          {'id': 'call_b', 'name': 'write', 'arguments': '{}'},
-        ]),
-        toolResults: jsonEncode([
-          {'id': 'call_a', 'name': 'search', 'result': 'ok'},
-        ]),
-      );
-      final service = ChatMessageConverter(
-          messageRepository: _FakeMessageRepository([_user('q'), partial]));
-      final result = await service.buildMessages(
-        chat: _chat(retention: -1),
-        sentinel: null,
-      );
-      final assistant = result.whereType<AssistantMessage>().single;
-      expect(assistant.toolCalls, hasLength(1));
-      expect(assistant.toolCalls!.single.id, 'call_a');
-      expect(result.whereType<ToolMessage>().single.toolCallId, 'call_a');
-    });
+    test(
+      'tool_calls with no result are dropped, covered ones are kept',
+      () async {
+        final partial = MessageEntity(
+          chatId: 1,
+          role: 'assistant',
+          toolCalls: jsonEncode([
+            {'id': 'call_a', 'name': 'search', 'arguments': '{}'},
+            {'id': 'call_b', 'name': 'write', 'arguments': '{}'},
+          ]),
+          toolResults: jsonEncode([
+            {'id': 'call_a', 'name': 'search', 'result': 'ok'},
+          ]),
+        );
+        final service = ChatMessageConverter(
+          messageRepository: _FakeMessageRepository([_user('q'), partial]),
+        );
+        final result = await service.buildMessages(
+          chat: _chat(retention: -1),
+          sentinel: null,
+        );
+        final assistant = result.whereType<AssistantMessage>().single;
+        expect(assistant.toolCalls, hasLength(1));
+        expect(assistant.toolCalls!.single.id, 'call_a');
+        expect(result.whereType<ToolMessage>().single.toolCallId, 'call_a');
+      },
+    );
   });
 
   group('empty assistant content serialization', () {
-    test('empty content becomes null (avoids content:"" with tool_calls)',
-        () async {
-      final msg = MessageEntity(
-        chatId: 1,
-        role: 'assistant',
-        content: '',
-      );
-      final service = ChatMessageConverter(
-          messageRepository: _FakeMessageRepository([_user('q'), msg]));
-      final result = await service.buildMessages(
-        chat: _chat(retention: -1),
-        sentinel: null,
-      );
-      final assistant = result.whereType<AssistantMessage>().single;
-      expect(assistant.content, isNull);
-    });
+    test(
+      'empty content becomes null (avoids content:"" with tool_calls)',
+      () async {
+        final msg = MessageEntity(chatId: 1, role: 'assistant', content: '');
+        final service = ChatMessageConverter(
+          messageRepository: _FakeMessageRepository([_user('q'), msg]),
+        );
+        final result = await service.buildMessages(
+          chat: _chat(retention: -1),
+          sentinel: null,
+        );
+        final assistant = result.whereType<AssistantMessage>().single;
+        expect(assistant.content, isNull);
+      },
+    );
 
     test('non-empty content is preserved', () async {
-      final msg = MessageEntity(
-        chatId: 1,
-        role: 'assistant',
-        content: 'hello',
-      );
+      final msg = MessageEntity(chatId: 1, role: 'assistant', content: 'hello');
       final service = ChatMessageConverter(
-          messageRepository: _FakeMessageRepository([_user('q'), msg]));
+        messageRepository: _FakeMessageRepository([_user('q'), msg]),
+      );
       final result = await service.buildMessages(
         chat: _chat(retention: -1),
         sentinel: null,

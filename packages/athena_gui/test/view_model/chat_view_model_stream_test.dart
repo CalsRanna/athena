@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
@@ -63,6 +64,7 @@ class _RecordingManageService extends ChatStoreService {
   int _nextId = 1000;
   MessageEntity? cancelledArg;
   MessageEntity? erroredArg;
+  final List<MessageEntity> finalized = [];
 
   /// 记录关键操作的发生顺序，用于断言删除等待了流 settle。
   final List<String> events = [];
@@ -81,7 +83,9 @@ class _RecordingManageService extends ChatStoreService {
   }
 
   @override
-  Future<void> finalizeAssistantMessage(MessageEntity message) async {}
+  Future<void> finalizeAssistantMessage(MessageEntity message) async {
+    finalized.add(message);
+  }
 
   @override
   Future<void> updateChatTimestamp(ChatEntity chat) async {}
@@ -275,12 +279,16 @@ class _FakeModelRepository extends ModelRepository {
   Future<void> batchCreateModels(List<ModelEntity> models) async {}
 
   @override
-  Future<ModelEntity?> getModelByNameAndProviderId(String name,
-    int providerId,) async => null;
+  Future<ModelEntity?> getModelByNameAndProviderId(
+    String name,
+    int providerId,
+  ) async => null;
 
   @override
-  Future<ModelEntity?> getModelByModelIdAndProviderId(String modelId,
-    int providerId,) async => null;
+  Future<ModelEntity?> getModelByModelIdAndProviderId(
+    String modelId,
+    int providerId,
+  ) async => null;
 
   @override
   Future<void> deleteAllModels() async {}
@@ -384,14 +392,16 @@ class _FakeTokenTrackingChatRepo extends ChatRepository {
     int contextTokens,
     int cachedTokens,
   ) async {
-    final existing = chats[chatId] ?? ChatEntity(
-      id: chatId,
-      title: '',
-      modelId: 1,
-      sentinelId: 1,
-      createdAt: DateTime(2024),
-      updatedAt: DateTime(2024),
-    );
+    final existing =
+        chats[chatId] ??
+        ChatEntity(
+          id: chatId,
+          title: '',
+          modelId: 1,
+          sentinelId: 1,
+          createdAt: DateTime(2024),
+          updatedAt: DateTime(2024),
+        );
     final next = existing.copyWith(
       tokenTotal: existing.tokenTotal + tokenDelta,
       contextTokens: contextTokens,
@@ -426,7 +436,10 @@ class _FakeTokenTrackingChatRepo extends ChatRepository {
   Future<List<ChatEntity>> getRecentChats({int limit = 10}) async => [];
 
   @override
-  Future<List<ChatEntity>> getChatsAfterId(int chatId, {int limit = 10}) async => [];
+  Future<List<ChatEntity>> getChatsAfterId(
+    int chatId, {
+    int limit = 10,
+  }) async => [];
 
   @override
   Future<List<ChatHistoryEntity>> getAllChatsWithLastMessage() async => [];
@@ -482,7 +495,8 @@ class _FakeAgentService extends AgentService {
   final Stream<AgentEvent> Function(
     ChatEntity chat,
     PermissionCallback? onPermission,
-  )? streamForChat;
+  )?
+  streamForChat;
 
   final Map<int, CancelToken> _tokens = {};
   final Map<int, Completer<void>> _settled = {};
@@ -663,6 +677,35 @@ void main() {
     await GetIt.instance.reset();
   });
 
+  test(
+    'tool output model content and reference are included in persisted messages',
+    () async {
+      final manage = _RecordingManageService();
+      final agent = _FakeAgentService(
+        Stream.fromIterable([
+          const AgentToolCallEvent(id: 'c1', name: 'search', arguments: '{}'),
+          const AgentToolResultEvent(
+            id: 'c1',
+            name: 'search',
+            result: 'full raw output',
+            modelResult: 'bounded preview',
+            outputId: 'saved-output',
+          ),
+          const AgentDoneEvent(content: ''),
+        ]),
+      );
+      final vm = _buildViewModel(manage: manage, agent: agent);
+      await vm.sendMessage(_userMessage(), chat: _chat());
+      final message = manage.finalized.singleWhere(
+        (m) => m.toolResults.isNotEmpty,
+      );
+      final result = (jsonDecode(message.toolResults) as List).single as Map;
+      expect(result['result'], 'full raw output');
+      expect(result['modelResult'], 'bounded preview');
+      expect(result['outputId'], 'saved-output');
+    },
+  );
+
   test('长对话首次只加载最新一页，向上滚动按游标补齐更早消息', () async {
     final stored = List.generate(
       125,
@@ -769,8 +812,11 @@ void main() {
     // 等待前两段文本被消费后再取消。
     await emittedSome.future;
     vm.stopGenerating(1);
-    expect(vm.isCurrentChatStreaming.value, isFalse,
-        reason: '点击停止后 UI 应同步退出运行态');
+    expect(
+      vm.isCurrentChatStreaming.value,
+      isFalse,
+      reason: '点击停止后 UI 应同步退出运行态',
+    );
     gate.complete();
 
     await future;
@@ -914,8 +960,9 @@ void main() {
 
     await vm.sendMessage(_userMessage(), chat: _chat());
 
-    final assistants =
-        vm.messages.value.where((m) => m.role == 'assistant').toList();
+    final assistants = vm.messages.value
+        .where((m) => m.role == 'assistant')
+        .toList();
     expect(assistants.length, 2, reason: '应有两张 assistant 卡片（首轮与第二轮）');
     expect(assistants[0].id, 1000);
     expect(assistants[0].content, 'iter1');
@@ -944,8 +991,9 @@ void main() {
 
     await vm.sendMessage(_userMessage(), chat: _chat());
 
-    final assistants =
-        vm.messages.value.where((m) => m.role == 'assistant').toList();
+    final assistants = vm.messages.value
+        .where((m) => m.role == 'assistant')
+        .toList();
     expect(assistants.length, 2);
     expect(
       assistants[0].reasoning,
@@ -982,8 +1030,7 @@ void main() {
     await expanded.future;
     await _settleFlush();
     // 找到正在思考的卡片并展开
-    final thinking =
-        vm.messages.value.lastWhere((m) => m.role == 'assistant');
+    final thinking = vm.messages.value.lastWhere((m) => m.role == 'assistant');
     expect(thinking.reasoning, isTrue);
     await vm.updateExpanded(thinking);
     expect(
@@ -995,11 +1042,7 @@ void main() {
     await future;
 
     final shown = vm.messages.value.lastWhere((m) => m.role == 'assistant');
-    expect(
-      shown.expanded,
-      isTrue,
-      reason: '思考期间展开的卡片不应被流式增量重新折叠',
-    );
+    expect(shown.expanded, isTrue, reason: '思考期间展开的卡片不应被流式增量重新折叠');
     expect(shown.reasoningContent, contains('after-expand'));
   });
 
@@ -1383,8 +1426,9 @@ void main() {
     await emittedSome.future;
     await _settleFlush();
     expect(
-      vm.messages.value
-          .any((m) => m.role == 'assistant' && m.content == 'Hello, world'),
+      vm.messages.value.any(
+        (m) => m.role == 'assistant' && m.content == 'Hello, world',
+      ),
       isTrue,
       reason: 'A 的流式内容应实时渲染到当前列表',
     );
@@ -1394,8 +1438,11 @@ void main() {
     // 流式期间切换到对话 B：加载 B 的消息，A 的事件不得写入
     final chatB = _chat(id: 2);
     await vm.selectChat(chatB);
-    expect(vm.isCurrentChatStreaming.value, isFalse,
-        reason: 'B 不在流式中，输入框不应显示 Stop');
+    expect(
+      vm.isCurrentChatStreaming.value,
+      isFalse,
+      reason: 'B 不在流式中，输入框不应显示 Stop',
+    );
     expect(
       vm.messages.value.every((m) => m.role != 'assistant'),
       isTrue,
@@ -1497,15 +1544,15 @@ void main() {
   test('审批请求按会话发布，Allow 决策后 Agent 继续', () async {
     var approvedResult = false;
 
-    Stream<AgentEvent> events(ChatEntity chat, PermissionCallback? onPermission) async* {
+    Stream<AgentEvent> events(
+      ChatEntity chat,
+      PermissionCallback? onPermission,
+    ) async* {
       yield const AgentTextEvent('before');
       // 模拟 agent 等待权限审批（触发 coordinator → delegate 的审批链路）。
       // onPermission 在用户决策（或 run 取消）前不会返回——fake 在此挂起。
-      approvedResult = await onPermission?.call(
-            'bash',
-            '{"command": "git push"}',
-          ) ??
-          false;
+      approvedResult =
+          await onPermission?.call('bash', '{"command": "git push"}') ?? false;
       yield const AgentTextEvent('after');
     }
 
@@ -1521,8 +1568,9 @@ void main() {
     await _waitFor(() => vm.pendingApprovals.value.isNotEmpty);
 
     // 审批请求已发布到对应会话（chatId=1），Agent 停在等待审批
-    final approvals =
-        vm.pendingApprovals.value.where((r) => r.chatId == 1).toList();
+    final approvals = vm.pendingApprovals.value
+        .where((r) => r.chatId == 1)
+        .toList();
     expect(approvals, hasLength(1));
     expect(approvals.first.toolName, 'bash');
     expect(approvals.first.arguments, contains('git push'));
@@ -1542,13 +1590,13 @@ void main() {
   test('审批挂起时取消 run：自动拒绝并移除卡片', () async {
     var approvedResult = true;
 
-    Stream<AgentEvent> events(ChatEntity chat, PermissionCallback? onPermission) async* {
+    Stream<AgentEvent> events(
+      ChatEntity chat,
+      PermissionCallback? onPermission,
+    ) async* {
       yield const AgentTextEvent('before');
-      approvedResult = await onPermission?.call(
-            'bash',
-            '{"command": "git push"}',
-          ) ??
-          false;
+      approvedResult =
+          await onPermission?.call('bash', '{"command": "git push"}') ?? false;
       yield const AgentTextEvent('after');
     }
 
@@ -1743,11 +1791,7 @@ void main() {
     messageRepo.storeGate.complete();
     await queuedFuture;
 
-    expect(
-      messageRepo.storeCalls,
-      3,
-      reason: 'hello + 撤销的排队落库 + 重新走 send 落库',
-    );
+    expect(messageRepo.storeCalls, 3, reason: 'hello + 撤销的排队落库 + 重新走 send 落库');
     expect(agent.runCalls, 2, reason: '撤销后消息经正常发送路径启动新 run');
     expect(
       vm.messages.value.where((m) => m.content == 'queued-input').length,

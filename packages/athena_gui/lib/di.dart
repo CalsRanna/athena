@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/repository/sqlite_chat_repository.dart';
@@ -54,6 +57,14 @@ import 'package:get_it/get_it.dart';
 class DI {
   static void ensureInitialized({String? dataDirectory}) {
     final getIt = GetIt.instance;
+
+    getIt.registerLazySingleton(
+      () => ToolOutputStore(
+        directory: Directory(
+          '${dataDirectory ?? Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? Directory.current.path}/.athena/tool_outputs',
+        ),
+      ),
+    );
 
     // Repositories (no dependencies)
     _registerRepositories(dataDirectory);
@@ -125,9 +136,7 @@ class DI {
     );
 
     getIt.registerLazySingleton(
-      () => ShortcutViewModel(
-        shortcutRepository: getIt<ShortcutRepository>(),
-      ),
+      () => ShortcutViewModel(shortcutRepository: getIt<ShortcutRepository>()),
     );
 
     getIt.registerLazySingleton(
@@ -200,6 +209,7 @@ class DI {
         experienceRepository: getIt<ExperienceRepository>(),
         sentinelRepository: getIt<SentinelRepository>(),
         store: getIt<KeyValueStore>(),
+        outputStore: getIt<ToolOutputStore>(),
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
         mobileHomeDir: dataDirectory,
       ),
@@ -267,7 +277,10 @@ class DI {
     );
 
     getIt.registerLazySingleton(
-      () => ChatMessageConverter(messageRepository: getIt<MessageRepository>()),
+      () => ChatMessageConverter(
+        messageRepository: getIt<MessageRepository>(),
+        outputStore: getIt<ToolOutputStore>(),
+      ),
     );
 
     getIt.registerLazySingleton(

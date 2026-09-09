@@ -508,6 +508,9 @@ class AgentRunCoordinator {
             'id': event.id,
             'name': event.name,
             'result': event.result,
+            'modelResult': event.modelResult ?? event.result,
+            if (event.outputId != null) 'outputId': event.outputId,
+            'status': event.status.name,
           });
           current = current.copyWith(toolResults: jsonEncode(toolResultsJson));
           hasCompletedIteration = true;
