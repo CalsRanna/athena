@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
@@ -75,7 +76,16 @@ class DesktopMessageInput extends StatelessWidget {
       var borderSide = BorderSide(
         color: colors.borderFaint.withValues(alpha: 0.2),
       );
-      var children = [toolbar, const SizedBox(height: 12), inputRow];
+      final queued = chatViewModel.queuedMessages.value;
+      var children = [
+        if (queued.isNotEmpty) ...[
+          QueuedMessages(messages: queued),
+          const SizedBox(height: 12),
+        ],
+        toolbar,
+        const SizedBox(height: 12),
+        inputRow,
+      ];
       return Container(
         decoration: BoxDecoration(border: Border(top: borderSide)),
         padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -418,8 +428,7 @@ class _SendButton extends StatelessWidget {
     );
 
     return Watch((context) {
-      // 流式时发送按钮仍保留：点击 = 排队发送（落库可见，当前轮结束后
-      // 自动接续），并排显示 Stop = 打断当前轮（不阻塞排队消息接续）。
+      // 流式时按钮切换为 Stop；回车仍通过 onSubmitted 排队发送。
       var streaming = chatViewModel.isCurrentChatStreaming.value;
       Widget roundButton(IconData icon, VoidCallback? onTap) {
         var innerContainer = Container(
@@ -444,15 +453,9 @@ class _SendButton extends StatelessWidget {
         );
       }
 
-      var send = roundButton(HugeIcons.strokeRoundedSent, onSubmitted);
-      if (!streaming) return send;
-      var stop = roundButton(
-        HugeIcons.strokeRoundedStop,
-        onTerminated,
-      );
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [stop, const SizedBox(width: 8), send],
+      return roundButton(
+        streaming ? HugeIcons.strokeRoundedStop : HugeIcons.strokeRoundedSent,
+        streaming ? onTerminated : onSubmitted,
       );
     });
   }

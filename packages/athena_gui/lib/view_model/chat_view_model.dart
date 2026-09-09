@@ -25,6 +25,14 @@ import 'package:signals/signals.dart';
 
 typedef _MessagePage = ({bool hasOlder, List<MessageEntity> messages});
 
+class _QueuedChatInput {
+  final MessageEntity message;
+  final ChatEntity chat;
+  final bool jsonMode;
+
+  const _QueuedChatInput(this.message, this.chat, this.jsonMode);
+}
+
 /// ChatViewModel 负责聊天会话的业务逻辑。
 ///
 /// 持有全部 UI 状态（Signal），直接调用 Service/Repository 完成简单操作，
@@ -60,6 +68,15 @@ class ChatViewModel {
   final chatHistories = listSignal<ChatHistoryEntity>([]);
   final currentChat = signal<ChatEntity?>(null);
   final messages = listSignal<MessageEntity>([]);
+  final _queuedInputs = listSignal<_QueuedChatInput>([]);
+
+  /// Unsent messages for the selected chat, displayed above its composer.
+  late final queuedMessages = computed(
+    () => _queuedInputs.value
+        .where((input) => input.chat.id == currentChat.value?.id)
+        .map((input) => input.message)
+        .toList(),
+  );
   final isLoading = signal(false);
 
   /// 当前选中对话的首屏历史正在读取。
@@ -470,6 +487,7 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
+      _discardQueuedInputs({chat.id!});
       final done =
           _runSettledByChat[chat.id!]?.future ?? _stream.settledOf(chat.id!);
       if (done != null) {
@@ -504,6 +522,7 @@ class ChatViewModel {
     error.value = null;
     try {
       final ids = chatsToDelete.map((c) => c.id!).toSet();
+      _discardQueuedInputs(ids);
 
       final settling = <Future<void>>[];
       for (final id in ids) {
@@ -768,24 +787,15 @@ class ChatViewModel {
     bool jsonMode = false,
   }) async {
     final chatId = chat.id!;
-    // 统一排队语义：运行中或旧 run 收尾期间的新消息不立即发送，等协调层
-    // 状态稳定后或排队（当前 run 结束后自动接续）或直接进入正常发送。
-    // UI 信号与协调层短暂脱节的窗口（run 已收尾而信号未清）通过等待
-    // 收尾后重新判定收敛——任何时序下消息不丢、不并发创建 run。
+    var input = _QueuedChatInput(message, chat, jsonMode);
+    // The owner drains this chat's queue after each complete coordinator run.
+    // Keep unsent input out of history and model context until its turn starts.
     while (true) {
-      if (isStreamingChat(chatId)) {
-        // 运行中输入：落库排队（立即可见），当前 run 结束后由协调层自动
-        // 接续为新 run——不打断正在执行的 Agent（stop 才是打断）。
-        if (await _queueInput(chatId, message)) return;
-        // 窗口：协调层 run 已收尾而 UI 信号未清（事件流即将结束）。
-        // 消息尚未落库，等待旧流收尾后重新判定，安全。
-        await _runSettledByChat[chatId]?.future;
-        continue;
+      if (_runSettledByChat.containsKey(chatId)) {
+        _queuedInputs.value = [..._queuedInputs.value, input];
+        return;
       }
-      // Stop 后 UI 已立即恢复发送态；若旧 run 仍在后台收尾，则把新消息
-      // 排在它后面。同一等待点上的并发发送者只有第一个能建立新 run。
-      final previous =
-          _runSettledByChat[chatId]?.future ?? _stream.settledOf(chatId);
+      final previous = _stream.settledOf(chatId);
       if (previous != null) {
         await previous;
         continue;
@@ -795,62 +805,27 @@ class ChatViewModel {
 
     final settled = Completer<void>();
     _runSettledByChat[chatId] = settled;
-    streamingChatIds.value = [...streamingChatIds.value, chatId];
-    currentTokenUsage.value = null;
-
+    // If an earlier input could not be stored, preserve FIFO on the next send.
+    final waiting = _nextQueuedInput(chatId);
+    if (waiting != null) {
+      _queuedInputs.value = [..._queuedInputs.value, input];
+      input = waiting;
+    }
     try {
-      final eventStream = _stream.send(
-        message: message,
-        chat: chat,
-        jsonMode: jsonMode,
-      );
-      await for (final event in eventStream) {
-        // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
-        // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
-        final belongsToCurrent = chat.id == currentChat.value?.id;
-        switch (event) {
-          case RunMessageStored(:final message):
-            if (belongsToCurrent) {
-              _bufferAppendMessage(message, chatId);
-            }
-          case RunAssistantAppended(:final message):
-            if (belongsToCurrent) {
-              _bufferAppendMessage(message, chatId);
-            }
-          case RunMessageUpdated(:final message):
-            if (belongsToCurrent) {
-              _bufferUpdateMessage(message, chatId);
-            }
-          case RunIterationChanged(:final iteration):
-            if (belongsToCurrent && isStreamingChat(chatId)) {
-              currentIteration.value = iteration;
-            }
-          case RunToolNameChanged(:final toolName):
-            if (belongsToCurrent && isStreamingChat(chatId)) {
-              currentToolName.value = toolName;
-            }
-          case RunUsageChanged(:final usage, :final chat):
-            if (chat.id == currentChat.value?.id) {
-              currentTokenUsage.value = usage;
-              cumulativeTokenTotal.value = chat.tokenTotal;
-              _updateChatInLists(chat);
-            }
-          case RunOutcomeChanged():
-            // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
-            break;
-          case RunAutoRename():
-            unawaited(renameChat(chat));
-          case RunListReload():
-            unawaited(getChats());
-          case RunError(:final message):
-            LoggerUtil.e("sendMessage RunError: $message");
-            error.value = message;
+      while (true) {
+        if (!isStreamingChat(chatId)) {
+          streamingChatIds.value = [...streamingChatIds.value, chatId];
         }
+        if (currentChat.value?.id == chatId) currentTokenUsage.value = null;
+        await _sendInput(input);
+        _flushMessages();
+        final next = _nextQueuedInput(chatId);
+        if (next == null) break;
+        input = next;
       }
     } catch (e) {
       error.value = e.toString();
     } finally {
-      // 收尾前把窗口内剩余增量落到信号上，否则最后一段文本会丢失
       _flushMessages();
       streamingChatIds.value = streamingChatIds.value
           .where((id) => id != chatId)
@@ -866,6 +841,67 @@ class ChatViewModel {
     }
   }
 
+  Future<void> _sendInput(_QueuedChatInput input) async {
+    final chat = input.chat;
+    final chatId = chat.id!;
+    final eventStream = _stream.send(
+      message: input.message,
+      chat: chat,
+      jsonMode: input.jsonMode,
+    );
+    await for (final event in eventStream) {
+      // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
+      // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
+      final belongsToCurrent = chat.id == currentChat.value?.id;
+      switch (event) {
+        case RunMessageStored(:final message):
+          batch(() {
+            if (_queuedInputs.value.contains(input)) {
+              _queuedInputs.value = _queuedInputs.value
+                  .where((queued) => !identical(queued, input))
+                  .toList();
+            }
+            if (belongsToCurrent) {
+              _bufferAppendMessage(message, chatId);
+              _flushMessages();
+            }
+          });
+        case RunAssistantAppended(:final message):
+          if (belongsToCurrent) {
+            _bufferAppendMessage(message, chatId);
+          }
+        case RunMessageUpdated(:final message):
+          if (belongsToCurrent) {
+            _bufferUpdateMessage(message, chatId);
+          }
+        case RunIterationChanged(:final iteration):
+          if (belongsToCurrent && isStreamingChat(chatId)) {
+            currentIteration.value = iteration;
+          }
+        case RunToolNameChanged(:final toolName):
+          if (belongsToCurrent && isStreamingChat(chatId)) {
+            currentToolName.value = toolName;
+          }
+        case RunUsageChanged(:final usage, :final chat):
+          if (chat.id == currentChat.value?.id) {
+            currentTokenUsage.value = usage;
+            cumulativeTokenTotal.value = chat.tokenTotal;
+            _updateChatInLists(chat);
+          }
+        case RunOutcomeChanged():
+          // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
+          break;
+        case RunAutoRename():
+          unawaited(renameChat(chat));
+        case RunListReload():
+          unawaited(getChats());
+        case RunError(:final message):
+          LoggerUtil.e("sendMessage RunError: $message");
+          error.value = message;
+      }
+    }
+  }
+
   /// 追加或替换消息：切换对话的竞态下占位消息可能已在列表中
   /// （快照合并或 DB 预读），避免重复追加。
   void _appendOrReplaceMessage(MessageEntity message) {
@@ -874,15 +910,13 @@ class ChatViewModel {
     }
   }
 
-  /// 运行中输入排队：落库（协调层）并立即显示在列表。返回 false 表示
-  /// run 恰好已结束、无排队可挂载——调用方应等待收尾后重新判定。
-  Future<bool> _queueInput(int chatId, MessageEntity message) async {
-    final stored = await _stream.queueInput(chatId, message);
-    if (stored == null) return false;
-    // 接续 run 启动时会再收到同 id 的 RunMessageStored，此处替换语义
-    // (append 若已存在则替换) 保证不重复显示
-    _bufferAppendMessage(stored, chatId);
-    return true;
+  _QueuedChatInput? _nextQueuedInput(int chatId) =>
+      _queuedInputs.value.where((input) => input.chat.id == chatId).firstOrNull;
+
+  void _discardQueuedInputs(Set<int> chatIds) {
+    _queuedInputs.value = _queuedInputs.value
+        .where((input) => !chatIds.contains(input.chat.id))
+        .toList();
   }
 
   /// 指定对话是否正在流式运行。
@@ -892,7 +926,7 @@ class ChatViewModel {
   void stopGenerating(int chatId) {
     _stream.stop(chatId);
     // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
-    // 完成。新发送会等待 [_runSettledByChat]，不会与旧 run 交叉写入。
+    // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
     if (_pendingChatId == chatId) _flushMessages();
     streamingChatIds.value = streamingChatIds.value
         .where((id) => id != chatId)
