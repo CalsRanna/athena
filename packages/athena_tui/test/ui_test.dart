@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
@@ -422,11 +423,29 @@ void main() {
       await tester.pump();
 
       // 触发一次权限请求(走 UI 注册的 handler → 弹出审批条)
-      final future = di.agentBridge
-          .requestPermissionForTest('bash', '{"command": "git push"}');
+      final future = di.agentBridge.requestPermissionForTest(
+        'bash',
+        jsonEncode({
+          'command': 'git push',
+          'workdir': '/tmp/project',
+          'call_description': '推送当前分支到远程仓库',
+        }),
+      );
       await tester.pump();
       expect(tester.terminalState.containsText('权限请求'), isTrue);
-      expect(tester.terminalState.containsText('git push'), isTrue);
+      expect(
+        tester.terminalState.containsText('git push'),
+        isTrue,
+        reason: tester.terminalState.getText(),
+      );
+      expect(tester.terminalState.containsText('推送当前分支到远程仓库'), isTrue);
+      await tester.sendKey(nocterm.LogicalKey.arrowDown);
+      await tester.pump();
+      expect(
+        tester.terminalState.containsText('workdir: /tmp/project'),
+        isTrue,
+        reason: tester.terminalState.getText(),
+      );
 
       // 按 y 允许
       await tester.sendKey(nocterm.LogicalKey.keyY);
@@ -436,6 +455,46 @@ void main() {
       expect(decision.approved, isTrue);
       // 审批条已关闭
       expect(tester.terminalState.containsText('权限请求'), isFalse);
+    });
+  });
+
+  test('long approval payloads scroll without hiding approval controls', () {
+    return nocterm_test.testNocterm('scroll approval', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+      final future = di.agentBridge.requestPermissionForTest(
+        'file_write',
+        jsonEncode({
+          'path': '/tmp/example.txt',
+          'content':
+              '${List.filled(80, 'content line').join('\n')}\nEND_OF_WRITE',
+          'call_description': 'Write the example file',
+        }),
+      );
+      await tester.pump();
+      expect(
+        tester.terminalState.containsText('Write the example file'),
+        isTrue,
+        reason: tester.terminalState.getText(),
+      );
+      expect(tester.terminalState.containsText('END_OF_WRITE'), isFalse);
+      expect(tester.terminalState.containsText('[y] 允许'), isTrue);
+
+      await tester.sendKey(nocterm.LogicalKey.pageDown);
+      await tester.pump();
+      expect(tester.terminalState.containsText('Write the example file'), isFalse);
+      await tester.sendKey(nocterm.LogicalKey.end);
+      await tester.pump();
+      expect(
+        tester.terminalState.containsText('END_OF_WRITE'),
+        isTrue,
+        reason: tester.terminalState.getText(),
+      );
+      expect(tester.terminalState.containsText('[y] 允许'), isTrue);
+      await tester.sendKey(nocterm.LogicalKey.keyN);
+      await tester.pump();
+      expect((await future).approved, isFalse);
     });
   });
 

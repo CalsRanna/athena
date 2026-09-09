@@ -30,6 +30,26 @@ class ToolRegistry {
 
   List<Tool> get all => _tools.values.toList();
 
+  /// Model-facing schema, including optional per-call display metadata.
+  static Map<String, dynamic> parametersFor(Tool tool) {
+    final parameters = tool.parameters;
+    return {
+      ...parameters,
+      'properties': {
+        toolCallDescriptionKey: {
+          'type': 'string',
+          'description':
+              'Briefly explain this specific call in the user\'s language. '
+              'Use one short, active sentence naming the action and target. '
+              'For multi-step commands, describe all meaningful effects. '
+              'Do not claim the action is safe or already approved. '
+              'This text is shown to the user, not executed.',
+        },
+        ...?parameters['properties'] as Map<String, dynamic>?,
+      },
+    };
+  }
+
   List<Map<String, dynamic>> get definitions => _definitions ??= _tools.values
       .map(
         (t) => {
@@ -37,7 +57,7 @@ class ToolRegistry {
           'function': {
             'name': t.name,
             'description': t.description,
-            'parameters': t.parameters,
+            'parameters': parametersFor(t),
           },
         },
       )

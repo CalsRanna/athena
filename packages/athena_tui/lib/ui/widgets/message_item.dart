@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
 import 'package:athena_tui/ui/widgets/message_card.dart';
@@ -129,7 +130,7 @@ class MessageItem extends StatelessComponent {
                 ),
                 if (arguments.isNotEmpty)
                   Text(
-                    sanitizeAnsi(arguments),
+                    sanitizeAnsi(toolArgPreview(name, arguments)),
                     style: AthenaTextStyles.dim,
                     softWrap: true,
                   ),

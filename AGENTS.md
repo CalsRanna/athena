@@ -240,6 +240,8 @@ enum ToolRisk { readOnly, dangerous }
 ```
 
 - `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
+- `ToolRegistry.parametersFor()` 为所有工具统一添加可选的 `call_description`（用用户语言简述本次调用的动作与目标）。这是保留的展示元数据，工具不可将其用作业务参数；原有 `description` 业务字段保持原语义。Agent 按此 schema 校验后，在权限判断/并行判定/执行前移除元数据，原始 JSON 仍用于审批展示和历史记录。
+- GUI/TUI 共用 `tool_args_formatter.dart`：卡片预览优先调用说明，缺失时取 command/path/url/query 或精简 JSON；审批详情完整展示实际参数并支持滚动，不用说明替代实际操作。GUI 的 `ApprovalRequest.arguments` 保留原始 JSON，由卡片格式化。
 - `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
 - 桌面端注册 15 个工具（bash 与 powershell 按操作系统互斥），移动端注册 11 个（无本地文件与进程工具）
 - 注册在 `di.dart` 的 ToolRegistry 工厂中按 `PlatformUtil.isMobile` 分支完成

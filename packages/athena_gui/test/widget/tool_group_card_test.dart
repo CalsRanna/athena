@@ -88,6 +88,37 @@ void main() {
     expect(tester.getTopLeft(find.text('first response')).dy, lessThan(100));
   });
 
+  testWidgets('single and grouped tool cards display model call descriptions', (
+    tester,
+  ) async {
+    final calls = [
+      {
+        'id': 'call-1',
+        'name': 'file_read',
+        'arguments': jsonEncode({
+          'path': '/tmp/a.dart',
+          'call_description': '读取应用入口代码',
+        }),
+      },
+      {
+        'id': 'call-2',
+        'name': 'web_search',
+        'arguments': jsonEncode({
+          'query': 'dart test',
+          'call_description': '查找 Dart 测试文档',
+        }),
+      },
+    ];
+    await pumpMessage(tester, calls: calls.take(1).toList(), results: []);
+    expect(find.text('读取应用入口代码'), findsOneWidget);
+
+    await pumpMessage(tester, calls: calls, results: []);
+    await tester.tap(find.text('2 tool calls'));
+    await tester.pump();
+    expect(find.text('读取应用入口代码'), findsOneWidget);
+    expect(find.text('查找 Dart 测试文档'), findsOneWidget);
+  });
+
   testWidgets('同一 Assistant 卡片开始输出后不再重复显示 Working', (tester) async {
     await pumpAssistantMessages(tester, [
       MessageEntity(

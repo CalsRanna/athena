@@ -1543,6 +1543,10 @@ void main() {
   // 第二步：审批请求发布到对应会话的卡片列表，决策后 run 继续。
   test('审批请求按会话发布，Allow 决策后 Agent 继续', () async {
     var approvedResult = false;
+    final arguments = jsonEncode({
+      'command': 'git push',
+      'call_description': '推送当前分支到远程仓库',
+    });
 
     Stream<AgentEvent> events(
       ChatEntity chat,
@@ -1551,8 +1555,7 @@ void main() {
       yield const AgentTextEvent('before');
       // 模拟 agent 等待权限审批（触发 coordinator → delegate 的审批链路）。
       // onPermission 在用户决策（或 run 取消）前不会返回——fake 在此挂起。
-      approvedResult =
-          await onPermission?.call('bash', '{"command": "git push"}') ?? false;
+      approvedResult = await onPermission?.call('bash', arguments) ?? false;
       yield const AgentTextEvent('after');
     }
 
@@ -1573,7 +1576,7 @@ void main() {
         .toList();
     expect(approvals, hasLength(1));
     expect(approvals.first.toolName, 'bash');
-    expect(approvals.first.arguments, contains('git push'));
+    expect(approvals.first.arguments, arguments);
 
     // 用户 Allow Once
     vm.respondApproval(

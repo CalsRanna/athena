@@ -1,5 +1,6 @@
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
+import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
@@ -126,7 +127,7 @@ class PermissionApprovalCard extends StatelessWidget {
       child: SingleChildScrollView(
         primary: false,
         child: Text(
-          request.arguments,
+          formatToolArgsForApproval(request.toolName, request.arguments),
           style: GoogleFonts.firaCode(
             fontSize: 12,
             color: colors.textOnRaised,

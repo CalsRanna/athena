@@ -12,7 +12,7 @@ import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
-    show CancellableTool;
+    show CancellableTool, toolCallDescriptionKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -200,7 +200,10 @@ class AgentService {
 
     // 参数校验
     if (tool != null) {
-      final validationError = SchemaValidator.validate(tool.parameters, args);
+      final validationError = SchemaValidator.validate(
+        ToolRegistry.parametersFor(tool),
+        args,
+      );
       if (validationError != null) {
         final msg =
             'Error: Invalid arguments for tool '
@@ -208,6 +211,9 @@ class AgentService {
         return result(msg, ToolResultStatus.invalidArguments);
       }
     }
+
+    // Keep display metadata in the original JSON for UI/history only.
+    args.remove(toolCallDescriptionKey);
 
     // 权限门（拦截或放行）
     if (permissionGate != null) {
@@ -294,6 +300,7 @@ class AgentService {
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
+        args.remove(toolCallDescriptionKey);
       } catch (_) {
         args = null;
       }

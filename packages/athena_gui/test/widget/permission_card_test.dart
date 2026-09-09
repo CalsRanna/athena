@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -11,7 +12,7 @@ void main() {
   ApprovalRequest makeRequest() => ApprovalRequest(
     chatId: 1,
     toolName: 'sentinel_evolve',
-    arguments: 'sentinel_name: Athena\nimprovements: ...',
+    arguments: jsonEncode({'sentinel_name': 'Athena', 'improvements': '...'}),
     completer: Completer<PermissionDecision>(),
   );
 
@@ -90,7 +91,12 @@ void main() {
     final request = ApprovalRequest(
       chatId: 1,
       toolName: 'bash',
-      arguments: List.generate(80, (index) => 'command line $index').join('\n'),
+      arguments: jsonEncode({
+        'command': List.generate(
+          80,
+          (index) => 'command line $index',
+        ).join('\n'),
+      }),
       completer: Completer<PermissionDecision>(),
     );
 
@@ -110,4 +116,40 @@ void main() {
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
     expect(find.text('Allow Once'), findsOneWidget);
   });
+
+  for (final platform in [TargetPlatform.macOS, TargetPlatform.iOS]) {
+    testWidgets('description and actual command stay separate on $platform', (
+      tester,
+    ) async {
+      final command = 'echo ${'x' * 220}; git push --force';
+      final request = ApprovalRequest(
+        chatId: 1,
+        toolName: 'bash',
+        arguments: jsonEncode({
+          'command': command,
+          'workdir': '/tmp/project',
+          'call_description': '推送当前分支到远程仓库',
+        }),
+        completer: Completer<PermissionDecision>(),
+      );
+      if (platform == TargetPlatform.iOS) {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+      }
+      await pumpCard(
+        tester,
+        platform: platform,
+        request: request,
+        maxHeight: 400,
+      );
+
+      expect(find.text('推送当前分支到远程仓库'), findsOneWidget);
+      expect(find.text('$command\nworkdir: /tmp/project'), findsOneWidget);
+      expect(find.textContaining('call_description'), findsNothing);
+      expect(find.text('Allow Once'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
