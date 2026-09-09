@@ -23,6 +23,26 @@ class MessageListScrollController extends ScrollController {
     addListener(_updateFollowState);
   }
 
+  /// 布局阶段的跟随状态，供 [_MessageListScrollPosition] 判断是否贴底。
+  ///
+  /// 只读取状态、不触发滚动；跟随状态本身仍然只由用户手势（见
+  /// [_updateFollowState]）和 [followBottom] 改变。
+  bool get isFollowingBottom => _followBottom;
+
+  @override
+  ScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) {
+    return _MessageListScrollPosition(
+      physics: physics,
+      context: context,
+      oldPosition: oldPosition,
+      controller: this,
+    );
+  }
+
   /// 在下一帧布局完成后保持列表位于底部。
   ///
   /// 用户已经向上滚动时不会移动列表。
@@ -143,5 +163,40 @@ class MessageListScrollController extends ScrollController {
     _disposed = true;
     removeListener(_updateFollowState);
     super.dispose();
+  }
+}
+
+/// 在布局阶段完成贴底校正的 [ScrollPosition]。
+///
+/// 正向列表的滚动偏移只在布局时决定子项位置（绘制阶段不再叠加偏移），
+/// 因此 post-frame 回调里的 jumpTo 必然晚一帧：内容变高的那一帧仍按旧
+/// 偏移绘制，卡片底部被视口切平，下一帧才跳回底部，流式输出时表现为
+/// 持续闪烁。这里在 [correctForNewDimensions] 中直接对齐并返回 false，
+/// 视口会在同一帧内重新布局，该帧绘制时就已经贴底。
+class _MessageListScrollPosition extends ScrollPositionWithSingleContext {
+  _MessageListScrollPosition({
+    required super.physics,
+    required super.context,
+    super.oldPosition,
+    required this.controller,
+  });
+
+  final MessageListScrollController controller;
+
+  @override
+  bool correctForNewDimensions(
+    ScrollMetrics oldPosition,
+    ScrollMetrics newPosition,
+  ) {
+    // 只在仍跟随底部、且没有正在进行的滚动（拖动或惯性）时贴底；滚动中
+    // 不干预，否则用户向底部甩动时来新内容会被瞬间吸底。
+    if (controller.isFollowingBottom &&
+        !(activity?.isScrolling ?? false) &&
+        newPosition.pixels < newPosition.maxScrollExtent - 0.5) {
+      correctPixels(newPosition.maxScrollExtent);
+      // 返回 false 让视口带新偏移重新布局，把校正吃进当前帧。
+      return false;
+    }
+    return super.correctForNewDimensions(oldPosition, newPosition);
   }
 }
