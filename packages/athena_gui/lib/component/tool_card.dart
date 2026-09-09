@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:athena_core/agent/permission/permission_rule.dart';
+import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,27 +38,9 @@ class ToolCard extends StatefulWidget {
     };
   }
 
-  /// 参数预览：优先提取关键字段（command/path/url/query），其余原样 JSON。
-  static String argPreview(String toolName, String arguments) {
-    Map<String, dynamic>? args;
-    try {
-      args = jsonDecode(arguments) as Map<String, dynamic>;
-    } catch (_) {
-      return arguments;
-    }
-
-    final keyField = switch (toolName) {
-      _ when kShellToolNames.contains(toolName) => 'command',
-      _ when kFileToolNames.contains(toolName) => 'path',
-      'web_fetch' => 'url',
-      'web_search' => 'query',
-      _ => null,
-    };
-    if (keyField != null && args[keyField] is String) {
-      return args[keyField] as String;
-    }
-    return arguments;
-  }
+  /// Shared GUI/TUI preview: call description, key argument, then compact JSON.
+  static String argPreview(String toolName, String arguments) =>
+      toolArgPreview(toolName, arguments);
 }
 
 class _ToolCardState extends State<ToolCard> {

@@ -48,36 +48,38 @@ void main() {
       expect(output, isNot(contains('...')));
     });
 
-    test('bash 只展示命令本身，不含其他参数', () {
+    test('bash includes workdir and timeout alongside the command', () {
       final output = formatToolArgsForApproval(
         'bash',
-        jsonEncode({'command': 'echo hi', 'timeout': 't' * 200}),
+        jsonEncode({
+          'command': 'echo hi',
+          'workdir': '/tmp/project',
+          'timeout': 30,
+          'call_description': 'Print a greeting',
+        }),
       );
 
-      expect(output, 'echo hi');
-      expect(output, isNot(contains('timeout')));
+      expect(output, 'echo hi\nworkdir: /tmp/project\ntimeout: 30');
     });
 
-    test('non-command arg longer than 120 chars is truncated to 120 + ...', () {
+    test('file writes retain the complete content for approval', () {
       final content = 'x' * 200;
       final output = formatToolArgsForApproval(
         'file_write',
         jsonEncode({'path': '/tmp/a.txt', 'content': content}),
       );
 
-      expect(output, contains('${'x' * 120}...'));
-      expect(output, isNot(contains('x' * 121)));
+      expect(output, contains(content));
     });
 
-    test('long path arg is truncated even for other tools', () {
+    test('long paths are never truncated in approval details', () {
       final longPath = '/tmp/${'d' * 200}/file.txt';
       final output = formatToolArgsForApproval(
         'file_read',
         jsonEncode({'path': longPath}),
       );
 
-      expect(output, contains('...'));
-      expect(output, isNot(contains(longPath)));
+      expect(output, contains(longPath));
     });
 
     for (final toolName in const [
@@ -103,10 +105,87 @@ void main() {
       expect(output, contains('not-json'));
     });
 
-    test('truncates raw arguments over 200 chars in fallback branch', () {
+    test('preserves raw arguments when approval JSON is invalid', () {
       final raw = 'z' * 300;
       final output = formatToolArgsForApproval('bash', raw);
-      expect(output, contains('${'z' * 200}...'));
+      expect(output, raw);
+    });
+
+    test('skill description remains business data, separate from intent', () {
+      final output = formatToolArgsForApproval(
+        'skill_evolve',
+        jsonEncode({
+          'description': 'Runs tests',
+          'call_description': 'Create the testing skill',
+        }),
+      );
+      expect(output, 'description: Runs tests');
+    });
+  });
+
+  group('toolArgPreview', () {
+    test('uses a trimmed model description before the command', () {
+      expect(
+        toolArgPreview(
+          'bash',
+          jsonEncode({
+            'command': 'git push',
+            'call_description': '  推送当前分支\n到远程仓库  ',
+          }),
+        ),
+        '推送当前分支 到远程仓库',
+      );
+    });
+
+    for (final description in [null, '', '  ', 123, <String>[]]) {
+      test('falls back to the key argument for $description', () {
+        expect(
+          toolArgPreview(
+            'file_read',
+            jsonEncode({
+              'path': '/tmp/a.dart',
+              'call_description': description,
+            }),
+          ),
+          '/tmp/a.dart',
+        );
+      });
+    }
+
+    test('business description is not treated as call intent', () {
+      expect(
+        toolArgPreview('skill_evolve', '{"description":"Runs tests"}'),
+        '{"description":"Runs tests"}',
+      );
+    });
+
+    test('missing description preserves shell, file and web previews', () {
+      for (final (tool, key, value) in [
+        ('powershell', 'command', 'Get-ChildItem'),
+        ('file_write', 'path', '/tmp/a.dart'),
+        ('web_fetch', 'url', 'https://example.com'),
+        ('web_search', 'query', 'Dart test'),
+      ]) {
+        expect(toolArgPreview(tool, jsonEncode({key: value})), value);
+      }
+    });
+
+    test('partial streaming JSON and non-object JSON do not throw', () {
+      for (final raw in ['{"command":', '[]', 'null', '']) {
+        expect(toolArgPreview('bash', raw), raw);
+        expect(toolCallDescription(raw), isNull);
+      }
+    });
+
+    test('compact JSON and Unicode descriptions have bounded previews', () {
+      expect(
+        toolArgPreview('unknown', '{\n  "name": "test"\n}'),
+        '{"name":"test"}',
+      );
+      expect(
+        toolArgPreview('bash', jsonEncode({'call_description': '😀' * 205})),
+        '${'😀' * 200}…',
+      );
     });
   });
 }

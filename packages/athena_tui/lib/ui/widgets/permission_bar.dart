@@ -11,28 +11,50 @@ class PermissionBar extends StatelessComponent {
     required this.title,
     required this.detail,
     required this.hint,
+    this.summary,
+    this.scrollController,
   });
 
   final String title;
   final String detail;
   final String hint;
+  final String? summary;
+  final ScrollController? scrollController;
 
   @override
   Component build(BuildContext context) {
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 1),
       padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 0),
       decoration: BoxDecoration(
         border: BoxBorder.all(color: AthenaColors.warning),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(
-            color: AthenaColors.warning,
-            fontWeight: FontWeight.bold,
-          )),
-          Text(sanitizeAnsi(detail), softWrap: true),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AthenaColors.warning,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (summary != null)
+                    Text(sanitizeAnsi(summary!), softWrap: true),
+                  Text(sanitizeAnsi(detail), softWrap: true),
+                ],
+              ),
+            ),
+          ),
           Text(hint, style: AthenaTextStyles.dim),
         ],
       ),

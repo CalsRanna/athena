@@ -70,6 +70,7 @@ class _AthenaAppState extends State<AthenaApp> {
 
   // 权限审批请求(M3 模态)
   _PermissionRequest? _permissionRequest;
+  final _permissionScrollController = ScrollController();
 
   // 选择模态(模型 / 角色 / 聊天)
   _PickerState? _picker;
@@ -115,14 +116,17 @@ class _AthenaAppState extends State<AthenaApp> {
           ),
           ErrorBar(message: _controller.error.value),
           if (_permissionRequest != null)
-            PermissionBar(
-              title: '权限请求',
-              // 与 GUI 共用同一个格式化器：shell 命令完整展示不截断，
-              // 避免被截断的尾部藏住危险操作（如 `...; rm -rf ~/x`）。
-              detail:
-                  '${_permissionRequest!.toolName}: '
-                  '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
-              hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
+            Flexible(
+              flex: 2,
+              child: PermissionBar(
+                title: '权限请求',
+                summary: toolCallDescription(_permissionRequest!.arguments),
+                scrollController: _permissionScrollController,
+                detail:
+                    '${_permissionRequest!.toolName}: '
+                    '${formatToolArgsForApproval(_permissionRequest!.toolName, _permissionRequest!.arguments)}',
+                hint: '[y] 允许  [n] 拒绝  [a] 总是允许  [↑↓] 滚动',
+              ),
             ),
           // 常驻组件:children 数量恒定,visible 控制显隐
           PickerOverlay(
@@ -201,6 +205,7 @@ class _AthenaAppState extends State<AthenaApp> {
       _scrollController.dispose();
     }
     _textController.dispose();
+    _permissionScrollController.dispose();
     // 生产树拆解时同步收尾 controller:后续异步延续(流式 finally/flush、
     // 后台 IO)经 _active guard 静默退出,不再写已失效的订阅。
     // 测试不拆树,此方法不会在测试中执行,controller 仍可继续使用。
@@ -341,6 +346,30 @@ class _AthenaAppState extends State<AthenaApp> {
     final permission = _permissionRequest;
     if (permission != null) {
       switch (event.logicalKey) {
+        case LogicalKey.arrowUp:
+          _permissionScrollController.scrollUp(1);
+          return true;
+        case LogicalKey.arrowDown:
+          _permissionScrollController.scrollDown(1);
+          return true;
+        case LogicalKey.pageUp:
+          _permissionScrollController.scrollUp(
+            _permissionScrollController.viewportDimension,
+          );
+          return true;
+        case LogicalKey.pageDown:
+          _permissionScrollController.scrollDown(
+            _permissionScrollController.viewportDimension,
+          );
+          return true;
+        case LogicalKey.home:
+          _permissionScrollController.jumpTo(0);
+          return true;
+        case LogicalKey.end:
+          _permissionScrollController.jumpTo(
+            _permissionScrollController.maxScrollExtent,
+          );
+          return true;
         case LogicalKey.keyY:
           _resolvePermission(true, false);
           return true;
@@ -402,6 +431,7 @@ class _AthenaAppState extends State<AthenaApp> {
   ) async {
     final completer = Completer<PermissionDecision>();
     _permissionRequest = _PermissionRequest(toolName, arguments, completer);
+    _permissionScrollController.jumpTo(0);
     setState(() {});
 
     // 取消联动已由 TuiAgentBridge._askPermission 处理

@@ -1,3 +1,6 @@
+/// Reserved display metadata, removed before permission checks and execution.
+const toolCallDescriptionKey = 'call_description';
+
 /// 工具执行模式。
 enum ExecutionMode {
   /// 串行执行：每次只执行一个工具。

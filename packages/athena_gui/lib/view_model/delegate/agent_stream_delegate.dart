@@ -19,14 +19,13 @@ import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
-import 'package:athena_core/util/tool_args_formatter.dart';
 
 /// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
 class ApprovalRequest {
   final int chatId;
   final String toolName;
 
-  /// 审批内容（shell 为完整命令，其他为参数键值），已格式化。
+  /// Original argument JSON, including optional call description metadata.
   final String arguments;
   final Completer<PermissionDecision> completer;
 
@@ -126,7 +125,7 @@ class AgentStreamDelegate {
       ApprovalRequest(
         chatId: chatId,
         toolName: toolName,
-        arguments: formatToolArgsForApproval(toolName, arguments),
+        arguments: arguments,
         completer: completer,
       ),
     );

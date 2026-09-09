@@ -1,59 +1,78 @@
 import 'dart:convert';
 
 import 'package:athena_core/agent/permission/permission_rule.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 
-/// Builds the content shown in the permission approval dialog for a tool the
-/// Agent wants to run. The tool name itself is rendered by the dialog header,
-/// so this function only produces the request payload.
-///
-/// Pure function (no side effects, no DI) so it can be unit-tested directly.
-///
-/// Security note (audit S5): for shell tools (`bash`/`powershell`) the
-/// `command` argument is the only thing shown and is NOT truncated, so the
-/// user always sees the complete command they are approving. A truncated
-/// preview could hide a dangerous tail (e.g. `...; rm -rf ~/x`). All other
-/// arguments keep a 120-character truncation to keep the dialog readable.
-/// Evolution writes are also shown in full because their content is the
-/// subject of the approval, not merely an execution parameter.
-String formatToolArgsForApproval(String toolName, String arguments) {
-  // Shell：命令是唯一的审批内容，完整展示不截断
-  if (kShellToolNames.contains(toolName)) {
-    try {
-      final args = jsonDecode(arguments) as Map<String, dynamic>;
-      final command = args['command'];
-      if (command is String && command.isNotEmpty) return command;
-    } catch (_) {}
-    return _truncateRaw(arguments);
-  }
+/// Optional model-authored intent; never used to decide permission or execution.
+String? toolCallDescription(String arguments) =>
+    _callDescription(_decodeArgs(arguments));
 
-  // 自进化写入：复用通用权限卡，但完整展示实际写入内容。
-  final showFullValues = _fullApprovalValueToolNames.contains(toolName);
-
-  // 其他工具：参数键值逐行展示
-  final buffer = StringBuffer();
-  try {
-    final args = jsonDecode(arguments) as Map<String, dynamic>;
-    for (final entry in args.entries) {
-      var value = entry.value.toString();
-      if (!showFullValues && value.length > 120) {
-        value = '${value.substring(0, 120)}...';
-      }
-      buffer.writeln('${entry.key}: $value');
-    }
-  } catch (_) {
-    buffer.write(showFullValues ? arguments : _truncateRaw(arguments));
-  }
-  return buffer.toString();
+String? _callDescription(Map<String, dynamic>? args) {
+  final description = args?[toolCallDescriptionKey];
+  if (description is! String || description.trim().isEmpty) return null;
+  return description.trim();
 }
 
-const _fullApprovalValueToolNames = {
-  'experience_learn',
-  'skill_evolve',
-  'sentinel_evolve',
-};
+/// Single-line preview for tool cards. Approval details use the full payload.
+String toolArgPreview(String toolName, String arguments) {
+  final args = _decodeArgs(arguments);
+  if (args == null) return _preview(arguments);
 
-/// 原始字符串兜底截断（200 字符）。
-String _truncateRaw(String arguments) {
-  if (arguments.length <= 200) return arguments;
-  return '${arguments.substring(0, 200)}...';
+  final description = _callDescription(args);
+  if (description != null) return _preview(description);
+
+  final keyField = switch (toolName) {
+    _ when kShellToolNames.contains(toolName) => 'command',
+    _ when kFileToolNames.contains(toolName) => 'path',
+    'web_fetch' => 'url',
+    'web_search' => 'query',
+    _ => null,
+  };
+  final value = args[keyField];
+  if (value is String && value.trim().isNotEmpty) return _preview(value);
+  args.remove(toolCallDescriptionKey);
+  return _preview(jsonEncode(args));
+}
+
+/// Actual arguments for approval, with display metadata omitted.
+///
+/// Values are never truncated: callers provide scrolling so the user can inspect
+/// the complete command, working directory, file content, or request payload.
+String formatToolArgsForApproval(String toolName, String arguments) {
+  final args = _decodeArgs(arguments);
+  if (args == null) return arguments;
+  args.remove(toolCallDescriptionKey);
+
+  final lines = <String>[];
+  if (kShellToolNames.contains(toolName)) {
+    final command = args['command'];
+    if (command is String && command.isNotEmpty) {
+      lines.add(command);
+      args.remove('command');
+    }
+  }
+
+  for (final entry in args.entries) {
+    final value = entry.value is String
+        ? entry.value as String
+        : const JsonEncoder.withIndent('  ').convert(entry.value);
+    lines.add('${entry.key}: $value');
+  }
+  return lines.join('\n');
+}
+
+Map<String, dynamic>? _decodeArgs(String arguments) {
+  try {
+    return jsonDecode(arguments) as Map<String, dynamic>;
+  } catch (_) {
+    // Streaming arguments may not yet contain a complete JSON object.
+    return null;
+  }
+}
+
+String _preview(String value) {
+  final text = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final characters = text.runes;
+  if (characters.length <= 200) return text;
+  return '${String.fromCharCodes(characters.take(200))}…';
 }
