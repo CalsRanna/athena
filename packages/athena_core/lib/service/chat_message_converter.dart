@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -10,13 +11,16 @@ import 'package:openai_dart/openai_dart.dart';
 ///
 /// 职责：将 [MessageEntity] 列表转换为 OpenAI [ChatMessage] 列表
 /// （含 system prompt 注入、上下文截断、tool_calls/tool_results 展开、
-/// 图片 ContentPart 处理）。不涉及网络或持久化。
+/// 图片 ContentPart 处理），并恢复完整工具输出的读取缓存。不修改聊天历史。
 class ChatMessageConverter {
   final MessageRepository _messageRepository;
+  final ToolOutputStore _outputs;
 
   ChatMessageConverter({
     required MessageRepository messageRepository,
-  }) : _messageRepository = messageRepository;
+    ToolOutputStore? outputStore,
+  }) : _messageRepository = messageRepository,
+       _outputs = outputStore ?? ToolOutputStore();
 
   /// 将 Entity 消息列表转换为 OpenAI ChatMessage 列表
   ///
@@ -41,7 +45,9 @@ class ChatMessageConverter {
       if (sentinel != null && sentinel.prompt.isNotEmpty) {
         wrapped.add(ChatMessage.system(sentinel.prompt));
       }
-      wrapped.addAll(_convertMessages(lastUser, includeReasoning: includeReasoning));
+      wrapped.addAll(
+        await _convertMessages(lastUser, includeReasoning: includeReasoning),
+      );
       return wrapped;
     }
 
@@ -60,10 +66,12 @@ class ChatMessageConverter {
     for (final msg in chatMessages) {
       if (msg.role == 'system') {
         summaries.addAll(
-            _convertMessages(msg, includeReasoning: includeReasoning));
+          await _convertMessages(msg, includeReasoning: includeReasoning),
+        );
       } else {
         history.addAll(
-            _convertMessages(msg, includeReasoning: includeReasoning));
+          await _convertMessages(msg, includeReasoning: includeReasoning),
+        );
       }
     }
     wrapped.addAll([...summaries, ...history]);
@@ -77,14 +85,17 @@ class ChatMessageConverter {
     return messages.where((m) => m.role == 'user').length == 1;
   }
 
-  List<ChatMessage> _convertMessages(MessageEntity msg, {bool includeReasoning = false}) {
+  Future<List<ChatMessage>> _convertMessages(
+    MessageEntity msg, {
+    bool includeReasoning = false,
+  }) async {
     switch (msg.role) {
       case 'system':
         return [ChatMessage.system(msg.content)];
       case 'assistant':
         final messages = <ChatMessage>[];
         // tool 结果只解析一次：既用于过滤悬空 tool_calls，也用于生成 tool
-        // 消息。单条结果可达 12000 字符，而 buildMessages 每次发送都会
+        // 消息。完整结果可能很大，而 buildMessages 每次发送都会
         // 遍历整个会话，重复 jsonDecode 的代价随会话长度线性累积。
         final toolResults = msg.toolResults.isEmpty
             ? const <dynamic>[]
@@ -97,18 +108,21 @@ class ChatMessageConverter {
         if (msg.toolCalls.isNotEmpty) {
           final parsed = jsonDecode(msg.toolCalls) as List<dynamic>;
           toolCalls = parsed
-              .where((tc) => resultIds.contains((tc as Map<String, dynamic>)['id']))
+              .where(
+                (tc) => resultIds.contains((tc as Map<String, dynamic>)['id']),
+              )
               .map((tc) {
-            final m = tc as Map<String, dynamic>;
-            return ToolCall(
-              id: m['id'] as String,
-              type: 'function',
-              function: FunctionCall(
-                name: m['name'] as String,
-                arguments: m['arguments'] as String,
-              ),
-            );
-          }).toList();
+                final m = tc as Map<String, dynamic>;
+                return ToolCall(
+                  id: m['id'] as String,
+                  type: 'function',
+                  function: FunctionCall(
+                    name: m['name'] as String,
+                    arguments: m['arguments'] as String,
+                  ),
+                );
+              })
+              .toList();
           // 防御：全部 tool_calls 都无对应结果时（异常取消残留），
           // 不携带 tool_calls 字段——带 tool_calls 却无 tool 响应
           // 会被 OpenAI 兼容端 400 拒绝。
@@ -117,19 +131,35 @@ class ChatMessageConverter {
         final reasoning = includeReasoning && msg.reasoningContent.isNotEmpty
             ? msg.reasoningContent
             : null;
-        messages.add(AssistantMessage(
-          // 与 agent_service 当轮构建一致：空 content 序列化为 null，
-          // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
-          content: msg.content.isEmpty ? null : msg.content,
-          toolCalls: toolCalls,
-          reasoningContent: reasoning,
-        ));
+        messages.add(
+          AssistantMessage(
+            // 与 agent_service 当轮构建一致：空 content 序列化为 null，
+            // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
+            content: msg.content.isEmpty ? null : msg.content,
+            toolCalls: toolCalls,
+            reasoningContent: reasoning,
+          ),
+        );
         for (final tr in toolResults) {
           final m = tr as Map<String, dynamic>;
-          messages.add(ChatMessage.tool(
-            toolCallId: m['id'] as String,
-            content: m['result'] as String,
-          ));
+          final raw = m['result'] as String;
+          final String modelResult;
+          if (m['modelResult'] is String) {
+            modelResult = m['modelResult'] as String;
+            // Recreate artifacts after an import or local cache removal.
+            if (m['outputId'] != null) {
+              await _outputs.restore(raw, modelResult: modelResult);
+            }
+          } else {
+            // Legacy records use the same policy and content IDs as live runs.
+            modelResult = (await _outputs.prepare(raw)).modelResult;
+          }
+          messages.add(
+            ChatMessage.tool(
+              toolCallId: m['id'] as String,
+              content: modelResult,
+            ),
+          );
         }
         return messages;
       default:
@@ -137,10 +167,9 @@ class ChatMessageConverter {
           final images = msg.imageUrls.split(',');
           final parts = <ContentPart>[ContentPart.text(msg.content)];
           for (final url in images) {
-            parts.add(ContentPart.imageBase64(
-              data: url,
-              mediaType: 'image/jpeg',
-            ));
+            parts.add(
+              ContentPart.imageBase64(data: url, mediaType: 'image/jpeg'),
+            );
           }
           return [ChatMessage.user(parts)];
         }

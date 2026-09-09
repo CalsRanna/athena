@@ -3,6 +3,20 @@ import 'package:athena_core/util/platform_util.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('date is padded to YYYY-MM-DD and ignores time of day', () {
+    expect(
+      currentDatePrompt(DateTime(2026, 1, 2, 0, 1)),
+      'Current date: 2026-01-02.',
+    );
+    expect(
+      currentDatePrompt(DateTime(2026, 1, 2, 23, 59)),
+      'Current date: 2026-01-02.',
+    );
+    expect(
+      currentDatePrompt(DateTime(2026, 1, 3)),
+      'Current date: 2026-01-03.',
+    );
+  });
   test('gui 环境提示包含 GUI 客户端与当前平台', () {
     final prompt = runtimeContextPrompt(RuntimeEnvironment.gui);
     expect(prompt, contains('Athena GUI application'));

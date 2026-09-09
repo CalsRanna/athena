@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/context_budget.dart';
+import 'package:athena_core/agent/runtime_context.dart';
+import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/run_outcome.dart';
@@ -52,6 +55,7 @@ class AgentService {
   final ChatCompletionsService _chatService;
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
+  final DateTime Function() _now;
 
   // ─── 运行时状态（按 runId 隔离，多 run 可并发）────────────────
   final Map<int, _AgentRunState> _runs = {};
@@ -65,14 +69,17 @@ class AgentService {
   /// 等待指定 run 完成后 resolve 的 Future。
   Future<void>? settledOf(int runId) => _runs[runId]?.settled.future;
 
-
   AgentService({
     required ChatCompletionsService chatService,
     required ToolRegistry toolRegistry,
     SkillRegistry? skillRegistry,
+    DateTime Function()? now,
   }) : _chatService = chatService,
        _toolRegistry = toolRegistry,
-       _skillRegistry = skillRegistry;
+       _skillRegistry = skillRegistry,
+       _now = now ?? DateTime.now {
+    _toolRegistry.register(ToolOutputReadTool(_toolRegistry.outputStore));
+  }
 
   /// 取消指定 run 的 Agent 循环。
   void abort(int runId) {
@@ -159,6 +166,26 @@ class AgentService {
     String? sentinelId,
     PermissionGate? permissionGate,
   }) async {
+    Future<ToolCallResultInternal> result(
+      String raw,
+      ToolResultStatus status,
+    ) async {
+      final output = await _toolRegistry.outputStore.prepare(raw);
+      return ToolCallResultInternal(
+        event: AgentToolResultEvent(
+          id: toolCall.id,
+          name: toolCall.function.name,
+          result: raw,
+          modelResult: output.modelResult,
+          outputId: output.outputId,
+          status: status,
+        ),
+        processedResult: output.modelResult,
+        rawResult: raw,
+        status: status,
+      );
+    }
+
     Map<String, dynamic> args;
     try {
       args = jsonDecode(toolCall.function.arguments) as Map<String, dynamic>;
@@ -166,17 +193,7 @@ class AgentService {
       final msg =
           'Error: Failed to parse tool call arguments as JSON: '
           '${toolCall.function.arguments}';
-      return ToolCallResultInternal(
-        event: AgentToolResultEvent(
-          id: toolCall.id,
-          name: toolCall.function.name,
-          result: msg,
-          status: ToolResultStatus.invalidArguments,
-        ),
-        processedResult: msg,
-        rawResult: msg,
-        status: ToolResultStatus.invalidArguments,
-      );
+      return result(msg, ToolResultStatus.invalidArguments);
     }
 
     final tool = _toolRegistry.get(toolCall.function.name);
@@ -188,17 +205,7 @@ class AgentService {
         final msg =
             'Error: Invalid arguments for tool '
             '"${toolCall.function.name}": $validationError';
-        return ToolCallResultInternal(
-          event: AgentToolResultEvent(
-            id: toolCall.id,
-            name: toolCall.function.name,
-            result: msg,
-            status: ToolResultStatus.invalidArguments,
-          ),
-          processedResult: msg,
-          rawResult: msg,
-          status: ToolResultStatus.invalidArguments,
-        );
+        return result(msg, ToolResultStatus.invalidArguments);
       }
     }
 
@@ -213,17 +220,7 @@ class AgentService {
         final msg = gateResult.reason.isEmpty
             ? 'Tool execution was blocked by the permission gate.'
             : gateResult.reason;
-        return ToolCallResultInternal(
-          event: AgentToolResultEvent(
-            id: toolCall.id,
-            name: toolCall.function.name,
-            result: msg,
-            status: ToolResultStatus.blocked,
-          ),
-          processedResult: msg,
-          rawResult: msg,
-          status: ToolResultStatus.blocked,
-        );
+        return result(msg, ToolResultStatus.blocked);
       }
     }
 
@@ -251,19 +248,7 @@ class AgentService {
       status = ToolResultStatus.executionError;
     }
 
-    var processed = smartTruncate(rawResult);
-
-    return ToolCallResultInternal(
-      event: AgentToolResultEvent(
-        id: toolCall.id,
-        name: toolCall.function.name,
-        result: rawResult,
-        status: status,
-      ),
-      processedResult: processed,
-      rawResult: rawResult,
-      status: status,
-    );
+    return result(rawResult, status);
   }
 
   void _logUsage(Usage? usage) {
@@ -388,7 +373,7 @@ class AgentService {
   /// 首轮注入 runtime / evolution / skill prompt。
   ///
   /// 目标布局（按语义分层，缓存前缀稳定）：
-  ///   [sentinel, runtime, evolution, system-summaries?, history...]
+  ///   [sentinel, runtime, evolution, system-summaries?, current-date, history...]
   ///
   /// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
   /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
@@ -435,7 +420,13 @@ class AgentService {
         history.add(m);
       }
     }
-    return [...head, ...staticBlocks, ...summaries, ...history];
+    return [
+      ...head,
+      ...staticBlocks,
+      ...summaries,
+      ChatMessage.system(currentDatePrompt(_now())),
+      ...history,
+    ];
   }
 
   /// 从 ToolRegistry 构建 OpenAI Tool 列表。
@@ -451,16 +442,6 @@ class AgentService {
           ),
         )
         .toList();
-  }
-
-  String smartTruncate(String result, {int threshold = 12000}) {
-    if (result.length <= threshold) return result;
-    final headLen = (threshold * 0.6).round();
-    final tailLen = threshold - headLen;
-    final head = result.substring(0, headLen);
-    final tail = result.substring(result.length - tailLen);
-    final skipped = result.length - headLen - tailLen;
-    return '$head\n\n... [truncated $skipped characters] ...\n\n$tail';
   }
 }
 
@@ -489,6 +470,8 @@ class _AgentLoop {
        _chat = chat,
        _provider = provider,
        _model = model,
+       _budget = ContextBudget(model.contextWindow),
+       _dateMessageIndex = messages.lastIndexWhere((m) => m is SystemMessage),
        _messages = messages,
        _runId = runId,
        _sentinelId = sentinelId,
@@ -503,6 +486,8 @@ class _AgentLoop {
   final ChatEntity _chat;
   final ProviderEntity _provider;
   final ModelEntity _model;
+  final ContextBudget _budget;
+  final int _dateMessageIndex;
 
   /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
   final List<ChatMessage> _messages;
@@ -578,9 +563,19 @@ class _AgentLoop {
     _iterationsExecuted++;
 
     final tools = _service._buildTools();
+    final date = currentDatePrompt(_service._now());
+    if ((_messages[_dateMessageIndex] as SystemMessage).content != date) {
+      _messages[_dateMessageIndex] = ChatMessage.system(date);
+    }
+    final requestMessages = await _budget.prepare(
+      messages: _messages,
+      tools: tools,
+      outputs: _service._toolRegistry.outputStore,
+    );
+    _token.throwIfCancelled();
     final request = ChatCompletionCreateRequest(
       model: _model.modelId,
-      messages: _messages,
+      messages: requestMessages,
       tools: tools,
       // jsonMode 场景（Shortcut 发起）：声明模型输出 JSON 对象
       responseFormat: _jsonMode ? ResponseFormat.jsonObject() : null,
@@ -685,10 +680,7 @@ class _AgentLoop {
                 // 仅已建卡（announced）时产出增量事件；未建卡的分片
                 // 已缓冲在 acc.arguments 中，由建卡事件一并携带。
                 if (acc.id != null && announcedIds.contains(acc.id)) {
-                  yield AgentEvent.toolCallArgs(
-                    id: acc.id!,
-                    delta: argsDelta,
-                  );
+                  yield AgentEvent.toolCallArgs(id: acc.id!, delta: argsDelta);
                 }
               }
             }
@@ -710,6 +702,11 @@ class _AgentLoop {
     _service._logUsage(st.accumulator.usage);
     final usage = st.accumulator.usage;
     if (usage != null) {
+      _budget.observe(
+        promptTokens: usage.promptTokens,
+        messages: request.messages,
+        tools: request.tools,
+      );
       yield AgentEvent.usage(
         TokenUsage(
           promptTokens: usage.promptTokens,
@@ -810,7 +807,8 @@ class _AgentLoop {
 
       final semaphore = _AsyncSemaphore(AgentService._maxParallelTools);
       final futures = <Future<_ToolExecutionData>>{
-        for (final tc in parallelCalls) _executeParallelOne(tc: tc, semaphore: semaphore),
+        for (final tc in parallelCalls)
+          _executeParallelOne(tc: tc, semaphore: semaphore),
       };
 
       while (futures.isNotEmpty) {
@@ -931,12 +929,7 @@ class _AgentLoop {
       permissionGate: _permissionGate,
     );
     return _ToolExecutionData(
-      event: AgentToolResultEvent(
-        id: tc.id,
-        name: tc.function.name,
-        result: result.rawResult,
-        status: result.status,
-      ),
+      event: result.event,
       toolMessage: ChatMessage.tool(
         toolCallId: tc.id,
         content: result.processedResult,
@@ -946,6 +939,8 @@ class _AgentLoop {
         'name': tc.function.name,
         'arguments': tc.function.arguments,
         'result': result.rawResult,
+        'modelResult': result.processedResult,
+        if (result.event.outputId != null) 'outputId': result.event.outputId,
         'status': result.status.name,
       },
     );
@@ -1083,6 +1078,8 @@ sealed class AgentEvent {
     required String id,
     required String name,
     required String result,
+    String? modelResult,
+    String? outputId,
     required ToolResultStatus status,
   }) = AgentToolResultEvent;
 
@@ -1148,11 +1145,15 @@ class AgentToolResultEvent extends AgentEvent {
   final String id;
   final String name;
   final String result;
+  final String? modelResult;
+  final String? outputId;
   final ToolResultStatus status;
   const AgentToolResultEvent({
     required this.id,
     required this.name,
     required this.result,
+    this.modelResult,
+    this.outputId,
     this.status = ToolResultStatus.success,
   });
 }

@@ -8,6 +8,7 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
@@ -47,13 +48,12 @@ class TuiDi {
     String? homeDir,
     this.agentServiceOverride,
   }) {
-    _homeDir = homeDir ??
+    _homeDir =
+        homeDir ??
         Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '/';
-    _dataDir = Directory(
-      dataDirectory ?? '$_homeDir/.athena/tui',
-    );
+    _dataDir = Directory(dataDirectory ?? '$_homeDir/.athena/tui');
     _workspace = workspace ?? Directory.current.path;
     _build();
   }
@@ -133,8 +133,8 @@ class TuiDi {
       // ChatController 会提示用户重试,不阻塞启动崩溃
       try {
         await modelCatalogService.syncIfNeeded().timeout(
-              const Duration(seconds: 30),
-            );
+          const Duration(seconds: 30),
+        );
       } catch (e) {
         LoggerUtil.w('Model catalog sync timeout: $e');
       }
@@ -185,8 +185,7 @@ class TuiDi {
           for (final mline in await legacyMsgFile.readAsLines()) {
             if (mline.trim().isEmpty) continue;
             try {
-              final mrow =
-                  Map<String, dynamic>.from(jsonDecode(mline) as Map);
+              final mrow = Map<String, dynamic>.from(jsonDecode(mline) as Map);
               buf.writeln(jsonEncode({...mrow, 'type': 'message'}));
               msgCount++;
             } catch (_) {
@@ -198,8 +197,11 @@ class TuiDi {
         // 消息计数:旧 key(messages/{id}.jsonl)迁到新 key(会话文件),
         // 取旧计数与迁移行数的较大者(旧计数含已删除消息)
         final oldMsgCount = meta.remove(legacyMsgFile.path) ?? 0;
-        meta[sessionFile.path] =
-            _maxCount(meta[sessionFile.path], oldMsgCount, msgCount);
+        meta[sessionFile.path] = _maxCount(
+          meta[sessionFile.path],
+          oldMsgCount,
+          msgCount,
+        );
         migrated++;
       } catch (_) {
         // 跳过损坏的 chat 行
@@ -207,8 +209,11 @@ class TuiDi {
     }
     // chat 计数:旧 key(chats.jsonl)迁到会话目录 key
     final oldChatCount = meta.remove(legacyChats.path) ?? 0;
-    meta[sessionsDir.path] =
-        _maxCount(meta[sessionsDir.path], oldChatCount, migrated);
+    meta[sessionsDir.path] = _maxCount(
+      meta[sessionsDir.path],
+      oldChatCount,
+      migrated,
+    );
     await _writeMetaCounters(meta);
     // 内存计数缓存已过期(meta.json 被改写),清空让下次 next() 重读
     _idAllocator.reset();
@@ -321,17 +326,17 @@ class TuiDi {
     if (legacyProviders.isEmpty) return;
 
     final memoryProviders = await providerRepo.getAllProviders();
-    final memoryByName = {
-      for (final p in memoryProviders) p.name: p,
-    };
+    final memoryByName = {for (final p in memoryProviders) p.name: p};
     final merged = <ProviderEntity>[];
     for (final legacyProvider in legacyProviders) {
       final memory = memoryByName[legacyProvider.name];
-      merged.add(legacyProvider.copyWith(
-        apiKey: memory?.apiKey.isNotEmpty == true
-            ? memory!.apiKey
-            : legacyProvider.apiKey,
-      ));
+      merged.add(
+        legacyProvider.copyWith(
+          apiKey: memory?.apiKey.isNotEmpty == true
+              ? memory!.apiKey
+              : legacyProvider.apiKey,
+        ),
+      );
     }
     // 内存中独有(旧文件没有,如用户新配的)也保留
     final legacyByName = {for (final p in legacyProviders) p.name: p};
@@ -357,6 +362,9 @@ class TuiDi {
 
   void _build() {
     final sessionsDir = Directory('${_dataDir.path}/sessions');
+    final outputStore = ToolOutputStore(
+      directory: Directory('${_dataDir.path}/tool_outputs'),
+    );
 
     // ── Repositories ──
     _idAllocator = IdAllocator(File('${_dataDir.path}/meta.json'));
@@ -401,6 +409,7 @@ class TuiDi {
       experienceRepository: experienceRepo,
       sentinelRepository: sentinelRepo,
       store: keyValueStore,
+      outputStore: outputStore,
       defaultWorkdir: _workspace,
     );
 
@@ -414,7 +423,10 @@ class TuiDi {
       providerRepository: providerRepo,
       sentinelRepository: sentinelRepo,
     );
-    messageService = ChatMessageConverter(messageRepository: messageRepo);
+    messageService = ChatMessageConverter(
+      messageRepository: messageRepo,
+      outputStore: outputStore,
+    );
     supportService = ChatUpdateService(
       chatRepository: chatRepo,
       messageRepository: messageRepo,
@@ -434,7 +446,8 @@ class TuiDi {
       providerRepo: providerRepo,
     );
 
-    agentService = agentServiceOverride ??
+    agentService =
+        agentServiceOverride ??
         AgentService(
           chatService: chatService,
           toolRegistry: toolRegistry,

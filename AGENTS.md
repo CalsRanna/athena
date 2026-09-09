@@ -10,7 +10,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
 - **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：TRPG/翻译/摘要/Shortcut/Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
-- **内置工具系统**：桌面端注册 14 个工具、移动端 10 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
+- **内置工具系统**：桌面端注册 15 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
@@ -190,8 +190,12 @@ messages.value.add(newMessage);
    - 无 tool call → `AgentDoneEvent`，结束
    - 有 tool call → 先做**截断保护**：`finishReason == length`（输出被 token 限制切断）时拒绝执行所有工具并提示重新调用
 6. **串行 + 并行混合执行**：`selectParallelCalls()` 预检分级——参数可解析、工具存在、`canExecuteParallel(args)` 且权限预检通过（`check() == true`，即不需要弹窗）的调用进并行组，其余进串行组。并行组用信号量限流（最多 8 个并发），`Future.any` 优先响应取消信号，结果渐进式产出
-7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → `beforeToolCall` hook → 权限检查 → 执行 → `afterToolCall` hook → `smartTruncate`（超 12000 字符保留头尾截断中间）
-8. 工具结果消息加入消息列表，进入下一轮迭代；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
+7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → 权限检查 → 执行 → `ToolOutputStore.prepare`（24,000 字符以内完整返回；超出后完整保存，返回 2,000 字符连续预览与 `tool_output_read` 续读提示）
+8. 工具结果消息加入消息列表，进入下一轮迭代；每轮请求前通过 `ContextBudget` 检查已知模型窗口的估算预算并预留输出空间，必要时将较早的工具结果替换为可续读引用（保留最新工具批次），仍超限则请求前报错；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
+
+日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，独立置于稳定 system 提示/摘要之后、历史之前；每轮检查是否跨日，不落库。
+
+工具结果 JSON 同时保存 `result`（原文）、`modelResult`（模型可见内容）和可选 `outputId`。`ChatMessageConverter` 回放 `modelResult`，旧记录经过同一输出策略；原文可用于恢复缺失的续读缓存。GUI/TUI 装配层让注册表和转换器共用一个 `ToolOutputStore`，目录由客户端注入，不依赖 Flutter/SQL。
 
 ### 7.2 AgentEvent 类型
 
@@ -237,7 +241,7 @@ enum ToolRisk { readOnly, dangerous }
 
 - `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
 - `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
-- 桌面端注册 14 个工具（bash 与 powershell 按操作系统互斥），移动端注册 10 个（无本地文件与进程工具）
+- 桌面端注册 15 个工具（bash 与 powershell 按操作系统互斥），移动端注册 11 个（无本地文件与进程工具）
 - 注册在 `di.dart` 的 ToolRegistry 工厂中按 `PlatformUtil.isMobile` 分支完成
 
 工具实现文件（`packages/athena_core/lib/agent/tool/`）：
@@ -246,6 +250,7 @@ enum ToolRisk { readOnly, dangerous }
 |------|--------|----------|------|
 | `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时默认上限 3600s（`ATHENA_SHELL_MAX_TIMEOUT` 可覆盖），超时 SIGTERM→SIGKILL |
 | `powershell_shell_tool.dart` | PowerShellShellTool | dangerous/串行 | Windows PowerShell 命令 |
+| `tool_output_read_tool.dart` | ToolOutputReadTool | **readOnly/并行** | 按结果 ID 和 Unicode 字符 offset/limit 续读已保存输出（默认 6,000，上限 12,000）；移动端也可用 |
 | `file_read_tool.dart` | FileReadTool | **readOnly/并行** | 文件读取，offset/limit 分页 + 行号 |
 | `file_write_tool.dart` | FileWriteTool | dangerous/串行 | 创建/覆写，递归建父目录 |
 | `file_update_tool.dart` | FileUpdateTool | dangerous/串行 | 精确字符串替换，mtime 外部修改检测，replace_all、行号前缀剥离 |

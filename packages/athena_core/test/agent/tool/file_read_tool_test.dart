@@ -23,6 +23,27 @@ void main() {
   });
 
   group('FileReadTool basics', () {
+    test('every non-final page advertises the next offset', () async {
+      await sampleFile.writeAsString(
+        List.generate(300, (i) => 'line$i').join('\n'),
+      );
+      for (final offset in [0, 100]) {
+        final result = await tool.execute({
+          'path': sampleFile.path,
+          'offset': offset,
+          'limit': 100,
+        });
+        expect(result, contains('Use offset=${offset + 100} to continue.'));
+        expect(result, contains('${offset + 1}\tline$offset'));
+        expect(result, contains('${offset + 100}\tline${offset + 99}'));
+      }
+      final last = await tool.execute({
+        'path': sampleFile.path,
+        'offset': 200,
+        'limit': 100,
+      });
+      expect(last, isNot(contains('to continue')));
+    });
     test('reads a file with line numbers', () async {
       final result = await tool.execute({'path': sampleFile.path});
       expect(result, contains('1\tline1'));

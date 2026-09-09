@@ -1,8 +1,14 @@
 import 'tool_interface.dart';
+import 'tool_output_store.dart';
 
 export 'tool_interface.dart' show ExecutionMode;
 
 class ToolRegistry {
+  ToolRegistry({ToolOutputStore? outputStore})
+    : outputStore = outputStore ?? ToolOutputStore();
+
+  final ToolOutputStore outputStore;
+
   final Map<String, Tool> _tools = {};
 
   /// OpenAI tool definitions 缓存：工具集在一次 run 内不变，而 Agent
@@ -24,17 +30,16 @@ class ToolRegistry {
 
   List<Tool> get all => _tools.values.toList();
 
-  List<Map<String, dynamic>> get definitions =>
-      _definitions ??= _tools.values
-          .map(
-            (t) => {
-              'type': 'function',
-              'function': {
-                'name': t.name,
-                'description': t.description,
-                'parameters': t.parameters,
-              },
-            },
-          )
-          .toList();
+  List<Map<String, dynamic>> get definitions => _definitions ??= _tools.values
+      .map(
+        (t) => {
+          'type': 'function',
+          'function': {
+            'name': t.name,
+            'description': t.description,
+            'parameters': t.parameters,
+          },
+        },
+      )
+      .toList();
 }

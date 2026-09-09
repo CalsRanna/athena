@@ -13,6 +13,8 @@ import 'package:athena_core/agent/tool/sentinel_revert_tool.dart';
 import 'package:athena_core/agent/tool/skill_evolve_tool.dart';
 import 'package:athena_core/agent/tool/skill_tool.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
+import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
+import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/agent/tool/web_search_tool.dart';
 import 'package:athena_core/repository/experience_repository.dart';
@@ -33,6 +35,7 @@ ToolRegistry buildToolRegistry({
   required ExperienceRepository experienceRepository,
   required SentinelRepository sentinelRepository,
   required KeyValueStore store,
+  ToolOutputStore? outputStore,
 
   /// Shell 工具的默认工作目录。null = 使用用户主目录。
   String? defaultWorkdir,
@@ -48,7 +51,8 @@ ToolRegistry buildToolRegistry({
   bool? mobile,
 }) {
   final isMobile = mobile ?? PlatformUtil.isMobile;
-  final registry = ToolRegistry();
+  final registry = ToolRegistry(outputStore: outputStore);
+  registry.register(ToolOutputReadTool(registry.outputStore));
   // sentinel 演进历史快照：与经验/技能同根的 .athena 沙盒目录
   final historyStore = SentinelHistoryStore(homeDir: mobileHomeDir);
 
