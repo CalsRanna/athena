@@ -23,11 +23,11 @@ import 'package:http/http.dart' as http;
 ///   下架模型删除,仅删除未被 chat 引用的 preset 模型)
 /// - 拉取失败 → 降级用上次缓存数据同步;无缓存(首次失败)→ 跳过,下次启动重试
 ///
-/// 家族去重:models.dev 每个 provider 收录同一模型家族的多个版本
-/// (如 claude-sonnet-4.5/4.6/5、gemini-2.5-flash/3.6-flash)。
-/// 同步时对每个模型家族(按 [familyKey] 分组)只保留 release_date 最新的
-/// 一个,老版本自动从本地库清理(未被 chat 引用时)。尺寸规格
-/// (8b/70b/235b 等)保留在家族键中,不同尺寸视为不同家族。
+/// 发布时间窗口:只同步 release_date 在最近 [kReleaseWindow](默认一年)内
+/// 的模型,窗口外的老版本自动从本地库清理(未被 chat 引用时)。窗口内
+/// 同一模型家族的多个版本(如 claude-sonnet-4.6 与 5)全部保留,不做
+/// "每家族只留最新"的家族去重——它依赖 id 命名猜新旧,对同日期发布的
+/// 别名 id 与版本号 id(deepseek-flash 与 deepseek-v4-flash)会误删其一。
 class ModelCatalogService {
   ModelCatalogService({
     required ModelRepository modelRepository,
@@ -38,6 +38,7 @@ class ModelCatalogService {
     Directory? cacheDir,
     Duration cacheTtl = const Duration(days: 7),
     Duration fetchTimeout = const Duration(seconds: 15),
+    Duration releaseWindow = kReleaseWindow,
   }) : _modelRepository = modelRepository,
        _providerRepository = providerRepository,
        _chatRepository = chatRepository,
@@ -45,15 +46,16 @@ class ModelCatalogService {
        _cacheFilePath = cacheFilePath,
        _cacheDir = cacheDir,
        _cacheTtl = cacheTtl,
-       _fetchTimeout = fetchTimeout;
+       _fetchTimeout = fetchTimeout,
+       _releaseWindow = releaseWindow;
 
   static const _cacheFileName = 'models_dev_cache.json';
   static const _catalogUrl = 'https://models.dev/api.json';
 
-  /// 发布时间下限:只同步 release_date >= 此值(ISO 字符串比较)的模型。
-  /// release_date 缺失或格式不完整(如 '2025-04')的模型不满足条件,剔除。
+  /// 发布时间滚动窗口:只同步 release_date 在此窗口内(距今不超过该时长)
+  /// 的模型。默认一年;构造时可覆盖(releaseWindow),测试用短窗口。
   @visibleForTesting
-  static const kMinReleaseDate = '2026-01-01';
+  static const kReleaseWindow = Duration(days: 365);
 
   /// 推理模型开关:true 时仅同步 reasoning = true 的模型。
   @visibleForTesting
@@ -67,6 +69,7 @@ class ModelCatalogService {
   final Directory? _cacheDir;
   final Duration _cacheTtl;
   final Duration _fetchTimeout;
+  final Duration _releaseWindow;
 
   /// 同步模型目录并返回统计。TTL 内直接返回空结果(除非 [force]);
   /// 过期则拉取 → 缓存 → 同步,失败降级缓存。
@@ -111,11 +114,10 @@ class ModelCatalogService {
   ///
   /// 对每个 [modelCatalogConfig] 配置:
   /// 1. 按名字查找 preset provider,不存在则创建
-  /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤([reasoningOnly])
-  ///    → 发布时间过滤([kMinReleaseDate]) → 家族去重(每家族只留
-  ///    release_date 最新的一个),逐模型插入或更新
-  /// 3. 清理下架模型:白名单外、reasoning 过滤淘汰、家族去重淘汰的老版本,
-  ///    若未被 chat 引用则删除
+  /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤 → 发布时间
+  ///    窗口过滤(最近一年),逐模型插入或更新
+  /// 3. 清理下架模型:白名单外、reasoning 过滤淘汰、发布时间窗口外的
+  ///    老版本,若未被 chat 引用则删除
   @visibleForTesting
   Future<CatalogSyncResult> applyCatalog(Map<String, dynamic> catalog) async {
     var createdProviders = 0;
@@ -129,17 +131,16 @@ class ModelCatalogService {
       final modelsJson = providerJson['models'];
       if (modelsJson is! Map<String, dynamic>) continue;
 
-      final selected = latestPerFamily(
-        filterByReleaseDate(
-          filterReasoning(
-            selectModels(
-              modelsJson,
-              include: config.include,
-              exclude: config.effectiveExcludes,
-            ),
-            reasoningOnly: config.reasoningOnly,
+      final selected = filterByReleaseDate(
+        filterReasoning(
+          selectModels(
+            modelsJson,
+            include: config.include,
+            exclude: config.effectiveExcludes,
           ),
+          reasoningOnly: config.reasoningOnly,
         ),
+        window: _releaseWindow,
       );
       if (selected.isEmpty) continue;
 
@@ -331,85 +332,41 @@ class ModelCatalogService {
     };
   }
 
-  /// 发布时间过滤:仅保留 release_date >= [minDate](ISO 字符串比较)的模型。
+  /// 发布时间窗口过滤:仅保留 release_date 距今不超过 [window] 的模型。
   ///
-  /// 缺失 release_date 或格式不完整('2025-04' 等前缀较短)的模型
-  /// 无法确认发布时间,一并剔除。同样须在家族去重之前执行。
+  /// release_date 需能解析为 ISO 日期:完整日期与月粒度('2026-09' 视为
+  /// 月初)都可解析;缺失或无法解析的模型无法确认发布时间,一并剔除。
+  /// [now] 缺省取当前时间,测试注入固定时钟。
   @visibleForTesting
   static Map<String, dynamic> filterByReleaseDate(
     Map<String, dynamic> models, {
-    String minDate = kMinReleaseDate,
+    DateTime? now,
+    Duration window = kReleaseWindow,
   }) {
-    if (minDate.isEmpty) return models;
-    return {
-      for (final entry in models.entries)
-        if (entry.value is Map<String, dynamic> &&
-            entry.value['release_date'] is String &&
-            (entry.value['release_date'] as String).compareTo(minDate) >= 0)
-          entry.key: entry.value,
-    };
-  }
-
-  /// 模型家族键:把 modelId 中的"版本信息"归一化,同家族的版本得到
-  /// 相同键,不同家族/不同规格得到不同键。
-  ///
-  /// 规则(对 modelId 去掉 provider 前缀后的部分):
-  /// - 代际数字与日期戳剥离:`qwen3-14b` → `qwen-14b`、`claude-sonnet-4.6`
-  ///   → `claude-sonnet`、`deepseek-chat-v3-0324` → `deepseek-chat`、
-  ///   `gpt-4o-2024-05-13` → `gpt-o`、`glm-4.5v` → `glm-v`
-  /// - 尺寸规格保留(数字后跟 `b` 不剥):`qwen3-8b` → `qwen-8b` 与
-  ///   `qwen3-235b-a22b` → `qwen-235b-a22b` 视为不同家族,各留最新
-  /// - 状态后缀并入主族:`DeepSeek-V3.2-Exp` → `deepseek-v`(与 V3 同族,
-  ///   由 release_date 决定留谁)
-  /// - `_` 归一为 `-`,连字符折叠,小写输出
-  @visibleForTesting
-  static String familyKey(String modelId) {
-    var s = modelId.split('/').last.replaceAll('_', '-');
-    // 实验版后缀并入主族,让 release_date 决定去留
-    s = s.replaceAll(RegExp(r'-exp$', caseSensitive: false), '');
-    // 剥除代际/日期数字段(v?N[.N][-N...],v 大小写均可);
-    // 数字后跟 b 的是尺寸规格不剥
-    s = s.replaceAll(RegExp(r'[vV]?\d+(?:[.-]\d+)*(?!\d*b)'), '');
-    // 归一化连字符
-    s = s.replaceAll(RegExp(r'-{2,}'), '-').replaceAll(RegExp(r'^-|-$'), '');
-    return s.toLowerCase();
-  }
-
-  /// 家族去重:对每个 [familyKey] 分组,组内只保留 release_date 最新的
-  /// 一个模型。返回与原输入同构的 id → json 映射。
-  ///
-  /// 排序依据:release_date(ISO 日期,字典序即时间序)。无 release_date
-  /// 的模型视为较旧;release_date 相同时保留先出现的(输入顺序稳定)。
-  @visibleForTesting
-  static Map<String, dynamic> latestPerFamily(
-    Map<String, dynamic> models,
-  ) {
-    final latest = <String, (String, Map<String, dynamic>)>{};
+    if (window <= Duration.zero) return models;
+    final threshold = (now ?? DateTime.now()).subtract(window);
+    final kept = <String, dynamic>{};
     for (final entry in models.entries) {
-      // 与 filterReasoning / filterByReleaseDate 一致:非 Map 值跳过
       final value = entry.value;
       if (value is! Map<String, dynamic>) continue;
-      final key = familyKey(entry.key);
-      final current = latest[key];
-      if (current == null || _isNewerThan(value, current.$2)) {
-        latest[key] = (entry.key, value);
-      }
+      final date = _parseReleaseDate(value['release_date']);
+      if (date == null || date.isBefore(threshold)) continue;
+      kept[entry.key] = value;
     }
-    return {for (final entry in latest.values) entry.$1: entry.$2};
+    return kept;
   }
 
-  /// a 是否比 b 新(release_date 比较;缺失视为旧,相同保留先出现者)。
-  static bool _isNewerThan(
-    Map<String, dynamic> a,
-    Map<String, dynamic> b,
-  ) {
-    final ra = a['release_date'];
-    final rb = b['release_date'];
-    if (ra is String && rb is String) {
-      return ra.compareTo(rb) > 0;
+  /// 解析 release_date('2026-09-10' 或月粒度 '2026-09')。
+  /// 缺失、非字符串或无法解析返回 null。
+  static DateTime? _parseReleaseDate(Object? value) {
+    if (value is! String) return null;
+    final full = DateTime.tryParse(value);
+    if (full != null) return full;
+    final month = RegExp(r'^(\d{4})-(\d{2})$').firstMatch(value);
+    if (month != null) {
+      return DateTime(int.parse(month.group(1)!), int.parse(month.group(2)!));
     }
-    // 仅一方有日期:有日期者更新(目录数据普遍带日期,缺失多为旧条目)
-    return ra is String && rb is! String;
+    return null;
   }
 
   /// models.dev 模型 JSON → [ModelEntity](models 表字段映射)。

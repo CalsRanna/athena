@@ -47,7 +47,7 @@ class CatalogProviderConfig {
 /// 共享默认排除:各 provider 通用的变体噪声模型。
 ///
 /// 这些是不同模型形态(preview/image/audio/realtime/免费档/快照/蒸馏版等),
-/// 家族去重管不到,必须在筛选时剔除。
+/// 时间窗口与别名规则都覆盖不到,必须在筛选时剔除。
 const defaultCatalogExcludes = <String>[
   '*-preview*', '*image*', '*audio*', '*video*', '*realtime*', '*:free',
   '*-free*', '*snapshot*', '*distill*', '*customtools*', '*multi-agent*',
@@ -70,8 +70,8 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     localBaseUrl: 'https://api.deepseek.com/v1',
   ),
 
-  // ---- Open Router(聚合器,保留白名单:每模型家族只留最新版,
-  // 家族去重由 ModelCatalogService.latestPerFamily 完成) ----
+  // ---- Open Router(聚合器,保留白名单;被替代的旧版本由同步的
+  // 发布时间窗口(最近一年)自动清理) ----
   CatalogProviderConfig(
     sourceId: 'openrouter',
     localName: 'Open Router',

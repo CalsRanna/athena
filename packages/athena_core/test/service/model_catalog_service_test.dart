@@ -108,6 +108,14 @@ class _FakeHttpClient extends http.BaseClient {
 // Fixtures
 // ---------------------------------------------------------------------------
 
+/// 相对今天的 ISO 日期(offsetDays 天前),保证滚动窗口测试不随时间失效。
+String _daysAgoISO(int offsetDays) {
+  final d = DateTime.now().subtract(Duration(days: offsetDays));
+  final m = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '${d.year}-$m-$day';
+}
+
 /// 模拟 models.dev/api.json 片段(结构与真实数据一致)。
 Map<String, dynamic> _fixtureCatalog() => {
   'deepseek': {
@@ -123,14 +131,14 @@ Map<String, dynamic> _fixtureCatalog() => {
         },
         'reasoning': true,
         'attachment': true,
-        'release_date': '2026-05-01',
+        'release_date': _daysAgoISO(30),
       },
       'deepseek-reasoner': {
         'name': 'DeepSeek Reasoner',
         'limit': {'context': 1000000},
         'cost': {'input': 0.14, 'output': 0.28},
         'reasoning': true,
-        'release_date': '2026-03-15',
+        'release_date': _daysAgoISO(120),
       },
     },
   },
@@ -270,9 +278,7 @@ void main() {
           'release_date': '2026-02-17',
         },
       };
-      final result = ModelCatalogService.latestPerFamily(
-        ModelCatalogService.filterReasoning(family),
-      );
+      final result = ModelCatalogService.filterReasoning(family);
       expect(result.keys, ['anthropic/claude-sonnet-5']);
     });
   });
@@ -283,139 +289,30 @@ void main() {
       if (release != null) 'release_date': release,
     };
 
-    test('只保留 minDate 及之后发布(ISO 字符串比较)', () {
-      final result = ModelCatalogService.filterByReleaseDate({
-        'a': model('2026-01-01'),
-        'b': model('2026-08-12'),
-        'c': model('2025-12-31'),
-        'd': model('2025-04'),
-      });
-      expect(result.keys.toSet(), {'a', 'b'});
-    });
+    final now = DateTime(2026, 9, 11);
 
-    test('缺失 release_date 的模型被剔除', () {
-      final result = ModelCatalogService.filterByReleaseDate({
-        'with-date': model('2026-05-01'),
-        'no-date': model(null),
-        'non-string': {'name': 'X', 'release_date': 20260101},
-      });
-      expect(result.keys, ['with-date']);
-    });
-
-    test('minDate 为空时不过滤', () {
+    test('window 传 Duration.zero 时不过滤', () {
       final result = ModelCatalogService.filterByReleaseDate(
         {'old': model('2020-01-01')},
-        minDate: '',
+        now: now,
+        window: Duration.zero,
       );
       expect(result.keys, ['old']);
     });
-  });
 
-  group('familyKey', () {
-    test('剥代际数字:同家族版本归一键', () {
-      expect(ModelCatalogService.familyKey('anthropic/claude-sonnet-5'),
-          'claude-sonnet');
-      expect(ModelCatalogService.familyKey('anthropic/claude-sonnet-4.6'),
-          'claude-sonnet');
-      expect(ModelCatalogService.familyKey('anthropic/claude-3-haiku'),
-          'claude-haiku');
-      expect(ModelCatalogService.familyKey('anthropic/claude-haiku-4.5'),
-          'claude-haiku');
-    });
-
-    test('剥日期戳与 v 前缀版本', () {
-      expect(ModelCatalogService.familyKey('deepseek/deepseek-chat-v3-0324'),
-          'deepseek-chat');
-      expect(ModelCatalogService.familyKey('deepseek/deepseek-chat'),
-          'deepseek-chat');
-      // V 线主模型同族(V3.2 与 V3 归 deepseek),留 release 最新;
-      // V4-Flash/Pro 是独立规格族
-      expect(ModelCatalogService.familyKey('deepseek/deepseek-v4-flash'),
-          'deepseek-flash');
-      expect(ModelCatalogService.familyKey('google/gemini-2.5-flash'),
-          'gemini-flash');
-      expect(ModelCatalogService.familyKey('google/gemini-3.6-flash'),
-          'gemini-flash');
-    });
-
-    test('尺寸规格保留:不同大小视为不同家族', () {
-      expect(ModelCatalogService.familyKey('qwen/qwen3-8b'), 'qwen-8b');
-      expect(ModelCatalogService.familyKey('qwen/qwen3-235b-a22b'),
-          'qwen-235b-a22b');
-      expect(ModelCatalogService.familyKey('qwen/qwen3.5-122b-a10b'),
-          'qwen-122b-a10b');
-      expect(ModelCatalogService.familyKey('qwen/qwen3.6-35b-a3b'),
-          'qwen-35b-a3b');
-    });
-
-    test('能力后缀保留(视觉/推理/速度变体)', () {
-      expect(ModelCatalogService.familyKey('z-ai/glm-4.5v'), 'glm-v');
-      expect(ModelCatalogService.familyKey('z-ai/glm-4.6v'), 'glm-v');
-      expect(ModelCatalogService.familyKey('minimax/minimax-m2.5-highspeed'),
-          'minimax-m-highspeed');
-      expect(ModelCatalogService.familyKey('openai/gpt-5-image'), 'gpt-image');
-    });
-
-    test('实验版后缀并入主族', () {
-      expect(ModelCatalogService.familyKey('deepseek/deepseek-v3.2-exp'),
-          'deepseek');
-      expect(ModelCatalogService.familyKey('deepseek-ai/DeepSeek-V3.2-Exp'),
-          'deepseek');
-      expect(ModelCatalogService.familyKey('deepseek-ai/DeepSeek-V4-Flash'),
-          'deepseek-flash');
-    });
-
-    test('openrouter 规格变体(o3/o4、gpt 系列)', () {
-      expect(ModelCatalogService.familyKey('openai/o3-mini'), 'o-mini');
-      expect(ModelCatalogService.familyKey('openai/o4-mini'), 'o-mini');
-      expect(ModelCatalogService.familyKey('openai/gpt-4.1'), 'gpt');
-      expect(ModelCatalogService.familyKey('openai/gpt-5.5'), 'gpt');
-      expect(ModelCatalogService.familyKey('openai/gpt-5.6-sol'), 'gpt-sol');
-      expect(ModelCatalogService.familyKey('x-ai/grok-4.5'), 'grok');
-    });
-  });
-
-  group('latestPerFamily', () {
-    Map<String, dynamic> model(String release) =>
-        {'name': 'M', if (release.isNotEmpty) 'release_date': release};
-
-    test('同家族多版本只留 release_date 最新', () {
-      final result = ModelCatalogService.latestPerFamily({
-        'anthropic/claude-sonnet-4.6': model('2026-02-17'),
-        'anthropic/claude-sonnet-5': model('2026-06-30'),
-        'anthropic/claude-sonnet-4.5': model('2025-10-15'),
-      });
-      expect(result.keys, ['anthropic/claude-sonnet-5']);
-    });
-
-    test('不同家族/不同尺寸全部保留', () {
-      final result = ModelCatalogService.latestPerFamily({
-        'qwen/qwen3-8b': model('2025-06-01'),
-        'qwen/qwen3-235b-a22b': model('2025-06-01'),
-        'google/gemini-3.6-flash': model('2026-07-21'),
-      });
-      expect(result.keys.toSet(), {
-        'qwen/qwen3-8b',
-        'qwen/qwen3-235b-a22b',
-        'google/gemini-3.6-flash',
-      });
-    });
-
-    test('无 release_date 视为较旧', () {
-      final result = ModelCatalogService.latestPerFamily({
-        'deepseek/deepseek-chat-v3-0324': model('2025-03-24'),
-        'deepseek/deepseek-chat': model(''), // 无日期
-        'deepseek/deepseek-chat-v3.1': model(''),
-      });
-      expect(result.keys, ['deepseek/deepseek-chat-v3-0324']);
-    });
-
-    test('release_date 相同时保留先出现的', () {
-      final result = ModelCatalogService.latestPerFamily({
-        'deepseek/deepseek-v4-flash': model('2026-07-31'),
-        'deepseek/deepseek-v4-flash-0731': model('2026-07-31'),
-      });
-      expect(result.keys, ['deepseek/deepseek-v4-flash']);
+    test('近一年滚动窗口:一年内保留、一年外与缺失日期剔除', () {
+      final iso = _daysAgoISO(40);
+      final result = ModelCatalogService.filterByReleaseDate({
+        'with-in-window': model(iso),
+        'too-old': model('2024-04-16'),
+        'no-date': model(null),
+        'non-string': {'name': 'X', 'release_date': 20260101},
+      }, now: now);
+      expect(
+        result.keys.toSet(),
+        {'with-in-window'},
+        reason: '只保留近一年内、且 release_date 可解析的模型',
+      );
     });
   });
 
@@ -510,7 +407,7 @@ void main() {
       expect(chat.providerId, provider.id);
       expect(chat.contextWindow, 1000000);
       expect(chat.inputPrice, r'$0.14/M input tokens');
-      expect(chat.releasedAt, 'Released 2026-05-01');
+      expect(chat.releasedAt, 'Released ${_daysAgoISO(30)}');
       expect(chat.vision, isTrue);
 
       // 统计:新增 1 provider + 2 模型
@@ -592,31 +489,31 @@ void main() {
       );
     });
 
-    test('家族去重:同家族只插入最新版', () async {
+    test('同家族多版本全部导入(不做家族去重)', () async {
+      final d1 = _daysAgoISO(3);
+      final d2 = _daysAgoISO(4);
       final catalog = {
         'deepseek': {
           'name': 'DeepSeek',
           'models': {
-            // deepseek-chat 家族:三个版本,只应保留 release 最新
             'deepseek-chat-v3-0324': {
               'name': 'DeepSeek Chat V3',
-              'release_date': '2026-01-10',
+              'release_date': d1,
               'reasoning': true,
             },
             'deepseek-chat-v3.1': {
               'name': 'DeepSeek Chat V3.1',
-              'release_date': '2026-02-10',
+              'release_date': d1,
               'reasoning': true,
             },
             'deepseek-chat': {
               'name': 'DeepSeek Chat',
-              'release_date': '2026-03-01',
+              'release_date': d1,
               'reasoning': true,
             },
-            // reasoner 独立家族,保留
             'deepseek-reasoner': {
               'name': 'DeepSeek Reasoner',
-              'release_date': '2026-01-15',
+              'release_date': d2,
               'reasoning': true,
             },
           },
@@ -625,20 +522,28 @@ void main() {
       await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
 
       expect(modelRepo.models.map((m) => m.modelId).toSet(), {
+        'deepseek-chat-v3-0324',
+        'deepseek-chat-v3.1',
         'deepseek-chat',
         'deepseek-reasoner',
       });
     });
 
-    test('家族去重:被淘汰的老版本从未被 chat 引用的模型中被清理', () async {
-      // 第一轮:chat 家族只有 v3-0324(唯一成员),正常入库
+    test('老版本跌出一年窗口后被清理;窗口内版本保留', () async {
+      final d3 = _daysAgoISO(3);
+      // 第一轮:两条都在窗口内,正常入库
       final catalog = {
         'deepseek': {
           'name': 'DeepSeek',
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2026-01-10',
+              'release_date': d3,
+              'reasoning': true,
+            },
+            'deepseek-chat-v3.1': {
+              'name': 'Mid',
+              'release_date': d3,
               'reasoning': true,
             },
           },
@@ -646,24 +551,30 @@ void main() {
       };
       final service = _service(modelRepo, providerRepo, chatRepo);
       await service.applyCatalog(catalog);
-      expect(
-        modelRepo.models.map((m) => m.modelId),
-        contains('deepseek-chat-v3-0324'),
-      );
+      expect(modelRepo.models.map((m) => m.modelId).toSet(), {
+        'deepseek-chat-v3-0324',
+        'deepseek-chat-v3.1',
+      });
 
-      // 第二轮:同家族上架新版本 v4 → v3-0324 被家族去重淘汰
+      // 第二轮:v3-0324 的 release_date 跌出一年窗口(数据源更新时间戳),
+      // v3.1 仍在窗口内 → 仅 v3-0324 与 v4 离线,不做家族去重
       final evolved = {
         'deepseek': {
           'name': 'DeepSeek',
           'models': {
             'deepseek-chat-v3-0324': {
               'name': 'Old',
-              'release_date': '2026-01-10',
+              'release_date': _daysAgoISO(400),
+              'reasoning': true,
+            },
+            'deepseek-chat-v3.1': {
+              'name': 'Mid',
+              'release_date': _daysAgoISO(200),
               'reasoning': true,
             },
             'deepseek-chat-v4': {
               'name': 'Newest',
-              'release_date': '2026-06-01',
+              'release_date': _daysAgoISO(1),
               'reasoning': true,
             },
           },
@@ -671,10 +582,11 @@ void main() {
       };
       await service.applyCatalog(evolved);
 
-      final ids = modelRepo.models.map((m) => m.modelId).toList();
+      final ids = modelRepo.models.map((m) => m.modelId).toSet();
       expect(ids, contains('deepseek-chat-v4'));
+      expect(ids, contains('deepseek-chat-v3.1'));
       expect(ids, isNot(contains('deepseek-chat-v3-0324')),
-          reason: '家族淘汰的老版本应被自动清理');
+          reason: '跌出时间窗口的老版本应被自动清理');
     });
 
     test('家族去重:被 chat 引用的老版本保留', () async {
@@ -719,6 +631,33 @@ void main() {
           containsAll(['deepseek-chat-v3-0324', 'deepseek-chat-v4']));
     });
 
+    test('同名同日期双胞胎都保留(deepseek-flash 回归)', () async {
+      final catalog = {
+        'deepseek': {
+          'name': 'DeepSeek',
+          'models': {
+            'deepseek-v4-flash': {
+              'name': 'DeepSeek V4 Flash',
+              'reasoning': true,
+              'release_date': _daysAgoISO(1),
+            },
+            'deepseek-flash': {
+              'name': 'DeepSeek V4.1 Flash',
+              'reasoning': true,
+              'release_date': _daysAgoISO(1),
+            },
+          },
+        },
+      };
+      await _service(modelRepo, providerRepo, chatRepo).applyCatalog(catalog);
+
+      expect(
+        modelRepo.models.map((m) => m.modelId).toSet(),
+        {'deepseek-v4-flash', 'deepseek-flash'},
+        reason: 'release_date 相同时不应因 id 形态不同而淘汰其一',
+      );
+    });
+
     test('catalog 中不存在的 provider 不处理', () async {
       final noProvider = {
         'some-unknown-provider': {
@@ -731,7 +670,7 @@ void main() {
       expect(modelRepo.models, isEmpty);
     });
 
-    test('2026 年之前发布的模型不导入', () async {
+    test('发布时间窗口外(超过一年)的模型不导入', () async {
       final catalog = {
         'deepseek': {
           'name': 'DeepSeek',
@@ -739,12 +678,12 @@ void main() {
             'deepseek-reasoner': {
               'name': 'DeepSeek Reasoner',
               'reasoning': true,
-              'release_date': '2026-01-01',
+              'release_date': _daysAgoISO(10),
             },
             'deepseek-chat': {
               'name': 'DeepSeek Chat',
               'reasoning': true,
-              'release_date': '2025-12-01',
+              'release_date': _daysAgoISO(400),
             },
           },
         },
