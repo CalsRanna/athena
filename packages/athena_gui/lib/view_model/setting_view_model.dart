@@ -30,7 +30,6 @@ class SettingViewModel {
   static const String _keyChatNamingModelId = 'chat_naming_model_id';
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
-  static const String _keyShortModelId = 'short_model_id';
   static const String _keyMaxRetries = 'max_retries';
   static const String _keyBraveApiKey = 'brave_api_key';
   static const String _keyThemeMode = 'theme_mode';
@@ -41,16 +40,13 @@ class SettingViewModel {
   final chatModelId = signal(0);
   final chatNamingModelId = signal(0);
   final sentinelMetadataGenerationModelId = signal(0);
-  final shortModelId = signal(0);
   final chatModel = signal<ModelEntity?>(null);
   final chatNamingModel = signal<ModelEntity?>(null);
 
   final sentinelMetadataGenerationModel = signal<ModelEntity?>(null);
-  final shortModel = signal<ModelEntity?>(null);
   final chatModelProvider = signal<ProviderEntity?>(null);
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
-  final shortModelProvider = signal<ProviderEntity?>(null);
 
   /// 委托核心 [AgentSettings]（持久化走 KeyValueStore）。
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
@@ -93,7 +89,6 @@ class SettingViewModel {
     chatNamingModelId.value = instance.getInt(_keyChatNamingModelId) ?? 0;
     sentinelMetadataGenerationModelId.value =
         instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
-    shortModelId.value = instance.getInt(_keyShortModelId) ?? 0;
     await _agentSettings.init();
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
@@ -105,7 +100,6 @@ class SettingViewModel {
     sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
       sentinelMetadataGenerationModelId.value,
     );
-    shortModel.value = await _modelRepository.getModelById(shortModelId.value);
     if (chatModel.value != null) {
       chatModelProvider.value = await _providerRepository.getProviderById(
         chatModel.value!.providerId,
@@ -119,11 +113,6 @@ class SettingViewModel {
     if (sentinelMetadataGenerationModel.value != null) {
       sentinelMetadataGenerationModelProvider.value = await _providerRepository
           .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
-    }
-    if (shortModel.value != null) {
-      shortModelProvider.value = await _providerRepository.getProviderById(
-        shortModel.value!.providerId,
-      );
     }
     await initThemeMode();
   }
@@ -179,19 +168,6 @@ class SettingViewModel {
     if (sentinelMetadataGenerationModel.value != null) {
       sentinelMetadataGenerationModelProvider.value = await _providerRepository
           .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
-    }
-  }
-
-  /// 更新短模型 ID
-  Future<void> updateShortModelId(int modelId) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keyShortModelId, modelId);
-    shortModelId.value = modelId;
-    shortModel.value = await _modelRepository.getModelById(modelId);
-    if (shortModel.value != null) {
-      shortModelProvider.value = await _providerRepository.getProviderById(
-        shortModel.value!.providerId,
-      );
     }
   }
 

@@ -117,19 +117,9 @@ Agent 可通过以下机制持续改进自身：
 - **视觉与推理**：支持视觉模型（图片附件）和推理模型（DeepSeek-R1 等 reasoning 展示）
 - **数据导入/导出**：JSON 格式完整数据迁移，自动重整悬空引用
 
-### 快捷入口（Shortcut）
-
-内置 5 个场景化快捷入口（Translation、Summary、Food、Code、TRPG），每个绑定独立的专属 Sentinel（能力配置）：
-
-- 点击后以其绑定 Sentinel 身份发起对话，支持**场景级 JSON 输出模式**（模型直接产出结构化 JSON）
-- Translation / Summary / TRPG 快捷入口直接打开对应的定制功能页，Food / Code 进入默认聊天页
-
 ### 扩展功能
 
-- **网页摘要**：AI 解析网页内容，生成结构化摘要
-- **文本翻译**：AI 多语言翻译
 - **网络搜索**：Brave Search 集成
-- **TRPG 游戏**：AI 驱动的桌面角色扮演游戏，含行动建议和状态面板
 
 ### 平台支持
 
@@ -185,7 +175,7 @@ packages/
 ├── athena_core/         # ★ 纯 Dart 核心，零 Flutter / 零 SQL 依赖
 │   ├── agent/           #   Agent 引擎：工具、权限、Skill、进化、取消令牌
 │   ├── coordinator/     #   AgentRunCoordinator：UI 无关的 run 编排层（RunEvent 流）
-│   ├── service/         #   LlmClient、Chat、Summary、Translation、TRPG 等
+│   ├── service/         #   LlmClient、Chat 等
 │   ├── repository/      #   存储接口（Chat/Message/Model/Provider/...）
 │   ├── entity/ model/ preset/ extension/ util/
 │   └── storage/         #   KeyValueStore 接口 + AgentSettings
@@ -292,7 +282,7 @@ packages/
 
 - **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载、Shell 进程管理、Schema 校验
 - **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
-- **ViewModel 层**（athena_gui）：聊天流、设置、摘要、翻译、TRPG
+- **ViewModel 层**（athena_gui）：聊天流、设置
 - **UI 层**（athena_gui）：移动端主页和聊天页 widget 测试
 - **数据库**（athena_gui）：迁移、CASCADE 行为验证
 

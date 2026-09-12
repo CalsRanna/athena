@@ -41,7 +41,6 @@ class _MobileDefaultModelFormPageState
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
     );
-    var shortcutTitle = Text('Shortcut Model', style: titleTextStyle);
     var tipTextStyle = TextStyle(
       color: colors.border,
       fontSize: 12,
@@ -55,10 +54,6 @@ class _MobileDefaultModelFormPageState
     );
     var generationTip = Text(
       'Model designated for generating sentinel name, description, avatar, and tags',
-      style: tipTextStyle,
-    );
-    var shortcutTip = Text(
-      'Model designated for all shortcuts',
       style: tipTextStyle,
     );
     return Watch((context) {
@@ -81,12 +76,6 @@ class _MobileDefaultModelFormPageState
         provider:
             settingViewModel.sentinelMetadataGenerationModelProvider.value,
       );
-      var shortcutDropdown = _ModelDropdown(
-        groupedModels: modelViewModel.groupedEnabledModels.value,
-        model: settingViewModel.shortModel.value,
-        onChanged: settingViewModel.updateShortModelId,
-        provider: settingViewModel.shortModelProvider.value,
-      );
       var listChildren = [
         chatTitle,
         const SizedBox(height: 12),
@@ -106,11 +95,6 @@ class _MobileDefaultModelFormPageState
         const SizedBox(height: 12),
         generationTip,
         const SizedBox(height: 16),
-        shortcutTitle,
-        const SizedBox(height: 12),
-        shortcutDropdown,
-        const SizedBox(height: 12),
-        shortcutTip,
         SafeArea(top: false, child: const SizedBox()),
       ];
       var listView = ListView(

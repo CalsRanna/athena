@@ -1,11 +1,9 @@
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_gui/entity/summary_entity.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/mobile/home/component/chat_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
-import 'package:athena_gui/page/mobile/summary/component/summary_list_tile.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -75,36 +73,6 @@ void main() {
         tester.widget<Text>(find.text('Recent Chat')).style?.color,
         colors.textOnRaised,
       );
-    }
-  });
-
-  testWidgets('light technical surfaces use their dedicated icon color', (
-    tester,
-  ) async {
-    final summary = SummaryEntity(
-      id: 'summary',
-      link: 'https://example.com',
-      title: 'Example',
-      content: '',
-      icon: '',
-      createdAt: DateTime(2025),
-    );
-
-    for (final (colors, brightness) in [
-      (AthenaColors.dark, Brightness.dark),
-      (AthenaColors.light, Brightness.light),
-    ]) {
-      await pumpThemed(
-        tester,
-        MobileSummaryListTile(summary: summary),
-        colors: colors,
-        brightness: brightness,
-      );
-
-      final icon = tester.widget<Icon>(
-        find.byIcon(HugeIcons.strokeRoundedAiBrowser),
-      );
-      expect(icon.color, colors.iconOnRaised);
     }
   });
 

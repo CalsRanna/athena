@@ -11,7 +11,6 @@ class SharedPreferenceUtil {
   final String _keyChatNamingModelId = 'chat_naming_model_id';
   final String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
-  final String _keyShortModelId = 'short_model_id';
 
   SharedPreferenceUtil._();
 
@@ -26,10 +25,6 @@ class SharedPreferenceUtil {
   Future<int> getSentinelMetadataGenerationModelId() async {
     return (await _preferences).getInt(_keySentinelMetadataGenerationModelId) ??
         0;
-  }
-
-  Future<int> getShortModelId() async {
-    return (await _preferences).getInt(_keyShortModelId) ?? 0;
   }
 
   Future<double> getWindowHeight() async {
@@ -53,10 +48,6 @@ class SharedPreferenceUtil {
       _keySentinelMetadataGenerationModelId,
       modelId,
     );
-  }
-
-  Future<void> setShortModelId(int modelId) async {
-    await (await _preferences).setInt(_keyShortModelId, modelId);
   }
 
   Future<void> setWindowHeight(double height) async {

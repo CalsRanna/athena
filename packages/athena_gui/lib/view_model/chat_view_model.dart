@@ -107,8 +107,8 @@ class ChatViewModel {
 
   /// 新建对话时使用的角色（仅草稿态有效）。
   ///
-  /// 与 [currentSentinel]（当前选中对话的角色）解耦：Shortcut 入口注入
-  /// 绑定角色或用户在无选中对话时显式选择角色才会设置它；为空时
+  /// 与 [currentSentinel]（当前选中对话的角色）解耦：入口注入绑定角色或
+  /// 用户在无选中对话时显式选择角色才会设置它；为空时
   /// [createChat] 回退默认角色 Athena，不复用上一个对话的角色。
   final draftSentinel = signal<SentinelEntity?>(null);
 
@@ -437,7 +437,7 @@ class ChatViewModel {
         await _sentinelViewModel.getSentinels();
       }
       // 默认角色 Athena；仅当草稿态显式选定了角色
-      // （Shortcut 入口注入或用户在无选中对话时选择）时使用选定角色。
+      // （入口注入或用户在无选中对话时选择）时使用选定角色。
       final sentinel =
           draftSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
 
@@ -760,7 +760,7 @@ class ChatViewModel {
 
   void updateCurrentSentinel(SentinelEntity sentinel) {
     currentSentinel.value = sentinel;
-    // 无选中对话时的显式选择（含 Shortcut 入口注入的绑定角色），
+    // 无选中对话时的显式选择（含入口注入的绑定角色），
     // 作为下一次新建对话的角色。
     draftSentinel.value = sentinel;
   }
