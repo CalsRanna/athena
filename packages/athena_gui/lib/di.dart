@@ -19,12 +19,6 @@ import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_gui/repository/sqlite_provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_gui/repository/sqlite_sentinel_repository.dart';
-import 'package:athena_gui/repository/shortcut_repository.dart';
-import 'package:athena_gui/repository/sqlite_shortcut_repository.dart';
-import 'package:athena_gui/repository/trpg_game_repository.dart';
-import 'package:athena_gui/repository/sqlite_trpg_game_repository.dart';
-import 'package:athena_gui/repository/trpg_message_repository.dart';
-import 'package:athena_gui/repository/sqlite_trpg_message_repository.dart';
 import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
@@ -34,9 +28,6 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
-import 'package:athena_gui/service/summary_service.dart';
-import 'package:athena_gui/service/translation_service.dart';
-import 'package:athena_gui/service/trpg_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/util/platform_util.dart';
@@ -48,10 +39,6 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/view_model/shortcut_view_model.dart';
-import 'package:athena_gui/view_model/summary_view_model.dart';
-import 'package:athena_gui/view_model/translation_view_model.dart';
-import 'package:athena_gui/view_model/trpg_view_model.dart';
 import 'package:get_it/get_it.dart';
 
 class DI {
@@ -136,43 +123,9 @@ class DI {
     );
 
     getIt.registerLazySingleton(
-      () => ShortcutViewModel(shortcutRepository: getIt<ShortcutRepository>()),
-    );
-
-    getIt.registerLazySingleton(
       () => ModelResolver(
         modelRepo: getIt<ModelRepository>(),
         providerRepo: getIt<ProviderRepository>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => SummaryViewModel(
-        service: getIt<SummaryService>(),
-        modelResolver: getIt<ModelResolver>(),
-        settingViewModel: getIt<SettingViewModel>(),
-        agentService: getIt<AgentService>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => TranslationViewModel(
-        service: getIt<TranslationService>(),
-        modelResolver: getIt<ModelResolver>(),
-        settingViewModel: getIt<SettingViewModel>(),
-        agentService: getIt<AgentService>(),
-      ),
-    );
-
-    getIt.registerLazySingleton(
-      () => TRPGViewModel(
-        gameRepository: getIt<TRPGGameRepository>(),
-        messageRepository: getIt<TRPGMessageRepository>(),
-        modelRepository: getIt<ModelRepository>(),
-        providerRepository: getIt<ProviderRepository>(),
-        settingViewModel: getIt<SettingViewModel>(),
-        modelResolver: getIt<ModelResolver>(),
-        agentService: getIt<AgentService>(),
       ),
     );
 
@@ -257,15 +210,6 @@ class DI {
         homeDir: PlatformUtil.isMobile ? dataDirectory : null,
       ),
     );
-    getIt.registerLazySingleton<TRPGGameRepository>(
-      () => SqliteTRPGGameRepository(),
-    );
-    getIt.registerLazySingleton<TRPGMessageRepository>(
-      () => SqliteTRPGMessageRepository(),
-    );
-    getIt.registerLazySingleton<ShortcutRepository>(
-      () => SqliteShortcutRepository(),
-    );
   }
 
   static void _registerServices() {
@@ -304,15 +248,6 @@ class DI {
 
     getIt.registerLazySingleton(
       () => SentinelService(llmClient: getIt<LlmClient>()),
-    );
-    getIt.registerLazySingleton(
-      () => SummaryService(llmClient: getIt<LlmClient>()),
-    );
-    getIt.registerLazySingleton(
-      () => TranslationService(llmClient: getIt<LlmClient>()),
-    );
-    getIt.registerLazySingleton(
-      () => TRPGService(llmClient: getIt<LlmClient>()),
     );
 
     getIt.registerLazySingleton(

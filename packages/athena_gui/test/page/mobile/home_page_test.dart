@@ -40,10 +40,6 @@ void main() {
       expect(find.text('Sentinel'), findsOneWidget);
     });
 
-    testWidgets('shows Shortcut section title', (tester) async {
-      await pumpHomePage(tester);
-      expect(find.text('Shortcut'), findsOneWidget);
-    });
   });
 
   group('MobileHomePage with data', () {

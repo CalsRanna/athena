@@ -1,6 +1,7 @@
 import 'package:athena_gui/database/migration/athena_preset_prompt.dart';
 import 'package:athena_gui/database/migration/migration_202608060001_update_athena_sentinel_prompt.dart';
 import 'package:athena_gui/database/migration/migration_202608240001_add_chat_reasoning_effort.dart';
+import 'package:athena_gui/database/migration/migration_202609120001_remove_shortcut_and_scene_pages.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -87,24 +88,6 @@ Future<Laconic> _buildSchema() async {
     )
   ''');
   await laconic.statement('''
-    CREATE TABLE trpg_games(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      model_id INTEGER NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )
-  ''');
-  await laconic.statement('''
-    CREATE TABLE trpg_messages(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      game_id INTEGER NOT NULL,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      suggestions TEXT DEFAULT '',
-      created_at INTEGER NOT NULL
-    )
-  ''');
-  await laconic.statement('''
     CREATE TABLE memories(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL,
@@ -113,18 +96,6 @@ Future<Laconic> _buildSchema() async {
       updated_at INTEGER NOT NULL
     )
   ''');
-  await laconic.statement('''
-    CREATE TABLE shortcuts(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      icon TEXT DEFAULT '',
-      page_target TEXT DEFAULT '',
-      sentinel_id INTEGER NOT NULL,
-      FOREIGN KEY (sentinel_id) REFERENCES sentinels(id) ON DELETE CASCADE
-    )
-  ''');
-
   await laconic.statement('PRAGMA foreign_keys = ON');
   return laconic;
 }
@@ -382,53 +353,6 @@ void main() {
         reason: 'token_total should accumulate');
   });
 
-  test('shortcuts table exists with expected columns', () async {
-    final laconic = await _buildSchema();
-    final info = await laconic.select("PRAGMA table_info('shortcuts')");
-    final columns = info.map((r) => r.toMap()['name'] as String).toSet();
-    expect(columns, contains('id'));
-    expect(columns, contains('name'));
-    expect(columns, contains('description'));
-    expect(columns, contains('icon'));
-    expect(columns, contains('page_target'));
-    expect(columns, contains('sentinel_id'));
-  });
-
-  test('bound sentinel deletion cascades to its shortcut', () async {
-    final laconic = await _buildSchema();
-
-    final sentinelId = await laconic.table('sentinels').insertGetId(<String, dynamic>{
-      'name': 'BoundSentinel',
-      'description': '',
-      'avatar': '',
-      'prompt': 'p',
-      'tags': '',
-      'created_at': 1,
-      'updated_at': 1,
-    });
-    await laconic.table('shortcuts').insertGetId(<String, dynamic>{
-      'name': 'BoundShortcut',
-      'description': '',
-      'icon': '',
-      'page_target': 'translation',
-      'sentinel_id': sentinelId,
-    });
-    expect(await laconic.table('shortcuts').count(), 1);
-    expect(await laconic.table('sentinels').count(), 1);
-
-    // 删除 Shortcut 时，其绑定的 Sentinel 保留（普通聊天仍可选择）。
-    await laconic.table('shortcuts').where('id', 1).delete();
-    expect(await laconic.table('shortcuts').count(), 0);
-    expect(await laconic.table('sentinels').count(), 1,
-        reason: 'bound sentinel should SURVIVE shortcut deletion');
-
-    // 删除 Sentinel 时，其绑定的 Shortcut 级联删除（防悬空引用）。
-    await laconic.table('sentinels').where('id', sentinelId).delete();
-    expect(await laconic.table('sentinels').count(), 0);
-    expect(await laconic.table('shortcuts').count(), 0,
-        reason: 'shortcut should be cascade-deleted with its bound sentinel');
-  });
-
   test('all expected tables exist after full migration', () async {
     final laconic = await _buildSchema();
     final tables =
@@ -440,10 +364,7 @@ void main() {
       'models',
       'providers',
       'sentinels',
-      'trpg_games',
-      'trpg_messages',
       'memories',
-      'shortcuts',
     ]) {
       expect(names, contains(expected),
           reason: 'table "$expected" should exist after migrations');
@@ -562,6 +483,183 @@ void main() {
     final result = await laconic.select(
       'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
       [Migration202608240001AddChatReasoningEffort.name],
+    );
+    expect(result.first.toMap()['c'], 1);
+  });
+
+  // ---------- shortcut & scene-page cleanup ----------
+
+  Future<Laconic> buildLegacySchema() async {
+    final laconic = await schemaWithMigrationsTable();
+    await laconic.statement('''
+      CREATE TABLE shortcuts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        icon TEXT DEFAULT '',
+        page_target TEXT DEFAULT '',
+        sentinel_id INTEGER NOT NULL
+      )
+    ''');
+    await laconic.statement('''
+      CREATE TABLE trpg_games(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        model_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+    await laconic.statement('''
+      CREATE TABLE trpg_messages(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        suggestions TEXT DEFAULT '',
+        created_at INTEGER NOT NULL
+      )
+    ''');
+    return laconic;
+  }
+
+  Future<int> insertChat(Laconic laconic, int sentinelId) {
+    return laconic.table('chats').insertGetId(<String, dynamic>{
+      'title': 'c',
+      'model_id': 1,
+      'sentinel_id': sentinelId,
+      'temperature': 1.0,
+      'retention': -1,
+      'pinned': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+  }
+
+  test('cleanup drops legacy tables, reassigns chats and removes seed sentinels',
+      () async {
+    final laconic = await buildLegacySchema();
+
+    final seedSentinelId =
+        await laconic.table('sentinels').insertGetId(<String, dynamic>{
+      'name': 'Translation',
+      'description': '',
+      'avatar': '',
+      'prompt': 'p',
+      'tags': 'shortcut',
+      'is_preset': 1,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    final otherSentinelId =
+        await laconic.table('sentinels').insertGetId(<String, dynamic>{
+      'name': 'Custom',
+      'description': '',
+      'avatar': '',
+      'prompt': 'p',
+      'tags': '',
+      'is_preset': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    final userTaggedId =
+        await laconic.table('sentinels').insertGetId(<String, dynamic>{
+      'name': 'UserShortcutTag',
+      'description': '',
+      'avatar': '',
+      'prompt': 'p',
+      'tags': 'shortcut',
+      'is_preset': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+
+    final boundChatId = await insertChat(laconic, seedSentinelId);
+    final otherChatId = await insertChat(laconic, otherSentinelId);
+
+    await _insert(laconic, 'shortcuts', <String, dynamic>{
+      'name': 'Translation',
+      'description': '',
+      'icon': '',
+      'page_target': 'translation',
+      'sentinel_id': seedSentinelId,
+    });
+
+    for (final legacy in [
+      'migration_202608040001_create_shortcuts',
+      'migration_202608040002_seed_shortcuts',
+      'preset_shortcuts_v1',
+      'migration_202501200002_add_trpg_tables',
+      'migration_202501210001_add_suggestions_to_trpg_messages',
+      'migration_202501210002_simplify_trpg_games',
+    ]) {
+      await laconic.table('migrations').insert([
+        {'name': legacy},
+      ]);
+    }
+    await laconic.table('migrations').insert([
+      {'name': 'keep_me'},
+    ]);
+
+    await Migration202609120001RemoveShortcutAndScenePages(laconic: laconic)
+        .migrate();
+
+    final tables =
+        await laconic.select("SELECT name FROM sqlite_master WHERE type='table'");
+    final names = tables.map((r) => r.toMap()['name'] as String).toSet();
+    expect(names.contains('shortcuts'), isFalse);
+    expect(names.contains('trpg_games'), isFalse);
+    expect(names.contains('trpg_messages'), isFalse);
+
+    final bound = await laconic.table('chats').where('id', boundChatId).first();
+    expect(bound.toMap()['sentinel_id'], 0,
+        reason: 'chat bound to seed sentinel must fall back to 0');
+    final other = await laconic.table('chats').where('id', otherChatId).first();
+    expect(other.toMap()['sentinel_id'], otherSentinelId,
+        reason: 'chat bound to a normal sentinel stays untouched');
+
+    final remaining = await laconic.select('SELECT id FROM sentinels');
+    final ids = remaining.map((r) => r.toMap()['id'] as int).toSet();
+    expect(ids.contains(seedSentinelId), isFalse);
+    expect(ids.contains(otherSentinelId), isTrue);
+    expect(ids.contains(userTaggedId), isTrue,
+        reason: 'user sentinel merely tagged shortcut must survive');
+
+    final markers = await laconic.select('SELECT name FROM migrations');
+    final markerNames = markers.map((r) => r.toMap()['name'] as String).toSet();
+    expect(markerNames, contains('keep_me'));
+    expect(markerNames,
+        contains(Migration202609120001RemoveShortcutAndScenePages.name));
+    expect(markerNames.contains('preset_shortcuts_v1'), isFalse);
+    expect(markerNames.contains('migration_202608040001_create_shortcuts'),
+        isFalse);
+    expect(markerNames.contains('migration_202501200002_add_trpg_tables'),
+        isFalse);
+  });
+
+  test('cleanup migration runs only once via marker', () async {
+    final laconic = await buildLegacySchema();
+
+    await Migration202609120001RemoveShortcutAndScenePages(laconic: laconic)
+        .migrate();
+    await Migration202609120001RemoveShortcutAndScenePages(laconic: laconic)
+        .migrate();
+
+    final result = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202609120001RemoveShortcutAndScenePages.name],
+    );
+    expect(result.first.toMap()['c'], 1);
+  });
+
+  test('cleanup is a safe no-op on a fresh schema', () async {
+    final laconic = await schemaWithMigrationsTable();
+
+    await Migration202609120001RemoveShortcutAndScenePages(laconic: laconic)
+        .migrate();
+
+    final result = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202609120001RemoveShortcutAndScenePages.name],
     );
     expect(result.first.toMap()['c'], 1);
   });

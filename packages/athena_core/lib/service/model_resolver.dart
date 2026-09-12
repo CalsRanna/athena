@@ -6,7 +6,7 @@ import 'package:athena_core/repository/provider_repository.dart';
 /// 统一的模型 / Provider 解析器。
 ///
 /// 提供"优先用指定模型 → 回退到第一个可用 Provider 的第一个模型"的
-/// 标准 fallback 逻辑，供 Summary / Translation / TRPG 等 ViewModel 使用。
+/// 标准 fallback 逻辑，供各 ViewModel 使用。
 class ModelResolver {
   final ModelRepository _modelRepo;
   final ProviderRepository _providerRepo;

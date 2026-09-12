@@ -35,7 +35,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 // 新建对话的角色选择规则：
 // 默认使用 Athena（不复用 currentSentinel 中残留的上一个对话角色）；
-// 仅草稿态显式选定（含 Shortcut 入口注入）时使用选定角色，且一次性消费；
+// 仅草稿态显式选定（显式注入）时使用选定角色，且一次性消费；
 // 显式选择“直接对话”时写入 sentinelId=0，不触发默认角色兜底。
 
 void main() {
@@ -140,7 +140,7 @@ void main() {
       sentinelViewModel.sentinels.value = [athena, custom];
       viewModel.currentSentinel.value = custom;
 
-      // 草稿态显式选择（Shortcut 入口注入亦走此路径）。
+      // 草稿态显式选择（显式注入亦走此路径）。
       viewModel.updateCurrentSentinel(custom);
       await viewModel.createChat();
 

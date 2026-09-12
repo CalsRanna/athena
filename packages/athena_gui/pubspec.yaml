@@ -26,9 +26,6 @@ dependencies:
   flutter_staggered_grid_view: ^0.7.0
   get_it: ^8.0.3
   google_fonts: ^6.3.3
-  html: ^0.15.5
-  html_parser_plus: ^0.1.4
-  http: ^1.1.0
   hugeicons: ^0.0.10
   image_gallery_saver_plus: ^4.0.1
   laconic: ^2.2.0
@@ -53,7 +50,6 @@ dependencies:
   synchronized: ^3.3.1
   tray_manager: ^0.5.2
   url_launcher: ^6.3.1
-  uuid: ^4.6.0
   visibility_detector: ^0.4.0+2
   window_manager: ^0.5.1
   # 1.2.0 需要 win32 ^6，与 package_info_plus 8.x 的 win32 ^5.5.3 冲突，

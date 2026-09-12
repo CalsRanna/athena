@@ -9,12 +9,11 @@
 Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter 构建。核心能力包括：
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
-- **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：TRPG/翻译/摘要/Shortcut/Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
+- **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
 - **内置工具系统**：桌面端注册 15 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
-- **Shortcut 快捷入口系统**：绑定额外 Sentinel 的一等公民实体，支持场景级 JSON 输出模式
 - **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
 - **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
 - **多模型提供商**：OpenAI API 兼容，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
@@ -51,10 +50,10 @@ athena/
     │   ├── lib/
     │   │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
     │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
-    │   │   ├── database/        # SQLite + Laconic ORM + 26 个迁移
-    │   │   ├── repository/      # 8 个 SqliteXxxRepository（引擎接口的 SQLite 实现）+ GUI 业务接口（shortcut/trpg）
+    │   │   ├── database/        # SQLite + Laconic ORM + 16 个迁移
+    │   │   ├── repository/      # 5 个 SqliteXxxRepository（引擎接口的 SQLite 实现）
     │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
-    │   │   ├── view_model/      # 9 个 ViewModel（Signals）+ delegate/（3 个委托）
+    │   │   ├── view_model/      # 5 个 ViewModel（Signals）+ delegate/（3 个委托）
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
     │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
     │   │   ├── widget/          # 设计系统组件（20+）
@@ -88,7 +87,7 @@ Coordinator Layer (athena_core/coordinator)  ← AgentRunCoordinator：UI 无关
     ↓ 消费/驱动
 Service Layer (chat_completions_service / chat_store_service / chat_message_converter / ...)
     ↓ 调用 Repository 接口
-Repository Layer (引擎存储接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository；GUI 业务接口如 shortcut/trpg 随业务在 athena_gui)
+Repository Layer (引擎存储接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository)
     ↓ 直接访问 Database.instance.laconic
 Data Layer (Entity / Database / Migration)
 ```
@@ -97,7 +96,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网�
 
 **核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；TUI 已实现同一组接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
-**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（TRPG/翻译/摘要/Shortcut/Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。提示词常量随使用者内联（引擎的放 core 服务、业务的放 GUI 服务），不设共享提示词文件。
+**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。提示词常量随使用者内联（引擎的放 core 服务、业务的放 GUI 服务），不设共享提示词文件。
 
 ---
 
@@ -105,10 +104,10 @@ Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网�
 
 `packages/athena_gui/lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
 
-1. **Repository**（9 个 LazySingleton：8 个 Sqlite 实现 + ExperienceRepository）
-2. **Service**（LlmClient → ChatCompletionsService / ChatMessageConverter / ChatStoreService / ChatUpdateService / SentinelService / SummaryService / TranslationService / TRPGService / DataMigrationService / ModelCatalogService）
+1. **Repository**（6 个 LazySingleton：5 个 Sqlite 实现 + ExperienceRepository）
+2. **Service**（LlmClient → ChatCompletionsService / ChatMessageConverter / ChatStoreService / ChatUpdateService / SentinelService / DataMigrationService / ModelCatalogService）
 3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
-4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、ShortcutViewModel、ModelResolver、SummaryViewModel、TranslationViewModel、TRPGViewModel）
+4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、ModelResolver）
 5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
 6. **ChatViewModel**（最后注册，依赖最多）
 
@@ -169,7 +168,7 @@ messages.value.add(newMessage);
 - **路径**：`{app_support_dir}/athena.db`
 - **初始化**：`Database.instance.ensureInitialized()` 在 `main()` 中调用
 - **外键**：迁移全部完成后执行 `PRAGMA foreign_keys = ON`（确保孤儿数据已清理）
-- **迁移**：按时间顺序执行（当前 26 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_shortcuts_v1`）控制只插入一次
+- **迁移**：按时间顺序执行（当前 16 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
 - **重置**：`Database.instance.reset()` DROP 所有表（不含 `sqlite_%`）后重新迁移+预设
 
 实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
@@ -325,13 +324,6 @@ disable-model-invocation: false
 - **Memory Digest**：每次顶层 send 临时注入当前 Sentinel 可见的全部 active lesson；目录不依赖当前任务，经验库不变时内容逐字稳定，context/tags 由 `experience_recall` 按需读取
 - 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
 
-### 7.7 Shortcut 系统（v3.4.4 新增）
-
-- `Shortcut`（`athena_gui/lib/model/shortcut.dart`）：name/description/icon/pageTarget/sentinelId；绑定一个 `is_preset` 的专属 Sentinel
-- 迁移 `202608040001_create_shortcuts` + `202608040002_seed_shortcuts` 播种 5 个内置 Shortcut（Translation/Summary/Food/Code/TRPG），每个带专属 preset Sentinel
-- 点击 Shortcut → 以其绑定 Sentinel 身份发起 run，`jsonMode: true`（ResponseFormat jsonObject）用于场景页
-- `pageTarget` 通过 `ShortcutPageRegistry`（纯查找表，非插件机制）映射到移动端路由（translation/summary/trpg；Food/Code 无目标页走默认聊天页）
-
 ---
 
 ## 8. Coordinator 层（run 编排）
@@ -378,11 +370,6 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 | ProviderEntity | name, baseUrl, apiKey, enabled, isPreset | AI 提供商 |
 | SentinelEntity | name, avatar, description, prompt, tags, isPreset | Agent 角色 |
 | ExperienceEntity | name, description, tags, context, scope | Agent 经验记忆 |
-| TranslationEntity | source, sourceLang, targetLang, result | 翻译记录 |
-| SummaryEntity | url, content, summary, modelId | 网页摘要记录 |
-| TRPGGameEntity | name, systemPrompt, modelId | TRPG 游戏 |
-| TRPGMessageEntity | gameId, role, content, suggestions | TRPG 消息 |
-| Shortcut（在 `model/` 而非 `entity/`） | name, description, icon, pageTarget, sentinelId | 快捷入口 |
 
 所有实体使用 `copyWith()` 进行不可变更新；布尔值存储为 0/1。`MessageEntity.toolCalls` / `toolResults` 是 JSON 编码字符串，转换在 `ChatMessageConverter._convertMessages` 展开为 OpenAI `ToolCall` / tool 消息。
 
@@ -403,7 +390,6 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 | ModelResolver | `service/model_resolver.dart` | 模型/Provider 解析 + fallback（优先指定模型 → 回退第一个可用） |
 | ModelCatalogService | `service/model_catalog_service.dart` | 从 models.dev/api.json 同步模型元数据（TTL 7 天缓存、失败降级缓存、只删除未被 chat 引用的 preset 模型） |
 | SentinelService | `service/sentinel_service.dart` | Sentinel 元数据 AI 生成 |
-| SummaryService / TranslationService / TRPGService | 各自文件 | 网页摘要 / 翻译 / TRPG（均走 LlmClient） |
 
 ### Retention 语义（ChatMessageConverter + Coordinator）
 
@@ -446,9 +432,6 @@ GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，�
 | ProviderViewModel | 提供商列表、启用/禁用 |
 | SentinelViewModel | Sentinel 列表、默认选择、元数据生成 |
 | SettingViewModel | 全局设置（默认模型、最大迭代、辅助模型、窗口尺寸、数据迁移） |
-| ShortcutViewModel | Shortcut 列表 CRUD（v3.4.4 新增） |
-| SummaryViewModel / TranslationViewModel | 摘要 / 翻译功能（可注入 agentService） |
-| TRPGViewModel | TRPG 游戏功能 |
 
 ---
 
@@ -526,9 +509,8 @@ cardPrimaryBackground / cardPrimaryText
   - `util/` - retry、tool_args_formatter；`extension/` - json_map_extension
 - `packages/athena_gui/test/`（Flutter，`flutter test`）
   - `database/` - migration_test、cascade_characterization_test
-  - `view_model/` - chat_view_model_stream_test、setting/summary/translation/trpg、view_model_defaults_test
+  - `view_model/` - chat_view_model_stream_test、chat_draft_sentinel_test、setting/sentinel_view_model_test、view_model_defaults_test
   - `page/mobile/` - chat_page_test、home_page_test
-  - `repository/` - trpg_message_repository_test
   - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
 
 ### 测试模式
@@ -639,7 +621,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 2. 在 `di.dart` 注册为 LazySingleton
 3. ViewModel 中通过构造函数注入使用
 
-### 修改预设数据（Provider / Model / Sentinel / Shortcut）
+### 修改预设数据（Provider / Model / Sentinel）
 
 1. 修改数据（新增模型、更新上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
 2. 创建幂等迁移并注册到 `_migrate()`（排在 seed migration 之后）
@@ -683,10 +665,10 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | `window_manager` + `tray_manager` | 桌面窗口和系统托盘 |
 | `process` v5.0.3 | Shell 工具进程管理 |
 | `shared_preferences` | KeyValueStore 实现 |
-| `html` / `html_parser_plus` / `markdown` | 网页摘要、HTML→Markdown |
+| `markdown` | Markdown 解析（widget/markdown.dart） |
 | `file_picker` / `image_gallery_saver_plus` | 数据导入 / 图片保存 |
 | `path_provider` / `stream_channel` | 沙盒路径解析 / 进程流 |
-| `cached_network_image` / `flutter_slidable` / `flutter_staggered_grid_view` / `visibility_detector` / `device_info_plus` / `package_info_plus` / `url_launcher` / `uuid` / `synchronized` | UI 辅助 |
+| `cached_network_image` / `flutter_slidable` / `flutter_staggered_grid_view` / `visibility_detector` / `device_info_plus` / `package_info_plus` / `url_launcher` / `synchronized` | UI 辅助 |
 
 ### athena_tui（nocterm 终端客户端）
 
@@ -704,4 +686,4 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 - 当前版本：**3.6.1+864**（`athena_gui/pubspec.yaml`）
 - Flutter SDK：>= 3.8.0；Dart SDK：>= 3.8.0
 - 平台：iOS / Android / macOS / Windows / Linux
-- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、Shortcut 系统 + JSON 模式（fcc0968 → 5e3ae04）、跨平台运行加固（cbec2be）、athena_tui 终端客户端（f65e8a7）、Sentinel 进化/回滚 + 经验回顾与记忆消化（886e0b5）、移动端沙盒进化工具（f28d6f8）
+- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、跨平台运行加固（cbec2be）、athena_tui 终端客户端（f65e8a7）、Sentinel 进化/回滚 + 经验回顾与记忆消化（886e0b5）、移动端沙盒进化工具（f28d6f8）

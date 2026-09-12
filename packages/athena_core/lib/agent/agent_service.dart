@@ -584,7 +584,7 @@ class _AgentLoop {
       model: _model.modelId,
       messages: requestMessages,
       tools: tools,
-      // jsonMode 场景（Shortcut 发起）：声明模型输出 JSON 对象
+      // jsonMode：声明模型输出 JSON 对象
       responseFormat: _jsonMode ? ResponseFormat.jsonObject() : null,
     );
 
