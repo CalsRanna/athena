@@ -111,6 +111,7 @@ Agent 可通过以下机制持续改进自身：
 ### 核心功能
 
 - **Sentinel 系统**：预定义角色和系统提示词，支持 AI 元数据生成（名称、描述、标签、头像 Emoji），内置默认 "Athena" Sentinel
+- **Skill 与经验管理**：可视化管理技能（SKILL.md，含内置只读）与经验记忆（归档/恢复/删除）；移动端首页 Experiences 卡片行，与 Agent 自我进化同一数据源
 - **多 AI 提供商管理**：支持 OpenAI API 兼容的任何提供商，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax；启动时后台自动从 models.dev 同步模型元数据（7 天缓存，失败降级）
 - **重试机制**：指数退避 + 随机抖动，可重试网络错误（连接异常、超时、限流、5xx），不重试业务错误（4xx、解析错误）
 - **聊天管理**：会话置顶、批量删除、AI 自动命名、上下文管理（零上下文 / 自动压缩 / 全量）、温度参数调整、Token 用量追踪
@@ -282,7 +283,7 @@ packages/
 
 - **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载、Shell 进程管理、Schema 校验
 - **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
-- **ViewModel 层**（athena_gui）：聊天流、设置
+- **ViewModel 层**（athena_gui）：聊天流、设置、技能、经验
 - **UI 层**（athena_gui）：移动端主页和聊天页 widget 测试
 - **数据库**（athena_gui）：迁移、CASCADE 行为验证
 

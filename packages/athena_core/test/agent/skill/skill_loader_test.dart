@@ -82,4 +82,67 @@ void main() {
     });
   });
 
+  group('SkillLoader.saveSkill', () {
+    late Directory tmp;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('skill_save_test_');
+    });
+
+    tearDown(() {
+      if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+    });
+
+    test('写入后可被 loadFromDirectory 解析（round trip）', () {
+      SkillLoader().saveSkill(
+        name: 'demo',
+        description: 'A demo skill',
+        allowedTools: 'file_read, web_search',
+        body: '## Steps\n\n1. Do it.',
+        targetDir: '${tmp.path}/demo',
+      );
+
+      final skills = SkillLoader().loadFromDirectory(tmp.path);
+      expect(skills, hasLength(1));
+      final skill = skills.single;
+      expect(skill.name, 'demo');
+      expect(skill.description, 'A demo skill');
+      expect(skill.allowedTools, 'file_read, web_search');
+      expect(skill.body, contains('Do it.'));
+    });
+
+    test('description 含冒号/引号/换行时仍可解析', () {
+      const description = 'Uses: colons, "quotes"\nand newlines # hash';
+      SkillLoader().saveSkill(
+        name: 'tricky',
+        description: description,
+        body: 'body',
+        targetDir: '${tmp.path}/tricky',
+      );
+
+      final skill = SkillLoader().loadFromDirectory(tmp.path).single;
+      expect(skill.description, description);
+    });
+
+    test('省略 allowedTools 时不写入该字段', () {
+      SkillLoader().saveSkill(
+        name: 'no-tools',
+        description: 'desc',
+        body: 'body',
+        targetDir: '${tmp.path}/no-tools',
+      );
+
+      final skill = SkillLoader().loadFromDirectory(tmp.path).single;
+      expect(skill.allowedTools, isNull);
+    });
+  });
+
+  group('SkillLoader.isValidSkillName', () {
+    test('接受 kebab-case，拒绝路径分隔符与控制字符', () {
+      expect(SkillLoader.isValidSkillName('code-reviewer'), isTrue);
+      expect(SkillLoader.isValidSkillName('foo/bar'), isFalse);
+      expect(SkillLoader.isValidSkillName('../escape'), isFalse);
+      expect(SkillLoader.isValidSkillName(''), isFalse);
+    });
+  });
 }

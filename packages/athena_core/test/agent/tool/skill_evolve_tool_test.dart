@@ -88,4 +88,22 @@ void main() {
     expect(File('$rootHome/.athena/skills/bad/name/SKILL.md').existsSync(),
         isFalse);
   });
+
+  test('特殊字符 description 经写入后仍可正确解析', () async {
+    final registry = newRegistry(homeDir: rootHome);
+    await SkillEvolveTool(
+      skillRegistry: registry,
+      homeDir: rootHome,
+    ).execute({
+      'name': 'special-desc',
+      'action': 'create',
+      'description': 'Uses: colons and "quotes"',
+      'body': 'body',
+    });
+
+    expect(
+      registry.get('special-desc')!.description,
+      'Uses: colons and "quotes"',
+    );
+  });
 }

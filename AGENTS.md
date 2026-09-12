@@ -14,6 +14,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
+- **技能与经验管理（GUI）**：设置页可视化管理 Skill（新建/编辑/删除）与 Experience（归档/恢复/删除），移动端首页 Skills 卡片行；与 Agent 工具共用同一份文件存储
 - **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
 - **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
 - **多模型提供商**：OpenAI API 兼容，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
@@ -53,7 +54,7 @@ athena/
     │   │   ├── database/        # SQLite + Laconic ORM + 16 个迁移
     │   │   ├── repository/      # 5 个 SqliteXxxRepository（引擎接口的 SQLite 实现）
     │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
-    │   │   ├── view_model/      # 5 个 ViewModel（Signals）+ delegate/（3 个委托）
+    │   │   ├── view_model/      # 7 个 ViewModel（Signals）+ delegate/（3 个委托）
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
     │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
     │   │   ├── widget/          # 设计系统组件（20+）
@@ -107,7 +108,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网�
 1. **Repository**（6 个 LazySingleton：5 个 Sqlite 实现 + ExperienceRepository）
 2. **Service**（LlmClient → ChatCompletionsService / ChatMessageConverter / ChatStoreService / ChatUpdateService / SentinelService / DataMigrationService / ModelCatalogService）
 3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
-4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、ModelResolver）
+4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、SkillViewModel、ExperienceViewModel、ModelResolver）
 5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
 6. **ChatViewModel**（最后注册，依赖最多）
 
@@ -324,6 +325,13 @@ disable-model-invocation: false
 - **Memory Digest**：每次顶层 send 临时注入当前 Sentinel 可见的全部 active lesson；目录不依赖当前任务，经验库不变时内容逐字稳定，context/tags 由 `experience_recall` 按需读取
 - 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
 
+### 7.7 Skill 与 Experience 管理（GUI）
+
+- 移动端首页仅展示 `Experiences` 卡片行（原 Shortcut 卡片样式，`component/card_tile.dart`；最近 10 条经验，标题常显、箭头进经验管理页，无数据时仅展示标题行；Skills 不在首页展示，仅设置页管理）；移动端设置页与桌面端设置页各有 `Skills` / `Experiences` 两个管理入口
+- Skill：网格列表 + 详情 + 表单（Name / Description / Allowed tools / Instructions）；内置 self-evolve 只读锁定；名称即目录名，编辑时不可改名
+- Experience：只读浏览（内容由 Agent 进化产出，不支持手工增改）；归档项始终展示，条目尾部仅展示归档图标（位置与样式参照 Provider 预设的尾部标记）；列表仅提供 All / Shared / Private 过滤，归档/恢复与删除另可通过列表项右键菜单（桌面）或长按弹层（移动端），删除带确认弹窗
+- 数据与 Agent 工具（skill_evolve / experience_learn）同源：`~/.athena/skills`、`~/.athena/experiences`（移动端为沙盒内目录），写入分别复用 `SkillLoader.saveSkill` 与 `ExperienceRepository`
+
 ---
 
 ## 8. Coordinator 层（run 编排）
@@ -432,6 +440,8 @@ GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，�
 | ProviderViewModel | 提供商列表、启用/禁用 |
 | SentinelViewModel | Sentinel 列表、默认选择、元数据生成 |
 | SettingViewModel | 全局设置（默认模型、最大迭代、辅助模型、窗口尺寸、数据迁移） |
+| SkillViewModel | Skill 列表与 CRUD（内置 self-evolve 只读） |
+| ExperienceViewModel | Experience 列表、编辑、归档/恢复、删除 |
 
 ---
 
@@ -509,7 +519,7 @@ cardPrimaryBackground / cardPrimaryText
   - `util/` - retry、tool_args_formatter；`extension/` - json_map_extension
 - `packages/athena_gui/test/`（Flutter，`flutter test`）
   - `database/` - migration_test、cascade_characterization_test
-  - `view_model/` - chat_view_model_stream_test、chat_draft_sentinel_test、setting/sentinel_view_model_test、view_model_defaults_test
+  - `view_model/` - chat_view_model_stream_test、chat_draft_sentinel_test、setting/sentinel_view_model_test、skill/experience_view_model_test、view_model_defaults_test
   - `page/mobile/` - chat_page_test、home_page_test
   - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
 

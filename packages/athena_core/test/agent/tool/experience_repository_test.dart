@@ -221,4 +221,41 @@ void main() {
     expect(all, hasLength(1));
     expect(all.single.status, ExperienceEntity.statusActive);
   });
+
+  group('listAll', () {
+    test('跨目录汇总私有与 shared，按时间倒序', () async {
+      final repo = newRepo();
+      final s1 = await repo.save(lesson: 's1 lesson', sentinelId: 's1');
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      final shared = await repo.save(
+        lesson: 'shared lesson',
+        scope: 'shared',
+        sentinelId: 's1',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      final s2 = await repo.save(lesson: 's2 lesson', sentinelId: 's2');
+
+      final all = await repo.listAll();
+      expect(all.map((e) => e.id), containsAll([s1.id, shared.id, s2.id]));
+      expect(all.first.id, s2.id, reason: '按创建时间倒序');
+      expect(all.firstWhere((e) => e.id == shared.id).scope, 'shared');
+    });
+
+    test('归档项默认隐藏，includeArchived 可见', () async {
+      final repo = newRepo();
+      final a = await repo.save(lesson: 'a', sentinelId: 's1');
+      final b = await repo.save(lesson: 'b', sentinelId: 's1');
+      await repo.update(
+        sentinelId: 's1',
+        id: b.id,
+        status: ExperienceEntity.statusArchived,
+      );
+
+      expect((await repo.listAll()).map((e) => e.id), [a.id]);
+      expect(
+        (await repo.listAll(includeArchived: true)).map((e) => e.id),
+        containsAll([a.id, b.id]),
+      );
+    });
+  });
 }

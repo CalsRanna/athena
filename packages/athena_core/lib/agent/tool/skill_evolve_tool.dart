@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 
@@ -91,7 +92,7 @@ class SkillEvolveTool implements Tool {
     final allowedTools = args['allowed_tools'] as String? ?? '';
     final body = args['body'] as String;
 
-    if (!_isValidSkillName(skillName)) {
+    if (!SkillLoader.isValidSkillName(skillName)) {
       return 'Error: Invalid skill name "$skillName". '
           'Use kebab-case, max 64 chars, no special characters or path separators.';
     }
@@ -143,27 +144,15 @@ class SkillEvolveTool implements Tool {
     required String targetDir,
   }) {
     final skillFile = '$targetDir/SKILL.md';
-
-    final buffer = StringBuffer();
-    buffer.writeln('---');
-    buffer.writeln('name: $skillName');
-    buffer.writeln('description: $description');
-    if (allowedTools.isNotEmpty) {
-      buffer.writeln('allowed-tools: $allowedTools');
-    }
-    buffer.writeln('---');
-    buffer.writeln();
-    buffer.write(body.trim());
-    if (!body.endsWith('\n')) {
-      buffer.writeln();
-    }
-
     try {
-      final dir = Directory(targetDir);
-      if (!dir.existsSync()) {
-        dir.createSync(recursive: true);
-      }
-      File(skillFile).writeAsStringSync(buffer.toString());
+      // 与 GUI 管理页共用同一写入实现，保证 front matter 转义一致。
+      SkillLoader().saveSkill(
+        name: skillName,
+        description: description,
+        allowedTools: allowedTools,
+        body: body,
+        targetDir: targetDir,
+      );
 
       _skillRegistry.reloadSkill(skillName, targetDir);
 
@@ -173,24 +162,5 @@ class SkillEvolveTool implements Tool {
     } catch (e) {
       return 'Error writing skill file: $e';
     }
-  }
-
-  bool _isValidSkillName(String name) {
-    if (name.isEmpty || name.length > 64) return false;
-    for (final code in name.codeUnits) {
-      if (code < 0x20 || code == 0x7f) return false;
-      if (code == 0x2f || code == 0x5c) return false;
-      if (code == 0x3a || // :
-          code == 0x2a || // *
-          code == 0x3f || // ?
-          code == 0x22 || // "
-          code == 0x3c || // <
-          code == 0x3e || // >
-          code == 0x7c) {
-        return false; // Windows 文件名非法字符
-      }
-    }
-    if (name == '.' || name == '..') return false;
-    return true;
   }
 }
