@@ -74,6 +74,8 @@ class _MessageListViewState extends State<MessageListView> {
       var messages = viewModel.messages.value
           .where((m) => m.chatId == widget.chat.id)
           .toList();
+      final loading = viewModel.isCurrentChatStreaming.value;
+      controller.isWorking = loading;
       if (_displayedChatId != widget.chat.id) {
         _displayedChatId = widget.chat.id;
         controller.followBottom();
@@ -85,7 +87,6 @@ class _MessageListViewState extends State<MessageListView> {
           .where((r) => r.chatId == widget.chat.id)
           .toList();
 
-      var loading = viewModel.isCurrentChatStreaming.value;
       final loadingHistory = viewModel.isLoadingMessages.value &&
           viewModel.currentChat.value?.id == widget.chat.id;
 
