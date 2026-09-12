@@ -52,11 +52,11 @@ class DesktopMessageInput extends StatelessWidget {
           onTemperatureChange: onTemperatureChange,
         ),
         DesktopImageSelector(onSelected: onImageSelected),
+        const Spacer(),
         DesktopReasoningEffortButton(
           current: chatViewModel.currentReasoningEffort.value,
           onSelected: onReasoningEffortChange,
         ),
-        const Spacer(),
         const DesktopTokenIndicator(),
       ];
       var toolbar = Row(spacing: 12, children: toolbarChildren);
