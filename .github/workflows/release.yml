@@ -9,7 +9,18 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 先建空 Release，各平台 job 并行 upload asset（已存在则跳过，保证重跑幂等）
+      # --draft=false 显式发布，避免 gh release create 留下草稿
+      - run: gh release view "${{ github.ref_name }}" >/dev/null 2>&1 || gh release create "${{ github.ref_name }}" --generate-notes --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   build-macos:
+    needs: create-release
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,12 +55,16 @@ jobs:
           fi
           zip -r -y Athena-macOS.zip "$APP_BUNDLE"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Athena-macOS
-          path: packages/athena_gui/build/macos/Build/Products/Release/Athena-macOS.zip
+      # 直传 Release（create-release 已预建，--clobber 容忍重跑）
+      - name: Upload asset
+        working-directory: packages/athena_gui/build/macos/Build/Products/Release
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "Athena-macOS.zip" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build-windows:
+    needs: create-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,12 +96,16 @@ jobs:
           # zip 内 exe 名与 asset 基名不同，由 .tapster.yaml 的 bin 字段显式声明
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath Athena-Windows.zip
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Athena-Windows
-          path: packages/athena_gui/Athena-Windows.zip
+      # 直传 Release（create-release 已预建，--clobber 容忍重跑）
+      - name: Upload asset
+        working-directory: packages/athena_gui
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "Athena-Windows.zip" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   build-linux:
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,23 +145,10 @@ jobs:
         working-directory: packages/athena_gui
         run: tar -czf Athena-Linux.tar.gz -C build/linux/x64/release/bundle .
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Athena-Linux
-          path: packages/athena_gui/Athena-Linux.tar.gz
-
-  release:
-    needs: [build-macos, build-windows, build-linux]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          merge-multiple: true
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            Athena-macOS.zip
-            Athena-Windows.zip
-            Athena-Linux.tar.gz
-          generate_release_notes: true
+      # 直传 Release（create-release 已预建，--clobber 容忍重跑）
+      - name: Upload asset
+        working-directory: packages/athena_gui
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "Athena-Linux.tar.gz" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
