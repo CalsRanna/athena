@@ -1,5 +1,7 @@
+import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/page/mobile/home/home.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
@@ -50,6 +52,24 @@ void main() {
       await pumpHomePage(tester);
 
       expect(find.text('Athena'), findsOneWidget);
+    });
+
+    testWidgets('shows Skills section and cards when user skills exist', (
+      tester,
+    ) async {
+      await pumpHomePage(tester);
+      GetIt.instance<SkillViewModel>().skills.value = [
+        const Skill(
+          name: 'demo-skill',
+          description: 'A demo skill',
+          body: 'body',
+          sourcePath: '/tmp/demo-skill',
+        ),
+      ];
+      await tester.pumpAndSettle();
+
+      expect(find.text('Skills'), findsOneWidget);
+      expect(find.text('demo-skill'), findsOneWidget);
     });
   });
 }

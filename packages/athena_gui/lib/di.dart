@@ -35,10 +35,12 @@ import 'package:athena_gui/storage/shared_prefs_key_value_store.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
+import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:get_it/get_it.dart';
 
 class DI {
@@ -126,6 +128,17 @@ class DI {
       () => ModelResolver(
         modelRepo: getIt<ModelRepository>(),
         providerRepo: getIt<ProviderRepository>(),
+      ),
+    );
+
+    getIt.registerLazySingleton(
+      () => SkillViewModel(skillRegistry: getIt<SkillRegistry>()),
+    );
+
+    getIt.registerLazySingleton(
+      () => ExperienceViewModel(
+        experienceRepository: getIt<ExperienceRepository>(),
+        sentinelRepository: getIt<SentinelRepository>(),
       ),
     );
 

@@ -1,3 +1,4 @@
+import 'package:athena_gui/component/card_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
 import 'package:athena_gui/page/mobile/home/component/recent_chat_list_view.dart';
 import 'package:athena_gui/page/mobile/home/component/section_title.dart';
@@ -7,12 +8,14 @@ import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/error_boundary.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
@@ -26,6 +29,7 @@ class MobileHomePage extends StatefulWidget {
 class _MobileHomePageState extends State<MobileHomePage> {
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  final skillViewModel = GetIt.instance<SkillViewModel>();
 
   @override
   void initState() {
@@ -38,6 +42,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       await GetIt.instance<SettingViewModel>().initSignals();
       await chatViewModel.getChats();
       await sentinelViewModel.getSentinels();
+      await skillViewModel.load();
     } catch (e) {
       if (mounted) {
         AthenaDialog.error('Failed to load home data. Please try again.');
@@ -51,6 +56,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       MobileHomeWelcome(),
       const NewChatButton(),
       _buildRecentChatListView(),
+      _buildSkillsListView(),
       _buildSentinelListView(),
     ];
     var body = AthenaErrorBoundary(
@@ -61,6 +67,40 @@ class _MobileHomePageState extends State<MobileHomePage> {
       ),
     );
     return AthenaScaffold(body: body);
+  }
+
+  Widget _buildSkillsListView() {
+    return Watch((context) {
+      var skills = skillViewModel.userSkills.value;
+      if (skills.isEmpty) return const SizedBox();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          SectionTitle('Skills', onTap: () => navigateSkillList(context)),
+          SizedBox(
+            height: 160,
+            child: CardListView(
+              itemCount: skills.length,
+              itemBuilder: (_, index) {
+                var skill = skills[index];
+                return CardTile(
+                  icon: HugeIcons.strokeRoundedBook01,
+                  name: skill.name,
+                  description: skill.description,
+                  onTap: () =>
+                      MobileSkillDetailRoute(skill: skill).push(context),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  void navigateSkillList(BuildContext context) {
+    MobileSkillListRoute().push(context);
   }
 
   Widget _buildSentinelListView() {

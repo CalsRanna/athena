@@ -40,6 +40,18 @@ class SettingPage extends StatelessWidget {
         trailing: '',
       ),
       MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedBook01, size: 24),
+        onTap: () => MobileSkillListRoute().push(context),
+        title: 'Skills',
+        trailing: '',
+      ),
+      MobileSettingTile(
+        leading: Icon(HugeIcons.strokeRoundedAiBrain02, size: 24),
+        onTap: () => MobileExperienceListRoute().push(context),
+        title: 'Experiences',
+        trailing: '',
+      ),
+      MobileSettingTile(
         leading: Icon(HugeIcons.strokeRoundedAiBrain01, size: 24),
         onTap: () => MobileDefaultModelFormRoute().push(context),
         title: 'Default Model',

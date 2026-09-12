@@ -1,5 +1,6 @@
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
+import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
 
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -25,6 +26,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   final _icons = [
     HugeIcons.strokeRoundedPowerService,
     HugeIcons.strokeRoundedArtificialIntelligence03,
+    HugeIcons.strokeRoundedBook01,
+    HugeIcons.strokeRoundedAiBrain02,
     HugeIcons.strokeRoundedAiBrain01,
     HugeIcons.strokeRoundedAiSetting,
     HugeIcons.strokeRoundedSettings03,
@@ -33,6 +36,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   final _menus = [
     'Provider',
     'Sentinel',
+    'Skills',
+    'Experiences',
     'Default Model',
     'Agent',
     'Advanced',
@@ -63,10 +68,12 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var route = switch (index) {
       0 => const DesktopSettingProviderRoute(),
       1 => const DesktopSettingSentinelRoute(),
-      2 => const DesktopSettingDefaultModelRoute(),
-      3 => const DesktopSettingAgentRoute(),
-      4 => const DesktopSettingAdvancedRoute(),
-      5 => const DesktopSettingAboutRoute(),
+      2 => const DesktopSettingSkillRoute(),
+      3 => const DesktopSettingExperienceRoute(),
+      4 => const DesktopSettingDefaultModelRoute(),
+      5 => const DesktopSettingAgentRoute(),
+      6 => const DesktopSettingAdvancedRoute(),
+      7 => const DesktopSettingAboutRoute(),
       _ => null,
     };
     if (route == null) return;
@@ -82,10 +89,14 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       AthenaDialog.show(DesktopSentinelFormDialog());
       return;
     }
+    if (index == 2) {
+      AthenaDialog.show(DesktopSkillFormDialog());
+      return;
+    }
   }
 
   Widget _buildCreateButton(BuildContext context) {
-    if (![0, 1].contains(index)) return const SizedBox();
+    if (![0, 1, 2].contains(index)) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
       HugeIcons.strokeRoundedPencilEdit02,
