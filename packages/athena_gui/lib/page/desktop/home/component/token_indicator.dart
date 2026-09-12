@@ -6,11 +6,8 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 输入框工具栏中的 token 使用情况指示器。
 ///
-/// 与左侧的 Config/Image 图标同风格（24px 图标 + 紧凑文本），
-/// 不渲染 chip 容器。展示：
-/// - 上下文窗口占用率（ctx%），超过 80% 暖色提示
-/// - 缓存命中率（仅 provider 返回缓存数据时）
-/// - 会话累计总量（悬停 Tooltip 显完整明细）
+/// 12px 圆环展示上下文窗口占用率，超过 80% 时使用警示色。
+/// 悬停后展示上下文、缓存命中与会话累计用量的完整明细。
 ///
 /// 无任何数据时不渲染。
 class DesktopTokenIndicator extends StatefulWidget {
@@ -58,44 +55,14 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     required bool hasCache,
   }) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final style = TextStyle(
-      color: colors.textInput,
-      fontSize: 12,
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
-    final accentStyle = TextStyle(
-      color: colors.teal,
-      fontSize: 12,
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
-    // 超过 80% 用暖色提醒窗口即将耗尽。
-    final over80 = hasCtx && ctxTokens / ctxWindow >= 0.8;
-    final ctxPctStyle = over80
-        ? accentStyle.copyWith(color: colors.border)
-        : accentStyle;
-
+    final usage = hasCtx ? ctxTokens / ctxWindow : 0.0;
     final ctxPct = hasCtx
         ? ((ctxTokens / ctxWindow) * 100).toStringAsFixed(
             ctxTokens * 100 ~/ ctxWindow > 99 ? 0 : 1,
           )
         : '—';
 
-    // 主行：ctx 占用率 + 可选 cache 率 + 累计
-    final children = <Widget>[
-      Text('context $ctxPct%', style: ctxPctStyle),
-      if (hasCache) ...[
-        const SizedBox(width: 10),
-        Text(
-          'cache ${_cacheRate(cachedTokens, ctxTokens)}%',
-          style: accentStyle,
-        ),
-      ],
-      const SizedBox(width: 10),
-      Text('total ${_format(cumulative)}', style: style),
-    ];
-
-    final child = Row(mainAxisSize: MainAxisSize.min, children: children);
-    final tooltip = Tooltip(
+    return Tooltip(
       richMessage: _tooltip(
         context,
         cumulative: cumulative,
@@ -104,6 +71,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         cachedTokens: cachedTokens,
         hasCtx: hasCtx,
         hasCache: hasCache,
+        ctxPct: ctxPct,
       ),
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
@@ -111,9 +79,19 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       ),
       padding: const EdgeInsets.all(10),
       preferBelow: false,
-      child: child,
+      child: SizedBox.square(
+        dimension: 12,
+        child: CircularProgressIndicator(
+          value: usage.clamp(0.0, 1.0),
+          strokeWidth: 2.5,
+          strokeCap: StrokeCap.round,
+          backgroundColor: colors.borderFaint.withValues(alpha: 0.25),
+          color: usage >= 0.8 ? colors.statusWarning : colors.teal,
+          semanticsLabel: '上下文窗口占用率',
+          semanticsValue: hasCtx ? '$ctxPct%' : '暂无数据',
+        ),
+      ),
     );
-    return MouseRegion(cursor: SystemMouseCursors.click, child: tooltip);
   }
 
   TextSpan _tooltip(
@@ -124,6 +102,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     required int cachedTokens,
     required bool hasCtx,
     required bool hasCache,
+    required String ctxPct,
   }) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final ts = TextStyle(color: colors.textInput, fontSize: 12, height: 1.5);
@@ -131,7 +110,8 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       TextSpan(text: '上下文窗口'),
       TextSpan(
         text: hasCtx
-            ? '\n${_format(ctxTokens)} / ${_format(ctxWindow)}'
+            ? '\n已使用 $ctxPct%'
+                  '\n${_brk(ctxTokens)} / ${_brk(ctxWindow)} tokens'
             : '\n暂无数据',
         style: TextStyle(color: colors.teal),
       ),
@@ -180,18 +160,5 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       buf.write(s[i]);
     }
     return buf.toString();
-  }
-
-  String _format(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    }
-    if (value >= 1000) {
-      final k = value / 1000;
-      return k == k.roundToDouble()
-          ? '${k.toStringAsFixed(0)}k'
-          : '${k.toStringAsFixed(1)}k';
-    }
-    return value.toString();
   }
 }
