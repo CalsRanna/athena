@@ -94,6 +94,26 @@ class ExperienceRepository {
     return _filterArchived(_listDir(dir), includeArchived);
   }
 
+  /// 列出全部经验（所有 Sentinel 私有 + shared），按时间倒序。
+  ///
+  /// 供管理界面使用；常规检索请用 [listForSentinel] / [searchForSentinel]。
+  Future<List<ExperienceEntity>> listAll({bool includeArchived = false}) async {
+    final baseDir = Directory(_basePath);
+    if (!await baseDir.exists()) return const [];
+    final results = <ExperienceEntity>[];
+    await for (final entry in baseDir.list()) {
+      if (entry is! Directory) continue;
+      results.addAll(await _listDir(entry));
+    }
+    final filtered = includeArchived
+        ? results
+        : results
+              .where((e) => e.status != ExperienceEntity.statusArchived)
+              .toList();
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return filtered;
+  }
+
   /// 默认过滤 archived 经验（保留为反例，但不参与常规检索）。
   Future<List<ExperienceEntity>> _filterArchived(
     Future<List<ExperienceEntity>> future,

@@ -114,6 +114,31 @@ class SkillRegistry {
     _skills[skillName] = skill;
   }
 
+  /// 重新扫描用户级 Skill 目录（复用最近一次 [loadAll] 的 homeDir）。
+  /// 内置 Skill 不受影响。
+  void reload() {
+    loadAll(homeDir: _homeDir);
+  }
+
+  /// 删除用户级 Skill：删除其目录并从内存移除。
+  ///
+  /// 内置 Skill（如 self-evolve）或未找到时返回 false，不做任何删除。
+  bool deleteSkill(String name) {
+    final skill = _skills[name];
+    if (skill == null) return false;
+    final dir = Directory(skill.sourcePath);
+    if (dir.existsSync()) {
+      dir.deleteSync(recursive: true);
+    }
+    _skills.remove(name);
+    return true;
+  }
+
+  /// 用户级 Skill 根目录（`{homeDir}/.athena/skills`）。
+  ///
+  /// 以最近一次 [loadAll] 的 homeDir 为准；新建 Skill 的落盘目录由此计算。
+  String get skillsDirectory => '${_homeDir ?? _homePath}/.athena/skills';
+
   Skill? get currentContext {
     if (_contextStack.isEmpty) return null;
     return _skills[_contextStack.last];

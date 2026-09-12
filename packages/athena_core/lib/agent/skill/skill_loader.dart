@@ -18,11 +18,14 @@ class Skill {
     this.disableModelInvocation = false,
     required this.sourcePath,
   });
+
+  /// 代码注册的内置 Skill（非文件系统来源），不可编辑/删除。
+  bool get isBuiltin => sourcePath == '(builtin)';
 }
 
 class SkillLoader {
-  static bool _isValidSkillName(String name) {
-    if (name.length > 64) return false;
+  static bool isValidSkillName(String name) {
+    if (name.isEmpty || name.length > 64) return false;
     for (final code in name.codeUnits) {
       if (code < 0x20 || code == 0x7f) return false; // 控制字符
       if (code == 0x2f || code == 0x5c) return false; // / \
@@ -38,6 +41,59 @@ class SkillLoader {
     }
     if (name == '.' || name == '..') return false;
     return true;
+  }
+
+  /// 写入 SKILL.md（front matter + body），目录不存在时递归创建。
+  ///
+  /// 与 [parseSkillFile] 互为逆操作；标量统一用双引号包裹并转义，
+  /// 避免 description 含冒号/井号/引号/换行时破坏 YAML。
+  /// 调用方应先以 [isValidSkillName] 校验 name。
+  void saveSkill({
+    required String name,
+    required String description,
+    String? allowedTools,
+    required String body,
+    required String targetDir,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln('---');
+    buffer.writeln('name: ${_yamlScalar(name)}');
+    buffer.writeln('description: ${_yamlScalar(description)}');
+    if (allowedTools != null && allowedTools.isNotEmpty) {
+      buffer.writeln('allowed-tools: ${_yamlScalar(allowedTools)}');
+    }
+    buffer.writeln('---');
+    buffer.writeln();
+    buffer.write(body.trim());
+    if (!body.endsWith('\n')) {
+      buffer.writeln();
+    }
+
+    final dir = Directory(targetDir);
+    if (!dir.existsSync()) {
+      dir.createSync(recursive: true);
+    }
+    File('$targetDir/SKILL.md').writeAsStringSync(buffer.toString());
+  }
+
+  /// YAML 双引号标量：转义反斜杠/引号/换行/回车/制表符。
+  static String _yamlScalar(String value) {
+    final escaped = value
+        .replaceAll(r'\', r'\\')
+        .replaceAll('"', r'\"')
+        .replaceAll('\n', r'\n')
+        .replaceAll('\r', r'\r')
+        .replaceAll('\t', r'\t');
+    return '"$escaped"';
+  }
+
+  /// 解析 YAML；语法错误返回 null（与"跳过非法 Skill 目录"的容错一致）。
+  static Object? _tryLoadYaml(String yaml) {
+    try {
+      return loadYaml(yaml);
+    } catch (_) {
+      return null;
+    }
   }
 
   List<Skill> loadFromDirectory(String directoryPath) {
@@ -81,7 +137,7 @@ class SkillLoader {
     final frontmatterYaml = lines.sublist(1, endIndex).join('\n');
     final body = lines.sublist(endIndex + 1).join('\n').trim();
 
-    final frontmatter = loadYaml(frontmatterYaml);
+    final frontmatter = _tryLoadYaml(frontmatterYaml);
     if (frontmatter is! YamlMap) return null;
 
     final name = frontmatter['name'] as String?;
@@ -89,7 +145,7 @@ class SkillLoader {
     if (name == null || description == null || name.isEmpty || description.isEmpty) {
       return null;
     }
-    if (!_isValidSkillName(name)) return null;
+    if (!isValidSkillName(name)) return null;
 
     return Skill(
       name: name,
