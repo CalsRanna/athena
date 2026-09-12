@@ -50,6 +50,10 @@ class SettingViewModel {
 
   /// 委托核心 [AgentSettings]（持久化走 KeyValueStore）。
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
+  Signal<bool> get aiApprovalEnabled => _agentSettings.aiApprovalEnabled;
+
+  Future<void> updateAiApprovalEnabled(bool enabled) =>
+      _agentSettings.updateAiApprovalEnabled(enabled);
   final maxRetries = signal(10);
   final braveApiKey = signal('');
   // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统

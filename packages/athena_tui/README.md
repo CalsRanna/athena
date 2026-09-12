@@ -31,9 +31,12 @@ dart run bin/athena.dart
 | `/providers` | 配置 provider API key(弹层选择 → 输入 key) |
 | `/json <文本>` | 以 JSON 模式运行 Agent |
 | `/help` | 帮助 |
+| `/review [on\|off]` | 查看、开启或关闭 AI 自动审核，保存后下一轮生效 |
 | `/quit` | 退出 |
 
 权限审批在终端内联提示:`[y] 允许 [n] 拒绝 [a] 总是允许`(总是允许写入 `~/.athena/permissions.json`,与 GUI 共享规则)。
+
+AI 自动审核默认开启，覆盖所有工具类型：原本需要审批的调用先由当前模型的独立请求判断授权。明确 deny 直接拦截，模型主动建议 ask、审核无法确定或失败时转人工；已有规则允许的调用不增加审核请求。自动批准仅限本次调用，不保存为持久授权。
 
 ## 架构
 

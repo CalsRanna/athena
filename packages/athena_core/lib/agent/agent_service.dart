@@ -7,12 +7,13 @@ import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
-    show CancellableTool, toolCallDescriptionKey;
+    show CancellableTool, toolExecutionArguments, toolApprovalRecommendationKey;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -31,6 +32,7 @@ typedef BeforeToolCallContext = ({
   String name,
   String arguments,
   Map<String, dynamic> args,
+  void Function(AiApprovalReview review) recordReview,
 });
 
 /// beforeToolCall 返回结果。
@@ -56,6 +58,7 @@ class AgentService {
   final ToolRegistry _toolRegistry;
   final SkillRegistry? _skillRegistry;
   final DateTime Function() _now;
+  final AiPermissionReviewer _permissionReviewer;
 
   // ─── 运行时状态（按 runId 隔离，多 run 可并发）────────────────
   final Map<int, _AgentRunState> _runs = {};
@@ -74,9 +77,12 @@ class AgentService {
     required ToolRegistry toolRegistry,
     SkillRegistry? skillRegistry,
     DateTime Function()? now,
+    AiPermissionReviewer? permissionReviewer,
   }) : _chatService = chatService,
        _toolRegistry = toolRegistry,
        _skillRegistry = skillRegistry,
+       _permissionReviewer =
+           permissionReviewer ?? AiPermissionReviewer(chatService: chatService),
        _now = now ?? DateTime.now {
     _toolRegistry.register(ToolOutputReadTool(_toolRegistry.outputStore));
   }
@@ -99,6 +105,7 @@ class AgentService {
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
+    PermissionReviewContext? permissionReviewContext,
     int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
@@ -129,6 +136,10 @@ class AgentService {
       permissionService: permissionService,
       onPermission: onPermission,
       cancelToken: token,
+      reviewContext: permissionReviewContext,
+      provider: provider,
+      model: model,
+      sentinelId: sentinelId,
     );
 
     try {
@@ -151,6 +162,7 @@ class AgentService {
       rethrow;
     } finally {
       _skillRegistry?.clearContext();
+      permissionService?.resetSession(runId);
       _runs.remove(runId);
       if (!state.settled.isCompleted) state.settled.complete();
     }
@@ -166,6 +178,7 @@ class AgentService {
     String? sentinelId,
     PermissionGate? permissionGate,
   }) async {
+    AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
       String raw,
       ToolResultStatus status,
@@ -179,6 +192,7 @@ class AgentService {
           modelResult: output.modelResult,
           outputId: output.outputId,
           status: status,
+          approvalReview: approvalReview?.toJson(),
         ),
         processedResult: output.modelResult,
         rawResult: raw,
@@ -213,7 +227,7 @@ class AgentService {
     }
 
     // Keep display metadata in the original JSON for UI/history only.
-    args.remove(toolCallDescriptionKey);
+    args = toolExecutionArguments(args);
 
     // 权限门（拦截或放行）
     if (permissionGate != null) {
@@ -221,6 +235,7 @@ class AgentService {
         name: toolCall.function.name,
         arguments: toolCall.function.arguments,
         args: args,
+        recordReview: (review) => approvalReview = review,
       ));
       if (gateResult.block) {
         final msg = gateResult.reason.isEmpty
@@ -300,7 +315,8 @@ class AgentService {
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
-        args.remove(toolCallDescriptionKey);
+        if (args[toolApprovalRecommendationKey] == 'ask') continue;
+        args = toolExecutionArguments(args);
       } catch (_) {
         args = null;
       }
@@ -335,12 +351,16 @@ class AgentService {
     PermissionService? permissionService,
     PermissionCallback? onPermission,
     required CancelToken cancelToken,
+    required PermissionReviewContext? reviewContext,
+    required ProviderEntity provider,
+    required ModelEntity model,
+    String? sentinelId,
   }) {
-    if (permissionService == null && onPermission == null) {
-      return null;
-    }
-
+    final userDecisions = <Map<String, Object?>>[];
     return (ctx) async {
+      cancelToken.throwIfCancelled();
+      final metadata = jsonDecode(ctx.arguments) as Map<String, dynamic>;
+      final asksUser = metadata[toolApprovalRecommendationKey] == 'ask';
       final verdict =
           permissionService?.check(
             runId,
@@ -348,13 +368,46 @@ class AgentService {
             ctx.args,
             risk: _toolRegistry.get(ctx.name)?.risk,
           ) ??
-          PermissionVerdict.prompt;
+          (onPermission == null
+              ? PermissionVerdict.allow
+              : PermissionVerdict.prompt);
 
       if (verdict == PermissionVerdict.deny) {
         return (block: true, reason: 'Tool call denied by a permission rule.');
       }
 
-      if (verdict == PermissionVerdict.prompt) {
+      if (asksUser || verdict == PermissionVerdict.prompt) {
+        final tool = _toolRegistry.get(ctx.name);
+        if (!asksUser && reviewContext != null && tool != null) {
+          final review = await _permissionReviewer.review(
+            context: reviewContext,
+            toolName: ctx.name,
+            toolDescription: tool.description,
+            arguments: ctx.args,
+            provider: provider,
+            model: model,
+            cancelToken: cancelToken,
+            sentinelId: sentinelId,
+            userDecisions: userDecisions,
+          );
+          cancelToken.throwIfCancelled();
+          ctx.recordReview(review);
+          // Recheck deny rules after the asynchronous review. AI approval never
+          // writes session or persistent rules, even for identical calls.
+          if (permissionService?.check(
+                runId,
+                ctx.name,
+                ctx.args,
+                risk: tool.risk,
+              ) ==
+              PermissionVerdict.deny) {
+            return (
+              block: true,
+              reason: 'Tool call denied by a permission rule.',
+            );
+          }
+          if (review.allowed) return (block: false, reason: '');
+        }
         if (onPermission == null) {
           return (
             block: true,
@@ -368,7 +421,13 @@ class AgentService {
           cancelToken.whenCancelled.then((_) => false),
         ]);
         cancelToken.throwIfCancelled();
+        userDecisions.add({
+          'tool': ctx.name,
+          'arguments': Map<String, dynamic>.of(ctx.args),
+          'approved': approved,
+        });
         if (!approved) {
+          permissionService?.denyForSession(runId, ctx.name, ctx.args);
           return (block: true, reason: 'User denied the tool execution.');
         }
       }
@@ -1088,6 +1147,7 @@ sealed class AgentEvent {
     String? modelResult,
     String? outputId,
     required ToolResultStatus status,
+    Map<String, dynamic>? approvalReview,
   }) = AgentToolResultEvent;
 
   const factory AgentEvent.iterationComplete({
@@ -1155,6 +1215,7 @@ class AgentToolResultEvent extends AgentEvent {
   final String? modelResult;
   final String? outputId;
   final ToolResultStatus status;
+  final Map<String, dynamic>? approvalReview;
   const AgentToolResultEvent({
     required this.id,
     required this.name,
@@ -1162,6 +1223,7 @@ class AgentToolResultEvent extends AgentEvent {
     this.modelResult,
     this.outputId,
     this.status = ToolResultStatus.success,
+    this.approvalReview,
   });
 }
 

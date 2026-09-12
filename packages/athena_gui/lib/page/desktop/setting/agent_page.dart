@@ -5,6 +5,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/menu.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -31,6 +32,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   );
 
   int index = 0;
+  late bool aiApprovalEnabled = viewModel.aiApprovalEnabled.value;
 
   @override
   void dispose() {
@@ -123,6 +125,26 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
         iterationsRow,
         const SizedBox(height: 12),
         retriesRow,
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(child: AthenaFormTileLabel(title: 'AI Auto Review')),
+            AthenaSwitch(
+              value: aiApprovalEnabled,
+              onChanged: (value) => setState(() => aiApprovalEnabled = value),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Let the current model independently review tool calls that need approval. '
+          'Unclear requests still ask you. Applies to all tools from the next run.',
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
         const SizedBox(height: 24),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [saveButton]),
       ],
@@ -191,6 +213,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     }
     await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
+    await viewModel.updateAiApprovalEnabled(aiApprovalEnabled);
     if (!mounted) return;
     AthenaDialog.success('Settings saved');
   }

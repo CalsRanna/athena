@@ -6,6 +6,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -20,6 +21,7 @@ class MobileAgentPage extends StatefulWidget {
 
 class _MobileAgentPageState extends State<MobileAgentPage> {
   final viewModel = GetIt.instance.get<SettingViewModel>();
+  late bool aiApprovalEnabled = viewModel.aiApprovalEnabled.value;
   late final iterationsController = TextEditingController(
     text: viewModel.maxAgentIterations.value.toString(),
   );
@@ -86,6 +88,26 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           'Maximum network retry attempts for LLM API calls (default: 10)',
           style: tipTextStyle,
         ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(child: AthenaFormTileLabel.large(title: 'AI Auto Review')),
+            AthenaSwitch(
+              value: aiApprovalEnabled,
+              onChanged: (value) => setState(() => aiApprovalEnabled = value),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Let the current model independently review tool calls that need approval. '
+          'Unclear requests still ask you. Applies to all tools from the next run.',
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 12,
+            height: 1.5,
+          ),
+        ),
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerRight,
@@ -148,6 +170,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     }
     await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
+    await viewModel.updateAiApprovalEnabled(aiApprovalEnabled);
     if (!mounted) return;
     AthenaDialog.success('Settings saved');
   }

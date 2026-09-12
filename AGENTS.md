@@ -12,7 +12,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 - **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
 - **内置工具系统**：桌面端注册 15 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
-- **三层权限模型**：只读短路 → 会话级缓存 → 用户持久化规则 + 审批弹窗
+- **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
 - **技能与经验管理（GUI）**：设置页可视化管理 Skill（新建/编辑/删除）与 Experience（归档/恢复/删除），移动端首页 Skills 卡片行；与 Agent 工具共用同一份文件存储
 - **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
@@ -189,7 +189,7 @@ messages.value.add(newMessage);
 5. 流结束后检查 tool calls：
    - 无 tool call → `AgentDoneEvent`，结束
    - 有 tool call → 先做**截断保护**：`finishReason == length`（输出被 token 限制切断）时拒绝执行所有工具并提示重新调用
-6. **串行 + 并行混合执行**：`selectParallelCalls()` 预检分级——参数可解析、工具存在、`canExecuteParallel(args)` 且权限预检通过（`check() == true`，即不需要弹窗）的调用进并行组，其余进串行组。并行组用信号量限流（最多 8 个并发），`Future.any` 优先响应取消信号，结果渐进式产出
+6. **串行 + 并行混合执行**：`selectParallelCalls()` 预检分级——参数可解析、工具存在、`canExecuteParallel(args)` 且权限预检通过（`check() == PermissionVerdict.allow` 且模型未建议 `ask`）的调用进并行组，其余进串行组。并行组用信号量限流（最多 8 个并发），`Future.any` 优先响应取消信号，结果渐进式产出
 7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → 权限检查 → 执行 → `ToolOutputStore.prepare`（24,000 字符以内完整返回；超出后完整保存，返回 2,000 字符连续预览与 `tool_output_read` 续读提示）
 8. 工具结果消息加入消息列表，进入下一轮迭代；每轮请求前通过 `ContextBudget` 检查已知模型窗口的估算预算并预留输出空间，必要时将较早的工具结果替换为可续读引用（保留最新工具批次），仍超限则请求前报错；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
 
@@ -240,6 +240,7 @@ enum ToolRisk { readOnly, dangerous }
 ```
 
 - `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
+- `ToolRegistry.parametersFor()` 还统一添加可选 `approval_recommendation`（proceed/ask）与 `approval_reason`。建议保留在原始 JSON，交权限门读取，执行和规则缓存前通过 `toolExecutionArguments` 剥离。
 - `ToolRegistry.parametersFor()` 为所有工具统一添加可选的 `call_description`（用用户语言简述本次调用的动作与目标）。这是保留的展示元数据，工具不可将其用作业务参数；原有 `description` 业务字段保持原语义。Agent 按此 schema 校验后，在权限判断/并行判定/执行前移除元数据，原始 JSON 仍用于审批展示和历史记录。
 - GUI/TUI 共用 `tool_args_formatter.dart`：卡片预览优先调用说明，缺失时取 command/path/url/query 或精简 JSON；审批详情完整展示实际参数并支持滚动，不用说明替代实际操作。GUI 的 `ApprovalRequest.arguments` 保留原始 JSON，由卡片格式化。
 - `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
@@ -272,16 +273,23 @@ enum ToolRisk { readOnly, dangerous }
 
 ### 7.4 权限系统
 
-`PermissionService.check()` 三层判定（返回 `true` = 放行，`null` = 需要弹窗）：
+`PermissionService.check()` 返回 `allow / prompt / deny`：持久 deny 与本轮精确拒绝优先，之后为只读短路、按 runId 隔离的完整参数缓存、持久 allow 规则；其余为 prompt。`web_fetch` 的 POST / 自定义 headers 不走只读短路。没有路径/命令主参数的工具也支持整工具规则。
 
-1. **readOnly 短路**：工具 `risk == readOnly` 永不弹窗；shell 工具中只读命令（`CommandAnalyzer.isReadOnlyCommand`：ls、git status 等）也不弹窗
-2. **会话级缓存**：当前 run 内已批准的调用直接放行（`approveForSession`，run 开始时 `resetSession()`）
-3. **持久化规则**：`~/.athena/permissions.json` 中的 `PermissionRule`（tool + action + pattern，支持 `*`/`?` 通配符，无通配符时按前缀匹配）命中则放行
+`AgentService` 的权限门在规则判定后执行以下流程：
+- deny 直接拒绝；模型填写 `approval_recommendation: ask` 时覆盖 allow，转人工。
+- allow 且未 ask：直接执行；并行预检遵循同一约束，需审核/人工确认的调用留在串行组。
+- prompt 且未 ask：如开启 AI 审核，调用 core 的 `AiPermissionReviewer`，使用当前会话模型、独立系统提示、无工具请求，判断原始用户授权与实际调用参数。所有工具类型均可审核；模型建议 proceed 不能自行授予权限。
+- 审核输出严格解析为 allow/ask；20 秒超时、无用户原文、完整输入超过预算或格式/网络错误均转人工。取消会中止请求，不继续审批或执行。
+- 自动批准仅限当前调用，不写入会话缓存或持久规则。独立结论保存在工具结果 JSON 的 `approvalReview`（decision/reason/source）字段，与主模型建议分开。
 
-未命中 → 调用方通过 `PermissionPrompt` 回调弹窗（GUI 对话框 / TUI stdin 输入）。用户选择：
-- **Allow**：写会话级缓存（同一 run 内不再弹）
-- **Always Allow**：持久化规则——shell 命令用 `CommandAnalyzer.parseRulePattern` 解析为 **动作级规则**（action=git, pattern=push*），非 shell 存 keyArg（文件路径 / URL origin）
-- 弹窗不可被空白点击关闭（`barrierDismissible: false`）
+Coordinator 从包含 compacted 消息的原始历史构造 `PermissionReviewContext`，仅传入 user/assistant 文本，排除 system、思考、工具输出、技能与经验。助手提案只能辅助解释用户回复，不能作为授权。当前 run 内的人工决策独立提供给审核器；人工拒绝的完全相同调用在本轮直接拒绝，防止重试自动批准。
+
+GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_approval_enabled`，0 关闭/1 开启）。GUI 的 Agent → General 设置页保存开关；TUI `/review [on|off]` 查看/切换，下一轮生效。
+
+人工通过 `PermissionPrompt` 回调进入 GUI 会话内卡片 / TUI 审批条，实际参数完整可滚动：
+- **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。
+- **Always Allow**：另外通过 `PermissionRule.forToolCall` 写入持久规则。
+- **Deny**：本轮记录精确拒绝，优先于之前批准；run 完成或取消清空本轮缓存。
 
 工具自我保护（在工具 `execute()` 内部，独立于权限系统）：
 - bash/powershell：递归删除命令（rm -rf 变体 / del /s）被检测到拒绝执行

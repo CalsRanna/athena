@@ -80,6 +80,8 @@ void main() {
       final original = registry.get(function['name'] as String)!.parameters;
       final parameters = function['parameters'] as Map<String, dynamic>;
       expect(parameters['properties'], contains('call_description'));
+      expect(parameters['properties'], contains('approval_recommendation'));
+      expect(parameters['properties'], contains('approval_reason'));
       expect(parameters['required'], original['required']);
       expect(original['properties'], isNot(contains('call_description')));
     }
@@ -95,6 +97,8 @@ void main() {
         final arguments = {
           'description': 'Skill business description',
           'call_description': 'Update the testing skill',
+          'approval_recommendation': 'proceed',
+          'approval_reason': 'User requested this change',
         };
         final result = await service.executeToolCallInternal(
           toolCall: call(arguments),
