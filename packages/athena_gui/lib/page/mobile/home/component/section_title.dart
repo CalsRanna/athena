@@ -17,7 +17,7 @@ class SectionTitle extends StatelessWidget {
     );
     var children = [
       Expanded(child: Text(title, style: textStyle)),
-      _buildMoreButton(context),
+      if (onTap != null) _buildMoreButton(context),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

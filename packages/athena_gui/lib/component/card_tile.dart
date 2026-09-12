@@ -38,6 +38,8 @@ class CardTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               name,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: colors.textPrimary,
                 fontSize: 16,

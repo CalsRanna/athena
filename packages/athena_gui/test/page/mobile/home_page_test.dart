@@ -1,5 +1,7 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
+import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/mobile/home/home.dart';
+import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +56,7 @@ void main() {
       expect(find.text('Athena'), findsOneWidget);
     });
 
-    testWidgets('shows Skills section and cards when user skills exist', (
+    testWidgets('does not display skills on the home page', (
       tester,
     ) async {
       await pumpHomePage(tester);
@@ -68,8 +70,38 @@ void main() {
       ];
       await tester.pumpAndSettle();
 
-      expect(find.text('Skills'), findsOneWidget);
-      expect(find.text('demo-skill'), findsOneWidget);
+      expect(find.text('demo-skill'), findsNothing);
+      expect(find.text('Skills'), findsNothing);
+      expect(find.text('Skills & Experiences'), findsNothing);
+    });
+
+    testWidgets('shows Experiences title with empty data', (
+      tester,
+    ) async {
+      await pumpHomePage(tester);
+
+      expect(find.text('Experiences'), findsOneWidget);
+      expect(find.text('Skills & Experiences'), findsNothing);
+    });
+
+    testWidgets('shows experience cards on the home page', (
+      tester,
+    ) async {
+      await pumpHomePage(tester);
+      GetIt.instance<ExperienceViewModel>().experiences.value = [
+        ExperienceEntity(
+          id: 'e1',
+          createdAt: DateTime(2026, 9, 1),
+          lesson: 'Prefer re-reading files before editing',
+          sentinelId: '7',
+        ),
+      ];
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Prefer re-reading files before editing'),
+        findsOneWidget,
+      );
     });
   });
 }
