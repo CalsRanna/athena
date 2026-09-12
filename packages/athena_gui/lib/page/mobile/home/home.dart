@@ -6,9 +6,9 @@ import 'package:athena_gui/page/mobile/home/component/sentinel_list_view.dart';
 import 'package:athena_gui/page/mobile/home/component/welcome.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/error_boundary.dart';
 import 'package:athena_gui/widget/scaffold.dart';
@@ -29,7 +29,7 @@ class MobileHomePage extends StatefulWidget {
 class _MobileHomePageState extends State<MobileHomePage> {
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
-  final skillViewModel = GetIt.instance<SkillViewModel>();
+  final experienceViewModel = GetIt.instance<ExperienceViewModel>();
 
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       await GetIt.instance<SettingViewModel>().initSignals();
       await chatViewModel.getChats();
       await sentinelViewModel.getSentinels();
-      await skillViewModel.load();
+      await experienceViewModel.load();
     } catch (e) {
       if (mounted) {
         AthenaDialog.error('Failed to load home data. Please try again.');
@@ -56,7 +56,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
       MobileHomeWelcome(),
       const NewChatButton(),
       _buildRecentChatListView(),
-      _buildSkillsListView(),
+      _buildExperiencesListView(),
       _buildSentinelListView(),
     ];
     var body = AthenaErrorBoundary(
@@ -69,38 +69,50 @@ class _MobileHomePageState extends State<MobileHomePage> {
     return AthenaScaffold(body: body);
   }
 
-  Widget _buildSkillsListView() {
+  Widget _buildExperiencesListView() {
     return Watch((context) {
-      var skills = skillViewModel.userSkills.value;
-      if (skills.isEmpty) return const SizedBox();
+      var experiences = experienceViewModel.experiences.value
+          .take(10)
+          .toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
         children: [
-          SectionTitle('Skills', onTap: () => navigateSkillList(context)),
-          SizedBox(
-            height: 160,
-            child: CardListView(
-              itemCount: skills.length,
-              itemBuilder: (_, index) {
-                var skill = skills[index];
-                return CardTile(
-                  icon: HugeIcons.strokeRoundedBook01,
-                  name: skill.name,
-                  description: skill.description,
-                  onTap: () =>
-                      MobileSkillDetailRoute(skill: skill).push(context),
-                );
-              },
-            ),
+          SectionTitle(
+            'Experiences',
+            onTap: () => navigateExperienceList(context),
           ),
+          if (experiences.isNotEmpty)
+            SizedBox(
+              height: 160,
+              child: CardListView(
+                itemCount: experiences.length,
+                itemBuilder: (_, index) {
+                  var experience = experiences[index];
+                  return CardTile(
+                    icon: HugeIcons.strokeRoundedAiBrain02,
+                    name: experience.lesson,
+                    description:
+                        '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
+                    onTap: () => MobileExperienceDetailRoute(
+                      experience: experience,
+                    ).push(context),
+                  );
+                },
+              ),
+            ),
         ],
       );
     });
   }
 
-  void navigateSkillList(BuildContext context) {
-    MobileSkillListRoute().push(context);
+  void navigateExperienceList(BuildContext context) {
+    MobileExperienceListRoute().push(context);
+  }
+
+  String _formatDate(DateTime dt) {
+    String pad(int n) => n.toString().padLeft(2, '0');
+    return '${dt.year}-${pad(dt.month)}-${pad(dt.day)}';
   }
 
   Widget _buildSentinelListView() {
