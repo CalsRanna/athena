@@ -116,6 +116,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     required bool loadingHistory,
   }) {
     var sentinel = _displaySentinel();
+    widget.controller?.isWorking = loading;
     final chatId = chatViewModel.currentChat.value?.id;
     if (_displayedChatId != chatId) {
       _displayedChatId = chatId;
