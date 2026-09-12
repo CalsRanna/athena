@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -516,6 +517,7 @@ class _FakeAgentService extends AgentService {
   int activeRuns = 0;
   int maxActiveRuns = 0;
   final contexts = <List<ChatMessage>>[];
+  final reviewContexts = <PermissionReviewContext?>[];
   final jsonModes = <bool>[];
 
   @override
@@ -543,12 +545,14 @@ class _FakeAgentService extends AgentService {
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
+    PermissionReviewContext? permissionReviewContext,
     int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
   }) async* {
     runCalls++;
     contexts.add(baseMessages);
+    reviewContexts.add(permissionReviewContext);
     jsonModes.add(jsonMode);
     activeRuns++;
     if (activeRuns > maxActiveRuns) maxActiveRuns = activeRuns;
@@ -706,6 +710,11 @@ void main() {
             result: 'full raw output',
             modelResult: 'bounded preview',
             outputId: 'saved-output',
+            approvalReview: {
+              'decision': 'allow',
+              'reason': 'User requested it',
+              'source': 'model',
+            },
           ),
           const AgentDoneEvent(content: ''),
         ]),
@@ -719,6 +728,54 @@ void main() {
       expect(result['result'], 'full raw output');
       expect(result['modelResult'], 'bounded preview');
       expect(result['outputId'], 'saved-output');
+      expect(result['approvalReview'], {
+        'decision': 'allow',
+        'reason': 'User requested it',
+        'source': 'model',
+      });
+    },
+  );
+
+  test(
+    'review context preserves compacted user instructions and respects the setting',
+    () async {
+      final repository = _PagedMessageRepository({
+        1: [
+          MessageEntity(
+            id: 1,
+            chatId: 1,
+            role: 'user',
+            content: 'Do not publish',
+            compacted: true,
+          ),
+          MessageEntity(
+            id: 2,
+            chatId: 1,
+            role: 'system',
+            content: 'Generated summary',
+          ),
+        ],
+      });
+      final agent = _FakeAgentService(const Stream<AgentEvent>.empty());
+      final vm = _buildViewModel(
+        manage: _RecordingManageService(),
+        agent: agent,
+        messageRepository: repository,
+      );
+      await vm.sendMessage(_userMessage(), chat: _chat());
+      expect(
+        agent.reviewContexts.single!.conversation.first['content'],
+        'Do not publish',
+      );
+      expect(
+        agent.reviewContexts.single!.conversation.any(
+          (m) => m['role'] == 'system',
+        ),
+        isFalse,
+      );
+      await GetIt.instance<AgentSettings>().updateAiApprovalEnabled(false);
+      await vm.sendMessage(_userMessage(), chat: _chat());
+      expect(agent.reviewContexts.last, isNull);
     },
   );
 

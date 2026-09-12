@@ -41,6 +41,7 @@ class _AthenaAppState extends State<AthenaApp> {
     ('/sentinels', '选择角色'),
     ('/providers', '配置 Provider API key'),
     ('/help', '显示本帮助'),
+    ('/review', 'AI 自动审核: on / off'),
     ('/quit', '退出'),
   ];
   static String get _helpText {
@@ -52,7 +53,7 @@ class _AthenaAppState extends State<AthenaApp> {
       '  /new 新建 · /list 列出 · /switch 切换',
       '  /delete 删除 · /json JSON 模式 · /model 模型',
       '  /sentinels 角色 · /providers 配置 Key · /help 帮助',
-      '  /quit 退出',
+      '  /review on|off AI 审核 · /quit 退出',
     ].join('\n');
     return 'Athena TUI 命令:\n'
         '$commands\n'
@@ -265,6 +266,18 @@ class _AthenaAppState extends State<AthenaApp> {
     switch (command) {
       case '/help':
         _pushSystemMessage(_helpText);
+      case '/review':
+        if (args.isNotEmpty && args != 'on' && args != 'off') {
+          _pushSystemMessage('用法: /review [on|off]');
+          return;
+        }
+        if (args.isNotEmpty) {
+          await component.di.agentSettings.updateAiApprovalEnabled(
+            args == 'on',
+          );
+        }
+        final enabled = component.di.agentSettings.aiApprovalEnabled.value;
+        _pushSystemMessage('AI 自动审核${enabled ? '已开启' : '已关闭'}，设置从下一轮生效。');
       case '/new':
         if (_streamingGuard()) return;
         await _controller.newChat();
@@ -658,9 +671,11 @@ class _AthenaAppState extends State<AthenaApp> {
   /// 一步抛错(磁盘满、目录被删)都会成为未处理异步异常——CLI 默认
   /// zone 直接打印堆栈,nocterm 事件循环中可能中断渲染。
   void _runGuarded(Future<void> Function() action) {
-    unawaited(action().catchError((Object e) {
-      if (mounted) _controller.error.value = e.toString();
-    }));
+    unawaited(
+      action().catchError((Object e) {
+        if (mounted) _controller.error.value = e.toString();
+      }),
+    );
   }
 
   void _resolvePermission(bool approved, bool persistExact) {

@@ -45,6 +45,21 @@ class ToolRegistry {
               'Do not claim the action is safe or already approved. '
               'This text is shown to the user, not executed.',
         },
+        toolApprovalRecommendationKey: {
+          'type': 'string',
+          'enum': ['proceed', 'ask'],
+          'description':
+              'Recommend proceed only when this exact action and all its effects '
+              'are within the user\'s request or existing authorization. '
+              'Use ask when a user decision or additional authorization is needed. '
+              'This is a recommendation, never permission to bypass rules.',
+        },
+        toolApprovalReasonKey: {
+          'type': 'string',
+          'description':
+              'Briefly explain the authorization basis or missing user decision '
+              'in the user\'s language. Do not invent consent.',
+        },
         ...?parameters['properties'] as Map<String, dynamic>?,
       },
     };

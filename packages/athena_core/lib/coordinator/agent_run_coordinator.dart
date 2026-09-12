@@ -8,6 +8,7 @@ import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
@@ -282,6 +283,15 @@ class AgentRunCoordinator {
 
       final baseMessages = compactedMessages;
 
+      // Read original messages, including compacted user instructions. Generated
+      // summaries, skills, memories and tool outputs cannot grant authorization.
+      final reviewContext = _agentSettings.aiApprovalEnabled.value
+          ? PermissionReviewContext.fromMessages(
+              await _messageRepo.getMessagesByChatId(chatId),
+            )
+          : null;
+      cancelToken.throwIfCancelled();
+
       // 3. 追加 assistant 占位消息
       assistantMessage = await _manageService.appendAssistantPlaceholder(
         chatId,
@@ -304,6 +314,7 @@ class AgentRunCoordinator {
         hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
+        permissionReviewContext: reviewContext,
         onPermission: (toolName, arguments) =>
             _askPermission(runId, chatId, toolName, arguments, cancelToken),
         jsonMode: jsonMode,
@@ -511,6 +522,8 @@ class AgentRunCoordinator {
             'modelResult': event.modelResult ?? event.result,
             if (event.outputId != null) 'outputId': event.outputId,
             'status': event.status.name,
+            if (event.approvalReview != null)
+              'approvalReview': event.approvalReview,
           });
           current = current.copyWith(toolResults: jsonEncode(toolResultsJson));
           hasCompletedIteration = true;
@@ -803,6 +816,7 @@ class AgentRunCoordinator {
       arguments,
       cancelToken,
     );
+    if (cancelToken.isCancelled) return false;
 
     if (decision.approved) {
       Map<String, dynamic> args;

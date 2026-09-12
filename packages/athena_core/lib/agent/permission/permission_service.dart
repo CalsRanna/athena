@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
@@ -49,6 +51,10 @@ class PermissionService {
   }) {
     // ① deny 优先:整条或任一子命令命中 deny 规则 → 直接拒绝
     if (_ruleDenied(toolName, args)) return PermissionVerdict.deny;
+    final sessionKey = _sessionKey(toolName, args);
+    if (_sessionApprovals[runId]?[sessionKey] == false) {
+      return PermissionVerdict.deny;
+    }
 
     // ② readOnly 短路:只读工具永不弹窗
     // 例外:web_fetch 的 POST / 自定义 headers 可驱动内网接口,需弹窗
@@ -65,9 +71,7 @@ class PermissionService {
     }
 
     // ③ 会话级缓存:当前 run 内已批准的动作直接放行
-    final sessionKey = _sessionKey(toolName, args);
-    if (sessionKey != null &&
-        _sessionApprovals[runId]?[sessionKey] == true) {
+    if (_sessionApprovals[runId]?[sessionKey] == true) {
       return PermissionVerdict.allow;
     }
 
@@ -92,8 +96,7 @@ class PermissionService {
 
     // ⑤ 单命令(或非 shell 工具):持久 allow 规则命中则放行
     final keyArg = _primaryArg(toolName, args);
-    if (keyArg != null &&
-        _ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
+    if (_ruleHits(toolName, keyArg ?? '', effect: RuleEffect.allow)) {
       return PermissionVerdict.allow;
     }
     return PermissionVerdict.prompt;
@@ -106,8 +109,12 @@ class PermissionService {
     Map<String, dynamic> args,
   ) async {
     final key = _sessionKey(toolName, args);
-    if (key == null) return;
     (_sessionApprovals[runId] ??= {})[key] = true;
+  }
+
+  /// A user denial supersedes earlier consent for this exact call in this run.
+  void denyForSession(int runId, String toolName, Map<String, dynamic> args) {
+    (_sessionApprovals[runId] ??= {})[_sessionKey(toolName, args)] = false;
   }
 
   /// 清空指定 run 的会话级缓存(run 结束/取消时调用)。
@@ -129,9 +136,8 @@ class PermissionService {
   /// deny 扫描:整条或复合命令的任一子命令命中 deny 规则即拒绝。
   bool _ruleDenied(String toolName, Map<String, dynamic> args) {
     final keyArg = _primaryArg(toolName, args);
-    if (keyArg == null) return false;
-    if (_ruleHits(toolName, keyArg, effect: RuleEffect.deny)) return true;
-    if (_isShellTool(toolName)) {
+    if (_ruleHits(toolName, keyArg ?? '', effect: RuleEffect.deny)) return true;
+    if (_isShellTool(toolName) && keyArg != null) {
       for (final sub in CommandAnalyzer.splitSubcommands(keyArg)) {
         if (_ruleHits(toolName, sub, effect: RuleEffect.deny)) return true;
       }
@@ -150,8 +156,9 @@ class PermissionService {
   /// 单条损坏规则(畸形 glob 等)只跳过、记日志,不能炸掉
   /// 所有工具调用(历史上一条坏规则曾让所有 bash 报错)。
   bool _ruleHits(String toolName, String keyArg, {required RuleEffect effect}) {
-    final action =
-        _isShellTool(toolName) ? CommandAnalyzer.extractAction(keyArg) : null;
+    final action = _isShellTool(toolName)
+        ? CommandAnalyzer.extractAction(keyArg)
+        : null;
     for (final rule in _store.rules) {
       if (rule.effect != effect) continue;
       try {
@@ -179,25 +186,22 @@ class PermissionService {
     return false;
   }
 
-  /// 会话级缓存 key:
-  /// - shell:按「工具 + 动作 + 子命令」缓存——批准 `git push` 后
-  ///   `git push --force origin main` 放行（同子命令），但
-  ///   `git reset --hard`、`git clean -fdx` 仍需弹窗；
-  ///   bash 与 powershell 不共享缓存（key 含工具名）
-  /// - 其他:按 toolName + keyArg 精确缓存
-  String? _sessionKey(String toolName, Map<String, dynamic> args) {
-    final keyArg = _primaryArg(toolName, args);
-    if (_isShellTool(toolName)) {
-      if (keyArg == null) return null;
-      final action = CommandAnalyzer.extractAction(keyArg);
-      if (action == null) return 'shell:$toolName:$keyArg';
-      final rest =
-          keyArg.substring(keyArg.indexOf(action) + action.length).trim();
-      final words = rest.isEmpty ? <String>[] : rest.split(RegExp(r'\s+'));
-      final sub = words.isEmpty ? null : words.first;
-      return 'shell:$toolName:$action${sub != null ? ':$sub' : ''}';
+  /// Reuse approval only for the same tool and complete execution arguments.
+  /// A different command flag, workdir, file content or HTTP body needs review.
+  /// Display/recommendation metadata and JSON map ordering do not change consent.
+  String _sessionKey(String toolName, Map<String, dynamic> args) {
+    return jsonEncode([toolName, _sortedJson(toolExecutionArguments(args))]);
+  }
+
+  Object? _sortedJson(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return {
+        for (final key in value.keys.toList()..sort())
+          key: _sortedJson(value[key]),
+      };
     }
-    return keyArg == null ? null : '$toolName:$keyArg';
+    if (value is List) return value.map(_sortedJson).toList();
+    return value;
   }
 
   String? _primaryArg(String toolName, Map<String, dynamic> args) {

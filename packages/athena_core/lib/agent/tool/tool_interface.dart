@@ -1,6 +1,16 @@
 /// Reserved display metadata, removed before permission checks and execution.
 const toolCallDescriptionKey = 'call_description';
 
+const toolApprovalRecommendationKey = 'approval_recommendation';
+const toolApprovalReasonKey = 'approval_reason';
+
+/// Remove model-authored metadata before rule matching or tool execution.
+Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
+    Map<String, dynamic>.of(args)
+      ..remove(toolCallDescriptionKey)
+      ..remove(toolApprovalRecommendationKey)
+      ..remove(toolApprovalReasonKey);
+
 /// 工具执行模式。
 enum ExecutionMode {
   /// 串行执行：每次只执行一个工具。
@@ -41,7 +51,8 @@ abstract class Tool {
   ///
   /// [onUpdate] 可选的进度回调，用于流式产出部分结果（如 shell 实时 stdout）。
   /// 实现应确保回调在工具返回后不再被调用。
-  Future<String> execute(Map<String, dynamic> args, {
+  Future<String> execute(
+    Map<String, dynamic> args, {
     void Function(String partialResult)? onUpdate,
   });
 }

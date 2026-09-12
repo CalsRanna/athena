@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
@@ -45,6 +46,7 @@ class _FakeAgentService extends AgentService {
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
     PermissionService? permissionService,
+    PermissionReviewContext? permissionReviewContext,
     int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
@@ -73,22 +75,26 @@ void main() {
   /// 依赖"首项 DeepSeek-R1-0528、末项 xAI: Grok 4、共 13 个"。
   Future<void> seedTestData(TuiDi di) async {
     final now = DateTime.now();
-    final dsId = await di.providerRepo.storeProvider(ProviderEntity(
-      name: 'Deep Seek',
-      baseUrl: 'https://api.deepseek.com/v1',
-      apiKey: '',
-      enabled: false,
-      isPreset: true,
-      createdAt: now,
-    ));
-    final orId = await di.providerRepo.storeProvider(ProviderEntity(
-      name: 'Open Router',
-      baseUrl: 'https://openrouter.ai/api/v1',
-      apiKey: '',
-      enabled: false,
-      isPreset: true,
-      createdAt: now,
-    ));
+    final dsId = await di.providerRepo.storeProvider(
+      ProviderEntity(
+        name: 'Deep Seek',
+        baseUrl: 'https://api.deepseek.com/v1',
+        apiKey: '',
+        enabled: false,
+        isPreset: true,
+        createdAt: now,
+      ),
+    );
+    final orId = await di.providerRepo.storeProvider(
+      ProviderEntity(
+        name: 'Open Router',
+        baseUrl: 'https://openrouter.ai/api/v1',
+        apiKey: '',
+        enabled: false,
+        isPreset: true,
+        createdAt: now,
+      ),
+    );
     ModelEntity model(String name, String modelId, int providerId) =>
         ModelEntity(
           name: name,
@@ -98,28 +104,44 @@ void main() {
           createdAt: now,
           updatedAt: now,
         );
-    await di.modelRepo.createModel(model('DeepSeek-V3-0324', 'deepseek-chat', dsId));
+    await di.modelRepo.createModel(
+      model('DeepSeek-V3-0324', 'deepseek-chat', dsId),
+    );
     await di.modelRepo.createModel(
       model('DeepSeek-R1-0528', 'deepseek-reasoner', dsId),
     );
-    await di.modelRepo
-        .createModel(model('Anthropic: Claude Opus 4', 'anthropic/claude-opus-4', orId));
-    await di.modelRepo
-        .createModel(model('Anthropic: Claude Sonnet 4', 'anthropic/claude-sonnet-4', orId));
     await di.modelRepo.createModel(
-      model('DeepSeek: DeepSeek V3 0324', 'deepseek/deepseek-chat-v3-0324', orId),
+      model('Anthropic: Claude Opus 4', 'anthropic/claude-opus-4', orId),
     );
-    await di.modelRepo
-        .createModel(model('DeepSeek: R1 0528', 'deepseek/deepseek-r1-0528', orId));
-    await di.modelRepo
-        .createModel(model('Google: Gemini 2.5 Flash', 'google/gemini-2.5-flash', orId));
-    await di.modelRepo
-        .createModel(model('Google: Gemini 2.5 Pro', 'google/gemini-2.5-pro', orId));
-    await di.modelRepo.createModel(model('OpenAI: GPT-4.1', 'openai/gpt-4.1', orId));
-    await di.modelRepo.createModel(model('OpenAI: GPT-5 Chat', 'openai/gpt-5', orId));
+    await di.modelRepo.createModel(
+      model('Anthropic: Claude Sonnet 4', 'anthropic/claude-sonnet-4', orId),
+    );
+    await di.modelRepo.createModel(
+      model(
+        'DeepSeek: DeepSeek V3 0324',
+        'deepseek/deepseek-chat-v3-0324',
+        orId,
+      ),
+    );
+    await di.modelRepo.createModel(
+      model('DeepSeek: R1 0528', 'deepseek/deepseek-r1-0528', orId),
+    );
+    await di.modelRepo.createModel(
+      model('Google: Gemini 2.5 Flash', 'google/gemini-2.5-flash', orId),
+    );
+    await di.modelRepo.createModel(
+      model('Google: Gemini 2.5 Pro', 'google/gemini-2.5-pro', orId),
+    );
+    await di.modelRepo.createModel(
+      model('OpenAI: GPT-4.1', 'openai/gpt-4.1', orId),
+    );
+    await di.modelRepo.createModel(
+      model('OpenAI: GPT-5 Chat', 'openai/gpt-5', orId),
+    );
     await di.modelRepo.createModel(model('OpenAI: o3', 'openai/o3', orId));
-    await di.modelRepo
-        .createModel(model('Qwen: Qwen3 235B A22B', 'qwen/qwen3-235b-a22b', orId));
+    await di.modelRepo.createModel(
+      model('Qwen: Qwen3 235B A22B', 'qwen/qwen3-235b-a22b', orId),
+    );
     await di.modelRepo.createModel(model('xAI: Grok 4', 'x-ai/grok-4', orId));
   }
 
@@ -185,6 +207,23 @@ void main() {
       final state = tester.terminalState;
       expect(state.containsText('Athena TUI 命令'), isTrue);
       expect(state.containsText('/quit'), isTrue);
+    });
+  });
+
+  test('/review disables, persists and re-enables automatic approval', () {
+    return nocterm_test.testNocterm('AI review settings', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+      await tester.enterText('/review off');
+      await tester.sendEnter();
+      await waitUntil(() => !di.agentSettings.aiApprovalEnabled.value);
+      await di.agentSettings.init();
+      expect(di.agentSettings.aiApprovalEnabled.value, isFalse);
+      await tester.pump();
+      await tester.enterText('/review on');
+      await tester.sendEnter();
+      await waitUntil(() => di.agentSettings.aiApprovalEnabled.value);
     });
   });
 
@@ -291,10 +330,7 @@ void main() {
       // 最后一项被滚动进视口(修复前不可见)
       expect(state.containsText('xAI: Grok 4'), isTrue);
       // 首项(弹层标签,含提供商名)已被滚出视口,证明弹层真的滚动了
-      expect(
-        state.containsText('DeepSeek-R1-0528 (Deep Seek)'),
-        isFalse,
-      );
+      expect(state.containsText('DeepSeek-R1-0528 (Deep Seek)'), isFalse);
     });
   });
 
@@ -365,11 +401,13 @@ void main() {
 
   test('权限审批条渲染与按键提示', () {
     return nocterm_test.testNocterm('权限条', (tester) async {
-      await tester.pumpComponent(const PermissionBar(
-        title: '权限请求',
-        detail: 'bash: git push -f',
-        hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
-      ));
+      await tester.pumpComponent(
+        const PermissionBar(
+          title: '权限请求',
+          detail: 'bash: git push -f',
+          hint: '[y] 允许  [n] 拒绝  [a] 总是允许',
+        ),
+      );
       await tester.pump();
       final state = tester.terminalState;
       expect(state.containsText('权限请求'), isTrue);
@@ -380,8 +418,10 @@ void main() {
 
   test('bridge 未注册审批处理器时拒绝权限请求', () async {
     final di = await createDi();
-    final decision = await di.agentBridge
-        .requestPermissionForTest('bash', '{"command": "rm -rf /"}');
+    final decision = await di.agentBridge.requestPermissionForTest(
+      'bash',
+      '{"command": "rm -rf /"}',
+    );
     expect(decision.approved, isFalse);
   });
 
@@ -483,7 +523,10 @@ void main() {
 
       await tester.sendKey(nocterm.LogicalKey.pageDown);
       await tester.pump();
-      expect(tester.terminalState.containsText('Write the example file'), isFalse);
+      expect(
+        tester.terminalState.containsText('Write the example file'),
+        isFalse,
+      );
       await tester.sendKey(nocterm.LogicalKey.end);
       await tester.pump();
       expect(
@@ -504,8 +547,10 @@ void main() {
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
-      final future = di.agentBridge
-          .requestPermissionForTest('bash', '{"command": "rm -rf /"}');
+      final future = di.agentBridge.requestPermissionForTest(
+        'bash',
+        '{"command": "rm -rf /"}',
+      );
       await tester.pump();
       expect(tester.terminalState.containsText('权限请求'), isTrue);
 
@@ -524,8 +569,10 @@ void main() {
       await tester.pumpComponent(AthenaApp(di: di));
       await tester.pump();
 
-      final future = di.agentBridge
-          .requestPermissionForTest('bash', '{"command": "git push"}');
+      final future = di.agentBridge.requestPermissionForTest(
+        'bash',
+        '{"command": "git push"}',
+      );
       await tester.pump();
       expect(tester.terminalState.containsText('权限请求'), isTrue);
 

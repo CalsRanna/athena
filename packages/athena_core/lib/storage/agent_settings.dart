@@ -8,10 +8,12 @@ class AgentSettings {
   AgentSettings({KeyValueStore? store}) : _store = store;
 
   static const _keyMaxAgentIterations = 'max_agent_iterations';
+  static const _keyAiApprovalEnabled = 'ai_approval_enabled';
 
   final KeyValueStore? _store;
 
   final maxAgentIterations = signal(100);
+  final aiApprovalEnabled = signal(true);
 
   /// 从存储加载设置（启动时调用）。
   Future<void> init() async {
@@ -21,11 +23,17 @@ class AgentSettings {
     if (v != null) {
       maxAgentIterations.value = v;
     }
+    aiApprovalEnabled.value = await store.getInt(_keyAiApprovalEnabled) != 0;
   }
 
   /// 更新最大 Agent 迭代次数。
   Future<void> updateMaxAgentIterations(int max) async {
     maxAgentIterations.value = max;
     await _store?.setInt(_keyMaxAgentIterations, max);
+  }
+
+  Future<void> updateAiApprovalEnabled(bool enabled) async {
+    await _store?.setInt(_keyAiApprovalEnabled, enabled ? 1 : 0);
+    aiApprovalEnabled.value = enabled;
   }
 }

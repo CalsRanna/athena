@@ -56,8 +56,10 @@ void main() {
       );
       expect(rule.matches('bash', 'rm error.log', action: 'rm'), isTrue);
       expect(rule.matches('bash', 'rm access.log', action: 'rm'), isTrue);
-      expect(rule.matches('bash', 'rm /var/log/error.log', action: 'rm'),
-          isTrue);
+      expect(
+        rule.matches('bash', 'rm /var/log/error.log', action: 'rm'),
+        isTrue,
+      );
     });
 
     test('action glob with ? matches single char', () {
@@ -193,10 +195,9 @@ void main() {
     test('readOnly tool bypasses rules entirely', () {
       final service = serviceWithRules([]);
       expect(
-        service.check(1, 'web_fetch',
-          {'url': 'https://a.com/path'},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_fetch', {
+          'url': 'https://a.com/path',
+        }, risk: ToolRisk.readOnly),
         PermissionVerdict.allow,
       );
     });
@@ -205,42 +206,39 @@ void main() {
       final service = serviceWithRules([]);
       // GET 无自定义 headers：readOnly 短路放行
       expect(
-        service.check(1, 'web_fetch',
-          {'url': 'https://a.com/path'},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_fetch', {
+          'url': 'https://a.com/path',
+        }, risk: ToolRisk.readOnly),
         PermissionVerdict.allow,
       );
       // POST：即使工具声明 readOnly 也需弹窗
       expect(
-        service.check(1, 'web_fetch',
-          {'url': 'https://a.com/path', 'method': 'POST', 'body': 'x=1'},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_fetch', {
+          'url': 'https://a.com/path',
+          'method': 'POST',
+          'body': 'x=1',
+        }, risk: ToolRisk.readOnly),
         PermissionVerdict.prompt,
       );
       // 自定义 headers：需弹窗
       expect(
-        service.check(1, 'web_fetch',
-          {'url': 'https://a.com/path', 'headers': {'X-Token': 'abc'}},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_fetch', {
+          'url': 'https://a.com/path',
+          'headers': {'X-Token': 'abc'},
+        }, risk: ToolRisk.readOnly),
         PermissionVerdict.prompt,
       );
       // 显式 GET 仍放行
       expect(
-        service.check(1, 'web_fetch',
-          {'url': 'https://a.com/path', 'method': 'GET'},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_fetch', {
+          'url': 'https://a.com/path',
+          'method': 'GET',
+        }, risk: ToolRisk.readOnly),
         PermissionVerdict.allow,
       );
       // 非 web_fetch 工具不受影响
       expect(
-        service.check(1, 'web_search',
-          {'q': 'x'},
-          risk: ToolRisk.readOnly,
-        ),
+        service.check(1, 'web_search', {'q': 'x'}, risk: ToolRisk.readOnly),
         PermissionVerdict.allow,
       );
     });
@@ -316,12 +314,16 @@ void main() {
       ]);
       // 子命令各自命中(或只读)→ 整条放行
       expect(
-        service.check(1, 'bash', {'command': 'cd /a && git status && npm test'}),
+        service.check(1, 'bash', {
+          'command': 'cd /a && git status && npm test',
+        }),
         PermissionVerdict.allow,
       );
       // cd 子命令只读、git status 只读,不构成弹窗
       expect(
-        service.check(1, 'bash', {'command': 'cd /a && git status && git diff'}),
+        service.check(1, 'bash', {
+          'command': 'cd /a && git status && git diff',
+        }),
         PermissionVerdict.allow,
       );
       // npm install 未被覆盖 → 弹窗
@@ -416,14 +418,14 @@ void main() {
       );
 
       await service.approveForSession(1, 'bash', {'command': 'git push'});
-      // 同动作同子命令放行（含参数变体）
+      // Only identical execution arguments reuse consent.
       expect(
         service.check(1, 'bash', {'command': 'git push'}),
         PermissionVerdict.allow,
       );
       expect(
         service.check(1, 'bash', {'command': 'git push origin main'}),
-        PermissionVerdict.allow,
+        PermissionVerdict.prompt,
       );
       // 其他动作不放行
       expect(
@@ -432,14 +434,14 @@ void main() {
       );
     });
 
-    test('session approval is subcommand-granular (not whole action)', () async {
+    test('session approval does not cover changed command flags', () async {
       final service = serviceWithRules([]);
 
       await service.approveForSession(1, 'bash', {'command': 'git push'});
-      // 同子命令放行
+      // A force push has different effects and requires fresh approval.
       expect(
         service.check(1, 'bash', {'command': 'git push --force origin main'}),
-        PermissionVerdict.allow,
+        PermissionVerdict.prompt,
       );
       // 不同子命令仍需弹窗——批准 git push 不得放行 git reset --hard
       expect(
@@ -470,6 +472,102 @@ void main() {
         PermissionVerdict.allow,
       );
     });
+
+    test(
+      'session consent includes workdir, content, HTTP target and body',
+      () async {
+        final service = serviceWithRules([]);
+        for (final example in [
+          (
+            'bash',
+            {'command': 'git push', 'workdir': '/one'},
+            {'command': 'git push', 'workdir': '/two'},
+          ),
+          (
+            'file_write',
+            {'path': '/one', 'content': 'a'},
+            {'path': '/one', 'content': 'b'},
+          ),
+          (
+            'web_fetch',
+            {'url': 'https://api.test/draft', 'method': 'POST', 'body': 'a'},
+            {'url': 'https://api.test/send', 'method': 'POST', 'body': 'a'},
+          ),
+          (
+            'web_fetch',
+            {'url': 'https://api.test/draft', 'method': 'POST', 'body': 'a'},
+            {'url': 'https://api.test/draft', 'method': 'POST', 'body': 'b'},
+          ),
+        ]) {
+          await service.approveForSession(1, example.$1, example.$2);
+          expect(
+            service.check(1, example.$1, example.$2),
+            PermissionVerdict.allow,
+          );
+          expect(
+            service.check(1, example.$1, example.$3),
+            PermissionVerdict.prompt,
+          );
+        }
+      },
+    );
+
+    test(
+      'JSON key ordering and model metadata do not invalidate consent',
+      () async {
+        final service = serviceWithRules([]);
+        await service.approveForSession(1, 'bash', {
+          'command': 'git push',
+          'workdir': '/project',
+          'call_description': 'Push',
+          'approval_recommendation': 'ask',
+          'approval_reason': 'Confirm destination',
+        });
+        expect(
+          service.check(1, 'bash', {
+            'workdir': '/project',
+            'command': 'git push',
+            'call_description': 'Push again',
+            'approval_recommendation': 'proceed',
+          }),
+          PermissionVerdict.allow,
+        );
+        expect(
+          service.check(2, 'bash', {
+            'command': 'git push',
+            'workdir': '/project',
+          }),
+          PermissionVerdict.prompt,
+        );
+      },
+    );
+
+    test(
+      'a later denial overrides cached consent and resets with the run',
+      () async {
+        final service = serviceWithRules([]);
+        final args = {'sentinel_id': 1};
+        await service.approveForSession(1, 'sentinel_evolve', args);
+        expect(
+          service.check(1, 'sentinel_evolve', args),
+          PermissionVerdict.allow,
+        );
+        service.denyForSession(1, 'sentinel_evolve', args);
+        expect(
+          service.check(1, 'sentinel_evolve', args),
+          PermissionVerdict.deny,
+        );
+        expect(
+          service.check(2, 'sentinel_evolve', args),
+          PermissionVerdict.prompt,
+        );
+        service.resetSession(1);
+        expect(
+          service.check(1, 'sentinel_evolve', args),
+          PermissionVerdict.prompt,
+        );
+      },
+    );
 
     test('resetSession clears session approvals', () async {
       final service = serviceWithRules([]);
