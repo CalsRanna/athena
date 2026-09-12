@@ -30,10 +30,12 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
+import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
+import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
@@ -107,7 +109,12 @@ void setupMobileTestDI() {
   getIt.registerSingleton<PermissionService>(
     PermissionService(store: PermissionStore()),
   );
-  getIt.registerSingleton<SkillRegistry>(SkillRegistry());
+  getIt.registerSingleton<SkillRegistry>(
+    SkillRegistry()
+      ..loadAll(
+        homeDir: Directory.systemTemp.createTempSync('athena-test-skills').path,
+      ),
+  );
   getIt.registerSingleton<ToolRegistry>(ToolRegistry());
   getIt.registerSingleton<AgentService>(
     AgentService(
@@ -143,6 +150,17 @@ void setupMobileTestDI() {
       providerRepository: getIt<ProviderRepository>(),
       modelRepository: getIt<ModelRepository>(),
       sentinelService: getIt<SentinelService>(),
+    ),
+  );
+
+  getIt.registerSingleton<SkillViewModel>(
+    SkillViewModel(skillRegistry: getIt<SkillRegistry>()),
+  );
+
+  getIt.registerSingleton<ExperienceViewModel>(
+    ExperienceViewModel(
+      experienceRepository: getIt<ExperienceRepository>(),
+      sentinelRepository: getIt<SentinelRepository>(),
     ),
   );
 
