@@ -53,6 +53,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color tagBorderStart; // Tag 渐变边框起点（使用点带 alpha）
   final Color tagSelectedBackground; // Tag 选中背景
   final Color cardHeader; // 工具卡 / 思考卡 header 底
+  final Color assistantCardBackground; // 助手消息卡底（深色白卡 95%，浅色无底色）
   final Color avatarBackground; // 头像圆底（两种模式下均需与卡底区分）
   final Color codeBackground; // 代码块 / 浅色容器填充
   final Color checkboxOff; // Checkbox 未选中勾色
@@ -91,6 +92,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.tagBorderStart,
     required this.tagSelectedBackground,
     required this.cardHeader,
+    required this.assistantCardBackground,
     required this.avatarBackground,
     required this.codeBackground,
     required this.checkboxOff,
@@ -131,6 +133,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     tagBorderStart: Color(0xFFEAEAEA),
     tagSelectedBackground: Color(0xFFE0E0E0),
     cardHeader: Color(0xFFE0E0E0),
+    assistantCardBackground: Color.from(alpha: 0.95, red: 1, green: 1, blue: 1),
     avatarBackground: Color(0xFF282F32),
     codeBackground: Color(0xFFEDEDED),
     checkboxOff: Color(0xFFD0D5DD),
@@ -172,6 +175,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     tagSelectedBackground: Color(0xFFE0E0E0),
     // header（cardHeader）比正文（codeBackground）略深，保持层次区分
     cardHeader: Color(0xFFE9EAEC),
+    assistantCardBackground: Color(0x00000000),
     avatarBackground: Color(0xFFE0E0E0),
     codeBackground: Color(0xFFEFF0F2),
     checkboxOff: Color(0xFFB8C0C8),
@@ -212,6 +216,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? tagBorderStart,
     Color? tagSelectedBackground,
     Color? cardHeader,
+    Color? assistantCardBackground,
     Color? avatarBackground,
     Color? codeBackground,
     Color? checkboxOff,
@@ -253,6 +258,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       tagSelectedBackground:
           tagSelectedBackground ?? this.tagSelectedBackground,
       cardHeader: cardHeader ?? this.cardHeader,
+      assistantCardBackground:
+          assistantCardBackground ?? this.assistantCardBackground,
       avatarBackground: avatarBackground ?? this.avatarBackground,
       codeBackground: codeBackground ?? this.codeBackground,
       checkboxOff: checkboxOff ?? this.checkboxOff,
@@ -310,6 +317,11 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         t,
       )!,
       cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
+      assistantCardBackground: Color.lerp(
+        assistantCardBackground,
+        other.assistantCardBackground,
+        t,
+      )!,
       avatarBackground: Color.lerp(
         avatarBackground,
         other.avatarBackground,

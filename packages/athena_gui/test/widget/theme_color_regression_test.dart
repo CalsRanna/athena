@@ -111,6 +111,43 @@ void main() {
     }
   });
 
+  testWidgets('assistant message card paints a background only in dark mode', (
+    tester,
+  ) async {
+    final message = MessageEntity(
+      id: 1,
+      chatId: 1,
+      role: 'assistant',
+      content: 'reply',
+    );
+
+    for (final (colors, brightness) in [
+      (AthenaColors.dark, Brightness.dark),
+      (AthenaColors.light, Brightness.light),
+    ]) {
+      await pumpThemed(
+        tester,
+        SizedBox(
+          width: 600,
+          child: MessageListTile(message: message, sentinel: testSentinel()),
+        ),
+        colors: colors,
+        brightness: brightness,
+      );
+
+      final card = tester.widget<Container>(
+        find.byKey(const ValueKey('assistant-card-segment-1')),
+      );
+      final decoration = card.decoration! as BoxDecoration;
+      expect(decoration.color, colors.assistantCardBackground);
+    }
+  });
+
+  test('assistant card background is transparent in light mode', () {
+    expect(AthenaColors.light.assistantCardBackground.a, 0);
+    expect(AthenaColors.dark.assistantCardBackground.a, 0.95);
+  });
+
   testWidgets('configuration tooltip foreground matches its themed surface', (
     tester,
   ) async {

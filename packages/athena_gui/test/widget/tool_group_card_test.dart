@@ -539,6 +539,13 @@ void main() {
     expect(find.text('dart test'), findsOneWidget);
     expect(find.byIcon(HugeIcons.strokeRoundedArrowRight01), findsNothing);
     expect(find.byIcon(HugeIcons.strokeRoundedArrowDown01), findsNothing);
+
+    // 展开后的子行跟随全局 8px 节奏：header→首行 与 行→行 的间距一致
+    double topOf(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(
+      topOf('bash') - topOf('file_read'),
+      closeTo(topOf('file_read') - topOf('2 tool calls'), 0.5),
+    );
   });
 
   testWidgets('工具失败不会展示状态或展开组卡与失败结果', (tester) async {
