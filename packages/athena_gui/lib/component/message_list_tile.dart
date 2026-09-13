@@ -497,7 +497,7 @@ BoxDecoration _assistantCardDecoration(
       bottomLeft: isCardEnd ? radius : Radius.zero,
       bottomRight: isCardEnd ? radius : Radius.zero,
     ),
-    color: colors.surfaceRaised.withValues(alpha: 0.95),
+    color: colors.assistantCardBackground,
   );
 }
 

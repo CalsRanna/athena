@@ -100,7 +100,7 @@ class _ToolGroupCardState extends State<ToolGroupCard> {
 
   Widget _buildItems() {
     return Padding(
-      padding: const EdgeInsets.only(left: 16, top: 2),
+      padding: const EdgeInsets.only(left: 16),
       child: Column(
         children: [
           for (var index = 0; index < widget.items.length; index++)
@@ -131,12 +131,15 @@ class _ToolGroupRowState extends State<_ToolGroupRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHeader(context),
-        if (widget.item.hasResult && _expanded) _buildResult(context),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context),
+          if (widget.item.hasResult && _expanded) _buildResult(context),
+        ],
+      ),
     );
   }
 
@@ -166,20 +169,19 @@ class _ToolGroupRowState extends State<_ToolGroupRow> {
             Expanded(
               child: Row(
                 children: [
-                  Flexible(
-                    child: Text(
-                      widget.item.toolName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.firaCode(
-                        fontSize: _fontSize,
-                        fontWeight: FontWeight.w500,
-                        color: foreground,
-                      ),
+                  // 工具名完整展示，不参与弹性分配
+                  Text(
+                    widget.item.toolName,
+                    maxLines: 1,
+                    style: GoogleFonts.firaCode(
+                      fontSize: _fontSize,
+                      fontWeight: FontWeight.w500,
+                      color: foreground,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Flexible(
+                  // 描述占满剩余宽度，只有真正超出时才省略
+                  Expanded(
                     child: Text(
                       ToolCard.argPreview(
                         widget.item.toolName,

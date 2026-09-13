@@ -94,20 +94,19 @@ class _ToolCardState extends State<ToolCard> {
                       color: foreground,
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        widget.toolName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.firaCode(
-                          fontSize: _fontSize,
-                          fontWeight: FontWeight.w500,
-                          color: foreground,
-                        ),
+                    // 工具名完整展示，不参与弹性分配
+                    Text(
+                      widget.toolName,
+                      maxLines: 1,
+                      style: GoogleFonts.firaCode(
+                        fontSize: _fontSize,
+                        fontWeight: FontWeight.w500,
+                        color: foreground,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
+                    // 描述占满剩余宽度，只有真正超出时才省略
+                    Expanded(
                       child: Text(
                         ToolCard.argPreview(widget.toolName, widget.arguments),
                         maxLines: 1,
