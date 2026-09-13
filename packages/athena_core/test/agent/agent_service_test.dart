@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/skill/skill_loader.dart';
+import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
@@ -85,6 +87,7 @@ void main() {
 
   _jsonModeTests();
   _runtimePromptTests();
+  _skillPromptTests();
   _reflectionTests();
 }
 
@@ -616,5 +619,90 @@ void _runtimePromptTests() {
       startsWith('Current date: '),
     );
     expect(messages[2], isA<UserMessage>());
+  });
+}
+
+void _skillPromptTests() {
+  test('装配 SkillRegistry 时自动注入 Level 1 技能目录', () async {
+    final recording = _RecordingChatCompletionsService();
+    final skillRegistry = SkillRegistry()
+      ..registerBuiltin(
+        const Skill(
+          name: 'demo-skill',
+          description: 'A demo skill',
+          body: 'instructions',
+          sourcePath: '(builtin)',
+        ),
+      );
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+      skillRegistry: skillRegistry,
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [
+            ChatMessage.system('SENTINEL'),
+            ChatMessage.user('hello'),
+          ],
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    expect((messages[0] as SystemMessage).content, 'SENTINEL');
+    expect(
+      (messages[1] as SystemMessage).content,
+      allOf(contains('Available Skills'), contains('demo-skill')),
+    );
+    expect(
+      (messages[2] as SystemMessage).content,
+      startsWith('Current date: '),
+    );
+    expect(messages[3], isA<UserMessage>());
+  });
+
+  test('显式 skillPrompt 覆盖默认技能目录', () async {
+    final recording = _RecordingChatCompletionsService();
+    final service = AgentService(
+      chatService: recording,
+      toolRegistry: ToolRegistry(),
+      skillRegistry: SkillRegistry()
+        ..registerBuiltin(
+          const Skill(
+            name: 'demo-skill',
+            description: 'A demo skill',
+            body: 'instructions',
+            sourcePath: '(builtin)',
+          ),
+        ),
+    );
+
+    await service
+        .run(
+          runId: 1,
+          chat: _chat(),
+          provider: _provider(),
+          model: _model(),
+          baseMessages: [
+            ChatMessage.system('SENTINEL'),
+            ChatMessage.user('hello'),
+          ],
+          skillPrompt: 'CUSTOM SKILLS',
+        )
+        .toList();
+
+    final messages = recording.lastMessages!;
+    expect((messages[1] as SystemMessage).content, 'CUSTOM SKILLS');
+    expect(
+      messages.whereType<SystemMessage>().any(
+        (m) => m.content.contains('Available Skills'),
+      ),
+      isFalse,
+    );
   });
 }

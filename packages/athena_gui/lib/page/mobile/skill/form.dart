@@ -24,7 +24,6 @@ class MobileSkillFormPage extends StatefulWidget {
 class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
-  final allowedToolsController = TextEditingController();
   final bodyController = TextEditingController();
 
   late final viewModel = GetIt.instance<SkillViewModel>();
@@ -36,7 +35,6 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
     super.initState();
     nameController.text = widget.skill?.name ?? '';
     descriptionController.text = widget.skill?.description ?? '';
-    allowedToolsController.text = widget.skill?.allowedTools ?? '';
     bodyController.text = widget.skill?.body ?? '';
   }
 
@@ -44,7 +42,6 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
   void dispose() {
     nameController.dispose();
     descriptionController.dispose();
-    allowedToolsController.dispose();
     bodyController.dispose();
     super.dispose();
   }
@@ -66,13 +63,6 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
       const AthenaFormTileLabel.large(title: 'Description'),
       const SizedBox(height: 12),
       AthenaInput(controller: descriptionController, maxLines: 4, minLines: 4),
-      const SizedBox(height: 16),
-      const AthenaFormTileLabel.large(title: 'Allowed tools'),
-      const SizedBox(height: 12),
-      AthenaInput(
-        controller: allowedToolsController,
-        placeholder: 'file_read, web_search',
-      ),
       const SizedBox(height: 16),
       const AthenaFormTileLabel.large(title: 'Instructions'),
       const SizedBox(height: 12),
@@ -120,14 +110,12 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
       ok = await viewModel.updateSkill(
         widget.skill!,
         description: descriptionController.text,
-        allowedTools: allowedToolsController.text,
         body: bodyController.text,
       );
     } else {
       ok = await viewModel.createSkill(
         name: nameController.text,
         description: descriptionController.text,
-        allowedTools: allowedToolsController.text,
         body: bodyController.text,
       );
     }

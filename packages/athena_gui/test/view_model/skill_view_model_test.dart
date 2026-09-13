@@ -24,7 +24,6 @@ void main() {
     final ok = await viewModel.createSkill(
       name: 'demo',
       description: 'A demo',
-      allowedTools: 'file_read',
       body: '## Steps',
     );
 
@@ -34,7 +33,6 @@ void main() {
       isTrue,
     );
     expect(viewModel.userSkills.value.map((s) => s.name), ['demo']);
-    expect(viewModel.userSkills.value.single.allowedTools, 'file_read');
   });
 
   test('createSkill 拒绝非法名与重复名', () async {

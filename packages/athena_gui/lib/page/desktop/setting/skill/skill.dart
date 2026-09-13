@@ -27,7 +27,6 @@ class DesktopSettingSkillPage extends StatefulWidget {
 class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   int index = 0;
   final descriptionController = TextEditingController();
-  final allowedToolsController = TextEditingController();
   final bodyController = TextEditingController();
 
   late final viewModel = GetIt.instance<SkillViewModel>();
@@ -41,7 +40,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   @override
   void dispose() {
     descriptionController.dispose();
-    allowedToolsController.dispose();
     bodyController.dispose();
     super.dispose();
   }
@@ -56,7 +54,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
 
   void _fillControllers(Skill skill) {
     descriptionController.text = skill.description;
-    allowedToolsController.text = skill.allowedTools ?? '';
     bodyController.text = skill.body;
   }
 
@@ -108,7 +105,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     var ok = await viewModel.updateSkill(
       skill,
       description: descriptionController.text,
-      allowedTools: allowedToolsController.text,
       body: bodyController.text,
     );
     if (!mounted) return;
@@ -205,14 +201,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
         SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
         Expanded(child: descriptionInput),
       ];
-      var allowedToolsInput = AthenaInput(controller: allowedToolsController);
-      var allowedToolsChildren = [
-        SizedBox(
-          width: 120,
-          child: AthenaFormTileLabel(title: 'Allowed tools'),
-        ),
-        Expanded(child: allowedToolsInput),
-      ];
       var bodyInput = AthenaInput(
         controller: bodyController,
         maxLines: 20,
@@ -241,8 +229,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
         ),
         const SizedBox(height: 12),
         Row(children: descriptionChildren),
-        const SizedBox(height: 12),
-        Row(children: allowedToolsChildren),
         const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -6,16 +6,12 @@ class Skill {
   final String name;
   final String description;
   final String body;
-  final String? allowedTools;
-  final bool disableModelInvocation;
   final String sourcePath;
 
   const Skill({
     required this.name,
     required this.description,
     required this.body,
-    this.allowedTools,
-    this.disableModelInvocation = false,
     required this.sourcePath,
   });
 
@@ -51,7 +47,6 @@ class SkillLoader {
   void saveSkill({
     required String name,
     required String description,
-    String? allowedTools,
     required String body,
     required String targetDir,
   }) {
@@ -59,9 +54,6 @@ class SkillLoader {
     buffer.writeln('---');
     buffer.writeln('name: ${_yamlScalar(name)}');
     buffer.writeln('description: ${_yamlScalar(description)}');
-    if (allowedTools != null && allowedTools.isNotEmpty) {
-      buffer.writeln('allowed-tools: ${_yamlScalar(allowedTools)}');
-    }
     buffer.writeln('---');
     buffer.writeln();
     buffer.write(body.trim());
@@ -151,10 +143,6 @@ class SkillLoader {
       name: name,
       description: description,
       body: body,
-      allowedTools: frontmatter['allowed-tools'] as String?,
-      disableModelInvocation:
-          frontmatter['disable-model-invocation'] == true ||
-              frontmatter['disable-model-invocation'] == 'true',
       sourcePath: file.parent.path,
     );
   }

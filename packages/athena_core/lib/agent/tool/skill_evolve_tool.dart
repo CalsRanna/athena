@@ -67,12 +67,6 @@ class SkillEvolveTool implements Tool {
             'description':
                 'Brief description of what the skill does (required for create, optional for update).',
           },
-          'allowed_tools': {
-            'type': 'string',
-            'description':
-                'Comma-separated list of tool names this skill is allowed to '
-                'use without approval (e.g. "file_read, search, web_search").',
-          },
           'body': {
             'type': 'string',
             'description':
@@ -89,7 +83,6 @@ class SkillEvolveTool implements Tool {
     final skillName = args['name'] as String;
     final action = args['action'] as String;
     final description = args['description'] as String? ?? '';
-    final allowedTools = args['allowed_tools'] as String? ?? '';
     final body = args['body'] as String;
 
     if (!SkillLoader.isValidSkillName(skillName)) {
@@ -106,7 +99,6 @@ class SkillEvolveTool implements Tool {
       return _writeSkill(
         skillName: skillName,
         description: description.isNotEmpty ? description : existing.description,
-        allowedTools: allowedTools.isNotEmpty ? allowedTools : (existing.allowedTools ?? ''),
         body: body,
         targetDir: existing.sourcePath,
       );
@@ -130,7 +122,6 @@ class SkillEvolveTool implements Tool {
     return _writeSkill(
       skillName: skillName,
       description: description,
-      allowedTools: allowedTools,
       body: body,
       targetDir: targetDir,
     );
@@ -139,7 +130,6 @@ class SkillEvolveTool implements Tool {
   String _writeSkill({
     required String skillName,
     required String description,
-    required String allowedTools,
     required String body,
     required String targetDir,
   }) {
@@ -149,7 +139,6 @@ class SkillEvolveTool implements Tool {
       SkillLoader().saveSkill(
         name: skillName,
         description: description,
-        allowedTools: allowedTools,
         body: body,
         targetDir: targetDir,
       );

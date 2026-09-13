@@ -45,13 +45,6 @@ class SkillTool implements Tool {
     final buffer = StringBuffer();
     buffer.writeln('Skill "$name" loaded successfully.');
     buffer.writeln();
-    if (skill.allowedTools != null && skill.allowedTools!.isNotEmpty) {
-      buffer.writeln(
-        'Note: this skill declares allowed-tools: ${skill.allowedTools}. '
-        'All tool calls still require user approval or a matching persistent permission rule.',
-      );
-      buffer.writeln();
-    }
     buffer.writeln('Instructions:');
     buffer.writeln(skill.body);
     return buffer.toString();

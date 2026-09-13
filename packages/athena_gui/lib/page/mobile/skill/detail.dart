@@ -66,15 +66,6 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
           skill.description,
           style: TextStyle(color: colors.textPrimary, fontSize: 14),
         ),
-        if (skill.allowedTools != null && skill.allowedTools!.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _label(context, 'Allowed tools'),
-          const SizedBox(height: 8),
-          Text(
-            skill.allowedTools!,
-            style: TextStyle(color: colors.textSecondary, fontSize: 13),
-          ),
-        ],
         const SizedBox(height: 16),
         _label(context, 'Instructions'),
         const SizedBox(height: 8),
