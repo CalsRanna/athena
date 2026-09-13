@@ -259,7 +259,7 @@ enum ToolRisk { readOnly, dangerous }
 | `file_update_tool.dart` | FileUpdateTool | dangerous/串行 | 精确字符串替换，mtime 外部修改检测，replace_all、行号前缀剥离 |
 | `web_fetch_tool.dart` | WebFetchTool | **readOnly/并行** | HTTP GET/POST（200KB 上限，仅 http/https），HTML→Markdown |
 | `web_search_tool.dart` | WebSearchTool | **readOnly/并行** | Brave Search API（API key 存 KeyValueStore，key: `brave_api_key`） |
-| `skill_tool.dart` | SkillTool | dangerous/串行 | 加载 Skill Level 2 指令，校验 allowed-tools |
+| `skill_tool.dart` | SkillTool | dangerous/串行 | 加载 Skill Level 2 指令 |
 | `skill_evolve_tool.dart` | SkillEvolveTool | dangerous/串行 | 创建/更新 Skill（SKILL.md） |
 | `experience_learn_tool.dart` | ExperienceLearnTool | dangerous/串行 | 经验学习（`~/.athena/experiences/`，Sentinel 私有或共享） |
 | `experience_learn_tool.dart` | ExperienceRecallTool | **readOnly/串行** | 经验检索 |
@@ -302,7 +302,7 @@ GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_
 
 | Level | 内容 | 加载时机 |
 |-------|------|---------|
-| 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 已实现，**但当前 run 流程未注入**（AgentRunCoordinator 只注入 sentinel prompt + evolution hint） |
+| 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 由 AgentService 在 run 开始时自动注入系统提示词（装配了 SkillRegistry 的前端即生效，显式 skillPrompt 可覆盖） |
 | 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 |
 | 3 | scripts/references 等资源 | Level 2 指令引用时加载 |
 
@@ -312,8 +312,6 @@ Skill 文件格式（YAML front matter + Markdown body）：
 ---
 name: my-skill
 description: What this skill does and when to use it
-allowed-tools: file_read, web_search
-disable-model-invocation: false
 ---
 ## Process
 1. Step one
@@ -322,7 +320,7 @@ disable-model-invocation: false
 放置位置：
 - `~/.athena/skills/` - 用户级（移动端为应用沙盒内目录），对所有对话可用
 - 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
-- Skill 指令会注入系统提示词，但工具调用仍需经过权限检查
+- Level 1 技能目录由 AgentService 自动注入系统提示词；完整指令经 `skill` 工具加载后进入工具结果，工具调用仍需经过权限检查
 
 ### 7.6 自我进化
 
@@ -336,7 +334,7 @@ disable-model-invocation: false
 ### 7.7 Skill 与 Experience 管理（GUI）
 
 - 移动端首页仅展示 `Experiences` 卡片行（原 Shortcut 卡片样式，`component/card_tile.dart`；最近 10 条经验，标题常显、箭头进经验管理页，无数据时仅展示标题行；Skills 不在首页展示，仅设置页管理）；移动端设置页与桌面端设置页各有 `Skills` / `Experiences` 两个管理入口
-- Skill：网格列表 + 详情 + 表单（Name / Description / Allowed tools / Instructions）；内置 self-evolve 只读锁定；名称即目录名，编辑时不可改名
+- Skill：网格列表 + 详情 + 表单（Name / Description / Instructions）；内置 self-evolve 只读锁定；名称即目录名，编辑时不可改名
 - Experience：只读浏览（内容由 Agent 进化产出，不支持手工增改）；归档项始终展示，条目尾部仅展示归档图标（位置与样式参照 Provider 预设的尾部标记）；列表仅提供 All / Shared / Private 过滤，归档/恢复与删除另可通过列表项右键菜单（桌面）或长按弹层（移动端），删除带确认弹窗
 - 数据与 Agent 工具（skill_evolve / experience_learn）同源：`~/.athena/skills`、`~/.athena/experiences`（移动端为沙盒内目录），写入分别复用 `SkillLoader.saveSkill` 与 `ExperienceRepository`
 

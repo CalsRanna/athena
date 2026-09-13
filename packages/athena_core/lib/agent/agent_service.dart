@@ -98,6 +98,7 @@ class AgentService {
     required ProviderEntity provider,
     required ModelEntity model,
     required List<ChatMessage> baseMessages,
+    /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
@@ -121,9 +122,12 @@ class AgentService {
     // 会话级权限缓存按 run 隔离：仅清空本 run 的
     permissionService?.resetSession(runId);
 
+    // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
+    // 本轮就会带上可用技能清单（含内置 self-evolve）；显式传入可覆盖。
+    final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
     var messages = _injectPrompts(
       baseMessages,
-      skillPrompt,
+      effectiveSkillPrompt,
       evolutionPrompt,
       runtimePrompt,
       hasSentinelPrompt: hasSentinelPrompt,

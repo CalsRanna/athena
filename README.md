@@ -75,7 +75,7 @@ AI 自动审核默认开启；GUI 在 **Settings → Agent → General → AI Au
 
 | 层级 | 内容 | 加载时机 | Token 消耗 |
 |------|------|---------|-----------|
-| Level 1 | name + description（最近使用 Top 20，按访问时间排序） | 由 `skill` 工具按名加载时提示可用技能清单（当前版本未在会话启动时自动注入） | 按需 |
+| Level 1 | name + description（最近使用 Top 20，按访问时间排序） | AgentService 在 run 开始时自动注入系统提示词 | 按需 |
 | Level 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 | 按需 |
 | Level 3 | scripts/references 等资源 | Level 2 指令引用时加载 | 按需 |
 
@@ -87,7 +87,6 @@ AI 自动审核默认开启；GUI 在 **Settings → Agent → General → AI Au
 ---
 name: my-skill
 description: What this skill does and when to use it
-allowed-tools: file_read, web_search
 ---
 ## Process
 1. Step one
@@ -98,7 +97,7 @@ allowed-tools: file_read, web_search
 
 - `~/.athena/skills/` — 用户级（移动端为应用沙盒内目录），对所有对话可用
 
-Skill 指令会注入系统提示词，但工具调用仍需经过权限检查。内置 `self-evolve` Skill 提供完整的自我进化指导。
+技能目录（Level 1）会自动注入系统提示词，完整指令通过 `skill` 工具按需加载；工具调用仍需经过权限检查。内置 `self-evolve` Skill 提供完整的自我进化指导。
 
 ### Agent 自我进化
 

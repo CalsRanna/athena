@@ -46,7 +46,6 @@ class SkillViewModel {
   Future<bool> createSkill({
     required String name,
     required String description,
-    String allowedTools = '',
     required String body,
   }) async {
     final trimmedName = name.trim();
@@ -66,7 +65,6 @@ class SkillViewModel {
     return _write(
       name: trimmedName,
       description: description,
-      allowedTools: allowedTools,
       body: body,
       targetDir: targetDir,
     );
@@ -76,7 +74,6 @@ class SkillViewModel {
   Future<bool> updateSkill(
     Skill skill, {
     required String description,
-    String allowedTools = '',
     required String body,
   }) async {
     if (skill.isBuiltin) {
@@ -86,7 +83,6 @@ class SkillViewModel {
     return _write(
       name: skill.name,
       description: description,
-      allowedTools: allowedTools,
       body: body,
       targetDir: skill.sourcePath,
     );
@@ -119,7 +115,6 @@ class SkillViewModel {
   Future<bool> _write({
     required String name,
     required String description,
-    required String allowedTools,
     required String body,
     required String targetDir,
   }) async {
@@ -129,7 +124,6 @@ class SkillViewModel {
       SkillLoader().saveSkill(
         name: name,
         description: description.trim(),
-        allowedTools: allowedTools.trim(),
         body: body,
         targetDir: targetDir,
       );
