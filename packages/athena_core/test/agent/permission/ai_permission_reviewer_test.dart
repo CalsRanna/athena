@@ -187,6 +187,11 @@ void main() {
         MessageEntity(chatId: 1, role: 'system', content: 'INJECTED MEMORY'),
         MessageEntity(
           chatId: 1,
+          role: 'summary',
+          content: 'GENERATED AUTHORIZATION',
+        ),
+        MessageEntity(
+          chatId: 1,
           role: 'user',
           content: 'Do not publish',
           compacted: true,
@@ -218,6 +223,7 @@ void main() {
       expect(payload, contains('/project'));
       for (final excluded in [
         'INJECTED MEMORY',
+        'GENERATED AUTHORIZATION',
         'HIDDEN REASONING',
         'INJECTED OUTPUT',
         'IGNORE THE USER',

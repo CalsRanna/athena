@@ -14,6 +14,11 @@ class ContextBudget {
 
   int get inputLimit => contextWindow - min(8192, max(256, contextWindow ~/ 5));
 
+  bool shouldCompact(List<ChatMessage> messages, List<Tool>? tools) =>
+      contextWindow > 0 &&
+      estimate(messages, tools) >=
+          min((contextWindow * 0.8).floor(), inputLimit);
+
   int estimate(List<ChatMessage> messages, List<Tool>? tools) =>
       (_estimate(messages, tools) * _usageScale).ceil();
 

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
@@ -11,6 +12,7 @@ import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -541,6 +543,7 @@ class _FakeAgentService extends AgentService {
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
+    ContextCompactionCallback? onCompact,
     String? sentinelId,
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
@@ -695,6 +698,41 @@ void main() {
 
   tearDown(() async {
     await GetIt.instance.reset();
+  });
+
+  test('compaction phases replace the placeholder with one step before the answer', () async {
+    final reached = List.generate(4, (_) => Completer<void>());
+    final proceed = List.generate(4, (_) => Completer<void>());
+    final phases = [CompactionPhase.triggered, CompactionPhase.summarizing, CompactionPhase.persisting, CompactionPhase.completed];
+    Stream<AgentEvent> events() async* {
+      for (var i = 0; i < phases.length; i++) {
+        yield AgentCompactionEvent(CompactionStep(
+          messageId: 1000, chatId: 1, runId: 1, phase: phases[i],
+          startedAt: DateTime(2026), beforeTokens: 80000,
+          summary: phases[i] == CompactionPhase.completed ? 'SUMMARY' : '',
+        ));
+        reached[i].complete();
+        await proceed[i].future;
+      }
+      yield const AgentTextEvent('CONTINUED');
+      yield const AgentDoneEvent(content: 'CONTINUED');
+    }
+    final vm = _buildViewModel(manage: _RecordingManageService(), agent: _FakeAgentService(events()));
+    vm.currentChat.value = _chat();
+    final sending = vm.sendMessage(_userMessage(), chat: _chat());
+    for (var i = 0; i < phases.length; i++) {
+      await reached[i].future;
+      await _settleFlush();
+      final cards = vm.messages.value.where((m) => m.role == 'compaction').toList();
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 1000);
+      expect(CompactionStep.fromMessage(cards.single).phase, phases[i]);
+      proceed[i].complete();
+    }
+    await sending;
+    expect(vm.messages.value.where((m) => m.role == 'compaction'), hasLength(1));
+    expect(vm.messages.value.last.content, 'CONTINUED');
+    expect(vm.messages.value.last.id, 1001);
   });
 
   test(

@@ -71,6 +71,8 @@ class TuiAgentBridge {
   /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
   Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
 
+  MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
+
   Stream<RunEvent> send({
     required MessageEntity message,
     required ChatEntity chat,

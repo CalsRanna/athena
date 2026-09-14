@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/entity/token_usage.dart';
@@ -14,6 +15,11 @@ sealed class RunEvent {
 class RunMessageStored extends RunEvent {
   final MessageEntity message;
   const RunMessageStored(this.message);
+}
+
+class RunCompactionChanged extends RunEvent {
+  final CompactionStep step;
+  const RunCompactionChanged(this.step);
 }
 
 class RunAssistantAppended extends RunEvent {
