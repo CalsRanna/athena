@@ -384,11 +384,12 @@ void _jsonModeTests() {
 }
 
 void _runtimePromptTests() {
-  test('runtimePrompt 注入在系统提示词之后、历史消息之前', () async {
+  test('runtimePrompt 与当前日期合为最后一条 system 消息', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
       toolRegistry: ToolRegistry(),
+      now: () => DateTime(2026, 9, 14),
     );
 
     await service
@@ -406,19 +407,17 @@ void _runtimePromptTests() {
         .toList();
 
     final messages = recording.lastMessages!;
+    expect(messages, hasLength(3));
     expect((messages[0] as SystemMessage).content, 'SENTINEL');
     expect(
       (messages[1] as SystemMessage).content,
-      contains('Athena GUI application'),
+      '${runtimeContextPrompt(RuntimeEnvironment.gui)}\n'
+      'Current date: 2026-09-14.',
     );
-    expect(
-      (messages[2] as SystemMessage).content,
-      startsWith('Current date: '),
-    );
-    expect(messages[3], isA<UserMessage>());
+    expect(messages[2], isA<UserMessage>());
   });
 
-  test('sentinel 保持首位，历史类摘要（digest）紧跟 runtime', () async {
+  test('sentinel 保持首位，runtime 位于历史类摘要（digest）之后', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -441,20 +440,17 @@ void _runtimePromptTests() {
         .toList();
 
     final messages = recording.lastMessages!;
+    expect(messages, hasLength(4));
     expect((messages[0] as SystemMessage).content, 'SENTINEL');
+    expect((messages[1] as SystemMessage).content, 'DIGEST');
     expect(
-      (messages[1] as SystemMessage).content,
-      contains('Athena TUI (terminal)'),
+      (messages[2] as SystemMessage).content,
+      allOf(contains('Athena TUI (terminal)'), contains('\nCurrent date: ')),
     );
-    expect((messages[2] as SystemMessage).content, 'DIGEST');
-    expect(
-      (messages[3] as SystemMessage).content,
-      startsWith('Current date: '),
-    );
-    expect(messages[4], isA<UserMessage>());
+    expect(messages[3], isA<UserMessage>());
   });
 
-  test('evolution 不再插顶：插在 sentinel 之后（sentinel 首位）', () async {
+  test('evolution 位于 sentinel 之后、运行上下文之前', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -485,7 +481,7 @@ void _runtimePromptTests() {
     expect(messages[3], isA<UserMessage>());
   });
 
-  test('含 base 摘要（digest）：sentinel → runtime → evolution → digest', () async {
+  test('含 base 摘要（digest）：sentinel → evolution → digest → runtime', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -515,13 +511,13 @@ void _runtimePromptTests() {
         .take(4)
         .toList();
     expect(contents[0], 'SENTINEL');
-    expect(contents[1], contains('Athena GUI application'));
-    expect(contents[2], 'EVOLUTION');
-    expect(contents[3], 'DIGEST');
+    expect(contents[1], 'EVOLUTION');
+    expect(contents[2], 'DIGEST');
+    expect(contents[3], contains('Athena GUI application'));
     expect(messages.last, isA<UserMessage>());
   });
 
-  test('含 compact 摘要：sentinel → runtime → evolution → summary', () async {
+  test('含 compact 摘要：runtime 位于全部摘要与 Memory 之后', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -551,14 +547,14 @@ void _runtimePromptTests() {
         .map((m) => m.content)
         .toList();
     expect(contents[0], 'SENTINEL');
-    expect(contents[1], contains('Athena GUI application'));
-    expect(contents[2], 'EVOLUTION');
-    expect(contents[3], startsWith('Previous conversation summary:'));
-    expect(contents[4], 'DIGEST');
+    expect(contents[1], 'EVOLUTION');
+    expect(contents[2], startsWith('Previous conversation summary:'));
+    expect(contents[3], 'DIGEST');
+    expect(contents[4], contains('Athena GUI application'));
     expect(messages.last, isA<UserMessage>());
   });
 
-  test('无 sentinel 时 runtime 和 evolution 位于历史摘要之前', () async {
+  test('无 sentinel 时 runtime 仍位于最后一条 system 消息', () async {
     final recording = _RecordingChatCompletionsService();
     final service = AgentService(
       chatService: recording,
@@ -586,9 +582,9 @@ void _runtimePromptTests() {
         .whereType<SystemMessage>()
         .map((m) => m.content)
         .toList();
-    expect(contents[0], contains('Athena GUI application'));
-    expect(contents[1], 'EVOLUTION');
-    expect(contents[2], 'DIGEST');
+    expect(contents[0], 'EVOLUTION');
+    expect(contents[1], 'DIGEST');
+    expect(contents[2], contains('Athena GUI application'));
     expect(messages.last, isA<UserMessage>());
   });
 

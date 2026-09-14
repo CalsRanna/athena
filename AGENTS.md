@@ -193,7 +193,7 @@ messages.value.add(newMessage);
 7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → 权限检查 → 执行 → `ToolOutputStore.prepare`（24,000 字符以内完整返回；超出后完整保存，返回 2,000 字符连续预览与 `tool_output_read` 续读提示）
 8. 工具结果消息加入消息列表，进入下一轮迭代；每轮请求前通过 `ContextBudget` 检查已知模型窗口的估算预算并预留输出空间，必要时将较早的工具结果替换为可续读引用（保留最新工具批次），仍超限则请求前报错；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
 
-日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，独立置于稳定 system 提示/摘要之后、历史之前；每轮检查是否跨日，不落库。
+日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，追加到运行环境提示末尾，合为最后一条 system 消息，置于 Sentinel / evolution / skill / 全部摘要与 Memory 之后、对话历史之前；无运行环境提示时该消息只包含日期。每轮检查是否跨日，原位更新日期并保留环境内容，不落库。
 
 工具结果 JSON 同时保存 `result`（原文）、`modelResult`（模型可见内容）和可选 `outputId`。`ChatMessageConverter` 回放 `modelResult`，旧记录经过同一输出策略；原文可用于恢复缺失的续读缓存。GUI/TUI 装配层让注册表和转换器共用一个 `ToolOutputStore`，目录由客户端注入，不依赖 Flutter/SQL。
 
