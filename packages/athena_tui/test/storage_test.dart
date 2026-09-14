@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/conversation_summary.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:openai_dart/openai_dart.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/storage/id_allocator.dart';
 import 'package:athena_tui/storage/json_array_store.dart';
@@ -138,6 +142,58 @@ void main() {
   });
 
   group('MessageRepository', () {
+    test('one compaction row is updated through all phases and reopens with its summary', () async {
+      final chatId = await repo.createChat(chat());
+      final oldId = await repo.storeMessage(MessageEntity(chatId: chatId, role: 'user', content: 'OLD'));
+      final stepId = await repo.storeMessage(MessageEntity(chatId: chatId, role: 'assistant'));
+      for (final phase in [CompactionPhase.triggered, CompactionPhase.summarizing, CompactionPhase.persisting, CompactionPhase.completed]) {
+        final step = CompactionStep(
+          messageId: stepId, chatId: chatId, runId: 9, phase: phase,
+          startedAt: DateTime(2026), beforeTokens: 8000,
+          afterTokens: phase == CompactionPhase.completed ? 900 : null,
+          messageCount: 1, coveredMessageIds: [oldId], throughMessageId: oldId,
+          summary: phase == CompactionPhase.completed ? 'SUMMARY' : '',
+        );
+        await repo.updateMessage(step.toMessage());
+        expect(await repo.getMessagesCount(chatId), 2);
+      }
+      final reopened = JsonlSessionRepository(
+        sessionsDir: Directory('${tempDir.path}/sessions'),
+        idAllocator: IdAllocator(File('${tempDir.path}/meta.json')),
+      );
+      final stored = (await reopened.getMessagesByChatId(chatId)).singleWhere((m) => m.role == 'compaction');
+      final step = CompactionStep.fromMessage(stored);
+      expect(step.compactionId, '$chatId:$stepId');
+      expect(step.phase, CompactionPhase.completed);
+      expect(step.afterTokens, 900);
+      final replay = await ChatMessageConverter(messageRepository: reopened).buildMessages(chat: chat(id: chatId), sentinel: null);
+      expect(replay, hasLength(1));
+      expect((replay.single as AssistantMessage).content, endsWith('SUMMARY'));
+    });
+
+    test('summary coverage and chronology survive reopening JSONL storage', () async {
+      final chatId = await repo.createChat(chat());
+      for (final content in ['OLD', 'RECENT', 'CURRENT']) {
+        await repo.storeMessage(MessageEntity(chatId: chatId, role: 'user', content: content));
+      }
+      final original = await repo.getMessagesByChatId(chatId);
+      await repo.storeMessage(ConversationSummary.create(
+        chatId: chatId, content: 'SUMMARY', coveredRecords: original.take(2).toList(),
+      ));
+      // Simulate interruption between summary commit and marking originals.
+      final reopened = JsonlSessionRepository(
+        sessionsDir: Directory('${tempDir.path}/sessions'),
+        idAllocator: IdAllocator(File('${tempDir.path}/meta.json')),
+      );
+      final replay = await ChatMessageConverter(messageRepository: reopened).buildMessages(
+        chat: chat(id: chatId), sentinel: null,
+      );
+      expect(replay, hasLength(2));
+      expect((replay.first as AssistantMessage).content, endsWith('SUMMARY'));
+      expect(jsonEncode(replay.last.toJson()), contains('CURRENT'));
+      expect((await reopened.getMessagesByChatId(chatId)).length, 4);
+    });
+
     test('消息 id 会话内递增,按会话分文件', () async {
       final chatId = await repo.createChat(chat());
       final id1 = await repo.storeMessage(MessageEntity(

@@ -14,9 +14,6 @@ import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
-import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -24,11 +21,10 @@ import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
+import 'package:athena_core/service/conversation_compactor.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
-import 'package:athena_core/util/logger_util.dart';
-import 'package:openai_dart/openai_dart.dart';
 
 /// UI 无关的 Agent run 编排层。
 ///
@@ -265,23 +261,7 @@ class AgentRunCoordinator {
       );
       cancelToken.throwIfCancelled();
       // 稳定目录只拼入本次请求，不参与消息持久化。
-      final wrappedMessages = [...persistedMessages, ...?digestMessages];
-
-      final compactedMessages = chat.retention == -1
-          ? await _prepareMessagesWithCompact(
-              chat: chat,
-              sentinel: sentinel,
-              wrappedMessages: wrappedMessages,
-              contextWindow: model.contextWindow,
-              currentTokens: chat.contextTokens,
-              provider: provider,
-              model: model,
-              cancelToken: cancelToken,
-            )
-          : wrappedMessages;
-      cancelToken.throwIfCancelled();
-
-      final baseMessages = compactedMessages;
+      final baseMessages = [...persistedMessages, ...?digestMessages];
 
       // Read original messages, including compacted user instructions. Generated
       // summaries, skills, memories and tool outputs cannot grant authorization.
@@ -300,6 +280,11 @@ class AgentRunCoordinator {
       cancelToken.throwIfCancelled();
 
       // 4. 启动 Agent 循环（runId 隔离，多个对话可同时运行）
+      final compactor = ConversationCompactor(
+        repository: _messageRepo,
+        converter: _messageService,
+        chatService: _chatService,
+      );
       final agentStream = _agentService.run(
         runId: runId,
         chat: chat,
@@ -310,6 +295,22 @@ class AgentRunCoordinator {
         runtimePrompt: _runtimeEnvironment == null
             ? null
             : runtimeContextPrompt(_runtimeEnvironment),
+        // turnStart has finalized the preceding iteration before this callback
+        // runs. Exclude the new placeholder and queued, not-yet-sent inputs.
+        onCompact: (request) => compactor.compact(
+          request: request,
+          chatId: chatId,
+          runId: runId,
+          // The placeholder bounds this snapshot, including inputs queued
+          // while the repository read is still in flight.
+          beforeMessageId: _liveMessages[chatId]!.id!,
+          excludedMessageIds: {
+            for (final pending in _pendingInputs[chatId] ?? <MessageEntity>[])
+              pending.id!,
+          },
+          provider: provider,
+          model: model,
+        ),
         sentinelId: sentinelKey,
         hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
         maxIterations: _agentSettings.maxAgentIterations.value,
@@ -468,6 +469,19 @@ class AgentRunCoordinator {
 
     try {
       await for (final event in agentStream) {
+        // Terminal compaction events must reach the UI even after Stop. The
+        // placeholder becomes the step; the following answer gets a new ID.
+        if (event is AgentCompactionEvent) {
+          current = event.step.toMessage();
+          _liveMessages[chat.id!] = current;
+          yield RunCompactionChanged(event.step);
+          if (event.step.isTerminal) {
+            current = await _manageService.appendAssistantPlaceholder(chat.id!);
+            _liveMessages[chat.id!] = current;
+            yield RunAssistantAppended(current);
+          }
+          continue;
+        }
         cancelToken.throwIfCancelled();
 
         if (event is AgentTurnStartEvent) {
@@ -604,16 +618,19 @@ class AgentRunCoordinator {
         );
       }
     } catch (e) {
-      // 错误已记录到消息内容中；同样先闭合工具调用
-      current = _closeOpenToolCalls(
-        current,
-        'run aborted by error: $e',
-        toolCallsJson,
-        toolResultsJson,
-      );
-      final failed = await _manageService.recordErrorOnMessage(current, e);
-      _liveMessages[chat.id!] = failed;
-      yield RunMessageUpdated(failed);
+      // A failed append after compaction still leaves current pointing at the
+      // completed step. Report the run error without changing its summary.
+      if (current.role != 'compaction') {
+        current = _closeOpenToolCalls(
+          current,
+          'run aborted by error: $e',
+          toolCallsJson,
+          toolResultsJson,
+        );
+        final failed = await _manageService.recordErrorOnMessage(current, e);
+        _liveMessages[chat.id!] = failed;
+        yield RunMessageUpdated(failed);
+      }
       if (!sawOutcome) {
         yield RunOutcomeChanged(
           AgentRunOutcome(
@@ -653,153 +670,6 @@ class AgentRunCoordinator {
     if (!changed) return msg;
     return msg.copyWith(toolResults: jsonEncode(toolResultsJson));
   }
-
-  // ─── Compact ───────────────────────────────────────────────
-
-  Future<List<ChatMessage>> _prepareMessagesWithCompact({
-    required ChatEntity chat,
-    required SentinelEntity? sentinel,
-    required List<ChatMessage> wrappedMessages,
-    required int contextWindow,
-    required int currentTokens,
-    required ProviderEntity provider,
-    required ModelEntity model,
-    required CancelToken cancelToken,
-  }) async {
-    cancelToken.throwIfCancelled();
-    if (contextWindow <= 0 ||
-        currentTokens <= 0 ||
-        currentTokens / contextWindow <= 0.8) {
-      return wrappedMessages;
-    }
-
-    final systemMessages = <ChatMessage>[];
-    final compressible = <ChatMessage>[];
-    for (final m in wrappedMessages) {
-      if (m is SystemMessage) {
-        systemMessages.add(m);
-      } else {
-        compressible.add(m);
-      }
-    }
-
-    final splitIndex = (compressible.length * 0.6).ceil();
-    final toSummarize = compressible.sublist(0, splitIndex);
-    final keep = compressible.sublist(splitIndex);
-
-    final textToSummarize = _buildCompactText(toSummarize);
-
-    try {
-      final summary = await _chatService.complete(
-        messages: [
-          ChatMessage.system(_compactSystemPrompt),
-          ChatMessage.user(textToSummarize),
-        ],
-        provider: provider,
-        model: model,
-        cancelSignal: cancelToken.whenCancelled,
-      );
-      cancelToken.throwIfCancelled();
-      if (summary.isEmpty) return wrappedMessages;
-
-      final chatId = chat.id!;
-
-      final activeMessages = await _messageRepo.getMessagesByChatId(
-        chatId,
-        includeCompacted: false,
-      );
-      cancelToken.throwIfCancelled();
-
-      final nonSystemEntities = <MessageEntity>[];
-      for (final entity in activeMessages) {
-        if (entity.role != 'system') {
-          nonSystemEntities.add(entity);
-        }
-      }
-
-      final compactSplit = (nonSystemEntities.length * 0.6).ceil();
-      final toCompactIds = nonSystemEntities
-          .sublist(0, compactSplit)
-          .where((e) => e.id != null)
-          .map((e) => e.id!)
-          .toSet();
-
-      final summaryEntity = MessageEntity(
-        chatId: chatId,
-        role: 'system',
-        content: 'Previous conversation summary:\n$summary',
-      );
-      // 先落库摘要，再标记压缩：若 storeMessage 失败走 catch 降级全量，
-      // 历史消息保持完整；若 markAsCompacted 失败（低概率），摘要已
-      // 入库但消息未压缩——下次 run 会重复压缩一遍，数据不丢。
-      final summaryId = await _messageRepo.storeMessage(summaryEntity);
-      cancelToken.throwIfCancelled();
-      final persistedSummary = summaryEntity.copyWith(id: summaryId);
-
-      if (toCompactIds.isNotEmpty) {
-        try {
-          await _messageRepo.markAsCompacted(toCompactIds);
-          cancelToken.throwIfCancelled();
-        } catch (e) {
-          cancelToken.throwIfCancelled();
-          LoggerUtil.w(
-            'Compact: markAsCompacted failed '
-            '(${toCompactIds.length} ids), summary kept: $e',
-          );
-        }
-      }
-
-      LoggerUtil.i(
-        'Compact: ${toCompactIds.length} messages compacted → '
-        '${summary.length} char summary (msg #$summaryId), '
-        'keeping ${keep.length} recent messages',
-      );
-
-      return [
-        ...systemMessages,
-        ChatMessage.system(persistedSummary.content),
-        ...keep,
-      ];
-    } catch (e) {
-      cancelToken.throwIfCancelled();
-      LoggerUtil.w('Compact failed, falling back to full messages: $e');
-      return wrappedMessages;
-    }
-  }
-
-  String _buildCompactText(List<ChatMessage> messages) {
-    final buf = StringBuffer();
-    for (final m in messages) {
-      if (m is SystemMessage) continue;
-      final role = m is UserMessage
-          ? 'User'
-          : m is AssistantMessage
-          ? 'Assistant'
-          : m is ToolMessage
-          ? 'Tool'
-          : 'System';
-      String content;
-      if (m is ToolMessage) {
-        content = 'tool_call_id=${m.toolCallId} result=${m.content}';
-      } else if (m is AssistantMessage) {
-        content = m.content ?? '';
-      } else if (m is UserMessage) {
-        content = '${m.content}';
-      } else {
-        continue;
-      }
-      if (content.isEmpty) continue;
-      buf.writeln('$role: $content');
-      buf.writeln();
-    }
-    return buf.toString();
-  }
-
-  static const _compactSystemPrompt =
-      'Summarize the conversation below. Keep all key facts, decisions, '
-      'code patterns, file paths, URLs, error messages, and data values. '
-      'Be concise but do not omit anything that might be needed later. '
-      'Output only the summary, no preamble.';
 
   // ─── 权限 ──────────────────────────────────────────────────
 

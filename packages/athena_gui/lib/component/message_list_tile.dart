@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/component/button.dart';
+import 'package:athena_gui/component/compaction_card.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
@@ -41,6 +43,14 @@ class MessageListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.role == 'compaction') {
+      final step = CompactionStep.fromMessage(message);
+      return CompactionCard(
+        key: ValueKey(step.compactionId),
+        step: step,
+        isLive: loading,
+      );
+    }
     if (message.role == 'user') {
       return _UserMessageListTile(
         message: message,
@@ -154,6 +164,7 @@ class MessageCardListSliver extends StatelessWidget {
           } else {
             child = MessageListTile(
               message: item.message,
+              loading: loading && item.message.id == messages.last.id,
               onLongPress: onLongPress == null
                   ? null
                   : () => onLongPress!(item.message),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_tui/di/tui_di.dart';
@@ -89,6 +90,30 @@ void main() {
     await di.chatController.updateProviderApiKey(target, 'sk-test-123');
     return di;
   }
+
+  test('compaction phases replace one record and ignore other chats', () async {
+    final di = await createDi();
+    final c = di.chatController;
+    final chatId = c.currentChat.value!.id!;
+    for (final phase in [CompactionPhase.triggered, CompactionPhase.summarizing, CompactionPhase.persisting, CompactionPhase.completed]) {
+      final step = CompactionStep(
+        messageId: 100, chatId: chatId, runId: 1, phase: phase,
+        startedAt: DateTime(2026), beforeTokens: 8000,
+        summary: phase == CompactionPhase.completed ? 'SUMMARY' : '',
+      );
+      c.handleRunEvent(RunCompactionChanged(step));
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(c.messages.value.where((m) => m.id == 100), hasLength(1));
+      expect(CompactionStep.fromMessage(c.messages.value.singleWhere((m) => m.id == 100)).phase, phase);
+    }
+    c.handleRunEvent(RunCompactionChanged(CompactionStep(
+      messageId: 100, chatId: chatId + 1, runId: 2, phase: CompactionPhase.triggered,
+      startedAt: DateTime(2026), beforeTokens: 8000,
+    )));
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    expect(c.messages.value.where((m) => m.id == 100), hasLength(1));
+    expect(c.messages.value.singleWhere((m) => m.id == 100).content, 'SUMMARY');
+  });
 
   group('流式期间聊天切换守卫', () {
     test('selectChat 在流式期间被拒绝', () async {
