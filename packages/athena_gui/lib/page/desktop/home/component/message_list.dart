@@ -153,7 +153,9 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             ),
           );
     final list = loadingHistory ? const SizedBox.expand() : content;
-    if (approvals.isEmpty) return list;
+    // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
+    // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
+    // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
     return LayoutBuilder(
       builder: (context, constraints) => Column(
         children: [
