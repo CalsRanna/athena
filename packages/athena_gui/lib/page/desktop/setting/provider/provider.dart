@@ -7,6 +7,7 @@ import 'package:athena_gui/page/desktop/setting/provider/component/model_form_di
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -40,6 +41,7 @@ class _DesktopSettingProviderPageState
 
   String model = '';
   int index = 0;
+  final _selection = DesktopListSelection<int>();
   final keyController = TextEditingController();
   final urlController = TextEditingController();
 
@@ -109,30 +111,64 @@ class _DesktopSettingProviderPageState
     }
   }
 
-  Future<void> destroyProvider(ProviderEntity provider) async {
-    var result = await AthenaDialog.confirm(
-      'Do you want to delete this provider?',
+  void _handleProviderTap(int tappedIndex) {
+    final providers = providerViewModel.providers.value;
+    final provider = providers[tappedIndex];
+    final activate = _selection.handleTap(
+      provider.id,
+      ids: providers
+          .where((item) => !item.isPreset && item.id != null)
+          .map((item) => item.id!)
+          .toList(),
+      activeId: index < providers.length ? providers[index].id : null,
     );
-    if (result == true) {
-      final providers = providerViewModel.providers.value;
-      final deletedIndex = providers.indexWhere((p) => p.id == provider.id);
-      final selectedProviderId = index < providers.length
-          ? providers[index].id
-          : null;
-      await providerViewModel.deleteProvider(provider);
-      final remaining = providerViewModel.providers.value;
-      if (remaining.any((p) => p.id == provider.id)) return;
-      if (remaining.isEmpty) {
-        setState(() => index = 0);
-        return;
-      }
-
-      var nextIndex = remaining.indexWhere((p) => p.id == selectedProviderId);
-      if (selectedProviderId == provider.id || nextIndex < 0) {
-        nextIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
-      }
-      await changeProvider(nextIndex);
+    if (activate) {
+      changeProvider(tappedIndex);
+    } else {
+      setState(() {});
     }
+  }
+
+  Future<void> destroyProviders(List<ProviderEntity> targets) async {
+    final deletable = targets
+        .where((item) => !item.isPreset && item.id != null)
+        .toList();
+    if (deletable.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      deletable.length == 1
+          ? 'Do you want to delete this provider?'
+          : 'Do you want to delete ${deletable.length} providers?',
+    );
+    if (confirmed == true) {
+      for (final provider in deletable) {
+        final before = providerViewModel.providers.value;
+        final deletedIndex = before.indexWhere(
+          (item) => item.id == provider.id,
+        );
+        final activeId = index < before.length ? before[index].id : null;
+        await providerViewModel.deleteProvider(provider);
+        final remaining = providerViewModel.providers.value;
+        if (remaining.any((item) => item.id == provider.id)) {
+          if (mounted) {
+            AthenaDialog.error(
+              providerViewModel.error.value ?? 'Failed to delete provider',
+            );
+          }
+          break;
+        }
+        if (!mounted) continue;
+        if (remaining.isEmpty) {
+          setState(() => index = 0);
+          continue;
+        }
+        var nextIndex = remaining.indexWhere((item) => item.id == activeId);
+        if (nextIndex < 0) {
+          nextIndex = (deletedIndex - 1).clamp(0, remaining.length - 1);
+        }
+        await changeProvider(nextIndex);
+      }
+    }
+    if (mounted) setState(_selection.clear);
   }
 
   Future<void> editModel(ModelEntity model) async {
@@ -160,9 +196,14 @@ class _DesktopSettingProviderPageState
 
   void openProviderContextMenu(TapUpDetails details, ProviderEntity provider) {
     if (provider.isPreset) return;
+    final selected = providerViewModel.providers.value
+        .where((item) => _selection.selectedIds.contains(item.id))
+        .toList();
+    final multiSelect = selected.length > 1;
     var contextMenu = DesktopProviderContextMenu(
+      multiSelect: multiSelect,
       offset: details.globalPosition - Offset(240, 50),
-      onDestroyed: () => destroyProvider(provider),
+      onDestroyed: () => destroyProviders(multiSelect ? selected : [provider]),
       onEdited: () => openProviderFormDialog(provider),
     );
     if (!mounted) return;
@@ -261,7 +302,10 @@ class _DesktopSettingProviderPageState
         width: 240,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [Expanded(child: listView), syncTile],
+          children: [
+            Expanded(child: listView),
+            syncTile,
+          ],
         ),
       );
     });
@@ -276,18 +320,14 @@ class _DesktopSettingProviderPageState
     var provider = providers[index];
     // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
     // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
-    var trailingColor = this.index == index
-        ? colors.textSelected
-        : colors.iconSecondary;
+    final selected =
+        this.index == index || _selection.selectedIds.contains(provider.id);
+    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
     var trailing = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (provider.enabled)
-          Icon(
-            HugeIcons.strokeRoundedToggleOn,
-            size: 10,
-            color: trailingColor,
-          ),
+          Icon(HugeIcons.strokeRoundedToggleOn, size: 10, color: trailingColor),
         if (provider.isPreset) SizedBox(width: 4),
         if (provider.isPreset)
           Icon(
@@ -298,10 +338,10 @@ class _DesktopSettingProviderPageState
       ],
     );
     return DesktopMenuTile(
-      active: this.index == index,
+      active: selected,
       label: provider.name,
       onSecondaryTap: (details) => openProviderContextMenu(details, provider),
-      onTap: () => changeProvider(index),
+      onTap: () => _handleProviderTap(index),
       trailing: trailing,
     );
   }

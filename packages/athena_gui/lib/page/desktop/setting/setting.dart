@@ -36,8 +36,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   final _menus = [
     'Provider',
     'Sentinel',
-    'Skills',
-    'Experiences',
+    'Skill',
+    'Experience',
     'Default Model',
     'Agent',
     'Advanced',

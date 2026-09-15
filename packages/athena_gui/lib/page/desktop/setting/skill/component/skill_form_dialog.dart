@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -8,9 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-/// 桌面端新建 Skill：仅收集名称与描述，创建后在右侧编辑区完善正文。
 class DesktopSkillFormDialog extends StatefulWidget {
-  const DesktopSkillFormDialog({super.key});
+  final Skill? skill;
+  final void Function()? onStored;
+
+  const DesktopSkillFormDialog({super.key, this.skill, this.onStored});
 
   @override
   State<DesktopSkillFormDialog> createState() => _DesktopSkillFormDialogState();
@@ -21,6 +24,13 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
   final descriptionController = TextEditingController();
 
   late final viewModel = GetIt.instance<SkillViewModel>();
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = widget.skill?.name ?? '';
+    descriptionController.text = widget.skill?.description ?? '';
+  }
 
   @override
   void dispose() {
@@ -51,7 +61,10 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
       ),
     );
     var titleChildren = [
-      Text('Add Skill', style: titleTextStyle),
+      Text(
+        widget.skill == null ? 'Add Skill' : 'Edit Skill',
+        style: titleTextStyle,
+      ),
       const Spacer(),
       closeButton,
     ];
@@ -61,6 +74,7 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
       Expanded(
         child: AthenaInput(
           controller: nameController,
+          enabled: widget.skill == null,
           placeholder: 'kebab-case-name',
         ),
       ),
@@ -87,7 +101,7 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
       decoration: boxDecoration,
       padding: const EdgeInsets.all(32),
       width: 520,
-      child: column,
+      child: SingleChildScrollView(child: column),
     );
     return Dialog(backgroundColor: Colors.transparent, child: container);
   }
@@ -97,16 +111,24 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
   }
 
   Future<void> storeSkill() async {
-    var ok = await viewModel.createSkill(
-      name: nameController.text,
-      description: descriptionController.text,
-      body: '',
-    );
+    final skill = widget.skill;
+    final ok = skill == null
+        ? await viewModel.createSkill(
+            name: nameController.text,
+            description: descriptionController.text,
+            body: '',
+          )
+        : await viewModel.updateSkill(
+            skill,
+            description: descriptionController.text,
+            body: skill.body,
+          );
     if (!mounted) return;
     if (!ok) {
-      AthenaDialog.warning(viewModel.error.value ?? 'Failed to create skill');
+      AthenaDialog.warning(viewModel.error.value ?? 'Failed to save skill');
       return;
     }
+    widget.onStored?.call();
     AthenaDialog.dismiss();
   }
 
