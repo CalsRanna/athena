@@ -77,7 +77,7 @@ AI 自动审核默认开启；GUI 在 **Settings → Agent → General → AI Au
 |------|------|---------|-----------|
 | Level 1 | name + description（最近使用 Top 20，按访问时间排序） | AgentService 在 run 开始时自动注入系统提示词 | 按需 |
 | Level 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 | 按需 |
-| Level 3 | scripts/references 等资源 | Level 2 指令引用时加载 | 按需 |
+| Level 3 | references、模板与脚本源码等文本资源 | `skill` 携带 `resource` 相对路径时分页读取 | 按需 |
 
 最多展示最近使用的 20 个 Skill（按访问时间排序），其余需显式调用。
 
@@ -98,6 +98,30 @@ description: What this skill does and when to use it
 - `~/.athena/skills/` — 用户级（移动端为应用沙盒内目录），对所有对话可用
 
 技能目录（Level 1）会自动注入系统提示词，完整指令通过 `skill` 工具按需加载；工具调用仍需经过权限检查。内置 `self-evolve` Skill 提供完整的自我进化指导。
+
+#### 引用附属文件和脚本
+
+每个用户技能目录可以包含参考文档、脚本和模板：
+
+```text
+demo/
+├── SKILL.md
+├── references/guide.md
+└── scripts/run.py
+```
+
+`SKILL.md` 中使用相对路径引用这些文件，例如 `[参考文档](references/guide.md)`。
+调用 `skill` 加载正文时会同时返回技能的绝对目录；这些引用以技能目录为基准。
+需要参考内容时，继续调用同一个工具：
+
+```json
+{"name":"demo","resource":"references/guide.md","offset":0,"limit":200}
+```
+
+资源仅按需读取，不会随着正文自动载入。`offset` 为从 0 开始的行号，`limit` 默认 200、最大 2000；返回内容带行号、总行数和下一页提示。
+只允许读取技能目录内的 UTF-8 文本文件，绝对路径、目录越界及指向目录外的符号链接会被拒绝。内置技能没有附属资源目录。
+
+桌面端、TUI 和移动端均可通过 `skill` 读取资源。执行脚本时，桌面端/TUI 复用 Bash/PowerShell 工具，使用脚本的绝对路径，并按技能指令设置 `workdir`；执行仍走现有权限流程。移动端不提供本地脚本执行。
 
 ### Agent 自我进化
 

@@ -305,7 +305,7 @@ GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_
 |-------|------|---------|
 | 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 由 AgentService 在 run 开始时自动注入系统提示词（装配了 SkillRegistry 的前端即生效，显式 skillPrompt 可覆盖） |
 | 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 |
-| 3 | scripts/references 等资源 | Level 2 指令引用时加载 |
+| 3 | references、模板与脚本源码等文本资源 | `skill(name, resource, offset?, limit?)` 按需分页读取 |
 
 Skill 文件格式（YAML front matter + Markdown body）：
 
@@ -322,6 +322,8 @@ description: What this skill does and when to use it
 - `~/.athena/skills/` - 用户级（移动端为应用沙盒内目录），对所有对话可用
 - 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
 - Level 1 技能目录由 AgentService 自动注入系统提示词；完整指令经 `skill` 工具加载后进入工具结果，工具调用仍需经过权限检查
+- `skill(name)` 返回用户技能的绝对目录与正文，明确相对引用以该技能目录为基准。`resource` 为相对文件路径，读取前检查词法路径和符号链接实际目标均位于技能目录内；内置技能无资源目录。分页复用 `TextFileReader`，`offset` 从 0 开始，`limit` 默认 200、最大 2000，文件按 UTF-8 解码。通用 `file_read` 的敏感路径限制保持原有行为。
+- 资源读取在 GUI/TUI 共用的 `SkillTool` 中实现，移动端也可读取沙盒内技能资源。脚本执行由桌面/TUI 的 Bash/PowerShell 工具负责，使用绝对脚本路径及所需 `workdir`，继续走原权限流程；读取脚本源码不会执行脚本。
 
 ### 7.6 自我进化
 
