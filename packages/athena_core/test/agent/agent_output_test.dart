@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as athena;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -191,64 +192,96 @@ void main() {
         .toList();
   });
 
-  test(
-    'date remains stable within a day and refreshes across midnight',
-    () async {
-      var now = DateTime(2026, 9, 9, 10);
-      final chatService = _ChatService([
-        (_) {
-          now = DateTime(2026, 9, 9, 23, 59);
-          return [_call('one')];
-        },
-        (_) {
-          now = DateTime(2026, 9, 10);
-          return [_call('two')];
-        },
-        (_) => [],
-        (_) => [],
-      ]);
-      final service = AgentService(
-        chatService: chatService,
-        toolRegistry: ToolRegistry()..register(_OutputTool('ok')),
-        now: () => now,
-      );
-      final base = [ChatMessage.system('SENTINEL'), ChatMessage.user('task')];
-      await service
-          .run(
-            runId: 1,
-            chat: _chat,
-            provider: _provider,
-            model: _model(),
-            baseMessages: base,
-          )
-          .toList();
-      now = DateTime(2026, 9, 11);
-      await service
-          .run(
-            runId: 2,
-            chat: _chat,
-            provider: _provider,
-            model: _model(),
-            baseMessages: base,
-          )
-          .toList();
-      final dates = chatService.requests.map((request) {
-        expect((request.first as SystemMessage).content, 'SENTINEL');
-        return request.whereType<SystemMessage>().last.content;
-      }).toList();
-      expect(dates, [
-        'Current date: 2026-09-09.',
-        'Current date: 2026-09-09.',
-        'Current date: 2026-09-10.',
-        'Current date: 2026-09-11.',
-      ]);
-      expect(
-        base,
-        hasLength(2),
-        reason: 'date does not mutate persisted history',
-      );
-    },
-  );
+  for (final environment in <RuntimeEnvironment?>[
+    RuntimeEnvironment.gui,
+    RuntimeEnvironment.tui,
+    null,
+  ]) {
+    test(
+      'last system message preserves runtime and refreshes date across midnight ($environment)',
+      () async {
+        final runtimePrompt = environment == null
+            ? null
+            : runtimeContextPrompt(environment);
+        var now = DateTime(2026, 9, 9, 10);
+        final chatService = _ChatService([
+          (_) {
+            now = DateTime(2026, 9, 9, 23, 59);
+            return [_call('one')];
+          },
+          (_) {
+            now = DateTime(2026, 9, 10);
+            return [_call('two')];
+          },
+          (_) => [],
+          (_) => [],
+        ]);
+        final service = AgentService(
+          chatService: chatService,
+          toolRegistry: ToolRegistry()..register(_OutputTool('ok')),
+          now: () => now,
+        );
+        final base = [
+          ChatMessage.system('SENTINEL'),
+          ChatMessage.system('SUMMARY'),
+          ChatMessage.system('DIGEST'),
+          ChatMessage.user('task'),
+        ];
+        final originalBase = base.map((message) => message.toJson()).toList();
+        await service
+            .run(
+              runId: 1,
+              chat: _chat,
+              provider: _provider,
+              model: _model(),
+              baseMessages: base,
+              runtimePrompt: runtimePrompt,
+              evolutionPrompt: 'EVOLUTION',
+              skillPrompt: 'SKILLS',
+            )
+            .toList();
+        now = DateTime(2026, 9, 11);
+        await service
+            .run(
+              runId: 2,
+              chat: _chat,
+              provider: _provider,
+              model: _model(),
+              baseMessages: base,
+              runtimePrompt: runtimePrompt,
+              evolutionPrompt: 'EVOLUTION',
+              skillPrompt: 'SKILLS',
+            )
+            .toList();
+        final runtimeMessages = chatService.requests.map((request) {
+          final systems = request.whereType<SystemMessage>().toList();
+          expect(systems, hasLength(6));
+          expect(request.take(systems.length), systems);
+          expect(request[systems.length], isA<UserMessage>());
+          expect(systems.take(5).map((message) => message.content), [
+            'SENTINEL',
+            'EVOLUTION',
+            'SKILLS',
+            'SUMMARY',
+            'DIGEST',
+          ]);
+          return systems.last.content;
+        }).toList();
+        final prefix = runtimePrompt == null ? '' : '$runtimePrompt\n';
+        expect(runtimeMessages, [
+          '${prefix}Current date: 2026-09-09.',
+          '${prefix}Current date: 2026-09-09.',
+          '${prefix}Current date: 2026-09-10.',
+          '${prefix}Current date: 2026-09-11.',
+        ]);
+        expect(
+          base.map((message) => message.toJson()).toList(),
+          originalBase,
+          reason: 'runtime context does not mutate persisted history',
+        );
+      },
+    );
+  }
 
   test(
     'context is rechecked during the run and older results remain readable',

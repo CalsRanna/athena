@@ -38,6 +38,25 @@ void main() {
     expect(result[3].map((message) => message.id), [5]);
   });
 
+  test('压缩步骤属于 assistant 卡片，保留顺序并由用户消息分隔', () {
+    final result = buildMessageDisplayCards([
+      message(id: 1, role: 'user'),
+      message(id: 2, role: 'compaction'),
+      message(id: 3, role: 'assistant'),
+      message(id: 4, role: 'compaction'),
+      message(id: 5, role: 'assistant'),
+      message(id: 6, role: 'user'),
+      message(id: 7, role: 'compaction'),
+    ]);
+
+    expect(result.map((card) => card.map((message) => message.id).toList()), [
+      [1],
+      [2, 3, 4, 5],
+      [6],
+      [7],
+    ]);
+  });
+
   test('非 assistant 消息不会被吸收到 assistant 卡片', () {
     final result = buildMessageDisplayCards([
       message(id: 1, role: 'assistant'),

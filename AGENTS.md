@@ -15,7 +15,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 - **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
 - **技能与经验管理（GUI）**：设置页可视化管理 Skill（新建/编辑/删除）与 Experience（归档/恢复/删除），移动端首页 Skills 卡片行；与 Agent 工具共用同一份文件存储
-- **自动上下文压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention == -1`）
+- **自动上下文压缩**：每次模型请求前，估算上下文达到窗口 80% 时自动将全部有效历史快照压缩为摘要（`retention == -1`，含 Agent 工具循环内）
 - **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
 - **多模型提供商**：OpenAI API 兼容，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
 
@@ -193,7 +193,7 @@ messages.value.add(newMessage);
 7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → 权限检查 → 执行 → `ToolOutputStore.prepare`（24,000 字符以内完整返回；超出后完整保存，返回 2,000 字符连续预览与 `tool_output_read` 续读提示）
 8. 工具结果消息加入消息列表，进入下一轮迭代；每轮请求前通过 `ContextBudget` 检查已知模型窗口的估算预算并预留输出空间，必要时将较早的工具结果替换为可续读引用（保留最新工具批次），仍超限则请求前报错；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
 
-日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，独立置于稳定 system 提示/摘要之后、历史之前；每轮检查是否跨日，不落库。
+日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，追加到运行环境提示末尾，合为最后一条 system 消息，置于 Sentinel / evolution / skill / Memory 之后、对话历史（含压缩摘要）之前；无运行环境提示时该消息只包含日期。每轮检查是否跨日，原位更新日期并保留环境内容，不落库。
 
 工具结果 JSON 同时保存 `result`（原文）、`modelResult`（模型可见内容）和可选 `outputId`。`ChatMessageConverter` 回放 `modelResult`，旧记录经过同一输出策略；原文可用于恢复缺失的续读缓存。GUI/TUI 装配层让注册表和转换器共用一个 `ToolOutputStore`，目录由客户端注入，不依赖 Flutter/SQL。
 
@@ -213,6 +213,7 @@ sealed class AgentEvent {
   AgentToolExecutionUpdateEvent// 工具部分结果进度（预留，shell 实时 stdout）
   AgentUsageEvent              // Token 使用量统计
   AgentRunOutcomeEvent         // 结构化终止原因、迭代数与工具失败证据
+  AgentCompactionEvent         // 同一次压缩步骤的阶段、统计与摘要
 }
 ```
 
@@ -304,7 +305,7 @@ GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_
 |-------|------|---------|
 | 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 由 AgentService 在 run 开始时自动注入系统提示词（装配了 SkillRegistry 的前端即生效，显式 skillPrompt 可覆盖） |
 | 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 |
-| 3 | scripts/references 等资源 | Level 2 指令引用时加载 |
+| 3 | references、模板与脚本源码等文本资源 | `skill(name, resource, offset?, limit?)` 按需分页读取 |
 
 Skill 文件格式（YAML front matter + Markdown body）：
 
@@ -321,6 +322,8 @@ description: What this skill does and when to use it
 - `~/.athena/skills/` - 用户级（移动端为应用沙盒内目录），对所有对话可用
 - 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
 - Level 1 技能目录由 AgentService 自动注入系统提示词；完整指令经 `skill` 工具加载后进入工具结果，工具调用仍需经过权限检查
+- `skill(name)` 返回用户技能的绝对目录与正文，明确相对引用以该技能目录为基准。`resource` 为相对文件路径，读取前检查词法路径和符号链接实际目标均位于技能目录内；内置技能无资源目录。分页复用 `TextFileReader`，`offset` 从 0 开始，`limit` 默认 200、最大 2000，文件按 UTF-8 解码。通用 `file_read` 的敏感路径限制保持原有行为。
+- 资源读取在 GUI/TUI 共用的 `SkillTool` 中实现，移动端也可读取沙盒内技能资源。脚本执行由桌面/TUI 的 Bash/PowerShell 工具负责，使用绝对脚本路径及所需 `workdir`，继续走原权限流程；读取脚本源码不会执行脚本。
 
 ### 7.6 自我进化
 
@@ -344,7 +347,17 @@ description: What this skill does and when to use it
 
 `AgentRunCoordinator`（athena_core，UI 无关）是 **AgentStreamDelegate 的实际实现体**。职责：
 
-1. 用户消息落库 → 2. 自动重命名触发判断（首条用户消息）→ 3. 解析 model/provider/sentinel → 4. 构建上下文（`ChatMessageConverter.buildMessages`）→ 5. **自动压缩**（`retention == -1` 且 `contextTokens/contextWindow > 80%` 时：前 60% 消息由辅助模型压缩为 system summary 消息，原消息 `markAsCompacted`，压缩失败降级全量）→ 6. 追加 assistant 占位消息 → 7. 启动 AgentService.run → 8. 消费事件流落库 → 9. 用量 `recordUsage` + 刷新会话 → 10. 收尾/取消/错误落库
+1. 用户消息落库 → 2. 自动重命名触发判断（首条用户消息）→ 3. 解析 model/provider/sentinel → 4. 构建上下文（`ChatMessageConverter.buildMessages`）→ 5. 追加 assistant 占位消息 → 6. 启动 AgentService.run（每次模型请求前检查并按需自动压缩）→ 7. 消费事件流落库 → 8. 用量 `recordUsage` + 刷新会话 → 9. 收尾/取消/错误落库
+
+**自动压缩**：`retention == -1` 且模型窗口已知时，由 `AgentService` 在每轮请求前使用 `ContextBudget` 估算完整输入（含 system、工具定义与工具结果）；达到窗口 80% 或更早触及预留输出后的输入上限时，调用 Coordinator 注入的 `ConversationCompactor`。不依赖上一轮 `chat.contextTokens`，因此用户输入和 Agent 连续工具执行都能触发。`AgentTurnStartEvent` 先使 Coordinator 落库上一轮完整工具批次，再进行压缩。
+
+触发后冻结当前请求的完整历史快照，全部非 system 有效历史（含当前用户消息、assistant/tool 批次和旧摘要）参与压缩；排除当前占位消息与待发送输入，以占位消息 ID 限定快照，读取期间新排队的输入也不会提前进入。摘要请求超预算时，按完整消息批次分段总结再合并；单个工具批次过大时，结果正文换成已保存输出的续读引用。工具名、参数及调用/结果配对保留。摘要长度预算为窗口的 10%（128～4096 token），生成后再次校验实际估算大小与有效缩减。失败时保留原上下文，再由预算检查决定是否可继续请求。
+
+每次压缩复用当前空的 assistant 占位记录，转为 `role: compaction` 的单条步骤记录。`CompactionStep` 的 `compactionId` 由 chatId/messageId 组成；全部阶段通过 `AgentCompactionEvent → RunCompactionChanged` 更新同一 ID。阶段为 triggered → summarizing → persisting → completed，失败或取消分别以 failed/cancelled 结束。步骤结束后才创建下一条 assistant 占位记录，保证卡片位于后续回复之前。
+
+`reference` 保存阶段、runId、时间、前后估算 token 数、消息数、累计覆盖 ID 与逻辑位置；completed 时 `content` 保存摘要。摘要与覆盖范围在同一次消息更新中提交，再标记原文 `compacted`；即使标记中断，回放仍按覆盖范围排除原文。completed 后才切换模型上下文并发出完成事件。未完成/失败/取消的步骤不进入模型上下文；完成摘要按覆盖位置作为 assistant 历史回放，不进入 system 或权限授权上下文。旧版 system/summary 摘要兼容读取，旧摘要参与后续压缩合并。
+
+GUI/TUI 在消息流内使用工具调用风格的 `CompactionCard`，每次压缩一张卡片，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示“压缩已中断”。GUI 使用工具 Header shimmer，TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
 
 产出 `RunEvent` 纯数据流（无 UI 类型）：
 
@@ -353,6 +366,7 @@ sealed class RunEvent {
   RunMessageStored      // 用户消息已落库
   RunAssistantAppended  // Assistant 占位消息已追加（含新迭代消息）
   RunMessageUpdated     // 消息增量更新
+  RunCompactionChanged  // 同一压缩步骤原位更新（GUI/TUI 共用）
   RunIterationChanged   // 迭代轮次变化
   RunToolNameChanged    // 当前工具名称变化
   RunUsageChanged       // Token 使用量 + 最新 ChatEntity
@@ -408,7 +422,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 ### Retention 语义（ChatMessageConverter + Coordinator）
 
 - `retention == 0`：零上下文模式，只携带最后一条用户消息（+ sentinel prompt）
-- `retention == -1`：自动管理——返回全部消息，Coordinator 在占用 >80% 窗口时自动 compact
+- `retention == -1`：自动管理——返回有效历史，Agent 每轮请求前在估算占用达到 80% 时经 Coordinator 回调自动 compact
 - `retention > 0`：当前实现**不截断**，返回全部消息（旧的手动轮数截断已移除，正数语义等同全量）
 
 ### Token 用量
@@ -602,7 +616,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 5. **OpenAI Client 生命周期**：每次 API 调用创建新 `OpenAIClient`，`finally` 中 `close()`；重试只覆盖网络错误（连接/超时/限流/5xx），不重试业务错误（4xx/解析）
 6. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用；权限弹窗与取消用 `Future.any` 竞速
 7. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），迭代结束/流结束时 `finalizeAssistantMessage()` 落库；取消标 `[Cancelled]`，错误写进消息内容
-8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（>80% 窗口触发）、正数 = 当前不截断
+8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（每次模型请求前估算达到 80% 窗口触发）、正数 = 当前不截断
 9. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
 10. **预设数据完全走 migration 机制**：新预设修改 = 新增幂等迁移（INSERT 用 `WHERE NOT EXISTS` / marker 去重，UPDATE 无条件执行，不删除条目只用 `is_preset = 0`，不覆盖用户 api_key/enabled）
 11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -7,6 +8,7 @@ import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/util/platform_util.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 class _FakeKeyValueStore implements KeyValueStore {
@@ -130,5 +132,39 @@ void main() {
   test('工具名唯一（注册表按名索引，重名会静默覆盖）', () {
     final names = toolNames(mobile: false);
     expect(names.toSet(), hasLength(names.length));
+  });
+
+  test('移动端通过 skill 读取沙盒内资源，不注册文件或脚本执行工具', () async {
+    final home = await Directory.systemTemp.createTemp(
+      'mobile_skill_resources',
+    );
+    addTearDown(() => home.delete(recursive: true));
+    final skillDir = p.join(home.path, '.athena', 'skills', 'mobile-demo');
+    SkillLoader().saveSkill(
+      name: 'mobile-demo',
+      description: 'Mobile resource reading',
+      body: 'Read references/guide.md.',
+      targetDir: skillDir,
+    );
+    final resource = File(p.join(skillDir, 'references', 'guide.md'));
+    await resource.parent.create();
+    await resource.writeAsString('Mobile reference content');
+    final skills = SkillRegistry()..loadAll(homeDir: home.path);
+    final tools = buildToolRegistry(
+      skillRegistry: skills,
+      experienceRepository: ExperienceRepository(),
+      sentinelRepository: _FakeSentinelRepository(),
+      store: _FakeKeyValueStore(),
+      mobileHomeDir: home.path,
+      mobile: true,
+    );
+    final result = await tools.get('skill')!.execute({
+      'name': 'mobile-demo',
+      'resource': 'references/guide.md',
+    });
+    expect(result, contains('1\tMobile reference content'));
+    expect(tools.get('file_read'), isNull);
+    expect(tools.get('bash'), isNull);
+    expect(tools.get('powershell'), isNull);
   });
 }

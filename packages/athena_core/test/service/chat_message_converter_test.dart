@@ -272,7 +272,7 @@ void main() {
     // compact 摘要在 DB 中按 id 排位（compact 时刻追加），可能夹在
     // 对话中间。buildMessages 必须把它归位到历史区开头（sentinel 之后）。
     test(
-      'compact summary is hoisted to the head of history (sentinel after)',
+      'legacy compact summary is replayed as history after the sentinel',
       () async {
         final summary = MessageEntity(
           chatId: 1,
@@ -301,8 +301,8 @@ void main() {
         expect(result[0], isA<SystemMessage>());
         expect((result[0] as SystemMessage).content, 'you are a bot');
         expect(
-          (result[1] as SystemMessage).content,
-          startsWith('Previous conversation summary:'),
+          (result[1] as AssistantMessage).content,
+          startsWith('Previous conversation summary (historical reference'),
         );
         expect(result[2], isA<UserMessage>());
       },

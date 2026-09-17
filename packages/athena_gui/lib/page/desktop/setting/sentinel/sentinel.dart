@@ -3,6 +3,7 @@ import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_cont
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -29,6 +30,7 @@ class DesktopSettingSentinelPage extends StatefulWidget {
 class _DesktopSettingSentinelPageState
     extends State<DesktopSettingSentinelPage> {
   int index = 0;
+  final _selection = DesktopListSelection<int>();
   final nameController = TextEditingController();
   final avatarController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -59,30 +61,64 @@ class _DesktopSettingSentinelPageState
     promptController.text = sentinels[index].prompt;
   }
 
-  Future<void> destroySentinel(SentinelEntity sentinel) async {
-    var result = await AthenaDialog.confirm(
-      'Do you want to delete this sentinel?',
+  void _handleSentinelTap(int tappedIndex) {
+    final sentinels = viewModel.sentinels.value;
+    final sentinel = sentinels[tappedIndex];
+    final activate = _selection.handleTap(
+      sentinel.id,
+      ids: sentinels
+          .where((item) => !item.isPreset && item.id != null)
+          .map((item) => item.id!)
+          .toList(),
+      activeId: sentinels[index].id,
     );
-    if (result == true) {
-      final sentinels = viewModel.sentinels.value;
-      final deletedIndex = sentinels.indexWhere((s) => s.id == sentinel.id);
-      final selectedSentinelId = index < sentinels.length
-          ? sentinels[index].id
-          : null;
-      await viewModel.deleteSentinel(sentinel);
-      final remaining = viewModel.sentinels.value;
-      if (remaining.any((s) => s.id == sentinel.id)) return;
-      if (remaining.isEmpty) {
-        setState(() => index = 0);
-        return;
-      }
-
-      var nextIndex = remaining.indexWhere((s) => s.id == selectedSentinelId);
-      if (selectedSentinelId == sentinel.id || nextIndex < 0) {
-        nextIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
-      }
-      await changeSentinel(nextIndex);
+    if (activate) {
+      changeSentinel(tappedIndex);
+    } else {
+      setState(() {});
     }
+  }
+
+  Future<void> destroySentinels(List<SentinelEntity> targets) async {
+    final deletable = targets
+        .where((item) => !item.isPreset && item.id != null)
+        .toList();
+    if (deletable.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      deletable.length == 1
+          ? 'Do you want to delete this sentinel?'
+          : 'Do you want to delete ${deletable.length} sentinels?',
+    );
+    if (confirmed == true) {
+      for (final sentinel in deletable) {
+        final before = viewModel.sentinels.value;
+        final deletedIndex = before.indexWhere(
+          (item) => item.id == sentinel.id,
+        );
+        final activeId = index < before.length ? before[index].id : null;
+        await viewModel.deleteSentinel(sentinel);
+        final remaining = viewModel.sentinels.value;
+        if (remaining.any((item) => item.id == sentinel.id)) {
+          if (mounted) {
+            AthenaDialog.error(
+              viewModel.error.value ?? 'Failed to delete sentinel',
+            );
+          }
+          break;
+        }
+        if (!mounted) continue;
+        if (remaining.isEmpty) {
+          setState(() => index = 0);
+          continue;
+        }
+        var nextIndex = remaining.indexWhere((item) => item.id == activeId);
+        if (nextIndex < 0) {
+          nextIndex = (deletedIndex - 1).clamp(0, remaining.length - 1);
+        }
+        await changeSentinel(nextIndex);
+      }
+    }
+    if (mounted) setState(_selection.clear);
   }
 
   @override
@@ -140,9 +176,14 @@ class _DesktopSettingSentinelPageState
 
   void showSentinelContextMenu(TapUpDetails details, SentinelEntity sentinel) {
     if (sentinel.isPreset) return;
+    final selected = viewModel.sentinels.value
+        .where((item) => _selection.selectedIds.contains(item.id))
+        .toList();
+    final multiSelect = selected.length > 1;
     var contextMenu = DesktopSentinelContextMenu(
+      multiSelect: multiSelect,
       offset: details.globalPosition - Offset(240, 50),
-      onDestroyed: () => destroySentinel(sentinel),
+      onDestroyed: () => destroySentinels(multiSelect ? selected : [sentinel]),
       onEdited: () => openSentinelFormDialog(sentinel),
     );
     DesktopContextMenuManager.instance.show(context, contextMenu);
@@ -230,9 +271,9 @@ class _DesktopSettingSentinelPageState
     var sentinel = sentinels[index];
     // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
     // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
-    var trailingColor = this.index == index
-        ? colors.textSelected
-        : colors.iconSecondary;
+    final selected =
+        this.index == index || _selection.selectedIds.contains(sentinel.id);
+    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
     var trailing = sentinel.isPreset
         ? Icon(
             HugeIcons.strokeRoundedCircleLock01,
@@ -241,11 +282,11 @@ class _DesktopSettingSentinelPageState
           )
         : null;
     return DesktopMenuTile(
-      active: this.index == index,
+      active: selected,
       label: sentinel.name,
       trailing: trailing,
       onSecondaryTap: (details) => showSentinelContextMenu(details, sentinel),
-      onTap: () => changeSentinel(index),
+      onTap: () => _handleSentinelTap(index),
     );
   }
 
