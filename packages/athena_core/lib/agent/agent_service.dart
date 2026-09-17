@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/context_budget.dart';
+import 'package:athena_core/agent/context_compaction.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
@@ -98,10 +100,12 @@ class AgentService {
     required ProviderEntity provider,
     required ModelEntity model,
     required List<ChatMessage> baseMessages,
+
     /// 覆盖默认注入的 Level 1 技能目录；null 时使用 SkillRegistry.level1Prompt。
     String? skillPrompt,
     String? evolutionPrompt,
     String? runtimePrompt,
+    ContextCompactionCallback? onCompact,
     String? sentinelId,
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
@@ -125,7 +129,7 @@ class AgentService {
     // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
     // 本轮就会带上可用技能清单（含内置 self-evolve）；显式传入可覆盖。
     final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
-    var messages = _injectPrompts(
+    final prompts = _injectPrompts(
       baseMessages,
       effectiveSkillPrompt,
       evolutionPrompt,
@@ -153,7 +157,10 @@ class AgentService {
         chat: chat,
         provider: provider,
         model: model,
-        messages: messages,
+        messages: prompts.messages,
+        runtimeMessageIndex: prompts.runtimeMessageIndex,
+        runtimePrompt: runtimePrompt,
+        onCompact: onCompact,
         runId: runId,
         sentinelId: sentinelId,
         maxIterations: maxIterations,
@@ -442,16 +449,16 @@ class AgentService {
 
   /// 首轮注入 runtime / evolution / skill prompt。
   ///
-  /// 目标布局（按语义分层，缓存前缀稳定）：
-  ///   [sentinel, runtime, evolution, system-summaries?, current-date, history...]
+  /// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
+  ///   [sentinel, evolution, skill, memory?, runtime-with-date, history...]
   ///
   /// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
-  /// true 时首个 system 是 sentinel，其后的 system 是上下文摘要（稳定的
-  /// active memory catalog 或历史 compact 摘要）；为 false 时所有 system
-  /// 都是上下文摘要。非 system 是对话历史。
-  /// - 静态注入段（runtime / evolution / skill，内容恒定）插在 sentinel
-  ///   之后、历史类摘要之前——指令层连续，摘要保持"历史区头部"。
-  List<ChatMessage> _injectPrompts(
+  /// true 时首个 system 是 sentinel，其后的 system 是稳定的 Memory 目录；
+  /// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
+  /// 包括按覆盖范围定位的 compact 摘要。
+  /// - evolution / skill 插在 sentinel 之后、Memory 之前。
+  /// - runtime + date 作为最后一条 system 消息，紧接对话历史之前。
+  ({List<ChatMessage> messages, int runtimeMessageIndex}) _injectPrompts(
     List<ChatMessage> base,
     String? skillPrompt,
     String? evolutionPrompt,
@@ -468,9 +475,7 @@ class AgentService {
       }
     }
 
-    final staticBlocks = <ChatMessage>[
-      if (runtimePrompt != null && runtimePrompt.isNotEmpty)
-        ChatMessage.system(runtimePrompt),
+    final injectedBlocks = <ChatMessage>[
       if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
         ChatMessage.system(evolutionPrompt),
       if (skillPrompt != null && skillPrompt.isNotEmpty)
@@ -485,18 +490,29 @@ class AgentService {
       if (i == sentinelEnd) {
         head.add(m); // sentinel
       } else if (m is SystemMessage) {
-        summaries.add(m); // 历史类摘要（memory digest / compact）
+        summaries.add(m); // 稳定的附加上下文（memory digest）
       } else {
         history.add(m);
       }
     }
-    return [
-      ...head,
-      ...staticBlocks,
-      ...summaries,
-      ChatMessage.system(currentDatePrompt(_now())),
-      ...history,
-    ];
+    return (
+      messages: [
+        ...head,
+        ...injectedBlocks,
+        ...summaries,
+        ChatMessage.system(_runtimePromptWithDate(runtimePrompt)),
+        ...history,
+      ],
+      runtimeMessageIndex:
+          head.length + injectedBlocks.length + summaries.length,
+    );
+  }
+
+  String _runtimePromptWithDate(String? runtimePrompt) {
+    final date = currentDatePrompt(_now());
+    return runtimePrompt == null || runtimePrompt.isEmpty
+        ? date
+        : '$runtimePrompt\n$date';
   }
 
   /// 从 ToolRegistry 构建 OpenAI Tool 列表。
@@ -528,6 +544,9 @@ class _AgentLoop {
     required ProviderEntity provider,
     required ModelEntity model,
     required List<ChatMessage> messages,
+    required int runtimeMessageIndex,
+    required String? runtimePrompt,
+    required ContextCompactionCallback? onCompact,
     required int runId,
     required String? sentinelId,
     required int maxIterations,
@@ -541,7 +560,9 @@ class _AgentLoop {
        _provider = provider,
        _model = model,
        _budget = ContextBudget(model.contextWindow),
-       _dateMessageIndex = messages.lastIndexWhere((m) => m is SystemMessage),
+       _runtimeMessageIndex = runtimeMessageIndex,
+       _runtimePrompt = runtimePrompt,
+       _onCompact = onCompact,
        _messages = messages,
        _runId = runId,
        _sentinelId = sentinelId,
@@ -557,7 +578,9 @@ class _AgentLoop {
   final ProviderEntity _provider;
   final ModelEntity _model;
   final ContextBudget _budget;
-  final int _dateMessageIndex;
+  final int _runtimeMessageIndex;
+  final String? _runtimePrompt;
+  final ContextCompactionCallback? _onCompact;
 
   /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
   final List<ChatMessage> _messages;
@@ -633,9 +656,31 @@ class _AgentLoop {
     _iterationsExecuted++;
 
     final tools = _service._buildTools();
-    final date = currentDatePrompt(_service._now());
-    if ((_messages[_dateMessageIndex] as SystemMessage).content != date) {
-      _messages[_dateMessageIndex] = ChatMessage.system(date);
+    if (_chat.retention == -1 &&
+        _onCompact != null &&
+        _budget.shouldCompact(_messages, tools)) {
+      await for (final update in _onCompact(
+        ContextCompactionRequest(
+          messages: List.of(_messages),
+          tools: tools,
+          budget: _budget,
+          outputs: _service._toolRegistry.outputStore,
+          cancelToken: _token,
+        ),
+      )) {
+        if (update.messages != null) {
+          _messages
+            ..clear()
+            ..addAll(update.messages!);
+        }
+        yield AgentCompactionEvent(update.step);
+      }
+      _token.throwIfCancelled();
+    }
+    // Summarization may span midnight; refresh immediately before the request.
+    final runtime = _service._runtimePromptWithDate(_runtimePrompt);
+    if ((_messages[_runtimeMessageIndex] as SystemMessage).content != runtime) {
+      _messages[_runtimeMessageIndex] = ChatMessage.system(runtime);
     }
     final requestMessages = await _budget.prepare(
       messages: _messages,
@@ -1185,6 +1230,11 @@ sealed class AgentEvent {
 class AgentTextEvent extends AgentEvent {
   final String delta;
   const AgentTextEvent(this.delta);
+}
+
+class AgentCompactionEvent extends AgentEvent {
+  final CompactionStep step;
+  const AgentCompactionEvent(this.step);
 }
 
 class AgentReasoningEvent extends AgentEvent {

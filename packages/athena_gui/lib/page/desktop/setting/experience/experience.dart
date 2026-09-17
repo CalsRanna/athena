@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/desktop/setting/experience/component/experience_context_menu.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -28,6 +29,7 @@ class DesktopSettingExperiencePage extends StatefulWidget {
 class _DesktopSettingExperiencePageState
     extends State<DesktopSettingExperiencePage> {
   int index = 0;
+  final _selection = DesktopListSelection<(String, String)>();
 
   late final viewModel = GetIt.instance<ExperienceViewModel>();
 
@@ -52,28 +54,71 @@ class _DesktopSettingExperiencePageState
     });
   }
 
-  Future<void> destroyExperience(ExperienceEntity experience) async {
-    var result = await AthenaDialog.confirm(
-      'Do you want to delete this experience?',
+  void _handleExperienceTap(int tappedIndex) {
+    final experiences = viewModel.experiences.value;
+    final experience = experiences[tappedIndex];
+    final activate = _selection.handleTap(
+      (experience.sentinelId, experience.id),
+      ids: experiences.map((item) => (item.sentinelId, item.id)).toList(),
+      activeId: index < experiences.length
+          ? (experiences[index].sentinelId, experiences[index].id)
+          : null,
     );
-    if (result != true) return;
-    var experiences = viewModel.experiences.value;
-    final deletedIndex = experiences.indexWhere((e) => e.id == experience.id);
-    final selectedId = index < experiences.length
-        ? experiences[index].id
-        : null;
-    await viewModel.deleteExperience(experience);
-    final remaining = viewModel.experiences.value;
-    if (remaining.any((e) => e.id == experience.id)) return;
-    if (remaining.isEmpty) {
-      setState(() => index = 0);
-      return;
+    if (activate) {
+      changeExperience(tappedIndex);
+    } else {
+      setState(() {});
     }
-    var nextIndex = remaining.indexWhere((e) => e.id == selectedId);
-    if (selectedId == experience.id || nextIndex < 0) {
-      nextIndex = deletedIndex > 0 ? deletedIndex - 1 : 0;
+  }
+
+  Future<void> destroyExperiences(List<ExperienceEntity> targets) async {
+    final deletable = targets;
+    if (deletable.isEmpty) return;
+    final confirmed = await AthenaDialog.confirm(
+      deletable.length == 1
+          ? 'Do you want to delete this experience?'
+          : 'Do you want to delete ${deletable.length} experiences?',
+    );
+    if (confirmed == true) {
+      for (final experience in deletable) {
+        final before = viewModel.experiences.value;
+        final deletedIndex = before.indexWhere(
+          (item) =>
+              (item.sentinelId, item.id) ==
+              (experience.sentinelId, experience.id),
+        );
+        final activeId = index < before.length
+            ? (before[index].sentinelId, before[index].id)
+            : null;
+        await viewModel.deleteExperience(experience);
+        final remaining = viewModel.experiences.value;
+        if (remaining.any(
+          (item) =>
+              (item.sentinelId, item.id) ==
+              (experience.sentinelId, experience.id),
+        )) {
+          if (mounted) {
+            AthenaDialog.error(
+              viewModel.error.value ?? 'Failed to delete experience',
+            );
+          }
+          break;
+        }
+        if (!mounted) continue;
+        if (remaining.isEmpty) {
+          setState(() => index = 0);
+          continue;
+        }
+        var nextIndex = remaining.indexWhere(
+          (item) => (item.sentinelId, item.id) == activeId,
+        );
+        if (nextIndex < 0) {
+          nextIndex = (deletedIndex - 1).clamp(0, remaining.length - 1);
+        }
+        changeExperience(nextIndex);
+      }
     }
-    changeExperience(nextIndex);
+    if (mounted) setState(_selection.clear);
   }
 
   Future<void> toggleStatus(ExperienceEntity experience) async {
@@ -96,16 +141,42 @@ class _DesktopSettingExperiencePageState
     }
   }
 
+  Future<void> archiveExperiences(List<ExperienceEntity> targets) async {
+    for (final experience in targets) {
+      if (experience.status == ExperienceEntity.statusArchived) continue;
+      final ok = await viewModel.archiveExperience(experience);
+      if (!ok) {
+        if (mounted) {
+          AthenaDialog.warning(viewModel.error.value ?? 'Operation failed');
+        }
+        break;
+      }
+    }
+    if (mounted) setState(_selection.clear);
+  }
+
   void showExperienceContextMenu(
     TapUpDetails details,
     ExperienceEntity experience,
   ) {
     var isArchived = experience.status == ExperienceEntity.statusArchived;
+    final selected = viewModel.experiences.value
+        .where(
+          (item) => _selection.selectedIds.contains((item.sentinelId, item.id)),
+        )
+        .toList();
+    final multiSelect = selected.length > 1;
     var contextMenu = DesktopExperienceContextMenu(
+      multiSelect: multiSelect,
+      canArchive: selected.any(
+        (item) => item.status != ExperienceEntity.statusArchived,
+      ),
       offset: details.globalPosition - const Offset(240, 50),
       isArchived: isArchived,
-      onToggledStatus: () => toggleStatus(experience),
-      onDestroyed: () => destroyExperience(experience),
+      onToggledStatus: () =>
+          multiSelect ? archiveExperiences(selected) : toggleStatus(experience),
+      onDestroyed: () =>
+          destroyExperiences(multiSelect ? selected : [experience]),
     );
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
@@ -148,23 +219,20 @@ class _DesktopSettingExperiencePageState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var experience = experiences[index];
     var isArchived = experience.status == ExperienceEntity.statusArchived;
-    var trailingColor = this.index == index
-        ? colors.textSelected
-        : colors.iconSecondary;
+    final selected =
+        this.index == index ||
+        _selection.selectedIds.contains((experience.sentinelId, experience.id));
+    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
     var trailing = isArchived
-        ? Icon(
-            HugeIcons.strokeRoundedArchive,
-            size: 10,
-            color: trailingColor,
-          )
+        ? Icon(HugeIcons.strokeRoundedArchive, size: 10, color: trailingColor)
         : null;
     return DesktopMenuTile(
-      active: this.index == index,
+      active: selected,
       label: experience.lesson,
       trailing: trailing,
       onSecondaryTap: (details) =>
           showExperienceContextMenu(details, experience),
-      onTap: () => changeExperience(index),
+      onTap: () => _handleExperienceTap(index),
     );
   }
 
@@ -172,7 +240,9 @@ class _DesktopSettingExperiencePageState
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var experiences = viewModel.experiences.value;
-      if (experiences.isEmpty) return const SizedBox();
+      if (experiences.isEmpty || index >= experiences.length) {
+        return const SizedBox();
+      }
       var experience = experiences[index];
       var isArchived = experience.status == ExperienceEntity.statusArchived;
       var sectionTextStyle = TextStyle(
@@ -188,10 +258,7 @@ class _DesktopSettingExperiencePageState
           padding: const EdgeInsets.only(top: 6),
           child: Row(
             children: [
-              SizedBox(
-                width: 80,
-                child: Text(label, style: labelTextStyle),
-              ),
+              SizedBox(width: 80, child: Text(label, style: labelTextStyle)),
               Expanded(child: Text(value, style: valueTextStyle)),
             ],
           ),

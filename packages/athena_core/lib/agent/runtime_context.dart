@@ -9,7 +9,7 @@ import 'package:athena_core/util/platform_util.dart';
 /// 猜测应用数据的存储位置。
 enum RuntimeEnvironment { gui, tui }
 
-/// Local calendar date only; stable within a day and separate from static facts.
+/// Local calendar date only; appended to the runtime context, stable within a day.
 String currentDatePrompt(DateTime date) {
   final year = date.year.toString().padLeft(4, '0');
   final month = date.month.toString().padLeft(2, '0');
@@ -17,7 +17,7 @@ String currentDatePrompt(DateTime date) {
   return 'Current date: $year-$month-$day.';
 }
 
-/// 生成运行时上下文提示文本，注入在 sentinel 系统提示之后。
+/// 生成运行环境提示文本，与日期合并后作为最后一条 system 消息注入。
 String runtimeContextPrompt(RuntimeEnvironment environment) {
   final client = environment == RuntimeEnvironment.gui
       ? 'Athena GUI application'

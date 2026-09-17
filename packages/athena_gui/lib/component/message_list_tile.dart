@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/component/button.dart';
+import 'package:athena_gui/component/compaction_card.dart';
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
@@ -65,12 +67,14 @@ class _AssistantMessageRenderData {
   final List<MessageEntity> toolMessages;
   final bool waitingForFirstDelta;
   final bool addBoundarySpacing;
+  final bool isLive;
 
   const _AssistantMessageRenderData({
     required this.message,
     required this.toolMessages,
     this.waitingForFirstDelta = false,
     required this.addBoundarySpacing,
+    this.isLive = false,
   });
 }
 
@@ -154,6 +158,7 @@ class MessageCardListSliver extends StatelessWidget {
           } else {
             child = MessageListTile(
               message: item.message,
+              loading: loading && item.message.id == messages.last.id,
               onLongPress: onLongPress == null
                   ? null
                   : () => onLongPress!(item.message),
@@ -186,7 +191,7 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
 
   for (final (cardIndex, cardMessages) in cards.indexed) {
     final message = cardMessages.first;
-    if (message.role != 'assistant') {
+    if (!isAssistantCardMessage(message)) {
       result.add(
         _MessageListRenderItem(message: message, addCardSpacing: cardIndex > 0),
       );
@@ -336,6 +341,14 @@ class _AssistantMessageContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final message = data.message;
+    if (message.role == 'compaction') {
+      final step = CompactionStep.fromMessage(message);
+      return CompactionCard(
+        key: ValueKey(step.compactionId),
+        step: step,
+        isLive: data.isLive,
+      );
+    }
     final children = <Widget>[];
     if (data.waitingForFirstDelta) {
       children.add(const _AssistantMessageWaitingPart());
@@ -419,6 +432,10 @@ List<_AssistantMessageRenderData> _buildAssistantRenderData(
   int? openToolOwner;
 
   for (final (index, message) in messages.indexed) {
+    if (message.role == 'compaction') {
+      openToolOwner = null;
+      continue;
+    }
     final hasTools = message.toolCalls.isNotEmpty;
     final hasContentBeforeTools =
         message.reasoningContent.isNotEmpty || message.content.isNotEmpty;
@@ -444,6 +461,17 @@ List<_AssistantMessageRenderData> _buildAssistantRenderData(
 
   final result = <_AssistantMessageRenderData>[];
   for (final (index, message) in messages.indexed) {
+    if (message.role == 'compaction') {
+      result.add(
+        _AssistantMessageRenderData(
+          message: message,
+          toolMessages: const [],
+          addBoundarySpacing: false,
+          isLive: loading && index == messages.length - 1,
+        ),
+      );
+      continue;
+    }
     final effectiveTools = toolMessages[index];
     final visible =
         message.reasoningContent.isNotEmpty ||

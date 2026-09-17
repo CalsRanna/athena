@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/compaction_step.dart';
+import 'package:athena_tui/ui/widgets/compaction_card.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:athena_tui/ui/theme.dart';
@@ -29,6 +31,15 @@ class MessageItem extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    if (message.role == 'compaction') {
+      final step = CompactionStep.fromMessage(message);
+      return CompactionCard(
+        key: ValueKey(step.compactionId),
+        step: step,
+        isLive: controller.isStreaming.value &&
+            controller.bridge.liveMessage(message.chatId)?.id == message.id,
+      );
+    }
     final isUser = message.role == 'user';
     final isAssistant = message.role == 'assistant';
     // 取消/错误标记只由核心层追加在 assistant 占位消息上;加角色门槛
@@ -38,7 +49,7 @@ class MessageItem extends StatelessComponent {
     final isError = isAssistant &&
         (message.content.startsWith('Error:') ||
             message.content.contains('[Error:'));
-    final isSystem = message.role == 'system';
+    final isSystem = message.role == 'system' || message.role == 'summary';
 
     // 正文卡片边框颜色与样式由消息类型决定
     var borderColor = isUser

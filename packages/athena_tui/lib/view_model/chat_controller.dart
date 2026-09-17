@@ -569,6 +569,8 @@ class ChatController {
   void handleRunEvent(RunEvent event) {
     if (!_active) return; // UI 拆解后的流式收尾事件不再写信号
     switch (event) {
+      case RunCompactionChanged(:final step):
+        _applyMessageUpdate(step.toMessage());
       case RunMessageStored(:final message):
         _pushMessage(message);
       case RunAssistantAppended(:final message):
