@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart'
+    show ElicitQuestion;
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
@@ -37,6 +39,21 @@ class ApprovalRequest {
   });
 }
 
+/// 一个挂起的提问请求（按 [chatId] 隔离，渲染到对应会话）。
+class ElicitRequest {
+  final int chatId;
+  final List<ElicitQuestion> questions;
+
+  /// 用户提交答案后完成；run 取消时以 null 完成（卡片随之移除）。
+  final Completer<Map<String, String>?> completer;
+
+  ElicitRequest({
+    required this.chatId,
+    required this.questions,
+    required this.completer,
+  });
+}
+
 /// GUI 侧的 Agent 流桥：包装核心 [AgentRunCoordinator]，
 /// 权限审批以会话内卡片（非模态）呈现，事件原样转发。
 class AgentStreamDelegate {
@@ -46,6 +63,11 @@ class AgentStreamDelegate {
 
   /// 挂起的权限审批请求流（ChatViewModel 订阅后渲染为会话内卡片）。
   Stream<ApprovalRequest> get approvalRequests => _approvalController.stream;
+
+  final _elicitController = StreamController<ElicitRequest>.broadcast();
+
+  /// 挂起的提问请求流（ChatViewModel 订阅后渲染为会话内卡片）。
+  Stream<ElicitRequest> get elicitRequests => _elicitController.stream;
 
   AgentStreamDelegate({required AgentServiceCoordinatorDeps deps}) {
     _coordinator = AgentRunCoordinator(
@@ -62,6 +84,8 @@ class AgentStreamDelegate {
       permissionService: deps.permissionService,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(chatId, toolName, arguments, cancelToken),
+      elicitPrompt: (chatId, questions, cancelToken) =>
+          _askElicit(chatId, questions, cancelToken),
       experienceRepository: deps.experienceRepository,
       runtimeEnvironment: RuntimeEnvironment.gui,
     );
@@ -107,6 +131,13 @@ class AgentStreamDelegate {
     }
   }
 
+  /// 用户提交某个提问请求的答案（由 UI 卡片调用）。
+  void respondElicit(ElicitRequest request, Map<String, String> answers) {
+    if (!request.completer.isCompleted) {
+      request.completer.complete(answers);
+    }
+  }
+
   // ─── GUI 侧实现：会话内审批卡片（非模态） ────────────────
 
   Future<PermissionDecision> _askPermission(
@@ -131,6 +162,26 @@ class AgentStreamDelegate {
       cancelToken.whenCancelled.then(
         (_) => const PermissionDecision(approved: false),
       ),
+    ]);
+    if (!completer.isCompleted) completer.complete(result);
+    return result;
+  }
+
+  /// GUI 侧实现：会话内提问卡片。卡片提交答案即完成；run 取消时以
+  /// null 完成——工具据此返回「未作答」并按既定策略降级，不挂死。
+  Future<Map<String, String>?> _askElicit(
+    int chatId,
+    List<ElicitQuestion> questions,
+    CancelToken cancelToken,
+  ) async {
+    final completer = Completer<Map<String, String>?>();
+    _elicitController.add(
+      ElicitRequest(chatId: chatId, questions: questions, completer: completer),
+    );
+
+    final result = await Future.any<Map<String, String>?>([
+      completer.future,
+      cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
     ]);
     if (!completer.isCompleted) completer.complete(result);
     return result;

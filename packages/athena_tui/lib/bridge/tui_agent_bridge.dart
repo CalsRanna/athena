@@ -1,6 +1,8 @@
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:meta/meta.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart'
+    show ElicitQuestion;
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
@@ -25,6 +27,12 @@ typedef TuiPermissionHandler = Future<PermissionDecision> Function(
   String arguments,
 );
 
+/// 提问回调:由 TUI UI 层注册(终端内模态)。
+///
+/// 返回 null = 未作答(UI 未就绪或用户跳过),工具据此按标注过的假定继续。
+typedef TuiElicitHandler =
+    Future<Map<String, String>?> Function(List<ElicitQuestion> questions);
+
 /// TUI 侧的 Agent 流桥:包装核心 [AgentRunCoordinator]。
 ///
 /// 结构与 GUI 的 AgentStreamDelegate 对称:事件原样转发,
@@ -34,6 +42,10 @@ class TuiAgentBridge {
 
   /// UI 层在启动时注册(尚未注册时拒绝权限请求,保证 Agent 不卡死)。
   TuiPermissionHandler? permissionHandler;
+
+  /// UI 层在启动时注册。尚未注册时以"未作答"返回——提问不是安全决策,
+  /// 没必要拒绝,让模型按假定继续即可(与权限请求的处理不同)。
+  TuiElicitHandler? elicitHandler;
 
   TuiAgentBridge({
     required AgentService agentService,
@@ -63,6 +75,8 @@ class TuiAgentBridge {
       permissionService: permissionService,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
           _askPermission(toolName, arguments, cancelToken),
+      elicitPrompt: (chatId, questions, cancelToken) =>
+          _askElicit(questions, cancelToken),
       experienceRepository: experienceRepository,
       runtimeEnvironment: RuntimeEnvironment.tui,
     );
@@ -103,6 +117,28 @@ class TuiAgentBridge {
     String arguments,
   ) {
     return _askPermission(toolName, arguments, CancelToken());
+  }
+
+  /// 测试入口:直接请求一次提问(走与 Agent 相同的 handler 逻辑)。
+  @visibleForTesting
+  Future<Map<String, String>?> requestElicitForTest(
+    List<ElicitQuestion> questions,
+  ) {
+    return _askElicit(questions, CancelToken());
+  }
+
+  Future<Map<String, String>?> _askElicit(
+    List<ElicitQuestion> questions,
+    CancelToken cancelToken,
+  ) {
+    final handler = elicitHandler;
+    // UI 未就绪(或测试未注册)时以"未作答"返回,避免 Agent 挂起等待
+    if (handler == null) return Future<Map<String, String>?>.value(null);
+    // run 取消时立即返回未作答,卡片/提示条随之中止
+    return Future.any<Map<String, String>?>([
+      handler(questions),
+      cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
+    ]);
   }
 
   Future<PermissionDecision> _askPermission(

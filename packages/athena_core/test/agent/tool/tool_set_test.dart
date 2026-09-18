@@ -65,14 +65,14 @@ void main() {
     return registry.all.map((t) => t.name).toList();
   }
 
-  test('桌面端注册 15 个工具，shell 按操作系统二选一', () {
+  test('桌面端注册 16 个工具，shell 按操作系统二选一', () {
     final names = toolNames(mobile: false);
 
     // bash 与 powershell 互斥：运行时只存在其中一个
     final shell = PlatformUtil.isWindows ? 'powershell' : 'bash';
     final absentShell = PlatformUtil.isWindows ? 'bash' : 'powershell';
 
-    expect(names, hasLength(15));
+    expect(names, hasLength(16));
     expect(
       names,
       containsAll(<String>[
@@ -81,6 +81,7 @@ void main() {
         'file_write',
         'file_update',
         shell,
+        'ask_user_question',
         'web_fetch',
         'web_search',
         'skill',
@@ -124,6 +125,8 @@ void main() {
       'file_update',
       'bash',
       'powershell',
+      // 移动端暂无提问卡片，交互工具不注册
+      'ask_user_question',
     ]) {
       expect(names, isNot(contains(absent)), reason: '$absent 不应出现在移动端');
     }

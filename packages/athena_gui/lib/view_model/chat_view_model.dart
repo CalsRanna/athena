@@ -99,6 +99,9 @@ class ChatViewModel {
   /// 挂起的权限审批请求（按对话渲染为会话内卡片）。
   final pendingApprovals = listSignal<ApprovalRequest>([]);
 
+  /// 当前挂起的提问请求（会话内卡片，按 chatId 归属）。
+  final pendingElicits = listSignal<ElicitRequest>([]);
+
   final error = signal<String?>(null);
 
   final currentModel = signal<ModelEntity?>(null);
@@ -381,6 +384,19 @@ class ChatViewModel {
       unawaited(
         request.completer.future.whenComplete(() {
           pendingApprovals.value = pendingApprovals.value
+              .where((r) => !identical(r, request))
+              .toList();
+        }),
+      );
+    });
+
+    // 提问请求 → 会话内卡片；提交答案或 run 取消（completer 以 null 完成）
+    // 后自动移除，与审批卡片同生命周期。
+    streamDelegate.elicitRequests.listen((request) {
+      pendingElicits.value = [...pendingElicits.value, request];
+      unawaited(
+        request.completer.future.whenComplete(() {
+          pendingElicits.value = pendingElicits.value
               .where((r) => !identical(r, request))
               .toList();
         }),
@@ -945,6 +961,11 @@ class ChatViewModel {
   /// 用户对审批请求做出决策（Allow Once / Always Allow / Deny）。
   void respondApproval(ApprovalRequest request, PermissionDecision decision) {
     _stream.respondApproval(request, decision);
+  }
+
+  /// 用户提交提问卡片上的答案（问题文本 → 所选 label / 自填文本）。
+  void respondElicit(ElicitRequest request, Map<String, String> answers) {
+    _stream.respondElicit(request, answers);
   }
 
   Future<void> deleteMessage(MessageEntity message) async {

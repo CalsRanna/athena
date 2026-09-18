@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitChannel;
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart' as athena;
@@ -83,6 +86,83 @@ void main() {
     token.cancel();
 
     await expectLater(future, throwsA(isA<CancelledException>()));
+  });
+
+  test('提问工具经引擎拿到 run 的通道，答案随工具结果交回', () async {
+    final registry = ToolRegistry()..register(AskUserQuestionTool());
+    final service = AgentService(
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+    var seenChatId = -1;
+    final result = await service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'q1',
+        type: 'function',
+        function: FunctionCall(
+          name: 'ask_user_question',
+          arguments: jsonEncode({
+            'questions': [
+              {
+                'question': '输出用哪种格式？',
+                'header': '格式',
+                'options': [
+                  {'label': '摘要', 'description': '简短概览'},
+                  {'label': '详细', 'description': '完整说明'},
+                ],
+              },
+            ],
+          }),
+        ),
+      ),
+      cancelToken: CancelToken(),
+      elicitChannel: ElicitChannel(
+        chatId: 3,
+        prompt: (chatId, questions, _) async {
+          seenChatId = chatId;
+          return {questions.single.question: '摘要'};
+        },
+        cancelToken: CancelToken(),
+      ),
+    );
+
+    expect(seenChatId, 3);
+    expect(result.status, ToolResultStatus.success);
+    expect(result.rawResult, contains('格式: 输出用哪种格式？ -> 摘要'));
+  });
+
+  test('未注入通道时提问工具降级为「按假定继续」，不等待不报错', () async {
+    final registry = ToolRegistry()..register(AskUserQuestionTool());
+    final service = AgentService(
+      chatService: ChatCompletionsService(llmClient: LlmClient()),
+      toolRegistry: registry,
+    );
+
+    final result = await service.executeToolCallInternal(
+      toolCall: ToolCall(
+        id: 'q2',
+        type: 'function',
+        function: FunctionCall(
+          name: 'ask_user_question',
+          arguments: jsonEncode({
+            'questions': [
+              {
+                'question': '输出用哪种格式？',
+                'header': '格式',
+                'options': [
+                  {'label': '摘要', 'description': '简短概览'},
+                  {'label': '详细', 'description': '完整说明'},
+                ],
+              },
+            ],
+          }),
+        ),
+      ),
+      cancelToken: CancelToken(),
+    );
+
+    expect(result.rawResult, AskUserQuestionTool.noChannelMessage);
+    expect(result.status, ToolResultStatus.success);
   });
 
   _jsonModeTests();

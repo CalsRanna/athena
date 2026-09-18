@@ -245,8 +245,8 @@ enum ToolRisk { readOnly, dangerous }
 - `ToolRegistry.parametersFor()` 为所有工具统一添加可选的 `call_description`（用用户语言简述本次调用的动作与目标）。这是保留的展示元数据，工具不可将其用作业务参数；原有 `description` 业务字段保持原语义。Agent 按此 schema 校验后，在权限判断/并行判定/执行前移除元数据，原始 JSON 仍用于审批展示和历史记录。
 - GUI/TUI 共用 `tool_args_formatter.dart`：卡片预览优先调用说明，缺失时取 command/path/url/query 或精简 JSON；审批详情完整展示实际参数并支持滚动，不用说明替代实际操作。GUI 的 `ApprovalRequest.arguments` 保留原始 JSON，由卡片格式化。
 - `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
-- 桌面端注册 15 个工具（bash 与 powershell 按操作系统互斥），移动端注册 11 个（无本地文件与进程工具）
-- 注册在 `di.dart` 的 ToolRegistry 工厂中按 `PlatformUtil.isMobile` 分支完成
+- 桌面端注册 16 个工具（bash 与 powershell 按操作系统互斥），移动端注册 11 个（无本地文件与进程工具；提问工具仅桌面端注册）
+- 清单与平台分支在 `tool_set.dart` 的 `buildToolRegistry`（引擎的事实，两前端共用），`di.dart` 只注入依赖与差异项
 
 工具实现文件（`packages/athena_core/lib/agent/tool/`）：
 
@@ -254,6 +254,7 @@ enum ToolRisk { readOnly, dangerous }
 |------|--------|----------|------|
 | `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时默认上限 3600s（`ATHENA_SHELL_MAX_TIMEOUT` 可覆盖），超时 SIGTERM→SIGKILL |
 | `powershell_shell_tool.dart` | PowerShellShellTool | dangerous/串行 | Windows PowerShell 命令 |
+| `ask_user_question_tool.dart` | AskUserQuestionTool | **readOnly/串行** | 向用户提结构化问题（1-4 问、每问 2-4 选项，单选/多选 + 自由输入）；GUI 卡片 / TUI 提问条作答，无提问 UI 时降级为"按假定继续" |
 | `tool_output_read_tool.dart` | ToolOutputReadTool | **readOnly/并行** | 按结果 ID 和 Unicode 字符 offset/limit 续读已保存输出（默认 6,000，上限 12,000）；移动端也可用 |
 | `file_read_tool.dart` | FileReadTool | **readOnly/并行** | 文件读取，offset/limit 分页 + 行号 |
 | `file_write_tool.dart` | FileWriteTool | dangerous/串行 | 创建/覆写，递归建父目录 |
@@ -291,6 +292,8 @@ GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_
 - **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。
 - **Always Allow**：另外通过 `PermissionRule.forToolCall` 写入持久规则。
 - **Deny**：本轮记录精确拒绝，优先于之前批准；run 完成或取消清空本轮缓存。
+
+提问（「你要哪个」，`ask_user_question`）是**与审批并列的另一条人机通道**，不共用审批弹窗：通道类型、两端 UI 接线与同步清单见 §17「交互类工具的两端同步点」。
 
 工具自我保护（在工具 `execute()` 内部，独立于权限系统）：
 - bash/powershell：递归删除命令（rm -rf 变体 / del /s）被检测到拒绝执行
@@ -632,9 +635,31 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 ### 添加新工具
 
 1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口（声明 `executionMode`、`risk`，只读/并行能力按需覆写 `canExecuteParallel`）
-2. 在 `di.dart` 的 ToolRegistry 注册中添加到合适的平台列表
+2. 在 `packages/athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry` 注册（工具清单的唯一真相源，两个前端共用），并同步 `test/agent/tool/tool_set_test.dart` 的计数与名单
 3. 权限相关：`PermissionRule._isFilePathTool()` 与 `PermissionService.primaryArg()` 中按需添加模式
-4. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`，运行 `dart test`
+4. 需要宿主交互（问用户 / 等用户）的工具，另见「交互类工具的两端同步点」
+5. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`，运行 `dart test`
+
+### 交互类工具的两端同步点（提问 / 审批）
+
+「你要哪个」（`ask_user_question`）与「要不要做」（权限审批）是两条独立通道，共用「按 run 注入回调」这一套模式；改一处要同步两端：
+
+| 环节 | 提问 | 审批 |
+|------|------|------|
+| 通道类型 | `agent/elicit/elicit_prompt.dart`：`ElicitChannel` / `ElicitChannelAware` / `ElicitPrompt` | `agent/permission/permission_prompt.dart`：`PermissionPrompt` / `PermissionDecision` |
+| 引擎注入 | `AgentService.run(onElicit:)` 按 run 构造 `ElicitChannel`，`executeToolCallInternal` 交给实现 `ElicitChannelAware` 的工具 | 权限门 `_buildPermissionGate` |
+| 协调层 | `AgentRunCoordinator(elicitPrompt:)` | `AgentRunCoordinator(permissionPrompt:)` |
+| GUI | `AgentStreamDelegate.elicitRequests` → `ChatViewModel.pendingElicits` → `widget/elicit_card.dart` | `approvalRequests` → `pendingApprovals` → `widget/permission_card.dart` |
+| TUI | `TuiAgentBridge.elicitHandler` → `widgets/question_bar.dart` + 输入区自填模式 | `permissionHandler` → `widgets/permission_bar.dart` |
+| 无人应答时 | 返回 null（未作答），模型按标注过的假定继续 | 返回拒绝（安全默认） |
+
+同步清单：
+- **改 `AgentService.run` 签名**会打到 `athena_gui/test/view_model/chat_view_model_stream_test.dart` 与 `athena_tui/test/ui_test.dart` 里的 `_FakeAgentService.run` 覆写，两处都要改。
+- 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
+- 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
+- `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
+- 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
+- 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 
 ### 添加新 Entity（含新表）
 

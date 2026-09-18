@@ -10,6 +10,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/elicit_card.dart';
 import 'package:athena_gui/widget/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -128,6 +129,11 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     final approvals = chatViewModel.pendingApprovals.value
         .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
         .toList();
+
+    // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
+    final elicits = chatViewModel.pendingElicits.value
+        .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
+        .toList();
     final content = messages.isEmpty
         ? DesktopSentinelPlaceholder(sentinel: sentinel)
         : NotificationListener<ScrollNotification>(
@@ -172,6 +178,17 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                       request,
                       permissionDecisionOf(approved, persistExact),
                     ),
+              ),
+            ),
+          for (final request in elicits)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+              child: ElicitCard(
+                request: request,
+                maxHeight:
+                    constraints.maxHeight * permissionCardMaxHeightFraction,
+                onSubmit: (answers) =>
+                    chatViewModel.respondElicit(request, answers),
               ),
             ),
         ],
