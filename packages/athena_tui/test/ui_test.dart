@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/cancel_token.dart';
@@ -15,6 +16,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_tui/di/tui_di.dart';
 import 'package:athena_tui/ui/app.dart';
 import 'package:athena_tui/ui/widgets/permission_bar.dart';
+import 'package:athena_tui/ui/widgets/question_bar.dart';
 // nocterm / nocterm_test 都导出 matchers,与 package:test 冲突(isEmpty 等),
 // 统一用别名访问
 import 'package:nocterm/nocterm.dart' as nocterm;
@@ -47,6 +49,7 @@ class _FakeAgentService extends AgentService {
     String? sentinelId,
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
+    ElicitPrompt? onElicit,
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
     int maxIterations = 100,
@@ -584,6 +587,184 @@ void main() {
 
       final decision = await future;
       expect(decision.approved, isFalse);
+    });
+  });
+
+  // ─── 提问(向用户问「你要哪个」) ──────────────────────────
+
+  test('bridge 未注册提问处理器时返回未作答', () async {
+    final di = await createDi();
+    final answers = await di.agentBridge.requestElicitForTest([
+      const ElicitQuestion(
+        question: '输出用哪种格式？',
+        header: '格式',
+        options: [
+          ElicitOption(label: '摘要', description: '简短概览'),
+          ElicitOption(label: '详细', description: '完整说明'),
+        ],
+      ),
+    ]);
+    // 未注册时返回 null:工具据此按标注过的假定继续,而不是挂起等待
+    expect(answers, isNull);
+  });
+
+  test('提问条渲染问题、选项与按键提示', () {
+    return nocterm_test.testNocterm('提问条', (tester) async {
+      await tester.pumpComponent(
+        const QuestionBar(
+          questions: [
+            ElicitQuestion(
+              question: '输出用哪种格式？',
+              header: '格式',
+              options: [
+                ElicitOption(label: '摘要', description: '简短概览'),
+                ElicitOption(label: '详细 (Recommended)', description: '完整说明'),
+              ],
+            ),
+          ],
+          currentIndex: 0,
+          selected: {},
+          freeText: {},
+          hint: '[1-4] 选择  [Enter] 提交',
+        ),
+      );
+      await tester.pump();
+      final state = tester.terminalState;
+      expect(state.containsText('提问'), isTrue);
+      expect(state.containsText('输出用哪种格式？'), isTrue);
+      expect(state.containsText('1) 摘要'), isTrue);
+      expect(state.containsText('详细 (Recommended)'), isTrue);
+      expect(state.containsText('[1-4] 选择'), isTrue);
+    });
+  });
+
+  test('提问条:数字键选选项,回车提交', () {
+    return nocterm_test.testNocterm('提问选择', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      final future = di.agentBridge.requestElicitForTest([
+        const ElicitQuestion(
+          question: '输出用哪种格式？',
+          header: '格式',
+          options: [
+            ElicitOption(label: '摘要', description: '简短概览'),
+            ElicitOption(label: '详细 (Recommended)', description: '完整说明'),
+          ],
+        ),
+      ]);
+      await tester.pump();
+      expect(tester.terminalState.containsText('提问'), isTrue);
+
+      // 选第 2 项(推荐项)后回车提交
+      await tester.sendKey(nocterm.LogicalKey.digit2);
+      await tester.pump();
+      await tester.sendEnter();
+      await tester.pump();
+
+      final answers = await future;
+      expect(answers, {'输出用哪种格式？': '详细 (Recommended)'});
+      expect(tester.terminalState.containsText('提问'), isFalse);
+    });
+  });
+
+  test('提问条:多选按 ", " 连接,未作答时回车不提交', () {
+    return nocterm_test.testNocterm('提问多选', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      final future = di.agentBridge.requestElicitForTest([
+        const ElicitQuestion(
+          question: '包含哪些部分？',
+          header: '部分',
+          multiSelect: true,
+          options: [
+            ElicitOption(label: '摘要', description: '简短概览'),
+            ElicitOption(label: '详细', description: '完整说明'),
+          ],
+        ),
+      ]);
+      await tester.pump();
+
+      // 未作答直接回车:跳到未作答问题并提示,不提交
+      await tester.sendEnter();
+      await tester.pump();
+      expect(tester.terminalState.containsText('还有问题未作答'), isTrue);
+
+      await tester.sendKey(nocterm.LogicalKey.digit1);
+      await tester.pump();
+      await tester.sendKey(nocterm.LogicalKey.digit2);
+      await tester.pump();
+      await tester.sendEnter();
+      await tester.pump();
+
+      final answers = await future;
+      expect(answers, {'包含哪些部分？': '摘要, 详细'});
+    });
+  });
+
+  test('提问条:[e] 用输入区自填,回传自填文本', () {
+    return nocterm_test.testNocterm('提问自填', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      // 问句刻意取短:输入区 placeholder 会带上问句,过长会在窄终端里折行
+      final future = di.agentBridge.requestElicitForTest([
+        const ElicitQuestion(
+          question: '用哪种格式？',
+          header: '格式',
+          options: [
+            ElicitOption(label: '摘要', description: '简短概览'),
+            ElicitOption(label: '详细', description: '完整说明'),
+          ],
+        ),
+      ]);
+      await tester.pump();
+
+      await tester.sendKey(nocterm.LogicalKey.keyE);
+      await tester.pump();
+      // 提问条切到自填态(输入区同时被切换为自填模式)
+      expect(tester.terminalState.containsText('自填中'), isTrue);
+
+      await tester.enterText('你觉得哪个好就用哪个');
+      await tester.sendEnter();
+      await tester.pump();
+      await tester.sendEnter();
+      await tester.pump();
+
+      final answers = await future;
+      // 自填文本本身就是答案,不是 "Other"
+      expect(answers, {'用哪种格式？': '你觉得哪个好就用哪个'});
+    });
+  });
+
+  test('提问条:Esc 跳过,以未作答收场(不中断本轮)', () {
+    return nocterm_test.testNocterm('提问跳过', (tester) async {
+      final di = await createDi();
+      await tester.pumpComponent(AthenaApp(di: di));
+      await tester.pump();
+
+      final future = di.agentBridge.requestElicitForTest([
+        const ElicitQuestion(
+          question: '输出用哪种格式？',
+          header: '格式',
+          options: [
+            ElicitOption(label: '摘要', description: '简短概览'),
+            ElicitOption(label: '详细', description: '完整说明'),
+          ],
+        ),
+      ]);
+      await tester.pump();
+      expect(tester.terminalState.containsText('提问'), isTrue);
+
+      await tester.sendEscape();
+      await tester.pump();
+
+      expect(await future, isNull);
+      expect(tester.terminalState.containsText('提问'), isFalse);
     });
   });
 

@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/context_budget.dart';
 import 'package:athena_core/agent/context_compaction.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart'
+    show ElicitChannel, ElicitChannelAware, ElicitPrompt;
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
@@ -111,6 +113,10 @@ class AgentService {
     PermissionCallback? onPermission,
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
+
+    /// 提问回调（「你要哪个」），与审批回调（「要不要做」）分开。
+    /// null = 本会话没有提问 UI，ask_user_question 会降级为「按假定继续」。
+    ElicitPrompt? onElicit,
     int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
@@ -150,6 +156,14 @@ class AgentService {
       sentinelId: sentinelId,
     );
 
+    // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
+    // 无 onElicit 时通道不可用，工具据此降级而不是空等。
+    final elicitChannel = ElicitChannel(
+      chatId: chat.id ?? 0,
+      prompt: onElicit,
+      cancelToken: token,
+    );
+
     try {
       yield* _AgentLoop(
         service: this,
@@ -168,6 +182,7 @@ class AgentService {
         permissionGate: permissionGate,
         permissionService: permissionService,
         onPermission: onPermission,
+        elicitChannel: elicitChannel,
       ).run();
     } on CancelledException {
       rethrow;
@@ -188,6 +203,7 @@ class AgentService {
     required CancelToken? cancelToken,
     String? sentinelId,
     PermissionGate? permissionGate,
+    ElicitChannel? elicitChannel,
   }) async {
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
@@ -266,6 +282,12 @@ class AgentService {
     if (tool == null) {
       rawResult = 'Error: Unknown tool "${toolCall.function.name}"';
       status = ToolResultStatus.executionError;
+    } else if (elicitChannel != null && tool is ElicitChannelAware) {
+      // 通道随 run 传入（工具集是长生命周期单例，通道不是）
+      rawResult = await (tool as ElicitChannelAware).executeWithElicit(
+        args,
+        channel: elicitChannel,
+      );
     } else if (cancelToken != null && tool is CancellableTool) {
       rawResult = await (tool as CancellableTool).executeCancellable(
         args,
@@ -554,6 +576,7 @@ class _AgentLoop {
     required PermissionGate? permissionGate,
     required PermissionService? permissionService,
     required PermissionCallback? onPermission,
+    required ElicitChannel elicitChannel,
   }) : _service = service,
        _state = state,
        _chat = chat,
@@ -570,7 +593,8 @@ class _AgentLoop {
        _jsonMode = jsonMode,
        _permissionGate = permissionGate,
        _permissionService = permissionService,
-       _onPermission = onPermission;
+       _onPermission = onPermission,
+       _elicitChannel = elicitChannel;
 
   final AgentService _service;
   final _AgentRunState _state;
@@ -591,6 +615,7 @@ class _AgentLoop {
   final PermissionGate? _permissionGate;
   final PermissionService? _permissionService;
   final PermissionCallback? _onPermission;
+  final ElicitChannel _elicitChannel;
 
   CancelToken get _token => _state.cancelToken;
 
@@ -1042,6 +1067,7 @@ class _AgentLoop {
       cancelToken: _token,
       sentinelId: _sentinelId,
       permissionGate: _permissionGate,
+      elicitChannel: _elicitChannel,
     );
     return _ToolExecutionData(
       event: result.event,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/context_compaction.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/cancel_token.dart';
@@ -547,6 +548,7 @@ class _FakeAgentService extends AgentService {
     String? sentinelId,
     bool hasSentinelPrompt = true,
     PermissionCallback? onPermission,
+    ElicitPrompt? onElicit,
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
     int maxIterations = 100,

@@ -11,6 +11,7 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/elicit_card.dart';
 import 'package:athena_gui/widget/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -87,6 +88,11 @@ class _MessageListViewState extends State<MessageListView> {
           .where((r) => r.chatId == widget.chat.id)
           .toList();
 
+      // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
+      final elicits = viewModel.pendingElicits.value
+          .where((r) => r.chatId == widget.chat.id)
+          .toList();
+
       final loadingHistory = viewModel.isLoadingMessages.value &&
           viewModel.currentChat.value?.id == widget.chat.id;
 
@@ -124,13 +130,13 @@ class _MessageListViewState extends State<MessageListView> {
             const SizedBox(height: 12),
             for (final (index, request) in approvals.indexed)
               Padding(
-                // 最后一张审批卡无需底部间距：输入框区域自带 16 外边距
-                // （chat.dart _buildInput），与无审批时消息→输入框的间距一致
+                // 最后一张卡片无需底部间距：输入框区域自带 16 外边距
+                // （chat.dart _buildInput），与无卡片时消息→输入框的间距一致
                 padding: EdgeInsets.fromLTRB(
                   16,
                   0,
                   16,
-                  index == approvals.length - 1 ? 0 : 12,
+                  index == approvals.length - 1 && elicits.isEmpty ? 0 : 12,
                 ),
                 child: PermissionApprovalCard(
                   request: request,
@@ -141,6 +147,22 @@ class _MessageListViewState extends State<MessageListView> {
                         request,
                         permissionDecisionOf(approved, persistExact),
                       ),
+                ),
+              ),
+            for (final (index, request) in elicits.indexed)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  index == elicits.length - 1 ? 0 : 12,
+                ),
+                child: ElicitCard(
+                  request: request,
+                  maxHeight:
+                      constraints.maxHeight * permissionCardMaxHeightFraction,
+                  onSubmit: (answers) =>
+                      viewModel.respondElicit(request, answers),
                 ),
               ),
           ],

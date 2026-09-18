@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
@@ -11,6 +12,7 @@ import 'package:athena_tui/ui/widgets/error_bar.dart';
 import 'package:athena_tui/ui/widgets/input_area.dart';
 import 'package:athena_tui/ui/widgets/message_list.dart';
 import 'package:athena_tui/ui/widgets/permission_bar.dart';
+import 'package:athena_tui/ui/widgets/question_bar.dart';
 import 'package:athena_tui/ui/widgets/picker_overlay.dart';
 import 'package:athena_tui/ui/widgets/status_bar.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
@@ -73,6 +75,10 @@ class _AthenaAppState extends State<AthenaApp> {
   _PermissionRequest? _permissionRequest;
   final _permissionScrollController = ScrollController();
 
+  // 提问请求(模态)
+  _ElicitRequest? _elicitRequest;
+  final _questionScrollController = ScrollController();
+
   // 选择模态(模型 / 角色 / 聊天)
   _PickerState? _picker;
 
@@ -93,8 +99,34 @@ class _AthenaAppState extends State<AthenaApp> {
   bool get _showCommandSuggestions =>
       _commandSuggestions.isNotEmpty &&
       _permissionRequest == null &&
+      _elicitRequest == null &&
       _picker == null &&
       _keyInputProvider == null;
+
+  /// 输入区提示语:自填答案 > API key > 普通输入。
+  String get _inputPlaceholder {
+    final elicit = _elicitRequest;
+    if (elicit != null && elicit.textIndex != null) {
+      final question = elicit.questions[elicit.textIndex!].question;
+      return '为「${truncateText(question, 24)}」输入答案…';
+    }
+    if (_keyInputProvider != null) {
+      return '为 ${_keyInputProvider!.name} 输入 API key…';
+    }
+    return '输入消息…';
+  }
+
+  /// 输入区状态行:仅模态输入时显示。
+  String get _inputStatusText {
+    final elicit = _elicitRequest;
+    if (elicit != null && elicit.textIndex != null) {
+      return '自填答案中:回车保存 · 留空/ Esc 返回选项';
+    }
+    if (_keyInputProvider != null) {
+      return 'API key 输入中:回车保存 · 留空/ Esc 取消';
+    }
+    return '';
+  }
 
   // ─── 构建 ────────────────────────────────────────────────
 
@@ -129,6 +161,21 @@ class _AthenaAppState extends State<AthenaApp> {
                 hint: '[y] 允许  [n] 拒绝  [a] 总是允许  [↑↓] 滚动',
               ),
             ),
+          if (_elicitRequest != null)
+            Flexible(
+              flex: 2,
+              child: QuestionBar(
+                questions: _elicitRequest!.questions,
+                currentIndex: _elicitRequest!.index,
+                selected: _elicitRequest!.selected,
+                freeText: _elicitRequest!.freeText,
+                scrollController: _questionScrollController,
+                hint: _elicitRequest!.textIndex != null
+                    ? '自填中:回车保存 · 留空/ Esc 返回选项'
+                    : '[1-4] 选择  [↑↓] 切换问题  [e] 自填  [Enter] 提交  '
+                          '[Esc] 跳过(按假定继续)',
+              ),
+            ),
           // 常驻组件:children 数量恒定,visible 控制显隐
           PickerOverlay(
             visible: _picker != null,
@@ -145,12 +192,8 @@ class _AthenaAppState extends State<AthenaApp> {
             controller: _controller,
             textController: _textController,
             onSubmitted: _submit,
-            placeholder: _keyInputProvider == null
-                ? '输入消息…'
-                : '为 ${_keyInputProvider!.name} 输入 API key…',
-            statusText: _keyInputProvider == null
-                ? ''
-                : 'API key 输入中:回车保存 · 留空/ Esc 取消',
+            placeholder: _inputPlaceholder,
+            statusText: _inputStatusText,
             onKeyEvent: (event) {
               // 审批模态(权限):所有按键交给全局处理器
               // (y/n/a 决策)。必须返回其结果(true)—— 若返回 false,
@@ -158,6 +201,20 @@ class _AthenaAppState extends State<AthenaApp> {
               // 冒泡不到根 Focusable 的 _handleGlobalKey(审批无响应)。
               if (_permissionRequest != null) {
                 return _handleGlobalKey(event);
+              }
+              // 提问模态:自填模式下输入框正常收字,其余按键交给全局处理器
+              // (数字选项 / 上下切问题 / Enter 提交)
+              final elicit = _elicitRequest;
+              if (elicit != null) {
+                if (elicit.textIndex == null) return _handleGlobalKey(event);
+                if (event.logicalKey == LogicalKey.escape) {
+                  setState(() {
+                    elicit.textIndex = null;
+                    _textController.clear();
+                  });
+                  return true;
+                }
+                return false;
               }
               // API key 输入模式:仅 Esc 退出,其余按键正常输入
               if (_keyInputProvider != null) {
@@ -222,6 +279,8 @@ class _AthenaAppState extends State<AthenaApp> {
 
     // UI 层注册审批实现(bridge 在 UI 未就绪时拒绝请求)
     component.di.agentBridge.permissionHandler = _handlePermission;
+    // 提问实现(bridge 在 UI 未就绪时以"未作答"返回)
+    component.di.agentBridge.elicitHandler = _handleElicit;
 
     _disposers.add(_controller.chatList.subscribe((_) => _refresh()));
     _disposers.add(_controller.currentChat.subscribe((_) => _refresh()));
@@ -402,6 +461,13 @@ class _AthenaAppState extends State<AthenaApp> {
       return true; // 模态期间吞掉所有按键,防止误操作
     }
 
+    // 提问模态:自填时输入区收字,其余按键全部由提问条接管
+    final elicit = _elicitRequest;
+    if (elicit != null && elicit.textIndex == null) {
+      _handleElicitKey(event, elicit);
+      return true; // 模态期间吞掉所有按键,防止输入区误收字符
+    }
+
     // 选择模态
     if (_picker != null) {
       return _handlePickerKey(event);
@@ -450,6 +516,112 @@ class _AthenaAppState extends State<AthenaApp> {
     // 取消联动已由 TuiAgentBridge._askPermission 处理
     // (cancelToken.whenCancelled → 自动拒绝)，此处只等用户决策。
     return completer.future;
+  }
+
+  // ─── 提问(向用户问「你要哪个」) ──────────────────────────
+
+  Future<Map<String, String>?> _handleElicit(List<ElicitQuestion> questions) {
+    final completer = Completer<Map<String, String>?>();
+    _questionScrollController.jumpTo(0);
+    setState(() => _elicitRequest = _ElicitRequest(questions, completer));
+
+    // 取消联动已由 TuiAgentBridge._askElicit 处理(取消 → null),
+    // 此处只等用户作答或跳过。
+    return completer.future;
+  }
+
+  /// 数字键 → 选项序号(1 起);非数字键返回 null。
+  static int? _optionIndex(KeyboardEvent event) {
+    const digits = [
+      LogicalKey.digit1,
+      LogicalKey.digit2,
+      LogicalKey.digit3,
+      LogicalKey.digit4,
+    ];
+    final index = digits.indexOf(event.logicalKey);
+    return index < 0 ? null : index + 1;
+  }
+
+  /// 提问模态按键:数字选选项、上下切问题、[e] 自填、回车提交、Esc 跳过。
+  void _handleElicitKey(KeyboardEvent event, _ElicitRequest request) {
+    final question = request.questions[request.index];
+
+    final option = _optionIndex(event);
+    if (option != null) {
+      if (option > question.options.length) return;
+      setState(() {
+        final label = question.options[option - 1].label;
+        final chosen = request.selected.putIfAbsent(
+          request.index,
+          () => <String>{},
+        );
+        if (question.multiSelect) {
+          if (!chosen.remove(label)) chosen.add(label);
+        } else {
+          final wasChosen = chosen.contains(label);
+          chosen
+            ..clear()
+            ..addAll(wasChosen ? const <String>[] : [label]);
+        }
+        // 选项与自填互斥:混在一起回传的答案会有歧义
+        request.freeText.remove(request.index);
+      });
+      return;
+    }
+
+    switch (event.logicalKey) {
+      case LogicalKey.arrowUp:
+        setState(() {
+          request.index =
+              (request.index - 1 + request.questions.length) %
+              request.questions.length;
+        });
+        return;
+      case LogicalKey.arrowDown:
+        setState(() {
+          request.index = (request.index + 1) % request.questions.length;
+        });
+        return;
+      case LogicalKey.pageUp:
+        _questionScrollController.pageUp();
+        return;
+      case LogicalKey.pageDown:
+        _questionScrollController.pageDown();
+        return;
+      case LogicalKey.keyE:
+        setState(() {
+          request.textIndex = request.index;
+          request.selected[request.index]?.clear();
+          _textController.clear();
+        });
+        return;
+      case LogicalKey.enter:
+        final unanswered = request.firstUnanswered;
+        if (unanswered == null) {
+          _resolveElicit(request, request.answers);
+        } else {
+          setState(() => request.index = unanswered);
+          _pushSystemMessage('还有问题未作答,已跳到第 ${unanswered + 1} 个。');
+        }
+        return;
+      case LogicalKey.escape:
+        // 跳过提问:以 null 完成,模型按标注过的假定继续(不中断本轮)
+        _resolveElicit(request, null);
+        return;
+      default:
+        return;
+    }
+  }
+
+  void _resolveElicit(_ElicitRequest request, Map<String, String>? answers) {
+    if (!request.completer.isCompleted) {
+      request.completer.complete(answers);
+    }
+    setState(() {
+      if (identical(_elicitRequest, request)) _elicitRequest = null;
+      request.textIndex = null;
+      _textController.clear();
+    });
   }
 
   /// picker 按键处理(全局键与输入区共用,模态期间拦截方向键)。
@@ -705,6 +877,26 @@ class _AthenaAppState extends State<AthenaApp> {
   // ─── 发送与命令 ──────────────────────────────────────────
 
   void _submit(String text) {
+    // 提问自填模式:回车保存该问题的答案(留空视为放弃自填,回到选项)。
+    // 与下面的 API key 分支同理,必须排在空文本检查之前。
+    final elicit = _elicitRequest;
+    if (elicit != null && elicit.textIndex != null) {
+      final index = elicit.textIndex!;
+      final trimmed = text.trim();
+      setState(() {
+        if (trimmed.isEmpty) {
+          elicit.freeText.remove(index);
+        } else {
+          elicit.freeText[index] = trimmed;
+          // 选项与自填互斥
+          elicit.selected[index]?.clear();
+        }
+        elicit.textIndex = null;
+      });
+      _textController.clear();
+      return;
+    }
+
     // API key 输入模式:回车提交 key(留空视为取消)。
     // 该分支必须在空文本检查之前:留空回车是合法的"取消"操作。
     final keyProvider = _keyInputProvider;
@@ -799,6 +991,49 @@ class _PermissionRequest {
   final String arguments;
   final Completer<PermissionDecision> completer;
   _PermissionRequest(this.toolName, this.arguments, this.completer);
+}
+
+/// 一次提问的进行中状态:问题、选项选择、自填文本、当前问题、作答器。
+class _ElicitRequest {
+  _ElicitRequest(this.questions, this.completer);
+
+  final List<ElicitQuestion> questions;
+  final Completer<Map<String, String>?> completer;
+
+  /// 问题下标 → 已选 label 集合(单选恒为 0 或 1 个)。
+  final Map<int, Set<String>> selected = {};
+
+  /// 问题下标 → 用户自填文本(与选项互斥)。
+  final Map<int, String> freeText = {};
+
+  /// 当前操作的问题下标。
+  int index = 0;
+
+  /// 非 null:输入区正用于为该问题自填答案。
+  int? textIndex;
+
+  /// 某个问题的答案:自填优先,其次选项;未作答返回 null。
+  String? answerFor(int questionIndex) {
+    final custom = freeText[questionIndex]?.trim() ?? '';
+    if (custom.isNotEmpty) return custom;
+    final chosen = selected[questionIndex];
+    if (chosen == null || chosen.isEmpty) return null;
+    return chosen.join(', ');
+  }
+
+  /// 第一个未作答的问题下标;全部已答返回 null。
+  int? get firstUnanswered {
+    for (var i = 0; i < questions.length; i++) {
+      if (answerFor(i) == null) return i;
+    }
+    return null;
+  }
+
+  /// 问题文本 → 答案(与 GUI 卡片回传的形状一致)。
+  Map<String, String> get answers => {
+    for (var i = 0; i < questions.length; i++)
+      if (answerFor(i) != null) questions[i].question: answerFor(i)!,
+  };
 }
 
 class _PickerState {

@@ -5,6 +5,8 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
+import 'package:athena_core/agent/elicit/elicit_prompt.dart'
+    show ElicitPrompt;
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -46,6 +48,7 @@ class AgentRunCoordinator {
   final AgentSettings _agentSettings;
   final PermissionService _permissionService;
   final PermissionPrompt _permissionPrompt;
+  final ElicitPrompt? _elicitPrompt;
 
   /// 经验仓库：每次 run 开始时注入稳定的全量 active 经验目录。
   final ExperienceRepository _experienceRepository;
@@ -113,6 +116,10 @@ class AgentRunCoordinator {
     required AgentSettings agentSettings,
     required PermissionService permissionService,
     required PermissionPrompt permissionPrompt,
+
+    /// 提问回调（「你要哪个」）。null = 本端没有提问 UI，
+    /// ask_user_question 会降级为「按假定继续」。
+    ElicitPrompt? elicitPrompt,
     required ExperienceRepository experienceRepository,
 
     /// Agent 运行环境（GUI/TUI），由前端装配层注入；null = 不注入
@@ -131,6 +138,7 @@ class AgentRunCoordinator {
        _agentSettings = agentSettings,
        _permissionService = permissionService,
        _permissionPrompt = permissionPrompt,
+       _elicitPrompt = elicitPrompt,
        _experienceRepository = experienceRepository;
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
@@ -318,6 +326,7 @@ class AgentRunCoordinator {
         permissionReviewContext: reviewContext,
         onPermission: (toolName, arguments) =>
             _askPermission(runId, chatId, toolName, arguments, cancelToken),
+        onElicit: _elicitPrompt,
         jsonMode: jsonMode,
         cancelToken: cancelToken,
       );

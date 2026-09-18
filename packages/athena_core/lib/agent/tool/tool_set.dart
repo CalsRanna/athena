@@ -1,5 +1,6 @@
 import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
@@ -90,6 +91,9 @@ ToolRegistry buildToolRegistry({
     PlatformUtil.isWindows
         ? PowerShellShellTool(defaultWorkdir: defaultWorkdir)
         : BashShellTool(defaultWorkdir: defaultWorkdir),
+    // 交互工具：向用户提结构化问题（宿主提问卡片承载，永不触发审批弹窗）。
+    // 移动端暂无对应的提问卡片，故只在桌面端注册。
+    AskUserQuestionTool(),
     WebFetchTool(),
     WebSearchTool(store: store),
     SkillTool(skillRegistry),
