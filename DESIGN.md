@@ -364,6 +364,26 @@ caption 12→13、radius 6→8、icon 16→24）。本仓只取 body 的 15，�
   旧版把图钉 / 进度圈常驻在行尾，与 Claude 不符
 - 标签用 `textRowLabel`（`#52514E`），**hover 不变色**——只有底色变
 
+### Message Actions（消息操作条，Claude 实测）
+
+Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静止时全透明，
+指针进入**整条消息行**才淡入。助手消息与用户消息用同一套。
+
+- **位置**：助手消息排在卡片最后一段的正下方、与正文左对齐；用户消息排在
+  气泡正下方、跟气泡一起右对齐。它**常驻占位**（`AnimatedOpacity`，不是
+  `Visibility`），所以卡片高度不随 hover 变化，正文宽度也不会被挤压。
+- **不要为了操作条在正文右侧预留空白**。它已经不在右侧了，再留一条内缩只会
+  让整块正文看着没对齐列宽。
+- **显形条件**：整行 hover（`.group/message-row:hover [data-cds=MessageActions]`），
+  不是指针压到按钮才显形。
+- **时序**：**只动 `opacity`**——`--cds-message-actions-reveal-scale` 在
+  `.cds-root` 上是 `none`，不要加缩放。进入用 `--cds-dur-snap`(120ms) 且延迟
+  `--cds-message-actions-reveal-in-delay`(100ms)；退出用 `--cds-dur-fast`(60ms)
+  且无延迟。
+- **按钮**：ghost 图标按钮，控件高 24（`--cds-h-control`）、图标 16
+  （`--cds-icon`）、圆角 7（`--cds-radius--lg`），hover 填充
+  `--cds-fill-ghost-hover`（浅色 alpha-1 ≈ 5%）。
+
 ### Menus（右键 / 弹出）
 
 - 面板：`surfaceMobile` 白底 + 1px `border`，圆角 12，内边距 4
