@@ -30,15 +30,27 @@ class ToolRegistry {
 
   List<Tool> get all => _tools.values.toList();
 
-  /// Model-facing schema, including optional per-call display metadata.
+  /// Model-facing schema: 业务参数 + 引擎注入的调用元数据。
+  ///
+  /// [toolCallDescriptionKey] 为必填——卡片 header 与审批界面都靠它展示
+  /// 「这次调用在做什么」；缺失时由 [SchemaValidator] 判为参数非法并回退
+  /// 给模型重发。
   static Map<String, dynamic> parametersFor(Tool tool) {
     final parameters = tool.parameters;
+    final declared = parameters['required'];
+    final required = <String>[
+      ...(declared is List ? declared.cast<String>() : const <String>[]),
+    ];
+    if (!required.contains(toolCallDescriptionKey)) {
+      required.add(toolCallDescriptionKey);
+    }
     return {
       ...parameters,
       'properties': {
         toolCallDescriptionKey: {
           'type': 'string',
           'description':
+              'Required in every tool call. '
               'Briefly explain this specific call in the user\'s language. '
               'Use one short, active sentence naming the action and target. '
               'For multi-step commands, describe all meaningful effects. '
@@ -62,6 +74,7 @@ class ToolRegistry {
         },
         ...?parameters['properties'] as Map<String, dynamic>?,
       },
+      'required': required,
     };
   }
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/entity/experience_entity.dart';
 
@@ -92,6 +93,8 @@ class ReflectionProposal {
     if (context.isNotEmpty) 'context': context,
     if (tags.isNotEmpty) 'tags': tags,
     'scope': scope,
+    // 反思通道的程序化调用同样要带必填的调用说明（会作为卡片展示给用户）。
+    toolCallDescriptionKey: '沉淀本轮失败的教训',
   };
 
   static String? _extractJsonObject(String text) {

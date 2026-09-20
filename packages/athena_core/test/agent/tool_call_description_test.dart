@@ -73,7 +73,8 @@ void main() {
     function: FunctionCall(name: tool.name, arguments: jsonEncode(args)),
   );
 
-  test('registry adds optional metadata without changing business schemas', () {
+  test('registry injects required metadata without changing business schemas',
+      () {
     registry.registerAll([BashShellTool(), PowerShellShellTool()]);
     for (final definition in registry.definitions) {
       final function = definition['function'] as Map<String, dynamic>;
@@ -82,8 +83,13 @@ void main() {
       expect(parameters['properties'], contains('call_description'));
       expect(parameters['properties'], contains('approval_recommendation'));
       expect(parameters['properties'], contains('approval_reason'));
-      expect(parameters['required'], original['required']);
+      // call_description 必填：追加在业务必填字段之后，业务 schema 本身不变
+      expect(parameters['required'], [
+        ...(original['required'] as List),
+        'call_description',
+      ]);
       expect(original['properties'], isNot(contains('call_description')));
+      expect(original['required'], <String>['description']);
     }
     final parameters = ToolRegistry.parametersFor(tool);
     expect(parameters['additionalProperties'], isFalse);
@@ -115,13 +121,15 @@ void main() {
     );
   }
 
-  test('older calls without metadata still execute', () async {
+  test('a call without call_description is rejected as invalid arguments',
+      () async {
     final result = await service.executeToolCallInternal(
       toolCall: call({'description': 'Business value'}),
       cancelToken: null,
     );
-    expect(result.status, ToolResultStatus.success);
-    expect(tool.received, {'description': 'Business value'});
+    expect(result.status, ToolResultStatus.invalidArguments);
+    expect(result.event.result, contains('call_description'));
+    expect(tool.received, isNull);
   });
 
   test('metadata is validated using the advertised schema', () async {

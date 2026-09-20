@@ -3,6 +3,7 @@ import 'package:athena_gui/database/migration/migration_202608060001_update_athe
 import 'package:athena_gui/database/migration/migration_202608240001_add_chat_reasoning_effort.dart';
 import 'package:athena_gui/database/migration/migration_202609120001_remove_shortcut_and_scene_pages.dart';
 import 'package:athena_gui/database/migration/migration_202609200001_drop_message_expanded.dart';
+import 'package:athena_gui/database/migration/migration_202609200002_require_tool_call_description.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -455,6 +456,79 @@ void main() {
     // 第二次运行(如重启)不应覆盖
     await Migration202608060001UpdateAthenaSentinelPrompt(laconic: laconic).migrate();
     expect(await promptOf(laconic, id), evolved);
+  });
+
+  test('preset Athena on the previous default prompt requires call_description',
+      () async {
+    final laconic = await schemaWithMigrationsTable();
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: agentAthenaPresetPromptV1, isPreset: 1);
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+
+    expect(await promptOf(laconic, id), athenaPresetPrompt);
+  });
+
+  test('evolved Athena keeps its customized prompt on the description upgrade',
+      () async {
+    final laconic = await schemaWithMigrationsTable();
+    final customized = 'custom evolved prompt, not the default';
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: customized, isPreset: 1);
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+
+    expect(await promptOf(laconic, id), customized,
+        reason: 'sentinel_evolve 定制过的提示词不应被覆盖');
+  });
+
+  test('non-preset or non-Athena sentinels are untouched by the description upgrade',
+      () async {
+    final laconic = await schemaWithMigrationsTable();
+    final nonPresetId = await insertSentinel(laconic,
+        name: 'Athena', prompt: agentAthenaPresetPromptV1, isPreset: 0);
+    final otherId = await insertSentinel(laconic,
+        name: 'Minerva', prompt: agentAthenaPresetPromptV1, isPreset: 1);
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+
+    expect(await promptOf(laconic, nonPresetId), agentAthenaPresetPromptV1);
+    expect(await promptOf(laconic, otherId), agentAthenaPresetPromptV1);
+  });
+
+  test('description upgrade runs only once via marker', () async {
+    final laconic = await schemaWithMigrationsTable();
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: agentAthenaPresetPromptV1, isPreset: 1);
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+    expect(await promptOf(laconic, id), athenaPresetPrompt);
+
+    final evolved = 'evolved after the description upgrade';
+    await laconic
+        .table('sentinels')
+        .where('id', id)
+        .update({'prompt': evolved});
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+    expect(await promptOf(laconic, id), evolved);
+  });
+
+  test('pure-chat legacy prompt is left to the Agent-mode migration', () async {
+    final laconic = await schemaWithMigrationsTable();
+    final id = await insertSentinel(laconic,
+        name: 'Athena', prompt: legacyAthenaPresetPrompt, isPreset: 1);
+
+    await Migration202609200002RequireToolCallDescription(laconic: laconic)
+        .migrate();
+
+    expect(await promptOf(laconic, id), legacyAthenaPresetPrompt,
+        reason: '纯对话版提示词由 migration_202608060001 负责升级');
   });
 
   // ---------- chats.reasoning_effort ----------
