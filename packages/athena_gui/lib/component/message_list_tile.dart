@@ -727,18 +727,18 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    // **不要设 alignment**：Container 一旦带 alignment 就会在宽度上手撑满可用
-    // 约束，气泡于是变成"固定 0.77 列宽"而不是"最宽 0.77 列宽"——短消息也会被
-    // 拉成一整条。高度交给 minHeight 与行盒决定，横向按内容取宽、超长才换行。
-    var container = Container(
-      constraints: const BoxConstraints(minHeight: 36),
-      child: column,
-    );
+    // **不要给内容套带 alignment 的 Container**：Container 一旦带 alignment 就会
+    // 在宽度上手撑满可用约束，气泡变成"固定 0.77 列宽"而不是"最宽 0.77 列宽"，
+    // 短消息也被拉成一整条。
+    //
+    // 也不设 minHeight：内容贴顶对齐，缺席的高度会整块落在文字下方——单行消息
+    // 于是凭空多出一行空白。气泡高度交给行盒与内边距：8 + 20 + 8 = 36 已经是
+    // 单行该有的高度，短内容靠外层内边距兜底即可。
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPress: widget.onLongPress,
       onSecondaryTapUp: widget.onSecondaryTapUp,
-      child: container,
+      child: column,
     );
     return gestureDetector;
   }
