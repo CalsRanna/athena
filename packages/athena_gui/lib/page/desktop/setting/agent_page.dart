@@ -1,15 +1,19 @@
-import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
-import 'package:athena_gui/widget/menu.dart';
+import 'package:athena_gui/widget/settings_panel.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+/// 桌面端 Agent 设置。
+///
+/// 旧版这里是「General / Tools」二阶导航。Claude 的设置**没有第二列导航**，
+/// 同一内容区里用分区标题分层（见 Claude 的 Code appearance / Appearance），
+/// 所以这里改成两个分区。
 @RoutePage()
 class DesktopSettingAgentPage extends StatefulWidget {
   const DesktopSettingAgentPage({super.key});
@@ -31,7 +35,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     text: viewModel.braveApiKey.value,
   );
 
-  int index = 0;
   late bool aiApprovalEnabled = viewModel.aiApprovalEnabled.value;
 
   @override
@@ -44,161 +47,82 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return AthenaSettingsPane(
       children: [
-        _buildListView(context),
-        Expanded(child: _buildContentView(context)),
-      ],
-    );
-  }
-
-  Widget _buildListView(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var items = ['General', 'Tools'];
-    var borderSide = BorderSide(color: colors.border);
-    Widget child = ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemBuilder: (context, i) => DesktopMenuTile(
-        active: index == i,
-        label: items[i],
-        onTap: () => setState(() => index = i),
-      ),
-      itemCount: items.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-    );
-    return Container(
-      decoration: BoxDecoration(border: Border(right: borderSide)),
-      width: 240,
-      child: child,
-    );
-  }
-
-  Widget _buildContentView(BuildContext context) {
-    return switch (index) {
-      0 => _buildGeneralView(context),
-      1 => _buildToolsView(context),
-      _ => const SizedBox(),
-    };
-  }
-
-  Widget _buildGeneralView(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var iterationsRow = Row(
-      children: [
-        SizedBox(
-          width: 120,
-          child: AthenaFormTileLabel(title: 'Max Iterations'),
-        ),
-        Expanded(
-          child: AthenaInput(
-            controller: iterationsController,
-            placeholder: '100',
-          ),
-        ),
-      ],
-    );
-    var retriesRow = Row(
-      children: [
-        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Max Retries')),
-        Expanded(
-          child: AthenaInput(controller: retriesController, placeholder: '10'),
-        ),
-      ],
-    );
-    const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var saveButton = AthenaPrimaryButton(
-      onTap: _saveGeneral,
-      child: Padding(padding: edgeInsets, child: const Text('Save')),
-    );
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: [
-        Text('General', style: titleTextStyle),
-        const SizedBox(height: 12),
-        iterationsRow,
-        const SizedBox(height: 12),
-        retriesRow,
-        const SizedBox(height: 20),
-        Row(
+        AthenaSettingsSection(
+          first: true,
+          title: 'General',
           children: [
-            Expanded(child: AthenaFormTileLabel(title: 'AI Auto Review')),
-            AthenaSwitch(
-              value: aiApprovalEnabled,
-              onChanged: (value) => setState(() => aiApprovalEnabled = value),
+            _buildInputRow(
+              label: 'Max Iterations',
+              description: 'Maximum tool-calling rounds in a single run.',
+              controller: iterationsController,
+              placeholder: '100',
+            ),
+            _buildInputRow(
+              label: 'Max Retries',
+              description: 'Retries for a failed model request.',
+              controller: retriesController,
+              placeholder: '10',
+            ),
+            AthenaSettingsRow(
+              label: 'AI Auto Review',
+              description:
+                  'Let the current model independently review tool calls that '
+                  'need approval. Unclear requests still ask you. Applies to '
+                  'all tools from the next run.',
+              control: AthenaSwitch(
+                value: aiApprovalEnabled,
+                onChanged: (value) =>
+                    setState(() => aiApprovalEnabled = value),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Let the current model independently review tool calls that need approval. '
-          'Unclear requests still ask you. Applies to all tools from the next run.',
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 12,
-            height: 1.5,
-          ),
+        AthenaSettingsSection(
+          title: 'Tools',
+          children: [
+            _buildInputRow(
+              label: 'Brave API Key',
+              description:
+                  'Required for web_search tool. Get a free key at '
+                  'brave.com/search/api/',
+              controller: braveApiKeyController,
+              placeholder: 'BSA...',
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.end, children: [saveButton]),
+        const SizedBox(height: 32),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            AthenaPrimaryButton(
+              onTap: save,
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildToolsView(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var braveApiRow = Row(
-      children: [
-        SizedBox(
-          width: 120,
-          child: AthenaFormTileLabel(title: 'Brave API Key'),
-        ),
-        Expanded(
-          child: AthenaInput(
-            controller: braveApiKeyController,
-            placeholder: 'BSA...',
-          ),
-        ),
-      ],
-    );
-    var tipTextStyle = TextStyle(
-      color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-      height: 1.5,
-    );
-    const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var saveButton = AthenaPrimaryButton(
-      onTap: _saveTools,
-      child: Padding(padding: edgeInsets, child: const Text('Save')),
-    );
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-      children: [
-        Text('Tools', style: titleTextStyle),
-        const SizedBox(height: 12),
-        braveApiRow,
-        const SizedBox(height: 12),
-        Text(
-          'Required for web_search tool. Get a free key at brave.com/search/api/',
-          style: tipTextStyle,
-        ),
-        const SizedBox(height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.end, children: [saveButton]),
-      ],
+  Widget _buildInputRow({
+    required String label,
+    required String description,
+    required TextEditingController controller,
+    required String placeholder,
+  }) {
+    return AthenaSettingsRow(
+      label: label,
+      description: description,
+      control: SizedBox(
+        width: AthenaSettings.controlColumnWidth,
+        child: AthenaInput(controller: controller, placeholder: placeholder),
+      ),
     );
   }
 
-  Future<void> _saveGeneral() async {
+  Future<void> save() async {
     final iterations = int.tryParse(iterationsController.text.trim());
     if (iterations == null || iterations < 1) {
       AthenaDialog.warning('Max Iterations must be a valid number (minimum 1)');
@@ -212,13 +136,8 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
     await viewModel.updateAiApprovalEnabled(aiApprovalEnabled);
-    if (!mounted) return;
-    AthenaDialog.success('Settings saved');
-  }
-
-  Future<void> _saveTools() async {
     await viewModel.updateBraveApiKey(braveApiKeyController.text.trim());
     if (!mounted) return;
-    AthenaDialog.success('API key saved');
+    AthenaDialog.success('Settings saved');
   }
 }
