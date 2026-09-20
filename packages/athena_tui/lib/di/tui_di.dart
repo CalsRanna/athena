@@ -429,7 +429,6 @@ class TuiDi {
     );
     supportService = ChatUpdateService(
       chatRepository: chatRepo,
-      messageRepository: messageRepo,
       providerRepository: providerRepo,
       chatService: chatService,
     );

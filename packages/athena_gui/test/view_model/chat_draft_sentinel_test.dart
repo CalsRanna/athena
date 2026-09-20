@@ -63,7 +63,6 @@ void main() {
     );
     final supportService = ChatUpdateService(
       chatRepository: chatRepo,
-      messageRepository: _FakeMessageRepository(),
       providerRepository: _FakeProviderRepository(),
       chatService: ChatCompletionsService(llmClient: LlmClient()),
     );

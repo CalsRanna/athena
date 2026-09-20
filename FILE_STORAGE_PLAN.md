@@ -128,7 +128,7 @@ Athena 会更新 assistant 占位消息、折叠状态、取消状态和 compact
 - `id`、`chat_id`、`role`、`created_at`、`updated_at`、`revision`。
 - `content`、`reasoning_content`、工具调用与结果、附件引用。
 - `status`：`streaming`、`completed`、`cancelled`、`error` 或 `interrupted`。
-- `compacted`、`expanded` 等现有持久化属性。
+- `compacted` 等现有持久化属性（`expanded` 已改为 UI 内存态，不持久化）。
 
 时间统一保存 UTC 毫秒，用于时间范围筛选；会话内消息仍按全局递增 ID 排序和使用 `beforeId` 分页，避免设备时钟回拨破坏游标语义。不能将 reasoning 的起止时间替代消息创建时间。为现有 `MessageEntity` 增加消息时间与运行状态，文件 DTO 负责字段编码。
 
@@ -143,7 +143,7 @@ Athena 会更新 assistant 占位消息、折叠状态、取消状态和 compact
 - 工具结果就绪、迭代结束、正常结束、取消、错误时立即提交状态；这些提交进入同一消息队列，终态不得被较旧检查点覆盖。
 - 发起有副作用的工具执行前保存调用声明及待执行状态；如果现有事件流不能形成可等待的保存屏障，增加 Coordinator 注入的异步持久化回调。中断恢复将“已准备但无结果”的调用显示为结果未知，不自动重试。
 - 检查点间隔是调优初值，不是断电丢失上限；只有 Store 已确认完成的提交才计入保存保证。
-- `updateMessage` 拆分为内容/运行状态更新与展示状态更新；后者只 patch `expanded`，不得把旧 UI 快照中的正文写回。
+- `updateMessage` 只承载内容/运行状态更新；展示状态（如推理卡片展开）留在 UI 内存态，不进入消息文件。
 - `updateChat` 改为持锁的字段 patch；`ChatUpdateService` 的“先读再改”移动到 Repository 锁内。Token 字段只能由 `recordUsage` 修改。
 - `recordUsage` 在同一锁内读取最新统计、累加并提交。Coordinator 为用量事件提供稳定的 `runId + iteration + usageOrdinal`；`chat.json` 同一提交记录当前/最近 run 的已应用游标，以确认重复提交。旧 run 的用量事件在 run 收尾后拒绝接收，不靠重读总数猜测本次增量是否已应用。
 - `markAsCompacted` 按全局消息 ID 定位；当前“先保存摘要、再标记原消息”的顺序保留。摘要消息同时保存 `compacts_message_ids`，恢复时先按这份目标集合幂等补齐标记，再组装上下文，避免中断后同时重复注入摘要和原文。

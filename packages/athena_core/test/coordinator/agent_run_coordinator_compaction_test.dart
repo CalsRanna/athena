@@ -297,7 +297,6 @@ class _Fixture {
       chatRepo: repo,
       supportService: ChatUpdateService(
         chatRepository: repo,
-        messageRepository: repo,
         providerRepository: providers,
         chatService: fixture.llm,
       ),

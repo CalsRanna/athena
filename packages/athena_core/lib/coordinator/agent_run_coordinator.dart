@@ -84,25 +84,6 @@ class AgentRunCoordinator {
   /// 需要据此恢复实时进度；run 结束时移除（届时 DB 已是最终态）。
   final Map<int, MessageEntity> _liveMessages = {};
 
-  /// 用户点击思考卡片切换的展开状态(messageId → expanded)。
-  ///
-  /// 流式更新期间由 UI 层调用 [updateExpanded] 同步通知;`_consumeStream`
-  /// 的 copyWith 链基于本地缓存 `current`,若不应用 override,下一次推理增量
-  /// 会把用户刚展开的卡片重新折叠(思考未结束时"闪一下又关闭")。
-  final Map<int, bool> _expandedOverrides = {};
-
-  /// 记录用户对该消息的最新展开选择,流式增量更新据此保留状态。
-  void updateExpanded(int messageId, bool expanded) {
-    _expandedOverrides[messageId] = expanded;
-  }
-
-  /// 把 override 中用户最近的展开选择应用到流式更新前的消息上。
-  MessageEntity _withExpandedOverride(MessageEntity message) {
-    final override = _expandedOverrides[message.id];
-    if (override == null || message.expanded == override) return message;
-    return message.copyWith(expanded: override);
-  }
-
   AgentRunCoordinator({
     required AgentService agentService,
     required ChatStoreService manageService,
@@ -377,8 +358,6 @@ class AgentRunCoordinator {
         _liveMessages.remove(chatId);
       }
       if (!settled.isCompleted) settled.complete();
-      // 注意：_expandedOverrides 不在全局清理——finalize 时已按消息逐个
-      // 移除，多 run 并发时全局 clear 会误删其他 run 的展开状态。
     }
 
     // ─── 接续排队输入 ───
@@ -464,9 +443,6 @@ class AgentRunCoordinator {
       }
       await _manageService.finalizeAssistantMessage(current);
       if (hadReasoning) yield RunMessageUpdated(current);
-      // 该消息已 finalize,不再接收流式更新,清除其展开状态覆盖
-      if (current.id != null) _expandedOverrides.remove(current.id);
-      // 每条消息的思考折叠状态独立：新迭代的消息重置为默认折叠
       current = await _manageService.appendAssistantPlaceholder(chat.id!);
       contentBuffer = StringBuffer();
       reasoningBuffer = StringBuffer();
@@ -507,11 +483,9 @@ class AgentRunCoordinator {
         } else if (event is AgentReasoningEvent) {
           if (hasCompletedIteration) yield* beginNewIteration();
           reasoningBuffer.write(event.delta);
-          // expanded 显式传当前值：流式更新不得覆盖用户已持久化的展开状态
           current = current.copyWith(
             reasoningContent: reasoningBuffer.toString(),
             reasoning: true,
-            expanded: current.expanded,
             reasoningUpdatedAt: DateTime.now(),
           );
         } else if (event is AgentTextEvent) {
@@ -573,9 +547,6 @@ class AgentRunCoordinator {
           yield RunAssistantAppended(current);
           appendedNewMessage = false;
         }
-        // 应用用户最近的展开选择:增量 copyWith 链基于本地缓存 current,
-        // 若不在此覆盖,刚展开的卡片会被下一次增量重新折叠
-        current = _withExpandedOverride(current);
         _liveMessages[chat.id!] = current;
         yield RunMessageUpdated(current);
       }

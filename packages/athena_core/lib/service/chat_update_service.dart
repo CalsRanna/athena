@@ -1,26 +1,21 @@
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 
-/// 会话辅助操作：重命名、配置更新、Provider 解析、消息折叠。
+/// 会话辅助操作：重命名、配置更新、Provider 解析。
 class ChatUpdateService {
   final ChatRepository _chatRepository;
-  final MessageRepository _messageRepository;
   final ProviderRepository _providerRepository;
   final ChatCompletionsService _chatService;
 
   ChatUpdateService({
     required ChatRepository chatRepository,
-    required MessageRepository messageRepository,
     required ProviderRepository providerRepository,
     required ChatCompletionsService chatService,
   }) : _chatRepository = chatRepository,
-       _messageRepository = messageRepository,
        _providerRepository = providerRepository,
        _chatService = chatService;
 
@@ -69,14 +64,6 @@ class ChatUpdateService {
 
   Future<ProviderEntity?> getProviderForModel(int providerId) async {
     return _providerRepository.getProviderById(providerId);
-  }
-
-  // ─── 消息 ───────────────────────────────────────────────
-
-  Future<MessageEntity> updateExpanded(MessageEntity message) async {
-    final updated = message.copyWith(expanded: !message.expanded);
-    await _messageRepository.updateMessage(updated);
-    return updated;
   }
 
   // ─── 内部 ───────────────────────────────────────────────

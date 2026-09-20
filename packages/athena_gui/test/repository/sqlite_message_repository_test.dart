@@ -20,7 +20,6 @@ void main() {
         content TEXT NOT NULL DEFAULT '',
         reasoning_content TEXT DEFAULT '',
         reasoning INTEGER DEFAULT 0,
-        expanded INTEGER DEFAULT 0,
         image_urls TEXT DEFAULT '',
         reference TEXT DEFAULT '',
         tool_calls TEXT DEFAULT '',

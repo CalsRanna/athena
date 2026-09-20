@@ -51,7 +51,7 @@ athena/
     │   ├── lib/
     │   │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
     │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
-    │   │   ├── database/        # SQLite + Laconic ORM + 16 个迁移
+    │   │   ├── database/        # SQLite + Laconic ORM + 17 个迁移
     │   │   ├── repository/      # 5 个 SqliteXxxRepository（引擎接口的 SQLite 实现）
     │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
     │   │   ├── view_model/      # 7 个 ViewModel（Signals）+ delegate/（3 个委托）
@@ -169,7 +169,7 @@ messages.value.add(newMessage);
 - **路径**：`{app_support_dir}/athena.db`
 - **初始化**：`Database.instance.ensureInitialized()` 在 `main()` 中调用
 - **外键**：迁移全部完成后执行 `PRAGMA foreign_keys = ON`（确保孤儿数据已清理）
-- **迁移**：按时间顺序执行（当前 16 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
+- **迁移**：按时间顺序执行（当前 17 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
 - **重置**：`Database.instance.reset()` DROP 所有表（不含 `sqlite_%`）后重新迁移+预设
 
 实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
@@ -381,7 +381,7 @@ sealed class RunEvent {
 ```
 
 关键实现细节：
-- **思考卡片展开状态保留**：`updateExpanded(messageId, expanded)` 记录用户展开选择，`_consumeStream` 的 copyWith 链应用 override，防止流式增量把刚展开的卡片重新折叠
+- **思考卡片展开状态不落库**：展开/折叠只是 `_AssistantMessageListTileThinkingPart` 的 Widget State（与 `ToolGroupCard` 一致），Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
@@ -396,7 +396,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 |--------|---------|------|
 | ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens, createdAt, updatedAt | 聊天会话 |
 | ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
-| MessageEntity | chatId, role, content, reasoningContent, reasoning, expanded, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
+| MessageEntity | chatId, role, content, reasoningContent, reasoning, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
 | ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
 | ProviderEntity | name, baseUrl, apiKey, enabled, isPreset | AI 提供商 |
 | SentinelEntity | name, avatar, description, prompt, tags, isPreset | Agent 角色 |
@@ -416,7 +416,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 | ChatCompletionsService | `service/chat_completions_service.dart` | AI 网络请求：`getCompletion()`（流式，含 includeUsage）、`complete()`（非流式，辅助模型摘要用）、`connect()`（测试连接）、`getTitle()`（标题生成） |
 | ChatMessageConverter | `service/chat_message_converter.dart` | Entity → OpenAI ChatMessage 转换、system prompt 注入、tool_calls/tool_results 展开、图片 ContentPart（base64）、retention 处理 |
 | ChatStoreService | `service/chat_store_service.dart` | 会话/消息持久化编排：CRUD、占位消息、finalize、`recordCancelledOnMessage`、`recordErrorOnMessage`、`deleteMessagesFromIndex` |
-| ChatUpdateService | `service/chat_update_service.dart` | UI 辅助：重命名、模型/哨兵/上下文/温度更新、图片保存、`getProviderForModel`、`updateExpanded` 落库 |
+| ChatUpdateService | `service/chat_update_service.dart` | UI 辅助：重命名、模型/哨兵/上下文/温度更新、图片保存、`getProviderForModel` |
 | DataMigrationService | `service/data_migration_service.dart` | 数据导入/导出（JSON）、数据库重置、悬空引用重整 |
 | ModelResolver | `service/model_resolver.dart` | 模型/Provider 解析 + fallback（优先指定模型 → 回退第一个可用） |
 | ModelCatalogService | `service/model_catalog_service.dart` | 从 models.dev/api.json 同步模型元数据（TTL 7 天缓存、失败降级缓存、只删除未被 chat 引用的 preset 模型） |
@@ -447,7 +447,7 @@ ChatViewModel（Signal 唯一持有者 + 编排层）
 
 ### ChatViewModel 直接操作（未委托部分）
 
-`createChat` / `deleteChat` / `deleteChats` / `selectChat` / `togglePin` / `updateModel` / `updateSentinel` / `updateRetention` / `updateTemperature` / `updateExpanded` / `sendMessage` / `stopGenerating` / `deleteMessage` / `renameChat` / `exportImage` / `addPendingImage` / `prepareNewChatDraft` / `_syncDraftDefaults` 等。
+`createChat` / `deleteChat` / `deleteChats` / `selectChat` / `togglePin` / `updateModel` / `updateSentinel` / `updateRetention` / `updateTemperature` / `sendMessage` / `stopGenerating` / `deleteMessage` / `renameChat` / `exportImage` / `addPendingImage` / `prepareNewChatDraft` / `_syncDraftDefaults` 等。
 
 GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，通过 `queuedMessages` 在桌面和移动端输入框上方的 `QueuedMessages` 组件展示。上一轮完整收尾后，按顺序调用 Coordinator 的正常 `send`，此时才落库并移入消息列表，未轮到的输入不进入历史或模型上下文。Stop 只取消当前轮，队列继续接续；删除会话会清空其待发送队列。GUI 不使用 Coordinator 的提前落库 `queueInput` 路径；待发送队列不跨应用重启恢复。
 
@@ -626,7 +626,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 字段，只能走 `recordUsage()` 增量路径
 13. **列表信号更新**：赋值新列表或 `replaceWhere`，禁止原地 `add()` 修改
 14. **AgentService 单实例运行**：`run()` 已运行时再次调用抛 `StateError`，需先 `abort()` / 等待 `settled`
-15. **思考卡片展开状态**：流式更新时显式传 `expanded: current.expanded` 并通过 Coordinator 的 override 机制保留用户选择
+15. **UI 展示态不进 MessageEntity**：`messages.expanded` 列已由迁移 202609200001 删除，推理卡片展开状态只存在于 Widget State；新的纯展示状态同样不要加进实体或数据库
 
 ---
 

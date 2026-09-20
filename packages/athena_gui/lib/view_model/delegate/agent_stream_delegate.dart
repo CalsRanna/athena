@@ -103,11 +103,6 @@ class AgentStreamDelegate {
   /// 指定对话当前流式中的消息快照（用于切换到运行中的对话时恢复进度）。
   MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
 
-  /// 用户点击思考卡片切换的展开状态，转发给核心协调层。
-  void updateExpanded(int messageId, bool expanded) {
-    _coordinator.updateExpanded(messageId, expanded);
-  }
-
   Stream<RunEvent> send({
     required MessageEntity message,
     required ChatEntity chat,

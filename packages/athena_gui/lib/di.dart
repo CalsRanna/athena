@@ -253,7 +253,6 @@ class DI {
     getIt.registerLazySingleton(
       () => ChatUpdateService(
         chatRepository: getIt<ChatRepository>(),
-        messageRepository: getIt<MessageRepository>(),
         providerRepository: getIt<ProviderRepository>(),
         chatService: getIt<ChatCompletionsService>(),
       ),

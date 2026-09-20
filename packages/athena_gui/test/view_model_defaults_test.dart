@@ -88,7 +88,6 @@ void main() {
           );
       final supportService = ChatUpdateService(
             chatRepository: SqliteChatRepository(),
-            messageRepository: SqliteMessageRepository(),
             providerRepository: SqliteProviderRepository(),
             chatService: ChatCompletionsService(llmClient: LlmClient()),
           );

@@ -751,22 +751,6 @@ class ChatViewModel {
     }
   }
 
-  Future<void> updateExpanded(MessageEntity message) async {
-    try {
-      // 先同步通知流式代理:思考/生成期间流式增量基于 delegate 的本地缓存,
-      // 若不告知用户最新的展开选择,刚展开的卡片会被下一次增量重新折叠
-      if (message.id != null) {
-        _stream.updateExpanded(message.id!, !message.expanded);
-      }
-      final updated = await _supportService.updateExpanded(message);
-      // 先落地挂起增量：否则这次改写会被下一次 flush 的旧快照覆盖
-      _flushMessages();
-      messages.replaceWhere((m) => m.id == message.id, updated);
-    } catch (e) {
-      error.value = e.toString();
-    }
-  }
-
   Future<void> updateCurrentModel(ModelEntity model) async {
     currentModel.value = model;
     currentProvider.value = await _supportService.getProviderForModel(

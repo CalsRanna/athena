@@ -7,7 +7,6 @@ class MessageEntity {
   final String content;
   final String reasoningContent;
   final bool reasoning;
-  final bool expanded;
   final String imageUrls;
   final String reference;
   final String toolCalls;
@@ -24,8 +23,6 @@ class MessageEntity {
     this.content = '',
     this.reasoningContent = '',
     this.reasoning = false,
-    // 思考内容默认折叠：多数用户不关心 LLM 推理过程，点击标题可展开
-    this.expanded = false,
     this.imageUrls = '',
     this.reference = '',
     this.toolCalls = '',
@@ -44,8 +41,6 @@ class MessageEntity {
       content: json.getString('content'),
       reasoningContent: json.getString('reasoning_content'),
       reasoning: json.getBool('reasoning'),
-      // 兼容旧数据：DB 里无 expanded 记录的旧消息仍按折叠处理
-      expanded: json.getBool('expanded', defaultValue: false),
       imageUrls: json.getString('image_urls'),
       reference: json.getString('reference'),
       toolCalls: json.getString('tool_calls'),
@@ -64,7 +59,6 @@ class MessageEntity {
       'content': content,
       'reasoning_content': reasoningContent,
       'reasoning': reasoning ? 1 : 0,
-      'expanded': expanded ? 1 : 0,
       'image_urls': imageUrls,
       'reference': reference,
       'tool_calls': toolCalls,
@@ -82,7 +76,6 @@ class MessageEntity {
     String? content,
     String? reasoningContent,
     bool? reasoning,
-    bool? expanded,
     String? imageUrls,
     String? reference,
     String? toolCalls,
@@ -98,7 +91,6 @@ class MessageEntity {
       content: content ?? this.content,
       reasoningContent: reasoningContent ?? this.reasoningContent,
       reasoning: reasoning ?? this.reasoning,
-      expanded: expanded ?? this.expanded,
       imageUrls: imageUrls ?? this.imageUrls,
       reference: reference ?? this.reference,
       toolCalls: toolCalls ?? this.toolCalls,
