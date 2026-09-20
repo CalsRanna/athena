@@ -2,14 +2,14 @@ import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/page/desktop/setting/skill/component/skill_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/skill/component/skill_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
-import 'package:athena_gui/widget/menu.dart';
+import 'package:athena_gui/widget/settings_panel.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -62,8 +62,14 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
 
   @override
   Widget build(BuildContext context) {
-    var children = [_buildSkillListView(), Expanded(child: _buildSkillView())];
-    return Row(children: children);
+    var children = [
+      _buildListColumn(),
+      Expanded(child: _buildDetailPane()),
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
   }
 
   Future<void> changeSkill(int index) async {
@@ -133,6 +139,10 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     if (mounted) setState(_selection.clear);
   }
 
+  void createSkill() {
+    AthenaDialog.show(DesktopSkillFormDialog());
+  }
+
   void storeSkill() async {
     var skills = viewModel.skills.value;
     if (skills.isEmpty) return;
@@ -183,35 +193,22 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     );
   }
 
-  Widget _buildSkillListView() {
+  Widget _buildListColumn() {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
       var skills = viewModel.skills.value;
-      var borderSide = BorderSide(color: colors.border);
-      Widget child = ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemBuilder: (context, index) =>
-            _buildSkillTile(context, skills, index),
-        itemCount: skills.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-      );
-      if (skills.isEmpty) {
-        var textStyle = TextStyle(
-          color: colors.textPrimary,
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-        );
-        child = Center(child: Text('No Skills', style: textStyle));
+      var rows = <Widget>[];
+      for (var i = 0; i < skills.length; i++) {
+        rows.add(_buildSkillRow(skills, i));
       }
-      return Container(
-        decoration: BoxDecoration(border: Border(right: borderSide)),
-        width: 240,
-        child: child,
+      return AthenaSettingsListColumn(
+        title: 'Skills',
+        onAdd: createSkill,
+        children: rows,
       );
     });
   }
 
-  Widget _buildSkillTile(BuildContext context, List<Skill> skills, int index) {
+  Widget _buildSkillRow(List<Skill> skills, int index) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var skill = skills[index];
     final selected =
@@ -220,90 +217,79 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     var trailing = skill.isBuiltin
         ? Icon(
             HugeIcons.strokeRoundedCircleLock01,
-            size: 10,
+            size: 12,
             color: trailingColor,
           )
         : null;
-    return DesktopMenuTile(
-      active: selected,
+    return AthenaSettingsListItem(
       label: skill.name,
+      selected: selected,
       trailing: trailing,
       onSecondaryTap: (details) => showSkillContextMenu(details, skill),
       onTap: () => _handleSkillTap(index),
     );
   }
 
-  Widget _buildSkillView() {
+  Widget _buildDetailPane() {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var skills = viewModel.skills.value;
-      if (skills.isEmpty || index >= skills.length) return const SizedBox();
+      if (skills.isEmpty || index >= skills.length) {
+        return const AthenaSettingsPane(children: []);
+      }
       var skill = skills[index];
-      var nameTextStyle = TextStyle(
-        color: colors.textPrimary,
-        fontSize: 20,
-        fontWeight: FontWeight.w500,
-      );
       var isBuiltin = skill.isBuiltin;
-      var descriptionInput = AthenaInput(
-        controller: descriptionController,
-        maxLines: 4,
-        minLines: 4,
-      );
-      var descriptionChildren = [
-        SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Description')),
-        Expanded(child: descriptionInput),
-      ];
-      var bodyInput = AthenaInput(
-        controller: bodyController,
-        maxLines: 20,
-        minLines: 20,
-      );
-      const edgeInsets = EdgeInsets.symmetric(vertical: 16);
-      var bodyLabel = SizedBox(
-        width: 120,
-        child: AthenaFormTileLabel(title: 'Instructions'),
-      );
-      var bodyChildren = [
-        Padding(padding: edgeInsets, child: bodyLabel),
-        Expanded(child: bodyInput),
-      ];
-      var listChildren = [
-        Row(
-          children: [
-            Expanded(child: Text(skill.name, style: nameTextStyle)),
-            if (isBuiltin)
-              Icon(
-                HugeIcons.strokeRoundedCircleLock01,
-                size: 14,
-                color: colors.iconSecondary,
+      return AthenaSettingsPane(
+        children: [
+          AthenaSettingsSection(
+            first: true,
+            title: skill.name,
+            trailing: isBuiltin
+                ? Icon(
+                    HugeIcons.strokeRoundedCircleLock01,
+                    size: 14,
+                    color: colors.iconSecondary,
+                  )
+                : null,
+            children: [
+              AthenaSettingsRow(
+                label: 'Description',
+                control: SizedBox(
+                  width: AthenaSettings.controlColumnWidth,
+                  child: AthenaInput(
+                    controller: descriptionController,
+                    maxLines: 4,
+                    minLines: 4,
+                  ),
+                ),
               ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(children: descriptionChildren),
-        const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: bodyChildren,
-        ),
-        const SizedBox(height: 12),
-        if (!isBuiltin) _buildButtons(context),
-      ];
-      return ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        children: listChildren,
+            ],
+          ),
+          AthenaSettingsSection(
+            title: 'Instructions',
+            children: [
+              AthenaInput(
+                controller: bodyController,
+                maxLines: 12,
+                minLines: 12,
+              ),
+            ],
+          ),
+          if (!isBuiltin)
+            Padding(
+              padding: const EdgeInsets.only(top: 32),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  AthenaPrimaryButton(
+                    onTap: storeSkill,
+                    child: const Text('Store'),
+                  ),
+                ],
+              ),
+            ),
+        ],
       );
     });
-  }
-
-  Widget _buildButtons(BuildContext context) {
-    const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var storeButton = AthenaPrimaryButton(
-      onTap: storeSkill,
-      child: const Padding(padding: edgeInsets, child: Text('Store')),
-    );
-    var children = [const Spacer(), storeButton];
-    return Row(children: children);
   }
 }

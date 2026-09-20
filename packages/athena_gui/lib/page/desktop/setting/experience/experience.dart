@@ -1,11 +1,11 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/desktop/setting/experience/component/experience_context_menu.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/menu.dart';
+import 'package:athena_gui/widget/settings_panel.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,7 @@ import 'package:get_it/get_it.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 桌面端经验管理：左栏列表（含归档开关）+ 右侧只读详情。
+/// 桌面端经验管理：左栏列表 + 右侧只读详情。
 ///
 /// 经验内容由 Agent 进化产出，不支持手工新建/编辑；
 /// 归档/恢复与删除通过列表项右键菜单完成。
@@ -42,10 +42,13 @@ class _DesktopSettingExperiencePageState
   @override
   Widget build(BuildContext context) {
     var children = [
-      _buildExperienceListView(),
-      Expanded(child: _buildExperienceView()),
+      _buildListColumn(),
+      Expanded(child: _buildDetailPane()),
     ];
-    return Row(children: children);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
   }
 
   void changeExperience(int index) {
@@ -181,52 +184,39 @@ class _DesktopSettingExperiencePageState
     DesktopContextMenuManager.instance.show(context, contextMenu);
   }
 
-  Widget _buildExperienceListView() {
+  Widget _buildListColumn() {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
       var experiences = viewModel.experiences.value;
-      var borderSide = BorderSide(color: colors.border);
-      Widget child = ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemBuilder: (context, index) =>
-            _buildExperienceTile(context, experiences, index),
-        itemCount: experiences.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-      );
-      if (experiences.isEmpty) {
-        var textStyle = TextStyle(
-          color: colors.textPrimary,
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-        );
-        child = Center(child: Text('No Experiences', style: textStyle));
+      var rows = <Widget>[];
+      for (var i = 0; i < experiences.length; i++) {
+        rows.add(_buildExperienceRow(experiences, i));
       }
-      return Container(
-        decoration: BoxDecoration(border: Border(right: borderSide)),
-        width: 240,
-        child: child,
+      return AthenaSettingsListColumn(
+        title: 'Experiences',
+        children: rows,
       );
     });
   }
 
-  Widget _buildExperienceTile(
-    BuildContext context,
+  Widget _buildExperienceRow(
     List<ExperienceEntity> experiences,
     int index,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     var experience = experiences[index];
     var isArchived = experience.status == ExperienceEntity.statusArchived;
     final selected =
         this.index == index ||
         _selection.selectedIds.contains((experience.sentinelId, experience.id));
-    var trailingColor = selected ? colors.textPrimary : colors.iconSecondary;
     var trailing = isArchived
-        ? Icon(HugeIcons.strokeRoundedArchive, size: 10, color: trailingColor)
+        ? Icon(
+            HugeIcons.strokeRoundedArchive,
+            size: 12,
+            color: settingsColorsOf(context).navMuted,
+          )
         : null;
-    return DesktopMenuTile(
-      active: selected,
+    return AthenaSettingsListItem(
       label: experience.lesson,
+      selected: selected,
       trailing: trailing,
       onSecondaryTap: (details) =>
           showExperienceContextMenu(details, experience),
@@ -234,81 +224,76 @@ class _DesktopSettingExperiencePageState
     );
   }
 
-  Widget _buildExperienceView() {
+  Widget _buildDetailPane() {
     return Watch((context) {
-      final colors = Theme.of(context).extension<AthenaColors>()!;
       var experiences = viewModel.experiences.value;
       if (experiences.isEmpty || index >= experiences.length) {
-        return const SizedBox();
+        return const AthenaSettingsPane(children: []);
       }
       var experience = experiences[index];
       var isArchived = experience.status == ExperienceEntity.statusArchived;
-      var sectionTextStyle = TextStyle(
-        color: colors.textPrimary,
-        fontSize: 14,
-        height: 1.5,
-      );
-      var labelTextStyle = TextStyle(color: colors.textWeak, fontSize: 12);
-      var valueTextStyle = TextStyle(color: colors.textPrimary, fontSize: 13);
-
-      Widget metaRow(String label, String value) {
-        return Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
+      return AthenaSettingsPane(
+        children: [
+          AthenaSettingsSection(
+            first: true,
+            title: viewModel.ownerLabel(experience),
             children: [
-              SizedBox(width: 80, child: Text(label, style: labelTextStyle)),
-              Expanded(child: Text(value, style: valueTextStyle)),
+              AthenaSettingsValueRow(label: 'Scope', value: experience.scope),
+              AthenaSettingsValueRow(label: 'Source', value: experience.source),
+              AthenaSettingsValueRow(
+                label: 'Status',
+                value: isArchived ? 'Archived' : 'Active',
+              ),
+              AthenaSettingsValueRow(
+                label: 'Created',
+                value: _formatDate(experience.createdAt),
+              ),
+              if (experience.updatedAt != null)
+                AthenaSettingsValueRow(
+                  label: 'Updated',
+                  value: _formatDate(experience.updatedAt!),
+                ),
             ],
           ),
-        );
-      }
-
-      var children = [
-        Text(
-          viewModel.ownerLabel(experience),
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
+          AthenaSettingsSection(
+            title: 'Lesson',
+            children: [_buildParagraph(experience.lesson)],
           ),
-        ),
-        const SizedBox(height: 8),
-        metaRow('Scope', experience.scope),
-        metaRow('Source', experience.source),
-        metaRow('Status', isArchived ? 'Archived' : 'Active'),
-        metaRow('Created', _formatDate(experience.createdAt)),
-        if (experience.updatedAt != null)
-          metaRow('Updated', _formatDate(experience.updatedAt!)),
-        const SizedBox(height: 16),
-        Text('Lesson', style: labelTextStyle),
-        const SizedBox(height: 8),
-        Text(experience.lesson, style: sectionTextStyle),
-        if (experience.context.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Context', style: labelTextStyle),
-          const SizedBox(height: 8),
-          Text(experience.context, style: sectionTextStyle),
+          if (experience.context.isNotEmpty)
+            AthenaSettingsSection(
+              title: 'Context',
+              children: [_buildParagraph(experience.context)],
+            ),
+          if (experience.tags.isNotEmpty)
+            AthenaSettingsSection(
+              title: 'Tags',
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tag in experience.tags)
+                      AthenaTag.small(text: tag),
+                  ],
+                ),
+              ],
+            ),
+          SafeArea(top: false, child: const SizedBox()),
         ],
-        if (experience.tags.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text('Tags', style: labelTextStyle),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final tag in experience.tags) AthenaTag.small(text: tag),
-            ],
-          ),
-        ],
-        const SizedBox(height: 32),
-        SafeArea(top: false, child: const SizedBox()),
-      ];
-      return ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        children: children,
       );
     });
+  }
+
+  Widget _buildParagraph(String text) {
+    final settings = settingsColorsOf(context);
+    return Text(
+      text,
+      style: TextStyle(
+        color: settings.navSelectedText,
+        fontSize: AthenaSettings.rowFontSize,
+        height: 1.6,
+      ),
+    );
   }
 }
 

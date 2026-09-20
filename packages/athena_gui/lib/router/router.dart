@@ -25,9 +25,12 @@ class AthenaRouter extends RootStackRouter {
       DesktopRoute(page: DesktopSettingAdvancedRoute.page),
       DesktopRoute(page: DesktopSettingAboutRoute.page),
     ];
+    // 设置是**非透明**路由：它自己画遮罩与居中面板，浮在应用之上
+    // （与 Claude 桌面端一致——设置面板后面能看见会话）。
     var desktopSettingRoute = DesktopRoute(
       children: desktopSettingChildren,
       page: DesktopSettingRoute.page,
+      opaque: false,
     );
     return [
       DesktopRoute(page: DesktopHomeRoute.page, initial: isDesktop),
@@ -57,10 +60,14 @@ class AthenaRouter extends RootStackRouter {
 }
 
 class DesktopRoute<R> extends CustomRoute<R> {
-  DesktopRoute({super.initial, required super.page, super.children})
-    : super(
-        transitionsBuilder: TransitionsBuilders.noTransition,
-        durationInMilliseconds: 0,
-        reverseDurationInMilliseconds: 0,
-      );
+  DesktopRoute({
+    super.initial,
+    required super.page,
+    super.children,
+    super.opaque,
+  }) : super(
+         transitionsBuilder: TransitionsBuilders.noTransition,
+         durationInMilliseconds: 0,
+         reverseDurationInMilliseconds: 0,
+       );
 }

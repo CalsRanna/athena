@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -30,6 +31,9 @@ AthenaColors colorsOf(AthenaColorMode mode) =>
 /// 让 Material 组件的默认强调（滑块、进度条、光标）与 Codex 唯一的那抹蓝一致。
 ThemeData buildAthenaThemeData(AthenaColorMode mode) {
   final colors = colorsOf(mode);
+  final settingsColors = mode == AthenaColorMode.light
+      ? AthenaSettingsColors.light
+      : AthenaSettingsColors.dark;
   final isLight = mode == AthenaColorMode.light;
   final base = isLight ? const ColorScheme.light() : const ColorScheme.dark();
   return ThemeData(
@@ -47,6 +51,6 @@ ThemeData buildAthenaThemeData(AthenaColorMode mode) {
     dividerColor: colors.divider,
     splashFactory: NoSplash.splashFactory,
     useMaterial3: true,
-    extensions: [colors],
+    extensions: [colors, settingsColors],
   );
 }

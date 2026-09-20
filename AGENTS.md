@@ -286,7 +286,7 @@ enum ToolRisk { readOnly, dangerous }
 
 Coordinator 从包含 compacted 消息的原始历史构造 `PermissionReviewContext`，仅传入 user/assistant 文本，排除 system、思考、工具输出、技能与经验。助手提案只能辅助解释用户回复，不能作为授权。当前 run 内的人工决策独立提供给审核器；人工拒绝的完全相同调用在本轮直接拒绝，防止重试自动批准。
 
-GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_approval_enabled`，0 关闭/1 开启）。GUI 的 Agent → General 设置页保存开关；TUI `/review [on|off]` 查看/切换，下一轮生效。
+GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_approval_enabled`，0 关闭/1 开启）。GUI 在设置 → Agent 的 General 分区保存开关；TUI `/review [on|off]` 查看/切换，下一轮生效。
 
 人工通过 `PermissionPrompt` 回调进入 GUI 会话内卡片 / TUI 审批条，实际参数完整可滚动：
 - **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。
@@ -573,7 +573,7 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   `7/28/20`、`8/32/22`、`10/40/28`；容器内按钮取"嵌套高"，
   圆角 `radius − (control − 嵌套)/2`。**不是圆形**，是圆角 3–4 的小方块。
 - **会话列定宽 768 并居中**，消息与 composer 同宽、左右对齐。
-- 主题默认浅色，深色为镜像。切换入口在设置 → Advanced → Appearance。
+- 主题默认浅色，深色为镜像。切换入口在设置 → Advanced 的 Appearance 分区。
 - 等宽只有一个来源 `AthenaFont.mono`；`google_fonts` 依赖已移除。
 
 ### 核心组件（athena_gui/lib/widget/）
@@ -585,6 +585,10 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
 | `AthenaInput` | 平涂底 + 1px 边框输入框 |
 | `AthenaScaffold` | 页面骨架 |
+| `AthenaSettingsPanel` / `AthenaSettingsPane` / `AthenaSettingsSection` | 设置面板外壳（居中浮层 + 遮罩）、内容区、分区标题 |
+| `AthenaSettingsRow` / `AthenaSettingsSegmented` / `AthenaSettingsSelect` | 设置行（标签 + 说明 + 右侧控件）、分段控件、下拉 |
+| `AthenaSettingsNav` / `AthenaSettingsSearchField` / `AthenaSettingsNavItem` | 设置左栏：搜索框 + 分组 + 导航行 |
+| `AthenaSettingsListColumn` / `AthenaSettingsListItem` | 设置页里的列表列与条目（内容列表，不是导航） |
 | `AthenaDialog` | 对话框（桌面居中 Dialog / 移动 Bottom Sheet） |
 | `AthenaSwitch` / `Checkbox` / `ContextMenu` / `Menu` / `Tile` / `Divider` / `AppBar` / `WindowButton` | 通用组件 |
 | `PermissionDialog` / `ElicitCard` | 会话内面板 |

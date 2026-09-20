@@ -1,5 +1,5 @@
-import 'package:athena_gui/theme/athena_colors.dart';
-
+import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/widget/settings_panel.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -24,11 +24,10 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final settings = settingsColorsOf(context);
     var textStyle = TextStyle(
-      color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
+      color: settings.navMuted,
+      fontSize: AthenaSettings.rowFontSize,
       height: 1.5,
     );
     var image = Image.asset(
@@ -36,16 +35,19 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
       height: 120,
       width: 120,
     );
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ClipOval(child: image),
-          const SizedBox(height: 24),
-          Text(version, style: textStyle),
-        ],
-      ),
+    return AthenaSettingsPane(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          child: Column(
+            children: [
+              ClipOval(child: image),
+              const SizedBox(height: 24),
+              Text(version, style: textStyle),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
