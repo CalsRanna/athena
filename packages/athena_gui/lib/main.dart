@@ -7,6 +7,7 @@ import 'package:athena_gui/router/router.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/util/single_instance_util.dart';
 import 'package:athena_gui/util/system_tray_util.dart';
@@ -28,6 +29,7 @@ void main(List<String> args) async {
   DI.ensureInitialized(dataDirectory: supportDir.path);
   await GetIt.instance<PermissionService>().load();
   await GetIt.instance<SettingViewModel>().initThemeMode();
+  await GetIt.instance<SettingViewModel>().initTextSize();
   if (PlatformUtil.isDesktop) {
     // 窗口原生背景色跟随当前主题（浅色下避免露出默认黑底）
     final resolved = resolveColorMode(
@@ -60,7 +62,9 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      final themeMode = GetIt.instance<SettingViewModel>().themeMode.value;
+      final settingViewModel = GetIt.instance<SettingViewModel>();
+      final themeMode = settingViewModel.themeMode.value;
+      final textSize = settingViewModel.textSize.value;
       final resolved = resolveColorMode(themeMode);
       final colors = colorsOf(resolved);
       if (PlatformUtil.isDesktop) {
@@ -80,8 +84,33 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
         theme: buildAthenaThemeData(AthenaColorMode.light),
         darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
         themeMode: themeMode,
+        // 「字体大小」设置：叠一层 TextScaler（只缩放字号，不动几何）。
+        builder: (context, child) => applyTextSize(context, child, textSize),
       );
     });
+  }
+
+  /// 把「字体大小」设置叠到系统文字缩放**之上**（不覆盖系统的无障碍缩放）。
+  ///
+  /// 默认档（1.0）直接返回原树，避免无谓地重建 MediaQuery。
+  @visibleForTesting
+  static Widget applyTextSize(
+    BuildContext context,
+    Widget? child,
+    AthenaTextSize size,
+  ) {
+    var content = child ?? const SizedBox();
+    if (size.scale == 1.0) return content;
+    var media = MediaQuery.of(context);
+    // 系统缩放是非线性的（Android 14+），所以按正文号取等效系数再相乘。
+    var systemScale =
+        media.textScaler.scale(AthenaFontSize.body) / AthenaFontSize.body;
+    return MediaQuery(
+      data: media.copyWith(
+        textScaler: TextScaler.linear(systemScale * size.scale),
+      ),
+      child: content,
+    );
   }
 
   @override

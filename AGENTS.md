@@ -574,6 +574,9 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   圆角 `radius − (control − 嵌套)/2`。**不是圆形**，是圆角 3–4 的小方块。
 - **会话列定宽 768 并居中**，消息与 composer 同宽、左右对齐。
 - 主题默认浅色，深色为镜像。切换入口在设置 → Advanced 的 Appearance 分区。
+- 同一分区还有 **Font size**（Small / Medium / Large，`AthenaTextSize`）：在应用
+  根部叠一层 `TextScaler`（`main.dart` 的 `applyTextSize`）全站生效，只缩放字号
+  不动几何，移动端入口在设置 → Appearance 弹层。
 - 等宽只有一个来源 `AthenaFont.mono`；`google_fonts` 依赖已移除。
 
 ### 核心组件（athena_gui/lib/widget/）

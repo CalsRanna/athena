@@ -198,6 +198,24 @@ caption 12→13、radius 6→8、icon 16→24）。本仓只取 body 的 15，�
 
 ---
 
+### Font Size Setting（字号档位）
+
+设置 → Advanced → Appearance 里的 **Font size**（Small / Medium / Large），
+对应 `AthenaTextSize`（0.85 / 1.0 / 1.15），默认 Medium；Claude 桌面端在同一个
+位置也有一档文字大小设置，这里与它同形。移动端在设置 → Appearance 弹层里给同
+三档（`Small / Medium / Large text`）。
+
+机制是**在应用根部叠一层 `TextScaler`**（`main.dart` 的 `applyTextSize`），
+而不是把 token 值改成动态的——这样全站文字（UI、正文、Markdown、代码、输入框）
+一次性生效，调用点一处都不用改。它**乘在系统无障碍缩放之上**，不覆盖系统设置
+（按正文号取等效系数再相乘，因为系统缩放在 Android 14+ 是非线性的）。
+
+**只缩放字号，不动几何**。1.15 倍下所有含文字的固定高度都仍有余量：侧栏行
+26 / 字号 13、设置导航行 32 / 字号 14、列表行 40 / 字号 14、分段控件与输入框
+32、composer 上下文条 40、顶栏 46。**注意**：若以后把档位拉大到 ~1.3，这些固定
+高度会先顶不住，届时要改成"字号与几何一起缩放"（Claude 的 `data-density` 正是
+两者一起动）。
+
 ## 4. Component Stylings
 
 ### Buttons
