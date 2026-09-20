@@ -36,9 +36,10 @@ class StepGroupCard extends StatefulWidget {
       }
     }
     final parts = <String>[
+      if (toolCount > 0)
+        toolCount == 1 ? 'Ran 1 tool call' : 'Ran $toolCount tool calls',
       if (reasoningCount > 0)
         'Thought for ${(thinkingMs / 1000).toStringAsFixed(1)} seconds',
-      if (toolCount > 0) toolCount == 1 ? '1 tool call' : '$toolCount tool calls',
     ];
     return parts.join(' · ');
   }
@@ -142,11 +143,7 @@ class _StepGroupCardState extends State<StepGroupCard> {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.firaCode(
-            fontSize: _fontSize,
-            fontWeight: FontWeight.w500,
-            color: foreground,
-          ),
+          style: GoogleFonts.firaCode(fontSize: _fontSize, color: foreground),
         ),
       ),
     ];
@@ -243,7 +240,6 @@ class _ToolStepRowState extends State<_ToolStepRow> {
                     maxLines: 1,
                     style: GoogleFonts.firaCode(
                       fontSize: _fontSize,
-                      fontWeight: FontWeight.w500,
                       color: foreground,
                     ),
                   ),
