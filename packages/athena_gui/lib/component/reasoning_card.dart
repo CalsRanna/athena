@@ -24,14 +24,14 @@ class ReasoningCard extends StatefulWidget {
     required this.thinking,
   });
 
-  /// 结束态标题：`Thought for 2.0 seconds`。
+  /// 结束态标题：`Thought 2.0 seconds`。
   static String durationLabel(MessageEntity message) {
     final duration =
         message.reasoningUpdatedAt
             .difference(message.reasoningStartedAt)
             .inMilliseconds /
         1000;
-    return 'Thought for ${duration.toStringAsFixed(1)} seconds';
+    return 'Thought ${duration.toStringAsFixed(1)} seconds';
   }
 
   @override

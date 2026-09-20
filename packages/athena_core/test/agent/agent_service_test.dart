@@ -77,7 +77,10 @@ void main() {
       toolCall: ToolCall(
         id: 'c1',
         type: 'function',
-        function: const FunctionCall(name: 'blocking', arguments: '{}'),
+        function: FunctionCall(
+          name: 'blocking',
+          arguments: jsonEncode({'call_description': '阻塞等待取消信号'}),
+        ),
       ),
       cancelToken: token,
     );
@@ -102,6 +105,7 @@ void main() {
         function: FunctionCall(
           name: 'ask_user_question',
           arguments: jsonEncode({
+            'call_description': '询问用户用哪种输出格式',
             'questions': [
               {
                 'question': '输出用哪种格式？',
@@ -145,6 +149,7 @@ void main() {
         function: FunctionCall(
           name: 'ask_user_question',
           arguments: jsonEncode({
+            'call_description': '询问用户用哪种输出格式',
             'questions': [
               {
                 'question': '输出用哪种格式？',
@@ -317,6 +322,8 @@ void _reflectionTests() {
             approvals++;
             expect(name, 'experience_learn');
             expect(arguments, contains('Re-read a file'));
+            // 程序化构造的反思调用同样要带必填的调用说明
+            expect(arguments, contains('call_description'));
             return true;
           },
         )

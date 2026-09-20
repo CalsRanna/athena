@@ -83,7 +83,8 @@ void main() {
       // 由注册表统一注入，工具自身不重复声明
       expect(properties, contains('call_description'));
       expect(properties, contains('approval_recommendation'));
-      expect(definition['required'], <String>['questions']);
+      // call_description 由注册表加入 required，其余业务必填字段保持原样
+      expect(definition['required'], <String>['questions', 'call_description']);
     });
   });
 

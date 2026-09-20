@@ -18,6 +18,7 @@ import 'package:athena_gui/database/migration/migration_202608210001_seed_sentin
 import 'package:athena_gui/database/migration/migration_202608240001_add_chat_reasoning_effort.dart';
 import 'package:athena_gui/database/migration/migration_202609120001_remove_shortcut_and_scene_pages.dart';
 import 'package:athena_gui/database/migration/migration_202609200001_drop_message_expanded.dart';
+import 'package:athena_gui/database/migration/migration_202609200002_require_tool_call_description.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -88,6 +89,7 @@ class Database {
     await Migration202608240001AddChatReasoningEffort().migrate();
     await Migration202609120001RemoveShortcutAndScenePages().migrate();
     await Migration202609200001DropMessageExpanded().migrate();
+    await Migration202609200002RequireToolCallDescription().migrate();
   }
 
   /// 重置数据库：清空所有数据并重新执行迁移和预设

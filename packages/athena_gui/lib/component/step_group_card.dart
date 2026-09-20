@@ -9,7 +9,7 @@ import 'package:hugeicons/hugeicons.dart';
 /// 将同一 Assistant 回合内按时间序排列的推理与工具调用收纳为一张默认折叠的卡片。
 ///
 /// - 进行中（[live]）：折叠头显示当前步骤（`Thinking` 或 `工具名 参数预览`）并带
-///   shimmer；结束后显示汇总（`Thought for 3.2 seconds · 2 tool calls`）。
+///   shimmer；结束后显示汇总（`Thought 3.2 seconds · 2 tool calls`）。
 /// - 展开后按时间序逐行列出推理卡与工具行，各自可再展开查看推理正文 / 结果。
 /// - 展开状态只保留在 Widget 内存态。
 class StepGroupCard extends StatefulWidget {
@@ -37,9 +37,9 @@ class StepGroupCard extends StatefulWidget {
     }
     final parts = <String>[
       if (toolCount > 0)
-        toolCount == 1 ? 'Ran 1 tool call' : 'Ran $toolCount tool calls',
+        toolCount == 1 ? 'Used 1 tool' : 'Used $toolCount tools',
       if (reasoningCount > 0)
-        'Thought for ${(thinkingMs / 1000).toStringAsFixed(1)} seconds',
+        'Thought ${(thinkingMs / 1000).toStringAsFixed(1)} seconds',
     ];
     return parts.join(' · ');
   }

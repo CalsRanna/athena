@@ -232,8 +232,8 @@ void main() {
 
     expect(find.text('first response'), findsOneWidget);
     expect(find.text('second response'), findsOneWidget);
-    expect(find.text('Thought for 1.0 seconds'), findsOneWidget);
-    expect(find.text('Thought for 2.0 seconds'), findsOneWidget);
+    expect(find.text('Thought 1.0 seconds'), findsOneWidget);
+    expect(find.text('Thought 2.0 seconds'), findsOneWidget);
     expect(find.byType(ToolCard), findsNWidgets(2));
     expect(find.byType(StepGroupCard), findsNothing);
     expect(find.text('References:'), findsNWidgets(2));
@@ -314,10 +314,10 @@ void main() {
 
     expect(find.byType(StepGroupCard), findsOneWidget);
     expect(find.byType(ToolCard), findsNothing);
-    expect(find.text('Thought for 1.0 seconds · 2 tool calls'), findsOneWidget);
+    expect(find.text('Thought 1.0 seconds · 2 tool calls'), findsOneWidget);
     expect(find.text('reasoning between tools'), findsNothing);
 
-    await tester.tap(find.text('Thought for 1.0 seconds · 2 tool calls'));
+    await tester.tap(find.text('Thought 1.0 seconds · 2 tool calls'));
     await tester.pump();
     // 展开后按时间序：file_read → 推理 → web_search
     double topOf(String text) => tester.getTopLeft(find.text(text)).dy;

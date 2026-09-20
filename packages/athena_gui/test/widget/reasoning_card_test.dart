@@ -51,7 +51,7 @@ void main() {
   testWidgets('完成后的推理卡使用透明弱色 Header 且没有状态图标', (tester) async {
     await pumpMessage(tester, reasoning: false);
 
-    final titleFinder = find.text('Thought for 2.0 seconds');
+    final titleFinder = find.text('Thought 2.0 seconds');
     expect(titleFinder, findsOneWidget);
     // 默认折叠，点击标题展开正文
     expect(find.text('reasoning details'), findsNothing);
