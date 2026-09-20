@@ -25,6 +25,14 @@ Color _renderedTextColor(WidgetTester tester, String text) {
   throw TestFailure('No styled text found for "$text".');
 }
 
+TextStyle _renderedTextStyle(WidgetTester tester, String text) {
+  for (final richText in tester.widgetList<RichText>(find.byType(RichText))) {
+    final style = _findTextStyle(richText.text, text);
+    if (style != null) return style;
+  }
+  throw TestFailure('No styled text found for "$text".');
+}
+
 Color? _renderedMathColor(WidgetTester tester) {
   final markdown = tester.widget<MarkdownBody>(
     find.byWidgetPredicate((widget) => widget is MarkdownBody),
@@ -128,10 +136,14 @@ void main() {
     },
   );
 
-  testWidgets('styles generated footnotes as a dedicated region', (
+  testWidgets('footnote region wears the same shell as a code block', (
     tester,
   ) async {
     const markdown = '''
+```dart
+void main() {}
+```
+
 First reference[^one] and second reference[^two].
 
 [^one]: First footnote.
@@ -142,14 +154,30 @@ First reference[^one] and second reference[^two].
 
     final regionFinder = find.byKey(const ValueKey('markdown-footnotes'));
     final region = tester.widget<Container>(regionFinder);
-    final decoration = region.decoration! as BoxDecoration;
+    final codeBlock = tester.widget<Container>(
+      find.byKey(const ValueKey('markdown-code-block')),
+    );
 
     expect(regionFinder, findsOneWidget);
     expect(find.text('Footnotes'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_upward_rounded), findsNWidgets(2));
+    // 头部只有文字标签，不带列表图标
+    expect(find.byIcon(Icons.format_list_numbered_rounded), findsNothing);
+    // 脚注区与代码块同壳：同底、同圆角、同宽同裁剪，且都不描边
+    // （width: double.infinity 在 Container 构造期落成 constraints）
+    expect(region.decoration, codeBlock.decoration);
+    expect(region.clipBehavior, codeBlock.clipBehavior);
+    expect(region.constraints, codeBlock.constraints);
+    final decoration = region.decoration! as BoxDecoration;
     expect(decoration.color, AthenaColors.dark.codeBackground);
-    expect(decoration.border, isNotNull);
     expect(decoration.borderRadius, BorderRadius.circular(8));
+    expect(decoration.border, isNull);
+    // 头部标签与代码块的语言标签同规格（等宽、同号、同色）
+    final label = tester.widget<Text>(find.text('Footnotes'));
+    final language = tester.widget<Text>(find.text('dart'));
+    expect(label.style?.fontFamily, language.style?.fontFamily);
+    expect(label.style?.fontSize, language.style?.fontSize);
+    expect(label.style?.color, language.style?.color);
   });
 
   testWidgets('does not style an ordinary ordered list as footnotes', (
@@ -194,5 +222,56 @@ First reference[^one] and second reference[^two].
     expect(darkColors.link, isNot(lightColors.link));
     expect(darkColors.strikethrough, isNot(lightColors.strikethrough));
     expect(darkColors.math, isNot(lightColors.math));
+  });
+
+  testWidgets('renders every heading level at body size, only bolded', (
+    tester,
+  ) async {
+    const markdown = '''
+# Alpha
+
+## Bravo
+
+### Charlie
+
+#### Delta
+
+##### Echo
+
+###### Foxtrot
+
+Body paragraph.
+''';
+
+    await pumpMarkdown(tester, markdown);
+
+    final body = _renderedTextStyle(tester, 'Body paragraph.');
+    expect(body.fontSize, isNotNull);
+    for (final text in const [
+      'Alpha',
+      'Bravo',
+      'Charlie',
+      'Delta',
+      'Echo',
+      'Foxtrot',
+    ]) {
+      final style = _renderedTextStyle(tester, text);
+      expect(style.fontSize, body.fontSize, reason: '$text 应与正文同号');
+      expect(style.height, body.height, reason: '$text 应与正文同行高');
+      expect(style.letterSpacing, body.letterSpacing);
+      expect(style.fontWeight, FontWeight.bold, reason: '$text 应加粗');
+      expect(style.color, body.color, reason: '$text 应与正文同色');
+    }
+
+    final markdownBody = tester.widget<MarkdownBody>(
+      find.byWidgetPredicate((widget) => widget is MarkdownBody),
+    );
+    final sheet = markdownBody.styleSheet!;
+    expect(
+      [sheet.h2, sheet.h3, sheet.h4, sheet.h5, sheet.h6],
+      everyElement(sheet.h1),
+      reason: '六级标题共用同一套样式',
+    );
+    expect(sheet.h1, sheet.p!.copyWith(fontWeight: FontWeight.bold));
   });
 }
