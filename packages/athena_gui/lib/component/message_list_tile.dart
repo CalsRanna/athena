@@ -320,15 +320,19 @@ class _AssistantMessageSegment extends StatelessWidget {
       ],
     );
     final showCopyButton = isCardHeader && !layout.waitingForFirstDelta;
+    // Claude 的消息操作是**hover/focus 才显形**（CSS：opacity 0→1 + scale，
+    // 进入 0.12s 且延迟 0.1s，退出 60ms）。旧版把复制按钮常驻在卡头。
     Widget result = showCopyButton
         ? Stack(
             children: [
               row,
               Positioned(
                 right: 0,
-                child: CopyButton(
-                  color: colors.textPrimary,
-                  onTap: () => _copyAssistantMessages(cardMessages),
+                child: _RevealOnHover(
+                  child: CopyButton(
+                    color: colors.textPrimary,
+                    onTap: () => _copyAssistantMessages(cardMessages),
+                  ),
                 ),
               ),
             ],
@@ -663,6 +667,40 @@ class _UserMessageListTile extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onResend,
       child: container,
+    );
+  }
+}
+
+/// hover / focus 时才显形的容器。
+///
+/// 取自 Claude 的 `[data-cds=MessageActions][data-reveal]`：进入用
+/// `--cds-dur-snap`（120ms）并延迟 100ms，退出用 `--cds-dur-fast`（60ms），
+/// 位移用 opacity + scale。这里用淡入 + 极轻的缩放复现。
+class _RevealOnHover extends StatefulWidget {
+  final Widget child;
+  const _RevealOnHover({required this.child});
+
+  @override
+  State<_RevealOnHover> createState() => _RevealOnHoverState();
+}
+
+class _RevealOnHoverState extends State<_RevealOnHover> {
+  bool _visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _visible = true),
+      onExit: (_) => setState(() => _visible = false),
+      child: AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: Duration(milliseconds: _visible ? 120 : 60),
+        child: AnimatedScale(
+          scale: _visible ? 1 : 0.9,
+          duration: Duration(milliseconds: _visible ? 120 : 60),
+          child: IgnorePointer(ignoring: !_visible, child: widget.child),
+        ),
+      ),
     );
   }
 }

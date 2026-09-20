@@ -91,9 +91,7 @@ class _DesktopAppBar extends StatelessWidget {
       SizedBox(width: 16),
     ];
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Codex 的顶栏是**透明的**：画布一直顶到窗口上沿，只有侧栏上方那条
-    // 保持与侧栏同色。旧版整条面板色 + 底部描边把画布切开了一道横带，
-    // 与 Codex 的"无顶栏"观感差别明显。
+    // 顶栏底色与画布相同（相当于透明），只有侧栏上方那条与侧栏同色。
     var rowChildren = [
       Container(
         width: AthenaSpace.sidebar,
@@ -107,10 +105,18 @@ class _DesktopAppBar extends StatelessWidget {
       action ?? const SizedBox(),
       const SizedBox(width: 16),
     ];
+    // Claude 实测：顶栏高 **46 逻辑**（我原来是 38），底边是一条**极浅**的线
+    // `#F7F7F7`（只比画布暗 5/255），且贯穿整条——它是顶栏唯一的轮廓。
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: handlePanStart,
-      child: Row(children: rowChildren),
+      child: Container(
+        height: 46,
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFF7F7F7))),
+        ),
+        child: Row(children: rowChildren),
+      ),
     );
   }
 
