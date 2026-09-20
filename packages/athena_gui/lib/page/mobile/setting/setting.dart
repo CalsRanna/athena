@@ -1,4 +1,6 @@
 import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -97,20 +99,48 @@ class SettingPage extends StatelessWidget {
     };
   }
 
-  /// 外观选择：bottom sheet 内使用行列表三选一,样式与其他移动端
-  /// 选择弹窗一致。
+  /// 外观选择：bottom sheet 内使用行列表，主题与字号各一组，
+  /// 样式与其他移动端选择弹窗一致。
   void _showAppearanceSheet(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final viewModel = GetIt.instance<SettingViewModel>();
     AthenaDialog.show(
       ListView(
         shrinkWrap: true,
         children: [
           const SizedBox(height: 8),
+          _sheetLabel('Theme', colors),
           _appearanceTile(viewModel, ThemeMode.dark, 'Dark'),
           _appearanceTile(viewModel, ThemeMode.light, 'Light'),
           _appearanceTile(viewModel, ThemeMode.system, 'System'),
+          const SizedBox(height: 12),
+          _sheetLabel('Font size', colors),
+          for (final size in AthenaTextSize.values) _textSizeTile(viewModel, size),
         ],
       ),
+    );
+  }
+
+  Widget _sheetLabel(String text, AthenaColors colors) {
+    var textStyle = TextStyle(
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.caption,
+      height: 1.4,
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Text(text, style: textStyle),
+    );
+  }
+
+  Widget _textSizeTile(SettingViewModel viewModel, AthenaTextSize size) {
+    return AthenaBottomSheetTile(
+      selected: viewModel.textSize.value == size,
+      onTap: () {
+        viewModel.setTextSize(size);
+        AthenaDialog.dismiss();
+      },
+      title: '${size.label} text',
     );
   }
 

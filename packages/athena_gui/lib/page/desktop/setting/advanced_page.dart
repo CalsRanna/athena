@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -50,6 +51,25 @@ class _DesktopSettingAdvancedPageState
                       value: ThemeMode.system,
                       label: 'System',
                     ),
+                  ],
+                );
+              }),
+            ),
+            AthenaSettingsRow(
+              label: 'Font size',
+              description:
+                  'Applies to all text — interface, conversation, and code.',
+              control: Watch((context) {
+                var size = viewModel.textSize.value;
+                return AthenaSettingsSegmented<AthenaTextSize>(
+                  selected: size,
+                  onChanged: viewModel.setTextSize,
+                  options: [
+                    for (final option in AthenaTextSize.values)
+                      AthenaSegmentOption(
+                        value: option,
+                        label: option.label,
+                      ),
                   ],
                 );
               }),

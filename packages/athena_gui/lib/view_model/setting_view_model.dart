@@ -12,6 +12,7 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_core/util/retry.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class SettingViewModel {
   static const String _keyMaxRetries = 'max_retries';
   static const String _keyBraveApiKey = 'brave_api_key';
   static const String _keyThemeMode = 'theme_mode';
+  static const String _keyTextSize = 'text_size';
   // Window 尺寸
   final windowHeight = signal(720.0);
   final windowWidth = signal(960.0);
@@ -58,6 +60,9 @@ class SettingViewModel {
   final braveApiKey = signal('');
   // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统
   final themeMode = signal<ThemeMode>(ThemeMode.light);
+
+  /// 全站字号档位（设置 → Advanced → Appearance → Font size）。
+  final textSize = signal<AthenaTextSize>(AthenaTextSize.medium);
 
   final ModelRepository _modelRepository;
   final ProviderRepository _providerRepository;
@@ -119,6 +124,7 @@ class SettingViewModel {
           .getProviderById(sentinelMetadataGenerationModel.value!.providerId);
     }
     await initThemeMode();
+    await initTextSize();
   }
 
   /// 从 SharedPreferences 加载主题模式（启动时调用）。
@@ -133,6 +139,21 @@ class SettingViewModel {
     final instance = await SharedPreferences.getInstance();
     await instance.setString(_keyThemeMode, mode.name);
     themeMode.value = mode;
+  }
+
+  /// 从 SharedPreferences 加载字号档位（启动时调用）。
+  Future<void> initTextSize() async {
+    final instance = await SharedPreferences.getInstance();
+    final saved = instance.getString(_keyTextSize);
+    textSize.value =
+        AthenaTextSize.values.asNameMap()[saved] ?? AthenaTextSize.medium;
+  }
+
+  /// 切换字号档位并持久化。真正的缩放发生在 `main.dart` 的 `applyTextSize`。
+  Future<void> setTextSize(AthenaTextSize size) async {
+    final instance = await SharedPreferences.getInstance();
+    await instance.setString(_keyTextSize, size.name);
+    textSize.value = size;
   }
 
   /// 更新聊天模型 ID
