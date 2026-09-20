@@ -543,6 +543,10 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   `⋮`**（旧版把图钉/进度圈常驻在行尾）；标签用 `textRowLabel` 且 hover 不变色。
 - **右键菜单**：分组间用 `DesktopContextMenuSeparator`；危险项用 `dangerText`
   （比 `statusError` 更深的红）。
+- **消息列与 composer 同宽同起点**（实测：窗口逻辑 408..1176，宽 768）。
+- **消息操作按钮 hover / focus 才显形**（Claude 的
+  `[data-cds=MessageActions][data-reveal]`：opacity 0→1 + scale，进入 120ms
+  并延迟 100ms、退出 60ms），不要常驻。
 - **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 16、
   内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
 - **Composer 版式取自 Claude 桌面端**：上下文条（灰底、无描边）与输入框
@@ -592,7 +596,8 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   （与画布 `#FCFCFB` 几乎无差）；行高 26、左右内缩 8、图标起于行内 11、文字起于 30
 - 顶栏只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题
 - **顶栏有会话标题**（Claude 的顶栏不是空的）；新建会话在侧栏导航块，
-  会话上下文在 composer 的上下文条上
+  会话上下文在 composer 的上下文条上。顶栏实测高 **46 逻辑**，底色同画布，
+  底边一条极浅的 `#F7F7F7` 线贯穿整条
 - 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚
 - 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
 
