@@ -2,6 +2,7 @@ import 'package:athena_gui/database/migration/athena_preset_prompt.dart';
 import 'package:athena_gui/database/migration/migration_202608060001_update_athena_sentinel_prompt.dart';
 import 'package:athena_gui/database/migration/migration_202608240001_add_chat_reasoning_effort.dart';
 import 'package:athena_gui/database/migration/migration_202609120001_remove_shortcut_and_scene_pages.dart';
+import 'package:athena_gui/database/migration/migration_202609200001_drop_message_expanded.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:laconic/laconic.dart';
 import 'package:laconic_sqlite/laconic_sqlite.dart';
@@ -76,7 +77,6 @@ Future<Laconic> _buildSchema() async {
       content TEXT NOT NULL DEFAULT '',
       reasoning_content TEXT DEFAULT '',
       reasoning INTEGER DEFAULT 0,
-      expanded INTEGER DEFAULT 1,
       image_urls TEXT DEFAULT '',
       reference TEXT DEFAULT '',
       tool_calls TEXT DEFAULT '',
@@ -158,7 +158,6 @@ void main() {
       'content': 'hello',
       'reasoning_content': '',
       'reasoning': 0,
-      'expanded': 1,
       'image_urls': '',
       'reference': '',
       'tool_calls': '',
@@ -196,7 +195,6 @@ void main() {
       'content': 'good',
       'reasoning_content': '',
       'reasoning': 0,
-      'expanded': 1,
       'image_urls': '',
       'reference': '',
       'tool_calls': '',
@@ -207,9 +205,9 @@ void main() {
     // Insert an orphan via raw SQL (bypass FK to non-existent chat)
     await laconic.statement(
       "INSERT INTO messages (chat_id, role, content, reasoning_content, reasoning, "
-      "expanded, image_urls, reference, tool_calls, tool_results, "
+      "image_urls, reference, tool_calls, tool_results, "
       "reasoning_started_at, reasoning_updated_at) "
-      "VALUES (99999, 'user', 'orphan', '', 0, 1, '', '', '', '', 1, 1)",
+      "VALUES (99999, 'user', 'orphan', '', 0, '', '', '', '', 1, 1)",
     );
     expect(await laconic.table('messages').count(), 2);
 
@@ -662,6 +660,154 @@ void main() {
       [Migration202609120001RemoveShortcutAndScenePages.name],
     );
     expect(result.first.toMap()['c'], 1);
+  });
+
+  // ---------- messages.expanded 删列 ----------
+
+  /// 迁移前的旧 messages 表（含 expanded 列，列序与历史迁移一致）。
+  Future<Laconic> buildSchemaWithExpanded() async {
+    final laconic = await schemaWithMigrationsTable();
+    await laconic.statement('DROP TABLE messages');
+    await laconic.statement('''
+      CREATE TABLE messages(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        reasoning_content TEXT DEFAULT '',
+        reasoning INTEGER DEFAULT 0,
+        expanded INTEGER DEFAULT 1,
+        image_urls TEXT DEFAULT '',
+        reference TEXT DEFAULT '',
+        reasoning_started_at INTEGER NOT NULL,
+        reasoning_updated_at INTEGER NOT NULL,
+        tool_calls TEXT DEFAULT '',
+        tool_results TEXT DEFAULT '',
+        compacted INTEGER DEFAULT 0,
+        FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+      )
+    ''');
+    await laconic.statement(
+      'CREATE INDEX idx_messages_chat_id ON messages(chat_id)',
+    );
+    return laconic;
+  }
+
+  Future<Set<String>> messageColumns(Laconic laconic) async {
+    final info = await laconic.select("PRAGMA table_info('messages')");
+    return info.map((r) => r.toMap()['name'] as String).toSet();
+  }
+
+  test('drop expanded rebuilds messages keeping rows, index and cascade',
+      () async {
+    final laconic = await buildSchemaWithExpanded();
+    final chatId = await laconic.table('chats').insertGetId(<String, dynamic>{
+      'title': 'T',
+      'model_id': 1,
+      'sentinel_id': 1,
+      'temperature': 1.0,
+      'retention': -1,
+      'pinned': 0,
+      'created_at': 1,
+      'updated_at': 1,
+    });
+    final messageId =
+        await laconic.table('messages').insertGetId(<String, dynamic>{
+      'chat_id': chatId,
+      'role': 'assistant',
+      'content': 'answer',
+      'reasoning_content': 'why',
+      'reasoning': 0,
+      'expanded': 1,
+      'image_urls': '',
+      'reference': '',
+      'tool_calls': '[{"id":"c1"}]',
+      'tool_results': '[{"id":"c1","result":"ok"}]',
+      'compacted': 1,
+      'reasoning_started_at': 5,
+      'reasoning_updated_at': 9,
+    });
+    expect(await messageColumns(laconic), contains('expanded'));
+
+    await Migration202609200001DropMessageExpanded(laconic: laconic).migrate();
+
+    final columns = await messageColumns(laconic);
+    expect(columns, isNot(contains('expanded')));
+    expect(
+      columns,
+      containsAll([
+        'id',
+        'chat_id',
+        'role',
+        'content',
+        'reasoning_content',
+        'reasoning',
+        'image_urls',
+        'reference',
+        'tool_calls',
+        'tool_results',
+        'compacted',
+        'reasoning_started_at',
+        'reasoning_updated_at',
+      ]),
+    );
+
+    final rows = await laconic.table('messages').get();
+    expect(rows, hasLength(1));
+    final row = rows.first.toMap();
+    expect(row['id'], messageId);
+    expect(row['content'], 'answer');
+    expect(row['reasoning_content'], 'why');
+    expect(row['tool_calls'], '[{"id":"c1"}]');
+    expect(row['tool_results'], '[{"id":"c1","result":"ok"}]');
+    expect(row['compacted'], 1);
+    expect(row['reasoning_started_at'], 5);
+    expect(row['reasoning_updated_at'], 9);
+
+    final indexes = await laconic.select(
+      "SELECT name FROM sqlite_master WHERE type='index' "
+      "AND tbl_name='messages' AND name='idx_messages_chat_id'",
+    );
+    expect(indexes, hasLength(1), reason: 'index must be recreated');
+
+    await laconic.table('chats').where('id', chatId).delete();
+    expect(await laconic.table('messages').count(), 0,
+        reason: 'FK cascade must survive the rebuild');
+
+    final marker = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202609200001DropMessageExpanded.name],
+    );
+    expect(marker.first.toMap()['c'], 1);
+  });
+
+  test('drop expanded migration runs only once via marker', () async {
+    final laconic = await buildSchemaWithExpanded();
+
+    await Migration202609200001DropMessageExpanded(laconic: laconic).migrate();
+    await Migration202609200001DropMessageExpanded(laconic: laconic).migrate();
+
+    final marker = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202609200001DropMessageExpanded.name],
+    );
+    expect(marker.first.toMap()['c'], 1);
+  });
+
+  test('drop expanded is a safe no-op when the column is already absent',
+      () async {
+    final laconic = await schemaWithMigrationsTable();
+    final before = await messageColumns(laconic);
+    expect(before, isNot(contains('expanded')));
+
+    await Migration202609200001DropMessageExpanded(laconic: laconic).migrate();
+
+    expect(await messageColumns(laconic), before);
+    final marker = await laconic.select(
+      'SELECT COUNT(*) AS c FROM migrations WHERE name = ?',
+      [Migration202609200001DropMessageExpanded.name],
+    );
+    expect(marker.first.toMap()['c'], 1);
   });
 }
 

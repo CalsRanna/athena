@@ -1,6 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
@@ -25,11 +24,6 @@ class _FakeChatRepository implements ChatRepository {
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakeMessageRepository implements MessageRepository {
-  @override
-  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 class _FakeProviderRepository implements ProviderRepository {
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -50,7 +44,6 @@ void main() {
       fakeRepo = _FakeChatRepository();
       service = ChatUpdateService(
         chatRepository: fakeRepo,
-        messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
         chatService: _FakeChatCompletionsService(),
       );
@@ -104,7 +97,6 @@ void main() {
       final fakeRepo = _FakeChatRepository();
       final service = ChatUpdateService(
         chatRepository: fakeRepo,
-        messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
         chatService: _FakeChatCompletionsService(),
       );
@@ -138,7 +130,6 @@ void main() {
       final fakeRepo = _FakeChatRepository();
       final service = ChatUpdateService(
         chatRepository: fakeRepo,
-        messageRepository: _FakeMessageRepository(),
         providerRepository: _FakeProviderRepository(),
         chatService: _FakeChatCompletionsService(),
       );

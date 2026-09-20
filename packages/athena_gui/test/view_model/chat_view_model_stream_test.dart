@@ -352,7 +352,6 @@ class _FakeSupportService extends ChatUpdateService {
   _FakeSupportService({this.renameStream, this.tokenUsage})
     : super(
         chatRepository: SqliteChatRepository(),
-        messageRepository: _NoopMessageRepository(),
         providerRepository: ProviderRepositoryStub(),
         chatService: ChatCompletionsService(llmClient: LlmClient()),
       );
@@ -1116,47 +1115,6 @@ void main() {
     expect(assistants[0].reasoningContent, 'think1');
     expect(assistants[1].reasoning, isFalse);
     expect(assistants[1].reasoningContent, 'think2');
-  });
-
-  // 回归：思考未结束时展开卡片，后续推理增量不得把展开状态重新折叠
-  // （delegate 的 copyWith 链基于本地缓存，必须应用用户最新的展开选择）。
-  test('思考期间展开卡片，后续推理增量不折叠', () async {
-    final gate = Completer<void>();
-    final expanded = Completer<void>();
-
-    Stream<AgentEvent> events() async* {
-      yield const AgentReasoningEvent('think ');
-      yield const AgentReasoningEvent('more ');
-      if (!expanded.isCompleted) expanded.complete();
-      await gate.future;
-      yield const AgentReasoningEvent('after-expand');
-    }
-
-    final manage = _RecordingManageService();
-    final agent = _FakeAgentService(events());
-    final vm = _buildViewModel(manage: manage, agent: agent);
-    // 事件只渲染到当前显示的对话；模拟用户在选中对话中发送消息
-    vm.currentChat.value = _chat();
-
-    final future = vm.sendMessage(_userMessage(), chat: _chat());
-
-    await expanded.future;
-    await _settleFlush();
-    // 找到正在思考的卡片并展开
-    final thinking = vm.messages.value.lastWhere((m) => m.role == 'assistant');
-    expect(thinking.reasoning, isTrue);
-    await vm.updateExpanded(thinking);
-    expect(
-      vm.messages.value.lastWhere((m) => m.id == thinking.id).expanded,
-      isTrue,
-    );
-
-    gate.complete();
-    await future;
-
-    final shown = vm.messages.value.lastWhere((m) => m.role == 'assistant');
-    expect(shown.expanded, isTrue, reason: '思考期间展开的卡片不应被流式增量重新折叠');
-    expect(shown.reasoningContent, contains('after-expand'));
   });
 
   test('C2: 流式中途抛错，落库的是携带已生成内容的最新消息', () async {

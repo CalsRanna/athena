@@ -12,13 +12,11 @@ import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/component/tool_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/util/message_display_util.dart';
-import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get_it/get_it.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -676,9 +674,25 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
   }
 }
 
-class _AssistantMessageListTileThinkingPart extends StatelessWidget {
+/// 推理卡片：标题行 + 可折叠的推理正文。
+///
+/// 展开状态只保留在 Widget 内存态（与 [ToolGroupCard] 一致），不再落库；
+/// 流式增量只替换消息实体，卡片 key 不变，State 得以保留，思考期间也可点击
+/// 展开实时查看推理进度。
+class _AssistantMessageListTileThinkingPart extends StatefulWidget {
   final MessageEntity message;
   const _AssistantMessageListTileThinkingPart({required this.message});
+
+  @override
+  State<_AssistantMessageListTileThinkingPart> createState() =>
+      _AssistantMessageListTileThinkingPartState();
+}
+
+class _AssistantMessageListTileThinkingPartState
+    extends State<_AssistantMessageListTileThinkingPart> {
+  bool _expanded = false;
+
+  MessageEntity get message => widget.message;
 
   @override
   Widget build(BuildContext context) {
@@ -689,17 +703,14 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
     );
   }
 
-  void updateExpanded() {
-    // 思考期间也可点击展开/折叠，实时查看推理进度
-    GetIt.instance<ChatViewModel>().updateExpanded(message);
-  }
+  void _toggleExpanded() => setState(() => _expanded = !_expanded);
 
   Widget _buildContent(BuildContext context) {
-    if (!message.expanded) return const SizedBox();
+    if (!_expanded) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: updateExpanded,
+      onTap: _toggleExpanded,
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
@@ -727,7 +738,7 @@ class _AssistantMessageListTileThinkingPart extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
-        onTap: updateExpanded,
+        onTap: _toggleExpanded,
         borderRadius: BorderRadius.circular(8),
         mouseCursor: SystemMouseCursors.click,
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),

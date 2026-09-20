@@ -95,7 +95,6 @@ void setupMobileTestDI() {
   getIt.registerSingleton<ChatUpdateService>(
     ChatUpdateService(
       chatRepository: getIt<ChatRepository>(),
-      messageRepository: getIt<MessageRepository>(),
       providerRepository: getIt<ProviderRepository>(),
       chatService: getIt<ChatCompletionsService>(),
     ),

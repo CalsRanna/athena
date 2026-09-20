@@ -12,17 +12,17 @@ void main() {
 
   Future<void> pumpMessage(
     WidgetTester tester, {
+    int? id,
     required bool reasoning,
-    required bool expanded,
     bool loading = false,
     String reasoningContent = 'reasoning details',
   }) async {
     final message = MessageEntity(
+      id: id,
       chatId: 1,
       role: 'assistant',
       reasoningContent: reasoningContent,
       reasoning: reasoning,
-      expanded: expanded,
       reasoningStartedAt: DateTime(2026),
       reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 2)),
     );
@@ -49,10 +49,15 @@ void main() {
   }
 
   testWidgets('完成后的推理卡使用透明弱色 Header 且没有状态图标', (tester) async {
-    await pumpMessage(tester, reasoning: false, expanded: true);
+    await pumpMessage(tester, reasoning: false);
 
     final titleFinder = find.text('Thought for 2.0 seconds');
     expect(titleFinder, findsOneWidget);
+    // 默认折叠，点击标题展开正文
+    expect(find.text('reasoning details'), findsNothing);
+    await tester.tap(titleFinder);
+    await tester.pump();
+    expect(find.text('reasoning details'), findsOneWidget);
     expect(find.byType(ShaderMask), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byIcon(HugeIcons.strokeRoundedTick02), findsNothing);
@@ -97,7 +102,7 @@ void main() {
   });
 
   testWidgets('推理中的 Header 只使用 shimmer 表达运行状态', (tester) async {
-    await pumpMessage(tester, reasoning: true, expanded: false, loading: true);
+    await pumpMessage(tester, reasoning: true, loading: true);
 
     expect(find.text('Thinking'), findsOneWidget);
     expect(find.byType(ShaderMask), findsOneWidget);
@@ -112,7 +117,6 @@ void main() {
     await pumpMessage(
       tester,
       reasoning: false,
-      expanded: false,
       loading: true,
       reasoningContent: '',
     );
@@ -122,5 +126,33 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byType(CopyButton), findsNothing);
     expect(find.text('Thinking'), findsNothing);
+  });
+
+  testWidgets('展开状态是 Widget 内存态，流式替换消息实体后仍保持展开', (tester) async {
+    await pumpMessage(
+      tester,
+      id: 7,
+      reasoning: true,
+      loading: true,
+      reasoningContent: 'think',
+    );
+    expect(find.text('think'), findsNothing);
+    await tester.tap(find.text('Thinking'));
+    await tester.pump();
+    expect(find.text('think'), findsOneWidget);
+
+    // 同 id 的新实体替换旧实体（模拟流式增量），卡片 key 不变、State 保留
+    await pumpMessage(
+      tester,
+      id: 7,
+      reasoning: true,
+      loading: true,
+      reasoningContent: 'think more',
+    );
+    expect(
+      find.text('think more'),
+      findsOneWidget,
+      reason: '流式增量不应把刚展开的推理卡片重新折叠',
+    );
   });
 }
