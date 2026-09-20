@@ -10,6 +10,9 @@ import 'package:google_fonts/google_fonts.dart';
 /// 决策，而这里是「你要哪个」——每个问题给 2-4 个选项，并额外提供一个
 /// 自由输入项（用户自填的文本就是答案本身，不是 "Other" 这个词）。
 ///
+/// 一次只展示一个问题（多问时问题前标 `1 / 3`），单选点选即前进、
+/// 最后一步点选即提交；多选与自由输入由 Next / Submit 收尾。
+///
 /// 多选问题的自由输入与选项互斥：二选一才能保证回传给模型的答案无歧义。
 class ElicitCard extends StatefulWidget {
   final ElicitRequest request;
@@ -33,8 +36,15 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 问题下标 → 已选 label 集合（单选恒为 0 或 1 个）。
   final Map<int, Set<String>> _selected = {};
 
+  /// 当前展示的问题下标：一次只展示一个问题。多问时按步骤推进，
+  /// 卡片不会因为问题多而撑高，用户也不会漏看后面的问题。
+  int _step = 0;
+
   /// 问题下标 → 自由输入控制器（内容非空即视为选择「其它」）。
   final Map<int, TextEditingController> _other = {};
+
+  /// 问题下标 → 自由输入焦点：点圈体即开始自填，需要把焦点交过去。
+  final Map<int, FocusNode> _focus = {};
 
   /// 正文滚动控制器。必须显式持有并同时交给 Scrollbar 与 ScrollView：
   /// 不传 controller 时 Scrollbar 会去用 PrimaryScrollController，
@@ -46,6 +56,9 @@ class _ElicitCardState extends State<ElicitCard> {
     for (final controller in _other.values) {
       controller.dispose();
     }
+    for (final node in _focus.values) {
+      node.dispose();
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -54,6 +67,8 @@ class _ElicitCardState extends State<ElicitCard> {
 
   TextEditingController _controllerFor(int index) =>
       _other.putIfAbsent(index, TextEditingController.new);
+
+  FocusNode _focusFor(int index) => _focus.putIfAbsent(index, FocusNode.new);
 
   /// 当前问题的答案：自由输入优先，其次选项。
   String? _answerFor(int index) {
@@ -64,8 +79,22 @@ class _ElicitCardState extends State<ElicitCard> {
     return selected.join(', ');
   }
 
-  bool get _canSubmit =>
-      _questions.asMap().keys.every((i) => _answerFor(i) != null);
+  bool get _hasMultiple => _questions.length > 1;
+
+  bool get _isLastStep => _step >= _questions.length - 1;
+
+  /// 当前问题是否已有答案：Next / Submit 的可用条件。
+  bool get _canConfirm => _answerFor(_step) != null;
+
+  /// 确认当前问题：不是最后一步就进入下一步，是最后一步就整卡提交。
+  void _confirm() {
+    if (!_canConfirm) return;
+    if (_isLastStep) {
+      _submit();
+    } else {
+      setState(() => _step++);
+    }
+  }
 
   void _toggle(int index, String label, {required bool multiSelect}) {
     final controller = _controllerFor(index);
@@ -74,16 +103,20 @@ class _ElicitCardState extends State<ElicitCard> {
       if (multiSelect) {
         if (!selected.remove(label)) selected.add(label);
       } else {
-        final wasSelected = selected.contains(label);
+        // 单选再点一次是「保持」而不是「取消」：每题都得有答案才能往下走，
+        // 允许点空会让用户卡在一个交不出去的步骤上。
         selected
           ..clear()
-          ..addAll(wasSelected ? const <String>[] : [label]);
+          ..add(label);
       }
       // 选项与自由输入互斥，避免答案歧义
       if (selected.isNotEmpty && controller.text.isNotEmpty) {
         controller.clear();
       }
     });
+    // 单选点选即确认：不用再按按钮。多选还要继续勾，交给按钮收尾；
+    // 自由输入需要先打字，同样交给按钮或回车。
+    if (!multiSelect) _confirm();
   }
 
   void _submit() {
@@ -132,10 +165,7 @@ class _ElicitCardState extends State<ElicitCard> {
                         primary: false,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (var i = 0; i < _questions.length; i++)
-                              _buildQuestion(colors, i),
-                          ],
+                          children: [_buildQuestion(colors, _step)],
                         ),
                       ),
                     ),
@@ -165,9 +195,7 @@ class _ElicitCardState extends State<ElicitCard> {
   Widget _buildHeader(AthenaColors colors) => Row(
     children: [
       Text(
-        widget.request.questions.length > 1
-            ? '${widget.request.questions.length} questions'
-            : 'Question',
+        'Question',
         style: GoogleFonts.firaCode(
           fontSize: 12,
           fontWeight: FontWeight.w500,
@@ -186,6 +214,10 @@ class _ElicitCardState extends State<ElicitCard> {
         children: [
           Row(
             children: [
+              if (_hasMultiple) ...[
+                _buildStepIndicator(colors),
+                const SizedBox(width: 8),
+              ],
               if (question.header.isNotEmpty) ...[
                 _buildHeaderChip(colors, question.header),
                 const SizedBox(width: 8),
@@ -209,11 +241,21 @@ class _ElicitCardState extends State<ElicitCard> {
           const SizedBox(height: 8),
           for (final option in question.options)
             _buildOptionRow(colors, index, option, question.multiSelect),
-          _buildOtherRow(colors, index, question.multiSelect),
+          _buildOtherRow(colors, index),
         ],
       ),
     );
   }
+
+  /// 步骤展示（只有多问时才需要）：问题前的 `1 / 3`。
+  Widget _buildStepIndicator(AthenaColors colors) => Text(
+    '${_step + 1} / ${_questions.length}',
+    style: GoogleFonts.firaCode(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      color: colors.textSecondaryOnRaised,
+    ),
+  );
 
   Widget _buildHeaderChip(AthenaColors colors, String header) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -278,47 +320,73 @@ class _ElicitCardState extends State<ElicitCard> {
     );
   }
 
-  /// 自由输入行：用户自填的文本就是答案
-  Widget _buildOtherRow(AthenaColors colors, int index, bool multiSelect) {
+  /// 自由输入行：用户自填的文本就是答案。
+  ///
+  /// 样式沿用全局输入约定（`AthenaInput` / 会话输入框：`inputBackground`
+  /// 半透明填充 + 24 圆角 + collapsed 装饰），只有文字色与尺度不同——卡片本身
+  /// 是 raised 白底，文字得用白卡家族的 `textOnRaised`；尺度取**卡片尺度**
+  /// （字号 14、垂直内边距 12，与卡片内按钮同高）而不是全局输入的 56px 高，
+  /// 否则一行自由输入会比整张卡片的其它内容都重。
+  Widget _buildOtherRow(AthenaColors colors, int index) {
     final controller = _controllerFor(index);
+    final focusNode = _focusFor(index);
+    final multiSelect = _questions[index].multiSelect;
     final active = controller.text.trim().isNotEmpty;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      // 输入框会随内容长到多行，圈体对齐首行而不是整块居中
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => setState(() {
             // 点圈体即开始自填：清空选项，聚焦输入
             _selected[index]?.clear();
+            focusNode.requestFocus();
           }),
           child: _buildMarker(
             colors,
             active,
             multiSelect,
             placeholderIcon: Icons.edit_outlined,
+            // 12 的内边距 + 首行行盒的一半，与输入文字基线对齐
+            margin: const EdgeInsets.only(top: 12),
           ),
         ),
         const SizedBox(width: 8),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: ShapeDecoration(
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: colors.border),
-                borderRadius: BorderRadius.circular(8),
-              ),
+            key: ValueKey('elicit-other-$index'),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.inputBackground.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(24),
             ),
             child: TextField(
               controller: controller,
-              onChanged: (_) => setState(() {}),
-              style: TextStyle(fontSize: 13, color: colors.textOnRaised),
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
+              focusNode: focusNode,
+              cursorHeight: 16,
+              cursorColor: colors.textOnRaised,
+              // 答案常常是一句话：1-3 行自增高，回车仍是提交而不是换行
+              minLines: 1,
+              maxLines: 3,
+              textInputAction: TextInputAction.done,
+              // 自填文本需要收尾动作，回车与确认按钮等价
+              onSubmitted: (_) => _confirm(),
+              onChanged: (value) => setState(() {
+                // 自填与选项互斥：一旦有文本就不再保留已选选项，
+                // 否则圈体亮着但答案不是它
+                if (value.trim().isNotEmpty) _selected[index]?.clear();
+              }),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.2,
+                color: colors.textOnRaised,
+              ),
+              decoration: InputDecoration.collapsed(
                 hintText: 'Or type your own answer',
                 hintStyle: TextStyle(
-                  fontSize: 12,
-                  color: colors.textOnRaised.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  color: colors.textSecondaryOnRaised,
                 ),
               ),
             ),
@@ -333,6 +401,7 @@ class _ElicitCardState extends State<ElicitCard> {
     bool selected,
     bool multiSelect, {
     IconData? placeholderIcon,
+    EdgeInsets margin = const EdgeInsets.only(top: 1),
   }) {
     final side = BorderSide(
       color: selected ? colors.cardPrimaryBackground : colors.border,
@@ -340,7 +409,7 @@ class _ElicitCardState extends State<ElicitCard> {
     return Container(
       height: 16,
       width: 16,
-      margin: const EdgeInsets.only(top: 1),
+      margin: margin,
       alignment: Alignment.center,
       decoration: ShapeDecoration(
         shape: multiSelect
@@ -362,17 +431,69 @@ class _ElicitCardState extends State<ElicitCard> {
   }
 
   Widget _buildActions(bool mobile) {
-    final button = _CardPrimaryButton(
-      label: 'Submit',
-      onTap: _canSubmit ? _submit : null,
+    final primary = _CardPrimaryButton(
+      label: _isLastStep ? 'Submit' : 'Next',
+      onTap: _canConfirm ? _confirm : null,
     );
+    // 多问时给一个回到上一步的出口：单选点选会自动前进，
+    // 没有退路的话手滑就无法改答案。
+    final back = _step > 0
+        ? _CardSecondaryButton(
+            label: 'Back',
+            onTap: () => setState(() => _step--),
+          )
+        : null;
     if (mobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [button],
+        children: [
+          primary,
+          if (back != null) ...[const SizedBox(height: 8), back],
+        ],
       );
     }
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: [button]);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (back != null) ...[back, const SizedBox(width: 12)],
+        primary,
+      ],
+    );
+  }
+}
+
+/// 浅色卡片上的次按钮：描边胶囊 + 深色文字，与主按钮同尺寸。
+class _CardSecondaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _CardSecondaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          decoration: ShapeDecoration(
+            shape: StadiumBorder(side: BorderSide(color: colors.border)),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: colors.textOnRaised,
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
