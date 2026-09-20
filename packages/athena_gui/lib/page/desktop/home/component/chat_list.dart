@@ -146,12 +146,21 @@ class DesktopChatListView extends StatelessWidget {
     TapUpDetails details,
     ChatEntity chat,
     List<ChatEntity> chats,
+  ) =>
+      _openContextMenuAt(context, details.globalPosition, chat, chats);
+
+  /// 在 [position] 处弹出会话右键菜单。右键与行尾的 `⋮` 按钮共用。
+  void _openContextMenuAt(
+    BuildContext context,
+    Offset position,
+    ChatEntity chat,
+    List<ChatEntity> chats,
   ) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     if (chatViewModel.selection.isMultiSelect.value) {
       var contextMenu = DesktopChatContextMenu(
         chat: chat,
-        offset: details.globalPosition,
+        offset: position,
         multiSelect: true,
         selectedCount: chatViewModel.selection.selectedChatIds.value.length,
         onDestroyed: () => _handleBatchDelete(context, chatViewModel, chats),
@@ -160,7 +169,7 @@ class DesktopChatListView extends StatelessWidget {
     } else {
       var contextMenu = DesktopChatContextMenu(
         chat: chat,
-        offset: details.globalPosition,
+        offset: position,
         onAutoRenamed: () => onAutoRenamed?.call(chat),
         onDestroyed: () => onDestroyed?.call(chat),
         onManualRenamed: () => onManualRenamed?.call(chat),
@@ -209,6 +218,7 @@ class DesktopChatListView extends StatelessWidget {
           onSecondaryTap: (details) =>
               _openContextMenu(context, details, chat, chats),
           selected: selectedIds.contains(chat.id),
+          onMore: (offset) => _openContextMenuAt(context, offset, chat, chats),
         ),
       );
     });
@@ -225,11 +235,15 @@ class _ChatTile extends StatefulWidget {
   final void Function()? onTap;
   final void Function(TapUpDetails)? onSecondaryTap;
   final bool selected;
+
+  /// 行尾 `⋮` 按钮被点击（位置用于锚定菜单）。
+  final void Function(Offset)? onMore;
   const _ChatTile({
     this.active = false,
     required this.chat,
     this.isRenaming = false,
     this.streaming = false,
+    this.onMore,
     this.onTap,
     this.onSecondaryTap,
     this.selected = false,
@@ -242,39 +256,97 @@ class _ChatTile extends StatefulWidget {
 class _ChatTileState extends State<_ChatTile> {
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    Widget? trailing;
-    if (widget.isRenaming) {
-      trailing = SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: colors.textPrimary,
-        ),
-      );
-    } else if (widget.streaming) {
-      trailing = SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: colors.textSecondary,
-        ),
-      );
-    } else if (widget.chat.pinned) {
-      trailing = Icon(
-        HugeIcons.strokeRoundedPinLocation03,
-        color: colors.textPrimary,
-        size: 16,
-      );
-    }
     return DesktopMenuTile(
       active: widget.active || widget.selected,
       label: widget.chat.title,
-      trailing: trailing,
+      // Claude 的会话行 leading 是一个状态点（hover 时加深），不是图标
+      leadingBuilder: (hover) => _StatusDot(
+        hover: hover,
+        streaming: widget.streaming,
+        renaming: widget.isRenaming,
+        pinned: widget.chat.pinned,
+      ),
+      // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
+      // 与 Claude 的"静止行没有尾部"不符。
+      hoverTrailing: widget.onMore == null
+          ? null
+          : _MoreButton(onTap: widget.onMore!),
       onTap: widget.onTap,
       onSecondaryTap: widget.onSecondaryTap,
+    );
+  }
+}
+
+/// 会话行的状态点。Claude 实测：静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
+/// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
+class _StatusDot extends StatelessWidget {
+  final bool hover;
+  final bool streaming;
+  final bool renaming;
+  final bool pinned;
+
+  const _StatusDot({
+    required this.hover,
+    required this.streaming,
+    required this.renaming,
+    required this.pinned,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final Color base;
+    final double alpha;
+    if (streaming) {
+      base = colors.accent;
+      alpha = 1;
+    } else if (renaming) {
+      base = colors.statusWarning;
+      alpha = 1;
+    } else if (pinned) {
+      base = colors.textRowLabel;
+      alpha = 1;
+    } else {
+      base = colors.iconSecondary;
+      alpha = hover ? 0.75 : 0.45;
+    }
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: base.withValues(alpha: alpha),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+/// 行尾的 `⋮` 按钮（只在 hover 时可见）。
+class _MoreButton extends StatelessWidget {
+  final void Function(Offset) onTap;
+  const _MoreButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        final box = context.findRenderObject() as RenderBox?;
+        final origin = box?.localToGlobal(Offset.zero) ?? Offset.zero;
+        onTap(Offset(origin.dx + (box?.size.width ?? 0), origin.dy));
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Padding(
+          padding: const EdgeInsets.all(3),
+          child: Icon(
+            HugeIcons.strokeRoundedMoreVertical,
+            size: 14,
+            color: colors.iconSecondary,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -538,6 +538,11 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 - 不引入渐变边框、发光、光晕。唯一例外是工具执行中标题的 shimmer 高光。
 - `accent`（`#2A78D6` / `#5598E7`）是全局唯一彩色，只用于主要动作 / 语音 / 链接。
 - 圆角只用 `AthenaRadius` 的档位，不新增。
+- **侧栏行**：行高**固定 26**（不要靠垂直内边距撑，否则 hover 出现的 `⋮` 会把
+  整行顶高）；leading 是 6px 状态点（hover 加深）；**尾部静止为空、hover 才出现
+  `⋮`**（旧版把图钉/进度圈常驻在行尾）；标签用 `textRowLabel` 且 hover 不变色。
+- **右键菜单**：分组间用 `DesktopContextMenuSeparator`；危险项用 `dangerText`
+  （比 `statusError` 更深的红）。
 - **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 16、
   内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
 - **Composer 版式取自 Claude 桌面端**：上下文条（`surfaceButtonSecondary` 灰底、

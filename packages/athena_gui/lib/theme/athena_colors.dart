@@ -47,6 +47,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color textSecondary; // 次级辅助文字
   final Color textWeak; // 最弱文字 / 占位
   final Color textRowLabel; // 列表行标签的静止色（Claude 用 gray-600，比次级文字更深）
+  final Color dangerText; // 菜单危险项文字（Claude 用深红 #832F2B，比 statusError 深）
   final Color textOnRaised; // 主操作实心底上的文字
   final Color textSecondaryOnRaised; // 主操作实心底上的次级文字
   final Color textOnCode; // 代码类容器上的正文与代码文字
@@ -102,6 +103,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.textSecondary,
     required this.textWeak,
     required this.textRowLabel,
+    required this.dangerText,
     required this.textOnRaised,
     required this.textSecondaryOnRaised,
     required this.textOnCode,
@@ -143,6 +145,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textSecondary: Color(0xFF6D6B67),
     textWeak: Color(0xFF898781),
     textRowLabel: Color(0xFF52514E),
+    dangerText: Color(0xFF832F2B),
     textOnRaised: Color(0xFFFFFFFF),
     textSecondaryOnRaised: Color(0xFFA5A49A),
     textOnCode: Color(0xFF20201F),
@@ -184,6 +187,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textSecondary: Color(0xFFA5A49A),
     textWeak: Color(0xFF898781),
     textRowLabel: Color(0xFFA5A49A),
+    dangerText: Color(0xFFE66767),
     textOnRaised: Color(0xFF0B0B0B),
     textSecondaryOnRaised: Color(0xFF5F5E5A),
     textOnCode: Color(0xFFE1E0D9),
@@ -225,6 +229,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? textSecondary,
     Color? textWeak,
     Color? textRowLabel,
+    Color? dangerText,
     Color? textOnRaised,
     Color? textSecondaryOnRaised,
     Color? textOnCode,
@@ -265,6 +270,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSecondary: textSecondary ?? this.textSecondary,
       textWeak: textWeak ?? this.textWeak,
       textRowLabel: textRowLabel ?? this.textRowLabel,
+      dangerText: dangerText ?? this.dangerText,
       textOnRaised: textOnRaised ?? this.textOnRaised,
       textSecondaryOnRaised:
           textSecondaryOnRaised ?? this.textSecondaryOnRaised,
@@ -315,6 +321,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textWeak: Color.lerp(textWeak, other.textWeak, t)!,
       textRowLabel: Color.lerp(textRowLabel, other.textRowLabel, t)!,
+      dangerText: Color.lerp(dangerText, other.dangerText, t)!,
       textOnRaised: Color.lerp(textOnRaised, other.textOnRaised, t)!,
       textSecondaryOnRaised: Color.lerp(
         textSecondaryOnRaised,

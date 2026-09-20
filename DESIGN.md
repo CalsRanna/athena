@@ -294,6 +294,24 @@ Claude 的色板是一套**偏暖的中性灰**，和 Codex 的中性灰完全�
 - 会话内的权限审批卡与提问卡是浅色面板（`surfaceMobile` + `overlay` 阴影）。
 - 助手消息不画底板，直接坐在画布上。
 
+### Sidebar Row（Claude 实测）
+
+- 行高 **26**（**固定高度**，不要靠垂直内边距撑），左右内缩各 **8**，圆角 10。
+  hover 才出现的 `⋮` 高 20，比标签的行盒（约 17）高；靠内容撑会把整行顶高，
+  表现为"hover 上去整行变高"
+- **leading 是状态点**（直径 6），不是图标：静止 `iconSecondary` @45%，
+  hover 加深到 @75%；运行中用 `accent`，固定用 `textRowLabel`
+- **尾部静止时为空**，hover 才出现一个 `⋮` 按钮（`iconSecondary`，14px）。
+  旧版把图钉 / 进度圈常驻在行尾，与 Claude 不符
+- 标签用 `textRowLabel`（`#52514E`），**hover 不变色**——只有底色变
+
+### Menus（右键 / 弹出）
+
+- 面板：`surfaceMobile` 白底 + 1px `border`，圆角 12，内边距 4
+- 条目：高约 **32**（内边距 12 × 7），文字 14
+- 分组之间用 `DesktopContextMenuSeparator`（1px `border`，上下间距 4）
+- 危险项（Delete）用 `dangerText`（浅色 `#832F2B`，比 `statusError` 更深）
+
 ### Component Coverage Rules
 
 - 所有主路径操作按钮必须从 **Primary CTA** 派生。

@@ -12,14 +12,23 @@ class DesktopMenuTile extends StatefulWidget {
   final void Function(TapUpDetails)? onSecondaryTap;
   final void Function()? onTap;
   final Widget? trailing;
+
+  /// 仅在 hover 时出现的尾部（Claude 的会话行 hover 才显示 `⋮`）。
+  final Widget? hoverTrailing;
+
+  /// 需要感知 hover 的 leading（Claude 的状态点在 hover 时会加深）。
+  final Widget Function(bool hover)? leadingBuilder;
+
   const DesktopMenuTile({
     super.key,
     required this.active,
     required this.label,
     this.leading,
+    this.leadingBuilder,
     this.onSecondaryTap,
     this.onTap,
     this.trailing,
+    this.hoverTrailing,
   });
 
   @override
@@ -59,15 +68,22 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
         : hover
         ? colors.surfaceHover
         : resting;
+    var leading = widget.leadingBuilder != null
+        ? widget.leadingBuilder!(hover)
+        : widget.leading;
     var iconTheme = IconTheme(
       data: IconThemeData(color: contentColor, size: 15),
-      child: widget.leading ?? const SizedBox(),
+      child: leading ?? const SizedBox(),
     );
+    var trailing =
+        widget.trailing ??
+        (hover ? widget.hoverTrailing : null) ??
+        const SizedBox();
     var children = [
       iconTheme,
-      if (widget.leading != null) const SizedBox(width: 4),
+      if (leading != null) const SizedBox(width: 4),
       Expanded(child: text),
-      widget.trailing ?? const SizedBox(),
+      trailing,
     ];
     var container = AnimatedContainer(
       decoration: BoxDecoration(
@@ -75,8 +91,11 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
         borderRadius: BorderRadius.circular(AthenaRadius.row),
       ),
       duration: duration,
-      // Claude 实测：行高 26（垂直内边距 4）、图标起于行内 11、文字起于 30
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+      // Claude 实测行高 26，这里给**固定高度**而不是靠垂直内边距撑：
+      // hover 才出现的 `⋮` 按钮高 20，比标签的行盒（约 17）高，靠内容撑会把
+      // 整行从 25 顶到 28——就是"hover 上去整行变高"的原因。
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 11),
       child: Row(children: children),
     );
     var mouseRegion = MouseRegion(
