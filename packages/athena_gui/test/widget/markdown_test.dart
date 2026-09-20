@@ -105,6 +105,29 @@ void main() {
     expect(find.text('inline code'), findsOneWidget);
   });
 
+  testWidgets(
+    'dark code blocks sit on a recessed surface, not a bright plate',
+    (tester) async {
+      await pumpMarkdown(tester, '```dart\nvoid main() {}\n```');
+
+      final block = tester.widget<Container>(
+        find.byKey(const ValueKey('markdown-code-block')),
+      );
+      final decoration = block.decoration! as BoxDecoration;
+
+      expect(decoration.color, AthenaColors.dark.codeBackground);
+      expect(
+        _renderedTextColor(tester, 'void main() {}'),
+        AthenaColors.dark.textOnCode,
+      );
+      // 代码块底必须比页面底色更深：深色页面上不允许再出现整块亮底
+      expect(
+        AthenaColors.dark.codeBackground.computeLuminance(),
+        lessThan(AthenaColors.dark.surface.computeLuminance()),
+      );
+    },
+  );
+
   testWidgets('styles generated footnotes as a dedicated region', (
     tester,
   ) async {

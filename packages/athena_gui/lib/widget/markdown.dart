@@ -38,7 +38,7 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       'Call tool: ${element.textContent}',
-      style: GoogleFonts.firaCode(fontSize: 12, color: colors.textOnRaised),
+      style: GoogleFonts.firaCode(fontSize: 12, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -90,7 +90,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
         style: GoogleFonts.firaCode(
           fontSize: 12,
           height: 1.5,
-          color: colors.textOnRaised,
+          color: colors.textOnCode,
         ),
       ),
     );
@@ -137,7 +137,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     var textStyle = GoogleFonts.firaCode(
       fontSize: 12,
       height: 1.5,
-      color: colors.textOnRaised,
+      color: colors.textOnCode,
     );
     var contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -152,6 +152,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       children: children,
     );
     var container = Container(
+      key: const ValueKey('markdown-code-block'),
       decoration: boxDecoration,
       // 裁剪内层背景（语言标签行等），避免从圆角处漏出背景色
       clipBehavior: Clip.antiAlias,
@@ -178,7 +179,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
     var textStyle = GoogleFonts.firaCode(
       fontSize: 12,
-      color: colors.textOnRaised,
+      color: colors.textOnCode,
     );
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
@@ -239,7 +240,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
             child: Icon(
               Icons.arrow_upward_rounded,
               size: 12,
-              color: colors.textSecondaryOnRaised,
+              color: colors.textSecondaryOnCode,
             ),
           ),
         ),
@@ -295,13 +296,13 @@ class _FootnotesMarkdownBody extends MarkdownBody {
                 Icon(
                   Icons.format_list_numbered_rounded,
                   size: 14,
-                  color: colors.textSecondaryOnRaised,
+                  color: colors.textSecondaryOnCode,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'Footnotes',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.textOnRaised,
+                    color: colors.textOnCode,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -367,7 +368,7 @@ class _FlutterMarkdown extends StatelessWidget {
       ),
       // 助手消息直接坐在页面底色上，正文用页面族文字色
       p: base.p?.copyWith(color: colors.textPrimary, height: 1.6),
-      code: base.code?.copyWith(color: colors.textPrimary),
+      code: base.code?.copyWith(color: colors.textOnCode),
       h1: base.h1?.copyWith(color: colors.textPrimary),
       h2: base.h2?.copyWith(color: colors.textPrimary),
       h3: base.h3?.copyWith(color: colors.textPrimary),
@@ -456,7 +457,7 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnRaised),
+      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -504,7 +505,7 @@ class _SupBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnRaised),
+      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,

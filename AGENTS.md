@@ -383,7 +383,7 @@ sealed class RunEvent {
 关键实现细节：
 - **思考卡片展开状态不落库**：展开/折叠只是 `ReasoningCard` / `StepGroupCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
 - **推理与工具调用按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块与每次工具调用都是"步骤"，严格按时间序排列，只有可见正文、引用和压缩步骤切断序列（推理不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层按步骤数决定形态：≥ 2 步收纳为默认折叠的 `StepGroupCard`（进行中折叠头显示当前步骤并 shimmer，结束后显示 `Thought for Xs · N tool calls` 汇总），单步保持平铺（`ReasoningCard` / `ToolCard`）。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
-- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`_AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（机制复现见 `test/widget/card_seam_mechanism_test.dart` 的"设计约束"用例，回归见同文件采样用例；按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、引用块 `divider`）继续用 `textOnRaised`；改配色时先判断"文字下面到底有没有浅底"
+- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`_AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（机制复现见 `test/widget/card_seam_mechanism_test.dart` 的"设计约束"用例，回归见同文件采样用例；按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
@@ -488,7 +488,10 @@ textPrimary      // 主文字 / 关键图标
 textInput        // 输入框文字
 textSecondary    // 次级辅助文字
 textWeak         // 弱文字 / 时间戳
-textOnRaised     // 白色按钮与局部浅底（代码块/表格头/引用块）上的深色文字（深浅同值）
+textOnRaised     // 白色按钮与白卡上的深色文字（深浅同值）
+textSecondaryOnRaised // 白卡上的次级辅助文字
+textOnCode       // 代码类容器（代码块/行内代码/脚注块/工具输出）上的正文与代码文字
+textSecondaryOnCode // 代码类容器上的次级文字与图标
 textSelected     // 选中态文字（Tag 选中反转）
 border / borderStrong / divider / inputBackground
 teal / sage / slate / ctaGlow
@@ -496,6 +499,12 @@ tagBorderStart / tagSelectedBackground / cardHeader / codeBackground
 checkboxOff / iconSecondary / iconOnRaised
 cardPrimaryBackground / cardPrimaryText
 ```
+
+代码类容器在深色主题下取**比 `surface` 更深**的底（`codeBackground` #1E1E1E、
+`cardHeader` #171717，浅色主题仍是比页面深一档的近白 #EFF0F2 / #E9EAEC）：
+深色页面上再出现整块白底会抢走全部注意力，且与「助手消息不画底板」的正文格调割裂。
+文字因此不能沿用白卡家族的 `textOnRaised`（深色下是深色字），需要 `textOnCode` 族。
+`test/widget/theme_color_regression_test.dart` 守住这条层级与对比度。
 
 字段按**语义角色**划分（一个角色一个字段，避免一个色值多角色冲突）。
 深/浅两套值（`AthenaColors.dark` / `AthenaColors.light`），浅色值从现有 token

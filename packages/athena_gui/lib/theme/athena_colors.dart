@@ -28,6 +28,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color textWeak; // 弱文字 / 时间戳
   final Color textOnRaised; // 白卡 / 白按钮上的深色文字（两种模式同值）
   final Color textSecondaryOnRaised; // 白卡上的次级辅助文字
+  final Color textOnCode; // 代码类容器（代码块 / 行内代码 / 脚注块）上的正文与代码文字
+  final Color textSecondaryOnCode; // 代码类容器上的次级文字与图标
   final Color textSelected; // 选中态文字（Tag 选中时反转）
 
   // ---- 边框 / 分隔 ----
@@ -76,6 +78,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.textWeak,
     required this.textOnRaised,
     required this.textSecondaryOnRaised,
+    required this.textOnCode,
+    required this.textSecondaryOnCode,
     required this.textSelected,
     required this.border,
     required this.borderStrong,
@@ -103,7 +107,11 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.markdownMath,
   });
 
-  /// 深色（默认，保持历史色值逐字节不变）。
+  /// 深色（默认）。
+  ///
+  /// 代码类容器（代码块 / 脚注块 / 表格头 / 工具输出）取比 [surface]
+  /// 更深的底，配 [textOnCode] 的浅灰文字：深色页面上一整块白底会抢走
+  /// 全部注意力，且与「助手消息不画底板」的正文格调割裂。
   static const dark = AthenaColors(
     surface: Color(0xFF282828),
     surfaceMobile: Color(0xFF282F32),
@@ -116,6 +124,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textWeak: Color(0xFFCACACA),
     textOnRaised: Color(0xFF161616),
     textSecondaryOnRaised: Color(0xFF616161),
+    textOnCode: Color(0xFFD6D6D6),
+    textSecondaryOnCode: Color(0xFF9A9A9A),
     textSelected: Color(0xFF161616),
     border: Color(0xFFC2C2C2),
     borderStrong: Color(0xFF757575),
@@ -130,9 +140,10 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     statusError: Color(0xFFE38B8B),
     tagBorderStart: Color(0xFFEAEAEA),
     tagSelectedBackground: Color(0xFFE0E0E0),
-    cardHeader: Color(0xFFE0E0E0),
+    // 代码类容器：比页面（surface #282828）更深一档，header 再深一档
+    cardHeader: Color(0xFF171717),
     avatarBackground: Color(0xFF282F32),
-    codeBackground: Color(0xFFEDEDED),
+    codeBackground: Color(0xFF1E1E1E),
     checkboxOff: Color(0xFFD0D5DD),
     iconSecondary: Color(0xFFE0E0E0),
     iconOnRaised: Color(0xFF000000),
@@ -157,6 +168,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     textWeak: Color(0xFF757575),
     textOnRaised: Color(0xFF161616),
     textSecondaryOnRaised: Color(0xFF6E6E6E),
+    textOnCode: Color(0xFF161616),
+    textSecondaryOnCode: Color(0xFF616161),
     textSelected: Color(0xFF161616),
     border: Color(0xFFB0B0B0),
     borderStrong: Color(0xFFC2C2C2),
@@ -198,6 +211,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? textWeak,
     Color? textOnRaised,
     Color? textSecondaryOnRaised,
+    Color? textOnCode,
+    Color? textSecondaryOnCode,
     Color? textSelected,
     Color? border,
     Color? borderStrong,
@@ -238,6 +253,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textOnRaised: textOnRaised ?? this.textOnRaised,
       textSecondaryOnRaised:
           textSecondaryOnRaised ?? this.textSecondaryOnRaised,
+      textOnCode: textOnCode ?? this.textOnCode,
+      textSecondaryOnCode: textSecondaryOnCode ?? this.textSecondaryOnCode,
       textSelected: textSelected ?? this.textSelected,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
@@ -290,6 +307,12 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       textSecondaryOnRaised: Color.lerp(
         textSecondaryOnRaised,
         other.textSecondaryOnRaised,
+        t,
+      )!,
+      textOnCode: Color.lerp(textOnCode, other.textOnCode, t)!,
+      textSecondaryOnCode: Color.lerp(
+        textSecondaryOnCode,
+        other.textSecondaryOnCode,
         t,
       )!,
       textSelected: Color.lerp(textSelected, other.textSelected, t)!,

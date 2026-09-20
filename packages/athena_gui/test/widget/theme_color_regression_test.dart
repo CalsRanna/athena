@@ -14,6 +14,15 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../test_utils/fakes.dart';
 
+/// WCAG 相对对比度，用于守住「代码文字在代码底上始终可读」。
+double _contrastRatio(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 void main() {
   setUp(setupMobileTestDI);
 
@@ -42,6 +51,29 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  test('code surfaces stay recessed and readable in both themes', () {
+    for (final colors in [AthenaColors.dark, AthenaColors.light]) {
+      // 层级：cardHeader 比 codeBackground 深一档，两者都比页面底色深。
+      // 深色主题曾经的近白代码块在深色页面上会抢走全部注意力。
+      expect(
+        colors.codeBackground.computeLuminance(),
+        lessThan(colors.surface.computeLuminance()),
+      );
+      expect(
+        colors.cardHeader.computeLuminance(),
+        lessThan(colors.codeBackground.computeLuminance()),
+      );
+      expect(
+        _contrastRatio(colors.textOnCode, colors.codeBackground),
+        greaterThan(4.5),
+      );
+      expect(
+        _contrastRatio(colors.textSecondaryOnCode, colors.cardHeader),
+        greaterThan(4.5),
+      );
+    }
+  });
 
   testWidgets('raised home controls always use the raised-surface text color', (
     tester,
