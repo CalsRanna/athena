@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-
 import 'package:athena_gui/component/compaction_card.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -260,10 +259,9 @@ class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
 
   @override
   Widget build(BuildContext context) {
-    final layouts = buildAssistantMessageLayouts(
-      [widget.message],
-      loading: widget.loading,
-    );
+    final layouts = buildAssistantMessageLayouts([
+      widget.message,
+    ], loading: widget.loading);
     if (layouts.isEmpty) return const SizedBox.shrink();
     return _AssistantMessageItem(
       layout: layouts.first,
@@ -305,9 +303,9 @@ class _AssistantMessageItem extends StatelessWidget {
     final message = layout.message;
     return Padding(
       // 列内左右留白：Claude 的助手正文用 `--cds-assistant-message-text-inset`
-      // (4) 贴住 768 定宽列的左缘，右侧留 `--cds-assistant-message-text-stop`
-      // （宽列下最多 56）给换行收窄。旧版左 12 + 列表内边距 16 共 28，比
-      // Claude 右移了一整档，正文因此显得没有对齐 composer。
+      // (4) 贴住 768 定宽列的左缘；右侧留 `--cds-assistant-message-text-stop`
+      // 的上限 56 给换行收窄，但那 56 里有 24 是给旧的右侧浮动工具条让位的。
+      // 工具条搬到底部后只保留 32 的排版收窄，正文不至于贴死列右缘。
       padding: EdgeInsets.fromLTRB(
         4,
         isCardHeader ? 16 : 0,
@@ -320,6 +318,7 @@ class _AssistantMessageItem extends StatelessWidget {
         ),
         layout: layout,
         isCardHeader: isCardHeader,
+        isCardTail: isCardTail,
         cardMessages: cardMessages,
         sentinel: sentinel,
         hover: hover,
@@ -341,6 +340,7 @@ class _AssistantMessageItem extends StatelessWidget {
 class _AssistantMessageSegment extends StatelessWidget {
   final AssistantMessageLayout layout;
   final bool isCardHeader;
+  final bool isCardTail;
   final List<MessageEntity> cardMessages;
   final SentinelEntity sentinel;
   final AssistantCardHover hover;
@@ -352,6 +352,7 @@ class _AssistantMessageSegment extends StatelessWidget {
     super.key,
     required this.layout,
     required this.isCardHeader,
+    required this.isCardTail,
     required this.cardMessages,
     required this.sentinel,
     required this.hover,
@@ -363,39 +364,34 @@ class _AssistantMessageSegment extends StatelessWidget {
     // 助手消息没有头像、没有气泡：内容直接铺满列宽。
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: _AssistantMessageContent(layout: layout)),
-        // 右侧余量对应 Claude 的 `--cds-assistant-message-text-stop`：
-        // 让正文换行收窄，同时给 hover 工具条留出不压字的落脚点。
-        const SizedBox(width: 24),
-      ],
+      children: [Expanded(child: _AssistantMessageContent(layout: layout))],
     );
-    final showActions = isCardHeader && !layout.waitingForFirstDelta;
-    // Claude 的操作条属于**整条消息行**（`.group\/message-row:hover
-    // [data-cds=MessageActions]`）：指针落在卡内任意一段都要显形。本仓每段
-    // 消息各占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover]
-    // 上，这里只负责上报进出、并按共享状态决定操作条是否可见。
-    // 只有操作条订阅该 notifier，正文不参与重建。
+    final showActions = isCardTail && !layout.waitingForFirstDelta;
+    // 操作条排在**整卡最后一段的正下方**（Claude 把它放在消息底部，不是浮在
+    // 右侧）。它常驻占位、默认全透明，hover 才淡入，所以卡片高度不随 hover
+    // 变化，正文也不会被压窄。
+    //
+    // Claude 的显形条件是**整条消息行** hover（`.group\/message-row:hover
+    // [data-cds=MessageActions]`）：指针落在卡内任意一段都算。本仓每段消息各
+    // 占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover] 上——
+    // 各段只上报进出，最后一段订阅它决定操作条是否可见，正文不参与重建。
     Widget result = MouseRegion(
       onEnter: (_) => hover.enter(cardId),
       onExit: (_) => hover.leave(cardId),
-      child: showActions
-          ? Stack(
-              children: [
-                row,
-                Positioned(
-                  right: 0,
-                  child: ValueListenableBuilder<Object?>(
-                    valueListenable: hover.hoveredCard,
-                    builder: (context, hoveredCard, _) => _MessageActionBar(
-                      visible: hoveredCard == cardId,
-                      onCopy: () => _copyAssistantMessages(cardMessages),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : row,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          row,
+          if (showActions)
+            ValueListenableBuilder<Object?>(
+              valueListenable: hover.hoveredCard,
+              builder: (context, hoveredCard, _) => _MessageActionBar(
+                visible: hoveredCard == cardId,
+                onCopy: () => _copyAssistantMessages(cardMessages),
+              ),
+            ),
+        ],
+      ),
     );
     if (layout.addBoundarySpacing) {
       result = Padding(padding: const EdgeInsets.only(top: 16), child: result);
@@ -472,15 +468,18 @@ class _AssistantMessageContent extends StatelessWidget {
       message.id ?? identityHashCode(message);
 }
 
+/// 写系统剪贴板。用户消息与助手消息共用这一个出口。
+void _copyMessageContent(String content) {
+  Clipboard.setData(ClipboardData(text: content));
+}
+
 void _copyAssistantMessages(List<MessageEntity> messages) {
   final content = messages
       .map((message) => message.content)
       .where((content) => content.isNotEmpty)
       .join('\n\n');
-  Clipboard.setData(ClipboardData(text: content));
+  _copyMessageContent(content);
 }
-
-
 
 class _AssistantMessageWaitingPart extends StatelessWidget {
   const _AssistantMessageWaitingPart();
@@ -618,7 +617,7 @@ class _ToolMessageListTile extends StatelessWidget {
   }
 }
 
-class _UserMessageListTile extends StatelessWidget {
+class _UserMessageListTile extends StatefulWidget {
   final MessageEntity message;
   final void Function()? onLongPress;
   final void Function()? onResend;
@@ -629,37 +628,62 @@ class _UserMessageListTile extends StatelessWidget {
     this.onResend,
     this.onSecondaryTapUp,
   });
+
+  @override
+  State<_UserMessageListTile> createState() => _UserMessageListTileState();
+}
+
+class _UserMessageListTileState extends State<_UserMessageListTile> {
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Codex 的用户消息：**右对齐的浅灰气泡**，取自它的类
+    // 用户消息：**右对齐的浅灰气泡**，取自 Claude 的类
     // `bg-text/5 max-w-[77%] rounded-2xl px-3 py-2`，容器 `items-end justify-end`。
     // 没有头像。
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: LayoutBuilder(
-        builder: (context, constraints) => Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    //
+    // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
+    // 气泡右对齐，操作条也贴右缘。旧版把重发按钮常驻在气泡右侧，白占了一列
+    // 横向位置，且静止时就能看见。
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Flexible(
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: constraints.maxWidth * 0.77,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.textPrimary.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: _buildContent(context),
+            LayoutBuilder(
+              builder: (context, constraints) => Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth * 0.77,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.textPrimary.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: _buildContent(context),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 4),
-            _buildResendButton(context),
+            _MessageActionBar(
+              visible: _hovered,
+              // Copy 始终可用；Retry 只有调用方给了回调才出现。
+              onCopy: () => _copyMessageContent(widget.message.content),
+              onResend: widget.onResend,
+            ),
           ],
         ),
       ),
@@ -669,16 +693,16 @@ class _UserMessageListTile extends StatelessWidget {
   Widget _buildContent(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
-    // 字号 / 行高与助手正文同一档（prose 15 / 22），否则一轮对话里
+    // 字号 / 行高与助手正文同一档（prose 13 / 20），否则一轮对话里
     // 问与答的字号会不一致。
     var textStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaFontSize.prose,
       height: AthenaFontSize.proseHeight,
     );
-    var text = Text(message.content, style: textStyle);
-    var images = message.imageUrls.isNotEmpty
-        ? message.imageUrls.split(',')
+    var text = Text(widget.message.content, style: textStyle);
+    var images = widget.message.imageUrls.isNotEmpty
+        ? widget.message.imageUrls.split(',')
         : <String>[];
     const delegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 9,
@@ -703,36 +727,20 @@ class _UserMessageListTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
+    // **不要设 alignment**：Container 一旦带 alignment 就会在宽度上手撑满可用
+    // 约束，气泡于是变成"固定 0.77 列宽"而不是"最宽 0.77 列宽"——短消息也会被
+    // 拉成一整条。高度交给 minHeight 与行盒决定，横向按内容取宽、超长才换行。
     var container = Container(
-      alignment: Alignment.centerLeft,
-      constraints: BoxConstraints(minHeight: 36),
+      constraints: const BoxConstraints(minHeight: 36),
       child: column,
     );
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onLongPress: onLongPress,
-      onSecondaryTapUp: onSecondaryTapUp,
+      onLongPress: widget.onLongPress,
+      onSecondaryTapUp: widget.onSecondaryTapUp,
       child: container,
     );
     return gestureDetector;
-  }
-
-  Widget _buildResendButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 不绘制底板：重试按钮只保留图标本身
-    var container = Container(
-      padding: const EdgeInsets.all(6),
-      child: Icon(
-        HugeIcons.strokeRoundedRefresh,
-        size: 12,
-        color: colors.iconSecondary,
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onResend,
-      child: container,
-    );
   }
 }
 
@@ -759,9 +767,13 @@ class AssistantCardHover {
   void dispose() => hoveredCard.dispose();
 }
 
-/// hover 才显形的消息操作条。
+/// 消息底部的操作条，默认全透明、hover 才淡入。
 ///
-/// 逐条对齐 Claude 的 `[data-cds=MessageActions][data-reveal]`：
+/// 位置对齐 Claude：操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
+/// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
+/// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
+///
+/// 时序逐条对齐 Claude 的 `[data-cds=MessageActions][data-reveal]`：
 /// - **只动透明度**——`--cds-message-actions-reveal-scale` 在 `.cds-root`
 ///   上是 `none`，旧版加的 `scale(0.9)` 是自创的；
 /// - 进入用 `--cds-dur-snap`(120ms) **且延迟** `...-reveal-in-delay`(100ms)；
@@ -770,8 +782,9 @@ class AssistantCardHover {
 class _MessageActionBar extends StatelessWidget {
   final bool visible;
   final VoidCallback? onCopy;
+  final VoidCallback? onResend;
 
-  const _MessageActionBar({required this.visible, this.onCopy});
+  const _MessageActionBar({required this.visible, this.onCopy, this.onResend});
 
   static const _inDelayMs = 100.0;
   static const _inDurMs = 120.0;
@@ -779,29 +792,40 @@ class _MessageActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: Duration(
-          milliseconds: (visible ? _inDelayMs + _inDurMs : _outDurMs).round(),
-        ),
-        curve: visible
-            ? const Interval(
-                _inDelayMs / (_inDelayMs + _inDurMs),
-                1,
-                curve: Curves.easeOut,
-              )
-            : Curves.linear,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _MessageActionButton(
-              icon: HugeIcons.strokeRoundedCopy01,
-              tooltip: 'Copy',
-              onTap: onCopy,
-            ),
-          ],
+    return Padding(
+      // 与正文之间的呼吸位。这块高度常驻，hover 前后不变。
+      padding: const EdgeInsets.only(top: 4),
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: Duration(
+            milliseconds: (visible ? _inDelayMs + _inDurMs : _outDurMs).round(),
+          ),
+          curve: visible
+              ? const Interval(
+                  _inDelayMs / (_inDelayMs + _inDurMs),
+                  1,
+                  curve: Curves.easeOut,
+                )
+              : Curves.linear,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onCopy != null)
+                _MessageActionButton(
+                  icon: HugeIcons.strokeRoundedCopy01,
+                  tooltip: 'Copy',
+                  onTap: onCopy,
+                ),
+              if (onResend != null)
+                _MessageActionButton(
+                  icon: HugeIcons.strokeRoundedRefresh,
+                  tooltip: 'Retry',
+                  onTap: onResend,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -853,11 +877,7 @@ class _MessageActionButtonState extends State<_MessageActionButton> {
                   : colors.textPrimary.withValues(alpha: 0),
               borderRadius: BorderRadius.circular(AthenaRadius.row),
             ),
-            child: Icon(
-              widget.icon,
-              size: 16,
-              color: colors.iconSecondary,
-            ),
+            child: Icon(widget.icon, size: 16, color: colors.iconSecondary),
           ),
         ),
       ),
