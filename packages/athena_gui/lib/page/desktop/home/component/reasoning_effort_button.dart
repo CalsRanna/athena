@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
 import 'package:flutter/material.dart';
@@ -21,10 +22,10 @@ class DesktopReasoningEffortButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var text = Text(
       reasoningEffortLabel(current),
+      // 与模型名同字号同字重（Claude 的 `High` 是常规字重）
       style: TextStyle(
         color: colors.textPrimary,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
+        fontSize: AthenaFontSize.body,
       ),
     );
     return GestureDetector(

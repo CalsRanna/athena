@@ -28,7 +28,7 @@ class DesktopImageSelector extends StatelessWidget {
     var hugeIcon = HugeIcon(
       icon: HugeIcons.strokeRoundedImage01,
       color: colors.textPrimary,
-      size: 24,
+      size: 16,
     );
     return GestureDetector(
       onTap: selectImages,

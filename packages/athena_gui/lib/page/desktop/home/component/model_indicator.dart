@@ -1,10 +1,10 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
-import 'package:athena_gui/widget/tag.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopModelIndicator extends StatelessWidget {
@@ -40,11 +40,26 @@ class _ModelIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AthenaContextChip(
-      label: '${model.name} | ${provider.name}',
-      leading: const Icon(HugeIcons.strokeRoundedAiBrain01),
+    // Claude 的底部那一行只用**纯文字**（`Fable 5.1`），没有图标、不带 provider。
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      filled: false,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 240),
+          child: Text(
+            model.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: AthenaFontSize.body,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
