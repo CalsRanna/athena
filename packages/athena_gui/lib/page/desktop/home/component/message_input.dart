@@ -48,6 +48,8 @@ class DesktopMessageInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // Claude 的 ghost 按钮 hover 填充：前景色 5%
+    final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
     return Watch((context) {
       final chat = chatViewModel.currentChat.value;
       final queued = chatViewModel.queuedMessages.value;
@@ -55,7 +57,7 @@ class DesktopMessageInput extends StatelessWidget {
       // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
       // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
       return Padding(
-        padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+        padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: kChatColumnWidth),
@@ -69,8 +71,9 @@ class DesktopMessageInput extends StatelessWidget {
                 ],
                 // 上下文条：灰底、无描边
                 Container(
-                  height: 42,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  height: 40,
+                  // Claude 实测：带内首个元素距容器左缘 17（含 chip 自身 10）
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
                     color: colors.surfaceButtonSecondary,
@@ -78,54 +81,79 @@ class DesktopMessageInput extends StatelessWidget {
                   ),
                   child: DesktopSentinelIndicator(onTap: onSentinelTap),
                 ),
-                const SizedBox(height: 6),
-                // 输入容器：白底 + 1px 描边
-                Container(
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(AthenaRadius.container),
+                const SizedBox(height: 5),
+                // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
+_ComposerInputBox(
+                  builder: (focusNode) => Row(
+                    children: [
+                      Expanded(
+                        child: _Input(
+                          controller: controller,
+                          focusNode: focusNode,
+                          images: chatViewModel.pendingImages.value,
+                          onImagePasted: onImagePasted,
+                          onImageRemoved: onImageRemoved,
+                          onSubmitted: onSubmitted,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      _SendButton(
+                        onSubmitted: onSubmitted,
+                        onTerminated: onTerminated,
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 6,
-                  ),
-                  child: _Input(
-                    controller: controller,
-                    images: chatViewModel.pendingImages.value,
-                    onImagePasted: onImagePasted,
-                    onImageRemoved: onImageRemoved,
-                    onSubmitted: onSubmitted,
-                  ),
-                ),
-                const SizedBox(height: 6),
+                ),                const SizedBox(height: 4),
                 // 容器之外的一行
                 Row(
                   children: [
-                    DesktopConfigurationButton(
-                      chat: chat,
-                      currentRetention: chatViewModel.currentRetention.value,
-                      currentTemperature:
-                          chatViewModel.currentTemperature.value,
-                      onRetentionChange: onRetentionChange,
-                      onTemperatureChange: onTemperatureChange,
+                    // Claude 的左侧是「一段文字 + 一个裸字形」（Bypass permissions +）。
+                    // 这里用配置按钮的 compact 变体承担"文字"那一半，图片按钮保持
+                    // 裸图标承担"字形"那一半；两个都是无标签图标会显得不可读。
+                    _SquishButton(
+                      hoverFill: ghostHover,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      child: DesktopConfigurationButton.compact(
+                        chat: chat,
+                        currentRetention: chatViewModel.currentRetention.value,
+                        currentTemperature:
+                            chatViewModel.currentTemperature.value,
+                        onRetentionChange: onRetentionChange,
+                        onTemperatureChange: onTemperatureChange,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    DesktopImageSelector(onSelected: onImageSelected),
-                    const Spacer(),
-                    DesktopModelIndicator(onTap: onModelTap),
-                    const SizedBox(width: 4),
-                    DesktopReasoningEffortButton(
-                      current: chatViewModel.currentReasoningEffort.value,
-                      onSelected: onReasoningEffortChange,
-                    ),
-                    const SizedBox(width: 4),
-                    const DesktopTokenIndicator(),
                     const SizedBox(width: 8),
-                    _SendButton(
-                      onSubmitted: onSubmitted,
-                      onTerminated: onTerminated,
+                    _SquishButton(
+                      hoverFill: ghostHover,
+                      child: DesktopImageSelector(onSelected: onImageSelected),
                     ),
+                    const Spacer(),
+                    _SquishButton(
+                      hoverFill: ghostHover,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      child: DesktopModelIndicator(onTap: onModelTap),
+                    ),
+                    const SizedBox(width: 4),
+                    _SquishButton(
+                      hoverFill: ghostHover,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      child: DesktopReasoningEffortButton(
+                        current: chatViewModel.currentReasoningEffort.value,
+                        onSelected: onReasoningEffortChange,
+                      ),
+                    ),
+                    // Claude 实测：`High` 与右侧圆环之间约 20
+                    const SizedBox(width: 12),
+                    const DesktopTokenIndicator(),
                   ],
                 ),
               ],
@@ -139,12 +167,16 @@ class DesktopMessageInput extends StatelessWidget {
 
 class _Input extends StatefulWidget {
   final TextEditingController controller;
+
+  /// 外部传入的焦点节点：composer 的容器要靠它切换边框色。
+  final FocusNode? focusNode;
   final List<String> images;
   final void Function(String)? onImagePasted;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   const _Input({
     required this.controller,
+    this.focusNode,
     this.images = const [],
     this.onImagePasted,
     this.onImageRemoved,
@@ -181,7 +213,9 @@ class _InputState extends State<_Input> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var hintTextStyle = TextStyle(
-      color: colors.textSecondary,
+      // Claude 实测：占位符是**浅灰** #898782（gray-400），不是深色。
+      // 之前那条"深色"的结论是我把光标误当成了文字。
+      color: colors.textWeak,
       fontSize: AthenaFontSize.body,
       height: 1.5,
     );
@@ -196,6 +230,7 @@ class _InputState extends State<_Input> {
     );
     var textField = TextField(
       controller: widget.controller,
+      focusNode: widget.focusNode,
       scrollController: _scrollController,
       cursorHeight: 16,
       cursorColor: colors.textInput,
@@ -247,7 +282,8 @@ class _InputState extends State<_Input> {
       ],
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      // Claude 实测：占位符距容器左缘 10
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: content,
     );
   }
@@ -435,43 +471,174 @@ class _SendButton extends StatelessWidget {
   final void Function()? onSubmitted;
   final void Function()? onTerminated;
   const _SendButton({this.onSubmitted, this.onTerminated});
-
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 与 Codex 的主操作一致：全局唯一那抹蓝（accent）的胶囊按钮。
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.pill),
-      color: colors.accent,
-    );
-
     return Watch((context) {
-      // 流式时按钮切换为 Stop；回车仍通过 onSubmitted 排队发送。
-      var streaming = chatViewModel.isCurrentChatStreaming.value;
-      Widget roundButton(IconData icon, VoidCallback? onTap) {
-        var outerContainer = Container(
+      final streaming = chatViewModel.isCurrentChatStreaming.value;
+      // Claude 的 ghost 按钮 hover 填充：前景色 5%
+      final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
+      // 规格取自 Claude 的 CSS（`[data-cds=Button][data-cds-icon-only]`）：
+      // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
+      // 取 step4 档：22×22。按下缩放到 0.975 也是从 CSS 取的。
+      return _SquishButton(
+        onTap: streaming ? onTerminated : onSubmitted,
+        hoverFill: ghostHover,
+        child: Container(
           alignment: Alignment.center,
-          decoration: boxDecoration,
-          height: 28,
-          width: 28,
-          child: Icon(icon, color: Colors.white, size: 16),
-        );
-        var mouseRegion = MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: outerContainer,
-        );
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: mouseRegion,
-        );
-      }
-
-      return roundButton(
-        streaming ? HugeIcons.strokeRoundedStop : HugeIcons.strokeRoundedSent,
-        streaming ? onTerminated : onSubmitted,
+          height: 22,
+          width: 22,
+          child: Icon(
+            streaming
+                ? HugeIcons.strokeRoundedStop
+                : HugeIcons.strokeRoundedSent,
+            color: colors.accent,
+            size: 16,
+          ),
+        ),
       );
     });
+  }
+}
+
+/// 按压缩放按钮。
+///
+/// 取自 Claude 的 `.cds-btn-squish:active { transform: scale(.975) }`，
+/// 过渡在按下时用快档（`--cds-dur-fast` ≈ 60ms）、回弹用慢档带弹簧。
+class _SquishButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  /// hover 时的圆角填充。Claude 的 ghost 按钮是前景色 5%（暗色 7.5%）。
+  /// 传 null 表示不做 hover 反馈。
+  final Color? hoverFill;
+
+  /// 填充与内容之间的内边距（文字类控件需要，纯图标不需要）。
+  final EdgeInsetsGeometry padding;
+
+  const _SquishButton({
+    required this.child,
+    this.onTap,
+    this.hoverFill,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  State<_SquishButton> createState() => _SquishButtonState();
+}
+
+class _SquishButtonState extends State<_SquishButton> {
+  bool _pressed = false;
+  bool _hover = false;
+
+  bool get _interactive => widget.onTap != null || widget.hoverFill != null;
+  @override
+  Widget build(BuildContext context) {
+    Widget result = widget.hoverFill == null
+        ? widget.child
+        : DecoratedBox(
+            decoration: BoxDecoration(
+              color: _hover ? widget.hoverFill : Colors.transparent,
+              borderRadius: BorderRadius.circular(AthenaRadius.xs),
+            ),
+            child: Padding(padding: widget.padding, child: widget.child),
+          );
+    result = AnimatedScale(
+      scale: _pressed ? 0.975 : 1,
+      duration: Duration(milliseconds: _pressed ? 60 : 200),
+      curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
+      child: result,
+    );
+    result = MouseRegion(
+      cursor: _interactive
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: result,
+    );
+    result = Listener(
+      onPointerDown: (_) {
+        if (_interactive) setState(() => _pressed = true);
+      },
+      onPointerUp: (_) {
+        if (_pressed) setState(() => _pressed = false);
+      },
+      onPointerCancel: (_) {
+        if (_pressed) setState(() => _pressed = false);
+      },
+      child: result,
+    );
+    if (widget.onTap == null) return result;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      child: result,
+    );
+  }
+}
+
+/// composer 的输入容器。
+///
+/// Claude 实测：边框**常态 `#E1E1E0`（浅灰），聚焦后加深到 `#BFBFBE`**
+/// （CSS 里对应 `focus:border-[...]` 效用类）。两个值都是中性灰，
+/// 而本仓的 `border` / `borderStrong` 属暖灰系，白底上会偏黄，所以这里单独定义。
+class _ComposerInputBox extends StatefulWidget {
+  final Widget Function(FocusNode focusNode) builder;
+  const _ComposerInputBox({required this.builder});
+
+  @override
+  State<_ComposerInputBox> createState() => _ComposerInputBoxState();
+}
+
+class _ComposerInputBoxState extends State<_ComposerInputBox> {
+  static const _idleBorder = Color(0xFFE1E1E0);
+  static const _focusBorder = Color(0xFFBFBFBE);
+
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return AnimatedContainer(
+      decoration: BoxDecoration(
+        color: colors.surfaceMobile,
+        border: Border.all(
+          color: _focusNode.hasFocus ? _focusBorder : _idleBorder,
+        ),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
+        // Claude 实测：容器下方有一层很柔的投影——紧贴下边框处比画布暗约
+        // 7/255，在约 18 逻辑内平滑衰减到 0，且上方几乎没有，所以是**向下偏移**
+        // 的阴影，而不是第二条边框色。
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      duration: const Duration(milliseconds: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: widget.builder(_focusNode),
+    );
   }
 }

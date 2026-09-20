@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:flutter/material.dart';
@@ -43,7 +43,7 @@ class DesktopConfigurationButton extends StatelessWidget {
     var icon = Icon(
       HugeIcons.strokeRoundedSlidersHorizontal,
       color: colors.textPrimary,
-      size: 24,
+      size: 16,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -54,19 +54,31 @@ class DesktopConfigurationButton extends StatelessWidget {
 
   Widget _buildCompactButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // Claude 的 `Bypass permissions` 是**完全没有框的纯文字**。旧版套了
+    // AthenaSecondaryButton.small，会画 1px 描边 + 胶囊，是这一行里唯一的"盒子"。
     var row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           HugeIcons.strokeRoundedSlidersHorizontal,
           color: colors.textPrimary,
-          size: 14,
+          size: 16,
         ),
-        const SizedBox(width: 8),
-        Text(label ?? 'Configure'),
+        const SizedBox(width: 6),
+        Text(
+          label ?? 'Configure',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: AthenaFontSize.body,
+          ),
+        ),
       ],
     );
-    return AthenaSecondaryButton.small(onTap: openDialog, child: row);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: openDialog,
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: row),
+    );
   }
 
   void openDialog() {
