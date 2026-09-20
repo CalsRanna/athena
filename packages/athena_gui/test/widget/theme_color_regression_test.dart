@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/mobile/home/component/chat_tile.dart';
 import 'package:athena_gui/page/mobile/home/component/new_chat_button.dart';
@@ -51,6 +52,25 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  test('header shimmer follows the theme instead of hardcoded white', () {
+    final dark = ToolHeaderShimmer.colorsFor(AthenaColors.dark);
+    // 深色主题保持历史观感：白色只调透明度
+    expect(dark.base, Colors.white.withValues(alpha: 0.45));
+    expect(dark.highlight, Colors.white.withValues(alpha: 0.95));
+
+    // srcIn 会把 header 整块涂成 shimmer 颜色，浅色主题必须与浅色页面成对比，
+    // 否则折叠头就是白底白字（此前写死 Colors.white 的 bug）
+    final light = ToolHeaderShimmer.colorsFor(AthenaColors.light);
+    expect(
+      _contrastRatio(light.base, AthenaColors.light.surface),
+      greaterThan(3),
+    );
+    expect(
+      _contrastRatio(light.highlight, AthenaColors.light.surface),
+      greaterThan(3),
+    );
+  });
 
   test('code surfaces stay recessed and readable in both themes', () {
     for (final colors in [AthenaColors.dark, AthenaColors.light]) {

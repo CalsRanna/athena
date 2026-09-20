@@ -672,6 +672,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
 - `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
 - GUI 提问卡片**一次只展示一个问题**，多问时问题前标 `1 / 3`（卡片标题不报数量）；单选**点选即确认**（非最后一步→前进，最后一步→提交），多选与自由输入由 Next / Submit 收尾（自由输入框里回车等价于按钮）；`_step > 0` 时有 Back 可退回上一步改答案。单选再点一次是「保持」而不是取消——每题都得有答案才能往下走，允许点空会把人卡在交不出去的步骤上。自由输入框取**卡片尺度**（字号 14 / 垂直内边距 12 / 1–3 行自增高，与卡片内按钮同高），不要套全局输入的 56px 尺度——那会让一行自填比整卡其它内容都重。`test/widget/elicit_card_test.dart` 锁住这些。
+- 工具 / 推理 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`ToolHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字（回归见 `theme_color_regression_test.dart` 的 shimmer 用例）。
 - 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
 - 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 
