@@ -7,6 +7,7 @@ import 'package:nocterm/nocterm.dart';
 ///
 /// 与 [PermissionBar] 同构——审批问的是「要不要做」(y/n/a),这里问的是
 /// 「你要哪个」:数字键选选项、上下键切问题、[e] 转输入区自填。
+/// 一次只展示一个问题,多问时标题标出 `1 / 3`,与 GUI 提问卡片同一套规则。
 /// 显示期间 app 层接管全局按键,输入区只在自填模式下接收输入。
 class QuestionBar extends StatelessComponent {
   const QuestionBar({
@@ -45,7 +46,9 @@ class QuestionBar extends StatelessComponent {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            questions.length > 1 ? '提问（${questions.length} 个）' : '提问',
+            questions.length > 1
+                ? '提问 ${currentIndex + 1}/${questions.length}'
+                : '提问',
             style: const TextStyle(
               color: AthenaColors.warning,
               fontWeight: FontWeight.bold,
@@ -57,10 +60,7 @@ class QuestionBar extends StatelessComponent {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < questions.length; i++)
-                    ..._buildQuestion(i),
-                ],
+                children: [..._buildQuestion(currentIndex)],
               ),
             ),
           ),
@@ -70,25 +70,22 @@ class QuestionBar extends StatelessComponent {
     );
   }
 
-  /// 一个问题:标题行 + 各选项 + 自填行。
+  /// 当前问题的标题行 + 各选项 + 自填行（一次只展示一个问题）。
   ///
   /// 问句与选项都来自模型,渲染前一律 [sanitizeAnsi] 清洗——
   /// 终端转义序列可由模型输出携带,不清洗等于把终端交给模型。
   List<Component> _buildQuestion(int index) {
     final question = questions[index];
-    final isCurrent = index == currentIndex;
     final chosen = selected[index] ?? const <String>{};
     final custom = freeText[index]?.trim() ?? '';
 
     return [
       Text(
-        '${isCurrent ? '▶' : ' '} ${sanitizeAnsi(question.header)}'
+        '${sanitizeAnsi(question.header)}'
         '${question.multiSelect ? '（多选）' : ''}  '
         '${sanitizeAnsi(question.question)}',
         softWrap: true,
-        style: isCurrent
-            ? const TextStyle(fontWeight: FontWeight.bold)
-            : AthenaTextStyles.dim,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       for (var j = 0; j < question.options.length; j++)
         Text(

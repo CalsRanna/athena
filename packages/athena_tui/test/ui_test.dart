@@ -30,10 +30,10 @@ import 'package:test/test.dart';
 /// (无 key 时收到 401,网络时序不定导致测试抖动/收尾竞态)。
 class _FakeAgentService extends AgentService {
   _FakeAgentService()
-      : super(
-          chatService: ChatCompletionsService(llmClient: LlmClient()),
-          toolRegistry: ToolRegistry(),
-        );
+    : super(
+        chatService: ChatCompletionsService(llmClient: LlmClient()),
+        toolRegistry: ToolRegistry(),
+      );
 
   @override
   Stream<AgentEvent> run({
@@ -635,6 +635,44 @@ void main() {
       expect(state.containsText('1) 摘要'), isTrue);
       expect(state.containsText('详细 (Recommended)'), isTrue);
       expect(state.containsText('[1-4] 选择'), isTrue);
+    });
+  });
+
+  test('提问条:一次只展示一个问题,标题标出 2/2', () {
+    return nocterm_test.testNocterm('提问条分步', (tester) async {
+      await tester.pumpComponent(
+        const QuestionBar(
+          questions: [
+            ElicitQuestion(
+              question: '第一个问题？',
+              header: '格式',
+              options: [
+                ElicitOption(label: '摘要', description: '简短概览'),
+                ElicitOption(label: '详细', description: '完整说明'),
+              ],
+            ),
+            ElicitQuestion(
+              question: '第二个问题？',
+              header: '范围',
+              options: [
+                ElicitOption(label: '甲', description: '第一个选项'),
+                ElicitOption(label: '乙', description: '第二个选项'),
+              ],
+            ),
+          ],
+          currentIndex: 1,
+          selected: {},
+          freeText: {},
+          hint: '[1-4] 选择  [↑↓] 切换问题',
+        ),
+      );
+      await tester.pump();
+      final state = tester.terminalState;
+      expect(state.containsText('提问 2/2'), isTrue);
+      expect(state.containsText('第二个问题？'), isTrue);
+      // 未轮到的问题不展示,避免长清单把提示挤出屏幕
+      expect(state.containsText('第一个问题？'), isFalse);
+      expect(state.containsText('摘要'), isFalse);
     });
   });
 
