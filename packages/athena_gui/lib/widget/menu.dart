@@ -47,11 +47,14 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     var contentColor = widget.active
         ? colors.textPrimary
         : colors.textRowLabel;
+    // 列表行（侧栏会话、设置页各行）取 UI 正文档 14，不是 label 档 12。
+    // Claude 实测：侧栏会话行与消息正文（15）只差 1px；用 12 会让侧栏
+    // 明显比工作区小一号。
     var textStyle = TextStyle(
       color: contentColor,
-      fontSize: AthenaFontSize.label,
+      fontSize: AthenaFontSize.body,
       fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
-      height: 1.4,
+      height: AthenaFontSize.bodyHeight,
     );
     var text = Text(
       widget.label,

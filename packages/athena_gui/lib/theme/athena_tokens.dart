@@ -76,16 +76,31 @@ abstract final class AthenaFontSize {
   /// 分区标题、卡片标题（`--cds-font-size-heading` = 14）。
   static const section = 14.0;
 
-  /// **消息正文（Markdown）**：`--cds-font-size-prose` = 15。
-  static const prose = 15.0;
+  /// **消息正文（Markdown）**：文字档 small 下取
+  /// `--cds-font-size-prose--textsm` = 13，行高 `--cds-leading-prose` = 20。
+  ///
+  /// 与 UI 正文同号。实测交叉验证：Claude 窗口里
+  /// 「解压完成，我来检查并定位 Claude 的真实 CSS。」(16 全角 + 9 西文)
+  /// 总宽 276.5 逻辑像素 → 反推 13.0；按 15 算会得到 319，对不上。
+  static const prose = 13.0;
 
-  /// 正文、输入框（`--cds-font-size-body` = 14）。
-  static const body = 14.0;
+  /// 正文、输入框、列表行（`--cds-font-size-body`）。
+  ///
+  /// 取按文字档 small 解析后的值：`--cds-font-size-body--textsm` = 13，
+  /// 行高 `--cds-leading-body` = 19。与消息正文同号（都是 13），
+  /// 侧栏与工作区读起来是同一层级。
+  ///
+  /// 实测交叉验证：Claude 侧栏「Athena 与 Claude 工作区 UI 对齐」
+  /// 总宽 192 → 反推 12.6；按 14 算会得到 213，对不上。
+  static const body = 13.0;
 
-  /// 消息正文行高比例：`--cds-leading-prose`(22) / `--cds-font-size-prose`(15)
-  /// ≈ 1.4667。Claude 的行高是"绝对行盒"，不是随字号缩放的比例；
+  /// 消息正文行高比例：`--cds-leading-prose`(20) / `--cds-font-size-prose`(13)。
+  /// Claude 的行高是"绝对行盒"，不是随字号缩放的比例；
   /// 这里换算成 Flutter 的 `TextStyle.height`。
-  static const proseHeight = 22.0 / prose;
+  static const proseHeight = 20.0 / prose;
+
+  /// UI 正文行高比例：`--cds-leading-body`(19) / `--cds-font-size-body`(13)。
+  static const bodyHeight = 19.0 / body;
 
   /// 标签、chip、小按钮（`--cds-font-size-body--sm` = 12）。
   static const label = 12.0;
