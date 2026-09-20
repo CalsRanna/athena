@@ -279,9 +279,9 @@ class _FootnotesMarkdownBody extends MarkdownBody {
       key: const ValueKey('markdown-footnotes'),
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
+      // 与代码块同壳：同底、同圆角、无描边——描边会破坏柔和卡片的观感
       decoration: BoxDecoration(
         color: colors.codeBackground,
-        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -291,26 +291,17 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             width: double.infinity,
             color: colors.cardHeader,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.format_list_numbered_rounded,
-                  size: 14,
-                  color: colors.textSecondaryOnCode,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Footnotes',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.textOnCode,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            // 头部只有一行标签，与代码块的语言标签同规格
+            child: Text(
+              'Footnotes',
+              style: GoogleFonts.firaCode(
+                fontSize: 12,
+                color: colors.textOnCode,
+              ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: content.last,
           ),
         ],
@@ -354,6 +345,11 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
+    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色
+    var body = base.p?.copyWith(color: colors.textPrimary, height: 1.6);
+    // 标题与正文同号、同行高、同字族，只以加粗区分层级：
+    // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
+    var heading = body?.copyWith(fontWeight: FontWeight.bold);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
     var markdownStyleSheet = base.copyWith(
@@ -366,15 +362,14 @@ class _FlutterMarkdown extends StatelessWidget {
         decoration: TextDecoration.lineThrough,
         decorationColor: colors.markdownStrikethrough,
       ),
-      // 助手消息直接坐在页面底色上，正文用页面族文字色
-      p: base.p?.copyWith(color: colors.textPrimary, height: 1.6),
+      p: body,
       code: base.code?.copyWith(color: colors.textOnCode),
-      h1: base.h1?.copyWith(color: colors.textPrimary),
-      h2: base.h2?.copyWith(color: colors.textPrimary),
-      h3: base.h3?.copyWith(color: colors.textPrimary),
-      h4: base.h4?.copyWith(color: colors.textPrimary),
-      h5: base.h5?.copyWith(color: colors.textPrimary),
-      h6: base.h6?.copyWith(color: colors.textPrimary),
+      h1: heading,
+      h2: heading,
+      h3: heading,
+      h4: heading,
+      h5: heading,
+      h6: heading,
       blockquote: base.blockquote?.copyWith(color: colors.textPrimary),
       img: base.img?.copyWith(color: colors.textPrimary),
       listBullet: base.listBullet?.copyWith(color: colors.textPrimary),
