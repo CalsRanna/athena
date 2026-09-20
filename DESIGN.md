@@ -349,7 +349,7 @@ caption 12→13、radius 6→8、icon 16→24）。本仓只取 body 的 15，�
 ### Cards & Surfaces
 
 - 浮起容器用**柔阴影**，不要用硬描边（这是 composer 的关键形态）。
-- 静态容器（代码块、引用块）用**淡描边 + 灰底**。
+- 静态容器（引用块）用**淡描边 + 灰底**；代码块是例外，**不描边**——它靠 `codeBackground` 与页面底色的差自成一层，header 再用 `cardHeader` 提亮一档划分标题与正文。
 - 会话内的权限审批卡与提问卡是浅色面板（`surfaceMobile` + `overlay` 阴影）。
 - 助手消息不画底板，直接坐在画布上。
 
@@ -500,7 +500,8 @@ Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静�
 |-------|-----------|-----|
 | Canvas | `surface`，无阴影无边框 | 主工作区 |
 | Panel | `surfacePanel` + 1px `border` | 侧栏、顶栏 |
-| Static content | `codeBackground` + 1px `border` | 代码块、引用块 |
+| Static content | `codeBackground` + 1px `border` | 引用块 |
+| Code block | `codeBackground`，header 为 `cardHeader`，**无边框** | 代码块、脚注区 |
 | Selected | `surfaceSelected` | 选中行、选中 chip |
 | Hover | `surfaceHover` | 悬停行 |
 | **Floating** | `surface`/`surfaceMobile` + `AthenaShadow.raised` | composer |

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -126,9 +127,10 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
         ? rawText.substring(0, rawText.length - 1)
         : rawText;
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // 无边框：代码块靠 codeBackground 与页面底色的差自成一层，
+    // header 再用 cardHeader 提亮一档划分标题与正文（与 Claude 一致）。
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
-      border: Border.all(color: colors.border),
       color: colors.codeBackground,
     );
     var textStyle = athenaMono(height: 1.5, color: colors.textOnCode);
@@ -180,10 +182,27 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
+    // header 左端是"这是什么"（图标 + 语言标签），右端是"能对它做什么"（复制）
+    var icon = HugeIcon(
+      icon: HugeIcons.strokeRoundedCode,
+      size: 12,
+      color: colors.textOnCode,
+    );
+    // CopyButton 的图标按传入色 40% 透明度渲染。默认取色 textOnRaised 在浅色
+    // 主题下是纯白，落在近白的语言条上等于隐形；这里显式用代码面上的正文色。
+    var copyButton = Tooltip(
+      message: 'Copy',
+      child: CopyButton(
+        color: colors.textOnCode,
+        onTap: () => handleTap(displayText),
+      ),
+    );
     var children = [
+      icon,
+      const SizedBox(width: 6),
       Expanded(child: text),
       const SizedBox(width: 12),
-      CopyButton(onTap: () => handleTap(displayText)),
+      copyButton,
     ];
     return Container(
       decoration: boxDecoration,
@@ -269,10 +288,9 @@ class _FootnotesMarkdownBody extends MarkdownBody {
       key: const ValueKey('markdown-footnotes'),
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
-      // 与代码块同壳：同底、同边框、同圆角
+      // 与代码块同壳：同底、同圆角、同样不描边。头部用 cardHeader 提亮一档
       decoration: BoxDecoration(
         color: colors.codeBackground,
-        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       child: Column(
@@ -377,7 +395,6 @@ class _FlutterMarkdown extends StatelessWidget {
       // cardColor，保持代码块为局部浅底（自带深色文字，自成对比）
       codeblockDecoration: BoxDecoration(
         color: colors.codeBackground,
-        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       codeblockPadding: const EdgeInsets.all(8),
