@@ -661,7 +661,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 - **改 `AgentService.run` 签名**会打到 `athena_gui/test/view_model/chat_view_model_stream_test.dart` 与 `athena_tui/test/ui_test.dart` 里的 `_FakeAgentService.run` 覆写，两处都要改。
 - 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
-- `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
+- `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
 - 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
 - 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 

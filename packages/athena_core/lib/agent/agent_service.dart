@@ -393,13 +393,20 @@ class AgentService {
     return (ctx) async {
       cancelToken.throwIfCancelled();
       final metadata = jsonDecode(ctx.arguments) as Map<String, dynamic>;
-      final asksUser = metadata[toolApprovalRecommendationKey] == 'ask';
+      final tool = _toolRegistry.get(ctx.name);
+      // 提问类工具（ask_user_question）自己就是人机通道：模型给它的
+      // approval_recommendation=ask 意思是「这件事得问用户」，而不是
+      // 「这个动作越界了」。不在这里挡掉，一次提问就会先弹审批弹窗、
+      // 再弹提问卡片，而审批一旦被拒，问题根本问不出去。
+      final asksUser =
+          metadata[toolApprovalRecommendationKey] == 'ask' &&
+          tool is! ElicitChannelAware;
       final verdict =
           permissionService?.check(
             runId,
             ctx.name,
             ctx.args,
-            risk: _toolRegistry.get(ctx.name)?.risk,
+            risk: tool?.risk,
           ) ??
           (onPermission == null
               ? PermissionVerdict.allow
@@ -410,7 +417,6 @@ class AgentService {
       }
 
       if (asksUser || verdict == PermissionVerdict.prompt) {
-        final tool = _toolRegistry.get(ctx.name);
         if (!asksUser && reviewContext != null && tool != null) {
           final review = await _permissionReviewer.review(
             context: reviewContext,
