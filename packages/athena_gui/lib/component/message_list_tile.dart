@@ -720,17 +720,13 @@ class _UserMessageListTile extends StatelessWidget {
 
   Widget _buildResendButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: colors.surfaceRaised,
-    );
+    // 不绘制底板：重试按钮只保留图标本身
     var container = Container(
-      decoration: boxDecoration,
       padding: const EdgeInsets.all(6),
       child: Icon(
         HugeIcons.strokeRoundedRefresh,
         size: 12,
-        color: colors.iconOnRaised,
+        color: colors.iconSecondary,
       ),
     );
     return GestureDetector(
