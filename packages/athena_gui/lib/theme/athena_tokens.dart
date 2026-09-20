@@ -60,9 +60,12 @@ abstract final class AthenaSpace {
   static const sidebar = 288.0;
 }
 
-/// 字号等级。取值来自 **Claude 桌面端的 `--cds-font-size-*`**。
+/// 字号等级。取值来自 **Claude 桌面端 `.cds-root` 的 `--cds-font-size-*`**。
 ///
-/// Claude 的正文是 13px（不是 14），层级也更密：11 / 12 / 13 / 14。
+/// 实测该变量的默认档（未叠加 `data-density` / `data-text-size`）是
+/// caption 12 / body 14 / prose 15 / heading 14，字号比早期实现记的
+/// （11 / 13 / 13）整体大一档。`prose` 是消息正文（Markdown）专用档，
+/// 比 UI 正文再大 1px，这是 Claude 让对话内容比界面控件更易读的手段。
 abstract final class AthenaFontSize {
   /// 空态标题。
   static const hero = 22.0;
@@ -73,14 +76,22 @@ abstract final class AthenaFontSize {
   /// 分区标题、卡片标题（`--cds-font-size-heading` = 14）。
   static const section = 14.0;
 
-  /// 正文、输入框（`--cds-font-size-body` = 13）。
-  static const body = 13.0;
+  /// **消息正文（Markdown）**：`--cds-font-size-prose` = 15。
+  static const prose = 15.0;
 
-  /// 标签、chip、小按钮。
+  /// 正文、输入框（`--cds-font-size-body` = 14）。
+  static const body = 14.0;
+
+  /// 消息正文行高比例：`--cds-leading-prose`(22) / `--cds-font-size-prose`(15)
+  /// ≈ 1.4667。Claude 的行高是"绝对行盒"，不是随字号缩放的比例；
+  /// 这里换算成 Flutter 的 `TextStyle.height`。
+  static const proseHeight = 22.0 / prose;
+
+  /// 标签、chip、小按钮（`--cds-font-size-body--sm` = 12）。
   static const label = 12.0;
 
-  /// 说明、元信息（`--cds-font-size-caption` = 11）。
-  static const caption = 11.0;
+  /// 说明、元信息（`--cds-font-size-caption` = 12）。
+  static const caption = 12.0;
 
   /// 代码、工具名、参数（`--cds-font-size-code` = 12）。
   static const mono = 12.0;

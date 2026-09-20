@@ -22,7 +22,8 @@ Athena 是一个跨平台的 AI 工作台。它的视觉语言基准是 **Claude
 | 弱文字 | `--cds-gray-400` | `#898781` |
 | 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
 | composer 圆角 | `--cds-radius-composer` | **12** |
-| 正文字号 | `--cds-font-size-body` | **13** |
+| 正文字号 | `--cds-font-size-body` | **14** |
+| 消息正文字号 | `--cds-font-size-prose` | **15**（行高 22） |
 | 头像档位 | `--cds-avatar-lg/md/sm/xs` | 36 / 28 / 20 / 16 |
 
 ### 核心特征
@@ -159,15 +160,24 @@ Claude 的色板是一套**偏暖的中性灰**，和 Codex 的中性灰完全�
 
 ### Hierarchy
 
-| Role | Token | Size | Weight | Font | Usage |
-|------|-------|------|--------|------|-------|
-| Hero | `AthenaFontSize.hero` | 28 | 600 | UI | 空态欢迎大标题 |
-| Page / Dialog Title | `AthenaFontSize.title` | 17 | 600 | UI | 对话框、页面标题 |
-| Section Title | `AthenaFontSize.section` | 15 | 500-600 | UI | 分区标题、卡片标题 |
-| Body | `AthenaFontSize.body` | 13 | 400 | UI | 正文、聊天文本、输入（`--cds-font-size-body`）；正文行高 1.625 |
-| Label | `AthenaFontSize.label` | 13 | 400-600 | UI | 标签、chip、小按钮 |
-| Caption | `AthenaFontSize.caption` | 12 | 400 | UI | 元信息、分组标题 |
-| Mono | `AthenaFontSize.mono` | 12.5 | 400 | Mono | 代码、工具参数、输出 |
+取值口径：Claude 的 `.cds-root` **默认档**（不叠加 `data-density=comfortable`
+与 `data-text-size`）。实测为 caption 12 / body 14 / prose 15 / heading 14；
+早期实现记成 11 / 13 / 13，整体小一档。
+
+| Role | Token | Size | Line height | Weight | Font | Usage |
+|------|-------|------|-------------|--------|------|-------|
+| Hero | `AthenaFontSize.hero` | 22 | — | 600 | UI | 空态欢迎大标题 |
+| Page / Dialog Title | `AthenaFontSize.title` | 15 | — | 600 | UI | 对话框、页面标题（`--cds-font-size-heading--textlg`） |
+| Section Title | `AthenaFontSize.section` | 14 | — | 500-600 | UI | 分区标题、卡片标题（`--cds-font-size-heading`） |
+| Prose | `AthenaFontSize.prose` | 15 | **22** | 400 | UI | **消息正文（Markdown）**（`--cds-font-size-prose` / `--cds-leading-prose`） |
+| Body | `AthenaFontSize.body` | 14 | 20 | 400 | UI | 正文、输入框（`--cds-font-size-body` / `--cds-leading-body`） |
+| Label | `AthenaFontSize.label` | 12 | — | 400-600 | UI | 标签、chip、小按钮 |
+| Caption | `AthenaFontSize.caption` | 12 | — | 400 | UI | 元信息、分组标题（`--cds-font-size-caption`） |
+| Mono | `AthenaFontSize.mono` | 12 | — | 400 | Mono | 代码、工具参数、输出（`--cds-font-size-code`） |
+
+**消息正文比 UI 正文大一档（15 vs 14）**，这是 Claude 的刻意设计：对话内容
+要比界面控件更易读。行高是**绝对行盒**（22px），不是随字号缩放的比例；
+`AthenaFontSize.proseHeight` 是换算后的比值 22/15 ≈ 1.4667。
 
 ### Principles
 
