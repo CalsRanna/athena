@@ -162,6 +162,20 @@ class ToolHeaderShimmer extends StatefulWidget {
     required this.child,
   });
 
+  /// shimmer 颜色：由主题的页面前景色只调透明度得来的高光与底光。
+  ///
+  /// `srcIn` 会把子树整块换成这里的颜色，所以**不能写死白色**：卡面无底板后
+  /// 这些 header 直接坐在页面底色上，浅色主题里写死的白就是「白底白字」，
+  /// 折叠头整个看不见（深色主题下 `textPrimary` 本就是白，观感不变）。
+  @visibleForTesting
+  static ({Color base, Color highlight}) colorsFor(AthenaColors colors) {
+    final shimmer = colors.textPrimary;
+    return (
+      base: shimmer.withValues(alpha: 0.45),
+      highlight: shimmer.withValues(alpha: 0.95),
+    );
+  }
+
   @override
   State<ToolHeaderShimmer> createState() => _ToolHeaderShimmerState();
 }
@@ -213,9 +227,8 @@ class _ToolHeaderShimmerState extends State<ToolHeaderShimmer>
   @override
   Widget build(BuildContext context) {
     if (!widget.active || _animationsDisabled) return widget.child;
-    // srcIn 是乘法蒙版：卡面无底板后改用白色只调透明度，避免把文字乘暗到看不见
-    final base = Colors.white.withValues(alpha: 0.45);
-    final highlight = Colors.white.withValues(alpha: 0.95);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final (:base, :highlight) = ToolHeaderShimmer.colorsFor(colors);
 
     return AnimatedBuilder(
       animation: _controller,

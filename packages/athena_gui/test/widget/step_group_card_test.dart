@@ -50,6 +50,7 @@ void main() {
     WidgetTester tester, {
     required List<Map<String, String>> calls,
     required List<Map<String, String>> results,
+    AthenaColors colors = AthenaColors.dark,
   }) async {
     final message = MessageEntity(
       chatId: 1,
@@ -60,10 +61,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          extensions: const [AthenaColors.dark],
-        ),
+        theme: ThemeData(useMaterial3: true, extensions: [colors]),
         home: Scaffold(
           body: SizedBox(
             width: 700,
@@ -245,9 +243,7 @@ void main() {
     );
 
     // 整卡不再画底板（不画就没有亚像素接缝），但段仍连续排布（段间无空隙）
-    final firstSegment = find.byKey(
-      const ValueKey('assistant-card-segment-1'),
-    );
+    final firstSegment = find.byKey(const ValueKey('assistant-card-segment-1'));
     final secondSegment = find.byKey(
       const ValueKey('assistant-card-segment-2'),
     );
@@ -438,9 +434,7 @@ void main() {
     expect(find.text('next response'), findsOneWidget);
   });
 
-  testWidgets('长 Assistant 卡片按消息懒构建：视口外的消息不构建也不布局', (
-    tester,
-  ) async {
+  testWidgets('长 Assistant 卡片按消息懒构建：视口外的消息不构建也不布局', (tester) async {
     final messages = List.generate(
       100,
       (index) => MessageEntity(
@@ -629,6 +623,35 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
+  testWidgets('浅色主题下进行中的折叠头不被涂成白色', (tester) async {
+    await pumpMessage(
+      tester,
+      calls: [
+        {
+          'id': 'call-1',
+          'name': 'file_read',
+          'arguments': jsonEncode({'path': '/tmp/a.dart'}),
+        },
+        {
+          'id': 'call-2',
+          'name': 'bash',
+          'arguments': jsonEncode({'command': 'dart test'}),
+        },
+      ],
+      results: [
+        {'id': 'call-1', 'name': 'file_read', 'result': 'file contents'},
+      ],
+      colors: AthenaColors.light,
+    );
+
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.byType(ShaderMask), findsOneWidget);
+    // shimmer 用主题前景色：浅色主题下它是深色，不再是写死的白
+    final light = ToolHeaderShimmer.colorsFor(AthenaColors.light);
+    expect(light.base, isNot(Colors.white));
+    expect(light.highlight, isNot(Colors.white));
+  });
+
   testWidgets('运行中的单个工具也只在 Header 前景显示 shimmer', (tester) async {
     await pumpMessage(
       tester,
@@ -697,9 +720,7 @@ void main() {
     expect(find.text('why read'), findsOneWidget);
   });
 
-  testWidgets('多轮推理与工具合并为一个步骤组，尾部推理吸入组内，正文单独渲染', (
-    tester,
-  ) async {
+  testWidgets('多轮推理与工具合并为一个步骤组，尾部推理吸入组内，正文单独渲染', (tester) async {
     MessageEntity round({
       required int id,
       required String reasoning,
@@ -744,9 +765,18 @@ void main() {
     // 组外不再单独出现推理头
     expect(find.text('Thought for 1.0 seconds'), findsNothing);
     // 第二条消息的全部内容都并入首条宿主，不再有自己的片段
-    expect(find.byKey(const ValueKey('assistant-card-segment-1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('assistant-card-segment-2')), findsNothing);
-    expect(find.byKey(const ValueKey('assistant-card-segment-3')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('assistant-card-segment-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('assistant-card-segment-2')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('assistant-card-segment-3')),
+      findsOneWidget,
+    );
     expect(
       tester.getTopLeft(find.byType(StepGroupCard)).dy,
       lessThan(tester.getTopLeft(find.text('final answer')).dy),
@@ -795,7 +825,10 @@ void main() {
       reasoningContent: 'r2',
       reasoning: true,
     );
-    await pumpAssistantMessages(tester, [withResult, nextThinking], loading: true);
+    await pumpAssistantMessages(tester, [
+      withResult,
+      nextThinking,
+    ], loading: true);
     expect(find.byType(StepGroupCard), findsOneWidget);
     expect(find.text('Thinking'), findsOneWidget);
     expect(find.text('bash'), findsNothing);
