@@ -22,7 +22,7 @@ Athena 是一个跨平台的 AI 工作台。它的视觉语言基准是 **Claude
 | 弱文字 | `--cds-gray-400` | `#898781` |
 | 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
 | composer 圆角 | `--cds-radius-composer` | **12** |
-| 正文字号 | `--cds-font-size-body` | **14** |
+| 正文字号 | `--cds-font-size-body` | **15**（desktop 的 comfortable 档） |
 | 消息正文字号 | `--cds-font-size-prose` | **15**（行高 22） |
 | 头像档位 | `--cds-avatar-lg/md/sm/xs` | 36 / 28 / 20 / 16 |
 
@@ -170,14 +170,25 @@ Claude 的色板是一套**偏暖的中性灰**，和 Codex 的中性灰完全�
 | Page / Dialog Title | `AthenaFontSize.title` | 15 | — | 600 | UI | 对话框、页面标题（`--cds-font-size-heading--textlg`） |
 | Section Title | `AthenaFontSize.section` | 14 | — | 500-600 | UI | 分区标题、卡片标题（`--cds-font-size-heading`） |
 | Prose | `AthenaFontSize.prose` | 15 | **22** | 400 | UI | **消息正文（Markdown）**（`--cds-font-size-prose` / `--cds-leading-prose`） |
-| Body | `AthenaFontSize.body` | 14 | 20 | 400 | UI | 正文、输入框（`--cds-font-size-body` / `--cds-leading-body`） |
+| Body | `AthenaFontSize.body` | 15 | 22 | 400 | UI | 正文、输入框、**列表行**（`--cds-font-size-body` / `--cds-leading-body`） |
 | Label | `AthenaFontSize.label` | 12 | — | 400-600 | UI | 标签、chip、小按钮 |
 | Caption | `AthenaFontSize.caption` | 12 | — | 400 | UI | 元信息、分组标题（`--cds-font-size-caption`） |
 | Mono | `AthenaFontSize.mono` | 12 | — | 400 | Mono | 代码、工具参数、输出（`--cds-font-size-code`） |
 
-**消息正文比 UI 正文大一档（15 vs 14）**，这是 Claude 的刻意设计：对话内容
-要比界面控件更易读。行高是**绝对行盒**（22px），不是随字号缩放的比例；
-`AthenaFontSize.proseHeight` 是换算后的比值 22/15 ≈ 1.4667。
+**本仓把正文与消息正文拉平成同一号（都是 15 / 22）**。Claude 有意让消息
+比界面大一号（默认档 14/15，comfortable 档 15/18），但侧栏与工作区字号
+不一致会让界面读起来像两个层级，故不跟这条。行高是**绝对行盒**（22px），
+不是随字号缩放的比例；`proseHeight` / `bodyHeight` 是换算后的比值 ≈ 1.4667。
+
+**密度口径**：Claude 桌面端 `index.html` 的 `<html>` 带
+`data-density="comfortable"`，该档比默认档整体大一档（body 14→15、
+caption 12→13、radius 6→8、icon 16→24）。本仓只取 body 的 15，其余仍按
+默认档——圆角、图标、控件高已经按默认档铺满全仓，整体切换是另一件事。
+
+**列表行（侧栏会话、设置页各行）用 Body 14，不是 Label 12**。实测 Claude 的
+侧栏会话行与消息正文只差 1px；用 Label 会让侧栏比工作区小一整号，看上去像
+两个不同层级的界面。`label` 只留给 chip、小按钮、工具卡这类真正的"控件标签"。
+一并注意行高：Body 的行盒是 20（`AthenaFontSize.bodyHeight`）。
 
 ### Principles
 
