@@ -1,7 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
-import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -68,43 +67,6 @@ class DesktopModelSelectDialog extends StatelessWidget {
       model: model,
       onTap: () => onTap?.call(model),
     );
-  }
-}
-
-class DesktopModelSelector extends StatelessWidget {
-  final void Function(ModelEntity)? onSelected;
-  const DesktopModelSelector({super.key, this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedAiBrain01,
-      color: colors.textPrimary,
-      size: 24,
-    );
-    return GestureDetector(
-      onTap: openDialog,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
-    );
-  }
-
-  void changeModel(ModelEntity model) {
-    AthenaDialog.dismiss();
-    onSelected?.call(model);
-  }
-
-  Future<void> openDialog() async {
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    var hasModel = modelViewModel.enabledModels.value.isNotEmpty;
-    if (hasModel) {
-      AthenaDialog.show(
-        DesktopModelSelectDialog(onTap: changeModel),
-        barrierDismissible: true,
-      );
-    } else {
-      AthenaDialog.warning('Your should enable a provider first');
-    }
   }
 }
 

@@ -4,12 +4,12 @@ import 'dart:typed_data';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 
-class DesktopBase64Image extends StatefulWidget {
+class Base64Image extends StatefulWidget {
   final String base64;
   final BoxFit? fit;
   final double? height;
   final double? width;
-  const DesktopBase64Image({
+  const Base64Image({
     super.key,
     required this.base64,
     this.fit,
@@ -18,12 +18,12 @@ class DesktopBase64Image extends StatefulWidget {
   });
 
   @override
-  State<DesktopBase64Image> createState() => _DesktopBase64ImageState();
+  State<Base64Image> createState() => _Base64ImageState();
 }
 
-class _DesktopBase64ImagePreviewDialog extends StatelessWidget {
+class _Base64ImagePreviewDialog extends StatelessWidget {
   final Uint8List bytes;
-  const _DesktopBase64ImagePreviewDialog({required this.bytes});
+  const _Base64ImagePreviewDialog({required this.bytes});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class _DesktopBase64ImagePreviewDialog extends StatelessWidget {
   }
 }
 
-class _DesktopBase64ImageState extends State<DesktopBase64Image> {
+class _Base64ImageState extends State<Base64Image> {
   late Uint8List bytes;
 
   @override
@@ -61,7 +61,7 @@ class _DesktopBase64ImageState extends State<DesktopBase64Image> {
   }
 
   @override
-  void didUpdateWidget(DesktopBase64Image oldWidget) {
+  void didUpdateWidget(Base64Image oldWidget) {
     super.didUpdateWidget(oldWidget);
     // 同一位置复用（列表更新）时 base64 可能变化，必须重新解码，
     // 否则会一直渲染旧消息的图片
@@ -72,7 +72,7 @@ class _DesktopBase64ImageState extends State<DesktopBase64Image> {
 
   void _openPreviewDialog() {
     AthenaDialog.show(
-      _DesktopBase64ImagePreviewDialog(bytes: bytes),
+      _Base64ImagePreviewDialog(bytes: bytes),
       barrierDismissible: true,
     );
   }

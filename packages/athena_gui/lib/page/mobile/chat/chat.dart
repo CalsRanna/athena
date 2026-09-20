@@ -6,7 +6,7 @@ import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
-import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
+import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';

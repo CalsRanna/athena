@@ -1,48 +1,10 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
-
-class DesktopSentinelSelector extends StatelessWidget {
-  final bool enabled;
-  final void Function(SentinelEntity)? onSelected;
-  const DesktopSentinelSelector({
-    super.key,
-    this.enabled = true,
-    this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedArtificialIntelligence03,
-      color: enabled ? colors.textPrimary : colors.textSecondary,
-      size: 24,
-    );
-    return GestureDetector(
-      onTap: enabled ? openDialog : null,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
-    );
-  }
-
-  void changeModel(SentinelEntity sentinel) {
-    AthenaDialog.dismiss();
-    onSelected?.call(sentinel);
-  }
-
-  void openDialog() {
-    AthenaDialog.show(
-      DesktopSentinelSelectDialog(onTap: changeModel),
-      barrierDismissible: true,
-    );
-  }
-}
 
 class _DesktopSentinelSelectDialogTile extends StatefulWidget {
   final SentinelEntity sentinel;

@@ -1,4 +1,5 @@
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
+import 'package:athena_gui/component/card_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -428,14 +429,14 @@ class _ElicitCardState extends State<ElicitCard> {
   }
 
   Widget _buildActions(bool mobile) {
-    final primary = _CardPrimaryButton(
+    final primary = CardPrimaryButton(
       label: _isLastStep ? 'Submit' : 'Next',
       onTap: _canConfirm ? _confirm : null,
     );
     // 多问时给一个回到上一步的出口：单选点选会自动前进，
     // 没有退路的话手滑就无法改答案。
     final back = _step > 0
-        ? _CardSecondaryButton(
+        ? CardSecondaryButton(
             label: 'Back',
             onTap: () => setState(() => _step--),
           )
@@ -455,83 +456,6 @@ class _ElicitCardState extends State<ElicitCard> {
         if (back != null) ...[back, const SizedBox(width: 12)],
         primary,
       ],
-    );
-  }
-}
-
-/// 浅色卡片上的次按钮：描边胶囊 + 深色文字，与主按钮同尺寸。
-class _CardSecondaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _CardSecondaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AthenaRadius.control),
-              side: BorderSide(color: colors.border),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 浅色卡片上的主按钮：深色实心胶囊 + 白字；[onTap] 为 null 时置灰禁用。
-class _CardPrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-
-  const _CardPrimaryButton({required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final enabled = onTap != null;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: Container(
-          decoration: ShapeDecoration(
-            color: colors.surfaceRaised.withValues(alpha: enabled ? 1 : 0.4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AthenaRadius.control),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

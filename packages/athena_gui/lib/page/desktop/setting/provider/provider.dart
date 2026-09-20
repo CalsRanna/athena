@@ -1,9 +1,7 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/model_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
-import 'package:athena_gui/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
@@ -14,7 +12,9 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/input.dart';
-import 'package:athena_gui/widget/settings_panel.dart';
+import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/widget/settings/panel.dart';
+import 'package:athena_gui/widget/settings/row.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
@@ -182,11 +182,16 @@ class _DesktopSettingProviderPageState
     ModelEntity model,
   ) async {
     if (model.isPreset) return;
-    var contextMenu = DesktopModelContextMenu(
+    var contextMenu = DesktopEditDeleteContextMenu(
       offset: details.globalPosition - Offset(240, 50),
-      onConnected: () => checkConnection(model),
       onDestroyed: () => destroyModel(model),
       onEdited: () => editModel(model),
+      leading: [
+        DesktopContextMenuTile(
+          text: 'Connect',
+          onTap: () => checkConnection(model),
+        ),
+      ],
     );
     if (!mounted) return;
     DesktopContextMenuManager.instance.show(context, contextMenu);
@@ -198,7 +203,7 @@ class _DesktopSettingProviderPageState
         .where((item) => _selection.selectedIds.contains(item.id))
         .toList();
     final multiSelect = selected.length > 1;
-    var contextMenu = DesktopProviderContextMenu(
+    var contextMenu = DesktopEditDeleteContextMenu(
       multiSelect: multiSelect,
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroyProviders(multiSelect ? selected : [provider]),

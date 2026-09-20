@@ -1,13 +1,13 @@
 import 'dart:convert';
 
-import 'package:athena_gui/component/compaction_card.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
-import 'package:athena_gui/component/tool_card.dart';
+import 'package:athena_gui/component/base64_image.dart';
+import 'package:athena_gui/component/compaction_card.dart';
 import 'package:athena_gui/component/reasoning_card.dart';
 import 'package:athena_gui/component/step_group_card.dart';
+import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
@@ -18,6 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// 会话内单条消息的渲染，以及消息底部的操作条。
+///
+/// 按角色分派：[MessageListTile] 只做分派，正文分别由助手 / 工具 / 用户三支
+/// 私有实现渲染。列表侧的懒加载与项切分在 `message_sliver.dart`。
 
 class MessageListTile extends StatelessWidget {
   final bool loading;
@@ -58,180 +63,6 @@ class MessageListTile extends StatelessWidget {
   }
 }
 
-class _MessageListRenderItem {
-  final MessageEntity message;
-
-  /// 该消息在助手卡里的布局；非空表示这一项是助手卡内的一段。
-  final AssistantMessageLayout? layout;
-
-  /// 该段所属整卡的消息（只有卡片头用它做"复制整轮回复"的载荷）。
-  final List<MessageEntity> cardMessages;
-
-  /// 是否为整卡的第一段 / 最后一段：卡片级上下内边距分别落在它们身上。
-  final bool isCardHeader;
-  final bool isCardTail;
-
-  /// 与上一张卡之间的间距，只加在整卡的第一段上。
-  final bool addCardSpacing;
-
-  const _MessageListRenderItem({
-    required this.message,
-    this.layout,
-    this.cardMessages = const [],
-    this.isCardHeader = false,
-    this.isCardTail = false,
-    required this.addCardSpacing,
-  });
-
-  String get key {
-    final identity = message.id ?? identityHashCode(message);
-    return layout == null ? 'message-$identity' : 'assistant-card-$identity';
-  }
-}
-
-/// 整个聊天共用的懒加载消息 Sliver。
-///
-/// **每条消息各占一个列表项**：视口外的消息不会被构建、也不参与布局，因此无论
-/// 一轮回复里有多少条消息，每帧成本都只与视口内可见的消息数有关。
-///
-/// 助手消息不再绘制卡片底板。历史上"整卡一个 item + 只画一次背景"是为了消除
-/// 相邻同色半透明底板在非整数像素边界上叠加不满造成的 1 像素接缝；代价则是
-/// 视口碰到整卡就要构建并逐帧遍历整卡内容（实测流式增量随卡内消息数线性增长，
-/// n=400 时约 369ms/帧，而逐消息一项恒为 4-5ms）。既然不要底板，接缝问题与
-/// 该约束一并消失（成因与回归见 `test/widget/card_seam_mechanism_test.dart`）。
-class MessageCardListSliver extends StatefulWidget {
-  final bool loading;
-  final List<MessageEntity> messages;
-  final SentinelEntity sentinel;
-  final EdgeInsetsGeometry padding;
-  final void Function(MessageEntity)? onLongPress;
-  final void Function(TapUpDetails, MessageEntity)? onSecondaryTapUp;
-  final void Function(MessageEntity)? onResend;
-
-  const MessageCardListSliver({
-    super.key,
-    this.loading = false,
-    required this.messages,
-    required this.sentinel,
-    this.padding = EdgeInsets.zero,
-    this.onLongPress,
-    this.onSecondaryTapUp,
-    this.onResend,
-  });
-
-  @override
-  State<MessageCardListSliver> createState() => _MessageCardListSliverState();
-}
-
-class _MessageCardListSliverState extends State<MessageCardListSliver> {
-  final hover = AssistantCardHover();
-
-  @override
-  void dispose() {
-    hover.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final renderItems = _buildMessageListRenderItems(
-      widget.messages,
-      loading: widget.loading,
-    );
-    final itemIndices = <String, int>{
-      for (final (index, item) in renderItems.indexed) item.key: index,
-    };
-    return SliverPadding(
-      padding: widget.padding,
-      sliver: SliverList.builder(
-        itemCount: renderItems.length,
-        findChildIndexCallback: (key) {
-          if (key is! ValueKey<String>) return null;
-          return itemIndices[key.value];
-        },
-        itemBuilder: (context, index) {
-          final item = renderItems[index];
-          final layout = item.layout;
-          Widget child;
-          if (layout != null) {
-            child = _AssistantMessageItem(
-              layout: layout,
-              cardMessages: item.cardMessages,
-              isCardHeader: item.isCardHeader,
-              isCardTail: item.isCardTail,
-              sentinel: widget.sentinel,
-              hover: hover,
-            );
-          } else {
-            child = MessageListTile(
-              message: item.message,
-              loading:
-                  widget.loading && item.message.id == widget.messages.last.id,
-              onLongPress: widget.onLongPress == null
-                  ? null
-                  : () => widget.onLongPress!(item.message),
-              onSecondaryTapUp: widget.onSecondaryTapUp == null
-                  ? null
-                  : (details) =>
-                        widget.onSecondaryTapUp!(details, item.message),
-              onResend: widget.onResend == null
-                  ? null
-                  : () => widget.onResend!(item.message),
-              sentinel: widget.sentinel,
-            );
-          }
-          if (item.addCardSpacing) {
-            // Codex 的轮次容器是 gap-4，即 16
-            child = Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: child,
-            );
-          }
-          return KeyedSubtree(key: ValueKey(item.key), child: child);
-        },
-      ),
-    );
-  }
-}
-
-List<_MessageListRenderItem> _buildMessageListRenderItems(
-  List<MessageEntity> messages, {
-  required bool loading,
-}) {
-  final cards = buildMessageDisplayCards(messages);
-  final result = <_MessageListRenderItem>[];
-
-  for (final (cardIndex, cardMessages) in cards.indexed) {
-    final message = cardMessages.first;
-    if (!isAssistantCardMessage(message)) {
-      result.add(
-        _MessageListRenderItem(message: message, addCardSpacing: cardIndex > 0),
-      );
-      continue;
-    }
-
-    final layouts = buildAssistantMessageLayouts(
-      cardMessages,
-      loading: loading && cardIndex == cards.length - 1,
-    );
-    if (layouts.isEmpty) continue;
-    for (final (index, layout) in layouts.indexed) {
-      result.add(
-        _MessageListRenderItem(
-          message: layout.message,
-          layout: layout,
-          cardMessages: cardMessages,
-          isCardHeader: index == 0,
-          isCardTail: index == layouts.length - 1,
-          addCardSpacing: cardIndex > 0 && index == 0,
-        ),
-      );
-    }
-  }
-
-  return result;
-}
-
 class _AssistantMessageListTile extends StatefulWidget {
   final bool loading;
   final MessageEntity message;
@@ -263,7 +94,7 @@ class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
       widget.message,
     ], loading: widget.loading);
     if (layouts.isEmpty) return const SizedBox.shrink();
-    return _AssistantMessageItem(
+    return AssistantMessageItem(
       layout: layouts.first,
       cardMessages: [widget.message],
       isCardHeader: true,
@@ -277,9 +108,8 @@ class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
 /// 助手卡内的一段消息。
 ///
 /// 卡片没有底板，因此这里只负责卡片级内边距：上内边距落在整卡第一段、下内边距
-/// 落在整卡最后一段，中间各段之间零间距（段本身仍连续排布，回归见
-/// `test/widget/step_group_card_test.dart`、`test/widget/compaction_card_test.dart`）。
-class _AssistantMessageItem extends StatelessWidget {
+/// 落在整卡最后一段，中间各段之间零间距（段本身仍连续排布）。
+class AssistantMessageItem extends StatelessWidget {
   final AssistantMessageLayout layout;
   final List<MessageEntity> cardMessages;
   final bool isCardHeader;
@@ -289,7 +119,8 @@ class _AssistantMessageItem extends StatelessWidget {
   /// 卡片级 hover 归属：操作条挂在整条助手消息上，而不是某一段上。
   final AssistantCardHover hover;
 
-  const _AssistantMessageItem({
+  const AssistantMessageItem({
+    super.key,
     required this.layout,
     required this.cardMessages,
     required this.isCardHeader,
@@ -385,7 +216,7 @@ class _AssistantMessageSegment extends StatelessWidget {
           if (showActions)
             ValueListenableBuilder<Object?>(
               valueListenable: hover.hoveredCard,
-              builder: (context, hoveredCard, _) => _MessageActionBar(
+              builder: (context, hoveredCard, _) => MessageActionBar(
                 visible: hoveredCard == cardId,
                 onCopy: () => _copyAssistantMessages(cardMessages),
               ),
@@ -678,7 +509,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
                 ],
               ),
             ),
-            _MessageActionBar(
+            MessageActionBar(
               visible: _hovered,
               // Copy 始终可用；Retry 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
@@ -711,7 +542,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
       gridDelegate: delegate,
       // 以 base64 为 key：同一网格位置的元素在不同消息间复用时，
       // 避免渲染出上一条消息的图片
-      itemBuilder: (context, index) => DesktopBase64Image(
+      itemBuilder: (context, index) => Base64Image(
         key: ValueKey(images[index]),
         base64: images[index],
         fit: BoxFit.cover,
@@ -779,12 +610,17 @@ class AssistantCardHover {
 /// - 进入用 `--cds-dur-snap`(120ms) **且延迟** `...-reveal-in-delay`(100ms)；
 /// - 退出用 `--cds-dur-fast`(60ms) 且无延迟。
 /// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。
-class _MessageActionBar extends StatelessWidget {
+class MessageActionBar extends StatelessWidget {
   final bool visible;
   final VoidCallback? onCopy;
   final VoidCallback? onResend;
 
-  const _MessageActionBar({required this.visible, this.onCopy, this.onResend});
+  const MessageActionBar({
+    super.key,
+    required this.visible,
+    this.onCopy,
+    this.onResend,
+  });
 
   static const _inDelayMs = 100.0;
   static const _inDurMs = 120.0;

@@ -2,7 +2,7 @@ import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/widget/settings_nav.dart';
-import 'package:athena_gui/widget/settings_panel.dart';
+import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
