@@ -333,9 +333,15 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
-    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色
-    // 行高取 Codex 的 --leading-relaxed: 1.625
-    var body = base.p?.copyWith(color: colors.textPrimary, height: 1.625);
+    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色。
+    // 字号 / 行高取 Claude 的 `--cds-font-size-prose`(15) 与
+    // `--cds-leading-prose`(22)——消息正文比 UI 正文（body 14）再大一档，
+    // 行高是绝对行盒 22，换算成比例 1.4667。
+    var body = base.p?.copyWith(
+      color: colors.textPrimary,
+      fontSize: AthenaFontSize.prose,
+      height: AthenaFontSize.proseHeight,
+    );
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
     var heading = body?.copyWith(fontWeight: FontWeight.bold);
@@ -375,6 +381,9 @@ class _FlutterMarkdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       codeblockPadding: const EdgeInsets.all(8),
+      // 块间距取 Claude 的 `--cds-gap-xs`(6)：实测相邻段落行距 ≈ 28
+      // = 行盒 22 + 段距 6。flutter_markdown 默认 8 会偏松。
+      blockSpacing: 6,
     );
     return _FootnotesMarkdownBody(
       builders: builders,

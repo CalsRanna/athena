@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 
-import 'package:athena_gui/component/button.dart';
 import 'package:athena_gui/component/compaction_card.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -101,7 +100,7 @@ class _MessageListRenderItem {
 /// 视口碰到整卡就要构建并逐帧遍历整卡内容（实测流式增量随卡内消息数线性增长，
 /// n=400 时约 369ms/帧，而逐消息一项恒为 4-5ms）。既然不要底板，接缝问题与
 /// 该约束一并消失（成因与回归见 `test/widget/card_seam_mechanism_test.dart`）。
-class MessageCardListSliver extends StatelessWidget {
+class MessageCardListSliver extends StatefulWidget {
   final bool loading;
   final List<MessageEntity> messages;
   final SentinelEntity sentinel;
@@ -122,16 +121,29 @@ class MessageCardListSliver extends StatelessWidget {
   });
 
   @override
+  State<MessageCardListSliver> createState() => _MessageCardListSliverState();
+}
+
+class _MessageCardListSliverState extends State<MessageCardListSliver> {
+  final hover = AssistantCardHover();
+
+  @override
+  void dispose() {
+    hover.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final renderItems = _buildMessageListRenderItems(
-      messages,
-      loading: loading,
+      widget.messages,
+      loading: widget.loading,
     );
     final itemIndices = <String, int>{
       for (final (index, item) in renderItems.indexed) item.key: index,
     };
     return SliverPadding(
-      padding: padding,
+      padding: widget.padding,
       sliver: SliverList.builder(
         itemCount: renderItems.length,
         findChildIndexCallback: (key) {
@@ -148,20 +160,25 @@ class MessageCardListSliver extends StatelessWidget {
               cardMessages: item.cardMessages,
               isCardHeader: item.isCardHeader,
               isCardTail: item.isCardTail,
-              sentinel: sentinel,
+              sentinel: widget.sentinel,
+              hover: hover,
             );
           } else {
             child = MessageListTile(
               message: item.message,
-              loading: loading && item.message.id == messages.last.id,
-              onLongPress: onLongPress == null
+              loading:
+                  widget.loading && item.message.id == widget.messages.last.id,
+              onLongPress: widget.onLongPress == null
                   ? null
-                  : () => onLongPress!(item.message),
-              onSecondaryTapUp: onSecondaryTapUp == null
+                  : () => widget.onLongPress!(item.message),
+              onSecondaryTapUp: widget.onSecondaryTapUp == null
                   ? null
-                  : (details) => onSecondaryTapUp!(details, item.message),
-              onResend: onResend == null ? null : () => onResend!(item.message),
-              sentinel: sentinel,
+                  : (details) =>
+                        widget.onSecondaryTapUp!(details, item.message),
+              onResend: widget.onResend == null
+                  ? null
+                  : () => widget.onResend!(item.message),
+              sentinel: widget.sentinel,
             );
           }
           if (item.addCardSpacing) {
@@ -216,7 +233,7 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
   return result;
 }
 
-class _AssistantMessageListTile extends StatelessWidget {
+class _AssistantMessageListTile extends StatefulWidget {
   final bool loading;
   final MessageEntity message;
   final SentinelEntity sentinel;
@@ -228,15 +245,33 @@ class _AssistantMessageListTile extends StatelessWidget {
   });
 
   @override
+  State<_AssistantMessageListTile> createState() =>
+      _AssistantMessageListTileState();
+}
+
+class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
+  final hover = AssistantCardHover();
+
+  @override
+  void dispose() {
+    hover.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final layouts = buildAssistantMessageLayouts([message], loading: loading);
+    final layouts = buildAssistantMessageLayouts(
+      [widget.message],
+      loading: widget.loading,
+    );
     if (layouts.isEmpty) return const SizedBox.shrink();
     return _AssistantMessageItem(
       layout: layouts.first,
-      cardMessages: [message],
+      cardMessages: [widget.message],
       isCardHeader: true,
       isCardTail: true,
-      sentinel: sentinel,
+      sentinel: widget.sentinel,
+      hover: hover,
     );
   }
 }
@@ -253,22 +288,30 @@ class _AssistantMessageItem extends StatelessWidget {
   final bool isCardTail;
   final SentinelEntity sentinel;
 
+  /// 卡片级 hover 归属：操作条挂在整条助手消息上，而不是某一段上。
+  final AssistantCardHover hover;
+
   const _AssistantMessageItem({
     required this.layout,
     required this.cardMessages,
     required this.isCardHeader,
     required this.isCardTail,
     required this.sentinel,
+    required this.hover,
   });
 
   @override
   Widget build(BuildContext context) {
     final message = layout.message;
     return Padding(
+      // 列内左右留白：Claude 的助手正文用 `--cds-assistant-message-text-inset`
+      // (4) 贴住 768 定宽列的左缘，右侧留 `--cds-assistant-message-text-stop`
+      // （宽列下最多 56）给换行收窄。旧版左 12 + 列表内边距 16 共 28，比
+      // Claude 右移了一整档，正文因此显得没有对齐 composer。
       padding: EdgeInsets.fromLTRB(
-        12,
+        4,
         isCardHeader ? 16 : 0,
-        16,
+        32,
         isCardTail ? 16 : 0,
       ),
       child: _AssistantMessageSegment(
@@ -279,6 +322,8 @@ class _AssistantMessageItem extends StatelessWidget {
         isCardHeader: isCardHeader,
         cardMessages: cardMessages,
         sentinel: sentinel,
+        hover: hover,
+        cardId: cardMessages.first.id ?? identityHashCode(cardMessages.first),
       ),
     );
   }
@@ -298,6 +343,10 @@ class _AssistantMessageSegment extends StatelessWidget {
   final bool isCardHeader;
   final List<MessageEntity> cardMessages;
   final SentinelEntity sentinel;
+  final AssistantCardHover hover;
+
+  /// 本段所属助手卡的标识，用来判定"指针是否在这张卡上"。
+  final Object cardId;
 
   const _AssistantMessageSegment({
     super.key,
@@ -305,39 +354,49 @@ class _AssistantMessageSegment extends StatelessWidget {
     required this.isCardHeader,
     required this.cardMessages,
     required this.sentinel,
+    required this.hover,
+    required this.cardId,
   });
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Codex 的助手消息没有头像、没有气泡：内容直接铺满列宽。
+    // 助手消息没有头像、没有气泡：内容直接铺满列宽。
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: _AssistantMessageContent(layout: layout)),
-        // 只为常驻的复制按钮留一点余地（Codex 的复制按钮是 hover 工具条，
-        // 不占布局；这里常驻，所以留 24）
+        // 右侧余量对应 Claude 的 `--cds-assistant-message-text-stop`：
+        // 让正文换行收窄，同时给 hover 工具条留出不压字的落脚点。
         const SizedBox(width: 24),
       ],
     );
-    final showCopyButton = isCardHeader && !layout.waitingForFirstDelta;
-    // Claude 的消息操作是**hover/focus 才显形**（CSS：opacity 0→1 + scale，
-    // 进入 0.12s 且延迟 0.1s，退出 60ms）。旧版把复制按钮常驻在卡头。
-    Widget result = showCopyButton
-        ? Stack(
-            children: [
-              row,
-              Positioned(
-                right: 0,
-                child: _RevealOnHover(
-                  child: CopyButton(
-                    color: colors.textPrimary,
-                    onTap: () => _copyAssistantMessages(cardMessages),
+    final showActions = isCardHeader && !layout.waitingForFirstDelta;
+    // Claude 的操作条属于**整条消息行**（`.group\/message-row:hover
+    // [data-cds=MessageActions]`）：指针落在卡内任意一段都要显形。本仓每段
+    // 消息各占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover]
+    // 上，这里只负责上报进出、并按共享状态决定操作条是否可见。
+    // 只有操作条订阅该 notifier，正文不参与重建。
+    Widget result = MouseRegion(
+      onEnter: (_) => hover.enter(cardId),
+      onExit: (_) => hover.leave(cardId),
+      child: showActions
+          ? Stack(
+              children: [
+                row,
+                Positioned(
+                  right: 0,
+                  child: ValueListenableBuilder<Object?>(
+                    valueListenable: hover.hoveredCard,
+                    builder: (context, hoveredCard, _) => _MessageActionBar(
+                      visible: hoveredCard == cardId,
+                      onCopy: () => _copyAssistantMessages(cardMessages),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          )
-        : row;
+              ],
+            )
+          : row,
+    );
     if (layout.addBoundarySpacing) {
       result = Padding(padding: const EdgeInsets.only(top: 16), child: result);
     }
@@ -609,8 +668,14 @@ class _UserMessageListTile extends StatelessWidget {
 
   Widget _buildContent(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）
-    var textStyle = TextStyle(color: colors.textPrimary);
+    // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
+    // 字号 / 行高与助手正文同一档（prose 15 / 22），否则一轮对话里
+    // 问与答的字号会不一致。
+    var textStyle = TextStyle(
+      color: colors.textPrimary,
+      fontSize: AthenaFontSize.prose,
+      height: AthenaFontSize.proseHeight,
+    );
     var text = Text(message.content, style: textStyle);
     var images = message.imageUrls.isNotEmpty
         ? message.imageUrls.split(',')
@@ -671,34 +736,129 @@ class _UserMessageListTile extends StatelessWidget {
   }
 }
 
-/// hover / focus 时才显形的容器。
+/// 助手卡的 hover 归属。
 ///
-/// 取自 Claude 的 `[data-cds=MessageActions][data-reveal]`：进入用
-/// `--cds-dur-snap`（120ms）并延迟 100ms，退出用 `--cds-dur-fast`（60ms），
-/// 位移用 opacity + scale。这里用淡入 + 极轻的缩放复现。
-class _RevealOnHover extends StatefulWidget {
-  final Widget child;
-  const _RevealOnHover({required this.child});
+/// Claude 的消息操作条挂在**整条消息行**上（`.group\/message-row:hover`
+/// 时 `[data-cds=MessageActions]` 显形），指针落在卡内任意一段都算 hover。
+/// 本仓每段消息各占一个独立列表项、各自持有 MouseRegion，因此用一个卡级的
+/// 共享 notifier 把各段的上报汇总起来：任意段进入即记为该卡，离开即清空。
+///
+/// 只有操作条订阅它，正文不参与重建，流式追加时的重建成本不变。
+class AssistantCardHover {
+  /// 当前被 hover 的卡片标识；`null` 表示没有任何卡片被 hover。
+  final ValueNotifier<Object?> hoveredCard = ValueNotifier<Object?>(null);
 
-  @override
-  State<_RevealOnHover> createState() => _RevealOnHoverState();
+  void enter(Object cardId) {
+    if (hoveredCard.value != cardId) hoveredCard.value = cardId;
+  }
+
+  void leave(Object cardId) {
+    if (hoveredCard.value == cardId) hoveredCard.value = null;
+  }
+
+  void dispose() => hoveredCard.dispose();
 }
 
-class _RevealOnHoverState extends State<_RevealOnHover> {
-  bool _visible = false;
+/// hover 才显形的消息操作条。
+///
+/// 逐条对齐 Claude 的 `[data-cds=MessageActions][data-reveal]`：
+/// - **只动透明度**——`--cds-message-actions-reveal-scale` 在 `.cds-root`
+///   上是 `none`，旧版加的 `scale(0.9)` 是自创的；
+/// - 进入用 `--cds-dur-snap`(120ms) **且延迟** `...-reveal-in-delay`(100ms)；
+/// - 退出用 `--cds-dur-fast`(60ms) 且无延迟。
+/// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。
+class _MessageActionBar extends StatelessWidget {
+  final bool visible;
+  final VoidCallback? onCopy;
+
+  const _MessageActionBar({required this.visible, this.onCopy});
+
+  static const _inDelayMs = 100.0;
+  static const _inDurMs = 120.0;
+  static const _outDurMs = 60.0;
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _visible = true),
-      onExit: (_) => setState(() => _visible = false),
+    return IgnorePointer(
+      ignoring: !visible,
       child: AnimatedOpacity(
-        opacity: _visible ? 1 : 0,
-        duration: Duration(milliseconds: _visible ? 120 : 60),
-        child: AnimatedScale(
-          scale: _visible ? 1 : 0.9,
-          duration: Duration(milliseconds: _visible ? 120 : 60),
-          child: IgnorePointer(ignoring: !_visible, child: widget.child),
+        opacity: visible ? 1 : 0,
+        duration: Duration(
+          milliseconds: (visible ? _inDelayMs + _inDurMs : _outDurMs).round(),
+        ),
+        curve: visible
+            ? const Interval(
+                _inDelayMs / (_inDelayMs + _inDurMs),
+                1,
+                curve: Curves.easeOut,
+              )
+            : Curves.linear,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _MessageActionButton(
+              icon: HugeIcons.strokeRoundedCopy01,
+              tooltip: 'Copy',
+              onTap: onCopy,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 操作条上的一个 ghost 图标按钮。
+///
+/// 尺寸取自 Claude：控件高 `--cds-h-control`(24)，图标 `--cds-icon`(16)，
+/// 圆角 `--cds-radius--lg`(7)，hover 填充 `--cds-fill-ghost-hover`
+/// （浅色 alpha-1 ≈ 5%）。
+class _MessageActionButton extends StatefulWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  const _MessageActionButton({
+    required this.icon,
+    required this.tooltip,
+    this.onTap,
+  });
+
+  @override
+  State<_MessageActionButton> createState() => _MessageActionButtonState();
+}
+
+class _MessageActionButtonState extends State<_MessageActionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? colors.textPrimary.withValues(alpha: 0.05)
+                  : colors.textPrimary.withValues(alpha: 0),
+              borderRadius: BorderRadius.circular(AthenaRadius.row),
+            ),
+            child: Icon(
+              widget.icon,
+              size: 16,
+              color: colors.iconSecondary,
+            ),
+          ),
         ),
       ),
     );
