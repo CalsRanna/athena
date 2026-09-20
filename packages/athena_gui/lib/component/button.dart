@@ -6,7 +6,12 @@ import 'package:hugeicons/hugeicons.dart';
 
 class CopyButton extends StatefulWidget {
   final void Function()? onTap;
-  const CopyButton({super.key, this.onTap});
+
+  /// 图标与 "Copied" 的颜色。为空时按"浅底深字"取色（代码块等局部浅底）；
+  /// 助手消息卡面即页面底色，那里要显式传页面上可读的浅色。
+  final Color? color;
+
+  const CopyButton({super.key, this.onTap, this.color});
 
   @override
   State<CopyButton> createState() => _CopyButtonState();
@@ -18,7 +23,8 @@ class _CopyButtonState extends State<CopyButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final color = colors.textOnRaised.withValues(alpha: 0.4);
+    final base = widget.color ?? colors.textOnRaised;
+    final color = base.withValues(alpha: 0.4);
     Widget child = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedCopy01,
@@ -38,7 +44,7 @@ class _CopyButtonState extends State<CopyButton> {
 
   Widget _buildCopiedRow() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final color = colors.textSecondaryOnRaised;
+    final color = widget.color ?? colors.textSecondaryOnRaised;
     var hugeIcon = HugeIcon(
       color: color,
       icon: HugeIcons.strokeRoundedTick01,

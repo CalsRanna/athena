@@ -87,7 +87,9 @@ void main() {
             sentinel: null,
           );
       expect(replay, hasLength(1));
-      expect((replay.single as AssistantMessage).content, endsWith('SUMMARY'));
+      // 压缩摘要以 user 角色注入（见 chat_message_converter：assistant 角色会让
+      // DeepSeek 思考模式要求携带 reasoning_content 而 400）
+      expect((replay.single as UserMessage).text, endsWith('SUMMARY'));
     },
   );
 }

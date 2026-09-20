@@ -58,8 +58,8 @@ athena/
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
     │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
     │   │   ├── widget/          # 设计系统组件（20+）
-    │   │   ├── component/       # 业务组件（消息列表项、工具卡片等）
-    │   │   └── util/            # color_util / window_util / system_tray_util / shared_preference_util
+    │   │   ├── component/       # 业务组件（消息列表项、推理卡 / 单工具卡 / 步骤组卡、压缩卡等）
+    │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ color_util / window_util / system_tray_util / shared_preference_util
     │   └── test/                # flutter test（页面 / ViewModel / 数据库迁移）
     └── athena_tui/              # nocterm 终端客户端
         ├── bin/athena.dart      # CLI 入口
@@ -360,7 +360,7 @@ description: What this skill does and when to use it
 
 `reference` 保存阶段、runId、时间、前后估算 token 数、消息数、累计覆盖 ID 与逻辑位置；completed 时 `content` 保存摘要。摘要与覆盖范围在同一次消息更新中提交，再标记原文 `compacted`；即使标记中断，回放仍按覆盖范围排除原文。completed 后才切换模型上下文并发出完成事件。未完成/失败/取消的步骤不进入模型上下文；完成摘要按覆盖位置作为 assistant 历史回放，不进入 system 或权限授权上下文。旧版 system/summary 摘要兼容读取，旧摘要参与后续压缩合并。
 
-GUI/TUI 在消息流内使用工具调用风格的 `CompactionCard`，每次压缩一张卡片，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示“压缩已中断”。GUI 使用工具 Header shimmer，TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
+GUI/TUI 在消息流内使用工具调用风格的 `CompactionCard`，每次压缩一张卡片，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示"压缩已中断"。GUI 使用工具 Header shimmer，TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
 
 产出 `RunEvent` 纯数据流（无 UI 类型）：
 
@@ -381,7 +381,9 @@ sealed class RunEvent {
 ```
 
 关键实现细节：
-- **思考卡片展开状态不落库**：展开/折叠只是 `_AssistantMessageListTileThinkingPart` 的 Widget State（与 `ToolGroupCard` 一致），Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
+- **思考卡片展开状态不落库**：展开/折叠只是 `ReasoningCard` / `StepGroupCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
+- **推理与工具调用按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块与每次工具调用都是"步骤"，严格按时间序排列，只有可见正文、引用和压缩步骤切断序列（推理不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层按步骤数决定形态：≥ 2 步收纳为默认折叠的 `StepGroupCard`（进行中折叠头显示当前步骤并 shimmer，结束后显示 `Thought for Xs · N tool calls` 汇总），单步保持平铺（`ReasoningCard` / `ToolCard`）。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
+- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`_AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（机制复现见 `test/widget/card_seam_mechanism_test.dart` 的"设计约束"用例，回归见同文件采样用例；按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、引用块 `divider`）继续用 `textOnRaised`；改配色时先判断"文字下面到底有没有浅底"
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
@@ -481,12 +483,12 @@ GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，�
 surface          // 桌面主背景
 surfaceMobile    // 移动端背景 / 对话框 / sheet
 surfaceDeep      // 深层容器 / Tag 未选中内层
-surfaceRaised    // 白卡 / 白色按钮底（深浅同值）
+surfaceRaised    // 白色按钮底 / 局部浅底（深浅同值）
 textPrimary      // 主文字 / 关键图标
 textInput        // 输入框文字
 textSecondary    // 次级辅助文字
 textWeak         // 弱文字 / 时间戳
-textOnRaised     // 白卡 / 白按钮上的深色文字（深浅同值）
+textOnRaised     // 白色按钮与局部浅底（代码块/表格头/引用块）上的深色文字（深浅同值）
 textSelected     // 选中态文字（Tag 选中反转）
 border / borderStrong / divider / inputBackground
 teal / sage / slate / ctaGlow
@@ -544,6 +546,8 @@ cardPrimaryBackground / cardPrimaryText
   - `database/` - migration_test、cascade_characterization_test
   - `view_model/` - chat_view_model_stream_test、chat_draft_sentinel_test、setting/sentinel_view_model_test、skill/experience_view_model_test、view_model_defaults_test
   - `page/mobile/` - chat_page_test、home_page_test
+  - `util/` - message_display_util_test（卡片分组 / 步骤布局纯函数）、clipboard_image_service_test
+  - `widget/` - step_group_card_test（步骤组 / 跨消息合并 / 懒加载卡片）、reasoning_card_test、tool_card_test、compaction_card_test 等
   - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
 
 ### 测试模式

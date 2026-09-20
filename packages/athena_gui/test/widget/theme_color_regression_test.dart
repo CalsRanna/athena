@@ -111,7 +111,7 @@ void main() {
     }
   });
 
-  testWidgets('assistant message card paints a background only in dark mode', (
+  testWidgets('assistant messages paint no card background in either theme', (
     tester,
   ) async {
     final message = MessageEntity(
@@ -135,17 +135,18 @@ void main() {
         brightness: brightness,
       );
 
-      final card = tester.widget<Container>(
-        find.byKey(const ValueKey('assistant-card-segment-1')),
+      // 助手消息不给底板：既没有画背景的卡面容器，段自身也不是 Container。
+      // 相邻同色底板在非整数像素边界上会留下 1 像素接缝；不画底板既没有接缝，
+      // 也就不用把整卡塞进一个列表项（成因见 card_seam_mechanism_test.dart）。
+      expect(
+        find.byKey(const ValueKey('assistant-card-surface-1')),
+        findsNothing,
       );
-      final decoration = card.decoration! as BoxDecoration;
-      expect(decoration.color, colors.assistantCardBackground);
+      expect(
+        tester.widget(find.byKey(const ValueKey('assistant-card-segment-1'))),
+        isNot(isA<Container>()),
+      );
     }
-  });
-
-  test('assistant card background is transparent in light mode', () {
-    expect(AthenaColors.light.assistantCardBackground.a, 0);
-    expect(AthenaColors.dark.assistantCardBackground.a, 0.95);
   });
 
   testWidgets('configuration tooltip foreground matches its themed surface', (

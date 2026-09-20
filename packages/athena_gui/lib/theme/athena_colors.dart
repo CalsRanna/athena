@@ -9,7 +9,7 @@ enum AthenaColorMode { dark, light }
 /// 深浅两套值遵循 DESIGN.md 的 Token Governance：
 /// 浅色值从现有 token 按角色推导（灰阶镜像 / 透明度变体），不新增品牌色。
 ///
-/// 深色主题中的"浅色表面"（白卡/白按钮）在浅色主题下保持浅色，
+/// 深色主题中的"浅色表面"（白色按钮、代码块等局部浅底）在浅色主题下保持浅色，
 /// 因此部分字段（surfaceRaised / textOnRaised / iconOnRaised /
 /// cardPrimaryBackground / cardPrimaryText）在两种模式下同值。
 @immutable
@@ -18,7 +18,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color surface; // 桌面主工作区背景
   final Color surfaceMobile; // 移动端主背景 / 对话框 / sheet 背景
   final Color surfaceDeep; // 深层容器 / 反白底 / Tag 未选中内层
-  final Color surfaceRaised; // 白卡 / 白色按钮底（两种模式同值）
+  final Color surfaceRaised; // 白色按钮底 / 局部浅底（两种模式同值）
   final Color surfaceButtonSecondary; // 次级按钮底 / 中性色块
 
   // ---- 文字 ----
@@ -52,8 +52,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 组件 ----
   final Color tagBorderStart; // Tag 渐变边框起点（使用点带 alpha）
   final Color tagSelectedBackground; // Tag 选中背景
-  final Color cardHeader; // 工具卡 / 思考卡 header 底
-  final Color assistantCardBackground; // 助手消息卡底（深色白卡 95%，浅色无底色）
+  final Color cardHeader; // 卡片头部条底色（markdown 代码块语言条 / 表头 / 脚注头）
   final Color avatarBackground; // 头像圆底（两种模式下均需与卡底区分）
   final Color codeBackground; // 代码块 / 浅色容器填充
   final Color checkboxOff; // Checkbox 未选中勾色
@@ -92,7 +91,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.tagBorderStart,
     required this.tagSelectedBackground,
     required this.cardHeader,
-    required this.assistantCardBackground,
     required this.avatarBackground,
     required this.codeBackground,
     required this.checkboxOff,
@@ -133,7 +131,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     tagBorderStart: Color(0xFFEAEAEA),
     tagSelectedBackground: Color(0xFFE0E0E0),
     cardHeader: Color(0xFFE0E0E0),
-    assistantCardBackground: Color.from(alpha: 0.95, red: 1, green: 1, blue: 1),
     avatarBackground: Color(0xFF282F32),
     codeBackground: Color(0xFFEDEDED),
     checkboxOff: Color(0xFFD0D5DD),
@@ -143,7 +140,8 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     cardPrimaryText: Color(0xFFFFFFFF),
     markdownLink: Color(0xFF6ABEB9),
     markdownStrikethrough: Color(0xFF9E9E9E),
-    markdownMath: Color(0xFF161616),
+    // 助手消息卡不再绘制底板，公式文字与正文同色（浅色主题仍为深色）
+    markdownMath: Color(0xFFFFFFFF),
   );
 
   /// 浅色（从现有 token 按角色推导）。
@@ -175,7 +173,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     tagSelectedBackground: Color(0xFFE0E0E0),
     // header（cardHeader）比正文（codeBackground）略深，保持层次区分
     cardHeader: Color(0xFFE9EAEC),
-    assistantCardBackground: Color(0x00000000),
     avatarBackground: Color(0xFFE0E0E0),
     codeBackground: Color(0xFFEFF0F2),
     checkboxOff: Color(0xFFB8C0C8),
@@ -216,7 +213,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? tagBorderStart,
     Color? tagSelectedBackground,
     Color? cardHeader,
-    Color? assistantCardBackground,
     Color? avatarBackground,
     Color? codeBackground,
     Color? checkboxOff,
@@ -258,8 +254,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       tagSelectedBackground:
           tagSelectedBackground ?? this.tagSelectedBackground,
       cardHeader: cardHeader ?? this.cardHeader,
-      assistantCardBackground:
-          assistantCardBackground ?? this.assistantCardBackground,
       avatarBackground: avatarBackground ?? this.avatarBackground,
       codeBackground: codeBackground ?? this.codeBackground,
       checkboxOff: checkboxOff ?? this.checkboxOff,
@@ -317,11 +311,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         t,
       )!,
       cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
-      assistantCardBackground: Color.lerp(
-        assistantCardBackground,
-        other.assistantCardBackground,
-        t,
-      )!,
       avatarBackground: Color.lerp(
         avatarBackground,
         other.avatarBackground,
