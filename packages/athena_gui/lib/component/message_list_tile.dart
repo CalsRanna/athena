@@ -9,7 +9,8 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/base64_image.dart';
 import 'package:athena_gui/component/tool_card.dart';
-import 'package:athena_gui/component/tool_group_card.dart';
+import 'package:athena_gui/component/reasoning_card.dart';
+import 'package:athena_gui/component/step_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -60,50 +61,47 @@ class MessageListTile extends StatelessWidget {
   }
 }
 
-class _AssistantMessageRenderData {
-  final MessageEntity message;
-  final List<MessageEntity> toolMessages;
-  final bool waitingForFirstDelta;
-  final bool addBoundarySpacing;
-  final bool isLive;
-
-  const _AssistantMessageRenderData({
-    required this.message,
-    required this.toolMessages,
-    this.waitingForFirstDelta = false,
-    required this.addBoundarySpacing,
-    this.isLive = false,
-  });
-}
-
 class _MessageListRenderItem {
   final MessageEntity message;
-  final _AssistantMessageRenderData? assistantData;
+
+  /// 该消息在助手卡里的布局；非空表示这一项是助手卡内的一段。
+  final AssistantMessageLayout? layout;
+
+  /// 该段所属整卡的消息（只有卡片头用它做"复制整轮回复"的载荷）。
   final List<MessageEntity> cardMessages;
-  final bool isAssistantCardStart;
-  final bool isAssistantCardEnd;
+
+  /// 是否为整卡的第一段 / 最后一段：卡片级上下内边距分别落在它们身上。
+  final bool isCardHeader;
+  final bool isCardTail;
+
+  /// 与上一张卡之间的间距，只加在整卡的第一段上。
   final bool addCardSpacing;
 
   const _MessageListRenderItem({
     required this.message,
-    this.assistantData,
+    this.layout,
     this.cardMessages = const [],
-    this.isAssistantCardStart = false,
-    this.isAssistantCardEnd = false,
+    this.isCardHeader = false,
+    this.isCardTail = false,
     required this.addCardSpacing,
   });
 
   String get key {
     final identity = message.id ?? identityHashCode(message);
-    return assistantData == null ? 'message-$identity' : 'assistant-$identity';
+    return layout == null ? 'message-$identity' : 'assistant-card-$identity';
   }
 }
 
 /// 整个聊天共用的懒加载消息 Sliver。
 ///
-/// 连续 Assistant 回复仍按原始消息逐项懒构建；每项绘制同色、无间隔的背景
-/// 片段，首尾片段分别绘制上/下圆角，视觉上组成一张卡片。这样无需嵌套滚动，
-/// 也不会依赖可变高度 Sliver 的估算 scrollExtent。
+/// **每条消息各占一个列表项**：视口外的消息不会被构建、也不参与布局，因此无论
+/// 一轮回复里有多少条消息，每帧成本都只与视口内可见的消息数有关。
+///
+/// 助手消息不再绘制卡片底板。历史上"整卡一个 item + 只画一次背景"是为了消除
+/// 相邻同色半透明底板在非整数像素边界上叠加不满造成的 1 像素接缝；代价则是
+/// 视口碰到整卡就要构建并逐帧遍历整卡内容（实测流式增量随卡内消息数线性增长，
+/// n=400 时约 369ms/帧，而逐消息一项恒为 4-5ms）。既然不要底板，接缝问题与
+/// 该约束一并消失（成因与回归见 `test/widget/card_seam_mechanism_test.dart`）。
 class MessageCardListSliver extends StatelessWidget {
   final bool loading;
   final List<MessageEntity> messages;
@@ -143,14 +141,14 @@ class MessageCardListSliver extends StatelessWidget {
         },
         itemBuilder: (context, index) {
           final item = renderItems[index];
+          final layout = item.layout;
           Widget child;
-          final assistantData = item.assistantData;
-          if (assistantData != null) {
-            child = _AssistantMessageCardSegment(
-              data: assistantData,
-              isCardStart: item.isAssistantCardStart,
-              isCardEnd: item.isAssistantCardEnd,
+          if (layout != null) {
+            child = _AssistantMessageItem(
+              layout: layout,
               cardMessages: item.cardMessages,
+              isCardHeader: item.isCardHeader,
+              isCardTail: item.isCardTail,
               sentinel: sentinel,
             );
           } else {
@@ -196,19 +194,20 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
       continue;
     }
 
-    final renderData = _buildAssistantRenderData(
+    final layouts = buildAssistantMessageLayouts(
       cardMessages,
       loading: loading && cardIndex == cards.length - 1,
     );
-    for (final (itemIndex, data) in renderData.indexed) {
+    if (layouts.isEmpty) continue;
+    for (final (index, layout) in layouts.indexed) {
       result.add(
         _MessageListRenderItem(
-          message: data.message,
-          assistantData: data,
+          message: layout.message,
+          layout: layout,
           cardMessages: cardMessages,
-          isAssistantCardStart: itemIndex == 0,
-          isAssistantCardEnd: itemIndex == renderData.length - 1,
-          addCardSpacing: cardIndex > 0 && itemIndex == 0,
+          isCardHeader: index == 0,
+          isCardTail: index == layouts.length - 1,
+          addCardSpacing: cardIndex > 0 && index == 0,
         ),
       );
     }
@@ -230,53 +229,54 @@ class _AssistantMessageListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final renderData = _buildAssistantRenderData([message], loading: loading);
-    if (renderData.isEmpty) return const SizedBox.shrink();
-    return _AssistantMessageCardSegment(
-      data: renderData.first,
-      isCardStart: true,
-      isCardEnd: true,
+    final layouts = buildAssistantMessageLayouts([message], loading: loading);
+    if (layouts.isEmpty) return const SizedBox.shrink();
+    return _AssistantMessageItem(
+      layout: layouts.first,
       cardMessages: [message],
+      isCardHeader: true,
+      isCardTail: true,
       sentinel: sentinel,
     );
   }
 }
 
-class _AssistantMessageCardSegment extends StatelessWidget {
-  final _AssistantMessageRenderData data;
-  final bool isCardStart;
-  final bool isCardEnd;
+/// 助手卡内的一段消息。
+///
+/// 卡片没有底板，因此这里只负责卡片级内边距：上内边距落在整卡第一段、下内边距
+/// 落在整卡最后一段，中间各段之间零间距（段本身仍连续排布，回归见
+/// `test/widget/step_group_card_test.dart`、`test/widget/compaction_card_test.dart`）。
+class _AssistantMessageItem extends StatelessWidget {
+  final AssistantMessageLayout layout;
   final List<MessageEntity> cardMessages;
+  final bool isCardHeader;
+  final bool isCardTail;
   final SentinelEntity sentinel;
 
-  const _AssistantMessageCardSegment({
-    required this.data,
-    required this.isCardStart,
-    required this.isCardEnd,
+  const _AssistantMessageItem({
+    required this.layout,
     required this.cardMessages,
+    required this.isCardHeader,
+    required this.isCardTail,
     required this.sentinel,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: ValueKey(
-        'assistant-card-segment-${data.message.id ?? identityHashCode(data.message)}',
-      ),
-      decoration: _assistantCardDecoration(
-        context,
-        isCardStart: isCardStart,
-        isCardEnd: isCardEnd,
-      ),
+    final message = layout.message;
+    return Padding(
       padding: EdgeInsets.fromLTRB(
         12,
-        isCardStart ? 12 : 0,
+        isCardHeader ? 12 : 0,
         16,
-        isCardEnd ? 16 : 0,
+        isCardTail ? 16 : 0,
       ),
       child: _AssistantMessageSegment(
-        data: data,
-        isCardHeader: isCardStart,
+        key: ValueKey(
+          'assistant-card-segment-${message.id ?? identityHashCode(message)}',
+        ),
+        layout: layout,
+        isCardHeader: isCardHeader,
         cardMessages: cardMessages,
         sentinel: sentinel,
       ),
@@ -284,14 +284,24 @@ class _AssistantMessageCardSegment extends StatelessWidget {
   }
 }
 
+/// 卡内一条消息的呈现。
+///
+/// 因为整张卡是一个列表项，卡内消息数可能很大，而流式期间每来一个 delta 都会
+/// 重建整张卡。这里按"渲染输入清单"记忆化：清单未变时返回同一个 Widget 实例，
+/// Flutter 的 `updateChild` 会直接跳过这棵子树，于是增量只重建真正变化的那条
+/// 消息，长卡的每次 delta 开销仍接近常数。
+///
+/// 清单用值比较而非哈希，避免碰撞造成画面陈旧；漏判只会导致多重建一次，
+/// 不会渲染错内容。
 class _AssistantMessageSegment extends StatelessWidget {
-  final _AssistantMessageRenderData data;
+  final AssistantMessageLayout layout;
   final bool isCardHeader;
   final List<MessageEntity> cardMessages;
   final SentinelEntity sentinel;
 
   const _AssistantMessageSegment({
-    required this.data,
+    super.key,
+    required this.layout,
     required this.isCardHeader,
     required this.cardMessages,
     required this.sentinel,
@@ -299,6 +309,7 @@ class _AssistantMessageSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -306,11 +317,11 @@ class _AssistantMessageSegment extends StatelessWidget {
             ? _buildAssistantAvatar(context, sentinel)
             : const SizedBox(width: 36),
         const SizedBox(width: 12),
-        Expanded(child: _AssistantMessageContent(data: data)),
+        Expanded(child: _AssistantMessageContent(layout: layout)),
         _buildAssistantTrailingSpace(),
       ],
     );
-    final showCopyButton = isCardHeader && !data.waitingForFirstDelta;
+    final showCopyButton = isCardHeader && !layout.waitingForFirstDelta;
     Widget result = showCopyButton
         ? Stack(
             children: [
@@ -318,13 +329,14 @@ class _AssistantMessageSegment extends StatelessWidget {
               Positioned(
                 right: 0,
                 child: CopyButton(
+                  color: colors.textPrimary,
                   onTap: () => _copyAssistantMessages(cardMessages),
                 ),
               ),
             ],
           )
         : row;
-    if (data.addBoundarySpacing) {
+    if (layout.addBoundarySpacing) {
       result = Padding(padding: const EdgeInsets.only(top: 12), child: result);
     }
     return result;
@@ -332,39 +344,35 @@ class _AssistantMessageSegment extends StatelessWidget {
 }
 
 class _AssistantMessageContent extends StatelessWidget {
-  final _AssistantMessageRenderData data;
+  final AssistantMessageLayout layout;
 
-  const _AssistantMessageContent({required this.data});
+  const _AssistantMessageContent({required this.layout});
 
   @override
   Widget build(BuildContext context) {
-    final message = data.message;
+    final message = layout.message;
     if (message.role == 'compaction') {
       final step = CompactionStep.fromMessage(message);
       return CompactionCard(
         key: ValueKey(step.compactionId),
         step: step,
-        isLive: data.isLive,
+        isLive: layout.isLive,
       );
     }
     final children = <Widget>[];
-    if (data.waitingForFirstDelta) {
+    if (layout.waitingForFirstDelta) {
       children.add(const _AssistantMessageWaitingPart());
     }
-    if (message.reasoningContent.isNotEmpty) {
-      children.add(_AssistantMessageListTileThinkingPart(message: message));
-    }
-    if (message.content.isNotEmpty) {
-      children.add(const SizedBox(height: 8));
-      children.add(AthenaMarkdown(message: message));
-    }
-
-    final toolItems = _buildToolItems(data.toolMessages);
-    if (toolItems.isNotEmpty) {
-      children.add(_buildToolPart(toolItems));
-    }
-    if (message.reference.isNotEmpty) {
-      children.add(_AssistantMessageListTileReferencePart(message: message));
+    for (final (index, part) in layout.parts.indexed) {
+      switch (part) {
+        case StepsPart():
+          children.add(_buildStepsPart(message, part, index));
+        case ContentPart():
+          children.add(const SizedBox(height: 8));
+          children.add(AthenaMarkdown(message: message));
+        case ReferencePart():
+          children.add(_AssistantMessageListTileReferencePart(message: message));
+      }
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,159 +380,33 @@ class _AssistantMessageContent extends StatelessWidget {
     );
   }
 
-  List<ToolGroupCardItem> _buildToolItems(List<MessageEntity> toolMessages) {
-    final items = <ToolGroupCardItem>[];
-    for (final message in toolMessages) {
-      final results = <String, String>{};
-      if (message.toolResults.isNotEmpty) {
-        try {
-          final list = jsonDecode(message.toolResults) as List<dynamic>;
-          for (final result in list) {
-            results[result['id'] as String] = result['result'] as String;
-          }
-        } catch (_) {}
-      }
-
-      if (message.toolCalls.isEmpty) continue;
-      try {
-        final calls = jsonDecode(message.toolCalls) as List<dynamic>;
-        for (final call in calls) {
-          final id = call['id'] as String;
-          items.add(
-            ToolGroupCardItem(
-              id: id,
-              toolName: call['name'] as String? ?? '',
-              arguments: call['arguments'] as String? ?? '',
-              result: results[id],
-            ),
-          );
-        }
-      } catch (_) {}
-    }
-    return items;
-  }
-
-  Widget _buildToolPart(List<ToolGroupCardItem> items) {
-    if (items.length == 1) {
-      final item = items.single;
-      return ToolCard(
-        key: ValueKey('tool-${item.id}'),
-        toolName: item.toolName,
-        arguments: item.arguments,
-        result: item.result,
-      );
-    }
-    return ToolGroupCard(
-      key: ValueKey('tool-group-${items.first.id}'),
-      items: items,
-    );
-  }
-}
-
-List<_AssistantMessageRenderData> _buildAssistantRenderData(
-  List<MessageEntity> messages, {
-  required bool loading,
-}) {
-  assert(messages.isNotEmpty);
-  final toolMessages = List.generate(messages.length, (_) => <MessageEntity>[]);
-  int? openToolOwner;
-
-  for (final (index, message) in messages.indexed) {
-    if (message.role == 'compaction') {
-      openToolOwner = null;
-      continue;
-    }
-    final hasTools = message.toolCalls.isNotEmpty;
-    final hasContentBeforeTools =
-        message.reasoningContent.isNotEmpty || message.content.isNotEmpty;
-    final hasContentAfterTools = message.reference.isNotEmpty;
-
-    if (hasTools) {
-      var owner = index;
-      if (!hasContentBeforeTools && openToolOwner != null) {
-        owner = openToolOwner;
-        toolMessages[owner].add(message);
-      } else {
-        toolMessages[index].add(message);
-      }
-      openToolOwner = hasContentAfterTools ? null : owner;
-      continue;
-    }
-
-    // 完全空的占位记录与旧实现一致，不打断跨消息工具组。
-    if (hasContentBeforeTools || hasContentAfterTools) {
-      openToolOwner = null;
-    }
-  }
-
-  final result = <_AssistantMessageRenderData>[];
-  for (final (index, message) in messages.indexed) {
-    if (message.role == 'compaction') {
-      result.add(
-        _AssistantMessageRenderData(
+  /// 步骤数 ≥ 2 收纳为折叠的步骤组；单步保持平铺（推理卡 / 单工具卡）。
+  Widget _buildStepsPart(MessageEntity host, StepsPart part, int index) {
+    final steps = part.steps;
+    if (steps.length == 1) {
+      return switch (steps.single) {
+        ReasoningStep(:final message) => ReasoningCard(
+          key: ValueKey('reasoning-${_identityOf(message)}'),
           message: message,
-          toolMessages: const [],
-          addBoundarySpacing: false,
-          isLive: loading && index == messages.length - 1,
+          thinking: part.live,
         ),
-      );
-      continue;
+        ToolCallStep step => ToolCard(
+          key: ValueKey('tool-${step.id}'),
+          toolName: step.toolName,
+          arguments: step.arguments,
+          result: step.result,
+        ),
+      };
     }
-    final effectiveTools = toolMessages[index];
-    final visible =
-        message.reasoningContent.isNotEmpty ||
-        message.content.isNotEmpty ||
-        effectiveTools.isNotEmpty ||
-        message.reference.isNotEmpty;
-    if (!visible) continue;
-
-    final toolsMergedIntoPrevious =
-        message.toolCalls.isNotEmpty && effectiveTools.isEmpty;
-    final firstPartHasLeadingSpacing =
-        message.reasoningContent.isEmpty &&
-        (message.content.isNotEmpty ||
-            effectiveTools.isNotEmpty ||
-            message.reference.isNotEmpty ||
-            toolsMergedIntoPrevious);
-    result.add(
-      _AssistantMessageRenderData(
-        message: message,
-        toolMessages: effectiveTools,
-        addBoundarySpacing: result.isNotEmpty && !firstPartHasLeadingSpacing,
-      ),
+    return StepGroupCard(
+      key: ValueKey('steps-${_identityOf(host)}-$index'),
+      steps: steps,
+      live: part.live,
     );
   }
 
-  // 首个 delta 到达前保留当前 Assistant 占位卡，并标记为一次性等待态。
-  if (result.isEmpty && loading) {
-    result.add(
-      _AssistantMessageRenderData(
-        message: messages.first,
-        toolMessages: const [],
-        waitingForFirstDelta: true,
-        addBoundarySpacing: false,
-      ),
-    );
-  }
-  return result;
-}
-
-BoxDecoration _assistantCardDecoration(
-  BuildContext context, {
-  required bool isCardStart,
-  required bool isCardEnd,
-}) {
-  final colors = Theme.of(context).extension<AthenaColors>()!;
-  const radius = Radius.circular(24);
-  return BoxDecoration(
-    borderRadius: BorderRadius.only(
-      topLeft: isCardStart ? radius : Radius.zero,
-      topRight: isCardStart ? radius : Radius.zero,
-      bottomLeft: isCardEnd ? radius : Radius.zero,
-      bottomRight: isCardEnd ? radius : Radius.zero,
-    ),
-    color: colors.assistantCardBackground,
-  );
+  static Object _identityOf(MessageEntity message) =>
+      message.id ?? identityHashCode(message);
 }
 
 void _copyAssistantMessages(List<MessageEntity> messages) {
@@ -583,7 +465,8 @@ class _AssistantMessageWaitingPart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final foreground = colors.textSecondaryOnRaised;
+    // 卡面即页面底色，用页面族文字色
+    final foreground = colors.textSecondary;
     return ToolHeaderShimmer(
       active: true,
       child: Row(
@@ -671,100 +554,6 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     );
     var children = [TextSpan(text: '${index + 1}. '), textSpan];
     return Text.rich(TextSpan(children: children));
-  }
-}
-
-/// 推理卡片：标题行 + 可折叠的推理正文。
-///
-/// 展开状态只保留在 Widget 内存态（与 [ToolGroupCard] 一致），不再落库；
-/// 流式增量只替换消息实体，卡片 key 不变，State 得以保留，思考期间也可点击
-/// 展开实时查看推理进度。
-class _AssistantMessageListTileThinkingPart extends StatefulWidget {
-  final MessageEntity message;
-  const _AssistantMessageListTileThinkingPart({required this.message});
-
-  @override
-  State<_AssistantMessageListTileThinkingPart> createState() =>
-      _AssistantMessageListTileThinkingPartState();
-}
-
-class _AssistantMessageListTileThinkingPartState
-    extends State<_AssistantMessageListTileThinkingPart> {
-  bool _expanded = false;
-
-  MessageEntity get message => widget.message;
-
-  @override
-  Widget build(BuildContext context) {
-    if (message.reasoningContent.isEmpty) return const SizedBox();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildTitle(context), _buildContent(context)],
-    );
-  }
-
-  void _toggleExpanded() => setState(() => _expanded = !_expanded);
-
-  Widget _buildContent(BuildContext context) {
-    if (!_expanded) return const SizedBox();
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _toggleExpanded,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-        child: Text(
-          message.reasoningContent,
-          style: GoogleFonts.firaCode(
-            fontSize: 12,
-            color: colors.textSecondaryOnRaised,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTitle(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final foreground = colors.textSecondaryOnRaised;
-    var startedAt = message.reasoningStartedAt;
-    var updatedAt = message.reasoningUpdatedAt;
-    var duration = updatedAt.difference(startedAt).inMilliseconds / 1000;
-    var durationText = 'Thought for ${duration.toStringAsFixed(1)} seconds';
-    var text = message.reasoning ? 'Thinking' : durationText;
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: _toggleExpanded,
-        borderRadius: BorderRadius.circular(8),
-        mouseCursor: SystemMouseCursors.click,
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        child: ToolHeaderShimmer(
-          active: message.reasoning,
-          child: Row(
-            children: [
-              Icon(
-                HugeIcons.strokeRoundedSparkles,
-                size: 15,
-                color: foreground,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.firaCode(fontSize: 12, color: foreground),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

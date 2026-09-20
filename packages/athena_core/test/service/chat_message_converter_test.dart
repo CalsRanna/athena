@@ -301,7 +301,7 @@ void main() {
         expect(result[0], isA<SystemMessage>());
         expect((result[0] as SystemMessage).content, 'you are a bot');
         expect(
-          (result[1] as AssistantMessage).content,
+          (result[1] as UserMessage).text,
           startsWith('Previous conversation summary (historical reference'),
         );
         expect(result[2], isA<UserMessage>());

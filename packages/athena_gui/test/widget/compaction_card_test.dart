@@ -4,7 +4,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/compaction_card.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/tool_card.dart';
-import 'package:athena_gui/component/tool_group_card.dart';
+import 'package:athena_gui/component/step_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,12 +83,15 @@ void main() {
 
     expect(identical(tester.state(compactionTool()), identity), isTrue);
     expect(find.byType(ClipOval), findsOneWidget);
-    final top =
-        tester.widget<Container>(segment(8)).decoration! as BoxDecoration;
-    final bottom =
-        tester.widget<Container>(segment(9)).decoration! as BoxDecoration;
-    expect((top.borderRadius! as BorderRadius).bottomLeft, Radius.zero);
-    expect((bottom.borderRadius! as BorderRadius).topLeft, Radius.zero);
+    // 整卡不画底板：两段自身不是 Container，也没有画背景的卡面容器，
+    // 但两段仍连续排布不留空隙
+    for (final id in [8, 9]) {
+      expect(tester.widget(segment(id)), isNot(isA<Container>()));
+    }
+    expect(
+      find.byKey(const ValueKey('assistant-card-surface-8')),
+      findsNothing,
+    );
     expect(
       tester.getBottomLeft(segment(8)).dy,
       tester.getTopLeft(segment(9)).dy,
@@ -118,7 +121,7 @@ void main() {
       );
 
       expect(find.byType(ToolCard), findsNWidgets(3));
-      expect(find.byType(ToolGroupCard), findsNothing);
+      expect(find.byType(StepGroupCard), findsNothing);
       expect(find.byType(ClipOval), findsOneWidget);
       expect(
         tester.getTopLeft(find.byType(CompactionCard)).dy,

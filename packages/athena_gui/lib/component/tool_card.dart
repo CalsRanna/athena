@@ -67,7 +67,7 @@ class _ToolCardState extends State<ToolCard> {
 
   Widget _buildHeader(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final foreground = colors.textSecondaryOnRaised;
+    final foreground = colors.textSecondary;
 
     return Material(
       color: Colors.transparent,
@@ -142,7 +142,7 @@ class _ToolCardState extends State<ToolCard> {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.firaCode(
             fontSize: _fontSize,
-            color: isError ? colors.statusError : colors.textSecondaryOnRaised,
+            color: isError ? colors.statusError : colors.textSecondary,
             height: 1.6,
           ),
         ),
@@ -213,9 +213,9 @@ class _ToolHeaderShimmerState extends State<ToolHeaderShimmer>
   @override
   Widget build(BuildContext context) {
     if (!widget.active || _animationsDisabled) return widget.child;
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final base = colors.textSecondaryOnRaised.withValues(alpha: 0.45);
-    final highlight = colors.textSecondaryOnRaised.withValues(alpha: 0.95);
+    // srcIn 是乘法蒙版：卡面无底板后改用白色只调透明度，避免把文字乘暗到看不见
+    final base = Colors.white.withValues(alpha: 0.45);
+    final highlight = Colors.white.withValues(alpha: 0.95);
 
     return AnimatedBuilder(
       animation: _controller,

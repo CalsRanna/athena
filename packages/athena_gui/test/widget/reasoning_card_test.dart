@@ -65,7 +65,7 @@ void main() {
     expect(find.byIcon(HugeIcons.strokeRoundedArrowDown01), findsNothing);
 
     final title = tester.widget<Text>(titleFinder);
-    expect(title.style?.color, AthenaColors.dark.textSecondaryOnRaised);
+    expect(title.style?.color, AthenaColors.dark.textSecondary);
 
     final header = tester.widget<InkWell>(
       find.ancestor(of: titleFinder, matching: find.byType(InkWell)),

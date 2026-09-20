@@ -4,7 +4,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/tool_card.dart';
-import 'package:athena_gui/component/tool_group_card.dart';
+import 'package:athena_gui/component/step_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/material.dart';
@@ -150,7 +150,7 @@ void main() {
     );
 
     expect(find.byType(ToolCard), findsOneWidget);
-    expect(find.byType(ToolGroupCard), findsNothing);
+    expect(find.byType(StepGroupCard), findsNothing);
     expect(find.byIcon(HugeIcons.strokeRoundedArrowRight01), findsNothing);
     expect(find.byIcon(HugeIcons.strokeRoundedArrowDown01), findsNothing);
 
@@ -184,7 +184,7 @@ void main() {
     expect(resultContainer.decoration, isNull);
   });
 
-  testWidgets('多条 assistant 消息共用背景但各自渲染推理和工具卡片', (tester) async {
+  testWidgets('多条 assistant 消息共用一张卡背景但各自渲染推理和工具卡片', (tester) async {
     final first = MessageEntity(
       id: 1,
       chatId: 1,
@@ -237,53 +237,33 @@ void main() {
     expect(find.text('Thought for 1.0 seconds'), findsOneWidget);
     expect(find.text('Thought for 2.0 seconds'), findsOneWidget);
     expect(find.byType(ToolCard), findsNWidgets(2));
-    expect(find.byType(ToolGroupCard), findsNothing);
+    expect(find.byType(StepGroupCard), findsNothing);
     expect(find.text('References:'), findsNWidgets(2));
     expect(
       tester.getTopLeft(find.text('first response')).dy,
       lessThan(tester.getTopLeft(find.text('second response')).dy),
     );
 
-    expect(find.byType(DecoratedSliver), findsNothing);
-    final firstBackground = tester.widget<Container>(
-      find.byKey(const ValueKey('assistant-card-segment-1')),
+    // 整卡不再画底板（不画就没有亚像素接缝），但段仍连续排布（段间无空隙）
+    final firstSegment = find.byKey(
+      const ValueKey('assistant-card-segment-1'),
     );
-    final secondBackground = tester.widget<Container>(
-      find.byKey(const ValueKey('assistant-card-segment-2')),
-    );
-    final firstDecoration = firstBackground.decoration as BoxDecoration;
-    final secondDecoration = secondBackground.decoration as BoxDecoration;
-    const radius = Radius.circular(24);
-    expect(
-      firstDecoration.borderRadius,
-      const BorderRadius.only(topLeft: radius, topRight: radius),
+    final secondSegment = find.byKey(
+      const ValueKey('assistant-card-segment-2'),
     );
     expect(
-      secondDecoration.borderRadius,
-      const BorderRadius.only(bottomLeft: radius, bottomRight: radius),
+      find.byKey(const ValueKey('assistant-card-surface-1')),
+      findsNothing,
     );
+    expect(tester.widget(firstSegment), isNot(isA<Container>()));
+    expect(tester.widget(secondSegment), isNot(isA<Container>()));
     expect(
-      firstDecoration.color,
-      AthenaColors.dark.surfaceRaised.withValues(alpha: 0.95),
-    );
-    expect(
-      secondDecoration.color,
-      AthenaColors.dark.surfaceRaised.withValues(alpha: 0.95),
-    );
-    expect(
-      tester
-          .getBottomLeft(find.byKey(const ValueKey('assistant-card-segment-1')))
-          .dy,
-      closeTo(
-        tester
-            .getTopLeft(find.byKey(const ValueKey('assistant-card-segment-2')))
-            .dy,
-        0.01,
-      ),
+      tester.getBottomLeft(firstSegment).dy,
+      closeTo(tester.getTopLeft(secondSegment).dy, 0.01),
     );
   });
 
-  testWidgets('跨原始消息的工具调用仅在无推理间隔时合并', (tester) async {
+  testWidgets('跨原始消息的工具调用与中间推理合并为同一步骤组', (tester) async {
     MessageEntity toolMessage({
       required int id,
       required String callId,
@@ -322,17 +302,35 @@ void main() {
 
     await pumpMessages([first, second]);
 
-    expect(find.byType(ToolGroupCard), findsOneWidget);
+    expect(find.byType(StepGroupCard), findsOneWidget);
     expect(find.byType(ToolCard), findsNothing);
     expect(find.text('2 tool calls'), findsOneWidget);
 
+    // 中间夹推理不再切断：推理作为步骤按时间序并入同一组
     await pumpMessages([
       first,
-      second.copyWith(reasoningContent: 'reasoning between tools'),
+      second.copyWith(
+        reasoningContent: 'reasoning between tools',
+        reasoningStartedAt: DateTime(2026),
+        reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 1)),
+      ),
     ]);
 
-    expect(find.byType(ToolGroupCard), findsNothing);
-    expect(find.byType(ToolCard), findsNWidgets(2));
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.byType(ToolCard), findsNothing);
+    expect(find.text('Thought for 1.0 seconds · 2 tool calls'), findsOneWidget);
+    expect(find.text('reasoning between tools'), findsNothing);
+
+    await tester.tap(find.text('Thought for 1.0 seconds · 2 tool calls'));
+    await tester.pump();
+    // 展开后按时间序：file_read → 推理 → web_search
+    double topOf(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(topOf('file_read'), lessThan(topOf('Thought for 1.0 seconds')));
+    expect(topOf('Thought for 1.0 seconds'), lessThan(topOf('web_search')));
+
+    await tester.tap(find.text('Thought for 1.0 seconds'));
+    await tester.pump();
+    expect(find.text('reasoning between tools'), findsOneWidget);
   });
 
   testWidgets('跨原始消息的文字到工具不叠加消息边界间距', (tester) async {
@@ -440,7 +438,9 @@ void main() {
     expect(find.text('next response'), findsOneWidget);
   });
 
-  testWidgets('长 Assistant 卡片由外层视口懒构建且没有内部滚动', (tester) async {
+  testWidgets('长 Assistant 卡片按消息懒构建：视口外的消息不构建也不布局', (
+    tester,
+  ) async {
     final messages = List.generate(
       100,
       (index) => MessageEntity(
@@ -466,14 +466,17 @@ void main() {
 
     await pumpAssistantMessages(tester, messages, height: 300);
 
-    expect(find.byType(DecoratedSliver), findsNothing);
     expect(find.byType(SliverList), findsOneWidget);
+    // 没有内部滚动：全部消息由外层视口承载
     expect(find.byType(Scrollable), findsOneWidget);
-    expect(find.byType(AthenaMarkdown), findsWidgets);
-    expect(find.byType(AthenaMarkdown).evaluate().length, lessThan(20));
+    // 每条消息一个列表项，视口外的消息不构建、也不参与布局。
+    // 旧版"整卡一个 item"会在这里构建全部 100 条，并让每帧成本随卡内消息数增长。
+    final built = find.byType(AthenaMarkdown).evaluate().length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(messages.length ~/ 4));
   });
 
-  testWidgets('多个工具调用默认折叠在同一张 ToolGroupCard 中', (tester) async {
+  testWidgets('多个工具调用默认折叠在同一张 StepGroupCard 中', (tester) async {
     await pumpMessage(
       tester,
       calls: [
@@ -494,7 +497,7 @@ void main() {
       ],
     );
 
-    expect(find.byType(ToolGroupCard), findsOneWidget);
+    expect(find.byType(StepGroupCard), findsOneWidget);
     expect(find.byType(ToolCard), findsNothing);
     expect(find.text('2 tool calls'), findsOneWidget);
     expect(find.text('done'), findsNothing);
@@ -505,7 +508,7 @@ void main() {
 
     final groupMaterials = tester.widgetList<Material>(
       find.descendant(
-        of: find.byType(ToolGroupCard),
+        of: find.byType(StepGroupCard),
         matching: find.byType(Material),
       ),
     );
@@ -515,11 +518,11 @@ void main() {
     );
 
     final title = tester.widget<Text>(find.text('2 tool calls'));
-    expect(title.style?.color, AthenaColors.dark.textSecondaryOnRaised);
+    expect(title.style?.color, AthenaColors.dark.textSecondary);
 
     final header = tester.widget<InkWell>(
       find.descendant(
-        of: find.byType(ToolGroupCard),
+        of: find.byType(StepGroupCard),
         matching: find.byType(InkWell),
       ),
     );
@@ -619,7 +622,7 @@ void main() {
       ],
     );
 
-    expect(find.byType(ToolGroupCard), findsOneWidget);
+    expect(find.byType(StepGroupCard), findsOneWidget);
     expect(find.byType(ShaderMask), findsOneWidget);
     expect(find.text('done'), findsNothing);
     expect(find.text('running'), findsNothing);
@@ -652,5 +655,215 @@ void main() {
       ),
     );
     expect(header.mouseCursor, SystemMouseCursors.basic);
+  });
+
+  testWidgets('单工具加推理也收纳为步骤组，头部汇总耗时与调用数', (tester) async {
+    final message = MessageEntity(
+      id: 1,
+      chatId: 1,
+      role: 'assistant',
+      reasoningContent: 'why read',
+      reasoningStartedAt: DateTime(2026),
+      reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 3)),
+      toolCalls: jsonEncode([
+        {
+          'id': 'call-1',
+          'name': 'file_read',
+          'arguments': jsonEncode({'path': '/tmp/a.dart'}),
+        },
+      ]),
+      toolResults: jsonEncode([
+        {'id': 'call-1', 'name': 'file_read', 'result': 'file contents'},
+      ]),
+    );
+
+    await pumpAssistantMessages(tester, [message]);
+
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.byType(ToolCard), findsNothing);
+    expect(find.text('Thought for 3.0 seconds · 1 tool call'), findsOneWidget);
+    expect(find.byType(ShaderMask), findsNothing);
+    expect(find.text('file_read'), findsNothing);
+    expect(find.text('why read'), findsNothing);
+
+    await tester.tap(find.text('Thought for 3.0 seconds · 1 tool call'));
+    await tester.pump();
+    expect(find.text('Thought for 3.0 seconds'), findsOneWidget);
+    expect(find.text('file_read'), findsOneWidget);
+    expect(find.text('why read'), findsNothing);
+
+    await tester.tap(find.text('Thought for 3.0 seconds'));
+    await tester.pump();
+    expect(find.text('why read'), findsOneWidget);
+  });
+
+  testWidgets('多轮推理与工具合并为一个步骤组，尾部推理吸入组内，正文单独渲染', (
+    tester,
+  ) async {
+    MessageEntity round({
+      required int id,
+      required String reasoning,
+      String content = '',
+      String? callId,
+    }) {
+      return MessageEntity(
+        id: id,
+        chatId: 1,
+        role: 'assistant',
+        content: content,
+        reasoningContent: reasoning,
+        reasoningStartedAt: DateTime(2026),
+        reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 1)),
+        toolCalls: callId == null
+            ? ''
+            : jsonEncode([
+                {
+                  'id': callId,
+                  'name': 'bash',
+                  'arguments': jsonEncode({'command': 'echo $callId'}),
+                },
+              ]),
+        toolResults: callId == null
+            ? ''
+            : jsonEncode([
+                {'id': callId, 'name': 'bash', 'result': 'ok'},
+              ]),
+      );
+    }
+
+    await pumpAssistantMessages(tester, [
+      round(id: 1, reasoning: 'r1', callId: 'call-1'),
+      round(id: 2, reasoning: 'r2', callId: 'call-2'),
+      round(id: 3, reasoning: 'r3', content: 'final answer'),
+    ]);
+
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.byType(ToolCard), findsNothing);
+    expect(find.text('Thought for 3.0 seconds · 2 tool calls'), findsOneWidget);
+    expect(find.text('final answer'), findsOneWidget);
+    // 组外不再单独出现推理头
+    expect(find.text('Thought for 1.0 seconds'), findsNothing);
+    // 第二条消息的全部内容都并入首条宿主，不再有自己的片段
+    expect(find.byKey(const ValueKey('assistant-card-segment-1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('assistant-card-segment-2')), findsNothing);
+    expect(find.byKey(const ValueKey('assistant-card-segment-3')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byType(StepGroupCard)).dy,
+      lessThan(tester.getTopLeft(find.text('final answer')).dy),
+    );
+
+    await tester.tap(find.text('Thought for 3.0 seconds · 2 tool calls'));
+    await tester.pump();
+    expect(find.text('Thought for 1.0 seconds'), findsNWidgets(3));
+    expect(find.text('echo call-1'), findsOneWidget);
+    expect(find.text('echo call-2'), findsOneWidget);
+  });
+
+  testWidgets('进行中的步骤组头部显示当前步骤并带 shimmer', (tester) async {
+    final thinkingFirst = MessageEntity(
+      id: 1,
+      chatId: 1,
+      role: 'assistant',
+      reasoningContent: 'r1',
+      toolCalls: jsonEncode([
+        {
+          'id': 'call-1',
+          'name': 'bash',
+          'arguments': jsonEncode({'command': 'ls -la'}),
+        },
+      ]),
+    );
+
+    // 最后一步是未返回的工具：头部显示工具名 + 参数预览
+    await pumpAssistantMessages(tester, [thinkingFirst], loading: true);
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.text('bash'), findsOneWidget);
+    expect(find.text('ls -la'), findsOneWidget);
+    expect(find.text('Thinking'), findsNothing);
+    expect(find.byType(ShaderMask), findsOneWidget);
+
+    // 工具返回、下一轮推理开始：头部切换为 Thinking
+    final withResult = thinkingFirst.copyWith(
+      toolResults: jsonEncode([
+        {'id': 'call-1', 'name': 'bash', 'result': 'ok'},
+      ]),
+    );
+    final nextThinking = MessageEntity(
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      reasoningContent: 'r2',
+      reasoning: true,
+    );
+    await pumpAssistantMessages(tester, [withResult, nextThinking], loading: true);
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.text('Thinking'), findsOneWidget);
+    expect(find.text('bash'), findsNothing);
+    expect(find.byType(ShaderMask), findsOneWidget);
+
+    // 正文开始流式输出：序列收口，头部变为汇总、不再 shimmer
+    await pumpAssistantMessages(tester, [
+      withResult,
+      nextThinking.copyWith(content: 'answer…'),
+    ], loading: true);
+    expect(find.textContaining('· 1 tool call'), findsOneWidget);
+    expect(find.text('Thinking'), findsNothing);
+    expect(find.byType(ShaderMask), findsNothing);
+    expect(find.text('answer…'), findsOneWidget);
+  });
+
+  testWidgets('正文与引用切断步骤组，其后的工具另起序列', (tester) async {
+    final first = MessageEntity(
+      id: 1,
+      chatId: 1,
+      role: 'assistant',
+      reasoningContent: 'r1',
+      reasoningStartedAt: DateTime(2026),
+      reasoningUpdatedAt: DateTime(2026).add(const Duration(seconds: 1)),
+      content: 'let me check',
+      toolCalls: jsonEncode([
+        {
+          'id': 'call-1',
+          'name': 'file_read',
+          'arguments': jsonEncode({'path': '/tmp/a.dart'}),
+        },
+      ]),
+      toolResults: jsonEncode([
+        {'id': 'call-1', 'name': 'file_read', 'result': 'a'},
+      ]),
+    );
+    final second = MessageEntity(
+      id: 2,
+      chatId: 1,
+      role: 'assistant',
+      toolCalls: jsonEncode([
+        {
+          'id': 'call-2',
+          'name': 'file_read',
+          'arguments': jsonEncode({'path': '/tmp/b.dart'}),
+        },
+      ]),
+      toolResults: jsonEncode([
+        {'id': 'call-2', 'name': 'file_read', 'result': 'b'},
+      ]),
+    );
+
+    await pumpAssistantMessages(tester, [first, second]);
+
+    // 正文前的单段推理平铺；正文后的两次工具调用跨消息合并为一组
+    expect(find.text('Thought for 1.0 seconds'), findsOneWidget);
+    expect(find.text('let me check'), findsOneWidget);
+    expect(find.byType(StepGroupCard), findsOneWidget);
+    expect(find.text('2 tool calls'), findsOneWidget);
+    expect(find.byType(ToolCard), findsNothing);
+    double topOf(Finder finder) => tester.getTopLeft(finder).dy;
+    expect(
+      topOf(find.text('Thought for 1.0 seconds')),
+      lessThan(topOf(find.text('let me check'))),
+    );
+    expect(
+      topOf(find.text('let me check')),
+      lessThan(topOf(find.byType(StepGroupCard))),
+    );
   });
 }
