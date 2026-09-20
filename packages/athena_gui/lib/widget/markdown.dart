@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:athena_gui/component/button.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,12 +33,12 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.cardHeader,
     );
     var text = Text(
       'Call tool: ${element.textContent}',
-      style: GoogleFonts.firaCode(fontSize: 12, color: colors.textOnCode),
+      style: athenaMono(fontSize: 12, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -81,17 +81,13 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var container = Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AthenaRadius.inline),
         color: colors.codeBackground,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
         element.textContent,
-        style: GoogleFonts.firaCode(
-          fontSize: 12,
-          height: 1.5,
-          color: colors.textOnCode,
-        ),
+        style: athenaMono(fontSize: 12, height: 1.5, color: colors.textOnCode),
       ),
     );
     var widgetSpan = WidgetSpan(
@@ -131,14 +127,11 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
         : rawText;
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
+      border: Border.all(color: colors.border),
       color: colors.codeBackground,
     );
-    var textStyle = GoogleFonts.firaCode(
-      fontSize: 12,
-      height: 1.5,
-      color: colors.textOnCode,
-    );
+    var textStyle = athenaMono(height: 1.5, color: colors.textOnCode);
     var contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
@@ -168,8 +161,8 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
     String displayText,
   ) {
     var borderRadius = BorderRadius.only(
-      topLeft: Radius.circular(8),
-      topRight: Radius.circular(8),
+      topLeft: Radius.circular(AthenaRadius.container),
+      topRight: Radius.circular(AthenaRadius.container),
     );
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
@@ -177,10 +170,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = GoogleFonts.firaCode(
-      fontSize: 12,
-      color: colors.textOnCode,
-    );
+    var textStyle = athenaMono(fontSize: 12, color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -235,7 +225,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: colors.cardHeader,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AthenaRadius.inline),
             ),
             child: Icon(
               Icons.arrow_upward_rounded,
@@ -279,10 +269,11 @@ class _FootnotesMarkdownBody extends MarkdownBody {
       key: const ValueKey('markdown-footnotes'),
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
-      // 与代码块同壳：同底、同圆角、无描边——描边会破坏柔和卡片的观感
+      // 与代码块同壳：同底、同边框、同圆角
       decoration: BoxDecoration(
         color: colors.codeBackground,
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,10 +285,7 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: GoogleFonts.firaCode(
-                fontSize: 12,
-                color: colors.textOnCode,
-              ),
+              style: athenaMono(fontSize: 12, color: colors.textOnCode),
             ),
           ),
           Padding(
@@ -346,7 +334,8 @@ class _FlutterMarkdown extends StatelessWidget {
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
     // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色
-    var body = base.p?.copyWith(color: colors.textPrimary, height: 1.6);
+    // 行高取 Codex 的 --leading-relaxed: 1.625
+    var body = base.p?.copyWith(color: colors.textPrimary, height: 1.625);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
     var heading = body?.copyWith(fontWeight: FontWeight.bold);
@@ -382,7 +371,8 @@ class _FlutterMarkdown extends StatelessWidget {
       // cardColor，保持代码块为局部浅底（自带深色文字，自成对比）
       codeblockDecoration: BoxDecoration(
         color: colors.codeBackground,
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       codeblockPadding: const EdgeInsets.all(8),
     );
@@ -448,11 +438,11 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.codeBackground,
-      shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(AthenaRadius.inline),
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnCode),
+      style: athenaMono(fontSize: 10, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -496,11 +486,11 @@ class _SupBuilder extends MarkdownElementBuilder {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.codeBackground,
-      shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(AthenaRadius.inline),
     );
     var text = Text(
       element.textContent,
-      style: GoogleFonts.firaCode(fontSize: 10, color: colors.textOnCode),
+      style: athenaMono(fontSize: 10, color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,

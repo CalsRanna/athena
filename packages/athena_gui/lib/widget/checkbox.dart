@@ -1,7 +1,9 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
+/// Codex 风格勾选框：小圆角方块，选中为反色实心块。
 class AthenaCheckbox extends StatefulWidget {
   final void Function(bool)? onChanged;
   final bool value;
@@ -50,14 +52,16 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var border = Border.all(
-      color: widget.value ? colors.sage : colors.checkboxOff,
-      width: 2,
+      color: widget.value ? colors.surfaceRaised : colors.checkboxOff,
     );
-    var color = widget.value ? colors.sage : Colors.transparent;
+    // 同 menu.dart：不能从 Colors.transparent 插值，否则取消勾选时闪一下深色
+    var color = widget.value
+        ? colors.surfaceRaised
+        : colors.surfaceRaised.withValues(alpha: 0);
     var boxDecoration = BoxDecoration(
       border: border,
-      borderRadius: BorderRadius.circular(4),
-      color: color, // Change color when checked
+      borderRadius: BorderRadius.circular(AthenaRadius.inline),
+      color: color,
     );
     var animatedContainer = AnimatedContainer(
       decoration: boxDecoration,
@@ -78,6 +82,11 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   }
 
   Widget _buildCheckIcon() {
-    return Icon(HugeIcons.strokeRoundedTick02, color: Colors.white, size: 12);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return Icon(
+      HugeIcons.strokeRoundedTick02,
+      color: colors.iconOnRaised,
+      size: 11,
+    );
   }
 }

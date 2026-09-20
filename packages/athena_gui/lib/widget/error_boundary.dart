@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 
@@ -41,12 +42,18 @@ class _AthenaErrorBoundaryState extends State<AthenaErrorBoundary> {
             const SizedBox(height: 16),
             Text(
               'Something went wrong',
-              style: TextStyle(color: colors.textPrimary, fontSize: 18),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: AthenaFontSize.title,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               widget.message ?? 'An unexpected error occurred',
-              style: TextStyle(color: colors.textSecondary, fontSize: 14),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: AthenaFontSize.body,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -56,10 +63,7 @@ class _AthenaErrorBoundaryState extends State<AthenaErrorBoundary> {
                   setState(() => _error = null);
                   widget.onRetry?.call();
                 },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Text('Retry'),
-                ),
+                child: const Text('Retry'),
               ),
           ],
         ),

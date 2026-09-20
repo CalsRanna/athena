@@ -2,9 +2,9 @@ import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 const permissionCardMaxHeightFraction = 0.5;
 
@@ -44,8 +44,9 @@ class PermissionApprovalCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colors.surfaceRaised.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(24),
+          color: colors.surfaceMobile,
+          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
         padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
         child: Row(
@@ -81,8 +82,8 @@ class PermissionApprovalCard extends StatelessWidget {
         shape: BoxShape.circle,
         color: colors.avatarBackground,
       ),
-      height: 36,
-      width: 36,
+      height: 28,
+      width: 28,
       child: Icon(
         ToolCard.toolIcon(request.toolName),
         color: colors.textPrimary,
@@ -98,10 +99,10 @@ class PermissionApprovalCard extends StatelessWidget {
       children: [
         Text(
           request.toolName,
-          style: GoogleFonts.firaCode(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: colors.textOnRaised,
+          style: TextStyle(
+            fontSize: AthenaFontSize.label,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
           ),
         ),
         SizedBox(width: 8),
@@ -110,10 +111,7 @@ class PermissionApprovalCard extends StatelessWidget {
             ToolCard.argPreview(request.toolName, request.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.firaCode(
-              fontSize: 12,
-              color: colors.textOnRaised,
-            ),
+            style: athenaMono(color: colors.textPrimary),
           ),
         ),
       ],
@@ -128,9 +126,9 @@ class PermissionApprovalCard extends StatelessWidget {
         primary: false,
         child: Text(
           formatToolArgsForApproval(request.toolName, request.arguments),
-          style: GoogleFonts.firaCode(
+          style: athenaMono(
             fontSize: 12,
-            color: colors.textOnRaised,
+            color: colors.textPrimary,
             height: 1.6,
           ),
         ),
@@ -205,15 +203,17 @@ class _CardPrimaryButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Container(
           decoration: ShapeDecoration(
-            color: colors.cardPrimaryBackground,
-            shape: StadiumBorder(),
+            color: colors.surfaceRaised,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
+            ),
           ),
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: colors.cardPrimaryText,
+              color: colors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -240,14 +240,17 @@ class _CardSecondaryButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Container(
           decoration: ShapeDecoration(
-            shape: StadiumBorder(side: BorderSide(color: colors.border)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
+              side: BorderSide(color: colors.border),
+            ),
           ),
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: colors.textOnRaised,
+              color: colors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w400,
             ),

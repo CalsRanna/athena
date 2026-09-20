@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -50,9 +51,7 @@ class _DesktopSettingDefaultModelPageState
   Widget _buildDefaultModelListView(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var models = ['Agent', 'Topic Naming', 'Sentinel Metadata Generation'];
-    var borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-    );
+    var borderSide = BorderSide(color: colors.border);
     Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, index) => _buildDefaultModelTile(models, index),
@@ -173,7 +172,7 @@ class _ModelDropdown extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.inputBackground.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
     var icon = Icon(
       HugeIcons.strokeRoundedFilterHorizontal,

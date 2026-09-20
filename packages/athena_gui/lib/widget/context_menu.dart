@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -37,7 +38,8 @@ class DesktopContextMenu extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.menu),
+      boxShadow: AthenaShadow.overlay(colors.shadow),
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +47,7 @@ class DesktopContextMenu extends StatelessWidget {
     );
     var container = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4),
       child: column,
     );
     return DesktopContextMenuConfiguration(width: width, child: container);
@@ -102,14 +104,14 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: hover && widget.enabled ? colors.surfaceButtonSecondary : null,
+      borderRadius: BorderRadius.circular(AthenaRadius.row),
+      color: hover && widget.enabled ? colors.surfaceHover : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       width: width,
       child: Text(widget.text, style: textStyle),
     );
@@ -170,13 +172,13 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: hover ? colors.surfaceButtonSecondary : null,
+      borderRadius: BorderRadius.circular(AthenaRadius.row),
+      color: hover ? colors.surfaceHover : null,
     );
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(widget.text, style: textStyle),
     );
     var mouseRegion = MouseRegion(
@@ -243,8 +245,8 @@ class _DesktopContextMenuTileWithSubmenuState
       fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: hover && widget.enabled ? colors.surfaceButtonSecondary : null,
+      borderRadius: BorderRadius.circular(AthenaRadius.row),
+      color: hover && widget.enabled ? colors.surfaceHover : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     var row = Row(
@@ -257,7 +259,7 @@ class _DesktopContextMenuTileWithSubmenuState
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       width: width,
       child: row,
     );
@@ -305,7 +307,8 @@ class _DesktopContextMenuTileWithSubmenuState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.menu),
+      boxShadow: AthenaShadow.overlay(colors.shadow),
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,7 +317,7 @@ class _DesktopContextMenuTileWithSubmenuState
     );
     var container = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4),
       width: 168,
       child: column,
     );

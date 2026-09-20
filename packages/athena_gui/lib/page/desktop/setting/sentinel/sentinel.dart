@@ -235,9 +235,7 @@ class _DesktopSettingSentinelPageState
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var sentinels = viewModel.sentinels.value;
-      var borderSide = BorderSide(
-        color: colors.borderFaint.withValues(alpha: 0.2),
-      );
+      var borderSide = BorderSide(color: colors.border);
       Widget child = ListView.separated(
         padding: const EdgeInsets.all(12),
         itemBuilder: (context, index) =>
@@ -269,11 +267,11 @@ class _DesktopSettingSentinelPageState
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var sentinel = sentinels[index];
-    // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
-    // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
+    // 尾随图标跟随行文字色:选中行提亮到 textPrimary,未选中用 iconSecondary。
+    // 选中行底色是 surfaceSelected(深色下比画布亮一档),两者都有足够对比。
     final selected =
         this.index == index || _selection.selectedIds.contains(sentinel.id);
-    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
+    var trailingColor = selected ? colors.textPrimary : colors.iconSecondary;
     var trailing = sentinel.isPreset
         ? Icon(
             HugeIcons.strokeRoundedCircleLock01,

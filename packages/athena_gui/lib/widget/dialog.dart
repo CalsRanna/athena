@@ -4,6 +4,7 @@ import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
@@ -88,7 +89,7 @@ class AthenaDialog {
     var content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(style.icon, color: style.accentColor, size: 18),
+        Icon(style.icon, color: style.accentColor, size: 16),
         const SizedBox(width: 8),
         Flexible(child: Text(message, style: textStyle)),
       ],
@@ -176,11 +177,11 @@ class _AthenaMessageVisualStyle {
   ) {
     return switch (type) {
       AthenaMessageType.info => _AthenaMessageVisualStyle(
-        accentColor: colors.border,
+        accentColor: colors.textSecondary,
         icon: HugeIcons.strokeRoundedInformationCircle,
       ),
       AthenaMessageType.success => _AthenaMessageVisualStyle(
-        accentColor: colors.sage,
+        accentColor: colors.statusSuccess,
         icon: HugeIcons.strokeRoundedTick02,
       ),
       AthenaMessageType.warning => _AthenaMessageVisualStyle(
@@ -195,6 +196,7 @@ class _AthenaMessageVisualStyle {
   }
 }
 
+/// 移动端底部 sheet 内的确认面板：主/次按钮都是全宽矩形。
 class _ConfirmDialog extends StatelessWidget {
   final String text;
   const _ConfirmDialog({required this.text});
@@ -204,19 +206,19 @@ class _ConfirmDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: FontWeight.w500,
+      fontSize: AthenaFontSize.title,
+      fontWeight: FontWeight.w600,
     );
     var children = [
       Text(text, style: textStyle),
-      const SizedBox(height: 24),
+      const SizedBox(height: AthenaSpace.xxl),
       _buildConfirmButton(context),
-      const SizedBox(height: 12),
+      const SizedBox(height: AthenaSpace.sm),
       _buildCancelButton(context),
       SizedBox(height: MediaQuery.paddingOf(context).bottom),
     ];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
@@ -230,21 +232,23 @@ class _ConfirmDialog extends StatelessWidget {
   }
 
   Widget _buildCancelButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var shapeDecoration = ShapeDecoration(
-      color: colors.surfaceButtonSecondary,
-      shape: StadiumBorder(),
-    );
-    var textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var container = Container(
       alignment: Alignment.center,
-      decoration: shapeDecoration,
-      padding: EdgeInsets.all(16),
-      child: Text('Cancel', style: textStyle),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Theme.of(context).extension<AthenaColors>()!.border,
+        ),
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Text(
+        'Cancel',
+        style: TextStyle(
+          color: Theme.of(context).extension<AthenaColors>()!.textPrimary,
+          fontSize: AthenaFontSize.label,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -255,28 +259,24 @@ class _ConfirmDialog extends StatelessWidget {
 
   Widget _buildConfirmButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxShadow = BoxShadow(
-      blurRadius: 16,
-      color: colors.ctaGlow.withValues(alpha: 0.5),
-    );
-    var shapeDecoration = ShapeDecoration(
-      shape: StadiumBorder(),
-      color: colors.surfaceRaised,
-      shadows: [boxShadow],
-    );
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => confirmDialog(context),
       child: Container(
         alignment: Alignment.center,
-        decoration: shapeDecoration,
-        padding: EdgeInsets.all(16),
-        child: Text('Confirm', style: textStyle),
+        decoration: BoxDecoration(
+          color: colors.surfaceRaised,
+          borderRadius: BorderRadius.circular(AthenaRadius.control),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Text(
+          'Confirm',
+          style: TextStyle(
+            color: colors.textOnRaised,
+            fontSize: AthenaFontSize.label,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -293,19 +293,19 @@ class _DesktopConfirmDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
+      fontSize: AthenaFontSize.title,
+      fontWeight: FontWeight.w600,
     );
     var messageStyle = TextStyle(
-      color: colors.textPrimary.withValues(alpha: 0.8),
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.body,
+      height: 1.6,
     );
     var children = [
       Text(title, style: titleStyle),
-      const SizedBox(height: 12),
+      const SizedBox(height: AthenaSpace.md),
       Text(message, style: messageStyle),
-      const SizedBox(height: 24),
+      const SizedBox(height: AthenaSpace.xxl),
       _buildButtons(context),
     ];
     var column = Column(
@@ -313,30 +313,35 @@ class _DesktopConfirmDialog extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
-    var boxDecoration = BoxDecoration(
-      color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
+        decoration: BoxDecoration(
+          color: colors.surfaceMobile,
+          borderRadius: BorderRadius.circular(AthenaRadius.panel),
+          boxShadow: AthenaShadow.overlay(colors.shadow),
+        ),
+        padding: const EdgeInsets.all(AthenaSpace.xxl),
+        child: column,
+      ),
     );
-    var container = Container(
-      constraints: BoxConstraints(minWidth: 320, maxWidth: 520),
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(32),
-      child: column,
-    );
-    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   Widget _buildButtons(BuildContext context) {
-    var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
     var cancelButton = AthenaSecondaryButton(
       onTap: () => Navigator.of(context).maybePop(false),
-      child: Padding(padding: edgeInsets, child: Text('Cancel')),
+      child: const Text('Cancel'),
     );
     var confirmButton = AthenaPrimaryButton(
       onTap: () => Navigator.of(context).maybePop(true),
-      child: Padding(padding: edgeInsets, child: Text('Confirm')),
+      child: const Text('Confirm'),
     );
-    var children = [cancelButton, const SizedBox(width: 12), confirmButton];
+    var children = [
+      cancelButton,
+      const SizedBox(width: AthenaSpace.sm),
+      confirmButton,
+    ];
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 }
@@ -371,14 +376,14 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
+      fontSize: AthenaFontSize.title,
+      fontWeight: FontWeight.w600,
     );
     var children = [
       Text(widget.title, style: titleStyle),
-      const SizedBox(height: 16),
+      const SizedBox(height: AthenaSpace.lg),
       AthenaInput(controller: controller, autoFocus: true),
-      const SizedBox(height: 24),
+      const SizedBox(height: AthenaSpace.xxl),
       _buildButtons(context),
     ];
     var column = Column(
@@ -386,30 +391,35 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
       mainAxisSize: MainAxisSize.min,
       children: children,
     );
-    var boxDecoration = BoxDecoration(
-      color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
+        decoration: BoxDecoration(
+          color: colors.surfaceMobile,
+          borderRadius: BorderRadius.circular(AthenaRadius.panel),
+          boxShadow: AthenaShadow.overlay(colors.shadow),
+        ),
+        padding: const EdgeInsets.all(AthenaSpace.xxl),
+        child: column,
+      ),
     );
-    var container = Container(
-      constraints: BoxConstraints(minWidth: 320, maxWidth: 520),
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(32),
-      child: column,
-    );
-    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   Widget _buildButtons(BuildContext context) {
-    var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
     var cancelButton = AthenaSecondaryButton(
       onTap: () => Navigator.of(context).maybePop(null),
-      child: Padding(padding: edgeInsets, child: Text('Cancel')),
+      child: const Text('Cancel'),
     );
     var confirmButton = AthenaPrimaryButton(
       onTap: _submit,
-      child: Padding(padding: edgeInsets, child: Text('Confirm')),
+      child: const Text('Confirm'),
     );
-    var children = [cancelButton, const SizedBox(width: 12), confirmButton];
+    var children = [
+      cancelButton,
+      const SizedBox(width: AthenaSpace.sm),
+      confirmButton,
+    ];
     return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 
@@ -448,42 +458,43 @@ class _InputDialogState extends State<_InputDialog> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
+      fontSize: AthenaFontSize.title,
+      fontWeight: FontWeight.w600,
     );
     var input = AthenaInput(controller: controller, autoFocus: true);
     var children = [
       Text(widget.title, style: titleStyle),
-      const SizedBox(height: 16),
+      const SizedBox(height: AthenaSpace.lg),
       input,
-      const SizedBox(height: 24),
+      const SizedBox(height: AthenaSpace.xxl),
       _buildConfirmButton(context),
-      const SizedBox(height: 12),
+      const SizedBox(height: AthenaSpace.sm),
       _buildCancelButton(context),
       SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
     ];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 
   Widget _buildCancelButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var shapeDecoration = ShapeDecoration(
-      color: colors.surfaceButtonSecondary,
-      shape: StadiumBorder(),
-    );
-    var textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var container = Container(
       alignment: Alignment.center,
-      decoration: shapeDecoration,
-      padding: EdgeInsets.all(16),
-      child: Text('Cancel', style: textStyle),
+      decoration: BoxDecoration(
+        border: Border.all(color: colors.border),
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Text(
+        'Cancel',
+        style: TextStyle(
+          color: colors.textPrimary,
+          fontSize: AthenaFontSize.label,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -494,28 +505,24 @@ class _InputDialogState extends State<_InputDialog> {
 
   Widget _buildConfirmButton(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxShadow = BoxShadow(
-      blurRadius: 16,
-      color: colors.ctaGlow.withValues(alpha: 0.5),
-    );
-    var shapeDecoration = ShapeDecoration(
-      shape: StadiumBorder(),
-      color: colors.surfaceRaised,
-      shadows: [boxShadow],
-    );
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.of(context).maybePop(controller.text.trim()),
       child: Container(
         alignment: Alignment.center,
-        decoration: shapeDecoration,
-        padding: EdgeInsets.all(16),
-        child: Text('Confirm', style: textStyle),
+        decoration: BoxDecoration(
+          color: colors.surfaceRaised,
+          borderRadius: BorderRadius.circular(AthenaRadius.control),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Text(
+          'Confirm',
+          style: TextStyle(
+            color: colors.textOnRaised,
+            fontSize: AthenaFontSize.label,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -528,25 +535,21 @@ class _DesktopLoadingDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final indicator = SizedBox(
-      height: 20,
-      width: 20,
+      height: 16,
+      width: 16,
       child: CircularProgressIndicator(
         color: colors.textPrimary,
         strokeWidth: 2,
       ),
     );
     final textStyle = TextStyle(
-      color: colors.textPrimary.withValues(alpha: 0.8),
+      color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
-    );
-    final borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
+      fontSize: AthenaFontSize.label,
     );
     final children = [
       indicator,
-      const SizedBox(width: 12),
+      const SizedBox(width: 10),
       Text('Loading...', style: textStyle),
     ];
     final row = Row(
@@ -557,10 +560,10 @@ class _DesktopLoadingDialog extends StatelessWidget {
     final container = Container(
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
-        border: Border.fromBorderSide(borderSide),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AthenaRadius.panel),
+        boxShadow: AthenaShadow.overlay(colors.shadow),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: row,
     );
     return Material(
@@ -585,27 +588,23 @@ class _DesktopMessageOverlay extends StatelessWidget {
     final textStyle = TextStyle(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
+      fontSize: AthenaFontSize.label,
       height: 1.5,
-    );
-    final borderSide = BorderSide(
-      color: style.accentColor.withValues(alpha: 0.35),
     );
     final screenWidth = MediaQuery.sizeOf(context).width;
     final children = [
-      Icon(style.icon, color: style.accentColor, size: 18),
-      const SizedBox(width: 10),
+      Icon(style.icon, color: style.accentColor, size: 16),
+      const SizedBox(width: 8),
       Flexible(child: Text(message, style: textStyle)),
     ];
     final container = Container(
       constraints: BoxConstraints(maxWidth: screenWidth - 32),
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
-        border: Border.fromBorderSide(borderSide),
-        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: style.accentColor.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(mainAxisSize: MainAxisSize.min, children: children),
     );
     return IgnorePointer(

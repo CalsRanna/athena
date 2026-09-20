@@ -103,11 +103,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
 
   Widget _buildSeparator(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var divider = Divider(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-      height: 1,
-      thickness: 1,
-    );
+    var divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: divider,

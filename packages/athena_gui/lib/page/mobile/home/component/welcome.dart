@@ -70,9 +70,9 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   Widget _buildText(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final welcomeTextStyle = TextStyle(
-      color: colors.sage,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
+      color: colors.textPrimary,
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
     );
     var textChildren = [
       TextSpan(text: 'Good ${getPeriod()}!', style: welcomeTextStyle),

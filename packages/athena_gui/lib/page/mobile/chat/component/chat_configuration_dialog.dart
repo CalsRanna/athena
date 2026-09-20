@@ -73,14 +73,14 @@ class _MobileConfigurationDialogState
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       return Slider(
-        activeColor: colors.sage,
+        activeColor: colors.textPrimary,
         inactiveColor: colors.borderStrong,
         label: _temperature.value.toStringAsFixed(1),
         max: 2,
         onChanged: (v) => _temperature.value = v,
         onChangeEnd: _storeTemperature,
         padding: EdgeInsets.symmetric(horizontal: 4),
-        thumbColor: colors.sage,
+        thumbColor: colors.textPrimary,
         value: _temperature.value,
       );
     });

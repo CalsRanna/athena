@@ -1,284 +1,292 @@
 import 'package:flutter/material.dart';
 
-/// 外观模式：深色（默认）/ 浅色。
-enum AthenaColorMode { dark, light }
+/// 外观模式：浅色（默认，对齐 Codex 原生观感）/ 深色。
+enum AthenaColorMode { light, dark }
 
-/// Athena 品牌语义色（挂载于 ThemeData.extensions）。
+/// Athena 语义色（挂载于 ThemeData.extensions）。
 ///
-/// 字段按"语义角色"划分（一个角色一个字段，避免一个色值多角色冲突），
-/// 深浅两套值遵循 DESIGN.md 的 Token Governance：
-/// 浅色值从现有 token 按角色推导（灰阶镜像 / 透明度变体），不新增品牌色。
+/// 取值来自 **Claude 桌面端 `app.asar` 里的 `--cds-*` 设计系统**
+/// （`MainWindowPage-*.css`），并与窗口截图采样交叉验证。
 ///
-/// 深色主题中的"浅色表面"（白色按钮、代码块等局部浅底）在浅色主题下保持浅色，
-/// 因此部分字段（surfaceRaised / textOnRaised / iconOnRaised /
-/// cardPrimaryBackground / cardPrimaryText）在两种模式下同值。
+/// Claude 的色板是一套**偏暖的中性灰**（`--cds-gray-0..900`），和 Codex 的
+/// 中性灰明显不同：白端带黄绿感（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。
+///
+/// | 角色 | Claude 变量 | 值 |
+/// |------|------------|-----|
+/// | 画布 | `--cds-gray-10`（实测采样一致） | `#FCFCFB` |
+/// | 侧栏 / 面板 | 实测采样 | `#FBFBF9`（与画布几乎无差） |
+/// | 行 hover | 实测采样 | `#F0EFEC` |
+/// | 行选中 | `--cds-gray-60` | `#EDECE9` |
+/// | 弹出层 | `--cds-surface-2` = `gray-0` | `#FFFFFF` |
+/// | 分隔线 / 描边 | `--cds-gray-100` | `#E1E0D9` |
+/// | 主文字 | `--cds-gray-900` | `#0B0B0B` |
+/// | 次级文字 | `--cds-gray-500` | `#6D6B67` |
+/// | 弱文字 | `--cds-gray-400` | `#898781` |
+/// | 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
+/// | 成功 / 警告 / 错误 | `green-400` / `orange-350` / `red-450` | `#0CA30C` / `#EB6834` / `#D03B3B` |
+///
+/// Claude 也用"基色 + alpha"派生：`--cds-alpha-0..9` 是 `neutral-900` 的
+/// 0/5/10/20/35/50/60/70/85/95%。本仓对应的 hover / 选中底直接取灰阶档位。
 @immutable
+
+
 class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 表面 ----
-  final Color surface; // 桌面主工作区背景
-  final Color surfaceMobile; // 移动端主背景 / 对话框 / sheet 背景
-  final Color surfaceDeep; // 深层容器 / 反白底 / Tag 未选中内层
-  final Color surfaceRaised; // 白色按钮底 / 局部浅底（两种模式同值）
+  final Color surface; // 主画布
+  final Color surfacePanel; // 侧栏 / 顶栏 / 次级面板
+  final Color surfaceMobile; // 对话框 / sheet / 弹出层
+  final Color surfaceDeep; // 深层容器 / 未选中 chip 内层
+  final Color surfaceRaised; // 主操作实心底（浅色=近黑，深色=白）
   final Color surfaceButtonSecondary; // 次级按钮底 / 中性色块
+  final Color surfaceHover; // hover 态底
+  final Color surfaceSelected; // 选中态底
 
   // ---- 文字 ----
   final Color textPrimary; // 主文字 / 关键图标
-  final Color textInput; // 输入框文字 / 亮色内容文本
+  final Color textInput; // 输入框文字
   final Color textSecondary; // 次级辅助文字
-  final Color textWeak; // 弱文字 / 时间戳
-  final Color textOnRaised; // 白卡 / 白按钮上的深色文字（两种模式同值）
-  final Color textSecondaryOnRaised; // 白卡上的次级辅助文字
-  final Color textOnCode; // 代码类容器（代码块 / 行内代码 / 脚注块）上的正文与代码文字
+  final Color textWeak; // 最弱文字 / 占位
+  final Color textRowLabel; // 列表行标签的静止色（Claude 用 gray-600，比次级文字更深）
+  final Color textOnRaised; // 主操作实心底上的文字
+  final Color textSecondaryOnRaised; // 主操作实心底上的次级文字
+  final Color textOnCode; // 代码类容器上的正文与代码文字
   final Color textSecondaryOnCode; // 代码类容器上的次级文字与图标
-  final Color textSelected; // 选中态文字（Tag 选中时反转）
 
   // ---- 边框 / 分隔 ----
-  final Color border; // 占位符 / 边框 / 弱图标
-  final Color borderStrong; // 输入框描边 / 较强轮廓线
-  final Color borderFaint; // 模块分割线 / 淡边框（使用点带 alpha）
+  final Color border; // 分隔线 / 容器描边
+  final Color borderStrong; // 聚焦 / 激活边框
   final Color divider; // 分隔线
 
   // ---- 输入 ----
-  final Color inputBackground; // 输入框半透明背景基色（使用点带 alpha）
+  final Color inputBackground; // 输入框底色
 
-  // ---- 品牌 ----
-  final Color teal; // Athena Teal 品牌强调
-  final Color sage; // 开关开启底色
-  final Color slate; // 开关关闭底色
-  final Color ctaGlow; // CTA 光晕阴影基色（使用点带 alpha）
+  // ---- 强调 ----
+  final Color accent; // 全局唯一彩色强调（主要动作 / 语音 / 链接同源）
 
   // ---- 状态 ----
-  final Color statusWarning; // 警告图标 / 边框
-  final Color statusError; // 错误图标 / 边框
+  final Color statusSuccess; // 成功 / 开关开启
+  final Color statusWarning; // 警告
+  final Color statusError; // 错误
 
-  // ---- 组件 ----
-  final Color tagBorderStart; // Tag 渐变边框起点（使用点带 alpha）
-  final Color tagSelectedBackground; // Tag 选中背景
-  final Color cardHeader; // 卡片头部条底色（markdown 代码块语言条 / 表头 / 脚注头）
-  final Color avatarBackground; // 头像圆底（两种模式下均需与卡底区分）
-  final Color codeBackground; // 代码块 / 浅色容器填充
-  final Color checkboxOff; // Checkbox 未选中勾色
+  // ---- 控件 ----
+  final Color switchKnob; // 开关滑块
+  final Color switchTrackOff; // 开关关闭轨道
+  final Color checkboxOff; // Checkbox 未选中描边
   final Color iconSecondary; // 次级图标
-  final Color iconOnRaised; // 白底上的图标（两种模式同值）
-  final Color cardPrimaryBackground; // 白卡上的主按钮底（两种模式同值）
-  final Color cardPrimaryText; // 白卡主按钮文字（两种模式同值）
+  final Color iconOnRaised; // 主操作实心底上的图标
+
+  // ---- 阴影 ----
+  final Color shadow; // 柔阴影基色（见 AthenaShadow）
+
+  // ---- 代码 / 内容容器 ----
+  final Color cardHeader; // 代码块语言条 / 表头 / 脚注头
+  final Color codeBackground; // 代码块 / 引用块 / 工具输出底
+  final Color avatarBackground; // 头像圆底
+
+  // ---- Markdown ----
   final Color markdownLink; // Markdown 链接文字
-  final Color markdownStrikethrough; // Markdown 删除线文字与装饰线
+  final Color markdownStrikethrough; // Markdown 删除线
   final Color markdownMath; // Markdown 数学公式
 
   const AthenaColors({
     required this.surface,
+    required this.surfacePanel,
     required this.surfaceMobile,
     required this.surfaceDeep,
     required this.surfaceRaised,
     required this.surfaceButtonSecondary,
+    required this.surfaceHover,
+    required this.surfaceSelected,
     required this.textPrimary,
     required this.textInput,
     required this.textSecondary,
     required this.textWeak,
+    required this.textRowLabel,
     required this.textOnRaised,
     required this.textSecondaryOnRaised,
     required this.textOnCode,
     required this.textSecondaryOnCode,
-    required this.textSelected,
     required this.border,
     required this.borderStrong,
-    required this.borderFaint,
     required this.divider,
     required this.inputBackground,
-    required this.teal,
-    required this.sage,
-    required this.slate,
-    required this.ctaGlow,
+    required this.accent,
+    required this.statusSuccess,
     required this.statusWarning,
     required this.statusError,
-    required this.tagBorderStart,
-    required this.tagSelectedBackground,
-    required this.cardHeader,
-    required this.avatarBackground,
-    required this.codeBackground,
+    required this.switchKnob,
+    required this.switchTrackOff,
     required this.checkboxOff,
     required this.iconSecondary,
     required this.iconOnRaised,
-    required this.cardPrimaryBackground,
-    required this.cardPrimaryText,
+    required this.shadow,
+    required this.cardHeader,
+    required this.codeBackground,
+    required this.avatarBackground,
     required this.markdownLink,
     required this.markdownStrikethrough,
     required this.markdownMath,
   });
 
-  /// 深色（默认）。
-  ///
-  /// 代码类容器（代码块 / 脚注块 / 表格头 / 工具输出）取比 [surface]
-  /// 更深的底，配 [textOnCode] 的浅灰文字：深色页面上一整块白底会抢走
-  /// 全部注意力，且与「助手消息不画底板」的正文格调割裂。
-  static const dark = AthenaColors(
-    surface: Color(0xFF282828),
-    surfaceMobile: Color(0xFF282F32),
-    surfaceDeep: Color(0xFF161616),
-    surfaceRaised: Color(0xFFFFFFFF),
-    surfaceButtonSecondary: Color(0xFF616161),
-    textPrimary: Color(0xFFFFFFFF),
-    textInput: Color(0xFFF5F5F5),
-    textSecondary: Color(0xFF9E9E9E),
-    textWeak: Color(0xFFCACACA),
-    textOnRaised: Color(0xFF161616),
-    textSecondaryOnRaised: Color(0xFF616161),
-    textOnCode: Color(0xFFD6D6D6),
-    textSecondaryOnCode: Color(0xFF9A9A9A),
-    textSelected: Color(0xFF161616),
-    border: Color(0xFFC2C2C2),
-    borderStrong: Color(0xFF757575),
-    borderFaint: Color(0xFFFFFFFF),
-    divider: Color(0xFFEDEDED),
-    inputBackground: Color(0xFFADADAD),
-    teal: Color(0xFF6ABEB9),
-    sage: Color(0xFFA7BA88),
-    slate: Color(0xFFC2C9D1),
-    ctaGlow: Color(0xFFCED2C7),
-    statusWarning: Color(0xFFE8B86D),
-    statusError: Color(0xFFE38B8B),
-    tagBorderStart: Color(0xFFEAEAEA),
-    tagSelectedBackground: Color(0xFFE0E0E0),
-    // 代码类容器：比页面（surface #282828）更深一档，header 再深一档
-    cardHeader: Color(0xFF171717),
-    avatarBackground: Color(0xFF282F32),
-    codeBackground: Color(0xFF1E1E1E),
-    checkboxOff: Color(0xFFD0D5DD),
-    iconSecondary: Color(0xFFE0E0E0),
-    iconOnRaised: Color(0xFF000000),
-    cardPrimaryBackground: Color(0xFF282F32),
-    cardPrimaryText: Color(0xFFFFFFFF),
-    markdownLink: Color(0xFF6ABEB9),
-    markdownStrikethrough: Color(0xFF9E9E9E),
-    // 助手消息卡不再绘制底板，公式文字与正文同色（浅色主题仍为深色）
-    markdownMath: Color(0xFFFFFFFF),
+  /// 浅色（默认）：Codex 原生观感。取值为截图实测。
+  static const light = AthenaColors(
+    surface: Color(0xFFFCFCFB),
+    surfacePanel: Color(0xFFFBFBF9),
+    surfaceMobile: Color(0xFFFFFFFF),
+    surfaceDeep: Color(0xFFF3F3F0),
+    surfaceRaised: Color(0xFF0B0B0B),
+    surfaceButtonSecondary: Color(0xFFF0EFEC),
+    surfaceHover: Color(0xFFF0EFEC),
+    surfaceSelected: Color(0xFFEDECE9),
+    textPrimary: Color(0xFF0B0B0B),
+    textInput: Color(0xFF20201F),
+    textSecondary: Color(0xFF6D6B67),
+    textWeak: Color(0xFF898781),
+    textRowLabel: Color(0xFF52514E),
+    textOnRaised: Color(0xFFFFFFFF),
+    textSecondaryOnRaised: Color(0xFFA5A49A),
+    textOnCode: Color(0xFF20201F),
+    textSecondaryOnCode: Color(0xFF6D6B67),
+    border: Color(0xFFE1E0D9),
+    borderStrong: Color(0xFFC3C2B7),
+    divider: Color(0xFFE1E0D9),
+    inputBackground: Color(0xFFFFFFFF),
+    accent: Color(0xFF2A78D6),
+    statusSuccess: Color(0xFF0CA30C),
+    statusWarning: Color(0xFFEB6834),
+    statusError: Color(0xFFD03B3B),
+    switchKnob: Color(0xFFFFFFFF),
+    switchTrackOff: Color(0xFFC3C2B7),
+    checkboxOff: Color(0xFFB4B3A8),
+    iconSecondary: Color(0xFF898781),
+    iconOnRaised: Color(0xFFFFFFFF),
+    shadow: Color(0xFF0B0B0B),
+    cardHeader: Color(0xFFF0EFEC),
+    codeBackground: Color(0xFFF6F6F4),
+    avatarBackground: Color(0xFFE4E3DD),
+    markdownLink: Color(0xFF256ABF),
+    markdownStrikethrough: Color(0xFF898781),
+    markdownMath: Color(0xFF0B0B0B),
   );
 
-  /// 浅色（从现有 token 按角色推导）。
-  static const light = AthenaColors(
-    surface: Color(0xFFFAFBFC),
-    surfaceMobile: Color(0xFFFDFDFE),
-    surfaceDeep: Color(0xFFFFFFFF),
+  /// 深色：同一语义体系的深色镜像，避开纯黑。
+  static const dark = AthenaColors(
+    surface: Color(0xFF1A1A19),
+    surfacePanel: Color(0xFF151515),
+    surfaceMobile: Color(0xFF1E1E1D),
+    surfaceDeep: Color(0xFF151515),
     surfaceRaised: Color(0xFFFFFFFF),
-    surfaceButtonSecondary: Color(0xFFF2F3F5),
-    textPrimary: Color(0xFF1C1C1C),
-    textInput: Color(0xFF333333),
-    textSecondary: Color(0xFF6E6E6E),
-    textWeak: Color(0xFF757575),
-    textOnRaised: Color(0xFF161616),
-    textSecondaryOnRaised: Color(0xFF6E6E6E),
-    textOnCode: Color(0xFF161616),
-    textSecondaryOnCode: Color(0xFF616161),
-    textSelected: Color(0xFF161616),
-    border: Color(0xFFB0B0B0),
-    borderStrong: Color(0xFFC2C2C2),
-    borderFaint: Color(0xFF8A8A8A),
-    divider: Color(0xFFE8E9EB),
-    inputBackground: Color(0xFFF3F4F6),
-    teal: Color(0xFF4FA8A3),
-    sage: Color(0xFF7E9A5F),
-    slate: Color(0xFFB0B8C0),
-    ctaGlow: Color(0xFFADADAD),
-    statusWarning: Color(0xFF9A650F),
-    statusError: Color(0xFFC05555),
-    tagBorderStart: Color(0xFF1C1C1C),
-    tagSelectedBackground: Color(0xFFE0E0E0),
-    // header（cardHeader）比正文（codeBackground）略深，保持层次区分
-    cardHeader: Color(0xFFE9EAEC),
-    avatarBackground: Color(0xFFE0E0E0),
-    codeBackground: Color(0xFFEFF0F2),
-    checkboxOff: Color(0xFFB8C0C8),
-    iconSecondary: Color(0xFF4D4D4D),
-    iconOnRaised: Color(0xFF000000),
-    cardPrimaryBackground: Color(0xFF282F32),
-    cardPrimaryText: Color(0xFFFFFFFF),
-    markdownLink: Color(0xFF4FA8A3),
-    markdownStrikethrough: Color(0xFF757575),
-    markdownMath: Color(0xFF333333),
+    surfaceButtonSecondary: Color(0xFF2C2C2A),
+    surfaceHover: Color(0xFF2C2C2A),
+    surfaceSelected: Color(0xFF383835),
+    textPrimary: Color(0xFFF6F6F4),
+    textInput: Color(0xFFE7E6E1),
+    textSecondary: Color(0xFFA5A49A),
+    textWeak: Color(0xFF898781),
+    textRowLabel: Color(0xFFA5A49A),
+    textOnRaised: Color(0xFF0B0B0B),
+    textSecondaryOnRaised: Color(0xFF5F5E5A),
+    textOnCode: Color(0xFFE1E0D9),
+    textSecondaryOnCode: Color(0xFFA5A49A),
+    border: Color(0xFF2C2C2A),
+    borderStrong: Color(0xFF454442),
+    divider: Color(0xFF2C2C2A),
+    inputBackground: Color(0xFF1E1E1D),
+    accent: Color(0xFF5598E7),
+    statusSuccess: Color(0xFF35B231),
+    statusWarning: Color(0xFFF09978),
+    statusError: Color(0xFFE66767),
+    switchKnob: Color(0xFFFFFFFF),
+    switchTrackOff: Color(0xFF454442),
+    checkboxOff: Color(0xFF5F5E5A),
+    iconSecondary: Color(0xFFA5A49A),
+    iconOnRaised: Color(0xFF0B0B0B),
+    shadow: Color(0xFF000000),
+    cardHeader: Color(0xFF2C2C2A),
+    codeBackground: Color(0xFF20201F),
+    avatarBackground: Color(0xFF383835),
+    markdownLink: Color(0xFF6DA7EC),
+    markdownStrikethrough: Color(0xFF898781),
+    markdownMath: Color(0xFFE1E0D9),
   );
 
   @override
   AthenaColors copyWith({
     Color? surface,
+    Color? surfacePanel,
     Color? surfaceMobile,
     Color? surfaceDeep,
     Color? surfaceRaised,
     Color? surfaceButtonSecondary,
+    Color? surfaceHover,
+    Color? surfaceSelected,
     Color? textPrimary,
     Color? textInput,
     Color? textSecondary,
     Color? textWeak,
+    Color? textRowLabel,
     Color? textOnRaised,
     Color? textSecondaryOnRaised,
     Color? textOnCode,
     Color? textSecondaryOnCode,
-    Color? textSelected,
     Color? border,
     Color? borderStrong,
-    Color? borderFaint,
     Color? divider,
     Color? inputBackground,
-    Color? teal,
-    Color? sage,
-    Color? slate,
-    Color? ctaGlow,
+    Color? accent,
+    Color? statusSuccess,
     Color? statusWarning,
     Color? statusError,
-    Color? tagBorderStart,
-    Color? tagSelectedBackground,
-    Color? cardHeader,
-    Color? avatarBackground,
-    Color? codeBackground,
+    Color? switchKnob,
+    Color? switchTrackOff,
     Color? checkboxOff,
     Color? iconSecondary,
     Color? iconOnRaised,
-    Color? cardPrimaryBackground,
-    Color? cardPrimaryText,
+    Color? shadow,
+    Color? cardHeader,
+    Color? codeBackground,
+    Color? avatarBackground,
     Color? markdownLink,
     Color? markdownStrikethrough,
     Color? markdownMath,
   }) {
     return AthenaColors(
       surface: surface ?? this.surface,
+      surfacePanel: surfacePanel ?? this.surfacePanel,
       surfaceMobile: surfaceMobile ?? this.surfaceMobile,
       surfaceDeep: surfaceDeep ?? this.surfaceDeep,
       surfaceRaised: surfaceRaised ?? this.surfaceRaised,
       surfaceButtonSecondary:
           surfaceButtonSecondary ?? this.surfaceButtonSecondary,
+      surfaceHover: surfaceHover ?? this.surfaceHover,
+      surfaceSelected: surfaceSelected ?? this.surfaceSelected,
       textPrimary: textPrimary ?? this.textPrimary,
       textInput: textInput ?? this.textInput,
       textSecondary: textSecondary ?? this.textSecondary,
       textWeak: textWeak ?? this.textWeak,
+      textRowLabel: textRowLabel ?? this.textRowLabel,
       textOnRaised: textOnRaised ?? this.textOnRaised,
       textSecondaryOnRaised:
           textSecondaryOnRaised ?? this.textSecondaryOnRaised,
       textOnCode: textOnCode ?? this.textOnCode,
       textSecondaryOnCode: textSecondaryOnCode ?? this.textSecondaryOnCode,
-      textSelected: textSelected ?? this.textSelected,
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
-      borderFaint: borderFaint ?? this.borderFaint,
       divider: divider ?? this.divider,
       inputBackground: inputBackground ?? this.inputBackground,
-      teal: teal ?? this.teal,
-      sage: sage ?? this.sage,
-      slate: slate ?? this.slate,
-      ctaGlow: ctaGlow ?? this.ctaGlow,
+      accent: accent ?? this.accent,
+      statusSuccess: statusSuccess ?? this.statusSuccess,
       statusWarning: statusWarning ?? this.statusWarning,
       statusError: statusError ?? this.statusError,
-      tagBorderStart: tagBorderStart ?? this.tagBorderStart,
-      tagSelectedBackground:
-          tagSelectedBackground ?? this.tagSelectedBackground,
-      cardHeader: cardHeader ?? this.cardHeader,
-      avatarBackground: avatarBackground ?? this.avatarBackground,
-      codeBackground: codeBackground ?? this.codeBackground,
+      switchKnob: switchKnob ?? this.switchKnob,
+      switchTrackOff: switchTrackOff ?? this.switchTrackOff,
       checkboxOff: checkboxOff ?? this.checkboxOff,
       iconSecondary: iconSecondary ?? this.iconSecondary,
       iconOnRaised: iconOnRaised ?? this.iconOnRaised,
-      cardPrimaryBackground:
-          cardPrimaryBackground ?? this.cardPrimaryBackground,
-      cardPrimaryText: cardPrimaryText ?? this.cardPrimaryText,
+      shadow: shadow ?? this.shadow,
+      cardHeader: cardHeader ?? this.cardHeader,
+      codeBackground: codeBackground ?? this.codeBackground,
+      avatarBackground: avatarBackground ?? this.avatarBackground,
       markdownLink: markdownLink ?? this.markdownLink,
       markdownStrikethrough:
           markdownStrikethrough ?? this.markdownStrikethrough,
@@ -291,6 +299,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     if (other is! AthenaColors) return this;
     return AthenaColors(
       surface: Color.lerp(surface, other.surface, t)!,
+      surfacePanel: Color.lerp(surfacePanel, other.surfacePanel, t)!,
       surfaceMobile: Color.lerp(surfaceMobile, other.surfaceMobile, t)!,
       surfaceDeep: Color.lerp(surfaceDeep, other.surfaceDeep, t)!,
       surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
@@ -299,10 +308,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         other.surfaceButtonSecondary,
         t,
       )!,
+      surfaceHover: Color.lerp(surfaceHover, other.surfaceHover, t)!,
+      surfaceSelected: Color.lerp(surfaceSelected, other.surfaceSelected, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textInput: Color.lerp(textInput, other.textInput, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       textWeak: Color.lerp(textWeak, other.textWeak, t)!,
+      textRowLabel: Color.lerp(textRowLabel, other.textRowLabel, t)!,
       textOnRaised: Color.lerp(textOnRaised, other.textOnRaised, t)!,
       textSecondaryOnRaised: Color.lerp(
         textSecondaryOnRaised,
@@ -315,40 +327,27 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
         other.textSecondaryOnCode,
         t,
       )!,
-      textSelected: Color.lerp(textSelected, other.textSelected, t)!,
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
-      borderFaint: Color.lerp(borderFaint, other.borderFaint, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
-      teal: Color.lerp(teal, other.teal, t)!,
-      sage: Color.lerp(sage, other.sage, t)!,
-      slate: Color.lerp(slate, other.slate, t)!,
-      ctaGlow: Color.lerp(ctaGlow, other.ctaGlow, t)!,
+      accent: Color.lerp(accent, other.accent, t)!,
+      statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
       statusError: Color.lerp(statusError, other.statusError, t)!,
-      tagBorderStart: Color.lerp(tagBorderStart, other.tagBorderStart, t)!,
-      tagSelectedBackground: Color.lerp(
-        tagSelectedBackground,
-        other.tagSelectedBackground,
-        t,
-      )!,
+      switchKnob: Color.lerp(switchKnob, other.switchKnob, t)!,
+      switchTrackOff: Color.lerp(switchTrackOff, other.switchTrackOff, t)!,
+      checkboxOff: Color.lerp(checkboxOff, other.checkboxOff, t)!,
+      iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
+      iconOnRaised: Color.lerp(iconOnRaised, other.iconOnRaised, t)!,
+      shadow: Color.lerp(shadow, other.shadow, t)!,
       cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
+      codeBackground: Color.lerp(codeBackground, other.codeBackground, t)!,
       avatarBackground: Color.lerp(
         avatarBackground,
         other.avatarBackground,
         t,
       )!,
-      codeBackground: Color.lerp(codeBackground, other.codeBackground, t)!,
-      checkboxOff: Color.lerp(checkboxOff, other.checkboxOff, t)!,
-      iconSecondary: Color.lerp(iconSecondary, other.iconSecondary, t)!,
-      iconOnRaised: Color.lerp(iconOnRaised, other.iconOnRaised, t)!,
-      cardPrimaryBackground: Color.lerp(
-        cardPrimaryBackground,
-        other.cardPrimaryBackground,
-        t,
-      )!,
-      cardPrimaryText: Color.lerp(cardPrimaryText, other.cardPrimaryText, t)!,
       markdownLink: Color.lerp(markdownLink, other.markdownLink, t)!,
       markdownStrikethrough: Color.lerp(
         markdownStrikethrough,

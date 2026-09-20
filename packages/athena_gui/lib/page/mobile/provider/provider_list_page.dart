@@ -54,11 +54,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
     );
     var actions = Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        syncButton,
-        const SizedBox(width: 8),
-        addButton,
-      ],
+      children: [syncButton, const SizedBox(width: 8), addButton],
     );
     return Watch((context) {
       return AthenaScaffold(
@@ -107,11 +103,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
 
   Widget _buildSeparator(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var divider = Divider(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-      height: 1,
-      thickness: 1,
-    );
+    var divider = Divider(color: colors.border, height: 1, thickness: 1);
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: divider,

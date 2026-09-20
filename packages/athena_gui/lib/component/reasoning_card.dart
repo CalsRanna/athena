@@ -1,8 +1,8 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 /// 推理卡片：标题行 + 可折叠的推理正文。
@@ -66,8 +66,9 @@ class _ReasoningCardState extends State<ReasoningCard> {
         padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
         child: Text(
           message.reasoningContent,
-          style: GoogleFonts.firaCode(
-            fontSize: 12,
+          style: TextStyle(
+            fontSize: AthenaFontSize.label,
+            height: 1.6,
             color: colors.textSecondary,
           ),
         ),
@@ -104,7 +105,10 @@ class _ReasoningCardState extends State<ReasoningCard> {
                   text,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.firaCode(fontSize: 12, color: foreground),
+                  style: TextStyle(
+                    fontSize: AthenaFontSize.label,
+                    color: foreground,
+                  ),
                 ),
               ),
             ],

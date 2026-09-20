@@ -21,18 +21,12 @@ class DesktopSentinelIndicator extends StatelessWidget {
         sentinel = SentinelViewModel.directChatSentinel;
       }
       var label = sentinel?.name ?? 'Athena';
-      var row = Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        children: [
-          const Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 160),
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-        ],
+      return AthenaContextChip(
+        label: label,
+        leading: const Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
+        onTap: onTap,
+        filled: false,
       );
-      return AthenaTagButton.small(onTap: onTap, child: row);
     });
   }
 }

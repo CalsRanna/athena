@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -38,9 +39,7 @@ class _DesktopSettingAdvancedPageState
   Widget _buildListView(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     const items = ['Appearance', 'Data'];
-    final borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-    );
+    final borderSide = BorderSide(color: colors.border);
     return Container(
       width: 240,
       decoration: BoxDecoration(border: Border(right: borderSide)),
@@ -317,7 +316,7 @@ class _DataActionTile extends StatelessWidget {
         border: danger
             ? Border.all(color: colors.statusError.withValues(alpha: 0.24))
             : null,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(

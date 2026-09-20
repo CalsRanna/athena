@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -21,16 +22,16 @@ class MobileSettingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final titleTextStyle = TextStyle(
-      fontSize: 16,
+      fontSize: AthenaFontSize.section,
       color: colors.textPrimary,
       fontWeight: FontWeight.w500,
-      height: 1.5,
+      height: 1.4,
     );
     final subtitleTextStyle = TextStyle(
-      fontSize: 12,
-      color: colors.iconSecondary,
+      fontSize: AthenaFontSize.caption,
+      color: colors.textSecondary,
       fontWeight: FontWeight.w400,
-      height: 1.5,
+      height: 1.4,
     );
     var titleChildren = [
       Text(title, style: titleTextStyle),

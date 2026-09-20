@@ -185,9 +185,7 @@ class _DesktopSettingExperiencePageState
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var experiences = viewModel.experiences.value;
-      var borderSide = BorderSide(
-        color: colors.borderFaint.withValues(alpha: 0.2),
-      );
+      var borderSide = BorderSide(color: colors.border);
       Widget child = ListView.separated(
         padding: const EdgeInsets.all(12),
         itemBuilder: (context, index) =>
@@ -222,7 +220,7 @@ class _DesktopSettingExperiencePageState
     final selected =
         this.index == index ||
         _selection.selectedIds.contains((experience.sentinelId, experience.id));
-    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
+    var trailingColor = selected ? colors.textPrimary : colors.iconSecondary;
     var trailing = isArchived
         ? Icon(HugeIcons.strokeRoundedArchive, size: 10, color: trailingColor)
         : null;

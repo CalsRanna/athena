@@ -182,14 +182,14 @@ class _DesktopConfigurationDialogTemperatureSliderState
       fontWeight: FontWeight.w400,
     );
     var slider = Slider(
-      activeColor: colors.sage,
+      activeColor: colors.textPrimary,
       inactiveColor: colors.textPrimary,
       label: value.toStringAsFixed(1),
       max: 2,
       onChanged: _updateValue,
       onChangeEnd: (value) => widget.onChange?.call(value),
       padding: EdgeInsets.symmetric(horizontal: 4),
-      thumbColor: colors.sage,
+      thumbColor: colors.textPrimary,
       value: value,
     );
     var text = Text(

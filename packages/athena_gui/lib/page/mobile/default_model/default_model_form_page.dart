@@ -2,6 +2,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/model_selector.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -143,7 +144,7 @@ class _ModelDropdown extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.inputBackground.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
     var icon = Icon(
       HugeIcons.strokeRoundedFilterHorizontal,

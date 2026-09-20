@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
 class AthenaDivider extends StatelessWidget {
@@ -7,11 +8,11 @@ class AthenaDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final onSurface = colorScheme.onSurface.withValues(alpha: 0.1);
-    final border = Border(top: BorderSide(color: color ?? onSurface));
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var container = Container(
-      decoration: BoxDecoration(border: border),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: color ?? colors.divider)),
+      ),
       width: width,
     );
     return Padding(

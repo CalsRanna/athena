@@ -9,13 +9,11 @@ import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
-import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
-import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_selector.dart';
 
-import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
@@ -28,7 +26,6 @@ import 'package:auto_route/auto_route.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
@@ -233,41 +230,34 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Widget _buildAppBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var icon = Icon(
-      HugeIcons.strokeRoundedPencilEdit02,
-      color: colors.textPrimary,
-      size: 24,
-    );
-    var chatCreateButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: createChat,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
-    );
-    return AthenaAppBar(
-      action: _buildSettingButton(context),
-      leading: Align(alignment: Alignment.centerRight, child: chatCreateButton),
-      title: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              spacing: 6,
-              children: [
-                DesktopSentinelIndicator(onTap: _openSentinelSelector),
-                DesktopModelIndicator(onTap: _openModelSelector),
-              ],
-            ),
+    // Claude 的顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
+    // 右侧是一组视图操作。这里保留标题那一部分（Athena 没有导航与右面板）。
+    var title = Watch((context) {
+      final chat = chatViewModel.currentChat.value;
+      final text = chat?.title.trim() ?? '';
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text.isEmpty ? 'New chat' : text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: AthenaFontSize.section,
+            fontWeight: FontWeight.w500,
           ),
         ),
-      ),
+      );
+    });
+    return AthenaAppBar(
+      title: Padding(padding: const EdgeInsets.only(left: 8), child: title),
     );
   }
 
   Widget _buildLeftBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var chatListView = DesktopChatListView(
+      onCreateChat: createChat,
       onAutoRenamed: chatViewModel.renameChat,
       onBatchDestroyed: batchDestroyChats,
       onDestroyed: destroyChat,
@@ -275,32 +265,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onPinned: chatViewModel.togglePin,
       onSelected: chatViewModel.selectChat,
     );
-    var borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-    );
-    var boxDecoration = BoxDecoration(border: Border(right: borderSide));
     return Container(
-      decoration: boxDecoration,
+      decoration: BoxDecoration(
+        color: colors.surfacePanel,
+        border: Border(right: BorderSide(color: colors.border)),
+      ),
       height: double.infinity,
-      width: 240,
+      width: AthenaSpace.sidebar,
       child: chatListView,
     );
   }
 
-  Widget _buildSettingButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final icon = Icon(
-      HugeIcons.strokeRoundedSettings01,
-      color: colors.textPrimary,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        DesktopSettingProviderRoute().push(context);
-      },
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
-    );
-  }
 
   Widget _buildWorkspace() {
     var workspace = DesktopMessageList(
@@ -317,6 +292,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onTemperatureChange: updateTemperature,
       onReasoningEffortChange: updateReasoningEffort,
       onTerminated: terminateStreaming,
+      onModelTap: _openModelSelector,
+      onSentinelTap: _openSentinelSelector,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

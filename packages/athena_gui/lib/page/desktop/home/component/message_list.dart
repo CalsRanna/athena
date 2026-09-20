@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:athena_gui/component/chat_column.dart';
 import 'package:athena_gui/component/message_list_tile.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -49,10 +50,13 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
       var messages = chatViewModel.messages.value;
       final loading = chatViewModel.isCurrentChatStreaming.value;
       final loadingHistory = chatViewModel.isLoadingMessages.value;
-      return _buildData(
-        messages,
-        loading: loading,
-        loadingHistory: loadingHistory,
+      return LayoutBuilder(
+        builder: (context, constraints) => _buildData(
+          messages,
+          loading: loading,
+          loadingHistory: loadingHistory,
+          columnPadding: chatColumnPadding(constraints.maxWidth),
+        ),
       );
     });
   }
@@ -115,6 +119,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     List<MessageEntity> messages, {
     required bool loading,
     required bool loadingHistory,
+    required double columnPadding,
   }) {
     var sentinel = _displaySentinel();
     widget.controller?.isWorking = loading;
@@ -147,8 +152,8 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                     messages: messages,
                     loading: loading,
                     sentinel: sentinel,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: columnPadding + kChatColumnInnerPadding,
                       vertical: 12,
                     ),
                     onResend: widget.onResend,
@@ -168,7 +173,12 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
           Expanded(child: list),
           for (final request in approvals)
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+              padding: EdgeInsets.fromLTRB(
+                columnPadding + kChatColumnInnerPadding,
+                0,
+                columnPadding + kChatColumnInnerPadding,
+                12,
+              ),
               child: PermissionApprovalCard(
                 request: request,
                 maxHeight:
@@ -182,7 +192,12 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             ),
           for (final request in elicits)
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 0, 32, 12),
+              padding: EdgeInsets.fromLTRB(
+                columnPadding + kChatColumnInnerPadding,
+                0,
+                columnPadding + kChatColumnInnerPadding,
+                12,
+              ),
               child: ElicitCard(
                 request: request,
                 maxHeight:

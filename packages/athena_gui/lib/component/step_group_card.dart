@@ -1,9 +1,9 @@
 import 'package:athena_gui/component/reasoning_card.dart';
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 /// 将同一 Assistant 回合内按时间序排列的推理与工具调用收纳为一张默认折叠的卡片。
@@ -117,9 +117,9 @@ class _StepGroupCardState extends State<StepGroupCard> {
         Text(
           last.toolName,
           maxLines: 1,
-          style: GoogleFonts.firaCode(
-            fontSize: _fontSize,
-            fontWeight: FontWeight.w500,
+          style: TextStyle(
+            fontSize: AthenaFontSize.label,
+            fontWeight: FontWeight.w600,
             color: foreground,
           ),
         ),
@@ -129,7 +129,7 @@ class _StepGroupCardState extends State<StepGroupCard> {
             ToolCard.argPreview(last.toolName, last.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.firaCode(fontSize: _fontSize, color: foreground),
+            style: athenaMono(fontSize: _fontSize, color: foreground),
           ),
         ),
       ];
@@ -143,7 +143,7 @@ class _StepGroupCardState extends State<StepGroupCard> {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.firaCode(fontSize: _fontSize, color: foreground),
+          style: TextStyle(fontSize: AthenaFontSize.label, color: foreground),
         ),
       ),
     ];
@@ -238,8 +238,9 @@ class _ToolStepRowState extends State<_ToolStepRow> {
                   Text(
                     widget.step.toolName,
                     maxLines: 1,
-                    style: GoogleFonts.firaCode(
-                      fontSize: _fontSize,
+                    style: TextStyle(
+                      fontSize: AthenaFontSize.label,
+                      fontWeight: FontWeight.w600,
                       color: foreground,
                     ),
                   ),
@@ -253,10 +254,7 @@ class _ToolStepRowState extends State<_ToolStepRow> {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.firaCode(
-                        fontSize: _fontSize,
-                        color: foreground,
-                      ),
+                      style: athenaMono(fontSize: _fontSize, color: foreground),
                     ),
                   ),
                 ],
@@ -281,7 +279,7 @@ class _ToolStepRowState extends State<_ToolStepRow> {
           widget.step.result!,
           maxLines: 10,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.firaCode(
+          style: athenaMono(
             fontSize: _fontSize,
             color: isError ? colors.statusError : colors.textSecondary,
             height: 1.6,

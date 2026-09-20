@@ -2,6 +2,7 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -20,16 +21,18 @@ class ChatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final shapeDecoration = ShapeDecoration(
-      color: colors.surfaceRaised,
-      shape: StadiumBorder(),
-    );
     final body = Container(
-      decoration: shapeDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: colors.surfaceRaised,
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Text(
         chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
-        style: TextStyle(color: colors.textOnRaised),
+        style: TextStyle(
+          color: colors.textOnRaised,
+          fontSize: AthenaFontSize.body,
+        ),
       ),
     );
     return GestureDetector(

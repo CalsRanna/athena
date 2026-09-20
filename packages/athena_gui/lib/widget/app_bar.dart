@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ class DesktopPopButton extends StatelessWidget {
     var icon = Icon(
       HugeIcons.strokeRoundedCancel01,
       color: colors.textPrimary,
-      size: 24,
+      size: 18,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -57,11 +58,11 @@ class MobilePopButton extends StatelessWidget {
     );
     final boxDecoration = BoxDecoration(
       color: colors.surfaceRaised,
-      shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(AthenaRadius.control),
     );
     final button = Container(
       decoration: boxDecoration,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       child: hugeIcon,
     );
     return GestureDetector(
@@ -89,25 +90,27 @@ class _DesktopAppBar extends StatelessWidget {
       Expanded(child: leading ?? const SizedBox()),
       SizedBox(width: 16),
     ];
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    // Codex 的顶栏是**透明的**：画布一直顶到窗口上沿，只有侧栏上方那条
+    // 保持与侧栏同色。旧版整条面板色 + 底部描边把画布切开了一道横带，
+    // 与 Codex 的"无顶栏"观感差别明显。
     var rowChildren = [
-      SizedBox(width: 240, child: Row(children: leadingChildren)),
+      Container(
+        width: AthenaSpace.sidebar,
+        decoration: BoxDecoration(
+          color: colors.surfacePanel,
+          border: Border(right: BorderSide(color: colors.border)),
+        ),
+        child: Row(children: leadingChildren),
+      ),
       Expanded(child: title ?? const SizedBox()),
       action ?? const SizedBox(),
       const SizedBox(width: 16),
     ];
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-    );
-    var boxDecoration = BoxDecoration(border: Border(bottom: borderSide));
-    var container = Container(
-      decoration: boxDecoration,
-      child: Row(children: rowChildren),
-    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: handlePanStart,
-      child: container,
+      child: Row(children: rowChildren),
     );
   }
 
@@ -131,7 +134,8 @@ class _MobileAppBar extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final textStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 20,
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
       height: 1.2,
     );
     final wrappedTitle = DefaultTextStyle(

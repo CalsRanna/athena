@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 class AthenaBottomSheetTile extends StatelessWidget {
@@ -24,15 +25,15 @@ class AthenaBottomSheetTile extends StatelessWidget {
     var textColor = enabled ? colors.textPrimary : colors.textSecondary;
     var textStyle = TextStyle(
       color: textColor,
-      fontSize: 14,
-      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-      height: 1.5,
+      fontSize: AthenaFontSize.body,
+      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      height: 1.4,
     );
     var trailingTextStyle = TextStyle(
       color: textColor,
-      fontSize: 14,
+      fontSize: AthenaFontSize.body,
       fontWeight: FontWeight.w400,
-      height: 1.5,
+      height: 1.4,
     );
     var iconColor = enabled ? colors.iconSecondary : colors.textSecondary;
     var leadingIconThemeData = IconThemeData(color: iconColor);
@@ -56,7 +57,7 @@ class AthenaBottomSheetTile extends StatelessWidget {
       Flexible(child: align),
     ];
     var container = Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       child: Row(children: children),
     );
     return GestureDetector(
