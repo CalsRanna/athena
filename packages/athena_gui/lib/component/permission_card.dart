@@ -1,6 +1,7 @@
 import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
+import 'package:athena_gui/component/card_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -146,17 +147,17 @@ class PermissionApprovalCard extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _CardPrimaryButton(
+          CardPrimaryButton(
             label: 'Allow Once',
             onTap: () => onDecision(true, false),
           ),
           const SizedBox(height: 8),
-          _CardSecondaryButton(
+          CardSecondaryButton(
             label: 'Always Allow',
             onTap: () => onDecision(true, true),
           ),
           const SizedBox(height: 8),
-          _CardSecondaryButton(
+          CardSecondaryButton(
             label: 'Deny',
             onTap: () => onDecision(false, false),
           ),
@@ -168,17 +169,17 @@ class PermissionApprovalCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        _CardSecondaryButton(
+        CardSecondaryButton(
           label: 'Deny',
           onTap: () => onDecision(false, false),
         ),
         const SizedBox(width: 12),
-        _CardSecondaryButton(
+        CardSecondaryButton(
           label: 'Always Allow',
           onTap: () => onDecision(true, true),
         ),
         const SizedBox(width: 12),
-        _CardPrimaryButton(
+        CardPrimaryButton(
           label: 'Allow Once',
           onTap: () => onDecision(true, false),
         ),
@@ -187,80 +188,5 @@ class PermissionApprovalCard extends StatelessWidget {
   }
 }
 
-/// 浅色卡片上的主按钮：深色实心胶囊 + 白字。
-class _CardPrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _CardPrimaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: ShapeDecoration(
-            color: colors.surfaceRaised,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AthenaRadius.control),
-            ),
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 浅色卡片上的次按钮：描边胶囊 + 深色文字。
-class _CardSecondaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _CardSecondaryButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AthenaRadius.control),
-              side: BorderSide(color: colors.border),
-            ),
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 把卡片决策转换为 core 的 [PermissionDecision]。
 PermissionDecision permissionDecisionOf(bool approved, bool persistExact) =>
     PermissionDecision(approved: approved, persistExact: persistExact);

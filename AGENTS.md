@@ -46,7 +46,7 @@ athena/
     │   │   ├── storage/         # KeyValueStore 接口 + AgentSettings
     │   │   ├── extension/       # json_map_extension
     │   │   └── util/            # platform_util / retry / logger_util / tool_args_formatter
-    │   └── test/                # dart test（Agent 引擎 / 工具 / 权限 / Skill / 服务）
+    │   └── （无 test/：测试套件已移除，见 §14）
     ├── athena_gui/              # ★ Flutter 桌面/移动应用
     │   ├── lib/
     │   │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
@@ -57,10 +57,10 @@ athena/
     │   │   ├── view_model/      # 7 个 ViewModel（Signals）+ delegate/（3 个委托）
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
     │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
-    │   │   ├── widget/          # 设计系统组件（20+）
-    │   │   ├── component/       # 业务组件（消息列表项、推理卡 / 单工具卡 / 步骤组卡、压缩卡等）
-    │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ color_util / window_util / system_tray_util / shared_preference_util
-    │   └── test/                # flutter test（页面 / ViewModel / 数据库迁移）
+    │   │   ├── widget/          # 设计系统组件：按钮 / 输入 / 菜单 / 对话框 / 窗口控件 / settings（设置面板三件套）
+    │   │   ├── component/       # 业务组件：消息列表（message_sliver + message_tiles）/ 工具卡 / 推理卡 / 步骤组卡 / 压缩卡 / 审批卡 / 提问卡
+    │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ window_util / system_tray_util / shared_preference_util 等
+    │   └── （无 test/：测试套件已移除，见 §14）
     └── athena_tui/              # nocterm 终端客户端
         ├── bin/athena.dart      # CLI 入口
         ├── lib/
@@ -70,7 +70,7 @@ athena/
         │   ├── storage/         # JSONL/JSON 文件存储（会话 / 模型 / 角色）
         │   ├── ui/              # nocterm 终端组件
         │   └── view_model/      # 终端响应式层
-        └── test/
+        └── （无 test/：测试套件已移除，见 §14）
 ```
 
 > 根目录无 pubspec；三个 package 各自独立 `pub get`。
@@ -383,7 +383,7 @@ sealed class RunEvent {
 关键实现细节：
 - **思考卡片展开状态不落库**：展开/折叠只是 `ReasoningCard` / `StepGroupCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
 - **推理与工具调用按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块与每次工具调用都是"步骤"，严格按时间序排列，只有可见正文、引用和压缩步骤切断序列（推理不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层按步骤数决定形态：≥ 2 步收纳为默认折叠的 `StepGroupCard`（进行中折叠头显示当前步骤并 shimmer，结束后显示 `Thought for Xs · N tool calls` 汇总），单步保持平铺（`ReasoningCard` / `ToolCard`）。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
-- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`_AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（机制复现见 `test/widget/card_seam_mechanism_test.dart` 的"设计约束"用例，回归见同文件采样用例；按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
+- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
@@ -579,7 +579,9 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   不动几何，移动端入口在设置 → Appearance 弹层。
 - 等宽只有一个来源 `AthenaFont.mono`；`google_fonts` 依赖已移除。
 
-### 核心组件（athena_gui/lib/widget/）
+### 核心组件
+
+**`lib/widget/` = 设计系统**：只依赖 `theme/` 与 `material`，不碰 `athena_core` 实体、不碰 ViewModel。
 
 | 组件 | 用途 |
 |------|------|
@@ -587,15 +589,26 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`） |
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
 | `AthenaInput` | 平涂底 + 1px 边框输入框 |
-| `AthenaScaffold` | 页面骨架 |
-| `AthenaSettingsPanel` / `AthenaSettingsPane` / `AthenaSettingsSection` | 设置面板外壳（居中浮层 + 遮罩）、内容区、分区标题 |
-| `AthenaSettingsRow` / `AthenaSettingsSegmented` / `AthenaSettingsSelect` | 设置行（标签 + 说明 + 右侧控件）、分段控件、下拉 |
+| `AthenaScaffold` / `AthenaAppBar` / `ErrorBoundary` | 页面骨架、顶栏、错误边界 |
+| `AthenaDialog` | 全局模态门面：`confirm` / `input` / `loading` / `message`（桌面居中 Dialog + Overlay toast，移动 Bottom Sheet + SnackBar）。含 `enum AthenaMessageType` |
+| `DesktopContextMenu` / `DesktopEditDeleteContextMenu` / `DesktopContextMenuManager` | 右键菜单；后者是列表条目通用的「编辑 / 删除」菜单（`leading` 可插额外项） |
+| `settings/panel.dart` | `AthenaSettingsPanel`（居中浮层 + 遮罩）/ `AthenaSettingsPane`（内容区）/ `AthenaSettingsSection` / `AthenaSettingsGroup` |
+| `settings/row.dart` | `AthenaSettingsRow`（标签 + 说明 + 右侧控件）/ `AthenaSettingsValueRow` / `AthenaSettingsListItem` / `AthenaSettingsListColumn` / `AthenaSettingsEmptyState` |
+| `settings/control.dart` | `AthenaSettingsSegmented` / `AthenaSegmentOption` / `AthenaSettingsSelect` / `AthenaSettingsIconButton` |
 | `AthenaSettingsNav` / `AthenaSettingsSearchField` / `AthenaSettingsNavItem` | 设置左栏：搜索框 + 分组 + 导航行 |
-| `AthenaSettingsListColumn` / `AthenaSettingsListItem` | 设置页里的列表列与条目（内容列表，不是导航） |
-| `AthenaDialog` | 对话框（桌面居中 Dialog / 移动 Bottom Sheet） |
-| `AthenaSwitch` / `Checkbox` / `ContextMenu` / `Menu` / `Tile` / `Divider` / `AppBar` / `WindowButton` | 通用组件 |
-| `PermissionDialog` / `ElicitCard` | 会话内面板 |
-| `ErrorBoundary` | 错误边界 |
+| `AthenaSwitch` / `Checkbox` / `Menu` / `Tile` / `WindowButton` | 通用组件 |
+
+**`lib/component/` = 业务组件**：消费 `athena_core` 实体或 ViewModel。
+
+| 组件 | 用途 |
+|------|------|
+| `message_sliver.dart` | `MessageCardListSliver`：懒加载消息列表（每条消息一个列表项）+ 卡片分组渲染项 |
+| `message_tiles.dart` | `MessageListTile`（按角色分派）、助手 / 工具 / 用户三支实现、`MessageActionBar`、`AssistantCardHover` |
+| `tool_card.dart` / `reasoning_card.dart` / `step_group_card.dart` / `compaction_card.dart` | 工具卡、推理卡、步骤组卡、压缩卡 |
+| `permission_card.dart` / `elicit_card.dart` / `card_button.dart` | 会话内审批卡、提问卡，以及两者共用的卡片按钮体系 |
+| `sentinel_placeholder.dart` | 会话空态（桌面与移动共用，不要另写平台分支） |
+| `base64_image.dart` / `queued_messages.dart` / `card_tile.dart` / `button.dart`（`CopyButton`） | 其余共享组件 |
+| `chat_column.dart` / `message_list_scroll_controller.dart` | 会话列几何常量与消息列表滚动控制器 |
 
 ### 桌面布局约定
 
@@ -622,40 +635,19 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 
 ## 14. 测试
 
-### 测试结构
+**当前三个包都没有测试套件**：`athena_core/test`、`athena_gui/test`、`athena_tui/test`
+已整体删除。因此：
 
-- `packages/athena_core/test/`（纯 Dart，`dart test`）
-  - `agent/` - AgentService 循环、cancel_token、**parallel_execution**、permission/（analyzer/rule/service）、skill/（loader/registry）、tool/（bash/powershell/file_update/shell_runner/web_fetch/schema_validator）
-  - `service/` - chat_manage_helpers、chat_message_service、chat_service、chat_support_touch、model_catalog_service
-  - `util/` - retry、tool_args_formatter；`extension/` - json_map_extension
-- `packages/athena_gui/test/`（Flutter，`flutter test`）
-  - `database/` - migration_test、cascade_characterization_test
-  - `view_model/` - chat_view_model_stream_test、chat_draft_sentinel_test、setting/sentinel_view_model_test、skill/experience_view_model_test、view_model_defaults_test
-  - `page/mobile/` - chat_page_test、home_page_test
-  - `util/` - message_display_util_test（卡片分组 / 步骤布局纯函数）、clipboard_image_service_test
-  - `widget/` - step_group_card_test（步骤组 / 跨消息合并 / 懒加载卡片）、reasoning_card_test、tool_card_test、compaction_card_test 等
-  - `test_utils/fakes.dart` - `setupMobileTestDI()`：注册最小化 DI（内存 Fake Repository，不访问真实数据库），service/viewModel 用真实实例、信号初始为空，测试中直接设置 signal 值模拟数据
+- 唯一的静态保障是 `flutter analyze` / `dart analyze`，改完必须跑到 0 issue。
+- UI 改动只能对着**运行中的开发实例**验证：`hot_restart` → 用 VM service 的 `evaluate`
+  推路由（不必手点 UI）→ 系统截屏 → 读图。没有 driver 扩展，`flutter_driver_command
+  screenshot` 不可用。
+- **移动端分支（`PlatformUtil.isMobile`）在 macOS 上跑不到**，改这两条分支时手上没有
+  任何回归网，能避开就避开、必须改时逐行对照。
+- 纯函数（`util/message_display_util.dart` 的卡片分组与步骤布局）同样没有回归网，
+  评审重点看边界：空列表、流式末条、跨消息合并。
 
-### 测试模式
-
-- GUI 使用 `GetIt.instance.reset()` + `registerSingleton` 替换为 Fake 实现
-- Widget 测试使用 `Watch` 包裹以支持 Signals
-- Agent 层测试（athena_core）直接实例化工具类/服务进行单元测试（无 DI）
-- AgentService 暴露 `@visibleForTesting` 成员：`selectParallelCalls`、`ToolCallResultInternal`、`currentCancelTokenInternal` 等
-
-### 运行测试
-
-```bash
-# 核心包（Agent 引擎、服务、工具——纯 Dart）
-cd packages/athena_core
-dart test                          # 全部核心测试
-dart test test/agent/tool/         # Agent 工具测试
-
-# GUI 包（Flutter）
-cd packages/athena_gui
-flutter test                       # GUI 测试（页面/ViewModel/数据库）
-flutter analyze                    # 静态分析
-```
+> 需要恢复用例时：`git log --diff-filter=D --name-only -- packages/`。
 
 ---
 
@@ -725,10 +717,10 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 ### 添加新工具
 
 1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口（声明 `executionMode`、`risk`，只读/并行能力按需覆写 `canExecuteParallel`）
-2. 在 `packages/athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry` 注册（工具清单的唯一真相源，两个前端共用），并同步 `test/agent/tool/tool_set_test.dart` 的计数与名单
+2. 在 `packages/athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry` 注册（工具清单的唯一真相源，两个前端共用）
 3. 权限相关：`PermissionRule._isFilePathTool()` 与 `PermissionService.primaryArg()` 中按需添加模式
 4. 需要宿主交互（问用户 / 等用户）的工具，另见「交互类工具的两端同步点」
-5. 添加单元测试 `packages/athena_core/test/agent/tool/xxx_tool_test.dart`，运行 `dart test`
+5. 测试套件已移除（见 §14）：改完跑 `dart analyze`，并用运行中的实例手测一次真实调用
 
 ### 交互类工具的两端同步点（提问 / 审批）
 
@@ -739,17 +731,17 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | 通道类型 | `agent/elicit/elicit_prompt.dart`：`ElicitChannel` / `ElicitChannelAware` / `ElicitPrompt` | `agent/permission/permission_prompt.dart`：`PermissionPrompt` / `PermissionDecision` |
 | 引擎注入 | `AgentService.run(onElicit:)` 按 run 构造 `ElicitChannel`，`executeToolCallInternal` 交给实现 `ElicitChannelAware` 的工具 | 权限门 `_buildPermissionGate` |
 | 协调层 | `AgentRunCoordinator(elicitPrompt:)` | `AgentRunCoordinator(permissionPrompt:)` |
-| GUI | `AgentStreamDelegate.elicitRequests` → `ChatViewModel.pendingElicits` → `widget/elicit_card.dart` | `approvalRequests` → `pendingApprovals` → `widget/permission_card.dart` |
+| GUI | `AgentStreamDelegate.elicitRequests` → `ChatViewModel.pendingElicits` → `component/elicit_card.dart` | `approvalRequests` → `pendingApprovals` → `component/permission_card.dart` |
 | TUI | `TuiAgentBridge.elicitHandler` → `widgets/question_bar.dart` + 输入区自填模式 | `permissionHandler` → `widgets/permission_bar.dart` |
 | 无人应答时 | 返回 null（未作答），模型按标注过的假定继续 | 返回拒绝（安全默认） |
 
 同步清单：
-- **改 `AgentService.run` 签名**会打到 `athena_gui/test/view_model/chat_view_model_stream_test.dart` 与 `athena_tui/test/ui_test.dart` 里的 `_FakeAgentService.run` 覆写，两处都要改。
+- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；测试套件已移除（见 §14），改完只能靠 `dart analyze` 与手测兜底。
 - 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
 - `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
-- GUI 提问卡片**一次只展示一个问题**，多问时问题前标 `1 / 3`（卡片标题不报数量）；单选**点选即确认**（非最后一步→前进，最后一步→提交），多选与自由输入由 Next / Submit 收尾（自由输入框里回车等价于按钮）；`_step > 0` 时有 Back 可退回上一步改答案。单选再点一次是「保持」而不是取消——每题都得有答案才能往下走，允许点空会把人卡在交不出去的步骤上。自由输入框取**卡片尺度**（字号 14 / 垂直内边距 12 / 1–3 行自增高，与卡片内按钮同高），不要套全局输入的 56px 尺度——那会让一行自填比整卡其它内容都重。`test/widget/elicit_card_test.dart` 锁住这些。
-- 工具 / 推理 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`ToolHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字（回归见 `theme_color_regression_test.dart` 的 shimmer 用例）。
+- GUI 提问卡片**一次只展示一个问题**，多问时问题前标 `1 / 3`（卡片标题不报数量）；单选**点选即确认**（非最后一步→前进，最后一步→提交），多选与自由输入由 Next / Submit 收尾（自由输入框里回车等价于按钮）；`_step > 0` 时有 Back 可退回上一步改答案。单选再点一次是「保持」而不是取消——每题都得有答案才能往下走，允许点空会把人卡在交不出去的步骤上。自由输入框取**卡片尺度**（字号 14 / 垂直内边距 12 / 1–3 行自增高，与卡片内按钮同高），不要套全局输入的 56px 尺度——那会让一行自填比整卡其它内容都重。
+- 工具 / 推理 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`ToolHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字。
 - 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
 - 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 
@@ -774,7 +766,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 2. 创建幂等迁移并注册到 `_migrate()`（排在 seed migration 之后）
 3. 规则：幂等（marker 或 `WHERE NOT EXISTS`）、不删除（`is_preset = 0`）、保留用户字段、模型通过 provider name 关联 `provider_id`
 4. 模型元数据（名称/窗口/价格/reasoning/vision）**优先考虑走 ModelCatalogService 的 models.dev 同步**，手工迁移只用于 models.dev 没有的 provider
-5. 添加单元测试 `test/database/migration/xxx_test.dart`
+5. 测试套件已移除（见 §14）：改完跑 `flutter analyze`
 
 ### 修改设计系统组件
 

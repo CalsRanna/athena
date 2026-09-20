@@ -1,18 +1,18 @@
 import 'dart:async';
 
 import 'package:athena_gui/component/chat_column.dart';
-import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart';
-import 'package:athena_gui/page/desktop/home/component/sentinel_placeholder.dart';
+import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/elicit_card.dart';
-import 'package:athena_gui/widget/permission_card.dart';
+import 'package:athena_gui/component/elicit_card.dart';
+import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -140,7 +140,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
         .toList();
     final content = messages.isEmpty
-        ? DesktopSentinelPlaceholder(sentinel: sentinel)
+        ? SentinelPlaceholder(sentinel: sentinel)
         : NotificationListener<ScrollNotification>(
             onNotification: _handleScrollNotification,
             child: NotificationListener<ScrollMetricsNotification>(

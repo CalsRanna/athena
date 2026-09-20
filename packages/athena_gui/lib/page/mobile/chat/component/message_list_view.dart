@@ -1,18 +1,18 @@
 import 'dart:async';
 
-import 'package:athena_gui/component/message_list_tile.dart';
+import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/edit_message_dialog.dart';
-import 'package:athena_gui/page/mobile/chat/component/sentinel_placeholder.dart';
+import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/elicit_card.dart';
-import 'package:athena_gui/widget/permission_card.dart';
+import 'package:athena_gui/component/elicit_card.dart';
+import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';

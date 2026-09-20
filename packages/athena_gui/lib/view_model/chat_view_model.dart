@@ -87,9 +87,6 @@ class ChatViewModel {
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   final streamingChatIds = listSignal<int>([]);
 
-  /// 是否有任一对话正在流式。
-  late final isStreaming = computed(() => streamingChatIds.value.isNotEmpty);
-
   /// 当前显示的对话是否正在流式（用于输入框/消息列表的流式状态展示）。
   late final isCurrentChatStreaming = computed(() {
     final id = currentChat.value?.id;
@@ -128,16 +125,8 @@ class ChatViewModel {
 
   // ─── Computed ───
 
-  late final recentChats = computed(() {
-    return chats.value.take(10).toList();
-  });
-
   late final recentChatHistories = computed(() {
     return chatHistories.value.take(10).toList();
-  });
-
-  late final pinnedChats = computed(() {
-    return chats.value.where((c) => c.pinned).toList();
   });
 
   // ─── 多选代理 ───
@@ -316,11 +305,6 @@ class ChatViewModel {
     _scheduleFlush();
   }
 
-  /// 流式内容增量。目标不在列表时追加——占位消息可能尚未落库。
-  void _bufferUpdateMessage(MessageEntity message, int chatId) {
-    _bufferAppendMessage(message, chatId);
-  }
-
   void _scheduleFlush() {
     _flushTimer ??= Timer(_flushInterval, () {
       _flushTimer = null;
@@ -347,11 +331,6 @@ class ChatViewModel {
     _flushTimer = null;
     _pendingMessages = null;
     _pendingChatId = null;
-  }
-
-  /// 测试与热重载收尾：释放合并定时器。
-  void dispose() {
-    _discardPendingMessages();
   }
 
   ChatViewModel({
@@ -877,7 +856,7 @@ class ChatViewModel {
           }
         case RunMessageUpdated(:final message):
           if (belongsToCurrent) {
-            _bufferUpdateMessage(message, chatId);
+            _bufferAppendMessage(message, chatId);
           }
         case RunIterationChanged(:final iteration):
           if (belongsToCurrent && isStreamingChat(chatId)) {

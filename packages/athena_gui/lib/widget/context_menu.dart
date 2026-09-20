@@ -54,6 +54,41 @@ class DesktopContextMenu extends StatelessWidget {
   }
 }
 
+/// 列表条目通用的「编辑 / 删除」右键菜单。
+///
+/// [multiSelect] 为真时禁用多选下无意义的「编辑」；[leading] 用于插入
+/// 条目特有的额外动作（如模型条目的 Connect）。
+class DesktopEditDeleteContextMenu extends StatelessWidget {
+  final Offset offset;
+  final bool multiSelect;
+  final void Function()? onEdited;
+  final void Function()? onDestroyed;
+  final List<Widget> leading;
+
+  const DesktopEditDeleteContextMenu({
+    super.key,
+    required this.offset,
+    this.multiSelect = false,
+    this.onEdited,
+    this.onDestroyed,
+    this.leading = const [],
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      ...leading,
+      DesktopContextMenuTile(
+        text: 'Edit',
+        onTap: onEdited,
+        enabled: !multiSelect,
+      ),
+      DesktopContextMenuTile(text: 'Delete', onTap: onDestroyed),
+    ];
+    return DesktopContextMenu(offset: offset, children: children);
+  }
+}
+
 class DesktopContextMenuConfiguration extends InheritedWidget {
   final double width;
   const DesktopContextMenuConfiguration({

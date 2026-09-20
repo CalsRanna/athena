@@ -1,6 +1,5 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
-import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
@@ -11,7 +10,8 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/input.dart';
-import 'package:athena_gui/widget/settings_panel.dart';
+import 'package:athena_gui/widget/settings/panel.dart';
+import 'package:athena_gui/widget/settings/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -187,7 +187,7 @@ class _DesktopSettingSentinelPageState
         .where((item) => _selection.selectedIds.contains(item.id))
         .toList();
     final multiSelect = selected.length > 1;
-    var contextMenu = DesktopSentinelContextMenu(
+    var contextMenu = DesktopEditDeleteContextMenu(
       multiSelect: multiSelect,
       offset: details.globalPosition - Offset(240, 50),
       onDestroyed: () => destroySentinels(multiSelect ? selected : [sentinel]),
