@@ -79,8 +79,12 @@ class DesktopContextMenuTile extends StatefulWidget {
   final void Function()? onTap;
   final String text;
 
+  /// 危险项（如 Delete）：Claude 用深红文字。
+  final bool danger;
+
   const DesktopContextMenuTile({
     super.key,
+    this.danger = false,
     this.enabled = true,
     this.onTap,
     required this.text,
@@ -96,7 +100,11 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textColor = widget.enabled ? colors.textPrimary : colors.textSecondary;
+    var textColor = !widget.enabled
+        ? colors.textSecondary
+        : widget.danger
+        ? colors.dangerText
+        : colors.textPrimary;
     var textStyle = TextStyle(
       color: textColor,
       decoration: TextDecoration.none,
@@ -111,7 +119,8 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      // Claude 实测：菜单项高约 32 逻辑
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       width: width,
       child: Text(widget.text, style: textStyle),
     );
@@ -368,5 +377,23 @@ class DesktopContextMenuManager {
   void dismiss() {
     _entry?.remove();
     _entry = null;
+  }
+}
+
+
+/// 菜单分组之间的 1px 细线（Claude 在 Archive / Delete 之前有一条）。
+class DesktopContextMenuSeparator extends StatelessWidget {
+  const DesktopContextMenuSeparator({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var width = DesktopContextMenuConfiguration.widthOf(context);
+    return Container(
+      width: width,
+      height: 1,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      color: colors.border,
+    );
   }
 }
