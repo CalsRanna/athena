@@ -371,7 +371,9 @@ class _AssistantMessageContent extends StatelessWidget {
           children.add(const SizedBox(height: 8));
           children.add(AthenaMarkdown(message: message));
         case ReferencePart():
-          children.add(_AssistantMessageListTileReferencePart(message: message));
+          children.add(
+            _AssistantMessageListTileReferencePart(message: message),
+          );
       }
     }
     return Column(
@@ -512,11 +514,11 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var boxDecoration = BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: colors.divider,
+        color: colors.codeBackground,
       );
       var textStyle = GoogleFonts.firaCode(
         fontWeight: FontWeight.w500,
-        color: colors.textOnRaised,
+        color: colors.textOnCode,
       );
       return Container(
         decoration: boxDecoration,
@@ -606,7 +608,7 @@ class _ToolMessageListTile extends StatelessWidget {
     // 内容以浅灰代码块样式呈现，与 ToolCard 展开区呼应。
     var textStyle = GoogleFonts.firaCode(
       fontSize: 12,
-      color: colors.textOnRaised,
+      color: colors.textOnCode,
       height: 1.6,
     );
     var text = Text(message.content, style: textStyle);
