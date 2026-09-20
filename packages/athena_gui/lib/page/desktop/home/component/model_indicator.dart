@@ -40,20 +40,11 @@ class _ModelIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var modelText = Text(
-      '${model.name} | ${provider.name}',
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+    return AthenaContextChip(
+      label: '${model.name} | ${provider.name}',
+      leading: const Icon(HugeIcons.strokeRoundedAiBrain01),
+      onTap: onTap,
+      filled: false,
     );
-    var children = <Widget>[
-      const Icon(HugeIcons.strokeRoundedAiBrain01),
-      modelText,
-    ];
-    var row = Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 8,
-      children: children,
-    );
-    return AthenaTagButton.small(onTap: onTap, child: row);
   }
 }

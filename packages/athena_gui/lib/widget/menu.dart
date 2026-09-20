@@ -1,7 +1,10 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// 桌面左侧栏/列表行。Codex 风格：整行 hover 底色 + 选中行提亮，
+/// 没有渐变边框、没有胶囊。
 class DesktopMenuTile extends StatefulWidget {
   final bool active;
   final String label;
@@ -29,14 +32,17 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    const duration = Duration(milliseconds: 200);
-    // 选中态为浅灰底 + 深字（与 Tag 选中语言一致），未选中为主文字色
-    var contentColor = widget.active ? colors.textSelected : colors.textPrimary;
+    const duration = Duration(milliseconds: 120);
+    // Claude 实测：**hover 只改底色，文字不动**。选中行才提亮文字。
+    // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
+    var contentColor = widget.active
+        ? colors.textPrimary
+        : colors.textRowLabel;
     var textStyle = TextStyle(
       color: contentColor,
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      height: 1.5,
+      fontSize: AthenaFontSize.label,
+      fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
+      height: 1.4,
     );
     var text = Text(
       widget.label,
@@ -44,15 +50,17 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
-    var innerShapeDecoration = ShapeDecoration(
-      color: widget.active
-          ? colors.tagSelectedBackground
-          : colors.surfaceButtonSecondary,
-      shape: StadiumBorder(),
-    );
-    var iconThemeData = IconThemeData(color: contentColor, size: 16);
+    // 不能从 `Colors.transparent` 做插值：它的 RGB 是黑，AnimatedContainer
+    // 从中途经过时会渲染成"半透明深灰"，表现为 hover 先闪一下深色再变浅。
+    // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
+    var resting = colors.surfaceHover.withValues(alpha: 0);
+    var background = widget.active
+        ? colors.surfaceSelected
+        : hover
+        ? colors.surfaceHover
+        : resting;
     var iconTheme = IconTheme(
-      data: iconThemeData,
+      data: IconThemeData(color: contentColor, size: 15),
       child: widget.leading ?? const SizedBox(),
     );
     var children = [
@@ -61,35 +69,21 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
       Expanded(child: text),
       widget.trailing ?? const SizedBox(),
     ];
-    var innerContainer = AnimatedContainer(
-      decoration: innerShapeDecoration,
+    var container = AnimatedContainer(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AthenaRadius.row),
+      ),
       duration: duration,
-      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      // Claude 实测：行高 26（垂直内边距 4）、图标起于行内 11、文字起于 30
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
       child: Row(children: children),
-    );
-    var linearGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      colors: [
-        colors.tagBorderStart.withValues(alpha: 0.17),
-        Colors.transparent,
-      ],
-      end: Alignment.bottomRight,
-    );
-    var outerShapeDecoration = ShapeDecoration(
-      color: widget.active || hover ? colors.border : null,
-      shape: StadiumBorder(),
-      gradient: widget.active || hover ? null : linearGradient,
-    );
-    var outerContainer = Container(
-      decoration: outerShapeDecoration,
-      padding: EdgeInsets.all(1),
-      child: innerContainer,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: handleEnter,
       onExit: handleExit,
-      child: outerContainer,
+      child: container,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

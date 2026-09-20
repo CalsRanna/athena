@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -81,10 +82,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
   }
 
-  Widget _buildData(
-    BuildContext context,
-    List<ExperienceEntity> experiences,
-  ) {
+  Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (experiences.isEmpty) {
       var textStyle = TextStyle(
@@ -112,10 +110,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
     );
   }
 
-  void _navigateDetailPage(
-    BuildContext context,
-    ExperienceEntity experience,
-  ) {
+  void _navigateDetailPage(BuildContext context, ExperienceEntity experience) {
     MobileExperienceDetailRoute(experience: experience).push(context);
   }
 
@@ -204,17 +199,14 @@ class _Tile extends StatelessWidget {
         style: lessonTextStyle,
       ),
       const SizedBox(height: 4),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: metaChildren,
-      ),
+      Row(crossAxisAlignment: CrossAxisAlignment.end, children: metaChildren),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.surfaceRaised,
     );
     var container = Container(

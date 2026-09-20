@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -41,7 +42,8 @@ class DesktopReasoningEffortSelectDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.menu),
+      boxShadow: AthenaShadow.overlay(colors.shadow),
     );
     var child = ConstrainedBox(
       constraints: BoxConstraints.loose(Size(520, 640)),
@@ -59,7 +61,7 @@ class DesktopReasoningEffortSelectDialog extends StatelessWidget {
     );
     var container = Container(
       decoration: boxDecoration,
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4),
       child: child,
     );
     return UnconstrainedBox(child: container);
@@ -96,14 +98,14 @@ class _DesktopReasoningEffortTileState
       fontWeight: widget.selected ? FontWeight.w500 : FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: hover ? colors.surfaceButtonSecondary : null,
+      borderRadius: BorderRadius.circular(AthenaRadius.row),
+      color: hover ? colors.surfaceHover : null,
     );
     var container = AnimatedContainer(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(widget.label, style: textStyle),
     );
     var mouseRegion = MouseRegion(

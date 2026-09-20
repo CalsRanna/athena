@@ -2,104 +2,145 @@
 
 ## 1. Visual Theme & Atmosphere
 
-Athena 是一个跨平台的 AI 工作台，不是社交应用，也不是营销网站。它的视觉语言应该让人联想到桌面级创作工具、轻量 IDE 和个人 AI 控制台：克制、安静、专业，但不是冰冷的机械黑盒。
+Athena 是一个跨平台的 AI 工作台。它的视觉语言基准是 **Claude 桌面端**
+（macOS 版，OpenAI）。
 
-整体气质建立在三个核心特征上：
-- **深色沉浸式工作区**：以深灰和蓝灰黑为主，降低背景存在感，让聊天内容、模型控制和角色系统成为焦点。
-- **克制的未来感光效**：不依赖大面积炫技渐变，而是把渐变和发光压缩到极少数关键位置，形成品牌记忆点。
-- **圆润但不软萌的工具感**：大量使用 pill 形和大圆角，但始终保持理性、紧凑、偏生产力工具的秩序。
+本节所有数值来自 **Claude 桌面端的 `app.asar`**（`/Applications/Claude.app/Contents/Resources/app.asar`
+里的 `MainWindowPage-*.css`，一套 `--cds-*` 设计系统），并与窗口截图采样交叉验证。
 
-Athena 最重要的视觉签名不是“深色”本身，而是以下两种细节：
-- **Tag / Chip 的浅色到透明边框渐变**：它让选择器、角色标签和过滤器拥有轻盈的悬浮感，是 Athena 最有辨识度的细节之一。
-- **白色 CTA 的柔光阴影**：主操作按钮不是普通白按钮，而是带有非常柔和的浅灰白光晕，像在暗色界面中被点亮的操作节点。
+| 项 | Claude 实测 / token | 值 |
+|----|--------------------|-----|
+| 中性灰阶 | `--cds-gray-0..900` | `#fff` → `#fcfcfb` → `#f9f9f7` … `#0b0b0b` |
+| 画布 | `--cds-gray-10`（采样一致） | `#FCFCFB` |
+| 侧栏 / 面板 | 实测采样 | `#FBFBF9`（与画布几乎无差） |
+| 行 hover | 实测采样 | `#F0EFEC` |
+| 行选中 | `--cds-gray-60` | `#EDECE9` |
+| 弹出层 | `--cds-surface-2` | `#FFFFFF` |
+| 描边 | `--cds-gray-100` | `#E1E0D9` |
+| 主文字 | `--cds-gray-900` | `#0B0B0B` |
+| 次级文字 | `--cds-gray-500` | `#6D6B67` |
+| 弱文字 | `--cds-gray-400` | `#898781` |
+| 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
+| composer 圆角 | `--cds-radius-composer` | **12** |
+| 正文字号 | `--cds-font-size-body` | **13** |
+| 头像档位 | `--cds-avatar-lg/md/sm/xs` | 36 / 28 / 20 / 16 |
+
+### 核心特征
+
+- **浅色为原生形态**：Claude 默认是暖白底 + 暖灰侧栏。深色是同一体系的镜像。
+- **灰阶是暖的**：`--cds-gray-*` 从 `#fff` 到 `#0b0b0b`，白端带黄绿感
+  （`#f9f9f7` / `#fcfcfb`），和中性灰一眼能分辨。深色画布取 `#1A1A19`，
+  侧栏更暗（`#0F0F0F`），不使用纯黑。
+- **UI 用系统字体，等宽只给代码**：Claude 的侧栏、设置、按钮、正文都是比例字体；
+  等宽只出现在代码块、行内代码和内置终端。
+- **圆角偏大**：可点行 8、容器 12、浮层 16、composer 20、chip 是胶囊。
+- **浮起容器带柔阴影**：composer 与浮层不是硬 1px 描边，而是一圈很柔的投影。
+- **唯一彩色是强调蓝** `#4E82EF`，用于主要动作 / 语音 / 链接。
+
+Anthena 在 Claude 语言之上的自有取舍：
+1. 会话上下文（角色、模型）以 chip 形式内嵌在 composer 顶部；
+2. 侧栏页脚承载设置入口（Claude 那里是账号）。
 
 **核心设计理念**
 - 背景必须退后，内容和控制区必须前置。
-- 渐变只服务于“品牌识别”和“焦点引导”，不能变成页面噪音。
-- Athena 的界面应当像“为长时间使用而设计”，而不是为了首屏惊艳。
-- 桌面和移动端可以结构不同，但必须共享同一套审美语言。
+- 层级靠三样东西：灰底提亮、极淡分隔线、柔阴影。不要引入第四种手段。
+- 界面应当像"为长时间使用而设计"，而不是为了首屏惊艳。
+- 桌面和移动端共享同一套审美语言，只改变结构，不改变人格。
 
 ### Priority Rules
 
-当设计决策发生冲突时，按以下优先级裁决：
-1. **先保留 Athena 的品牌签名**：Tag 渐变边框、白色 CTA 光晕、深色工作台气质优先于局部装饰创新。
-2. **再保留克制感**：如果“更强视觉冲击”和“更安静的专业工具感”冲突，优先选择后者。
-3. **再考虑层次强化**：需要提升层级时，优先增加明暗和结构，而不是新增颜色或特效。
+1. **先保住"白底 + 系统字体 + 大圆角"的底子**。
+2. **再保住克制感**：如果"更强视觉冲击"和"更安静的专业工具感"冲突，选后者。
+3. **再考虑层次强化**：优先增加灰度差与柔阴影，而不是新增颜色或特效。
 4. **最后才允许局部变化**：新页面可以有新构图，但不能引入第二套视觉人格。
 
-### Brand Signature Preservation
+### Forbidden Patterns
 
-- 如果一个新页面只能保留一个 Athena 特征，优先保留 **Tag 渐变边框体系**。
-- 如果一个页面存在明确主操作，优先保留 **白色 CTA + 柔光阴影**。
-- 如果页面属于桌面主工作区，优先保留 **深灰主体 + 轻 teal 氛围壳层**。
+- 纯黑画布（`#000000`）
+- 全站等宽字体
+- 装饰性渐变边框、发光 / 光晕
+- 硬 1px 描边代替 composer 的柔阴影
+- 大面积单色品牌色；强调色只有 `accent` 一支，且只用于主要动作
 
 ---
 
 ## 2. Color Palette & Roles
 
-### Primary Colors
+Claude 的色板是一套**偏暖的中性灰**，和 Codex 的中性灰完全不同：白端带一点黄绿
+（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。它同样用"基色 + alpha"派生
+（`--cds-alpha-0..9` = `neutral-900` 的 0/5/10/20/35/50/60/70/85/95%）。
 
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Surface Desktop | `#282828` | 桌面主工作区背景 |
-| Surface Mobile | `#282F32` | 移动端主背景、sheet 背景 |
-| Surface Deep | `#161616` | 深层容器、未选中标签内层、深色反白文字底 |
-| Pure White | `#FFFFFF` | 主文字、主按钮底色、关键图标 |
-| True Black | `#000000` | 白色圆形图标按钮中的图标 |
+### Primary Surfaces
 
-### Neutral Scale
+| Token | Light | Dark | 说明 |
+|-------|-------|------|------|
+| `surface` | `#FCFCFB` | `#1A1A19` | 主画布 |
+| `surfacePanel` | `#FBFBF9` | `#151515` | 侧栏 / 顶栏（与画布几乎无差） |
+| `surfaceMobile` | `#FFFFFF` | `#1E1E1D` | 对话框 / sheet |
+| `surfaceDeep` | `#F3F3F0` | `#151515` | 深层容器 |
+| `surfaceRaised` | `#0B0B0B` | `#FFFFFF` | 主操作实心底 |
+| `surfaceButtonSecondary` | `#F0EFEC` | `#2C2C2A` | 次级按钮 / 上下文条 |
+| `surfaceHover` | `#F0EFEC` | `#2C2C2A` | hover 态（实测） |
+| `surfaceSelected` | `#EDECE9` | `#383835` | 选中态（实测） |
 
-| Level | Hex | Usage |
-|-------|-----|-------|
-| Gray 100 | `#F5F5F5` | 输入框文字、亮色内容文本 |
-| Gray 200 | `#EAEAEA` | Tag 渐变边框起点、轻边缘高光 |
-| Gray 300 | `#E0E0E0` | 选中 Tag 背景、浅色 code/container 填充 |
-| Gray 400 | `#C2C2C2` | 占位符、边框、弱图标 |
-| Gray 500 | `#ADADAD` | 输入框半透明背景基色 |
-| Gray 600 | `#9E9E9E` | 次级辅助文字 |
-| Gray 700 | `#757575` | 输入框描边、较强轮廓线 |
-| Gray 800 | `#616161` | 移动端次级按钮背景、深层中性色块 |
+### Text
 
-### Accent Colors
+| Token | Light | Dark | Claude 来源 |
+|-------|-------|------|------------|
+| `textPrimary` | `#0B0B0B` | `#F6F6F4` | `gray-900` / `gray-30` |
+| `textInput` | `#20201F` | `#E7E6E1` | `gray-800` / `gray-80` |
+| `textSecondary` | `#6D6B67` | `#A5A49A` | `gray-500` / `gray-300` |
+| `textWeak` | `#898781` | `#898781` | `gray-400` |
+| `textRowLabel` | `#52514E` | `#A5A49A` | 列表行标签的静止色（`gray-600`，比次级文字更深） |
+| `textOnRaised` | `#FFFFFF` | `#0B0B0B` | 反色块上的文字 |
+| `textOnCode` | `#20201F` | `#E1E0D9` | 代码容器上的文字 |
 
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Athena Teal | `#6ABEB9` | 桌面背景氛围渐变、品牌级强调 |
-| Sage | `#A7BA88` | 开关开启底色 |
-| Slate | `#C2C9D1` | 开关关闭底色 |
-| Glow White | `#CED2C7` | CTA 光晕阴影基色 |
+### Borders
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `border` | `#E1E0D9` | `#2C2C2A` |
+| `borderStrong` | `#C3C2B7` | `#454442` |
+| `divider` | `#E1E0D9` | `#2C2C2A` |
+
+### Accent & Status
+
+| Token | Light | Dark | Claude 来源 |
+|-------|-------|------|------------|
+| `accent` | `#2A78D6` | `#5598E7` | `role-accent-fill` = `blue-450` / `blue-350` |
+| `statusSuccess` | `#0CA30C` | `#35B231` | `green-400` / `green-350` |
+| `statusWarning` | `#EB6834` | `#F09978` | `orange-350` / `orange-250` |
+| `statusError` | `#D03B3B` | `#E66767` | `red-450` / `red-350` |
+
+### 控件与容器
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `switchTrackOff` | `#C3C2B7` | `#454442` |
+| `checkboxOff` | `#B4B3A8` | `#5F5E5A` |
+| `iconSecondary` | `#898781` | `#A5A49A` |
+| `cardHeader` | `#F0EFEC` | `#2C2C2A` |
+| `codeBackground` | `#F6F6F4` | `#20201F` |
+| `avatarBackground` | `#E4E3DD` | `#383835` |
+| `shadow` | `#0B0B0B` | `#000000` |
 
 ### Semantic Principles
 
-- **Athena Teal 不是通用按钮色**，它主要用于大背景氛围、轻强调和品牌识别。
-- **白色是主操作色**，尤其用于 CTA、返回按钮、发送按钮、关键入口。
-- **选中状态优先通过明暗反转表达**，而不是引入更多彩色。
-- **如果一个界面已经有渐变边框或白色光晕，则不要再叠加第二种强装饰。**
-
-### Opacity Usage
-
-| Context | Opacity | Example |
-|---------|---------|---------|
-| 基础边框 | 20% | `rgba(255,255,255,0.2)` |
-| 次级文字 | 80% | `rgba(255,255,255,0.8)` |
-| Tag 渐变起点 | 17% | `rgba(234,234,234,0.17)` |
-| 输入框背景 | 60% | `rgba(173,173,173,0.6)` |
-| 桌面 teal 氛围层 | 20% | `rgba(106,190,185,0.2)` |
-| CTA 光晕 | 50% | `rgba(206,210,199,0.5)` |
-
-### Gradient Patterns
-
-- **Desktop Atmosphere Gradient**：右上角 teal 氛围渐变向左下透明扩散，用于整个桌面壳层的轻品牌氛围。
-- **Tag Border Gradient**：由浅灰白 `rgba(234,234,234,0.17)` 向透明过渡，形成轻量边缘发光，而不是实体描边。
-- **CTA Halo**：不是多色渐变，而是白色主按钮外一圈非常柔和的浅白绿色阴影，让按钮像被暗环境衬亮。
+- `accent` 是全局唯一彩色，只用于主要动作、语音与链接。
+- 状态色只承担功能语义；色相取自 Claude 的 `green / orange / red` 色阶。
+- 选中与 hover 用**灰阶档位**表达（`gray-70` / `gray-90`），不做反转填充。
+- **hover 只改底色，文字不动**。实测 Claude 的侧栏行在 hover 前后标签都是
+  `#52514F`；把标签一起提亮会让文字"闪一下"，是错的。
+- **不要从 `Colors.transparent` 做颜色动画**。它的 RGB 是黑色，`AnimatedContainer`
+  插值中途会渲染成半透明深灰，表现为"hover 先闪一下深色再变浅"。要用目标色的
+  0 透明度版本（`color.withValues(alpha: 0)`），让 RGB 全程一致、只有 alpha 在动。
+- 一次只用一种手段：有灰底就不要再加边框。
 
 ### Token Governance
 
-- 不新增新的品牌色；品牌级强调只能围绕 `Athena Teal`、白色 CTA 和既有中性色展开。
-- 不新增第二套发光体系；所有发光都必须归属于 CTA 光晕或极轻的品牌氛围层。
-- 不新增新的大圆角等级；优先复用 `8 / 24 / pill / circle`。
-- 不新增与现有灰阶相近但难以区分的新灰色。
-- 如果必须扩展 token，应先从现有 token 推导透明度、层级或尺寸变体，而不是新造一套视觉语言。
+- 不新增彩色；`accent` 之外任何色相都要有功能语义。
+- 新增灰阶一律从 `--cds-gray-*` 这套暖灰里取，不要手挑一个相近的中性灰。
+- 不新增圆角或阴影等级（见 §5、§6）。
 
 ---
 
@@ -107,44 +148,32 @@ Athena 最重要的视觉签名不是“深色”本身，而是以下两种细�
 
 ### Font Family
 
-- **UI / Body**：系统默认字体
-- **Windows 优先**：`Microsoft YaHei`
-- **Code / Technical**：等宽字体，可使用类似 Fira Code 的现代 monospace
+- **UI / 正文 / 按钮 / 侧栏 / 设置**：系统字体（`AthenaFont.ui == null`）。
+  macOS 上是 SF Pro，Windows 上是 Segoe UI；CJK 由系统回退处理。
+- **代码 / 行内代码 / 工具输出 / 终端**：`AthenaFont.mono`（Menlo → SF Mono →
+  Consolas → DejaVu Sans Mono → monospace）。
+- 全站**只有一个等宽来源**：`athenaMono()`。不要引入第二种等宽字体。
 
-### Typography Strategy
-
-Athena 的排版不靠复杂字体系统取胜，而靠清晰层级和稳定密度：
-- 标题不夸张，不做营销页式展示排版。
-- 正文尺寸稳定，强调长时间阅读和对话浏览。
-- 技术文本、代码、模型名、参数名可以使用 monospace，强化“工具感”。
+> **历史教训**：早期实现把整个 UI 做成等宽，并因此移除了 `google_fonts`。
+> 这是误读——Claude 只有代码与终端用等宽，UI 是比例字体。
 
 ### Hierarchy
 
-| Role | Size | Weight | Line Height | Usage |
-|------|------|--------|-------------|-------|
-| Page / Dialog Title | 20px | 500 | 1.2 | 对话框标题、关键页面标题 |
-| Section Title | 16px | 500 | 1.3 | 分区标题、功能模块标题 |
-| App Bar Title | 14px | 400 | 1.2 | 顶栏标题 |
-| Body | 14px | 400 | 1.5-1.7 | 主体内容、聊天文本、输入文本 |
-| Label | 12px | 500 | 1.4-1.5 | 标签、Chip、小按钮 |
-| Caption / Placeholder | 12-14px | 400 | 1.4-1.6 | 提示信息、空态、说明 |
-| Mono Label | 11-12px | 400-500 | 1.4-1.6 | 代码片段、技术标签、模型参数 |
-
-### Text Colors
-
-| Context | Color |
-|---------|-------|
-| Primary text | `#FFFFFF` |
-| Secondary text | `rgba(255,255,255,0.8)` |
-| Placeholder | `#C2C2C2` |
-| Input text | `#F5F5F5` |
-| Dark text on light surface | `#161616` |
+| Role | Token | Size | Weight | Font | Usage |
+|------|-------|------|--------|------|-------|
+| Hero | `AthenaFontSize.hero` | 28 | 600 | UI | 空态欢迎大标题 |
+| Page / Dialog Title | `AthenaFontSize.title` | 17 | 600 | UI | 对话框、页面标题 |
+| Section Title | `AthenaFontSize.section` | 15 | 500-600 | UI | 分区标题、卡片标题 |
+| Body | `AthenaFontSize.body` | 13 | 400 | UI | 正文、聊天文本、输入（`--cds-font-size-body`）；正文行高 1.625 |
+| Label | `AthenaFontSize.label` | 13 | 400-600 | UI | 标签、chip、小按钮 |
+| Caption | `AthenaFontSize.caption` | 12 | 400 | UI | 元信息、分组标题 |
+| Mono | `AthenaFontSize.mono` | 12.5 | 400 | Mono | 代码、工具参数、输出 |
 
 ### Principles
 
-- Athena 不依赖超大字和强对比标题建立品牌。
-- 层级主要通过明暗、位置和间距建立，而不是很多种字号。
-- 代码和模型信息应当更“技术化”，但不能抢正文的视觉中心。
+- 层级靠**字重 + 灰度**，不靠字号。只有空态欢迎语明显放大。
+- 技术信息（工具名、参数、输出）要保持"技术感"，但不能抢正文的视觉中心。
+- 工具**名**用 UI 字体（w600），工具**参数 / 输出**用等宽。
 
 ---
 
@@ -153,178 +182,130 @@ Athena 的排版不靠复杂字体系统取胜，而靠清晰层级和稳定密�
 ### Buttons
 
 **Primary CTA**
-- Background: `#FFFFFF`
-- Text: `#161616`
-- Shape: `StadiumBorder`
-- Padding: `horizontal 12, vertical 16`
-- Shadow: `0 0 16 rgba(206,210,199,0.5)`
-- Character: 在深色背景中像被点亮的操作节点
-
-**States**
-- Default: 白底 + 柔光阴影
-- Hover: 仅轻微强化亮度或阴影，不新增彩色描边
-- Pressed: 保持白底，缩小光晕感，像被压下
-- Disabled: 降低对比度，去掉光晕，不能再像可点击主操作
+- Background: `surfaceRaised`（浅色=近黑，深色=白）
+- Text: `textOnRaised`
+- Shape: `BorderRadius.circular(8)`
+- Padding: `horizontal 16, vertical 10`
+- Hover: 填充向画布色混入 12%
+- Disabled: `surfaceButtonSecondary` 底 + `textSecondary` 字
 
 **Secondary Button**
 - Background: transparent
-- Border: `1px solid #C2C2C2`
-- Text: `#FFFFFF`
-- Shape: `StadiumBorder`
-- Sizes:
-  - Default: `20 x 16`
-  - Medium: `24 x 12`
-  - Small: `20 x 8`
-
-**States**
-- Default: 细边框 + 白字
-- Hover: 允许轻微提亮边框或文字
-- Pressed: 保持当前色系，不出现发光
-- Disabled: 文字与边框同步减弱
-
-**Text / Ghost Button**
-- Background: transparent
-- Text: `#FFFFFF`
-- Shape: `StadiumBorder`
-- Padding: `12 x 16`
-- Use: 非主路径操作、轻工具操作
-
-**States**
-- Hover: 可以提亮文字，但不增加填充和阴影
-- Pressed: 保持安静，不做视觉跳变
+- Border: `1px solid border`
+- Text: `textPrimary`
+- Shape: `8`
+- Hover: 底 `surfaceHover` + 边框提亮到 `borderStrong`
 
 **Icon Button**
-- Background: `#FFFFFF`
-- Icon: `#000000`
-- Shape: circle
-- Padding: 12
-- Use: 返回、确认、轻量单步操作
+- Background: `surfaceRaised`
+- Icon: `iconOnRaised`
+- Shape: `8`（不是圆形，除非是头像或语音按钮）
 
-**States**
-- Hover: 轻微提亮或提升存在感
-- Pressed: 维持实体感，但不要出现 CTA 级光晕
-- Disabled: 仍保留结构轮廓，但明显失去可操作感
+**Send / Voice Button**
+- Background: `accent`
+- Icon: 白色
+- Shape: `pill`（圆形）
+- 全站唯一一处彩色实心块。
 
 ### Inputs
 
 **Canonical Input Style**
-- Background: `rgba(173,173,173,0.6)`
-- Border: `1px solid #757575`
-- Radius: 24
-- Text: `#F5F5F5`
-- Placeholder: `#C2C2C2`
-- Cursor: `#F5F5F5`
-- Padding: `horizontal 20, vertical 15.5`
+- Background: `inputBackground`
+- Border: `1px solid border`（聚焦提亮到 `borderStrong`）
+- Radius: 8
+- Padding: `horizontal 12, vertical 10`
+- 聚焦不出现焦点环、不出现光晕。
 
-**States**
-- Default: 半透明中灰背景 + 细描边
-- Focus: 优先加强边框清晰度，不使用高饱和 focus ring
-- Error: 在不破坏整体深色气质的前提下，使用更明确但克制的警示边界
-- Disabled: 维持结构，但明显降低对比与可编辑感
+**Composer（版式取自 Claude 桌面端）**
 
-**Mobile Input Adaptation**
-- 保留相同色彩语言
-- 可适度压缩内边距，但不要改变整体气质
-- 不要切回默认 Material 白底输入框
+版式取自 Claude 桌面端：两个**独立的圆角容器**上下堆叠（上下文条 + 输入框），
+控制项排在容器**外面**单独一行。
 
-**Scope**
-- `Canonical Input` 用于设置、表单、命名、配置、编辑等通用文本输入场景。
-- 它是 Athena 的默认输入语言，但不是所有输入场景的唯一形态。
+- **上下文条**（上容器）：`surfaceButtonSecondary` 灰底、**无描边**、
+  圆角 12、高 42，放当前角色
+- 间距 6
+- **输入容器**（下容器）：`surface` 白底 + 1px `border`、圆角 12，内含输入区
+- 间距 6
+- **容器外的一行**：左（配置、图片），右（模型、推理强度、token 指示、发送）
+- 容器不用阴影，只用填充与描边区分层级
+- 桌面居中，`maxWidth 768`（`kChatColumnWidth`），底部 20
+- 桌面端 `Enter` 发送、`Shift+Enter` 换行；小键盘 Enter 同样发送
 
-**Composer Input Exception**
-- Chat Composer input 是独立组件，不强制与 `Canonical Input` 完全同构。
-- 它可以保留相近的视觉语言，但允许为消息输入单独处理键盘行为与布局。
-- 在桌面端，Composer input 应优先支持 `Enter` 发送、`Shift+Enter` 换行等高频创作型交互。
-- 即使作为例外组件，Composer input 仍然必须属于 Athena 视觉体系，不能退回默认系统输入风格。
+### Chips
 
-### Tags / Chips
+**AthenaTag / AthenaTagButton**（筛选类）
+- Shape: `pill`
+- Border: `1px solid border`
+- Unselected: `surfaceDeep` 底 + `textSecondary` 字
+- Selected: `surfaceSelected` 底 + `textPrimary` 字 + `w600`
+- Hover: `surfaceHover` 底 + `borderStrong` 边框
 
-这是 Athena 的关键品牌组件，必须被高度统一。
+**AthenaContextChip**（composer 上下文条上的项）
+- Shape: `pill`
+- `filled: false`（默认使用）：**完全不画底色**——它坐在已经是浅灰的上下文条上，
+  再画一层同色底就成了"看不见的胶囊"。Claude 的上下文项就是条上直接排的文字 + 图标。
+  操作行里单独出现的模型名也用 `filled: false`，与 Claude 桌面端的
+  底部模型文字一致（不画底）。
+- `filled: true` 用于带外单独出现的场景
+- 左侧可选 13px 图标；文字 `textSecondary`
+- Hover: 填充提亮到 `surfaceSelected`
 
-- Outer border: 渐变边框，从 `rgba(234,234,234,0.17)` 到透明
-- Inner radius: 44
-- Unselected background: `#161616`
-- Unselected text: `#FFFFFF`
-- Selected background: `#E0E0E0`
-- Selected text: `#161616`
-- Default padding: `horizontal 36, vertical 13`
-- Small padding: `horizontal 20, vertical 4`
-- Animation: `300ms`
-
-**Principle**
-- Tag 的“亮边框”不是边框装饰，而是 Athena 的视觉签名。
-- 任何角色列表、模型筛选、Sentinel 展示区都应优先沿用这套语言。
-
-**States**
-- Default: 深色内层 + 渐变边框
-- Hover: 只允许轻微提升亮边缘存在感
-- Selected: 浅色填充 + 深色文字，形成明确反转
-- Disabled: 保留轮廓但显著降低存在感
+**原则**：容器内（composer）的 chip 不画边；独立出现的筛选 chip 画边。
+两者都是胶囊。
 
 ### Switch / Toggle
 
-- Width: 36
-- Thumb: 16 x 16
-- On: `#A7BA88`
-- Off: `#C2C9D1`
-- Thumb color: `#FFFFFF`
-- Duration: `100ms`
+- Track: `34 × 18`，圆角 6
+- Knob: `12 × 12` 圆形，`switchKnob`
+- On: `statusSuccess`
+- Off: `switchTrackOff`
+- Duration: `120ms`
+
+### Checkbox
+
+- 尺寸 `16 × 16`，圆角 4
+- 选中：`surfaceRaised` 实心 + `iconOnRaised` 勾
+- 未选中：`checkboxOff` 描边
 
 ### Dialogs & Sheets
 
 **Desktop Dialog**
-- Background: `#282F32`
-- Radius: 8
+- Background: `surfaceMobile`
+- Radius: `AthenaRadius.panel`（16）
+- Shadow: `AthenaShadow.overlay`
 - Width: `min 320 / max 520`
-- Padding: 32
-- Positioning: centered
+- Padding: 24
+- Title: 17 / w600
 
 **Mobile Sheet**
-- Background: `#282F32`
-- Presentation: bottom sheet
-- Padding: `horizontal 24, vertical 12`
-- Tone: 与桌面对话框一致，但更贴近触控上下文
+- Background: `surfaceMobile`
+- Padding: `horizontal 20, vertical 16`
+- 按钮全宽、圆角 8
+
+**Toast / Message Overlay**
+- Background: `surfaceMobile`
+- Radius: 16 + `overlay` 阴影
+- 边框取语义色 40% 透明度（仅用于提示，不用于常规面板）
+
+### Cards & Surfaces
+
+- 浮起容器用**柔阴影**，不要用硬描边（这是 composer 的关键形态）。
+- 静态容器（代码块、引用块）用**淡描边 + 灰底**。
+- 会话内的权限审批卡与提问卡是浅色面板（`surfaceMobile` + `overlay` 阴影）。
+- 助手消息不画底板，直接坐在画布上。
 
 ### Component Coverage Rules
 
 - 所有主路径操作按钮必须从 **Primary CTA** 派生。
-- 所有筛选器、角色标签、模型标签、Sentinel 标签必须从 **Athena Tag / Chip** 派生。
-- 所有文本输入和搜索输入必须从 **Canonical Input Style** 派生。
-- 所有聊天消息输入区必须从 **Composer Input** 语言派生，而不是普通表单输入。
-- 所有移动端临时操作面板必须优先使用 **Mobile Sheet** 语言。
+- 所有筛选 chip 从 **AthenaTag** 派生；composer 内 chip 从 **AthenaContextChip** 派生。
+- 所有文本输入从 **Canonical Input Style** 派生；会话输入必须用 **Composer**。
 - 所有桌面模态必须优先使用 **Desktop Dialog** 语言。
-- 新页面如果完全没有使用 Athena 签名元素，应视为风格不足。
 
 ### Allowed Exceptions
 
-- 代码块、技术输出、预览面板可以使用更中性的容器样式，但不能引入新的品牌色。
-- 图片预览、媒体预览、系统级权限弹窗允许更弱的品牌化处理，但仍应保留基础深色体系。
-- 例外组件只能弱化 Athena 风格，不能创造第二套风格。
-
-### Cards & Surfaces
-
-- 主体卡片尽量少做厚重投影
-- 默认依靠深浅分层、边框、渐变边缘区分层级
-- 如果一个卡片已经使用浅边缘渐变，就不要再叠加强卡片阴影
-
-### Distinctive Components
-
-**Sentinel Tag Wall**
-- 以成组 pill 标签构成角色入口
-- 重点展示渐变边框与深浅反转选中态
-- 感觉应当轻盈、可收藏、像“角色胶囊库”
-
-**Chat Composer**
-- 是工作台核心控制区，不只是输入框
-- 负责输入、发送、附件、局部会话参数等高频创作操作
-- 在桌面端，模型选择、角色选择、工具服务器等会话上下文切换可以提升到顶栏 context strip，与 composer 形成上下协同
-- 发送按钮应优先使用白色高亮操作节点
-- 输入区允许拥有独立于表单输入的键盘交互规则
-- 它应被视为品牌组件，而不是普通 textarea
-
-**Desktop Shell**
-- 最外层用非常轻的 teal 氛围渐变建立品牌识别
-- 内层保持深灰纯净工作区
+- 工具执行中的标题可以有一条流动 shimmer 高光。
+- macOS 窗口控制灯保持系统样式；头像保持圆形。
+- 例外组件只能弱化 Claude 语言，不能创造第二套语言。
 
 ---
 
@@ -334,102 +315,102 @@ Athena 的排版不靠复杂字体系统取胜，而靠清晰层级和稳定密�
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| space-xs | 4 | 微调、细间距 |
-| space-sm | 8 | 紧凑控件间距 |
-| space-md | 12 | 常规模块内间距 |
-| space-lg | 16 | 页面常规留白 |
-| space-xl | 20 | 输入框水平 padding、按钮舒适留白 |
-| space-2xl | 24 | 大圆角、sheet padding |
-| space-3xl | 32 | 桌面工作区 padding |
+| `AthenaSpace.xs` | 4 | 微调 |
+| `AthenaSpace.sm` | 8 | 紧凑控件间距 |
+| `AthenaSpace.md` | 12 | 常规模块内间距 |
+| `AthenaSpace.lg` | 16 | 页面常规留白 |
+| `AthenaSpace.xl` | 20 | 面板内边距 |
+| `AthenaSpace.xxl` | 24 | 对话框内边距 |
+| `AthenaSpace.xxxl` | 32 | 桌面工作区留白 |
+| `AthenaSpace.sidebar` | 260 | 桌面左侧栏宽度 |
 
 ### Grid & Density
 
-- Athena 应保持 **中高密度工具界面**
-- 不走营销网站的大留白路线
-- 也不走终端式极端压缩路线
-- 信息密度要足够专业，但仍需呼吸感
+- 保持 **高密度工具界面**：紧凑但不拥挤。
+- 不走营销网站的大留白路线。
 
 ### Desktop Layout
 
-- Left sidebar width: `240px`
-- Workspace padding: `horizontal 32, vertical 12`
-- 桌面聊天页应形成稳定多区工作台结构：顶栏 context strip、左栏列表、主内容区、底部 composer
-- 顶栏负责承载当前会话的上下文选择，底部 composer 负责创作输入与发送核心
+实测值（参考侧为窗口像素量取）：
+
+| 项 | 值 |
+|----|-----|
+| 侧栏宽 | **288**（实测：分界线在逻辑 287） |
+| 侧栏行 | 高 **26**（垂直内边距 4）、左右内缩各 **8**、图标起于行内 **11**、文字起于 **30** |
+| 会话列宽 | **768** = `kChatColumnWidth`；消息列与 composer 同宽并居中，左右对齐。注意 Claude 的 composer 实测约 810，是本仓保留 768 的已知偏差 |
+| Composer 高 | 约 114 |
+| Composer 底距 | 20 |
+| 顶栏 | 只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题 |
+
+- 侧栏底色 `surfacePanel`，与画布以 1px `border` 分开
+- 顶栏**有会话标题**（Claude 的顶栏不是空的）：左侧是窗口控制，中间是当前会话标题。
+  Athena 没有导航箭头与右面板，所以只保留标题
+- 侧栏内容：分组列表（Pinned / Chats）+ 底部页脚（应用标识 + 设置入口）
+- **会话列定宽居中**：消息与 composer 走同一条 768 宽的列（`chatColumnPadding()`
+  按画布宽度算两侧留白），左右边缘对齐；画布不够宽时退回 32 的最小留白
+- **消息不带头像**（Claude 的对话渲染里没有头像元素）
+- **用户消息是右对齐的浅灰气泡**：前景色 5% 填充、圆角 16、内边距 12×8、
+  最宽为列宽的 77%
+- **助手消息没有气泡**：内容直接铺满列宽
+- 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
 
 ### Mobile Layout
 
 - Horizontal padding: `16px`
-- Vertical rhythm: `8px / 12px / 24px`
-- 模块之间以清晰分段组织，不堆砌卡片
-- 触控区域应当更明确、更圆润
+- 单列；composer 与桌面同一形态（浮起容器 + 柔阴影）
 
 ### Border Radius Scale
 
-| Size | Value | Use |
-|------|-------|-----|
-| Standard | 8px | dialog、card、轻容器 |
-| Comfortable | 24px | 输入区、搜索框、大表单 |
-| Full Pill | 44px+ | Tag、胶囊按钮、筛选器 |
-| Circle | 50% | 返回按钮、图标按钮 |
+取自 Claude 的 `--cds-radius-*`：最小档 5，
+控件档 7，**composer 也只有 12**，没有 20/24 这种大圆角。
 
-### Whitespace Philosophy
+| Claude 变量 | 值 | 本仓 token | 组件 |
+|-----------|-----|-----------|------|
+| `--cds-radius` | 4 | `xs` | 极小元素 |
+| `--cds-radius--sm` / `--xs` | 5 | `inline` | 徽标、行内代码、勾选框 |
+| `--cds-radius--lg` | 7 | `row` / `control` | 列表行、按钮、输入框 |
+| （卡片 / 面板） | 10 | `container` | 卡片、代码块 |
+| `--cds-radius-composer` | 12 | `panel` / `menu` / `composer` | 对话框、菜单、composer |
+| `--radius-full` | 9999 | `pill` | chip、发送按钮、头像 |
 
-- 空白不是为了“高级感展示”，而是为了让控制区和内容区分离。
-- 深色界面中的留白应尽量通过结构间距体现，而不是大量空洞区域。
-- 所有间距都应服务于可读性和操作流畅度。
+### Desktop Layout（实测值）
+
+| 项 | 值 |
+|----|-----|
+| 侧栏宽 | 260 |
+| Composer | 上下文条 + 输入容器，宽 768（`kChatColumnWidth`），底部 20 |
+| 会话列 | 768 宽居中，内部再留 16（`kChatColumnInnerPadding`） |
+| 顶栏 | 只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题 |
 
 ### Page Archetypes
 
 **Desktop Chat Workspace**
-- 采用桌面工作台分区：导航/列表、顶栏上下文区、主内容区、底部 composer
-- 主内容区应最安静，顶栏上下文区、列表区与底部 composer 承担更多边界和功能提示
-- 顶栏上下文区优先承载模型、角色、工具服务器等当前会话切换
-- 底部 composer 是页面最明确的输入与发送核心
-
-**Mobile Home**
-- 首屏应突出 Athena 的品牌组件，尤其是 Sentinel Tag Wall
-- 不做社交 feed 式大卡片流
-- 模块应当像“工具入口集合”，而不是“内容消费列表”
+- 分区：侧栏列表、顶栏标题、主内容区、底部 composer
+- 主内容区最安静；composer 是视觉重心（浮起 + 柔阴影）
+- 空态是居中大标题 + 胶囊标签
 
 **Settings / Configuration**
-- 采用工具化、列表化、表单化布局
+- 工具化、列表化、表单化布局
 - 强调清晰层级，不强调装饰性卡片堆叠
-- 行为操作要克制，避免多个同时抢眼的按钮
-
-**Bottom Sheet Flow**
-- 每个 sheet 应只服务一个短流程或一组紧密相关操作
-- sheet 内优先使用 Athena Tag、Canonical Input、简洁 CTA
-- 不在 sheet 内再堆叠复杂卡片体系
-
-**Selection Surfaces**
-- 模型选择、角色选择、过滤选择器优先通过 Tag / pill 体系建立统一感
-- 在桌面聊天页中，这类选择器可以以内联顶栏 chips / tags 的形式出现，而不是只能放在底部 composer
-- “选择”应更多依赖反转、边缘、明暗，而不是彩色高亮
 
 ---
 
 ## 6. Depth & Elevation
 
-Athena 的层级系统应当克制。它更依赖：
-- 深浅背景差
-- 半透明边框
-- 渐变边缘
-- 少量关键发光
-
-而不是大量 Material 式卡片阴影。
-
 | Level | Treatment | Use |
 |-------|-----------|-----|
-| Flat | 无阴影，仅背景层次 | 主页面背景、大多数内容区 |
-| Border Ring | `rgba(255,255,255,0.2)` 细边 | 分割、输入框、工具区边界 |
-| Gradient Edge | 浅灰到透明渐变边缘 | Tag、轻浮层、品牌性边缘 |
-| CTA Glow | `0 0 16 rgba(206,210,199,0.5)` | 主按钮、关键发送按钮 |
-| Ambient Brand Layer | `rgba(106,190,185,0.2)` 到透明 | 桌面壳层背景氛围 |
+| Canvas | `surface`，无阴影无边框 | 主工作区 |
+| Panel | `surfacePanel` + 1px `border` | 侧栏、顶栏 |
+| Static content | `codeBackground` + 1px `border` | 代码块、引用块 |
+| Selected | `surfaceSelected` | 选中行、选中 chip |
+| Hover | `surfaceHover` | 悬停行 |
+| **Floating** | `surface`/`surfaceMobile` + `AthenaShadow.raised` | composer |
+| **Overlay** | `surfaceMobile` + `AthenaShadow.overlay` | 对话框、菜单 |
 
 ### Principles
 
-- 发光只给“重要操作”，不要把所有可点击元素都做亮。
-- 渐变边缘比实体描边更符合 Athena 的气质。
+- **静态容器用边框，浮起容器用阴影**——这是本体系最重要的一条分工。
+- 不要给静态卡片加阴影，也不要给浮起容器加硬描边。
 - 真正的视觉焦点应当很少，这样它们才有力量。
 
 ---
@@ -438,63 +419,50 @@ Athena 的层级系统应当克制。它更依赖：
 
 ### Do
 
-- 使用深灰和蓝灰黑作为稳定背景，保持沉浸式工作台气质
-- 把 Tag 的渐变边框当作 Athena 的品牌语言持续复用
-- 把白色 CTA 的柔光阴影作为主操作的专属视觉信号
-- 让桌面端保持轻微 teal 氛围背景，但强度必须克制
-- 通过圆角、边框、亮暗反转统一交互组件
-- 让移动端延续桌面端的品牌感，而不是退回默认移动应用风格
-- 在内容区和控制区之间保留清晰层次
+- 用白底（浅色）/ `#212121`（深色）作为主画布
+- 用系统字体承载 UI 与正文，等宽只给代码
+- 用柔阴影表达"浮起"，用淡边框表达"分隔"
+- 主操作用"画布的反色块"或 `accent` 胶囊
+- chip 一律胶囊；容器内的 chip 不画边
+- 保持高密度，紧凑但不拥挤
 
 ### Don't
 
-- 不要把 Athena 做成彩色 dashboard 或 neon cyberpunk
-- 不要把 teal 扩散成全站主按钮色或大面积品牌底色
-- 不要让渐变无处不在；渐变必须是稀缺资源
-- 不要把白色光晕用于所有按钮；它只属于 CTA
-- 不要引入大量不同半径，破坏组件家族感
-- 不要使用默认 Material 风格白底输入框、蓝色按钮或系统原生弹窗视觉
-- 不要把移动端做成“社交 feed”风格；它仍然是工具界面
-- 不要让页面之间出现完全不同的交互控件气质
+- 不要使用纯黑画布
+- 不要把整个 UI 做成等宽字体
+- 不要引入渐变边框、发光、光晕
+- 不要给静态卡片加阴影，也不要给 composer 加硬描边
+- 不要新增彩色；`accent` 之外只允许功能语义色
+- 不要新增圆角等级
+- 不要使用默认 Material 风格白底输入框或系统原生弹窗视觉
 
 ---
 
 ## 8. Responsive Behavior
 
-### Shared Brand, Different Shell
+### Shared Language, Different Shell
 
-Athena 的跨平台原则应当是：
-- **品牌一致**
-- **交互壳层适配平台**
-
-也就是说，桌面和移动可以拥有不同布局和容器形式，但不能拥有不同视觉人格。
+- **视觉语言一致**，**交互壳层适配平台**。
+- 桌面和移动可以有不同的布局与容器形式，但不能有不同视觉人格。
 
 ### Desktop
 
-- 深灰工作台 + 轻 teal 氛围渐变
-- 更强调分栏、长时间停留、信息并行
-- 对话框采用居中浮层
-- 输入区更像工具带的一部分
+- 白底工作台 + `surfacePanel` 侧栏与顶栏
+- 分栏、长时间停留、信息并行
+- 对话框居中浮层
+- Composer 居中浮起，`maxWidth 860`
 
 ### Mobile
 
-- 蓝灰黑主背景
-- 更强调分段浏览和单任务流程
-- 使用 bottom sheet 代替大多数模态居中弹窗
-- 返回、确认等关键动作优先使用白色圆形 icon button
-
-### Touch & Interaction
-
-- 移动端 CTA 和 icon button 需要清晰、饱满、可单手识别
-- 桌面端 hover 可以强化，但不能依赖 hover 才能理解状态
-- 选中状态优先使用亮暗反转和标签填充变化表达
+- 单列，`surfaceMobile` 背景
+- bottom sheet 代替大多数模态居中弹窗
+- Composer 与桌面同一形态
 
 ### Motion & State Principles
 
-- 所有交互动效都应服务于“状态确认”，而不是制造炫技。
+- 所有交互动效服务于"状态确认"，而不是炫技。
 - hover 只做轻微强调，不改变组件类型。
-- pressed 应更像“压下”，而不是“点亮”。
-- disabled 应清晰可见但不吸引注意力。
+- 时长：hover / 选中 `120-150ms`，开关 `120ms`。
 
 ---
 
@@ -502,49 +470,61 @@ Athena 的跨平台原则应当是：
 
 ### Athena Visual Summary
 
-- Deep dark AI workspace
-- Minimal teal atmosphere on desktop only
-- Pill-heavy control language
-- Signature gradient-outline tags
-- Signature white CTA with soft halo glow
-- Calm, technical, non-marketing, non-social
+- Claude-desktop-derived AI workspace
+- Light-first: white canvas (`#FFFFFF`), `#FAFAFA` sidebar, `#E8E8E9` hairline dividers
+- **System UI font**; monospace only for code, inline code, tool args and output
+- Message hierarchy from weight and gray value, not size
+- Radii 4 / 8 / 12 / 16 / 20, plus pills for chips and the send button
+- Static containers use hairline borders; floating containers use soft shadows
+- One chromatic accent: `#4E82EF`
+- Calm, technical, high-density, non-marketing, non-social
 
 ### Quick Color Reference
 
-| Use | Value |
-|-----|-------|
-| Desktop background | `#282828` |
-| Mobile background | `#282F32` |
-| Deep surface | `#161616` |
-| Primary text | `#FFFFFF` |
-| Secondary text | `rgba(255,255,255,0.8)` |
-| Placeholder | `#C2C2C2` |
-| Input background | `rgba(173,173,173,0.6)` |
-| Input border | `#757575` |
-| Brand teal | `#6ABEB9` |
-| CTA glow | `rgba(206,210,199,0.5)` |
-| Tag gradient start | `rgba(234,234,234,0.17)` |
+| Use | Light（实测） | Dark |
+|-----|------|------|
+| Canvas | `#FFFFFF` | `#212121` |
+| Sidebar / app bar | `#FAFAFA` | `#171717` |
+| Divider / border | `#E8E8E9` | `#2F2F2F` |
+| Selected row | `#EDEEEF` | `#333333` |
+| Chip fill | `#F4F4F4` | `#2F2F2F` |
+| Primary text | `#1A1C1F` | `#ECECEC` |
+| Secondary text | `#6E6E73` | `#A0A0A5` |
+| Weak text | `#C3C3C5` | `#6E6E73` |
+| Accent | `#4E82EF` | `#6E9BF5` |
 
 ### Prompt Fragments
 
-**For Athena CTA**
-"Create a primary CTA for a dark AI workspace: white background, dark text, StadiumBorder shape, soft white-green halo shadow (`rgba(206,210,199,0.5)` with 16px blur), calm and premium rather than loud."
+**For the Athena Composer**
+"Build a chat composer as ONE floating container: white fill, 20px radius, and a
+soft shadow (no hard border). Inside, stack three rows: pills showing the current
+context (role, model) with a light `#F4F4F4` fill and no border; the borderless
+text field; and an action row with settings on the left and a circular blue
+`#4E82EF` send button on the right. Centered, max width 860, 32px side margins."
 
-**For Athena Tag**
-"Create a pill-shaped tag with a subtle gradient border from `rgba(234,234,234,0.17)` to transparent, dark inner fill (`#161616`), white text by default, and a selected state with light fill (`#E0E0E0`) and dark text."
+**For Athena Chips**
+"Build a compact pill chip: fully rounded, 13px system-font label. Filter chips get
+a 1px `#E8E8E9` border with a `#F7F7F7` fill; chips inside the composer get NO
+border, only a `#F4F4F4` fill. Selected is `#EDEEEF` fill with `#1A1C1F` weighted
+text. No gradient, no glow."
 
-**For Athena Desktop Surface**
-"Create a desktop AI workspace with a dark gray base (`#282828`) and a very subtle teal atmospheric gradient in the outer shell, keeping the center workspace clean and focused."
+**For Athena Code Block**
+"Build a code block: `#F7F7F7` fill with a 1px `#E8E8E9` border and 12px radius, a
+`#F4F4F4` header strip carrying the monospace language label and a copy button, and
+`#1A1C1F` monospace body text. The body is the only monospace in the UI."
 
-**For Athena Mobile Sheet**
-"Create a mobile bottom sheet for an AI tool app using `#282F32` background, rounded geometry, white text, restrained spacing, and the same visual language as a professional desktop workspace."
+**For the Athena Sidebar**
+"Build a `#FAFAFA` sidebar, 260px wide, separated from the white canvas by a 1px
+`#E8E8E9` line. Rows are 8px-radius with the system font; the selected row is
+`#EDEEEF`. Add uppercase-ish `#C3C3C5` group labels and a bottom footer with a
+rounded app avatar, the app name, and a settings icon."
 
 ### Final Instruction to Agents
 
-当你为 Athena 设计页面时：
-1. 先保证它像一个深色 AI 工作台，而不是普通 app。
-2. 优先复用 Athena 的两个签名元素：渐变边框 Tag 与白色光晕 CTA。
-3. 让品牌感来自少量高质量细节，而不是大量视觉特效。
-4. 让桌面和移动共享气质，只改变结构，不改变人格。
-5. 不新增新的品牌色、圆角体系或发光体系，先从现有 token 派生。
-6. 如果多个方向都看起来合理，优先选择更克制、更工具化、更多 Athena 签名元素的方案。
+1. 先保证它像 Claude 桌面端：暖白底、系统字体、克制的圆角、少量阴影。
+2. 浮起容器用阴影，静态容器用边框——不要混用。
+3. 等宽只给代码；UI 与正文一律系统字体。
+4. chip 一律胶囊；`#4E82EF` 是唯一的彩色。
+5. 桌面与移动共享气质，只改变结构，不改变人格。
+6. 不新增颜色、圆角或阴影体系，先从现有 token 派生。
+7. 多个方向都合理时，选更克制、更工具化的那个。

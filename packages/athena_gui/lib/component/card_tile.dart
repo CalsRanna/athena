@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// 首页卡片行中的单张卡片（恢复原 Shortcut 卡片样式：
@@ -25,7 +26,7 @@ class CardTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AthenaRadius.container),
           color: colors.surfaceButtonSecondary,
         ),
         padding: const EdgeInsets.all(12),

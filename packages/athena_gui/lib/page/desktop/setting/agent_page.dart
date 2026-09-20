@@ -55,9 +55,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
   Widget _buildListView(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var items = ['General', 'Tools'];
-    var borderSide = BorderSide(
-      color: colors.borderFaint.withValues(alpha: 0.2),
-    );
+    var borderSide = BorderSide(color: colors.border);
     Widget child = ListView.separated(
       padding: const EdgeInsets.all(12),
       itemBuilder: (context, i) => DesktopMenuTile(

@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -17,9 +18,9 @@ class QueuedMessages extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.inputBackground.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.borderFaint.withValues(alpha: 0.3)),
+        color: colors.inputBackground,
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

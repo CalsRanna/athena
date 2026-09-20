@@ -1,5 +1,6 @@
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 
 import 'package:flutter/material.dart';
 
@@ -11,22 +12,16 @@ class NewChatButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final textStyle = TextStyle(
       color: colors.textOnRaised,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var boxShadow = BoxShadow(
-      blurRadius: 16,
-      color: colors.ctaGlow.withValues(alpha: 0.5),
-    );
-    var shapeDecoration = ShapeDecoration(
-      color: colors.surfaceRaised,
-      shadows: [boxShadow],
-      shape: StadiumBorder(),
+      fontSize: AthenaFontSize.section,
+      fontWeight: FontWeight.w600,
     );
     final button = Container(
-      decoration: shapeDecoration,
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+      decoration: BoxDecoration(
+        color: colors.surfaceRaised,
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
       child: Center(child: Text('New Chat', style: textStyle)),
     );
     return GestureDetector(

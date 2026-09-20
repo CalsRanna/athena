@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 class AthenaFormTileLabel extends StatelessWidget {
@@ -7,13 +8,13 @@ class AthenaFormTileLabel extends StatelessWidget {
   final Widget? trailing;
 
   const AthenaFormTileLabel({super.key, required this.title, this.trailing})
-    : titleFontSize = 14;
+    : titleFontSize = AthenaFontSize.section;
 
   const AthenaFormTileLabel.large({
     super.key,
     required this.title,
     this.trailing,
-  }) : titleFontSize = 24;
+  }) : titleFontSize = AthenaFontSize.title;
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +22,8 @@ class AthenaFormTileLabel extends StatelessWidget {
     var titleTextStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: titleFontSize,
-      fontWeight: FontWeight.w500,
-      height: 1.5,
+      fontWeight: FontWeight.w600,
+      height: 1.4,
     );
     var children = [
       Expanded(child: Text(title, style: titleTextStyle)),

@@ -1,5 +1,6 @@
 import 'package:athena_gui/page/mobile/chat/component/send_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 class UserInput extends StatefulWidget {
@@ -32,9 +33,8 @@ class _UserInputState extends State<UserInput> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final hintTextStyle = TextStyle(
-      color: colors.border,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
+      color: colors.textWeak,
+      fontSize: AthenaFontSize.body,
     );
     final inputDecoration = InputDecoration.collapsed(
       hintText: 'Send a message',
@@ -42,8 +42,7 @@ class _UserInputState extends State<UserInput> {
     );
     final textStyle = TextStyle(
       color: colors.textInput,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
+      fontSize: AthenaFontSize.body,
     );
     final textField = TextField(
       controller: widget.controller,
@@ -62,21 +61,22 @@ class _UserInputState extends State<UserInput> {
       onTerminated: widget.onTerminated,
       isStreaming: widget.isStreaming,
     );
-    var shapeDecoration = ShapeDecoration(
-      color: colors.inputBackground.withValues(alpha: 0.6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-    );
-    var rowChildren = [
-      Expanded(child: textField),
-      const SizedBox(width: 16),
-      sendButton,
-    ];
+    // 与桌面端同一形态：一整块圆角容器 + 柔阴影，输入在上、操作在下。
     return Container(
-      decoration: shapeDecoration,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: rowChildren,
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AthenaRadius.composer),
+        boxShadow: AthenaShadow.raised(colors.shadow),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          textField,
+          const SizedBox(height: 8),
+          Row(children: [const Spacer(), sendButton]),
+        ],
       ),
     );
   }

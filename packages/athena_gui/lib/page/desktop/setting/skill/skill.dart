@@ -187,9 +187,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var skills = viewModel.skills.value;
-      var borderSide = BorderSide(
-        color: colors.borderFaint.withValues(alpha: 0.2),
-      );
+      var borderSide = BorderSide(color: colors.border);
       Widget child = ListView.separated(
         padding: const EdgeInsets.all(12),
         itemBuilder: (context, index) =>
@@ -218,7 +216,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     var skill = skills[index];
     final selected =
         this.index == index || _selection.selectedIds.contains(skill.name);
-    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
+    var trailingColor = selected ? colors.textPrimary : colors.iconSecondary;
     var trailing = skill.isBuiltin
         ? Icon(
             HugeIcons.strokeRoundedCircleLock01,

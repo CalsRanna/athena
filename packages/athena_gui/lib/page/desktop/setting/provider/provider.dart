@@ -7,6 +7,7 @@ import 'package:athena_gui/page/desktop/setting/provider/component/model_form_di
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_context_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -278,9 +279,7 @@ class _DesktopSettingProviderPageState
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var providers = providerViewModel.providers.value;
       if (providers.isEmpty) return const SizedBox();
-      var borderSide = BorderSide(
-        color: colors.borderFaint.withValues(alpha: 0.2),
-      );
+      var borderSide = BorderSide(color: colors.border);
       var listView = ListView.separated(
         padding: const EdgeInsets.all(12),
         itemBuilder: (context, index) =>
@@ -318,11 +317,11 @@ class _DesktopSettingProviderPageState
   ) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var provider = providers[index];
-    // 选中态背景是浅色 tagSelectedBackground,iconSecondary 与之同色
-    // (深色模式均为 0xFFE0E0E0)会看不见,选中时用 textSelected(与文字同色)
+    // 尾随图标跟随行文字色:选中行提亮到 textPrimary,未选中用 iconSecondary。
+    // 选中行底色是 surfaceSelected(深色下比画布亮一档),两者都有足够对比。
     final selected =
         this.index == index || _selection.selectedIds.contains(provider.id);
-    var trailingColor = selected ? colors.textSelected : colors.iconSecondary;
+    var trailingColor = selected ? colors.textPrimary : colors.iconSecondary;
     var trailing = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -502,7 +501,7 @@ class _ModelListTileState extends State<_ModelListTile> {
         color: hover
             ? colors.surfaceButtonSecondary
             : colors.inputBackground.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: column,

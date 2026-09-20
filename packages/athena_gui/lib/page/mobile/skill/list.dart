@@ -1,6 +1,7 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -49,9 +50,10 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                 behavior: HitTestBehavior.opaque,
                 onTap: () => navigateFormPage(context, null),
                 child: Container(
-                  decoration: ShapeDecoration(
+                  decoration: BoxDecoration(
                     color: colors.surfaceDeep,
-                    shape: const StadiumBorder(),
+                    border: Border.all(color: colors.border),
+                    borderRadius: BorderRadius.circular(AthenaRadius.control),
                   ),
                   padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
                   margin: EdgeInsets.only(
@@ -63,7 +65,9 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                       Container(
                         decoration: BoxDecoration(
                           color: colors.surfaceRaised,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(
+                            AthenaRadius.inline,
+                          ),
                         ),
                         height: 24,
                         width: 24,
@@ -196,7 +200,7 @@ class _Tile extends StatelessWidget {
       children: children,
     );
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.surfaceRaised,
     );
     var container = Container(

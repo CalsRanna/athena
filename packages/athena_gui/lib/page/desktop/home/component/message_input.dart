@@ -1,11 +1,15 @@
 import 'dart:io';
 
+import 'package:athena_gui/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
+import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +28,8 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(double)? onTemperatureChange;
   final void Function(String?)? onReasoningEffortChange;
   final void Function()? onTerminated;
+  final void Function()? onModelTap;
+  final void Function()? onSentinelTap;
   const DesktopMessageInput({
     super.key,
     required this.controller,
@@ -35,61 +41,97 @@ class DesktopMessageInput extends StatelessWidget {
     this.onTemperatureChange,
     this.onReasoningEffortChange,
     this.onTerminated,
+    this.onModelTap,
+    this.onSentinelTap,
   });
-
   @override
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Watch((context) {
-      var chat = chatViewModel.currentChat.value;
-      var toolbarChildren = [
-        DesktopConfigurationButton(
-          chat: chat,
-          currentRetention: chatViewModel.currentRetention.value,
-          currentTemperature: chatViewModel.currentTemperature.value,
-          onRetentionChange: onRetentionChange,
-          onTemperatureChange: onTemperatureChange,
-        ),
-        DesktopImageSelector(onSelected: onImageSelected),
-        const Spacer(),
-        DesktopReasoningEffortButton(
-          current: chatViewModel.currentReasoningEffort.value,
-          onSelected: onReasoningEffortChange,
-        ),
-        const DesktopTokenIndicator(),
-      ];
-      var toolbar = Row(spacing: 12, children: toolbarChildren);
-      var input = _Input(
-        controller: controller,
-        images: chatViewModel.pendingImages.value,
-        onImagePasted: onImagePasted,
-        onImageRemoved: onImageRemoved,
-        onSubmitted: onSubmitted,
-      );
-      var inputChildren = [
-        Expanded(child: input),
-        const SizedBox(width: 8),
-        _SendButton(onSubmitted: onSubmitted, onTerminated: onTerminated),
-      ];
-      var inputRow = Row(children: inputChildren);
-      var borderSide = BorderSide(
-        color: colors.borderFaint.withValues(alpha: 0.2),
-      );
+      final chat = chatViewModel.currentChat.value;
       final queued = chatViewModel.queuedMessages.value;
-      var children = [
-        if (queued.isNotEmpty) ...[
-          QueuedMessages(messages: queued),
-          const SizedBox(height: 12),
-        ],
-        toolbar,
-        const SizedBox(height: 12),
-        inputRow,
-      ];
-      return Container(
-        decoration: BoxDecoration(border: Border(top: borderSide)),
-        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-        child: Column(children: children),
+      // 版式取自 **Claude 桌面端**（这一处刻意不跟 Codex）：
+      // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
+      // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kChatColumnWidth),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (queued.isNotEmpty) ...[
+                  QueuedMessages(messages: queued),
+                  const SizedBox(height: 12),
+                ],
+                // 上下文条：灰底、无描边
+                Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceButtonSecondary,
+                    borderRadius: BorderRadius.circular(AthenaRadius.container),
+                  ),
+                  child: DesktopSentinelIndicator(onTap: onSentinelTap),
+                ),
+                const SizedBox(height: 6),
+                // 输入容器：白底 + 1px 描边
+                Container(
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    border: Border.all(color: colors.border),
+                    borderRadius: BorderRadius.circular(AthenaRadius.container),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: _Input(
+                    controller: controller,
+                    images: chatViewModel.pendingImages.value,
+                    onImagePasted: onImagePasted,
+                    onImageRemoved: onImageRemoved,
+                    onSubmitted: onSubmitted,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // 容器之外的一行
+                Row(
+                  children: [
+                    DesktopConfigurationButton(
+                      chat: chat,
+                      currentRetention: chatViewModel.currentRetention.value,
+                      currentTemperature:
+                          chatViewModel.currentTemperature.value,
+                      onRetentionChange: onRetentionChange,
+                      onTemperatureChange: onTemperatureChange,
+                    ),
+                    const SizedBox(width: 4),
+                    DesktopImageSelector(onSelected: onImageSelected),
+                    const Spacer(),
+                    DesktopModelIndicator(onTap: onModelTap),
+                    const SizedBox(width: 4),
+                    DesktopReasoningEffortButton(
+                      current: chatViewModel.currentReasoningEffort.value,
+                      onSelected: onReasoningEffortChange,
+                    ),
+                    const SizedBox(width: 4),
+                    const DesktopTokenIndicator(),
+                    const SizedBox(width: 8),
+                    _SendButton(
+                      onSubmitted: onSubmitted,
+                      onTerminated: onTerminated,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     });
   }
@@ -138,14 +180,9 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
-      border: Border.all(color: colors.borderStrong),
-      borderRadius: BorderRadius.circular(24),
-      color: colors.inputBackground.withValues(alpha: 0.6),
-    );
     var hintTextStyle = TextStyle(
-      color: colors.border,
-      fontSize: 14,
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
@@ -154,7 +191,7 @@ class _InputState extends State<_Input> {
     );
     final inputTextStyle = TextStyle(
       color: colors.textInput,
-      fontSize: 14,
+      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var textField = TextField(
@@ -209,9 +246,8 @@ class _InputState extends State<_Input> {
         shortcuts,
       ],
     );
-    return Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: content,
     );
   }
@@ -328,7 +364,7 @@ class _PendingImageStrip extends StatelessWidget {
       size: 12,
     );
     var decoration = BoxDecoration(
-      shape: BoxShape.circle,
+      borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: colors.surfaceMobile,
     );
     var removeButton = GestureDetector(
@@ -346,7 +382,7 @@ class _PendingImageStrip extends StatelessWidget {
     return SizedBox.square(
       dimension: 48,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AthenaRadius.inline),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -404,43 +440,22 @@ class _SendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var gradientColors = [
-      colors.tagBorderStart.withValues(alpha: 0.17),
-      Colors.transparent,
-    ];
-    var linearGradient = LinearGradient(
-      begin: Alignment.centerLeft,
-      colors: gradientColors,
-      end: Alignment.centerRight,
-    );
+    // 与 Codex 的主操作一致：全局唯一那抹蓝（accent）的胶囊按钮。
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(55),
-      gradient: linearGradient,
-    );
-    var boxShadow = BoxShadow(
-      blurRadius: 16,
-      color: colors.ctaGlow.withValues(alpha: 0.5),
-    );
-    var innerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(55),
-      color: colors.surfaceRaised,
-      boxShadow: [boxShadow],
+      borderRadius: BorderRadius.circular(AthenaRadius.pill),
+      color: colors.accent,
     );
 
     return Watch((context) {
       // 流式时按钮切换为 Stop；回车仍通过 onSubmitted 排队发送。
       var streaming = chatViewModel.isCurrentChatStreaming.value;
       Widget roundButton(IconData icon, VoidCallback? onTap) {
-        var innerContainer = Container(
-          decoration: innerBoxDecoration,
-          child: Icon(icon, color: colors.iconOnRaised),
-        );
         var outerContainer = Container(
+          alignment: Alignment.center,
           decoration: boxDecoration,
-          height: 55,
-          padding: EdgeInsets.all(1),
-          width: 55,
-          child: innerContainer,
+          height: 28,
+          width: 28,
+          child: Icon(icon, color: Colors.white, size: 16),
         );
         var mouseRegion = MouseRegion(
           cursor: SystemMouseCursors.click,

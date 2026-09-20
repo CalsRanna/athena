@@ -35,7 +35,7 @@ class _MacWindowButtonState extends State<MacWindowButton> {
       child: Row(children: children),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: mouseRegion,
     );
   }

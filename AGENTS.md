@@ -472,65 +472,105 @@ GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，�
 
 ## 12. 设计系统
 
-详见 `DESIGN.md`。关键元素：
+详见 `DESIGN.md`。视觉语言基准是 **Claude 桌面端**。所有数值来自它
+`app.asar` 里的 `--cds-*` 设计系统（`MainWindowPage-*.css`），并与窗口截图
+采样交叉验证。
 
-### 颜色系统
+### Token 分层（athena_gui/lib/theme/）
 
-品牌语义色定义在 `athena_gui/lib/theme/athena_colors.dart`：
+| 文件 | 职责 |
+|------|------|
+| `athena_colors.dart` | 颜色。`AthenaColors extends ThemeExtension`，随主题切换 |
+| `athena_tokens.dart` | 几何 / 排版 / 字族 / 阴影 + `athenaMono()` |
+| `athena_theme.dart` | `buildAthenaThemeData(mode)` / `resolveColorMode()` / `colorsOf()` |
+| `component/chat_column.dart` | `kChatColumnWidth` / `chatColumnPadding()`，会话列与 composer 共享 |
 
 ```dart
-// AthenaColors extends ThemeExtension，挂载于 ThemeData.extensions
-surface          // 桌面主背景
-surfaceMobile    // 移动端背景 / 对话框 / sheet
-surfaceDeep      // 深层容器 / Tag 未选中内层
-surfaceRaised    // 白色按钮底 / 局部浅底（深浅同值）
-textPrimary      // 主文字 / 关键图标
-textInput        // 输入框文字
-textSecondary    // 次级辅助文字
-textWeak         // 弱文字 / 时间戳
-textOnRaised     // 白色按钮与白卡上的深色文字（深浅同值）
-textSecondaryOnRaised // 白卡上的次级辅助文字
-textOnCode       // 代码类容器（代码块/行内代码/脚注块/工具输出）上的正文与代码文字
-textSecondaryOnCode // 代码类容器上的次级文字与图标
-textSelected     // 选中态文字（Tag 选中反转）
-border / borderStrong / divider / inputBackground
-teal / sage / slate / ctaGlow
-tagBorderStart / tagSelectedBackground / cardHeader / codeBackground
-checkboxOff / iconSecondary / iconOnRaised
-cardPrimaryBackground / cardPrimaryText
+// 表面（浅色 = Claude 的暖灰，深色为同体系镜像）
+surface              // 主画布（#FCFCFB / #1A1A19）
+surfacePanel         // 侧栏 / 顶栏（#FBFBF9 / #151515，与画布几乎无差）
+surfaceMobile        // 对话框 / sheet / 弹出层
+surfaceDeep          // 深层容器
+surfaceRaised        // 主操作实心底（浅色=近黑 #0B0B0B，深色=白）
+surfaceButtonSecondary / surfaceHover / surfaceSelected
+// 文字
+textPrimary / textInput / textSecondary / textWeak / textRowLabel
+textOnRaised / textSecondaryOnRaised / textOnCode / textSecondaryOnCode
+// 边框 / 输入 / 强调
+border / borderStrong / divider / inputBackground / accent
+// 状态与控件
+statusSuccess / statusWarning / statusError
+switchKnob / switchTrackOff / checkboxOff / iconSecondary / iconOnRaised / shadow
+// 容器 / Markdown
+cardHeader / codeBackground / avatarBackground
+markdownLink / markdownStrikethrough / markdownMath
 ```
 
-代码类容器在深色主题下取**比 `surface` 更深**的底（`codeBackground` #1E1E1E、
-`cardHeader` #171717，浅色主题仍是比页面深一档的近白 #EFF0F2 / #E9EAEC）：
-深色页面上再出现整块白底会抢走全部注意力，且与「助手消息不画底板」的正文格调割裂。
-文字因此不能沿用白卡家族的 `textOnRaised`（深色下是深色字），需要 `textOnCode` 族。
-`test/widget/theme_color_regression_test.dart` 守住这条层级与对比度。
+```dart
+// 几何与排版：取自 --cds-radius-* 与 --cds-font-size-*
+AthenaRadius.xs/inline/row/control/container/panel/composer/pill
+                       // 4 / 5 / 7 / 7 / 10 / 12 / 12 / 999
+AthenaSpace.xs..xxxl   // 4 / 8 / 12 / 16 / 20 / 24 / 32
+AthenaSpace.sidebar    // 260
+AthenaFontSize.hero/title/section/body/label/caption/mono
+                       // 22 / 15 / 14 / 13 / 12 / 11 / 12
+AthenaFont.ui          // null → 系统字体（UI 与正文）
+AthenaFont.mono        // Menlo 等宽（只给代码 / 工具 / 终端）
+AthenaShadow.raised/overlay
+athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
+```
 
-字段按**语义角色**划分（一个角色一个字段，避免一个色值多角色冲突）。
-深/浅两套值（`AthenaColors.dark` / `AthenaColors.light`），浅色值从现有 token
-按角色推导（灰阶镜像 / 透明度变体），不新增品牌色。主题切换入口在
-设置 → Advanced → Appearance（`ThemeMode`，默认深色）。
+### 四条容易搞错的规则
+
+1. **灰阶是暖的，且只能从 `--cds-gray-*` 取**。Claude 的中性灰带黄绿感
+   （白端 `#f9f9f7` / `#fcfcfb`，黑端 `#0b0b0b`）。不要手挑一个中性灰。
+2. **UI 用系统字体，等宽只给代码**。工具**名**用 `AthenaFontSize.label` +
+   `w600`，工具**参数与输出**才用 `athenaMono()`。
+3. **静态容器用边框，浮起容器才考虑阴影**。圆角上限是 12
+   （`--cds-radius-composer`），没有 20/24。
+4. **不使用纯黑画布**：深色画布是 `#1A1A19`，侧栏更暗（`#151515`）。
+5. **hover 只改底色，文字不动**（Claude 实测：行标签 hover 前后都是 `#52514F`）。
+6. **不要从 `Colors.transparent` 做颜色动画**：它的 RGB 是黑，插值中途会渲染成
+   半透明深灰，表现为"先闪一下深色再变浅"。用 `目标色.withValues(alpha: 0)`。
+
+### 关键约束
+
+- 不引入渐变边框、发光、光晕。唯一例外是工具执行中标题的 shimmer 高光。
+- `accent`（`#2A78D6` / `#5598E7`）是全局唯一彩色，只用于主要动作 / 语音 / 链接。
+- 圆角只用 `AthenaRadius` 的档位，不新增。
+- **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 16、
+  内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
+- **Composer 版式取自 Claude 桌面端**：上下文条（`surfaceButtonSecondary` 灰底、
+  无描边）+ 输入框（白底 + 1px `border`）是两个**独立圆角容器**，中间隔 6；
+  配置 / 图片 / 模型 / 推理强度 / token / 发送排在容器**外面**单独一行。
+- **会话列定宽 768 并居中**，消息与 composer 同宽、左右对齐。
+- 主题默认浅色，深色为镜像。切换入口在设置 → Advanced → Appearance。
+- 等宽只有一个来源 `AthenaFont.mono`；`google_fonts` 依赖已移除。
 
 ### 核心组件（athena_gui/lib/widget/）
 
 | 组件 | 用途 |
 |------|------|
-| `AthenaTag` / `AthenaTagButton` | 渐变边框 pill 标签（品牌签名） |
+| `AthenaTag` / `AthenaTagButton` | 带 1px 边框的胶囊筛选 chip |
+| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`） |
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
-| `AthenaInput` | 半透明深色输入框 |
-| `AthenaScaffold` | 深色背景页面骨架 |
-| `AthenaDialog` | 对话框系统（桌面居中 Dialog / 移动 Bottom Sheet，内部自动判断） |
+| `AthenaInput` | 平涂底 + 1px 边框输入框 |
+| `AthenaScaffold` | 页面骨架 |
+| `AthenaDialog` | 对话框（桌面居中 Dialog / 移动 Bottom Sheet） |
 | `AthenaSwitch` / `Checkbox` / `ContextMenu` / `Menu` / `Tile` / `Divider` / `AppBar` / `WindowButton` | 通用组件 |
-| `PermissionDialog` | 权限审批弹窗（不可空白点击关闭） |
+| `PermissionDialog` / `ElicitCard` | 会话内面板 |
 | `ErrorBoundary` | 错误边界 |
 
 ### 桌面布局约定
 
-- 左侧栏宽 240px
-- 工作区内边距：horizontal 32, vertical 12
-- 结构：导航/列表 → 顶栏 context strip → 主内容区 → 底部 composer
+- 侧栏宽 **288px**（`AthenaSpace.sidebar`，Claude 实测），底色 `surfacePanel` = `#FBFBF9`
+  （与画布 `#FCFCFB` 几乎无差）；行高 26、左右内缩 8、图标起于行内 11、文字起于 30
+- 顶栏只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题
+- **顶栏有会话标题**（Claude 的顶栏不是空的）；新建会话在侧栏导航块，
+  会话上下文在 composer 的上下文条上
+- 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚
+- 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
 
----
 
 ## 13. 路由
 
@@ -702,8 +742,12 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 ### 修改设计系统组件
 
 1. 组件在 `athena_gui/lib/widget/`
-2. 颜色从 `ColorUtil` 获取，不要硬编码
-3. 遵循 `DESIGN.md` 规范（Tag 渐变边框、CTA 光晕等），桌面/移动视觉一致
+2. 颜色从 `Theme.of(context).extension<AthenaColors>()!` 取，不要硬编码；
+   几何/字号从 `athena_tokens.dart` 取，不要写字面量
+3. 遵循 `DESIGN.md` 规范：白底画布（深色用 `#212121`，禁止纯黑）、
+   **UI 与正文用系统字体**（等宽只给代码）、大圆角（4/8/12/16/20/pill）、
+   静态容器用边框而浮起容器用 `AthenaShadow`，桌面/移动视觉一致
+4. 新增颜色前先问"灰阶够不够"；`accent` 是全局唯一彩色，不要新增色相
 
 ---
 

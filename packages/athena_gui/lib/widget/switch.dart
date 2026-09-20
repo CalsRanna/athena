@@ -1,34 +1,43 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
+/// Codex 风格开关：小圆角矩形轨道 + 实心圆滑块，尺寸紧凑。
+///
+/// 开启态用 [AthenaColors.statusSuccess]（功能绿），关闭态用
+/// [AthenaColors.switchTrackOff]（几乎融入画布的深灰）。
 class AthenaSwitch extends StatelessWidget {
   final void Function(bool)? onChanged;
   final bool value;
   const AthenaSwitch({super.key, required this.onChanged, required this.value});
 
+  static const _trackWidth = 34.0;
+  static const _trackHeight = 18.0;
+  static const _knob = 12.0;
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var outerShapeDecoration = ShapeDecoration(
-      color: value ? colors.sage : colors.slate,
-      shape: StadiumBorder(),
+    var outerDecoration = BoxDecoration(
+      color: value ? colors.statusSuccess : colors.switchTrackOff,
+      borderRadius: BorderRadius.circular(AthenaRadius.inline + 2),
     );
-    var innerBoxDecoration = BoxDecoration(
-      color: colors.surfaceRaised,
-      shape: BoxShape.circle,
-    );
-    var container = Container(
-      decoration: innerBoxDecoration,
-      height: 16,
-      width: 16,
+    var knob = Container(
+      decoration: BoxDecoration(
+        color: colors.switchKnob,
+        shape: BoxShape.circle,
+      ),
+      height: _knob,
+      width: _knob,
     );
     var animatedContainer = AnimatedContainer(
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-      decoration: outerShapeDecoration,
-      duration: Duration(milliseconds: 100),
-      padding: EdgeInsets.all(2),
-      width: 36,
-      child: container,
+      decoration: outerDecoration,
+      duration: const Duration(milliseconds: 120),
+      height: _trackHeight,
+      padding: const EdgeInsets.all(3),
+      width: _trackWidth,
+      child: knob,
     );
     var mouseRegion = MouseRegion(
       cursor: SystemMouseCursors.click,

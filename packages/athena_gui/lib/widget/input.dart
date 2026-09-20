@@ -1,6 +1,11 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
+/// Codex 风格输入框：小圆角 + 1px 实线边框 + 平涂底色。
+///
+/// 去掉旧版的半透明中灰填充与 24 大圆角：Codex 的输入框是"画布上划出的
+/// 一个矩形"，聚焦时只让边框变亮，不做焦点环、不做光晕。
 class AthenaInput extends StatefulWidget {
   final bool autoFocus;
   final TextEditingController controller;
@@ -38,11 +43,7 @@ class _AthenaInputState extends State<AthenaInput> {
   @override
   void initState() {
     super.initState();
-    focusNode.addListener(() {
-      if (!focusNode.hasFocus) {
-        widget.onBlur?.call();
-      }
-    });
+    focusNode.addListener(_handleFocusChange);
     if (widget.autoFocus) {
       focusNode.requestFocus();
     }
@@ -50,21 +51,33 @@ class _AthenaInputState extends State<AthenaInput> {
 
   @override
   void dispose() {
+    focusNode.removeListener(_handleFocusChange);
     focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleFocusChange() {
+    if (!focusNode.hasFocus) {
+      widget.onBlur?.call();
+    }
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    final focused = focusNode.hasFocus;
     var boxDecoration = BoxDecoration(
-      color: colors.inputBackground.withValues(alpha: 0.6),
-      borderRadius: BorderRadius.circular(widget.radius ?? 24),
+      color: colors.inputBackground,
+      border: Border.all(color: focused ? colors.borderStrong : colors.border),
+      borderRadius: BorderRadius.circular(
+        widget.radius ?? AthenaRadius.control,
+      ),
     );
     var hintTextStyle = TextStyle(
-      color: colors.border,
-      fontSize: 14,
-      height: 1.75,
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.body,
+      height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: widget.placeholder,
@@ -72,13 +85,14 @@ class _AthenaInputState extends State<AthenaInput> {
     );
     final inputTextStyle = TextStyle(
       color: colors.textInput,
-      fontSize: 14,
-      height: 1.7,
+      fontSize: AthenaFontSize.body,
+      height: 1.5,
     );
     var textField = TextField(
       controller: widget.controller,
-      cursorHeight: 16,
+      cursorHeight: 15,
       cursorColor: colors.textInput,
+      cursorWidth: 1.5,
       decoration: inputDecoration,
       enabled: widget.enabled,
       focusNode: focusNode,
@@ -98,9 +112,10 @@ class _AthenaInputState extends State<AthenaInput> {
             ],
           )
         : textField;
-    return Container(
+    return AnimatedContainer(
       decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15.5),
+      duration: const Duration(milliseconds: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: child,
     );
   }

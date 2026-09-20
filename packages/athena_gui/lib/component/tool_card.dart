@@ -1,7 +1,7 @@
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class ToolCard extends StatefulWidget {
@@ -98,9 +98,9 @@ class _ToolCardState extends State<ToolCard> {
                     Text(
                       widget.toolName,
                       maxLines: 1,
-                      style: GoogleFonts.firaCode(
-                        fontSize: _fontSize,
-                        fontWeight: FontWeight.w500,
+                      style: TextStyle(
+                        fontSize: AthenaFontSize.label,
+                        fontWeight: FontWeight.w600,
                         color: foreground,
                       ),
                     ),
@@ -111,7 +111,7 @@ class _ToolCardState extends State<ToolCard> {
                         ToolCard.argPreview(widget.toolName, widget.arguments),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.firaCode(
+                        style: athenaMono(
                           fontSize: _fontSize,
                           color: foreground,
                         ),
@@ -140,7 +140,7 @@ class _ToolCardState extends State<ToolCard> {
           widget.result!,
           maxLines: 10,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.firaCode(
+          style: athenaMono(
             fontSize: _fontSize,
             color: isError ? colors.statusError : colors.textSecondary,
             height: 1.6,

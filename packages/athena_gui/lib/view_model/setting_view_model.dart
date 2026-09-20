@@ -57,7 +57,7 @@ class SettingViewModel {
   final maxRetries = signal(10);
   final braveApiKey = signal('');
   // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统
-  final themeMode = signal<ThemeMode>(ThemeMode.dark);
+  final themeMode = signal<ThemeMode>(ThemeMode.light);
 
   final ModelRepository _modelRepository;
   final ProviderRepository _providerRepository;
@@ -125,7 +125,7 @@ class SettingViewModel {
   Future<void> initThemeMode() async {
     final instance = await SharedPreferences.getInstance();
     final saved = instance.getString(_keyThemeMode);
-    themeMode.value = ThemeMode.values.asNameMap()[saved] ?? ThemeMode.dark;
+    themeMode.value = ThemeMode.values.asNameMap()[saved] ?? ThemeMode.light;
   }
 
   /// 切换主题模式并持久化。

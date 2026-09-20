@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/component/button.dart';
 import 'package:athena_gui/component/compaction_card.dart';
@@ -12,13 +11,13 @@ import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_gui/component/reasoning_card.dart';
 import 'package:athena_gui/component/step_group_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -166,8 +165,9 @@ class MessageCardListSliver extends StatelessWidget {
             );
           }
           if (item.addCardSpacing) {
+            // Codex 的轮次容器是 gap-4，即 16
             child = Padding(
-              padding: const EdgeInsets.only(top: 12),
+              padding: const EdgeInsets.only(top: 16),
               child: child,
             );
           }
@@ -267,7 +267,7 @@ class _AssistantMessageItem extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         12,
-        isCardHeader ? 12 : 0,
+        isCardHeader ? 16 : 0,
         16,
         isCardTail ? 16 : 0,
       ),
@@ -306,19 +306,17 @@ class _AssistantMessageSegment extends StatelessWidget {
     required this.cardMessages,
     required this.sentinel,
   });
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    // Codex 的助手消息没有头像、没有气泡：内容直接铺满列宽。
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        isCardHeader
-            ? _buildAssistantAvatar(context, sentinel)
-            : const SizedBox(width: 36),
-        const SizedBox(width: 12),
         Expanded(child: _AssistantMessageContent(layout: layout)),
-        _buildAssistantTrailingSpace(),
+        // 只为常驻的复制按钮留一点余地（Codex 的复制按钮是 hover 工具条，
+        // 不占布局；这里常驻，所以留 24）
+        const SizedBox(width: 24),
       ],
     );
     final showCopyButton = isCardHeader && !layout.waitingForFirstDelta;
@@ -337,7 +335,7 @@ class _AssistantMessageSegment extends StatelessWidget {
           )
         : row;
     if (layout.addBoundarySpacing) {
-      result = Padding(padding: const EdgeInsets.only(top: 12), child: result);
+      result = Padding(padding: const EdgeInsets.only(top: 16), child: result);
     }
     return result;
   }
@@ -419,47 +417,7 @@ void _copyAssistantMessages(List<MessageEntity> messages) {
   Clipboard.setData(ClipboardData(text: content));
 }
 
-Widget _buildAssistantAvatar(BuildContext context, SentinelEntity sentinel) {
-  if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      height: 1,
-    );
-    var text = Text(
-      sentinel.avatar,
-      maxLines: 1,
-      overflow: TextOverflow.clip,
-      style: textStyle,
-      textAlign: TextAlign.center,
-    );
-    var boxDecoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: colors.avatarBackground,
-    );
-    return Container(
-      alignment: Alignment.center,
-      decoration: boxDecoration,
-      height: 36,
-      width: 36,
-      child: text,
-    );
-  }
-  var image = Image.asset(
-    'asset/image/launcher_icon_ios_512x512.jpg',
-    fit: BoxFit.cover,
-    filterQuality: FilterQuality.medium,
-    height: 36,
-    width: 36,
-  );
-  return ClipOval(child: image);
-}
 
-Widget _buildAssistantTrailingSpace() {
-  var isDesktop = PlatformUtil.isDesktop;
-  return SizedBox(width: isDesktop ? 48 : 24);
-}
 
 class _AssistantMessageWaitingPart extends StatelessWidget {
   const _AssistantMessageWaitingPart();
@@ -480,7 +438,10 @@ class _AssistantMessageWaitingPart extends StatelessWidget {
               'Working…',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.firaCode(fontSize: 12, color: foreground),
+              style: TextStyle(
+                fontSize: AthenaFontSize.label,
+                color: foreground,
+              ),
             ),
           ),
         ],
@@ -516,8 +477,8 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         color: colors.codeBackground,
       );
-      var textStyle = GoogleFonts.firaCode(
-        fontWeight: FontWeight.w500,
+      var textStyle = TextStyle(
+        fontWeight: FontWeight.w600,
         color: colors.textOnCode,
       );
       return Container(
@@ -551,7 +512,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     var title = reference['title'] as String?;
     var textSpan = TextSpan(
       text: title,
-      style: TextStyle(color: colors.teal),
+      style: TextStyle(color: colors.markdownLink),
       recognizer: TapGestureRecognizer()..onTap = () => openLink(url),
     );
     var children = [TextSpan(text: '${index + 1}. '), textSpan];
@@ -562,43 +523,11 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
 class _ToolMessageListTile extends StatelessWidget {
   final MessageEntity message;
   const _ToolMessageListTile({required this.message});
-
   @override
   Widget build(BuildContext context) {
-    var children = [
-      _buildAvatar(context),
-      const SizedBox(width: 12),
-      _buildContent(context),
-      _buildTrailingSpace(),
-    ];
-    var messageRow = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
-      padding: EdgeInsets.fromLTRB(12, 12, 16, 16),
-      child: messageRow,
-    );
-  }
-
-  Widget _buildAvatar(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hugeIcon = Icon(
-      HugeIcons.strokeRoundedTools,
-      color: colors.textPrimary,
-      size: 20,
-    );
-    var boxDecoration = BoxDecoration(
-      shape: BoxShape.circle,
-      color: colors.avatarBackground,
-    );
-    return Container(
-      alignment: Alignment.center,
-      decoration: boxDecoration,
-      height: 36,
-      width: 36,
-      child: hugeIcon,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: _buildContent(context),
     );
   }
 
@@ -606,7 +535,7 @@ class _ToolMessageListTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 工具消息没有工具名可用（MessageEntity 无 tool_call_id），
     // 内容以浅灰代码块样式呈现，与 ToolCard 展开区呼应。
-    var textStyle = GoogleFonts.firaCode(
+    var textStyle = athenaMono(
       fontSize: 12,
       color: colors.textOnCode,
       height: 1.6,
@@ -624,11 +553,6 @@ class _ToolMessageListTile extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildTrailingSpace() {
-    var isDesktop = PlatformUtil.isDesktop;
-    return SizedBox(width: isDesktop ? 48 : 24);
-  }
 }
 
 class _UserMessageListTile extends StatelessWidget {
@@ -642,35 +566,41 @@ class _UserMessageListTile extends StatelessWidget {
     this.onResend,
     this.onSecondaryTapUp,
   });
-
   @override
   Widget build(BuildContext context) {
-    var children = [
-      _buildAvatar(),
-      const SizedBox(width: 8),
-      _buildContent(context),
-      const SizedBox(width: 8),
-      _buildResendButton(context),
-    ];
-    var row = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    // Codex 的用户消息：**右对齐的浅灰气泡**，取自它的类
+    // `bg-text/5 max-w-[77%] rounded-2xl px-3 py-2`，容器 `items-end justify-end`。
+    // 没有头像。
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: row,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.77,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.textPrimary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: _buildContent(context),
+              ),
+            ),
+            const SizedBox(width: 4),
+            _buildResendButton(context),
+          ],
+        ),
+      ),
     );
-  }
-
-  Widget _buildAvatar() {
-    var image = Image.asset(
-      'asset/image/avatar.png',
-      fit: BoxFit.cover,
-      filterQuality: FilterQuality.medium,
-      height: 36,
-      width: 36,
-    );
-    return ClipOval(child: image);
   }
 
   Widget _buildContent(BuildContext context) {
@@ -715,7 +645,7 @@ class _UserMessageListTile extends StatelessWidget {
       onSecondaryTapUp: onSecondaryTapUp,
       child: container,
     );
-    return Expanded(child: gestureDetector);
+    return gestureDetector;
   }
 
   Widget _buildResendButton(BuildContext context) {

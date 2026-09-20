@@ -85,8 +85,8 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
           value: usage.clamp(0.0, 1.0),
           strokeWidth: 2.5,
           strokeCap: StrokeCap.round,
-          backgroundColor: colors.borderFaint.withValues(alpha: 0.25),
-          color: usage >= 0.8 ? colors.statusWarning : colors.teal,
+          backgroundColor: colors.border,
+          color: usage >= 0.8 ? colors.statusWarning : colors.textSecondary,
           semanticsLabel: '上下文窗口占用率',
           semanticsValue: hasCtx ? '$ctxPct%' : '暂无数据',
         ),
@@ -113,7 +113,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
             ? '\n已使用 $ctxPct%'
                   '\n${_brk(ctxTokens)} / ${_brk(ctxWindow)} tokens'
             : '\n暂无数据',
-        style: TextStyle(color: colors.teal),
+        style: TextStyle(color: colors.textSecondary),
       ),
     ];
     if (hasCache) {
@@ -122,7 +122,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
           text:
               '\n缓存命中 ${_cacheRate(cachedTokens, ctxTokens)}%'
               '（${_brk(cachedTokens)} / ${_brk(ctxTokens)}）',
-          style: TextStyle(color: colors.teal),
+          style: TextStyle(color: colors.textSecondary),
         ),
       );
     }
@@ -130,7 +130,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       TextSpan(text: '\n\n会话累计'),
       TextSpan(
         text: '\n${_brk(cumulative)}',
-        style: TextStyle(color: colors.teal),
+        style: TextStyle(color: colors.textSecondary),
       ),
       TextSpan(
         text: '\n口径：每轮 usage.total 都计入，含 prompt 重复计费',

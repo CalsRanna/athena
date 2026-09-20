@@ -1,8 +1,8 @@
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// 会话内提问卡片（非模态）：渲染在所属对话的消息列表中。
 ///
@@ -141,8 +141,9 @@ class _ElicitCardState extends State<ElicitCard> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: colors.surfaceRaised.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(24),
+          color: colors.surfaceMobile,
+          border: Border.all(color: colors.border),
+          borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
         padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
         child: Row(
@@ -187,19 +188,19 @@ class _ElicitCardState extends State<ElicitCard> {
       shape: BoxShape.circle,
       color: colors.avatarBackground,
     ),
-    height: 36,
-    width: 36,
-    child: Icon(Icons.help_outline, color: colors.textPrimary, size: 20),
+    height: 28,
+    width: 28,
+    child: Icon(Icons.help_outline, color: colors.textPrimary, size: 16),
   );
 
   Widget _buildHeader(AthenaColors colors) => Row(
     children: [
       Text(
         'Question',
-        style: GoogleFonts.firaCode(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: colors.textOnRaised,
+        style: TextStyle(
+          fontSize: AthenaFontSize.label,
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
         ),
       ),
     ],
@@ -225,7 +226,7 @@ class _ElicitCardState extends State<ElicitCard> {
               if (question.multiSelect)
                 Text(
                   'select all that apply',
-                  style: TextStyle(fontSize: 11, color: colors.textOnRaised),
+                  style: TextStyle(fontSize: 11, color: colors.textPrimary),
                 ),
             ],
           ),
@@ -235,7 +236,7 @@ class _ElicitCardState extends State<ElicitCard> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: colors.textOnRaised,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -250,24 +251,27 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 步骤展示（只有多问时才需要）：问题前的 `1 / 3`。
   Widget _buildStepIndicator(AthenaColors colors) => Text(
     '${_step + 1} / ${_questions.length}',
-    style: GoogleFonts.firaCode(
-      fontSize: 11,
+    style: TextStyle(
+      fontSize: AthenaFontSize.caption,
       fontWeight: FontWeight.w500,
-      color: colors.textSecondaryOnRaised,
+      color: colors.textSecondary,
     ),
   );
 
   Widget _buildHeaderChip(AthenaColors colors, String header) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: ShapeDecoration(
-      shape: StadiumBorder(side: BorderSide(color: colors.border)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AthenaRadius.control),
+        side: BorderSide(color: colors.border),
+      ),
     ),
     child: Text(
       header,
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: colors.textOnRaised,
+        color: colors.textPrimary,
       ),
     ),
   );
@@ -297,17 +301,14 @@ class _ElicitCardState extends State<ElicitCard> {
                   children: [
                     Text(
                       option.label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colors.textOnRaised,
-                      ),
+                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
                     ),
                     if (option.description.isNotEmpty)
                       Text(
                         option.description,
                         style: TextStyle(
                           fontSize: 11,
-                          color: colors.textOnRaised.withValues(alpha: 0.7),
+                          color: colors.textSecondary,
                         ),
                       ),
                   ],
@@ -356,16 +357,17 @@ class _ElicitCardState extends State<ElicitCard> {
         Expanded(
           child: Container(
             key: ValueKey('elicit-other-$index'),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: colors.inputBackground.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(24),
+              color: colors.inputBackground,
+              border: Border.all(color: colors.border),
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
             ),
             child: TextField(
               controller: controller,
               focusNode: focusNode,
-              cursorHeight: 16,
-              cursorColor: colors.textOnRaised,
+              cursorHeight: 15,
+              cursorColor: colors.textPrimary,
               // 答案常常是一句话：1-3 行自增高，回车仍是提交而不是换行
               minLines: 1,
               maxLines: 3,
@@ -380,14 +382,11 @@ class _ElicitCardState extends State<ElicitCard> {
               style: TextStyle(
                 fontSize: 14,
                 height: 1.2,
-                color: colors.textOnRaised,
+                color: colors.textPrimary,
               ),
               decoration: InputDecoration.collapsed(
                 hintText: 'Or type your own answer',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: colors.textSecondaryOnRaised,
-                ),
+                hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
               ),
             ),
           ),
@@ -404,7 +403,7 @@ class _ElicitCardState extends State<ElicitCard> {
     EdgeInsets margin = const EdgeInsets.only(top: 1),
   }) {
     final side = BorderSide(
-      color: selected ? colors.cardPrimaryBackground : colors.border,
+      color: selected ? colors.surfaceRaised : colors.border,
     );
     return Container(
       height: 16,
@@ -414,18 +413,16 @@ class _ElicitCardState extends State<ElicitCard> {
       decoration: ShapeDecoration(
         shape: multiSelect
             ? RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(AthenaRadius.inline),
                 side: side,
               )
             : CircleBorder(side: side),
-        color: selected ? colors.cardPrimaryBackground : null,
+        color: selected ? colors.surfaceRaised : null,
       ),
       child: Icon(
         selected ? Icons.check : (placeholderIcon ?? Icons.check),
         size: 11,
-        color: selected
-            ? colors.cardPrimaryText
-            : colors.textOnRaised.withValues(alpha: 0.4),
+        color: selected ? colors.textPrimary : colors.textSecondary,
       ),
     );
   }
@@ -479,14 +476,17 @@ class _CardSecondaryButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Container(
           decoration: ShapeDecoration(
-            shape: StadiumBorder(side: BorderSide(color: colors.border)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
+              side: BorderSide(color: colors.border),
+            ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: colors.textOnRaised,
+              color: colors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w400,
             ),
@@ -515,17 +515,17 @@ class _CardPrimaryButton extends StatelessWidget {
         cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: Container(
           decoration: ShapeDecoration(
-            color: colors.cardPrimaryBackground.withValues(
-              alpha: enabled ? 1 : 0.4,
+            color: colors.surfaceRaised.withValues(alpha: enabled ? 1 : 0.4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AthenaRadius.control),
             ),
-            shape: const StadiumBorder(),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: colors.cardPrimaryText,
+              color: colors.textPrimary,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),

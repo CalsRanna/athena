@@ -1,6 +1,7 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -9,7 +10,6 @@ import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -112,9 +112,9 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
       padding: const EdgeInsets.all(12),
       child: SelectableText(
         body,
-        style: GoogleFonts.firaCode(
-          fontSize: 12,
-          height: 1.5,
+        style: TextStyle(
+          fontSize: AthenaFontSize.label,
+          height: 1.6,
           color: colors.textOnRaised,
         ),
       ),

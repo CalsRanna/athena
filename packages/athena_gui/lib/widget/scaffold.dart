@@ -2,6 +2,10 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
 
+/// 页面骨架。桌面端是"侧栏面板 + 纯黑工作区"，移动端是单列。
+///
+/// 旧版的右上角 teal 氛围渐变已移除：Codex 的壳层没有任何装饰性渐变，
+/// 品牌感来自纯黑画布本身与 1px 边框。
 class AthenaScaffold extends StatelessWidget {
   final Widget? appBar;
   final Widget? body;
@@ -27,24 +31,10 @@ class _DesktopScaffold extends StatelessWidget {
       appBar ?? const SizedBox(),
       Expanded(child: body ?? const SizedBox()),
     ];
-    var innerDecoratedBox = DecoratedBox(
-      decoration: BoxDecoration(color: colors.surface),
-      child: Column(children: children),
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: Column(children: children),
     );
-    var gradientColors = [
-      colors.teal.withValues(alpha: 0.2),
-      Colors.transparent,
-    ];
-    var linearGradient = LinearGradient(
-      begin: Alignment.topRight,
-      colors: gradientColors,
-      end: Alignment.bottomLeft,
-    );
-    var outerDecoratedBox = DecoratedBox(
-      decoration: BoxDecoration(gradient: linearGradient),
-      child: innerDecoratedBox,
-    );
-    return Scaffold(body: outerDecoratedBox);
   }
 }
 

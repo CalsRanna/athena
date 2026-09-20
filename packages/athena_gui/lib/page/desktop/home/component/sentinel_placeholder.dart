@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
 class DesktopSentinelPlaceholder extends StatelessWidget {
@@ -11,12 +12,14 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var nameTextStyle = TextStyle(
       color: colors.textPrimary,
-      fontSize: 28,
-      fontWeight: FontWeight.w700,
+      fontSize: AthenaFontSize.hero,
+      // hero = 24，对齐 Codex 空态标题的实测字号
+      fontWeight: FontWeight.w600,
+      height: 1.25,
     );
     var descriptionTextStyle = TextStyle(
-      color: colors.border,
-      fontSize: 14,
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.body,
       fontWeight: FontWeight.w400,
     );
     var descriptionText = Text(
@@ -24,12 +27,19 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
       style: descriptionTextStyle,
       textAlign: TextAlign.center,
     );
+    // 结构对齐 Codex 的空态：图标 → 大标题 → 说明 → 标签。
+    // 实测 Codex 是「48 逻辑图标 + 约 37 逻辑间距 + 约 24 逻辑居中标题」，
+    // 标题字号取 24（旧版 28 偏大）。
     var children = [
-      Text(sentinel.name, style: nameTextStyle),
-      const SizedBox(height: 12),
+      _buildGlyph(context, sentinel),
+      const SizedBox(height: 28),
+      Text(sentinel.name, style: nameTextStyle, textAlign: TextAlign.center),
+      if (sentinel.description.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        descriptionText,
+      ],
+      const SizedBox(height: 18),
       _TagWrap(sentinel: sentinel),
-      const SizedBox(height: 12),
-      descriptionText,
     ];
     var column = Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -40,6 +50,40 @@ class DesktopSentinelPlaceholder extends StatelessWidget {
       child: column,
     );
   }
+}
+
+/// 空态顶部图标：Codex 在标题上方放一个约 48 逻辑的标记，
+/// 这里用当前 Sentinel 的头像（自定义角色用 emoji，内置角色用应用图标）。
+Widget _buildGlyph(BuildContext context, SentinelEntity sentinel) {
+  final colors = Theme.of(context).extension<AthenaColors>()!;
+  const size = 48.0;
+  if (sentinel.name != 'Athena' && sentinel.avatar.isNotEmpty) {
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colors.avatarBackground,
+      ),
+      height: size,
+      width: size,
+      child: Text(
+        sentinel.avatar,
+        maxLines: 1,
+        overflow: TextOverflow.clip,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 26, height: 1),
+      ),
+    );
+  }
+  return ClipOval(
+    child: Image.asset(
+      'asset/image/launcher_icon_ios_512x512.jpg',
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.medium,
+      height: size,
+      width: size,
+    ),
+  );
 }
 
 class _TagWrap extends StatelessWidget {
@@ -62,36 +106,17 @@ class _TagWrap extends StatelessWidget {
   Widget _buildTile(BuildContext context, String tag) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 12,
+      color: colors.textSecondary,
+      fontSize: AthenaFontSize.label,
       fontWeight: FontWeight.w500,
     );
-    var innerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(36),
-      color: colors.surfaceDeep,
-    );
-    var innerContainer = Container(
-      decoration: innerBoxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
-      child: Text(tag, style: textStyle),
-    );
-    var gradientColors = [
-      colors.tagBorderStart.withValues(alpha: 0.17),
-      colors.textPrimary.withValues(alpha: 0),
-    ];
-    var linearGradient = LinearGradient(
-      begin: Alignment.topLeft,
-      colors: gradientColors,
-      end: Alignment.bottomRight,
-    );
-    var outerBoxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(36),
-      gradient: linearGradient,
-    );
     return Container(
-      decoration: outerBoxDecoration,
-      padding: EdgeInsets.all(1),
-      child: innerContainer,
+      decoration: BoxDecoration(
+        color: colors.surfaceButtonSecondary,
+        borderRadius: BorderRadius.circular(AthenaRadius.pill),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(tag, style: textStyle),
     );
   }
 }
