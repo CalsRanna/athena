@@ -386,8 +386,15 @@ class _FlutterMarkdown extends StatelessWidget {
       blockquote: base.blockquote?.copyWith(color: colors.textPrimary),
       img: base.img?.copyWith(color: colors.textPrimary),
       listBullet: base.listBullet?.copyWith(color: colors.textPrimary),
-      tableHead: base.tableHead?.copyWith(color: colors.textPrimary),
-      tableBody: base.tableBody?.copyWith(color: colors.textPrimary),
+      // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
+      // 默认取主题的 textTheme.bodyMedium（14 / 1.43），而正文走 prose
+      // （13 / 1.538），表格会比周围正文大一号、行盒也更紧。
+      // 表头只保留字重差异（w600），与标题"同号不同重"的处理一致。
+      tableHead: body?.copyWith(
+        color: colors.textPrimary,
+        fontWeight: FontWeight.w600,
+      ),
+      tableBody: body?.copyWith(color: colors.textPrimary),
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),
       horizontalRuleDecoration: BoxDecoration(border: Border(top: borderSide)),
       tableBorder: TableBorder.all(color: colors.border),
