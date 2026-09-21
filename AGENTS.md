@@ -41,18 +41,17 @@ athena/
     │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
     │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
     │   │   ├── entity/          # 8 个实体（纯数据类，含 TokenUsage）
-    │   │   ├── repository/      # 7 个存储接口（抽象，GUI 用 SQLite 实现）
+    │   │   ├── repository/      # 7 个存储接口（抽象；文件实现在 storage/，GUI/TUI 共用）
+    │   │   ├── seed/            # 内置 Athena 角色种子 + 预设提示词（单一来源）
     │   │   ├── service/         # LlmClient / ChatCompletions / ChatStore / ChatMessageConverter / ChatUpdate / ModelCatalog 等
-    │   │   ├── storage/         # KeyValueStore 接口 + AgentSettings
+    │   │   ├── storage/         # 本地文件持久化：FileStorage 布局 + JSONL/JSON/YAML 仓储实现 + 跨进程文件锁 + KeyValueStore 接口 + AgentSettings
     │   │   ├── extension/       # json_map_extension
     │   │   └── util/            # platform_util / retry / logger_util / tool_args_formatter
     │   └── （无 test/：测试套件已移除，见 §14）
     ├── athena_gui/              # ★ Flutter 桌面/移动应用
     │   ├── lib/
-    │   │   ├── main.dart        # 入口：DB 初始化 → Window/Tray → DI → 后台同步模型目录
-    │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点）
-    │   │   ├── database/        # SQLite + Laconic ORM + 17 个迁移
-    │   │   ├── repository/      # 5 个 SqliteXxxRepository（引擎接口的 SQLite 实现）
+    │   │   ├── main.dart        # 入口：DI → FileStorage 加载 + 种子 → Window/Tray → 后台同步模型目录
+    │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点，注入 core 的文件仓储）
     │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
     │   │   ├── view_model/      # 7 个 ViewModel（Signals）+ delegate/（3 个委托）
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
@@ -65,9 +64,7 @@ athena/
         ├── bin/athena.dart      # CLI 入口
         ├── lib/
         │   ├── bridge/          # tui_agent_bridge.dart（Agent 引擎 → TUI 状态桥）
-        │   ├── di/              # tui_di.dart（GetIt 手动装配）
-        │   ├── seed/            # sentinel_seed.dart（首次运行植入）
-        │   ├── storage/         # JSONL/JSON 文件存储（会话 / 模型 / 角色）
+        │   ├── di/              # tui_di.dart（手动装配，注入 core 的文件仓储）
         │   ├── ui/              # nocterm 终端组件
         │   └── view_model/      # 终端响应式层
         └── （无 test/：测试套件已移除，见 §14）
@@ -88,14 +85,14 @@ Coordinator Layer (athena_core/coordinator)  ← AgentRunCoordinator：UI 无关
     ↓ 消费/驱动
 Service Layer (chat_completions_service / chat_store_service / chat_message_converter / ...)
     ↓ 调用 Repository 接口
-Repository Layer (引擎存储接口在 athena_core，实现为 athena_gui 的 SqliteXxxRepository)
-    ↓ 直接访问 Database.instance.laconic
-Data Layer (Entity / Database / Migration)
+Repository Layer (存储接口与文件实现都在 athena_core：repository/ 抽象 + storage/ 实现)
+    ↓ 读写 ~/.athena/ 下的 JSONL / JSON / YAML 文件
+Data Layer (Entity / FileStorage 目录布局)
 ```
 
 Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
 
-**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与持久化策略/UI 解耦。GUI 用 SQLite + SharedPreferences；TUI 已实现同一组接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
+**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与 UI 解耦。持久化是纯 Dart 的本地文件实现（`athena_core/lib/storage/`，见 §6），GUI 与 TUI 共用同一套仓储、共享同一数据目录；GUI 另用 SharedPreferences 存窗口/主题等 UI 偏好。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
 
 **athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。提示词常量随使用者内联（引擎的放 core 服务、业务的放 GUI 服务），不设共享提示词文件。
 
@@ -105,7 +102,7 @@ Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网�
 
 `packages/athena_gui/lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
 
-1. **Repository**（6 个 LazySingleton：5 个 Sqlite 实现 + ExperienceRepository）
+1. **FileStorage**（Singleton，root = `$HOME/.athena`，移动端为 Application Support）→ **Repository**（6 个 LazySingleton：5 个取自 FileStorage 的文件实现 + ExperienceRepository）
 2. **Service**（LlmClient → ChatCompletionsService / ChatMessageConverter / ChatStoreService / ChatUpdateService / SentinelService / DataMigrationService / ModelCatalogService）
 3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
 4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、SkillViewModel、ExperienceViewModel、ModelResolver）
@@ -163,14 +160,29 @@ messages.value.add(newMessage);
 
 ---
 
-## 6. 数据库
+## 6. 持久化（本地文件）
 
-- **引擎**：SQLite，通过 `laconic` + `laconic_sqlite` 包访问（非 sqlite3 原生绑定）
-- **路径**：`{app_support_dir}/athena.db`
-- **初始化**：`Database.instance.ensureInitialized()` 在 `main()` 中调用
-- **外键**：迁移全部完成后执行 `PRAGMA foreign_keys = ON`（确保孤儿数据已清理）
-- **迁移**：按时间顺序执行（当前 19 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
-- **重置**：`Database.instance.reset()` DROP 所有表（不含 `sqlite_%`）后重新迁移+预设
+无数据库。业务数据全部是 `~/.athena/` 下的纯文本文件，**文件是唯一真相**；GUI 与 TUI 共享同一目录、可同时运行。布局与装配见 `athena_core/lib/storage/file_storage.dart`：
+
+```
+~/.athena/                      # 移动端为 Application Support 目录
+  sessions/{chatId}.jsonl       # 一个对话一个文件：首行 type=chat 元数据，后续 type=message 行
+  models.json                   # 模型列表（JSON 数组，id 为主键）
+  sentinels.json                # 角色列表
+  meta.json                     # 自增 id 计数（key 为文件/目录路径），IdAllocator
+  setting.yaml                  # provider 配置（含 API key，全量持久化）+ TUI 默认模型
+  models_dev_cache.json         # models.dev 目录缓存
+  tool_outputs/                 # 工具长输出（内容寻址）
+  experiences/ sentinels/ skills/ permissions.json   # 经验 / 角色演进快照 / 技能 / 权限（原有）
+```
+
+- **仓储实现**：`JsonlSessionRepository`（同一实例兼任 ChatRepository + MessageRepository，删对话即删文件）、`JsonArrayModelRepository`、`JsonArraySentinelRepository`、`YamlProviderRepository`（每次读都重新解析 yaml，无内存副本）
+- **并发**：每个修改都在"进程内串行 + 跨进程文件锁"内完成读-改-写（`file_lock.dart`：每个存储文件配独立的 `.lock`，**不要复用同一把锁**，Windows 按句柄互斥会自锁死）；整文件写走唯一临时文件 + rename 原子替换；读不加锁，读到的要么是旧文件要么是新文件
+- **id**：`IdAllocator` 每次分配都在文件锁内重读 meta.json，不缓存，两个进程不会分到同一个 id
+- **初始化**：`FileStorage.load()` → `SentinelSeed.applyIfNeeded()`（首次启动植入 Athena 角色；GUI 在 `main.dart`，TUI 在 `tui_di.initialize`）
+- **重置**：`FileStorage.reset()` 删 sessions/ 与 models/sentinels/meta 文件、清空 provider，保留目录缓存与工具输出；随后重新种子
+- **没有迁移机制**：字段变更靠 Entity `fromJson` 的默认值向前兼容；大版本破坏性变更不做旧数据迁移
+- **长会话分页**：`SessionJsonlStore.loadRecentRows` 从文件尾部向前按块读，不读整个文件
 
 实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
 
@@ -431,7 +443,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 | ChatMessageConverter | `service/chat_message_converter.dart` | Entity → OpenAI ChatMessage 转换、system prompt 注入、tool_calls/tool_results 展开、图片 ContentPart（base64）、retention 处理 |
 | ChatStoreService | `service/chat_store_service.dart` | 会话/消息持久化编排：CRUD、占位消息、finalize、`recordCancelledOnMessage`、`recordErrorOnMessage`、`deleteMessagesFromIndex` |
 | ChatUpdateService | `service/chat_update_service.dart` | UI 辅助：重命名、模型/哨兵/上下文/温度更新、图片保存、`getProviderForModel` |
-| DataMigrationService | `service/data_migration_service.dart` | 数据导入/导出（JSON）、数据库重置、悬空引用重整 |
+| DataMigrationService | `service/data_migration_service.dart` | 数据导入/导出（JSON）、悬空引用重整 |
 | ModelResolver | `service/model_resolver.dart` | 模型/Provider 解析 + fallback（优先指定模型 → 回退第一个可用） |
 | ModelCatalogService | `service/model_catalog_service.dart` | 从 models.dev/api.json 同步模型元数据（TTL 7 天缓存、失败降级缓存、只删除未被 chat 引用的 preset 模型） |
 | SentinelService | `service/sentinel_service.dart` | Sentinel 元数据 AI 生成 |
@@ -729,20 +741,20 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 ## 16. 重要约束与注意事项
 
 1. **包依赖方向**：`athena_gui → athena_core` 单向；**athena_core 禁止引入 Flutter / SQL / GetIt**（它是 TUI 与 GUI 共用的核心）。**GUI 专有业务不进 core**（见"核心解耦原则"后的准入标准）
-2. **DI 初始化顺序**：Repository → Service → Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 之后注册；全部 `registerLazySingleton`
-3. **数据库单例**：`Database.instance` 全局单例，所有 Sqlite Repository 直接访问 `.instance.laconic`
-4. **外键级联**：`PRAGMA foreign_keys = ON` 必须在所有迁移之后执行
+2. **DI 初始化顺序**：FileStorage → Repository → Service → Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 之后注册；除 FileStorage 外全部 `registerLazySingleton`
+3. **文件是唯一真相**：不引入数据库；将来若需全文检索，索引必须是可删除可重建的缓存，不反向持有数据
+4. **跨进程锁不可省**：所有读-改-写必须经 `withFileLock`（GUI 与 TUI 共享目录且可能同时运行）；每个文件独立 `.lock`
 5. **OpenAI Client 生命周期**：每次 API 调用创建新 `OpenAIClient`，`finally` 中 `close()`；重试只覆盖网络错误（连接/超时/限流/5xx），不重试业务错误（4xx/解析）
 6. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用；权限弹窗与取消用 `Future.any` 竞速
 7. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），迭代结束/流结束时 `finalizeAssistantMessage()` 落库；取消标 `[Cancelled]`，错误写进消息内容
 8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（每次模型请求前估算达到 80% 窗口触发）、正数 = 当前不截断
 9. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
-10. **预设数据完全走 migration 机制**：新预设修改 = 新增幂等迁移（INSERT 用 `WHERE NOT EXISTS` / marker 去重，UPDATE 无条件执行，不删除条目只用 `is_preset = 0`，不覆盖用户 api_key/enabled）
+10. **预设数据不再走 migration**：模型/provider 由 ModelCatalogService 从 models.dev 同步；内置 Athena 角色只在 `sentinels.json` 为空时种子一次（`athena_core/lib/seed/`），已存在的角色不覆盖（用户可能已通过 sentinel_evolve 改过）
 11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`
 12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 字段，只能走 `recordUsage()` 增量路径
 13. **列表信号更新**：赋值新列表或 `replaceWhere`，禁止原地 `add()` 修改
 14. **AgentService 单实例运行**：`run()` 已运行时再次调用抛 `StateError`，需先 `abort()` / 等待 `settled`
-15. **UI 展示态不进 MessageEntity**：`messages.expanded` 列已由迁移 202609200001 删除，推理卡片展开状态只存在于 Widget State；新的纯展示状态同样不要加进实体或数据库
+15. **UI 展示态不进 MessageEntity**：推理卡片展开状态只存在于 Widget State；新的纯展示状态同样不要加进实体或文件
 
 ---
 
@@ -779,14 +791,18 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 - 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
 - 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 
-### 添加新 Entity（含新表）
+### 添加新 Entity（含新存储文件）
 
-1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（fromJson/toJson/copyWith）或 `model/`（非 DB 数据类）
+1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（fromJson/toJson/copyWith；新字段给 fromJson 默认值以兼容旧文件）或 `model/`（非持久化数据类）
 2. 创建 `packages/athena_core/lib/repository/xxx_repository.dart`（存储接口，纯抽象）
-3. 在 `packages/athena_gui/lib/repository/` 添加 SQLite 实现类
-4. 创建迁移 `packages/athena_gui/lib/database/migration/migration_YYYYMMDDNNN_xxx.dart`
-5. 在 `database.dart` 的 `_migrate()` 中追加迁移调用
-6. 在 `di.dart` 注册 Repository LazySingleton
+3. 在 `packages/athena_core/lib/storage/` 添加文件实现（列表数据用 `JsonArrayStore`，追加型数据仿 `SessionJsonlStore`），并在 `FileStorage` 里声明文件路径与实例
+4. 在 GUI `di.dart` 与 TUI `tui_di.dart` 注册（都从 `FileStorage` 取）
+5. 若需清空：在 `FileStorage.reset()` 里加上该文件
+
+### 修改已有 Entity 字段
+
+- 只加不删、给默认值：旧文件缺字段时 `fromJson` 用默认值补齐即可，无需迁移
+- 破坏性改动（改语义/删字段）只在大版本做，不写旧数据迁移
 
 ### 添加新 Service
 
@@ -796,11 +812,9 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 
 ### 修改预设数据（Provider / Model / Sentinel）
 
-1. 修改数据（新增模型、更新上下文窗口、新增/废弃提供商、更新 Sentinel prompt 等）
-2. 创建幂等迁移并注册到 `_migrate()`（排在 seed migration 之后）
-3. 规则：幂等（marker 或 `WHERE NOT EXISTS`）、不删除（`is_preset = 0`）、保留用户字段、模型通过 provider name 关联 `provider_id`
-4. 模型元数据（名称/窗口/价格/reasoning/vision）**优先考虑走 ModelCatalogService 的 models.dev 同步**，手工迁移只用于 models.dev 没有的 provider
-5. 测试套件已移除（见 §14）：改完跑 `flutter analyze`
+1. 模型/provider：改 `model_catalog_config.dart`（provider 清单、include/exclude 白名单），元数据由 ModelCatalogService 从 models.dev 同步，不手工维护
+2. 内置 Athena 角色：改 `athena_core/lib/seed/athena_preset_prompt.dart`；只影响**新装用户**（已有 `sentinels.json` 的不覆盖）
+3. 改完跑 `dart analyze` / `flutter analyze` 与 `dart test`（athena_core）
 
 ### 修改设计系统组件
 
@@ -835,7 +849,6 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | `signals_flutter` v6.2.0 | Widget 响应式订阅（Watch） |
 | `get_it` v8.0.3 | 依赖注入 |
 | `auto_route` v9.2.2 | 路由 + 代码生成 |
-| `laconic` / `laconic_sqlite` | SQLite ORM |
 | `hugeicons` | 图标库 |
 | `google_fonts` | 字体 |
 | `flutter_markdown` + `flutter_markdown_latex` | Markdown/LaTeX 渲染 |

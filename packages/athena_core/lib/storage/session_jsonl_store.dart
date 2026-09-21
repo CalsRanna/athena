@@ -174,23 +174,6 @@ class SessionJsonlStore {
     });
   }
 
-  /// 用给定的会话元数据与消息行整体重建文件(导入用,id 原样保留,
-  /// 不经过 [idAllocator])。已有内容被覆盖。
-  Future<void> writeSession(
-    Map<String, dynamic> chatRow,
-    List<Map<String, dynamic>> messageRows,
-  ) {
-    return _mutate(() async {
-      await _writeAll([
-        {...chatRow, 'type': chatType},
-        for (final row in messageRows) {...row, 'type': messageType},
-      ]);
-    });
-  }
-
-  /// 会话文件是否存在。
-  Future<bool> exists() => file.exists();
-
   /// 删除整个会话文件。
   Future<void> deleteFile() {
     return _mutate(() async {

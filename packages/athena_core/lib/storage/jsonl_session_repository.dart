@@ -9,18 +9,16 @@ import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
 
 /// ChatRepository + MessageRepository 的会话文件实现
-/// (`~/.athena/tui/sessions/{chatId}.jsonl`)。
+/// (`~/.athena/sessions/{chatId}.jsonl`,GUI 与 TUI 共用)。
 ///
 /// 一个对话一个文件,首行是会话元数据,后续行是消息(见 [SessionJsonlStore])。
 /// 一个类同时实现两个接口:对话与其消息同生命周期,`deleteChat` 即删文件,
-/// 无需像旧的 chats.jsonl + messages/ 双存储那样手动级联。
+/// 无需手动级联。
 ///
-/// 与 SQLite 实现的差异:
 /// - `updateChat`(读-改首行)与 `recordUsage`(独立读写)共用会话文件的
-///   串行锁,不会互相覆盖
-/// - `deleteChat` 直接删除会话文件(SQLite 靠外键级联)
+///   锁,不会互相覆盖
 ///
-/// id 分配(与旧版行为一致,meta.json 计数 key 对应迁移):
+/// id 分配(meta.json 计数):
 /// - chat id:会话目录路径为 key,所有会话共享递增计数
 /// - message id:会话文件路径为 key,每个会话独立递增计数
 class JsonlSessionRepository
@@ -222,38 +220,6 @@ class JsonlSessionRepository
       beforeId = firstId is int ? firstId : null;
     }
     return ChatHistoryEntity(chat: chat, lastMessageContent: lastContent);
-  }
-
-  /// 原样导入一个会话(含消息),用于从其他存储(如旧 SQLite 库)迁移。
-  ///
-  /// 优先沿用 [chat] 自带的 id;若该 id 的会话文件已存在(另一端已有
-  /// 同号会话),改为分配新 id。消息 id 原样保留(会话内唯一即可)。
-  /// 返回实际使用的会话 id。
-  Future<int> importSession(
-    ChatEntity chat,
-    List<MessageEntity> messages,
-  ) async {
-    var id = chat.id;
-    if (id == null || await _storeFor(id).exists()) {
-      id = await _idAllocator.next(_sessionsDir.path);
-    } else {
-      await _idAllocator.ensureAtLeast(_sessionsDir.path, id);
-    }
-    final store = _storeFor(id);
-    var maxMessageId = 0;
-    final rows = <Map<String, dynamic>>[];
-    for (final message in messages) {
-      final messageId = message.id;
-      if (messageId != null && messageId > maxMessageId) {
-        maxMessageId = messageId;
-      }
-      rows.add(message.copyWith(chatId: id).toJson());
-    }
-    await store.writeSession(chat.copyWith(id: id).toJson(), rows);
-    if (maxMessageId > 0) {
-      await _idAllocator.ensureAtLeast(store.file.path, maxMessageId);
-    }
-    return id;
   }
 
   // ─────────────────────────── MessageRepository ───────────────────────────

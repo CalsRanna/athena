@@ -6,7 +6,7 @@ import 'package:athena_core/storage/serial_lock.dart';
 
 /// 跨文件共享的自增 id 分配器。
 ///
-/// 计数持久化在 meta.json(SQLite 自增主键的等价物),key 是文件/目录路径。
+/// 计数持久化在 meta.json(自增主键的等价物),key 是文件/目录路径。
 /// 进程内与跨重启均单调递增,保证 chat/message 的引用 id 不会被复用。
 ///
 /// GUI 与 TUI 共享同一数据目录,可能同时运行:每次分配都在跨进程文件锁

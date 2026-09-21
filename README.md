@@ -154,7 +154,7 @@ Agent 可通过以下机制持续改进自身：
 
 - **桌面端**：macOS、Windows、Linux。窗口管理、系统托盘、全局快捷键（Meta+W 隐藏）
 - **移动端**：iOS、Android。触摸优化界面
-- **终端**：athena_tui（nocterm），数据独立存储于 `~/.athena/tui/`（JSONL），与 GUI 的 SQLite 互不干扰
+- **终端**：athena_tui（nocterm），与 GUI 共享 `~/.athena/` 下的同一份会话/模型/角色数据，可同时运行
 
 ## 快速开始
 
@@ -206,26 +206,24 @@ packages/
 │   ├── coordinator/     #   AgentRunCoordinator：UI 无关的 run 编排层（RunEvent 流）
 │   ├── service/         #   LlmClient、Chat 等
 │   ├── repository/      #   存储接口（Chat/Message/Model/Provider/...）
-│   ├── entity/ model/ preset/ extension/ util/
-│   └── storage/         #   KeyValueStore 接口 + AgentSettings
+│   ├── storage/         #   本地文件持久化（FileStorage 布局 + JSONL/JSON/YAML 仓储 + 跨进程锁）
+│   ├── seed/            #   内置 Athena 角色种子
+│   └── entity/ model/ extension/ util/
 ├── athena_gui/          # ★ Flutter 桌面/移动应用
 │   ├── page/            #   UI 层（desktop 多区工作台 / mobile 分段浏览）
 │   ├── view_model/      #   Signals 状态管理
 │   │   └── delegate/    #   AgentStreamDelegate：包装核心协调层 + 对话框注入
-│   ├── repository/      #   SQLite 实现（SqliteChatRepository 等）
-│   ├── database/        #   SQLite + Laconic ORM + 迁移
 │   ├── router/ widget/ component/ util/
 │   └── storage/         #   KeyValueStore 的 SharedPreferences 实现
 └── athena_tui/          # ★ 终端客户端（nocterm）
     ├── bin/athena.dart  #   CLI 入口
     ├── bridge/          #   tui_agent_bridge：Agent 引擎 → TUI 状态桥
-    ├── ui/ view_model/  #   终端 UI 与响应式层
-    └── storage/         #   JSONL/JSON 文件存储（会话 / 模型 / 角色）
+    └── ui/ view_model/  #   终端 UI 与响应式层
 ```
 
 核心通过**存储接口**（`repository/`）与**注入回调**（权限审批）
-与持久化策略解耦：GUI 用 SQLite + SharedPreferences；TUI 已实现同一组
-接口的 JSONL/JSON 文件存储（`athena_tui/lib/storage/`，如 `jsonl_session_repository.dart`）。
+与 UI 解耦。持久化是纯 Dart 的本地文件实现（`athena_core/lib/storage/`），
+GUI 与 TUI 共用同一套仓储并共享 `~/.athena/` 数据目录；没有数据库。
 
 ### 技术栈
 
@@ -236,7 +234,7 @@ packages/
 | 状态管理 | Signals（Computed、Signal、listSignal、setSignal） |
 | 依赖注入 | GetIt（LazySingleton，仅客户端装配层） |
 | 路由 | AutoRoute（桌面无过渡，移动标准过渡） |
-| 数据库 | SQLite + Laconic ORM（GUI 侧实现，PRAGMA foreign_keys = ON） |
+| 持久化 | 本地文件：`~/.athena/` 下的 JSONL（会话）/ JSON（模型、角色）/ YAML（provider），跨进程文件锁 + 原子写 |
 | AI API | openai_dart ^8.1.0（流式 + 工具调用 + 推理） |
 | HTTP | http v1.x（web_fetch、web_search） |
 | 测试 | athena_core：`dart test`；athena_gui：`flutter test` |
@@ -248,18 +246,18 @@ packages/
 │            athena_gui（Flutter）             │
 │  UI Layer（page / widget / component）      │
 │  ViewModel Layer（signals + Delegate 委托） │
-│  SQLite 实现（repository / database）       │
 ├─────────────────────────────────────────────┤
 │            athena_core（纯 Dart）            │
 │  AgentRunCoordinator（run 编排层，RunEvent）│
 │  Service Layer（LLM 通信 / 数据转换 / 编排）│
 │  Repository 接口（存储抽象，port）          │
+│  Storage（FileStorage：JSONL/JSON/YAML 实现）│
 │  Agent Layer（Agent Service / Tool /        │
 │              Permission / Skill）           │
-│  Entity / Storage / Util                    │
+│  Entity / Util                              │
 └─────────────────────────────────────────────┘
-   GUI 通过 GetIt 装配：注入 SQLite 实现 + 权限弹窗；
-   TUI 注入 JSONL/文件存储 + stdin 权限审批
+   GUI 通过 GetIt 装配：注入文件仓储 + 权限弹窗；
+   TUI 手动装配：同一套文件仓储 + stdin 权限审批
 ```
 
 ## 配置

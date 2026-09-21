@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
-import 'package:athena_gui/storage/legacy_storage_importer.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -19,7 +17,6 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:window_manager/window_manager.dart';
@@ -30,7 +27,7 @@ void main(List<String> args) async {
   await SingleInstanceUtil.instance.ensureInitialized(args);
   final supportDir = await getApplicationSupportDirectory();
   DI.ensureInitialized(dataDirectory: supportDir.path);
-  await _bootstrapStorage(supportDir);
+  await _bootstrapStorage();
   await GetIt.instance<PermissionService>().load();
   await GetIt.instance<SettingViewModel>().initThemeMode();
   await GetIt.instance<SettingViewModel>().initTextSize();
@@ -53,21 +50,10 @@ void main(List<String> args) async {
   runApp(const AthenaApp());
 }
 
-/// 文件存储启动序列:先读 provider(yaml)进内存,再把旧 SQLite 库
-/// (若仍存在)按合并语义导入,最后种子内置角色。顺序不能变:导入按
-/// 名字匹配 provider 依赖已加载的列表;种子必须在导入之后,否则会先
-/// 占掉 id 1 再与旧库角色撞号。
-Future<void> _bootstrapStorage(Directory supportDir) async {
+/// 文件存储启动序列:加载存储,再种子内置角色(首次启动)。
+Future<void> _bootstrapStorage() async {
   final storage = GetIt.instance<FileStorage>();
   await storage.load();
-  await LegacyStorageImporter(
-    storage: storage,
-    dbFile: File(p.join(supportDir.path, 'athena.db')),
-    // 桌面端旧版把工具输出写在 Application Support/.athena 下
-    legacyToolOutputsDir: Directory(
-      p.join(supportDir.path, '.athena', 'tool_outputs'),
-    ),
-  ).importIfNeeded();
   await const SentinelSeed().applyIfNeeded(
     sentinelRepo: storage.sentinelRepository,
   );

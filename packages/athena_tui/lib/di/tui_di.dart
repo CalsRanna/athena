@@ -29,7 +29,6 @@ import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/json_file_key_value_store.dart';
-import 'package:athena_core/storage/legacy_tui_dir_importer.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 
@@ -114,14 +113,6 @@ class TuiDi {
   Future<void> initialize({bool syncModels = true}) async {
     await permissionService.load();
     await agentSettings.init();
-    // 先把旧的 TUI 专属目录(~/.athena/tui/,两种历史布局都认)按合并
-    // 语义并入共享根目录,再种子:导入必须发生在种子写入之前,否则种子
-    // 先占掉 id 1 再与旧数据撞号
-    try {
-      await LegacyTuiDirImporter(storage: storage).importIfNeeded();
-    } catch (e) {
-      LoggerUtil.w('Import legacy TUI dir failed: $e');
-    }
     await _importUserSettings();
     // 预设 provider/模型由 ModelCatalogService 从 models.dev 同步,
     // 这里只种子 Athena 角色(无外部数据源)
