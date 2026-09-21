@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 
@@ -36,10 +37,9 @@ class JsonFileKeyValueStore implements KeyValueStore {
     return _cache = {};
   }
 
-  Future<void> _persist(Map<String, dynamic> map) async {
-    await _file.parent.create(recursive: true);
-    await _file.writeAsString(jsonEncode(map));
-  }
+  // 原子写:临时文件 + rename,避免写一半损坏文件
+  Future<void> _persist(Map<String, dynamic> map) =>
+      atomicWriteString(_file, jsonEncode(map));
 
   @override
   Future<String?> getString(String key) {

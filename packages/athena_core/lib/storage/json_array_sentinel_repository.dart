@@ -65,12 +65,21 @@ class JsonArraySentinelRepository implements SentinelRepository {
     return null;
   }
 
+  /// 以给定 id 原样写入(存在则覆盖),导入保留原 id 的角色时使用。
+  Future<void> restore(SentinelEntity sentinel) {
+    return _store.restore(sentinel.id!, sentinel.toJson());
+  }
+
   @override
   Future<void> importSentinels(List<SentinelEntity> sentinels) async {
     for (final sentinel in sentinels) {
       final existing = await getSentinelByName(sentinel.name);
       if (existing != null) {
         await _store.replaceById(existing.id!, sentinel.toJson());
+      } else if (sentinel.id != null &&
+          await getSentinelById(sentinel.id!) == null) {
+        // 与 SQLite 实现一致:新角色保留原 id(chat.sentinel_id 引用它)
+        await _store.restore(sentinel.id!, sentinel.toJson());
       } else {
         await _store.insert(sentinel.toJson());
       }

@@ -44,9 +44,15 @@ class Database {
 
   Database._internal();
 
-  Future<void> ensureInitialized() async {
-    var directory = await getApplicationSupportDirectory();
-    var path = join(directory.path, 'athena.db');
+  /// 打开(必要时创建)SQLite 库并执行全部迁移。
+  ///
+  /// [path] 缺省为 Application Support 下的 athena.db。业务数据已改为
+  /// 文件持久化(见 FileStorage),此类仅供 LegacyStorageImporter 读旧库。
+  Future<void> ensureInitialized({String? path}) async {
+    if (path == null) {
+      var directory = await getApplicationSupportDirectory();
+      path = join(directory.path, 'athena.db');
+    }
     LoggerUtil.i('Database path: $path');
     var file = File(path);
     var exists = await file.exists();

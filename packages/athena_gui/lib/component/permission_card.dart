@@ -31,13 +31,6 @@ class PermissionApprovalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final platform = Theme.of(context).platform;
-    final mobile =
-        platform == TargetPlatform.android || platform == TargetPlatform.iOS;
-    // 右侧留白对齐消息卡片的正文右缘:消息卡正文尾部有 CopyButton
-    // 悬浮占位(移动 24 / 桌面 48),正文实际距卡片右为 16 + 该尾随位;
-    // 审核卡片没有 CopyButton,右侧直接加大容器 padding 达到同等留白。
-    final rightPadding = mobile ? 40.0 : 64.0;
     // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
     // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
     return ConstrainedBox(
@@ -49,46 +42,18 @@ class PermissionApprovalCard extends StatelessWidget {
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
-        padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
-        child: Row(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAvatar(context),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 8),
-                  Flexible(child: _buildCommand(context)),
-                  const SizedBox(height: 12),
-                  _buildActions(context),
-                ],
-              ),
-            ),
+            _buildHeader(context),
+            const SizedBox(height: 8),
+            Flexible(child: _buildCommand(context)),
+            const SizedBox(height: 12),
+            _buildActions(context),
           ],
         ),
-      ),
-    );
-  }
-
-  /// 头像：灰圆底 + 工具图标（对齐工具消息卡片的头像样式）。
-  Widget _buildAvatar(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.avatarBackground,
-      ),
-      height: 28,
-      width: 28,
-      child: Icon(
-        StepCard.toolIcon(request.toolName),
-        color: colors.textPrimary,
-        size: 20,
       ),
     );
   }

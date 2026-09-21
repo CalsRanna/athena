@@ -185,6 +185,12 @@ class JsonlSessionRepository
       final history = await _historyFor(_storeForFile(file));
       if (history != null) histories.add(history);
     }
+    // 与 SQLite 实现同序:置顶优先,再按更新时间倒序(目录遍历序不可靠)
+    histories.sort((a, b) {
+      final pinned = (b.chat.pinned ? 1 : 0).compareTo(a.chat.pinned ? 1 : 0);
+      if (pinned != 0) return pinned;
+      return b.chat.updatedAt.compareTo(a.chat.updatedAt);
+    });
     return histories;
   }
 
@@ -216,6 +222,38 @@ class JsonlSessionRepository
       beforeId = firstId is int ? firstId : null;
     }
     return ChatHistoryEntity(chat: chat, lastMessageContent: lastContent);
+  }
+
+  /// 原样导入一个会话(含消息),用于从其他存储(如旧 SQLite 库)迁移。
+  ///
+  /// 优先沿用 [chat] 自带的 id;若该 id 的会话文件已存在(另一端已有
+  /// 同号会话),改为分配新 id。消息 id 原样保留(会话内唯一即可)。
+  /// 返回实际使用的会话 id。
+  Future<int> importSession(
+    ChatEntity chat,
+    List<MessageEntity> messages,
+  ) async {
+    var id = chat.id;
+    if (id == null || await _storeFor(id).exists()) {
+      id = await _idAllocator.next(_sessionsDir.path);
+    } else {
+      await _idAllocator.ensureAtLeast(_sessionsDir.path, id);
+    }
+    final store = _storeFor(id);
+    var maxMessageId = 0;
+    final rows = <Map<String, dynamic>>[];
+    for (final message in messages) {
+      final messageId = message.id;
+      if (messageId != null && messageId > maxMessageId) {
+        maxMessageId = messageId;
+      }
+      rows.add(message.copyWith(chatId: id).toJson());
+    }
+    await store.writeSession(chat.copyWith(id: id).toJson(), rows);
+    if (maxMessageId > 0) {
+      await _idAllocator.ensureAtLeast(store.file.path, maxMessageId);
+    }
+    return id;
   }
 
   // ─────────────────────────── MessageRepository ───────────────────────────

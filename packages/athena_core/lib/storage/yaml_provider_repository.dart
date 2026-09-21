@@ -1,61 +1,51 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 
 /// ProviderRepository 的 YAML 实现(`~/.athena/setting.yaml`)。
 ///
-/// 设计:yaml **不自动生成 providers 列表**——只有用户配置了某个
-/// provider 的 api key(或清空 key 后移除)时才修改 yaml。
+/// - **yaml 是唯一真相**:每次读都重新解析文件(几 KB,可忽略),不在
+///   内存里另存一份权威副本——GUI 与 TUI 共享此文件且可能同时运行,
+///   内存副本会把对方刚写入的 provider 覆盖掉
+/// - **yaml 持久化全部 provider**(含尚未配 key 的模板 provider):
+///   GUI 的 provider 设置页需要在重启后仍列出它们供用户填 key;
+///   目录同步在 TTL 内会跳过,不能依赖同步重建
+/// - 修改在"进程内串行 + 跨进程文件锁"内完成读-改-写
 ///
-/// - **内存 `_all` 是运行时权威**:启动时由 [load](读 yaml 用户配置)+
-///   ModelCatalogService(模板 provider)填充
-/// - **yaml 只存用户配置的子集**:apiKey 非空的 provider;
-///   种子/同步创建的 provider(空 key)不落 yaml
-/// - 所有操作经 [serialLock] 串行化(防并发写覆盖)
-///
-/// id 分配:复用已有 provider 的 id,新 provider 取 max(id)+1——
-/// 与 models.json 的 providerId 引用保持一致。
+/// id 分配:新 provider 取 max(id)+1——与 models.json 的 providerId
+/// 引用保持一致。
 class YamlProviderRepository implements ProviderRepository {
   YamlProviderRepository({required UserSettingsStore store}) : _store = store;
 
   final UserSettingsStore _store;
   Future<void>? _lock;
 
-  /// 运行时权威的完整 provider 列表(内存)。
-  final List<ProviderEntity> _all = [];
+  /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
+  Future<void> load() async {}
 
-  /// 启动时加载:读取 yaml 中用户配置的 provider(配过 key 的)。
-  Future<void> load() {
-    return _serialized(() async {
-      _all
-        ..clear()
-        ..addAll(await _store.loadProviders());
-    });
-  }
-
-  Future<T> _serialized<T>(Future<T> Function() action) {
-    return serialLock(_lock, action, (f) => _lock = f);
-  }
-
-  /// 把"配了 key 的 provider"同步到 yaml(整段覆写 yaml 的用户配置段)。
-  ///
-  /// 不加锁:所有调用方(updateProvider/deleteProvider/importProviders/
-  /// deleteAllProviders)已持有 [serialLock],嵌套加锁会死锁。
-  Future<void> _syncYaml() {
-    return _store.saveProviders(
-      [for (final p in _all) if (p.apiKey.isNotEmpty) p],
+  Future<T> _mutate<T>(
+    Future<T> Function(List<ProviderEntity> all) action,
+  ) {
+    return serialLock(
+      _lock,
+      () => withFileLock(lockFileFor(_store.file), () async {
+        final all = await _store.loadProviders();
+        final result = await action(all);
+        await _store.saveProviders(all);
+        return result;
+      }),
+      (f) => _lock = f,
     );
   }
 
   @override
-  Future<List<ProviderEntity>> getAllProviders() async {
-    return List.of(_all);
-  }
+  Future<List<ProviderEntity>> getAllProviders() => _store.loadProviders();
 
   @override
   Future<ProviderEntity?> getProviderById(int id) async {
-    for (final provider in _all) {
+    for (final provider in await getAllProviders()) {
       if (provider.id == id) return provider;
     }
     return null;
@@ -63,67 +53,62 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<List<ProviderEntity>> getEnabledProviders() async {
-    return [for (final p in _all) if (p.enabled) p];
+    return [for (final p in await getAllProviders()) if (p.enabled) p];
   }
 
   @override
   Future<int> storeProvider(ProviderEntity provider) {
-    return _serialized(() async {
+    return _mutate((all) async {
       if (provider.id != null) {
-        // 已带 id(如 importProviders 保留原始 id):更新或追加
-        final index = _all.indexWhere((p) => p.id == provider.id);
+        // 已带 id(如导入保留原始 id):更新或追加
+        final index = all.indexWhere((p) => p.id == provider.id);
         if (index >= 0) {
-          _all[index] = provider;
+          all[index] = provider;
         } else {
-          _all.add(provider);
+          all.add(provider);
         }
         return provider.id!;
       }
-      // 分配新 id:max(id)+1,保证与 models.jsonl 引用一致且跨重启稳定
       var maxId = 0;
-      for (final p in _all) {
+      for (final p in all) {
         if ((p.id ?? 0) > maxId) maxId = p.id!;
       }
       final newId = maxId + 1;
-      _all.add(provider.copyWith(id: newId));
+      all.add(provider.copyWith(id: newId));
       return newId;
     });
   }
 
   @override
   Future<void> updateProvider(ProviderEntity provider) {
-    return _serialized(() async {
+    return _mutate((all) async {
       final id = provider.id;
-      final index = id == null ? -1 : _all.indexWhere((p) => p.id == id);
-      if (index < 0) return;
-      _all[index] = provider;
-      // 只有配置了 key 的 provider 才写 yaml;清空 key 则从 yaml 移除
-      await _syncYaml();
+      final index = id == null ? -1 : all.indexWhere((p) => p.id == id);
+      if (index >= 0) all[index] = provider;
     });
   }
 
   @override
   Future<void> deleteProvider(int id) {
-    return _serialized(() async {
-      _all.removeWhere((p) => p.id == id);
-      await _syncYaml();
+    return _mutate((all) async {
+      all.removeWhere((p) => p.id == id);
     });
   }
 
   @override
-  Future<int> getProvidersCount() async => _all.length;
+  Future<int> getProvidersCount() async => (await getAllProviders()).length;
 
   @override
   Future<void> batchStoreProviders(List<ProviderEntity> providers) {
-    return _serialized(() async {
+    return _mutate((all) async {
       for (final provider in providers) {
         final index = provider.id == null
             ? -1
-            : _all.indexWhere((p) => p.id == provider.id);
+            : all.indexWhere((p) => p.id == provider.id);
         if (index >= 0) {
-          _all[index] = provider;
+          all[index] = provider;
         } else {
-          _all.add(provider);
+          all.add(provider);
         }
       }
     });
@@ -131,7 +116,7 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<ProviderEntity?> getProviderByName(String name) async {
-    for (final provider in _all) {
+    for (final provider in await getAllProviders()) {
       if (provider.name == name) return provider;
     }
     return null;
@@ -139,7 +124,7 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<ProviderEntity?> getPresetProviderByName(String name) async {
-    for (final provider in _all) {
+    for (final provider in await getAllProviders()) {
       if (provider.name == name && provider.isPreset) return provider;
     }
     return null;
@@ -147,21 +132,15 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<void> deleteAllProviders() {
-    return _serialized(() async {
-      _all.clear();
-      await _store.saveProviders(const []);
-    });
+    return _mutate((all) async => all.clear());
   }
 
   @override
   Future<void> importProviders(List<ProviderEntity> providers) {
-    return _serialized(() async {
-      _all
+    return _mutate((all) async {
+      all
         ..clear()
         ..addAll(providers);
-      // 只把配了 key 的写 yaml(迁移场景:用户历史 key 进 yaml,
-      // 空 key 的模板 provider 不落盘)
-      await _syncYaml();
     });
   }
 }

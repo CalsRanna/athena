@@ -57,6 +57,9 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color border; // 分隔线 / 容器描边
   final Color borderStrong; // 聚焦 / 激活边框
   final Color divider; // 分隔线
+  /// 窗口外壳的分隔线：侧栏右边界、侧栏页脚上边。比 [border] 轻一档
+  /// （neutral-900 5% 对 10%），因为外壳线是"面与面的接缝"，不是容器的轮廓。
+  final Color borderChrome;
 
   // ---- 输入 ----
   final Color inputBackground; // 输入框底色
@@ -111,6 +114,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.border,
     required this.borderStrong,
     required this.divider,
+    required this.borderChrome,
     required this.inputBackground,
     required this.accent,
     required this.statusSuccess,
@@ -153,6 +157,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     border: Color(0xFFE1E0D9),
     borderStrong: Color(0xFFC3C2B7),
     divider: Color(0xFFE1E0D9),
+    borderChrome: Color(0xFFEFEFED),
     inputBackground: Color(0xFFFFFFFF),
     accent: Color(0xFF2A78D6),
     statusSuccess: Color(0xFF0CA30C),
@@ -195,6 +200,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     border: Color(0xFF2C2C2A),
     borderStrong: Color(0xFF454442),
     divider: Color(0xFF2C2C2A),
+    borderChrome: Color(0xFF212121),
     inputBackground: Color(0xFF1E1E1D),
     accent: Color(0xFF5598E7),
     statusSuccess: Color(0xFF35B231),
@@ -237,6 +243,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? border,
     Color? borderStrong,
     Color? divider,
+    Color? borderChrome,
     Color? inputBackground,
     Color? accent,
     Color? statusSuccess,
@@ -279,6 +286,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       border: border ?? this.border,
       borderStrong: borderStrong ?? this.borderStrong,
       divider: divider ?? this.divider,
+      borderChrome: borderChrome ?? this.borderChrome,
       inputBackground: inputBackground ?? this.inputBackground,
       accent: accent ?? this.accent,
       statusSuccess: statusSuccess ?? this.statusSuccess,
@@ -337,6 +345,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       border: Color.lerp(border, other.border, t)!,
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
+      borderChrome: Color.lerp(borderChrome, other.borderChrome, t)!,
       inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,

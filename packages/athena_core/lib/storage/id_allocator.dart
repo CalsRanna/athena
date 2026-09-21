@@ -1,52 +1,69 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 
 /// 跨文件共享的自增 id 分配器。
 ///
-/// 计数持久化在 meta.json(GUI 用 SQLite 自增主键,TUI 用此等价物)。
+/// 计数持久化在 meta.json(SQLite 自增主键的等价物),key 是文件/目录路径。
 /// 进程内与跨重启均单调递增,保证 chat/message 的引用 id 不会被复用。
+///
+/// GUI 与 TUI 共享同一数据目录,可能同时运行:每次分配都在跨进程文件锁
+/// 内完成"读 meta → 加一 → 原子写回",不缓存计数,两个进程不会分到
+/// 同一个 id。
 class IdAllocator {
   IdAllocator(this.file);
 
   final File file;
-  final Map<String, int> _counters = {};
   Future<void>? _pending;
 
   Future<int> next(String key) {
-    final result = _serialized(() async {
-      await _load();
-      final next = (_counters[key] ?? 0) + 1;
-      _counters[key] = next;
-      await _save();
+    return _mutate((counters) {
+      final next = (counters[key] ?? 0) + 1;
+      counters[key] = next;
       return next;
     });
-    return result;
   }
 
-  /// 清空内存缓存,强制下次 [next] 重读 meta 文件。
-  ///
-  /// 迁移代码直接改写 meta.json 后调用,避免旧计数覆盖迁移结果。
-  void reset() {
-    _counters.clear();
+  /// 把 [key] 的计数抬到不低于 [value](导入保留原 id 的数据后调用,
+  /// 避免后续分配与已导入的 id 冲突)。
+  Future<void> ensureAtLeast(String key, int value) {
+    return _mutate<bool>((counters) {
+      if ((counters[key] ?? 0) >= value) return false;
+      counters[key] = value;
+      return true;
+    });
   }
 
-  Future<void> _load() async {
-    if (_counters.isNotEmpty) return;
-    if (!await file.exists()) return;
+  Future<T> _mutate<T>(T Function(Map<String, int> counters) mutate) {
+    return _serialized(() {
+      return withFileLock(lockFileFor(file), () async {
+        final counters = await _load();
+        final result = mutate(counters);
+        await _save(counters);
+        return result;
+      });
+    });
+  }
+
+  Future<Map<String, int>> _load() async {
+    if (!await file.exists()) return {};
     try {
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      json.forEach((k, v) => _counters[k] = v as int);
+      final json = jsonDecode(await file.readAsString());
+      if (json is! Map) return {};
+      return {
+        for (final entry in json.entries)
+          if (entry.value is int) entry.key as String: entry.value as int,
+      };
     } catch (_) {
       // 损坏的 meta 文件按空计数处理,id 从头分配
+      return {};
     }
   }
 
-  Future<void> _save() async {
-    await file.parent.create(recursive: true);
-    await file.writeAsString(jsonEncode(_counters));
-  }
+  Future<void> _save(Map<String, int> counters) =>
+      atomicWriteString(file, jsonEncode(counters));
 
   Future<T> _serialized<T>(Future<T> Function() action) {
     return serialLock(_pending, action, (f) => _pending = f);

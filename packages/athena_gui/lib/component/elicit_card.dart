@@ -135,7 +135,6 @@ class _ElicitCardState extends State<ElicitCard> {
     final platform = Theme.of(context).platform;
     final mobile =
         platform == TargetPlatform.android || platform == TargetPlatform.iOS;
-    final rightPadding = mobile ? 40.0 : 64.0;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: widget.maxHeight),
@@ -146,53 +145,33 @@ class _ElicitCardState extends State<ElicitCard> {
           border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(AthenaRadius.container),
         ),
-        padding: EdgeInsets.fromLTRB(12, 12, rightPadding, 16),
-        child: Row(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAvatar(colors),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(colors),
-                  const SizedBox(height: 8),
-                  Flexible(
-                    child: Scrollbar(
-                      controller: _scrollController,
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        primary: false,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [_buildQuestion(colors, _step)],
-                        ),
-                      ),
-                    ),
+            _buildHeader(colors),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Scrollbar(
+                controller: _scrollController,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  primary: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [_buildQuestion(colors, _step)],
                   ),
-                  const SizedBox(height: 12),
-                  _buildActions(mobile),
-                ],
+                ),
               ),
             ),
+            const SizedBox(height: 12),
+            _buildActions(mobile),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildAvatar(AthenaColors colors) => Container(
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: colors.avatarBackground,
-    ),
-    height: 28,
-    width: 28,
-    child: Icon(Icons.help_outline, color: colors.textPrimary, size: 16),
-  );
 
   Widget _buildHeader(AthenaColors colors) => Row(
     children: [

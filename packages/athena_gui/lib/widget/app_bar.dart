@@ -92,30 +92,45 @@ class _DesktopAppBar extends StatelessWidget {
     ];
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 顶栏底色与画布相同（相当于透明），只有侧栏上方那条与侧栏同色。
-    var rowChildren = [
-      Container(
-        width: AthenaSpace.sidebar,
-        decoration: BoxDecoration(
-          color: colors.surfacePanel,
-          border: Border(right: BorderSide(color: colors.border)),
-        ),
-        child: Row(children: leadingChildren),
+    //
+    // 这块左条必须**满高**（0..46）并且自带右边线：它是侧栏右边线在顶栏里的
+    // 那一段。之前它由 `Row` 默认的 center 对齐决定高度（只到 38，上下各留
+    // 3.5px），竖线在顶栏里到不了顶栏底边，看上去就像被顶栏底线切断。
+    final sidebarStrip = Container(
+      width: AthenaSpace.sidebar,
+      decoration: BoxDecoration(
+        color: colors.surfacePanel,
+        border: Border(right: BorderSide(color: colors.borderChrome)),
       ),
-      Expanded(child: title ?? const SizedBox()),
-      action ?? const SizedBox(),
-      const SizedBox(width: 16),
-    ];
+      child: Row(children: leadingChildren),
+    );
     // Claude 实测：顶栏高 **46 逻辑**（我原来是 38），底边是一条**极浅**的线
-    // `#F7F7F7`（只比画布暗 5/255），且贯穿整条——它是顶栏唯一的轮廓。
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onPanStart: handlePanStart,
+    // `#F7F7F7`（只比画布暗 5/255）。它是顶栏唯一的轮廓，**只画在工作区上方**：
+    // 画满整宽的话会横穿侧栏那条竖线（并在交叉处留一个 1px 的缺口），
+    // 而侧栏上方本该是侧栏面板本身的延伸，不该有横线。
+    final workspaceStrip = Expanded(
       child: Container(
-        height: 46,
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: Color(0xFFF7F7F7))),
         ),
-        child: Row(children: rowChildren),
+        child: Row(
+          children: [
+            Expanded(child: title ?? const SizedBox()),
+            action ?? const SizedBox(),
+            const SizedBox(width: 16),
+          ],
+        ),
+      ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onPanStart: handlePanStart,
+      child: SizedBox(
+        height: 46,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [sidebarStrip, workspaceStrip],
+        ),
       ),
     );
   }

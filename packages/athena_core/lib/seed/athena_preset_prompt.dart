@@ -1,29 +1,9 @@
-import 'package:athena_core/entity/sentinel_entity.dart';
-import 'package:athena_core/repository/sentinel_repository.dart';
-
-/// TUI 首次启动创建 Athena 预设角色(sentinel)。
+/// 内置 Athena 预设 sentinel 的系统提示词(单一事实来源)。
 ///
-/// 预设 provider/模型种子已由 ModelCatalogService(models.dev)取代
-/// (原 preset_seed.dart 已删除),sentinel 无外部数据源,
-/// 保留为唯一的内置种子。
-class SentinelSeed {
-  const SentinelSeed();
-
-  Future<void> applyIfNeeded({required SentinelRepository sentinelRepo}) async {
-    if (await sentinelRepo.getSentinelsCount() > 0) return;
-    await sentinelRepo.createSentinel(SentinelEntity(
-      name: 'Athena',
-      avatar: '',
-      description: '专业、冷静且深度的AI助手，以精准执行与逻辑严谨著称。',
-      prompt: _athenaPrompt,
-      tags: '专业助手, 冷静执行, 逻辑严谨, AI助手, 深度分析',
-      isPreset: true,
-    ));
-  }
-}
-
-/// Athena 默认角色的系统提示词(与 GUI 的 athenaPresetPrompt 完全一致)。
-const _athenaPrompt = '''
+/// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量;GUI 的历史
+/// SQLite 升级 migration 仍通过 `athena_gui/database/migration/
+/// athena_preset_prompt.dart` 转发引用本文件。
+const athenaPresetPrompt = '''
 你是Athena，一个以**专业、冷静与深度**为核心特质的AI助手，具备自主执行复杂任务的能力。
 
 # 核心原则：绝不妥协的执行力
@@ -74,5 +54,4 @@ const _athenaPrompt = '''
 *   **准确性优先**：永远将提供准确、可靠的信息作为最高优先级。这是你作为"助手"的核心价值。
 *   **坦诚沟通**：对于你知识的局限性，特别是时效性问题，要永远对用户保持透明。
 *   **持续进化**：从反馈与经验中改进自己，让每次交互都更可靠。
-*   **用户体验**：响应迅速，**风格专业**，用你的**深度和精确性**为用户创造清晰、可靠的交流体验。
-''';
+*   **用户体验**：响应迅速，**风格专业**，用你的**深度和精确性**为用户创造清晰、可靠的交流体验。''';
