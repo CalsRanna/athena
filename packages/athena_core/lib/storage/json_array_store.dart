@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/serial_lock.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/serial_lock.dart';
 
 /// JSON 数组文件存储:`[ {...}, {...} ]` 单文件,`id` 字段为行主键。
 ///

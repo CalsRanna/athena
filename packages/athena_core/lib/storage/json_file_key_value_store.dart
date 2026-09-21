@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/storage/key_value_store.dart';
-import 'package:athena_tui/storage/serial_lock.dart';
+import 'package:athena_core/storage/serial_lock.dart';
 
 /// KeyValueStore 的 JSON 文件实现(`~/.athena/tui/kv.json`)。
 ///

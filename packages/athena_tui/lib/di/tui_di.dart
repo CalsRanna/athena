@@ -29,13 +29,13 @@ import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_tui/seed/sentinel_seed.dart';
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/json_array_model_repository.dart';
-import 'package:athena_tui/storage/json_array_sentinel_repository.dart';
-import 'package:athena_tui/storage/json_file_key_value_store.dart';
-import 'package:athena_tui/storage/jsonl_session_repository.dart';
-import 'package:athena_tui/storage/user_settings_store.dart';
-import 'package:athena_tui/storage/yaml_provider_repository.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/json_array_model_repository.dart';
+import 'package:athena_core/storage/json_array_sentinel_repository.dart';
+import 'package:athena_core/storage/json_file_key_value_store.dart';
+import 'package:athena_core/storage/jsonl_session_repository.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
+import 'package:athena_core/storage/yaml_provider_repository.dart';
 import 'package:athena_tui/view_model/chat_controller.dart';
 
 /// TUI 组合根:手写依赖装配(镜像 athena_gui 的 di.dart,不用 GetIt)。

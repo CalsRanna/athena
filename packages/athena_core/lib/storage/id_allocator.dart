@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_tui/storage/serial_lock.dart';
+import 'package:athena_core/storage/serial_lock.dart';
 
 /// 跨文件共享的自增 id 分配器。
 ///

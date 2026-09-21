@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/json_array_store.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/json_array_store.dart';
 
 /// SentinelRepository 的 JSON 数组实现(`~/.athena/tui/sentinels.json`)。
 ///
