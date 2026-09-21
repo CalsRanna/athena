@@ -58,7 +58,7 @@ athena/
     │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
     │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
     │   │   ├── widget/          # 设计系统组件：按钮 / 输入 / 菜单 / 对话框 / 窗口控件 / settings（设置面板三件套）
-    │   │   ├── component/       # 业务组件：消息列表（message_sliver + message_tiles）/ 工具卡 / 推理卡 / 步骤组卡 / 压缩卡 / 审批卡 / 提问卡
+    │   │   ├── component/       # 业务组件：消息列表（message_sliver + message_tiles）/ 步骤卡（step_card + step_primitives）/ 审批卡 / 提问卡
     │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ window_util / system_tray_util / shared_preference_util 等
     │   └── （无 test/：测试套件已移除，见 §14）
     └── athena_tui/              # nocterm 终端客户端
@@ -360,7 +360,7 @@ description: What this skill does and when to use it
 
 `reference` 保存阶段、runId、时间、前后估算 token 数、消息数、累计覆盖 ID 与逻辑位置；completed 时 `content` 保存摘要。摘要与覆盖范围在同一次消息更新中提交，再标记原文 `compacted`；即使标记中断，回放仍按覆盖范围排除原文。completed 后才切换模型上下文并发出完成事件。未完成/失败/取消的步骤不进入模型上下文；完成摘要按覆盖位置作为 assistant 历史回放，不进入 system 或权限授权上下文。旧版 system/summary 摘要兼容读取，旧摘要参与后续压缩合并。
 
-GUI/TUI 在消息流内使用工具调用风格的 `CompactionCard`，每次压缩一张卡片，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示"压缩已中断"。GUI 使用工具 Header shimmer，TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
+GUI/TUI 在消息流内使用工具调用风格的压缩卡（GUI 为 `StepCard` 的压缩步骤形态，TUI 为 `CompactionCard`），每次压缩一张，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示"压缩已中断"。GUI 里压缩是一个"步骤"，与推理 / 工具调用同组渲染（见 §GUI 关键实现细节）；TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
 
 产出 `RunEvent` 纯数据流（无 UI 类型）：
 
@@ -381,8 +381,8 @@ sealed class RunEvent {
 ```
 
 关键实现细节：
-- **思考卡片展开状态不落库**：展开/折叠只是 `ReasoningCard` / `StepGroupCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key 不变，State 自然保留
-- **推理与工具调用按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块与每次工具调用都是"步骤"，严格按时间序排列，只有可见正文、引用和压缩步骤切断序列（推理不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层按步骤数决定形态：≥ 2 步收纳为默认折叠的 `StepGroupCard`（进行中折叠头显示当前步骤并 shimmer，结束后显示 `Thought for Xs · N tool calls` 汇总），单步保持平铺（`ReasoningCard` / `ToolCard`）。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
+- **思考卡片展开状态不落库**：展开/折叠只是 `StepCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key（`steps-<宿主消息 id>-<片段下标>`）不变，State 自然保留；序列从单步长成多步时 `didUpdateWidget` 重置为折叠
+- **推理、工具调用与压缩按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块、每次工具调用与每条压缩消息都是"步骤"（`ReasoningStep` / `ToolCallStep` / `ContextCompactionStep`），严格按时间序排列，只有可见正文和引用切断序列（步骤本身不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层只有一个组件 `component/step_card.dart` 的 `StepCard(steps: [...])`（Composite）：单步时头部是该步骤自己的图标 / 文案 / 运行态、展开看正文；≥ 2 步时默认折叠，进行中折叠头显示当前步骤文案（`Thinking` / 工具参数预览 / 压缩阶段）并 shimmer，结束后显示 `Used N tools · Thought Xs · Compacted once` 汇总，展开后按时间序嵌套单步 `StepCard(nested: true)`（子项不自带 shimmer，运行态由组头统一表达）。每种步骤类型的"表现描述"（图标 / 文案 / 等宽 / 运行态 / 正文）只在 `_StepCardState._faceOf` 的一处 switch 里，新增类型时先加 `AssistantStep` 子类，再补这处 switch、`summaryLabel` 计数与 `_childKey`。折叠头与结果正文的视觉原语在 `step_primitives.dart`（`StepHeader` / `StepResultBody` / `StepHeaderShimmer`）。所有步骤卡统一带 8 的上边距（单步与组一致，不再有"平铺推理卡补 16 边界间距"的特判）。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
 - **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
@@ -603,8 +603,9 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | 组件 | 用途 |
 |------|------|
 | `message_sliver.dart` | `MessageCardListSliver`：懒加载消息列表（每条消息一个列表项）+ 卡片分组渲染项 |
-| `message_tiles.dart` | `MessageListTile`（按角色分派）、助手 / 工具 / 用户三支实现、`MessageActionBar`、`AssistantCardHover` |
-| `tool_card.dart` / `reasoning_card.dart` / `step_group_card.dart` / `compaction_card.dart` | 工具卡、推理卡、步骤组卡、压缩卡 |
+| `message_tiles.dart` | `MessageListTile`（按角色分派）、助手 / 用户两支实现、`MessageActionBar`、`AssistantCardHover` |
+| `step_card.dart` | `StepCard`：推理 / 工具 / 压缩步骤卡，按 `steps` 长度决定单步平铺或折叠组（组内嵌套单步）；`toolIcon` / `argPreview` 静态映射供审批卡复用 |
+| `step_primitives.dart` | 步骤卡共用原语：`StepHeader`（图标 + 单行文案 + shimmer）、`StepResultBody`、`StepHeaderShimmer` |
 | `permission_card.dart` / `elicit_card.dart` / `card_button.dart` | 会话内审批卡、提问卡，以及两者共用的卡片按钮体系 |
 | `sentinel_placeholder.dart` | 会话空态（桌面与移动共用，不要另写平台分支） |
 | `base64_image.dart` / `queued_messages.dart` / `card_tile.dart` / `button.dart`（`CopyButton`） | 其余共享组件 |
@@ -741,7 +742,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
 - `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
 - GUI 提问卡片**一次只展示一个问题**，多问时问题前标 `1 / 3`（卡片标题不报数量）；单选**点选即确认**（非最后一步→前进，最后一步→提交），多选与自由输入由 Next / Submit 收尾（自由输入框里回车等价于按钮）；`_step > 0` 时有 Back 可退回上一步改答案。单选再点一次是「保持」而不是取消——每题都得有答案才能往下走，允许点空会把人卡在交不出去的步骤上。自由输入框取**卡片尺度**（字号 14 / 垂直内边距 12 / 1–3 行自增高，与卡片内按钮同高），不要套全局输入的 56px 尺度——那会让一行自填比整卡其它内容都重。
-- 工具 / 推理 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`ToolHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字。
+- 工具 / 推理 / 压缩 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`StepHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字。
 - 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
 - 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
 

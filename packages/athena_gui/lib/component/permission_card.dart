@@ -1,7 +1,7 @@
-import 'package:athena_gui/component/tool_card.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/component/card_button.dart';
+import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
@@ -11,7 +11,7 @@ const permissionCardMaxHeightFraction = 0.5;
 
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
-/// 容器对齐 Agent 消息卡片（白色圆角 24）；内部结构复用 ToolCard 的
+/// 容器对齐 Agent 消息卡片（白色圆角 24）；内部结构复用工具步骤行的
 /// 标题行语言（工具图标 + 工具名 + 参数预览 + 运行状态），命令完整
 /// 展示，按钮为浅色卡片上的胶囊体系（深色实心主按钮 + 描边次按钮）。
 class PermissionApprovalCard extends StatelessWidget {
@@ -86,7 +86,7 @@ class PermissionApprovalCard extends StatelessWidget {
       height: 28,
       width: 28,
       child: Icon(
-        ToolCard.toolIcon(request.toolName),
+        StepCard.toolIcon(request.toolName),
         color: colors.textPrimary,
         size: 20,
       ),
@@ -109,7 +109,7 @@ class PermissionApprovalCard extends StatelessWidget {
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            ToolCard.argPreview(request.toolName, request.arguments),
+            StepCard.argPreview(request.toolName, request.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: athenaMono(color: colors.textPrimary),

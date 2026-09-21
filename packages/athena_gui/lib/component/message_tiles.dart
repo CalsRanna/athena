@@ -1,13 +1,10 @@
 import 'dart:convert';
 
-import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/base64_image.dart';
-import 'package:athena_gui/component/compaction_card.dart';
-import 'package:athena_gui/component/reasoning_card.dart';
-import 'package:athena_gui/component/step_group_card.dart';
-import 'package:athena_gui/component/tool_card.dart';
+import 'package:athena_gui/component/step_card.dart';
+import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
@@ -21,8 +18,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// 会话内单条消息的渲染，以及消息底部的操作条。
 ///
-/// 按角色分派：[MessageListTile] 只做分派，正文分别由助手 / 工具 / 用户三支
-/// 私有实现渲染。列表侧的懒加载与项切分在 `message_sliver.dart`。
+/// 按角色分派：[MessageListTile] 只做分派，正文分别由助手 / 用户两支私有实现
+/// 渲染（压缩消息归入助手卡内的步骤序列）。列表侧的懒加载与项切分在
+/// `message_sliver.dart`。
 
 class MessageListTile extends StatelessWidget {
   final bool loading;
@@ -51,9 +49,6 @@ class MessageListTile extends StatelessWidget {
         onResend: onResend,
         onSecondaryTapUp: onSecondaryTapUp,
       );
-    }
-    if (message.role == 'tool') {
-      return _ToolMessageListTile(message: message);
     }
     return _AssistantMessageListTile(
       loading: loading,
@@ -224,9 +219,6 @@ class _AssistantMessageSegment extends StatelessWidget {
         ],
       ),
     );
-    if (layout.addBoundarySpacing) {
-      result = Padding(padding: const EdgeInsets.only(top: 16), child: result);
-    }
     return result;
   }
 }
@@ -239,14 +231,6 @@ class _AssistantMessageContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final message = layout.message;
-    if (message.role == 'compaction') {
-      final step = CompactionStep.fromMessage(message);
-      return CompactionCard(
-        key: ValueKey(step.compactionId),
-        step: step,
-        isLive: layout.isLive,
-      );
-    }
     final children = <Widget>[];
     if (layout.waitingForFirstDelta) {
       children.add(const _AssistantMessageWaitingPart());
@@ -254,7 +238,15 @@ class _AssistantMessageContent extends StatelessWidget {
     for (final (index, part) in layout.parts.indexed) {
       switch (part) {
         case StepsPart():
-          children.add(_buildStepsPart(message, part, index));
+          children.add(
+            StepCard(
+              key: ValueKey(
+                'steps-${message.id ?? identityHashCode(message)}-$index',
+              ),
+              steps: part.steps,
+              live: part.live,
+            ),
+          );
         case ContentPart():
           children.add(const SizedBox(height: 8));
           children.add(AthenaMarkdown(message: message));
@@ -269,34 +261,6 @@ class _AssistantMessageContent extends StatelessWidget {
       children: children,
     );
   }
-
-  /// 步骤数 ≥ 2 收纳为折叠的步骤组；单步保持平铺（推理卡 / 单工具卡）。
-  Widget _buildStepsPart(MessageEntity host, StepsPart part, int index) {
-    final steps = part.steps;
-    if (steps.length == 1) {
-      return switch (steps.single) {
-        ReasoningStep(:final message) => ReasoningCard(
-          key: ValueKey('reasoning-${_identityOf(message)}'),
-          message: message,
-          thinking: part.live,
-        ),
-        ToolCallStep step => ToolCard(
-          key: ValueKey('tool-${step.id}'),
-          toolName: step.toolName,
-          arguments: step.arguments,
-          result: step.result,
-        ),
-      };
-    }
-    return StepGroupCard(
-      key: ValueKey('steps-${_identityOf(host)}-$index'),
-      steps: steps,
-      live: part.live,
-    );
-  }
-
-  static Object _identityOf(MessageEntity message) =>
-      message.id ?? identityHashCode(message);
 }
 
 /// 写系统剪贴板。用户消息与助手消息共用这一个出口。
@@ -317,28 +281,10 @@ class _AssistantMessageWaitingPart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 卡面即页面底色，用页面族文字色
-    final foreground = colors.textSecondary;
-    return ToolHeaderShimmer(
-      active: true,
-      child: Row(
-        children: [
-          Icon(HugeIcons.strokeRoundedSparkles, size: 15, color: foreground),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Working…',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: AthenaFontSize.label,
-                color: foreground,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return const StepHeader(
+      icon: HugeIcons.strokeRoundedSparkles,
+      label: 'Working…',
+      running: true,
     );
   }
 }
@@ -410,41 +356,6 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
     );
     var children = [TextSpan(text: '${index + 1}. '), textSpan];
     return Text.rich(TextSpan(children: children));
-  }
-}
-
-class _ToolMessageListTile extends StatelessWidget {
-  final MessageEntity message;
-  const _ToolMessageListTile({required this.message});
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: _buildContent(context),
-    );
-  }
-
-  Widget _buildContent(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 工具消息没有工具名可用（MessageEntity 无 tool_call_id），
-    // 内容以浅灰代码块样式呈现，与 ToolCard 展开区呼应。
-    var textStyle = athenaMono(
-      fontSize: 12,
-      color: colors.textOnCode,
-      height: 1.6,
-    );
-    var text = Text(message.content, style: textStyle);
-    return Expanded(
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.codeBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: text,
-      ),
-    );
   }
 }
 

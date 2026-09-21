@@ -1,11 +1,12 @@
 import 'dart:convert';
 
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 
 /// 把消息划分为 UI 卡片，同时保留每条原始消息。
 ///
 /// 连续的 assistant 消息与压缩步骤共用一张外层卡片；其他角色各自占一张。卡片内部
-/// 仍逐条渲染 reasoning、正文、工具和引用，不合并或过滤消息字段。
+/// 仍逐条渲染 reasoning、正文、工具、压缩和引用，不合并或过滤消息字段。
 List<List<MessageEntity>> buildMessageDisplayCards(
   List<MessageEntity> messages,
 ) {
@@ -58,6 +59,20 @@ final class ToolCallStep extends AssistantStep {
   bool get hasResult => result != null;
 }
 
+/// 一次上下文压缩（来自一条 `compaction` 角色的消息）。
+///
+/// [isLive] 表示该压缩仍属于当前 run：未结束且 live 时视为进行中，未结束但
+/// 不 live 时按"已中断"展示。
+final class ContextCompactionStep extends AssistantStep {
+  final CompactionStep step;
+  final bool isLive;
+
+  const ContextCompactionStep({required this.step, required this.isLive});
+
+  /// 仍在压缩中：只有当前 run 里未到终态的压缩才算。
+  bool get running => isLive && !step.isTerminal;
+}
+
 /// 一条 Assistant 消息按顺序渲染的片段。
 sealed class AssistantPart {
   const AssistantPart();
@@ -70,7 +85,7 @@ sealed class AssistantPart {
 final class StepsPart extends AssistantPart {
   final List<AssistantStep> steps;
 
-  /// 序列仍在进行：对话流式中，且尚未被正文 / 引用 / 压缩步骤收口。
+  /// 序列仍在进行：对话流式中，且尚未被正文 / 引用收口。
   final bool live;
 
   const StepsPart({required this.steps, required this.live});
@@ -90,35 +105,29 @@ final class ReferencePart extends AssistantPart {
 class AssistantMessageLayout {
   final MessageEntity message;
 
-  /// 按渲染顺序排列的片段；压缩步骤与首个 delta 前的占位为空。
+  /// 按渲染顺序排列的片段；被并入前序序列的消息与首个 delta 前的占位为空。
   final List<AssistantPart> parts;
 
   /// 首个 delta 到达前的一次性等待态。
   final bool waitingForFirstDelta;
 
-  /// 首个片段是平铺的推理卡（自身无上边距）且不是卡片首条时补消息边界间距。
-  final bool addBoundarySpacing;
-
-  /// 压缩步骤是否仍在当前 run 中（只对压缩消息有意义）。
-  final bool isLive;
-
   const AssistantMessageLayout({
     required this.message,
     required this.parts,
     this.waitingForFirstDelta = false,
-    required this.addBoundarySpacing,
-    this.isLive = false,
   });
 }
 
 /// 把同一张卡片内的连续 Assistant 消息展开为渲染布局。
 ///
 /// 分组规则：
-/// - 推理与工具调用是"步骤"，严格按时间序排列；只有可见正文、引用和压缩步骤
-///   会切断序列，推理本身不切断，因此多轮 `推理 → 工具 → 推理 → 工具 → 推理`
+/// - 推理、工具调用与上下文压缩都是"步骤"，严格按时间序排列；只有可见正文和
+///   引用会切断序列，步骤本身不切断，因此多轮 `推理 → 工具 → 压缩 → 工具 → 推理`
 ///   会合并成一个序列，尾部推理也一并吸入，正文单独渲染在其后。
-/// - 序列挂在首步所在消息上；后续消息被并入的推理/工具不再自行渲染。
-/// - 序列是否成组由渲染层按步骤数决定（≥ 2 成组），这里只负责切分。
+/// - 序列挂在首步所在消息上；后续消息被并入的步骤不再自行渲染。
+/// - 压缩消息只贡献一个步骤：它的 content 是摘要、reference 是阶段元数据，
+///   都不作为正文 / 引用渲染。
+/// - 序列是否成组由渲染层（`StepCard`）按步骤数决定（≥ 2 成组），这里只负责切分。
 /// - 完全空的占位消息不切断序列（流式期间新占位随时可能被并入）。
 ///
 /// [loading] 表示这张卡片仍在流式输出；末尾仍未收口的序列标记为 live。
@@ -131,10 +140,6 @@ List<AssistantMessageLayout> buildAssistantMessageLayouts(
   _StepRun? open;
 
   for (final (index, message) in messages.indexed) {
-    if (message.role == 'compaction') {
-      open = null;
-      continue;
-    }
     final parts = partsByIndex[index];
 
     _StepRun ensureRun() {
@@ -145,6 +150,16 @@ List<AssistantMessageLayout> buildAssistantMessageLayouts(
         open = run;
       }
       return run;
+    }
+
+    if (message.role == 'compaction') {
+      ensureRun().steps.add(
+        ContextCompactionStep(
+          step: CompactionStep.fromMessage(message),
+          isLive: loading && index == messages.length - 1,
+        ),
+      );
+      continue;
     }
 
     if (message.reasoningContent.isNotEmpty) {
@@ -167,35 +182,12 @@ List<AssistantMessageLayout> buildAssistantMessageLayouts(
 
   final result = <AssistantMessageLayout>[];
   for (final (index, message) in messages.indexed) {
-    if (message.role == 'compaction') {
-      result.add(
-        AssistantMessageLayout(
-          message: message,
-          parts: const [],
-          addBoundarySpacing: false,
-          isLive: loading && index == messages.length - 1,
-        ),
-      );
-      continue;
-    }
     final parts = <AssistantPart>[
       for (final part in partsByIndex[index])
         part is _StepRun ? part.toPart() : part as AssistantPart,
     ];
     if (parts.isEmpty) continue;
-
-    final first = parts.first;
-    final flatReasoningFirst =
-        first is StepsPart &&
-        first.steps.length == 1 &&
-        first.steps.single is ReasoningStep;
-    result.add(
-      AssistantMessageLayout(
-        message: message,
-        parts: parts,
-        addBoundarySpacing: result.isNotEmpty && flatReasoningFirst,
-      ),
-    );
+    result.add(AssistantMessageLayout(message: message, parts: parts));
   }
 
   // 首个 delta 到达前保留当前 Assistant 占位卡，并标记为一次性等待态。
@@ -205,7 +197,6 @@ List<AssistantMessageLayout> buildAssistantMessageLayouts(
         message: messages.first,
         parts: const [],
         waitingForFirstDelta: true,
-        addBoundarySpacing: false,
       ),
     );
   }
