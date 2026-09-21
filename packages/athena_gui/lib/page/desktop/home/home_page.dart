@@ -228,6 +228,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateReasoningEffort(effort, chat: chat);
   }
 
+  /// 清除本会话的 Sentinel，回到「不选择任何 Sentinel」（direct chat 假实体）。
+  /// 没有选中对话时改的是草稿角色：下一次新建对话即不带 Sentinel。
+  Future<void> clearSentinel() =>
+      updateSentinel(SentinelViewModel.directChatSentinel);
+
   /// 选择本会话的工作文件夹（目录选择器在 ViewModel 层弹；取消不改变现状）。
   Future<void> pickWorkspaceFolder() => chatViewModel.pickWorkspaceFolder();
 
@@ -304,6 +309,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onTerminated: terminateStreaming,
       onModelTap: _openModelSelector,
       onSentinelTap: _openSentinelSelector,
+      onSentinelClear: clearSentinel,
       onWorkspaceTap: pickWorkspaceFolder,
       onWorkspaceClear: clearWorkspaceFolder,
     );

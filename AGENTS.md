@@ -542,6 +542,12 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
    （`--cds-radius-composer`），没有 20/24。
 4. **不使用纯黑画布**：深色画布是 `#1A1A19`，侧栏更暗（`#151515`）。
 5. **hover 只改底色，文字不动**（Claude 实测：行标签 hover 前后都是 `#52514F`）。
+   **这层底色要用"前景色 alpha 叠加"，不要用固定灰**：`surfaceHover` 与
+   `surfaceButtonSecondary` 两档同值（浅色都是 `#F0EFEC`，深色都是 `#2C2C2A`），
+   `surfaceSelected` 在浅色下也只深 3/255（`#EDECE9`）——凡是落在灰底容器
+   （上下文条、卡片、已填充控件）上的 hover，取这两个 token 等于没有反馈。
+   Claude 的 hover 填充一律是 `--cds-alpha-1/2/3`（neutral-900 的 5/10/20%），
+   本仓对应 `colors.textPrimary.withValues(alpha: 0.05)`。
 6. **不要从 `Colors.transparent` 做颜色动画**（填充与边框同理）：它的 RGB 是黑，
    插值中途会渲染成半透明深灰，表现为"先闪一下深色再变浅"。两种安全写法：
    `目标色.withValues(alpha: 0)`（RGB 全程不变、只动 alpha），或让
@@ -562,6 +568,10 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 - **消息操作按钮 hover / focus 才显形**（Claude 的
   `[data-cds=MessageActions][data-reveal]`：opacity 0→1 + scale，进入 120ms
   并延迟 100ms、退出 60ms），不要常驻。
+- **尚未结束的那一轮，助手消息 hover 也不显形操作条**：`loading` 期间，最后一条
+  用户消息之后的助手卡（即正在跑的那一轮）操作条保持不可见（`visible: false`），
+  收尾后才恢复。**用户消息不受影响**（照常 hover 显形）；上一轮及更早的助手卡
+  同样不受影响。别把控件从树上摘掉——摘掉会让高度在收尾瞬间变 28、末尾跳一下。
 - **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 16、
   内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
 - **Composer 版式取自 Claude 桌面端**：上下文条（灰底、无描边）与输入框
@@ -601,7 +611,7 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | 组件 | 用途 |
 |------|------|
 | `AthenaTag` / `AthenaTagButton` | 带 1px 边框的胶囊筛选 chip |
-| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`）；`trailing` 是尾随控件插槽（前景色由 chip 注入，内层 onTap 先于 chip 的 onTap 命中）；hover 高亮（`surfaceSelected`）对 `filled: false` 同样生效，且只对可点的 chip 生效 |
+| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`），圆角取嵌套控件档 `AthenaRadius.xs`（4，不是胶囊）；`trailing` 是尾随控件插槽（前景色由 chip 注入，内层 onTap 先于 chip 的 onTap 命中），**静止透明、hover 才显形**且不可见时 `IgnorePointer`；hover 高亮（**前景色 5% 的 alpha 叠加层**）对 `filled: false` 同样生效，且只对可点的 chip 生效 |
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
 | `AthenaInput` | 平涂底 + 1px 边框输入框 |
 | `AthenaScaffold` / `AthenaAppBar` / `ErrorBoundary` | 页面骨架、顶栏、错误边界 |
@@ -632,7 +642,10 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   （与画布 `#FCFCFB` 几乎无差）；行高 26、左右内缩 8、图标起于行内 11、文字起于 30
 - 顶栏只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题
 - **顶栏有会话标题**（Claude 的顶栏不是空的）；新建会话在侧栏导航块，
-  会话上下文（Sentinel chip、工作文件夹 chip，见 §7.8）在 composer 的上下文条上。
+  会话上下文（Sentinel chip、工作文件夹 chip，见 §7.8）在 composer 的上下文条上；
+  两个 chip 都**可清除**（hover 时 chip 内出现叉）：清 Sentinel = 回到
+  `ChatEntity.noSentinelId`（标签显示 `No Sentinel`，没有选中对话时改草稿角色），
+  清文件夹 = `workspace_path` 置空。
   顶栏实测高 **46 逻辑**，底色同画布，
   底边一条极浅的 `#F7F7F7` 线贯穿整条
 - 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚

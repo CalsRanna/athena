@@ -318,17 +318,32 @@ caption 12→13、radius 6→8、icon 16→24）。本仓只取 body 的 15，�
 - Hover: `surfaceHover` 底 + `borderStrong` 边框
 
 **AthenaContextChip**（composer 上下文条上的项）
-- Shape: `pill`
+- Shape: `AthenaRadius.xs` = **4**（**不是胶囊**）。上下文条是容器（`_SquishButton` 的
+  hover 底同样是 `xs`），条内的可点控件取嵌套档的小方块——与 Claude 的
+  `[data-step]` 阶梯一致（容器内按钮取嵌套高、圆角 3–4 的小方块）。
 - `filled: false`（默认使用）：**完全不画底色**——它坐在已经是浅灰的上下文条上，
   再画一层同色底就成了"看不见的胶囊"。Claude 的上下文项就是条上直接排的文字 + 图标。
   操作行里单独出现的模型名也用 `filled: false`，与 Claude 桌面端的
   底部模型文字一致（不画底）。
 - `filled: true` 用于带外单独出现的场景
 - 左侧可选 13px 图标；文字 `textSecondary`
-- Hover: 填充提亮到 `surfaceSelected`
+- `trailing`（如清除按钮）：**静止透明、hover 才显形**（与消息操作条同一条规则），
+  进入用 `AnimatedOpacity` 120ms；占位始终保留（不摘控件），否则 hover 进出会让
+  chip 宽度跳；不可见时同时 `IgnorePointer`，免得点到看不见的叉。
+- Hover: **前景色 5% 的 alpha 叠加层**（`textPrimary.withValues(alpha: 0.05)`），
+  不是固定灰。上下文带的底色就是 `surfaceButtonSecondary`，而表面状态灰在浅色下
+  几乎与它同值——`surfaceHover` 与它完全相同，`surfaceSelected` 只深 3/255
+  （`#F0EFEC` → `#EDECE9`），落在带上 hover 等于没有反馈。
+  合成像素：浅色 `#F0EFEC` → `#E5E4E1`（Δ11），深色 `#2C2C2A` → `#363634`（Δ10）。
+  这与 Claude「hover 中的 chip」同档：它的 chip 静止 `bg-neutral-chip` =
+  neutral-900 的 5%（`#F0F0EF`，等于本仓的条底色）、hover `bg-neutral-chip-hover`
+  = 10%（`#E4E4E3`）。`filled: true` 的 chip 把叠加层合成到自己的底色上
+  （`Color.alphaBlend`），静止与 hover 都保持不透明，避免插值中途出现半透明深色。
 
-**原则**：容器内（composer）的 chip 不画边；独立出现的筛选 chip 画边。
-两者都是胶囊。
+**原则**：容器内（composer）的 chip 不画边、用嵌套档小圆角（4）；独立出现的筛选
+chip 画边、用胶囊。上下文条上两个 chip（Sentinel、工作文件夹）都能**清除**：
+清掉 Sentinel 就是「不使用 Sentinel」（`ChatEntity.noSentinelId`），chip 显示
+`No Sentinel` 且不再出现清除按钮；清掉文件夹则显示 `No folder`。
 
 ### Switch / Toggle
 
@@ -393,7 +408,11 @@ Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静�
 - **不要为了操作条在正文右侧预留空白**。它已经不在右侧了，再留一条内缩只会
   让整块正文看着没对齐列宽。
 - **显形条件**：整行 hover（`.group/message-row:hover [data-cds=MessageActions]`），
-  不是指针压到按钮才显形。
+  不是指针压到按钮才显形。**但尚未结束的那一轮的助手消息是例外**：`loading` 期间，
+  最后一条用户消息之后的那张助手卡不显形——这一轮还在跑，Copy 只能拿到半截正文，
+  收尾后才恢复。**用户消息不受影响**（它照常 hover 显形），上一轮及更早的助手卡
+  也不受影响。`loading` 期间仍保留占位高度（`visible: false`，不要把控件摘掉），
+  否则收尾瞬间卡片高度变 28、末尾跳一下。
 - **时序**：**只动 `opacity`**——`--cds-message-actions-reveal-scale` 在
   `.cds-root` 上是 `none`，不要加缩放。进入用 `--cds-dur-snap`(120ms) 且延迟
   `--cds-message-actions-reveal-in-delay`(100ms)；退出用 `--cds-dur-fast`(60ms)
