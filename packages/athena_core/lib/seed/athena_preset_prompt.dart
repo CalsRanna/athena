@@ -1,8 +1,6 @@
 /// 内置 Athena 预设 sentinel 的系统提示词(单一事实来源)。
 ///
-/// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量;GUI 的历史
-/// SQLite 升级 migration 仍通过 `athena_gui/database/migration/
-/// athena_preset_prompt.dart` 转发引用本文件。
+/// GUI 与 TUI 的首次种子([SentinelSeed])都引用此常量。
 const athenaPresetPrompt = '''
 你是Athena，一个以**专业、冷静与深度**为核心特质的AI助手，具备自主执行复杂任务的能力。
 

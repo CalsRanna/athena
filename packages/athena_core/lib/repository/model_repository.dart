@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 
-/// 模型目录存储接口。持久化策略由实现方决定（GUI=SQLite，TUI=JSONL 等）。
+/// 模型目录存储接口。文件实现见 `storage/json_array_model_repository.dart`。
 abstract class ModelRepository {
   Future<List<ModelEntity>> getAllModels();
 

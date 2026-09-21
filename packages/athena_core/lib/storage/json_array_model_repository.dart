@@ -5,7 +5,7 @@ import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/json_array_store.dart';
 
-/// ModelRepository 的 JSON 数组实现(`~/.athena/tui/models.json`)。
+/// ModelRepository 的 JSON 数组实现(`~/.athena/models.json`,GUI 与 TUI 共用)。
 ///
 /// 模型列表是整读整写的列表数据,JSON 数组文件比 JSONL 更合适
 /// (与 GUI 的 models.json 对齐)。
@@ -93,14 +93,9 @@ class JsonArrayModelRepository implements ModelRepository {
   @override
   Future<void> deleteAllModels() => _store.deleteFile();
 
-  /// 以给定 id 原样写入(存在则覆盖),导入保留原 id 的模型时使用。
-  Future<void> restore(ModelEntity model) {
-    return _store.restore(model.id!, model.toJson());
-  }
-
   @override
   Future<void> importModels(List<ModelEntity> models) {
-    // 与 SQLite 实现一致:导入的模型保留原 id(chat.model_id 引用它)
+    // 导入的模型保留原 id(chat.model_id 引用它)
     return _store.replaceAll([for (final m in models) m.toJson()]);
   }
 }

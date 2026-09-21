@@ -1,8 +1,9 @@
 /// 一条经验记录：Agent 从交互中学到的可复用的教训或洞察。
 ///
-/// Unlike other entities (ChatEntity, MessageEntity, etc.) which are stored in
-/// SQLite via Laconic ORM, ExperienceEntity is persisted as JSON files on disk
-/// (one file per experience). This explains the structural differences:
+/// Unlike other entities (ChatEntity, MessageEntity, etc.) which live in
+/// shared JSONL/JSON list files under FileStorage, ExperienceEntity is
+/// persisted as one JSON file per experience. This explains the structural
+/// differences:
 /// - `id` is a String (filename without extension) rather than int?
 /// - `tags` is `List<String>` rather than a comma-separated String
 /// - `createdAt` is serialized as ISO 8601 string rather than millisecond timestamp

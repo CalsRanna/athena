@@ -3,8 +3,7 @@ import 'package:athena_core/entity/chat_history_entity.dart';
 
 /// 聊天（会话）存储接口。
 ///
-/// 持久化策略由实现方决定：GUI 用 SQLite（[SqliteChatRepository]），
-/// TUI 可用 JSONL 文件实现。
+/// 文件实现见 `storage/jsonl_session_repository.dart`（GUI 与 TUI 共用）。
 abstract class ChatRepository {
   Future<List<ChatEntity>> getAllChats();
 

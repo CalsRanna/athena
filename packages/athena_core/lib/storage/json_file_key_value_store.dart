@@ -5,7 +5,7 @@ import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 
-/// KeyValueStore 的 JSON 文件实现(`~/.athena/tui/kv.json`)。
+/// KeyValueStore 的 JSON 文件实现(`~/.athena/kv.json`,TUI 使用;GUI 用 SharedPreferences)。
 ///
 /// GUI 用 SharedPreferences,TUI 用单个 JSON 对象文件,接口行为对齐。
 ///
