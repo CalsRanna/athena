@@ -169,7 +169,7 @@ messages.value.add(newMessage);
 - **路径**：`{app_support_dir}/athena.db`
 - **初始化**：`Database.instance.ensureInitialized()` 在 `main()` 中调用
 - **外键**：迁移全部完成后执行 `PRAGMA foreign_keys = ON`（确保孤儿数据已清理）
-- **迁移**：按时间顺序执行（当前 17 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
+- **迁移**：按时间顺序执行（当前 19 个），每个迁移通过 `migrations` 表判断是否已执行；预设数据用独立 marker（如 `preset_sentinels_v1`）控制只插入一次
 - **重置**：`Database.instance.reset()` DROP 所有表（不含 `sqlite_%`）后重新迁移+预设
 
 实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
@@ -344,6 +344,18 @@ description: What this skill does and when to use it
 - Experience：只读浏览（内容由 Agent 进化产出，不支持手工增改）；归档项始终展示，条目尾部仅展示归档图标（位置与样式参照 Provider 预设的尾部标记）；列表仅提供 All / Shared / Private 过滤，归档/恢复与删除另可通过列表项右键菜单（桌面）或长按弹层（移动端），删除带确认弹窗
 - 数据与 Agent 工具（skill_evolve / experience_learn）同源：`~/.athena/skills`、`~/.athena/experiences`（移动端为沙盒内目录），写入分别复用 `SkillLoader.saveSkill` 与 `ExperienceRepository`
 
+### 7.8 会话工作文件夹（可选）
+
+每个对话可选一个工作文件夹（`chats.workspace_path`；桌面 GUI 在 composer 上下文条上选择/清除——Sentinel chip 之后的 chip，`filled: false`，设置后在 chip 内出现清除按钮；设计里没有全局默认项）。**未设置 = 与引入本能力之前完全一致**：shell 默认在用户主目录执行、文件工具的相对路径按进程当前目录解析。设置后，本轮 run 的 shell 缺省工作目录与文件工具的相对路径基准都落在该目录。
+
+- **为什么挂在会话上而不是进程上**：GUI 支持多对话同时运行（`streamingChatIds` / `_runSettledByChat`），进程级可变基准会串台。TUI 的启动参数工作区是另一条既有路径（`Directory.current` + `buildToolRegistry(defaultWorkdir:)`），两者不冲突，也不要合并。
+- **解析发生在分发边界**：`agent/tool/run_workspace.dart` 的 `applyRunWorkspace(toolName, args, workspace)` 把文件工具相对 `path` 解析成绝对路径、给 shell 缺省 `workdir` 补值。`path_normalizer.normalizePathForMatch` 只在路径为相对时才读 `Directory.current`，故解析成绝对路径后，文件执行与权限规则匹配（`PermissionRule._matchesPath` 同样走归一化）自动共用同一基准——不需要给 `PermissionService` 另开基准通道，也不必改 `Tool.execute` 接口。
+- **必须三处共用**：执行（`AgentService.executeToolCallInternal`）、并行预检（`AgentService.selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。审批路径拿到的是模型原始 JSON（相对路径），漏掉那一处就会把授权与规则写成相对路径：会话级授权键按全参数 JSON 比对，导致同一 run 内已批准仍重复弹窗；「始终允许」落的 path 规则也匹配不到执行时的绝对路径，静默失效。
+- **展示与执行分离**：事件与历史保留模型原始 `arguments`（弹窗、卡片、记录里看到的仍是模型写的相对路径），只有执行副本被重写。
+- **目录失效降级**：run 开始校验一次（`_resolveWorkspace`），目录被删/改名/不可访问时按「不指定」处理并记日志，不让每条命令各报一次错。
+- **权限语义不变**：写入仍逐个弹窗（只读短路只覆盖 `file_read`）；换工作文件夹会让同一条命令重新弹窗——shell 的会话授权键本来就含完整参数（含 `workdir`）。
+- **工具描述是静态文本**：默认目录随会话变化，描述说不出具体路径，故 `bash` / `powershell` 的措辞是「设置了会话工作文件夹就用它」，实际路径由 `runtimeContextPrompt(env, workspace:)` 注入的运行时提示声明。
+
 ---
 
 ## 8. Coordinator 层（run 编排）
@@ -396,7 +408,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 
 | Entity | 关键字段 | 说明 |
 |--------|---------|------|
-| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens, createdAt, updatedAt | 聊天会话 |
+| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
 | ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
 | MessageEntity | chatId, role, content, reasoningContent, reasoning, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
 | ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
@@ -520,7 +532,7 @@ AthenaShadow.raised/overlay
 athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 ```
 
-### 四条容易搞错的规则
+### 容易搞错的几条规则
 
 1. **灰阶是暖的，且只能从 `--cds-gray-*` 取**。Claude 的中性灰带黄绿感
    （白端 `#f9f9f7` / `#fcfcfb`，黑端 `#0b0b0b`）。不要手挑一个中性灰。
@@ -530,8 +542,11 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
    （`--cds-radius-composer`），没有 20/24。
 4. **不使用纯黑画布**：深色画布是 `#1A1A19`，侧栏更暗（`#151515`）。
 5. **hover 只改底色，文字不动**（Claude 实测：行标签 hover 前后都是 `#52514F`）。
-6. **不要从 `Colors.transparent` 做颜色动画**：它的 RGB 是黑，插值中途会渲染成
-   半透明深灰，表现为"先闪一下深色再变浅"。用 `目标色.withValues(alpha: 0)`。
+6. **不要从 `Colors.transparent` 做颜色动画**（填充与边框同理）：它的 RGB 是黑，
+   插值中途会渲染成半透明深灰，表现为"先闪一下深色再变浅"。两种安全写法：
+   `目标色.withValues(alpha: 0)`（RGB 全程不变、只动 alpha），或让
+   `BoxDecoration.color` 为 `null`（`Color.lerp(null, c, t)` 走 `_scaleAlpha`，
+   同样只缩 alpha——`menu.dart` 那批菜单项用的就是这种）。
 
 ### 关键约束
 
@@ -586,7 +601,7 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | 组件 | 用途 |
 |------|------|
 | `AthenaTag` / `AthenaTagButton` | 带 1px 边框的胶囊筛选 chip |
-| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`） |
+| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`）；`trailing` 是尾随控件插槽（前景色由 chip 注入，内层 onTap 先于 chip 的 onTap 命中）；hover 高亮（`surfaceSelected`）对 `filled: false` 同样生效，且只对可点的 chip 生效 |
 | `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
 | `AthenaInput` | 平涂底 + 1px 边框输入框 |
 | `AthenaScaffold` / `AthenaAppBar` / `ErrorBoundary` | 页面骨架、顶栏、错误边界 |
@@ -617,7 +632,8 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   （与画布 `#FCFCFB` 几乎无差）；行高 26、左右内缩 8、图标起于行内 11、文字起于 30
 - 顶栏只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题
 - **顶栏有会话标题**（Claude 的顶栏不是空的）；新建会话在侧栏导航块，
-  会话上下文在 composer 的上下文条上。顶栏实测高 **46 逻辑**，底色同画布，
+  会话上下文（Sentinel chip、工作文件夹 chip，见 §7.8）在 composer 的上下文条上。
+  顶栏实测高 **46 逻辑**，底色同画布，
   底边一条极浅的 `#F7F7F7` 线贯穿整条
 - 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚
 - 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer

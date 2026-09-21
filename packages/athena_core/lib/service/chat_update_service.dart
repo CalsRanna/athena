@@ -60,6 +60,13 @@ class ChatUpdateService {
     return _applyField(chat, (c) => c.copyWith(reasoningEffort: effort));
   }
 
+  /// 设置/清除本会话的工作文件夹（null = 不指定）。
+  ///
+  /// 只影响后续 run：运行中的 run 已在开始时解析并持有自己的基准。
+  Future<ChatEntity> updateWorkspacePath(ChatEntity chat, String? path) {
+    return _applyField(chat, (c) => c.copyWith(workspacePath: path));
+  }
+
   // ─── Provider 解析 ──────────────────────────────────────
 
   Future<ProviderEntity?> getProviderForModel(int providerId) async {

@@ -23,6 +23,14 @@ class ChatEntity {
   final int contextTokens;
   /// 最近一次推理的缓存命中 token 数（覆盖写，用于缓存命中率）。
   final int cachedTokens;
+  /// 本会话可选的工作文件夹（绝对路径）。
+  ///
+  /// null = 不指定：shell 默认在用户主目录执行、文件工具的相对路径按进程
+  /// 当前目录解析（与引入本字段之前的行为一致）。非 null 时，本轮 run 的
+  /// shell 默认工作目录与文件工具的相对路径基准都落在该目录。
+  ///
+  /// 挂在会话上而不是进程上：多对话可同时运行，进程级可变基准会串台。
+  final String? workspacePath;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -40,6 +48,7 @@ class ChatEntity {
     this.tokenTotal = 0,
     this.contextTokens = 0,
     this.cachedTokens = 0,
+    this.workspacePath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -57,6 +66,7 @@ class ChatEntity {
       tokenTotal: json.getInt('token_total', defaultValue: 0),
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
       cachedTokens: json.getInt('cached_tokens', defaultValue: 0),
+      workspacePath: json.getStringOrNull('workspace_path'),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
     );
@@ -75,6 +85,9 @@ class ChatEntity {
       'token_total': tokenTotal,
       'context_tokens': contextTokens,
       'cached_tokens': cachedTokens,
+      // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
+      // 条件写法会让「清空工作文件夹」落不了库。
+      'workspace_path': workspacePath,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -91,6 +104,7 @@ class ChatEntity {
     double? temperature,
     Object? reasoningEffort = _unset,
     int? retention,
+    Object? workspacePath = _unset,
     bool? pinned,
     int? tokenTotal,
     int? contextTokens,
@@ -108,6 +122,9 @@ class ChatEntity {
           ? this.reasoningEffort
           : reasoningEffort as String?,
       retention: retention ?? this.retention,
+      workspacePath: identical(workspacePath, _unset)
+          ? this.workspacePath
+          : workspacePath as String?,
       pinned: pinned ?? this.pinned,
       tokenTotal: tokenTotal ?? this.tokenTotal,
       contextTokens: contextTokens ?? this.contextTokens,

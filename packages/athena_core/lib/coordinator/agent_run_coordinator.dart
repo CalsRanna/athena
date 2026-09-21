@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
@@ -12,6 +13,7 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/runtime_context.dart';
+import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -27,6 +29,7 @@ import 'package:athena_core/service/conversation_compactor.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 /// UI 无关的 Agent run 编排层。
 ///
@@ -64,6 +67,11 @@ class AgentRunCoordinator {
 
   /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
   final Map<int, int> _runIdByChat = {};
+
+  /// chatId → 本次 run 的工作文件夹（审批落库时按同一口径解析路径）。
+  ///
+  /// 按会话而非进程持有：多对话可同时运行，各自的工作文件夹不能串台。
+  final Map<int, String?> _workspaceByChat = {};
 
   /// Coordinator 从 run 建立的第一刻就持有取消令牌。此前令牌直到
   /// AgentService.run 才创建，用户在上下文构建/自动压缩期间点击停止会丢失。
@@ -154,10 +162,14 @@ class AgentRunCoordinator {
     final runId = ++_nextRunId;
     final cancelToken = CancelToken();
     final settled = Completer<void>();
+    // 会话工作文件夹：本次 run 的路径解析基准。目录已失效（删除/改名）
+    // 时降级为「不指定」并记日志，不让工具在每一条命令上报错。
+    final workspace = _resolveWorkspace(chat);
     _streamingChatIds.add(chatId);
     _runIdByChat[chatId] = runId;
     _cancelTokenByChat[chatId] = cancelToken;
     _settledByChat[chatId] = settled;
+    _workspaceByChat[chatId] = workspace;
 
     var userMessageStored = false;
     MessageEntity? assistantMessage;
@@ -283,7 +295,7 @@ class AgentRunCoordinator {
         evolutionPrompt: EvolutionPrompt.hint,
         runtimePrompt: _runtimeEnvironment == null
             ? null
-            : runtimeContextPrompt(_runtimeEnvironment),
+            : runtimeContextPrompt(_runtimeEnvironment, workspace: workspace),
         // turnStart has finalized the preceding iteration before this callback
         // runs. Exclude the new placeholder and queued, not-yet-sent inputs.
         onCompact: (request) => compactor.compact(
@@ -305,6 +317,7 @@ class AgentRunCoordinator {
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
+        workspace: workspace,
         onPermission: (toolName, arguments) =>
             _askPermission(runId, chatId, toolName, arguments, cancelToken),
         onElicit: _elicitPrompt,
@@ -356,6 +369,7 @@ class AgentRunCoordinator {
         _cancelTokenByChat.remove(chatId);
         _settledByChat.remove(chatId);
         _liveMessages.remove(chatId);
+        _workspaceByChat.remove(chatId);
       }
       if (!settled.isCompleted) settled.complete();
     }
@@ -653,6 +667,26 @@ class AgentRunCoordinator {
 
   // ─── 权限 ──────────────────────────────────────────────────
 
+  /// 解析本次 run 的工作文件夹（已校验存在的绝对路径）。
+  ///
+  /// 目录不存在或不可访问时降级为 null（= 不指定）并记日志：工作文件夹是
+  /// 用户随时可能删除的外部状态，不能让它在每次工具调用上报错。
+  String? _resolveWorkspace(ChatEntity chat) {
+    final path = chat.workspacePath;
+    if (path == null || path.isEmpty) return null;
+    try {
+      final dir = Directory(path);
+      if (!dir.existsSync()) {
+        LoggerUtil.w('Chat ${chat.id} workspace not found: $path');
+        return null;
+      }
+      return dir.absolute.path;
+    } on FileSystemException catch (e) {
+      LoggerUtil.w('Chat ${chat.id} workspace unavailable: $path ($e)');
+      return null;
+    }
+  }
+
   Future<bool> _askPermission(
     int runId,
     int chatId,
@@ -675,6 +709,12 @@ class AgentRunCoordinator {
       } catch (_) {
         args = {};
       }
+
+      // 与执行侧（executeToolCallInternal）同一解析口径：这里的 args 来自模型
+      // 原始 JSON（相对路径），若直接用来记授权与落规则，会话级授权键与
+      // 持久规则的路径都会与执行时算出的绝对路径对不上——表现为「同一 run 内
+      // 已批准仍重复弹窗」与「始终允许」失效。
+      args = applyRunWorkspace(toolName, args, _workspaceByChat[chatId]);
 
       // 任何批准模式都先写入本 run 的会话级缓存（按 run 隔离）:
       // 同一 run 内不再重复弹窗，其他 run 不受影响

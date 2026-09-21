@@ -64,8 +64,9 @@ String shellTimeoutParamDescription() =>
 
 String shellWorkdirParamDescription([String? defaultWorkdir]) =>
     defaultWorkdir == null
-    ? 'Working directory for the command. '
-          'Defaults to the user home directory.'
+    ? 'Working directory for the command. Defaults to the session working '
+          'folder when one is set (see the runtime context), otherwise to '
+          'the user home directory.'
     : 'Working directory for the command. Defaults to $defaultWorkdir.';
 
 /// 构建传递给子进程的环境变量，在当前进程环境基础上扩展 PATH，
