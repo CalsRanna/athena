@@ -64,9 +64,10 @@ class _StepGroupCardState extends State<StepGroupCard> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
         children: [_buildHeader(context), if (_expanded) _buildItems()],
       ),
     );
@@ -114,16 +115,6 @@ class _StepGroupCardState extends State<StepGroupCard> {
     final last = widget.steps.last;
     if (widget.live && last is ToolCallStep) {
       return [
-        Text(
-          last.toolName,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: AthenaFontSize.label,
-            fontWeight: FontWeight.w600,
-            color: foreground,
-          ),
-        ),
-        const SizedBox(width: 8),
         Expanded(
           child: Text(
             ToolCard.argPreview(last.toolName, last.arguments),
@@ -151,30 +142,25 @@ class _StepGroupCardState extends State<StepGroupCard> {
 
   Widget _buildItems() {
     final steps = widget.steps;
-    return Padding(
-      padding: const EdgeInsets.only(left: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final (index, step) in steps.indexed)
-            switch (step) {
-              ReasoningStep(:final message) => Padding(
-                key: ValueKey(
-                  'reasoning-${message.id ?? identityHashCode(message)}',
-                ),
-                padding: const EdgeInsets.only(top: 8),
-                child: ReasoningCard(
-                  message: message,
-                  thinking: widget.live && index == steps.length - 1,
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
+      children: [
+        for (final (index, step) in steps.indexed)
+          switch (step) {
+            ReasoningStep(:final message) => ReasoningCard(
+              key: ValueKey(
+                'reasoning-${message.id ?? identityHashCode(message)}',
               ),
-              ToolCallStep tool => _ToolStepRow(
-                key: ValueKey(tool.id),
-                step: tool,
-              ),
-            },
-        ],
-      ),
+              message: message,
+              thinking: widget.live && index == steps.length - 1,
+            ),
+            ToolCallStep tool => _ToolStepRow(
+              key: ValueKey(tool.id),
+              step: tool,
+            ),
+          },
+      ],
     );
   }
 }
@@ -196,15 +182,12 @@ class _ToolStepRowState extends State<_ToolStepRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(context),
-          if (widget.step.hasResult && _expanded) _buildResult(context),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(context),
+        if (widget.step.hasResult && _expanded) _buildResult(context),
+      ],
     );
   }
 
@@ -234,17 +217,6 @@ class _ToolStepRowState extends State<_ToolStepRow> {
             Expanded(
               child: Row(
                 children: [
-                  // 工具名完整展示，不参与弹性分配
-                  Text(
-                    widget.step.toolName,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: AthenaFontSize.label,
-                      fontWeight: FontWeight.w600,
-                      color: foreground,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   // 描述占满剩余宽度，只有真正超出时才省略
                   Expanded(
                     child: Text(
@@ -273,8 +245,7 @@ class _ToolStepRowState extends State<_ToolStepRow> {
       onTap: () => setState(() => _expanded = false),
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Text(
           widget.step.result!,
           maxLines: 10,

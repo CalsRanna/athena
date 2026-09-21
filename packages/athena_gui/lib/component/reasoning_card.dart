@@ -48,22 +48,20 @@ class _ReasoningCardState extends State<ReasoningCard> {
     if (message.reasoningContent.isEmpty) return const SizedBox();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [_buildTitle(context), _buildContent(context)],
+      spacing: 8,
+      children: [_buildTitle(context), if (_expanded) _buildContent(context)],
     );
   }
 
   void _toggleExpanded() => setState(() => _expanded = !_expanded);
 
   Widget _buildContent(BuildContext context) {
-    if (!_expanded) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _toggleExpanded,
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
         child: Text(
           message.reasoningContent,
           style: TextStyle(
