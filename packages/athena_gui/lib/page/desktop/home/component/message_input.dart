@@ -32,6 +32,9 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function()? onModelTap;
   final void Function()? onSentinelTap;
 
+  /// 清除本会话的 Sentinel（回到「不选择任何 Sentinel」）。
+  final void Function()? onSentinelClear;
+
   /// 选择/清除本会话的工作文件夹（目录选择器在 ViewModel 层弹）。
   final void Function()? onWorkspaceTap;
   final void Function()? onWorkspaceClear;
@@ -48,6 +51,7 @@ class DesktopMessageInput extends StatelessWidget {
     this.onTerminated,
     this.onModelTap,
     this.onSentinelTap,
+    this.onSentinelClear,
     this.onWorkspaceTap,
     this.onWorkspaceClear,
   });
@@ -89,7 +93,10 @@ class DesktopMessageInput extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      DesktopSentinelIndicator(onTap: onSentinelTap),
+                      DesktopSentinelIndicator(
+                        onTap: onSentinelTap,
+                        onClear: onSentinelClear,
+                      ),
                       const SizedBox(width: 4),
                       DesktopWorkspaceIndicator(
                         path: chat?.workspacePath,

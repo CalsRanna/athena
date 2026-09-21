@@ -114,6 +114,9 @@ class AssistantMessageItem extends StatelessWidget {
   /// 卡片级 hover 归属：操作条挂在整条助手消息上，而不是某一段上。
   final AssistantCardHover hover;
 
+  /// 本轮尚未结束：操作条不显形。整卡同值，卡内各段无需各自判断。
+  final bool suppressActions;
+
   const AssistantMessageItem({
     super.key,
     required this.layout,
@@ -122,6 +125,7 @@ class AssistantMessageItem extends StatelessWidget {
     required this.isCardTail,
     required this.sentinel,
     required this.hover,
+    this.suppressActions = false,
   });
 
   @override
@@ -148,6 +152,7 @@ class AssistantMessageItem extends StatelessWidget {
         cardMessages: cardMessages,
         sentinel: sentinel,
         hover: hover,
+        suppressActions: suppressActions,
         cardId: cardMessages.first.id ?? identityHashCode(cardMessages.first),
       ),
     );
@@ -171,6 +176,9 @@ class _AssistantMessageSegment extends StatelessWidget {
   final SentinelEntity sentinel;
   final AssistantCardHover hover;
 
+  /// 本轮尚未结束：操作条不显形。
+  final bool suppressActions;
+
   /// 本段所属助手卡的标识，用来判定"指针是否在这张卡上"。
   final Object cardId;
 
@@ -182,6 +190,7 @@ class _AssistantMessageSegment extends StatelessWidget {
     required this.cardMessages,
     required this.sentinel,
     required this.hover,
+    required this.suppressActions,
     required this.cardId,
   });
 
@@ -201,6 +210,10 @@ class _AssistantMessageSegment extends StatelessWidget {
     // [data-cds=MessageActions]`）：指针落在卡内任意一段都算。本仓每段消息各
     // 占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover] 上——
     // 各段只上报进出，最后一段订阅它决定操作条是否可见，正文不参与重建。
+    //
+    // 本轮未结束时（[suppressActions]）hover 也不显形：这一轮还在跑，Copy 只能
+    // 拿到半截正文。这里仍走 `visible: false` 而不是把控件摘掉——摘掉的话收尾
+    // 瞬间操作条凭空出现，卡片高度变 28，流式末尾会跳一下。
     Widget result = MouseRegion(
       onEnter: (_) => hover.enter(cardId),
       onExit: (_) => hover.leave(cardId),
@@ -212,7 +225,7 @@ class _AssistantMessageSegment extends StatelessWidget {
             ValueListenableBuilder<Object?>(
               valueListenable: hover.hoveredCard,
               builder: (context, hoveredCard, _) => MessageActionBar(
-                visible: hoveredCard == cardId,
+                visible: hoveredCard == cardId && !suppressActions,
                 onCopy: () => _copyAssistantMessages(cardMessages),
               ),
             ),
@@ -421,6 +434,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
               ),
             ),
             MessageActionBar(
+              // 用户消息不受"本轮未结束"影响：即使正在跑，也照常 hover 显形。
               visible: _hovered,
               // Copy 始终可用；Retry 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
@@ -514,6 +528,11 @@ class AssistantCardHover {
 /// 位置对齐 Claude：操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
 /// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
 /// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
+///
+/// [visible] 由调用方决定：既包含 hover 归属，也包含"这一轮是否已经结束"。
+/// **尚未结束的那一轮里的助手消息不显形**（流式中悬在助手正文上看不到操作条，
+/// 收尾后才恢复）；用户消息不受影响，照常 hover 显形。调用方**不要**在未结束时
+/// 把控件从树上摘掉，摘掉会让卡片高度在收尾瞬间变 28，末尾跳一下。
 ///
 /// 时序逐条对齐 Claude 的 `[data-cds=MessageActions][data-reveal]`：
 /// - **只动透明度**——`--cds-message-actions-reveal-scale` 在 `.cds-root`

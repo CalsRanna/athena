@@ -145,7 +145,8 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
 ///
 /// 与 [AthenaTagButton] 的区别：没有描边，只有一层浅灰填充（Codex 的
 /// `#F4F4F4`），因为 composer 本身已经是一个浮起容器，chip 不需要再画边。
-/// 形状是胶囊，左侧常带一个 14px 图标。
+/// 形状是小圆角方块（`AthenaRadius.xs`，与 composer 里模型名等嵌套控件同档的
+/// 「小方块」语言，不是胶囊），左侧常带一个 13px 图标。
 class AthenaContextChip extends StatefulWidget {
   final Widget? leading;
   final String label;
@@ -153,6 +154,10 @@ class AthenaContextChip extends StatefulWidget {
 
   /// 尾随控件（如「清除」按钮）。前景色由 chip 统一注入，调用方只需给字形
   /// 与尺寸；它自己的 onTap 在命中测试里先于 chip 的 onTap 生效。
+  ///
+  /// **静止时透明、hover 才显形**（与消息操作条同一条规则）。占位始终保留
+  /// （`AnimatedOpacity` 而不是摘控件），否则 hover 进出会让 chip 宽度一跳；
+  /// 不可见时同时 `IgnorePointer`，免得点到看不见的叉。
   final Widget? trailing;
 
   /// 是否绘制自己的底色。
@@ -209,7 +214,9 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
     var container = AnimatedContainer(
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(AthenaRadius.pill),
+        // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
+        // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
+        borderRadius: BorderRadius.circular(AthenaRadius.xs),
       ),
       duration: const Duration(milliseconds: 120),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
@@ -238,9 +245,16 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
           ),
           if (widget.trailing != null) ...[
             const SizedBox(width: 4),
-            IconTheme(
-              data: IconThemeData(color: foreground),
-              child: widget.trailing!,
+            IgnorePointer(
+              ignoring: !hover,
+              child: AnimatedOpacity(
+                opacity: hover ? 1 : 0,
+                duration: const Duration(milliseconds: 120),
+                child: IconTheme(
+                  data: IconThemeData(color: foreground),
+                  child: widget.trailing!,
+                ),
+              ),
             ),
           ],
         ],
