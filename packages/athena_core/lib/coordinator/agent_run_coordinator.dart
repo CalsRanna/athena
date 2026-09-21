@@ -722,8 +722,8 @@ class AgentRunCoordinator {
 
       if (decision.persistExact) {
         // "Always Allow" 落库:规则形态由 PermissionRule.forToolCall 决定
-        // (shell 按动作+参数、复合命令拆子命令;文件走路径;web_fetch 走
-        // origin;其余整工具放行)。
+        // (shell 落整条命令的 exact;文件走路径;web_fetch 走 origin;
+        // 其余整工具放行)。
         final keyArg = _permissionService.primaryArg(toolName, args);
         for (final rule in PermissionRule.forToolCall(toolName, keyArg)) {
           await _permissionService.persistRule(rule);

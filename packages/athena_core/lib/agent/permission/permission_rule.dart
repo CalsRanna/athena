@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 
 /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
 const kFileToolNames = {'file_read', 'file_write', 'file_update'};
 
-/// Shell 类工具:规则按「动作 + 参数」匹配,命令文本走 [CommandAnalyzer]。
+/// Shell 类工具:「始终允许」落整条命令的精确匹配(见 [PermissionRule.forToolCall])。
 ///
 /// 与 [kFileToolNames] 对称——新增 shell 工具(zsh/cmd...)只需改这里,
 /// 避免 `toolName == 'bash' || toolName == 'powershell'` 散落多处后漏改。
@@ -15,8 +14,9 @@ const kShellToolNames = {'bash', 'powershell'};
 
 /// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
 ///
-/// - [action]:shell 工具。匹配命令首个动作(词),pattern 匹配动作后的参数
-/// - [exact]:shell 工具。命令 trim 后与 pattern 完全相等(复合命令/管道)
+/// - [action]:shell 工具,按「动作 + 参数前缀」匹配。宿主**不再写入**该形态,
+///   仅为读取旧版本落下的 `permissions.json` 保留
+/// - [exact]:shell 工具。命令 trim 后与 pattern 完全相等(当前唯一的落库形态)
 /// - [origin]:web_fetch。pattern 为 URL origin,前缀 + 主机边界
 /// - [path]:文件工具。归一化路径 + 目录前缀(/ 边界)或路径 glob
 enum RuleKind { action, exact, origin, path }
@@ -108,49 +108,24 @@ class PermissionRule {
         if (wildcard) 'wildcard': true,
       };
 
-  /// 从完整命令生成规则(「始终允许」落库用):
-  ///
-  /// - 简单命令(`git status`、`ls -la /x`)→ action 规则,参数含
-  ///   `*`/`?` 时按 glob(wildcard: true),否则按前缀+词边界
-  ///   (`git push origin main` 放行 `git push origin main -f` 等带参变体)
-  /// - 复合命令(`git status && npm test`)→ 按子命令分别建模(最多 5 条,
-  ///   同 Claude Code)。`cd` 子命令无副作用不存规则;子命令过多或括号
-  ///   不平衡时退化为整条 exact(保守)
-  /// - 未识别首词 → exact 整串
-  static List<PermissionRule> fromCommand(String tool, String command) {
-    final trimmed = command.trim();
-    if (trimmed.isEmpty) {
-      return [PermissionRule(tool: tool, kind: RuleKind.exact)];
-    }
-    final subs = CommandAnalyzer.splitSubcommands(trimmed);
-    if (subs.length > 1) {
-      final rules = <PermissionRule>[];
-      for (final sub in subs) {
-        // cd 本身无副作用,工作目录变更归后续子命令的规则管
-        if (CommandAnalyzer.extractAction(sub) == 'cd') continue;
-        rules.add(_ruleForSingleCommand(tool, sub));
-      }
-      if (rules.isEmpty || rules.length > 5) {
-        // 全部是 cd(或空白)/无法可靠拆分:整条精确匹配
-        return [PermissionRule(tool: tool, kind: RuleKind.exact, pattern: trimmed)];
-      }
-      return rules;
-    }
-    return [_ruleForSingleCommand(tool, trimmed)];
-  }
-
   /// 「始终允许」落库用:按工具类别选择规则形态。
   ///
-  /// - shell 工具 → [fromCommand](复合命令按子命令拆成多条)
+  /// - shell 工具 → [RuleKind.exact](整条命令精确匹配)
   /// - 文件工具   → [RuleKind.path](归一化路径前缀 / glob)
   /// - web_fetch  → [RuleKind.origin](scheme://host[:port])
   /// - 其余工具,或 [keyArg] 缺失 → 空 pattern 的 [RuleKind.exact],
   ///   即放行该工具的所有调用
+  ///
+  /// shell 不落 [RuleKind.action]:按「动作 + 参数前缀」匹配会把一次授权
+  /// 顺带扩展到用户没看到的变体(`npm test` 放行 `npm test -- --watch`),
+  /// 而这中间没有二次确认。精确匹配把授权范围钉在用户当时看到的那条命令上。
   static List<PermissionRule> forToolCall(String tool, String? keyArg) {
     if (keyArg == null) {
       return [PermissionRule(tool: tool, kind: RuleKind.exact)];
     }
-    if (kShellToolNames.contains(tool)) return fromCommand(tool, keyArg);
+    if (kShellToolNames.contains(tool)) {
+      return [PermissionRule(tool: tool, kind: RuleKind.exact, pattern: keyArg)];
+    }
     if (kFileToolNames.contains(tool)) {
       return [PermissionRule(tool: tool, kind: RuleKind.path, pattern: keyArg)];
     }
@@ -160,30 +135,6 @@ class PermissionRule {
       ];
     }
     return [PermissionRule(tool: tool, kind: RuleKind.exact)];
-  }
-
-  static PermissionRule _ruleForSingleCommand(String tool, String command) {
-    final trimmed = command.trim();
-    final actionWord = CommandAnalyzer.extractAction(trimmed);
-    if (actionWord != null &&
-        !actionWord.startsWith('/') &&
-        !actionWord.contains('://')) {
-      final rest =
-          trimmed.substring(trimmed.indexOf(actionWord) + actionWord.length)
-              .trim();
-      return PermissionRule(
-        tool: tool,
-        kind: RuleKind.action,
-        action: actionWord,
-        pattern: rest,
-        wildcard: rest.contains('*') || rest.contains('?'),
-      );
-    }
-    return PermissionRule(
-      tool: tool,
-      kind: RuleKind.exact,
-      pattern: trimmed,
-    );
   }
 
   /// [keyArg] 是归一化后的参数(路径/命令/origin)。

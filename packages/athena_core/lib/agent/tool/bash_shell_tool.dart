@@ -45,8 +45,10 @@ class BashShellTool implements Tool, CancellableTool {
       'For deep listings, pipe to head: | head -100\n'
       '- Searching: use grep -rn and filter extensions with --include. '
       'Pipe to head to limit output.\n'
-      '- Deleting: ONLY delete single files (rm path/to/file). '
-      'NEVER use rm -rf or any recursive delete.\n'
+      '- Deleting: prefer explicit targets (rm path/to/file). Prefer '
+      'multiple explicit paths over recursion. Recursive or otherwise '
+      'destructive deletes are not forbidden, but they stop for user '
+      'approval before running.\n'
       'For long-running tasks, pass a larger "timeout" value. '
       'Commands run in $_defaultWorkdirHint by default.';
 
@@ -103,16 +105,6 @@ class BashShellTool implements Tool, CancellableTool {
         Directory.current.path;
     // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
     final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
-
-    // 递归删除拦截：用户在弹窗中可以看到完整命令并决定是否放行
-    if (CommandAnalyzer.isRecursiveDelete(command)) {
-      return 'Warning: This command contains potentially dangerous '
-          'recursive delete patterns and was blocked by safety checks. '
-          'To delete files, use explicit commands targeting specific files '
-          '(e.g. rm file1 file2 without -r flag).'
-          'If you genuinely need recursive deletion, the user must run '
-          'the command manually outside this tool.';
-    }
 
     final result = await runShellProcess(
       executable: _resolveShellExecutable(),

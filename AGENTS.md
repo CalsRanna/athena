@@ -47,7 +47,7 @@ athena/
     │   │   ├── storage/         # 本地文件持久化：FileStorage 布局 + JSONL/JSON/YAML 仓储实现 + 跨进程文件锁 + KeyValueStore 接口 + AgentSettings
     │   │   ├── extension/       # json_map_extension
     │   │   └── util/            # platform_util / retry / logger_util / tool_args_formatter
-    │   └── （无 test/：测试套件已移除，见 §14）
+    │   └── test/                # 仅 athena_core 有：permission_rule_test / file_storage_test（见 §14）
     ├── athena_gui/              # ★ Flutter 桌面/移动应用
     │   ├── lib/
     │   │   ├── main.dart        # 入口：DI → FileStorage 加载 + 种子 → Window/Tray → 后台同步模型目录
@@ -298,17 +298,19 @@ enum ToolRisk { readOnly, dangerous }
 
 Coordinator 从包含 compacted 消息的原始历史构造 `PermissionReviewContext`，仅传入 user/assistant 文本，排除 system、思考、工具输出、技能与经验。助手提案只能辅助解释用户回复，不能作为授权。当前 run 内的人工决策独立提供给审核器；人工拒绝的完全相同调用在本轮直接拒绝，防止重试自动批准。
 
+宿主**不解析 shell 语法、不匹配命令文本**：审批器拿到的是完整命令原文（`arguments`）与用户原始请求，删除类形态由它自己按提示词判断（提示词要求「递归删除、或目标内容未知的删除，在用户请求未明确授权该确切目标时一律 ask」），判断不了就转人工。宿主侧不存在「命令命中某个模式」这类信号，因此也没有对应的 `risk_signals` 字段——早期版本有过 `recursive_delete` 信号，因既不比原文多给信息、又在多种写法（`if …; then rm -rf …; fi`、`echo $(rm -rf …)`、`/bin/rm`、`bash -lc`）上漏检而被移除。
+
 GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_approval_enabled`，0 关闭/1 开启）。GUI 在设置 → Agent 的 General 分区保存开关；TUI `/review [on|off]` 查看/切换，下一轮生效。
 
 人工通过 `PermissionPrompt` 回调进入 GUI 会话内卡片 / TUI 审批条，实际参数完整可滚动：
 - **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。
-- **Always Allow**：另外通过 `PermissionRule.forToolCall` 写入持久规则。
+- **Always Allow**：另外通过 `PermissionRule.forToolCall` 写入持久规则。shell 工具落**整条命令的精确匹配**（`RuleKind.exact`），不再按「动作 + 参数前缀」建模——前缀形态会把一次授权顺带扩展到用户没看到的变体（`npm test` 的授权放行 `npm test -- --watch`，`rm -rf build` 的授权放行 `rm -rf build -f`），而中间没有二次确认。`RuleKind.action` 仍可读取旧版本落下的 `~/.athena/permissions.json`，但宿主不再写入该形态。文件工具走路径、`web_fetch` 走 origin，其余整工具放行。
 - **Deny**：本轮记录精确拒绝，优先于之前批准；run 完成或取消清空本轮缓存。
 
 提问（「你要哪个」，`ask_user_question`）是**与审批并列的另一条人机通道**，不共用审批弹窗：通道类型、两端 UI 接线与同步清单见 §17「交互类工具的两端同步点」。
 
 工具自我保护（在工具 `execute()` 内部，独立于权限系统）：
-- bash/powershell：递归删除命令（rm -rf 变体 / del /s）被检测到拒绝执行
+- bash/powershell：**无工具内硬拦，也无宿主侧命令文本匹配**。是否执行由权限规则与人工/AI 审批决定；审批器看完整命令原文，宿主不解析 shell 语法
 - file_update：写入前校验文件 mtime，防止覆盖外部并发修改
 - web_fetch：仅允许 http/https scheme
 
@@ -681,10 +683,12 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 
 ## 14. 测试
 
-**当前三个包都没有测试套件**：`athena_core/test`、`athena_gui/test`、`athena_tui/test`
-已整体删除。因此：
+**只有 `athena_core` 有测试**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
+落库形态与匹配范围）与 `test/storage/file_storage_test.dart`；`athena_gui/test`、`athena_tui/test` 为空
+（测试套件已整体删除）。因此：
 
-- 唯一的静态保障是 `flutter analyze` / `dart analyze`，改完必须跑到 0 issue。
+- `athena_core` 的改动在 `packages/athena_core` 下先跑 `dart test`，再跑 `dart analyze`。
+- 其余改动的静态保障只有 `flutter analyze` / `dart analyze`，改完必须跑到 0 issue。
 - UI 改动只能对着**运行中的开发实例**验证：`hot_restart` → 用 VM service 的 `evaluate`
   推路由（不必手点 UI）→ 系统截屏 → 读图。没有 driver 扩展，`flutter_driver_command
   screenshot` 不可用。
@@ -766,7 +770,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 2. 在 `packages/athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry` 注册（工具清单的唯一真相源，两个前端共用）
 3. 权限相关：`PermissionRule._isFilePathTool()` 与 `PermissionService.primaryArg()` 中按需添加模式
 4. 需要宿主交互（问用户 / 等用户）的工具，另见「交互类工具的两端同步点」
-5. 测试套件已移除（见 §14）：改完跑 `dart analyze`，并用运行中的实例手测一次真实调用
+5. 新工具落在 `athena_core`：改完在 `packages/athena_core` 下跑 `dart test` 与 `dart analyze`（见 §14），并用运行中的实例手测一次真实调用
 
 ### 交互类工具的两端同步点（提问 / 审批）
 
@@ -782,7 +786,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | 无人应答时 | 返回 null（未作答），模型按标注过的假定继续 | 返回拒绝（安全默认） |
 
 同步清单：
-- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；测试套件已移除（见 §14），改完只能靠 `dart analyze` 与手测兜底。
+- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；GUI / TUI 没有测试套件兜底（见 §14），改完只能靠 `dart analyze` 与手测。
 - 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
 - `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
