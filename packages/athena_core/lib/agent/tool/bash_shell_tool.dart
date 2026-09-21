@@ -27,6 +27,14 @@ class BashShellTool implements Tool, CancellableTool {
   @override
   String get name => 'bash';
 
+  /// 默认目录的措辞。装配期已确定的注入值（TUI 启动参数）直接报出来；
+  /// 为 null 时默认目录随会话变化（工作文件夹），而工具描述是构造期的
+  /// 静态文本，只能说明优先级，具体路径由运行时上下文声明。
+  String get _defaultWorkdirHint =>
+      _defaultWorkdir ??
+      'the session working folder when one is set, otherwise the user home '
+          'directory';
+
   @override
   String get description =>
       'Execute a bash shell command. '
@@ -40,7 +48,7 @@ class BashShellTool implements Tool, CancellableTool {
       '- Deleting: ONLY delete single files (rm path/to/file). '
       'NEVER use rm -rf or any recursive delete.\n'
       'For long-running tasks, pass a larger "timeout" value. '
-      'Commands run in the ${_defaultWorkdir ?? 'user home'} directory by default.';
+      'Commands run in $_defaultWorkdirHint by default.';
 
   @override
   Map<String, dynamic> get parameters => {

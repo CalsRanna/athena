@@ -151,6 +151,10 @@ class AthenaContextChip extends StatefulWidget {
   final String label;
   final void Function()? onTap;
 
+  /// 尾随控件（如「清除」按钮）。前景色由 chip 统一注入，调用方只需给字形
+  /// 与尺寸；它自己的 onTap 在命中测试里先于 chip 的 onTap 生效。
+  final Widget? trailing;
+
   /// 是否绘制自己的底色。
   ///
   /// 放在 composer 的上下文带上时传 false：带本身已是浅灰填充，chip 再画一层
@@ -163,6 +167,7 @@ class AthenaContextChip extends StatefulWidget {
     required this.label,
     this.onTap,
     this.filled = true,
+    this.trailing,
   });
 
   @override
@@ -178,13 +183,32 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
     var foreground = widget.onTap == null
         ? colors.textWeak
         : colors.textSecondary;
+    // hover 的填充是**前景色 5% 的叠加层**，不是某个固定灰。上下文带的底色
+    // 就是 surfaceButtonSecondary（浅色 #F0EFEC），而表面状态灰在浅色下几乎与
+    // 它同值：surfaceHover 与它完全相同，surfaceSelected 只深 3/255
+    // （#EDECE9）——chip 落在带上 hover 等于没反应。
+    // Claude 的 hover 填充一律是中性色的 alpha 叠加（`--cds-alpha-1/2/3` =
+    // neutral-900 的 5/10/20%，chip 静止 5%、hover 10%），所以任何底色的容器上
+    // 都留得住对比度。本仓 chip 坐在已经是 5% 灰的带上，hover 再叠 5%，
+    // 合成像素 #E5E4E1 正好等于 Claude「hover 中的 chip」（#E4E4E3）。
+    final hoverFill = colors.textPrimary.withValues(alpha: 0.05);
+    // 静止态不能写 `Colors.transparent`：它的 RGB 是黑，插值到浅色中途会渲染
+    // 成"半透明深灰"，表现为 hover 先闪一下深色再变浅（同 menu.dart 的说明）。
+    // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
+    final resting = widget.filled
+        ? colors.surfaceButtonSecondary
+        : hoverFill.withValues(alpha: 0);
+    // hover 高亮只对可点的 chip 生效（放在上下文带上时 chip 不带底色，
+    // 但可点却毫无反馈同样不对）。自带宽度的 chip 要让叠加层压在自己的底色上
+    // （合成成不透明色，避免插值中途出现半透明深色）。
+    final background = hover && widget.onTap != null
+        ? (widget.filled
+              ? Color.alphaBlend(hoverFill, colors.surfaceButtonSecondary)
+              : hoverFill)
+        : resting;
     var container = AnimatedContainer(
       decoration: BoxDecoration(
-        color: !widget.filled
-            ? Colors.transparent
-            : hover
-            ? colors.surfaceSelected
-            : colors.surfaceButtonSecondary,
+        color: background,
         borderRadius: BorderRadius.circular(AthenaRadius.pill),
       ),
       duration: const Duration(milliseconds: 120),
@@ -212,6 +236,13 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
               ),
             ),
           ),
+          if (widget.trailing != null) ...[
+            const SizedBox(width: 4),
+            IconTheme(
+              data: IconThemeData(color: foreground),
+              child: widget.trailing!,
+            ),
+          ],
         ],
       ),
     );

@@ -8,6 +8,7 @@ import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/clipboard_image_service.dart';
@@ -30,6 +31,10 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function()? onTerminated;
   final void Function()? onModelTap;
   final void Function()? onSentinelTap;
+
+  /// 选择/清除本会话的工作文件夹（目录选择器在 ViewModel 层弹）。
+  final void Function()? onWorkspaceTap;
+  final void Function()? onWorkspaceClear;
   const DesktopMessageInput({
     super.key,
     required this.controller,
@@ -43,6 +48,8 @@ class DesktopMessageInput extends StatelessWidget {
     this.onTerminated,
     this.onModelTap,
     this.onSentinelTap,
+    this.onWorkspaceTap,
+    this.onWorkspaceClear,
   });
   @override
   Widget build(BuildContext context) {
@@ -79,7 +86,18 @@ class DesktopMessageInput extends StatelessWidget {
                     color: colors.surfaceButtonSecondary,
                     borderRadius: BorderRadius.circular(AthenaRadius.container),
                   ),
-                  child: DesktopSentinelIndicator(onTap: onSentinelTap),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DesktopSentinelIndicator(onTap: onSentinelTap),
+                      const SizedBox(width: 4),
+                      DesktopWorkspaceIndicator(
+                        path: chat?.workspacePath,
+                        onTap: chat == null ? null : onWorkspaceTap,
+                        onClear: chat == null ? null : onWorkspaceClear,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 5),
                 // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边

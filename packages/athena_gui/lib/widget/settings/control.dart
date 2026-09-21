@@ -43,12 +43,19 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
 
   Widget _buildSegment(BuildContext context, AthenaSegmentOption<T> option) {
     final settings = settingsColorsOf(context);
+    // 未选中态不能用 `Colors.transparent`：它的 RGB 是黑，AnimatedContainer
+    // 切换档位时会先闪一下半透明深灰（同 menu.dart 的说明）。用目标色的 0
+    // 透明度版本，填充与边框全程同色只有 alpha 在动。
     var isSelected = option.value == selected;
     var decoration = BoxDecoration(
-      color: isSelected ? settings.controlFill : Colors.transparent,
-      border: isSelected
-          ? Border.all(color: settings.controlBorder)
-          : Border.all(color: Colors.transparent),
+      color: isSelected
+          ? settings.controlFill
+          : settings.controlFill.withValues(alpha: 0),
+      border: Border.all(
+        color: isSelected
+            ? settings.controlBorder
+            : settings.controlBorder.withValues(alpha: 0),
+      ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var textStyle = TextStyle(
@@ -183,7 +190,8 @@ class _AthenaSettingsIconButtonState extends State<AthenaSettingsIconButton> {
     var container = AnimatedContainer(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: hover ? settings.rule : Colors.transparent,
+        // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
+        color: hover ? settings.rule : settings.rule.withValues(alpha: 0),
         borderRadius: BorderRadius.circular(AthenaRadius.row),
       ),
       duration: const Duration(milliseconds: 120),

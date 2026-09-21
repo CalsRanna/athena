@@ -228,6 +228,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateReasoningEffort(effort, chat: chat);
   }
 
+  /// 选择本会话的工作文件夹（目录选择器在 ViewModel 层弹；取消不改变现状）。
+  Future<void> pickWorkspaceFolder() => chatViewModel.pickWorkspaceFolder();
+
+  /// 清除本会话的工作文件夹，回到默认（shell 用用户主目录）。
+  Future<void> clearWorkspaceFolder() async {
+    var chat = chatViewModel.currentChat.value;
+    if (chat == null) return;
+    await chatViewModel.updateWorkspacePath(null, chat: chat);
+  }
+
   Widget _buildAppBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // Claude 的顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
@@ -294,6 +304,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onTerminated: terminateStreaming,
       onModelTap: _openModelSelector,
       onSentinelTap: _openSentinelSelector,
+      onWorkspaceTap: pickWorkspaceFolder,
+      onWorkspaceClear: clearWorkspaceFolder,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

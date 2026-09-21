@@ -90,7 +90,8 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
-            color: hover ? settings.rule : Colors.transparent,
+            // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
+            color: hover ? settings.rule : settings.rule.withValues(alpha: 0),
             borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8),

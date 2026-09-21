@@ -18,14 +18,30 @@ String currentDatePrompt(DateTime date) {
 }
 
 /// 生成运行环境提示文本，与日期合并后作为最后一条 system 消息注入。
-String runtimeContextPrompt(RuntimeEnvironment environment) {
+///
+/// [workspace] 非空时额外声明本会话的工作文件夹：shell 的默认工作目录与
+/// 文件工具的相对路径基准随会话变化，而工具描述是构造期的静态文本，
+/// 承载不了该事实，只能在此声明。
+String runtimeContextPrompt(
+  RuntimeEnvironment environment, {
+  String? workspace,
+}) {
   final client = environment == RuntimeEnvironment.gui
       ? 'Athena GUI application'
       : 'Athena TUI (terminal)';
-  return 'You are running in the $client on ${_platformName()}.\n'
-      'Application data (sentinels, chats, experiences, skills) is managed '
-      'through your tools — never locate, read, or modify application data '
-      'files directly.';
+  final buffer = StringBuffer(
+    'You are running in the $client on ${_platformName()}.\n'
+    'Application data (sentinels, chats, experiences, skills) is managed '
+    'through your tools — never locate, read, or modify application data '
+    'files directly.',
+  );
+  if (workspace != null && workspace.isNotEmpty) {
+    buffer.write(
+      '\nYour working folder is $workspace. Shell commands run there by '
+      'default, and relative paths passed to file tools resolve against it.',
+    );
+  }
+  return buffer.toString();
 }
 
 String _platformName() {

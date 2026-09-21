@@ -21,6 +21,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
 
 typedef _MessagePage = ({bool hasOlder, List<MessageEntity> messages});
@@ -725,6 +726,39 @@ class ChatViewModel {
       final updated = await _supportService.updateReasoningEffort(chat, effort);
       _updateChatInLists(updated);
       currentReasoningEffort.value = updated.reasoningEffort;
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
+
+  /// 弹出系统目录选择器设置本会话的工作文件夹。
+  ///
+  /// 取消（返回 null）不做任何改动：native 目录选择器选不出「不指定」，
+  /// 清除走 [updateWorkspacePath]。
+  Future<void> pickWorkspaceFolder() async {
+    final chat = currentChat.value;
+    if (chat == null) return;
+    error.value = null;
+    try {
+      final path = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Choose working folder',
+      );
+      if (path == null) return;
+      await updateWorkspacePath(path, chat: chat);
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
+
+  /// 设置/清除本会话的工作文件夹（null = 不指定，回到默认行为）。
+  Future<void> updateWorkspacePath(
+    String? path, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      final updated = await _supportService.updateWorkspacePath(chat, path);
+      _updateChatInLists(updated);
     } catch (e) {
       error.value = e.toString();
     }

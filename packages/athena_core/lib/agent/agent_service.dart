@@ -13,6 +13,7 @@ import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/run_outcome.dart';
+import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
@@ -114,6 +115,11 @@ class AgentService {
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
 
+    /// 本次 run 的工作文件夹（已校验存在的绝对路径）。
+    /// null = 不指定：shell 默认用户主目录、文件工具相对路径按进程当前
+    /// 目录解析（与引入本能力之前一致）。
+    String? workspace,
+
     /// 提问回调（「你要哪个」），与审批回调（「要不要做」）分开。
     /// null = 本会话没有提问 UI，ask_user_question 会降级为「按假定继续」。
     ElicitPrompt? onElicit,
@@ -183,6 +189,7 @@ class AgentService {
         permissionService: permissionService,
         onPermission: onPermission,
         elicitChannel: elicitChannel,
+        workspace: workspace,
       ).run();
     } on CancelledException {
       rethrow;
@@ -204,6 +211,7 @@ class AgentService {
     String? sentinelId,
     PermissionGate? permissionGate,
     ElicitChannel? elicitChannel,
+    String? workspace,
   }) async {
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
@@ -255,6 +263,10 @@ class AgentService {
 
     // Keep display metadata in the original JSON for UI/history only.
     args = toolExecutionArguments(args);
+
+    // 会话工作文件夹：在权限门之前解析，使规则匹配与文件执行共用同一
+    // 绝对路径（展示用的 toolCall.function.arguments 保持原样）
+    args = applyRunWorkspace(toolCall.function.name, args, workspace);
 
     // 权限门（拦截或放行）
     if (permissionGate != null) {
@@ -341,6 +353,7 @@ class AgentService {
     required int runId,
     PermissionService? permissionService,
     PermissionCallback? onPermission,
+    String? workspace,
   }) {
     final parallelCalls = <ToolCall>[];
     for (final tc in toolCalls) {
@@ -350,6 +363,9 @@ class AgentService {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
         if (args[toolApprovalRecommendationKey] == 'ask') continue;
         args = toolExecutionArguments(args);
+        // 与 executeToolCallInternal 同一解析口径：两处不一致会出现
+        // 「预检放行、执行时被拦」或反向的判定漂移
+        args = applyRunWorkspace(tc.function.name, args, workspace);
       } catch (_) {
         args = null;
       }
@@ -583,6 +599,7 @@ class _AgentLoop {
     required PermissionService? permissionService,
     required PermissionCallback? onPermission,
     required ElicitChannel elicitChannel,
+    required String? workspace,
   }) : _service = service,
        _state = state,
        _chat = chat,
@@ -600,7 +617,8 @@ class _AgentLoop {
        _permissionGate = permissionGate,
        _permissionService = permissionService,
        _onPermission = onPermission,
-       _elicitChannel = elicitChannel;
+       _elicitChannel = elicitChannel,
+       _workspace = workspace;
 
   final AgentService _service;
   final _AgentRunState _state;
@@ -622,6 +640,9 @@ class _AgentLoop {
   final PermissionService? _permissionService;
   final PermissionCallback? _onPermission;
   final ElicitChannel _elicitChannel;
+
+  /// 本次 run 的工作文件夹（相对路径解析基准），null = 不指定。
+  final String? _workspace;
 
   CancelToken get _token => _state.cancelToken;
 
@@ -921,6 +942,7 @@ class _AgentLoop {
       runId: _runId,
       permissionService: _permissionService,
       onPermission: _onPermission,
+      workspace: _workspace,
     );
     final sequentialCalls = [
       for (final tc in toolCalls)
@@ -1074,6 +1096,7 @@ class _AgentLoop {
       sentinelId: _sentinelId,
       permissionGate: _permissionGate,
       elicitChannel: _elicitChannel,
+      workspace: _workspace,
     );
     return _ToolExecutionData(
       event: result.event,
