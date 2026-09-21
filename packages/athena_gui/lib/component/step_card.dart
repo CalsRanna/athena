@@ -147,8 +147,10 @@ class _StepCardState extends State<StepCard> {
   Widget build(BuildContext context) {
     final face = _single ? _faceOf(steps.single) : _groupFace();
     final body = face.body;
+    // 上边距是卡片对外的边距：顶层卡自带，嵌套子卡由组正文的 spacing 统一给，
+    // 否则组头到首行会叠成 8 + 8。
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: EdgeInsets.only(top: widget.nested ? 0 : 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
@@ -230,6 +232,7 @@ class _StepCardState extends State<StepCard> {
       running: running,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
         children: [
           for (final (index, step) in steps.indexed)
             StepCard(
