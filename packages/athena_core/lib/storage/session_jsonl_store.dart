@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/serial_lock.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/serial_lock.dart';
 
 /// 单会话文件存储:`sessions/{chatId}.jsonl`。
 ///

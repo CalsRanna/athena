@@ -1,7 +1,7 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_tui/storage/serial_lock.dart';
-import 'package:athena_tui/storage/user_settings_store.dart';
+import 'package:athena_core/storage/serial_lock.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 
 /// ProviderRepository 的 YAML 实现(`~/.athena/setting.yaml`)。
 ///

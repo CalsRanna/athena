@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/json_array_store.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/json_array_store.dart';
 
 /// ModelRepository 的 JSON 数组实现(`~/.athena/tui/models.json`)。
 ///

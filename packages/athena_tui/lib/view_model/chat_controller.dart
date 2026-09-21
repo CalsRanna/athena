@@ -17,7 +17,7 @@ import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
-import 'package:athena_tui/storage/jsonl_session_repository.dart';
+import 'package:athena_core/storage/jsonl_session_repository.dart';
 import 'package:athena_tui/ui/text_util.dart';
 import 'package:signals/signals.dart';
 

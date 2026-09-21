@@ -5,8 +5,8 @@ import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_tui/storage/id_allocator.dart';
-import 'package:athena_tui/storage/session_jsonl_store.dart';
+import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/session_jsonl_store.dart';
 
 /// ChatRepository + MessageRepository 的会话文件实现
 /// (`~/.athena/tui/sessions/{chatId}.jsonl`)。
