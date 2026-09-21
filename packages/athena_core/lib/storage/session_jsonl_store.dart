@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 
@@ -15,9 +16,13 @@ import 'package:athena_core/storage/serial_lock.dart';
 /// ```
 ///
 /// 设计要点:
-/// - **单写者锁**:所有公开方法在单次锁内完成(读-改-写原子),流式期间
+/// - **单写者锁**:所有修改在单次锁内完成(读-改-写原子),流式期间
 ///   的 update(整文件重写)与 append 并发时不丢行(锁是实例字段,调用方
 ///   必须按文件缓存共享实例,锁才能跨调用生效)
+/// - **跨进程文件锁**:GUI 与 TUI 共享目录,修改再套一层 `.lock` 排它,
+///   另一进程的重写(rename 换 inode)不会吞掉本进程的 append
+/// - **原子写**:整文件重写走临时文件 + rename;读不加锁,读到的要么是
+///   旧文件要么是新文件
 /// - **损坏容错**:损坏行跳过,chat 记录缺失时按无会话处理
 /// - 行更新采用整文件重写:会话数据规模有限,重写简单可靠
 class SessionJsonlStore {
@@ -31,8 +36,14 @@ class SessionJsonlStore {
   static const chatType = 'chat';
   static const messageType = 'message';
 
+  /// 进程内串行(读写都排队,读不会夹在本进程写的中间)。
   Future<T> _serialized<T>(Future<T> Function() action) {
     return serialLock(_lock, action, (f) => _lock = f);
+  }
+
+  /// 修改:进程内串行 + 跨进程文件锁。
+  Future<T> _mutate<T>(Future<T> Function() action) {
+    return _serialized(() => withFileLock(lockFileFor(file), action));
   }
 
   // ─────────────────────────── 会话元数据(首行) ───────────────────────────
@@ -50,7 +61,7 @@ class SessionJsonlStore {
 
   /// 替换首行的会话元数据;不存在则插入到文件头。
   Future<void> writeChatRow(Map<String, dynamic> row) {
-    return _serialized(() async {
+    return _mutate(() async {
       final rows = await _readAllRows();
       row['type'] = chatType;
       final index = rows.indexWhere((r) => r['type'] == chatType);
@@ -71,7 +82,7 @@ class SessionJsonlStore {
   Future<Map<String, dynamic>?> updateChatRow(
     Map<String, dynamic> Function(Map<String, dynamic> current) transform,
   ) {
-    return _serialized(() async {
+    return _mutate(() async {
       final rows = await _readAllRows();
       final index = rows.indexWhere((r) => r['type'] == chatType);
       if (index < 0) return null;
@@ -99,7 +110,7 @@ class SessionJsonlStore {
 
   /// 分配 id 并追加一条消息,返回新 id。
   Future<int> appendMessage(Map<String, dynamic> row) {
-    return _serialized(() async {
+    return _mutate(() async {
       final id = await idAllocator.next(file.path);
       row['id'] = id;
       row['type'] = messageType;
@@ -110,7 +121,7 @@ class SessionJsonlStore {
 
   /// 按 id 整行替换消息(不存在则追加)。
   Future<void> replaceMessage(int id, Map<String, dynamic> row) {
-    return _serialized(() async {
+    return _mutate(() async {
       final rows = await _readAllRows();
       row['id'] = id;
       row['type'] = messageType;
@@ -131,7 +142,7 @@ class SessionJsonlStore {
     bool Function(Map<String, dynamic> json) test,
     Map<String, dynamic> Function(Map<String, dynamic> json) transform,
   ) {
-    return _serialized(() async {
+    return _mutate(() async {
       final rows = await _readAllRows();
       var changed = 0;
       for (var i = 0; i < rows.length; i++) {
@@ -152,7 +163,7 @@ class SessionJsonlStore {
 
   /// 删除命中的消息行,返回删除数。
   Future<int> deleteMessageWhere(bool Function(Map<String, dynamic> json) test) {
-    return _serialized(() async {
+    return _mutate(() async {
       final rows = await _readAllRows();
       final before = rows.length;
       rows.removeWhere((r) => r['type'] == messageType && test(r));
@@ -163,9 +174,26 @@ class SessionJsonlStore {
     });
   }
 
+  /// 用给定的会话元数据与消息行整体重建文件(导入用,id 原样保留,
+  /// 不经过 [idAllocator])。已有内容被覆盖。
+  Future<void> writeSession(
+    Map<String, dynamic> chatRow,
+    List<Map<String, dynamic>> messageRows,
+  ) {
+    return _mutate(() async {
+      await _writeAll([
+        {...chatRow, 'type': chatType},
+        for (final row in messageRows) {...row, 'type': messageType},
+      ]);
+    });
+  }
+
+  /// 会话文件是否存在。
+  Future<bool> exists() => file.exists();
+
   /// 删除整个会话文件。
   Future<void> deleteFile() {
-    return _serialized(() async {
+    return _mutate(() async {
       if (await file.exists()) {
         await file.delete();
       }
@@ -280,12 +308,14 @@ class SessionJsonlStore {
     await sink.close();
   }
 
+  /// 整文件重写:临时文件 + rename 原子替换。GUI 与 TUI 共享数据目录,
+  /// 另一进程在重写窗口内读到的要么是旧文件要么是新文件,不会是半截。
   Future<void> _writeAll(List<Map<String, dynamic>> rows) async {
     await file.parent.create(recursive: true);
     final buf = StringBuffer();
     for (final row in rows) {
       buf.writeln(jsonEncode(row));
     }
-    await file.writeAsString(buf.toString());
+    await atomicWriteString(file, buf.toString());
   }
 }

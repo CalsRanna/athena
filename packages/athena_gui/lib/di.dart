@@ -9,16 +9,11 @@ import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/chat_repository.dart';
-import 'package:athena_gui/repository/sqlite_chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_gui/repository/sqlite_message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_gui/repository/sqlite_model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_gui/repository/sqlite_provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_gui/repository/sqlite_sentinel_repository.dart';
 import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
@@ -29,6 +24,7 @@ import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/storage/shared_prefs_key_value_store.dart';
@@ -44,19 +40,32 @@ import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:get_it/get_it.dart';
 
 class DI {
+  /// 用户级数据根目录的父目录:桌面端是 `$HOME`(与 TUI 共享
+  /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
+  /// ([dataDirectory])。写入端(skill_evolve / experience 工具)必须与
+  /// 这里读同一目录。
+  static String _homeDir(String? dataDirectory) {
+    if (PlatformUtil.isMobile && dataDirectory != null) return dataDirectory;
+    return Platform.environment['HOME'] ??
+        Platform.environment['USERPROFILE'] ??
+        Directory.current.path;
+  }
+
   static void ensureInitialized({String? dataDirectory}) {
     final getIt = GetIt.instance;
 
+    // 文件持久化(布局见 FileStorage):root = $HOME/.athena
+    final storage = FileStorage(
+      root: Directory('${_homeDir(dataDirectory)}/.athena'),
+    );
+    getIt.registerSingleton<FileStorage>(storage);
+
     getIt.registerLazySingleton(
-      () => ToolOutputStore(
-        directory: Directory(
-          '${dataDirectory ?? Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? Directory.current.path}/.athena/tool_outputs',
-        ),
-      ),
+      () => ToolOutputStore(directory: storage.toolOutputsDir),
     );
 
     // Repositories (no dependencies)
-    _registerRepositories(dataDirectory);
+    _registerRepositories(storage, dataDirectory);
 
     // Services
     _registerServices();
@@ -114,6 +123,7 @@ class DI {
         llmClient: getIt<LlmClient>(),
         dataMigrationService: getIt<DataMigrationService>(),
         agentSettings: getIt<AgentSettings>(),
+        storage: getIt<FileStorage>(),
       ),
     );
 
@@ -160,8 +170,9 @@ class DI {
 
     getIt.registerLazySingleton(() {
       final registry = SkillRegistry();
-      // 移动端无可靠 $HOME，用户级数据根目录用 Application Support（与 athena.db
-      // 同根）；写入端（skill_evolve / experience 工具）必须与这里读同一目录。
+      // 移动端无可靠 $HOME，用户级数据根目录用 Application Support（与
+      // FileStorage 同根）；写入端（skill_evolve / experience 工具）必须与
+      // 这里读同一目录。
       registry.loadAll(homeDir: PlatformUtil.isMobile ? dataDirectory : null);
       registry.registerBuiltin(kSelfEvolveSkill);
       return registry;
@@ -205,18 +216,27 @@ class DI {
     );
   }
 
-  static void _registerRepositories(String? dataDirectory) {
+  static void _registerRepositories(
+    FileStorage storage,
+    String? dataDirectory,
+  ) {
     final getIt = GetIt.instance;
-    getIt.registerLazySingleton<ChatRepository>(() => SqliteChatRepository());
-    getIt.registerLazySingleton<MessageRepository>(
-      () => SqliteMessageRepository(),
+    // 同一实例同时承担 ChatRepository 与 MessageRepository:对话与其消息
+    // 同生命周期,删对话即删会话文件
+    getIt.registerLazySingleton<ChatRepository>(
+      () => storage.sessionRepository,
     );
-    getIt.registerLazySingleton<ModelRepository>(() => SqliteModelRepository());
+    getIt.registerLazySingleton<MessageRepository>(
+      () => storage.sessionRepository,
+    );
+    getIt.registerLazySingleton<ModelRepository>(
+      () => storage.modelRepository,
+    );
     getIt.registerLazySingleton<ProviderRepository>(
-      () => SqliteProviderRepository(),
+      () => storage.providerRepository,
     );
     getIt.registerLazySingleton<SentinelRepository>(
-      () => SqliteSentinelRepository(),
+      () => storage.sentinelRepository,
     );
     getIt.registerLazySingleton(
       () => ExperienceRepository(
@@ -271,11 +291,14 @@ class DI {
       ),
     );
 
+    // 目录缓存放数据目录(与 TUI 共享),不用 systemTemp:重启清空临时
+    // 目录后不必每次重新拉取 3.2MB
     getIt.registerLazySingleton(
       () => ModelCatalogService(
         modelRepository: getIt<ModelRepository>(),
         providerRepository: getIt<ProviderRepository>(),
         chatRepository: getIt<ChatRepository>(),
+        cacheFilePath: getIt<FileStorage>().catalogCacheFile.path,
       ),
     );
   }

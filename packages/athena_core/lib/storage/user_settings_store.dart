@@ -1,20 +1,21 @@
 import 'dart:io';
 
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:yaml/yaml.dart';
 
 /// 用户配置的持久化(`~/.athena/setting.yaml`):provider 配置(含 API key)
-/// 与用户选择的默认模型。
+/// 与 TUI 选择的默认模型。GUI 与 TUI 共享此文件。
 ///
-/// yaml 是**用户配置的权威存储**(jsonl 只存消息/数据流水):
+/// yaml 是**provider 的权威存储**(jsonl 只存消息/数据流水):
 /// - provider 的 name/baseUrl/apiKey 等直接读写 yaml,用户可手工编辑,
 ///   重启即生效
 /// - 模型选择存 modelId 字符串(如 `deepseek-v4-flash`),稳定可读,
-///   不依赖本地自增 id
+///   不依赖本地自增 id(仅 TUI 使用;GUI 的默认模型存 SharedPreferences)
 ///
 /// 文件格式:
 /// ```yaml
-/// # Athena TUI 用户配置
+/// # Athena 用户配置
 /// model: deepseek-v4-flash      # 默认模型(modelId,可选)
 /// providers:
 ///   - id: 1                     # 与 models.json 的 providerId 对应
@@ -30,6 +31,9 @@ class UserSettingsStore {
   UserSettingsStore({required File file}) : _file = file;
 
   final File _file;
+
+  /// 配置文件(供仓储层对其加跨进程锁)。
+  File get file => _file;
 
   static const _modelKey = 'model';
   static const _providersKey = 'providers';
@@ -117,10 +121,8 @@ class UserSettingsStore {
   }
 
   Future<void> _writeMap(Map<String, dynamic> map) async {
-    await _file.parent.create(recursive: true);
-    final tmp = File('${_file.path}.tmp');
     final buf = StringBuffer()
-      ..writeln('# Athena TUI 用户配置:默认模型与各 provider 的 API key')
+      ..writeln('# Athena 用户配置:各 provider 的 API key 与 TUI 默认模型')
       ..writeln('# 修改后重启生效;运行中配置会同步回写')
       ..writeln();
     for (final entry in map.entries) {
@@ -145,10 +147,7 @@ class UserSettingsStore {
         buf.writeln('${entry.key}: ${_escapeScalar(value)}');
       }
     }
-    await tmp.writeAsString(buf.toString());
-    // rename 目标目录必须已存在:单独确保一次
-    await _file.parent.create(recursive: true);
-    await tmp.rename(_file.path);
+    await atomicWriteString(_file, buf.toString());
   }
 
   static String _escapeScalar(Object? value) {

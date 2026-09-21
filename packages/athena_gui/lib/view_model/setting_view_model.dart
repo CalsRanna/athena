@@ -2,14 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/database/database.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_gui/service/data_migration_service.dart';
 import 'package:athena_core/service/llm_client.dart';
+import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -69,6 +70,7 @@ class SettingViewModel {
   final LlmClient _llmClient;
   final DataMigrationService _dataMigrationService;
   final AgentSettings _agentSettings;
+  final FileStorage _storage;
 
   SettingViewModel({
     required ModelRepository modelRepository,
@@ -76,11 +78,13 @@ class SettingViewModel {
     required LlmClient llmClient,
     required DataMigrationService dataMigrationService,
     required AgentSettings agentSettings,
+    required FileStorage storage,
   }) : _modelRepository = modelRepository,
        _providerRepository = providerRepository,
        _llmClient = llmClient,
        _dataMigrationService = dataMigrationService,
-       _agentSettings = agentSettings;
+       _agentSettings = agentSettings,
+       _storage = storage;
 
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
@@ -278,8 +282,12 @@ class SettingViewModel {
   Future<void> reconcileChatModelReferences() =>
       _dataMigrationService.reconcileChatModelReferences(chatModelId.value);
 
+  /// 重置:清空全部业务数据文件并重新种子内置角色,再清空设置。
   Future<bool> resetData() async {
-    await Database.instance.reset();
+    await _storage.reset();
+    await const SentinelSeed().applyIfNeeded(
+      sentinelRepo: _storage.sentinelRepository,
+    );
     await clearAllSettings();
     return true;
   }

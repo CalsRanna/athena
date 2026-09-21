@@ -103,6 +103,11 @@ Claude 的色板是一套**偏暖的中性灰**，和 Codex 的中性灰完全�
 | `border` | `#E1E0D9` | `#2C2C2A` |
 | `borderStrong` | `#C3C2B7` | `#454442` |
 | `divider` | `#E1E0D9` | `#2C2C2A` |
+| `borderChrome` | `#EFEFED` | `#212121` |
+
+`borderChrome` 是**窗口外壳**的接缝线（侧栏右边界、侧栏页脚上边、顶栏里那段侧栏边）：
+它比 `border` 轻一档（neutral-900 的 5% 对 10%，实测对比度 1.11:1 对 1.28:1），
+因为外壳线是「面与面的接缝」，不是容器的轮廓——容器描边该更实，外壳接缝该更虚。
 
 ### Accent & Status
 
@@ -522,11 +527,15 @@ Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静�
 | Composer 底距 | 20 |
 | 顶栏 | 只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题 |
 
-- 侧栏底色 `surfacePanel`，与画布以 1px `border` 分开
+- 侧栏底色 `surfacePanel`，与画布以 1px `borderChrome` 分开（见 §5 的 `borderChrome`）
 - 顶栏**有会话标题**（Claude 的顶栏不是空的）：左侧是窗口控制，中间是当前会话标题。
   Athena 没有导航箭头与右面板，所以只保留标题
 - 顶栏实测：高 **46 逻辑**，底色与画布相同（相当于透明），底边是一条**极浅**的线
-  `#F7F7F7`（只比画布暗 5/255）且贯穿整条——它是顶栏唯一的轮廓
+  `#F7F7F7`（只比画布暗 5/255）——它是顶栏唯一的轮廓
+- **顶栏底线只画在工作区那一段**（x ≥ 288）：侧栏上方是侧栏面板的延伸，不画横线，
+  否则这条线会横穿侧栏右边线。顶栏里的侧栏条本身**满高 0..46**，它的右边线才是
+  与下方侧栏右边线相接的同一段竖线（`AthenaAppBar` 里的 `sidebarStrip` /
+  `workspaceStrip`，外层 `CrossAxisAlignment.stretch`）
 - 侧栏内容：分组列表（Pinned / Chats）+ 底部页脚（应用标识 + 设置入口）
 - **会话列定宽居中**：消息与 composer 走同一条 768 宽的列（`chatColumnPadding()`
   按画布宽度算两侧留白），左右边缘对齐；画布不够宽时退回 32 的最小留白
@@ -582,7 +591,7 @@ Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静�
 | Level | Treatment | Use |
 |-------|-----------|-----|
 | Canvas | `surface`，无阴影无边框 | 主工作区 |
-| Panel | `surfacePanel` + 1px `border` | 侧栏、顶栏 |
+| Panel | `surfacePanel` + 1px `borderChrome` | 侧栏、顶栏 |
 | Static content | `codeBackground` + 1px `border` | 引用块 |
 | Code block | `codeBackground`，header 为 `cardHeader`，**无边框** | 代码块、脚注区 |
 | Selected | `surfaceSelected` | 选中行、选中 chip |

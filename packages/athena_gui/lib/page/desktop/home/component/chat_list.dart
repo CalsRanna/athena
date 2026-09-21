@@ -379,7 +379,8 @@ class _SidebarFooter extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Container(
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: colors.border)),
+        // 外壳分隔线（页脚上边）：用比 border 轻一档的 borderChrome
+        border: Border(top: BorderSide(color: colors.borderChrome)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
@@ -450,18 +451,12 @@ class _SidebarNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       child: DesktopMenuTile(
         active: false,
         label: 'New chat',
         leading: const Icon(HugeIcons.strokeRoundedPencilEdit02),
-        trailing: Icon(
-          HugeIcons.strokeRoundedAdd01,
-          size: 15,
-          color: colors.iconSecondary,
-        ),
         onTap: onCreateChat,
       ),
     );

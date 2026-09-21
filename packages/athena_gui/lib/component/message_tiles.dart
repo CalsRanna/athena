@@ -133,13 +133,11 @@ class AssistantMessageItem extends StatelessWidget {
     final message = layout.message;
     return Padding(
       // 列内左右留白：Claude 的助手正文用 `--cds-assistant-message-text-inset`
-      // (4) 贴住 768 定宽列的左缘；右侧留 `--cds-assistant-message-text-stop`
-      // 的上限 56 给换行收窄，但那 56 里有 24 是给旧的右侧浮动工具条让位的。
-      // 工具条搬到底部后只保留 32 的排版收窄，正文不至于贴死列右缘。
+      // (4) 贴住 768 定宽列的边缘
       padding: EdgeInsets.fromLTRB(
         4,
         isCardHeader ? 16 : 0,
-        32,
+        4,
         isCardTail ? 16 : 0,
       ),
       child: _AssistantMessageSegment(
@@ -395,7 +393,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 用户消息：**右对齐的浅灰气泡**，取自 Claude 的类
-    // `bg-text/5 max-w-[77%] rounded-2xl px-3 py-2`，容器 `items-end justify-end`。
+    // `bg-text/5 max-w-[77%] rounded-xl px-3 py-2`，容器 `items-end justify-end`。
     // 没有头像。
     //
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
@@ -405,7 +403,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -421,7 +419,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
                       ),
                       decoration: BoxDecoration(
                         color: colors.textPrimary.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

@@ -11,9 +11,9 @@ const double kChatColumnWidth = 768;
 /// 定宽列之外的最小水平留白。
 const double kChatColumnMinPadding = 32;
 
-/// 定宽列**内部**的水平留白，取 Codex 的 `--padding-toolbar`（spacing × 4 = 16）。
-/// Codex 的对话容器是 `max-w-3xl` 再加 `px-toolbar`，所以内容宽 768 - 32。
-const double kChatColumnInnerPadding = 16;
+/// 定宽列**内部**的水平留白，取 4。
+/// Codex 的对话容器是 `max-w-3xl` 再加 `px-toolbar`，所以内容宽 768 - 8。
+const double kChatColumnInnerPadding = 4;
 
 /// 画布可用宽度 [width] 下，定宽列两侧应留的水平留白。
 ///

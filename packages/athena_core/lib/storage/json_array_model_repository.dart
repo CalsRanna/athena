@@ -93,11 +93,14 @@ class JsonArrayModelRepository implements ModelRepository {
   @override
   Future<void> deleteAllModels() => _store.deleteFile();
 
+  /// 以给定 id 原样写入(存在则覆盖),导入保留原 id 的模型时使用。
+  Future<void> restore(ModelEntity model) {
+    return _store.restore(model.id!, model.toJson());
+  }
+
   @override
-  Future<void> importModels(List<ModelEntity> models) async {
-    await _store.deleteFile();
-    for (final model in models) {
-      await _store.insert(model.toJson());
-    }
+  Future<void> importModels(List<ModelEntity> models) {
+    // 与 SQLite 实现一致:导入的模型保留原 id(chat.model_id 引用它)
+    return _store.replaceAll([for (final m in models) m.toJson()]);
   }
 }

@@ -509,7 +509,7 @@ surfaceButtonSecondary / surfaceHover / surfaceSelected
 textPrimary / textInput / textSecondary / textWeak / textRowLabel
 textOnRaised / textSecondaryOnRaised / textOnCode / textSecondaryOnCode
 // 边框 / 输入 / 强调
-border / borderStrong / divider / inputBackground / accent
+border / borderStrong / divider / borderChrome / inputBackground / accent
 // 状态与控件
 statusSuccess / statusWarning / statusError
 switchKnob / switchTrackOff / checkboxOff / iconSecondary / iconOnRaised / shadow
@@ -646,8 +646,12 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   两个 chip 都**可清除**（hover 时 chip 内出现叉）：清 Sentinel = 回到
   `ChatEntity.noSentinelId`（标签显示 `No Sentinel`，没有选中对话时改草稿角色），
   清文件夹 = `workspace_path` 置空。
-  顶栏实测高 **46 逻辑**，底色同画布，
-  底边一条极浅的 `#F7F7F7` 线贯穿整条
+  顶栏实测高 **46 逻辑**，底色同画布，底边一条极浅的 `#F7F7F7` 线，
+  且**只画在工作区那段**（侧栏上方不画，否则会横穿侧栏右边线）；顶栏里的侧栏条
+  满高 0..46，侧栏右边线在顶栏内是连续的一根
+- **外壳接缝线一律用 `borderChrome`**（比 `border` 轻一档：#EFEFED / #212121，实测对比度
+  1.11:1 对 1.28:1）：侧栏右边界（顶栏那段 + 主区那段，两处必须同档）、侧栏页脚上边。
+  容器描边（卡片、输入框、dialog）仍用 `border`
 - 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚
 - 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
 

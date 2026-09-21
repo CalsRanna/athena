@@ -283,7 +283,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return Container(
       decoration: BoxDecoration(
         color: colors.surfacePanel,
-        border: Border(right: BorderSide(color: colors.border)),
+        // 外壳分隔线（侧栏右边界）：与顶栏里那段用同一档，见 app_bar.dart
+        border: Border(right: BorderSide(color: colors.borderChrome)),
       ),
       height: double.infinity,
       width: AthenaSpace.sidebar,

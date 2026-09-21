@@ -15,8 +15,8 @@ class SingleInstanceUtil {
 
   SingleInstanceUtil._();
 
-  /// 必须在 main 中尽早调用——要早于 `Database.ensureInitialized()`，否则重复
-  /// 启动的进程会先打开 SQLite 再退出，与已有实例产生锁竞争。
+  /// 必须在 main 中尽早调用——要早于存储初始化，否则重复启动的进程会先
+  /// 触碰数据目录（导入/种子）再退出，与已有实例产生写竞争。
   ///
   /// 非首个实例把 [args] 经命名管道交给正在运行的实例后自行退出。
   Future<void> ensureInitialized(List<String> args) async {
