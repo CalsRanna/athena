@@ -37,8 +37,10 @@ class PowerShellShellTool implements Tool, CancellableTool {
       'and deleting files (Remove-Item).\n'
       '- Listing: use Get-ChildItem. For deep listings, use | Select-Object -First 100\n'
       '- Searching: use Get-ChildItem -Recurse -Include ... | Select-String -Pattern ...\n'
-      '- Deleting: ONLY delete single files (Remove-Item path). '
-      'NEVER use Remove-Item -Recurse or del /s.\n'
+      '- Deleting: prefer explicit targets (Remove-Item path). Prefer '
+      'multiple explicit paths over recursion. Recursive or otherwise '
+      'destructive deletes are not forbidden, but they stop for user '
+      'approval before running.\n'
       'For long-running tasks, pass a larger "timeout" value. '
       'Commands run in $_defaultWorkdirHint by default.';
 
@@ -103,16 +105,6 @@ class PowerShellShellTool implements Tool, CancellableTool {
         Directory.current.path;
     // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
     final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
-
-    // 递归删除拦截
-    if (CommandAnalyzer.isRecursiveDelete(command)) {
-      return 'Warning: This command contains potentially dangerous '
-          'recursive delete patterns and was blocked by safety checks. '
-          'To delete files, use explicit commands targeting specific files '
-          '(e.g. Remove-Item path/to/file without -Recurse flag).'
-          'If you genuinely need recursive deletion, the user must run '
-          'the command manually outside this tool.';
-    }
 
     final result = await runShellProcess(
       executable: 'powershell.exe',

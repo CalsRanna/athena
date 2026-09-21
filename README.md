@@ -66,9 +66,10 @@ AI 自动审核默认开启；GUI 在 **Settings → Agent → General → AI Au
 
 独立于权限系统，在工具内部执行的安全检查：
 
-- **递归删除拦截**：bash/powershell 检测到 `rm -rf`、`del /s` 等模式时拒绝执行
 - **Shell 进程管理**：超时主动 SIGTERM → SIGKILL 杀死进程，防止孤儿进程泄漏
 - **文件修改检测**：`file_update` 在写入前校验 mtime，防止覆盖外部并发修改
+
+删除类命令（`rm -rf`、`del /s` 等）**没有**工具内拦截，也**不再**由宿主匹配命令文本：是否放行完全交给权限规则与 AI/人工审批。宿主不解析 shell 语法，因此不会因为命令里出现某个字符串而误拦只读命令（`grep -rn "rm -rf" docs/`），也不会因为模型换一种写法就假装拦得住（`bash scripts/clean.sh`、变量展开、`git clean`）。
 
 ### Skill 系统
 

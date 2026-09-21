@@ -10,15 +10,19 @@ import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
-import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
+import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
-    show CancellableTool, toolExecutionArguments, toolApprovalRecommendationKey;
+    show
+        CancellableTool,
+        ToolRisk,
+        toolApprovalRecommendationKey,
+        toolExecutionArguments;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -417,19 +421,26 @@ class AgentService {
       final asksUser =
           metadata[toolApprovalRecommendationKey] == 'ask' &&
           tool is! ElicitChannelAware;
+      final serviceVerdict = permissionService?.check(
+        runId,
+        ctx.name,
+        ctx.args,
+        risk: tool?.risk,
+      );
       final verdict =
-          permissionService?.check(
-            runId,
-            ctx.name,
-            ctx.args,
-            risk: tool?.risk,
-          ) ??
-          (onPermission == null
-              ? PermissionVerdict.allow
-              : PermissionVerdict.prompt);
+          serviceVerdict ??
+          _verdictWithoutPermissionService(tool?.risk, onPermission);
 
       if (verdict == PermissionVerdict.deny) {
-        return (block: true, reason: 'Tool call denied by a permission rule.');
+        // 两种 deny 要能分辨:规则拒绝,与「没有权限服务时危险工具兜底拒绝」
+        // (后者没有任何规则存在,沿用前者的措辞会把排查带偏)。
+        return (
+          block: true,
+          reason: serviceVerdict != null
+              ? 'Tool call denied by a permission rule.'
+              : 'Error: Dangerous tool denied because no permission service is '
+                    'configured.',
+        );
       }
 
       if (asksUser || verdict == PermissionVerdict.prompt) {
@@ -489,6 +500,21 @@ class AgentService {
 
       return (block: false, reason: '');
     };
+  }
+
+  /// 权限服务缺席时的兜底（库被无权限装配调用，如自定义宿主只装了
+  /// AgentService）。危险工具直接拒绝，其余保持放行；有审批回调时一律弹窗。
+  ///
+  /// 旧行为是本路径无条件 allow，由 shell 工具内的递归删除硬拦掩盖——
+  /// 硬拦移除后必须在此收口，否则「没有权限系统」就等于「没有权限」。
+  static PermissionVerdict _verdictWithoutPermissionService(
+    ToolRisk? risk,
+    PermissionCallback? onPermission,
+  ) {
+    if (onPermission != null) return PermissionVerdict.prompt;
+    return risk == ToolRisk.dangerous
+        ? PermissionVerdict.deny
+        : PermissionVerdict.allow;
   }
 
   /// 首轮注入 runtime / evolution / skill prompt。

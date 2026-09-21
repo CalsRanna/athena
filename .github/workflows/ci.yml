@@ -27,9 +27,9 @@ jobs:
         working-directory: packages/athena_core
         run: dart analyze
 
-      # 测试目录已随 977986a 清空（dart test 会以 exit 65
-      # "default test/ directory doesn't exist" 失败）；
-      # 目录重新有测试文件后此步自动恢复执行
+      # athena_core/test 现已有用例（command_analyzer_test / file_storage_test），
+      # 此步会执行；目录若再次清空（dart test 会以 exit 65
+      # "default test/ directory doesn't exist" 失败）则自动跳过
       - name: Test (athena_core)
         if: hashFiles('packages/athena_core/test/**', 'packages/athena_core/test/*') != ''
         working-directory: packages/athena_core
