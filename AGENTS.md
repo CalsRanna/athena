@@ -10,7 +10,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 
 - **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
 - **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
-- **内置工具系统**：桌面端注册 15 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
+- **内置工具系统**：桌面端注册 16 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
 - **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
@@ -36,7 +36,7 @@ athena/
     │   │   │   ├── evolution/                # 自我进化提示词（hint + fullBody）
     │   │   │   ├── permission/               # permission_service / permission_rule / command_analyzer
     │   │   │   ├── skill/                    # skill_loader / skill_registry
-    │   │   │   └── tool/                     # 13 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
+    │   │   │   └── tool/                     # 16 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
     │   │   ├── coordinator/
     │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
     │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
@@ -748,7 +748,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 6. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用；权限弹窗与取消用 `Future.any` 竞速
 7. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），迭代结束/流结束时 `finalizeAssistantMessage()` 落库；取消标 `[Cancelled]`，错误写进消息内容
 8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（每次模型请求前估算达到 80% 窗口触发）、正数 = 当前不截断
-9. **移动端工具精简**：移动端仅注册 WebFetchTool、WebSearchTool、SkillTool 三个工具
+9. **移动端工具精简**：移动端注册 11 个工具（`tool_output_read`、`web_fetch`、`web_search`、`skill`、`skill_evolve`、`experience_learn`、`experience_recall`、`sentinel_list`、`sentinel_get`、`sentinel_evolve`、`sentinel_revert`）；不注册本地文件与进程工具（`file_read` / `file_write` / `file_update` / `bash` / `powershell`）与提问工具（`ask_user_question`：移动端无提问卡片），进化类工具只写沙盒内 `.athena` 目录
 10. **预设数据不再走 migration**：模型/provider 由 ModelCatalogService 从 models.dev 同步；内置 Athena 角色只在 `sentinels.json` 为空时种子一次（`athena_core/lib/seed/`），已存在的角色不覆盖（用户可能已通过 sentinel_evolve 改过）
 11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`
 12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 字段，只能走 `recordUsage()` 增量路径
