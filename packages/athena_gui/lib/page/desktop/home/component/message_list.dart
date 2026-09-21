@@ -47,16 +47,86 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
-      var messages = chatViewModel.messages.value;
+      // 信号一律在这里读取。LayoutBuilder 的 builder 在布局阶段执行，
+      // 不在 Watch 的依赖追踪范围内：在那里读信号不会订阅，审批/提问
+      // 列表的变化就不会触发重建，卡片只能搭消息流下一次更新的车才
+      // 出现或消失。
+      final messages = chatViewModel.messages.value;
       final loading = chatViewModel.isCurrentChatStreaming.value;
       final loadingHistory = chatViewModel.isLoadingMessages.value;
+      final chatId = chatViewModel.currentChat.value?.id;
+      final sentinel = _displaySentinel();
+      // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
+      final approvals = chatViewModel.pendingApprovals.value
+          .where((r) => r.chatId == chatId)
+          .toList();
+      // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
+      final elicits = chatViewModel.pendingElicits.value
+          .where((r) => r.chatId == chatId)
+          .toList();
+
+      widget.controller?.isWorking = loading;
+      if (_displayedChatId != chatId) {
+        _displayedChatId = chatId;
+        widget.controller?.followBottom();
+      } else {
+        widget.controller?.maintainBottom();
+      }
+
+      // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
+      // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
+      // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
+      //
+      // LayoutBuilder 只做一件事：把约束换算成列宽留白与卡片最大高度。
       return LayoutBuilder(
-        builder: (context, constraints) => _buildData(
-          messages,
-          loading: loading,
-          loadingHistory: loadingHistory,
-          columnPadding: chatColumnPadding(constraints.maxWidth),
-        ),
+        builder: (context, constraints) {
+          final columnPadding = chatColumnPadding(constraints.maxWidth);
+          final cardMaxHeight =
+              constraints.maxHeight * permissionCardMaxHeightFraction;
+          final cardPadding = EdgeInsets.fromLTRB(
+            columnPadding + kChatColumnInnerPadding,
+            0,
+            columnPadding + kChatColumnInnerPadding,
+            12,
+          );
+          return Column(
+            children: [
+              Expanded(
+                child: loadingHistory
+                    ? const SizedBox.expand()
+                    : _buildList(
+                        messages,
+                        loading: loading,
+                        sentinel: sentinel,
+                        columnPadding: columnPadding,
+                      ),
+              ),
+              for (final request in approvals)
+                Padding(
+                  padding: cardPadding,
+                  child: PermissionApprovalCard(
+                    request: request,
+                    maxHeight: cardMaxHeight,
+                    onDecision: (approved, persistExact) =>
+                        chatViewModel.respondApproval(
+                          request,
+                          permissionDecisionOf(approved, persistExact),
+                        ),
+                  ),
+                ),
+              for (final request in elicits)
+                Padding(
+                  padding: cardPadding,
+                  child: ElicitCard(
+                    request: request,
+                    maxHeight: cardMaxHeight,
+                    onSubmit: (answers) =>
+                        chatViewModel.respondElicit(request, answers),
+                  ),
+                ),
+            ],
+          );
+        },
       );
     });
   }
@@ -115,101 +185,38 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         sentinelViewModel.defaultSentinel.value;
   }
 
-  Widget _buildData(
+  /// 消息列表本体：空会话显示角色占位，否则是带懒加载的滚动列表。
+  /// 只接收 build 阶段读好的值，自己不碰信号。
+  Widget _buildList(
     List<MessageEntity> messages, {
     required bool loading,
-    required bool loadingHistory,
+    required SentinelEntity sentinel,
     required double columnPadding,
   }) {
-    var sentinel = _displaySentinel();
-    widget.controller?.isWorking = loading;
-    final chatId = chatViewModel.currentChat.value?.id;
-    if (_displayedChatId != chatId) {
-      _displayedChatId = chatId;
-      widget.controller?.followBottom();
-    } else {
-      widget.controller?.maintainBottom();
-    }
-    // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
-    final approvals = chatViewModel.pendingApprovals.value
-        .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
-        .toList();
-
-    // 当前对话挂起的提问卡片（同一归属规则，排在审批卡片之后）
-    final elicits = chatViewModel.pendingElicits.value
-        .where((r) => r.chatId == chatViewModel.currentChat.value?.id)
-        .toList();
-    final content = messages.isEmpty
-        ? SentinelPlaceholder(sentinel: sentinel)
-        : NotificationListener<ScrollNotification>(
-            onNotification: _handleScrollNotification,
-            child: NotificationListener<ScrollMetricsNotification>(
-              onNotification: widget.controller?.handleMetricsNotification,
-              child: CustomScrollView(
-                controller: widget.controller,
-                slivers: [
-                  MessageCardListSliver(
-                    messages: messages,
-                    loading: loading,
-                    sentinel: sentinel,
-                    // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
-                    // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
-                    // 这里再加内边距会让正文比 Claude 右移 24。
-                    padding: EdgeInsets.symmetric(
-                      horizontal: columnPadding,
-                      vertical: 12,
-                    ),
-                    onResend: widget.onResend,
-                    onSecondaryTapUp: openContextMenu,
-                  ),
-                ],
+    if (messages.isEmpty) return SentinelPlaceholder(sentinel: sentinel);
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: NotificationListener<ScrollMetricsNotification>(
+        onNotification: widget.controller?.handleMetricsNotification,
+        child: CustomScrollView(
+          controller: widget.controller,
+          slivers: [
+            MessageCardListSliver(
+              messages: messages,
+              loading: loading,
+              sentinel: sentinel,
+              // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
+              // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
+              // 这里再加内边距会让正文比 Claude 右移 24。
+              padding: EdgeInsets.symmetric(
+                horizontal: columnPadding,
+                vertical: 12,
               ),
+              onResend: widget.onResend,
+              onSecondaryTapUp: openContextMenu,
             ),
-          );
-    final list = loadingHistory ? const SizedBox.expand() : content;
-    // 返回结构必须与「有无审批」无关：根控件类型一旦随审批状态变化，滚动视图
-    // 及其 ScrollPosition 会被整体重建，新 position 从偏移 0（列表顶部）
-    // 起步，贴底校正要晚一帧才生效，表现为卡片弹出时列表先跳到顶部再跳回底部。
-    return LayoutBuilder(
-      builder: (context, constraints) => Column(
-        children: [
-          Expanded(child: list),
-          for (final request in approvals)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                columnPadding + kChatColumnInnerPadding,
-                0,
-                columnPadding + kChatColumnInnerPadding,
-                12,
-              ),
-              child: PermissionApprovalCard(
-                request: request,
-                maxHeight:
-                    constraints.maxHeight * permissionCardMaxHeightFraction,
-                onDecision: (approved, persistExact) =>
-                    chatViewModel.respondApproval(
-                      request,
-                      permissionDecisionOf(approved, persistExact),
-                    ),
-              ),
-            ),
-          for (final request in elicits)
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                columnPadding + kChatColumnInnerPadding,
-                0,
-                columnPadding + kChatColumnInnerPadding,
-                12,
-              ),
-              child: ElicitCard(
-                request: request,
-                maxHeight:
-                    constraints.maxHeight * permissionCardMaxHeightFraction,
-                onSubmit: (answers) =>
-                    chatViewModel.respondElicit(request, answers),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

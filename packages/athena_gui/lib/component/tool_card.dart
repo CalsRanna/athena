@@ -53,15 +53,12 @@ class _ToolCardState extends State<ToolCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(context),
-          if (widget.hasResult && _expanded) _buildContent(context),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHeader(context),
+        if (widget.hasResult && _expanded) _buildContent(context),
+      ],
     );
   }
 
@@ -94,17 +91,6 @@ class _ToolCardState extends State<ToolCard> {
                       color: foreground,
                     ),
                     const SizedBox(width: 8),
-                    // 工具名完整展示，不参与弹性分配
-                    Text(
-                      widget.toolName,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: AthenaFontSize.label,
-                        fontWeight: FontWeight.w600,
-                        color: foreground,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     // 描述占满剩余宽度，只有真正超出时才省略
                     Expanded(
                       child: Text(
@@ -134,8 +120,7 @@ class _ToolCardState extends State<ToolCard> {
       onTap: () => setState(() => _expanded = false),
       child: Container(
         width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(10, 2, 4, 4),
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Text(
           widget.result!,
           maxLines: 10,
