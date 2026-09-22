@@ -121,7 +121,6 @@ class ChatViewModel {
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
-  final cumulativeTokenTotal = signal(0);
   final pendingImages = listSignal<String>([]);
 
   // ─── Computed ───
@@ -445,7 +444,6 @@ class ChatViewModel {
       );
 
       currentTokenUsage.value = null;
-      cumulativeTokenTotal.value = 0;
 
       final pinned = chats.value.where((c) => c.pinned).toList();
       final unpinned = chats.value.where((c) => !c.pinned).toList();
@@ -612,7 +610,6 @@ class ChatViewModel {
       currentReasoningEffort.value = chat.reasoningEffort;
       pendingImages.value = [];
       currentTokenUsage.value = null;
-      cumulativeTokenTotal.value = chat.tokenTotal;
 
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
       _mergeLiveMessage(chat.id!);
@@ -903,7 +900,6 @@ class ChatViewModel {
         case RunUsageChanged(:final usage, :final chat):
           if (chat.id == currentChat.value?.id) {
             currentTokenUsage.value = usage;
-            cumulativeTokenTotal.value = chat.tokenTotal;
             _updateChatInLists(chat);
           }
         case RunOutcomeChanged():
@@ -1074,7 +1070,6 @@ class ChatViewModel {
     messages.value = [];
     pendingImages.value = [];
     currentTokenUsage.value = null;
-    cumulativeTokenTotal.value = 0;
     await _syncDraftDefaults();
   }
 

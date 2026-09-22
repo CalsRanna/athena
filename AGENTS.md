@@ -422,7 +422,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 
 | Entity | 关键字段 | 说明 |
 |--------|---------|------|
-| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, tokenTotal, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
+| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
 | ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
 | MessageEntity | chatId, role, content, reasoningContent, reasoning, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
 | ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
@@ -458,7 +458,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 
 ### Token 用量
 
-`ChatRepository.recordUsage(chatId, total, prompt, cached)` 独立增量写入路径；`ChatRepository.updateChat()` 显式排除 `token_total` / `context_tokens` / `cached_tokens` 字段，防止并发覆盖。旧的 TokenUsageService 已移除。
+`ChatRepository.recordUsage(chatId, prompt, cached)` 独立快照写入路径：只覆盖写最近一次推理的 `context_tokens` / `cached_tokens`，不累计会话总用量（指示器只关心上下文窗口占用）；`ChatRepository.updateChat()` 显式排除这两个字段，防止并发覆盖。旧的 TokenUsageService 已移除。
 
 ---
 
@@ -614,7 +614,7 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
   不是第二条边框色。
 - **发送/停止键在输入容器的右端内部**（Claude 的位置）；容器**外面**单独一行：
   左侧 `Configure`（裸文字 + 16px 图标）与图片图标，右侧纯文字的模型名
-  （不带 provider、不带图标）、常规字重的推理强度、token 圆环（状态指示，不是控件）。
+  （不带 provider、不带图标）、常规字重的推理强度、上下文圆环（hover 出一句深色 tooltip，点击弹出明细面板）。
 - 实测：上容器高 **40**、输入容器高 **44**、间距 **5 / 4**、底部留白 **12**、
   发送键 **22×22**；占位符是**浅灰 `#898782`**（`textWeak`），不要取成 caret 的深色。
 - **控件阶梯**（`[data-step=1..5]`）：`radius/control/嵌套` = `5/20/16`、`6/24/18`、
@@ -770,7 +770,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 9. **移动端工具精简**：移动端注册 11 个工具（`tool_output_read`、`web_fetch`、`web_search`、`skill`、`skill_evolve`、`experience_learn`、`experience_recall`、`sentinel_list`、`sentinel_get`、`sentinel_evolve`、`sentinel_revert`）；不注册本地文件与进程工具（`file_read` / `file_write` / `file_update` / `bash` / `powershell`）与提问工具（`ask_user_question`：移动端无提问卡片），进化类工具只写沙盒内 `.athena` 目录
 10. **预设数据不再走 migration**：模型/provider 由 ModelCatalogService 从 models.dev 同步；内置 Athena 角色只在 `sentinels.json` 为空时种子一次（`athena_core/lib/seed/`），已存在的角色不覆盖（用户可能已通过 sentinel_evolve 改过）
 11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`
-12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 字段，只能走 `recordUsage()` 增量路径
+12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 快照字段，只能走 `recordUsage()` 快照路径
 13. **列表信号更新**：赋值新列表或 `replaceWhere`，禁止原地 `add()` 修改
 14. **AgentService 单实例运行**：`run()` 已运行时再次调用抛 `StateError`，需先 `abort()` / 等待 `settled`
 15. **UI 展示态不进 MessageEntity**：推理卡片展开状态只存在于 Widget State；新的纯展示状态同样不要加进实体或文件

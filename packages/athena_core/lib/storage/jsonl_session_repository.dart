@@ -26,8 +26,8 @@ class JsonlSessionRepository
   JsonlSessionRepository({
     required Directory sessionsDir,
     required IdAllocator idAllocator,
-  })  : _sessionsDir = sessionsDir,
-        _idAllocator = idAllocator;
+  }) : _sessionsDir = sessionsDir,
+       _idAllocator = idAllocator;
 
   final Directory _sessionsDir;
   final IdAllocator _idAllocator;
@@ -53,9 +53,11 @@ class JsonlSessionRepository
   /// 退回独立实例,仅影响该文件自身的并发。
   SessionJsonlStore _storeForFile(File file) {
     final name = file.uri.pathSegments.last;
-    final chatId = int.tryParse(name.endsWith('.jsonl')
-        ? name.substring(0, name.length - '.jsonl'.length)
-        : name);
+    final chatId = int.tryParse(
+      name.endsWith('.jsonl')
+          ? name.substring(0, name.length - '.jsonl'.length)
+          : name,
+    );
     return chatId == null
         ? SessionJsonlStore(file: file, idAllocator: _idAllocator)
         : _storeFor(chatId);
@@ -108,13 +110,11 @@ class JsonlSessionRepository
   Future<void> updateChat(ChatEntity chat) async {
     final id = chat.id;
     if (id == null) return;
-    // 接口契约:token_total / context_tokens / cached_tokens 三列由
-    // recordUsage 独立路径管理,整行覆盖会回退累加值。读当前行保留
-    // 三列再写回(与旧 chats.jsonl 实现一致)。
+    // 接口契约:context_tokens / cached_tokens 两列由 recordUsage 独立
+    // 路径管理,整行覆盖会回退快照。读当前行保留两列再写回。
     await _storeFor(id).updateChatRow((row) {
       final current = ChatEntity.fromJson(row);
       final merged = chat.copyWith(
-        tokenTotal: current.tokenTotal,
         contextTokens: current.contextTokens,
         cachedTokens: current.cachedTokens,
       );
@@ -135,24 +135,18 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<int> recordUsage(
+  Future<void> recordUsage(
     int chatId,
-    int tokenDelta,
     int contextTokens,
     int cachedTokens,
   ) async {
-    // 单次锁内完成"读→累加→写",与 updateChat 并发时不丢数据
-    final updated = await _storeFor(chatId).updateChatRow((row) {
+    // 单次锁内完成"读→改→写",与 updateChat 并发时不丢数据
+    await _storeFor(chatId).updateChatRow((row) {
       final chat = ChatEntity.fromJson(row);
       return chat
-          .copyWith(
-            tokenTotal: chat.tokenTotal + tokenDelta,
-            contextTokens: contextTokens,
-            cachedTokens: cachedTokens,
-          )
+          .copyWith(contextTokens: contextTokens, cachedTokens: cachedTokens)
           .toJson();
     });
-    return updated == null ? 0 : ChatEntity.fromJson(updated).tokenTotal;
   }
 
   @override
@@ -209,10 +203,7 @@ class JsonlSessionRepository
         final content = row['content'];
         if (content is String && content.isNotEmpty) {
           lastContent = content;
-          return ChatHistoryEntity(
-            chat: chat,
-            lastMessageContent: lastContent,
-          );
+          return ChatHistoryEntity(chat: chat, lastMessageContent: lastContent);
         }
       }
       if (rows.length < 20) break; // 已扫到文件头
@@ -230,12 +221,13 @@ class JsonlSessionRepository
     bool includeCompacted = true,
   }) async {
     final rows = await _storeFor(chatId).readMessageRows();
-    final messages = rows
-        .map(MessageEntity.fromJson)
-        .where((m) => includeCompacted || !m.compacted)
-        .toList()
-      // 文件行序即插入序;防御性排序保证 id 升序
-      ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+    final messages =
+        rows
+            .map(MessageEntity.fromJson)
+            .where((m) => includeCompacted || !m.compacted)
+            .toList()
+          // 文件行序即插入序;防御性排序保证 id 升序
+          ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
     return messages;
   }
 
@@ -266,9 +258,9 @@ class JsonlSessionRepository
   @override
   Future<void> deleteMessage(int id) async {
     for (final file in await _sessionFiles()) {
-      final deleted = await _storeForFile(file).deleteMessageWhere(
-        (row) => row['id'] == id,
-      );
+      final deleted = await _storeForFile(
+        file,
+      ).deleteMessageWhere((row) => row['id'] == id);
       if (deleted > 0) return;
     }
   }
@@ -315,7 +307,9 @@ class JsonlSessionRepository
     required int count,
     int? beforeId,
   }) async {
-    final rows = await _storeFor(chatId).loadRecentRows(count, beforeId: beforeId);
+    final rows = await _storeFor(
+      chatId,
+    ).loadRecentRows(count, beforeId: beforeId);
     final messages = <MessageEntity>[];
     for (final row in rows) {
       try {

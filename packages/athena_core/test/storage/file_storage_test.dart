@@ -79,13 +79,16 @@ void main() {
       for (var i = 0; i < 10; i++) ...[
         a.sessionRepository.storeMessage(msg('a$i')),
         b.sessionRepository.storeMessage(msg('b$i')),
-        a.sessionRepository.recordUsage(chatId, 1, 0, 0),
+        a.sessionRepository.recordUsage(chatId, 100 + i, 10),
       ],
     ]);
     final messages = await b.sessionRepository.getMessagesByChatId(chatId);
     expect(messages.length, 20);
     expect(messages.map((m) => m.id).toSet().length, 20);
-    expect((await a.sessionRepository.getChatById(chatId))!.tokenTotal, 10);
+    // 快照列是覆盖写:最后落盘的是某一次的值,但一定写进去了
+    final chat = (await a.sessionRepository.getChatById(chatId))!;
+    expect(chat.contextTokens, inInclusiveRange(100, 109));
+    expect(chat.cachedTokens, 10);
   });
 
   test('reset 清空业务数据但保留目录缓存', () async {

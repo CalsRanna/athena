@@ -11,24 +11,20 @@ abstract class ChatRepository {
 
   Future<int> createChat(ChatEntity chat);
 
-  /// 更新聊天。实现方注意：token_total / context_tokens / cached_tokens 三列
-  /// 由独立写入路径（[recordUsage]）管理，整行覆盖写回会回退已累加/已覆盖值，
-  /// 更新时应显式排除这三列，与增量路径解耦。
+  /// 更新聊天。实现方注意：context_tokens / cached_tokens 两列由独立写入
+  /// 路径（[recordUsage]）管理，整行覆盖写回会回退已覆盖的快照，
+  /// 更新时应显式排除这两列，与快照路径解耦。
   Future<void> updateChat(ChatEntity chat);
 
   Future<void> deleteChat(int id);
 
   Future<List<ChatEntity>> getRecentChats({int limit = 10});
 
-  /// 原子地累加 [chatId] 的 token_total 列 [delta]，
-  /// 同时覆盖写 context_tokens 与 cached_tokens 快照列，不触碰 updatedAt。
-  /// 返回累加后的最新行。
-  Future<int> recordUsage(
-    int chatId,
-    int tokenDelta,
-    int contextTokens,
-    int cachedTokens,
-  );
+  /// 覆盖写 [chatId] 的 context_tokens / cached_tokens 快照列（最近一次推理
+  /// 的 prompt token 数与其中的缓存命中数），不触碰 updatedAt。
+  ///
+  /// 只记上下文，不累计会话总用量：指示器只关心上下文窗口占用。
+  Future<void> recordUsage(int chatId, int contextTokens, int cachedTokens);
 
   Future<int> getChatsCount();
 

@@ -6,8 +6,7 @@ import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
-import 'package:athena_core/agent/elicit/elicit_prompt.dart'
-    show ElicitPrompt;
+import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -543,7 +542,6 @@ class AgentRunCoordinator {
         } else if (event is AgentUsageEvent) {
           await _chatRepo.recordUsage(
             chat.id!,
-            event.usage.totalTokens,
             event.usage.promptTokens,
             event.usage.cachedTokens ?? 0,
           );

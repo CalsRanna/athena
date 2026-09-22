@@ -74,7 +74,7 @@ class SessionJsonlStore {
     });
   }
 
-  /// 单次锁内读-改-写会话元数据(如 recordUsage 的累加写)。
+  /// 单次锁内读-改-写会话元数据(如 recordUsage 的快照写)。
   ///
   /// 文件无 chat 行时 [transform] 不执行,返回 null;成功返回更新后的行。
   /// 与独立调用的 readChatRow + writeChatRow 不同,不会被并发 updateChat
