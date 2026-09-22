@@ -1,6 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
-import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -39,7 +39,7 @@ class DesktopChatListView extends StatelessWidget {
       var chats = chatViewModel.chats.value;
       chatViewModel.initLastSelectedIndex();
       // 侧栏结构对齐 Claude：上方是会话列表（置顶 / 其余分两组），
-      // 底部常驻一个账号/设置页脚。
+      // 底部常驻一个账号式页脚（点击弹出设置 / 关于菜单）。
       final items = _buildSidebarItems(chats);
       return Column(
         children: [
@@ -64,7 +64,7 @@ class DesktopChatListView extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
                   ),
           ),
-          const _SidebarFooter(),
+          const DesktopSidebarFooter(),
         ],
       );
     });
@@ -356,75 +356,6 @@ class _SidebarEntry extends _SidebarItem {
   final int index;
   final ChatEntity chat;
   const _SidebarEntry({required this.index, required this.chat});
-}
-
-/// 侧栏底部常驻页脚：应用标识 + 设置入口。
-///
-/// 对齐 Claude 的账号页脚位置；Athena 没有账号体系，这里承担设置入口，
-/// 因此顶栏不再重复放设置按钮。
-class _SidebarFooter extends StatelessWidget {
-  const _SidebarFooter();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Container(
-      decoration: BoxDecoration(
-        // 外壳分隔线（页脚上边）：用比 border 轻一档的 borderChrome
-        border: Border(top: BorderSide(color: colors.borderChrome)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AthenaRadius.pill),
-            child: Image.asset(
-              'asset/image/launcher_icon_ios_512x512.jpg',
-              fit: BoxFit.cover,
-              filterQuality: FilterQuality.medium,
-              height: 24,
-              width: 24,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Athena',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
-            ),
-          ),
-          _FooterIconButton(
-            icon: HugeIcons.strokeRoundedSettings01,
-            onTap: () => DesktopSettingProviderRoute().push(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FooterIconButton extends StatelessWidget {
-  final IconData icon;
-  final void Function() onTap;
-  const _FooterIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(icon, size: 16, color: colors.iconSecondary),
-        ),
-      ),
-    );
-  }
 }
 
 /// 侧栏顶部导航块。

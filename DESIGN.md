@@ -42,7 +42,7 @@ Athena 是一个跨平台的 AI 工作台。它的视觉语言基准是 **Claude
 
 Athena 在 Claude 语言之上的自有取舍：
 1. 会话上下文（角色、模型）以 chip 形式内嵌在 composer 顶部；
-2. 侧栏页脚承载设置入口（Claude 那里是账号）。
+2. 侧栏页脚是账号式菜单入口（Claude 那里是账号），点开只有设置与关于两个真实条目。
 
 **核心设计理念**
 - 背景必须退后，内容和控制区必须前置。
@@ -624,7 +624,10 @@ Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静�
   否则这条线会横穿侧栏右边线。顶栏里的侧栏条本身**满高 0..46**，它的右边线才是
   与下方侧栏右边线相接的同一段竖线（`AthenaAppBar` 里的 `sidebarStrip` /
   `workspaceStrip`，外层 `CrossAxisAlignment.stretch`）
-- 侧栏内容：分组列表（Pinned / Chats）+ 底部页脚（应用标识 + 设置入口）
+- 侧栏内容：分组列表（Pinned / Chats）+ 底部页脚。页脚是一整行可点的应用标识
+  （标识 + 名称 + 下拉箭头，行高 32、圆角 `row`，hover 与展开中上 `surfaceHover`），
+  点击在行上方 4 处弹出与行同宽的菜单：头部「应用名 + 版本」，条目 Settings /
+  About Athena（带 16 图标）；面板样式同右键菜单
 - **会话列定宽居中**：消息与 composer 走同一条 768 宽的列（`chatColumnPadding()`
   按画布宽度算两侧留白），左右边缘对齐；画布不够宽时退回 32 的最小留白
 - **消息不带头像**（Claude 的对话渲染里没有头像元素）
@@ -805,9 +808,10 @@ monospace body text. Code is the only monospace in the UI."
 "Build a `#FBFBF9` sidebar, 288 wide, separated from the `#FCFCFB` canvas by a
 1px `#EFEFED` line. Rows are 26 high with 7 radius and 13px system-font labels
 in `#52514E` that do not change on hover; hover fill `#F0EFEC`, selected fill
-`#EDECE9` with w600 text. Leading is a 6px status dot; trailing is empty until
-hover reveals a `⋮` button. The footer holds the app mark and the settings
-entry."
+`#EDECE9` with w400 text. Leading is a 6px status dot; trailing is empty until
+hover reveals a `⋮` button. The footer is one hoverable 32px row (app mark,
+name, chevron) that opens a same-width menu above itself: a name/version
+header, then Settings and About items with 16px icons."
 
 ### Final Instruction to Agents
 

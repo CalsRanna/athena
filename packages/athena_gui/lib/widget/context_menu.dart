@@ -9,19 +9,31 @@ class DesktopContextMenu extends StatelessWidget {
   final Offset offset;
   final double width;
   final List<Widget> children;
+
+  /// 为真时 [offset] 是菜单的**左下角**，菜单从锚点向上展开
+  /// （侧栏页脚菜单弹在页脚行上方）；默认 [offset] 是左上角。
+  final bool upward;
+
   const DesktopContextMenu({
     super.key,
     required this.offset,
     this.width = 120,
+    this.upward = false,
     required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      const SizedBox.expand(),
-      Positioned(left: offset.dx, top: offset.dy, child: _buildMenu(context)),
-    ];
+    var menu = _buildMenu(context);
+    // 浮层铺满整窗，所以"离底边的距离"直接用窗高减锚点 y。
+    var positioned = upward
+        ? Positioned(
+            left: offset.dx,
+            bottom: MediaQuery.sizeOf(context).height - offset.dy,
+            child: menu,
+          )
+        : Positioned(left: offset.dx, top: offset.dy, child: menu);
+    var children = [const SizedBox.expand(), positioned];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onSecondaryTap: dismissContextMenu,
@@ -117,12 +129,20 @@ class DesktopContextMenuTile extends StatefulWidget {
   /// 危险项（如 Delete）：Claude 用深红文字。
   final bool danger;
 
+  /// 条目左侧的图标（Claude 的账号菜单有，右键菜单没有）。
+  final IconData? icon;
+
+  /// 条目右侧的附加内容（快捷键提示之类），样式由调用方定。
+  final Widget? trailing;
+
   const DesktopContextMenuTile({
     super.key,
     this.danger = false,
     this.enabled = true,
+    this.icon,
     this.onTap,
     required this.text,
+    this.trailing,
   });
 
   @override
@@ -149,13 +169,32 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       color: hover && widget.enabled ? colors.surfaceHover : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
+    var label = Text(
+      widget.text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: textStyle,
+    );
+    // 没有图标和尾部时保持纯文字，右键菜单不受影响。
+    Widget content = widget.icon == null && widget.trailing == null
+        ? label
+        : Row(
+            children: [
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 16, color: textColor),
+                const SizedBox(width: 10),
+              ],
+              Expanded(child: label),
+              if (widget.trailing != null) widget.trailing!,
+            ],
+          );
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
       // Claude 实测：菜单项高约 32 逻辑
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       width: width,
-      child: Text(widget.text, style: textStyle),
+      child: content,
     );
     var mouseRegion = MouseRegion(
       cursor: widget.enabled
@@ -396,16 +435,28 @@ class _DesktopContextMenuTileWithSubmenuState
 
 class DesktopContextMenuManager {
   OverlayEntry? _entry;
+  void Function()? _onDismissed;
   static DesktopContextMenuManager instance = DesktopContextMenuManager();
-  void show(BuildContext context, Widget contextMenu) {
-    if (_entry != null) _entry!.remove();
+
+  /// [onDismissed] 在菜单以任何方式关掉时回调一次——点外面、选中条目、
+  /// 被下一个菜单顶掉——供触发它的控件复位"展开中"状态。
+  void show(
+    BuildContext context,
+    Widget contextMenu, {
+    void Function()? onDismissed,
+  }) {
+    dismiss();
     _entry = OverlayEntry(builder: (_) => contextMenu);
+    _onDismissed = onDismissed;
     Overlay.of(context).insert(_entry!);
   }
 
   void dismiss() {
     _entry?.remove();
     _entry = null;
+    var callback = _onDismissed;
+    _onDismissed = null;
+    callback?.call();
   }
 }
 
