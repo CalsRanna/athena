@@ -117,7 +117,9 @@ class ChatViewModel {
   final currentTemperature = signal(defaultDraftTemperature);
 
   /// 当前对话（或草稿态）的推理强度。null = 不传参、使用模型默认。
-  final currentReasoningEffort = signal<String?>(null);
+  final currentReasoningEffort = signal<String>(
+    ChatEntity.defaultReasoningEffort,
+  );
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
@@ -715,7 +717,7 @@ class ChatViewModel {
   }
 
   Future<void> updateReasoningEffort(
-    String? effort, {
+    String effort, {
     required ChatEntity chat,
   }) async {
     error.value = null;
@@ -783,7 +785,7 @@ class ChatViewModel {
     currentTemperature.value = temperature;
   }
 
-  void updateCurrentReasoningEffort(String? effort) {
+  void updateCurrentReasoningEffort(String effort) {
     currentReasoningEffort.value = effort;
   }
 
@@ -1094,6 +1096,6 @@ class ChatViewModel {
     draftSentinel.value = null;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
-    currentReasoningEffort.value = null;
+    currentReasoningEffort.value = ChatEntity.defaultReasoningEffort;
   }
 }

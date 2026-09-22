@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -50,25 +48,15 @@ class DesktopModelSelectMenu extends StatelessWidget {
           ),
       ],
     ];
-    // 模型多时限高滚动。Claude 的选择器就是一小段列表，这里封顶 320
-    // （约十行），再高就在面板内滚；同时不超过锚点上方、离窗顶留 12 的空间。
-    final maxHeight = math.min(320.0, math.max(anchor.top - 20, 120.0));
     return DesktopContextMenu(
       // 面板自带 4 内边距，左边要比"右对齐"再让出 8
       offset: Offset(anchor.right - contentWidth - 8, anchor.top - 8),
       upward: true,
       width: contentWidth,
       children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SizedBox(
-            width: contentWidth,
-            child: ListView(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              children: children,
-            ),
-          ),
+        DesktopContextMenuList(
+          maxHeight: DesktopContextMenuList.maxHeightAbove(anchor),
+          children: children,
         ),
       ],
     );
