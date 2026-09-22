@@ -82,7 +82,7 @@ class DesktopChatListView extends StatelessWidget {
     }
     return [
       if (pinned.isNotEmpty) ...[const _SidebarGroup('Pinned'), ...pinned],
-      if (rest.isNotEmpty) ...[const _SidebarGroup('Chats'), ...rest],
+      if (rest.isNotEmpty) ...[const _SidebarGroup('Recent'), ...rest],
     ];
   }
 

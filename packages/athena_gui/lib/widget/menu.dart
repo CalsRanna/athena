@@ -81,7 +81,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
         const SizedBox();
     var children = [
       iconTheme,
-      if (leading != null) const SizedBox(width: 4),
+      if (leading != null) const SizedBox(width: 8),
       Expanded(child: text),
       trailing,
     ];

@@ -11,18 +11,21 @@ class ChatEntity {
   final int modelId;
   final int sentinelId;
   final double temperature;
+
   /// OpenAI 官方推理强度值（low/medium/high/none/minimal/xhigh）。
   /// null = 不传参，使用模型默认推理强度。
   final String? reasoningEffort;
+
   /// 上下文保留策略。0 = 无历史（每次独立请求），-1 = 自动管理（compact）。
   final int retention;
   final bool pinned;
-  /// 本会话累计消耗的 token 总量（跨重启持久化）。
-  final int tokenTotal;
+
   /// 最近一次推理的 prompt token 数（覆盖写，用于上下文窗口占用率）。
   final int contextTokens;
+
   /// 最近一次推理的缓存命中 token 数（覆盖写，用于缓存命中率）。
   final int cachedTokens;
+
   /// 本会话可选的工作文件夹（绝对路径）。
   ///
   /// null = 不指定：shell 默认在用户主目录执行、文件工具的相对路径按进程
@@ -45,7 +48,6 @@ class ChatEntity {
     this.reasoningEffort,
     this.retention = -1,
     this.pinned = false,
-    this.tokenTotal = 0,
     this.contextTokens = 0,
     this.cachedTokens = 0,
     this.workspacePath,
@@ -63,7 +65,6 @@ class ChatEntity {
       reasoningEffort: json.getStringOrNull('reasoning_effort'),
       retention: json.getInt('retention', defaultValue: -1),
       pinned: json.getBool('pinned'),
-      tokenTotal: json.getInt('token_total', defaultValue: 0),
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
       cachedTokens: json.getInt('cached_tokens', defaultValue: 0),
       workspacePath: json.getStringOrNull('workspace_path'),
@@ -82,7 +83,6 @@ class ChatEntity {
       if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
       'retention': retention,
       'pinned': pinned ? 1 : 0,
-      'token_total': tokenTotal,
       'context_tokens': contextTokens,
       'cached_tokens': cachedTokens,
       // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
@@ -106,7 +106,6 @@ class ChatEntity {
     int? retention,
     Object? workspacePath = _unset,
     bool? pinned,
-    int? tokenTotal,
     int? contextTokens,
     int? cachedTokens,
     DateTime? createdAt,
@@ -126,7 +125,6 @@ class ChatEntity {
           ? this.workspacePath
           : workspacePath as String?,
       pinned: pinned ?? this.pinned,
-      tokenTotal: tokenTotal ?? this.tokenTotal,
       contextTokens: contextTokens ?? this.contextTokens,
       cachedTokens: cachedTokens ?? this.cachedTokens,
       createdAt: createdAt ?? this.createdAt,
