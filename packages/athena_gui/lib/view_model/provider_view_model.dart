@@ -55,15 +55,18 @@ class ProviderViewModel {
     }
   }
 
-  Future<void> storeProvider(ProviderEntity provider) async {
+  /// 新建 provider;成功返回带 id 的实体(设置页据此直接打开它)。
+  Future<ProviderEntity?> storeProvider(ProviderEntity provider) async {
     isLoading.value = true;
     error.value = null;
     try {
       var id = await _repository.storeProvider(provider);
       var created = provider.copyWith(id: id);
       providers.value = [...providers.value, created];
+      return created;
     } catch (e) {
       AthenaDialog.error(e.toString());
+      return null;
     } finally {
       isLoading.value = false;
     }

@@ -34,7 +34,7 @@ class AthenaSettingsNav extends StatelessWidget {
 
 /// 导航顶部的搜索框。实测高 32、宽与行同宽、圆角 8、
 /// 底色 `#FEFEFD`、描边 `#E6E6E5`、图标与占位都是 `#898781`。
-class AthenaSettingsSearchField extends StatelessWidget {
+class AthenaSettingsSearchField extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
   final String placeholder;
@@ -46,11 +46,41 @@ class AthenaSettingsSearchField extends StatelessWidget {
   });
 
   @override
+  State<AthenaSettingsSearchField> createState() =>
+      _AthenaSettingsSearchFieldState();
+}
+
+class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
+  final focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    focusNode.addListener(_handleChange);
+    widget.controller.addListener(_handleChange);
+  }
+
+  @override
+  void dispose() {
+    focusNode.removeListener(_handleChange);
+    widget.controller.removeListener(_handleChange);
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    var focused = focusNode.hasFocus;
     var decoration = BoxDecoration(
       color: colors.surfaceMobile,
-      border: Border.all(color: colors.neutralBorder),
+      border: Border.all(
+        color: focused ? colors.neutralBorderStrong : colors.neutralBorder,
+      ),
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );
     var icon = Icon(
@@ -69,24 +99,53 @@ class AthenaSettingsSearchField extends StatelessWidget {
       height: 1.3,
     );
     var field = TextField(
-      controller: controller,
+      controller: widget.controller,
       cursorColor: colors.textPrimary,
       cursorHeight: 14,
       cursorWidth: 1.5,
       decoration: InputDecoration.collapsed(
-        hintText: placeholder,
+        hintText: widget.placeholder,
         hintStyle: hintStyle,
       ),
-      onChanged: onChanged,
+      focusNode: focusNode,
+      onChanged: widget.onChanged,
+      onTapOutside: (_) => focusNode.unfocus(),
       style: textStyle,
     );
-    var children = [icon, const SizedBox(width: 8), Expanded(child: field)];
-    return Container(
+    // 有输入时右端出现清除键，与 Claude 的搜索框一致
+    var clear = widget.controller.text.isEmpty
+        ? null
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _clear,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Icon(
+                HugeIcons.strokeRoundedCancel01,
+                color: colors.textWeak,
+                size: 12,
+              ),
+            ),
+          );
+    var children = [
+      icon,
+      const SizedBox(width: 8),
+      Expanded(child: field),
+      if (clear != null) const SizedBox(width: 6),
+      if (clear != null) clear,
+    ];
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
       height: AthenaSettings.searchHeight,
       decoration: decoration,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(children: children),
     );
+  }
+
+  void _clear() {
+    widget.controller.clear();
+    widget.onChanged?.call('');
   }
 }
 
@@ -139,6 +198,9 @@ class AthenaSettingsNavGroup extends StatelessWidget {
 
 /// 导航行：图标 + 标签。实测行高 32、圆角 8、左内缩 12、
 /// 图标 16、图标与标签间距 12。
+///
+/// 选中行只换底色与文字色，**不加粗**：Claude 的导航选中行是 `#0B0B0B`
+/// 的常规字重（见截图 `Claude Code` 行），加粗会让整列在切换时跳动。
 class AthenaSettingsNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -174,7 +236,7 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
     var textStyle = TextStyle(
       color: contentColor,
       fontSize: AthenaSettings.navFontSize,
-      fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
+      fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
       height: 1.3,
     );
     var children = [
@@ -198,7 +260,10 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
       ),
       duration: const Duration(milliseconds: 120),
       height: AthenaSettings.navRowHeight,
-      padding: const EdgeInsets.only(left: 12, right: 8),
+      padding: const EdgeInsets.only(
+        left: AthenaSettings.navRowPadding,
+        right: 8,
+      ),
       child: Row(children: children),
     );
     return GestureDetector(

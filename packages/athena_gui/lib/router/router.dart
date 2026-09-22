@@ -22,7 +22,7 @@ class AthenaRouter extends RootStackRouter {
       DesktopRoute(page: DesktopSettingSkillRoute.page),
       DesktopRoute(page: DesktopSettingExperienceRoute.page),
       DesktopRoute(page: DesktopSettingAgentRoute.page),
-      DesktopRoute(page: DesktopSettingAdvancedRoute.page),
+      DesktopRoute(page: DesktopSettingGeneralRoute.page),
       DesktopRoute(page: DesktopSettingAboutRoute.page),
     ];
     // 设置是**非透明**路由：它自己画遮罩与居中面板，浮在应用之上

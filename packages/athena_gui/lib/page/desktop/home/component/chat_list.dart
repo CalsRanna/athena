@@ -294,9 +294,6 @@ class _StatusDot extends StatelessWidget {
     } else if (renaming) {
       base = colors.statusWarning;
       alpha = 1;
-    } else if (pinned) {
-      base = colors.textRowLabel;
-      alpha = 1;
     } else {
       base = colors.iconSecondary;
       alpha = hover ? 0.75 : 0.45;

@@ -1,22 +1,21 @@
-import 'package:athena_core/entity/model_entity.dart';
-import 'package:athena_gui/page/desktop/home/component/model_selector.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/page/desktop/setting/component/model_menu.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
-import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
-import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:athena_gui/widget/settings/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// 桌面端默认模型设置。
+/// 桌面端默认模型设置：一个分区、三行，每行一个下拉。
 ///
-/// 旧版这里是「Agent / Topic Naming / Sentinel Metadata Generation」二阶导航，
-/// 现在改成同一内容区的三个分区，每个分区一行「说明 + 下拉选择」。
+/// 旧版是三个各只有一行的分区，分区标题与行标签互相重复（`Agent` /
+/// `Agent Model`）。Claude 的做法是**一个分区放一组同类设置**，这里改成
+/// 「Default models」一个分区，三行分别是会话、话题命名、角色元数据。
+/// 选了即保存，没有 Save。
 @RoutePage()
 class DesktopSettingDefaultModelPage extends StatefulWidget {
   const DesktopSettingDefaultModelPage({super.key});
@@ -28,111 +27,88 @@ class DesktopSettingDefaultModelPage extends StatefulWidget {
 
 class _DesktopSettingDefaultModelPageState
     extends State<DesktopSettingDefaultModelPage> {
-  late final SettingViewModel settingViewModel;
+  final settingViewModel = GetIt.instance<SettingViewModel>();
+  final modelViewModel = GetIt.instance<ModelViewModel>();
 
   @override
   void initState() {
     super.initState();
-    settingViewModel = GetIt.instance<SettingViewModel>();
+    // 保证下拉里有最新的启用模型（用户可能刚在 Providers 里开了一家）
+    modelViewModel.loadEnabledModels();
   }
 
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final hasModels = modelViewModel.groupedEnabledModels.value.isNotEmpty;
       return AthenaSettingsPane(
         children: [
           AthenaSettingsSection(
             first: true,
-            title: 'Agent',
+            title: 'Default models',
+            description:
+                'Which model each job starts with. A chat can still switch '
+                'models from the composer.',
             children: [
-              AthenaSettingsRow(
-                label: 'Agent Model',
-                description: 'Model designated for new chat',
-                control: _ModelSelect(
-                  model: settingViewModel.chatModelId.value,
-                  onChanged: settingViewModel.updateChatModelId,
+              if (!hasModels)
+                const AthenaSettingsEmptyState(
+                  icon: HugeIcons.strokeRoundedAiBrain01,
+                  title: 'No enabled models',
+                  hint:
+                      'Enable a provider and add an API key under Providers '
+                      'to pick default models.',
                 ),
-              ),
-            ],
-          ),
-          AthenaSettingsSection(
-            title: 'Topic Naming',
-            children: [
-              AthenaSettingsRow(
-                label: 'Topic Naming Model',
-                description: 'Model designated for automatic naming topic',
-                control: _ModelSelect(
-                  model: settingViewModel.chatNamingModelId.value,
-                  onChanged: settingViewModel.updateChatNamingModelId,
+              if (hasModels) ...[
+                AthenaSettingsRow(
+                  label: 'Chat',
+                  description: 'Used by new chats and the agent loop.',
+                  control: _buildSelect(
+                    settingViewModel.chatModelId.value,
+                    settingViewModel.updateChatModelId,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          AthenaSettingsSection(
-            title: 'Sentinel Metadata',
-            children: [
-              AthenaSettingsRow(
-                label: 'Sentinel Metadata Generation Model',
-                description:
-                    'Model designated for generating sentinel name, '
-                    'description, avatar, and tags',
-                control: _ModelSelect(
-                  model: settingViewModel.sentinelMetadataGenerationModelId.value,
-                  onChanged:
-                      settingViewModel.updateSentinelMetadataGenerationModelId,
+                AthenaSettingsRow(
+                  label: 'Topic naming',
+                  description:
+                      'Names a chat after its first exchange. Falls back to '
+                      'the chat model.',
+                  control: _buildSelect(
+                    settingViewModel.chatNamingModelId.value,
+                    settingViewModel.updateChatNamingModelId,
+                    clearable: true,
+                  ),
                 ),
-              ),
+                AthenaSettingsRow(
+                  label: 'Sentinel metadata',
+                  description:
+                      'Generates a Sentinel\'s name, description, avatar '
+                      'and tags from its prompt.',
+                  control: _buildSelect(
+                    settingViewModel.sentinelMetadataGenerationModelId.value,
+                    settingViewModel.updateSentinelMetadataGenerationModelId,
+                    clearable: true,
+                  ),
+                ),
+              ],
             ],
           ),
         ],
       );
     });
   }
-}
 
-/// 模型下拉：外观是 Claude 的 select 控件，点开的是既有的模型选择弹层。
-class _ModelSelect extends StatelessWidget {
-  final int? model;
-  final void Function(int)? onChanged;
-  const _ModelSelect({this.model, this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSelect(
+    int modelId,
+    Future<void> Function(int) onChanged, {
+    bool clearable = false,
+  }) {
     return SizedBox(
-      width: AthenaSettings.controlColumnWidth,
-      child: AthenaSettingsSelect(
-        label: _buildLabel(context),
-        onTap: showModelSelectorDialog,
+      width: AthenaSettingsControlWidth.wide,
+      child: DesktopSettingModelSelect(
+        modelId: modelId,
+        clearable: clearable,
+        onChanged: onChanged,
       ),
     );
-  }
-
-  void handleSelect(ModelEntity model) {
-    AthenaDialog.dismiss();
-    onChanged?.call(model.id!);
-  }
-
-  void showModelSelectorDialog() {
-    AthenaDialog.show(
-      DesktopModelSelectDialog(onTap: handleSelect),
-      barrierDismissible: true,
-    );
-  }
-
-  String _buildLabel(BuildContext context) {
-    if (model == null || model == 0) return 'No Model';
-    final modelViewModel = GetIt.instance<ModelViewModel>();
-    final providerViewModel = GetIt.instance<ProviderViewModel>();
-    final modelEntity = modelViewModel.models.value
-        .where((m) => m.id == model)
-        .firstOrNull;
-    if (modelEntity == null) return 'No Model';
-    var modelName = modelEntity.name;
-    final aiProvider = providerViewModel.providers.value
-        .where((p) => p.id == modelEntity.providerId)
-        .firstOrNull;
-    var providerName = aiProvider?.name ?? '';
-    if (providerName.isEmpty) return modelName;
-    return '$modelName | $providerName';
   }
 }

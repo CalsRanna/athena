@@ -1,3 +1,4 @@
+import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -10,27 +11,28 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// 桌面端 Advanced 设置。
+/// 桌面端 General（应用本身的设置）：Appearance / Data / Danger zone。
 ///
-/// 旧版这里是「Appearance / Data」二阶导航，现在是同一内容区的两个分区 +
-/// 一个 Danger Zone 分区（Claude 的设置也是这种「一个导航项对应多个分区」）。
-/// 主题选择改用 Claude 的**分段控件**（Claude 的 Appearance 分区正是分段控件）。
+/// 对应 Claude 设置里 `Desktop app → General`。旧名 Advanced 不准确——
+/// 这里放的是主题、字号、备份这些最常用的项，不是「高级」选项。
 @RoutePage()
-class DesktopSettingAdvancedPage extends StatefulWidget {
-  const DesktopSettingAdvancedPage({super.key});
+class DesktopSettingGeneralPage extends StatefulWidget {
+  const DesktopSettingGeneralPage({super.key});
 
   @override
-  State<DesktopSettingAdvancedPage> createState() =>
-      _DesktopSettingAdvancedPageState();
+  State<DesktopSettingGeneralPage> createState() =>
+      _DesktopSettingGeneralPageState();
 }
 
-class _DesktopSettingAdvancedPageState
-    extends State<DesktopSettingAdvancedPage> {
-  final viewModel = GetIt.instance.get<SettingViewModel>();
+class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
+  final viewModel = GetIt.instance<SettingViewModel>();
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final dataDirectory = GetIt.instance<FileStorage>().root.path;
     return AthenaSettingsPane(
       children: [
         AthenaSettingsSection(
@@ -39,12 +41,10 @@ class _DesktopSettingAdvancedPageState
           children: [
             AthenaSettingsRow(
               label: 'Theme',
-              description:
-                  'System follows the appearance selected on this device.',
+              description: 'System follows the appearance selected on this device.',
               control: Watch((context) {
-                var mode = viewModel.themeMode.value;
                 return AthenaSettingsSegmented<ThemeMode>(
-                  selected: mode,
+                  selected: viewModel.themeMode.value,
                   onChanged: viewModel.setThemeMode,
                   options: const [
                     AthenaSegmentOption(value: ThemeMode.light, label: 'Light'),
@@ -58,13 +58,11 @@ class _DesktopSettingAdvancedPageState
               }),
             ),
             AthenaSettingsRow(
-              label: 'Font size',
-              description:
-                  'Applies to all text — interface, conversation, and code.',
+              label: 'Text size',
+              description: 'Applies to the interface, conversations and code.',
               control: Watch((context) {
-                var size = viewModel.textSize.value;
                 return AthenaSettingsSegmented<AthenaTextSize>(
-                  selected: size,
+                  selected: viewModel.textSize.value,
                   onChanged: viewModel.setTextSize,
                   options: [
                     for (final option in AthenaTextSize.values)
@@ -82,35 +80,49 @@ class _DesktopSettingAdvancedPageState
           title: 'Data',
           children: [
             AthenaSettingsRow(
+              label: 'Data folder',
+              description: dataDirectory,
+              control: AthenaSecondaryButton.small(
+                onTap: () => _openFolder(dataDirectory),
+                child: const Text('Show in Finder'),
+              ),
+            ),
+            AthenaSettingsRow(
               label: 'Export configuration',
               description:
-                  'Save providers, models, and Sentinels as a JSON backup.',
+                  'Save providers, models and Sentinels as a JSON backup.',
               control: AthenaSecondaryButton.small(
                 onTap: _handleExport,
-                child: const Text('Export'),
+                child: const Text('Export…'),
               ),
             ),
             AthenaSettingsRow(
               label: 'Import configuration',
               description:
-                  'Restore a JSON backup and replace current providers and '
+                  'Restore a JSON backup. Replaces current providers and '
                   'models.',
               control: AthenaSecondaryButton.small(
                 onTap: _handleImport,
-                child: const Text('Import'),
+                child: const Text('Import…'),
               ),
             ),
           ],
         ),
         AthenaSettingsSection(
-          title: 'Danger Zone',
+          title: 'Danger zone',
           children: [
             AthenaSettingsRow(
               label: 'Reset Athena',
               description:
-                  'Delete all local data and restore every setting to its '
-                  'default.',
-              control: _buildResetButton(context),
+                  'Deletes every chat, provider, model and Sentinel on this '
+                  'device and restores all settings to their defaults.',
+              control: AthenaSecondaryButton.small(
+                onTap: _handleReset,
+                child: Text(
+                  'Reset…',
+                  style: TextStyle(color: colors.dangerText),
+                ),
+              ),
             ),
           ],
         ),
@@ -118,13 +130,9 @@ class _DesktopSettingAdvancedPageState
     );
   }
 
-  Widget _buildResetButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(color: colors.dangerText);
-    return AthenaSecondaryButton.small(
-      onTap: _handleReset,
-      child: Text('Reset', style: textStyle),
-    );
+  Future<void> _openFolder(String path) async {
+    final ok = await launchUrl(Uri.directory(path));
+    if (!ok && mounted) AthenaDialog.error('Unable to open $path');
   }
 
   Future<void> _handleExport() {

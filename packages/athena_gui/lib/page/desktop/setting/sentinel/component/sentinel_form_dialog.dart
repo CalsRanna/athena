@@ -1,15 +1,18 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
-import 'package:athena_gui/widget/input.dart';
+import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+/// 新建 Sentinel 的对话框：只问名字，其余在编辑页填。
+///
+/// 新建成功后通过 [onStored] 把带 id 的实体交回列表页，列表页直接打开编辑。
 class DesktopSentinelFormDialog extends StatefulWidget {
-  final SentinelEntity? sentinel;
-  const DesktopSentinelFormDialog({super.key, this.sentinel});
+  final void Function(SentinelEntity sentinel)? onStored;
+  const DesktopSentinelFormDialog({super.key, this.onStored});
 
   @override
   State<DesktopSentinelFormDialog> createState() =>
@@ -18,23 +21,39 @@ class DesktopSentinelFormDialog extends StatefulWidget {
 
 class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
   final nameController = TextEditingController();
+  String? error;
 
   late final viewModel = GetIt.instance<SentinelViewModel>();
 
   @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    var nameChildren = [
-      SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
-      const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: nameController)),
-    ];
     var children = [
-      Row(children: nameChildren),
-      const SizedBox(height: 12),
-      _buildButtons(),
+      DesktopSettingFormField(
+        label: 'Name',
+        hint: 'You can write the system prompt on the next screen.',
+        error: error,
+        child: AthenaSettingsTextField(
+          controller: nameController,
+          autofocus: true,
+          placeholder: 'e.g. Code reviewer',
+          onSubmitted: (_) => storeSentinel(),
+        ),
+      ),
+      const SizedBox(height: AthenaSpace.xxl),
+      DesktopSettingFormActions(
+        onCancel: cancelDialog,
+        onConfirm: storeSentinel,
+        confirmLabel: 'Create',
+      ),
     ];
     return AthenaDesktopDialog(
-      title: widget.sentinel == null ? 'Add Sentinel' : 'Edit Sentinel',
+      title: 'New Sentinel',
       onClose: cancelDialog,
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
@@ -44,47 +63,27 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
     AthenaDialog.dismiss();
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    nameController.text = widget.sentinel?.name ?? '';
-  }
-
   Future<void> storeSentinel() async {
-    if (widget.sentinel != null) {
-      var copiedSentinel = widget.sentinel!.copyWith(name: nameController.text);
-      await viewModel.updateSentinel(copiedSentinel);
-    } else {
-      var newSentinel = SentinelEntity(
-        id: 0,
-        name: nameController.text,
-        prompt: '',
-        avatar: '',
-        description: '',
-        tags: '',
-      );
-      await viewModel.createSentinel(newSentinel);
+    final name = nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => error = 'Give the Sentinel a name.');
+      return;
+    }
+    var newSentinel = SentinelEntity(
+      id: 0,
+      name: name,
+      prompt: '',
+      avatar: '',
+      description: '',
+      tags: '',
+    );
+    final created = await viewModel.createSentinel(newSentinel);
+    if (!mounted) return;
+    if (created == null) {
+      setState(() => error = viewModel.error.value ?? 'Failed to create');
+      return;
     }
     AthenaDialog.dismiss();
-  }
-
-  Widget _buildButtons() {
-    var edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var cancelButton = AthenaSecondaryButton(
-      onTap: cancelDialog,
-      child: Padding(padding: edgeInsets, child: Text('Cancel')),
-    );
-    var storeButton = AthenaPrimaryButton(
-      onTap: storeSentinel,
-      child: Padding(padding: edgeInsets, child: Text('Store')),
-    );
-    var children = [cancelButton, const SizedBox(width: 12), storeButton];
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
+    widget.onStored?.call(created);
   }
 }

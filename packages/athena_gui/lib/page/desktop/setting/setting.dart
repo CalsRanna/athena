@@ -19,7 +19,7 @@ enum SettingSection {
   sentinel,
   skill,
   experience,
-  advanced,
+  general,
   about,
 }
 
@@ -27,7 +27,15 @@ class _SettingEntry {
   final SettingSection section;
   final String label;
   final IconData icon;
-  const _SettingEntry(this.section, this.label, this.icon);
+
+  /// 搜索时额外命中的关键词（分区里的行标签），让「api key」也能找到 Providers。
+  final List<String> keywords;
+  const _SettingEntry(
+    this.section,
+    this.label,
+    this.icon, {
+    this.keywords = const [],
+  });
 }
 
 class _SettingGroup {
@@ -42,12 +50,12 @@ class _SettingGroup {
 /// - **居中浮层**（最大宽 1024、上下留白 44、圆角 12）+ 40% 黑遮罩，右上角关闭；
 ///   路由是**非透明**的，所以面板浮在应用之上而不是整窗替换。
 /// - **左栏 192**：搜索框 + 分组标题 + 图标行（行高 32、选中底 `#E3E3E2`）。
-/// - **右栏纯白内容区**：24 内边距、分区标题、行（标签 + 说明 + 右侧控件）、
-///   行间 1px `#F3F3F3` 发丝线。
+/// - **右栏纯白内容区**：顶部 60 的标题带（关闭键 / 返回链接）、分区标题、
+///   行（标签 + 说明 + 右侧控件）、行间 1px `#F3F3F3` 发丝线。
 ///
-/// 二阶导航（Agent 的 General/Tools、Advanced 的 Appearance/Data、
-/// Default Model 的三个模型）在 Claude 里不存在——它是**同一内容区里的
-/// 多个分区**，所以改成分区标题而不是第二列导航。
+/// **没有第二列导航**：Claude 的一个导航项对应同一内容区里的多个分区。
+/// Providers / Sentinels / Skills / Experiences 这类条目集合用**单列列表 →
+/// 钻取详情**（标题带里出现 `← 返回`）承载，而不是再开一列。
 @RoutePage()
 class DesktopSettingPage extends StatefulWidget {
   const DesktopSettingPage({super.key});
@@ -61,43 +69,70 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     _SettingGroup('Settings', [
       _SettingEntry(
         SettingSection.provider,
-        'Provider',
+        'Providers',
         HugeIcons.strokeRoundedPowerService,
+        keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
       ),
       _SettingEntry(
         SettingSection.defaultModel,
-        'Default Model',
+        'Default models',
         HugeIcons.strokeRoundedAiBrain01,
+        keywords: ['chat', 'topic naming', 'sentinel metadata'],
       ),
       _SettingEntry(
         SettingSection.agent,
         'Agent',
         HugeIcons.strokeRoundedAiSetting,
+        keywords: [
+          'approval',
+          'permissions',
+          'iterations',
+          'retries',
+          'brave',
+          'web search',
+        ],
       ),
     ]),
     _SettingGroup('Customize', [
       _SettingEntry(
         SettingSection.sentinel,
-        'Sentinel',
+        'Sentinels',
         HugeIcons.strokeRoundedArtificialIntelligence03,
+        keywords: ['prompt', 'persona', 'system prompt'],
       ),
-      _SettingEntry(SettingSection.skill, 'Skills', HugeIcons.strokeRoundedBook01),
+      _SettingEntry(
+        SettingSection.skill,
+        'Skills',
+        HugeIcons.strokeRoundedBook01,
+        keywords: ['instructions'],
+      ),
       _SettingEntry(
         SettingSection.experience,
         'Experiences',
         HugeIcons.strokeRoundedAiBrain02,
+        keywords: ['lesson', 'memory', 'archive'],
       ),
     ]),
     _SettingGroup('Desktop app', [
       _SettingEntry(
-        SettingSection.advanced,
-        'Advanced',
+        SettingSection.general,
+        'General',
         HugeIcons.strokeRoundedSettings03,
+        keywords: [
+          'theme',
+          'appearance',
+          'font size',
+          'export',
+          'import',
+          'reset',
+          'storage',
+        ],
       ),
       _SettingEntry(
         SettingSection.about,
         'About Athena',
         HugeIcons.strokeRoundedInformationCircle,
+        keywords: ['version', 'license', 'github', 'issue'],
       ),
     ]),
   ];
@@ -109,9 +144,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   @override
   void initState() {
     super.initState();
-    // 设置页也可能被**外部**入口直接推入（首页的 Sentinel 卡片就是
-    // `DesktopSettingSentinelRoute().push(...)`）。这时不能假定停在
-    // Provider——否则左栏会高亮错行。
+    // 设置页也可能被**外部**入口直接推入（侧栏页脚的 About 就是
+    // `DesktopSettingAboutRoute().push(...)`）。这时不能假定停在
+    // Providers——否则左栏会高亮错行。
     section = _sectionFromRouter() ?? SettingSection.provider;
   }
 
@@ -203,8 +238,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     if (name == DesktopSettingExperienceRoute.name) {
       return SettingSection.experience;
     }
-    if (name == DesktopSettingAdvancedRoute.name) {
-      return SettingSection.advanced;
+    if (name == DesktopSettingGeneralRoute.name) {
+      return SettingSection.general;
     }
     if (name == DesktopSettingAboutRoute.name) return SettingSection.about;
     return null;
@@ -212,7 +247,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
 
   bool _matches(_SettingEntry entry) {
     if (query.isEmpty) return true;
-    return entry.label.toLowerCase().contains(query);
+    if (entry.label.toLowerCase().contains(query)) return true;
+    return entry.keywords.any((keyword) => keyword.contains(query));
   }
 
   void _handleSearch(String value) {
@@ -220,6 +256,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   void openSection(SettingSection section) {
+    if (section == this.section) return;
     setState(() => this.section = section);
     var route = switch (section) {
       SettingSection.provider => const DesktopSettingProviderRoute(),
@@ -228,7 +265,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       SettingSection.sentinel => const DesktopSettingSentinelRoute(),
       SettingSection.skill => const DesktopSettingSkillRoute(),
       SettingSection.experience => const DesktopSettingExperienceRoute(),
-      SettingSection.advanced => const DesktopSettingAdvancedRoute(),
+      SettingSection.general => const DesktopSettingGeneralRoute(),
       SettingSection.about => const DesktopSettingAboutRoute(),
     };
     AutoRouter.of(context).replace(route);

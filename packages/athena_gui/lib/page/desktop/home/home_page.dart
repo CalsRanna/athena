@@ -262,7 +262,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       );
     });
     return AthenaAppBar(
-      title: Padding(padding: const EdgeInsets.only(left: 8), child: title),
+      title: Padding(padding: const EdgeInsets.only(left: 12), child: title),
     );
   }
 

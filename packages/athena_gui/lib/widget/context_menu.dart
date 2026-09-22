@@ -26,14 +26,12 @@ class DesktopContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var menu = _buildMenu(context);
-    // 浮层铺满整窗，所以"离底边的距离"直接用窗高减锚点 y。
-    var positioned = upward
-        ? Positioned(
-            left: offset.dx,
-            bottom: MediaQuery.sizeOf(context).height - offset.dy,
-            child: menu,
-          )
-        : Positioned(left: offset.dx, top: offset.dy, child: menu);
+    // 菜单按 [offset] 定位后再收敛到窗口内（四边各留 8）：设置面板里的
+    // 行尾菜单、靠近窗底的选择菜单都可能越界，越界就整体平移回来。
+    var positioned = CustomSingleChildLayout(
+      delegate: _ContextMenuLayoutDelegate(offset: offset, upward: upward),
+      child: menu,
+    );
     var children = [const SizedBox.expand(), positioned];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -64,6 +62,37 @@ class DesktopContextMenu extends StatelessWidget {
       child: column,
     );
     return DesktopContextMenuConfiguration(width: width, child: container);
+  }
+}
+
+/// 把菜单放到锚点处并收敛进窗口。
+///
+/// [upward] 为真时 [offset] 是菜单的**左下角**（菜单向上展开），否则是左上角；
+/// 量到子节点尺寸后再把四边各留 8 的越界量平移回来。
+class _ContextMenuLayoutDelegate extends SingleChildLayoutDelegate {
+  final Offset offset;
+  final bool upward;
+  const _ContextMenuLayoutDelegate({required this.offset, required this.upward});
+
+  static const _margin = 8.0;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    return BoxConstraints.loose(constraints.biggest);
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    var x = offset.dx;
+    var y = upward ? offset.dy - childSize.height : offset.dy;
+    var maxX = math.max(_margin, size.width - childSize.width - _margin);
+    var maxY = math.max(_margin, size.height - childSize.height - _margin);
+    return Offset(x.clamp(_margin, maxX), y.clamp(_margin, maxY));
+  }
+
+  @override
+  bool shouldRelayout(_ContextMenuLayoutDelegate oldDelegate) {
+    return oldDelegate.offset != offset || oldDelegate.upward != upward;
   }
 }
 
@@ -424,7 +453,7 @@ class _DesktopContextMenuTileWithSubmenuState
         ],
       ),
     );
-    Overlay.of(context).insert(_submenuEntry!);
+    Overlay.of(context, rootOverlay: true).insert(_submenuEntry!);
   }
 
   void _hideSubmenu() {
@@ -441,6 +470,10 @@ class DesktopContextMenuManager {
 
   /// [onDismissed] 在菜单以任何方式关掉时回调一次——点外面、选中条目、
   /// 被下一个菜单顶掉——供触发它的控件复位"展开中"状态。
+  ///
+  /// 菜单一律插进**根 Overlay**：菜单的坐标是全局坐标（`globalPosition` /
+  /// [contextMenuAnchorOf]），而最近的 Overlay 可能属于嵌套 Navigator
+  /// （设置面板的内容区就是一个），它的原点不在窗口左上角，插进去会整体偏移。
   void show(
     BuildContext context,
     Widget contextMenu, {
@@ -449,7 +482,7 @@ class DesktopContextMenuManager {
     dismiss();
     _entry = OverlayEntry(builder: (_) => contextMenu);
     _onDismissed = onDismissed;
-    Overlay.of(context).insert(_entry!);
+    Overlay.of(context, rootOverlay: true).insert(_entry!);
   }
 
   void dismiss() {
@@ -495,6 +528,32 @@ class DesktopContextMenuList extends StatelessWidget {
           padding: EdgeInsets.zero,
           shrinkWrap: true,
           children: children,
+        ),
+      ),
+    );
+  }
+}
+
+/// 菜单里的分组小标题（provider 名、`Mode` 之类）：说明字号、`textWeak`。
+class DesktopContextMenuGroupLabel extends StatelessWidget {
+  final String text;
+  const DesktopContextMenuGroupLabel({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var width = DesktopContextMenuConfiguration.widthOf(context);
+    return Container(
+      width: width,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        // 浮层不在 Material 之下，文字样式要写全（含 decoration）
+        style: AthenaTextStyle.caption.copyWith(
+          color: colors.textWeak,
+          decoration: TextDecoration.none,
         ),
       ),
     );

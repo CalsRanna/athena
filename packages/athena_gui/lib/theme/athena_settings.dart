@@ -77,11 +77,25 @@ abstract final class AthenaSettings {
   static const searchTopMargin = 13.0;
 
   // ---- 右侧内容区 ----
-  /// 内容区左右内边距。实测左 24.5（标签起于 352.5，面板中线 328）、右 24。
+  /// 内容区左右内边距（文字列的内缩）。实测左 24.5（标签起于 352.5，
+  /// 面板中线 328）、右 24。
   static const panePadding = 24.0;
 
-  /// 内容区顶部内边距。实测标题顶 109，面板顶 44。
-  static const paneTopPadding = 24.0;
+  /// 行块相对文字列的外扩。可点行的 hover 底、选中底比文字列**每边宽 8**
+  /// （Claude 的列表行块比正文列宽一圈），所以内容区实际按
+  /// `panePadding − rowInset` 内缩、每一行自带 `rowInset` 的水平内边距，
+  /// 文字列仍落在 24 的位置上。
+  static const rowInset = 8.0;
+
+  /// 内容区顶部的**标题带**高度：关闭键（与返回链接）独占的一条。
+  ///
+  /// 实测首个分区标题顶 109、面板顶 44，即标题起于面板内 65；扣掉标题行盒
+  /// 的上半留白取 60。旧值 24 会让首个标题与右上角的关闭键同一水平线，
+  /// 分区标题右侧的控件（Provider 的启用开关）直接压在关闭键上。
+  static const paneTopPadding = 60.0;
+
+  /// 内容区底部内边距。
+  static const paneBottomPadding = 40.0;
 
   /// 分区标题字号。实测大写高 11.2 / 0.72 ≈ 15.6。主字号表没有 16 这一档
   /// （见 DESIGN.md §3），它是设置面板独有的实测值。
@@ -125,10 +139,19 @@ abstract final class AthenaSettings {
   /// 右侧控件列宽。实测分段控件 820..1136 = 316。
   static const controlColumnWidth = 316.0;
 
+  /// 窄控件列宽：数字输入这类短值用它，免得一个三位数撑满 316 的框。
+  static const controlNarrowWidth = 120.0;
+
+  /// 宽控件列：下拉、密钥、URL 这类长值用它（比 316 再宽一档）。
+  static const controlWideWidth = 360.0;
+
+  /// 行内按钮高（Claude 的 `Manage` / `Export` 这类行尾按钮）。
+  static const buttonHeight = 28.0;
+
   /// 空搜索结果文字字号，与导航标签同号。
   static const fontSizeForEmptySearch = AthenaFontSize.row;
 
   /// 关闭按钮：字形约 10，内缩对齐内容区右缘（1136）与顶缘（68）。
   static const closeIconSize = 14.0;
-  static const closeInset = 24.0;
+  static const closeInset = 15.0;
 }

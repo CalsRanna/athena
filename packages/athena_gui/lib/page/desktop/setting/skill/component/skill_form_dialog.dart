@@ -1,17 +1,18 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
-import 'package:athena_gui/widget/input.dart';
+import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
+/// 新建技能的对话框：名字（目录名）+ 一句描述，正文在编辑页写。
+///
+/// 成功后通过 [onStored] 把技能名交回列表页，列表页直接打开编辑。
 class DesktopSkillFormDialog extends StatefulWidget {
-  final Skill? skill;
-  final void Function()? onStored;
-
-  const DesktopSkillFormDialog({super.key, this.skill, this.onStored});
+  final void Function(String name)? onStored;
+  const DesktopSkillFormDialog({super.key, this.onStored});
 
   @override
   State<DesktopSkillFormDialog> createState() => _DesktopSkillFormDialogState();
@@ -20,15 +21,10 @@ class DesktopSkillFormDialog extends StatefulWidget {
 class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
+  String? nameError;
+  String? descriptionError;
 
   late final viewModel = GetIt.instance<SkillViewModel>();
-
-  @override
-  void initState() {
-    super.initState();
-    nameController.text = widget.skill?.name ?? '';
-    descriptionController.text = widget.skill?.description ?? '';
-  }
 
   @override
   void dispose() {
@@ -39,37 +35,40 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    var nameChildren = [
-      SizedBox(width: 120, child: const AthenaFormTileLabel(title: 'Name')),
-      const SizedBox(width: 12),
-      Expanded(
-        child: AthenaInput(
+    var children = [
+      DesktopSettingFormField(
+        label: 'Name',
+        hint: 'Becomes the folder name. Lowercase words joined by dashes.',
+        error: nameError,
+        child: AthenaSettingsTextField(
           controller: nameController,
-          enabled: widget.skill == null,
+          autofocus: true,
+          mono: true,
           placeholder: 'kebab-case-name',
         ),
       ),
-    ];
-    var descriptionChildren = [
-      SizedBox(
-        width: 120,
-        child: const AthenaFormTileLabel(title: 'Description'),
+      const SizedBox(height: AthenaSpace.lg),
+      DesktopSettingFormField(
+        label: 'Description',
+        hint: 'One sentence the agent reads to decide when to use it.',
+        error: descriptionError,
+        child: AthenaSettingsTextField(
+          controller: descriptionController,
+          placeholder: 'Use when…',
+          onSubmitted: (_) => storeSkill(),
+        ),
       ),
-      const SizedBox(width: 12),
-      Expanded(child: AthenaInput(controller: descriptionController)),
+      const SizedBox(height: AthenaSpace.xxl),
+      DesktopSettingFormActions(
+        onCancel: cancelDialog,
+        onConfirm: storeSkill,
+        confirmLabel: 'Create',
+      ),
     ];
-    var children = [
-      Row(children: nameChildren),
-      const SizedBox(height: 12),
-      Row(children: descriptionChildren),
-      const SizedBox(height: 12),
-      _buildButtons(),
-    ];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
     return AthenaDesktopDialog(
-      title: widget.skill == null ? 'Add Skill' : 'Edit Skill',
+      title: 'New skill',
       onClose: cancelDialog,
-      child: SingleChildScrollView(child: column),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
   }
 
@@ -78,38 +77,26 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
   }
 
   Future<void> storeSkill() async {
-    final skill = widget.skill;
-    final ok = skill == null
-        ? await viewModel.createSkill(
-            name: nameController.text,
-            description: descriptionController.text,
-            body: '',
-          )
-        : await viewModel.updateSkill(
-            skill,
-            description: descriptionController.text,
-            body: skill.body,
-          );
+    final name = nameController.text.trim();
+    final description = descriptionController.text.trim();
+    setState(() {
+      nameError = !SkillLoader.isValidSkillName(name)
+          ? 'Use letters, digits and dashes only.'
+          : null;
+      descriptionError = description.isEmpty ? 'Description is required.' : null;
+    });
+    if (nameError != null || descriptionError != null) return;
+    final ok = await viewModel.createSkill(
+      name: name,
+      description: description,
+      body: '',
+    );
     if (!mounted) return;
     if (!ok) {
-      AthenaDialog.warning(viewModel.error.value ?? 'Failed to save skill');
+      setState(() => nameError = viewModel.error.value ?? 'Failed to create');
       return;
     }
-    widget.onStored?.call();
     AthenaDialog.dismiss();
-  }
-
-  Widget _buildButtons() {
-    const edgeInsets = EdgeInsets.symmetric(horizontal: 16);
-    var cancelButton = AthenaSecondaryButton(
-      onTap: cancelDialog,
-      child: const Padding(padding: edgeInsets, child: Text('Cancel')),
-    );
-    var storeButton = AthenaPrimaryButton(
-      onTap: storeSkill,
-      child: const Padding(padding: edgeInsets, child: Text('Store')),
-    );
-    var children = [cancelButton, const SizedBox(width: 12), storeButton];
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
+    widget.onStored?.call(name);
   }
 }
