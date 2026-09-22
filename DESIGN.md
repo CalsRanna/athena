@@ -349,13 +349,14 @@ caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档�
 控制项排在容器**外面**单独一行。
 
 - **上下文条**（上容器）：`surfaceButtonSecondary` 灰底、**无描边**、
-  圆角 `container`（10）、高 40，放当前 Sentinel 与工作文件夹 chip
+  圆角 `container`（10）、高 40，左边放当前 Sentinel 与工作文件夹 chip，最右是会话配置
+  （Configure）chip
 - 间距 **5**
 - **输入容器**（下容器）：**纯白**（`surfaceMobile`）底 + 1px **中性灰**描边
   （常态 `neutralBorder`、聚焦 `neutralBorderStrong`，见 §2「白底上的中性灰」）、
   圆角 `container`（10），含输入区与右端的发送键
 - 间距 **4**
-- **容器外的一行**：左（配置、图片），右（模型、推理强度、token 指示）
+- **容器外的一行**：左（审批模式、加号），右（模型、推理强度、上下文指示）
 - 上下文条不带阴影；输入容器带一层**向下偏移的柔投影**（见下），是全站唯一
   "描边 + 阴影"并用的容器
 - 桌面居中，宽 **768**（`kChatColumnWidth`），两侧最少留 32，底部留白 **12**
@@ -378,7 +379,8 @@ caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档�
   - 两个容器与容器的左右边界都在逻辑 408..1176，即宽 **768**
 
 - **容器外那一行不用任何填充或描边**（Claude 的语言是「文字 + 细线」）：
-  - 左：一段**纯文字**（`Configure`，图标 16 + 文字 13，无框无底）+ 一个裸图标（图片）
+  - 左：一段**纯文字**（审批模式，如 `Bypass permissions`，13 无框无底，点开 Mode
+    菜单：标题 + 三行「名称 + 说明」，当前档打钩）+ 一个裸加号（选图片）
   - 右：**纯文字**模型名（只显示模型名，不带 provider、不带图标）、推理强度
     （与模型名同字号、**常规字重**）、细线圆环（上下文占用）
   - **发送/停止键在输入容器的右端内部**（Claude 的位置），不在容器外那一行
@@ -435,7 +437,7 @@ caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档�
   （`Color.alphaBlend`），静止与 hover 都保持不透明，避免插值中途出现半透明深色。
 
 **原则**：容器内（composer）的 chip 不画边、用嵌套档小圆角（4）；独立出现的筛选
-chip 画边、用胶囊。上下文条上两个 chip（Sentinel、工作文件夹）都能**清除**：
+chip 画边、用胶囊。上下文条左边两个 chip（Sentinel、工作文件夹）都能**清除**：
 清掉 Sentinel 就是「不使用 Sentinel」（`ChatEntity.noSentinelId`），chip 显示
 `No Sentinel` 且不再出现清除按钮；清掉文件夹则显示 `No folder`。
 

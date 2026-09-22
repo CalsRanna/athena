@@ -12,7 +12,7 @@ Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter �
 - **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
 - **内置工具系统**：桌面端注册 16 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
 - **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
-- **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批
+- **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批；审批模式三档（手动 / AI 自动审核 / 所有权限），所有权限跳过 AI 与人工两级，deny 仍生效
 - **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
 - **技能与经验管理（GUI）**：设置页可视化管理 Skill（新建/编辑/删除）与 Experience（归档/恢复/删除），移动端首页 Skills 卡片行；与 Agent 工具共用同一份文件存储
 - **自动上下文压缩**：每次模型请求前，估算上下文达到窗口 80% 时自动将全部有效历史快照压缩为摘要（`retention == -1`，含 Agent 工具循环内）
@@ -292,15 +292,16 @@ enum ToolRisk { readOnly, dangerous }
 `AgentService` 的权限门在规则判定后执行以下流程：
 - deny 直接拒绝；模型填写 `approval_recommendation: ask` 时覆盖 allow，转人工。
 - allow 且未 ask：直接执行；并行预检遵循同一约束，需审核/人工确认的调用留在串行组。
-- prompt 且未 ask：如开启 AI 审核，调用 core 的 `AiPermissionReviewer`，使用当前会话模型、独立系统提示、无工具请求，判断原始用户授权与实际调用参数。所有工具类型均可审核；模型建议 proceed 不能自行授予权限。
+- prompt 且未 ask：审批模式为 AI 自动审核时，调用 core 的 `AiPermissionReviewer`，使用当前会话模型、独立系统提示、无工具请求，判断原始用户授权与实际调用参数。所有工具类型均可审核；模型建议 proceed 不能自行授予权限。
 - 审核输出严格解析为 allow/ask；20 秒超时、无用户原文、完整输入超过预算或格式/网络错误均转人工。取消会中止请求，不继续审批或执行。
 - 自动批准仅限当前调用，不写入会话缓存或持久规则。独立结论保存在工具结果 JSON 的 `approvalReview`（decision/reason/source）字段，与主模型建议分开。
+- 所有权限模式：过了 deny 就放行，不问 AI 也不弹窗，模型标 ask 的调用同样放行（`AgentService.run` 的 `bypassPermissions`）。
 
 Coordinator 从包含 compacted 消息的原始历史构造 `PermissionReviewContext`，仅传入 user/assistant 文本，排除 system、思考、工具输出、技能与经验。助手提案只能辅助解释用户回复，不能作为授权。当前 run 内的人工决策独立提供给审核器；人工拒绝的完全相同调用在本轮直接拒绝，防止重试自动批准。
 
 宿主**不解析 shell 语法、不匹配命令文本**：审批器拿到的是完整命令原文（`arguments`）与用户原始请求，删除类形态由它自己按提示词判断（提示词要求「递归删除、或目标内容未知的删除，在用户请求未明确授权该确切目标时一律 ask」），判断不了就转人工。宿主侧不存在「命令命中某个模式」这类信号，因此也没有对应的 `risk_signals` 字段——早期版本有过 `recursive_delete` 信号，因既不比原文多给信息、又在多种写法（`if …; then rm -rf …; fi`、`echo $(rm -rf …)`、`/bin/rm`、`bash -lc`）上漏检而被移除。
 
-GUI/TUI 共用 `AgentSettings.aiApprovalEnabled`（默认 true，持久 key `ai_approval_enabled`，0 关闭/1 开启）。GUI 在设置 → Agent 的 General 分区保存开关；TUI `/review [on|off]` 查看/切换，下一轮生效。
+GUI/TUI 共用 `AgentSettings.approvalMode`（`manual` / `ai_review` / `bypass`，默认 AI 自动审核，持久 key `approval_mode`；旧的 `ai_approval_enabled` 只在没有新 key 时读一次做迁移）。GUI 在 composer 左下角的 Mode 菜单与设置 → Agent 的 General 分区都能切换；TUI `/review [manual|ai|bypass]` 查看/切换（`on|off` 仍可用），下一轮生效。
 
 人工通过 `PermissionPrompt` 回调进入 GUI 会话内卡片 / TUI 审批条，实际参数完整可滚动：
 - **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。

@@ -15,6 +15,7 @@ import 'package:athena_core/agent/runtime_context.dart';
 import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -265,7 +266,8 @@ class AgentRunCoordinator {
 
       // Read original messages, including compacted user instructions. Generated
       // summaries, skills, memories and tool outputs cannot grant authorization.
-      final reviewContext = _agentSettings.aiApprovalEnabled.value
+      final approvalMode = _agentSettings.approvalMode.value;
+      final reviewContext = approvalMode == ApprovalMode.aiReview
           ? PermissionReviewContext.fromMessages(
               await _messageRepo.getMessagesByChatId(chatId),
             )
@@ -316,6 +318,7 @@ class AgentRunCoordinator {
         maxIterations: _agentSettings.maxAgentIterations.value,
         permissionService: _permissionService,
         permissionReviewContext: reviewContext,
+        bypassPermissions: approvalMode == ApprovalMode.bypass,
         workspace: workspace,
         onPermission: (toolName, arguments) =>
             _askPermission(runId, chatId, toolName, arguments, cancelToken),
