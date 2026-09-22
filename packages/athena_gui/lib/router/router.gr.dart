@@ -16,11 +16,11 @@ import 'package:athena_core/entity/provider_entity.dart' as _i37;
 import 'package:athena_core/entity/sentinel_entity.dart' as _i34;
 import 'package:athena_gui/page/desktop/home/home_page.dart' as _i1;
 import 'package:athena_gui/page/desktop/setting/about.dart' as _i2;
-import 'package:athena_gui/page/desktop/setting/advanced_page.dart' as _i3;
-import 'package:athena_gui/page/desktop/setting/agent_page.dart' as _i4;
-import 'package:athena_gui/page/desktop/setting/default_model.dart' as _i5;
+import 'package:athena_gui/page/desktop/setting/agent_page.dart' as _i3;
+import 'package:athena_gui/page/desktop/setting/default_model.dart' as _i4;
 import 'package:athena_gui/page/desktop/setting/experience/experience.dart'
-    as _i6;
+    as _i5;
+import 'package:athena_gui/page/desktop/setting/general_page.dart' as _i6;
 import 'package:athena_gui/page/desktop/setting/provider/provider.dart' as _i8;
 import 'package:athena_gui/page/desktop/setting/sentinel/sentinel.dart' as _i9;
 import 'package:athena_gui/page/desktop/setting/setting.dart' as _i7;
@@ -91,26 +91,7 @@ class DesktopSettingAboutRoute extends _i31.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i3.DesktopSettingAdvancedPage]
-class DesktopSettingAdvancedRoute extends _i31.PageRouteInfo<void> {
-  const DesktopSettingAdvancedRoute({List<_i31.PageRouteInfo>? children})
-      : super(
-          DesktopSettingAdvancedRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'DesktopSettingAdvancedRoute';
-
-  static _i31.PageInfo page = _i31.PageInfo(
-    name,
-    builder: (data) {
-      return const _i3.DesktopSettingAdvancedPage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i4.DesktopSettingAgentPage]
+/// [_i3.DesktopSettingAgentPage]
 class DesktopSettingAgentRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingAgentRoute({List<_i31.PageRouteInfo>? children})
       : super(
@@ -123,13 +104,13 @@ class DesktopSettingAgentRoute extends _i31.PageRouteInfo<void> {
   static _i31.PageInfo page = _i31.PageInfo(
     name,
     builder: (data) {
-      return const _i4.DesktopSettingAgentPage();
+      return const _i3.DesktopSettingAgentPage();
     },
   );
 }
 
 /// generated route for
-/// [_i5.DesktopSettingDefaultModelPage]
+/// [_i4.DesktopSettingDefaultModelPage]
 class DesktopSettingDefaultModelRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingDefaultModelRoute({List<_i31.PageRouteInfo>? children})
       : super(
@@ -142,13 +123,13 @@ class DesktopSettingDefaultModelRoute extends _i31.PageRouteInfo<void> {
   static _i31.PageInfo page = _i31.PageInfo(
     name,
     builder: (data) {
-      return const _i5.DesktopSettingDefaultModelPage();
+      return const _i4.DesktopSettingDefaultModelPage();
     },
   );
 }
 
 /// generated route for
-/// [_i6.DesktopSettingExperiencePage]
+/// [_i5.DesktopSettingExperiencePage]
 class DesktopSettingExperienceRoute extends _i31.PageRouteInfo<void> {
   const DesktopSettingExperienceRoute({List<_i31.PageRouteInfo>? children})
       : super(
@@ -161,7 +142,26 @@ class DesktopSettingExperienceRoute extends _i31.PageRouteInfo<void> {
   static _i31.PageInfo page = _i31.PageInfo(
     name,
     builder: (data) {
-      return const _i6.DesktopSettingExperiencePage();
+      return const _i5.DesktopSettingExperiencePage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i6.DesktopSettingGeneralPage]
+class DesktopSettingGeneralRoute extends _i31.PageRouteInfo<void> {
+  const DesktopSettingGeneralRoute({List<_i31.PageRouteInfo>? children})
+      : super(
+          DesktopSettingGeneralRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DesktopSettingGeneralRoute';
+
+  static _i31.PageInfo page = _i31.PageInfo(
+    name,
+    builder: (data) {
+      return const _i6.DesktopSettingGeneralPage();
     },
   );
 }

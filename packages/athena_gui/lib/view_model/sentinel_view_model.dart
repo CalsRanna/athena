@@ -229,15 +229,18 @@ class SentinelViewModel {
     }
   }
 
-  Future<void> createSentinel(SentinelEntity sentinel) async {
+  /// 新建角色;成功返回带 id 的实体(设置页据此直接打开它)。
+  Future<SentinelEntity?> createSentinel(SentinelEntity sentinel) async {
     isLoading.value = true;
     error.value = null;
     try {
       var id = await _sentinelRepository.createSentinel(sentinel);
       var created = sentinel.copyWith(id: id);
       sentinels.value = [...sentinels.value, created];
+      return created;
     } catch (e) {
       error.value = e.toString();
+      return null;
     } finally {
       isLoading.value = false;
     }

@@ -110,6 +110,16 @@ class ModelCatalogService {
     }
   }
 
+  /// 本地缓存的抓取时间(设置页显示"上次同步");没有缓存时为 null。
+  Future<DateTime?> lastSyncedAt() async {
+    try {
+      final cached = await _readCache(await _resolveCachePath());
+      return cached?.fetchedAt;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行),返回统计。
   ///
   /// 对每个 [modelCatalogConfig] 配置:
@@ -281,15 +291,19 @@ class ModelCatalogService {
     return reference.difference(fetchedAt) < ttl;
   }
 
-  /// 把价格格式化为 '$X/M input tokens',去除多余尾零:
-  /// 2 → '$2/M input tokens',0.14 → '$0.14/M input tokens'。
+  /// 把每百万 token 的价格格式化为 '$X/M',去除多余尾零:
+  /// 2 → '$2/M',0.14 → '$0.14/M'。
+  ///
+  /// 不带 "input / output tokens" 字样:同一个函数既格式化输入价也格式化
+  /// 输出价,方向由字段本身(`inputPrice` / `outputPrice`)表达,界面再按需
+  /// 标注。旧缓存里的 '$X/M input tokens' 由界面解析数字后兼容显示。
   @visibleForTesting
   static String formatPrice(Object? value) {
     if (value is! num) return '';
     var s = value.toStringAsFixed(4);
     s = s.replaceAll(RegExp(r'0+$'), '');
     s = s.replaceAll(RegExp(r'\.$'), '');
-    return '\$$s/M input tokens';
+    return '\$$s/M';
   }
 
   /// glob 通配符匹配(仅支持 `*`,可匹配任意字符)。

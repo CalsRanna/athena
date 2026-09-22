@@ -42,8 +42,17 @@ class AthenaIconButton extends StatelessWidget {
 
 class AthenaPrimaryButton extends StatefulWidget {
   final void Function()? onTap;
+  final EdgeInsets padding;
   final Widget child;
-  const AthenaPrimaryButton({super.key, this.onTap, required this.child});
+  const AthenaPrimaryButton({super.key, this.onTap, required this.child})
+    : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+
+  /// 行内小号（与 [AthenaSecondaryButton.small] 同尺度，高 28）。
+  const AthenaPrimaryButton.small({
+    super.key,
+    this.onTap,
+    required this.child,
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
 
   @override
   State<AthenaPrimaryButton> createState() => _AthenaPrimaryButtonState();
@@ -74,7 +83,7 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),
       duration: const Duration(milliseconds: 120),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: widget.padding,
       child: DefaultTextStyle(
         style: AthenaTextStyle.label.copyWith(
           color: foreground,
