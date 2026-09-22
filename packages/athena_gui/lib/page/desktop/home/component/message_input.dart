@@ -7,13 +7,14 @@ import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/permission_mode_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
-import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
+import 'package:athena_gui/page/desktop/home/component/reasoning_effort_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -28,12 +29,14 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   final void Function(double)? onTemperatureChange;
-  final void Function(String?)? onReasoningEffortChange;
+  final void Function(String)? onReasoningEffortChange;
   final void Function()? onTerminated;
 
   /// 点击模型名：回传那一块（含 hover 填充）的全局矩形，模型菜单锚在它上方。
   final void Function(Rect anchor)? onModelTap;
-  final void Function()? onSentinelTap;
+
+  /// 点击 Sentinel chip：回传 chip 的全局矩形，角色菜单锚在它上方。
+  final void Function(Rect anchor)? onSentinelTap;
 
   /// 清除本会话的 Sentinel（回到「不选择任何 Sentinel」）。
   final void Function()? onSentinelClear;
@@ -67,6 +70,11 @@ class DesktopMessageInput extends StatelessWidget {
     return Watch((context) {
       final chat = chatViewModel.currentChat.value;
       final queued = chatViewModel.queuedMessages.value;
+      // 推理强度只对推理模型有意义（发送端也只给推理模型带参数），
+      // 非推理模型不摆这个控件——摆了也没有任何效果。
+      final reasoningModel =
+          chatViewModel.currentModel.value?.reasoning ?? false;
+      final reasoningEffort = chatViewModel.currentReasoningEffort.value;
       // 版式取自 **Claude 桌面端**：
       // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
       // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
@@ -158,7 +166,7 @@ class DesktopMessageInput extends StatelessWidget {
                         ),
                         onTap: () => DesktopPermissionModeMenu.show(
                           context,
-                          _globalRect(context),
+                          contextMenuAnchorOf(context),
                         ),
                         child: const DesktopPermissionModeLabel(),
                       ),
@@ -177,22 +185,33 @@ class DesktopMessageInput extends StatelessWidget {
                           horizontal: 6,
                           vertical: 3,
                         ),
-                        onTap: () => onModelTap?.call(_globalRect(context)),
+                        onTap: () =>
+                            onModelTap?.call(contextMenuAnchorOf(context)),
                         child: const DesktopModelIndicator(),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    _SquishButton(
-                      hoverFill: ghostHover,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
+                    if (reasoningModel) ...[
+                      const SizedBox(width: 4),
+                      // Effort 面板锚在这一整块上方、右对齐
+                      Builder(
+                        builder: (context) => _SquishButton(
+                          hoverFill: ghostHover,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 3,
+                          ),
+                          onTap: () => DesktopReasoningEffortMenu.show(
+                            context,
+                            contextMenuAnchorOf(context),
+                            current: reasoningEffort,
+                            onSelected: onReasoningEffortChange,
+                          ),
+                          child: DesktopReasoningEffortLabel(
+                            current: reasoningEffort,
+                          ),
+                        ),
                       ),
-                      child: DesktopReasoningEffortButton(
-                        current: chatViewModel.currentReasoningEffort.value,
-                        onSelected: onReasoningEffortChange,
-                      ),
-                    ),
+                    ],
                     // Claude 实测：`High` 与右侧圆环之间约 20
                     const SizedBox(width: 12),
                     const DesktopTokenIndicator(),
@@ -680,10 +699,4 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
       child: widget.builder(_focusNode),
     );
   }
-}
-
-/// [context] 对应控件的全局矩形，供弹出菜单锚定。
-Rect _globalRect(BuildContext context) {
-  final box = context.findRenderObject() as RenderBox;
-  return box.localToGlobal(Offset.zero) & box.size;
 }

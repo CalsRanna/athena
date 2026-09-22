@@ -220,7 +220,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateTemperature(temperature, chat: chat);
   }
 
-  Future<void> updateReasoningEffort(String? effort) async {
+  Future<void> updateReasoningEffort(String effort) async {
     var chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chatViewModel.updateCurrentReasoningEffort(effort);
@@ -340,7 +340,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  void _openSentinelSelector() async {
+  /// 在 Sentinel chip（[anchor]）上方弹出角色菜单。
+  void _openSentinelSelector(Rect anchor) async {
     if (sentinelViewModel.sentinels.value.isEmpty) {
       await sentinelViewModel.getSentinels();
     }
@@ -348,14 +349,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       AthenaDialog.warning('No sentinels found');
       return;
     }
-    AthenaDialog.show(
-      DesktopSentinelSelectDialog(
-        onTap: (sentinel) {
-          AthenaDialog.dismiss();
-          updateSentinel(sentinel);
-        },
-      ),
-      barrierDismissible: true,
+    if (!mounted) return;
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopSentinelSelectMenu(anchor: anchor, onSelected: updateSentinel),
     );
   }
 }

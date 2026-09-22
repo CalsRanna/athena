@@ -56,7 +56,7 @@ class ChatUpdateService {
     return _applyField(chat, (c) => c.copyWith(temperature: temperature));
   }
 
-  Future<ChatEntity> updateReasoningEffort(ChatEntity chat, String? effort) {
+  Future<ChatEntity> updateReasoningEffort(ChatEntity chat, String effort) {
     return _applyField(chat, (c) => c.copyWith(reasoningEffort: effort));
   }
 

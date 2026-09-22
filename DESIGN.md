@@ -350,7 +350,9 @@ caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档�
 
 - **上下文条**（上容器）：`surfaceButtonSecondary` 灰底、**无描边**、
   圆角 `container`（10）、高 40，左边放当前 Sentinel 与工作文件夹 chip，最右是会话配置
-  （Configure）chip
+  （Configure）chip。Sentinel chip 点开的是与模型菜单同一套的弹出菜单（锚在 chip
+  上方左对齐、每行只有角色名、当前角色打钩、封顶 320 内滚），菜单里**没有**
+  「No Sentinel」项——清掉角色只走 chip 上的清除按钮
 - 间距 **5**
 - **输入容器**（下容器）：**纯白**（`surfaceMobile`）底 + 1px **中性灰**描边
   （常态 `neutralBorder`、聚焦 `neutralBorderStrong`，见 §2「白底上的中性灰」）、
@@ -382,7 +384,13 @@ caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档�
   - 左：一段**纯文字**（审批模式，如 `Bypass permissions`，13 无框无底，点开 Mode
     菜单：标题 + 三行「名称 + 说明」，当前档打钩）+ 一个裸加号（选图片）
   - 右：**纯文字**模型名（只显示模型名，不带 provider、不带图标）、推理强度
-    （与模型名同字号、**常规字重**）、细线圆环（上下文占用）
+    （与模型名同字号、**常规字重**；只在推理模型下显示）、细线圆环（上下文占用）
+  - 推理强度点开的是 Claude 的 Effort 面板（浮层样式同菜单，宽 248，锚在文字上方
+    右对齐）：标题行「Effort + 当前档」+ 右端 `?`（hover 出深色 tooltip）、
+    `Faster / Smarter` 两端标注、一条五档滑杆（Low / Medium / High / Extra High /
+    Max，`neutralRule` 胶囊轨道 + `neutralBorderStrong` 小点 + 带 `raised` 阴影的
+    白色圆钮）。点或拖即生效、面板不关。没有 Default / None / Minimal，
+    新会话默认 High
   - **发送/停止键在输入容器的右端内部**（Claude 的位置），不在容器外那一行
   - 容器外那一行最右是上下文圆环：hover 只给一句深色 tooltip（`surfaceRaised`
     底 + `textOnRaised` 字，`Context 181.6k / 1M (18%)`），点击才在圆环上方弹出

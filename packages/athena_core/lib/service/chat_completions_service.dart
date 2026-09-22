@@ -53,9 +53,8 @@ Output: 游玩地点推荐
 class ChatCompletionsService {
   final LlmClient _llmClient;
 
-  ChatCompletionsService({
-    required LlmClient llmClient,
-  }) : _llmClient = llmClient;
+  ChatCompletionsService({required LlmClient llmClient})
+    : _llmClient = llmClient;
 
   /// 测试连接
   Future<String> connect({
@@ -66,10 +65,7 @@ class ChatCompletionsService {
       model: model.modelId,
       messages: [ChatMessage.user('Hi')],
     );
-    var response = await _llmClient.fetch(
-      provider: provider,
-      request: request,
-    );
+    var response = await _llmClient.fetch(provider: provider, request: request);
     return response.text ?? '';
   }
 
@@ -87,7 +83,11 @@ class ChatCompletionsService {
       model: model.modelId,
       messages: messages,
       temperature: chat.temperature,
-      reasoningEffort: _parseReasoningEffort(chat.reasoningEffort),
+      // 只有推理模型才带这个参数：会话上总有一档（默认 high），
+      // 非推理模型收到它会直接 400
+      reasoningEffort: model.reasoning
+          ? _parseReasoningEffort(chat.reasoningEffort)
+          : null,
       tools: tools,
       responseFormat: responseFormat,
       streamOptions: const StreamOptions(includeUsage: true),
@@ -126,10 +126,7 @@ class ChatCompletionsService {
   }) async* {
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
-      messages: [
-        ChatMessage.system(_namingPrompt),
-        ChatMessage.user(value),
-      ],
+      messages: [ChatMessage.system(_namingPrompt), ChatMessage.user(value)],
     );
     var stream = _llmClient.stream(provider: provider, request: request);
     await for (final chunk in stream) {
@@ -139,10 +136,9 @@ class ChatCompletionsService {
   }
 }
 
-/// 解析会话存储的推理强度字符串为官方枚举；非法/未识别值返回 null
+/// 解析会话存储的推理强度字符串为官方枚举；未识别值返回 null
 /// （不传参，交由模型决定），避免把 unknown 发送到 API。
-ReasoningEffort? _parseReasoningEffort(String? value) {
-  if (value == null) return null;
+ReasoningEffort? _parseReasoningEffort(String value) {
   final parsed = ReasoningEffort.fromJson(value);
   return parsed == ReasoningEffort.unknown ? null : parsed;
 }

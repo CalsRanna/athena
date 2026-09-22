@@ -423,7 +423,7 @@ GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps
 
 | Entity | 关键字段 | 说明 |
 |--------|---------|------|
-| ChatEntity | title, modelId, sentinelId, temperature, retention, pinned, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
+| ChatEntity | title, modelId, sentinelId, temperature, reasoningEffort, retention, pinned, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
 | ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
 | MessageEntity | chatId, role, content, reasoningContent, reasoning, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
 | ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
@@ -615,7 +615,7 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
   不是第二条边框色。
 - **发送/停止键在输入容器的右端内部**（Claude 的位置）；容器**外面**单独一行：
   左侧 `Configure`（裸文字 + 16px 图标）与图片图标，右侧纯文字的模型名
-  （不带 provider、不带图标）、常规字重的推理强度、上下文圆环（hover 出一句深色 tooltip，点击弹出明细面板）。
+  （不带 provider、不带图标）、常规字重的推理强度（只在推理模型下显示，点开 Claude 式 Effort 滑杆面板：low / medium / high / xhigh / max，新会话默认 high；发送端只给推理模型带 `reasoning_effort`）、上下文圆环（hover 出一句深色 tooltip，点击弹出明细面板）。
 - 实测：上容器高 **40**、输入容器高 **44**、间距 **5 / 4**、底部留白 **12**、
   发送键 **22×22**；占位符是**浅灰 `#898782`**（`textWeak`），不要取成 caret 的深色。
 - **控件阶梯**（`[data-step=1..5]`）：`radius/control/嵌套` = `5/20/16`、`6/24/18`、

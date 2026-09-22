@@ -6,15 +6,29 @@ class ChatEntity {
   /// 持久化 Sentinel 使用正整数 ID，因此 0 可作为无需额外实体的保留值。
   static const int noSentinelId = 0;
 
+  /// 支持的推理强度档位，从弱到强。UI 的滑杆按这个顺序排点。
+  static const reasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
+
+  /// 新会话的推理强度。
+  static const defaultReasoningEffort = 'high';
+
+  /// 把存储里的值收敛到 [reasoningEfforts]：null 与已去掉的旧档位
+  /// （default / none / minimal）都回到默认档。
+  static String normalizeReasoningEffort(String? value) =>
+      reasoningEfforts.contains(value) ? value! : defaultReasoningEffort;
+
   final int? id;
   final String title;
   final int modelId;
   final int sentinelId;
   final double temperature;
 
-  /// OpenAI 官方推理强度值（low/medium/high/none/minimal/xhigh）。
-  /// null = 不传参，使用模型默认推理强度。
-  final String? reasoningEffort;
+  /// 推理强度，取 [reasoningEfforts] 之一，新会话默认 [defaultReasoningEffort]。
+  ///
+  /// 只对推理模型生效：发送时由 `ChatCompletionsService` 按 `model.reasoning`
+  /// 决定要不要带这个参数。xhigh / max 只有部分模型支持，选了不支持的档位
+  /// API 会 400（与官方一致）。
+  final String reasoningEffort;
 
   /// 上下文保留策略。0 = 无历史（每次独立请求），-1 = 自动管理（compact）。
   final int retention;
@@ -45,7 +59,7 @@ class ChatEntity {
     required this.modelId,
     required this.sentinelId,
     this.temperature = 1.0,
-    this.reasoningEffort,
+    this.reasoningEffort = defaultReasoningEffort,
     this.retention = -1,
     this.pinned = false,
     this.contextTokens = 0,
@@ -62,7 +76,9 @@ class ChatEntity {
       modelId: json.getInt('model_id'),
       sentinelId: json.getInt('sentinel_id'),
       temperature: json.getDouble('temperature', defaultValue: 1.0),
-      reasoningEffort: json.getStringOrNull('reasoning_effort'),
+      reasoningEffort: normalizeReasoningEffort(
+        json.getStringOrNull('reasoning_effort'),
+      ),
       retention: json.getInt('retention', defaultValue: -1),
       pinned: json.getBool('pinned'),
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
@@ -80,7 +96,7 @@ class ChatEntity {
       'model_id': modelId,
       'sentinel_id': sentinelId,
       'temperature': temperature,
-      if (reasoningEffort != null) 'reasoning_effort': reasoningEffort,
+      'reasoning_effort': reasoningEffort,
       'retention': retention,
       'pinned': pinned ? 1 : 0,
       'context_tokens': contextTokens,
@@ -102,7 +118,7 @@ class ChatEntity {
     int? modelId,
     int? sentinelId,
     double? temperature,
-    Object? reasoningEffort = _unset,
+    String? reasoningEffort,
     int? retention,
     Object? workspacePath = _unset,
     bool? pinned,
@@ -117,9 +133,7 @@ class ChatEntity {
       modelId: modelId ?? this.modelId,
       sentinelId: sentinelId ?? this.sentinelId,
       temperature: temperature ?? this.temperature,
-      reasoningEffort: identical(reasoningEffort, _unset)
-          ? this.reasoningEffort
-          : reasoningEffort as String?,
+      reasoningEffort: reasoningEffort ?? this.reasoningEffort,
       retention: retention ?? this.retention,
       workspacePath: identical(workspacePath, _unset)
           ? this.workspacePath

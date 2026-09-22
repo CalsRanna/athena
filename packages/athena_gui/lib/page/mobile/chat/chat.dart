@@ -29,11 +29,7 @@ class MobileChatPage extends StatefulWidget {
   final ChatEntity? chat;
   final SentinelEntity? sentinel;
 
-  const MobileChatPage({
-    super.key,
-    this.chat,
-    this.sentinel,
-  });
+  const MobileChatPage({super.key, this.chat, this.sentinel});
 
   @override
   State<MobileChatPage> createState() => _MobileChatPageState();
@@ -274,7 +270,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     }
   }
 
-  Future<void> updateReasoningEffort(String? value) async {
+  Future<void> updateReasoningEffort(String value) async {
     final chat = viewModel.currentChat.value;
     if (chat != null) {
       await viewModel.updateReasoningEffort(value, chat: chat);

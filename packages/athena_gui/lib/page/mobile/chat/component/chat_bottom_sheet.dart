@@ -27,7 +27,7 @@ class MobileChatBottomSheet extends StatefulWidget {
   final void Function(ModelEntity)? onModelChanged;
   final void Function(SentinelEntity)? onSentinelChanged;
   final void Function(double)? onTemperatureChanged;
-  final void Function(String?)? onReasoningEffortChanged;
+  final void Function(String)? onReasoningEffortChanged;
   const MobileChatBottomSheet({
     super.key,
     this.chat,
@@ -56,7 +56,9 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final _modelId = signal<int>(0);
   late final _temperature = signal<double>(1.0);
   late final _retention = signal<int>(-1);
-  late final _reasoningEffort = signal<String?>(null);
+  late final _reasoningEffort = signal<String>(
+    ChatEntity.defaultReasoningEffort,
+  );
 
   @override
   void initState() {
@@ -186,7 +188,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     AthenaDialog.show(dialog);
   }
 
-  void _updateReasoningEffort(String? value) {
+  void _updateReasoningEffort(String value) {
     widget.onReasoningEffortChanged?.call(value);
     _reasoningEffort.value = value;
     AthenaDialog.dismiss();

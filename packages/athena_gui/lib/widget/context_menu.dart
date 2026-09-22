@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -457,6 +458,46 @@ class DesktopContextMenuManager {
     var callback = _onDismissed;
     _onDismissed = null;
     callback?.call();
+  }
+}
+
+/// [context] 对应控件的全局矩形，供弹出菜单锚定（模型名、Sentinel chip 等）。
+Rect contextMenuAnchorOf(BuildContext context) {
+  final box = context.findRenderObject() as RenderBox;
+  return box.localToGlobal(Offset.zero) & box.size;
+}
+
+/// 菜单里可滚动的条目列表：超过 [maxHeight] 时在面板内滚，宽度取菜单配置。
+///
+/// 模型 / Sentinel 这类选择菜单用它，条目多时不至于撑满整窗。
+class DesktopContextMenuList extends StatelessWidget {
+  final double maxHeight;
+  final List<Widget> children;
+  const DesktopContextMenuList({
+    super.key,
+    required this.maxHeight,
+    required this.children,
+  });
+
+  /// 弹在 [anchor] 上方的选择菜单能用的最大高度：Claude 的选择器就是一小段
+  /// 列表，这里封顶 320（约十行）；同时不超过锚点上方、离窗顶留 12 的空间。
+  static double maxHeightAbove(Rect anchor) =>
+      math.min(320.0, math.max(anchor.top - 20, 120.0));
+
+  @override
+  Widget build(BuildContext context) {
+    final width = DesktopContextMenuConfiguration.widthOf(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: SizedBox(
+        width: width,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          shrinkWrap: true,
+          children: children,
+        ),
+      ),
+    );
   }
 }
 
