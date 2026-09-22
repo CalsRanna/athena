@@ -50,7 +50,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     // 明显比工作区小一号。
     var textStyle = AthenaTextStyle.body.copyWith(
       color: contentColor,
-      fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
+      fontWeight: FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );
     var text = Text(
