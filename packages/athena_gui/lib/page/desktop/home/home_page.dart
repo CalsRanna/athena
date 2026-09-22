@@ -20,6 +20,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
+import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -288,7 +289,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-
   Widget _buildWorkspace() {
     var workspace = DesktopMessageList(
       controller: scrollController,
@@ -326,20 +326,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await sentinelViewModel.getSentinels();
   }
 
-  void _openModelSelector() async {
+  /// 在模型名那一块（[anchor]）上方弹出模型菜单。
+  void _openModelSelector(Rect anchor) async {
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {
       AthenaDialog.warning('You should enable a provider first');
       return;
     }
-    AthenaDialog.show(
-      DesktopModelSelectDialog(
-        onTap: (model) {
-          AthenaDialog.dismiss();
-          updateModel(model);
-        },
-      ),
-      barrierDismissible: true,
+    if (!mounted) return;
+    DesktopContextMenuManager.instance.show(
+      context,
+      DesktopModelSelectMenu(anchor: anchor, onSelected: updateModel),
     );
   }
 

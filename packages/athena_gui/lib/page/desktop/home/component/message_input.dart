@@ -29,7 +29,9 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(double)? onTemperatureChange;
   final void Function(String?)? onReasoningEffortChange;
   final void Function()? onTerminated;
-  final void Function()? onModelTap;
+
+  /// 点击模型名：回传那一块（含 hover 填充）的全局矩形，模型菜单锚在它上方。
+  final void Function(Rect anchor)? onModelTap;
   final void Function()? onSentinelTap;
 
   /// 清除本会话的 Sentinel（回到「不选择任何 Sentinel」）。
@@ -157,13 +159,21 @@ class DesktopMessageInput extends StatelessWidget {
                       child: DesktopImageSelector(onSelected: onImageSelected),
                     ),
                     const Spacer(),
-                    _SquishButton(
-                      hoverFill: ghostHover,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
+                    // 用 Builder 拿到这一整块的矩形回传，菜单右边要与它对齐
+                    Builder(
+                      builder: (context) => _SquishButton(
+                        hoverFill: ghostHover,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        onTap: () {
+                          final box = context.findRenderObject() as RenderBox;
+                          final origin = box.localToGlobal(Offset.zero);
+                          onModelTap?.call(origin & box.size);
+                        },
+                        child: const DesktopModelIndicator(),
                       ),
-                      child: DesktopModelIndicator(onTap: onModelTap),
                     ),
                     const SizedBox(width: 4),
                     _SquishButton(
