@@ -45,9 +45,8 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         Expanded(
           child: Text(
             skill.name,
-            style: TextStyle(
+            style: AthenaTextStyle.title.copyWith(
               color: colors.textPrimary,
-              fontSize: 20,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -64,7 +63,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         const SizedBox(height: 8),
         Text(
           skill.description,
-          style: TextStyle(color: colors.textPrimary, fontSize: 14),
+          style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: 16),
         _label(context, 'Instructions'),
@@ -73,7 +72,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         const SizedBox(height: 16),
         Text(
           skill.sourcePath,
-          style: TextStyle(color: colors.textWeak, fontSize: 12),
+          style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
         ),
         const SizedBox(height: 24),
         if (!skill.isBuiltin) _buildButtons(context, skill),
@@ -93,11 +92,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
       text,
-      style: TextStyle(
-        color: colors.textWeak,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-      ),
+      style: AthenaTextStyle.label.copyWith(color: colors.textWeak),
     );
   }
 
@@ -112,8 +107,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
       padding: const EdgeInsets.all(12),
       child: SelectableText(
         body,
-        style: TextStyle(
-          fontSize: AthenaFontSize.label,
+        style: AthenaTextStyle.caption.copyWith(
           height: 1.6,
           color: colors.textOnRaised,
         ),
@@ -122,17 +116,11 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   Widget _buildButtons(BuildContext context, Skill skill) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var children = [
       Expanded(
         child: AthenaPrimaryButton(
           onTap: () => navigateFormPage(context, skill),
-          child: Center(child: Text('Edit', style: textStyle)),
+          child: Center(child: Text('Edit')),
         ),
       ),
       const SizedBox(width: 8),

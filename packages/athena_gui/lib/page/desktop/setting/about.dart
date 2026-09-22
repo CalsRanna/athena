@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:auto_route/auto_route.dart';
@@ -24,9 +25,9 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: 1.5,
     );

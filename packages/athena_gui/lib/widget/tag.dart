@@ -3,26 +3,26 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// Codex 风格 chip：小圆角矩形 + 1px 实线边框，没有渐变边框、没有胶囊。
+/// 筛选 chip：胶囊 + 1px 实线边框，没有渐变边框。
 ///
-/// 选中态靠"提亮底色 + 提亮文字"表达，不做明暗反转的实心填充——
-/// 反转填充在纯黑画布上会跳出一块白，破坏 Codex 的安静层次。
+/// 选中态靠"提亮底色 + 加粗文字"表达，不做明暗反转的实心填充——
+/// 反转填充会在安静的灰阶层次里跳出一块高对比色块。
 class AthenaTag extends StatelessWidget {
-  final double fontSize;
+  final TextStyle base;
   final EdgeInsets padding;
   final bool selected;
   final String text;
 
   const AthenaTag({
     super.key,
-    this.fontSize = AthenaFontSize.label,
+    this.base = AthenaTextStyle.label,
     this.selected = false,
     required this.text,
   }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
 
   const AthenaTag.small({
     super.key,
-    this.fontSize = AthenaFontSize.caption,
+    this.base = AthenaTextStyle.caption,
     this.selected = false,
     required this.text,
   }) : padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 3);
@@ -30,9 +30,8 @@ class AthenaTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = base.copyWith(
       color: selected ? colors.textPrimary : colors.textSecondary,
-      fontSize: fontSize,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       height: 1.4,
     );
@@ -93,9 +92,8 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
         : colors.surfaceDeep;
     var borderColor = selected || hover ? colors.borderStrong : colors.border;
     var child = DefaultTextStyle.merge(
-      style: TextStyle(
+      style: AthenaTextStyle.label.copyWith(
         color: foregroundColor,
-        fontSize: AthenaFontSize.label,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
         height: 1.4,
       ),
@@ -143,8 +141,8 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
 
 /// Composer 内的上下文 chip。
 ///
-/// 与 [AthenaTagButton] 的区别：没有描边，只有一层浅灰填充（Codex 的
-/// `#F4F4F4`），因为 composer 本身已经是一个浮起容器，chip 不需要再画边。
+/// 与 [AthenaTagButton] 的区别：没有描边，至多一层浅灰填充（`filled: true`
+/// 时），因为它坐在 composer 的上下文条里，chip 不需要再画边。
 /// 形状是小圆角方块（`AthenaRadius.xs`，与 composer 里模型名等嵌套控件同档的
 /// 「小方块」语言，不是胶囊），左侧常带一个 13px 图标。
 class AthenaContextChip extends StatefulWidget {
@@ -163,7 +161,7 @@ class AthenaContextChip extends StatefulWidget {
   /// 是否绘制自己的底色。
   ///
   /// 放在 composer 的上下文带上时传 false：带本身已是浅灰填充，chip 再画一层
-  /// 同色底会变成"看不见的胶囊"。Codex 的上下文项就是带上直接排的文字 + 图标。
+  /// 同色底会变成"看不见的胶囊"。Claude 的上下文项就是带上直接排的文字 + 图标。
   final bool filled;
 
   const AthenaContextChip({
@@ -236,11 +234,7 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
               widget.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: foreground,
-                fontSize: AthenaFontSize.label,
-                fontWeight: FontWeight.w500,
-              ),
+              style: AthenaTextStyle.label.copyWith(color: foreground),
             ),
           ),
           if (widget.trailing != null) ...[

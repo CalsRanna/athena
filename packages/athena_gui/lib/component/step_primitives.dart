@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 const kStepHeaderRadius = 8.0;
 
 /// 步骤头部与结果正文的字号。
-const kStepFontSize = AthenaFontSize.label;
 
 /// 折叠头：图标 + 单行文案（[mono] 时等宽）+ 运行中 shimmer。
 ///
@@ -39,8 +38,8 @@ class StepHeader extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final foreground = colors.textSecondary;
     final style = mono
-        ? athenaMono(fontSize: kStepFontSize, color: foreground)
-        : TextStyle(fontSize: kStepFontSize, color: foreground);
+        ? athenaMono(color: foreground)
+        : AthenaTextStyle.caption.copyWith(color: foreground);
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(kStepHeaderRadius),
@@ -94,7 +93,6 @@ class StepResultBody extends StatelessWidget {
           maxLines: 10,
           overflow: TextOverflow.ellipsis,
           style: athenaMono(
-            fontSize: kStepFontSize,
             color: isError ? colors.statusError : colors.textSecondary,
             height: 1.6,
           ),

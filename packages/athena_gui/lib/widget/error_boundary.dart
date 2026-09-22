@@ -42,18 +42,12 @@ class _AthenaErrorBoundaryState extends State<AthenaErrorBoundary> {
             const SizedBox(height: 16),
             Text(
               'Something went wrong',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: AthenaFontSize.title,
-              ),
+              style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               widget.message ?? 'An unexpected error occurred',
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: AthenaFontSize.body,
-              ),
+              style: AthenaTextStyle.body.copyWith(color: colors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

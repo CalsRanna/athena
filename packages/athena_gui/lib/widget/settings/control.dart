@@ -1,10 +1,13 @@
-/// 设置面板里的行内控件：分段控件、下拉、ghost 图标按钮。
+/// 设置面板里的行内控件：分段控件、下拉。
+///
+/// 关闭 / 新增用的 ghost 图标按钮是全站通用的 `AthenaGhostIconButton`
+/// （`widget/button.dart`）。
 ///
 /// 外壳与分区见 `panel.dart`，行为组件见 `row.dart`。
 library;
 
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -26,9 +29,9 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var decoration = BoxDecoration(
-      color: settings.controlTrack,
+      color: colors.neutralRule,
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var children = [
@@ -42,24 +45,24 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
   }
 
   Widget _buildSegment(BuildContext context, AthenaSegmentOption<T> option) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     // 未选中态不能用 `Colors.transparent`：它的 RGB 是黑，AnimatedContainer
     // 切换档位时会先闪一下半透明深灰（同 menu.dart 的说明）。用目标色的 0
     // 透明度版本，填充与边框全程同色只有 alpha 在动。
     var isSelected = option.value == selected;
     var decoration = BoxDecoration(
       color: isSelected
-          ? settings.controlFill
-          : settings.controlFill.withValues(alpha: 0),
+          ? colors.neutralControlFill
+          : colors.neutralControlFill.withValues(alpha: 0),
       border: Border.all(
         color: isSelected
-            ? settings.controlBorder
-            : settings.controlBorder.withValues(alpha: 0),
+            ? colors.neutralBorder
+            : colors.neutralBorder.withValues(alpha: 0),
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var textStyle = TextStyle(
-      color: isSelected ? settings.navSelectedText : settings.navMuted,
+      color: isSelected ? colors.textPrimary : colors.textWeak,
       fontSize: AthenaSettings.segmentFontSize,
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
     );
@@ -105,10 +108,10 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var decoration = BoxDecoration(
-      color: settings.controlFill,
-      border: Border.all(color: settings.controlBorder),
+      color: colors.neutralControlFill,
+      border: Border.all(color: colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var label = Text(
@@ -116,14 +119,14 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-        color: settings.navSelectedText,
+        color: colors.textPrimary,
         fontSize: AthenaSettings.controlFontSize,
         height: 1.3,
       ),
     );
     var chevron = Icon(
       HugeIcons.strokeRoundedArrowDown01,
-      color: settings.navMuted,
+      color: colors.textWeak,
       size: 14,
     );
     var content = AnimatedContainer(
@@ -150,63 +153,6 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
         onEnter: (_) => setState(() => hover = true),
         onExit: (_) => setState(() => hover = false),
         child: content,
-      ),
-    );
-  }
-}
-
-/// 设置面板里的 ghost 图标按钮（关闭、新增）。
-///
-/// Claude 的控件语言：静止无底色，hover 填充前景色 5%，圆角 7。
-class AthenaSettingsIconButton extends StatefulWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  final double box;
-  final double iconSize;
-  const AthenaSettingsIconButton({
-    super.key,
-    required this.icon,
-    this.onTap,
-    this.box = 28,
-    this.iconSize = AthenaSettings.closeIconSize,
-  });
-
-  @override
-  State<AthenaSettingsIconButton> createState() =>
-      _AthenaSettingsIconButtonState();
-}
-
-class _AthenaSettingsIconButtonState extends State<AthenaSettingsIconButton> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
-    var icon = Icon(
-      widget.icon,
-      color: settings.navText,
-      size: widget.iconSize,
-    );
-    var container = AnimatedContainer(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
-        color: hover ? settings.rule : settings.rule.withValues(alpha: 0),
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-      ),
-      duration: const Duration(milliseconds: 120),
-      height: widget.box,
-      width: widget.box,
-      child: icon,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
       ),
     );
   }

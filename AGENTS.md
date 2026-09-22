@@ -524,6 +524,9 @@ textPrimary / textInput / textSecondary / textWeak / textRowLabel
 textOnRaised / textSecondaryOnRaised / textOnCode / textSecondaryOnCode
 // 边框 / 输入 / 强调
 border / borderStrong / divider / borderChrome / inputBackground / accent
+// 白底上的中性灰（设置面板、composer 输入容器、顶栏底线共用）
+neutralHairline / neutralRule / neutralBorder / neutralBorderStrong
+neutralSelected / neutralControlFill / scrim
 // 状态与控件
 statusSuccess / statusWarning / statusError
 switchKnob / switchTrackOff / checkboxOff / iconSecondary / iconOnRaised / shadow
@@ -537,13 +540,21 @@ markdownLink / markdownStrikethrough / markdownMath
 AthenaRadius.xs/inline/row/control/container/panel/composer/pill
                        // 4 / 5 / 7 / 7 / 10 / 12 / 12 / 999
 AthenaSpace.xs..xxxl   // 4 / 8 / 12 / 16 / 20 / 24 / 32
-AthenaSpace.sidebar    // 260
-AthenaFontSize.hero/title/section/body/label/caption/mono
-                       // 22 / 15 / 14 / 13 / 12 / 11 / 12
+AthenaSpace.sidebar    // 288
+AthenaFontSize.hero/title/section/row/prose/body/label/caption/mono
+                       // 22 / 15 / 14 / 14 / 13 / 13 / 12 / 12 / 12（prose 行盒 20、body 行盒 19）
+AthenaTextStyle.hero/title/section/row/prose/body/label/caption
+                       // 文字样式预设 = 字号 + 默认字重（prose 另带行盒）；调用方只补颜色
 AthenaFont.ui          // null → 系统字体（UI 与正文）
 AthenaFont.mono        // Menlo 等宽（只给代码 / 工具 / 终端）
 AthenaShadow.raised/overlay
 athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
+```
+
+```dart
+// 文字：取预设再补颜色，不要手拼 TextStyle(fontSize: ...)
+Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
+// 字重与预设不同时才覆盖 fontWeight；body 多行时加 height: AthenaFontSize.bodyHeight
 ```
 
 ### 容易搞错的几条规则
@@ -571,8 +582,13 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 ### 关键约束
 
 - 不引入渐变边框、发光、光晕。唯一例外是工具执行中标题的 shimmer 高光。
-- `accent`（`#2A78D6` / `#5598E7`）是全局唯一彩色，只用于主要动作 / 语音 / 链接。
+- `accent`（`#2A78D6` / `#5598E7`）是全局唯一彩色，只用于发送键与运行中状态点
+  （Markdown 链接另有 `markdownLink`）。
 - 圆角只用 `AthenaRadius` 的档位，不新增。
+- 字号只用 `AthenaTextStyle` 预设；主字号表**没有 16 / 20 两档**（16 归 `section`、
+  20 归 `title`）。全仓仅存的两处字面量字号是字形尺寸（空态 emoji 26、脚注徽标 10），
+  不是文字档位。
+- 白底容器上的线与底只从 `neutral*` 七个 token 取，组件里不要私藏 `Color(0x...)`。
 - **侧栏行**：行高**固定 26**（不要靠垂直内边距撑，否则 hover 出现的 `⋮` 会把
   整行顶高）；leading 是 6px 状态点（hover 加深）；**尾部静止为空、hover 才出现
   `⋮`**（旧版把图钉/进度圈常驻在行尾）；标签用 `textRowLabel` 且 hover 不变色。
@@ -586,13 +602,13 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   用户消息之后的助手卡（即正在跑的那一轮）操作条保持不可见（`visible: false`），
   收尾后才恢复。**用户消息不受影响**（照常 hover 显形）；上一轮及更早的助手卡
   同样不受影响。别把控件从树上摘掉——摘掉会让高度在收尾瞬间变 28、末尾跳一下。
-- **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 16、
+- **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 8、
   内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
 - **Composer 版式取自 Claude 桌面端**：上下文条（灰底、无描边）与输入框
   （**纯白** + 1px 中性灰描边）是两个**独立圆角容器**，中间隔 **5**。
-- **输入框边框随焦点切换**：常态 `#E1E1E0` → 聚焦 `#BFBFBE`。
+- **输入框边框随焦点切换**：常态 `neutralBorder` → 聚焦 `neutralBorderStrong`。
   两个值都是中性灰（本仓 `border`/`borderStrong` 是暖灰、白底上偏黄），
-  所以输入框单独定义；Claude 的 CSS 对应 `focus:border-[...]` 效用类。
+  与设置面板共用同一组 `neutral*` token；Claude 的 CSS 对应 `focus:border-[...]` 效用类。
   输入框下方另有一层**向下偏移的柔投影**（`0x0C000000` / blur 20 / offset (0,4)），
   紧贴下边框比画布暗约 7/255、约 18 逻辑衰减到 0——这是下边框看着更深的原因，
   不是第二条边框色。
@@ -608,9 +624,6 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
   按下 `scale(.975)`（按下 60ms、回弹 200ms 弹簧）；输入框聚焦**不加焦点环**、
   容器边框不变（`.cds-input:focus` 只清 box-shadow，`:focus-visible` 才加
   1px accent + 6px 辉光，composer 的编辑器没有焦点规则）。
-- **控件阶梯**（`[data-step=1..5]`）：`radius/control/嵌套` = `5/20/16`、`6/24/18`、
-  `7/28/20`、`8/32/22`、`10/40/28`；容器内按钮取"嵌套高"，
-  圆角 `radius − (control − 嵌套)/2`。**不是圆形**，是圆角 3–4 的小方块。
 - **会话列定宽 768 并居中**，消息与 composer 同宽、左右对齐。
 - 主题默认浅色，深色为镜像。切换入口在设置 → Advanced 的 Appearance 分区。
 - 同一分区还有 **Font size**（Small / Medium / Large，`AthenaTextSize`）：在应用
@@ -626,16 +639,18 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 |------|------|
 | `AthenaTag` / `AthenaTagButton` | 带 1px 边框的胶囊筛选 chip |
 | `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`），圆角取嵌套控件档 `AthenaRadius.xs`（4，不是胶囊）；`trailing` 是尾随控件插槽（前景色由 chip 注入，内层 onTap 先于 chip 的 onTap 命中），**静止透明、hover 才显形**且不可见时 `IgnorePointer`；hover 高亮（**前景色 5% 的 alpha 叠加层**）对 `filled: false` 同样生效，且只对可点的 chip 生效 |
-| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` | 按钮体系 |
+| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` / `AthenaGhostIconButton` | 按钮体系；ghost 图标键（静止无底、hover 前景 5%）给设置面板与桌面对话框的关闭 / 新增用。会话内审批卡与提问卡的按钮也直接用 Primary / Secondary |
 | `AthenaInput` | 平涂底 + 1px 边框输入框 |
 | `AthenaScaffold` / `AthenaAppBar` / `ErrorBoundary` | 页面骨架、顶栏、错误边界 |
 | `AthenaDialog` | 全局模态门面：`confirm` / `input` / `loading` / `message`（桌面居中 Dialog + Overlay toast，移动 Bottom Sheet + SnackBar）。含 `enum AthenaMessageType` |
+| `AthenaDesktopDialog` | 桌面对话框外壳（`surfaceMobile` + `panel` 圆角 + `overlay` 阴影 + 24 内边距 + 可选标题行与 ghost 关闭键）。确认 / 输入对话框与设置里的四个表单对话框都从它派生 |
 | `DesktopContextMenu` / `DesktopEditDeleteContextMenu` / `DesktopContextMenuManager` | 右键菜单；后者是列表条目通用的「编辑 / 删除」菜单（`leading` 可插额外项） |
 | `settings/panel.dart` | `AthenaSettingsPanel`（居中浮层 + 遮罩）/ `AthenaSettingsPane`（内容区）/ `AthenaSettingsSection` / `AthenaSettingsGroup` |
 | `settings/row.dart` | `AthenaSettingsRow`（标签 + 说明 + 右侧控件）/ `AthenaSettingsValueRow` / `AthenaSettingsListItem` / `AthenaSettingsListColumn` / `AthenaSettingsEmptyState` |
-| `settings/control.dart` | `AthenaSettingsSegmented` / `AthenaSegmentOption` / `AthenaSettingsSelect` / `AthenaSettingsIconButton` |
+| `settings/control.dart` | `AthenaSettingsSegmented` / `AthenaSegmentOption` / `AthenaSettingsSelect` |
 | `AthenaSettingsNav` / `AthenaSettingsSearchField` / `AthenaSettingsNavItem` | 设置左栏：搜索框 + 分组 + 导航行 |
-| `AthenaSwitch` / `Checkbox` / `Menu` / `Tile` / `WindowButton` | 通用组件 |
+| `AthenaSwitch` / `Checkbox` / `Menu` / `WindowButton` | 通用组件 |
+| `tile.dart` | `MobileSettingTile`（移动端设置行）/ `MobileGridTile`（移动端网格实体卡：反色底、标题 + 副标题 + 可选尾标，Skill / Sentinel / Experience 列表共用） |
 
 **`lib/component/` = 业务组件**：消费 `athena_core` 实体或 ViewModel。
 
@@ -645,7 +660,7 @@ athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
 | `message_tiles.dart` | `MessageListTile`（按角色分派）、助手 / 用户两支实现、`MessageActionBar`、`AssistantCardHover` |
 | `step_card.dart` | `StepCard`：推理 / 工具 / 压缩步骤卡，按 `steps` 长度决定单步平铺或折叠组（组内嵌套单步）；`toolIcon` / `argPreview` 静态映射供审批卡复用 |
 | `step_primitives.dart` | 步骤卡共用原语：`StepHeader`（图标 + 单行文案 + shimmer）、`StepResultBody`、`StepHeaderShimmer` |
-| `permission_card.dart` / `elicit_card.dart` / `card_button.dart` | 会话内审批卡、提问卡，以及两者共用的卡片按钮体系 |
+| `permission_card.dart` / `elicit_card.dart` | 会话内审批卡、提问卡；按钮直接用 `AthenaPrimaryButton` / `AthenaSecondaryButton` |
 | `sentinel_placeholder.dart` | 会话空态（桌面与移动共用，不要另写平台分支） |
 | `base64_image.dart` / `queued_messages.dart` / `card_tile.dart` / `button.dart`（`CopyButton`） | 其余共享组件 |
 | `chat_column.dart` / `message_list_scroll_controller.dart` | 会话列几何常量与消息列表滚动控制器 |
@@ -824,9 +839,9 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 
 1. 组件在 `athena_gui/lib/widget/`
 2. 颜色从 `Theme.of(context).extension<AthenaColors>()!` 取，不要硬编码；
-   几何/字号从 `athena_tokens.dart` 取，不要写字面量
-3. 遵循 `DESIGN.md` 规范：白底画布（深色用 `#212121`，禁止纯黑）、
-   **UI 与正文用系统字体**（等宽只给代码）、大圆角（4/8/12/16/20/pill）、
+   几何从 `athena_tokens.dart` 取，文字样式从 `AthenaTextStyle` 预设取，不要写字面量
+3. 遵循 `DESIGN.md` 规范：暖白画布（`#FCFCFB`，深色用 `#1A1A19`，禁止纯黑）、
+   **UI 与正文用系统字体**（等宽只给代码）、圆角只用 `AthenaRadius` 档位（4/5/7/10/12/pill）、
    静态容器用边框而浮起容器用 `AthenaShadow`，桌面/移动视觉一致
 4. 新增颜色前先问"灰阶够不够"；`accent` 是全局唯一彩色，不要新增色相
 

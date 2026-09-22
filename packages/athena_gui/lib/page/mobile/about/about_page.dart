@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/scaffold.dart';
@@ -22,10 +23,8 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var image = Image.asset(

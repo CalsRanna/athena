@@ -2,7 +2,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// Codex 风格开关：小圆角矩形轨道 + 实心圆滑块，尺寸紧凑。
+/// 开关：小圆角矩形轨道（34×18）+ 实心圆滑块，尺寸紧凑。
 ///
 /// 开启态用 [AthenaColors.statusSuccess]（功能绿），关闭态用
 /// [AthenaColors.switchTrackOff]（几乎融入画布的深灰）。

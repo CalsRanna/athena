@@ -122,11 +122,7 @@ class SettingPage extends StatelessWidget {
   }
 
   Widget _sheetLabel(String text, AthenaColors colors) {
-    var textStyle = TextStyle(
-      color: colors.textSecondary,
-      fontSize: AthenaFontSize.caption,
-      height: 1.4,
-    );
+    var textStyle = AthenaTextStyle.caption.copyWith(color: colors.textSecondary, height: 1.4);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Text(text, style: textStyle),

@@ -23,16 +23,13 @@ class AthenaBottomSheetTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var textColor = enabled ? colors.textPrimary : colors.textSecondary;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.body.copyWith(
       color: textColor,
-      fontSize: AthenaFontSize.body,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
       height: 1.4,
     );
-    var trailingTextStyle = TextStyle(
+    var trailingTextStyle = AthenaTextStyle.body.copyWith(
       color: textColor,
-      fontSize: AthenaFontSize.body,
-      fontWeight: FontWeight.w400,
       height: 1.4,
     );
     var iconColor = enabled ? colors.iconSecondary : colors.textSecondary;

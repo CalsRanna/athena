@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/page/desktop/setting/experience/component/experience_context_menu.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
@@ -212,7 +213,7 @@ class _DesktopSettingExperiencePageState
         ? Icon(
             HugeIcons.strokeRoundedArchive,
             size: 12,
-            color: settingsColorsOf(context).navMuted,
+            color: Theme.of(context).extension<AthenaColors>()!.textWeak,
           )
         : null;
     return AthenaSettingsListItem(
@@ -286,11 +287,11 @@ class _DesktopSettingExperiencePageState
   }
 
   Widget _buildParagraph(String text) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
       text,
       style: TextStyle(
-        color: settings.navSelectedText,
+        color: colors.textPrimary,
         fontSize: AthenaSettings.rowFontSize,
         height: 1.6,
       ),

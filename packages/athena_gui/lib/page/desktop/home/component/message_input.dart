@@ -64,7 +64,7 @@ class DesktopMessageInput extends StatelessWidget {
     return Watch((context) {
       final chat = chatViewModel.currentChat.value;
       final queued = chatViewModel.queuedMessages.value;
-      // 版式取自 **Claude 桌面端**（这一处刻意不跟 Codex）：
+      // 版式取自 **Claude 桌面端**：
       // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
       // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
       return Padding(
@@ -108,7 +108,7 @@ class DesktopMessageInput extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
-_ComposerInputBox(
+                _ComposerInputBox(
                   builder: (focusNode) => Row(
                     children: [
                       Expanded(
@@ -128,7 +128,8 @@ _ComposerInputBox(
                       ),
                     ],
                   ),
-                ),                const SizedBox(height: 4),
+                ),
+                const SizedBox(height: 4),
                 // 容器之外的一行
                 Row(
                   children: [
@@ -237,20 +238,18 @@ class _InputState extends State<_Input> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var hintTextStyle = TextStyle(
+    var hintTextStyle = AthenaTextStyle.body.copyWith(
       // Claude 实测：占位符是**浅灰** #898782（gray-400），不是深色。
       // 之前那条"深色"的结论是我把光标误当成了文字。
       color: colors.textWeak,
-      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: 'Ask me anything',
       hintStyle: hintTextStyle,
     );
-    final inputTextStyle = TextStyle(
+    final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
-      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var textField = TextField(
@@ -618,9 +617,6 @@ class _ComposerInputBox extends StatefulWidget {
 }
 
 class _ComposerInputBoxState extends State<_ComposerInputBox> {
-  static const _idleBorder = Color(0xFFE1E1E0);
-  static const _focusBorder = Color(0xFFBFBFBE);
-
   final _focusNode = FocusNode();
 
   @override
@@ -647,7 +643,9 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
         border: Border.all(
-          color: _focusNode.hasFocus ? _focusBorder : _idleBorder,
+          color: _focusNode.hasFocus
+              ? colors.neutralBorderStrong
+              : colors.neutralBorder,
         ),
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         // Claude 实测：容器下方有一层很柔的投影——紧贴下边框处比画布暗约

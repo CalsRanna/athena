@@ -23,10 +23,7 @@ class DesktopReasoningEffortButton extends StatelessWidget {
     var text = Text(
       reasoningEffortLabel(current),
       // 与模型名同字号同字重（Claude 的 `High` 是常规字重）
-      style: TextStyle(
-        color: colors.textPrimary,
-        fontSize: AthenaFontSize.body,
-      ),
+      style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
     return GestureDetector(
       onTap: openDialog,

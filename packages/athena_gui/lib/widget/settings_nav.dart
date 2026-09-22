@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -14,10 +15,10 @@ class AthenaSettingsNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var decoration = BoxDecoration(
-      color: settings.nav,
-      border: Border(right: BorderSide(color: settings.navDivider)),
+      color: colors.surfacePanel,
+      border: Border(right: BorderSide(color: colors.neutralBorder)),
     );
     var listView = ListView(
       padding: const EdgeInsets.all(AthenaSettings.navPadding),
@@ -46,30 +47,30 @@ class AthenaSettingsSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var decoration = BoxDecoration(
-      color: settings.searchFill,
-      border: Border.all(color: settings.searchBorder),
+      color: colors.surfaceMobile,
+      border: Border.all(color: colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );
     var icon = Icon(
       HugeIcons.strokeRoundedSearch01,
-      color: settings.navMuted,
+      color: colors.textWeak,
       size: AthenaSettings.searchIconSize,
     );
     var textStyle = TextStyle(
-      color: settings.navSelectedText,
+      color: colors.textPrimary,
       fontSize: AthenaSettings.searchFontSize,
       height: 1.3,
     );
     var hintStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.searchFontSize,
       height: 1.3,
     );
     var field = TextField(
       controller: controller,
-      cursorColor: settings.navSelectedText,
+      cursorColor: colors.textPrimary,
       cursorHeight: 14,
       cursorWidth: 1.5,
       decoration: InputDecoration.collapsed(
@@ -104,9 +105,9 @@ class AthenaSettingsNavGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.navGroupFontSize,
       fontWeight: FontWeight.w400,
       height: 1.3,
@@ -162,16 +163,14 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
-    var contentColor = widget.active
-        ? settings.navSelectedText
-        : settings.navText;
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var contentColor = widget.active ? colors.textPrimary : colors.textRowLabel;
     // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
     var background = widget.active
-        ? settings.navSelected
+        ? colors.neutralSelected
         : hover
-        ? settings.rule
-        : settings.rule.withValues(alpha: 0);
+        ? colors.neutralRule
+        : colors.neutralRule.withValues(alpha: 0);
     var textStyle = TextStyle(
       color: contentColor,
       fontSize: AthenaSettings.navFontSize,

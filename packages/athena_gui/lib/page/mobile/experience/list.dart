@@ -8,6 +8,7 @@ import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/tag.dart';
+import 'package:athena_gui/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -85,11 +86,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   Widget _buildData(BuildContext context, List<ExperienceEntity> experiences) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (experiences.isEmpty) {
-      var textStyle = TextStyle(
-        color: colors.textPrimary,
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-      );
+      var textStyle = AthenaTextStyle.body.copyWith(color: colors.textPrimary);
       return Center(child: Text('No experiences yet', style: textStyle));
     }
     return MasonryGridView.count(
@@ -99,9 +96,16 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
       itemCount: experiences.length,
       itemBuilder: (context, index) {
         var experience = experiences[index];
-        return _Tile(
-          experience: experience,
-          ownerLabel: viewModel.ownerLabel(experience),
+        var isArchived = experience.status == ExperienceEntity.statusArchived;
+        var owner = viewModel.ownerLabel(experience);
+        return MobileGridTile(
+          title: experience.lesson,
+          subtitle: '$owner · ${_formatDate(experience.createdAt)}',
+          titleMaxLines: 3,
+          subtitleMaxLines: 2,
+          trailing: isArchived
+              ? const Icon(HugeIcons.strokeRoundedArchive)
+              : null,
           onTap: () => _navigateDetailPage(context, experience),
           onLongPress: () => openBottomSheet(context, experience),
         );
@@ -145,81 +149,6 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
       child: column,
     );
     AthenaDialog.show(SafeArea(child: padding));
-  }
-}
-
-class _Tile extends StatelessWidget {
-  final ExperienceEntity experience;
-  final String ownerLabel;
-  final void Function()? onTap;
-  final void Function()? onLongPress;
-
-  const _Tile({
-    required this.experience,
-    required this.ownerLabel,
-    this.onTap,
-    this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var lessonTextStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      height: 1.4,
-    );
-    var metaTextStyle = TextStyle(color: colors.textOnRaised, fontSize: 12);
-    var isArchived = experience.status == ExperienceEntity.statusArchived;
-    var meta = '$ownerLabel · ${_formatDate(experience.createdAt)}';
-    var metaChildren = [
-      Expanded(
-        child: Text(
-          meta,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: metaTextStyle,
-        ),
-      ),
-      if (isArchived) ...[
-        const SizedBox(width: 8),
-        Icon(
-          HugeIcons.strokeRoundedArchive,
-          size: 16,
-          color: colors.iconSecondary,
-        ),
-      ],
-    ];
-    var children = [
-      Text(
-        experience.lesson,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
-        style: lessonTextStyle,
-      ),
-      const SizedBox(height: 4),
-      Row(crossAxisAlignment: CrossAxisAlignment.end, children: metaChildren),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.container),
-      color: colors.surfaceRaised,
-    );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(12),
-      child: column,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: container,
-    );
   }
 }
 

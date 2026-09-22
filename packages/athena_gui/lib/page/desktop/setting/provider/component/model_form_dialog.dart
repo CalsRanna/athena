@@ -2,6 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/checkbox.dart';
@@ -10,7 +11,6 @@ import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 class DesktopModelFormDialog extends StatefulWidget {
   final ModelEntity? model;
@@ -36,27 +36,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
-      color: colors.textPrimary,
-      size: 24,
-    );
-    var closeButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: cancelDialog,
-      child: icon,
-    );
-    var text = widget.model == null ? 'Add Model' : 'Edit Model';
-    var titleChildren = [
-      Text(text, style: titleTextStyle),
-      Spacer(),
-      closeButton,
-    ];
     var valueChildren = [
       SizedBox(width: 100, child: AthenaFormTileLabel(title: 'Id')),
       const SizedBox(width: 12),
@@ -88,8 +67,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       Expanded(child: AthenaInput(controller: outputController)),
     ];
     var children = [
-      Row(children: titleChildren),
-      SizedBox(height: 24),
       Row(children: valueChildren),
       SizedBox(height: 12),
       Row(children: nameChildren),
@@ -106,22 +83,15 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       const SizedBox(height: 12),
       _buildButtons(),
     ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
+    return AthenaDesktopDialog(
+      title: widget.model == null ? 'Add Model' : 'Edit Model',
+      onClose: cancelDialog,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
     );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: colors.surfaceMobile,
-    );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(32),
-      width: 520,
-      child: column,
-    );
-    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   void cancelDialog() {
@@ -223,10 +193,8 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
       value: supportVisual,
       onChanged: updateSupportVisual,
     );
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
       height: 1.5,
     );
     var reasoningCheckboxGroup = AthenaCheckboxGroup(

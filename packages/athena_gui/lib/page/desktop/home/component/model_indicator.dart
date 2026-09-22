@@ -53,10 +53,7 @@ class _ModelIndicator extends StatelessWidget {
             model.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: AthenaFontSize.body,
-            ),
+            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
         ),
       ),

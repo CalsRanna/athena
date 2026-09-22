@@ -2,6 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
@@ -54,10 +55,8 @@ class _ModelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameTextStyle = TextStyle(
+    var nameTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
       height: 1.5,
     );
     var nameText = Text(
@@ -124,10 +123,8 @@ class _ModelTile extends StatelessWidget {
       if (inputPrice.isNotEmpty) inputPrice,
       if (outputPrice.isNotEmpty) outputPrice,
     ];
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var text = Text(

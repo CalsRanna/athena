@@ -10,9 +10,8 @@ class NewChatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.section.copyWith(
       color: colors.textOnRaised,
-      fontSize: AthenaFontSize.section,
       fontWeight: FontWeight.w600,
     );
     final button = Container(

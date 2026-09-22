@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -105,7 +106,10 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
     required String ctxPct,
   }) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final ts = TextStyle(color: colors.textInput, fontSize: 12, height: 1.5);
+    final ts = AthenaTextStyle.caption.copyWith(
+      color: colors.textInput,
+      height: 1.5,
+    );
     final children = <InlineSpan>[
       TextSpan(text: '上下文窗口'),
       TextSpan(
@@ -134,9 +138,8 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
       ),
       TextSpan(
         text: '\n口径：每轮 usage.total 都计入，含 prompt 重复计费',
-        style: TextStyle(
+        style: AthenaTextStyle.caption.copyWith(
           color: colors.textInput.withValues(alpha: 0.45),
-          fontSize: 11,
         ),
       ),
     ]);

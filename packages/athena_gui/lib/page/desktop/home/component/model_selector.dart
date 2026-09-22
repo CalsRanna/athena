@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -50,11 +51,9 @@ class DesktopModelSelectDialog extends StatelessWidget {
 
   Widget _buildItemGroupTitle(BuildContext context, String title) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.border,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -87,11 +86,9 @@ class _DesktopModelSelectDialogTileState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var thinkIcon = Icon(
       HugeIcons.strokeRoundedBrain02,

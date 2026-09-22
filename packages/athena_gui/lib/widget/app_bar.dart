@@ -105,13 +105,13 @@ class _DesktopAppBar extends StatelessWidget {
       child: Row(children: leadingChildren),
     );
     // Claude 实测：顶栏高 **46 逻辑**（我原来是 38），底边是一条**极浅**的线
-    // `#F7F7F7`（只比画布暗 5/255）。它是顶栏唯一的轮廓，**只画在工作区上方**：
+    // （`neutralHairline`，只比画布暗 5/255）。它是顶栏唯一的轮廓，**只画在工作区上方**：
     // 画满整宽的话会横穿侧栏那条竖线（并在交叉处留一个 1px 的缺口），
     // 而侧栏上方本该是侧栏面板本身的延伸，不该有横线。
     final workspaceStrip = Expanded(
       child: Container(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFF7F7F7))),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colors.neutralHairline)),
         ),
         child: Row(
           children: [
@@ -153,10 +153,8 @@ class _MobileAppBar extends StatelessWidget {
       child: MobilePopButton(),
     );
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.title.copyWith(
       color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
       height: 1.2,
     );
     final wrappedTitle = DefaultTextStyle(

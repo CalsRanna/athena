@@ -162,6 +162,72 @@ class AthenaDialog {
   }
 }
 
+/// 桌面对话框外壳（DESIGN.md §4 Desktop Dialog）。
+///
+/// `surfaceMobile` 底 + [AthenaRadius.panel] 圆角 + [AthenaShadow.overlay]，
+/// 内边距 24，宽 320–520。给 [title] 就渲染标题行（[AthenaTextStyle.title]），
+/// 再给 [onClose] 会在标题行右端放一个 ghost 关闭键。
+///
+/// 所有桌面模态（确认、输入、设置里的表单）都从这里派生，不要再各自画容器。
+class AthenaDesktopDialog extends StatelessWidget {
+  final String? title;
+  final VoidCallback? onClose;
+  final Widget child;
+
+  const AthenaDesktopDialog({
+    super.key,
+    this.title,
+    this.onClose,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var header = title == null
+        ? null
+        : Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title!,
+                  style: AthenaTextStyle.title.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              if (onClose != null)
+                AthenaGhostIconButton(
+                  icon: HugeIcons.strokeRoundedCancel01,
+                  onTap: onClose,
+                ),
+            ],
+          );
+    var children = [
+      if (header != null) header,
+      if (header != null) const SizedBox(height: AthenaSpace.lg),
+      child,
+    ];
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
+        decoration: BoxDecoration(
+          color: colors.surfaceMobile,
+          borderRadius: BorderRadius.circular(AthenaRadius.panel),
+          boxShadow: AthenaShadow.overlay(colors.shadow),
+        ),
+        padding: const EdgeInsets.all(AthenaSpace.xxl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
+      ),
+    );
+  }
+}
+
 class _AthenaMessageVisualStyle {
   final Color accentColor;
   final IconData icon;
@@ -204,11 +270,7 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.title,
-      fontWeight: FontWeight.w600,
-    );
+    var textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     var children = [
       Text(text, style: textStyle),
       const SizedBox(height: AthenaSpace.xxl),
@@ -243,10 +305,8 @@ class _ConfirmDialog extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Text(
         'Cancel',
-        style: TextStyle(
+        style: AthenaTextStyle.label.copyWith(
           color: Theme.of(context).extension<AthenaColors>()!.textPrimary,
-          fontSize: AthenaFontSize.label,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -271,9 +331,8 @@ class _ConfirmDialog extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Text(
           'Confirm',
-          style: TextStyle(
+          style: AthenaTextStyle.label.copyWith(
             color: colors.textOnRaised,
-            fontSize: AthenaFontSize.label,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -291,39 +350,21 @@ class _DesktopConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.title,
-      fontWeight: FontWeight.w600,
-    );
-    var messageStyle = TextStyle(
+    var messageStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
-      fontSize: AthenaFontSize.body,
       height: 1.6,
     );
     var children = [
-      Text(title, style: titleStyle),
-      const SizedBox(height: AthenaSpace.md),
       Text(message, style: messageStyle),
       const SizedBox(height: AthenaSpace.xxl),
       _buildButtons(context),
     ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
-        decoration: BoxDecoration(
-          color: colors.surfaceMobile,
-          borderRadius: BorderRadius.circular(AthenaRadius.panel),
-          boxShadow: AthenaShadow.overlay(colors.shadow),
-        ),
-        padding: const EdgeInsets.all(AthenaSpace.xxl),
-        child: column,
+    return AthenaDesktopDialog(
+      title: title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
       ),
     );
   }
@@ -373,35 +414,17 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.title,
-      fontWeight: FontWeight.w600,
-    );
     var children = [
-      Text(widget.title, style: titleStyle),
-      const SizedBox(height: AthenaSpace.lg),
       AthenaInput(controller: controller, autoFocus: true),
       const SizedBox(height: AthenaSpace.xxl),
       _buildButtons(context),
     ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
-        decoration: BoxDecoration(
-          color: colors.surfaceMobile,
-          borderRadius: BorderRadius.circular(AthenaRadius.panel),
-          boxShadow: AthenaShadow.overlay(colors.shadow),
-        ),
-        padding: const EdgeInsets.all(AthenaSpace.xxl),
-        child: column,
+    return AthenaDesktopDialog(
+      title: widget.title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: children,
       ),
     );
   }
@@ -456,11 +479,7 @@ class _InputDialogState extends State<_InputDialog> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.title,
-      fontWeight: FontWeight.w600,
-    );
+    var titleStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     var input = AthenaInput(controller: controller, autoFocus: true);
     var children = [
       Text(widget.title, style: titleStyle),
@@ -489,11 +508,7 @@ class _InputDialogState extends State<_InputDialog> {
       padding: const EdgeInsets.all(14),
       child: Text(
         'Cancel',
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: AthenaFontSize.label,
-          fontWeight: FontWeight.w500,
-        ),
+        style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
       ),
     );
     return GestureDetector(
@@ -517,9 +532,8 @@ class _InputDialogState extends State<_InputDialog> {
         padding: const EdgeInsets.all(14),
         child: Text(
           'Confirm',
-          style: TextStyle(
+          style: AthenaTextStyle.label.copyWith(
             color: colors.textOnRaised,
-            fontSize: AthenaFontSize.label,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -542,10 +556,9 @@ class _DesktopLoadingDialog extends StatelessWidget {
         strokeWidth: 2,
       ),
     );
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: AthenaFontSize.label,
     );
     final children = [
       indicator,
@@ -585,10 +598,9 @@ class _DesktopMessageOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final style = _AthenaMessageVisualStyle.fromType(type, colors);
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: AthenaFontSize.label,
       height: 1.5,
     );
     final screenWidth = MediaQuery.sizeOf(context).width;

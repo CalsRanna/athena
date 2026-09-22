@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -45,12 +46,7 @@ class _MobileExperienceDetailPageState
       var children = [
         Text(
           experience.lesson,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
-          ),
+          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary, height: 1.5),
         ),
         const SizedBox(height: 12),
         _metaRow(context, 'Owner', viewModel.ownerLabel(experience)),
@@ -66,7 +62,7 @@ class _MobileExperienceDetailPageState
           const SizedBox(height: 8),
           Text(
             experience.context,
-            style: TextStyle(color: colors.textPrimary, fontSize: 14),
+            style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
           ),
         ],
         if (experience.tags.isNotEmpty) ...[
@@ -99,11 +95,7 @@ class _MobileExperienceDetailPageState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
       text,
-      style: TextStyle(
-        color: colors.textWeak,
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-      ),
+      style: AthenaTextStyle.label.copyWith(color: colors.textWeak),
     );
   }
 
@@ -117,13 +109,13 @@ class _MobileExperienceDetailPageState
             width: 80,
             child: Text(
               label,
-              style: TextStyle(color: colors.textWeak, fontSize: 12),
+              style: AthenaTextStyle.caption.copyWith(color: colors.textWeak),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(color: colors.textPrimary, fontSize: 13),
+              style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
             ),
           ),
         ],
@@ -136,21 +128,12 @@ class _MobileExperienceDetailPageState
     ExperienceEntity experience,
     bool isArchived,
   ) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var children = [
       Expanded(
         child: AthenaPrimaryButton(
           onTap: () => _toggleStatus(experience, isArchived),
           child: Center(
-            child: Text(
-              isArchived ? 'Restore' : 'Archive',
-              style: textStyle,
-            ),
+            child: Text(isArchived ? 'Restore' : 'Archive'),
           ),
         ),
       ),

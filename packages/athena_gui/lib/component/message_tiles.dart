@@ -449,11 +449,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
     // 字号 / 行高与助手正文同一档（prose 13 / 20），否则一轮对话里
     // 问与答的字号会不一致。
-    var textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.prose,
-      height: AthenaFontSize.proseHeight,
-    );
+    var textStyle = AthenaTextStyle.prose.copyWith(color: colors.textPrimary);
     var text = Text(widget.message.content, style: textStyle);
     var images = widget.message.imageUrls.isNotEmpty
         ? widget.message.imageUrls.split(',')

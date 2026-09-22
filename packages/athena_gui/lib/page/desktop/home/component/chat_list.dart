@@ -38,7 +38,7 @@ class DesktopChatListView extends StatelessWidget {
     return Watch((context) {
       var chats = chatViewModel.chats.value;
       chatViewModel.initLastSelectedIndex();
-      // 侧栏结构对齐 Codex：上方是会话列表（置顶 / 其余分两组），
+      // 侧栏结构对齐 Claude：上方是会话列表（置顶 / 其余分两组），
       // 底部常驻一个账号/设置页脚。
       final items = _buildSidebarItems(chats);
       return Column(
@@ -81,14 +81,8 @@ class DesktopChatListView extends StatelessWidget {
       );
     }
     return [
-      if (pinned.isNotEmpty) ...[
-        const _SidebarGroup('Pinned'),
-        ...pinned,
-      ],
-      if (rest.isNotEmpty) ...[
-        const _SidebarGroup('Chats'),
-        ...rest,
-      ],
+      if (pinned.isNotEmpty) ...[const _SidebarGroup('Pinned'), ...pinned],
+      if (rest.isNotEmpty) ...[const _SidebarGroup('Chats'), ...rest],
     ];
   }
 
@@ -98,9 +92,8 @@ class DesktopChatListView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
       child: Text(
         label,
-        style: TextStyle(
+        style: AthenaTextStyle.label.copyWith(
           color: colors.textWeak,
-          fontSize: AthenaFontSize.caption,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.3,
         ),
@@ -146,8 +139,7 @@ class DesktopChatListView extends StatelessWidget {
     TapUpDetails details,
     ChatEntity chat,
     List<ChatEntity> chats,
-  ) =>
-      _openContextMenuAt(context, details.globalPosition, chat, chats);
+  ) => _openContextMenuAt(context, details.globalPosition, chat, chats);
 
   /// 在 [position] 处弹出会话右键菜单。右键与行尾的 `⋮` 按钮共用。
   void _openContextMenuAt(
@@ -186,10 +178,9 @@ class DesktopChatListView extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(
           'No chats yet',
-          style: TextStyle(
+          style: AthenaTextStyle.caption.copyWith(
             color: colors.textWeak,
             decoration: TextDecoration.none,
-            fontSize: AthenaFontSize.label,
           ),
         ),
       ),
@@ -369,7 +360,7 @@ class _SidebarEntry extends _SidebarItem {
 
 /// 侧栏底部常驻页脚：应用标识 + 设置入口。
 ///
-/// 对齐 Codex 的账号页脚位置；Athena 没有账号体系，这里承担设置入口，
+/// 对齐 Claude 的账号页脚位置；Athena 没有账号体系，这里承担设置入口，
 /// 因此顶栏不再重复放设置按钮。
 class _SidebarFooter extends StatelessWidget {
   const _SidebarFooter();
@@ -401,11 +392,7 @@ class _SidebarFooter extends StatelessWidget {
               'Athena',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: AthenaFontSize.label,
-                fontWeight: FontWeight.w500,
-              ),
+              style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
             ),
           ),
           _FooterIconButton(
@@ -442,7 +429,7 @@ class _FooterIconButton extends StatelessWidget {
 
 /// 侧栏顶部导航块。
 ///
-/// Codex 的侧栏在会话分组之上还有一段导航行（New chat / Scheduled / …）。
+/// Claude 的侧栏在会话分组之上还有一段导航行（New chat 等）。
 /// Athena 只有"新建会话"这一项有对应能力，就只放它——不摆没有行为的入口。
 /// 这一块同时替代了旧版悬在画布上的那枚新建铅笔图标。
 class _SidebarNav extends StatelessWidget {

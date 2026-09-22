@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 /// 主操作实心按钮的填充色与前景色。
 ///
-/// 深色主题下是白底黑字，浅色主题下是黑底白字——Codex 的主按钮在两种
+/// 深色主题下是白底黑字，浅色主题下是黑底白字——Claude 的主按钮在两种
 /// 主题里都是"画布的反色块"，因此取值全部来自 [AthenaColors] 的
 /// surfaceRaised / textOnRaised 这一对。
 class AthenaIconButton extends StatelessWidget {
@@ -55,7 +55,7 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Codex 没有 CTA 光晕：主按钮就是一块干净的反色实心矩形，
+    // Claude 没有 CTA 光晕：主按钮就是一块干净的反色实心矩形，
     // 悬停只把填充微微压暗（深色主题）/ 提亮（浅色主题）。
     final background = widget.onTap == null
         ? colors.surfaceButtonSecondary
@@ -76,9 +76,8 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
       duration: const Duration(milliseconds: 120),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: DefaultTextStyle(
-        style: TextStyle(
+        style: AthenaTextStyle.label.copyWith(
           color: foreground,
-          fontSize: AthenaFontSize.label,
           fontWeight: FontWeight.w600,
         ),
         child: IconTheme.merge(
@@ -153,12 +152,10 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
       duration: const Duration(milliseconds: 120),
       padding: widget.padding,
       child: DefaultTextStyle(
-        style: TextStyle(
+        style: AthenaTextStyle.label.copyWith(
           color: widget.onTap == null
               ? colors.textSecondary
               : colors.textPrimary,
-          fontSize: AthenaFontSize.label,
-          fontWeight: FontWeight.w500,
         ),
         child: IconTheme.merge(
           data: IconThemeData(
@@ -214,11 +211,67 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Text(
         widget.text,
-        style: TextStyle(
+        style: AthenaTextStyle.label.copyWith(
           color: hover ? colors.textPrimary : colors.textSecondary,
-          fontSize: AthenaFontSize.label,
         ),
       ),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => hover = true),
+        onExit: (_) => setState(() => hover = false),
+        child: container,
+      ),
+    );
+  }
+}
+
+/// Ghost 图标按钮：静止无底色，hover 填充前景色 5%（Claude 的
+/// `--cds-fill-ghost-hover`），圆角 [AthenaRadius.row]。
+///
+/// 用于设置面板的关闭 / 新增键与桌面对话框的关闭键；默认盒 28、图标 14。
+class AthenaGhostIconButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double box;
+  final double iconSize;
+  const AthenaGhostIconButton({
+    super.key,
+    required this.icon,
+    this.onTap,
+    this.box = 28,
+    this.iconSize = 14,
+  });
+
+  @override
+  State<AthenaGhostIconButton> createState() => _AthenaGhostIconButtonState();
+}
+
+class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var icon = Icon(
+      widget.icon,
+      color: colors.textRowLabel,
+      size: widget.iconSize,
+    );
+    var container = AnimatedContainer(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
+        color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+        borderRadius: BorderRadius.circular(AthenaRadius.row),
+      ),
+      duration: const Duration(milliseconds: 120),
+      height: widget.box,
+      width: widget.box,
+      child: icon,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

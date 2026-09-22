@@ -196,15 +196,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Widget _buildGenerateButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return AthenaPrimaryButton(
       onTap: generateSentinel,
-      child: Center(child: Text('Generate', style: textStyle)),
+      child: Center(child: Text('Generate')),
     );
   }
 
@@ -224,15 +218,9 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   }
 
   Widget _buildStoreButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return AthenaPrimaryButton(
       onTap: storeSentinel,
-      child: Center(child: Text('Store', style: textStyle)),
+      child: Center(child: Text('Store')),
     );
   }
 

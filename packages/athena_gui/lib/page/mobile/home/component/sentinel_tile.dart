@@ -12,11 +12,7 @@ class SentinelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.label,
-      fontWeight: FontWeight.w500,
-    );
+    final textStyle = AthenaTextStyle.label.copyWith(color: colors.textPrimary);
     final innerContainer = Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(

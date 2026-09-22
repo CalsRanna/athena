@@ -31,10 +31,9 @@ class _MobileDefaultModelFormPageState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = TextStyle(
+    var titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
     );
     var chatTitle = Text('Agent Model', style: titleTextStyle);
     var namingTitle = Text('Chat Naming Model', style: titleTextStyle);
@@ -42,10 +41,8 @@ class _MobileDefaultModelFormPageState
       'Sentinel Metadata Generation Model',
       style: titleTextStyle,
     );
-    var tipTextStyle = TextStyle(
+    var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
@@ -188,9 +185,8 @@ class _ModelDropdown extends StatelessWidget {
   Widget _buildText() {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      final textStyle = TextStyle(
+      final textStyle = AthenaTextStyle.row.copyWith(
         color: colors.textInput,
-        fontSize: 14,
         height: 1.7,
       );
       if (model == null) {

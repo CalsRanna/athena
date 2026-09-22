@@ -1,5 +1,6 @@
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/widget/settings_nav.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
@@ -161,9 +162,9 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
   }
 
   Widget _buildNoResult(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.fontSizeForEmptySearch,
       height: 1.5,
     );

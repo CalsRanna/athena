@@ -1,20 +1,21 @@
-/// Codex 风格的设计 token：几何、排版、字体族、阴影。
+/// Athena 的设计 token：几何、排版、字体族、阴影。
 ///
 /// 与 [AthenaColors] 的分工：`athena_colors.dart` 管颜色（挂 ThemeExtension，
 /// 随主题切换），本文件管不随主题变化的常量。
 ///
-/// 视觉语言来自 **真实的 Codex 桌面端**（取值来自对 Codex 窗口截图的实际采样）：
+/// 视觉语言来自 **Claude 桌面端**（取值来自它 `app.asar` 里的 `--cds-*` 变量，
+/// 并与窗口截图采样交叉验证）：
 /// - UI 与正文用**系统字体**，等宽只用于代码块 / 终端 / 技术标签；
-/// - 圆角偏大：行 8、容器 12、浮层 16、composer 20，chip 是胶囊；
-/// - 层级靠"提亮一档的灰底 + 极淡的分隔线"，浮起容器带一层柔阴影；
-/// - 画布是纯白（浅色）/ 近黑（深色），**不使用纯黑**。
+/// - 圆角克制：行 / 控件 7、卡片 10、对话框 / 菜单 12；筛选 chip 是胶囊；
+/// - 层级靠"提亮一档的灰底 + 极淡的分隔线"，浮层带一层柔阴影；
+/// - 画布是暖白（浅色）/ 近黑（深色），**不使用纯黑**。
 library;
 
 import 'package:flutter/material.dart';
 
 /// 圆角等级。取值来自 **Claude 桌面端的 `--cds-radius-*`**。
 ///
-/// Claude 的圆角比 Codex 更收：最小档 5、控件档 7、composer 也只有 12。
+/// Claude 的圆角很克制：最小档 5、控件档 7、composer 也只有 12。
 /// 没有 20/24 这种大圆角。
 ///
 /// | Claude 变量 | 值 | 本仓 token | 组件 |
@@ -35,15 +36,7 @@ abstract final class AthenaRadius {
   static const panel = 12.0;
   static const menu = 12.0;
   static const composer = 12.0;
-  static const sm = 5.0;
-  static const md = 7.0;
-  static const lg = 10.0;
-  static const xl = 12.0;
-  static const xxl = 14.0;
-  static const xxxl = 16.0;
-  static const xxxxl = 20.0;
-  static const full = 999.0;
-  static const pill = full;
+  static const pill = 999.0;
 }
 
 /// 间距等级。
@@ -62,10 +55,10 @@ abstract final class AthenaSpace {
 
 /// 字号等级。取值来自 **Claude 桌面端 `.cds-root` 的 `--cds-font-size-*`**。
 ///
-/// 实测该变量的默认档（未叠加 `data-density` / `data-text-size`）是
-/// caption 12 / body 14 / prose 15 / heading 14，字号比早期实现记的
-/// （11 / 13 / 13）整体大一档。`prose` 是消息正文（Markdown）专用档，
-/// 比 UI 正文再大 1px，这是 Claude 让对话内容比界面控件更易读的手段。
+/// 该变量的默认档（未叠加 `data-density` / `data-text-size`）是
+/// caption 12 / body 14 / prose 15 / heading 14；本仓的 [body] 与 [prose]
+/// 取的是文字档 small 解析后的值（`--textsm` = 13，见各自注释里的实测
+/// 交叉验证），标题、标签、说明仍按默认档。
 abstract final class AthenaFontSize {
   /// 空态标题。
   static const hero = 22.0;
@@ -75,6 +68,13 @@ abstract final class AthenaFontSize {
 
   /// 分区标题、卡片标题（`--cds-font-size-heading` = 14）。
   static const section = 14.0;
+
+  /// 菜单条目、选择器行、设置行（Claude 默认档 body = 14）。
+  ///
+  /// 与 [section] 同号但不同角色：[section] 是加粗的标题，这里是常规字重的
+  /// 行文字。本仓的 [body] 取的是文字档 small 的 13，而 Claude 的菜单与
+  /// 设置行实测仍是 14，所以单独留一个名字，免得写成 `section` + w400。
+  static const row = 14.0;
 
   /// **消息正文（Markdown）**：文字档 small 下取
   /// `--cds-font-size-prose--textsm` = 13，行高 `--cds-leading-prose` = 20。
@@ -112,6 +112,68 @@ abstract final class AthenaFontSize {
   static const mono = 12.0;
 }
 
+/// 文字样式预设：一个角色 = 字号 + 默认字重（+ 行盒）。
+///
+/// 调用方只需补颜色：`AthenaTextStyle.section.copyWith(color: colors.textPrimary)`；
+/// 字重与预设不同时再覆盖 `fontWeight`。角色与字号的对应见 [AthenaFontSize]，
+/// 设计口径见 DESIGN.md §3。
+///
+/// 行高：只有 [prose]（消息正文）把 Claude 的绝对行盒（20）烧进预设；
+/// [body] 不带行高——它多数时候是单行控件文字，多行时按需加
+/// `height: AthenaFontSize.bodyHeight`（19 / 13）。
+///
+/// 等宽不在这里：代码 / 工具参数 / 输出走 [athenaMono]。
+abstract final class AthenaTextStyle {
+  /// 空态欢迎大标题：22 / w600。
+  static const hero = TextStyle(
+    fontSize: AthenaFontSize.hero,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// 页 / 对话框标题：15 / w600。
+  static const title = TextStyle(
+    fontSize: AthenaFontSize.title,
+    fontWeight: FontWeight.w600,
+  );
+
+  /// 分区标题、卡片标题、列表项标题：14 / w500。
+  static const section = TextStyle(
+    fontSize: AthenaFontSize.section,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// 菜单条目、选择器行、设置行：14 / w400。
+  static const row = TextStyle(
+    fontSize: AthenaFontSize.row,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// 消息正文（Markdown）：13 / w400，行盒 20。
+  static const prose = TextStyle(
+    fontSize: AthenaFontSize.prose,
+    fontWeight: FontWeight.w400,
+    height: AthenaFontSize.proseHeight,
+  );
+
+  /// UI 正文、输入框、侧栏行：13 / w400。
+  static const body = TextStyle(
+    fontSize: AthenaFontSize.body,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// 标签、chip、小按钮、工具名：12 / w500。
+  static const label = TextStyle(
+    fontSize: AthenaFontSize.label,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// 说明、元信息、分组标题：12 / w400。
+  static const caption = TextStyle(
+    fontSize: AthenaFontSize.caption,
+    fontWeight: FontWeight.w400,
+  );
+}
+
 /// 全站字号档位（设置里的「Font size」）。
 ///
 /// Claude 桌面端在 Appearance 里有一档文字大小设置（分段控件，Small / Medium /
@@ -139,8 +201,8 @@ enum AthenaTextSize {
 /// 字体族。
 ///
 /// **UI 与正文走系统字体**（`null` = 平台默认：macOS SF Pro / Windows Segoe UI）——
-/// Codex 的侧栏、设置、按钮、正文都是比例字体，等宽只有代码与终端在用。
-/// 早期实现把整个 UI 做成等宽，是对 Codex 的误读。
+/// Claude 的侧栏、设置、按钮、正文都是比例字体，等宽只有代码与终端在用。
+/// 早期实现把整个 UI 做成等宽，是对 Claude 的误读。
 abstract final class AthenaFont {
   /// UI 与正文：交给平台默认字体（含 CJK 回退）。
   static const String? ui = null;
@@ -169,8 +231,8 @@ abstract final class AthenaFont {
 
 /// 浮起容器的柔阴影。
 ///
-/// Codex 的 composer 与浮层不是硬 1px 描边，而是一圈非常柔和的投影
-/// （截图实测在边界处呈 `#FBFBFB → #F0F0F0 → #FFFFFF` 的渐变过渡）。
+/// Claude 的对话框与弹出层不是硬 1px 描边，而是一圈非常柔和的投影；
+/// 移动端 composer 用 [raised]，对话框与菜单用 [overlay]。
 abstract final class AthenaShadow {
   /// 低浮起：composer、行内浮层。
   static List<BoxShadow> raised(Color ink) => [

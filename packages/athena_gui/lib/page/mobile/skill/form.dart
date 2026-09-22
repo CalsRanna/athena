@@ -1,5 +1,6 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -56,7 +57,7 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
         const SizedBox(height: 4),
         Text(
           'Used as the skill directory name; cannot be changed later',
-          style: TextStyle(color: Theme.of(context).extension<AthenaColors>()!.border, fontSize: 12),
+          style: AthenaTextStyle.caption.copyWith(color: Theme.of(context).extension<AthenaColors>()!.border),
         ),
         const SizedBox(height: 16),
       ],
@@ -89,17 +90,11 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
   }
 
   Widget _buildStoreButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: AthenaPrimaryButton(
         onTap: storeSkill,
-        child: Center(child: Text('Store', style: textStyle)),
+        child: Center(child: Text('Store')),
       ),
     );
   }

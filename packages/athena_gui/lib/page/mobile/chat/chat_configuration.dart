@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
@@ -43,9 +44,8 @@ class _MobileChatConfigurationPageState
         child: Text(
           'When enabled, each message is sent independently '
           'without any conversation history.',
-          style: TextStyle(
+          style: AthenaTextStyle.body.copyWith(
             color: colors.textPrimary.withValues(alpha: 0.6),
-            fontSize: 13,
             height: 1.5,
           ),
         ),
