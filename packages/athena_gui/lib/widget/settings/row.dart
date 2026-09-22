@@ -3,9 +3,10 @@
 /// 外壳与分区见 `panel.dart`，行内控件见 `control.dart`。
 library;
 
+import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -37,16 +38,16 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var hasDescription = widget.description != null;
     var labelStyle = TextStyle(
-      color: settings.navSelectedText,
+      color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
       height: 1.4,
     );
     var descriptionStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: FontWeight.w400,
       height: AthenaSettings.rowDescriptionHeight,
@@ -56,8 +57,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       children: [
         Text(widget.label, style: labelStyle),
         if (hasDescription) const SizedBox(height: AthenaSettings.rowLabelGap),
-        if (hasDescription)
-          Text(widget.description!, style: descriptionStyle),
+        if (hasDescription) Text(widget.description!, style: descriptionStyle),
       ],
     );
     var row = Row(
@@ -91,7 +91,9 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
           duration: const Duration(milliseconds: 120),
           decoration: BoxDecoration(
             // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
-            color: hover ? settings.rule : settings.rule.withValues(alpha: 0),
+            color: hover
+                ? colors.neutralRule
+                : colors.neutralRule.withValues(alpha: 0),
             borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -121,19 +123,22 @@ class AthenaSettingsValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var labelStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: 1.5,
     );
     var valueStyle = TextStyle(
-      color: settings.navSelectedText,
+      color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       height: 1.5,
     );
     var children = [
-      SizedBox(width: labelWidth, child: Text(label, style: labelStyle)),
+      SizedBox(
+        width: labelWidth,
+        child: Text(label, style: labelStyle),
+      ),
       Expanded(child: Text(value, style: valueStyle)),
     ];
     return Padding(
@@ -171,15 +176,15 @@ class _AthenaSettingsListItemState extends State<AthenaSettingsListItem> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var contentColor = widget.selected
-        ? settings.navSelectedText
-        : settings.navText;
+        ? colors.textPrimary
+        : colors.textRowLabel;
     var background = widget.selected
-        ? settings.navSelected
+        ? colors.neutralSelected
         : hover
-        ? settings.rule
-        : settings.rule.withValues(alpha: 0);
+        ? colors.neutralRule
+        : colors.neutralRule.withValues(alpha: 0);
     var textStyle = TextStyle(
       color: contentColor,
       fontSize: AthenaSettings.rowFontSize,
@@ -189,7 +194,7 @@ class _AthenaSettingsListItemState extends State<AthenaSettingsListItem> {
       alignment: Alignment.centerLeft,
       decoration: BoxDecoration(
         color: background,
-        border: Border(bottom: BorderSide(color: settings.rule)),
+        border: Border(bottom: BorderSide(color: colors.neutralRule)),
       ),
       duration: const Duration(milliseconds: 120),
       height: 40,
@@ -245,9 +250,9 @@ class AthenaSettingsListColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.navGroupFontSize,
       height: 1.3,
     );
@@ -257,7 +262,7 @@ class AthenaSettingsListColumn extends StatelessWidget {
         children: [
           Expanded(child: Text(title, style: titleStyle)),
           if (onAdd != null)
-            AthenaSettingsIconButton(
+            AthenaGhostIconButton(
               box: 24,
               icon: HugeIcons.strokeRoundedAdd01,
               iconSize: 14,
@@ -267,11 +272,13 @@ class AthenaSettingsListColumn extends StatelessWidget {
       ),
     );
     var decoration = BoxDecoration(
-      border: Border(right: BorderSide(color: settings.navDivider)),
+      border: Border(right: BorderSide(color: colors.neutralBorder)),
     );
     var children2 = [
       header,
-      Expanded(child: ListView(padding: EdgeInsets.zero, children: children)),
+      Expanded(
+        child: ListView(padding: EdgeInsets.zero, children: children),
+      ),
       if (footer != null) footer!,
     ];
     return Container(
@@ -289,9 +296,9 @@ class AthenaSettingsEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = TextStyle(
-      color: settings.navMuted,
+      color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
       height: 1.5,
     );

@@ -7,6 +7,7 @@ import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
+import 'package:athena_gui/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -80,10 +81,8 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                       const SizedBox(width: 8),
                       Text(
                         'Add a skill',
-                        style: TextStyle(
+                        style: AthenaTextStyle.section.copyWith(
                           color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -100,11 +99,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   Widget _buildData(BuildContext context, List<Skill> skills) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (skills.isEmpty) {
-      var textStyle = TextStyle(
-        color: colors.textPrimary,
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-      );
+      var textStyle = AthenaTextStyle.body.copyWith(color: colors.textPrimary);
       return Center(child: Text('No skills yet', style: textStyle));
     }
     return MasonryGridView.count(
@@ -114,8 +109,12 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
       itemCount: skills.length,
       itemBuilder: (context, index) {
         var skill = skills[index];
-        return _Tile(
-          skill: skill,
+        return MobileGridTile(
+          title: skill.name,
+          subtitle: skill.description,
+          trailing: skill.isBuiltin
+              ? const Icon(HugeIcons.strokeRoundedCircleLock01)
+              : null,
           onTap: () => navigateDetailPage(context, skill),
           onLongPress: () => openBottomSheet(context, skill),
         );
@@ -160,59 +159,5 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
       child: column,
     );
     AthenaDialog.show(SafeArea(child: padding));
-  }
-}
-
-class _Tile extends StatelessWidget {
-  final Skill skill;
-  final void Function()? onTap;
-  final void Function()? onLongPress;
-
-  const _Tile({required this.skill, this.onTap, this.onLongPress});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameTextStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    var descriptionTextStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 12,
-    );
-    var nameChildren = [
-      Expanded(child: Text(skill.name, style: nameTextStyle)),
-      if (skill.isBuiltin)
-        Icon(
-          HugeIcons.strokeRoundedCircleLock01,
-          size: 12,
-          color: colors.textOnRaised,
-        ),
-    ];
-    var children = [
-      Row(children: nameChildren),
-      Text(skill.description, style: descriptionTextStyle),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.container),
-      color: colors.surfaceRaised,
-    );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(12),
-      child: column,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: container,
-    );
   }
 }

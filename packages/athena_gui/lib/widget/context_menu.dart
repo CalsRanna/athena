@@ -140,11 +140,9 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
         : widget.danger
         ? colors.dangerText
         : colors.textPrimary;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: textColor,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.row),
@@ -209,11 +207,9 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.row),
@@ -282,11 +278,9 @@ class _DesktopContextMenuTileWithSubmenuState
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var textColor = widget.enabled ? colors.textPrimary : colors.textSecondary;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: textColor,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.row),
@@ -414,7 +408,6 @@ class DesktopContextMenuManager {
     _entry = null;
   }
 }
-
 
 /// 菜单分组之间的 1px 细线（Claude 在 Archive / Delete 之前有一条）。
 class DesktopContextMenuSeparator extends StatelessWidget {

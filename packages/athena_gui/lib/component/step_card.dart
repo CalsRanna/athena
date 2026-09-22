@@ -4,6 +4,7 @@ import 'package:athena_core/util/compaction_step_formatter.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -272,8 +273,7 @@ class _ReasoningBody extends StatelessWidget {
         width: double.infinity,
         child: Text(
           message.reasoningContent,
-          style: TextStyle(
-            fontSize: kStepFontSize,
+          style: AthenaTextStyle.caption.copyWith(
             height: 1.6,
             color: colors.textSecondary,
           ),

@@ -1,6 +1,7 @@
 import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -55,7 +56,10 @@ class _CopyButtonState extends State<CopyButton> {
     var children = [
       hugeIcon,
       const SizedBox(width: 4),
-      Text('Copied', style: TextStyle(fontSize: 12, height: 1, color: color)),
+      Text(
+        'Copied',
+        style: AthenaTextStyle.caption.copyWith(height: 1, color: color),
+      ),
     ];
     return Row(children: children);
   }

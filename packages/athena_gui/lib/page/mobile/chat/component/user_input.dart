@@ -32,18 +32,12 @@ class _UserInputState extends State<UserInput> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final hintTextStyle = TextStyle(
-      color: colors.textWeak,
-      fontSize: AthenaFontSize.body,
-    );
+    final hintTextStyle = AthenaTextStyle.body.copyWith(color: colors.textWeak);
     final inputDecoration = InputDecoration.collapsed(
       hintText: 'Send a message',
       hintStyle: hintTextStyle,
     );
-    final textStyle = TextStyle(
-      color: colors.textInput,
-      fontSize: AthenaFontSize.body,
-    );
+    final textStyle = AthenaTextStyle.body.copyWith(color: colors.textInput);
     final textField = TextField(
       controller: widget.controller,
       scrollController: _scrollController,

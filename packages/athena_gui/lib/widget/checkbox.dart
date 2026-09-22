@@ -3,7 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
-/// Codex 风格勾选框：小圆角方块，选中为反色实心块。
+/// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为反色实心块。
 class AthenaCheckbox extends StatefulWidget {
   final void Function(bool)? onChanged;
   final bool value;

@@ -1,19 +1,19 @@
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
-import 'package:athena_gui/component/card_button.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 
 const permissionCardMaxHeightFraction = 0.5;
 
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
-/// 容器对齐 Agent 消息卡片（白色圆角 24）；内部结构复用工具步骤行的
-/// 标题行语言（工具图标 + 工具名 + 参数预览 + 运行状态），命令完整
-/// 展示，按钮为浅色卡片上的胶囊体系（深色实心主按钮 + 描边次按钮）。
+/// 容器是白底描边卡片；内部结构复用工具步骤行的标题行语言（工具名 +
+/// 参数预览），命令完整展示，按钮直接用全站的 [AthenaPrimaryButton] /
+/// [AthenaSecondaryButton]（DESIGN.md：主路径操作按钮一律从 Primary CTA 派生）。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
   final double maxHeight;
@@ -31,8 +31,6 @@ class PermissionApprovalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 容器样式对齐 Agent 消息卡片（白色圆角 24、同款 padding），
-    // 内部为 [头像] + [正文] 两列布局（与消息卡片一致）
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
       child: Container(
@@ -65,8 +63,7 @@ class PermissionApprovalCard extends StatelessWidget {
       children: [
         Text(
           request.toolName,
-          style: TextStyle(
-            fontSize: AthenaFontSize.label,
+          style: AthenaTextStyle.label.copyWith(
             fontWeight: FontWeight.w600,
             color: colors.textPrimary,
           ),
@@ -92,11 +89,7 @@ class PermissionApprovalCard extends StatelessWidget {
         primary: false,
         child: Text(
           formatToolArgsForApproval(request.toolName, request.arguments),
-          style: athenaMono(
-            fontSize: 12,
-            color: colors.textPrimary,
-            height: 1.6,
-          ),
+          style: athenaMono(color: colors.textPrimary, height: 1.6),
         ),
       ),
     );
@@ -112,19 +105,19 @@ class PermissionApprovalCard extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CardPrimaryButton(
-            label: 'Allow Once',
+          AthenaPrimaryButton(
             onTap: () => onDecision(true, false),
+            child: const Center(child: Text('Allow Once')),
           ),
           const SizedBox(height: 8),
-          CardSecondaryButton(
-            label: 'Always Allow',
+          AthenaSecondaryButton(
             onTap: () => onDecision(true, true),
+            child: const Center(child: Text('Always Allow')),
           ),
           const SizedBox(height: 8),
-          CardSecondaryButton(
-            label: 'Deny',
+          AthenaSecondaryButton(
             onTap: () => onDecision(false, false),
+            child: const Center(child: Text('Deny')),
           ),
         ],
       );
@@ -134,19 +127,19 @@ class PermissionApprovalCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        CardSecondaryButton(
-          label: 'Deny',
+        AthenaSecondaryButton(
           onTap: () => onDecision(false, false),
+          child: const Text('Deny'),
         ),
         const SizedBox(width: 12),
-        CardSecondaryButton(
-          label: 'Always Allow',
+        AthenaSecondaryButton(
           onTap: () => onDecision(true, true),
+          child: const Text('Always Allow'),
         ),
         const SizedBox(width: 12),
-        CardPrimaryButton(
-          label: 'Allow Once',
+        AthenaPrimaryButton(
           onTap: () => onDecision(true, false),
+          child: const Text('Allow Once'),
         ),
       ],
     );

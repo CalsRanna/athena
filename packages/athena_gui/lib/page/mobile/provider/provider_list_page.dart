@@ -2,6 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -118,16 +119,12 @@ class _ProviderListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final titleTextStyle = TextStyle(
-      fontSize: 16,
+    final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontWeight: FontWeight.w500,
       height: 1.5,
     );
-    final subtitleTextStyle = TextStyle(
-      fontSize: 12,
+    final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var titleChildren = [

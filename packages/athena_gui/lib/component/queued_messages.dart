@@ -36,9 +36,7 @@ class QueuedMessages extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 'Queued (${messages.length})',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                style: AthenaTextStyle.label.copyWith(
                   color: colors.textSecondary,
                 ),
               ),
@@ -49,7 +47,9 @@ class QueuedMessages extends StatelessWidget {
                   textAlign: TextAlign.end,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: colors.textWeak),
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: colors.textWeak,
+                  ),
                 ),
               ),
             ],
@@ -77,8 +77,7 @@ class QueuedMessages extends StatelessWidget {
                       width: 24,
                       child: Text(
                         '${index + 1}',
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: AthenaTextStyle.body.copyWith(
                           height: 1.5,
                           color: colors.textWeak,
                         ),
@@ -95,8 +94,7 @@ class QueuedMessages extends StatelessWidget {
                                 text,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
+                                style: AthenaTextStyle.body.copyWith(
                                   height: 1.5,
                                   color: colors.textInput,
                                 ),
@@ -113,8 +111,7 @@ class QueuedMessages extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   '$imageCount ${imageCount == 1 ? 'image' : 'images'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
+                                  style: AthenaTextStyle.caption.copyWith(
                                     height: 1.5,
                                     color: colors.textSecondary,
                                   ),

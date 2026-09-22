@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -62,10 +63,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
 
   Widget _buildGeneralSection(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final tipTextStyle = TextStyle(
+    final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     return Column(
@@ -102,9 +101,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
         Text(
           'Let the current model independently review tool calls that need approval. '
           'Unclear requests still ask you. Applies to all tools from the next run.',
-          style: TextStyle(
+          style: AthenaTextStyle.caption.copyWith(
             color: colors.textSecondary,
-            fontSize: 12,
             height: 1.5,
           ),
         ),
@@ -125,10 +123,8 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
 
   Widget _buildToolsSection(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final tipTextStyle = TextStyle(
+    final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     return Column(

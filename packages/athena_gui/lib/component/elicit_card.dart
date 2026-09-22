@@ -1,8 +1,8 @@
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
-import 'package:athena_gui/component/card_button.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 
 /// 会话内提问卡片（非模态）：渲染在所属对话的消息列表中。
@@ -177,8 +177,7 @@ class _ElicitCardState extends State<ElicitCard> {
     children: [
       Text(
         'Question',
-        style: TextStyle(
-          fontSize: AthenaFontSize.label,
+        style: AthenaTextStyle.label.copyWith(
           fontWeight: FontWeight.w600,
           color: colors.textPrimary,
         ),
@@ -206,15 +205,16 @@ class _ElicitCardState extends State<ElicitCard> {
               if (question.multiSelect)
                 Text(
                   'select all that apply',
-                  style: TextStyle(fontSize: 11, color: colors.textPrimary),
+                  style: AthenaTextStyle.caption.copyWith(
+                    color: colors.textPrimary,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             question.question,
-            style: TextStyle(
-              fontSize: 13,
+            style: AthenaTextStyle.body.copyWith(
               fontWeight: FontWeight.w500,
               color: colors.textPrimary,
             ),
@@ -231,11 +231,7 @@ class _ElicitCardState extends State<ElicitCard> {
   /// 步骤展示（只有多问时才需要）：问题前的 `1 / 3`。
   Widget _buildStepIndicator(AthenaColors colors) => Text(
     '${_step + 1} / ${_questions.length}',
-    style: TextStyle(
-      fontSize: AthenaFontSize.caption,
-      fontWeight: FontWeight.w500,
-      color: colors.textSecondary,
-    ),
+    style: AthenaTextStyle.label.copyWith(color: colors.textSecondary),
   );
 
   Widget _buildHeaderChip(AthenaColors colors, String header) => Container(
@@ -248,11 +244,7 @@ class _ElicitCardState extends State<ElicitCard> {
     ),
     child: Text(
       header,
-      style: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-        color: colors.textPrimary,
-      ),
+      style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
     ),
   );
 
@@ -281,13 +273,14 @@ class _ElicitCardState extends State<ElicitCard> {
                   children: [
                     Text(
                       option.label,
-                      style: TextStyle(fontSize: 13, color: colors.textPrimary),
+                      style: AthenaTextStyle.body.copyWith(
+                        color: colors.textPrimary,
+                      ),
                     ),
                     if (option.description.isNotEmpty)
                       Text(
                         option.description,
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: AthenaTextStyle.caption.copyWith(
                           color: colors.textSecondary,
                         ),
                       ),
@@ -359,14 +352,15 @@ class _ElicitCardState extends State<ElicitCard> {
                 // 否则圈体亮着但答案不是它
                 if (value.trim().isNotEmpty) _selected[index]?.clear();
               }),
-              style: TextStyle(
-                fontSize: 14,
+              style: AthenaTextStyle.body.copyWith(
                 height: 1.2,
                 color: colors.textPrimary,
               ),
               decoration: InputDecoration.collapsed(
                 hintText: 'Or type your own answer',
-                hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
+                hintStyle: AthenaTextStyle.body.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ),
           ),
@@ -408,16 +402,21 @@ class _ElicitCardState extends State<ElicitCard> {
   }
 
   Widget _buildActions(bool mobile) {
-    final primary = CardPrimaryButton(
-      label: _isLastStep ? 'Submit' : 'Next',
+    // 移动端按钮整行拉伸，文字要居中；桌面端按钮在行内按内容收缩，
+    // 不能再套 Center（Center 会把按钮撑到整行宽）。
+    final label = _isLastStep ? 'Submit' : 'Next';
+    final primary = AthenaPrimaryButton(
       onTap: _canConfirm ? _confirm : null,
+      child: mobile ? Center(child: Text(label)) : Text(label),
     );
     // 多问时给一个回到上一步的出口：单选点选会自动前进，
     // 没有退路的话手滑就无法改答案。
     final back = _step > 0
-        ? CardSecondaryButton(
-            label: 'Back',
+        ? AthenaSecondaryButton(
             onTap: () => setState(() => _step--),
+            child: mobile
+                ? const Center(child: Text('Back'))
+                : const Text('Back'),
           )
         : null;
     if (mobile) {

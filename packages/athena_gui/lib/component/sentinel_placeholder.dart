@@ -22,17 +22,13 @@ class SentinelPlaceholder extends StatelessWidget {
     if (sentinel == null) return const SizedBox.shrink();
 
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var nameTextStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.hero,
-      // hero = 24，对齐空态标题的实测字号（旧版 28 偏大）
+    var nameTextStyle = AthenaTextStyle.hero.copyWith(
+      color: colors.textPrimary, // hero = 24，对齐空态标题的实测字号（旧版 28 偏大）
       fontWeight: FontWeight.w600,
       height: 1.25,
     );
-    var descriptionTextStyle = TextStyle(
+    var descriptionTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
-      fontSize: AthenaFontSize.body,
-      fontWeight: FontWeight.w400,
     );
     var children = [
       _Glyph(sentinel: sentinel),
@@ -83,6 +79,7 @@ class _Glyph extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.clip,
           textAlign: TextAlign.center,
+          // emoji 字形尺寸（48 圆底里的头像），不是文字档位（DESIGN.md §3 例外）
           style: const TextStyle(fontSize: 26, height: 1),
         ),
       );
@@ -118,11 +115,7 @@ class _TagWrap extends StatelessWidget {
 
   Widget _buildTile(BuildContext context, String tag) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textSecondary,
-      fontSize: AthenaFontSize.label,
-      fontWeight: FontWeight.w500,
-    );
+    var textStyle = AthenaTextStyle.label.copyWith(color: colors.textSecondary);
     return Container(
       decoration: BoxDecoration(
         color: colors.surfaceButtonSecondary,

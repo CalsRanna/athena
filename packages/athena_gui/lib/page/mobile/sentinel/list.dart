@@ -7,6 +7,7 @@ import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/scaffold.dart';
+import 'package:athena_gui/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,10 +67,8 @@ class MobileSentinelListPage extends StatelessWidget {
                       SizedBox(width: 8),
                       Text(
                         'Add a sentinel',
-                        style: TextStyle(
+                        style: AthenaTextStyle.section.copyWith(
                           color: colors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -93,73 +92,40 @@ class MobileSentinelListPage extends StatelessWidget {
       crossAxisSpacing: 8,
       mainAxisSpacing: 8,
       itemCount: sentinels.length,
-      itemBuilder: (context, index) => _Tile(sentinel: sentinels[index]),
+      itemBuilder: (context, index) {
+        var sentinel = sentinels[index];
+        return MobileGridTile(
+          title: sentinel.name,
+          subtitle: sentinel.description,
+          onTap: () => editSentinel(context, sentinel),
+          onLongPress: () => openBottomSheet(context, sentinel),
+        );
+      },
       padding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
-}
 
-class _Tile extends StatelessWidget {
-  final SentinelEntity sentinel;
-  const _Tile({required this.sentinel});
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final nameTextStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
-    final descriptionTextStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 12,
-    );
-    var children = [
-      Text(sentinel.name, style: nameTextStyle),
-      Text(sentinel.description, style: descriptionTextStyle),
-    ];
-    var column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.container),
-      color: colors.surfaceRaised,
-    );
-    var container = Container(
-      decoration: boxDecoration,
-      padding: EdgeInsets.all(12),
-      child: column,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onLongPress: () => openBottomSheet(context),
-      onTap: () => editSentinel(context),
-      child: container,
-    );
-  }
-
-  void destroySentinel(BuildContext context) {
+  void destroySentinel(BuildContext context, SentinelEntity sentinel) {
     AthenaDialog.dismiss();
     GetIt.instance<SentinelViewModel>().deleteSentinel(sentinel);
   }
 
-  void editSentinel(BuildContext context) {
+  void editSentinel(BuildContext context, SentinelEntity sentinel) {
     MobileSentinelFormRoute(sentinel: sentinel).push(context);
   }
 
-  void openBottomSheet(BuildContext context) {
+  void openBottomSheet(BuildContext context, SentinelEntity sentinel) {
     HapticFeedback.heavyImpact();
     if (sentinel.isPreset) return;
     var editTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
       title: 'Edit',
-      onTap: () => editSentinel(context),
+      onTap: () => editSentinel(context, sentinel),
     );
     var deleteTile = AthenaBottomSheetTile(
       leading: Icon(HugeIcons.strokeRoundedDelete02),
       title: 'Delete',
-      onTap: () => destroySentinel(context),
+      onTap: () => destroySentinel(context, sentinel),
     );
     var children = [editTile, deleteTile];
     var column = Column(mainAxisSize: MainAxisSize.min, children: children);

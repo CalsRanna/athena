@@ -2,10 +2,10 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:flutter/material.dart';
 
-/// 页面骨架。桌面端是"侧栏面板 + 纯黑工作区"，移动端是单列。
+/// 页面骨架。桌面端是"侧栏面板 + 画布工作区"，移动端是单列。
 ///
-/// 旧版的右上角 teal 氛围渐变已移除：Codex 的壳层没有任何装饰性渐变，
-/// 品牌感来自纯黑画布本身与 1px 边框。
+/// 壳层没有任何装饰性渐变：层次只靠暖灰画布、面板底色与 1px 接缝线
+/// （见 [AthenaColors.borderChrome]）。
 class AthenaScaffold extends StatelessWidget {
   final Widget? appBar;
   final Widget? body;

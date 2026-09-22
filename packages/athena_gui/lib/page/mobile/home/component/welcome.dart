@@ -1,5 +1,6 @@
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
@@ -69,10 +70,8 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
 
   Widget _buildText(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final welcomeTextStyle = TextStyle(
+    final welcomeTextStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: FontWeight.w600,
     );
     var textChildren = [
       TextSpan(text: 'Good ${getPeriod()}!', style: welcomeTextStyle),

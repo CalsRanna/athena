@@ -48,11 +48,7 @@ class DesktopChatContextMenu extends StatelessWidget {
       ),
       renameSubmenu,
       const DesktopContextMenuSeparator(),
-      DesktopContextMenuTile(
-        text: 'Delete',
-        danger: true,
-        onTap: onDestroyed,
-      ),
+      DesktopContextMenuTile(text: 'Delete', danger: true, onTap: onDestroyed),
     ];
     return DesktopContextMenu(offset: offset, width: 140, children: children);
   }

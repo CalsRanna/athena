@@ -29,10 +29,7 @@ class ChatTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Text(
         chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
-        style: TextStyle(
-          color: colors.textOnRaised,
-          fontSize: AthenaFontSize.body,
-        ),
+        style: AthenaTextStyle.body.copyWith(color: colors.textOnRaised),
       ),
     );
     return GestureDetector(

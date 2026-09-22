@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:flutter/material.dart';
 
@@ -16,10 +17,8 @@ class MobileModelSelectDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     if (groupedModels.isEmpty) return const SizedBox();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var titleTextStyle = TextStyle(
+    var titleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     List<Widget> children = [SizedBox(height: 16)];

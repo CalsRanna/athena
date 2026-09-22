@@ -39,7 +39,7 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       'Call tool: ${element.textContent}',
-      style: athenaMono(fontSize: 12, color: colors.textOnCode),
+      style: athenaMono(color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -88,7 +88,7 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
         element.textContent,
-        style: athenaMono(fontSize: 12, height: 1.5, color: colors.textOnCode),
+        style: athenaMono(height: 1.5, color: colors.textOnCode),
       ),
     );
     var widgetSpan = WidgetSpan(
@@ -172,7 +172,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = athenaMono(fontSize: 12, color: colors.textOnCode);
+    var textStyle = athenaMono(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -303,7 +303,7 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: athenaMono(fontSize: 12, color: colors.textOnCode),
+              style: athenaMono(color: colors.textOnCode),
             ),
           ),
           Padding(
@@ -351,15 +351,11 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
-    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色。
-    // 字号 / 行高取 Claude 的 `--cds-font-size-prose`(15) 与
-    // `--cds-leading-prose`(22)——消息正文比 UI 正文（body 14）再大一档，
-    // 行高是绝对行盒 22，换算成比例 1.4667。
-    var body = base.p?.copyWith(
-      color: colors.textPrimary,
-      fontSize: AthenaFontSize.prose,
-      height: AthenaFontSize.proseHeight,
-    );
+    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色；
+    // 字号与行盒取 [AthenaTextStyle.prose]（13 / 20）。
+    var body = base.p
+        ?.merge(AthenaTextStyle.prose)
+        .copyWith(color: colors.textPrimary);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
     var heading = body?.copyWith(fontWeight: FontWeight.bold);
@@ -475,6 +471,7 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
+      // 引用徽标字形比 mono 档小 2：这是徽标尺寸，不是文字档位（DESIGN.md §3 例外）
       style: athenaMono(fontSize: 10, color: colors.textOnCode),
     );
     var container = Container(

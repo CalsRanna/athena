@@ -3,8 +3,8 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// 桌面左侧栏/列表行。Codex 风格：整行 hover 底色 + 选中行提亮，
-/// 没有渐变边框、没有胶囊。
+/// 桌面左侧栏/列表行：整行 hover 底色 + 选中行提亮，圆角 [AthenaRadius.row]，
+/// 没有渐变边框。
 class DesktopMenuTile extends StatefulWidget {
   final bool active;
   final String label;
@@ -44,15 +44,12 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     const duration = Duration(milliseconds: 120);
     // Claude 实测：**hover 只改底色，文字不动**。选中行才提亮文字。
     // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
-    var contentColor = widget.active
-        ? colors.textPrimary
-        : colors.textRowLabel;
-    // 列表行（侧栏会话、设置页各行）取 UI 正文档 14，不是 label 档 12。
-    // Claude 实测：侧栏会话行与消息正文（15）只差 1px；用 12 会让侧栏
+    var contentColor = widget.active ? colors.textPrimary : colors.textRowLabel;
+    // 列表行取 UI 正文档 body（13），不是 label 档 12。
+    // Claude 实测：侧栏会话行与消息正文同号；用 12 会让侧栏
     // 明显比工作区小一号。
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.body.copyWith(
       color: contentColor,
-      fontSize: AthenaFontSize.body,
       fontWeight: widget.active ? FontWeight.w600 : FontWeight.w400,
       height: AthenaFontSize.bodyHeight,
     );

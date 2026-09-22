@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -144,10 +145,8 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
       value: supportVisual,
       onChanged: updateSupportVisual,
     );
-    var trailingTextStyle = TextStyle(
+    var trailingTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
       height: 1.5,
     );
     var reasoningCheckboxGroup = AthenaCheckboxGroup(
@@ -169,15 +168,9 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   }
 
   Widget _buildSubmitButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var button = AthenaPrimaryButton(
       onTap: submitModel,
-      child: Center(child: Text('Submit', style: textStyle)),
+      child: Center(child: Text('Submit')),
     );
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }

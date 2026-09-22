@@ -2,8 +2,8 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// 首页卡片行中的单张卡片（恢复原 Shortcut 卡片样式：
-/// 160×160、圆角 24、surfaceButtonSecondary、图标 + 名称 + 描述）。
+/// 首页卡片行中的单张卡片：160×160、圆角 [AthenaRadius.container]、
+/// `surfaceButtonSecondary` 底、图标 + 名称 + 描述。
 class CardTile extends StatelessWidget {
   final IconData icon;
   final String name;
@@ -41,20 +41,16 @@ class CardTile extends StatelessWidget {
               name,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: AthenaTextStyle.section.copyWith(
                 color: colors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 4),
             Expanded(
               child: Text(
                 description,
-                style: TextStyle(
+                style: AthenaTextStyle.caption.copyWith(
                   color: colors.iconSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),

@@ -3,6 +3,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/material.dart';
+
 class _MessageListRenderItem {
   final MessageEntity message;
 
@@ -132,7 +133,7 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
             );
           }
           if (item.addCardSpacing) {
-            // Codex 的轮次容器是 gap-4，即 16
+            // 轮次之间留 16
             child = Padding(
               padding: const EdgeInsets.only(top: 16),
               child: child,

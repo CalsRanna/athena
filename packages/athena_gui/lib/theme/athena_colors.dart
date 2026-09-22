@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 外观模式：浅色（默认，对齐 Codex 原生观感）/ 深色。
+/// 外观模式：浅色（默认，对齐 Claude 桌面端的原生观感）/ 深色。
 enum AthenaColorMode { light, dark }
 
 /// Athena 语义色（挂载于 ThemeData.extensions）。
@@ -8,8 +8,8 @@ enum AthenaColorMode { light, dark }
 /// 取值来自 **Claude 桌面端 `app.asar` 里的 `--cds-*` 设计系统**
 /// （`MainWindowPage-*.css`），并与窗口截图采样交叉验证。
 ///
-/// Claude 的色板是一套**偏暖的中性灰**（`--cds-gray-0..900`），和 Codex 的
-/// 中性灰明显不同：白端带黄绿感（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。
+/// Claude 的色板是一套**偏暖的中性灰**（`--cds-gray-0..900`），和普通
+/// 中性灰一眼能分辨：白端带黄绿感（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。
 ///
 /// | 角色 | Claude 变量 | 值 |
 /// |------|------------|-----|
@@ -28,8 +28,6 @@ enum AthenaColorMode { light, dark }
 /// Claude 也用"基色 + alpha"派生：`--cds-alpha-0..9` 是 `neutral-900` 的
 /// 0/5/10/20/35/50/60/70/85/95%。本仓对应的 hover / 选中底直接取灰阶档位。
 @immutable
-
-
 class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 表面 ----
   final Color surface; // 主画布
@@ -61,11 +59,26 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   /// （neutral-900 5% 对 10%），因为外壳线是"面与面的接缝"，不是容器的轮廓。
   final Color borderChrome;
 
+  // ---- 白底上的中性灰 ----
+  //
+  // Claude 的设置面板与 composer 输入容器用的是一组**中性灰**（neutral-900 的
+  // alpha 阶：约 3% / 5% / 10% / 25%），不是侧栏那套暖灰——暖灰铺在纯白容器上
+  // 会偏黄。浅色为实测值，深色按同一语义镜像推导（面板比画布亮一档、
+  // 线比底亮一档）。
+  final Color neutralHairline; // 顶栏底线：只比画布暗 5/255（实测 #F7F7F7）
+  final Color neutralRule; // 设置面板的发丝分隔线 / 分段控件轨道 / 行 hover 底（实测 #F3F3F3）
+  final Color
+  neutralBorder; // 白底容器的 1px 描边：composer 常态、设置控件、搜索框、列表分界（实测 #E1E1E0–#E7E7E7，取中值 #E4E4E3）
+  final Color neutralBorderStrong; // composer 聚焦描边（实测 #BFBFBE）
+  final Color neutralSelected; // 设置导航 / 列表的选中行底（实测 #E3E3E2）
+  final Color neutralControlFill; // 分段控件选中块 / 下拉框底：浅色纯白，深色比面板亮一档
+  final Color scrim; // 设置面板遮罩：画布压 40% 黑
+
   // ---- 输入 ----
   final Color inputBackground; // 输入框底色
 
   // ---- 强调 ----
-  final Color accent; // 全局唯一彩色强调（主要动作 / 语音 / 链接同源）
+  final Color accent; // 全局唯一彩色强调（发送键 / 运行中状态点 / ColorScheme.primary）
 
   // ---- 状态 ----
   final Color statusSuccess; // 成功 / 开关开启
@@ -115,6 +128,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.borderStrong,
     required this.divider,
     required this.borderChrome,
+    required this.neutralHairline,
+    required this.neutralRule,
+    required this.neutralBorder,
+    required this.neutralBorderStrong,
+    required this.neutralSelected,
+    required this.neutralControlFill,
+    required this.scrim,
     required this.inputBackground,
     required this.accent,
     required this.statusSuccess,
@@ -134,7 +154,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.markdownMath,
   });
 
-  /// 浅色（默认）：Codex 原生观感。取值为截图实测。
+  /// 浅色（默认）：Claude 桌面端的原生观感。取值为 `--cds-*` 变量 + 截图实测。
   static const light = AthenaColors(
     surface: Color(0xFFFCFCFB),
     surfacePanel: Color(0xFFFBFBF9),
@@ -158,6 +178,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     borderStrong: Color(0xFFC3C2B7),
     divider: Color(0xFFE1E0D9),
     borderChrome: Color(0xFFEFEFED),
+    neutralHairline: Color(0xFFF7F7F7),
+    neutralRule: Color(0xFFF3F3F3),
+    neutralBorder: Color(0xFFE4E4E3),
+    neutralBorderStrong: Color(0xFFBFBFBE),
+    neutralSelected: Color(0xFFE3E3E2),
+    neutralControlFill: Color(0xFFFFFFFF),
+    scrim: Color(0x66000000),
     inputBackground: Color(0xFFFFFFFF),
     accent: Color(0xFF2A78D6),
     statusSuccess: Color(0xFF0CA30C),
@@ -201,6 +228,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     borderStrong: Color(0xFF454442),
     divider: Color(0xFF2C2C2A),
     borderChrome: Color(0xFF212121),
+    neutralHairline: Color(0xFF212121),
+    neutralRule: Color(0xFF2A2A28),
+    neutralBorder: Color(0xFF2C2C2A),
+    neutralBorderStrong: Color(0xFF454442),
+    neutralSelected: Color(0xFF2C2C2A),
+    neutralControlFill: Color(0xFF383835),
+    scrim: Color(0x7A000000),
     inputBackground: Color(0xFF1E1E1D),
     accent: Color(0xFF5598E7),
     statusSuccess: Color(0xFF35B231),
@@ -244,6 +278,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? borderStrong,
     Color? divider,
     Color? borderChrome,
+    Color? neutralHairline,
+    Color? neutralRule,
+    Color? neutralBorder,
+    Color? neutralBorderStrong,
+    Color? neutralSelected,
+    Color? neutralControlFill,
+    Color? scrim,
     Color? inputBackground,
     Color? accent,
     Color? statusSuccess,
@@ -287,6 +328,13 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       borderStrong: borderStrong ?? this.borderStrong,
       divider: divider ?? this.divider,
       borderChrome: borderChrome ?? this.borderChrome,
+      neutralHairline: neutralHairline ?? this.neutralHairline,
+      neutralRule: neutralRule ?? this.neutralRule,
+      neutralBorder: neutralBorder ?? this.neutralBorder,
+      neutralBorderStrong: neutralBorderStrong ?? this.neutralBorderStrong,
+      neutralSelected: neutralSelected ?? this.neutralSelected,
+      neutralControlFill: neutralControlFill ?? this.neutralControlFill,
+      scrim: scrim ?? this.scrim,
       inputBackground: inputBackground ?? this.inputBackground,
       accent: accent ?? this.accent,
       statusSuccess: statusSuccess ?? this.statusSuccess,
@@ -346,6 +394,21 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       borderStrong: Color.lerp(borderStrong, other.borderStrong, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       borderChrome: Color.lerp(borderChrome, other.borderChrome, t)!,
+      neutralHairline: Color.lerp(neutralHairline, other.neutralHairline, t)!,
+      neutralRule: Color.lerp(neutralRule, other.neutralRule, t)!,
+      neutralBorder: Color.lerp(neutralBorder, other.neutralBorder, t)!,
+      neutralBorderStrong: Color.lerp(
+        neutralBorderStrong,
+        other.neutralBorderStrong,
+        t,
+      )!,
+      neutralSelected: Color.lerp(neutralSelected, other.neutralSelected, t)!,
+      neutralControlFill: Color.lerp(
+        neutralControlFill,
+        other.neutralControlFill,
+        t,
+      )!,
+      scrim: Color.lerp(scrim, other.scrim, t)!,
       inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,

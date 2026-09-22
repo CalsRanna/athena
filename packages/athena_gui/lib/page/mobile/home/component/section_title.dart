@@ -11,9 +11,8 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = TextStyle(
+    final textStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
-      fontSize: 24,
       fontWeight: FontWeight.w500,
     );
     var children = [

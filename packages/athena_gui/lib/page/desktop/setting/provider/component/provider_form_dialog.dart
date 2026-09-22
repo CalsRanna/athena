@@ -1,5 +1,4 @@
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -7,7 +6,6 @@ import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 class DesktopProviderFormDialog extends StatefulWidget {
   final ProviderEntity? provider;
@@ -25,52 +23,21 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
-      color: colors.surfaceMobile,
-    );
-    var titleTextStyle = TextStyle(
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
-    var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
-      color: colors.textPrimary,
-      size: 24,
-    );
-    var closeButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: cancelDialog,
-      child: icon,
-    );
-    var text = widget.provider == null ? 'Add Provider' : 'Edit Provider';
-    var titleChildren = [
-      Text(text, style: titleTextStyle),
-      Spacer(),
-      closeButton,
-    ];
     var nameChildren = [
       SizedBox(width: 120, child: AthenaFormTileLabel(title: 'Name')),
       const SizedBox(width: 12),
       Expanded(child: AthenaInput(controller: nameController)),
     ];
     var children = [
-      Row(children: titleChildren),
-      const SizedBox(height: 24),
       Row(children: nameChildren),
       const SizedBox(height: 12),
       _buildButtons(),
     ];
-    var column = Column(mainAxisSize: MainAxisSize.min, children: children);
-    var container = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(32),
-      width: 520,
-      child: column,
+    return AthenaDesktopDialog(
+      title: widget.provider == null ? 'Add Provider' : 'Edit Provider',
+      onClose: cancelDialog,
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
-    return Dialog(backgroundColor: Colors.transparent, child: container);
   }
 
   void cancelDialog() {

@@ -3,6 +3,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -208,25 +209,17 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   Widget _buildSubmitButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
-      color: colors.textOnRaised,
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-    );
     var button = AthenaPrimaryButton(
       onTap: updateProvider,
-      child: Center(child: Text('Update', style: textStyle)),
+      child: Center(child: Text('Update')),
     );
     return Padding(padding: const EdgeInsets.all(16), child: button);
   }
 
   Widget _buildTip(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var tipTextStyle = TextStyle(
+    var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var tipText = Text(

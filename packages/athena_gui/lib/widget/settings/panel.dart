@@ -7,7 +7,7 @@ library;
 
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
-import 'package:athena_gui/widget/settings/control.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -38,31 +38,27 @@ class AthenaSettingsPanel extends StatelessWidget {
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): () => onClose?.call(),
       },
-      child: Focus(
-        autofocus: true,
-        child: Stack(children: children),
-      ),
+      child: Focus(autofocus: true, child: Stack(children: children)),
     );
   }
 
   /// 遮罩只吸收点击，**不关闭面板**：Athena 的设置行有显式 Save，
   /// 误触遮罩会丢掉未保存的编辑。关闭走右上角的 X 或 Esc。
   Widget _buildScrim(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Positioned.fill(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {},
-        child: ColoredBox(color: settings.scrim),
+        child: ColoredBox(color: colors.scrim),
       ),
     );
   }
 
   Widget _buildPanel(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final settings = settingsColorsOf(context);
     var decoration = BoxDecoration(
-      color: settings.panel,
+      color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
       // Claude 实测：面板外的阴影很窄（约 10px 内衰减完，紧贴边缘最深），
       // 不是 overlay 那种 28px 大范围投影。
@@ -87,7 +83,7 @@ class AthenaSettingsPanel extends StatelessWidget {
             : Positioned(
                 top: 15,
                 right: 15,
-                child: AthenaSettingsIconButton(
+                child: AthenaGhostIconButton(
                   icon: HugeIcons.strokeRoundedCancel01,
                   onTap: onClose,
                 ),
@@ -99,12 +95,17 @@ class AthenaSettingsPanel extends StatelessWidget {
           // 面板内必须有 Material：设置路由是**非透明**路由，没有 Scaffold，
           // 而内容区里的输入框（TextField）需要 Material 祖先。
           child: Material(
-            color: settings.panel,
+            color: colors.surfaceMobile,
             borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
             clipBehavior: Clip.antiAlias,
             child: Stack(
               children: [
-                Row(children: [nav, Expanded(child: content)]),
+                Row(
+                  children: [
+                    nav,
+                    Expanded(child: content),
+                  ],
+                ),
                 if (closeButton != null) closeButton,
               ],
             ),
@@ -130,9 +131,9 @@ class AthenaSettingsPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return ColoredBox(
-      color: settings.panel,
+      color: colors.surfaceMobile,
       child: ListView(padding: padding, children: children),
     );
   }
@@ -156,9 +157,9 @@ class AthenaSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = TextStyle(
-      color: settings.navSelectedText,
+      color: colors.textPrimary,
       fontSize: AthenaSettings.headingFontSize,
       fontWeight: FontWeight.w600,
       height: 1.3,
@@ -170,9 +171,7 @@ class AthenaSettingsSection extends StatelessWidget {
       ],
     );
     return Padding(
-      padding: EdgeInsets.only(
-        top: first ? 0 : AthenaSettings.sectionGap,
-      ),
+      padding: EdgeInsets.only(top: first ? 0 : AthenaSettings.sectionGap),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -194,8 +193,8 @@ class AthenaSettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = settingsColorsOf(context);
-    var spacer = Container(height: 1, color: settings.rule);
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    var spacer = Container(height: 1, color: colors.neutralRule);
     var merged = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) merged.add(spacer);

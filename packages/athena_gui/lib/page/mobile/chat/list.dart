@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
@@ -49,10 +50,8 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var chatHistory = viewModel.chatHistories.value[index];
     var chat = chatHistory.chat;
-    var titleTextStyle = TextStyle(
+    var titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: FontWeight.w500,
       height: 1.5,
     );
     var title = Text(
@@ -72,10 +71,8 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     );
     var rowChildren = [Expanded(child: title), gestureDetector];
     var content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
-    var messageTextStyle = TextStyle(
+    var messageTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
       height: 1.5,
     );
     var message = Text(

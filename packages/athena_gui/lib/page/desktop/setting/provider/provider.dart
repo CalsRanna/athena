@@ -9,10 +9,10 @@ import 'package:athena_gui/util/context_window_util.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/input.dart';
-import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:athena_gui/widget/settings/row.dart';
 import 'package:athena_gui/widget/switch.dart';
@@ -341,7 +341,7 @@ class _DesktopSettingProviderPageState
           ),
           AthenaSettingsSection(
             title: 'Models',
-            trailing: AthenaSettingsIconButton(
+            trailing: AthenaGhostIconButton(
               icon: HugeIcons.strokeRoundedAdd01,
               iconSize: 14,
               onTap: () => createModel(provider),

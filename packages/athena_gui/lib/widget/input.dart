@@ -2,10 +2,9 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// Codex 风格输入框：小圆角 + 1px 实线边框 + 平涂底色。
+/// 标准输入框：小圆角（[AthenaRadius.control]）+ 1px 实线边框 + 平涂底色。
 ///
-/// 去掉旧版的半透明中灰填充与 24 大圆角：Codex 的输入框是"画布上划出的
-/// 一个矩形"，聚焦时只让边框变亮，不做焦点环、不做光晕。
+/// 聚焦只让边框加深到 [AthenaColors.borderStrong]，不做焦点环、不做光晕。
 class AthenaInput extends StatefulWidget {
   final bool autoFocus;
   final TextEditingController controller;
@@ -74,18 +73,16 @@ class _AthenaInputState extends State<AthenaInput> {
         widget.radius ?? AthenaRadius.control,
       ),
     );
-    var hintTextStyle = TextStyle(
+    var hintTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
-      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: widget.placeholder,
       hintStyle: hintTextStyle,
     );
-    final inputTextStyle = TextStyle(
+    final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
-      fontSize: AthenaFontSize.body,
       height: 1.5,
     );
     var textField = TextField(

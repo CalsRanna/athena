@@ -91,10 +91,9 @@ class _DesktopReasoningEffortTileState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
       fontWeight: widget.selected ? FontWeight.w500 : FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
@@ -177,9 +176,8 @@ class _MobileReasoningEffortTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
-      fontSize: 14,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       height: 1.5,
     );

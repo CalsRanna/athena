@@ -67,10 +67,7 @@ class DesktopConfigurationButton extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           label ?? 'Configure',
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: AthenaFontSize.body,
-          ),
+          style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
         ),
       ],
     );
@@ -187,11 +184,9 @@ class _DesktopConfigurationDialogTemperatureSliderState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var slider = Slider(
       activeColor: colors.textPrimary,
@@ -259,11 +254,9 @@ class _DesktopConfigurationDialogTileState
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = TextStyle(
+    var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      fontSize: 14,
-      fontWeight: FontWeight.w400,
     );
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(8),
