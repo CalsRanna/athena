@@ -1,11 +1,13 @@
+import 'package:athena_core/entity/approval_mode.dart';
+import 'package:athena_gui/component/approval_mode_label.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
+import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/row.dart';
-import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -36,7 +38,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     text: viewModel.braveApiKey.value,
   );
 
-  late bool aiApprovalEnabled = viewModel.aiApprovalEnabled.value;
+  late ApprovalMode approvalMode = viewModel.approvalMode.value;
 
   @override
   void dispose() {
@@ -67,15 +69,20 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
               placeholder: '10',
             ),
             AthenaSettingsRow(
-              label: 'AI Auto Review',
+              label: 'Approval Mode',
               description:
-                  'Let the current model independently review tool calls that '
-                  'need approval. Unclear requests still ask you. Applies to '
-                  'all tools from the next run.',
-              control: AthenaSwitch(
-                value: aiApprovalEnabled,
-                onChanged: (value) =>
-                    setState(() => aiApprovalEnabled = value),
+                  'Who approves tool calls that need permission. Manual always '
+                  'asks you; AI review lets the current model decide and asks '
+                  'you when unsure; Bypass permissions runs them without '
+                  'asking. Deny rules always apply. Takes effect from the '
+                  'next run.',
+              control: AthenaSettingsSegmented<ApprovalMode>(
+                options: [
+                  for (final mode in ApprovalMode.values)
+                    AthenaSegmentOption(value: mode, label: mode.label),
+                ],
+                selected: approvalMode,
+                onChanged: (value) => setState(() => approvalMode = value),
               ),
             ),
           ],
@@ -97,10 +104,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            AthenaPrimaryButton(
-              onTap: save,
-              child: const Text('Save'),
-            ),
+            AthenaPrimaryButton(onTap: save, child: const Text('Save')),
           ],
         ),
       ],
@@ -136,7 +140,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     }
     await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
-    await viewModel.updateAiApprovalEnabled(aiApprovalEnabled);
+    await viewModel.updateApprovalMode(approvalMode);
     await viewModel.updateBraveApiKey(braveApiKeyController.text.trim());
     if (!mounted) return;
     AthenaDialog.success('Settings saved');

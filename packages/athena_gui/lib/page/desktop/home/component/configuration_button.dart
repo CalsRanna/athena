@@ -3,6 +3,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/switch.dart';
+import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -12,6 +13,9 @@ class DesktopConfigurationButton extends StatelessWidget {
   final int currentRetention;
   final double currentTemperature;
   final bool compact;
+
+  /// 上下文条最右的 chip 形态（与 Sentinel / 工作文件夹 chip 同一种）。
+  final bool chip;
   final String? label;
   final void Function(int)? onRetentionChange;
   final void Function(double)? onTemperatureChange;
@@ -24,7 +28,7 @@ class DesktopConfigurationButton extends StatelessWidget {
     this.label,
     this.onRetentionChange,
     this.onTemperatureChange,
-  });
+  }) : chip = false;
 
   const DesktopConfigurationButton.compact({
     super.key,
@@ -34,11 +38,24 @@ class DesktopConfigurationButton extends StatelessWidget {
     this.label = 'Configure',
     this.onRetentionChange,
     this.onTemperatureChange,
-  }) : compact = true;
+  }) : compact = true,
+       chip = false;
+
+  const DesktopConfigurationButton.chip({
+    super.key,
+    this.chat,
+    this.currentRetention = -1,
+    this.currentTemperature = 0.7,
+    this.label = 'Configure',
+    this.onRetentionChange,
+    this.onTemperatureChange,
+  }) : compact = false,
+       chip = true;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    if (chip) return _buildChip();
     if (compact) return _buildCompactButton(context);
     var icon = Icon(
       HugeIcons.strokeRoundedSlidersHorizontal,
@@ -49,6 +66,15 @@ class DesktopConfigurationButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: openDialog,
       child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
+    );
+  }
+
+  Widget _buildChip() {
+    return AthenaContextChip(
+      leading: const Icon(HugeIcons.strokeRoundedSlidersHorizontal),
+      label: label ?? 'Configure',
+      onTap: openDialog,
+      filled: false,
     );
   }
 

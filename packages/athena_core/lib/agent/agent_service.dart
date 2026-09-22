@@ -119,6 +119,9 @@ class AgentService {
     PermissionService? permissionService,
     PermissionReviewContext? permissionReviewContext,
 
+    /// 所有权限模式：需要审批的调用直接放行（不问 AI、不弹窗）；deny 规则仍生效。
+    bool bypassPermissions = false,
+
     /// 本次 run 的工作文件夹（已校验存在的绝对路径）。
     /// null = 不指定：shell 默认用户主目录、文件工具相对路径按进程当前
     /// 目录解析（与引入本能力之前一致）。
@@ -161,6 +164,7 @@ class AgentService {
       onPermission: onPermission,
       cancelToken: token,
       reviewContext: permissionReviewContext,
+      bypassPermissions: bypassPermissions,
       provider: provider,
       model: model,
       sentinelId: sentinelId,
@@ -405,6 +409,7 @@ class AgentService {
     PermissionCallback? onPermission,
     required CancelToken cancelToken,
     required PermissionReviewContext? reviewContext,
+    required bool bypassPermissions,
     required ProviderEntity provider,
     required ModelEntity model,
     String? sentinelId,
@@ -442,6 +447,9 @@ class AgentService {
                     'configured.',
         );
       }
+
+      // 所有权限模式：过了 deny 这一关就放行，不再问 AI 也不弹窗。
+      if (bypassPermissions) return (block: false, reason: '');
 
       if (asksUser || verdict == PermissionVerdict.prompt) {
         if (!asksUser && reviewContext != null && tool != null) {

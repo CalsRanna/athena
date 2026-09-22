@@ -25,8 +25,9 @@ class DesktopImageSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (compact) return _buildCompactButton(context);
+    // Claude 的附件入口是一个裸加号，不是图片字形
     var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedImage01,
+      icon: HugeIcons.strokeRoundedPlusSign,
       color: colors.textPrimary,
       size: 16,
     );

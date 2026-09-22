@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
@@ -43,7 +44,7 @@ class _AthenaAppState extends State<AthenaApp> {
     ('/sentinels', '选择角色'),
     ('/providers', '配置 Provider API key'),
     ('/help', '显示本帮助'),
-    ('/review', 'AI 自动审核: on / off'),
+    ('/review', '审批模式: manual / ai / bypass'),
     ('/quit', '退出'),
   ];
   static String get _helpText {
@@ -55,7 +56,7 @@ class _AthenaAppState extends State<AthenaApp> {
       '  /new 新建 · /list 列出 · /switch 切换',
       '  /delete 删除 · /json JSON 模式 · /model 模型',
       '  /sentinels 角色 · /providers 配置 Key · /help 帮助',
-      '  /review on|off AI 审核 · /quit 退出',
+      '  /review manual|ai|bypass 审批 · /quit 退出',
     ].join('\n');
     return 'Athena TUI 命令:\n'
         '$commands\n'
@@ -326,17 +327,26 @@ class _AthenaAppState extends State<AthenaApp> {
       case '/help':
         _pushSystemMessage(_helpText);
       case '/review':
-        if (args.isNotEmpty && args != 'on' && args != 'off') {
-          _pushSystemMessage('用法: /review [on|off]');
-          return;
-        }
         if (args.isNotEmpty) {
-          await component.di.agentSettings.updateAiApprovalEnabled(
-            args == 'on',
-          );
+          // on / off 是旧写法，分别等于 ai / manual
+          final mode = switch (args) {
+            'manual' || 'off' => ApprovalMode.manual,
+            'ai' || 'on' => ApprovalMode.aiReview,
+            'bypass' => ApprovalMode.bypass,
+            _ => null,
+          };
+          if (mode == null) {
+            _pushSystemMessage('用法: /review [manual|ai|bypass]');
+            return;
+          }
+          await component.di.agentSettings.updateApprovalMode(mode);
         }
-        final enabled = component.di.agentSettings.aiApprovalEnabled.value;
-        _pushSystemMessage('AI 自动审核${enabled ? '已开启' : '已关闭'}，设置从下一轮生效。');
+        final label = switch (component.di.agentSettings.approvalMode.value) {
+          ApprovalMode.manual => '手动',
+          ApprovalMode.aiReview => 'AI 自动审核',
+          ApprovalMode.bypass => '所有权限',
+        };
+        _pushSystemMessage('审批模式：$label，设置从下一轮生效。');
       case '/new':
         if (_streamingGuard()) return;
         await _controller.newChat();

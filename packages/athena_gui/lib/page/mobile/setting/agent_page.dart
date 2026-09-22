@@ -1,3 +1,5 @@
+import 'package:athena_core/entity/approval_mode.dart';
+import 'package:athena_gui/component/approval_mode_label.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -7,7 +9,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
-import 'package:athena_gui/widget/switch.dart';
+import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -22,7 +24,7 @@ class MobileAgentPage extends StatefulWidget {
 
 class _MobileAgentPageState extends State<MobileAgentPage> {
   final viewModel = GetIt.instance.get<SettingViewModel>();
-  late bool aiApprovalEnabled = viewModel.aiApprovalEnabled.value;
+  late ApprovalMode approvalMode = viewModel.approvalMode.value;
   late final iterationsController = TextEditingController(
     text: viewModel.maxAgentIterations.value.toString(),
   );
@@ -88,19 +90,25 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           style: tipTextStyle,
         ),
         const SizedBox(height: 20),
-        Row(
+        AthenaFormTileLabel.large(title: 'Approval Mode'),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
-            Expanded(child: AthenaFormTileLabel.large(title: 'AI Auto Review')),
-            AthenaSwitch(
-              value: aiApprovalEnabled,
-              onChanged: (value) => setState(() => aiApprovalEnabled = value),
-            ),
+            for (final mode in ApprovalMode.values)
+              AthenaTagButton.small(
+                selected: mode == approvalMode,
+                onTap: () => setState(() => approvalMode = mode),
+                child: Text(mode.label),
+              ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
-          'Let the current model independently review tool calls that need approval. '
-          'Unclear requests still ask you. Applies to all tools from the next run.',
+          'Manual always asks you; AI review lets the current model decide and '
+          'asks you when unsure; Bypass permissions runs tools without asking. '
+          'Deny rules always apply. Takes effect from the next run.',
           style: AthenaTextStyle.caption.copyWith(
             color: colors.textSecondary,
             height: 1.5,
@@ -166,7 +174,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     }
     await viewModel.updateMaxAgentIterations(iterations);
     await viewModel.updateMaxRetries(retries);
-    await viewModel.updateAiApprovalEnabled(aiApprovalEnabled);
+    await viewModel.updateApprovalMode(approvalMode);
     if (!mounted) return;
     AthenaDialog.success('Settings saved');
   }

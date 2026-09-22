@@ -5,6 +5,7 @@ import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/permission_mode_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/reasoning_effort_button.dart';
 import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
@@ -93,7 +94,6 @@ class DesktopMessageInput extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AthenaRadius.container),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       DesktopSentinelIndicator(
                         onTap: onSentinelTap,
@@ -104,6 +104,17 @@ class DesktopMessageInput extends StatelessWidget {
                         path: chat?.workspacePath,
                         onTap: chat == null ? null : onWorkspaceTap,
                         onClear: chat == null ? null : onWorkspaceClear,
+                      ),
+                      const Spacer(),
+                      // 会话配置（上下文保留 / 温度）从容器外那一行挪到
+                      // 上下文条最右，与左边两个 chip 同一种形态
+                      DesktopConfigurationButton.chip(
+                        chat: chat,
+                        currentRetention: chatViewModel.currentRetention.value,
+                        currentTemperature:
+                            chatViewModel.currentTemperature.value,
+                        onRetentionChange: onRetentionChange,
+                        onTemperatureChange: onTemperatureChange,
                       ),
                     ],
                   ),
@@ -135,22 +146,21 @@ class DesktopMessageInput extends StatelessWidget {
                 // 容器之外的一行
                 Row(
                   children: [
-                    // Claude 的左侧是「一段文字 + 一个裸字形」（Bypass permissions +）。
-                    // 这里用配置按钮的 compact 变体承担"文字"那一半，图片按钮保持
-                    // 裸图标承担"字形"那一半；两个都是无标签图标会显得不可读。
-                    _SquishButton(
-                      hoverFill: ghostHover,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      child: DesktopConfigurationButton.compact(
-                        chat: chat,
-                        currentRetention: chatViewModel.currentRetention.value,
-                        currentTemperature:
-                            chatViewModel.currentTemperature.value,
-                        onRetentionChange: onRetentionChange,
-                        onTemperatureChange: onTemperatureChange,
+                    // Claude 的左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
+                    // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
+                    // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
+                    Builder(
+                      builder: (context) => _SquishButton(
+                        hoverFill: ghostHover,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        onTap: () => DesktopPermissionModeMenu.show(
+                          context,
+                          _globalRect(context),
+                        ),
+                        child: const DesktopPermissionModeLabel(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -167,11 +177,7 @@ class DesktopMessageInput extends StatelessWidget {
                           horizontal: 6,
                           vertical: 3,
                         ),
-                        onTap: () {
-                          final box = context.findRenderObject() as RenderBox;
-                          final origin = box.localToGlobal(Offset.zero);
-                          onModelTap?.call(origin & box.size);
-                        },
+                        onTap: () => onModelTap?.call(_globalRect(context)),
                         child: const DesktopModelIndicator(),
                       ),
                     ),
@@ -674,4 +680,10 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
       child: widget.builder(_focusNode),
     );
   }
+}
+
+/// [context] 对应控件的全局矩形，供弹出菜单锚定。
+Rect _globalRect(BuildContext context) {
+  final box = context.findRenderObject() as RenderBox;
+  return box.localToGlobal(Offset.zero) & box.size;
 }
