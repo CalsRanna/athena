@@ -251,6 +251,8 @@ entity + ~/.athena/ 下的文件
 - 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。设置面板用 `widget/settings/` 三件套（panel / row / control），改动即存、没有页面级 Save。
 - 桌面与移动是两套页面（`page/desktop/`、`page/mobile/`），路由在 `router/router.dart`，桌面路由是 0 时长无过渡，桌面设置路由 `opaque: false`（面板浮在应用之上）。
 - 平台判定统一用 `PlatformUtil`（`isDesktop` / `isMobile`），不要散落 `Platform.isXxx`。
+- 页级快捷键挂页面（首页的 ⌘N / Ctrl+N 新建对话在 `page/desktop/home/component/home_shortcuts.dart`），不要塞进 `main.dart` 的全局 `HardwareKeyboard` 处理器——那条只服务窗口级动作（如 ⌘W 隐藏窗口）。路由是天然的生效边界：设置页/对话框压上来时焦点整体搬进新路由的 FocusScope，快捷键自动失效、关掉即恢复，不需要查路由名；页面自己再带一层 `FocusScope(autofocus: true)`，保证点画布失焦后焦点落回页面内部而不是路由 scope。
+- widget 测试要挂真实页面时，用 `DI.ensureInitialized(homeDirOverride: 临时目录)` 装依赖图：数据根整体指到临时目录，不碰真实的 `~/.athena`（例见 `test/widget/home_page_new_chat_test.dart`）。注意页面 `_initState` 是一串串行的真实文件 I/O，测试里要交替「`runAsync` 真实异步窗口 + `pump`」才能把它推完——单放一次 `runAsync` 只够第一段 I/O。
 
 **TUI（`athena_tui`）**
 

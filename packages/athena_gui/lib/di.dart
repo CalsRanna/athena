@@ -87,7 +87,7 @@ class DI {
     );
 
     // Repositories (no dependencies)
-    _registerRepositories(storage, dataDirectory);
+    _registerRepositories(storage, userHomeDir);
 
     // Services
     _registerServices();
@@ -194,8 +194,8 @@ class DI {
       final registry = SkillRegistry();
       // 移动端无可靠 $HOME，用户级数据根目录用 Application Support（与
       // FileStorage 同根）；写入端（skill_evolve / experience 工具）必须与
-      // 这里读同一目录。
-      registry.loadAll(homeDir: PlatformUtil.isMobile ? dataDirectory : null);
+      // 这里读同一目录。测试里由 homeDirOverride 指到临时目录。
+      registry.loadAll(homeDir: userHomeDir);
       registry.registerBuiltin(kSelfEvolveSkill);
       return registry;
     });
@@ -239,10 +239,10 @@ class DI {
     );
   }
 
-  static void _registerRepositories(
-    FileStorage storage,
-    String? dataDirectory,
-  ) {
+  /// [userHomeDir] 是"用户级数据根"（`$HOME` 的替代，见
+  /// [ensureInitialized] 里的 [homeDirOverride]）；为 null 时仓储回退到
+  /// `$HOME`，与桌面端生产行为一致。
+  static void _registerRepositories(FileStorage storage, String? userHomeDir) {
     final getIt = GetIt.instance;
     // 同一实例同时承担 ChatRepository 与 MessageRepository:对话与其消息
     // 同生命周期,删对话即删会话文件
@@ -262,9 +262,7 @@ class DI {
       () => storage.sentinelRepository,
     );
     getIt.registerLazySingleton(
-      () => ExperienceRepository(
-        homeDir: PlatformUtil.isMobile ? dataDirectory : null,
-      ),
+      () => ExperienceRepository(homeDir: userHomeDir),
     );
   }
 

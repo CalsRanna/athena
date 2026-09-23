@@ -1,8 +1,10 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/component/step_card.dart';
+import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/util/message_display_util.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -99,6 +101,79 @@ void main() {
       expect(find.textContaining('Used 1 tool'), findsOneWidget);
       expect(find.byIcon(HugeIcons.strokeRoundedTools), findsOneWidget);
       expect(find.byIcon(HugeIcons.strokeRoundedFile01), findsNothing);
+    });
+  });
+
+  group('头部 hover 提亮', () {
+    /// 头部静止是次级文字色，hover 提亮到正文色（`textPrimary`）——与
+    /// `AthenaTextButton` 的 `textSecondary → textPrimary` 同一口径。
+    ///
+    /// 断言的是前景取值口径，不涉及画面：运行中的头会被 shimmer 的 `srcIn`
+    /// 整块改色，那时提亮本来看不见。
+    Color? labelColor(WidgetTester tester, String label) =>
+        tester.widget<Text>(find.text(label)).style?.color;
+
+    Color? iconColor(WidgetTester tester, IconData icon) =>
+        tester.widget<Icon>(find.byIcon(icon)).color;
+
+    AthenaColors colorsOf(WidgetTester tester) => Theme.of(
+      tester.element(find.byType(StepHeader)),
+    ).extension<AthenaColors>()!;
+
+    Future<TestGesture> movePointerTo(
+      WidgetTester tester,
+      Offset position,
+    ) async {
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: Offset.zero);
+      addTearDown(gesture.removePointer);
+      await gesture.moveTo(position);
+      await tester.pump();
+      return gesture;
+    }
+
+    testWidgets('可点头部：图标与文案一起提亮，移开还原', (tester) async {
+      await pumpCard(tester, [
+        tool('{"call_description":"读取配置文件"}'),
+      ], live: false);
+      final colors = colorsOf(tester);
+      expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
+      expect(
+        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        colors.textSecondary,
+      );
+
+      final gesture = await movePointerTo(
+        tester,
+        tester.getCenter(find.byType(StepHeader)),
+      );
+      expect(labelColor(tester, '读取配置文件'), colors.textPrimary);
+      expect(
+        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        colors.textPrimary,
+      );
+
+      await gesture.moveTo(const Offset(0, 0));
+      await tester.pump();
+      expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
+      expect(
+        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        colors.textSecondary,
+      );
+    });
+
+    testWidgets('不可点头部（结果未返回）：hover 不提亮，仍是次级色', (tester) async {
+      await pumpCard(tester, [
+        tool('{"call_description":"读取配置文件"}', result: null),
+      ], live: false);
+      final colors = colorsOf(tester);
+
+      await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
+      expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
+      expect(
+        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        colors.textSecondary,
+      );
     });
   });
 }

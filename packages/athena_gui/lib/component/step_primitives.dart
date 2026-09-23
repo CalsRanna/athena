@@ -17,7 +17,12 @@ const kStepHeaderRadius = 8.0;
 /// 折叠头：图标 + 单行文案（[mono] 时等宽）+ 运行中 shimmer。
 ///
 /// [onTap] 为 null 时不可点（光标为普通箭头），用于结果未返回或纯展示的头。
-class StepHeader extends StatelessWidget {
+///
+/// 静止前景是次级文字色；**可点的头在 hover 时整条（图标 + 文案）提亮到正文色**
+/// `textPrimary`——与 [AthenaTextButton] 的 `textSecondary → textPrimary` 同一口径：
+/// 前景提亮即"这里能点开"。运行中的头由 shimmer 的 `srcIn` 统一改色，彼时提亮被
+/// 覆盖，观感以 shimmer 为准（无妨：此时它本就没有可展开的正文）。
+class StepHeader extends StatefulWidget {
   final IconData icon;
   final String label;
   final bool mono;
@@ -34,37 +39,57 @@ class StepHeader extends StatelessWidget {
   });
 
   @override
+  State<StepHeader> createState() => _StepHeaderState();
+}
+
+class _StepHeaderState extends State<StepHeader> {
+  bool _hovered = false;
+
+  void _setHovered(bool value) {
+    if (_hovered == value) return;
+    setState(() => _hovered = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final foreground = colors.textSecondary;
-    final style = mono
+    final interactive = widget.onTap != null;
+    final foreground = interactive && _hovered
+        ? colors.textPrimary
+        : colors.textSecondary;
+    final style = widget.mono
         ? athenaMono(color: foreground)
         : AthenaTextStyle.caption.copyWith(color: foreground);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(kStepHeaderRadius),
-      child: InkWell(
-        onTap: onTap,
+    return MouseRegion(
+      // 不可点的头不挂 hover 回调：光标已是普通箭头，再提亮就成了假的可点信号。
+      onEnter: interactive ? (_) => _setHovered(true) : null,
+      onExit: interactive ? (_) => _setHovered(false) : null,
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(kStepHeaderRadius),
-        mouseCursor: onTap == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        child: StepHeaderShimmer(
-          active: running,
-          child: Row(
-            children: [
-              Icon(icon, size: 15, color: foreground),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(kStepHeaderRadius),
+          mouseCursor: interactive
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+          child: StepHeaderShimmer(
+            active: widget.running,
+            child: Row(
+              children: [
+                Icon(widget.icon, size: 15, color: foreground),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
