@@ -59,7 +59,7 @@ athena/
     │   │   ├── widget/          # 设计系统组件：按钮 / 输入 / 菜单 / 对话框 / 窗口控件 / settings（设置面板三件套）
     │   │   ├── component/       # 业务组件：消息列表（message_sliver + message_tiles）/ 步骤卡（step_card + step_primitives）/ 审批卡 / 提问卡
     │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ window_util / system_tray_util / shared_preference_util 等
-    │   └── （无 test/：测试套件已移除，见 §14）
+    │   └── test/                # test/widget/ 下的 widget 用例（见 §14）
     └── athena_tui/              # nocterm 终端客户端
         ├── bin/athena.dart      # CLI 入口
         ├── lib/
@@ -67,7 +67,7 @@ athena/
         │   ├── di/              # tui_di.dart（手动装配，注入 core 的文件仓储）
         │   ├── ui/              # nocterm 终端组件
         │   └── view_model/      # 终端响应式层
-        └── （无 test/：测试套件已移除，见 §14）
+        └── （无 test/，见 §14）
 ```
 
 > 根目录无 pubspec；三个 package 各自独立 `pub get`。
@@ -700,18 +700,22 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
 
 ## 14. 测试
 
-**只有 `athena_core` 有测试**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
-落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话文件的行级读取口径：轮次指示器要的 user 行全量扫描、尾部窗口按块回读、够小的会话整读分流）；`athena_gui/test`、`athena_tui/test` 为空
-（测试套件已整体删除）。因此：
+**`athena_core`（3 个文件）**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
+落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话文件的行级读取口径：轮次指示器要的 user 行全量扫描、尾部窗口按块回读、够小的会话整读分流）。
+
+**`athena_gui` 只有一处常驻套件 `test/widget/`（3 个文件）**：`turn_indicator_test.dart`（条长只有一套公式、高亮与点击报的都是整段会话下标、一页只画当前轮那一页、预览卡只给已加载的轮次）、`message_list_scroll_jump_test.dart`（贴着底部跟随态下点轮次条也跳得过去、用户自己滚过之后跟随已解除的路径）、`context_menu_test.dart`（菜单贴锚点朝锚点方向展开、收成内容高、贴窗口边时回退到窗口内）。它们是随轮次导航 / 菜单实现留下的回归网，改到对应组件时必须跑；GUI 其余部分没有回归网。
+
+**`athena_tui` 没有测试。** 因此：
 
 - `athena_core` 的改动在 `packages/athena_core` 下先跑 `dart test`，再跑 `dart analyze`。
+- `athena_gui` 的改动在 `packages/athena_gui` 下跑 `flutter test`（`test/widget/`）与 `flutter analyze`。
 - 其余改动的静态保障只有 `flutter analyze` / `dart analyze`，改完必须跑到 0 issue。
 - UI 改动只能对着**运行中的开发实例**验证：`hot_restart` → 用 VM service 的 `evaluate`
   推路由（不必手点 UI）→ 系统截屏 → 读图。没有 driver 扩展，`flutter_driver_command
   screenshot` 不可用。
 - UI 改动也可以用**临时 widget 探针**取证：在 `packages/athena_gui/test/probe_*_test.dart`
-  里写一次性用例断言渲染属性 / 位置 / 命中行为，比截图精确；跑完把该目录整体删掉——
-  仓库不留 GUI 测试套件。
+  里写一次性用例断言渲染属性 / 位置 / 命中行为，比截图精确；跑完把文件删掉——
+  `probe_` 前缀就是"一次性"的标记，只有 `test/widget/` 下的用例是常驻的。
 - **移动端分支（`PlatformUtil.isMobile`）在 macOS 上跑不到**，改这两条分支时手上没有
   任何回归网，能避开就避开、必须改时逐行对照。
 - 纯函数（`util/message_display_util.dart` 的卡片分组与步骤布局）同样没有回归网，
@@ -806,7 +810,7 @@ Text('x', style: TextStyle(color: colors.textPrimary));
 | 无人应答时 | 返回 null（未作答），模型按标注过的假定继续 | 返回拒绝（安全默认） |
 
 同步清单：
-- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；GUI / TUI 没有测试套件兜底（见 §14），改完只能靠 `dart analyze` 与手测。
+- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；TUI 没有测试套件兜底，GUI 只有 `test/widget/` 那三个用例（见 §14），改完主要靠 `dart analyze` 与手测。
 - 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
 - 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
 - `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
