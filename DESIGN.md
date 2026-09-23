@@ -8,7 +8,8 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 - 冷暖由表面决定，不由强调色决定：画布是暖白 `#FCFCFB`（深色近黑 `#1A1A19`），文字是 `#0B0B0B`；
   全站只有一抹彩色（`accent` 蓝 `#2A78D6`），出现位置极少——发送键图标、会话行"运行中"状态点、
-  Material 组件的默认强调（滑块、进度条、光标）。
+  Material 组件的默认强调（滑块、进度条、光标）。唯一的例外是"运行中"状态点的色相循环：
+  它绕的是 `accent` 自己的色相、相对亮度恒等于 `accent`，不引入第二种强调色（见 Rows & Lists）。
 - "安静"是硬性取向：同类容器在浅色主题下的明度差只有 3–6/255，靠一档提亮与 1px 线区分层次，
   而不是靠边框加粗或投影加深。
 
@@ -37,7 +38,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
 - 色值来源是 Claude `app.asar` 里的 `--cds-*` 变量，并与窗口截图采样交叉验证；带 "实测" 字样的几何值同源。
 - 过渡时长取自各组件源码的显式声明（`Duration` 出现频次：120ms 二十处、150ms 四处、200ms 三处、
-  100ms 三处、140ms / 240ms / 1800ms 各一处）。据此归纳出的"节奏档位"是聚合结论，不是单一 token。
+  100ms 三处、140ms / 240ms / 1800ms / 2400ms 各一处）。据此归纳出的"节奏档位"是聚合结论，不是单一 token。
 
 ## Colors
 
@@ -280,8 +281,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **侧栏会话行（`DesktopMenuTile`）**：**固定高 26**（不靠内容撑，避免 hover 出现 `⋮` 时行高跳动）、
   圆角 7、水平内边距 11；文字 `body` 13 / 行高 19，静止 `textRowLabel`、选中 `textPrimary`；
   hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点
-  （静止 `iconSecondary` 45%、hover 75%、运行中 `accent`、重命名中 `statusWarning`），
-  尾部 `⋮` 只在 hover 出现。
+  （静止 `iconSecondary` 45%、hover 75%、重命名中 `statusWarning`、运行中 `accent` 且带**色相循环**：
+  色相每 2400ms 绕一圈，明度按"相对亮度等于 `accent`"反解，所以整圈对比度恒为 accent 对画布的那一档
+  ——不这么做的话沿用同一 HSL 明度的黄绿相位在浅色画布上只有 1.5:1，圆点会淡到看不见；
+  `disableAnimations` 时停在 `accent` 原色）；尾部 `⋮` 只在 hover 出现。
 - **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
   文字仍与分区标题对齐），圆角 8；hover 底 `neutralRule`、选中底 `neutralSelected`、归档项文字降为 `textSecondary`；
   标签 14 / w600、说明 14 / w400 / `textWeak`、校验错误 `dangerText`；标签后的徽标
@@ -339,6 +342,9 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **Do** 所有颜色、几何、字号只从 `theme/athena_colors.dart`（颜色，走 `ThemeExtension`）与
   `theme/athena_tokens.dart`（几何 / 排版 / 阴影）取用；设置面板的实测几何在 `theme/athena_settings.dart`。
   页面上出现裸 `Color(0x…)` 或 `Colors.xxx` 就是漏 token 的信号。
+- **Do** 需要 token 之外的颜色时**从 token 派生**，不要另写色值：目前唯一的派生点是运行中状态点的
+  色相循环（`StatusDot.colorAt`），它取 `accent` 的色相 / 饱和度，明度由"相对亮度等于 `accent`"反解，
+  因此整圈对比度与 `accent` 相同。
 - **Do** 用"同色不同 alpha"表达 hover 与选中：填充取前景色 5%（ghost）、主按钮 hover 取 `surface` 12%。
   在 `AnimatedContainer` 里**永远不要**用 `Colors.transparent` 参与插值——它的 RGB 是黑，
   中途会渲染成半透明深灰，表现为 hover 先闪一下深色；请用目标色的 0 透明度版本。

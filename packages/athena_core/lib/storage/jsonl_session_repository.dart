@@ -255,14 +255,16 @@ class JsonlSessionRepository
     await _storeFor(message.chatId).replaceMessage(id, message.toJson());
   }
 
+  /// 删除 [chatId] 会话内 id ∈ [ids] 的消息，**一次读-改-写**。
+  ///
+  /// 只作用于该会话自己的文件：不按 id 跨会话查找。消息 id 是每会话独立的
+  /// 计数（见 [MessageRepository.deleteMessages]），跨文件按 id 匹配会删到
+  /// 别的会话；逐个 id 循环调用则会把整文件读改写重复 [ids] 次（实测 833KB
+  /// 的会话删 199 条要 1.5s）。
   @override
-  Future<void> deleteMessage(int id) async {
-    for (final file in await _sessionFiles()) {
-      final deleted = await _storeForFile(
-        file,
-      ).deleteMessageWhere((row) => row['id'] == id);
-      if (deleted > 0) return;
-    }
+  Future<void> deleteMessages(int chatId, Set<int> ids) async {
+    if (ids.isEmpty) return;
+    await _storeFor(chatId).deleteMessageWhere((row) => ids.contains(row['id']));
   }
 
   @override
@@ -277,15 +279,17 @@ class JsonlSessionRepository
     return rows.length;
   }
 
+  /// 标记 [chatId] 会话内 id ∈ [ids] 的消息为已压缩（一次读-改-写）。
+  ///
+  /// 与删除同理按会话定位：id 只在会话内唯一，跨文件按 id 扫会把别的会话的
+  /// 消息标成 compacted（等于从上下文里消失）。
   @override
-  Future<void> markAsCompacted(Set<int> ids) async {
+  Future<void> markAsCompacted(int chatId, Set<int> ids) async {
     if (ids.isEmpty) return;
-    for (final file in await _sessionFiles()) {
-      await _storeForFile(file).updateMessagesWhere(
-        (row) => ids.contains(row['id']),
-        (row) => {...row, 'compacted': 1},
-      );
-    }
+    await _storeFor(chatId).updateMessagesWhere(
+      (row) => ids.contains(row['id']),
+      (row) => {...row, 'compacted': 1},
+    );
   }
 
   @override

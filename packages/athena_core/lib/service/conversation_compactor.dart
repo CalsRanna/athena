@@ -127,7 +127,10 @@ class ConversationCompactor {
       step = committed;
       if (!token.isCancelled) {
         try {
-          await _repository.markAsCompacted(records.map((m) => m.id!).toSet());
+          await _repository.markAsCompacted(
+            chatId,
+            records.map((m) => m.id!).toSet(),
+          );
         } catch (error) {
           LoggerUtil.w('Compact: coverage committed; marking failed: $error');
         }

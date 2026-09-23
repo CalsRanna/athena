@@ -103,13 +103,20 @@ class ChatStoreService {
     );
   }
 
+  /// 从 [fromIndex] 起删掉 [messages] 里的全部消息。
+  ///
+  /// 一次性收集 id 交给仓储按会话删除：一次读-改-写，而不是逐条删
+  /// （逐条 = 每条都要把整会话文件读+写一遍）。
   Future<void> deleteMessagesFromIndex(
+    int chatId,
     List<MessageEntity> messages,
     int fromIndex,
   ) async {
-    for (var i = fromIndex; i < messages.length; i++) {
-      await _messageRepository.deleteMessage(messages[i].id!);
-    }
+    final ids = <int>{
+      for (var i = fromIndex; i < messages.length; i++) messages[i].id!,
+    };
+    if (ids.isEmpty) return;
+    await _messageRepository.deleteMessages(chatId, ids);
   }
 
   Future<void> updateChatTimestamp(ChatEntity chat) async {

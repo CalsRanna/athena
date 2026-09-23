@@ -14,14 +14,20 @@ abstract class MessageRepository {
 
   Future<void> updateMessage(MessageEntity message);
 
-  Future<void> deleteMessage(int id);
+  /// 删除 [chatId] 会话内 [ids] 命中的消息（一次读-改-写）。
+  ///
+  /// **必须带 [chatId]**：消息 id 只在会话内唯一（`IdAllocator` 以会话文件
+  /// 路径为计数 key，每个会话都从 1 开始），只按 id 跨会话查找会命中别的
+  /// 会话——目标会话那条删不掉，另一个对话却少一条。
+  Future<void> deleteMessages(int chatId, Set<int> ids);
 
   Future<void> deleteMessagesByChatId(int chatId);
 
   Future<int> getMessagesCount(int chatId);
 
-  /// 批量标记消息为已压缩。
-  Future<void> markAsCompacted(Set<int> ids);
+  /// 批量标记 [chatId] 会话内的消息为已压缩（同样必须带 chatId，理由见
+  /// [deleteMessages]）。
+  Future<void> markAsCompacted(int chatId, Set<int> ids);
 
   Future<MessageEntity?> getLatestMessageByChatId(int chatId);
 
