@@ -1,16 +1,23 @@
 import 'dart:io';
 
 import 'package:athena_core/agent/permission/command_analyzer.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 
+import 'shell_background.dart';
 import 'shell_runner.dart';
 import 'tool_interface.dart';
 
 class BashShellTool implements Tool, CancellableTool {
   /// 默认工作目录。未传入时退化为用户主目录(原有行为)。
   /// 桌面端可注入启动时指定的工作区,让命令默认在项目目录里执行。
-  BashShellTool({String? defaultWorkdir}) : _defaultWorkdir = defaultWorkdir;
+  BashShellTool({String? defaultWorkdir, BackgroundTaskService? tasks})
+    : _defaultWorkdir = defaultWorkdir,
+      _tasks = tasks;
 
   final String? _defaultWorkdir;
+
+  /// 后台任务登记表。null = 本宿主不支持后台任务（移动端等）。
+  final BackgroundTaskService? _tasks;
 
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
@@ -49,7 +56,9 @@ class BashShellTool implements Tool, CancellableTool {
       'multiple explicit paths over recursion. Recursive or otherwise '
       'destructive deletes are not forbidden, but they stop for user '
       'approval before running.\n'
-      'For long-running tasks, pass a larger "timeout" value. '
+      'For long-running tasks, pass a larger "timeout" value, or pass '
+      '"background": true to start it without waiting (it keeps running '
+      'after the turn ends; check it with the background_task tool). '
       'Commands run in $_defaultWorkdirHint by default.';
 
   @override
@@ -66,6 +75,17 @@ class BashShellTool implements Tool, CancellableTool {
             'minimum': ShellTimeoutPolicy.minSeconds,
             'maximum': ShellTimeoutPolicy.maxSeconds,
             'default': ShellTimeoutPolicy.defaultSeconds,
+          },
+          'background': {
+            'type': 'boolean',
+            'description':
+                'Run the command in the background: the call returns '
+                'immediately with a task id instead of waiting, and the '
+                'command keeps running after this turn ends (timeout does not '
+                'apply). Use it for long builds, test suites and installs, '
+                'then keep working; read progress with the background_task '
+                'tool. Say so in call_description: the user approving it must '
+                'know the command will keep running after the turn.',
           },
           'workdir': {
             'type': 'string',
@@ -105,6 +125,21 @@ class BashShellTool implements Tool, CancellableTool {
         Directory.current.path;
     // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
     final workdir = args['workdir'] as String? ?? _defaultWorkdir ?? home;
+
+    if (args['background'] == true) {
+      final tasks = _tasks;
+      if (tasks == null) {
+        return 'Error: background tasks are not available in this host.';
+      }
+      return startBackgroundShellTask(
+        tasks: tasks,
+        args: args,
+        executable: _resolveShellExecutable(),
+        arguments: ['-c', command],
+        workdir: workdir,
+        command: command,
+      );
+    }
 
     final result = await runShellProcess(
       executable: _resolveShellExecutable(),

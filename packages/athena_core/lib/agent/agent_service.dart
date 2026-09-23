@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/agent/context_budget.dart';
 import 'package:athena_core/agent/context_compaction.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart'
     show ElicitChannel, ElicitChannelAware, ElicitPrompt;
 import 'package:athena_core/entity/compaction_step.dart';
@@ -22,6 +23,8 @@ import 'package:athena_core/agent/tool/tool_interface.dart'
         CancellableTool,
         ToolRisk,
         toolApprovalRecommendationKey,
+        toolBackgroundDisabledKey,
+        toolChatIdKey,
         toolExecutionArguments;
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -74,6 +77,9 @@ class AgentService {
 
   /// 当前是否有 Agent 循环在运行（任一 run）。
   bool get isRunning => _runs.isNotEmpty;
+
+  /// 后台任务登记表（工具与协调层共用同一份）。
+  BackgroundTaskService get backgroundTasks => _toolRegistry.backgroundTasks;
 
   /// 指定 run 的取消令牌（可能为 null）。
   CancelToken? cancelTokenOf(int runId) => _runs[runId]?.cancelToken;
@@ -133,6 +139,16 @@ class AgentService {
     int maxIterations = 100,
     CancelToken? cancelToken,
     bool jsonMode = false,
+
+    /// 只暴露只读工具，并跳过失败反思（反思会写经验）。
+    ///
+    /// 自动汇报回合用：它由后台任务完成触发、用户并不在场，因此不能拥有
+    /// 任何写能力，也不能落任何未经请求的副作用。
+    bool readOnlyToolsOnly = false,
+
+    /// 本轮是否允许启动后台任务。false 时 shell 的 background=true 直接
+    /// 被拒——否则「任务完成→自动汇报→再启任务」会形成无限链。
+    bool allowBackgroundTasks = true,
   }) async* {
     if (_runs.containsKey(runId)) {
       throw StateError('Agent run $runId is already active.');
@@ -198,6 +214,8 @@ class AgentService {
         onPermission: onPermission,
         elicitChannel: elicitChannel,
         workspace: workspace,
+        readOnlyToolsOnly: readOnlyToolsOnly,
+        allowBackgroundTasks: allowBackgroundTasks,
       ).run();
     } on CancelledException {
       rethrow;
@@ -220,6 +238,13 @@ class AgentService {
     PermissionGate? permissionGate,
     ElicitChannel? elicitChannel,
     String? workspace,
+
+    /// 本次调用所属会话。后台任务按会话归属，工具据此把任务登记到正确的
+    /// 会话，并在用户取消该会话时被连带终止。
+    int? chatId,
+
+    /// 本轮 run 是否允许启动后台任务（自动汇报回合为 false）。
+    bool allowBackgroundTasks = true,
   }) async {
     AiApprovalReview? approvalReview;
     Future<ToolCallResultInternal> result(
@@ -295,6 +320,14 @@ class AgentService {
     cancelToken?.throwIfCancelled();
     if (sentinelId != null) {
       args['_sentinel_id'] = sentinelId;
+    }
+    // 引擎注入的运行期上下文：在权限门之后写入，既不参与规则匹配，
+    // 也不会出现在展示用的原始参数 JSON 里。
+    if (chatId != null) {
+      args[toolChatIdKey] = chatId;
+    }
+    if (!allowBackgroundTasks) {
+      args[toolBackgroundDisabledKey] = true;
     }
 
     final String rawResult;
@@ -594,8 +627,12 @@ class AgentService {
   }
 
   /// 从 ToolRegistry 构建 OpenAI Tool 列表。
-  List<Tool>? _buildTools() {
-    final defs = _toolRegistry.definitions;
+  ///
+  /// [readOnlyOnly] 用于自动汇报回合：无人值守的 run 不得有写能力。
+  List<Tool>? _buildTools({bool readOnlyOnly = false}) {
+    final defs = readOnlyOnly
+        ? _toolRegistry.readOnlyDefinitions
+        : _toolRegistry.definitions;
     if (defs.isEmpty) return null;
     return defs
         .map(
@@ -634,6 +671,8 @@ class _AgentLoop {
     required PermissionCallback? onPermission,
     required ElicitChannel elicitChannel,
     required String? workspace,
+    required bool readOnlyToolsOnly,
+    required bool allowBackgroundTasks,
   }) : _service = service,
        _state = state,
        _chat = chat,
@@ -652,7 +691,9 @@ class _AgentLoop {
        _permissionService = permissionService,
        _onPermission = onPermission,
        _elicitChannel = elicitChannel,
-       _workspace = workspace;
+       _workspace = workspace,
+       _readOnlyToolsOnly = readOnlyToolsOnly,
+       _allowBackgroundTasks = allowBackgroundTasks;
 
   final AgentService _service;
   final _AgentRunState _state;
@@ -677,6 +718,12 @@ class _AgentLoop {
 
   /// 本次 run 的工作文件夹（相对路径解析基准），null = 不指定。
   final String? _workspace;
+
+  /// 只暴露只读工具（自动汇报回合）。
+  final bool _readOnlyToolsOnly;
+
+  /// 本轮是否允许启动后台任务。
+  final bool _allowBackgroundTasks;
 
   CancelToken get _token => _state.cancelToken;
 
@@ -741,7 +788,7 @@ class _AgentLoop {
     yield AgentEvent.turnStart(iteration: iteration);
     _iterationsExecuted++;
 
-    final tools = _service._buildTools();
+    final tools = _service._buildTools(readOnlyOnly: _readOnlyToolsOnly);
     if (_chat.retention == -1 &&
         _onCompact != null &&
         _budget.shouldCompact(_messages, tools)) {
@@ -1051,6 +1098,8 @@ class _AgentLoop {
       toolFailures: List.unmodifiable(_toolFailures),
     );
     if (ReflectionPolicy.shouldReflect(outcome) &&
+        // 反思会写经验（experience_learn），自动汇报回合不做任何写操作。
+        !_readOnlyToolsOnly &&
         _service._toolRegistry.get('experience_learn') != null) {
       _reflectionAttempted = true;
       try {
@@ -1131,6 +1180,8 @@ class _AgentLoop {
       permissionGate: _permissionGate,
       elicitChannel: _elicitChannel,
       workspace: _workspace,
+      chatId: _chat.id,
+      allowBackgroundTasks: _allowBackgroundTasks,
     );
     return _ToolExecutionData(
       event: result.event,

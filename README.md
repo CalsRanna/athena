@@ -20,14 +20,15 @@
 
 ### 内置工具
 
-工具清单的唯一来源是 `athena_core` 的 `buildToolRegistry()`；桌面端注册 16 个，移动端 11 个（移动端不注册文件、shell 与提问工具）。
+工具清单的唯一来源是 `athena_core` 的 `buildToolRegistry()`；桌面端注册 17 个，移动端 11 个（移动端不注册文件、shell、提问与后台任务工具）。
 
 | 工具 | 作用 | 危险等级 | 默认执行 |
 |---|---|---|---|
 | `file_read` | 按行分页读文本文件（单次最多 2000 行，大文件流式读） | 只读 | 并行 |
 | `file_write` | 新建或整文件覆盖 | 危险 | 串行 |
 | `file_update` | 精确字符串替换，`replace_all=false` 时 `old_string` 必须唯一 | 危险 | 串行 |
-| `bash` / `powershell` | 执行 shell 命令（按操作系统二选一），单次超时默认 120s、上限 3600s | 危险 | 按命令判定（只读命令可并行） |
+| `bash` / `powershell` | 执行 shell 命令（按操作系统二选一），单次超时默认 120s、上限 3600s；`background: true` 时不等待、不超时（见「后台任务」） | 危险 | 按命令判定（只读命令可并行） |
+| `background_task` | 查看/读取/停止后台任务（`list` / `read` / `stop`） | 只读 | 并行 |
 | `web_fetch` | 抓取 URL 并转 Markdown；POST 或带自定义 headers 时需审批 | 只读 | 并行 |
 | `web_search` | Brave 搜索（需在设置里填 Brave API key） | 只读 | 并行 |
 | `ask_user_question` | 向用户提结构化问题（选项卡片），不触发审批弹窗 | 只读 | 串行 |
@@ -40,6 +41,14 @@
 | `tool_output_read` | 分页回读超长工具输出 | 只读 | 并行 |
 
 每个工具调用都必须带一个展示用的 `call_description`（由 schema 强制、缺失即判参数非法）；模型还可以给出 `approval_recommendation` / `approval_reason`，这三个字段在权限匹配与执行前会被剥离。
+
+### 后台任务
+
+长命令（构建、测试套件、安装）可以 `bash(command: "...", background: true)` 启动：调用立刻返回一个任务 id，命令继续在后台跑，本轮不必等它，用 `background_task(action="read")` 看输出、`action="stop"` 停掉它。生命周期口径：
+
+- run 正常结束**不**停止任务；用户点停止（取消 run）会**同时停止该会话的全部后台任务**，会话删除与退出应用同理（保留已产生的输出，状态记为 `cancelled`）；
+- 任务跑完后会自动起一个**汇报回合**把结论带回会话（默认开，可在设置里关）；该回合只有只读工具、不弹审批、不落用户消息、也不能再启动后台任务；
+- 进程被强杀（崩溃 / kill -9）时会留下孤儿进程——这是已知残余，下次启动时会按记录核对 pid 与命令行后清理。
 
 ### 权限模型
 

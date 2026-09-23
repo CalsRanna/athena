@@ -43,7 +43,11 @@ class ChatController {
        _sentinelRepo = sentinelRepo,
        _supportService = supportService,
        _onModelSwitched = onModelSwitched,
-       _defaultModelId = defaultModelId;
+       _defaultModelId = defaultModelId {
+    // 后台任务完成后的自动汇报由协调层自己发起，没有对应的 sendMessage
+    // 事件流；订阅内部事件流，让它和普通 run 一样实时出现在终端里。
+    _internalEventsSub = _bridge.internalEvents.listen(_handleInternalEvent);
+  }
 
   final ChatStoreService _manageService;
   final TuiAgentBridge _bridge;
@@ -199,6 +203,8 @@ class ChatController {
     _disposed = true;
     _flushTimer?.cancel();
     _flushTimer = null;
+    _internalEventsSub?.cancel();
+    _internalEventsSub = null;
   }
 
   /// 等待当前 sendMessage 完全结束(含 finally 与 flush)。无 in-flight 时立即返回。
@@ -563,6 +569,32 @@ class ChatController {
     isStreaming.value = false;
   }
 
+  /// 内部 run（后台任务完成后的自动汇报）的事件入口。
+  ///
+  /// 它不属于任何一次 sendMessage，因此流式状态在这里维护：其他对话的汇报
+  /// 照常落库（切过去就能看到），只有当前对话的汇报会点亮流式指示。
+  void _handleInternalEvent(InternalRunEvent internal) {
+    final chatId = internal.chatId;
+    final event = internal.event;
+    if (chatId != currentChat.value?.id) {
+      // 其他对话的汇报照常落库（切过去就能看到），但不改当前界面状态。
+      if (event is RunListReload || event is RunError) handleRunEvent(event);
+      return;
+    }
+    if (event is RunAssistantAppended) {
+      _reporting = true;
+      isStreaming.value = true;
+    }
+    handleRunEvent(event);
+    if (event is RunOutcomeChanged) {
+      // 只在「当前流式确实来自汇报」时收尾，避免清掉用户自己的 run。
+      if (_reporting) {
+        _reporting = false;
+        isStreaming.value = false;
+      }
+    }
+  }
+
   /// 消费单个 [RunEvent](sendMessage 的事件分发;测试可注入事件验证
   /// 跨聊天过滤与列表更新,不依赖真实 Agent 流)。
   @visibleForTesting
@@ -714,6 +746,12 @@ class ChatController {
 
   List<MessageEntity>? _pendingList;
   Timer? _flushTimer;
+
+  /// 内部 run（自动汇报）的事件订阅：控制器构造时订阅，dispose 时释放。
+  StreamSubscription<InternalRunEvent>? _internalEventsSub;
+
+  /// 当前流式状态是否由自动汇报点亮（用于决定收尾时是否清除指示）。
+  bool _reporting = false;
 
   /// 流式高频更新合并:窗口内多次更新只通知 UI 一次。
   ///

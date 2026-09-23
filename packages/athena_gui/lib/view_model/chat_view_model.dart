@@ -301,6 +301,9 @@ class ChatViewModel {
   /// 直接把 UI 线程打满；合并后恒定 10 次/秒，与 token 速率解耦。
   final Duration _flushInterval;
 
+  /// 当前运行指示是否由自动汇报点亮（决定收尾时是否清除指示）。
+  bool _reporting = false;
+
   /// 取出可变的 pending 列表（首次从当前信号值复制一份，之后原地变异，
   /// 省掉每个事件一次的整表复制）。
   List<MessageEntity> _pendingFor(int chatId) {
@@ -408,6 +411,10 @@ class ChatViewModel {
         }),
       );
     });
+
+    // 后台任务完成后的自动汇报由协调层自己发起，没有对应的 sendMessage
+    // 事件流；订阅内部事件流，让汇报的流式进度和最终结论照常出现在会话里。
+    streamDelegate.internalEvents.listen(_handleInternalRunEvent);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -962,69 +969,123 @@ class ChatViewModel {
 
   Future<void> _sendInput(_QueuedChatInput input) async {
     final chat = input.chat;
-    final chatId = chat.id!;
     final eventStream = _stream.send(
       message: input.message,
       chat: chat,
       jsonMode: input.jsonMode,
     );
     await for (final event in eventStream) {
-      // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
-      // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
-      final belongsToCurrent = chat.id == currentChat.value?.id;
-      switch (event) {
-        case RunCompactionChanged(:final step):
+      _applyRunEvent(event, chat: chat, input: input);
+    }
+  }
+
+  /// 单个 [RunEvent] 的分发（用户 send 与内部汇报 run 共用一份语义）。
+  ///
+  /// [input] 只用于把「用户消息已落库」的排队项从本地队列移除：内部发起的
+  /// run（后台任务完成后的自动汇报）没有排队项。
+  void _applyRunEvent(
+    RunEvent event, {
+    required ChatEntity chat,
+    _QueuedChatInput? input,
+  }) {
+    final chatId = chat.id!;
+    // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
+    // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
+    final belongsToCurrent = chatId == currentChat.value?.id;
+    switch (event) {
+      case RunCompactionChanged(:final step):
+        if (belongsToCurrent) {
+          _bufferAppendMessage(step.toMessage(), chatId);
+          _flushMessages();
+        }
+      case RunMessageStored(:final message):
+        // 用户消息落库 = 会话多了一轮，轮次计数就地跟上（见 _recordNewTurn）
+        if (message.role == 'user') _recordNewTurn(chatId, message.id);
+        batch(() {
+          if (input != null && _queuedInputs.value.contains(input)) {
+            _queuedInputs.value = _queuedInputs.value
+                .where((queued) => !identical(queued, input))
+                .toList();
+          }
           if (belongsToCurrent) {
-            _bufferAppendMessage(step.toMessage(), chatId);
+            _bufferAppendMessage(message, chatId);
             _flushMessages();
           }
-        case RunMessageStored(:final message):
-          // 用户消息落库 = 会话多了一轮，轮次计数就地跟上（见 _recordNewTurn）
-          if (message.role == 'user') _recordNewTurn(chatId, message.id);
-          batch(() {
-            if (_queuedInputs.value.contains(input)) {
-              _queuedInputs.value = _queuedInputs.value
-                  .where((queued) => !identical(queued, input))
-                  .toList();
-            }
-            if (belongsToCurrent) {
-              _bufferAppendMessage(message, chatId);
-              _flushMessages();
-            }
-          });
-        case RunAssistantAppended(:final message):
-          if (belongsToCurrent) {
-            _bufferAppendMessage(message, chatId);
-          }
-        case RunMessageUpdated(:final message):
-          if (belongsToCurrent) {
-            _bufferAppendMessage(message, chatId);
-          }
-        case RunIterationChanged(:final iteration):
-          if (belongsToCurrent && isStreamingChat(chatId)) {
-            currentIteration.value = iteration;
-          }
-        case RunToolNameChanged(:final toolName):
-          if (belongsToCurrent && isStreamingChat(chatId)) {
-            currentToolName.value = toolName;
-          }
-        case RunUsageChanged(:final usage, :final chat):
-          if (chat.id == currentChat.value?.id) {
-            currentTokenUsage.value = usage;
-            _updateChatInLists(chat);
-          }
-        case RunOutcomeChanged():
-          // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
-          break;
-        case RunAutoRename():
-          unawaited(renameChat(chat));
-        case RunListReload():
-          unawaited(getChats());
-        case RunError(:final message):
-          LoggerUtil.e("sendMessage RunError: $message");
-          error.value = message;
+        });
+      case RunAssistantAppended(:final message):
+        if (belongsToCurrent) {
+          _bufferAppendMessage(message, chatId);
+        }
+      case RunMessageUpdated(:final message):
+        if (belongsToCurrent) {
+          _bufferAppendMessage(message, chatId);
+        }
+      case RunIterationChanged(:final iteration):
+        if (belongsToCurrent && isStreamingChat(chatId)) {
+          currentIteration.value = iteration;
+        }
+      case RunToolNameChanged(:final toolName):
+        if (belongsToCurrent && isStreamingChat(chatId)) {
+          currentToolName.value = toolName;
+        }
+      case RunUsageChanged(:final usage, :final chat):
+        if (chat.id == currentChat.value?.id) {
+          currentTokenUsage.value = usage;
+          _updateChatInLists(chat);
+        }
+      case RunOutcomeChanged():
+        // 结构化结果供进化/诊断链路消费，GUI 暂无额外展示。
+        break;
+      case RunAutoRename():
+        unawaited(renameChat(chat));
+      case RunListReload():
+        unawaited(getChats());
+      case RunError(:final message):
+        LoggerUtil.e("sendMessage RunError: $message");
+        error.value = message;
+    }
+  }
+
+  /// 内部 run（后台任务完成后的自动汇报）的事件入口。
+  ///
+  /// 它没有 sendMessage 的收尾流程，因此流式状态在这里维护：其他对话的汇报
+  /// 照常落库，只有当前对话的汇报会点亮运行指示。
+  void _handleInternalRunEvent(InternalRunEvent internal) {
+    final chatId = internal.chatId;
+    final chat = _chatForEvent(chatId);
+    if (chat == null) return;
+    final belongsToCurrent = chatId == currentChat.value?.id;
+    if (belongsToCurrent && internal.event is RunAssistantAppended) {
+      _reporting = true;
+      if (!isStreamingChat(chatId)) {
+        streamingChatIds.value = [...streamingChatIds.value, chatId];
       }
     }
+    _applyRunEvent(internal.event, chat: chat);
+    if (_reporting &&
+        belongsToCurrent &&
+        internal.event is RunOutcomeChanged) {
+      _reporting = false;
+      streamingChatIds.value = streamingChatIds.value
+          .where((id) => id != chatId)
+          .toList();
+      currentIteration.value = 0;
+      currentToolName.value = null;
+    }
+  }
+
+  /// 事件所属会话的实体。
+  ///
+  /// 内部 run 的事件不带 ChatEntity（只有 chatId）：从已加载的会话列表里取，
+  /// 列表尚未包含它（刚创建/已切换）时跳过——按会话 id 过滤的事件仍然生效，
+  /// 这里只影响需要 ChatEntity 的那几种（自动重命名）。
+  ChatEntity? _chatForEvent(int chatId) {
+    final current = currentChat.value;
+    if (current?.id == chatId) return current;
+    for (final history in chatHistories.value) {
+      if (history.chat.id == chatId) return history.chat;
+    }
+    return null;
   }
 
   /// 追加或替换消息：切换对话的竞态下占位消息可能已在列表中

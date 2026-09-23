@@ -136,7 +136,9 @@ entity + ~/.athena/ 下的文件
 6. 消费事件流：文本/推理增量写进占位消息、工具调用与结果累积进 JSON 列、用量覆盖写回会话、迭代边界把当前消息落地并开新占位消息；
 7. 收尾：`run` 结束（正常/取消/错误）都保证有落库与 outcome；随后取排队输入自动接续成下一个 run，事件流对 UI 连续。
 
-事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。
+事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。UI 侧因此有两条订阅：`send()` 返回的那条（用户消息触发的 run），以及 `internalEvents`（协调层自己发起的自动汇报 run，带 `chatId`，见下）。
+
+**内部 run（后台任务自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ 会话空闲则 `_runReport`，正忙则攒进 `_pendingReports`，由 `send` 收尾时的 `_drainPendingReport` 合并成一次汇报。它不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。
 
 ---
 
@@ -153,6 +155,7 @@ entity + ~/.athena/ 下的文件
 | `models_dev_cache.json` | `ModelCatalogService` | 目录缓存 |
 | `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root` |
 | `tool_outputs/{sha256}.txt` | `ToolOutputStore` | 内容寻址的长工具输出 |
+| `background_tasks/background_tasks.json` | `BackgroundTaskService` | 运行中的后台任务（pid + 命令行），仅用于下次启动清理强杀遗留的孤儿进程 |
 | `experiences/shared/`、`experiences/{sentinelId}/` | `ExperienceRepository` | 一条经验一个 JSON，文件名即 id |
 | `sentinels/{Uri.encodeComponent(name)}/history/` | `SentinelHistoryStore` | 演进前快照 |
 | `skills/{name}/SKILL.md` | `SkillLoader` / `SkillRegistry` | 用户级技能 |
@@ -200,7 +203,7 @@ entity + ~/.athena/ 下的文件
 
 | 工具 | risk | 并行 |
 |---|---|---|
-| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` | readOnly | 是 |
+| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` `background_task` | readOnly | 是 |
 | `ask_user_question` | readOnly | 否 |
 | `experience_recall` | readOnly | 否 |
 | `file_write` `file_update` `bash` / `powershell` `skill` `skill_evolve` `experience_learn` `sentinel_evolve` `sentinel_revert` | dangerous | 否（shell 按命令动态判定） |
@@ -208,10 +211,22 @@ entity + ~/.athena/ 下的文件
 其它要点：
 
 - 每个工具的 model-facing schema 由 `ToolRegistry.parametersFor` 注入三个元数据字段：`call_description`（必填，缺失即判参数非法并要求模型重发）、`approval_recommendation`、`approval_reason`。三者在权限匹配与执行前由 `toolExecutionArguments` 剥离——**别把它们算进参数或权限判断**。
+- 引擎还会在执行前注入两个隐藏键（`tool_interface.dart`，同样不进展示 JSON、不参与规则匹配）：`_chat_id`（会话归属，后台任务用）与 `_background_disabled`（本轮禁止启动后台任务，自动汇报回合用）。
 - 危险等级默认 `dangerous`，只读工具必须显式覆写。
-- 移动端只注册 11 个工具（不注册文件、shell、提问）；新增工具时先想清楚移动端是否可用，再决定放在哪个分支。
+- 移动端只注册 11 个工具（不注册文件、shell、提问、后台任务）；新增工具时先想清楚移动端是否可用，再决定放在哪个分支。
 - `ToolOutputStore`：超过 24000 字符才落盘（内存实例用于测试），预览 2000 字符，单次回读上限 12000 字符，按内容哈希寻址（同内容重跑不会重复落盘）。
 - shell 超时策略在 `ShellTimeoutPolicy`：默认 120s，上限 3600s（环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 可抬高，低于默认值视为非法并回退）。
+
+### 后台任务（桌面端）
+
+`bash` / `powershell` 的 `background: true` 走 `BackgroundTaskService`（`lib/agent/task/background_task.dart`）：**启动即返回**任务 id（`bg-1`…），命令继续跑，输出持续累积在任务对象里，用 `background_task(action="list"|"read"|"stop")` 查看与停止。归属与生命周期是这套能力的关键，改动前先读懂这几条：
+
+- **归属会话，不归属 run**。登记表按 `chatId` 分组，`_chat_id` 由引擎注入；工具自己不知道会话，也不允许模型指定。
+- **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI `runApp` 返回）同样杀。
+- **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
+- **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
+- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）、只读工具（`ToolRegistry.readOnlyDefinitions`）、不弹审批（`onPermission: null`，需要审批即拒绝）、`allowBackgroundTasks: false`（否则「任务→汇报→任务」无限链）、跳过失败反思（会写经验）、迭代上限 3。
+- **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
 
 ---
 

@@ -56,6 +56,10 @@ class FileStorage {
   File get catalogCacheFile => File(p.join(root.path, 'models_dev_cache.json'));
   Directory get toolOutputsDir => Directory(p.join(root.path, 'tool_outputs'));
 
+  /// 后台任务孤儿记录目录（进程被强杀后下次启动据此清理遗留进程）。
+  Directory get backgroundTasksDir =>
+      Directory(p.join(root.path, 'background_tasks'));
+
   late final IdAllocator idAllocator;
 
   /// 同一实例同时承担 ChatRepository 与 MessageRepository:对话与其消息

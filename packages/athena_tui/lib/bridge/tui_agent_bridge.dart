@@ -85,6 +85,9 @@ class TuiAgentBridge {
   /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
   Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
 
+  /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
+  Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
+
   MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
 
   Stream<RunEvent> send({

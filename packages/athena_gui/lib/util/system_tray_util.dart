@@ -9,12 +9,17 @@ class SystemTrayUtil with TrayListener {
 
   SystemTrayUtil._();
 
+  /// 退出前的收尾回调（停止后台任务等）。在 exit(0) 之前 await，
+  /// 否则进程先没了，子进程会变成孤儿。
+  Future<void> Function()? onBeforeQuit;
+
   Future<void> dispose() async {
     trayManager.removeListener(this);
     await trayManager.destroy();
   }
 
-  Future<void> ensureInitialized() async {
+  Future<void> ensureInitialized({Future<void> Function()? onBeforeQuit}) async {
+    this.onBeforeQuit = onBeforeQuit;
     trayManager.addListener(this);
     await _setContextMenu();
     await _setTrayIcon();
@@ -35,8 +40,14 @@ class SystemTrayUtil with TrayListener {
   }
 
   @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
+  Future<void> onTrayMenuItemClick(MenuItem menuItem) async {
     if (menuItem.key == 'quit') {
+      try {
+        await onBeforeQuit?.call();
+      } catch (e) {
+        // 收尾失败不该挡退出：孤儿清理是下次启动的兜底。
+        LoggerUtil.w('退出前收尾失败: $e');
+      }
       exit(0);
     }
   }

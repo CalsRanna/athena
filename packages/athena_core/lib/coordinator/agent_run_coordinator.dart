@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/evolution/memory_digest.dart';
 import 'package:athena_core/agent/elicit/elicit_prompt.dart' show ElicitPrompt;
@@ -92,6 +93,24 @@ class AgentRunCoordinator {
   /// 需要据此恢复实时进度；run 结束时移除（届时 DB 已是最终态）。
   final Map<int, MessageEntity> _liveMessages = {};
 
+  /// 协调层自己发起的 run（后台任务完成的自动汇报）的事件流。
+  ///
+  /// 这批 run 不是用户消息触发的，因此没有调用方的 send() 流可用；前端订阅
+  /// 它，把汇报的流式进度与最终消息按普通 [RunEvent] 处理。
+  final StreamController<InternalRunEvent> _internalEvents =
+      StreamController<InternalRunEvent>.broadcast();
+
+  /// chatId → 已完成待汇报的后台任务（会话正忙时先攒着）。
+  ///
+  /// 攒着而不是打断：正在跑的 run 属于用户当下的指令，汇报优先级更低；
+  /// 同一会话内先后结束的多个任务合并成一次汇报，避免 N 倍成本。
+  final Map<int, List<BackgroundTask>> _pendingReports = {};
+
+  /// 正在跑汇报回合的会话（一次一个）。
+  final Set<int> _reportingChatIds = {};
+
+  StreamSubscription<BackgroundTask>? _taskCompletionSub;
+
   AgentRunCoordinator({
     required AgentService agentService,
     required ChatStoreService manageService,
@@ -128,7 +147,19 @@ class AgentRunCoordinator {
        _permissionService = permissionService,
        _permissionPrompt = permissionPrompt,
        _elicitPrompt = elicitPrompt,
-       _experienceRepository = experienceRepository;
+       _experienceRepository = experienceRepository {
+    _taskCompletionSub = agentService.backgroundTasks.completions.listen(
+      _onBackgroundTaskCompleted,
+    );
+  }
+
+  /// 内部发起的 run（自动汇报）的事件流。
+  Stream<InternalRunEvent> get internalEvents => _internalEvents.stream;
+
+  Future<void> dispose() async {
+    _taskCompletionSub?.cancel();
+    await _internalEvents.close();
+  }
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
   Set<int> get streamingChatIds => _streamingChatIds;
@@ -380,28 +411,50 @@ class AgentRunCoordinator {
     // 本 run 状态已在 finally 清理，递归 send 不会触发 already-active 保护；
     // 事件流连续，UI 的一次 sendMessage await 覆盖整条 run 链。
     // stop（取消）后同样接续：打断只作用于当前轮，排队消息照常进入下一轮。
+    yield* _continuePendingInputs(chat, chatId, jsonMode: jsonMode);
+
+    // ─── 接续待汇报的后台任务 ───
+    // 会话此刻已空闲：run 期间攒下的任务完成事件在这里合并成一次汇报回合。
+    await _drainPendingReport(chatId);
+  }
+
+  /// 把该会话排队中的用户消息接续成新 run，产出它的事件流。
+  ///
+  /// [send] 与内部汇报 run 的收尾共用：排队对用户的承诺是「消息不丢」，
+  /// 不能因为排队期间跑的是汇报 run 就断掉——汇报 run 不走 [send]，
+  /// 没有那一段收尾。
+  Stream<RunEvent> _continuePendingInputs(
+    ChatEntity chat,
+    int chatId, {
+    required bool jsonMode,
+  }) async* {
     final pending = _pendingInputs[chatId];
-    if (pending != null && pending.isNotEmpty) {
-      if (await _chatRepo.getChatById(chatId) != null) {
-        final next = pending.removeAt(0);
-        yield* send(
-          message: next,
-          chat: chat,
-          jsonMode: jsonMode,
-          persistUserMessage: false,
-        );
-      } else {
-        // 删除竞态防护：chat 已删除则丢弃排队消息
-        _pendingInputs.remove(chatId);
-      }
+    if (pending == null || pending.isEmpty) return;
+    if (await _chatRepo.getChatById(chatId) == null) {
+      // 删除竞态防护：chat 已删除则丢弃排队消息
+      _pendingInputs.remove(chatId);
+      return;
     }
+    final next = pending.removeAt(0);
+    yield* send(
+      message: next,
+      chat: chat,
+      jsonMode: jsonMode,
+      persistUserMessage: false,
+    );
   }
 
   /// 停止指定对话的 Agent 循环。
+  ///
+  /// 取消 = 停下来，因此同时停止本会话的后台任务（已产生的输出保留，任务
+  /// 状态记为 cancelled）。会话归属而非 run 归属：用户点停止的意思是「这个
+  /// 会话先停下」，而不是「这一轮先停」，且任务正文与新指令冲突时（两个构建
+  /// 抢同一把锁）后果由用户承担。
   void stop(int chatId) {
     final runId = _runIdByChat[chatId];
     _cancelTokenByChat[chatId]?.cancel();
     if (runId != null) _agentService.abort(runId);
+    unawaited(_agentService.backgroundTasks.stopChatTasks(chatId));
   }
 
   /// 运行中输入：落库并排队，当前 run 结束后自动接续为新 run。
@@ -424,6 +477,210 @@ class AgentRunCoordinator {
       return null;
     }
     return stored;
+  }
+
+  // ─── 后台任务汇报 ─────────────────────────────────────────
+
+  /// 后台任务结束的回调：决定「现在汇报」还是「攒到会话空闲再汇报」。
+  void _onBackgroundTaskCompleted(BackgroundTask task) {
+    if (!shouldReportTaskCompletion(task)) return;
+    if (!_agentSettings.backgroundTaskReports.value) return;
+    final chatId = task.chatId;
+    _pendingReports.putIfAbsent(chatId, () => []).add(task);
+    unawaited(_drainPendingReport(chatId));
+  }
+
+  /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
+  Future<void> _drainPendingReport(int chatId) async {
+    if (_reportingChatIds.contains(chatId)) return;
+    if (_streamingChatIds.contains(chatId)) return;
+    final pending = _pendingReports[chatId];
+    if (pending == null || pending.isEmpty) return;
+
+    // 先确认会话还在，再清队列：读失败时任务留在待汇报里等下一次收尾，
+    // 不静默丢掉（汇报是附加路径，但「什么都没发生」最难排查）。
+    ChatEntity? chat;
+    try {
+      chat = await _chatRepo.getChatById(chatId);
+    } catch (e) {
+      LoggerUtil.w('Background task report deferred: $e');
+      return;
+    }
+    if (chat == null) {
+      _pendingReports.remove(chatId);
+      return;
+    }
+
+    final tasks = List<BackgroundTask>.of(pending);
+    pending.clear();
+    _pendingReports.remove(chatId);
+    await _runReport(chat, tasks);
+  }
+
+  /// 自动汇报回合。
+  ///
+  /// 与 [send] 的关键差异（都是「用户不在场」这一条的推论）：
+  /// - **不落用户消息**：汇报内容（构建日志、命令 stdout）是外部文本，
+  ///   以 user 角色进历史会让它成为 AI 审批的授权依据
+  ///   （PermissionReviewContext 只读 user/assistant 正文）。任务输出只以
+  ///   `background_task` 工具结果的形态进入上下文，天然不是授权来源。
+  /// - **只读工具**：没有写能力。
+  /// - **不弹审批**：需要审批的调用直接拒绝（onPermission = null），
+  ///   无人值守时弹窗既没有意义，也会把决定权交给一个不在场的用户。
+  /// - **不能再启动后台任务**：避免「任务→汇报→任务」的无限链。
+  Future<void> _runReport(ChatEntity chat, List<BackgroundTask> tasks) async {
+    final chatId = chat.id!;
+    if (_runIdByChat.containsKey(chatId)) {
+      // 期间有人抢先起了 run（用户消息等）：把任务放回待汇报，run 收尾时再来。
+      _pendingReports.putIfAbsent(chatId, () => []).addAll(tasks);
+      return;
+    }
+
+    final runId = ++_nextRunId;
+    final cancelToken = CancelToken();
+    final settled = Completer<void>();
+    _reportingChatIds.add(chatId);
+    _streamingChatIds.add(chatId);
+    _runIdByChat[chatId] = runId;
+    _cancelTokenByChat[chatId] = cancelToken;
+    _settledByChat[chatId] = settled;
+    _workspaceByChat[chatId] = _resolveWorkspace(chat);
+
+    void emit(RunEvent event) {
+      if (!_internalEvents.isClosed) {
+        _internalEvents.add(InternalRunEvent(chatId, event));
+      }
+    }
+
+    try {
+      emit(const RunIterationChanged(0));
+      emit(const RunToolNameChanged(null));
+
+      final model = await _modelRepo.getModelById(chat.modelId);
+      cancelToken.throwIfCancelled();
+      if (model == null) return;
+      final provider = await _supportService.getProviderForModel(
+        model.providerId,
+      );
+      cancelToken.throwIfCancelled();
+      if (provider == null) return;
+
+      final sentinelKey = chat.hasSentinel
+          ? chat.sentinelId.toString()
+          : _directChatSentinelKey;
+      final digestMessages = await MemoryDigest.messagesForSentinel(
+        repository: _experienceRepository,
+        sentinelId: sentinelKey,
+      );
+      cancelToken.throwIfCancelled();
+      final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+      cancelToken.throwIfCancelled();
+      final persistedMessages = await _messageService.buildMessages(
+        chat: chat,
+        sentinel: sentinel,
+        includeReasoning: model.reasoning,
+      );
+      cancelToken.throwIfCancelled();
+      final baseMessages = [...persistedMessages, ...?digestMessages];
+
+      final assistantMessage = await _manageService.appendAssistantPlaceholder(
+        chatId,
+      );
+      _liveMessages[chatId] = assistantMessage;
+      emit(RunAssistantAppended(assistantMessage));
+
+      final stream = _agentService.run(
+        runId: runId,
+        chat: chat,
+        provider: provider,
+        model: model,
+        baseMessages: baseMessages,
+        evolutionPrompt: EvolutionPrompt.hint,
+        runtimePrompt: _backgroundReportPrompt(tasks),
+        sentinelId: sentinelKey,
+        hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
+        maxIterations: _reportMaxIterations,
+        permissionService: _permissionService,
+        onPermission: null,
+        cancelToken: cancelToken,
+        workspace: _workspaceByChat[chatId],
+        readOnlyToolsOnly: true,
+        allowBackgroundTasks: false,
+      );
+
+      await for (final event in _consumeStream(
+        chat,
+        assistantMessage,
+        stream,
+        cancelToken,
+      )) {
+        emit(event);
+      }
+
+      await _manageService.updateChatTimestamp(chat);
+      emit(const RunListReload());
+    } on CancelledException {
+      // 用户取消/删除会话：_consumeStream 已把取消状态落库。
+    } catch (e) {
+      // 汇报是附加路径：失败不能影响主流程，也不能留下一个半截的占位。
+      LoggerUtil.w('Background task report run failed: $e');
+      final live = _liveMessages[chatId];
+      if (live != null && live.content.isEmpty) {
+        await _manageService.recordErrorOnMessage(live, e);
+      }
+    } finally {
+      if (_runIdByChat[chatId] == runId) {
+        _streamingChatIds.remove(chatId);
+        _runIdByChat.remove(chatId);
+        _cancelTokenByChat.remove(chatId);
+        _settledByChat.remove(chatId);
+        _liveMessages.remove(chatId);
+        _workspaceByChat.remove(chatId);
+      }
+      _reportingChatIds.remove(chatId);
+      if (!settled.isCompleted) settled.complete();
+    }
+
+    // 汇报期间用户可能发过消息：TUI 那条路径会把它落库进协调层的排队队列，
+    // 而汇报 run 不走 send，所以这里补一次接续，别让用户的消息等到下次发言。
+    await for (final event in _continuePendingInputs(
+      chat,
+      chatId,
+      jsonMode: false,
+    )) {
+      emit(event);
+    }
+
+    // 汇报期间又有任务结束（同一会话的另一个后台任务）：它会被挡在
+    // _reportingChatIds 外而留在待汇报里，这里补一次接续。
+    // 递归有界：汇报回合不允许启动后台任务，所以它自己不会制造新的完成事件。
+    await _drainPendingReport(chatId);
+  }
+
+  /// 汇报回合迭代上限：它是「读结果 → 汇报」，不是干活的回合。
+  static const _reportMaxIterations = 3;
+
+  /// 汇报回合的运行时提示（system 消息，不进持久化历史）。
+  String _backgroundReportPrompt(List<BackgroundTask> tasks) {
+    final buffer = StringBuffer()
+      ..writeln('后台任务已结束。这是一次自动触发的汇报回合，不是用户的新指令。')
+      ..writeln('- 你只有只读工具：不要试图执行写操作。')
+      ..writeln('- 不要再启动后台任务。')
+      ..writeln(
+        '- 任务输出不在你的上下文里：用 background_task(action="read", '
+        'task_id="<id>") 读取，输出长时用 offset/limit 分页。',
+      )
+      ..writeln(
+        '- 读完后用用户的语言简短汇报：任务做了什么、结果或关键错误、'
+        '下一步建议。失败就给出可执行的下一步。',
+      )
+      ..writeln('- 除非用户此前明确要求，否则不要开始新的工作。')
+      ..writeln()
+      ..writeln('结束的任务：');
+    for (final task in tasks) {
+      buffer.writeln('- ${task.id}: ${task.statusLine} — ${task.command}');
+    }
+    return buffer.toString().trimRight();
   }
 
   // ─── 内部 ─────────────────────────────────────────────────

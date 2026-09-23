@@ -6,6 +6,7 @@ import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
@@ -186,6 +187,9 @@ class TuiDi {
       sentinelRepository: sentinelRepo,
       store: keyValueStore,
       outputStore: outputStore,
+      backgroundTasks: BackgroundTaskService(
+        stateDirectory: storage.backgroundTasksDir,
+      ),
       defaultWorkdir: _workspace,
     );
 

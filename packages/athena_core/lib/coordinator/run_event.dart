@@ -4,6 +4,17 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/entity/token_usage.dart';
 
+/// 协调层**内部发起**的 run（后台任务完成后的自动汇报）的事件。
+///
+/// 与 [RunEvent] 的区别只有一个：它没有 `sendMessage` 的调用上下文，所以
+/// 必须自带会话 id，前端才知道该更新哪个会话的界面。
+class InternalRunEvent {
+  const InternalRunEvent(this.chatId, this.event);
+
+  final int chatId;
+  final RunEvent event;
+}
+
 /// Agent 一次 run 的对外事件契约（UI 无关）。
 ///
 /// GUI 与 TUI 各自消费同一事件流：[RunMessageStored] 等由

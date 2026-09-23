@@ -4,6 +4,17 @@ const toolCallDescriptionKey = 'call_description';
 const toolApprovalRecommendationKey = 'approval_recommendation';
 const toolApprovalReasonKey = 'approval_reason';
 
+/// 引擎注入的会话标识。后台任务按会话归属（不是按 run），因此工具必须
+/// 知道这次调用属于哪个会话。injection 发生在权限门之后，也不出现在
+/// 展示用的原始参数 JSON 里，模型既看不到也改不了。
+const toolChatIdKey = '_chat_id';
+
+/// 引擎注入：本轮 run 不允许启动后台任务。
+///
+/// 自动汇报回合用它守住边界——汇报回合由任务完成触发，用户并不在场，
+/// 让它再启动后台任务会形成「任务→汇报→任务」的无限链。
+const toolBackgroundDisabledKey = '_background_disabled';
+
 /// Remove model-authored metadata before rule matching or tool execution.
 Map<String, dynamic> toolExecutionArguments(Map<String, dynamic> args) =>
     Map<String, dynamic>.of(args)

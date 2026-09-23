@@ -1,13 +1,22 @@
+import 'package:athena_core/agent/task/background_task.dart';
+
 import 'tool_interface.dart';
 import 'tool_output_store.dart';
 
 export 'tool_interface.dart' show ExecutionMode;
 
 class ToolRegistry {
-  ToolRegistry({ToolOutputStore? outputStore})
-    : outputStore = outputStore ?? ToolOutputStore();
+  ToolRegistry({
+    ToolOutputStore? outputStore,
+    BackgroundTaskService? backgroundTasks,
+  }) : outputStore = outputStore ?? ToolOutputStore(),
+       backgroundTasks = backgroundTasks ?? BackgroundTaskService();
 
   final ToolOutputStore outputStore;
+
+  /// 后台任务登记表：与 [outputStore] 同级——两者都是「一次工具调用之外
+  /// 仍然存在的资源」，由注册表持有，工具与协调层共用同一份。
+  final BackgroundTaskService backgroundTasks;
 
   final Map<String, Tool> _tools = {};
 
@@ -15,9 +24,13 @@ class ToolRegistry {
   /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。
   List<Map<String, dynamic>>? _definitions;
 
+  /// 只读子集缓存（自动汇报回合用）。
+  List<Map<String, dynamic>>? _readOnlyDefinitions;
+
   void register(Tool tool) {
     _tools[tool.name] = tool;
     _definitions = null;
+    _readOnlyDefinitions = null;
   }
 
   void registerAll(Iterable<Tool> tools) {
@@ -29,6 +42,16 @@ class ToolRegistry {
   Tool? get(String name) => _tools[name];
 
   List<Tool> get all => _tools.values.toList();
+
+  /// 单个工具的 OpenAI function schema。
+  static Map<String, dynamic> definitionOf(Tool tool) => {
+    'type': 'function',
+    'function': {
+      'name': tool.name,
+      'description': tool.description,
+      'parameters': parametersFor(tool),
+    },
+  };
 
   /// Model-facing schema: 业务参数 + 引擎注入的调用元数据。
   ///
@@ -79,15 +102,16 @@ class ToolRegistry {
   }
 
   List<Map<String, dynamic>> get definitions => _definitions ??= _tools.values
-      .map(
-        (t) => {
-          'type': 'function',
-          'function': {
-            'name': t.name,
-            'description': t.description,
-            'parameters': parametersFor(t),
-          },
-        },
-      )
+      .map(definitionOf)
       .toList();
+
+  /// 只读工具子集：自动汇报回合（无人值守、用户不在场）的可用能力。
+  ///
+  /// 这一类 run 由任务完成自动触发，因此不得拥有任何写能力，也不得
+  /// 弹审批——它们没有 [ToolRisk.dangerous] 工具可选。
+  List<Map<String, dynamic>> get readOnlyDefinitions => _readOnlyDefinitions ??=
+      _tools.values
+          .where((t) => t.risk == ToolRisk.readOnly)
+          .map(definitionOf)
+          .toList();
 }

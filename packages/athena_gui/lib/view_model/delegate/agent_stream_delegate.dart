@@ -97,6 +97,9 @@ class AgentStreamDelegate {
   /// 指定对话是否正在流式运行。
   bool isStreamingChat(int chatId) => _coordinator.isStreamingChat(chatId);
 
+  /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
+  Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
+
   /// 等待指定对话的 run 完成后 resolve 的 Future。
   Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
 

@@ -1,6 +1,8 @@
 import 'package:athena_core/agent/evolution/sentinel_history_store.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/ask_user_question_tool.dart';
+import 'package:athena_core/agent/tool/background_task_tool.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/experience_learn_tool.dart';
 import 'package:athena_core/agent/tool/file_read_tool.dart';
@@ -38,6 +40,9 @@ ToolRegistry buildToolRegistry({
   required KeyValueStore store,
   ToolOutputStore? outputStore,
 
+  /// 后台任务登记表（桌面端有 shell 才有意义）。null = 新建一个。
+  BackgroundTaskService? backgroundTasks,
+
   /// Shell 工具的默认工作目录。null = 使用用户主目录。
   String? defaultWorkdir,
 
@@ -52,7 +57,11 @@ ToolRegistry buildToolRegistry({
   bool? mobile,
 }) {
   final isMobile = mobile ?? PlatformUtil.isMobile;
-  final registry = ToolRegistry(outputStore: outputStore);
+  final registry = ToolRegistry(
+    outputStore: outputStore,
+    backgroundTasks: backgroundTasks,
+  );
+  final tasks = registry.backgroundTasks;
   registry.register(ToolOutputReadTool(registry.outputStore));
   // sentinel 演进历史快照：与经验/技能同根的 .athena 沙盒目录
   final historyStore = SentinelHistoryStore(homeDir: mobileHomeDir);
@@ -89,8 +98,11 @@ ToolRegistry buildToolRegistry({
     FileUpdateTool(),
     // bash 与 powershell 按操作系统互斥，运行时只存在一个
     PlatformUtil.isWindows
-        ? PowerShellShellTool(defaultWorkdir: defaultWorkdir)
-        : BashShellTool(defaultWorkdir: defaultWorkdir),
+        ? PowerShellShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks)
+        : BashShellTool(defaultWorkdir: defaultWorkdir, tasks: tasks),
+    // 后台任务的查看/读取/停止入口，与 shell 的 background=true 成对出现：
+    // 只注册 shell 而不注册它，模型就无法取回后台命令的结果。
+    BackgroundTaskTool(tasks),
     // 交互工具：向用户提结构化问题（宿主提问卡片承载，永不触发审批弹窗）。
     // 移动端暂无对应的提问卡片，故只在桌面端注册。
     AskUserQuestionTool(),
