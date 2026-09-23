@@ -295,6 +295,33 @@ class JsonlSessionRepository
     return MessageEntity.fromJson(rows.first);
   }
 
+  /// 开头预览最多扫过的消息条数。
+  ///
+  /// 首条用户消息固定在最前面,余量只为跨过它前后可能出现的空行
+  /// (assistant 先落占位行再流式填充),多读没有意义。
+  static const int _openingPreviewScanLimit = 20;
+
+  @override
+  Future<String> getOpeningAnswerPreview(int chatId) async {
+    final rows = await _storeFor(
+      chatId,
+    ).loadLeadingMessageRows(_openingPreviewScanLimit);
+    var afterUser = false;
+    for (final row in rows) {
+      if (!afterUser) {
+        if (row['role'] == 'user') afterUser = true;
+        continue;
+      }
+      final content = row['content'];
+      if (row['role'] == 'assistant' &&
+          content is String &&
+          content.trim().isNotEmpty) {
+        return content.trim();
+      }
+    }
+    return '';
+  }
+
   /// 从文件尾部向前扫描读取消息(不读整个文件),窗口化分页用。
   ///
   /// 长对话的 JSONL 可达几百 MB,`getMessagesByChatId` 全量读既慢又占

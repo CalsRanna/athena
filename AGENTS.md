@@ -47,7 +47,7 @@ athena/
     │   │   ├── storage/         # 本地文件持久化：FileStorage 布局 + JSONL/JSON/YAML 仓储实现 + 跨进程文件锁 + KeyValueStore 接口 + AgentSettings
     │   │   ├── extension/       # json_map_extension
     │   │   └── util/            # platform_util / retry / logger_util / tool_args_formatter
-    │   └── test/                # 仅 athena_core 有：permission_rule_test / file_storage_test（见 §14）
+    │   └── test/                # 仅 athena_core 有：permission_rule_test / file_storage_test / jsonl_session_repository_test（见 §14）
     ├── athena_gui/              # ★ Flutter 桌面/移动应用
     │   ├── lib/
     │   │   ├── main.dart        # 入口：DI → FileStorage 加载 + 种子 → Window/Tray → 后台同步模型目录
@@ -411,6 +411,7 @@ sealed class RunEvent {
 - **思考卡片展开状态不落库**：展开/折叠只是 `StepCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key（`steps-<宿主消息 id>-<片段下标>`）不变，State 自然保留；序列从单步长成多步时 `didUpdateWidget` 重置为折叠
 - **推理、工具调用与压缩按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块、每次工具调用与每条压缩消息都是"步骤"（`ReasoningStep` / `ToolCallStep` / `ContextCompactionStep`），严格按时间序排列，只有可见正文和引用切断序列（步骤本身不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层只有一个组件 `component/step_card.dart` 的 `StepCard(steps: [...])`（Composite）：单步时头部是该步骤自己的图标 / 文案 / 运行态、展开看正文；≥ 2 步时默认折叠，进行中折叠头显示当前步骤文案（`Thinking` / 工具参数预览 / 压缩阶段）并 shimmer，结束后显示 `Used N tools · Thought Xs · Compacted once` 汇总，展开后按时间序嵌套单步 `StepCard(nested: true)`（子项不自带 shimmer，运行态由组头统一表达）。每种步骤类型的"表现描述"（图标 / 文案 / 等宽 / 运行态 / 正文）只在 `_StepCardState._faceOf` 的一处 switch 里，新增类型时先加 `AssistantStep` 子类，再补这处 switch、`summaryLabel` 计数与 `_childKey`。折叠头与结果正文的视觉原语在 `step_primitives.dart`（`StepHeader` / `StepResultBody` / `StepHeaderShimmer`）。上边距是卡片对外的边距：顶层步骤卡自带 8（单步与组一致，不再有"平铺推理卡补 16 边界间距"的特判），嵌套子卡不自带、由组正文 Column 的 spacing 统一给 8，避免组头到首行叠成 16。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
 - **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
+- **轮次导航（桌面）**：`TurnNavigator` 是消息 sliver 与左侧轮次指示器之间的单向桥——sliver 在每帧布局后上报"视口当前在第几轮"（`currentTurnIndex`），反向由指示器调 `scrollToTurn`。两条约束都来自懒加载列表本身：(1) 只有已构建的项知道自己的高度，跳转目标还没被构建时只能按索引差 × 已构建项平均高度**粗跳一段再复测**（单次上限 2.5 屏、最多 8 次），坐标系换算集中在 `util/sliver_item_metrics.dart`（子项 `layoutOffset` + `constraints.scrollOffset`，被 keepAlive 留下的项要跳过）；(2) "视口当前轮"取**占视口面积最多**的那一项所属的轮次，不能用"视口顶那一项"——贴着列表底部时视口顶往往还留着上一轮的尾巴。轮次切分口径见 `util/chat_turn_util.dart`（一轮 = 一条用户消息 + 它之后第一条有正文的回答）。
 - **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
 - **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
 - **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
@@ -700,7 +701,7 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
 ## 14. 测试
 
 **只有 `athena_core` 有测试**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
-落库形态与匹配范围）与 `test/storage/file_storage_test.dart`；`athena_gui/test`、`athena_tui/test` 为空
+落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话开头预览的取数口径：首条用户消息之后第一条有正文的回答）；`athena_gui/test`、`athena_tui/test` 为空
 （测试套件已整体删除）。因此：
 
 - `athena_core` 的改动在 `packages/athena_core` 下先跑 `dart test`，再跑 `dart analyze`。
@@ -708,6 +709,9 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
 - UI 改动只能对着**运行中的开发实例**验证：`hot_restart` → 用 VM service 的 `evaluate`
   推路由（不必手点 UI）→ 系统截屏 → 读图。没有 driver 扩展，`flutter_driver_command
   screenshot` 不可用。
+- UI 改动也可以用**临时 widget 探针**取证：在 `packages/athena_gui/test/probe_*_test.dart`
+  里写一次性用例断言渲染属性 / 位置 / 命中行为，比截图精确；跑完把该目录整体删掉——
+  仓库不留 GUI 测试套件。
 - **移动端分支（`PlatformUtil.isMobile`）在 macOS 上跑不到**，改这两条分支时手上没有
   任何回归网，能避开就避开、必须改时逐行对照。
 - 纯函数（`util/message_display_util.dart` 的卡片分组与步骤布局）同样没有回归网，
