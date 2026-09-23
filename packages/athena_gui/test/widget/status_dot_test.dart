@@ -12,10 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 ///    运行中是实心点——形状是一条不依赖颜色的状态线索；
 /// 2. 不在跑的三态是静态档位（同色不同 alpha），不随时间变化；
 /// 3. 运行中循环**色相**，且相对亮度钉在 `accent` 上——所以每个采样点的饱和度与
-///    `computeLuminance()` 都必须等于 accent 的。用"颜色各不相同"当唯一判据挡不住
-///    "随手换成一组别的颜色"，这两条断言才是这条口径的牙齿：只转色相是为了不改语义
-///    （绿 / 橙 = 成功 / 警告），钉住亮度是为了不改视觉重量（沿用 accent 的 HSL 明度时，
-///    黄绿相位对浅色画布只有 1.5:1，而 accent 是 4.3:1）。
+///    `computeLuminance()` 都必须落在 accent 的同一档里。用"颜色各不相同"当唯一判据
+///    挡不住"随手换成一组别的颜色"，这两条断言才是这条口径的牙齿：只转色相是为了不改
+///    语义（绿 / 橙 = 成功 / 警告），钉住亮度是为了不改视觉重量（沿用 accent 的 HSL
+///    明度时，黄绿相位对浅色画布只有 1.5:1，而 accent 是 4.3:1）。
+///
+/// 容差不是 0：颜色表是按 96 档采样的，档与档之间做 RGB 直线插值（是弦不是弧），
+/// 实测整圈最大偏差为饱和度 0.021、相对亮度 0.004（后者已是 8bit 量化下限）。
 void main() {
   const colors = AthenaColors.light;
 
@@ -207,12 +210,12 @@ void main() {
     for (final color in seen) {
       expect(
         HSLColor.fromColor(color).saturation,
-        closeTo(accentHsl.saturation, 0.01),
-        reason: '只准换色相：$color',
+        closeTo(accentHsl.saturation, 0.03),
+        reason: '只准换色相（容差=表格插值的弦误差）：$color',
       );
       expect(
         color.computeLuminance(),
-        closeTo(accentLuminance, 0.01),
+        closeTo(accentLuminance, 0.006),
         reason: '整圈必须是同一视觉重量（= accent 对画布的对比度）：$color',
       );
     }
@@ -239,5 +242,32 @@ void main() {
       reason: '减弱动态效果下圆点应静止：$frozen',
     );
     expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  test('整圈 200 点采样：明暗恒定、色相在走（两个主题都查）', () {
+    for (final palette in [AthenaColors.light, AthenaColors.dark]) {
+      final accentHsl = HSLColor.fromColor(palette.accent);
+      final accentLuminance = palette.accent.computeLuminance();
+      final seen = <Color>{};
+      for (var i = 0; i < 200; i++) {
+        final color = StatusDot.colorAt(i / 200, palette);
+        seen.add(color);
+        expect(
+          HSLColor.fromColor(color).saturation,
+          closeTo(accentHsl.saturation, 0.03),
+          reason: '$i/200 上的饱和度跑偏：$color',
+        );
+        expect(
+          color.computeLuminance(),
+          closeTo(accentLuminance, 0.006),
+          reason: '$i/200 上的视觉重量跑偏：$color',
+        );
+      }
+      expect(
+        seen.length,
+        greaterThan(100),
+        reason: '整圈应该是一段连续的色相，而不是几个跳变的档：${seen.length}',
+      );
+    }
   });
 }

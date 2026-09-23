@@ -283,9 +283,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点，
   **不在跑时是 1px 描边的圆环、运行中是实心点**（形状本身也是一条不依赖颜色的状态线索），
   颜色档位：静止 `iconSecondary` 45%、hover 75%、重命名中 `statusWarning`；运行中 `accent` 实心
-  且带**色相循环**：色相每 2400ms 绕一圈，明度按"相对亮度等于 `accent`"反解，所以整圈对比度恒为
-  accent 对画布的那一档——不这么做的话沿用同一 HSL 明度的黄绿相位在浅色画布上只有 1.5:1，
-  圆点会淡到看不见；`disableAnimations` 时停在 `accent` 原色。尾部 `⋮` 只在 hover 出现。
+  且带**色相循环**：色相每 2400ms 绕一圈，明度按"相对亮度等于 `accent`"反解，所以整圈对比度都在
+  accent 那一档（浅色实测 4.2–4.4:1，±0.1 来自 8bit 颜色量化）——不这么做的话沿用同一 HSL 明度的
+  黄绿相位在浅色画布上只有 1.5:1，圆点会淡到看不见；`disableAnimations` 时停在 `accent` 原色。
+  尾部 `⋮` 只在 hover 出现。
 - **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
   文字仍与分区标题对齐），圆角 8；hover 底 `neutralRule`、选中底 `neutralSelected`、归档项文字降为 `textSecondary`；
   标签 14 / w600、说明 14 / w400 / `textWeak`、校验错误 `dangerText`；标签后的徽标
