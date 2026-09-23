@@ -252,6 +252,7 @@ entity + ~/.athena/ 下的文件
 - 桌面与移动是两套页面（`page/desktop/`、`page/mobile/`），路由在 `router/router.dart`，桌面路由是 0 时长无过渡，桌面设置路由 `opaque: false`（面板浮在应用之上）。
 - 平台判定统一用 `PlatformUtil`（`isDesktop` / `isMobile`），不要散落 `Platform.isXxx`。
 - 页级快捷键挂页面（首页的 ⌘N / Ctrl+N 新建对话在 `page/desktop/home/component/home_shortcuts.dart`），不要塞进 `main.dart` 的全局 `HardwareKeyboard` 处理器——那条只服务窗口级动作（如 ⌘W 隐藏窗口）。路由是天然的生效边界：设置页/对话框压上来时焦点整体搬进新路由的 FocusScope，快捷键自动失效、关掉即恢复，不需要查路由名；页面自己再带一层 `FocusScope(autofocus: true)`，保证点画布失焦后焦点落回页面内部而不是路由 scope。
+- 新对话的草稿参数（`ChatViewModel.prepareNewChatDraft`）：模型/保留策略/温度/推理强度一律回默认；**角色与工作文件夹从 `inheritFrom` 继承**——桌面点 New chat 传当前选中对话的快照，移动端传最近打开的对话但 `inheritWorkspace: false`（那边不注册 shell / 文件工具）。启动落草稿、删掉最后一个对话不传来源，回默认角色 + 不指定文件夹。继承值只是草稿初值，composer 上仍可改，`createChat` 落库读的就是这些 `current*` 信号。
 - widget 测试要挂真实页面时，用 `DI.ensureInitialized(homeDirOverride: 临时目录)` 装依赖图：数据根整体指到临时目录，不碰真实的 `~/.athena`（例见 `test/widget/home_page_new_chat_test.dart`）。注意页面 `_initState` 是一串串行的真实文件 I/O，测试里要交替「`runAsync` 真实异步窗口 + `pump`」才能把它推完——单放一次 `runAsync` 只够第一段 I/O。
 
 **TUI（`athena_tui`）**

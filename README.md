@@ -92,12 +92,13 @@
 - 发送首条消息时用模型自动命名会话；角色元数据（名称/描述/标签/头像）也可由模型生成。
 - 系统托盘、Cmd+W 隐藏窗口、Win 单实例守卫（macOS 由 LaunchServices 保证）。
 - Cmd+N（macOS）/ Ctrl+N（Windows、Linux）新建对话，并把焦点落回输入框；设置页、对话框这类压在首页之上的路由打开时不生效。
+- 新建对话的草稿继承**当前选中对话**的角色与工作文件夹（模型、上下文保留、温度、推理强度仍回默认），在草稿上照旧可以改；启动落草稿、删掉最后一个对话没有来源，回默认角色与「不指定文件夹」。
 
 **移动（iOS / Android）**
 
 - 分段浏览页面：首页（欢迎 / 新建会话 / 最近会话 / 经验 / 角色）、聊天、最近会话列表、角色、Skill、经验、Provider、设置（Agent / Provider / Sentinels / Skills / Experiences / Default Model / Data / Appearance / About）。
 - 用户级数据（Skill、经验、Sentinel 历史）落在应用沙盒的 Application Support 目录，而非 `$HOME`。
-- 不注册文件、shell 与提问工具。
+- 不注册文件、shell 与提问工具；新建会话继承最近打开会话的角色（工作文件夹在移动端没有作用，不继承）。
 
 **终端（`athena_tui`）**
 

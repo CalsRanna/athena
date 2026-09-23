@@ -1242,7 +1242,21 @@ class ChatViewModel {
   ///
   /// 桌面端点"New chat"、移动端进入无对话的聊天页、删掉最后一个对话都到
   /// 这里；真正的会话文件要等首条消息发送时由 [createChat] 创建。
-  Future<void> prepareNewChatDraft() async {
+  ///
+  /// [inheritFrom] 非空时草稿的**角色与工作文件夹**从这条对话继承：点
+  /// "新建对话"的意图通常是在同一条项目/角色线上开个新话题，每次重选一遍
+  /// 是纯重复劳动。传 null（启动落草稿、删掉最后一个对话）仍回默认角色与
+  /// "不指定文件夹"。调用方传的必须是**快照**——本方法一进来就把
+  /// [currentChat] 置空。
+  ///
+  /// [inheritWorkspace] 只被移动端关掉：移动端不注册 shell / 文件工具，
+  /// 工作文件夹在那里不起作用，静默落库一个用不到的路径只会污染数据。
+  ///
+  /// 其余参数（模型、上下文保留、温度、推理强度）不继承，仍取默认。
+  Future<void> prepareNewChatDraft({
+    ChatEntity? inheritFrom,
+    bool inheritWorkspace = true,
+  }) async {
     _messageLoadGeneration++;
     _resetMessagePagination();
     isLoadingMessages.value = false;
@@ -1253,10 +1267,24 @@ class ChatViewModel {
     turnStartIds.value = const [];
     pendingImages.value = [];
     currentTokenUsage.value = null;
-    await _syncDraftDefaults();
+    await _syncDraftDefaults(inheritFrom, inheritWorkspace: inheritWorkspace);
   }
 
-  Future<void> _syncDraftDefaults() async {
+  /// 继承来源对话的角色。显式"不用角色"（sentinel_id = 0）继承成同一个保留
+  /// 值；其余按 id 回仓储解析，这样隐藏的预设角色也能带过来（它们在
+  /// [SentinelViewModel.sentinels] 里根本不出现）。
+  Future<SentinelEntity?> _inheritedSentinel(ChatEntity chat) async {
+    if (!chat.hasSentinel) return SentinelViewModel.directChatSentinel;
+    final listed = _sentinelViewModel.sentinels.value
+        .where((s) => s.id == chat.sentinelId)
+        .firstOrNull;
+    return listed ?? await _sentinelViewModel.getSentinelById(chat.sentinelId);
+  }
+
+  Future<void> _syncDraftDefaults(
+    ChatEntity? inheritFrom, {
+    required bool inheritWorkspace,
+  }) async {
     currentModel.value = _settingViewModel.chatModel.value;
     currentProvider.value = _settingViewModel.chatModelProvider.value;
 
@@ -1273,10 +1301,18 @@ class ChatViewModel {
     if (_sentinelViewModel.sentinels.value.isEmpty) {
       await _sentinelViewModel.getSentinels();
     }
-    currentSentinel.value = _sentinelViewModel.defaultSentinel.value;
+    // 来源对话的角色已被删/解析不到时退回默认角色，与选中该对话时的显示
+    // 口径一致（`_displaySentinel` 也是这么兜底的）。
+    final inherited = inheritFrom == null
+        ? null
+        : await _inheritedSentinel(inheritFrom);
+    currentSentinel.value =
+        inherited ?? _sentinelViewModel.defaultSentinel.value;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
     currentReasoningEffort.value = ChatEntity.defaultReasoningEffort;
-    currentWorkspacePath.value = null;
+    currentWorkspacePath.value = inheritWorkspace
+        ? inheritFrom?.workspacePath
+        : null;
   }
 }
