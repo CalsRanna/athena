@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 /// 会话行的状态点。Claude 实测：静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
 /// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
 ///
-/// [streaming]（Agent 正在该会话里跑）时圆点额外带一条**色相循环**：色相绕 `accent`
-/// 转圈、相对亮度钉在 `accent` 上，见 [colorAt]。只换色相是刻意的——换成另一组固定
-/// 颜色（绿 / 橙）会被读成 `statusSuccess` / `statusWarning` 的语义，而"运行中"不是
-/// 任何一种结果状态；亮度不动则是为了让圆点在一圈里始终有同一个视觉重量。
+/// **形状分两态**：没有在跑（静止 / hover / 重命名）画成 1px 描边的圆环，
+/// 运行中（[streaming]）是实心点——形状本身就是一条不依赖颜色的状态线索。
+///
+/// 运行中的实心点额外带一条**色相循环**：色相绕 `accent` 转圈、相对亮度钉在 `accent`
+/// 上，见 [colorAt]。只换色相是刻意的——换成另一组固定颜色（绿 / 橙）会被读成
+/// `statusSuccess` / `statusWarning` 的语义，而"运行中"不是任何一种结果状态；
+/// 亮度不动则是为了让圆点在一圈里始终有同一个视觉重量。
 class StatusDot extends StatefulWidget {
   final bool hover;
   final bool streaming;
@@ -125,12 +128,26 @@ class _StatusDotState extends State<StatusDot>
       base = colors.iconSecondary;
       alpha = widget.hover ? 0.75 : 0.45;
     }
-    return _dot(base.withValues(alpha: alpha));
+    return _ring(base.withValues(alpha: alpha));
   }
 
+  /// 运行中的实心圆点（颜色由 [colorAt] 逐帧给出）。
   Widget _dot(Color color) => Container(
     width: 6,
     height: 6,
     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  );
+
+  /// 不在跑的三态（静止 / hover / 重命名）是**圆环**：1px 描边、中间空心。
+  ///
+  /// 形状本身参与区分状态（不只靠颜色），同时让常驻的会话行退后一档——运行中的
+  /// 实心点（还带色相循环）成为列表里唯一的实心焦点。外径仍是 6，行高不受影响。
+  Widget _ring(Color color) => Container(
+    width: 6,
+    height: 6,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: color, width: 1),
+    ),
   );
 }
