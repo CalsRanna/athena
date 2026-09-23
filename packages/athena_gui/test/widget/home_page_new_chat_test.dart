@@ -1,17 +1,25 @@
 import 'dart:io';
 
+import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/repository/chat_repository.dart';
+import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
+import 'package:athena_gui/page/desktop/home/component/sentinel_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/page/desktop/home/home_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 首页"新建对话"整条链路的验收（页级）：点侧栏 New chat、按 ⌘N / Ctrl+N
@@ -58,6 +66,17 @@ void main() {
     return tester.widget<EditableText>(editable).focusNode.hasFocus;
   }
 
+  /// 交替「真实异步窗口 + pump」把一次 async 动作推完。页面里的 I/O 是一条
+  /// 串行 await 链，只放一次 runAsync 只够第一段（原因见 [pumpHome]）。
+  Future<void> settle(WidgetTester tester, {int rounds = 10}) async {
+    for (var i = 0; i < rounds; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+  }
+
   Future<void> pumpHome(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
@@ -78,6 +97,9 @@ void main() {
       );
       await tester.pump();
     }
+    // 焦点落进输入框不等于 init 链走完（composer 首帧就可能持焦），而草稿的
+    // 角色/工作文件夹是链尾才设的信号：再走几轮，别让断言读到中间态。
+    await settle(tester);
   }
 
   /// 模拟桌面端点画布：焦点离开输入框。此后快捷键仍须可用（页里那层
@@ -100,6 +122,70 @@ void main() {
     await tester.pump();
   }
 
+  /// 落一条"来源对话"：可选择挂自定义角色（不给就是"不用角色"）与工作文件夹。
+  /// 页面挂起来之前调用，这样 initSignals 能把它读进侧栏。
+  Future<ChatEntity> seedSourceChat(
+    WidgetTester tester, {
+    String? sentinelName,
+    String? workspacePath,
+  }) async {
+    final sentinelRepo = GetIt.instance<SentinelRepository>();
+    final chatRepo = GetIt.instance<ChatRepository>();
+    late ChatEntity chat;
+    await tester.runAsync(() async {
+      var sentinelId = ChatEntity.noSentinelId;
+      if (sentinelName != null) {
+        sentinelId = await sentinelRepo.createSentinel(
+          SentinelEntity(name: sentinelName, prompt: 'probe'),
+        );
+      }
+      final id = await chatRepo.createChat(
+        ChatEntity(
+          title: 'Source chat',
+          modelId: 1,
+          sentinelId: sentinelId,
+          workspacePath: workspacePath,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+      chat = (await chatRepo.getChatById(id))!;
+    });
+    return chat;
+  }
+
+  /// 选中一条对话（等价于用户在侧栏点它）；此刻它就是"当前对话"。
+  Future<void> selectSourceChat(WidgetTester tester, ChatEntity chat) async {
+    await tester.runAsync(
+      () => GetIt.instance<ChatViewModel>().selectChat(chat),
+    );
+    await settle(tester);
+  }
+
+  /// 点侧栏的 "New chat" 行。顶栏标题在草稿态也是 'New chat'，所以按侧栏子树
+  /// 定位，避免命中标题。
+  Future<void> tapSidebarNewChat(WidgetTester tester) async {
+    var newChatButton = find.descendant(
+      of: find.byType(DesktopChatListView),
+      matching: find.text('New chat'),
+    );
+    expect(newChatButton, findsOneWidget);
+    await tester.tap(newChatButton);
+    await settle(tester);
+  }
+
+  /// composer 上下文条上的角色 chip 文案。
+  Finder sentinelChipLabel(String label) => find.descendant(
+    of: find.byType(DesktopSentinelIndicator),
+    matching: find.text(label),
+  );
+
+  /// composer 上下文条上的工作文件夹 chip 文案（只显示目录名）。
+  Finder workspaceChipLabel(String label) => find.descendant(
+    of: find.byType(DesktopWorkspaceIndicator),
+    matching: find.text(label),
+  );
+
   testWidgets('启动落在草稿页：开屏焦点就在 composer', (tester) async {
     await pumpHome(tester);
     expect(composerFocused(tester), isTrue);
@@ -109,15 +195,7 @@ void main() {
     await pumpHome(tester);
     await blurComposer(tester);
 
-    // 顶栏标题在草稿态也是 'New chat'，所以按侧栏子树定位
-    var newChatButton = find.descendant(
-      of: find.byType(DesktopChatListView),
-      matching: find.text('New chat'),
-    );
-    expect(newChatButton, findsOneWidget);
-    await tester.tap(newChatButton);
-    await tester.pump();
-    await tester.pump();
+    await tapSidebarNewChat(tester);
 
     expect(composerFocused(tester), isTrue);
   });
@@ -172,5 +250,78 @@ void main() {
     await pressNewChat(tester);
     await tester.pump();
     expect(composerFocused(tester), isTrue);
+  });
+
+  testWidgets('从选中的对话新建：草稿继承它的角色与工作文件夹', (tester) async {
+    var workspace = Directory.systemTemp.createTempSync('athena_inherit_ws');
+    addTearDown(() {
+      if (workspace.existsSync()) workspace.deleteSync(recursive: true);
+    });
+
+    // 先落一条带自定义角色与工作文件夹的对话，页面挂起来后选中它
+    final source = await seedSourceChat(
+      tester,
+      sentinelName: 'Inherit Probe',
+      workspacePath: workspace.path,
+    );
+    await pumpHome(tester);
+    await selectSourceChat(tester, source);
+
+    await tapSidebarNewChat(tester);
+
+    expect(
+      sentinelChipLabel('Inherit Probe'),
+      findsOneWidget,
+      reason: '草稿的角色应继承来源对话，而不是回到默认 Athena',
+    );
+    expect(
+      workspaceChipLabel(p.basename(workspace.path)),
+      findsOneWidget,
+      reason: '草稿的工作文件夹应继承来源对话，否则新对话的 shell 会跑回主目录',
+    );
+    // 继承只是初值：模型/保留策略不跟着走（用户只要求角色与文件夹）
+    expect(
+      GetIt.instance<ChatViewModel>().currentRetention.value,
+      ChatViewModel.defaultDraftRetention,
+    );
+  });
+
+  testWidgets('来源对话「不用角色」时：草稿也是不用角色', (tester) async {
+    // sentinel_id = 0 是保留值，继承时必须原样带过来（同样不落 sentinels 表），
+    // 否则用户显式选的"直接对话"会被悄悄换成 Athena
+    final source = await seedSourceChat(
+      tester,
+      sentinelName: null,
+      workspacePath: null,
+    );
+    await pumpHome(tester);
+    await selectSourceChat(tester, source);
+    expect(sentinelChipLabel('No Sentinel'), findsOneWidget);
+
+    await tapSidebarNewChat(tester);
+
+    expect(sentinelChipLabel('No Sentinel'), findsOneWidget);
+    expect(
+      workspaceChipLabel('No folder'),
+      findsOneWidget,
+      reason: '来源没设工作文件夹时草稿也是"不指定"',
+    );
+  });
+
+  testWidgets('启动即草稿（没有选中对话）：仍是默认角色与不指定文件夹', (tester) async {
+    // 来源只来自"当前选中的对话"：没有它就回默认，而不是沿用上次看过的对话
+    var workspace = Directory.systemTemp.createTempSync('athena_idle_ws');
+    addTearDown(() {
+      if (workspace.existsSync()) workspace.deleteSync(recursive: true);
+    });
+    await seedSourceChat(
+      tester,
+      sentinelName: 'Inherit Probe',
+      workspacePath: workspace.path,
+    );
+    await pumpHome(tester);
+
+    expect(sentinelChipLabel('Athena'), findsOneWidget);
+    expect(workspaceChipLabel('No folder'), findsOneWidget);
   });
 }

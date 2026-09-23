@@ -177,7 +177,12 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (widget.chat != null) {
         await viewModel.selectChat(widget.chat!);
       } else {
-        await viewModel.prepareNewChatDraft();
+        // 移动端没有侧栏选中态，"当前对话"就是最近打开的那条；工作文件夹在
+        // 移动端没有作用（不注册 shell / 文件工具），所以只继承角色。
+        await viewModel.prepareNewChatDraft(
+          inheritFrom: viewModel.currentChat.value,
+          inheritWorkspace: false,
+        );
         // 入口注入的专属 Sentinel：作为新聊天的角色
         if (widget.sentinel != null) {
           viewModel.updateCurrentSentinel(widget.sentinel!);

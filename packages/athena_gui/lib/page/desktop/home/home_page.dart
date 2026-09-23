@@ -74,9 +74,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
   /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话——
   /// 但焦点照样放回输入框，这样在草稿页按快捷键也等于"回到输入框"。
+  ///
+  /// 从某条对话点进来时把它的角色与工作文件夹带进草稿（见
+  /// `ChatViewModel.prepareNewChatDraft`）。先取快照：prepareNewChatDraft
+  /// 一进去就会把 `currentChat` 置空。
   Future<void> startNewChat() async {
-    if (chatViewModel.currentChat.value != null) {
-      await chatViewModel.prepareNewChatDraft();
+    final source = chatViewModel.currentChat.value;
+    if (source != null) {
+      await chatViewModel.prepareNewChatDraft(inheritFrom: source);
     }
     if (!mounted) return;
     composerFocusNode.requestFocus();
