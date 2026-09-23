@@ -701,7 +701,7 @@ Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
 ## 14. 测试
 
 **只有 `athena_core` 有测试**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
-落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话开头预览的取数口径：首条用户消息之后第一条有正文的回答；以及轮次指示器要的 user 行全量扫描）；`athena_gui/test`、`athena_tui/test` 为空
+落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话文件的行级读取口径：轮次指示器要的 user 行全量扫描、尾部窗口按块回读、够小的会话整读分流）；`athena_gui/test`、`athena_tui/test` 为空
 （测试套件已整体删除）。因此：
 
 - `athena_core` 的改动在 `packages/athena_core` 下先跑 `dart test`，再跑 `dart analyze`。
