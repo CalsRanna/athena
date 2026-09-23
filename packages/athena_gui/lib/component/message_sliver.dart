@@ -1,8 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_tiles.dart';
+import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
 import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/util/sliver_item_metrics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 class _MessageListRenderItem {
   final MessageEntity message;
@@ -59,6 +64,10 @@ class MessageCardListSliver extends StatefulWidget {
   final void Function(TapUpDetails, MessageEntity)? onSecondaryTapUp;
   final void Function(MessageEntity)? onResend;
 
+  /// 轮次导航桥（可选）：登记后由本 sliver 上报「视口当前在第几轮」，
+  /// 并接受「跳到第几轮」的请求。
+  final TurnNavigator? navigator;
+
   const MessageCardListSliver({
     super.key,
     this.loading = false,
@@ -68,6 +77,7 @@ class MessageCardListSliver extends StatefulWidget {
     this.onLongPress,
     this.onSecondaryTapUp,
     this.onResend,
+    this.navigator,
   });
 
   @override
@@ -75,10 +85,55 @@ class MessageCardListSliver extends StatefulWidget {
 }
 
 class _MessageCardListSliverState extends State<MessageCardListSliver> {
+  /// 跳转时最多粗跳几次。懒加载列表里目标项可能还没被构建，只能按索引差
+  /// 估一屏再量一次；实测（几十项以内的跨度）两三次就到位。
+  static const int _maxScrollAttempts = 8;
+
+  /// 粗跳时单次最多走几屏：估得太远会来回震荡。
+  static const double _maxJumpViewports = 2.5;
+
+  static const Duration _jumpDuration = Duration(milliseconds: 240);
+
   final hover = AssistantCardHover();
+
+  /// 挂在 [SliverList] 上，用来在布局之后读子项的实际位置。
+  final _sliverKey = GlobalKey();
+
+  ScrollPosition? _position;
+
+  /// 每一轮起点（用户消息）对应的列表项下标，与消息顺序一致。
+  List<int> _turnStarts = const [];
+  bool _reportScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.navigator?.bindScroller(_scrollToTurn);
+  }
+
+  @override
+  void didUpdateWidget(covariant MessageCardListSliver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.navigator, widget.navigator)) {
+      oldWidget.navigator?.bindScroller(null);
+      widget.navigator?.bindScroller(_scrollToTurn);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final position = _scrollPosition();
+    if (identical(position, _position)) return;
+    _position?.removeListener(_scheduleTurnReport);
+    _position = position;
+    _position?.addListener(_scheduleTurnReport);
+  }
 
   @override
   void dispose() {
+    _position?.removeListener(_scheduleTurnReport);
+    widget.navigator?.bindScroller(null);
     hover.dispose();
     super.dispose();
   }
@@ -89,12 +144,19 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
       widget.messages,
       loading: widget.loading,
     );
+    _turnStarts = [
+      for (final (index, item) in renderItems.indexed)
+        if (item.layout == null && item.message.role == 'user') index,
+    ];
+    // 内容变化后（新消息、翻页、切会话）视口落在哪一轮也会变
+    _scheduleTurnReport();
     final itemIndices = <String, int>{
       for (final (index, item) in renderItems.indexed) item.key: index,
     };
     return SliverPadding(
       padding: widget.padding,
       sliver: SliverList.builder(
+        key: _sliverKey,
         itemCount: renderItems.length,
         findChildIndexCallback: (key) {
           if (key is! ValueKey<String>) return null;
@@ -143,6 +205,116 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
         },
       ),
     );
+  }
+
+  // ─── 轮次探测与跳转 ───────────────────────────────────────
+
+  ScrollPosition? _scrollPosition() {
+    // position 在 Scrollable 建好之前是不存在的；这里只在 didChangeDependencies
+    // 调用，此时祖先 Scrollable 已经挂上 position。
+    return Scrollable.maybeOf(context)?.position;
+  }
+
+  RenderSliverList? get _sliver {
+    final object = _sliverKey.currentContext?.findRenderObject();
+    return object is RenderSliverList ? object : null;
+  }
+
+  void _scheduleTurnReport() {
+    if (_reportScheduled) return;
+    _reportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reportScheduled = false;
+      _reportCurrentTurn();
+    });
+  }
+
+  /// 上报视口当前所在的那一轮：取视口里占得最多的那一项所属的轮次。
+  void _reportCurrentTurn() {
+    final navigator = widget.navigator;
+    if (navigator == null || !mounted) return;
+    final dominant = _dominantItemIndex();
+    navigator.currentTurnIndex.value = dominant == null
+        ? -1
+        : _turnIndexForItem(dominant) ?? -1;
+  }
+
+  /// 视口里占得最多的那一项下标（懒加载列表里只有已构建的项能参与）。
+  int? _dominantItemIndex() {
+    final sliver = _sliver;
+    return sliver == null ? null : SliverItemMetrics.dominantItemIndex(sliver);
+  }
+
+  /// 视口内**可见**的第一项下标。
+  ///
+  /// 懒加载 sliver 只构建视口（含缓存区）附近的项，所以遍历已构建的子项、
+  /// 取「下边缘越过视口顶」里最靠上的那个即可（坐标系换算见
+  /// [SliverItemMetrics]）。
+  int? _firstVisibleItemIndex() {
+    final sliver = _sliver;
+    return sliver == null ? null : SliverItemMetrics.firstVisibleIndex(sliver);
+  }
+
+  int? _turnIndexForItem(int itemIndex) {
+    int? turn;
+    for (var index = 0; index < _turnStarts.length; index++) {
+      if (_turnStarts[index] > itemIndex) break;
+      turn = index;
+    }
+    return turn;
+  }
+
+  /// 把第 [turnIndex] 轮滚到视口顶部。
+  Future<void> _scrollToTurn(int turnIndex) async {
+    final position = _position;
+    if (position == null || turnIndex < 0 || turnIndex >= _turnStarts.length) {
+      return;
+    }
+    final targetItem = _turnStarts[turnIndex];
+    for (var attempt = 0; attempt < _maxScrollAttempts; attempt++) {
+      final offset = _viewportOffsetOfItem(targetItem);
+      if (offset != null) {
+        await position.animateTo(
+          offset.clamp(0.0, position.maxScrollExtent),
+          duration: _jumpDuration,
+          curve: Curves.easeOut,
+        );
+        return;
+      }
+      // 目标项还没被构建：按索引差粗跳一段，下一帧再量。方向取自视口首边
+      // 可见的那一项（目标在它上方就是负数，往上跳）。
+      final firstVisible = _firstVisibleItemIndex();
+      if (firstVisible == null) return;
+      final step = _estimateStep(targetItem - firstVisible);
+      final next = (position.pixels + step).clamp(
+        0.0,
+        position.maxScrollExtent,
+      );
+      if (next == position.pixels) return;
+      position.jumpTo(next);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+  }
+
+  /// 把第 [itemIndex] 项移到视口顶所需的滚动偏移；该项未被构建时返回 null。
+  double? _viewportOffsetOfItem(int itemIndex) {
+    final sliver = _sliver;
+    final position = _position;
+    if (sliver == null || position == null) return null;
+    return SliverItemMetrics.viewportOffsetOf(sliver, position, itemIndex);
+  }
+
+  /// 粗跳步长：用可见项的平均高度估算，上限 [(_maxJumpViewports)] 屏。
+  double _estimateStep(int deltaItems) {
+    final sliver = _sliver;
+    if (sliver == null || deltaItems == 0) return 0;
+    final average = SliverItemMetrics.averageChildExtent(sliver);
+    if (average <= 0) return 0;
+    final distance = deltaItems.abs() * average;
+    final cap = sliver.constraints.viewportMainAxisExtent * _maxJumpViewports;
+    return deltaItems > 0
+        ? math.min(distance, cap)
+        : -math.min(distance, cap);
   }
 }
 

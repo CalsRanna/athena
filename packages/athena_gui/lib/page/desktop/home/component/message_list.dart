@@ -6,7 +6,10 @@ import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
+import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
+import 'package:athena_gui/util/chat_turn_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
@@ -34,14 +37,31 @@ class DesktopMessageList extends StatefulWidget {
 class _DesktopMessageListState extends State<DesktopMessageList> {
   static const double _loadOlderThreshold = 120;
 
+  /// 轮次指示器离消息区左缘的距离。
+  static const double _turnIndicatorLeft = 12;
+
+  /// 单条最大宽度。
+  static const double _maxBarWidth = 40;
+
+  /// 可用留白窄于这个值时干脆不显示指示器：定宽列被挤到窗口边缘时，
+  /// 条会压到正文上。
+  static const double _minBarWidth = 12;
+
   late final ChatViewModel chatViewModel;
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
+  final turnNavigator = TurnNavigator();
   int? _displayedChatId;
 
   @override
   void initState() {
     super.initState();
     chatViewModel = GetIt.instance<ChatViewModel>();
+  }
+
+  @override
+  void dispose() {
+    turnNavigator.dispose();
+    super.dispose();
   }
 
   @override
@@ -89,17 +109,46 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             columnPadding + kChatColumnInnerPadding,
             12,
           );
+          // 轮次指示器只占消息区左留白：条长上限随留白收缩，留白不够就不显示
+          final barWidth = (columnPadding - _turnIndicatorLeft - 12).clamp(
+            0.0,
+            _maxBarWidth,
+          );
+          final turns = buildChatTurns(messages);
           return Column(
             children: [
               Expanded(
-                child: loadingHistory
-                    ? const SizedBox.expand()
-                    : _buildList(
-                        messages,
-                        loading: loading,
-                        sentinel: sentinel,
-                        columnPadding: columnPadding,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: loadingHistory
+                          ? const SizedBox.expand()
+                          : _buildList(
+                              messages,
+                              loading: loading,
+                              sentinel: sentinel,
+                              columnPadding: columnPadding,
+                            ),
+                    ),
+                    // 一条 = 一轮；只有一轮时不显示，单根条说明不了什么
+                    if (!loadingHistory &&
+                        turns.length >= 2 &&
+                        barWidth >= _minBarWidth)
+                      Positioned(
+                        left: _turnIndicatorLeft,
+                        top: 0,
+                        bottom: 0,
+                        width: barWidth,
+                        child: Center(
+                          child: TurnIndicator(
+                            turns: turns,
+                            navigator: turnNavigator,
+                            maxBarWidth: barWidth,
+                          ),
+                        ),
                       ),
+                  ],
+                ),
               ),
               for (final request in approvals)
                 Padding(
@@ -205,6 +254,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
               messages: messages,
               loading: loading,
               sentinel: sentinel,
+              navigator: turnNavigator,
               // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
               // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
               // 这里再加内边距会让正文比 Claude 右移 24。

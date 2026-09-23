@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -245,25 +248,92 @@ class _ChatTile extends StatefulWidget {
 }
 
 class _ChatTileState extends State<_ChatTile> {
+  /// 悬浮多久才弹预览：立刻弹会在鼠标扫过列表时闪出一串卡片。
+  static const _previewDelay = Duration(milliseconds: 400);
+
+  Timer? _previewTimer;
+  bool _hovering = false;
+
+  @override
+  void dispose() {
+    _previewTimer?.cancel();
+    DesktopChatPreviewManager.instance.dismissFor(this);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DesktopMenuTile(
-      active: widget.active || widget.selected,
-      label: widget.chat.title,
-      // Claude 的会话行 leading 是一个状态点（hover 时加深），不是图标
-      leadingBuilder: (hover) => _StatusDot(
-        hover: hover,
-        streaming: widget.streaming,
-        renaming: widget.isRenaming,
-        pinned: widget.chat.pinned,
+    return MouseRegion(
+      onEnter: _handleHoverEnter,
+      onExit: _handleHoverExit,
+      child: DesktopMenuTile(
+        active: widget.active || widget.selected,
+        label: widget.chat.title,
+        // Claude 的会话行 leading 是一个状态点（hover 时加深），不是图标
+        leadingBuilder: (hover) => _StatusDot(
+          hover: hover,
+          streaming: widget.streaming,
+          renaming: widget.isRenaming,
+          pinned: widget.chat.pinned,
+        ),
+        // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
+        // 与 Claude 的"静止行没有尾部"不符。
+        hoverTrailing: widget.onMore == null
+            ? null
+            : _MoreButton(onTap: widget.onMore!),
+        onTap: _handleTap,
+        onSecondaryTap: _handleSecondaryTap,
       ),
-      // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
-      // 与 Claude 的"静止行没有尾部"不符。
-      hoverTrailing: widget.onMore == null
-          ? null
-          : _MoreButton(onTap: widget.onMore!),
-      onTap: widget.onTap,
-      onSecondaryTap: widget.onSecondaryTap,
+    );
+  }
+
+  /// 点选与右键菜单都不能和预览卡并存：这两种情况指针都停在行上，
+  /// 等不到 `onExit`，得自己把卡片收掉。
+  void _handleTap() {
+    _dismissPreview();
+    widget.onTap?.call();
+  }
+
+  void _handleSecondaryTap(TapUpDetails details) {
+    _dismissPreview();
+    widget.onSecondaryTap?.call(details);
+  }
+
+  void _handleHoverEnter(PointerEnterEvent _) {
+    _hovering = true;
+    _previewTimer?.cancel();
+    _previewTimer = Timer(_previewDelay, _showPreview);
+  }
+
+  void _handleHoverExit(PointerExitEvent _) {
+    _hovering = false;
+    _dismissPreview();
+  }
+
+  void _dismissPreview() {
+    _previewTimer?.cancel();
+    DesktopChatPreviewManager.instance.dismissFor(this);
+  }
+
+  /// 悬浮到延迟后弹预览卡。会话开头那一轮还没有回答（首轮仍在跑）时不弹，
+  /// 收尾后再悬浮就能读到——空结果不进缓存，见
+  /// [ChatViewModel.openingAnswerPreview]。
+  Future<void> _showPreview() async {
+    final chatId = widget.chat.id;
+    if (chatId == null || !_hovering || !mounted) return;
+    final answer = await GetIt.instance<ChatViewModel>().openingAnswerPreview(
+      chatId,
+    );
+    // 读取期间指针可能已经移开，或这一行已被重建/滚走
+    if (!_hovering || !mounted || answer.isEmpty) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    DesktopChatPreviewManager.instance.show(
+      context,
+      owner: this,
+      anchor: box.localToGlobal(Offset.zero) & box.size,
+      title: widget.chat.title,
+      answer: answer,
     );
   }
 }
