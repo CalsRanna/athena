@@ -115,8 +115,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       scrollController.followBottom();
       await chatViewModel.deleteChat(chat);
     }
-    // 删掉的若正好是当前对话，ViewModel 会自动落到邻居：输入框跟着换成那条
-    // 对话的草稿（被删的那条不再有槽位，见 [_restoreComposerDraft]）
+    // 删掉的若正好是当前对话，ViewModel 会回草稿态：输入框跟着换成"新对话"
+    // 槽的草稿（被删的那条不再有槽位，见 [_restoreComposerDraft]）
     _syncComposerDraft();
   }
 
@@ -168,7 +168,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// [key] 的草稿填进输入框（null = 还没落盘的"新对话"槽）。
   ///
   /// 每个会换 `ChatViewModel.currentChat` 的入口都要调一次（侧栏选中、新建对话、
-  /// 删除后自动落到邻居、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
+  /// 删除当前对话后回草稿、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
   /// B。切换要在**发出切换动作的同一帧内**做完：等 IO 回来再换，这段延迟里用户
   /// 敲进去的字会被恢复出来的草稿覆盖。
   void _restoreComposerDraft(int? key) {
@@ -186,7 +186,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 
-  /// 按当前选中的对话对齐输入框：删除当前对话后自动落到邻居、首条消息把草稿
+  /// 按当前选中的对话对齐输入框：删除当前对话后回草稿、首条消息把草稿
   /// 落盘成对话时用（这两种情况的目标对话事先不知道）。
   void _syncComposerDraft() =>
       _restoreComposerDraft(chatViewModel.currentChat.value?.id);
