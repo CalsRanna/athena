@@ -538,6 +538,14 @@ class ChatViewModel {
     }
   }
 
+  /// 删一条对话。视图落点只看"删的是不是正在看的那条"：
+  ///
+  /// - 删的是别条 → 当前对话与消息原样不动（删除是一个列表操作，不该顺手
+  ///   把用户正在读的内容换掉）；
+  /// - 删的正是当前这条 → 回草稿态（[prepareNewChatDraft]，与删掉最后一条
+  ///   对话同一条路径）。**不自动落到邻居**：用户删掉的就是他想离开的那条，
+  ///   替他去上一条等于再做一次他没要求的切换，而草稿页的"下一步"是显式的
+  ///   （点侧栏任意一条，或直接开新对话）。
   Future<void> deleteChat(ChatEntity chat) async {
     isLoading.value = true;
     error.value = null;
@@ -555,17 +563,14 @@ class ChatViewModel {
       _turnStartIdsByChat.remove(chat.id);
       _pendingTurnIds.remove(chat.id);
 
-      final shouldSelectReplacement = currentChat.value?.id == chat.id;
-      final replacement = shouldSelectReplacement
-          ? _replacementChatAfterDeleting({chat.id!})
-          : null;
+      final removedCurrentChat = currentChat.value?.id == chat.id;
       chats.value = chats.value.where((c) => c.id != chat.id).toList();
       chatHistories.value = chatHistories.value
           .where((h) => h.chat.id != chat.id)
           .toList();
 
-      if (shouldSelectReplacement) {
-        await _selectChatOrClear(replacement);
+      if (removedCurrentChat) {
+        await _clearToDraft();
       }
       _dropChatDrafts({chat.id!});
     } catch (e) {
@@ -599,18 +604,15 @@ class ChatViewModel {
       ids.forEach(_turnStartIdsByChat.remove);
       ids.forEach(_pendingTurnIds.remove);
 
-      final shouldSelectReplacement =
-          currentChat.value != null && ids.contains(currentChat.value!.id);
-      final replacement = shouldSelectReplacement
-          ? _replacementChatAfterDeleting(ids)
-          : null;
+      final removedCurrentChat = currentChat.value != null &&
+          ids.contains(currentChat.value!.id);
       chats.value = chats.value.where((c) => !ids.contains(c.id)).toList();
       chatHistories.value = chatHistories.value
           .where((h) => !ids.contains(h.chat.id))
           .toList();
 
-      if (shouldSelectReplacement) {
-        await _selectChatOrClear(replacement);
+      if (removedCurrentChat) {
+        await _clearToDraft();
       }
       _dropChatDrafts(ids);
     } catch (e) {
@@ -620,31 +622,14 @@ class ChatViewModel {
     }
   }
 
-  ChatEntity? _replacementChatAfterDeleting(Set<int> deletedIds) {
-    final currentIndex = chats.value.indexWhere(
-      (chat) => chat.id == currentChat.value?.id,
-    );
-    for (var index = currentIndex - 1; index >= 0; index--) {
-      final candidate = chats.value[index];
-      if (!deletedIds.contains(candidate.id)) return candidate;
-    }
-    return chats.value
-        .where((chat) => !deletedIds.contains(chat.id))
-        .firstOrNull;
-  }
-
-  Future<void> _selectChatOrClear(ChatEntity? chat) async {
-    if (chat != null) {
-      await selectChat(chat);
-      if (currentChat.value?.id == chat.id) {
-        _selection.lastSelectedIndex.value = chats.value.indexWhere(
-          (candidate) => candidate.id == chat.id,
-        );
-      }
-    } else {
-      await prepareNewChatDraft();
-      _selection.lastSelectedIndex.value = null;
-    }
+  /// 删掉当前对话后的落点：回草稿态，列表里的选中项一并清空。
+  ///
+  /// 走不带继承来源的 [prepareNewChatDraft]：被删的那条对话已经不在了，没有
+  /// "还在的邻居"可以继承角色/工作文件夹，参数回默认——与"删掉最后一条对话"
+  /// 完全同一条路径。
+  Future<void> _clearToDraft() async {
+    await prepareNewChatDraft();
+    _selection.lastSelectedIndex.value = null;
   }
 
   Future<void> selectChat(ChatEntity chat) async {
@@ -1297,7 +1282,7 @@ class ChatViewModel {
   /// 对话被删掉后清掉它的草稿槽（文字与待发图片）：留着只会在内存里越堆越多，
   /// 而 chat id 不复用，那个槽再也回不去了。
   ///
-  /// 必须在 [_selectChatOrClear] 之后调用——切换会把当前槽先存回它自己的位置，
+  /// 必须在 [_clearToDraft] 之后调用——切换会把当前槽先存回它自己的位置，
   /// 早一步清就会被那一步重新写回来。
   void _dropChatDrafts(Set<int> chatIds) {
     for (final id in chatIds) {
