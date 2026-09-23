@@ -1080,7 +1080,11 @@ class ChatViewModel {
       _flushMessages();
       final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
-        await _manageService.deleteMessagesFromIndex(messages.value, index);
+        await _manageService.deleteMessagesFromIndex(
+          message.chatId,
+          messages.value,
+          index,
+        );
         _dropTurnStartIdsFrom(message.chatId, message.id);
         await refreshMessages(message.chatId);
       }

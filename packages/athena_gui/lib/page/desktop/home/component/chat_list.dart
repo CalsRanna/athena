@@ -1,4 +1,5 @@
 import 'package:athena_core/entity/chat_entity.dart';
+import 'package:athena_gui/component/status_dot.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -250,58 +251,16 @@ class _ChatTile extends StatelessWidget {
       active: active || selected,
       label: chat.title,
       // Claude 的会话行 leading 是一个状态点（hover 时加深），不是图标
-      leadingBuilder: (hover) => _StatusDot(
+      leadingBuilder: (hover) => StatusDot(
         hover: hover,
         streaming: streaming,
         renaming: isRenaming,
-        pinned: chat.pinned,
       ),
       // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
       // 与 Claude 的"静止行没有尾部"不符。
       hoverTrailing: onMore == null ? null : _MoreButton(onTap: onMore!),
       onTap: onTap,
       onSecondaryTap: onSecondaryTap,
-    );
-  }
-}
-
-/// 会话行的状态点。Claude 实测：静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
-/// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
-class _StatusDot extends StatelessWidget {
-  final bool hover;
-  final bool streaming;
-  final bool renaming;
-  final bool pinned;
-
-  const _StatusDot({
-    required this.hover,
-    required this.streaming,
-    required this.renaming,
-    required this.pinned,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final Color base;
-    final double alpha;
-    if (streaming) {
-      base = colors.accent;
-      alpha = 1;
-    } else if (renaming) {
-      base = colors.statusWarning;
-      alpha = 1;
-    } else {
-      base = colors.iconSecondary;
-      alpha = hover ? 0.75 : 0.45;
-    }
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: BoxDecoration(
-        color: base.withValues(alpha: alpha),
-        shape: BoxShape.circle,
-      ),
     );
   }
 }

@@ -193,6 +193,9 @@ class SessionJsonlStore {
   }
 
   /// 删除命中的消息行,返回删除数。
+  ///
+  /// 调用方要删一批 id 时,**把整批放进 [test]**（一次读-改-写）；按 id 循环
+  /// 调用会把整文件读写重复 N 遍（实测 833KB 的会话逐条删 199 条要 1.5s）。
   Future<int> deleteMessageWhere(bool Function(Map<String, dynamic> json) test) {
     return _mutate(() async {
       final rows = await _readAllRows();

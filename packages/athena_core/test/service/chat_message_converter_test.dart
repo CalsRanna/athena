@@ -45,7 +45,7 @@ class _FakeMessageRepository implements MessageRepository {
       throw UnimplementedError('read-only fake');
 
   @override
-  Future<void> deleteMessage(int id) =>
+  Future<void> deleteMessages(int chatId, Set<int> ids) =>
       throw UnimplementedError('read-only fake');
 
   @override
@@ -53,7 +53,7 @@ class _FakeMessageRepository implements MessageRepository {
       throw UnimplementedError('read-only fake');
 
   @override
-  Future<void> markAsCompacted(Set<int> ids) =>
+  Future<void> markAsCompacted(int chatId, Set<int> ids) =>
       throw UnimplementedError('read-only fake');
 }
 

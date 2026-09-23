@@ -420,7 +420,7 @@ class AgentRunCoordinator {
     if (!_runIdByChat.containsKey(chatId)) {
       pending.remove(stored);
       if (pending.isEmpty) _pendingInputs.remove(chatId);
-      await _messageRepo.deleteMessage(stored.id!);
+      await _messageRepo.deleteMessages(stored.chatId, {stored.id!});
       return null;
     }
     return stored;

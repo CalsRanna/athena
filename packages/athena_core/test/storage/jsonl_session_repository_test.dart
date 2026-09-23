@@ -185,4 +185,95 @@ void main() {
       expect(missing.hasOlder, isFalse);
     });
   });
+
+  // 消息 id 是每会话独立计数（都从 1 开始），所以「按 id 跨会话查找」的删除与
+  // 标记一定会命中别的会话：目标会话删不掉、另一个对话静默丢消息。
+  group('deleteMessages / markAsCompacted 按会话隔离', () {
+    /// 建 [count] 条消息，返回 (chatId, ids)。
+    Future<(int, List<int>)> chatWith(int count, String prefix) async {
+      final chatId = await createChat();
+      final ids = <int>[];
+      for (var i = 0; i < count; i++) {
+        ids.add(
+          await storage.sessionRepository.storeMessage(
+            MessageEntity(chatId: chatId, role: 'user', content: '$prefix$i'),
+          ),
+        );
+      }
+      return (chatId, ids);
+    }
+
+    Future<List<(int, String)>> rows(int chatId) async {
+      final messages = await storage.sessionRepository.getMessagesByChatId(
+        chatId,
+      );
+      return [for (final m in messages) (m.id!, m.content)];
+    }
+
+    Future<List<String>> fileOrder() async {
+      final names = <String>[];
+      await for (final entity in storage.sessionsDir.list()) {
+        if (entity is File && entity.path.endsWith('.jsonl')) {
+          names.add(entity.uri.pathSegments.last);
+        }
+      }
+      return names;
+    }
+
+    test('两个会话同 id 时只删目标会话，另一个会话原样保留', () async {
+      final (a, aIds) = await chatWith(3, 'A');
+      final (b, bIds) = await chatWith(3, 'B');
+      expect(aIds, bIds); // 前提：id 跨会话重名
+
+      // 按 id 跨会话查找命中的是目录序里第一个含该 id 的文件（`_sessionFiles`
+      // 走的就是目录序），所以删除必须挑「排在后面」的会话：只有这样才能
+      // 暴露"删到先序会话、目标会话没删掉"。
+      final order = await fileOrder();
+      final aFirst = order.indexOf('$a.jsonl') < order.indexOf('$b.jsonl');
+      final target = aFirst ? b : a;
+      final victim = aFirst ? a : b;
+      final targetIds = aFirst ? bIds : aIds;
+      final victimIds = aFirst ? aIds : bIds;
+      final targetPrefix = aFirst ? 'B' : 'A';
+      final victimPrefix = aFirst ? 'A' : 'B';
+
+      await storage.sessionRepository.deleteMessages(target, {
+        targetIds[1],
+        targetIds[2],
+      });
+
+      expect(await rows(target), [(targetIds[0], '${targetPrefix}0')]);
+      expect(await rows(victim), [
+        (victimIds[0], '${victimPrefix}0'),
+        (victimIds[1], '${victimPrefix}1'),
+        (victimIds[2], '${victimPrefix}2'),
+      ]);
+    });
+
+    test('ids 为空时不改动任何会话', () async {
+      final (a, aIds) = await chatWith(2, 'A');
+      final (b, bIds) = await chatWith(2, 'B');
+
+      await storage.sessionRepository.deleteMessages(a, const {});
+
+      expect((await rows(a)).map((r) => r.$1), aIds);
+      expect((await rows(b)).map((r) => r.$1), bIds);
+    });
+
+    test('markAsCompacted 只标目标会话，另一个会话的同 id 行不受影响', () async {
+      final (a, aIds) = await chatWith(3, 'A');
+      final (b, bIds) = await chatWith(3, 'B');
+
+      await storage.sessionRepository.markAsCompacted(b, {bIds[0], bIds[1]});
+
+      final allA = await storage.sessionRepository.getMessagesByChatId(a);
+      final keptB = await storage.sessionRepository.getMessagesByChatId(
+        b,
+        includeCompacted: false,
+      );
+      expect(allA.map((m) => m.compacted), [false, false, false]);
+      expect(keptB.map((m) => m.id), [bIds[2]]);
+      expect(aIds.length, 3);
+    });
+  });
 }
