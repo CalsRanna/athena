@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/component/status_dot.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
+import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -328,8 +329,29 @@ class _SidebarNav extends StatelessWidget {
         active: false,
         label: 'New chat',
         leading: const Icon(HugeIcons.strokeRoundedPencilEdit02),
+        // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
+        hoverTrailing: const _ShortcutHint(),
         onTap: onCreateChat,
       ),
+    );
+  }
+}
+
+/// 行尾的快捷键提示（macOS `⌘N` / 其余 `Ctrl+N`，只在 hover 时可见）。
+///
+/// 文案取自 [DesktopHomeShortcuts.newChatLabel]，不在这里重写平台判断。
+/// 样式 `caption` + `textSecondary`：提示是辅助信息要弱一档，但得能从
+/// hover 底（`surfaceHover`）上读出来——`textWeak` 在浅色下只有 3.2:1，
+/// 12 号小字不合格，`textSecondary` 浅色 4.6:1 / 深色 5.7:1。
+class _ShortcutHint extends StatelessWidget {
+  const _ShortcutHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return Text(
+      DesktopHomeShortcuts.newChatLabel,
+      style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
     );
   }
 }
