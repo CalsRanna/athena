@@ -6,7 +6,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// composer 上下文条里的 Sentinel 选择菜单：与模型选择菜单同一套 UI。
 ///
@@ -33,7 +33,7 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
         ? current.id
         : null;
     final tick = Icon(
-      HugeIcons.strokeRoundedTick02,
+      LucideIcons.check,
       size: 16,
       color: colors.textPrimary,
     );

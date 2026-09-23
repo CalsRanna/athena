@@ -14,7 +14,7 @@ import 'package:athena_gui/widget/settings/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Sentinels：单列列表 → 点进一个角色的编辑页。
@@ -95,7 +95,7 @@ class _DesktopSettingSentinelPageState
     if (rows.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
-          icon: HugeIcons.strokeRoundedArtificialIntelligence03,
+          icon: LucideIcons.bot,
           title: 'No Sentinels',
           hint:
               'A Sentinel is a reusable persona: a system prompt plus a name, '
@@ -334,7 +334,7 @@ class _DesktopSettingSentinelPageState
                           ),
                         )
                       else
-                        const Icon(HugeIcons.strokeRoundedSparkles),
+                        const Icon(LucideIcons.sparkles),
                       const SizedBox(width: 6),
                       Text(generating ? 'Generating…' : 'Generate metadata'),
                     ],

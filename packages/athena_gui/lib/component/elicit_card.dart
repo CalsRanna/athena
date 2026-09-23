@@ -4,6 +4,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 会话内提问卡片（非模态）：渲染在所属对话的消息列表中。
 ///
@@ -321,7 +322,7 @@ class _ElicitCardState extends State<ElicitCard> {
             colors,
             active,
             multiSelect,
-            placeholderIcon: Icons.edit_outlined,
+            placeholderIcon: LucideIcons.pencilLine,
             // 12 的内边距 + 首行行盒的一半，与输入文字基线对齐
             margin: const EdgeInsets.only(top: 12),
           ),
@@ -394,7 +395,7 @@ class _ElicitCardState extends State<ElicitCard> {
         color: selected ? colors.surfaceRaised : null,
       ),
       child: Icon(
-        selected ? Icons.check : (placeholderIcon ?? Icons.check),
+        selected ? LucideIcons.check : (placeholderIcon ?? LucideIcons.check),
         size: 11,
         color: selected ? colors.textPrimary : colors.textSecondary,
       ),

@@ -17,7 +17,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 @RoutePage()
 class MobileProviderFormPage extends StatefulWidget {
@@ -41,8 +41,8 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       onTap: () => setState(() => _obscureKey = !_obscureKey),
       child: Icon(
         _obscureKey
-            ? HugeIcons.strokeRoundedView
-            : HugeIcons.strokeRoundedViewOff,
+            ? LucideIcons.eye
+            : LucideIcons.eyeOff,
         size: 18,
         color: colors.border,
       ),
@@ -157,19 +157,19 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
     var connectTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedConnect),
+      leading: Icon(LucideIcons.plugZap),
       title: 'Connect',
       onTap: () => checkConnection(model),
     );
     var children = <Widget>[connectTile];
     if (!model.isPreset) {
       var editTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+        leading: Icon(LucideIcons.pencilLine),
         title: 'Edit',
         onTap: () => editModel(model),
       );
       var deleteTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedDelete02),
+        leading: Icon(LucideIcons.trash2),
         title: 'Delete',
         onTap: () => destroyModel(model),
       );

@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 技能管理列表：网格卡片 + 底部浮动新建按钮；长按编辑/删除，
@@ -73,7 +73,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
                         height: 24,
                         width: 24,
                         child: Icon(
-                          HugeIcons.strokeRoundedAdd01,
+                          LucideIcons.plus,
                           size: 12,
                           color: colors.iconOnRaised,
                         ),
@@ -113,7 +113,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
           title: skill.name,
           subtitle: skill.description,
           trailing: skill.isBuiltin
-              ? const Icon(HugeIcons.strokeRoundedCircleLock01)
+              ? const Icon(LucideIcons.lockKeyhole)
               : null,
           onTap: () => navigateDetailPage(context, skill),
           onLongPress: () => openBottomSheet(context, skill),
@@ -135,7 +135,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
     HapticFeedback.heavyImpact();
     if (skill.isBuiltin) return;
     var editTile = AthenaBottomSheetTile(
-      leading: const Icon(HugeIcons.strokeRoundedPencilEdit02),
+      leading: const Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () {
         AthenaDialog.dismiss();
@@ -143,7 +143,7 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
       },
     );
     var deleteTile = AthenaBottomSheetTile(
-      leading: const Icon(HugeIcons.strokeRoundedDelete02),
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () async {
         AthenaDialog.dismiss();

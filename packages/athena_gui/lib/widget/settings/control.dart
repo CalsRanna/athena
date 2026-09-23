@@ -14,7 +14,7 @@ import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 行尾控件的几档宽度（别名，便于页面按语义取用）。
 abstract final class AthenaSettingsControlWidth {
@@ -148,7 +148,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       ),
     );
     var chevron = Icon(
-      HugeIcons.strokeRoundedArrowDown01,
+      LucideIcons.chevronDown,
       color: colors.textWeak,
       size: 14,
     );
@@ -297,8 +297,8 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
         AthenaGhostIconButton(
           box: 24,
           icon: revealed
-              ? HugeIcons.strokeRoundedViewOff
-              : HugeIcons.strokeRoundedView,
+              ? LucideIcons.eyeOff
+              : LucideIcons.eye,
           iconSize: 14,
           onTap: () => setState(() => revealed = !revealed),
         ),
@@ -454,7 +454,7 @@ class AthenaSettingsMenuButton extends StatelessWidget {
     return Builder(
       builder: (context) => AthenaGhostIconButton(
         box: 24,
-        icon: HugeIcons.strokeRoundedMoreHorizontal,
+        icon: LucideIcons.ellipsis,
         iconSize: 14,
         onTap: () => _open(context),
       ),

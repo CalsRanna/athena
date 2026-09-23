@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:athena_gui/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
-import 'package:athena_gui/page/desktop/home/component/configuration_button.dart';
+import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/image_selector.dart';
 import 'package:athena_gui/page/desktop/home/component/model_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/permission_mode_selector.dart';
@@ -18,7 +18,7 @@ import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageInput extends StatelessWidget {
@@ -32,7 +32,6 @@ class DesktopMessageInput extends StatelessWidget {
   final void Function(String)? onImagePasted;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
-  final void Function(double)? onTemperatureChange;
   final void Function(String)? onReasoningEffortChange;
   final void Function()? onTerminated;
 
@@ -57,7 +56,6 @@ class DesktopMessageInput extends StatelessWidget {
     this.onImagePasted,
     this.onImageRemoved,
     this.onSubmitted,
-    this.onTemperatureChange,
     this.onReasoningEffortChange,
     this.onTerminated,
     this.onModelTap,
@@ -73,7 +71,6 @@ class DesktopMessageInput extends StatelessWidget {
     // Claude 的 ghost 按钮 hover 填充：前景色 5%
     final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
     return Watch((context) {
-      final chat = chatViewModel.currentChat.value;
       final queued = chatViewModel.queuedMessages.value;
       // 推理强度只对推理模型有意义（发送端也只给推理模型带参数），
       // 非推理模型不摆这个控件——摆了也没有任何效果。
@@ -121,15 +118,10 @@ class DesktopMessageInput extends StatelessWidget {
                         onClear: onWorkspaceClear,
                       ),
                       const Spacer(),
-                      // 会话配置（上下文保留 / 温度）从容器外那一行挪到
-                      // 上下文条最右，与左边两个 chip 同一种形态
-                      DesktopConfigurationButton.chip(
-                        chat: chat,
+                      // 当前保留策略同时服务草稿和已有会话，选项从 chip 向上展开。
+                      DesktopContextSelector(
                         currentRetention: chatViewModel.currentRetention.value,
-                        currentTemperature:
-                            chatViewModel.currentTemperature.value,
-                        onRetentionChange: onRetentionChange,
-                        onTemperatureChange: onTemperatureChange,
+                        onSelected: onRetentionChange,
                       ),
                     ],
                   ),
@@ -453,7 +445,7 @@ class _PendingImageStrip extends StatelessWidget {
           color: colors.inputBackground,
           child: Center(
             child: Icon(
-              HugeIcons.strokeRoundedImage01,
+              LucideIcons.image,
               color: colors.border,
               size: 16,
             ),
@@ -462,7 +454,7 @@ class _PendingImageStrip extends StatelessWidget {
       },
     );
     var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
+      LucideIcons.x,
       color: colors.textPrimary,
       size: 12,
     );
@@ -558,8 +550,8 @@ class _SendButton extends StatelessWidget {
           width: 22,
           child: Icon(
             streaming
-                ? HugeIcons.strokeRoundedStop
-                : HugeIcons.strokeRoundedSent,
+                ? LucideIcons.square
+                : LucideIcons.arrowUp,
             color: colors.accent,
             size: 16,
           ),

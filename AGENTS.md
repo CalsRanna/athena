@@ -249,10 +249,13 @@ entity + ~/.athena/ 下的文件
 - 依赖注入唯一入口是 `lib/di.dart`（GetIt）；新增 ViewModel/Service 在那里注册，别在页面里自行 new。
 - 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
 - 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。设置面板用 `widget/settings/` 三件套（panel / row / control），改动即存、没有页面级 Save。
+- 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，通过 Flutter `Icon` 渲染；新增图标沿用默认线条字重、既有尺寸与语义色，不混用其他图标库。同类功能保持同一字形，工具与审批卡共用 `StepCard.toolIcon` 映射。
+- 桌面 composer 的 `DesktopContextSelector` 只设置聊天历史保留策略（`-1` 携带 / `0` 不携带），读取 `currentRetention`，草稿与已有会话共用。入口用 Lucide `clock4` / `clockFading` 和 `Context on / Context off`，无下拉箭头；复用 `DesktopContextMenu` 向上、右对齐展开，选择后关闭并经既有回调保存，不提供温度入口。
 - 桌面与移动是两套页面（`page/desktop/`、`page/mobile/`），路由在 `router/router.dart`，桌面路由是 0 时长无过渡，桌面设置路由 `opaque: false`（面板浮在应用之上）。
 - 平台判定统一用 `PlatformUtil`（`isDesktop` / `isMobile`），不要散落 `Platform.isXxx`。
 - 页级快捷键挂页面（首页的 ⌘N / Ctrl+N 新建对话在 `page/desktop/home/component/home_shortcuts.dart`），不要塞进 `main.dart` 的全局 `HardwareKeyboard` 处理器——那条只服务窗口级动作（如 ⌘W 隐藏窗口）。路由是天然的生效边界：设置页/对话框压上来时焦点整体搬进新路由的 FocusScope，快捷键自动失效、关掉即恢复，不需要查路由名；页面自己再带一层 `FocusScope(autofocus: true)`，保证点画布失焦后焦点落回页面内部而不是路由 scope。
 - 新对话的草稿参数（`ChatViewModel.prepareNewChatDraft`）：模型/保留策略/温度/推理强度一律回默认；**角色与工作文件夹从 `inheritFrom` 继承**——桌面点 New chat 传当前选中对话的快照，移动端传最近打开的对话但 `inheritWorkspace: false`（那边不注册 shell / 文件工具）。启动落草稿、删掉最后一个对话不传来源，回默认角色 + 不指定文件夹。继承值只是草稿初值，composer 上仍可改，`createChat` 落库读的就是这些 `current*` 信号。
+- composer 里没发出去的内容（文字 + 待发图片）**按对话分开存**，切走时存回原对话、切回来时取出：文字由页面在切换点存取（`DesktopHomePage._restoreComposerDraft`，槽位 key = chatId，`null` 是还没落盘的"新对话"），待发图片由 ViewModel 存（`ChatViewModel._retargetPendingImages`，`pendingImages` 始终只是当前那一槽）。槽位只活在内存里；空内容不留条目；取出即删，避免旧副本把改过的内容顶回去。**新增任何会换 `currentChat` 的入口，都要在同一帧内调一次 `_restoreComposerDraft`**（等 IO 回来再换会覆盖用户在这段延迟里敲的字），否则 A 里打的字会跟着串进 B。桌面 composer 只有一个 `TextEditingController` 跨对话复用，别指望它自己按对话隔离。
 - widget 测试要挂真实页面时，用 `DI.ensureInitialized(homeDirOverride: 临时目录)` 装依赖图：数据根整体指到临时目录，不碰真实的 `~/.athena`（例见 `test/widget/home_page_new_chat_test.dart`）。注意页面 `_initState` 是一串串行的真实文件 I/O，测试里要交替「`runAsync` 真实异步窗口 + `pump`」才能把它推完——单放一次 `runAsync` 只够第一段 I/O。
 
 **TUI（`athena_tui`）**

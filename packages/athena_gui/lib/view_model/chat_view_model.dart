@@ -141,6 +141,21 @@ class ChatViewModel {
   final currentTokenUsage = signal<TokenUsage?>(null);
   final pendingImages = listSignal<String>([]);
 
+  /// [pendingImages] 当前属于哪条对话的槽位；null 是还没落盘的"新对话"槽，
+  /// 也是启动时的状态。它只是"当前这一槽"的实时值，其余槽位存在
+  /// [_pendingImagesByChat] 里：切换对话时旧槽存回、新槽取出。
+  int? _pendingImagesKey;
+
+  /// 非当前对话的待发图片（见 [_pendingImagesKey]）。当前槽的真相在
+  /// [pendingImages] 里，所以这张表里不会出现当前槽。
+  final Map<int?, List<String>> _pendingImagesByChat = {};
+
+  /// composer 里没发出去的文字，按对话分开存（key 同 [_pendingImagesKey]）。
+  /// 文字的真相同样在输入框（`TextEditingController`）里，这张表只放"当前不在
+  /// 编辑的那几槽"——页面切走时存进来、切回来时取走。只活在内存里：草稿是
+  /// 临时输入，进程退出即丢。
+  final Map<int?, String> _composerDrafts = {};
+
   // ─── Computed ───
 
   late final recentChatHistories = computed(() {
@@ -497,6 +512,9 @@ class ChatViewModel {
       _resetMessagePagination();
       isLoadingMessages.value = false;
       currentChat.value = chat;
+      // 草稿落盘成对话：待发图片的槽位跟着改名（列表内容原地不动——调用方
+      // 发送首条消息时马上要读 [pendingImages]）；文字草稿的槽位由页面同步。
+      _pendingImagesKey = chat.id;
       currentModel.value = model;
       currentProvider.value = provider;
       currentSentinel.value = sentinel;
@@ -549,6 +567,7 @@ class ChatViewModel {
       if (shouldSelectReplacement) {
         await _selectChatOrClear(replacement);
       }
+      _dropChatDrafts({chat.id!});
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -593,6 +612,7 @@ class ChatViewModel {
       if (shouldSelectReplacement) {
         await _selectChatOrClear(replacement);
       }
+      _dropChatDrafts(ids);
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -631,6 +651,9 @@ class ChatViewModel {
     final loadGeneration = ++_messageLoadGeneration;
     _resetMessagePagination();
     currentChat.value = chat;
+    // 待发图片按对话分开，跟着对话一起换（文字草稿由页面同步，见
+    // `DesktopHomePage._restoreComposerDraft`）
+    _retargetPendingImages();
     isLoadingMessages.value = true;
     // 新会话的 IO 返回前先卸载旧消息，避免用新 chatId 将旧长列表重建并回底。
     _discardPendingMessages();
@@ -660,7 +683,6 @@ class ChatViewModel {
       currentTemperature.value = chat.temperature;
       currentReasoningEffort.value = chat.reasoningEffort;
       currentWorkspacePath.value = chat.workspacePath;
-      pendingImages.value = [];
       currentTokenUsage.value = null;
 
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
@@ -1234,9 +1256,55 @@ class ChatViewModel {
     }
   }
 
+  /// 把 [pendingImages] 切到当前对话那一槽：旧槽存回 [_pendingImagesByChat]、
+  /// 新槽取出。必须在 `currentChat` 已更新之后调用，否则会把图片存到错的对话上。
+  ///
+  /// 取出时把表里的那份删掉：取出来之后它的真相就在 [pendingImages] 里了，
+  /// 留着会在"取回后编辑、再切走"之间产生一份过期的副本（切回旧对话时冒出一张
+  /// 早就删掉的图）。
+  void _retargetPendingImages() {
+    final next = currentChat.value?.id;
+    if (next == _pendingImagesKey) return;
+    final leaving = pendingImages.value;
+    if (leaving.isEmpty) {
+      _pendingImagesByChat.remove(_pendingImagesKey);
+    } else {
+      _pendingImagesByChat[_pendingImagesKey] = List<String>.of(leaving);
+    }
+    _pendingImagesKey = next;
+    pendingImages.value = List<String>.of(
+      _pendingImagesByChat.remove(next) ?? const [],
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // 草稿
   // ═══════════════════════════════════════════════════════════════
+
+  /// 存一段没发出去的输入，等这条对话再被选中时由 [takeComposerDraft] 取回。
+  /// 空串等于不留：不给一个空输入框占条目。
+  void saveComposerDraft(int? chatId, String text) {
+    if (text.isEmpty) {
+      _composerDrafts.remove(chatId);
+    } else {
+      _composerDrafts[chatId] = text;
+    }
+  }
+
+  /// 取出 [chatId] 的输入草稿（取走即删，理由同 [_retargetPendingImages]）。
+  String takeComposerDraft(int? chatId) => _composerDrafts.remove(chatId) ?? '';
+
+  /// 对话被删掉后清掉它的草稿槽（文字与待发图片）：留着只会在内存里越堆越多，
+  /// 而 chat id 不复用，那个槽再也回不去了。
+  ///
+  /// 必须在 [_selectChatOrClear] 之后调用——切换会把当前槽先存回它自己的位置，
+  /// 早一步清就会被那一步重新写回来。
+  void _dropChatDrafts(Set<int> chatIds) {
+    for (final id in chatIds) {
+      _composerDrafts.remove(id);
+      _pendingImagesByChat.remove(id);
+    }
+  }
 
   /// 进入草稿态：卸掉当前对话，composer 回到新对话默认参数，不落盘。
   ///
@@ -1265,7 +1333,8 @@ class ChatViewModel {
     messages.value = [];
     // 上一个对话的轮次起点不能留着，否则空白草稿页会画出它的指示条
     turnStartIds.value = const [];
-    pendingImages.value = [];
+    // 待发图片切回"新对话"槽（上一个对话的那份存回它自己的槽）
+    _retargetPendingImages();
     currentTokenUsage.value = null;
     await _syncDraftDefaults(inheritFrom, inheritWorkspace: inheritWorkspace);
   }

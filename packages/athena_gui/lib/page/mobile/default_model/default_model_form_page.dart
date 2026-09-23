@@ -11,7 +11,7 @@ import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
@@ -144,7 +144,7 @@ class _ModelDropdown extends StatelessWidget {
       borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
     var icon = Icon(
-      HugeIcons.strokeRoundedFilterHorizontal,
+      LucideIcons.listFilter,
       color: colors.textInput,
       size: 20,
     );

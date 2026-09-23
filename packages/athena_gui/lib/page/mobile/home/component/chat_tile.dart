@@ -9,7 +9,7 @@ import 'package:athena_gui/widget/dialog.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ChatTile extends StatelessWidget {
   final ChatHistoryEntity chatHistory;
@@ -47,12 +47,12 @@ class ChatTile extends StatelessWidget {
   void handleLongPress(BuildContext context) {
     HapticFeedback.heavyImpact();
     var renameTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      leading: Icon(LucideIcons.pencilLine),
       title: 'Rename',
       onTap: () => _renameChat(context, viewModel),
     );
     var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      leading: Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => _deleteChat(viewModel),
     );

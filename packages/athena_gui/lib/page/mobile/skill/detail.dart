@@ -10,7 +10,7 @@ import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// Skill 详情页：展示 SKILL.md 内容（描述/允许工具/正文/路径），
@@ -53,7 +53,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
         ),
         if (skill.isBuiltin)
           Icon(
-            HugeIcons.strokeRoundedCircleLock01,
+            LucideIcons.lockKeyhole,
             size: 16,
             color: colors.iconSecondary,
           ),

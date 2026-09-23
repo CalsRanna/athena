@@ -1,6 +1,6 @@
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:path/path.dart' as p;
 
 /// 上下文条上的「本会话工作文件夹」入口，紧跟在 Sentinel chip 之后。
@@ -33,7 +33,7 @@ class DesktopWorkspaceIndicator extends StatelessWidget {
       preferBelow: false,
       constraints: const BoxConstraints(maxWidth: 280),
       child: AthenaContextChip(
-        leading: const Icon(HugeIcons.strokeRoundedFolder01),
+        leading: const Icon(LucideIcons.folder),
         label: set ? p.basename(path!) : 'No folder',
         onTap: onTap,
         filled: false,
@@ -42,7 +42,7 @@ class DesktopWorkspaceIndicator extends StatelessWidget {
             ? GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: onClear,
-                child: const Icon(HugeIcons.strokeRoundedCancel01, size: 12),
+                child: const Icon(LucideIcons.x, size: 12),
               )
             : null,
       ),

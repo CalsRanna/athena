@@ -6,7 +6,7 @@ import 'package:athena_gui/widget/tile.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 @RoutePage()
 class MobileDataPage extends StatefulWidget {
@@ -23,19 +23,19 @@ class _MobileDataPageState extends State<MobileDataPage> {
   Widget build(BuildContext context) {
     var children = [
       MobileSettingTile(
-        leading: Icon(HugeIcons.strokeRoundedFileExport, size: 24),
+        leading: Icon(LucideIcons.fileOutput, size: 24),
         onTap: _handleExport,
         title: 'Export',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(HugeIcons.strokeRoundedFileImport, size: 24),
+        leading: Icon(LucideIcons.fileInput, size: 24),
         onTap: _handleImport,
         title: 'Import',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(HugeIcons.strokeRoundedDatabaseRestore, size: 24),
+        leading: Icon(LucideIcons.databaseBackup, size: 24),
         onTap: _handleReset,
         title: 'Reset',
         trailing: '',

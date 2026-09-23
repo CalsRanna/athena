@@ -7,7 +7,7 @@ import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 工具步骤头部的两条口径：
 /// 1. **文案只认 call_description**：解析得出就用模型自述，解析不出（缺该字段，
@@ -75,8 +75,8 @@ void main() {
       await pumpCard(tester, [reasoning(), tool('{"path":"a.dart"}')]);
 
       expect(find.text('Using a tool'), findsOneWidget);
-      expect(find.byIcon(HugeIcons.strokeRoundedFile01), findsOneWidget);
-      expect(find.byIcon(HugeIcons.strokeRoundedTools), findsNothing);
+      expect(find.byIcon(LucideIcons.file), findsOneWidget);
+      expect(find.byIcon(LucideIcons.wrench), findsNothing);
     });
 
     testWidgets('当前步有 call_description：文案是自述，图标仍是该工具的图标', (tester) async {
@@ -89,7 +89,7 @@ void main() {
       ]);
 
       expect(find.text('抓取文档'), findsOneWidget);
-      expect(find.byIcon(HugeIcons.strokeRoundedSearch01), findsOneWidget);
+      expect(find.byIcon(LucideIcons.search), findsOneWidget);
     });
 
     testWidgets('结束态是汇总文案，仍用通用图标', (tester) async {
@@ -99,8 +99,8 @@ void main() {
       ], live: false);
 
       expect(find.textContaining('Used 1 tool'), findsOneWidget);
-      expect(find.byIcon(HugeIcons.strokeRoundedTools), findsOneWidget);
-      expect(find.byIcon(HugeIcons.strokeRoundedFile01), findsNothing);
+      expect(find.byIcon(LucideIcons.wrench), findsOneWidget);
+      expect(find.byIcon(LucideIcons.file), findsNothing);
     });
   });
 
@@ -139,7 +139,7 @@ void main() {
       final colors = colorsOf(tester);
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
       expect(
-        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        iconColor(tester, LucideIcons.file),
         colors.textSecondary,
       );
 
@@ -149,7 +149,7 @@ void main() {
       );
       expect(labelColor(tester, '读取配置文件'), colors.textPrimary);
       expect(
-        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        iconColor(tester, LucideIcons.file),
         colors.textPrimary,
       );
 
@@ -157,7 +157,7 @@ void main() {
       await tester.pump();
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
       expect(
-        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        iconColor(tester, LucideIcons.file),
         colors.textSecondary,
       );
     });
@@ -171,7 +171,7 @@ void main() {
       await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
       expect(
-        iconColor(tester, HugeIcons.strokeRoundedFile01),
+        iconColor(tester, LucideIcons.file),
         colors.textSecondary,
       );
     });

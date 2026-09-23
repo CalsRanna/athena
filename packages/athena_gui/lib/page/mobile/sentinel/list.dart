@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 @RoutePage()
@@ -59,7 +59,7 @@ class MobileSentinelListPage extends StatelessWidget {
                         height: 24,
                         width: 24,
                         child: Icon(
-                          HugeIcons.strokeRoundedAdd01,
+                          LucideIcons.plus,
                           size: 12,
                           color: colors.iconOnRaised,
                         ),
@@ -118,12 +118,12 @@ class MobileSentinelListPage extends StatelessWidget {
     HapticFeedback.heavyImpact();
     if (sentinel.isPreset) return;
     var editTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      leading: Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () => editSentinel(context, sentinel),
     );
     var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      leading: Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => destroySentinel(context, sentinel),
     );

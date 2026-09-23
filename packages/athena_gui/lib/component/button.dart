@@ -3,7 +3,7 @@ import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class CopyButton extends StatefulWidget {
   final void Function()? onTap;
@@ -26,9 +26,9 @@ class _CopyButtonState extends State<CopyButton> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final base = widget.color ?? colors.textOnRaised;
     final color = base.withValues(alpha: 0.4);
-    Widget child = HugeIcon(
+    Widget child = Icon(
+      LucideIcons.copy,
       color: color,
-      icon: HugeIcons.strokeRoundedCopy01,
       size: 12.0,
     );
     if (copied) child = _buildCopiedRow();
@@ -46,15 +46,15 @@ class _CopyButtonState extends State<CopyButton> {
   Widget _buildCopiedRow() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final color = widget.color ?? colors.textSecondaryOnRaised;
-    var hugeIcon = HugeIcon(
+    var iconWidget = Icon(
+      LucideIcons.check,
       color: color,
-      icon: HugeIcons.strokeRoundedTick01,
       size: 12.0,
     );
     var isDesktop = PlatformUtil.isDesktop;
-    if (!isDesktop) return hugeIcon;
+    if (!isDesktop) return iconWidget;
     var children = [
-      hugeIcon,
+      iconWidget,
       const SizedBox(width: 4),
       Text(
         'Copied',

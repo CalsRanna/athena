@@ -15,7 +15,7 @@ import 'package:athena_gui/component/elicit_card.dart';
 import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MessageListView extends StatefulWidget {
@@ -185,12 +185,12 @@ class _MessageListViewState extends State<MessageListView> {
   void openBottomSheet(MessageEntity message) {
     HapticFeedback.heavyImpact();
     var editTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedPencilEdit02),
+      leading: Icon(LucideIcons.pencilLine),
       title: 'Edit',
       onTap: () => openEditDialog(message),
     );
     var deleteTile = AthenaBottomSheetTile(
-      leading: Icon(HugeIcons.strokeRoundedDelete02),
+      leading: Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () => destroyMessage(message),
     );

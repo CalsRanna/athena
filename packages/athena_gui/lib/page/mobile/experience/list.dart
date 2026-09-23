@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 经验管理列表：All / Shared / Private 过滤 + 归档开关；
@@ -104,7 +104,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
           titleMaxLines: 3,
           subtitleMaxLines: 2,
           trailing: isArchived
-              ? const Icon(HugeIcons.strokeRoundedArchive)
+              ? const Icon(LucideIcons.archive)
               : null,
           onTap: () => _navigateDetailPage(context, experience),
           onLongPress: () => openBottomSheet(context, experience),
@@ -133,7 +133,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
       },
     );
     var deleteTile = AthenaBottomSheetTile(
-      leading: const Icon(HugeIcons.strokeRoundedDelete02),
+      leading: const Icon(LucideIcons.trash2),
       title: 'Delete',
       onTap: () async {
         AthenaDialog.dismiss();

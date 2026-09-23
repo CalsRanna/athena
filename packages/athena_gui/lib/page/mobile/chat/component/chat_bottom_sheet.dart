@@ -14,7 +14,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
 import 'package:flutter/material.dart';
 
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileChatBottomSheet extends StatefulWidget {
@@ -111,28 +111,28 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var modelFullName =
           '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
       var sentinelSheetTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
+        leading: Icon(LucideIcons.bot),
         onTap: openSentinelSelectorDialog,
         title: 'Sentinel',
         trailing: Text(sentinel?.name ?? ''),
       );
       var modelSheetTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedAiBrain01),
+        leading: Icon(LucideIcons.cpu),
         onTap: openModelSelectorDialog,
         title: 'Model',
         trailing: Text(modelFullName),
       );
       var reasoningEffortSheetTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedBrain02),
+        leading: Icon(LucideIcons.brainCircuit),
         onTap: openReasoningEffortDialog,
         title: 'Reasoning Effort',
         trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
       );
       var chatConfigurationSheetTile = AthenaBottomSheetTile(
-        leading: Icon(HugeIcons.strokeRoundedSlidersHorizontal),
+        leading: Icon(LucideIcons.slidersHorizontal),
         onTap: openConfigurationDialog,
         title: 'Chat Configuration',
-        trailing: Icon(HugeIcons.strokeRoundedArrowRight02),
+        trailing: Icon(LucideIcons.arrowRight),
       );
 
       var children = <Widget>[

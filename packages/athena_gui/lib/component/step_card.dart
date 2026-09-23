@@ -7,7 +7,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 一段步骤序列的卡片：单步平铺，≥ 2 步收纳为默认折叠的组。
 ///
@@ -42,18 +42,18 @@ class StepCard extends StatefulWidget {
 
   // ─── 共享的静态工具函数 ────────────────────────────────
 
-  /// 工具图标映射（HugeIcons strokeRounded 系列）。审批卡沿用同一映射。
+  /// 工具图标映射（Lucide 图标库）。审批卡沿用同一映射。
   static IconData toolIcon(String toolName) {
     return switch (toolName) {
-      'bash' || 'powershell' => HugeIcons.strokeRoundedCommandLine,
-      'file_read' => HugeIcons.strokeRoundedFile01,
-      'file_write' || 'file_update' => HugeIcons.strokeRoundedPencilEdit02,
-      'web_fetch' => HugeIcons.strokeRoundedGlobe,
-      'web_search' => HugeIcons.strokeRoundedSearch01,
-      'skill' => HugeIcons.strokeRoundedBook01,
-      'sentinel_evolve' => HugeIcons.strokeRoundedAiBrain01,
-      'experience_learn' => HugeIcons.strokeRoundedAiBrain02,
-      _ => HugeIcons.strokeRoundedTools,
+      'bash' || 'powershell' => LucideIcons.terminal,
+      'file_read' => LucideIcons.file,
+      'file_write' || 'file_update' => LucideIcons.pencilLine,
+      'web_fetch' => LucideIcons.globe,
+      'web_search' => LucideIcons.search,
+      'skill' => LucideIcons.bookOpen,
+      'sentinel_evolve' => LucideIcons.bot,
+      'experience_learn' => LucideIcons.brain,
+      _ => LucideIcons.wrench,
     };
   }
 
@@ -178,7 +178,7 @@ class _StepCardState extends State<StepCard> {
 
   _Face _faceOf(AssistantStep step) => switch (step) {
     ReasoningStep(:final message) => (
-      icon: HugeIcons.strokeRoundedSparkles,
+      icon: LucideIcons.sparkles,
       label: widget.live ? 'Thinking' : StepCard.thoughtLabel(message),
       mono: false,
       running: widget.live,
@@ -192,7 +192,7 @@ class _StepCardState extends State<StepCard> {
       body: tool.hasResult ? _resultBody(tool.result!) : null,
     ),
     ContextCompactionStep compaction => (
-      icon: HugeIcons.strokeRoundedZip01,
+      icon: LucideIcons.fileArchive,
       label: StepCard.compactionLabel(compaction),
       mono: false,
       running: compaction.running,
@@ -229,8 +229,8 @@ class _StepCardState extends State<StepCard> {
         );
     // 汇总口径（结束态，或当前步不是工具）用的通用图标。
     final genericIcon = hasTool
-        ? HugeIcons.strokeRoundedTools
-        : HugeIcons.strokeRoundedSparkles;
+        ? LucideIcons.wrench
+        : LucideIcons.sparkles;
     return (
       icon: switch (last) {
         // 进行中时头部跟随当前步骤：文案可能只是通用的 `Using a tool`，

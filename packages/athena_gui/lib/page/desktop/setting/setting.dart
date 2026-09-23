@@ -6,7 +6,7 @@ import 'package:athena_gui/widget/settings_nav.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置分区。
 ///
@@ -70,19 +70,19 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.provider,
         'Providers',
-        HugeIcons.strokeRoundedPowerService,
+        LucideIcons.plug,
         keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
       ),
       _SettingEntry(
         SettingSection.defaultModel,
         'Default models',
-        HugeIcons.strokeRoundedAiBrain01,
+        LucideIcons.cpu,
         keywords: ['chat', 'topic naming', 'sentinel metadata'],
       ),
       _SettingEntry(
         SettingSection.agent,
         'Agent',
-        HugeIcons.strokeRoundedAiSetting,
+        LucideIcons.botMessageSquare,
         keywords: [
           'approval',
           'permissions',
@@ -97,19 +97,19 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.sentinel,
         'Sentinels',
-        HugeIcons.strokeRoundedArtificialIntelligence03,
+        LucideIcons.bot,
         keywords: ['prompt', 'persona', 'system prompt'],
       ),
       _SettingEntry(
         SettingSection.skill,
         'Skills',
-        HugeIcons.strokeRoundedBook01,
+        LucideIcons.bookOpen,
         keywords: ['instructions'],
       ),
       _SettingEntry(
         SettingSection.experience,
         'Experiences',
-        HugeIcons.strokeRoundedAiBrain02,
+        LucideIcons.brain,
         keywords: ['lesson', 'memory', 'archive'],
       ),
     ]),
@@ -117,7 +117,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.general,
         'General',
-        HugeIcons.strokeRoundedSettings03,
+        LucideIcons.settings,
         keywords: [
           'theme',
           'appearance',
@@ -131,7 +131,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.about,
         'About Athena',
-        HugeIcons.strokeRoundedInformationCircle,
+        LucideIcons.info,
         keywords: ['version', 'license', 'github', 'issue'],
       ),
     ]),
