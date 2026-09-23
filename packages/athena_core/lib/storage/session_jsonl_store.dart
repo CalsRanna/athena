@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_allocator.dart';
@@ -136,6 +137,36 @@ class SessionJsonlStore {
     });
   }
 
+  /// 顺序扫一遍文件,返回所有 user 行的 id(按行序)。
+  ///
+  /// 轮次指示器要的是"整段会话有多少轮"与"已加载窗口从第几轮开始",而窗口化
+  /// 分页只读文件尾部若干条,只能从这里补。这是一次**整文件**扫描(长对话的
+  /// JSONL 可达几百 MB),因此只做廉价的行内判定,命中 user 行才解析 JSON,
+  /// 不做逐行 JSON 解码;调用方按 chatId 缓存结果,不要每次构建都调。
+  Future<List<int>> loadUserMessageIds() {
+    return _serialized(() async {
+      if (!await file.exists()) return const [];
+      final ids = <int>[];
+      final lines = file
+          .openRead()
+          .transform(const Utf8Decoder(allowMalformed: true))
+          .transform(const LineSplitter());
+      await for (final line in lines) {
+        // 先按序列化后的紧凑 JSON 做判定,滤掉绝大多数 assistant 行
+        if (!line.contains('"role":"user"')) continue;
+        final row = _decodeRow(line);
+        if (row == null ||
+            row['type'] != messageType ||
+            row['role'] != 'user') {
+          continue;
+        }
+        final id = row['id'];
+        if (id is int) ids.add(id);
+      }
+      return ids;
+    });
+  }
+
   /// 分配 id 并追加一条消息,返回新 id。
   Future<int> appendMessage(Map<String, dynamic> row) {
     return _mutate(() async {
@@ -226,6 +257,11 @@ class SessionJsonlStore {
   /// 一行按完整行处理。损坏行(空行/非法 JSON)跳过;读完全部块后缓冲里
   /// 剩的是文件首行(会话元数据),不属于消息,直接丢弃。
   ///
+  /// 悬浮半行按**剩余长度翻倍**决定下一块读多大:块边界落在一条超长行里
+  /// (一行的 json 里能塞几 MB 的 base64 图片)时,逐块把半行抄一遍是平方级,
+  /// 翻倍读则把复制量拉回几何级数(实测 3.4MB 的图片行：单页 830ms → 约
+  /// 20ms,基准见 `tool/bench_message_loading.dart`),且不会多读半行之前的历史。
+  ///
   /// 全程走该文件的串行锁:与 append/整文件重写(update)互斥,避免
   /// 重写窗口内读到中间状态。
   Future<List<Map<String, dynamic>>> loadRecentRows(
@@ -238,16 +274,17 @@ class SessionJsonlStore {
       try {
         final length = await raf.length();
         final result = <Map<String, dynamic>>[];
-        // 已读未切出完整行的字节:开头方向 = 更早,末尾方向 = 更晚
-        var buffer = <int>[];
+        // 已读未切出完整行的字节（开头方向 = 更早，末尾方向 = 更晚）
+        var buffer = Uint8List(0);
+        var blockSize = _readBlockSize;
         var pos = length;
         while (pos > 0 && result.length < count) {
-          final blockSize = math.min(65536, pos);
-          final start = pos - blockSize;
+          final size = math.min(blockSize, pos);
+          final start = pos - size;
           await raf.setPosition(start);
-          final block = await raf.read(blockSize);
+          final block = await raf.read(size);
           pos = start;
-          final combined = [...block, ...buffer];
+          final combined = _concatBytes(block, buffer);
           // 从末尾向前切完整行,直到块内没有可切的(悬浮行首留到下一轮)。
           // 索引指针 [end) 单调前移,整块一次线性扫描(不反复 lastIndexOf
           // + sublist 复制,避免 O(n²)——每行只复制行字节本身)
@@ -267,14 +304,28 @@ class SessionJsonlStore {
             }
           }
           buffer = combined.sublist(0, end);
+          // 还剩下半行 = 这块的边界落在一条很长的行里:下一块按它翻倍读
+          blockSize = math.max(_readBlockSize, buffer.length * 2);
         }
-        // 所有块读完:缓冲里剩的是文件第一行(会话元数据),跳过
+        // 所有块读完:缓冲里剩的是文件首行(会话元数据),跳过
         // 逆序收集(最新在前),翻转为升序
         return result.reversed.toList();
       } finally {
         await raf.close();
       }
     });
+  }
+
+  /// 单次读块的基准大小。块越大,跨块的半行越少;真正的上限由"半行翻倍"决定。
+  static const int _readBlockSize = 65536;
+
+  /// 拼接两段字节（[head] 在前）。用 [Uint8List] 而不是 `List<int>`：一条几 MB
+  /// 的图片行在这里不该被放大成每个小整数一个引用。
+  static Uint8List _concatBytes(List<int> head, List<int> tail) {
+    final joined = Uint8List(head.length + tail.length);
+    joined.setRange(0, head.length, head);
+    joined.setRange(head.length, joined.length, tail);
+    return joined;
   }
 
   // ─────────────────────────── 内部 ───────────────────────────

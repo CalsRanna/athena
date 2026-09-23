@@ -54,6 +54,7 @@ class DesktopContextMenu extends StatelessWidget {
     );
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: children,
     );
     var container = Container(

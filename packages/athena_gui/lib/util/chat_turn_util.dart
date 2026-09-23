@@ -19,6 +19,22 @@ class ChatTurn {
   Object get id => user.id ?? identityHashCode(user);
 }
 
+/// 窗口第一轮在整段会话里的下标（绝对轮次序号）。
+///
+/// 窗口是整段会话的尾部，所以窗口内第 n 轮的绝对下标 = 本值 + n。定位不到
+/// （窗口首轮的消息还没有 id）时返回 0，条就从最上面一排开始摆。
+/// 注意轮次**总数**不从这里推：总数是整段会话的属性，只认扫描结果
+/// （见 `ChatViewModel.turnStartIds`），与窗口加载到哪无关。
+int windowFirstTurnIndex(List<int> allTurnIds, List<ChatTurn> windowTurns) {
+  for (var position = 0; position < windowTurns.length; position++) {
+    final id = windowTurns[position].user.id;
+    if (id == null) continue;
+    final absolute = allTurnIds.indexOf(id);
+    if (absolute >= 0) return absolute - position < 0 ? 0 : absolute - position;
+  }
+  return 0;
+}
+
 /// 把消息列表切成轮次。
 ///
 /// 规则与 `MessageRepository.getOpeningAnswerPreview` 一致：回答取用户消息
