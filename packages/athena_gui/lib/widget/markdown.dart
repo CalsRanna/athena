@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -183,8 +183,8 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       style: textStyle,
     );
     // header 左端是"这是什么"（图标 + 语言标签），右端是"能对它做什么"（复制）
-    var icon = HugeIcon(
-      icon: HugeIcons.strokeRoundedCode,
+    var icon = Icon(
+      LucideIcons.code,
       size: 12,
       color: colors.textOnCode,
     );
@@ -247,7 +247,7 @@ class _FootnoteBackrefBuilder extends MarkdownElementBuilder {
               borderRadius: BorderRadius.circular(AthenaRadius.inline),
             ),
             child: Icon(
-              Icons.arrow_upward_rounded,
+              LucideIcons.arrowUp,
               size: 12,
               color: colors.textSecondaryOnCode,
             ),

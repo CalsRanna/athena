@@ -6,7 +6,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class MobileModelListView extends StatelessWidget {
@@ -70,7 +70,7 @@ class _ModelTile extends StatelessWidget {
       if (model.isPreset) SizedBox(width: 8),
       if (model.isPreset)
         Icon(
-          HugeIcons.strokeRoundedCircleLock01,
+          LucideIcons.lockKeyhole,
           size: 16,
           color: colors.iconSecondary,
         ),
@@ -78,12 +78,12 @@ class _ModelTile extends StatelessWidget {
       AthenaTag.small(text: model.modelId),
     ];
     var thinkIcon = Icon(
-      HugeIcons.strokeRoundedBrain02,
+      LucideIcons.brainCircuit,
       color: colors.iconSecondary,
       size: 18,
     );
     var visualIcon = Icon(
-      HugeIcons.strokeRoundedVision,
+      LucideIcons.eye,
       color: colors.iconSecondary,
       size: 18,
     );

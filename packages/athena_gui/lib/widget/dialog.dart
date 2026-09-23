@@ -8,7 +8,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 enum AthenaMessageType { info, success, warning, error }
 
@@ -198,7 +198,7 @@ class AthenaDesktopDialog extends StatelessWidget {
               ),
               if (onClose != null)
                 AthenaGhostIconButton(
-                  icon: HugeIcons.strokeRoundedCancel01,
+                  icon: LucideIcons.x,
                   onTap: onClose,
                 ),
             ],
@@ -244,19 +244,19 @@ class _AthenaMessageVisualStyle {
     return switch (type) {
       AthenaMessageType.info => _AthenaMessageVisualStyle(
         accentColor: colors.textSecondary,
-        icon: HugeIcons.strokeRoundedInformationCircle,
+        icon: LucideIcons.info,
       ),
       AthenaMessageType.success => _AthenaMessageVisualStyle(
         accentColor: colors.statusSuccess,
-        icon: HugeIcons.strokeRoundedTick02,
+        icon: LucideIcons.check,
       ),
       AthenaMessageType.warning => _AthenaMessageVisualStyle(
         accentColor: colors.statusWarning,
-        icon: HugeIcons.strokeRoundedAlert02,
+        icon: LucideIcons.triangleAlert,
       ),
       AthenaMessageType.error => _AthenaMessageVisualStyle(
         accentColor: colors.statusError,
-        icon: HugeIcons.strokeRoundedCancelCircle,
+        icon: LucideIcons.circleX,
       ),
     };
   }

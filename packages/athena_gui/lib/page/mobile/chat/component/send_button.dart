@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class SendButton extends StatelessWidget {
@@ -24,8 +24,8 @@ class SendButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.pill),
       );
       final streaming = isStreaming;
-      var iconData = HugeIcons.strokeRoundedSent;
-      if (streaming) iconData = HugeIcons.strokeRoundedStop;
+      var iconData = LucideIcons.arrowUp;
+      if (streaming) iconData = LucideIcons.square;
       var icon = Icon(iconData, color: Colors.white, size: 16);
       var container = Container(
         decoration: shapeDecoration,

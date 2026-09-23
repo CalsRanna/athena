@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -41,6 +42,11 @@ class DesktopHomePage extends StatefulWidget {
 class _DesktopHomePageState extends State<DesktopHomePage> {
   final controller = TextEditingController();
 
+  /// 输入框里那段文字属于哪条对话；null 是还没落盘的"新对话"草稿槽（也是启动
+  /// 时的状态）。composer 只有一个 controller，跨对话复用它，所以必须自己记着
+  /// 文字归属于谁，切换时才能把它存回原地、把目标对话的草稿取出来。
+  int? _composerKey;
+
   /// composer 输入框的焦点：新建对话、启动落到草稿页时把焦点放进去。
   final composerFocusNode = FocusNode(debugLabel: 'composer');
   final scrollController = MessageListScrollController();
@@ -80,9 +86,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 一进去就会把 `currentChat` 置空。
   Future<void> startNewChat() async {
     final source = chatViewModel.currentChat.value;
-    if (source != null) {
-      await chatViewModel.prepareNewChatDraft(inheritFrom: source);
-    }
+    // 草稿槽的切换不能等到 await 回来：这段 IO 期间用户可能已经在输入框里
+    // 打字，晚一步恢复出来的草稿会把刚敲进去的字冲掉（见 [_restoreComposerDraft]）
+    final preparing = source == null
+        ? null
+        : chatViewModel.prepareNewChatDraft(inheritFrom: source);
+    _restoreComposerDraft(null);
+    await preparing;
     if (!mounted) return;
     composerFocusNode.requestFocus();
   }
@@ -96,6 +106,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       await chatViewModel.deleteChats(chats);
     }
     chatViewModel.clearSelection();
+    _syncComposerDraft();
   }
 
   Future<void> destroyChat(ChatEntity chat) async {
@@ -104,6 +115,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       scrollController.followBottom();
       await chatViewModel.deleteChat(chat);
     }
+    // 删掉的若正好是当前对话，ViewModel 会自动落到邻居：输入框跟着换成那条
+    // 对话的草稿（被删的那条不再有槽位，见 [_restoreComposerDraft]）
+    _syncComposerDraft();
   }
 
   @override
@@ -143,6 +157,40 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.sendMessage(message, chat: chat);
   }
 
+  /// 侧栏点选对话。先把草稿换过去，再让 ViewModel 去加载消息（不 await：换草稿
+  /// 必须在同一帧内完成，理由见 [_restoreComposerDraft]）。
+  void selectChat(ChatEntity chat) {
+    unawaited(chatViewModel.selectChat(chat));
+    _restoreComposerDraft(chat.id);
+  }
+
+  /// 把输入框内容对齐到 [key] 那条对话的草稿：当前文字存回它所属的对话，再取出
+  /// [key] 的草稿填进输入框（null = 还没落盘的"新对话"槽）。
+  ///
+  /// 每个会换 `ChatViewModel.currentChat` 的入口都要调一次（侧栏选中、新建对话、
+  /// 删除后自动落到邻居、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
+  /// B。切换要在**发出切换动作的同一帧内**做完：等 IO 回来再换，这段延迟里用户
+  /// 敲进去的字会被恢复出来的草稿覆盖。
+  void _restoreComposerDraft(int? key) {
+    if (key == _composerKey) return;
+    // 原对话已经被删掉就不再留草稿：那个槽再也回不去（chat id 不复用）
+    if (_composerKey == null ||
+        chatViewModel.chats.value.any((chat) => chat.id == _composerKey)) {
+      chatViewModel.saveComposerDraft(_composerKey, controller.text);
+    }
+    _composerKey = key;
+    final draft = chatViewModel.takeComposerDraft(key);
+    controller.value = TextEditingValue(
+      text: draft,
+      selection: TextSelection.collapsed(offset: draft.length),
+    );
+  }
+
+  /// 按当前选中的对话对齐输入框：删除当前对话后自动落到邻居、首条消息把草稿
+  /// 落盘成对话时用（这两种情况的目标对话事先不知道）。
+  void _syncComposerDraft() =>
+      _restoreComposerDraft(chatViewModel.currentChat.value?.id);
+
   Future<void> sendMessage() async {
     var text = controller.text.trim();
     if (text.isEmpty) return;
@@ -159,6 +207,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (chat == null) {
       chat = await chatViewModel.createChat();
       if (chat == null) return;
+      // 落盘后输入框这段文字（马上要发出去）改归这条新对话，免得下次新建对话
+      // 又把刚发出的句子填回输入框
+      _composerKey = chat.id;
     }
 
     // 检查当前聊天的模型是否有效
@@ -229,15 +280,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
   }
 
-  Future<void> updateTemperature(double temperature) async {
-    var chat = chatViewModel.currentChat.value;
-    if (chat == null) {
-      chatViewModel.updateCurrentTemperature(temperature);
-      return;
-    }
-    await chatViewModel.updateTemperature(temperature, chat: chat);
-  }
-
   Future<void> updateReasoningEffort(String effort) async {
     var chat = chatViewModel.currentChat.value;
     if (chat == null) {
@@ -297,7 +339,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onDestroyed: destroyChat,
       onManualRenamed: manualRenameChat,
       onPinned: chatViewModel.togglePin,
-      onSelected: chatViewModel.selectChat,
+      onSelected: selectChat,
     );
     return Container(
       decoration: BoxDecoration(
@@ -324,7 +366,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onImagePasted: chatViewModel.addPendingImage,
       onImageRemoved: chatViewModel.removePendingImage,
       onSubmitted: sendMessage,
-      onTemperatureChange: updateTemperature,
       onReasoningEffortChange: updateReasoningEffort,
       onTerminated: terminateStreaming,
       onModelTap: _openModelSelector,

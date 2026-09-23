@@ -11,7 +11,7 @@ import 'package:athena_gui/widget/menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopChatListView extends StatelessWidget {
@@ -286,7 +286,7 @@ class _MoreButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(3),
           child: Icon(
-            HugeIcons.strokeRoundedMoreVertical,
+            LucideIcons.ellipsisVertical,
             size: 14,
             color: colors.iconSecondary,
           ),
@@ -328,7 +328,7 @@ class _SidebarNav extends StatelessWidget {
       child: DesktopMenuTile(
         active: false,
         label: 'New chat',
-        leading: const Icon(HugeIcons.strokeRoundedPencilEdit02),
+        leading: const Icon(LucideIcons.pencilLine),
         // 快捷键提示只在 hover 出现，与会话行的 `⋮` 同一口径：静止行没有尾部。
         hoverTrailing: const _ShortcutHint(),
         onTap: onCreateChat,

@@ -25,7 +25,6 @@ dependencies:
   flutter_slidable: ^3.0.0
   flutter_staggered_grid_view: ^0.7.0
   get_it: ^8.0.3
-  hugeicons: ^0.0.10
   image_gallery_saver_plus: ^4.0.1
   pasteboard: ^0.5.0
   logger: ^2.0.2+1
@@ -53,6 +52,7 @@ dependencies:
   # pub 会回退到 1.1.x；两者仅差 win32 API 迁移，native 实现完全相同。
   # 待 package_info_plus 升到 10.x 后此约束会自动解析到 1.2.0。
   windows_single_instance: ^1.1.0
+  lucide_icons_flutter: ^3.1.20
 
 dependency_overrides:
   flutter_math_fork: ^0.7.4

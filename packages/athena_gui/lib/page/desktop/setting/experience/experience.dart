@@ -12,7 +12,7 @@ import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Experiences：单列列表（活跃 / 已归档两个分区）→ 点进只读详情。
@@ -69,7 +69,7 @@ class _DesktopSettingExperiencePageState
     if (rows.isEmpty) {
       rows = [
         const AthenaSettingsEmptyState(
-          icon: HugeIcons.strokeRoundedAiBrain02,
+          icon: LucideIcons.brain,
           title: 'Nothing learned yet',
           hint:
               'As the agent works it records lessons here and recalls them '

@@ -19,7 +19,7 @@ import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Providers：单列列表 → 点进一家的详情（标题带里出现 `← Providers`）。
@@ -98,7 +98,7 @@ class _DesktopSettingProviderPageState
     if (rows.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
-          icon: HugeIcons.strokeRoundedPowerService,
+          icon: LucideIcons.plug,
           title: 'No providers',
           hint:
               'Sync the catalog from models.dev to get the preset providers, '
@@ -370,7 +370,7 @@ class _DesktopSettingProviderPageState
     if (models.isEmpty) {
       return [
         AthenaSettingsEmptyState(
-          icon: HugeIcons.strokeRoundedAiBrain01,
+          icon: LucideIcons.cpu,
           title: 'No models',
           hint: provider.isPreset
               ? 'Sync from models.dev on the Providers page, or add one by hand.'
@@ -428,7 +428,7 @@ class _DesktopSettingProviderPageState
         Tooltip(
           message: 'Reasoning',
           child: Icon(
-            HugeIcons.strokeRoundedBrain02,
+            LucideIcons.brainCircuit,
             size: 14,
             color: colors.iconSecondary,
           ),
@@ -437,7 +437,7 @@ class _DesktopSettingProviderPageState
         Tooltip(
           message: 'Vision',
           child: Icon(
-            HugeIcons.strokeRoundedVision,
+            LucideIcons.eye,
             size: 14,
             color: colors.iconSecondary,
           ),

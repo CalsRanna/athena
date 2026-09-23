@@ -22,7 +22,7 @@ class AthenaIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final hugeIcon = Icon(icon, color: colors.iconOnRaised, size: 16);
+    final iconWidget = Icon(icon, color: colors.iconOnRaised, size: 16);
     final boxDecoration = BoxDecoration(
       color: colors.surfaceRaised,
       borderRadius: BorderRadius.circular(AthenaRadius.control),
@@ -30,7 +30,7 @@ class AthenaIconButton extends StatelessWidget {
     final button = Container(
       decoration: boxDecoration,
       padding: padding ?? const EdgeInsets.all(12),
-      child: hugeIcon,
+      child: iconWidget,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

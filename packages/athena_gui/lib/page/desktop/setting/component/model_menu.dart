@@ -7,7 +7,7 @@ import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置里「选一个模型」的下拉菜单：锚在 select 控件下方、与它同宽，
 /// 按 provider 分组、当前值行尾打钩；条目多时在面板内滚。
@@ -140,7 +140,7 @@ class _ModelTileState extends State<_ModelTile> {
         if (widget.reasoning) ...[
           const SizedBox(width: 8),
           Icon(
-            HugeIcons.strokeRoundedBrain02,
+            LucideIcons.brainCircuit,
             size: 14,
             color: colors.iconSecondary,
           ),
@@ -148,7 +148,7 @@ class _ModelTileState extends State<_ModelTile> {
         if (widget.vision) ...[
           const SizedBox(width: 6),
           Icon(
-            HugeIcons.strokeRoundedVision,
+            LucideIcons.eye,
             size: 14,
             color: colors.iconSecondary,
           ),
@@ -156,7 +156,7 @@ class _ModelTileState extends State<_ModelTile> {
         if (widget.selected) ...[
           const SizedBox(width: 8),
           Icon(
-            HugeIcons.strokeRoundedTick02,
+            LucideIcons.check,
             size: 16,
             color: colors.textPrimary,
           ),

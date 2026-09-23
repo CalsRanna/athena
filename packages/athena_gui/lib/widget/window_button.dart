@@ -1,7 +1,7 @@
 import 'package:athena_gui/util/window_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 
 class MacWindowButton extends StatefulWidget {
@@ -66,9 +66,9 @@ class _CloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = HugeIcon(
+    final icon = Icon(
+      LucideIcons.x,
       color: Theme.of(context).colorScheme.onSurface,
-      icon: HugeIcons.strokeRoundedCancel01,
       size: 10.0,
     );
     const placeholder = SizedBox(height: 10, width: 10);
@@ -102,9 +102,9 @@ class _MinimumButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
-    final icon = HugeIcon(
+    final icon = Icon(
+      LucideIcons.minus,
       color: color,
-      icon: HugeIcons.strokeRoundedRemove01,
       size: 10,
     );
     const placeholder = SizedBox(height: 10, width: 10);
@@ -143,9 +143,9 @@ class _FullScreenButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
-    final child = HugeIcon(
+    final child = Icon(
+      LucideIcons.maximize2,
       color: color,
-      icon: HugeIcons.strokeRoundedArrowExpand02,
       size: 10,
     );
     const placeholder = SizedBox(height: 10, width: 10);

@@ -2,7 +2,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Unsent messages waiting above the composer, separate from chat history.
 class QueuedMessages extends StatelessWidget {
@@ -29,7 +29,7 @@ class QueuedMessages extends StatelessWidget {
           Row(
             children: [
               Icon(
-                HugeIcons.strokeRoundedClock01,
+                LucideIcons.clock,
                 size: 14,
                 color: colors.textSecondary,
               ),
@@ -104,7 +104,7 @@ class QueuedMessages extends StatelessWidget {
                             Row(
                               children: [
                                 Icon(
-                                  HugeIcons.strokeRoundedImage01,
+                                  LucideIcons.image,
                                   size: 13,
                                   color: colors.textSecondary,
                                 ),

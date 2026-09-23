@@ -4,7 +4,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// 侧栏底部常驻页脚：一整行可点的应用标识，点击在行的上方弹出菜单。
@@ -65,12 +65,12 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
         _FooterMenuHeader(name: 'Athena', version: version),
         const DesktopContextMenuSeparator(),
         DesktopContextMenuTile(
-          icon: HugeIcons.strokeRoundedSettings01,
+          icon: LucideIcons.settings,
           text: 'Settings',
           onTap: () => DesktopSettingProviderRoute().push(context),
         ),
         DesktopContextMenuTile(
-          icon: HugeIcons.strokeRoundedInformationCircle,
+          icon: LucideIcons.info,
           text: 'About Athena',
           onTap: () => DesktopSettingAboutRoute().push(context),
         ),
@@ -122,7 +122,7 @@ class _FooterTileState extends State<_FooterTile> {
       style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
     var chevron = Icon(
-      HugeIcons.strokeRoundedArrowDown01,
+      LucideIcons.chevronDown,
       size: 14,
       color: colors.iconSecondary,
     );

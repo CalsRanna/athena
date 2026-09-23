@@ -7,7 +7,7 @@ import 'package:athena_gui/widget/settings/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端默认模型设置：一个分区、三行，每行一个下拉。
@@ -52,7 +52,7 @@ class _DesktopSettingDefaultModelPageState
             children: [
               if (!hasModels)
                 const AthenaSettingsEmptyState(
-                  icon: HugeIcons.strokeRoundedAiBrain01,
+                  icon: LucideIcons.cpu,
                   title: 'No enabled models',
                   hint:
                       'Enable a provider and add an API key under Providers '

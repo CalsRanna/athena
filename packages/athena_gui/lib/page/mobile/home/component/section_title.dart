@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SectionTitle extends StatelessWidget {
   final void Function()? onTap;
@@ -34,7 +34,7 @@ class SectionTitle extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(7),
       child: Icon(
-        HugeIcons.strokeRoundedArrowRight02,
+        LucideIcons.arrowRight,
         size: 13,
         color: colors.iconOnRaised,
       ),

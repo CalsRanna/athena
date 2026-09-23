@@ -168,6 +168,17 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - 禁止把整个 UI 做成等宽字体——那是对参照实现的误读；等宽只是代码与技术值的局部语言。
 - emoji 不进文档、注释与界面文案（角色头像里的 emoji 属于产品数据，不受此限）。
 
+## Icons
+
+- 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，由 Flutter `Icon`
+  渲染；使用默认线条字重，不混用其他图标库。颜色跟随所在控件的语义色与 `IconTheme`，沿用各组件规定的尺寸。
+- 同类功能用同一字形：Provider 为 `plug`、模型为 `cpu`、角色为 `bot`、经验为 `brain`、
+  Skill 为 `bookOpen`；推理能力为 `brainCircuit`、视觉能力为 `eye`。
+- 操作图标：新增 `plus`、编辑 `pencilLine`、删除 `trash2`、关闭 `x`、确认 `check`、
+  发送 `arrowUp`、停止 `square`；展开提示用 `chevronDown` / `chevronRight`。
+- 工具步骤与审批卡共享 `StepCard.toolIcon`，终端为 `terminal`、读文件为 `file`、
+  写文件为 `pencilLine`、网页为 `globe`、搜索为 `search`，通用工具为 `wrench`。
+
 ## Elevation
 
 **深度不靠阴影，靠表面色差与发丝线。** 浅色主题下画布 `#FCFCFB`、侧栏 `#FBFBF9`、深层容器 `#F3F3F0`、
@@ -238,6 +249,11 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **上下文 chip（`AthenaContextChip`，composer 内）**：小圆角方块（圆角 4）、**无描边**，
   静止填 `surfaceButtonSecondary`，hover 叠前景色 5%；左侧常带 13px 图标，标签最宽 200 并省略；
   尾随控件静止透明、hover 才显形（占位常驻 + `IgnorePointer`，避免 hover 进出行宽跳动）。
+- **聊天历史入口（`DesktopContextSelector`）**：上下文条最右的无填充 chip，开启用 Lucide `clock4` +
+  `Context on`，关闭用 `clockFading` + `Context off`，均沿用 13px 图标与中性前景色，无下拉箭头。
+  点击使用统一菜单向上展开，间隔 8、右边对齐 chip；内容宽 280（另加面板两侧各 4 内边距），
+  两项为 `Use chat history` / `Current message only`，附说明与当前项勾选，选择后立即保存并关闭。
+  原 Configure 对话框与桌面 composer 的 Temperature 设置入口移除。
 
 **Cards & Containers**
 

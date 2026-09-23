@@ -4,7 +4,7 @@ import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// 上下文条上的「本会话角色」入口。
@@ -37,7 +37,7 @@ class DesktopSentinelIndicator extends StatelessWidget {
       return Builder(
         builder: (context) => AthenaContextChip(
           label: label,
-          leading: const Icon(HugeIcons.strokeRoundedArtificialIntelligence03),
+          leading: const Icon(LucideIcons.bot),
           onTap: onTap == null
               ? null
               : () => onTap!(contextMenuAnchorOf(context)),
@@ -47,7 +47,7 @@ class DesktopSentinelIndicator extends StatelessWidget {
               ? GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: onClear,
-                  child: const Icon(HugeIcons.strokeRoundedCancel01, size: 12),
+                  child: const Icon(LucideIcons.x, size: 12),
                 )
               : null,
         ),

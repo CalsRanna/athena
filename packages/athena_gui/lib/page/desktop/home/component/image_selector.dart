@@ -2,7 +2,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class DesktopImageSelector extends StatelessWidget {
   final bool compact;
@@ -26,14 +26,14 @@ class DesktopImageSelector extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     if (compact) return _buildCompactButton(context);
     // Claude 的附件入口是一个裸加号，不是图片字形
-    var hugeIcon = HugeIcon(
-      icon: HugeIcons.strokeRoundedPlusSign,
+    var iconWidget = Icon(
+      LucideIcons.plus,
       color: colors.textPrimary,
       size: 16,
     );
     return GestureDetector(
       onTap: selectImages,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: hugeIcon),
+      child: MouseRegion(cursor: SystemMouseCursors.click, child: iconWidget),
     );
   }
 
@@ -43,7 +43,7 @@ class DesktopImageSelector extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
-          HugeIcons.strokeRoundedImage01,
+          LucideIcons.image,
           color: colors.textPrimary,
           size: 14,
         ),

@@ -12,7 +12,7 @@ import 'package:athena_gui/widget/settings/row.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -77,7 +77,7 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
     if (rows.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
-          icon: HugeIcons.strokeRoundedBook01,
+          icon: LucideIcons.bookOpen,
           title: 'No skills yet',
           hint:
               'A skill is a SKILL.md the agent loads on demand: a short '

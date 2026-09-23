@@ -7,7 +7,7 @@ import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 @RoutePage()
 class MobileProviderNamePage extends StatefulWidget {
@@ -29,7 +29,7 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
   @override
   Widget build(BuildContext context) {
     final button = AthenaIconButton(
-      icon: HugeIcons.strokeRoundedTick02,
+      icon: LucideIcons.check,
       onTap: handleTap,
     );
     var input = AthenaInput(

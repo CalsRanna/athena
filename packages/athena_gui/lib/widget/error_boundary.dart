@@ -2,6 +2,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AthenaErrorBoundary extends StatefulWidget {
   final Widget child;
@@ -38,7 +39,7 @@ class _AthenaErrorBoundaryState extends State<AthenaErrorBoundary> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: colors.statusError),
+            Icon(LucideIcons.circleAlert, size: 48, color: colors.statusError),
             const SizedBox(height: 16),
             Text(
               'Something went wrong',

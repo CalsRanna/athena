@@ -12,7 +12,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置面板外壳：居中浮层 + 遮罩，版式取自 Claude 桌面端的设置。
 ///
@@ -88,7 +88,7 @@ class AthenaSettingsPanel extends StatelessWidget {
                 top: AthenaSettings.closeInset,
                 right: AthenaSettings.closeInset,
                 child: AthenaGhostIconButton(
-                  icon: HugeIcons.strokeRoundedCancel01,
+                  icon: LucideIcons.x,
                   iconSize: AthenaSettings.closeIconSize,
                   onTap: onClose,
                 ),
@@ -207,7 +207,7 @@ class _AthenaSettingsBackLinkState extends State<AthenaSettingsBackLink> {
     );
     var children = [
       Icon(
-        HugeIcons.strokeRoundedArrowLeft01,
+        LucideIcons.chevronLeft,
         color: colors.textRowLabel,
         size: 14,
       ),

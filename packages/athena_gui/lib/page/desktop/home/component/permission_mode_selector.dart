@@ -7,7 +7,7 @@ import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// composer 左下角的审批模式文字（Claude 的 `Bypass permissions` 那段纯文字）。
@@ -138,7 +138,7 @@ class _ModeTileState extends State<_ModeTile> {
         if (widget.selected) ...[
           const SizedBox(width: 8),
           Icon(
-            HugeIcons.strokeRoundedTick02,
+            LucideIcons.check,
             size: 16,
             color: colors.textPrimary,
           ),

@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置面板左栏：搜索框 + 分组标题 + 图标行。
 ///
@@ -84,7 +84,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );
     var icon = Icon(
-      HugeIcons.strokeRoundedSearch01,
+      LucideIcons.search,
       color: colors.textWeak,
       size: AthenaSettings.searchIconSize,
     );
@@ -121,7 +121,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
               child: Icon(
-                HugeIcons.strokeRoundedCancel01,
+                LucideIcons.x,
                 color: colors.textWeak,
                 size: 12,
               ),

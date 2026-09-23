@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为反色实心块。
 class AthenaCheckbox extends StatefulWidget {
@@ -84,7 +84,7 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   Widget _buildCheckIcon() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Icon(
-      HugeIcons.strokeRoundedTick02,
+      LucideIcons.check,
       color: colors.iconOnRaised,
       size: 11,
     );

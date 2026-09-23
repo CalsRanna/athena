@@ -3,7 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/material.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 
 class AthenaAppBar extends StatelessWidget {
@@ -29,7 +29,7 @@ class DesktopPopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var icon = Icon(
-      HugeIcons.strokeRoundedCancel01,
+      LucideIcons.x,
       color: colors.textPrimary,
       size: 18,
     );
@@ -51,8 +51,8 @@ class MobilePopButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final hugeIcon = Icon(
-      HugeIcons.strokeRoundedArrowLeft02,
+    final iconWidget = Icon(
+      LucideIcons.arrowLeft,
       color: colors.iconOnRaised,
       size: 16,
     );
@@ -63,7 +63,7 @@ class MobilePopButton extends StatelessWidget {
     final button = Container(
       decoration: boxDecoration,
       padding: const EdgeInsets.all(8),
-      child: hugeIcon,
+      child: iconWidget,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

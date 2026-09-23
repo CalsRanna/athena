@@ -13,7 +13,7 @@ import 'package:athena_gui/widget/markdown.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 会话内单条消息的渲染，以及消息底部的操作条。
@@ -293,7 +293,7 @@ class _AssistantMessageWaitingPart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const StepHeader(
-      icon: HugeIcons.strokeRoundedSparkles,
+      icon: LucideIcons.sparkles,
       label: 'Working…',
       running: true,
     );
@@ -574,13 +574,13 @@ class MessageActionBar extends StatelessWidget {
             children: [
               if (onCopy != null)
                 _MessageActionButton(
-                  icon: HugeIcons.strokeRoundedCopy01,
+                  icon: LucideIcons.copy,
                   tooltip: 'Copy',
                   onTap: onCopy,
                 ),
               if (onResend != null)
                 _MessageActionButton(
-                  icon: HugeIcons.strokeRoundedRefresh,
+                  icon: LucideIcons.refreshCw,
                   tooltip: 'Retry',
                   onTap: onResend,
                 ),

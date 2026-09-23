@@ -8,7 +8,7 @@ import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
-import 'package:hugeicons/hugeicons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// composer 里的模型选择菜单：对齐 Claude 的模型选择器，但不放数字快捷键与
@@ -140,7 +140,7 @@ class _ModelTileState extends State<_ModelTile> {
         if (widget.selected) ...[
           const SizedBox(width: 8),
           Icon(
-            HugeIcons.strokeRoundedTick02,
+            LucideIcons.check,
             size: 16,
             color: colors.textPrimary,
           ),
@@ -292,12 +292,12 @@ class _DesktopModelSelectDialogTileState
       decoration: TextDecoration.none,
     );
     var thinkIcon = Icon(
-      HugeIcons.strokeRoundedBrain02,
+      LucideIcons.brainCircuit,
       color: colors.iconSecondary,
       size: 18,
     );
     var visualIcon = Icon(
-      HugeIcons.strokeRoundedVision,
+      LucideIcons.eye,
       color: colors.iconSecondary,
       size: 18,
     );
