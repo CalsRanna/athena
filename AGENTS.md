@@ -1,907 +1,316 @@
-# AGENTS.md - Athena 项目编码指南
+# AGENTS.md
 
-本文档面向在此项目中工作的 AI Coding Agent，提供项目架构、编码规范、重要约束和常见操作模式的完整说明。
+在本仓库里动手改代码的工程指南：命令、分层、硬约束、约定与常见任务。
 
----
+阅读前提：
 
-## 1. 项目概览
-
-Athena 是一个跨平台（桌面 + 移动）AI Agent 应用，使用 Flutter 构建。核心能力包括：
-
-- **完整 Agent 循环**：推理 -> 工具调用 -> 结果 -> 再推理（最大 100 轮可配置），支持**并行工具执行**
-- **Monorepo 三包结构**：`athena_core`（纯 Dart Agent 引擎，零 Flutter / 零 SQL）+ `athena_gui`（Flutter 桌面/移动应用，含 GUI 专有业务：Sentinel 表单生成/数据迁移）+ `athena_tui`（nocterm 终端客户端），依赖方向严格单向 `gui/tui → core`，三个客户端共用同一套 Agent 引擎
-- **内置工具系统**：桌面端注册 16 个工具、移动端 11 个，带危险等级（readOnly/dangerous）与执行模式（串行/并行）
-- **Skill 系统**：Claude Code 风格三级渐进式加载（Level 1/2/3），用户级存储（`~/.athena/skills/`）
-- **权限模型**：deny 优先 → 模型主动 ask → 只读/会话/持久授权 → 独立 AI 自动审核 → 人工审批；审批模式三档（手动 / AI 自动审核 / 所有权限），所有权限跳过 AI 与人工两级，deny 仍生效
-- **Agent 自我进化**：Skill 创建/更新、经验学习/回忆、失败反思、Sentinel 系统提示词优化
-- **技能与经验管理（GUI）**：设置页可视化管理 Skill（新建/编辑/删除）与 Experience（归档/恢复/删除），移动端首页 Skills 卡片行；与 Agent 工具共用同一份文件存储
-- **自动上下文压缩**：每次模型请求前，估算上下文达到窗口 80% 时自动将全部有效历史快照压缩为摘要（`retention == -1`，含 Agent 工具循环内）
-- **模型目录同步**：启动时后台从 models.dev 同步预设 provider 的模型元数据（7 天 TTL 缓存）
-- **多模型提供商**：OpenAI API 兼容，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax
+- **代码是唯一真相**。本文是导航与约束清单，与代码冲突时以代码为准，并顺手把这里改对。
+- **引用前先确认它存在**。文中每个类名、常量、阈值都应在仓库里 grep 得到；过时的引用比没有引用更坏。
+- **改行为就改文档**。行为变化与 README / AGENTS / DESIGN 的对应修改应同一批完成。
 
 ---
 
-## 2. 仓库结构（Monorepo）
+## 1. 仓库地图
 
 ```
-athena/
-├── AGENTS.md / README.md / DESIGN.md
-├── .github/workflows/          # ci + release（tag v* 触发的三平台构建）
-└── packages/
-    ├── athena_core/             # ★ 纯 Dart 核心（零 Flutter / 零 SQL 依赖）
-    │   ├── lib/
-    │   │   ├── agent/
-    │   │   │   ├── agent_service.dart        # 核心 Agent 循环 + AgentEvent sealed class
-    │   │   │   ├── cancel_token.dart         # 取消令牌
-    │   │   │   ├── evolution/                # 自我进化提示词（hint + fullBody）
-    │   │   │   ├── permission/               # permission_service / permission_rule / command_analyzer
-    │   │   │   ├── skill/                    # skill_loader / skill_registry
-    │   │   │   └── tool/                     # 16 个工具 + tool_interface + tool_registry + schema_validator + shell_runner + html_to_markdown
-    │   │   ├── coordinator/
-    │   │   │   ├── agent_run_coordinator.dart # AgentRunCoordinator：UI 无关的 run 编排层
-    │   │   │   └── run_event.dart             # RunEvent sealed class（纯数据事件流）
-    │   │   ├── entity/          # 8 个实体（纯数据类，含 TokenUsage）
-    │   │   ├── repository/      # 7 个存储接口（抽象；文件实现在 storage/，GUI/TUI 共用）
-    │   │   ├── seed/            # 内置 Athena 角色种子 + 预设提示词（单一来源）
-    │   │   ├── service/         # LlmClient / ChatCompletions / ChatStore / ChatMessageConverter / ChatUpdate / ModelCatalog 等
-    │   │   ├── storage/         # 本地文件持久化：FileStorage 布局 + JSONL/JSON/YAML 仓储实现 + 跨进程文件锁 + KeyValueStore 接口 + AgentSettings
-    │   │   ├── extension/       # json_map_extension
-    │   │   └── util/            # platform_util / retry / logger_util / tool_args_formatter
-    │   └── test/                # 仅 athena_core 有：permission_rule_test / file_storage_test / jsonl_session_repository_test（见 §14）
-    ├── athena_gui/              # ★ Flutter 桌面/移动应用
-    │   ├── lib/
-    │   │   ├── main.dart        # 入口：DI → FileStorage 加载 + 种子 → Window/Tray → 后台同步模型目录
-    │   │   ├── di.dart          # GetIt 装配层（唯一依赖注入点，注入 core 的文件仓储）
-    │   │   ├── storage/         # SharedPrefsKeyValueStore（KeyValueStore 实现）
-    │   │   ├── view_model/      # 7 个 ViewModel（Signals）+ delegate/（3 个委托）
-    │   │   ├── page/            # desktop/（多区工作台 + 设置）+ mobile/（分段浏览）
-    │   │   ├── router/          # auto_route 配置 + 生成代码 router.gr.dart
-    │   │   ├── widget/          # 设计系统组件：按钮 / 输入 / 菜单 / 对话框 / 窗口控件 / settings（设置面板三件套）
-    │   │   ├── component/       # 业务组件：消息列表（message_sliver + message_tiles）/ 步骤卡（step_card + step_primitives）/ 审批卡 / 提问卡
-    │   │   └── util/            # message_display_util（卡片分组与步骤布局纯函数）/ window_util / system_tray_util / shared_preference_util 等
-    │   └── test/                # test/widget/ 下的 widget 用例（见 §14）
-    └── athena_tui/              # nocterm 终端客户端
-        ├── bin/athena.dart      # CLI 入口
-        ├── lib/
-        │   ├── bridge/          # tui_agent_bridge.dart（Agent 引擎 → TUI 状态桥）
-        │   ├── di/              # tui_di.dart（手动装配，注入 core 的文件仓储）
-        │   ├── ui/              # nocterm 终端组件
-        │   └── view_model/      # 终端响应式层
-        └── （无 test/，见 §14）
+packages/
+  athena_core/                  # 纯 Dart 引擎：零 Flutter、零 SQL
+    lib/agent/
+      agent_service.dart        # AgentService.run + _AgentLoop（单 run 生命周期）、AgentEvent
+      context_budget.dart       # ContextBudget：估算、输入上限、按用量校准
+      context_compaction.dart   # 压缩请求/更新契约
+      cancel_token.dart run_outcome.dart runtime_context.dart
+      elicit/elicit_prompt.dart # 提问通道（「你要哪个」）
+      evolution/                # 进化提示词、记忆目录注入、失败反思、Sentinel 快照
+      permission/               # 权限服务、规则与存储、命令分析、AI 审核
+      skill/                    # SkillRegistry（三级加载）+ SkillLoader（SKILL.md 读写）
+      tool/                     # 工具接口、注册表、工具集装配、各工具实现、输出存储
+    lib/coordinator/
+      agent_run_coordinator.dart # UI 无关的 run 编排（落库、流式消费、排队、审批落库）
+      run_event.dart             # RunEvent：对外纯数据事件契约
+    lib/service/                # LLM 客户端、补全、会话编排、上下文组装、压缩、模型目录/解析
+    lib/repository/             # Chat / Message / Model / Provider / Sentinel / Experience 接口
+    lib/storage/                # FileStorage 布局、JSONL 会话、JSON 数组、YAML、锁、id 分配
+    lib/entity/                 # 领域模型（Chat / Message / Model / Provider / Sentinel / Experience …）
+    lib/seed/                   # Athena 预设角色与预设提示词
+    lib/util/                   # 平台判定、路径归一化、重试、日志、文本分页读
+    tool/bench_message_loading.dart # 只读性能基准脚本（手工跑，不参与 CI）
+    test/                       # dart test：storage/、agent/permission/
+  athena_gui/                   # Flutter 桌面 / 移动应用
+    lib/main.dart               # 入口：单实例 → DI → 存储 → 种子 → 窗口/托盘 → 后台同步模型目录
+    lib/di.dart                 # GetIt 装配（GUI 侧唯一依赖注入点）
+    lib/page/desktop|mobile/    # 页面（桌面多区工作台 + 设置浮层；移动分段浏览）
+    lib/component/ lib/widget/  # 业务组件 / 设计系统控件（widget/settings/ 是设置面板三件套）
+    lib/view_model/             # signals 状态 + delegate/（Agent 流、重命名、选择）
+    lib/theme/                  # 设计 token 与色板（口径见 DESIGN.md）
+    lib/router/                 # auto_route 配置 + 生成产物 router.gr.dart
+    lib/util/ lib/service/ lib/storage/
+    test/widget/                # flutter_test widget 用例
+  athena_tui/                   # nocterm 终端客户端
+    bin/athena.dart             # CLI 入口（参数 = 工作区目录；会改 Directory.current）
+    lib/di/tui_di.dart          # 手写装配（不用 GetIt），镜像 GUI 的 di.dart
+    lib/bridge/ lib/ui/ lib/view_model/
 ```
 
-> 根目录无 pubspec；三个 package 各自独立 `pub get`。
+依赖方向**严格单向**：`athena_gui` / `athena_tui` → `athena_core`。`athena_core` 不 import Flutter，也不含 SQL；两端共用同一份工具集、权限规则、数据目录与事件契约。
 
 ---
 
-## 3. 分层架构与数据流
+## 2. 常用命令
 
+根目录没有 `pubspec.yaml`，三个包各自 `pub get`。CI 与 release 都锁定 Flutter **3.41.4** stable；SDK 约束 `>=3.8.0 <4.0.0`。
+
+```bash
+# athena_core
+cd packages/athena_core
+dart pub get
+dart analyze
+dart test
+
+# athena_gui（analyze 前必须先生成代码，否则路由/序列化产物缺失直接失败）
+cd packages/athena_gui
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter analyze
+flutter test
+flutter run -d macos          # 或 windows / linux / <device id>
+
+# athena_tui
+cd packages/athena_tui
+dart pub get
+dart analyze
+dart run bin/athena.dart [工作区目录]     # 无测试目录
+
+# 只读基准（cwd = packages/athena_core）
+dart run tool/bench_message_loading.dart time <file.jsonl>
 ```
-UI Layer (page/widget/component)
-    ↓ 读取 Signal / 调用 ViewModel 方法
-ViewModel Layer (signals 响应式 + 业务逻辑 + UI 状态)
-    ↓ 编排调用（委托）
-Coordinator Layer (athena_core/coordinator)  ← AgentRunCoordinator：UI 无关的 run 编排
-    ↓ 消费/驱动
-Service Layer (chat_completions_service / chat_store_service / chat_message_converter / ...)
-    ↓ 调用 Repository 接口
-Repository Layer (存储接口与文件实现都在 athena_core：repository/ 抽象 + storage/ 实现)
-    ↓ 读写 ~/.athena/ 下的 JSONL / JSON / YAML 文件
-Data Layer (Entity / FileStorage 目录布局)
-```
 
-Agent 层横向穿透各层：AgentService 调用 ChatCompletionsService（网络）、ToolRegistry（工具）、SkillRegistry（技能）。
+CI（`.github/workflows/ci.yml`）只跑 `athena_core` 与 `athena_gui` 两个 job：core 是 `dart analyze` + `dart test`，gui 是 `build_runner` + `flutter analyze` + `flutter test`。两个测试步骤都带 `hashFiles(...)` 守卫（目录为空时跳过）。**`athena_tui` 不在 CI 里**，改它要自己 `dart analyze`。
 
-**核心解耦原则**：athena_core 通过**存储接口**（`repository/` 抽象类）与**注入回调**（权限审批 `PermissionPrompt`）与 UI 解耦。持久化是纯 Dart 的本地文件实现（`athena_core/lib/storage/`，见 §6），GUI 与 TUI 共用同一套仓储、共享同一数据目录；GUI 另用 SharedPreferences 存窗口/主题等 UI 偏好。**athena_core 中严禁出现 Flutter 或 SQL 依赖**（`flutter_lints` 与代码评审共同保证）。
-
-**athena_core 准入标准**（判定"新代码放 core 还是 GUI"）：文件必须满足"TUI 也会用"或"属于 Agent 引擎/领域模型/存储接口"之一；GUI 专有业务（Sentinel 名称描述生成/数据导入导出/模型字段展示兼容等）一律放 athena_gui。提示词常量随使用者内联（引擎的放 core 服务、业务的放 GUI 服务），不设共享提示词文件。
+Release（`.github/workflows/release.yml`）由 `v*` tag 触发，三平台并行出包：`Athena-macOS.zip` / `Athena-Windows.zip` / `Athena-Linux.tar.gz`。发布中转产物在 `packages/athena_gui/dist/`，该目录被 `.gitignore` 忽略、不入库。
 
 ---
 
-## 4. 依赖注入（DI）
+## 3. 硬约束
 
-`packages/athena_gui/lib/di.dart` 通过 `GetIt.instance` 按以下顺序注册：
-
-1. **FileStorage**（Singleton，root = `$HOME/.athena`，移动端为 Application Support）→ **Repository**（6 个 LazySingleton：5 个取自 FileStorage 的文件实现 + ExperienceRepository）
-2. **Service**（LlmClient → ChatCompletionsService / ChatMessageConverter / ChatStoreService / ChatUpdateService / SentinelService / DataMigrationService / ModelCatalogService）
-3. **ViewModel Delegate**（ChatRenameDelegate、AgentStreamDelegate——后者通过 `AgentServiceCoordinatorDeps` 聚合 12 个依赖注入 AgentRunCoordinator）
-4. **ViewModel**（ModelViewModel、SentinelViewModel、SettingViewModel、ProviderViewModel、SkillViewModel、ExperienceViewModel、ModelResolver）
-5. **Agent 栈**（PermissionStore → PermissionService → KeyValueStore(SharedPrefs) → AgentSettings → SkillRegistry(loadAll + 注册内置 self-evolve) → ToolRegistry(按平台注册工具) → AgentService）
-6. **ChatViewModel**（最后注册，依赖最多）
-
-> 所有注册使用 `registerLazySingleton`（首次访问时才实例化），声明顺序不影响运行时依赖解析。**注意**：DI 是 GUI 独有的装配层——athena_core 无任何 GetIt 引用，测试中构造服务时直接 `new` 并注入 Fake Repository。
-
----
-
-## 5. 状态管理（Signals）
-
-项目使用 `signals` 包（v6.2.0），核心概念：
-
-- `signal<T>(initialValue)` - 可读写响应式值
-- `listSignal<T>([])` - 响应式列表
-- `computed(() => ...)` - 派生信号
-- `Watch((context) { ... })` - Flutter Widget 中自动订阅信号变化
-- `athena_gui` 提供 `list_signal_extension.dart`：`replaceWhere` 等便捷方法（ViewModel 消息/会话更新使用）
-
-ChatViewModel 的主要信号：
-
-```dart
-final chats = listSignal<ChatEntity>([]);
-final chatHistories = listSignal<ChatHistoryEntity>([]);
-final currentChat = signal<ChatEntity?>(null);
-final messages = listSignal<MessageEntity>([]);
-final isLoading = signal(false);
-final isStreaming = signal(false);
-final error = signal<String?>(null);
-
-final currentModel = signal<ModelEntity?>(null);
-final currentProvider = signal<ProviderEntity?>(null);
-final currentSentinel = signal<SentinelEntity?>(null);
-final currentRetention = signal(defaultDraftRetention);   // -1 = 自动管理
-final currentTemperature = signal(defaultDraftTemperature); // 1.0
-final currentIteration = signal(0);
-final currentToolName = signal<String?>(null);
-final currentTokenUsage = signal<TokenUsage?>(null);
-final cumulativeTokenTotal = signal(0);
-final pendingImages = listSignal<String>([]);
-// Computed
-final recentChats = computed(() => chats.value.take(10).toList());
-final pinnedChats = computed(() => chats.value.where((c) => c.pinned).toList());
-```
-
-**关键模式**：更新列表信号时，不要在原有列表上直接修改，而是创建新列表再赋值（或使用 `replaceWhere` 扩展）：
-
-```dart
-// 正确
-messages.value = [...messages.value, newMessage];
-// 错误 - 不会触发信号更新
-messages.value.add(newMessage);
-```
+1. **`athena_core` 保持零 Flutter、零 SQL**。加入 `package:flutter` 或数据库依赖会同时破坏 GUI/TUI 共用与纯 Dart 可测性。判定：`grep -rn "package:flutter\|sqflite" packages/athena_core/lib` 必须为空。
+2. **工具清单只有一处**：`athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry()`。「有哪些工具、注册顺序、哪个平台注册哪些」是引擎的事实，不是装配层的选择；`di.dart` / `tui_di.dart` 只传自己特有的差异项（`outputStore`、`onSentinelChanged`、`mobileHomeDir`、`defaultWorkdir`）。加工具只改这一处，两端同时生效。
+3. **工作文件夹的路径解析必须三处共用**（`applyRunWorkspace`）：执行（`AgentService.executeToolCallInternal`）、并行预检（`selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。三处口径不一致会出现「预检放行、执行被拦」或「同一 run 内已批准仍重复弹窗 / 始终允许失效」。
+4. **并行组里不得有需要弹窗的调用**。多个审批模态会互相覆盖，所以 `selectParallelCalls` 先用权限预检分级：只有 `allow` 的调用留在并行组，`prompt` / `deny` 一律降级串行；没有权限服务但有审批回调时，候选并行调用全部串行（保守）。
+5. **权限系统缺席也要收口**。`AgentService._verdictWithoutPermissionService`：无权限服务时危险工具直接拒绝（旧行为是无条件放行，靠 shell 工具里的硬拦掩盖）。别把它退回成 allow。
+6. **会话文件的锁必须在共享实例上**。`JsonlSessionRepository` 按 chatId 缓存 `SessionJsonlStore`——串行锁是实例字段，每次新建实例等于没锁，`update`（整文件重写）与 `append` 交错会丢行。
+7. **id 分配不缓存计数**。`IdAllocator` 每次都在跨进程文件锁内「读 meta → 加一 → 原子写回」，因为 GUI 与 TUI 可能同时运行。
+8. **所有改文件的写操作走 `atomicWriteString` / 临时文件 + rename**，修改再套 `withFileLock(...)`（`.lock` 文件只做互斥，内容始终为空）。GUI 与 TUI 共享同一目录。
+9. **不要用 `Stream.timeout`**：Dart 3.12 里它对「async* 生成器 + await for」不触发。用 `util`/`service/llm_client.dart` 的 `withIdleTimeout`（Timer 手动实现）。
+10. **assistant 消息的 `tool_calls` 必须被 tool 结果全覆盖**。取消、异常、流提前结束时都要用 `_closeOpenToolCalls` 合成占位结果，否则下次组装上下文会被 OpenAI 兼容端 400 拒绝，该会话再也发不出消息。
+11. **不要用文件工具去读写 `~/.athena/` 下的应用数据**。那是运行时数据（sentinels / chats / experiences / skills），由工具与仓储管理；文档里的这条要求同样写进了注入模型的运行时提示（`runtime_context.dart`）。
+12. **生成的代码不要手改**：`athena_gui/lib/router/router.gr.dart` 由 `build_runner` 产生；改路由后重跑生成命令并把产物一起提交。
 
 ---
 
-## 6. 持久化（本地文件）
-
-无数据库。业务数据全部是 `~/.athena/` 下的纯文本文件，**文件是唯一真相**；GUI 与 TUI 共享同一目录、可同时运行。布局与装配见 `athena_core/lib/storage/file_storage.dart`：
+## 4. 分层与数据流
 
 ```
-~/.athena/                      # 移动端为 Application Support 目录
-  sessions/{chatId}.jsonl       # 一个对话一个文件：首行 type=chat 元数据，后续 type=message 行
-  models.json                   # 模型列表（JSON 数组，id 为主键）
-  sentinels.json                # 角色列表
-  meta.json                     # 自增 id 计数（key 为文件/目录路径），IdAllocator
-  setting.yaml                  # provider 配置（含 API key，全量持久化）+ TUI 默认模型
-  models_dev_cache.json         # models.dev 目录缓存
-  tool_outputs/                 # 工具长输出（内容寻址）
-  experiences/ sentinels/ skills/ permissions.json   # 经验 / 角色演进快照 / 技能 / 权限（原有）
+page / widget / component          （GUI）或 ui/（TUI）
+  ↓ 读 signals、调 ViewModel/Controller
+view_model（signals 状态）+ view_model/delegate
+  ↓ AgentStreamDelegate（GUI）/ TuiAgentBridge（TUI）：包装协调层、把审批与提问接到本地 UI
+coordinator.AgentRunCoordinator    ← UI 无关的 run 编排，产出 RunEvent
+  ↓ 驱动 / 消费
+agent.AgentService（_AgentLoop）    ← 产出 AgentEvent（流式 token、工具调用、用量…）
+  ↓ 调用
+service（补全 / 会话编排 / 上下文组装 / 压缩 / 模型目录）
+  ↓ 接口
+repository（抽象）← storage（文件实现：JSONL / JSON / YAML + 锁）
+  ↓
+entity + ~/.athena/ 下的文件
 ```
 
-- **仓储实现**：`JsonlSessionRepository`（同一实例兼任 ChatRepository + MessageRepository，删对话即删文件）、`JsonArrayModelRepository`、`JsonArraySentinelRepository`、`YamlProviderRepository`（每次读都重新解析 yaml，无内存副本）
-- **并发**：每个修改都在"进程内串行 + 跨进程文件锁"内完成读-改-写（`file_lock.dart`：每个存储文件配独立的 `.lock`，**不要复用同一把锁**，Windows 按句柄互斥会自锁死）；整文件写走唯一临时文件 + rename 原子替换；读不加锁，读到的要么是旧文件要么是新文件
-- **id**：`IdAllocator` 每次分配都在文件锁内重读 meta.json，不缓存，两个进程不会分到同一个 id
-- **初始化**：`FileStorage.load()` → `SentinelSeed.applyIfNeeded()`（首次启动植入 Athena 角色；GUI 在 `main.dart`，TUI 在 `tui_di.initialize`）
-- **重置**：`FileStorage.reset()` 删 sessions/ 与 models/sentinels/meta 文件、清空 provider，保留目录缓存与工具输出；随后重新种子
-- **没有迁移机制**：字段变更靠 Entity `fromJson` 的默认值向前兼容；大版本破坏性变更不做旧数据迁移
-- **长会话分页**：`SessionJsonlStore.loadRecentRows` 从文件尾部向前按块读，不读整个文件；跨块的半行按"剩余长度**翻倍**读下一块"兜齐（逐块抄一遍半行是平方级：实测一条 3.4MB 的 base64 图片行单页 830ms → 翻倍读 20ms，基准见 `packages/athena_core/tool/bench_message_loading.dart`）。**够小的会话不走分页**：`JsonlSessionRepository.loadInitialMessages` 在文件 ≤ `wholeSessionMaxBytes`（8MB）时一次读完整段（`hasOlder=false`，此后不再翻页），超过才只给尾部一页——整读峰值内存 ≈ 文件大小 × 3.6~4.6、首屏 ≈ 4~7ms/MB，比自己分页（窗口外没内容可预览、点远处一轮要连翻数页）更划算
+**一次 send 的完整链路**（`AgentRunCoordinator.send`）：
 
-实体类模式：所有 Entity 实现 `fromJson(Map)`、`toJson()`、`copyWith(...)`；布尔值存储为 0/1。
+1. 注册 run（`runId`、取消令牌、工作文件夹、`settled`）；
+2. 落库用户消息；标题为默认值时，若是首条用户消息则触发自动命名；
+3. 解析模型与 provider，缺任一就发 `RunError` 并结束（用户消息已落库，不能静默无响应）；
+4. 计算记忆作用域（`chat.sentinelId` 或直接对话专用的 `direct`），注入 MemoryDigest，组装历史消息；
+5. 追加 assistant 占位消息 → 启动 `AgentService.run`；
+6. 消费事件流：文本/推理增量写进占位消息、工具调用与结果累积进 JSON 列、用量覆盖写回会话、迭代边界把当前消息落地并开新占位消息；
+7. 收尾：`run` 结束（正常/取消/错误）都保证有落库与 outcome；随后取排队输入自动接续成下一个 run，事件流对 UI 连续。
 
----
-
-## 7. Agent 系统详解
-
-### 7.1 Agent 循环流程
-
-`AgentService.run()` 是核心，返回 `Stream<AgentEvent>`：
-
-1. **双层循环**：内层是工具调用迭代（`maxIterations` 轮，默认 100，来自 `AgentSettings.maxAgentIterations`）；外层检查 `_followUpQueue`——有 followUp 消息则注入并重启内层循环
-2. 每轮迭代开始注入 `EvolutionPrompt.hint`（~30 token）；`_steerQueue` 中的 steering 消息在当前轮工具执行完后、下一轮 LLM 调用前插入
-3. 通过 `ChatCompletionsService.getCompletion()` 流式获取模型响应（`streamOptions.includeUsage: true`）
-4. 流式解析 text / reasoning / tool_calls（**工具卡片实时产出**：id+name 齐备即发 `AgentToolCallEvent`，后续参数分片发 `AgentToolCallArgsEvent`）
-5. 流结束后检查 tool calls：
-   - 无 tool call → `AgentDoneEvent`，结束
-   - 有 tool call → 先做**截断保护**：`finishReason == length`（输出被 token 限制切断）时拒绝执行所有工具并提示重新调用
-6. **串行 + 并行混合执行**：`selectParallelCalls()` 预检分级——参数可解析、工具存在、`canExecuteParallel(args)` 且权限预检通过（`check() == PermissionVerdict.allow` 且模型未建议 `ask`）的调用进并行组，其余进串行组。并行组用信号量限流（最多 8 个并发），`Future.any` 优先响应取消信号，结果渐进式产出
-7. 每个工具调用前先发 `AgentToolExecutionStartEvent`；执行流程：JSON 参数解析 → `SchemaValidator` 参数校验 → 权限检查 → 执行 → `ToolOutputStore.prepare`（24,000 字符以内完整返回；超出后完整保存，返回 2,000 字符连续预览与 `tool_output_read` 续读提示）
-8. 工具结果消息加入消息列表，进入下一轮迭代；每轮请求前通过 `ContextBudget` 检查已知模型窗口的估算预算并预留输出空间，必要时将较早的工具结果替换为可续读引用（保留最新工具批次），仍超限则请求前报错；`jsonMode` 时请求携带 `responseFormat: ResponseFormat.jsonObject()`
-
-日期由 `currentDatePrompt` 生成，只包含本地 `YYYY-MM-DD`，追加到运行环境提示末尾，合为最后一条 system 消息，置于 Sentinel / evolution / skill / Memory 之后、对话历史（含压缩摘要）之前；无运行环境提示时该消息只包含日期。每轮检查是否跨日，原位更新日期并保留环境内容，不落库。
-
-工具结果 JSON 同时保存 `result`（原文）、`modelResult`（模型可见内容）和可选 `outputId`。`ChatMessageConverter` 回放 `modelResult`，旧记录经过同一输出策略；原文可用于恢复缺失的续读缓存。GUI/TUI 装配层让注册表和转换器共用一个 `ToolOutputStore`，目录由客户端注入，不依赖 Flutter/SQL。
-
-### 7.2 AgentEvent 类型
-
-```dart
-sealed class AgentEvent {
-  AgentTextEvent               // 文本 delta（流式）
-  AgentReasoningEvent          // 推理过程 delta（流式）
-  AgentToolCallEvent           // 工具调用声明（id+name 齐备即产出，arguments 为首片）
-  AgentToolCallArgsEvent       // 工具调用参数增量（按 id 追加）
-  AgentToolResultEvent         // 工具执行结果（id/name/result）
-  AgentIterationCompleteEvent  // 一轮迭代完成（含全部 toolCalls 记录）
-  AgentDoneEvent               // Agent 完成（最终 content）
-  AgentTurnStartEvent          // 每轮迭代开始
-  AgentToolExecutionStartEvent // 单个工具开始执行（串行/并行均发）
-  AgentToolExecutionUpdateEvent// 工具部分结果进度（预留，shell 实时 stdout）
-  AgentUsageEvent              // Token 使用量统计
-  AgentRunOutcomeEvent         // 结构化终止原因、迭代数与工具失败证据
-  AgentCompactionEvent         // 同一次压缩步骤的阶段、统计与摘要
-}
-```
-
-### 7.3 工具系统
-
-`Tool` 抽象接口（`tool_interface.dart`）：
-
-```dart
-abstract class Tool {
-  String get name;
-  String get description;
-  Map<String, dynamic> get parameters; // JSON Schema
-
-  ExecutionMode get executionMode => ExecutionMode.sequential;
-  bool canExecuteParallel(Map<String, dynamic> args) =>
-      executionMode == ExecutionMode.parallel;
-  ToolRisk get risk => ToolRisk.dangerous; // 默认保守
-
-  Future<String> execute(Map<String, dynamic> args,
-      {void Function(String partialResult)? onUpdate});
-}
-
-enum ExecutionMode { sequential, parallel }
-enum ToolRisk { readOnly, dangerous }
-```
-
-- `ToolRegistry` 管理所有工具：`registerAll()`、`get()`、`definitions`（OpenAI tool definitions）
-- `ToolRegistry.parametersFor()` 还统一添加可选 `approval_recommendation`（proceed/ask）与 `approval_reason`。建议保留在原始 JSON，交权限门读取，执行和规则缓存前通过 `toolExecutionArguments` 剥离。
-- `ToolRegistry.parametersFor()` 为所有工具统一把 `call_description`（用用户语言简述本次调用的动作与目标）追加进 `required`，即每次调用必填：缺失时 `SchemaValidator` 判为 `invalidArguments`，错误文本回到模型并可在同一轮重发。这是保留的展示元数据，工具不可将其用作业务参数；原有 `description` 业务字段保持原语义。Agent 按此 schema 校验后，在权限判断/并行判定/执行前移除元数据，原始 JSON 仍用于审批展示和历史记录。程序化构造的工具调用（如反思通道的 `experience_learn`）必须自行带上该字段。
-- GUI/TUI 共用 `tool_args_formatter.dart`：卡片预览优先调用说明，缺失时取 command/path/url/query 或精简 JSON；审批详情完整展示实际参数并支持滚动，不用说明替代实际操作。GUI 的 `ApprovalRequest.arguments` 保留原始 JSON，由卡片格式化。
-- `SchemaValidator.validate(parameters, args)` 在工具执行前做 JSON Schema 参数校验
-- 桌面端注册 16 个工具（bash 与 powershell 按操作系统互斥），移动端注册 11 个（无本地文件与进程工具；提问工具仅桌面端注册）
-- 清单与平台分支在 `tool_set.dart` 的 `buildToolRegistry`（引擎的事实，两前端共用），`di.dart` 只注入依赖与差异项
-
-工具实现文件（`packages/athena_core/lib/agent/tool/`）：
-
-| 文件 | 工具类 | 风险/模式 | 说明 |
-|------|--------|----------|------|
-| `bash_shell_tool.dart` | BashShellTool | dangerous/串行 | Linux/macOS Shell 命令，超时默认上限 3600s（`ATHENA_SHELL_MAX_TIMEOUT` 可覆盖），超时 SIGTERM→SIGKILL |
-| `powershell_shell_tool.dart` | PowerShellShellTool | dangerous/串行 | Windows PowerShell 命令 |
-| `ask_user_question_tool.dart` | AskUserQuestionTool | **readOnly/串行** | 向用户提结构化问题（1-4 问、每问 2-4 选项，单选/多选 + 自由输入）；GUI 卡片 / TUI 提问条作答，无提问 UI 时降级为"按假定继续" |
-| `tool_output_read_tool.dart` | ToolOutputReadTool | **readOnly/并行** | 按结果 ID 和 Unicode 字符 offset/limit 续读已保存输出（默认 6,000，上限 12,000）；移动端也可用 |
-| `file_read_tool.dart` | FileReadTool | **readOnly/并行** | 文件读取，offset/limit 分页 + 行号 |
-| `file_write_tool.dart` | FileWriteTool | dangerous/串行 | 创建/覆写，递归建父目录 |
-| `file_update_tool.dart` | FileUpdateTool | dangerous/串行 | 精确字符串替换，mtime 外部修改检测，replace_all、行号前缀剥离 |
-| `web_fetch_tool.dart` | WebFetchTool | **readOnly/并行** | HTTP GET/POST（200KB 上限，仅 http/https），HTML→Markdown |
-| `web_search_tool.dart` | WebSearchTool | **readOnly/并行** | Brave Search API（API key 存 KeyValueStore，key: `brave_api_key`） |
-| `skill_tool.dart` | SkillTool | dangerous/串行 | 加载 Skill Level 2 指令 |
-| `skill_evolve_tool.dart` | SkillEvolveTool | dangerous/串行 | 创建/更新 Skill（SKILL.md） |
-| `experience_learn_tool.dart` | ExperienceLearnTool | dangerous/串行 | 经验学习（`~/.athena/experiences/`，Sentinel 私有或共享） |
-| `experience_learn_tool.dart` | ExperienceRecallTool | **readOnly/串行** | 经验检索 |
-| `sentinel_list_tool.dart` | SentinelListTool | **readOnly/串行** | 列出 Sentinel 摘要 |
-| `sentinel_get_tool.dart` | SentinelGetTool | **readOnly/串行** | 获取 Sentinel 完整配置 |
-| `sentinel_evolve_tool.dart` | SentinelEvolveTool | dangerous/串行 | 改进 Sentinel 提示词（内置 Sentinel 不可改名），onChanged 回调刷新列表 |
-| `sentinel_revert_tool.dart` | SentinelRevertTool | dangerous/串行 | 从本地快照回滚 Sentinel |
-| `shell_runner.dart` | (辅助) | - | Shell 进程启动/管理（超时、kill） |
-| `html_to_markdown.dart` | (辅助) | - | HTML 转 Markdown |
-| `schema_validator.dart` | (辅助) | - | JSON Schema 参数校验（类型/必填/枚举/数值范围） |
-
-### 7.4 权限系统
-
-`PermissionService.check()` 返回 `allow / prompt / deny`：持久 deny 与本轮精确拒绝优先，之后为只读短路、按 runId 隔离的完整参数缓存、持久 allow 规则；其余为 prompt。`web_fetch` 的 POST / 自定义 headers 不走只读短路。没有路径/命令主参数的工具也支持整工具规则。
-
-`AgentService` 的权限门在规则判定后执行以下流程：
-- deny 直接拒绝；模型填写 `approval_recommendation: ask` 时覆盖 allow，转人工。
-- allow 且未 ask：直接执行；并行预检遵循同一约束，需审核/人工确认的调用留在串行组。
-- prompt 且未 ask：审批模式为 AI 自动审核时，调用 core 的 `AiPermissionReviewer`，使用当前会话模型、独立系统提示、无工具请求，判断原始用户授权与实际调用参数。所有工具类型均可审核；模型建议 proceed 不能自行授予权限。
-- 审核输出严格解析为 allow/ask；20 秒超时、无用户原文、完整输入超过预算或格式/网络错误均转人工。取消会中止请求，不继续审批或执行。
-- 自动批准仅限当前调用，不写入会话缓存或持久规则。独立结论保存在工具结果 JSON 的 `approvalReview`（decision/reason/source）字段，与主模型建议分开。
-- 所有权限模式：过了 deny 就放行，不问 AI 也不弹窗，模型标 ask 的调用同样放行（`AgentService.run` 的 `bypassPermissions`）。
-
-Coordinator 从包含 compacted 消息的原始历史构造 `PermissionReviewContext`，仅传入 user/assistant 文本，排除 system、思考、工具输出、技能与经验。助手提案只能辅助解释用户回复，不能作为授权。当前 run 内的人工决策独立提供给审核器；人工拒绝的完全相同调用在本轮直接拒绝，防止重试自动批准。
-
-宿主**不解析 shell 语法、不匹配命令文本**：审批器拿到的是完整命令原文（`arguments`）与用户原始请求，删除类形态由它自己按提示词判断（提示词要求「递归删除、或目标内容未知的删除，在用户请求未明确授权该确切目标时一律 ask」），判断不了就转人工。宿主侧不存在「命令命中某个模式」这类信号，因此也没有对应的 `risk_signals` 字段——早期版本有过 `recursive_delete` 信号，因既不比原文多给信息、又在多种写法（`if …; then rm -rf …; fi`、`echo $(rm -rf …)`、`/bin/rm`、`bash -lc`）上漏检而被移除。
-
-GUI/TUI 共用 `AgentSettings.approvalMode`（`manual` / `ai_review` / `bypass`，默认 AI 自动审核，持久 key `approval_mode`；旧的 `ai_approval_enabled` 只在没有新 key 时读一次做迁移）。GUI 在 composer 左下角的 Mode 菜单与设置 → Agent 的 General 分区都能切换；TUI `/review [manual|ai|bypass]` 查看/切换（`on|off` 仍可用），下一轮生效。
-
-人工通过 `PermissionPrompt` 回调进入 GUI 会话内卡片 / TUI 审批条，实际参数完整可滚动：
-- **Allow Once**：仅对本轮相同工具及完整执行参数复用，JSON 键顺序和展示/建议元数据不影响匹配；不同 flags/workdir/文件内容/HTTP body 必须重新判断。
-- **Always Allow**：另外通过 `PermissionRule.forToolCall` 写入持久规则。shell 工具落**整条命令的精确匹配**（`RuleKind.exact`），不再按「动作 + 参数前缀」建模——前缀形态会把一次授权顺带扩展到用户没看到的变体（`npm test` 的授权放行 `npm test -- --watch`，`rm -rf build` 的授权放行 `rm -rf build -f`），而中间没有二次确认。`RuleKind.action` 仍可读取旧版本落下的 `~/.athena/permissions.json`，但宿主不再写入该形态。文件工具走路径、`web_fetch` 走 origin，其余整工具放行。
-- **Deny**：本轮记录精确拒绝，优先于之前批准；run 完成或取消清空本轮缓存。
-
-提问（「你要哪个」，`ask_user_question`）是**与审批并列的另一条人机通道**，不共用审批弹窗：通道类型、两端 UI 接线与同步清单见 §17「交互类工具的两端同步点」。
-
-工具自我保护（在工具 `execute()` 内部，独立于权限系统）：
-- bash/powershell：**无工具内硬拦，也无宿主侧命令文本匹配**。是否执行由权限规则与人工/AI 审批决定；审批器看完整命令原文，宿主不解析 shell 语法
-- file_update：写入前校验文件 mtime，防止覆盖外部并发修改
-- web_fetch：仅允许 http/https scheme
-
-### 7.5 Skill 系统
-
-三级渐进式加载：
-
-| Level | 内容 | 加载时机 |
-|-------|------|---------|
-| 1 | name + description（最多最近使用的 20 个，按访问时间排序） | `SkillRegistry.level1Prompt` 由 AgentService 在 run 开始时自动注入系统提示词（装配了 SkillRegistry 的前端即生效，显式 skillPrompt 可覆盖） |
-| 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 |
-| 3 | references、模板与脚本源码等文本资源 | `skill(name, resource, offset?, limit?)` 按需分页读取 |
-
-Skill 文件格式（YAML front matter + Markdown body）：
-
-```markdown
----
-name: my-skill
-description: What this skill does and when to use it
----
-## Process
-1. Step one
-```
-
-放置位置：
-- `~/.athena/skills/` - 用户级（移动端为应用沙盒内目录），对所有对话可用
-- 内置 `self-evolve` Skill（代码注册，`sourcePath: '(builtin)'`）提供完整的自我进化指导
-- Level 1 技能目录由 AgentService 自动注入系统提示词；完整指令经 `skill` 工具加载后进入工具结果，工具调用仍需经过权限检查
-- `skill(name)` 返回用户技能的绝对目录与正文，明确相对引用以该技能目录为基准。`resource` 为相对文件路径，读取前检查词法路径和符号链接实际目标均位于技能目录内；内置技能无资源目录。分页复用 `TextFileReader`，`offset` 从 0 开始，`limit` 默认 200、最大 2000，文件按 UTF-8 解码。通用 `file_read` 的敏感路径限制保持原有行为。
-- 资源读取在 GUI/TUI 共用的 `SkillTool` 中实现，移动端也可读取沙盒内技能资源。脚本执行由桌面/TUI 的 Bash/PowerShell 工具负责，使用绝对脚本路径及所需 `workdir`，继续走原权限流程；读取脚本源码不会执行脚本。
-
-### 7.6 自我进化
-
-- **Sentinel 优化**（`sentinel_evolve`）：基于使用反馈优化系统提示词
-- **Skill Evolution**（`skill_evolve`）：创建/改进 Skill 扩展能力
-- **Experience Learning**（`experience_learn` / `experience_recall`）：长期经验记忆（`~/.athena/experiences/`），写入走 dangerous 权限审批，支持 update/archive、Sentinel 私有或全局共享
-- **Failure Reflection**：最大迭代或同工具重复失败时生成候选经验，并转成标准 `experience_learn` 调用复用原参数校验、权限审批和执行路径
-- **Memory Digest**：每次顶层 send 临时注入当前 Sentinel 可见的全部 active lesson；目录不依赖当前任务，经验库不变时内容逐字稳定，context/tags 由 `experience_recall` 按需读取
-- 每次 run 自动注入 `EvolutionPrompt.hint`（~30 token）；完整指南在 `EvolutionPrompt.fullBody`，作为 self-evolve Skill 按需加载
-
-### 7.7 Skill 与 Experience 管理（GUI）
-
-- 移动端首页仅展示 `Experiences` 卡片行（原 Shortcut 卡片样式，`component/card_tile.dart`；最近 10 条经验，标题常显、箭头进经验管理页，无数据时仅展示标题行；Skills 不在首页展示，仅设置页管理）；移动端设置页与桌面端设置页各有 `Skills` / `Experiences` 两个管理入口
-- Skill：网格列表 + 详情 + 表单（Name / Description / Instructions）；内置 self-evolve 只读锁定；名称即目录名，编辑时不可改名
-- Experience：只读浏览（内容由 Agent 进化产出，不支持手工增改）；归档项始终展示，条目尾部仅展示归档图标（位置与样式参照 Provider 预设的尾部标记）；列表仅提供 All / Shared / Private 过滤，归档/恢复与删除另可通过列表项右键菜单（桌面）或长按弹层（移动端），删除带确认弹窗
-- 数据与 Agent 工具（skill_evolve / experience_learn）同源：`~/.athena/skills`、`~/.athena/experiences`（移动端为沙盒内目录），写入分别复用 `SkillLoader.saveSkill` 与 `ExperienceRepository`
-
-### 7.8 会话工作文件夹（可选）
-
-每个对话可选一个工作文件夹（`chats.workspace_path`；桌面 GUI 在 composer 上下文条上选择/清除——Sentinel chip 之后的 chip，`filled: false`，设置后在 chip 内出现清除按钮；设计里没有全局默认项）。**未设置 = 与引入本能力之前完全一致**：shell 默认在用户主目录执行、文件工具的相对路径按进程当前目录解析。设置后，本轮 run 的 shell 缺省工作目录与文件工具的相对路径基准都落在该目录。
-
-- **为什么挂在会话上而不是进程上**：GUI 支持多对话同时运行（`streamingChatIds` / `_runSettledByChat`），进程级可变基准会串台。TUI 的启动参数工作区是另一条既有路径（`Directory.current` + `buildToolRegistry(defaultWorkdir:)`），两者不冲突，也不要合并。
-- **解析发生在分发边界**：`agent/tool/run_workspace.dart` 的 `applyRunWorkspace(toolName, args, workspace)` 把文件工具相对 `path` 解析成绝对路径、给 shell 缺省 `workdir` 补值。`path_normalizer.normalizePathForMatch` 只在路径为相对时才读 `Directory.current`，故解析成绝对路径后，文件执行与权限规则匹配（`PermissionRule._matchesPath` 同样走归一化）自动共用同一基准——不需要给 `PermissionService` 另开基准通道，也不必改 `Tool.execute` 接口。
-- **必须三处共用**：执行（`AgentService.executeToolCallInternal`）、并行预检（`AgentService.selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。审批路径拿到的是模型原始 JSON（相对路径），漏掉那一处就会把授权与规则写成相对路径：会话级授权键按全参数 JSON 比对，导致同一 run 内已批准仍重复弹窗；「始终允许」落的 path 规则也匹配不到执行时的绝对路径，静默失效。
-- **展示与执行分离**：事件与历史保留模型原始 `arguments`（弹窗、卡片、记录里看到的仍是模型写的相对路径），只有执行副本被重写。
-- **目录失效降级**：run 开始校验一次（`_resolveWorkspace`），目录被删/改名/不可访问时按「不指定」处理并记日志，不让每条命令各报一次错。
-- **权限语义不变**：写入仍逐个弹窗（只读短路只覆盖 `file_read`）；换工作文件夹会让同一条命令重新弹窗——shell 的会话授权键本来就含完整参数（含 `workdir`）。
-- **工具描述是静态文本**：默认目录随会话变化，描述说不出具体路径，故 `bash` / `powershell` 的措辞是「设置了会话工作文件夹就用它」，实际路径由 `runtimeContextPrompt(env, workspace:)` 注入的运行时提示声明。
+事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。
 
 ---
 
-## 8. Coordinator 层（run 编排）
+## 5. 领域模型与存储
 
-`AgentRunCoordinator`（athena_core，UI 无关）是 **AgentStreamDelegate 的实际实现体**。职责：
+`FileStorage`（`lib/storage/file_storage.dart`）定义与装配整个布局，root 默认 `~/.athena/`（移动端由装配层传 Application Support）：
 
-1. 用户消息落库 → 2. 自动重命名触发判断（首条用户消息）→ 3. 解析 model/provider/sentinel → 4. 构建上下文（`ChatMessageConverter.buildMessages`）→ 5. 追加 assistant 占位消息 → 6. 启动 AgentService.run（每次模型请求前检查并按需自动压缩）→ 7. 消费事件流落库 → 8. 用量 `recordUsage` + 刷新会话 → 9. 收尾/取消/错误落库
+| 路径 | 实现 | 说明 |
+|---|---|---|
+| `sessions/{chatId}.jsonl` | `JsonlSessionRepository` + `SessionJsonlStore` | 一个对话一个文件；首行 chat 元数据，之后每行一条消息，行序即消息序。同一实例同时实现 `ChatRepository` 与 `MessageRepository`，删对话即删文件 |
+| `models.json` / `sentinels.json` | `JsonArrayStore` 系列 | JSON 数组，`id` 为主键；读-改-整文件写 |
+| `meta.json` | `IdAllocator` | 自增计数，key 为文件/目录路径（chat id、message id 各自独立计数） |
+| `setting.yaml` | `UserSettingsStore` + `YamlProviderRepository` | provider 的**权威**存储（含 API key，可手工编辑），以及 TUI 默认模型（modelId 字符串） |
+| `models_dev_cache.json` | `ModelCatalogService` | 目录缓存 |
+| `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root` |
+| `tool_outputs/{sha256}.txt` | `ToolOutputStore` | 内容寻址的长工具输出 |
+| `experiences/shared/`、`experiences/{sentinelId}/` | `ExperienceRepository` | 一条经验一个 JSON，文件名即 id |
+| `sentinels/{Uri.encodeComponent(name)}/history/` | `SentinelHistoryStore` | 演进前快照 |
+| `skills/{name}/SKILL.md` | `SkillLoader` / `SkillRegistry` | 用户级技能 |
+| `kv.json` | `JsonFileKeyValueStore` | TUI 的 `KeyValueStore`；GUI 用 `SharedPreferences` |
 
-**自动压缩**：`retention == -1` 且模型窗口已知时，由 `AgentService` 在每轮请求前使用 `ContextBudget` 估算完整输入（含 system、工具定义与工具结果）；达到窗口 80% 或更早触及预留输出后的输入上限时，调用 Coordinator 注入的 `ConversationCompactor`。不依赖上一轮 `chat.contextTokens`，因此用户输入和 Agent 连续工具执行都能触发。`AgentTurnStartEvent` 先使 Coordinator 落库上一轮完整工具批次，再进行压缩。
+约定：
 
-触发后冻结当前请求的完整历史快照，全部非 system 有效历史（含当前用户消息、assistant/tool 批次和旧摘要）参与压缩；排除当前占位消息与待发送输入，以占位消息 ID 限定快照，读取期间新排队的输入也不会提前进入。摘要请求超预算时，按完整消息批次分段总结再合并；单个工具批次过大时，结果正文换成已保存输出的续读引用。工具名、参数及调用/结果配对保留。摘要长度预算为窗口的 10%（128～4096 token），生成后再次校验实际估算大小与有效缩减。失败时保留原上下文，再由预算检查决定是否可继续请求。
-
-每次压缩复用当前空的 assistant 占位记录，转为 `role: compaction` 的单条步骤记录。`CompactionStep` 的 `compactionId` 由 chatId/messageId 组成；全部阶段通过 `AgentCompactionEvent → RunCompactionChanged` 更新同一 ID。阶段为 triggered → summarizing → persisting → completed，失败或取消分别以 failed/cancelled 结束。步骤结束后才创建下一条 assistant 占位记录，保证卡片位于后续回复之前。
-
-`reference` 保存阶段、runId、时间、前后估算 token 数、消息数、累计覆盖 ID 与逻辑位置；completed 时 `content` 保存摘要。摘要与覆盖范围在同一次消息更新中提交，再标记原文 `compacted`；即使标记中断，回放仍按覆盖范围排除原文。completed 后才切换模型上下文并发出完成事件。未完成/失败/取消的步骤不进入模型上下文；完成摘要按覆盖位置作为 assistant 历史回放，不进入 system 或权限授权上下文。旧版 system/summary 摘要兼容读取，旧摘要参与后续压缩合并。
-
-GUI/TUI 在消息流内使用工具调用风格的压缩卡（GUI 为 `StepCard` 的压缩步骤形态，TUI 为 `CompactionCard`），每次压缩一张，随阶段原位更新。运行中显示加载动画，完成后默认折叠，展开可查看覆盖数量、耗时、前后估算 token 与摘要/错误；重开会话读取同一持久记录，无活跃 run 的未结束步骤显示"压缩已中断"。GUI 里压缩是一个"步骤"，与推理 / 工具调用同组渲染（见 §GUI 关键实现细节）；TUI 使用工具卡片竖条和动态进度条，点击标题展开。阶段展示元数据不作为普通对话送给模型。
-
-产出 `RunEvent` 纯数据流（无 UI 类型）：
-
-```dart
-sealed class RunEvent {
-  RunMessageStored      // 用户消息已落库
-  RunAssistantAppended  // Assistant 占位消息已追加（含新迭代消息）
-  RunMessageUpdated     // 消息增量更新
-  RunCompactionChanged  // 同一压缩步骤原位更新（GUI/TUI 共用）
-  RunIterationChanged   // 迭代轮次变化
-  RunToolNameChanged    // 当前工具名称变化
-  RunUsageChanged       // Token 使用量 + 最新 ChatEntity
-  RunOutcomeChanged     // 结构化运行结果（completed/maxIterations/cancelled/error）
-  RunAutoRename         // 触发自动重命名
-  RunListReload         // 触发会话列表刷新
-  RunError              // 错误
-}
-```
-
-关键实现细节：
-- **思考卡片展开状态不落库**：展开/折叠只是 `StepCard` 的 Widget State，Coordinator 与 DB 都不感知；流式增量只替换消息实体、卡片 key（`steps-<宿主消息 id>-<片段下标>`）不变，State 自然保留；序列从单步长成多步时 `didUpdateWidget` 重置为折叠
-- **推理、工具调用与压缩按步骤分组渲染**：`util/message_display_util.dart` 的 `buildAssistantMessageLayouts` 把同一张 Assistant 卡片内的连续消息展开为片段序列——推理块、每次工具调用与每条压缩消息都是"步骤"（`ReasoningStep` / `ToolCallStep` / `ContextCompactionStep`），严格按时间序排列，只有可见正文和引用切断序列（步骤本身不切断，尾部推理也吸入）；序列挂在首步所在的宿主消息上，被并入的后续消息不再自行渲染这些部分。渲染层只有一个组件 `component/step_card.dart` 的 `StepCard(steps: [...])`（Composite）：单步时头部是该步骤自己的图标 / 文案 / 运行态、展开看正文；≥ 2 步时默认折叠，进行中折叠头显示当前步骤文案（`Thinking` / 工具参数预览 / 压缩阶段）并 shimmer，结束后显示 `Used N tools · Thought Xs · Compacted once` 汇总，展开后按时间序嵌套单步 `StepCard(nested: true)`（子项不自带 shimmer，运行态由组头统一表达）。每种步骤类型的"表现描述"（图标 / 文案 / 等宽 / 运行态 / 正文）只在 `_StepCardState._faceOf` 的一处 switch 里，新增类型时先加 `AssistantStep` 子类，再补这处 switch、`summaryLabel` 计数与 `_childKey`。折叠头与结果正文的视觉原语在 `step_primitives.dart`（`StepHeader` / `StepResultBody` / `StepHeaderShimmer`）。上边距是卡片对外的边距：顶层步骤卡自带 8（单步与组一致，不再有"平铺推理卡补 16 边界间距"的特判），嵌套子卡不自带、由组正文 Column 的 spacing 统一给 8，避免组头到首行叠成 16。桌面端与移动端共用 `MessageCardListSliver`，TUI 独立渲染不受影响
-- **助手消息不画卡片底板，每条消息各占一个 sliver item**：连续 assistant 消息仍归为同一张卡（共享头像、跨消息合并步骤组、卡片头的"复制整轮回复"载荷），但列表项按消息切分（`AssistantMessageItem`，段 key 仍是 `assistant-card-segment-<id>`），视口外的消息不构建也不布局；卡片级内边距落在整卡首段的顶边与末段的底边（12/12/16/16 的上下部分拆到首/末段）。历史：曾为"整卡只画一次 95% 白底与 24 圆角"把整卡合并成**一个** item，代价是视口碰到整卡就要构建并按帧遍历整卡内容——实测流式增量 n=50/100/200/400 依次 27/36/109/369ms，而逐消息一项恒为 4-5ms；卡内记忆化确实命中（400 段里只有 3 个内容子树真正重建）也降不到 O(1)，因此记忆化与 `_AssistantMessageSegment._renderKey` 已一并删除。**不要把卡底加回来**：相邻同色半透明底板在非整数物理像素边界上各只覆盖该像素行一部分，叠加不满会露出页面底色，形成随滚动时隐时现的 1 物理像素暗线（按覆盖合成推算，不透明色同样会漏出约 24% 底色）。此前文档记的"把背景切片吸附到设备像素网格"并未落地过（仓内无该代码、也未验证），且分析上在"滚动只平移 layer、不重绘"的路径下不成立：吸附时的边界被整体平移后不再落在设备像素网格上。卡面文字也随底板去掉了"浅底深字"假设——直接坐在页面上的文字用 `textPrimary` / `textSecondary`，仍带局部浅底的小块（代码块 `codeBackground`、表格头与复制按钮 `cardHeader`、工具输出与引用块）用 `textOnCode` / `textSecondaryOnCode`；改配色时先判断"文字下面到底有没有浅底"
-- **轮次导航（桌面）**：`TurnNavigator` 是消息 sliver 与左侧轮次指示器之间的单向桥——sliver 在每帧布局后上报"视口当前在第几轮"（`currentTurnIndex`），反向由指示器调 `scrollToTurn`。两条约束都来自懒加载列表本身：(1) 只有已构建的项知道自己的高度，跳转目标还没被构建时只能按索引差 × 已构建项平均高度**粗跳一段再复测**（单次上限 2.5 屏、最多 8 次），坐标系换算集中在 `util/sliver_item_metrics.dart`（子项 `layoutOffset` + `constraints.scrollOffset`，被 keepAlive 留下的项要跳过）；(2) "视口当前轮"取**占视口面积最多**的那一项所属的轮次，不能用"视口顶那一项"——贴着列表底部时视口顶往往还留着上一轮的尾巴。轮次切分口径见 `util/chat_turn_util.dart`（一轮 = 一条用户消息 + 它之后第一条有正文的回答）。指示器的**条数按整段会话算**：窗口可能是整段（≤8MB 的会话首屏一次读入，此时没有"未加载的历史"），也可能只含尾部若干轮（超过整读阈值的大会话），总轮数与窗口起点来自 `MessageRepository.getTurnStartIds`（整文件扫 user 行，`ChatViewModel.turnStartIds` 按 chatId 缓存、删消息时按 id 截断，切会话后台补，扫完信号驱动重画；合成 61 MB / 24000 行的文件实测约 250 ms、240 MB/s，所以放在后台不挡切换），**计数只认这份扫描结果，与窗口无关**：新发出的 user 消息由 `_recordNewTurn` 就地补（扫描还在飞就先记进 `_pendingTurnIds`，等结果落地再并），删消息按 id 截断，不从消息列表里推；扫描还没回来时指示器不画，不给错的数字。未加载的历史（只出现在超过整读阈值的大会话里）**照样一条一条画，长度与颜色与窗口里的条同一套公式**（`TurnIndicator.barWidthFor` / `barColorFor`，没有"未加载就更短 / 更淡"的专用档位；一页最多 20 条、每条一个控件，"为上千条只画一次 `CustomPaint`"的专用渲染路径也随之取消），也照样能当 hover 的锚点，只是没有内容可预览、不弹卡；点它由宿主 `_selectTurn` 先向上翻页（≤8 页）把那一轮补进窗口再滚，点了不会没反应；跳转整段**挂起贴底跟随**（sliver 用 `MessageListScrollController.of(context)` 取到控制器，套在 `jumpWithoutFollowing` 里跑完整个跳转）：切会话 / 发消息后列表处于"显式跟随"态，跟随会在每次内容尺寸变化时把偏移拉回底部，而懒加载列表跳转必然建新项、尺寸必然变，于是刚跳上去的视口被立刻拽回底部（用户看到的是点任何一条都只在原地闪一下、根本没跳过去）；落点不在底部时跟随随之解除——点条就是"我要去看别处"，与用户自己向上滚动同一语义；整列**最多画 `TurnIndicator.maxBars`（20）条 = 一页**，只画视口当前轮所在的那一页（页起点 `_pageStart`；当前轮还没上报时按"停在最新"算最后一页），页内行高固定 12（20 × 12 = 240 高）、摆位稳定，跨页时整列按新页重建——纯固定 12 高在几十轮后 `RenderFlex overflow`，只按可用高压行高则几十轮就铺满整个消息区高度，给整列封 260 的高度上限又会让 30 轮压到 8.7px、50 轮 5.2px（条密到点不中），分页把"一条 = 一轮"与"点得中"同时保住。
-- **迭代切换**：`AgentToolResultEvent` 后 `hasCompletedIteration = true`，下一条 text/reasoning 事件触发 `beginNewIteration()`——finalize 上一条消息、追加新占位、清空 buffer；新消息通过 `RunAssistantAppended` 先入 UI 列表，否则 `RunMessageUpdated` 的 replaceWhere 找不到目标会丢弃更新
-- **取消**：`CancelledException` 在内部捕获并落库（`recordCancelledOnMessage`，标记 `[Cancelled]`），流正常结束不向外抛
-- **错误**：`recordErrorOnMessage` 把错误写进消息内容，再发 `RunError`
-
-GUI 侧 `AgentStreamDelegate` 只是薄桥：通过 `AgentServiceCoordinatorDeps`（11 个依赖）构造 Coordinator，注入 `showPermissionDialog` 实现，事件原样转发。权限弹窗与取消令牌用 `Future.any` 竞速——取消时自动 pop 对话框。
+- **文件永远是唯一真相**，索引/缓存必须可删除可重建，不反向持有数据。
+- 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。
+- 会话消息的窗口化：`RecentMessageRepository.loadInitialMessages` / `loadRecentMessages` 只读尾部窗口（GUI 每页 50），轮次总数靠 `getTurnStartIds` 的整文件扫描。
 
 ---
 
-## 9. 实体与数据模型
+## 6. 上下文预算与压缩
 
-| Entity | 关键字段 | 说明 |
-|--------|---------|------|
-| ChatEntity | title, modelId, sentinelId, temperature, reasoningEffort, retention, pinned, contextTokens, cachedTokens, workspacePath, createdAt, updatedAt | 聊天会话（workspacePath 为本会话可选工作文件夹，见 §7.8） |
-| ChatHistoryEntity | chat, lastMessageContent | 会话列表项（含最后消息） |
-| MessageEntity | chatId, role, content, reasoningContent, reasoning, imageUrls, reference, toolCalls, toolResults, compacted, reasoningStartedAt, reasoningUpdatedAt | 聊天消息（toolCalls/toolResults 为 JSON 字符串） |
-| ModelEntity | name, modelId, providerId, reasoning, vision, contextWindow, isPreset | AI 模型 |
-| ProviderEntity | name, baseUrl, apiKey, enabled, isPreset | AI 提供商 |
-| SentinelEntity | name, avatar, description, prompt, tags, isPreset | Agent 角色 |
-| ExperienceEntity | name, description, tags, context, scope | Agent 经验记忆 |
+`ContextBudget`（`lib/agent/context_budget.dart`）：
 
-所有实体使用 `copyWith()` 进行不可变更新；布尔值存储为 0/1。`MessageEntity.toolCalls` / `toolResults` 是 JSON 编码字符串，转换在 `ChatMessageConverter._convertMessages` 展开为 OpenAI `ToolCall` / tool 消息。
+- 输入上限 `inputLimit = contextWindow - min(8192, max(256, contextWindow ~/ 5))`（给输出留空）；
+- 估算 = `utf8(JSON(messages+tools)).length / 2`，每张图片额外 4096，估算值再乘 `_usageScale`（由真实 `prompt_tokens` 向上校准，只增不减）；
+- 触发压缩的条件：`contextWindow > 0 && estimate >= min(窗口 80%, inputLimit)`；
+- 仍超限时 `prepare()` 把较旧的长工具结果替换成 `tool_output_read` 引用，**最新一批工具结果始终保留**（可能正是刚分页读出来的内容）；无法压缩到上限内就抛 `StateError` 而不是静默截断。
 
----
+`retention` 语义（`ChatEntity`）：`0` = 每次只带当前用户消息；`-1` = 全量历史 + 自动压缩。压缩回调只在 `retention == -1 && onCompact != null` 时进入。
 
-## 10. 服务层详解
-
-### 服务概览
-
-| 服务 | 文件 | 职责 |
-|------|------|------|
-| LlmClient | `service/llm_client.dart` | 统一 LLM API 客户端：每次调用创建 OpenAIClient → 请求 → `close()`；内建重试（`retry()` / `retryStream()`，指数退避 + 随机抖动） |
-| ChatCompletionsService | `service/chat_completions_service.dart` | AI 网络请求：`getCompletion()`（流式，含 includeUsage）、`complete()`（非流式，辅助模型摘要用）、`connect()`（测试连接）、`getTitle()`（标题生成） |
-| ChatMessageConverter | `service/chat_message_converter.dart` | Entity → OpenAI ChatMessage 转换、system prompt 注入、tool_calls/tool_results 展开、图片 ContentPart（base64）、retention 处理 |
-| ChatStoreService | `service/chat_store_service.dart` | 会话/消息持久化编排：CRUD、占位消息、finalize、`recordCancelledOnMessage`、`recordErrorOnMessage`、`deleteMessagesFromIndex` |
-| ChatUpdateService | `service/chat_update_service.dart` | UI 辅助：重命名、模型/哨兵/上下文/温度更新、图片保存、`getProviderForModel` |
-| DataMigrationService | `service/data_migration_service.dart` | 数据导入/导出（JSON）、悬空引用重整 |
-| ModelResolver | `service/model_resolver.dart` | 模型/Provider 解析 + fallback（优先指定模型 → 回退第一个可用） |
-| ModelCatalogService | `service/model_catalog_service.dart` | 从 models.dev/api.json 同步模型元数据（TTL 7 天缓存、失败降级缓存、只删除未被 chat 引用的 preset 模型） |
-| SentinelService | `service/sentinel_service.dart` | Sentinel 元数据 AI 生成 |
-
-### Retention 语义（ChatMessageConverter + Coordinator）
-
-- `retention == 0`：零上下文模式，只携带最后一条用户消息（+ sentinel prompt）
-- `retention == -1`：自动管理——返回有效历史，Agent 每轮请求前在估算占用达到 80% 时经 Coordinator 回调自动 compact
-- `retention > 0`：当前实现**不截断**，返回全部消息（旧的手动轮数截断已移除，正数语义等同全量）
-
-### Token 用量
-
-`ChatRepository.recordUsage(chatId, prompt, cached)` 独立快照写入路径：只覆盖写最近一次推理的 `context_tokens` / `cached_tokens`，不累计会话总用量（指示器只关心上下文窗口占用）；`ChatRepository.updateChat()` 显式排除这两个字段，防止并发覆盖。旧的 TokenUsageService 已移除。
+压缩落库形态：`CompactionStep` 用**同一条消息 id** 逐阶段更新（triggered → summarizing → persisting → completed/failed/cancelled），完成后其内容即摘要，覆盖范围写在 `reference` 里；被覆盖的原始消息标 `compacted`（保留可回溯，但不参与上下文）。组装历史统一走 `ConversationSummary.activeHistory()`，不要自己过滤 `compacted`。
 
 ---
 
-## 11. ViewModel 与 Delegate
+## 7. 权限系统
 
-### 架构模式：ViewModel + Delegate
+`PermissionVerdict` 三态与判定顺序见 `PermissionService.check`：deny 规则 → 只读短路（含只读 shell 命令）→ 会话缓存（按 `runId` 隔离）→ 持久 allow 规则 → 需要弹窗。复合命令的放行要求**每个子命令**都过；命中 deny 则整条拒绝。
 
-```
-ChatViewModel（Signal 唯一持有者 + 编排层）
-├── AgentStreamDelegate    — 薄桥包装 AgentRunCoordinator（真实逻辑在 core）
-├── ChatRenameDelegate     — 自动/手动重命名（CancelToken 防写入已删会话）
-└── ChatSelectionDelegate  — 多选/重命名 UI 交互状态（纯信号，无数据访问）
-```
-
-### ChatViewModel 直接操作（未委托部分）
-
-`createChat` / `deleteChat` / `deleteChats` / `selectChat` / `togglePin` / `updateModel` / `updateSentinel` / `updateRetention` / `updateTemperature` / `sendMessage` / `stopGenerating` / `deleteMessage` / `renameChat` / `exportImage` / `addPendingImage` / `prepareNewChatDraft` / `_syncDraftDefaults` 等。
-
-GUI 的待发送消息由 `ChatViewModel` 按会话保存在内存队列中，通过 `queuedMessages` 在桌面和移动端输入框上方的 `QueuedMessages` 组件展示。上一轮完整收尾后，按顺序调用 Coordinator 的正常 `send`，此时才落库并移入消息列表，未轮到的输入不进入历史或模型上下文。Stop 只取消当前轮，队列继续接续；删除会话会清空其待发送队列。GUI 不使用 Coordinator 的提前落库 `queueInput` 路径；待发送队列不跨应用重启恢复。
-
-流式约束：
-1. **取消安全性**：`AgentStreamDelegate.settled`（实为 `AgentService.settled`）等待流完全 settle 后再删除数据
-2. **竞态保护**：`ChatRenameDelegate._tokens` 用 CancelToken 防止重命名流在 chat 删除后写入
-
-### 其他 ViewModel
-
-| ViewModel | 说明 |
-|-----------|------|
-| ModelViewModel | 模型列表、启用/禁用、连接测试 |
-| ProviderViewModel | 提供商列表、启用/禁用 |
-| SentinelViewModel | Sentinel 列表、默认选择、元数据生成 |
-| SettingViewModel | 全局设置（默认模型、最大迭代、辅助模型、窗口尺寸、数据迁移） |
-| SkillViewModel | Skill 列表与 CRUD（内置 self-evolve 只读） |
-| ExperienceViewModel | Experience 列表、编辑、归档/恢复、删除 |
+- `CommandAnalyzer` 是纯字符串分析（引号/括号感知，不执行 shell），负责拆子命令、提取动作、判定只读。
+- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。`RuleKind.action` 只为读旧的 `permissions.json` 保留，**不要新写**。
+- 会话缓存键 = 工具名 + 规范化后的完整参数（排序、剥离三个展示/建议元数据字段）：换个参数就是另一次授权。
+- `ApprovalMode`：`manual` / `ai_review`（默认）/ `bypass`，存 `KeyValueStore`（键 `approval_mode`，旧布尔键 `ai_approval_enabled` 只做一次性迁移），改动下一轮 run 生效。三档都越过不了 deny。
+- AI 审核（`AiPermissionReviewer`）：独立提示词、无工具、20s 超时、单次调用有效，输入是**原始用户/助手对话**（摘要、技能、记忆、工具输出都不构成授权）；非法输出、超时、异常一律降级为「问人」。审核通过后要**重新检查 deny 规则**。
+- `bypass` 只有 `bypassPermissions` 一条开关路径（`AgentRunCoordinator` 由 `approvalMode == ApprovalMode.bypass` 传入），不要在各工具里另加旁路。
 
 ---
 
-## 12. 设计系统
+## 8. 工具
 
-详见 `DESIGN.md`。视觉语言基准是 **Claude 桌面端**。所有数值来自它
-`app.asar` 里的 `--cds-*` 设计系统（`MainWindowPage-*.css`），并与窗口截图
-采样交叉验证。
+`Tool` 接口（`lib/agent/tool/tool_interface.dart`）：`name` / `description` / `parameters`（JSON Schema）/ `executionMode` / `canExecuteParallel(args)` / `risk`。可选实现 `CancellableTool`（长阻塞工具接取消信号）与 `ElicitChannelAware`（提问类工具）。
 
-### Token 分层（athena_gui/lib/theme/）
+| 工具 | risk | 并行 |
+|---|---|---|
+| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` | readOnly | 是 |
+| `ask_user_question` | readOnly | 否 |
+| `experience_recall` | readOnly | 否 |
+| `file_write` `file_update` `bash` / `powershell` `skill` `skill_evolve` `experience_learn` `sentinel_evolve` `sentinel_revert` | dangerous | 否（shell 按命令动态判定） |
 
-| 文件 | 职责 |
-|------|------|
-| `athena_colors.dart` | 颜色。`AthenaColors extends ThemeExtension`，随主题切换 |
-| `athena_tokens.dart` | 几何 / 排版 / 字族 / 阴影 + `athenaMono()` |
-| `athena_theme.dart` | `buildAthenaThemeData(mode)` / `resolveColorMode()` / `colorsOf()` |
-| `component/chat_column.dart` | `kChatColumnWidth` / `chatColumnPadding()`，会话列与 composer 共享 |
+其它要点：
 
-```dart
-// 表面（浅色 = Claude 的暖灰，深色为同体系镜像）
-surface              // 主画布（#FCFCFB / #1A1A19）
-surfacePanel         // 侧栏 / 顶栏（#FBFBF9 / #151515，与画布几乎无差）
-surfaceMobile        // 对话框 / sheet / 弹出层
-surfaceDeep          // 深层容器
-surfaceRaised        // 主操作实心底（浅色=近黑 #0B0B0B，深色=白）
-surfaceButtonSecondary / surfaceHover / surfaceSelected
-// 文字
-textPrimary / textInput / textSecondary / textWeak / textRowLabel
-textOnRaised / textSecondaryOnRaised / textOnCode / textSecondaryOnCode
-// 边框 / 输入 / 强调
-border / borderStrong / divider / borderChrome / inputBackground / accent
-// 白底上的中性灰（设置面板、composer 输入容器、顶栏底线共用）
-neutralHairline / neutralRule / neutralBorder / neutralBorderStrong
-neutralSelected / neutralControlFill / scrim
-// 状态与控件
-statusSuccess / statusWarning / statusError
-switchKnob / switchTrackOff / checkboxOff / iconSecondary / iconOnRaised / shadow
-// 容器 / Markdown
-cardHeader / codeBackground / avatarBackground
-markdownLink / markdownStrikethrough / markdownMath
-```
-
-```dart
-// 几何与排版：取自 --cds-radius-* 与 --cds-font-size-*
-AthenaRadius.xs/inline/row/control/container/panel/composer/pill
-                       // 4 / 5 / 7 / 7 / 10 / 12 / 12 / 999
-AthenaSpace.xs..xxxl   // 4 / 8 / 12 / 16 / 20 / 24 / 32
-AthenaSpace.sidebar    // 288
-AthenaFontSize.hero/title/section/row/prose/body/label/caption/mono
-                       // 22 / 15 / 14 / 14 / 13 / 13 / 12 / 12 / 12（prose 行盒 20、body 行盒 19）
-AthenaTextStyle.hero/title/section/row/prose/body/label/caption
-                       // 文字样式预设 = 字号 + 默认字重（prose 另带行盒）；调用方只补颜色
-AthenaFont.ui          // null → 系统字体（UI 与正文）
-AthenaFont.mono        // Menlo 等宽（只给代码 / 工具 / 终端）
-AthenaShadow.raised/overlay
-athenaMono(...)        // 代码 / 工具参数 / 工具输出的统一入口
-```
-
-```dart
-// 文字：取预设再补颜色，不要手拼 TextStyle(fontSize: ...)
-Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
-// 字重与预设不同时才覆盖 fontWeight；body 多行时加 height: AthenaFontSize.bodyHeight
-```
-
-### 容易搞错的几条规则
-
-1. **灰阶是暖的，且只能从 `--cds-gray-*` 取**。Claude 的中性灰带黄绿感
-   （白端 `#f9f9f7` / `#fcfcfb`，黑端 `#0b0b0b`）。不要手挑一个中性灰。
-2. **UI 用系统字体，等宽只给代码**。工具**名**用 `AthenaFontSize.label` +
-   `w600`，工具**参数与输出**才用 `athenaMono()`。
-3. **静态容器用边框，浮起容器才考虑阴影**。圆角上限是 12
-   （`--cds-radius-composer`），没有 20/24。
-4. **不使用纯黑画布**：深色画布是 `#1A1A19`，侧栏更暗（`#151515`）。
-5. **hover 只改底色，文字不动**（Claude 实测：行标签 hover 前后都是 `#52514F`）。
-   **这层底色要用"前景色 alpha 叠加"，不要用固定灰**：`surfaceHover` 与
-   `surfaceButtonSecondary` 两档同值（浅色都是 `#F0EFEC`，深色都是 `#2C2C2A`），
-   `surfaceSelected` 在浅色下也只深 3/255（`#EDECE9`）——凡是落在灰底容器
-   （上下文条、卡片、已填充控件）上的 hover，取这两个 token 等于没有反馈。
-   Claude 的 hover 填充一律是 `--cds-alpha-1/2/3`（neutral-900 的 5/10/20%），
-   本仓对应 `colors.textPrimary.withValues(alpha: 0.05)`。
-6. **不要从 `Colors.transparent` 做颜色动画**（填充与边框同理）：它的 RGB 是黑，
-   插值中途会渲染成半透明深灰，表现为"先闪一下深色再变浅"。两种安全写法：
-   `目标色.withValues(alpha: 0)`（RGB 全程不变、只动 alpha），或让
-   `BoxDecoration.color` 为 `null`（`Color.lerp(null, c, t)` 走 `_scaleAlpha`，
-   同样只缩 alpha——`menu.dart` 那批菜单项用的就是这种）。
-
-### 关键约束
-
-- 不引入渐变边框、发光、光晕。唯一例外是工具执行中标题的 shimmer 高光。
-- `accent`（`#2A78D6` / `#5598E7`）是全局唯一彩色，只用于发送键与运行中状态点
-  （Markdown 链接另有 `markdownLink`）。
-- 圆角只用 `AthenaRadius` 的档位，不新增。
-- 字号只用 `AthenaTextStyle` 预设；主字号表**没有 16 / 20 两档**（16 归 `section`、
-  20 归 `title`）。全仓仅存的两处字面量字号是字形尺寸（空态 emoji 26、脚注徽标 10），
-  不是文字档位。
-- 白底容器上的线与底只从 `neutral*` 七个 token 取，组件里不要私藏 `Color(0x...)`。
-- **侧栏行**：行高**固定 26**（不要靠垂直内边距撑，否则 hover 出现的 `⋮` 会把
-  整行顶高）；leading 是 6px 状态点（hover 加深）；**尾部静止为空、hover 才出现
-  `⋮`**（旧版把图钉/进度圈常驻在行尾）；标签用 `textRowLabel` 且 hover 不变色。
-- **右键菜单**：分组间用 `DesktopContextMenuSeparator`；危险项用 `dangerText`
-  （比 `statusError` 更深的红）。
-- **消息列与 composer 同宽同起点**（实测：窗口逻辑 408..1176，宽 768）。
-- **消息操作按钮 hover / focus 才显形**（Claude 的
-  `[data-cds=MessageActions][data-reveal]`：opacity 0→1 + scale，进入 120ms
-  并延迟 100ms、退出 60ms），不要常驻。
-- **尚未结束的那一轮，助手消息 hover 也不显形操作条**：`loading` 期间，最后一条
-  用户消息之后的助手卡（即正在跑的那一轮）操作条保持不可见（`visible: false`），
-  收尾后才恢复。**用户消息不受影响**（照常 hover 显形）；上一轮及更早的助手卡
-  同样不受影响。别把控件从树上摘掉——摘掉会让高度在收尾瞬间变 28、末尾跳一下。
-- **消息不带头像**；用户消息是右对齐浅灰气泡（前景 5%、圆角 8、
-  内边距 12×8、最宽 77% 列宽），助手消息无气泡、内容铺满列宽。
-- **Composer 版式取自 Claude 桌面端**：上下文条（灰底、无描边）与输入框
-  （**纯白** + 1px 中性灰描边）是两个**独立圆角容器**，中间隔 **5**。
-- **输入框边框随焦点切换**：常态 `neutralBorder` → 聚焦 `neutralBorderStrong`。
-  两个值都是中性灰（本仓 `border`/`borderStrong` 是暖灰、白底上偏黄），
-  与设置面板共用同一组 `neutral*` token；Claude 的 CSS 对应 `focus:border-[...]` 效用类。
-  输入框下方另有一层**向下偏移的柔投影**（`0x0C000000` / blur 20 / offset (0,4)），
-  紧贴下边框比画布暗约 7/255、约 18 逻辑衰减到 0——这是下边框看着更深的原因，
-  不是第二条边框色。
-- **发送/停止键在输入容器的右端内部**（Claude 的位置）；容器**外面**单独一行：
-  左侧 `Configure`（裸文字 + 16px 图标）与图片图标，右侧纯文字的模型名
-  （不带 provider、不带图标）、常规字重的推理强度（只在推理模型下显示，点开 Claude 式 Effort 滑杆面板：low / medium / high / xhigh / max，新会话默认 high；发送端只给推理模型带 `reasoning_effort`）、上下文圆环（hover 出一句深色 tooltip，点击弹出明细面板）。
-- 实测：上容器高 **40**、输入容器高 **44**、间距 **5 / 4**、底部留白 **12**、
-  发送键 **22×22**；占位符是**浅灰 `#898782`**（`textWeak`），不要取成 caret 的深色。
-- **控件阶梯**（`[data-step=1..5]`）：`radius/control/嵌套` = `5/20/16`、`6/24/18`、
-  `7/28/20`、`8/32/22`、`10/40/28`；容器内按钮取"嵌套高"，圆角
-  `radius − (control − 嵌套)/2`。**不是圆形**，是圆角 3–4 的小方块。
-- **控件状态**：ghost 按钮 hover 填充 = **前景色 5%**（暗色 7.5%）、圆角 4；
-  按下 `scale(.975)`（按下 60ms、回弹 200ms 弹簧）；输入框聚焦**不加焦点环**、
-  容器边框不变（`.cds-input:focus` 只清 box-shadow，`:focus-visible` 才加
-  1px accent + 6px 辉光，composer 的编辑器没有焦点规则）。
-- **会话列定宽 768 并居中**，消息与 composer 同宽、左右对齐。
-- 主题默认浅色，深色为镜像。切换入口在设置 → Advanced 的 Appearance 分区。
-- 同一分区还有 **Font size**（Small / Medium / Large，`AthenaTextSize`）：在应用
-  根部叠一层 `TextScaler`（`main.dart` 的 `applyTextSize`）全站生效，只缩放字号
-  不动几何，移动端入口在设置 → Appearance 弹层。
-- 等宽只有一个来源 `AthenaFont.mono`；`google_fonts` 依赖已移除。
-
-### 核心组件
-
-**`lib/widget/` = 设计系统**：只依赖 `theme/` 与 `material`，不碰 `athena_core` 实体、不碰 ViewModel。
-
-| 组件 | 用途 |
-|------|------|
-| `AthenaTag` / `AthenaTagButton` | 带 1px 边框的胶囊筛选 chip |
-| `AthenaContextChip` | 上下文条上的无底色 chip（`filled: false`），圆角取嵌套控件档 `AthenaRadius.xs`（4，不是胶囊）；`trailing` 是尾随控件插槽（前景色由 chip 注入，内层 onTap 先于 chip 的 onTap 命中），**静止透明、hover 才显形**且不可见时 `IgnorePointer`；hover 高亮（**前景色 5% 的 alpha 叠加层**）对 `filled: false` 同样生效，且只对可点的 chip 生效 |
-| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaIconButton` / `AthenaTextButton` / `AthenaGhostIconButton` | 按钮体系；ghost 图标键（静止无底、hover 前景 5%）给设置面板与桌面对话框的关闭 / 新增用。会话内审批卡与提问卡的按钮也直接用 Primary / Secondary |
-| `AthenaInput` | 平涂底 + 1px 边框输入框 |
-| `AthenaScaffold` / `AthenaAppBar` / `ErrorBoundary` | 页面骨架、顶栏、错误边界 |
-| `AthenaDialog` | 全局模态门面：`confirm` / `input` / `loading` / `message`（桌面居中 Dialog + Overlay toast，移动 Bottom Sheet + SnackBar）。含 `enum AthenaMessageType` |
-| `AthenaDesktopDialog` | 桌面对话框外壳（`surfaceMobile` + `panel` 圆角 + `overlay` 阴影 + 24 内边距 + 可选标题行与 ghost 关闭键）。确认 / 输入对话框与设置里的四个表单对话框都从它派生 |
-| `DesktopContextMenu` / `DesktopEditDeleteContextMenu` / `DesktopContextMenuManager` | 右键菜单；后者是列表条目通用的「编辑 / 删除」菜单（`leading` 可插额外项） |
-| `settings/panel.dart` | `AthenaSettingsPanel`（居中浮层 + 遮罩）/ `AthenaSettingsPane`（内容区）/ `AthenaSettingsSection` / `AthenaSettingsGroup` |
-| `settings/row.dart` | `AthenaSettingsRow`（标签 + 说明 + 右侧控件）/ `AthenaSettingsValueRow` / `AthenaSettingsListItem` / `AthenaSettingsListColumn` / `AthenaSettingsEmptyState` |
-| `settings/control.dart` | `AthenaSettingsSegmented` / `AthenaSegmentOption` / `AthenaSettingsSelect` |
-| `AthenaSettingsNav` / `AthenaSettingsSearchField` / `AthenaSettingsNavItem` | 设置左栏：搜索框 + 分组 + 导航行 |
-| `AthenaSwitch` / `Checkbox` / `Menu` / `WindowButton` | 通用组件 |
-| `tile.dart` | `MobileSettingTile`（移动端设置行）/ `MobileGridTile`（移动端网格实体卡：反色底、标题 + 副标题 + 可选尾标，Skill / Sentinel / Experience 列表共用） |
-
-**`lib/component/` = 业务组件**：消费 `athena_core` 实体或 ViewModel。
-
-| 组件 | 用途 |
-|------|------|
-| `message_sliver.dart` | `MessageCardListSliver`：懒加载消息列表（每条消息一个列表项）+ 卡片分组渲染项 |
-| `message_tiles.dart` | `MessageListTile`（按角色分派）、助手 / 用户两支实现、`MessageActionBar`、`AssistantCardHover` |
-| `step_card.dart` | `StepCard`：推理 / 工具 / 压缩步骤卡，按 `steps` 长度决定单步平铺或折叠组（组内嵌套单步）；`toolIcon` / `argPreview` 静态映射供审批卡复用 |
-| `step_primitives.dart` | 步骤卡共用原语：`StepHeader`（图标 + 单行文案 + shimmer）、`StepResultBody`、`StepHeaderShimmer` |
-| `permission_card.dart` / `elicit_card.dart` | 会话内审批卡、提问卡；按钮直接用 `AthenaPrimaryButton` / `AthenaSecondaryButton` |
-| `sentinel_placeholder.dart` | 会话空态（桌面与移动共用，不要另写平台分支） |
-| `base64_image.dart` / `queued_messages.dart` / `card_tile.dart` / `button.dart`（`CopyButton`） | 其余共享组件 |
-| `chat_column.dart` / `message_list_scroll_controller.dart` | 会话列几何常量与消息列表滚动控制器 |
-
-### 桌面布局约定
-
-- 侧栏宽 **288px**（`AthenaSpace.sidebar`，Claude 实测），底色 `surfacePanel` = `#FBFBF9`
-  （与画布 `#FCFCFB` 几乎无差）；行高 26、左右内缩 8、图标起于行内 11、文字起于 30
-- 顶栏只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题
-- **顶栏有会话标题**（Claude 的顶栏不是空的）；新建会话在侧栏导航块，
-  会话上下文（Sentinel chip、工作文件夹 chip，见 §7.8）在 composer 的上下文条上；
-  两个 chip 都**可清除**（hover 时 chip 内出现叉）：清 Sentinel = 回到
-  `ChatEntity.noSentinelId`（标签显示 `No Sentinel`，没有选中对话时改草稿角色），
-  清文件夹 = `workspace_path` 置空。
-  顶栏实测高 **46 逻辑**，底色同画布，底边一条极浅的 `#F7F7F7` 线，
-  且**只画在工作区那段**（侧栏上方不画，否则会横穿侧栏右边线）；顶栏里的侧栏条
-  满高 0..46，侧栏右边线在顶栏内是连续的一根
-- **外壳接缝线一律用 `borderChrome`**（比 `border` 轻一档：#EFEFED / #212121，实测对比度
-  1.11:1 对 1.28:1）：侧栏右边界（顶栏那段 + 主区那段，两处必须同档）、侧栏页脚上边。
-  容器描边（卡片、输入框、dialog）仍用 `border`
-- 侧栏内容：导航块（New chat）+ 分组列表（Pinned / Chats）+ 底部页脚
-- 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
-
-
-## 13. 路由
-
-使用 `auto_route` 包，配置在 `athena_gui/lib/router/router.dart`：
-
-- 桌面端使用 `DesktopRoute(CustomRoute)`，过渡时间为 0（无动画）；`initial: isDesktop`
-- 移动端使用标准 `AutoRoute`，带过渡动画
-- **路由代码生成**：`router.gr.dart` 由 build_runner 生成，修改 router.dart 后需运行 `flutter pub run build_runner build --delete-conflicting-outputs`
-- 全局 `scaffoldMessengerKey` 用于 SnackBar；`router.navigatorKey.currentContext` 用于不依赖 Widget 树的全局导航（如取消时 pop 权限弹窗）
+- 每个工具的 model-facing schema 由 `ToolRegistry.parametersFor` 注入三个元数据字段：`call_description`（必填，缺失即判参数非法并要求模型重发）、`approval_recommendation`、`approval_reason`。三者在权限匹配与执行前由 `toolExecutionArguments` 剥离——**别把它们算进参数或权限判断**。
+- 危险等级默认 `dangerous`，只读工具必须显式覆写。
+- 移动端只注册 11 个工具（不注册文件、shell、提问）；新增工具时先想清楚移动端是否可用，再决定放在哪个分支。
+- `ToolOutputStore`：超过 24000 字符才落盘（内存实例用于测试），预览 2000 字符，单次回读上限 12000 字符，按内容哈希寻址（同内容重跑不会重复落盘）。
+- shell 超时策略在 `ShellTimeoutPolicy`：默认 120s，上限 3600s（环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 可抬高，低于默认值视为非法并回退）。
 
 ---
 
-## 14. 测试
+## 9. 自我进化与记忆
 
-**`athena_core`（3 个文件）**：`test/agent/permission/permission_rule_test.dart`（「始终允许」的
-落库形态与匹配范围）与 `test/storage/file_storage_test.dart`、`test/storage/jsonl_session_repository_test.dart`（会话文件的行级读取口径：轮次指示器要的 user 行全量扫描、尾部窗口按块回读、够小的会话整读分流）。
-
-**`athena_gui` 只有一处常驻套件 `test/widget/`（3 个文件）**：`turn_indicator_test.dart`（条长只有一套公式、高亮与点击报的都是整段会话下标、一页只画当前轮那一页、预览卡只给已加载的轮次）、`message_list_scroll_jump_test.dart`（贴着底部跟随态下点轮次条也跳得过去、用户自己滚过之后跟随已解除的路径）、`context_menu_test.dart`（菜单贴锚点朝锚点方向展开、收成内容高、贴窗口边时回退到窗口内）。它们是随轮次导航 / 菜单实现留下的回归网，改到对应组件时必须跑；GUI 其余部分没有回归网。
-
-**`athena_tui` 没有测试。** 因此：
-
-- `athena_core` 的改动在 `packages/athena_core` 下先跑 `dart test`，再跑 `dart analyze`。
-- `athena_gui` 的改动在 `packages/athena_gui` 下跑 `flutter test`（`test/widget/`）与 `flutter analyze`。
-- 其余改动的静态保障只有 `flutter analyze` / `dart analyze`，改完必须跑到 0 issue。
-- UI 改动只能对着**运行中的开发实例**验证：`hot_restart` → 用 VM service 的 `evaluate`
-  推路由（不必手点 UI）→ 系统截屏 → 读图。没有 driver 扩展，`flutter_driver_command
-  screenshot` 不可用。
-- UI 改动也可以用**临时 widget 探针**取证：在 `packages/athena_gui/test/probe_*_test.dart`
-  里写一次性用例断言渲染属性 / 位置 / 命中行为，比截图精确；跑完把文件删掉——
-  `probe_` 前缀就是"一次性"的标记，只有 `test/widget/` 下的用例是常驻的。
-- **移动端分支（`PlatformUtil.isMobile`）在 macOS 上跑不到**，改这两条分支时手上没有
-  任何回归网，能避开就避开、必须改时逐行对照。
-- 纯函数（`util/message_display_util.dart` 的卡片分组与步骤布局）同样没有回归网，
-  评审重点看边界：空列表、流式末条、跨消息合并。
-
-> 需要恢复用例时：`git log --diff-filter=D --name-only -- packages/`。
+- 注入顺序（`AgentService._injectPrompts`）：`[sentinel] → evolution hint → skill 目录 → MemoryDigest → runtime+日期 → 历史`。runtime 与日期合成同一条 system 消息（一天内内容稳定，跨午夜会在请求前刷新）。
+- `EvolutionPrompt.hint` 是每次注入的极简提示；完整指南是内置 `self-evolve` Skill 的 body，按需加载。两端装配都要 `registerBuiltin(kSelfEvolveSkill)`。
+- `SkillRegistry`：Level 1 目录上限 20 条、按最近访问倒序；`loadAll({homeDir})` 决定用户级根目录（`{homeDir}/.athena/skills`），移动端传沙盒目录——**写入端（`skill_evolve`）必须与读取端同目录**。`deleteSkill` 只允许删用户级 Skill。
+- `MemoryDigest`：每次 run 注入当前 Sentinel 的**全部 active** 经验目录（lesson 一行一条，`shared` / `private` 标注 + 创建日期），顺序稳定（按创建时间倒序、同时间按 id）以便复用 prompt cache；没有经验时不注入空段。`context` / `tags` 由 `experience_recall` 按需取。
+- 失败反思（`ReflectionPolicy.shouldReflect`）：`maxIterations` 结束且失败不全是权限拒绝，或 `completed` 且同一工具失败 ≥2 次才触发。反思只做一次 LLM 提案调用，经验写入完全复用 `experience_learn` 的标准工具路径（校验/审批/执行），**不要直接写 `ExperienceRepository`**。
+- 经验长度上限 `ExperienceEntity.maxLessonLength = 500`；lesson 是给上下文直接用的精炼摘要，详细背景放 `context`。反思提案的置信度门槛 0.7。
+- Sentinel 演进前必写快照（`SentinelHistoryStore`），`sentinel_revert` 本身也可回滚。
 
 ---
 
-## 15. 开发约定
+## 10. 客户端约定
 
-### 代码风格
+**GUI（`athena_gui`）**
 
-- Dart 3.8+；athena_core 用 `lints`，athena_gui 用 `flutter_lints`
-- 优先使用 `const` 构造函数；变量声明优先 `final`
-- 实体类使用 `copyWith()` 模式
-- 注释语言：中文/英文混合（历史代码中文居多，新代码趋向英文）；代码标识符一律英文
+- 依赖注入唯一入口是 `lib/di.dart`（GetIt）；新增 ViewModel/Service 在那里注册，别在页面里自行 new。
+- 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
+- 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。设置面板用 `widget/settings/` 三件套（panel / row / control），改动即存、没有页面级 Save。
+- 桌面与移动是两套页面（`page/desktop/`、`page/mobile/`），路由在 `router/router.dart`，桌面路由是 0 时长无过渡，桌面设置路由 `opaque: false`（面板浮在应用之上）。
+- 平台判定统一用 `PlatformUtil`（`isDesktop` / `isMobile`），不要散落 `Platform.isXxx`。
 
-### 平台检测
+**TUI（`athena_tui`）**
 
-使用 `PlatformUtil`（athena_core）而非直接使用 `dart:io` 的 `Platform`：
-
-```dart
-PlatformUtil.isDesktop  // macOS || Linux || Windows
-PlatformUtil.isMobile   // iOS || Android
-PlatformUtil.isWindows  // 特定平台
-```
-
-### 颜色使用
-
-从 ThemeExtension 取色，不要直接写 `Color(0xFF...)`：
-
-```dart
-final colors = Theme.of(context).extension<AthenaColors>()!;
-Text('x', style: TextStyle(color: colors.textPrimary));
-```
-
-无 `BuildContext` 的辅助方法：加 `BuildContext context` 参数并在调用处传参；
-顶层/静态方法用 `router.navigatorKey.currentContext!`（参考 `widget/dialog.dart`
-的 `_colors` getter）。新增颜色时在 `theme/athena_colors.dart` 的**深/浅两套
-值同时定义**（浅色值从现有 token 推导），并确认该字段只承担一个语义角色。
-含 `colors.xxx` 的表达式不能使用 `const`。
-
-### 对话框与消息提示
-
-- 桌面端 `AthenaDialog` 静态方法或 `showDialog()`，移动端 `showModalBottomSheet()`，平台判断已封装在 `AthenaDialog` 内部
-- 消息提示：`AthenaDialog.message()` / `.info()` / `.success()` / `.warning()` / `.error()`（桌面 Overlay 3 秒自动消失，移动 SnackBar）
+- 组合根是 `lib/di/tui_di.dart`（手写装配，镜像 GUI 但不引入 GetIt）；数据目录、工具集、权限规则与 GUI 相同。
+- 启动会把 `Directory.current` 改成工作区目录——核心层（shell 默认 workdir、文件工具相对路径）都按 `Directory.current` 解析。
+- `ChatController` 不依赖 nocterm，保持纯 Dart 可测；UI 状态全在 signals 里。
 
 ---
 
-## 16. 重要约束与注意事项
+## 11. 代码与文档约定
 
-1. **包依赖方向**：`athena_gui → athena_core` 单向；**athena_core 禁止引入 Flutter / SQL / GetIt**（它是 TUI 与 GUI 共用的核心）。**GUI 专有业务不进 core**（见"核心解耦原则"后的准入标准）
-2. **DI 初始化顺序**：FileStorage → Repository → Service → Delegate → ViewModel → Agent → ChatViewModel；ChatViewModel 必须在 AgentService 和 SkillRegistry 之后注册；除 FileStorage 外全部 `registerLazySingleton`
-3. **文件是唯一真相**：不引入数据库；将来若需全文检索，索引必须是可删除可重建的缓存，不反向持有数据
-4. **跨进程锁不可省**：所有读-改-写必须经 `withFileLock`（GUI 与 TUI 共享目录且可能同时运行）；每个文件独立 `.lock`
-5. **OpenAI Client 生命周期**：每次 API 调用创建新 `OpenAIClient`，`finally` 中 `close()`；重试只覆盖网络错误（连接/超时/限流/5xx），不重试业务错误（4xx/解析）
-6. **流取消**：`CancelToken.throwIfCancelled()` 在流的多个关键点调用；权限弹窗与取消用 `Future.any` 竞速
-7. **消息持久化时机**：流式过程中 assistant 消息逐段累积更新（reasoning/content/toolCalls/toolResults），迭代结束/流结束时 `finalizeAssistantMessage()` 落库；取消标 `[Cancelled]`，错误写进消息内容
-8. **Context 语义**：`retention` 0 = 零上下文（仅最后用户消息）、-1 = 自动 compact（每次模型请求前估算达到 80% 窗口触发）、正数 = 当前不截断
-9. **移动端工具精简**：移动端注册 11 个工具（`tool_output_read`、`web_fetch`、`web_search`、`skill`、`skill_evolve`、`experience_learn`、`experience_recall`、`sentinel_list`、`sentinel_get`、`sentinel_evolve`、`sentinel_revert`）；不注册本地文件与进程工具（`file_read` / `file_write` / `file_update` / `bash` / `powershell`）与提问工具（`ask_user_question`：移动端无提问卡片），进化类工具只写沙盒内 `.athena` 目录
-10. **预设数据不再走 migration**：模型/provider 由 ModelCatalogService 从 models.dev 同步；内置 Athena 角色只在 `sentinels.json` 为空时种子一次（`athena_core/lib/seed/`），已存在的角色不覆盖（用户可能已通过 sentinel_evolve 改过）
-11. **权限弹窗不可绕过**：`showPermissionDialog()` 设置 `barrierDismissible: false`
-12. **Token 写入**：`ChatRepository.updateChat()` 显式排除 token 快照字段，只能走 `recordUsage()` 快照路径
-13. **列表信号更新**：赋值新列表或 `replaceWhere`，禁止原地 `add()` 修改
-14. **AgentService 单实例运行**：`run()` 已运行时再次调用抛 `StateError`，需先 `abort()` / 等待 `settled`
-15. **UI 展示态不进 MessageEntity**：推理卡片展开状态只存在于 Widget State；新的纯展示状态同样不要加进实体或文件
+- **注释与文档用中文**；面向模型的文本（工具描述、系统提示、回给模型的错误）用英文，与既有实现保持一致。注释解释「为什么」——现状为什么是这样、当初避开什么坑，而不是复述代码。
+- **格式化**：仓库**不是 format-clean**（`dart format` 会改写约四分之一既有文件）。新建文件保持 `dart format` 结果；既有文件按原风格手改，**不要**对既有文件跑 `dart format`，那会产出满屏无关重排。
+- **导入**：跨目录引用普遍用 `package:athena_core/...` 绝对导入，同一目录内部也有相对导入（如 `tool/` 内）。改动沿用所在文件既有风格即可。
+- **测试**：`athena_core/test` 用 `package:test`，GUI 用 `flutter_test`。用例要断言可观察的行为或量出来的几何（`.expect(..., reason: ...)`），不是「调用了哪个方法」；交互/动画类断言需要多帧 `pump` 才能拿到过渡终态（单次 `pump(200ms)` 可能仍是起点值）。写完顺手确认它真的会因为回归而失败。
+- **文档同步**：改行为时同步 README（用户可见能力）、AGENTS（本文件）、DESIGN（视觉口径），并核对文中引用的常量仍存在。
+- 文档与代码注释不使用 emoji（仓库现有文档与注释均无 emoji；角色头像里的 emoji 是产品数据，不在此列）。
 
 ---
 
-## 17. 常见任务模式
+## 12. 常见任务
 
-### 添加新工具
+**加一个工具**
 
-1. 创建 `packages/athena_core/lib/agent/tool/xxx_tool.dart`，实现 `Tool` 接口（声明 `executionMode`、`risk`，只读/并行能力按需覆写 `canExecuteParallel`）
-2. 在 `packages/athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry` 注册（工具清单的唯一真相源，两个前端共用）
-3. 权限相关：`PermissionRule._isFilePathTool()` 与 `PermissionService.primaryArg()` 中按需添加模式
-4. 需要宿主交互（问用户 / 等用户）的工具，另见「交互类工具的两端同步点」
-5. 新工具落在 `athena_core`：改完在 `packages/athena_core` 下跑 `dart test` 与 `dart analyze`（见 §14），并用运行中的实例手测一次真实调用
+1. 在 `lib/agent/tool/` 新建实现（给出 `name` / `description` / `parameters` / `risk` / `canExecuteParallel`），需要取消能力就实现 `CancellableTool`；
+2. 在 `tool_set.dart` 注册：判断移动端是否可用，决定放进移动分支、桌面分支还是两者；
+3. 若需要持久化，走已有 repository（新增仓储要同时在 `FileStorage` 里装配）；
+4. 在 README 的工具表里补一行。
 
-### 交互类工具的两端同步点（提问 / 审批）
+**加一个页面 / 路由（GUI）**
 
-「你要哪个」（`ask_user_question`）与「要不要做」（权限审批）是两条独立通道，共用「按 run 注入回调」这一套模式；改一处要同步两端：
+1. 建页面并加 `@RoutePage()`；
+2. 在 `router/router.dart` 注册（桌面页面用 `DesktopRoute`）；
+3. 跑 `dart run build_runner build --delete-conflicting-outputs`，把 `router.gr.dart` 一起提交。
 
-| 环节 | 提问 | 审批 |
-|------|------|------|
-| 通道类型 | `agent/elicit/elicit_prompt.dart`：`ElicitChannel` / `ElicitChannelAware` / `ElicitPrompt` | `agent/permission/permission_prompt.dart`：`PermissionPrompt` / `PermissionDecision` |
-| 引擎注入 | `AgentService.run(onElicit:)` 按 run 构造 `ElicitChannel`，`executeToolCallInternal` 交给实现 `ElicitChannelAware` 的工具 | 权限门 `_buildPermissionGate` |
-| 协调层 | `AgentRunCoordinator(elicitPrompt:)` | `AgentRunCoordinator(permissionPrompt:)` |
-| GUI | `AgentStreamDelegate.elicitRequests` → `ChatViewModel.pendingElicits` → `component/elicit_card.dart` | `approvalRequests` → `pendingApprovals` → `component/permission_card.dart` |
-| TUI | `TuiAgentBridge.elicitHandler` → `widgets/question_bar.dart` + 输入区自填模式 | `permissionHandler` → `widgets/permission_bar.dart` |
-| 无人应答时 | 返回 null（未作答），模型按标注过的假定继续 | 返回拒绝（安全默认） |
+**加一个设置项**
 
-同步清单：
-- **改 `AgentService.run` 签名**会打到所有调用方（GUI 的 `AgentStreamDelegate`、TUI 的 `TuiAgentBridge`）及其测试替身；TUI 没有测试套件兜底，GUI 只有 `test/widget/` 那三个用例（见 §14），改完主要靠 `dart analyze` 与手测。
-- 通道**按 run 绑定**，而工具集是长生命周期单例：不要把 channel 存成工具字段（多 run 并发会串台），照 `CancellableTool` 的写法按调用传入。
-- 等待用户期间**必须与 `cancelToken` 竞速**（`Future.any`，与 `_buildPermissionGate` 同写法），否则无应答或取消时会挂死。
-- `ask_user_question` 的 `risk` 是 `readOnly`，永不触发审批弹窗；引擎另外对 `ElicitChannelAware` 工具忽略模型自填的 `approval_recommendation: ask`（提问本身就是人机交互，不该再叠一层审批）：它的使用判据（只在真正属于用户、且从请求/代码/合理默认都推不出的决定上问）写在**工具描述**里随工具下发，不依赖任何角色提示词。
-- GUI 提问卡片**一次只展示一个问题**，多问时问题前标 `1 / 3`（卡片标题不报数量）；单选**点选即确认**（非最后一步→前进，最后一步→提交），多选与自由输入由 Next / Submit 收尾（自由输入框里回车等价于按钮）；`_step > 0` 时有 Back 可退回上一步改答案。单选再点一次是「保持」而不是取消——每题都得有答案才能往下走，允许点空会把人卡在交不出去的步骤上。自由输入框取**卡片尺度**（字号 14 / 垂直内边距 12 / 1–3 行自增高，与卡片内按钮同高），不要套全局输入的 56px 尺度——那会让一行自填比整卡其它内容都重。
-- 工具 / 推理 / 压缩 / 步骤组 header 的 shimmer 颜色由 `textPrimary` 推出（`StepHeaderShimmer.colorsFor`），**不要写死白色**：`BlendMode.srcIn` 会把 header 整块涂成该色，卡面无底板后 header 直接坐在页面底色上，写死白在浅色主题就是白底白字。
-- 形状约束为每次 1-4 问、每问 2-4 选项、header ≤12 字符。`SchemaValidator` 只校验顶层必填与类型、**不递归 `items`**，嵌套约束由工具内部兜住（非法时返回可自纠的错误，且不弹卡片）。
-- 终端渲染模型生成的问句/选项前必须 `sanitizeAnsi`。
+1. 值放 `AgentSettings`（核心，被协调层消费）或 `SettingViewModel`（GUI 本地偏好，走 SharedPreferences）；
+2. 两端的入口都要接上（GUI 设置面板行、TUI 斜杠命令或启动导入），否则同一份设置在不同端行为不一致；
+3. 旧键迁移只做一次：读不到新键时读旧键，写入后不再看旧键。
 
-### 添加新 Entity（含新存储文件）
+**改存储格式**
 
-1. 创建 `packages/athena_core/lib/entity/xxx_entity.dart`（fromJson/toJson/copyWith；新字段给 fromJson 默认值以兼容旧文件）或 `model/`（非持久化数据类）
-2. 创建 `packages/athena_core/lib/repository/xxx_repository.dart`（存储接口，纯抽象）
-3. 在 `packages/athena_core/lib/storage/` 添加文件实现（列表数据用 `JsonArrayStore`，追加型数据仿 `SessionJsonlStore`），并在 `FileStorage` 里声明文件路径与实例
-4. 在 GUI `di.dart` 与 TUI `tui_di.dart` 注册（都从 `FileStorage` 取）
-5. 若需清空：在 `FileStorage.reset()` 里加上该文件
+1. 只动 `storage/`（或 repository 实现），并在 `FileStorage` 的布局注释里同步；
+2. 保证向后兼容或提供迁移；损坏数据按容错处理（跳过 + 记日志）；
+3. 补 `athena_core/test/storage/` 用例（并发写、损坏文件、原子写至少覆盖一个）。
 
-### 修改已有 Entity 字段
+**加一个 ViewModel / Service（GUI）**
 
-- 只加不删、给默认值：旧文件缺字段时 `fromJson` 用默认值补齐即可，无需迁移
-- 破坏性改动（改语义/删字段）只在大版本做，不写旧数据迁移
-
-### 添加新 Service
-
-1. 核心逻辑放 `packages/athena_core/lib/service/`，构造函数注入 Repository 接口
-2. 在 `di.dart` 注册为 LazySingleton
-3. ViewModel 中通过构造函数注入使用
-
-### 修改预设数据（Provider / Model / Sentinel）
-
-1. 模型/provider：改 `model_catalog_config.dart`（provider 清单、include/exclude 白名单），元数据由 ModelCatalogService 从 models.dev 同步，不手工维护
-2. 内置 Athena 角色：改 `athena_core/lib/seed/athena_preset_prompt.dart`；只影响**新装用户**（已有 `sentinels.json` 的不覆盖）
-3. 改完跑 `dart analyze` / `flutter analyze` 与 `dart test`（athena_core）
-
-### 修改设计系统组件
-
-1. 组件在 `athena_gui/lib/widget/`
-2. 颜色从 `Theme.of(context).extension<AthenaColors>()!` 取，不要硬编码；
-   几何从 `athena_tokens.dart` 取，文字样式从 `AthenaTextStyle` 预设取，不要写字面量
-3. 遵循 `DESIGN.md` 规范：暖白画布（`#FCFCFB`，深色用 `#1A1A19`，禁止纯黑）、
-   **UI 与正文用系统字体**（等宽只给代码）、圆角只用 `AthenaRadius` 档位（4/5/7/10/12/pill）、
-   静态容器用边框而浮起容器用 `AthenaShadow`，桌面/移动视觉一致
-4. 新增颜色前先问"灰阶够不够"；`accent` 是全局唯一彩色，不要新增色相
+1. 在 `di.dart` 注册（lazy singleton）；
+2. 需要 Agent 事件的走 `AgentStreamDelegate`，不要自己 new `AgentRunCoordinator`。
 
 ---
 
-## 18. 依赖包说明
+## 13. 易错点（都踩过）
 
-### athena_core（纯 Dart）
-
-| 包 | 用途 |
-|----|------|
-| `openai_dart` ^8.1.0 | OpenAI API 客户端（流式 + 工具调用 + 推理），三包共用 |
-| `signals` v6.2.0 | 响应式状态管理（AgentSettings 等） |
-| `http` v1.x | web_fetch/web_search 的 HTTP 客户端 + models.dev 同步 |
-| `yaml` v3.1.2 | Skill 文件 front matter 解析 |
-| `html` | HTML→Markdown 转换 |
-| `logger` | LoggerUtil 封装 |
-
-### athena_gui（Flutter）
-
-| 包 | 用途 |
-|----|------|
-| `athena_core`（path 依赖） | 核心包 |
-| `signals_flutter` v6.2.0 | Widget 响应式订阅（Watch） |
-| `get_it` v8.0.3 | 依赖注入 |
-| `auto_route` v9.2.2 | 路由 + 代码生成 |
-| `hugeicons` | 图标库 |
-| `google_fonts` | 字体 |
-| `flutter_markdown` + `flutter_markdown_latex` | Markdown/LaTeX 渲染 |
-| `window_manager` + `tray_manager` | 桌面窗口和系统托盘 |
-| `process` v5.0.3 | Shell 工具进程管理 |
-| `shared_preferences` | KeyValueStore 实现 |
-| `markdown` | Markdown 解析（widget/markdown.dart） |
-| `file_picker` / `image_gallery_saver_plus` | 数据导入 / 图片保存 |
-| `path_provider` / `stream_channel` | 沙盒路径解析 / 进程流 |
-| `cached_network_image` / `flutter_slidable` / `flutter_staggered_grid_view` / `visibility_detector` / `device_info_plus` / `package_info_plus` / `url_launcher` / `synchronized` | UI 辅助 |
-
-### athena_tui（nocterm 终端客户端）
-
-| 包 | 用途 |
-|----|------|
-| `athena_core`（path 依赖） | 核心包 |
-| `nocterm` ^0.8.0 | 终端 UI（TUI 运行时） |
-| `openai_dart` ^8.1.0 | 与 core 同源 |
-| `signals` / `yaml` | 响应式状态 / 配置解析 |
+- **并行组的审批弹窗**：需要弹窗的调用放进并行组 → 多个模态互相覆盖。用 `selectParallelCalls` 的预检分级。
+- **路径口径三处不一致**：审批按相对路径落规则、执行按绝对路径匹配 → 「已批准仍重复弹窗」和「始终允许」失效。三处必须共用 `applyRunWorkspace`。
+- **会话锁形同虚设**：每次新建 `SessionJsonlStore` → 流式期间的整文件重写与 append 交错丢行。
+- **`Stream.timeout` 不触发**：改用 `withIdleTimeout`。
+- **tool_calls 未闭合**：取消/异常路径漏合成 tool 结果 → 该会话后续请求被 400 拒绝。
+- **截断的 tool_calls 直接执行**：参数半截就写文件/跑命令 → 撞输出上限时一律不执行。
+- **展示元数据混进参数**：`call_description` / `approval_recommendation` / `approval_reason` 必须剥离后再匹配规则与执行。
+- **读写应用数据目录**：`~/.athena/` 只能经仓储与工具访问，不要用文件工具直接改。
+- **移动端的 `$HOME`**：移动端没有可靠的 `HOME`，用户级目录（Skill、经验、Sentinel 历史）与 `FileStorage` 根必须同为装配层传入的沙盒目录。
+- **忘记生成代码**：GUI 改了路由不跑 `build_runner` → analyze 直接失败。
+- **对既有文件跑 `dart format`**：产出大面积无关改动，评审无法看。
+- **用索引当下标口径**：UI 里的「第几轮 / 第几项」有窗口内相对下标与整段会话绝对下标两套（见 `util/chat_turn_util.dart` 与 `TurnIndicator` 的分页），传参前先核对。
 
 ---
 
-## 19. 版本信息
+## 14. 交付前检查
 
-- 当前版本：**3.6.1+864**（`athena_gui/pubspec.yaml`）
-- Flutter SDK：>= 3.8.0；Dart SDK：>= 3.8.0
-- 平台：iOS / Android / macOS / Windows / Linux
-- 近期架构里程碑（git log）：core/gui 拆分（d4c9147 → 5b03e94）、并行工具执行与权限控制（6c68941）、工具 hooks + Schema 校验 + 执行模式（711a851）、流式工具卡片（43f9e1c）、跨平台运行加固（cbec2be）、athena_tui 终端客户端（f65e8a7）、Sentinel 进化/回滚 + 经验回顾与记忆消化（886e0b5）、移动端沙盒进化工具（f28d6f8）
+1. `dart analyze` / `flutter analyze` 干净（至少不新增问题）；
+2. `dart test` / `flutter test` 通过：改了 `athena_core` 就跑 `athena_core` 的，改了 GUI 就跑 GUI 的，两端都涉及就跑两遍；
+3. 改 GUI 前先 `build_runner`；
+4. `git diff` 复核：无调试残留、无无关文件、无大范围重排；
+5. 行为变化已在 README / AGENTS / DESIGN 中同步，且文中引用的常量仍存在。
