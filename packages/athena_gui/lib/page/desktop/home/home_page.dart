@@ -59,15 +59,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     });
   }
 
-  Future<void> createChat() async {
-    var modelViewModel = GetIt.instance<ModelViewModel>();
-    await modelViewModel.loadEnabledModels();
-    if (modelViewModel.enabledModels.value.isEmpty) {
-      AthenaDialog.warning('You should enable a provider first');
-      return;
-    }
-
-    await chatViewModel.createChat();
+  /// 侧栏 "New chat"：进入草稿态，不落盘。
+  ///
+  /// 对齐 Claude 桌面端：新对话只是一个空页面，会话文件与侧栏条目要等首条
+  /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
+  /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话。
+  Future<void> startNewChat() async {
+    if (chatViewModel.currentChat.value == null) return;
+    await chatViewModel.prepareNewChatDraft();
   }
 
   Future<void> batchDestroyChats(List<ChatEntity> chats) async {
@@ -136,7 +135,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       return;
     }
 
-    // 如果没有选中的聊天，先创建一个
+    // 草稿态：首条消息发送时才把草稿落盘成对话
     var chat = chatViewModel.currentChat.value;
     if (chat == null) {
       chat = await chatViewModel.createChat();
@@ -238,9 +237,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Future<void> pickWorkspaceFolder() => chatViewModel.pickWorkspaceFolder();
 
   /// 清除本会话的工作文件夹，回到默认（shell 用用户主目录）。
+  /// 没有选中对话时改的是草稿：落盘时就不带工作文件夹。
   Future<void> clearWorkspaceFolder() async {
     var chat = chatViewModel.currentChat.value;
-    if (chat == null) return;
+    if (chat == null) {
+      chatViewModel.updateCurrentWorkspacePath(null);
+      return;
+    }
     await chatViewModel.updateWorkspacePath(null, chat: chat);
   }
 
@@ -269,7 +272,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Widget _buildLeftBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var chatListView = DesktopChatListView(
-      onCreateChat: createChat,
+      onCreateChat: startNewChat,
       onAutoRenamed: chatViewModel.renameChat,
       onBatchDestroyed: batchDestroyChats,
       onDestroyed: destroyChat,

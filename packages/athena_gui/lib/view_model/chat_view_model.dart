@@ -120,17 +120,12 @@ class ChatViewModel {
 
   final error = signal<String?>(null);
 
+  // 下面这组 `current*` 是"当前选中对话"的参数；没有选中对话时
+  // （[currentChat] 为 null，即草稿态）它们就是草稿本身：composer 上改的
+  // 每一项都只写在这里，直到首条消息发送时由 [createChat] 一次性落盘。
   final currentModel = signal<ModelEntity?>(null);
   final currentProvider = signal<ProviderEntity?>(null);
   final currentSentinel = signal<SentinelEntity?>(null);
-
-  /// 新建对话时使用的角色（仅草稿态有效）。
-  ///
-  /// 与 [currentSentinel]（当前选中对话的角色）解耦：入口注入绑定角色或
-  /// 用户在无选中对话时显式选择角色才会设置它；为空时
-  /// [createChat] 回退默认角色 Athena，不复用上一个对话的角色。
-  final draftSentinel = signal<SentinelEntity?>(null);
-
   final currentRetention = signal(defaultDraftRetention);
   final currentTemperature = signal(defaultDraftTemperature);
 
@@ -138,6 +133,9 @@ class ChatViewModel {
   final currentReasoningEffort = signal<String>(
     ChatEntity.defaultReasoningEffort,
   );
+
+  /// 当前对话（或草稿态）的工作文件夹，null = 不指定。
+  final currentWorkspacePath = signal<String?>(null);
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
@@ -429,50 +427,60 @@ class ChatViewModel {
     }
   }
 
+  /// 启动：读会话列表，然后落在一个空草稿页上（对齐 Claude 桌面端），
+  /// 不自动打开最近的对话。历史对话从侧栏点进去。
   Future<void> initSignals() async {
     final (chatsList, histories) = await _manageService.getChats();
     chats.value = chatsList;
     chatHistories.value = histories;
-    final initialChat = chats.value.firstOrNull;
-
-    if (initialChat != null) {
-      await selectChat(initialChat);
-    } else {
-      await prepareNewChatDraft();
-    }
+    await prepareNewChatDraft();
   }
 
+  /// 把草稿落盘成一个真正的对话。
+  ///
+  /// 只在草稿态（[currentChat] 为 null）由"首条消息发送"调用：新建对话本身
+  /// 不落盘（对齐 Claude 桌面端），`sessions/` 目录与侧栏里只有真正聊过的
+  /// 对话。会话参数全部取自草稿态的 `current*` 信号——用户在 composer 上改过
+  /// 的模型/角色/温度/上下文保留/推理强度/工作文件夹都要带过去；草稿没定
+  /// 模型时回退到设置里的默认对话模型。**不动 [pendingImages]**：调用方发送
+  /// 首条消息时还要读它。
   Future<ChatEntity?> createChat() async {
     isLoading.value = true;
     error.value = null;
     try {
+      // 按 id 重新解析：拿到最新的模型行与其 provider，provider 已被删掉时
+      // 回退到第一个可用模型，而不是带着悬空引用落盘。
       final resolved = await _modelResolver.resolve(
-        preferredModelId: _settingViewModel.chatModelId.value,
+        preferredModelId:
+            currentModel.value?.id ?? _settingViewModel.chatModelId.value,
       );
       if (resolved == null) {
         error.value = 'Failed to create chat';
         return null;
       }
-
       final model = resolved.model;
       final provider = resolved.provider;
 
       if (_sentinelViewModel.sentinels.value.isEmpty) {
         await _sentinelViewModel.getSentinels();
       }
-      // 默认角色 Athena；仅当草稿态显式选定了角色
-      // （入口注入或用户在无选中对话时选择）时使用选定角色。
+      // 草稿没显式选过角色就是默认角色 Athena（见 _syncDraftDefaults）；
+      // 清掉角色是 directChatSentinel（保留 id 0），同样能落库。
       final sentinel =
-          draftSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
+          currentSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
+      if (sentinel.id == null) {
+        error.value = 'Failed to create chat';
+        return null;
+      }
 
       final chat = await _manageService.createChat(
         model: model,
         sentinel: sentinel,
-        retention: defaultDraftRetention,
-        temperature: defaultDraftTemperature,
+        retention: currentRetention.value,
+        temperature: currentTemperature.value,
+        reasoningEffort: currentReasoningEffort.value,
+        workspacePath: currentWorkspacePath.value,
       );
-
-      currentTokenUsage.value = null;
 
       final pinned = chats.value.where((c) => c.pinned).toList();
       final unpinned = chats.value.where((c) => !c.pinned).toList();
@@ -485,14 +493,13 @@ class ChatViewModel {
       currentModel.value = model;
       currentProvider.value = provider;
       currentSentinel.value = sentinel;
-      currentRetention.value = chat.retention;
-      currentTemperature.value = chat.temperature;
-      currentReasoningEffort.value = chat.reasoningEffort;
-      pendingImages.value = [];
+      currentTokenUsage.value = null;
+      // 新对话的轮次数是已知的 0：直接建缓存，之后每落一条 user 消息由
+      // _recordNewTurn 就地追加，指示器从第二轮起就能画，不必等重新选中。
+      _turnStartIdsByChat[chat.id!] = [];
+      turnStartIds.value = const [];
       _discardPendingMessages();
       messages.value = [];
-      // 草稿角色是一次性设定，消费后清空，避免下次新建对话复用。
-      draftSentinel.value = null;
 
       clearSelection();
       _selection.lastSelectedIndex.value = pinned.length;
@@ -645,6 +652,7 @@ class ChatViewModel {
       currentRetention.value = chat.retention;
       currentTemperature.value = chat.temperature;
       currentReasoningEffort.value = chat.reasoningEffort;
+      currentWorkspacePath.value = chat.workspacePath;
       pendingImages.value = [];
       currentTokenUsage.value = null;
 
@@ -823,20 +831,23 @@ class ChatViewModel {
     }
   }
 
-  /// 弹出系统目录选择器设置本会话的工作文件夹。
+  /// 弹出系统目录选择器设置本会话（或草稿）的工作文件夹。
   ///
   /// 取消（返回 null）不做任何改动：native 目录选择器选不出「不指定」，
-  /// 清除走 [updateWorkspacePath]。
+  /// 清除走 [updateWorkspacePath] / [updateCurrentWorkspacePath]。
   Future<void> pickWorkspaceFolder() async {
     final chat = currentChat.value;
-    if (chat == null) return;
     error.value = null;
     try {
       final path = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Choose working folder',
       );
       if (path == null) return;
-      await updateWorkspacePath(path, chat: chat);
+      if (chat == null) {
+        updateCurrentWorkspacePath(path);
+      } else {
+        await updateWorkspacePath(path, chat: chat);
+      }
     } catch (e) {
       error.value = e.toString();
     }
@@ -851,6 +862,7 @@ class ChatViewModel {
     try {
       final updated = await _supportService.updateWorkspacePath(chat, path);
       _updateChatInLists(updated);
+      currentWorkspacePath.value = updated.workspacePath;
     } catch (e) {
       error.value = e.toString();
     }
@@ -864,10 +876,8 @@ class ChatViewModel {
   }
 
   void updateCurrentSentinel(SentinelEntity sentinel) {
+    // 草稿态的显式选择（含入口注入的绑定角色），落盘时随草稿一起写入。
     currentSentinel.value = sentinel;
-    // 无选中对话时的显式选择（含入口注入的绑定角色），
-    // 作为下一次新建对话的角色。
-    draftSentinel.value = sentinel;
   }
 
   void updateCurrentRetention(int retention) {
@@ -880,6 +890,10 @@ class ChatViewModel {
 
   void updateCurrentReasoningEffort(String effort) {
     currentReasoningEffort.value = effort;
+  }
+
+  void updateCurrentWorkspacePath(String? path) {
+    currentWorkspacePath.value = path;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1159,6 +1173,10 @@ class ChatViewModel {
   // 草稿
   // ═══════════════════════════════════════════════════════════════
 
+  /// 进入草稿态：卸掉当前对话，composer 回到新对话默认参数，不落盘。
+  ///
+  /// 桌面端点"New chat"、移动端进入无对话的聊天页、删掉最后一个对话都到
+  /// 这里；真正的会话文件要等首条消息发送时由 [createChat] 创建。
   Future<void> prepareNewChatDraft() async {
     _messageLoadGeneration++;
     _resetMessagePagination();
@@ -1166,6 +1184,8 @@ class ChatViewModel {
     currentChat.value = null;
     _discardPendingMessages();
     messages.value = [];
+    // 上一个对话的轮次起点不能留着，否则空白草稿页会画出它的指示条
+    turnStartIds.value = const [];
     pendingImages.value = [];
     currentTokenUsage.value = null;
     await _syncDraftDefaults();
@@ -1189,9 +1209,9 @@ class ChatViewModel {
       await _sentinelViewModel.getSentinels();
     }
     currentSentinel.value = _sentinelViewModel.defaultSentinel.value;
-    draftSentinel.value = null;
     currentRetention.value = defaultDraftRetention;
     currentTemperature.value = defaultDraftTemperature;
     currentReasoningEffort.value = ChatEntity.defaultReasoningEffort;
+    currentWorkspacePath.value = null;
   }
 }
