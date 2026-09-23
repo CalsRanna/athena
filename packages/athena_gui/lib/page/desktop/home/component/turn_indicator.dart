@@ -14,17 +14,17 @@ import 'package:flutter/material.dart';
 /// 自然比远处的长），没有 hover 时全部等长。宽度上限由调用方按工作区留白给出
 /// ——窄窗口里定宽列的留白被压缩，条跟着变短，不会压到正文上。
 ///
-/// **一条 = 一条 user message**，整段会话都画（见 [totalTurns]），而不是只画
-/// 已加载窗口里那几轮。窗口里那一段可 hover 可点（内容在手，能弹预览卡）；
-/// 更早的历史照样一条条画，**长度与颜色走的是同一套公式**（[barWidthFor] /
-/// [barColorFor]），没有"未加载就更短 / 更淡"这样的额外档位——两者唯一的区别
-/// 是历史那几轮没有内容可预览：hover 上去照样变长、也照样带动邻居，只是不弹
-/// 卡，点它由宿主先去补历史。整列因此永远是"整段会话"的比例，而不是"已加载
-/// 了几轮"的比例。
+/// **整列最多画 [maxBars] 条**：一条 = 一条 user message，但只画**视口当前轮
+/// 所在的那一页**（每 [maxBars] 轮一页）。轮次多的会话不再把整列拉长，也不必
+/// 把行高压矮——压矮会让条密到点不中，等于把这一列废掉。页内的条保持正常大小
+/// 与间距，且页内摆位稳定（页内跳转不重排）；跨页（滚动、或跳转把当前轮带过
+/// 页边界）时整列按新的当前轮重建。要看更早/更晚的轮次就滚到那一页——视口当前
+/// 轮由消息 sliver 上报，窗口自己会跟过来。
 ///
-/// 渲染分成两条路径，逻辑却只有一份（[_BarField]）：窗口里那几轮各自是控件
-/// （要 hover 命中区、要弹卡、要取卡片锚点的 RenderBox），历史那几段连起来一次
-/// `CustomPaint` 画完——条数可能上百上千，不为每条建控件。
+/// 页内的条分两种：已加载那几轮（内容在手，可 hover 弹预览卡）与更早的历史
+/// （照样按同一套长度与颜色画、照样能当 hover 锚点、照样能点，只是没有内容可
+/// 预览，点它由宿主先去补历史）。两者用的是同一套公式（[barWidthFor] /
+/// [barColorFor]），没有"未加载就更短 / 更淡"的专用档位。
 ///
 /// 交互：hover 弹预览卡（第一行 = 该轮用户消息，第二行 = 该轮 agent 回答），
 /// 点击把那一轮滚到视口顶部（滚动由 [TurnNavigator] 落到消息 sliver 上）。
@@ -41,7 +41,7 @@ class TurnIndicator extends StatefulWidget {
   ///
   /// 消息列表是窗口化分页的，[turns] 只是尾部一段；条数按整段会话算，而且
   /// **不从 [turns] 推**——那是窗口，计数是整段会话的属性（见
-  /// `ChatViewModel.turnStartIds`）。
+  /// `ChatViewModel.turnStartIds`）。整列按它切页（见 [maxBars]）。
   final int totalTurns;
 
   /// [turns] 第一轮在整段会话里的下标，用来把窗口内的条摆到正确位置。
@@ -78,6 +78,12 @@ class TurnIndicator extends StatefulWidget {
   /// 单条命中行高（条居中，上下各留一点，条才点得中）。
   static const double barRowHeight = 12;
 
+  /// 整列最多画几条 = 一页多少轮。超过就分页，只画视口当前轮所在的那一页。
+  ///
+  /// 20 条按 [barRowHeight] 排是 240 高，落在消息区里不占地方又点得中；这是
+  /// "一页多大"的唯一旋钮。
+  static const int maxBars = 20;
+
   /// 条长与颜色的过渡时长，跟全站 hover 过渡一致。
   static const Duration barDuration = Duration(milliseconds: 120);
 
@@ -90,8 +96,8 @@ class TurnIndicator extends StatefulWidget {
   /// 回到静止长度。
   ///
   /// [index] 与 [hoveredIndex] 都是**整段会话**里的下标：距离要跨"已加载 /
-  /// 未加载"那条线算，否则 hover 窗口边缘那一条时，紧挨着它的历史条不会跟着
-  /// 变长，两段的长度场就在窗口边界上断开。
+  /// 未加载"那条线算，否则 hover 页内历史那一条时，紧挨着它的已加载条不会跟着
+  /// 变长。
   static double barWidthFor({
     required int index,
     required int? hoveredIndex,
@@ -117,164 +123,14 @@ class TurnIndicator extends StatefulWidget {
   State<TurnIndicator> createState() => _TurnIndicatorState();
 }
 
-/// 一条轮次条在某一刻的样子：长度 + 颜色。过渡的两端都是它。
-@immutable
-class _BarVisual {
-  final double width;
-  final Color color;
-
-  const _BarVisual(this.width, this.color);
-
-  static _BarVisual lerp(_BarVisual from, _BarVisual to, double t) {
-    if (t >= 1) return to;
-    if (t <= 0) return from;
-    return _BarVisual(
-      from.width + (to.width - from.width) * t,
-      Color.lerp(from.color, to.color, t)!,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is _BarVisual && other.width == width && other.color == color;
-
-  @override
-  int get hashCode => Object.hash(width, color);
-}
-
-/// 整列的"长度 + 颜色场"。
-///
-/// 一条的**目标**样子只由三件事决定：它到 hover 锚点的距离
-/// （[TurnIndicator.barWidthFor]）、它是不是锚点自己、它是不是视口当前轮
-/// （[TurnIndicator.barColorFor]）。这套公式对窗口里的条与未加载的历史条一视
-/// 同仁，没有"未加载"专用档位。
-///
-/// 换锚点（或视口当前轮变了）时不是逐条各存一份动画，而是整列从"此刻的样子"
-/// 补间到"新的目标"：把此刻的视觉抄成起点、新目标记成目标，t 从 0 重走一遍。
-/// 只有此刻已经偏离静止态的条需要抄（锚点 ± [TurnIndicator.falloffSpread] 内，
-/// 十来条），其余条在整段过渡里恒为静止态——远端那些条因此仍然可以一次画完，
-/// 不必参与逐条动画。
-@immutable
-class _BarField {
-  /// 过渡起点：此后会偏离静止态的那些条。没有条目的下标 = 它此刻正是静止态。
-  final Map<int, _BarVisual> origin;
-
-  /// hover 锚点（整段会话的下标）；null = 没有 hover，整列回静止长度。
-  final int? anchor;
-
-  /// 视口当前轮（整段会话的下标）；-1 = 还没测出来。
-  final int currentIndex;
-
-  const _BarField({
-    this.origin = const {},
-    this.anchor,
-    this.currentIndex = -1,
-  });
-
-  /// 整列的静止档视觉：没有 hover、也不是视口当前轮的样子。
-  static _BarVisual restingVisual({
-    required double maxBarWidth,
-    required AthenaColors colors,
-  }) => _BarVisual(
-    maxBarWidth * TurnIndicator.restingWidthFactor,
-    TurnIndicator.barColorFor(highlighted: false, colors: colors),
-  );
-
-  /// 目标视觉：过渡的终点，也是没有过渡时的样子。
-  _BarVisual targetOf(
-    int index, {
-    required double maxBarWidth,
-    required AthenaColors colors,
-  }) => _BarVisual(
-    TurnIndicator.barWidthFor(
-      index: index,
-      hoveredIndex: anchor,
-      maxBarWidth: maxBarWidth,
-    ),
-    TurnIndicator.barColorFor(
-      highlighted: index == anchor || index == currentIndex,
-      colors: colors,
-    ),
-  );
-
-  /// 此刻的视觉：从起点向目标补间了 [t]。
-  _BarVisual visualOf(
-    int index, {
-    required double t,
-    required double maxBarWidth,
-    required AthenaColors colors,
-  }) => _BarVisual.lerp(
-    origin[index] ?? restingVisual(maxBarWidth: maxBarWidth, colors: colors),
-    targetOf(index, maxBarWidth: maxBarWidth, colors: colors),
-    t,
-  );
-
-  /// 换锚点 / 换视口当前轮：此刻的样子记成起点，新的目标记成目标，返回一个新的
-  /// 场（过渡从头走）。
-  ///
-  /// [t] 是调用时刻的过渡进度——它不一定走完（鼠标快速扫过时上一段还在半路），
-  /// 所以起点必须按**此刻**的视觉抄，不能按上一档的目标抄，否则会有一次可见的
-  /// 跳变。
-  _BarField retarget({
-    required int? anchor,
-    required int currentIndex,
-    required double t,
-    required int rows,
-    required double maxBarWidth,
-    required AthenaColors colors,
-  }) {
-    final candidates = <int>{
-      ...origin.keys,
-      ..._around(anchor, rows),
-      ..._around(this.anchor, rows),
-      ..._around(currentIndex, rows),
-      ..._around(this.currentIndex, rows),
-    };
-    final resting = restingVisual(maxBarWidth: maxBarWidth, colors: colors);
-    final kept = <int, _BarVisual>{};
-    for (final index in candidates) {
-      final visual = visualOf(
-        index,
-        t: t,
-        maxBarWidth: maxBarWidth,
-        colors: colors,
-      );
-      // 正好落在静止态的条不进起点表：它在整段过渡里都不会变
-      if (visual != resting) kept[index] = visual;
-    }
-    return _BarField(origin: kept, anchor: anchor, currentIndex: currentIndex);
-  }
-
-  /// 会被某个锚点带动的那几条（± [TurnIndicator.falloffSpread]），夹在
-  /// `[0, rows)` 内。
-  static Iterable<int> _around(int? index, int rows) sync* {
-    if (index == null || rows <= 0) return;
-    final from = math.max(0, index - TurnIndicator.falloffSpread);
-    final to = math.min(rows - 1, index + TurnIndicator.falloffSpread);
-    for (var i = from; i <= to; i++) {
-      yield i;
-    }
-  }
-}
-
-class _TurnIndicatorState extends State<TurnIndicator>
-    with SingleTickerProviderStateMixin {
-  /// hover 锚点，整段会话的下标：窗口里的条与未加载的历史条都能当锚点。
+class _TurnIndicatorState extends State<TurnIndicator> {
+  /// hover 锚点，整段会话的下标；页内任何一条都能当锚点。
   int? _hoveredIndex;
-
-  /// 视口当前轮，**整段会话**的下标（[TurnNavigator.currentTurnIndex] 报的是
-  /// 窗口内的下标，要加上窗口首轮的位置；-1 = 还没测出来、或本次没有轮次）。
-  int get _absoluteCurrentTurn {
-    final windowIndex = widget.navigator.currentTurnIndex.value;
-    return windowIndex < 0 ? -1 : widget.firstTurnIndex + windowIndex;
-  }
 
   Timer? _previewTimer;
   final Map<int, GlobalKey> _barKeys = {};
-  late final AnimationController _lengthController;
-  late _BarField _field;
 
-  /// 整列画多少行 = 窗口那几轮 + 未加载的历史。窗口首轮的下标大于扫描到的
+  /// 整段会话画多少行 = 窗口那几轮 + 未加载的历史。窗口首轮的下标大于扫描到的
   /// 总轮数时以窗口为准——新发出的消息先落进窗口、扫描还没跟上时会这样。
   int get _rowCount =>
       math.max(widget.totalTurns, widget.firstTurnIndex + widget.turns.length);
@@ -286,33 +142,41 @@ class _TurnIndicatorState extends State<TurnIndicator>
   bool _isLoaded(int absoluteIndex) =>
       absoluteIndex >= _windowStart && absoluteIndex < _windowEnd;
 
-  /// 当前的过渡进度（与 [AnimationController] 同一条曲线：全站 hover 过渡的
-  /// easeOut）。
-  double get _lengthT => Curves.easeOut.transform(_lengthController.value);
+  /// 视口当前轮，**整段会话**的下标（[TurnNavigator.currentTurnIndex] 报的是
+  /// 窗口内的下标，要加上窗口首轮的位置；-1 = 还没测出来、或本次没有轮次）。
+  int get _absoluteCurrentTurn {
+    final windowIndex = widget.navigator.currentTurnIndex.value;
+    return windowIndex < 0 ? -1 : widget.firstTurnIndex + windowIndex;
+  }
+
+  /// 整列当前画的那一页的起点（整段会话下标）。
+  ///
+  /// 当前轮还没上报时（打开会话的首帧）按"停在最新"算：打开时视口就在列表
+  /// 底部，这样首帧画的就是最后一页，不会先闪一页再跳过去。
+  int get _pageStart {
+    final rows = _rowCount;
+    if (rows <= TurnIndicator.maxBars) return 0;
+    final current = _absoluteCurrentTurn;
+    final anchor = current < 0 || current >= rows ? rows - 1 : current;
+    return (anchor ~/ TurnIndicator.maxBars) * TurnIndicator.maxBars;
+  }
 
   @override
   void initState() {
     super.initState();
-    _field = _BarField(currentIndex: _absoluteCurrentTurn);
-    _lengthController = AnimationController(
-      vsync: this,
-      duration: TurnIndicator.barDuration,
-    )..value = 1;
     widget.navigator.currentTurnIndex.addListener(_handleCurrentTurnChanged);
   }
 
   @override
   void didUpdateWidget(covariant TurnIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final navigatorChanged = !identical(oldWidget.navigator, widget.navigator);
-    if (navigatorChanged) {
+    if (!identical(oldWidget.navigator, widget.navigator)) {
       oldWidget.navigator.currentTurnIndex.removeListener(
         _handleCurrentTurnChanged,
       );
       widget.navigator.currentTurnIndex.addListener(_handleCurrentTurnChanged);
     }
     final windowChanged =
-        navigatorChanged ||
         oldWidget.totalTurns != widget.totalTurns ||
         oldWidget.firstTurnIndex != widget.firstTurnIndex ||
         oldWidget.turns.length != widget.turns.length ||
@@ -325,13 +189,7 @@ class _TurnIndicatorState extends State<TurnIndicator>
     if (_hoveredIndex != null && _hoveredIndex! >= _rowCount) {
       _hoveredIndex = null;
     }
-    // 行的下标口径整个变了，锚点也换了位置：不做补间，直接落到新目标
     _barKeys.clear();
-    _lengthController.value = 1;
-    _field = _BarField(
-      anchor: _hoveredIndex,
-      currentIndex: _absoluteCurrentTurn,
-    );
   }
 
   @override
@@ -339,8 +197,13 @@ class _TurnIndicatorState extends State<TurnIndicator>
     widget.navigator.currentTurnIndex.removeListener(_handleCurrentTurnChanged);
     _previewTimer?.cancel();
     DesktopChatPreviewManager.instance.dismissFor(this);
-    _lengthController.dispose();
     super.dispose();
+  }
+
+  /// 视口当前轮变了：高亮那条要换色、当前轮跨过页边界时整列还要换页——都在
+  /// 这一次重建里（值由 getter 现取，不必先存一份）。
+  void _handleCurrentTurnChanged() {
+    if (mounted) setState(() {});
   }
 
   GlobalKey _barKey(int absoluteIndex) => _barKeys.putIfAbsent(
@@ -348,26 +211,7 @@ class _TurnIndicatorState extends State<TurnIndicator>
     () => GlobalKey(debugLabel: 'turn-bar-$absoluteIndex'),
   );
 
-  /// 换锚点 / 视口当前轮：整列从此刻的视觉补间到新目标。
-  void _retarget({required int? anchor}) {
-    _field = _field.retarget(
-      anchor: anchor,
-      currentIndex: _absoluteCurrentTurn,
-      t: _lengthT,
-      rows: _rowCount,
-      maxBarWidth: widget.maxBarWidth,
-      colors: Theme.of(context).extension<AthenaColors>()!,
-    );
-  }
-
-  /// 视口当前轮变了：高亮跟着走，走同一段过渡。
-  void _handleCurrentTurnChanged() {
-    if (_absoluteCurrentTurn == _field.currentIndex) return;
-    setState(() => _retarget(anchor: _hoveredIndex));
-    _lengthController.forward(from: 0);
-  }
-
-  /// 指针停在某一轮上（窗口里的条与未加载的历史条都调到这里）。
+  /// 指针停在某一轮上（页内已加载的条与未加载的历史条都调到这里）。
   void _setHovered(int? absoluteIndex) {
     if (_hoveredIndex == absoluteIndex) return;
     _previewTimer?.cancel();
@@ -380,11 +224,7 @@ class _TurnIndicatorState extends State<TurnIndicator>
       // 未加载的历史没有内容可预览：照样变长，但不弹卡
       DesktopChatPreviewManager.instance.dismissFor(this);
     }
-    setState(() {
-      _hoveredIndex = absoluteIndex;
-      _retarget(anchor: absoluteIndex);
-    });
-    _lengthController.forward(from: 0);
+    setState(() => _hoveredIndex = absoluteIndex);
   }
 
   void _handleExit(int absoluteIndex) {
@@ -396,18 +236,6 @@ class _TurnIndicatorState extends State<TurnIndicator>
     DesktopChatPreviewManager.instance.dismissFor(this);
     // 报整段会话的下标：宿主据此决定是直接滚，还是先翻页把这一轮补进来
     widget.onTurnSelected(absoluteIndex);
-  }
-
-  /// 指针纵坐标落在这一段里的哪一条上（整段会话的下标）。
-  int _rowAt(
-    Offset localPosition,
-    int startAbsoluteIndex,
-    int count,
-    double rowHeight,
-  ) {
-    if (rowHeight <= 0) return startAbsoluteIndex;
-    final offset = (localPosition.dy / rowHeight).floor().clamp(0, count - 1);
-    return startAbsoluteIndex + offset;
   }
 
   void _showPreview(int absoluteIndex) {
@@ -442,111 +270,35 @@ class _TurnIndicatorState extends State<TurnIndicator>
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 行高按整段会话的轮数收缩，永远铺得下：旧版固定 12 高，轮次一多就
-        // RenderFlex overflow（实测 40 条在 300 高里溢出 180）。代价是很长
-        // 的会话里条变密、命中区变窄——那时它的作用是位置图，不是精确点选。
         final rows = _rowCount;
-        final rowHeight = rows <= 0 || !constraints.hasBoundedHeight
+        final pageStart = _pageStart;
+        final pageEnd = math.min(pageStart + TurnIndicator.maxBars, rows);
+        final pageRows = math.max(0, pageEnd - pageStart);
+        // 一页最多 20 条，正常情况用满行高；窗口矮到放不下这一页时才压（那时
+        // 整列本来也铺不下）。旧版按**整段会话**的轮数压行高，几十轮就压得点不中
+        final rowHeight = pageRows <= 0 || !constraints.hasBoundedHeight
             ? TurnIndicator.barRowHeight
             : math.min(
                 TurnIndicator.barRowHeight,
-                constraints.maxHeight / rows,
+                constraints.maxHeight / pageRows,
               );
-        final unloadedBefore = math.max(0, _windowStart);
-        final unloadedAfter = math.max(0, rows - _windowEnd);
-        // 长度与颜色随 hover 锚点和视口当前轮变，两者都由这一条控制器补间
-        return AnimatedBuilder(
-          animation: _lengthController,
-          builder: (context, _) {
-            final t = _lengthT;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (unloadedBefore > 0)
-                  _buildUnloadedBars(colors, unloadedBefore, 0, rowHeight, t),
-                for (var index = 0; index < widget.turns.length; index++)
-                  _buildBar(
-                    colors,
-                    widget.firstTurnIndex + index,
-                    rowHeight,
-                    t,
-                  ),
-                if (unloadedAfter > 0)
-                  _buildUnloadedBars(
-                    colors,
-                    unloadedAfter,
-                    _windowEnd,
-                    rowHeight,
-                    t,
-                  ),
-              ],
-            );
-          },
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = pageStart; index < pageEnd; index++)
+              _buildBar(colors, index, rowHeight),
+          ],
         );
       },
     );
   }
 
-  /// 未加载的历史轮次：长度与颜色照 [_BarField] 走，与窗口里的条同一套公式，
-  /// 只是没有内容可预览。
-  ///
-  /// 连成一段一次画完，不为每条建控件——条数可能上百上千，而整列每次都会被
-  /// 重建（视口当前轮一变、hover 一动就重画）。轮数密到亚像素时它们自然并成
-  /// 一条连续的轨。
-  ///
-  /// 它们照样是 hover 的锚点：指针停在哪一条（由行高换算，所以不必为每行建
-  /// 控件）哪一条最长，相邻的按距离递减——只是不弹预览卡。点它由宿主先把历史
-  /// 翻页补进来，再滚过去。
-  Widget _buildUnloadedBars(
-    AthenaColors colors,
-    int count,
-    int startAbsoluteIndex,
-    double rowHeight,
-    double t,
-  ) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (event) => _setHovered(
-        _rowAt(event.localPosition, startAbsoluteIndex, count, rowHeight),
-      ),
-      onHover: (event) => _setHovered(
-        _rowAt(event.localPosition, startAbsoluteIndex, count, rowHeight),
-      ),
-      onExit: (_) => _setHovered(null),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapUp: (details) => _handleTap(
-          _rowAt(details.localPosition, startAbsoluteIndex, count, rowHeight),
-        ),
-        child: CustomPaint(
-          size: Size(widget.maxBarWidth, count * rowHeight),
-          painter: _TurnBarsPainter(
-            field: _field,
-            t: t,
-            startIndex: startAbsoluteIndex,
-            count: count,
-            maxBarWidth: widget.maxBarWidth,
-            rowHeight: rowHeight,
-            colors: colors,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBar(
-    AthenaColors colors,
-    int absoluteIndex,
-    double rowHeight,
-    double t,
-  ) {
-    final visual = _field.visualOf(
-      absoluteIndex,
-      t: t,
-      maxBarWidth: widget.maxBarWidth,
-      colors: colors,
-    );
+  Widget _buildBar(AthenaColors colors, int absoluteIndex, double rowHeight) {
+    // 视口当前那一轮与 hover 那一轮都用行标签色，其余次级图标色压到 45%——
+    // 与侧栏会话行状态点的静止档同一套灰阶。
+    final highlighted =
+        absoluteIndex == _hoveredIndex || absoluteIndex == _absoluteCurrentTurn;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => _setHovered(absoluteIndex),
@@ -558,13 +310,22 @@ class _TurnIndicatorState extends State<TurnIndicator>
           height: rowHeight,
           child: Align(
             alignment: Alignment.centerLeft,
-            child: Container(
+            child: AnimatedContainer(
               key: _barKey(absoluteIndex),
-              width: visual.width,
+              duration: TurnIndicator.barDuration,
+              curve: Curves.easeOut,
+              width: TurnIndicator.barWidthFor(
+                index: absoluteIndex,
+                hoveredIndex: _hoveredIndex,
+                maxBarWidth: widget.maxBarWidth,
+              ),
               // 行变矮时条也跟着变薄，密到极限时仍留一条可见的线
               height: math.min(TurnIndicator.barHeight, rowHeight * 0.6),
               decoration: BoxDecoration(
-                color: visual.color,
+                color: TurnIndicator.barColorFor(
+                  highlighted: highlighted,
+                  colors: colors,
+                ),
                 borderRadius: BorderRadius.circular(AthenaRadius.pill),
               ),
             ),
@@ -573,62 +334,4 @@ class _TurnIndicatorState extends State<TurnIndicator>
       ),
     );
   }
-}
-
-/// 未加载的历史轮次：一段一次画完。
-///
-/// 几何与颜色一律向 [_BarField] 要（与窗口里那些条共用同一套公式与同一段过渡），
-/// 这里的职责只有"把 n 条摆成一行一条"。
-class _TurnBarsPainter extends CustomPainter {
-  final _BarField field;
-  final double t;
-  final int startIndex;
-  final int count;
-  final double maxBarWidth;
-  final double rowHeight;
-  final AthenaColors colors;
-
-  const _TurnBarsPainter({
-    required this.field,
-    required this.t,
-    required this.startIndex,
-    required this.count,
-    required this.maxBarWidth,
-    required this.rowHeight,
-    required this.colors,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final barHeight = math.min(TurnIndicator.barHeight, rowHeight * 0.6);
-    final radius = Radius.circular(barHeight / 2);
-    final paint = Paint();
-    for (var offset = 0; offset < count; offset++) {
-      final visual = field.visualOf(
-        startIndex + offset,
-        t: t,
-        maxBarWidth: maxBarWidth,
-        colors: colors,
-      );
-      if (visual.width <= 0) continue;
-      final top = offset * rowHeight + (rowHeight - barHeight) / 2;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(0, top, visual.width, barHeight),
-          radius,
-        ),
-        paint..color = visual.color,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TurnBarsPainter oldDelegate) =>
-      oldDelegate.t != t ||
-      oldDelegate.startIndex != startIndex ||
-      oldDelegate.count != count ||
-      oldDelegate.maxBarWidth != maxBarWidth ||
-      oldDelegate.rowHeight != rowHeight ||
-      oldDelegate.colors != colors ||
-      !identical(oldDelegate.field, field);
 }
