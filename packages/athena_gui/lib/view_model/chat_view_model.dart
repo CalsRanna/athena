@@ -59,10 +59,6 @@ class ChatViewModel {
   int _messageLoadGeneration = 0;
   int _olderLoadGeneration = 0;
 
-  /// 侧栏悬浮预览的开头回答,按 chatId 缓存(见 [openingAnswerPreview])。
-  /// 删对话时清掉对应项:会话文件删了,id 将来可能被别的会话用上。
-  final Map<int, String> _openingAnswerPreviews = {};
-
   /// 轮次指示器的全量轮次起点，按 chatId 缓存：一次整文件扫描的代价不低，
   /// 切回同一会话时直接用缓存。消息被删除（会连带删掉后面的轮次）时按 id 截断。
   final Map<int, List<int>> _turnStartIdsByChat = {};
@@ -207,18 +203,6 @@ class ChatViewModel {
         : all.where((message) => (message.id ?? 0) < beforeId).toList();
     if (eligible.length <= count) return eligible;
     return eligible.sublist(eligible.length - count);
-  }
-
-  /// 会话开头那一轮的 agent 回答正文,供侧栏悬浮预览使用;没有时返回空串。
-  ///
-  /// 「开头那一轮」落库后不再变化,所以按 chatId 缓存,反复悬浮不必重读
-  /// 会话文件。空结果(首轮还在跑)不进缓存,收尾后再悬浮就能读到。
-  Future<String> openingAnswerPreview(int chatId) async {
-    final cached = _openingAnswerPreviews[chatId];
-    if (cached != null) return cached;
-    final text = await _messageRepo.getOpeningAnswerPreview(chatId);
-    if (text.isNotEmpty) _openingAnswerPreviews[chatId] = text;
-    return text;
   }
 
   Future<MessageWindow> _loadMessagePage(int chatId, {int? beforeId}) async {
@@ -536,7 +520,6 @@ class ChatViewModel {
       _rename.cancel(chat.id!);
 
       await _manageService.deleteChat(chat.id!);
-      _openingAnswerPreviews.remove(chat.id);
       _turnStartIdsByChat.remove(chat.id);
       _pendingTurnIds.remove(chat.id);
 
@@ -580,7 +563,6 @@ class ChatViewModel {
       }
 
       await _manageService.deleteChats(ids);
-      ids.forEach(_openingAnswerPreviews.remove);
       ids.forEach(_turnStartIdsByChat.remove);
       ids.forEach(_pendingTurnIds.remove);
 

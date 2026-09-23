@@ -37,9 +37,9 @@ int windowFirstTurnIndex(List<int> allTurnIds, List<ChatTurn> windowTurns) {
 
 /// 把消息列表切成轮次。
 ///
-/// 规则与 `MessageRepository.getOpeningAnswerPreview` 一致：回答取用户消息
-/// **之后第一条有正文的 assistant 消息**，跳过空占位行与 reasoning 行；
-/// compaction 消息不算回答。
+/// 回答取用户消息**之后第一条有正文的 assistant 消息**，跳过空占位行与
+/// reasoning 行；compaction 消息不算回答。轮次口径只在这里定义一处——原先
+/// 侧栏会话行预览另按同一口径从文件头取过一遍，已随那张卡一起去掉。
 ///
 /// 传入的通常只是**已加载**的窗口（消息列表是窗口化分页的），所以历史被压缩
 /// 或尚未翻页时，前面可能缺少用户消息——那些助手消息不成轮，直接略过。

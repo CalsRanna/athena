@@ -109,34 +109,6 @@ class SessionJsonlStore {
     });
   }
 
-  /// 从文件头部顺序读消息行,最多 [count] 条(读够即停,不碰文件其余部分)。
-  ///
-  /// 会话开头预览只需要最前面几条消息,而 [readMessageRows] 会整文件读
-  /// (长对话的 JSONL 可达几百 MB,见 [loadRecentRows] 的注释);这里顺序
-  /// 流式读到第 [count] 条就跳出,取消订阅即关闭句柄,读取量 ≈ 前几条
-  /// 消息的字节数,与文件总大小无关。
-  ///
-  /// 与 [loadRecentRows] 一样走该文件的串行锁,不会读到整文件重写的中间
-  /// 状态。非法 UTF-8 按损坏行跳过(与 [readMessageRows] 的容错一致)。
-  Future<List<Map<String, dynamic>>> loadLeadingMessageRows(int count) {
-    return _serialized(() async {
-      if (count <= 0 || !await file.exists()) return const [];
-      final rows = <Map<String, dynamic>>[];
-      final lines = file
-          .openRead()
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .transform(const LineSplitter());
-      await for (final line in lines) {
-        if (line.trim().isEmpty) continue;
-        final row = _decodeRow(line);
-        if (row == null || row['type'] != messageType) continue;
-        rows.add(row);
-        if (rows.length >= count) break;
-      }
-      return rows;
-    });
-  }
-
   /// 顺序扫一遍文件,返回所有 user 行的 id(按行序)。
   ///
   /// 轮次指示器要的是"整段会话有多少轮"与"已加载窗口从第几轮开始",而窗口化

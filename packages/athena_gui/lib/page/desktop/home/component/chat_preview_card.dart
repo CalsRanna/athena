@@ -4,20 +4,22 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// 侧栏会话行的悬浮预览卡：鼠标停在会话行上时，在行右侧弹出的一张浮层。
+/// 悬浮预览卡：鼠标停在轮次条上时，在条右侧弹出的一张浮层（唯一使用处见
+/// `turn_indicator.dart`）。
 ///
-/// 只有两行内容：
-/// - 第一行：会话标题
-/// - 第二行：会话**开头那一轮**的 agent 回答正文（首条用户消息之后紧跟的
-///   那条回答，见 `MessageRepository.getOpeningAnswerPreview`）。它不是最新
-///   消息——最新一条可能只是工具步骤，或还没收尾的占位。
+/// 只有两行内容，都由调用方给：
+/// - 第一行：标题行（轮次条传该轮的用户消息）
+/// - 第二行：正文（轮次条传该轮的 agent 回答；本轮还没收尾时为空，那就不画）
+///
+/// 它自己不取数：卡与数据解耦，传进来什么就画什么。侧栏会话行曾用它做预览
+/// （并从会话文件头另取开头那一轮的回答），那处弹卡与取数链已一并去掉。
 ///
 /// 它只读、不可点，所以整张卡不参与命中测试（见 [DesktopChatPreviewManager]
-/// 的 `IgnorePointer`）：卡片压在指针旁边的行上时，不该把 hover 从行上抢走，
-/// 否则卡片一弹出侧栏行的 hover 底色就"熄"了。
+/// 的 `IgnorePointer`）：卡片压在指针旁边的条上时，不该把 hover 从条上抢走，
+/// 否则卡片一弹出，条的 hover 长度就跟着缩回去了。
 class ChatPreviewCard extends StatelessWidget {
-  /// 卡片宽度。侧栏 288，卡片越过侧栏右边缘压在画布上，给正文留出能读
-  /// 两三句的宽度。
+  /// 卡片宽度。锚点（轮次条）在消息区左留白里，卡片从条的右缘往正文方向铺开，
+  /// 给正文留出能读两三句的宽度。
   static const double width = 248;
 
   /// 卡片最大高度（标题 19 + 间距 4 + 正文 3 行约 53 + 上下内边距 22）。
@@ -83,12 +85,12 @@ class ChatPreviewCard extends StatelessWidget {
 
 /// 悬浮预览卡的浮层管理：同一时刻只留一张卡。
 ///
-/// 鼠标在行间快速划过时，旧行先 [dismissFor]、新行再 [show]，不会叠出两张；
-/// 卡片归属由 [show] 的 `owner` 标记，行 State 销毁时只关自己那张，不会误关
-/// 别人刚弹出的。
+/// 鼠标在锚点之间快速划过时，旧锚点先 [dismissFor]、新锚点再 [show]，不会叠出
+/// 两张；卡片归属由 [show] 的 `owner` 标记，锚点的 State 销毁时只关自己那张，
+/// 不会误关别人刚弹出的。
 ///
 /// 卡片刻意不带遮罩层：它不像右键菜单那样要吃掉"点外面关闭"的手势，指针
-/// 停在行上才是它的常态。
+/// 停在锚点上才是它的常态。
 class DesktopChatPreviewManager {
   /// 正在显示的卡。
   OverlayEntry? _entry;
@@ -111,7 +113,7 @@ class DesktopChatPreviewManager {
   /// 退场时长。比进场短：指针已经移开，收卡要跟手。
   static const Duration hideDuration = Duration(milliseconds: 100);
 
-  /// 在 [anchor]（会话行的全局矩形）右侧弹出预览卡；右侧/下侧放不下时回退。
+  /// 在 [anchor]（锚点的全局矩形）右侧弹出预览卡；右侧/下侧放不下时回退。
   void show(
     BuildContext context, {
     required Object owner,
@@ -119,7 +121,7 @@ class DesktopChatPreviewManager {
     required String title,
     required String answer,
   }) {
-    // 上一张直接摘掉（不等它淡出）：鼠标挪到另一行时不该看到两张卡
+    // 上一张直接摘掉（不等它淡出）：鼠标挪到另一条上时不该看到两张卡
     _clear();
     final key = GlobalKey<_PreviewCardOverlayState>();
     _key = key;
