@@ -1,921 +1,360 @@
-# Design System
-
-## 1. Visual Theme & Atmosphere
-
-Athena 是一个跨平台的 AI 工作台。它的视觉语言基准是 **Claude 桌面端**
-（macOS 版，Anthropic）。
-
-本节所有数值来自 **Claude 桌面端的 `app.asar`**（`/Applications/Claude.app/Contents/Resources/app.asar`
-里的 `MainWindowPage-*.css`，一套 `--cds-*` 设计系统），并与窗口截图采样交叉验证。
-
-| 项 | Claude 实测 / token | 值 |
-|----|--------------------|-----|
-| 中性灰阶 | `--cds-gray-0..900` | `#fff` → `#fcfcfb` → `#f9f9f7` … `#0b0b0b` |
-| 画布 | `--cds-gray-10`（采样一致） | `#FCFCFB` |
-| 侧栏 / 面板 | 实测采样 | `#FBFBF9`（与画布几乎无差） |
-| 行 hover | 实测采样 | `#F0EFEC` |
-| 行选中 | `--cds-gray-60` | `#EDECE9` |
-| 弹出层 | `--cds-surface-2` | `#FFFFFF` |
-| 描边 | `--cds-gray-100` | `#E1E0D9` |
-| 主文字 | `--cds-gray-900` | `#0B0B0B` |
-| 次级文字 | `--cds-gray-500` | `#6D6B67` |
-| 弱文字 | `--cds-gray-400` | `#898781` |
-| 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
-| composer 圆角 | `--cds-radius-composer` | **12** |
-| 正文字号 | `--cds-font-size-body` | 默认档 14；**本仓取 `--textsm` 档 13**（行高 19，见 §3） |
-| 消息正文字号 | `--cds-font-size-prose` | 默认档 15；**本仓取 `--textsm` 档 13**（行高 20） |
-| 头像档位 | `--cds-avatar-lg/md/sm/xs` | 36 / 28 / 20 / 16 |
-
-### 核心特征
-
-- **浅色为原生形态**：Claude 默认是暖白底 + 暖灰侧栏。深色是同一体系的镜像。
-- **灰阶是暖的**：`--cds-gray-*` 从 `#fff` 到 `#0b0b0b`，白端带黄绿感
-  （`#f9f9f7` / `#fcfcfb`），和中性灰一眼能分辨。深色画布取 `#1A1A19`，
-  侧栏更暗（`#151515`），不使用纯黑。
-- **UI 用系统字体，等宽只给代码**：Claude 的侧栏、设置、按钮、正文都是比例字体；
-  等宽只出现在代码块、行内代码和内置终端。
-- **圆角克制**：可点行 / 控件 7、卡片 10、对话框 / 菜单 12；筛选 chip 是胶囊，
-  composer 内的 chip 是 4 的小方块。
-- **浮层带柔阴影**：对话框与菜单不是硬 1px 描边，而是一圈很柔的投影；
-  composer 输入容器是 1px 中性灰描边加一层向下的柔投影。
-- **唯一彩色是强调蓝** `#2A78D6`（深色 `#5598E7`），用于发送键与运行中状态点。
-
-Athena 在 Claude 语言之上的自有取舍：
-1. 会话上下文（角色、模型）以 chip 形式内嵌在 composer 顶部；
-2. 侧栏页脚是账号式菜单入口（Claude 那里是账号），点开只有设置与关于两个真实条目。
-
-**核心设计理念**
-- 背景必须退后，内容和控制区必须前置。
-- 层级靠三样东西：灰底提亮、极淡分隔线、柔阴影。不要引入第四种手段。
-- 界面应当像"为长时间使用而设计"，而不是为了首屏惊艳。
-- 桌面和移动端共享同一套审美语言，只改变结构，不改变人格。
-
-### Priority Rules
-
-1. **先保住"暖白底 + 系统字体 + 克制的圆角"的底子**。
-2. **再保住克制感**：如果"更强视觉冲击"和"更安静的专业工具感"冲突，选后者。
-3. **再考虑层次强化**：优先增加灰度差与柔阴影，而不是新增颜色或特效。
-4. **最后才允许局部变化**：新页面可以有新构图，但不能引入第二套视觉人格。
-
-### Forbidden Patterns
-
-- 纯黑画布（`#000000`）
-- 全站等宽字体
-- 装饰性渐变边框、发光 / 光晕
-- 用硬 1px 描边代替对话框 / 菜单的柔阴影
-- 大面积单色品牌色；强调色只有 `accent` 一支，且只用于主要动作
-
----
-
-## 2. Color Palette & Roles
-
-Claude 的色板是一套**偏暖的中性灰**，和普通中性灰一眼能分辨：白端带一点黄绿
-（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。它同样用"基色 + alpha"派生
-（`--cds-alpha-0..9` = `neutral-900` 的 0/5/10/20/35/50/60/70/85/95%）。
-
-### Primary Surfaces
-
-| Token | Light | Dark | 说明 |
-|-------|-------|------|------|
-| `surface` | `#FCFCFB` | `#1A1A19` | 主画布 |
-| `surfacePanel` | `#FBFBF9` | `#151515` | 侧栏 / 顶栏（与画布几乎无差） |
-| `surfaceMobile` | `#FFFFFF` | `#1E1E1D` | 对话框 / sheet |
-| `surfaceDeep` | `#F3F3F0` | `#151515` | 深层容器 |
-| `surfaceRaised` | `#0B0B0B` | `#FFFFFF` | 主操作实心底 |
-| `surfaceButtonSecondary` | `#F0EFEC` | `#2C2C2A` | 次级按钮 / 上下文条 |
-| `surfaceHover` | `#F0EFEC` | `#2C2C2A` | hover 态（实测） |
-| `surfaceSelected` | `#EDECE9` | `#383835` | 选中态（实测） |
-
-### Text
-
-| Token | Light | Dark | Claude 来源 |
-|-------|-------|------|------------|
-| `textPrimary` | `#0B0B0B` | `#F6F6F4` | `gray-900` / `gray-30` |
-| `textInput` | `#20201F` | `#E7E6E1` | `gray-800` / `gray-80` |
-| `textSecondary` | `#6D6B67` | `#A5A49A` | `gray-500` / `gray-300` |
-| `textWeak` | `#898781` | `#898781` | `gray-400` |
-| `textRowLabel` | `#52514E` | `#A5A49A` | 列表行标签的静止色（`gray-600`，比次级文字更深） |
-| `textOnRaised` | `#FFFFFF` | `#0B0B0B` | 反色块上的文字 |
-| `textOnCode` | `#20201F` | `#E1E0D9` | 代码容器上的文字 |
-| `textSecondaryOnRaised` | `#A5A49A` | `#5F5E5A` | 反色块上的次级文字 |
-| `textSecondaryOnCode` | `#6D6B67` | `#A5A49A` | 代码容器上的次级文字与图标 |
-| `dangerText` | `#832F2B` | `#E66767` | 菜单危险项文字（比 `statusError` 深） |
-
-### Borders
-
-| Token | Light | Dark |
-|-------|-------|------|
-| `border` | `#E1E0D9` | `#2C2C2A` |
-| `borderStrong` | `#C3C2B7` | `#454442` |
-| `divider` | `#E1E0D9` | `#2C2C2A` |
-| `borderChrome` | `#EFEFED` | `#212121` |
-
-`borderChrome` 是**窗口外壳**的接缝线（侧栏右边界、侧栏页脚上边、顶栏里那段侧栏边）：
-它比 `border` 轻一档（neutral-900 的 5% 对 10%，实测对比度 1.11:1 对 1.28:1），
-因为外壳线是「面与面的接缝」，不是容器的轮廓——容器描边该更实，外壳接缝该更虚。
-
-### 白底上的中性灰
-
-Claude 的**设置面板**与 **composer 输入容器**用的是一组**中性灰**（neutral-900 的
-alpha 阶：约 3% / 5% / 10% / 25%），不是侧栏那套暖灰——暖灰铺在纯白容器上会偏黄。
-这组灰只有下面 7 个 token，全站的"白底上的线与底"都从这里取，不再各自定义：
-
-| Token | Light | Dark | 用途 |
-|-------|-------|------|------|
-| `neutralHairline` | `#F7F7F7` | `#212121` | 顶栏底线（只比画布暗 5/255） |
-| `neutralRule` | `#F3F3F3` | `#2A2A28` | 设置面板发丝分隔线、分段控件轨道、行 hover 底 |
-| `neutralBorder` | `#E4E4E3` | `#2C2C2A` | 白底容器的 1px 描边：composer 常态、设置控件、搜索框、导航 / 列表分界 |
-| `neutralBorderStrong` | `#BFBFBE` | `#454442` | composer 聚焦描边 |
-| `neutralSelected` | `#E3E3E2` | `#2C2C2A` | 设置导航 / 列表的选中行底 |
-| `neutralControlFill` | `#FFFFFF` | `#383835` | 分段控件选中块、下拉框底 |
-| `scrim` | `#0B0B0B` @40% | `#000000` @48% | 设置面板遮罩 |
-
-`neutralBorder` 的实测值在 `#E1E1E0`（composer）到 `#E7E7E7`（设置控件）之间，
-取中值 `#E4E4E3`（导航分界的实测值），各处偏差不超过 3/255。深色一套无法从浅色
-截图量取，按同一语义镜像推导。设置面板里与既有 token 同值的角色直接复用既有
-token：导航底 = `surfacePanel`、内容区与搜索框底 = `surfaceMobile`、导航静止字 =
-`textRowLabel`、分组标题与说明 = `textWeak`、选中字 = `textPrimary`。
-
-### Accent & Status
-
-| Token | Light | Dark | Claude 来源 |
-|-------|-------|------|------------|
-| `accent` | `#2A78D6` | `#5598E7` | `role-accent-fill` = `blue-450` / `blue-350` |
-| `statusSuccess` | `#0CA30C` | `#35B231` | `green-400` / `green-350` |
-| `statusWarning` | `#EB6834` | `#F09978` | `orange-350` / `orange-250` |
-| `statusError` | `#D03B3B` | `#E66767` | `red-450` / `red-350` |
-
-### 控件与容器
-
-| Token | Light | Dark |
-|-------|-------|------|
-| `switchTrackOff` | `#C3C2B7` | `#454442` |
-| `checkboxOff` | `#B4B3A8` | `#5F5E5A` |
-| `iconSecondary` | `#898781` | `#A5A49A` |
-| `cardHeader` | `#F0EFEC` | `#2C2C2A` |
-| `codeBackground` | `#F6F6F4` | `#20201F` |
-| `avatarBackground` | `#E4E3DD` | `#383835` |
-| `shadow` | `#0B0B0B` | `#000000` |
-| `switchKnob` | `#FFFFFF` | `#FFFFFF` |
-| `iconOnRaised` | `#FFFFFF` | `#0B0B0B` |
-| `inputBackground` | `#FFFFFF` | `#1E1E1D` |
-
-### Markdown
-
-| Token | Light | Dark |
-|-------|-------|------|
-| `markdownLink` | `#256ABF` | `#6DA7EC` |
-| `markdownStrikethrough` | `#898781` | `#898781` |
-| `markdownMath` | `#0B0B0B` | `#E1E0D9` |
-
-### Semantic Principles
-
-- `accent` 是全局唯一彩色，只用于发送键、运行中状态点与 Material 默认强调（光标、进度条）；
-  Markdown 链接另有 `markdownLink`。
-- 状态色只承担功能语义；色相取自 Claude 的 `green / orange / red` 色阶。
-- 选中与 hover 用**灰阶档位**表达（`gray-70` / `gray-90`），不做反转填充。
-- **hover 只改底色，文字不动**。实测 Claude 的侧栏行在 hover 前后标签都是
-  `#52514F`；把标签一起提亮会让文字"闪一下"，是错的。
-- **不要从 `Colors.transparent` 做颜色动画**。它的 RGB 是黑色，`AnimatedContainer`
-  插值中途会渲染成半透明深灰，表现为"hover 先闪一下深色再变浅"。要用目标色的
-  0 透明度版本（`color.withValues(alpha: 0)`），让 RGB 全程一致、只有 alpha 在动。
-- 一次只用一种手段：有灰底就不要再加边框。
-
-### Token Governance
-
-- 不新增彩色；`accent` 之外任何色相都要有功能语义。
-- 新增灰阶一律从 `--cds-gray-*` 这套暖灰里取，不要手挑一个相近的中性灰。
-- 不新增圆角或阴影等级（见 §5、§6）。
-- 白底容器上的线与底只从 `neutral*` 七个 token 里取，不要再在组件里私藏一个
-  `Color(0x...)`。
-
----
-
-## 3. Typography Rules
-
-### Font Family
-
-- **UI / 正文 / 按钮 / 侧栏 / 设置**：系统字体（`AthenaFont.ui == null`）。
-  macOS 上是 SF Pro，Windows 上是 Segoe UI；CJK 由系统回退处理。
-- **代码 / 行内代码 / 工具输出 / 终端**：`AthenaFont.mono`（Menlo → SF Mono →
-  Consolas → DejaVu Sans Mono → monospace）。
-- 全站**只有一个等宽来源**：`athenaMono()`。不要引入第二种等宽字体。
-
-> **历史教训**：早期实现把整个 UI 做成等宽，并因此移除了 `google_fonts`。
-> 这是误读——Claude 只有代码与终端用等宽，UI 是比例字体。
-
-### Hierarchy
-
-取值口径：Claude 的 `.cds-root` 默认档是 caption 12 / body 14 / prose 15 /
-heading 14；本仓的正文与消息正文取的是它**文字档 small** 解析后的值
-（`--cds-font-size-body--textsm` / `--cds-font-size-prose--textsm` = 13），
-并用窗口截图的文字总宽反推交叉验证过（侧栏行反推 12.6、消息正文反推 13.0；
-按 14 / 15 算都对不上）。标题、标签、说明仍按默认档。
-
-| Role | Token | Size | Line height | Weight | Font | Usage |
-|------|-------|------|-------------|--------|------|-------|
-| Hero | `AthenaFontSize.hero` | 22 | — | 600 | UI | 空态欢迎大标题 |
-| Page / Dialog Title | `AthenaFontSize.title` | 15 | — | 600 | UI | 对话框、页面标题（`--cds-font-size-heading--textlg`） |
-| Section Title | `AthenaFontSize.section` | 14 | — | 500-600 | UI | 分区标题、卡片标题（`--cds-font-size-heading`） |
-| Prose | `AthenaFontSize.prose` | 13 | **20**（`proseHeight`） | 400 | UI | **消息正文（Markdown）**（`--cds-font-size-prose--textsm` / `--cds-leading-prose`） |
-| Body | `AthenaFontSize.body` | 13 | **19**（`bodyHeight`） | 400 | UI | 正文、输入框、**侧栏行**（`--cds-font-size-body--textsm` / `--cds-leading-body`） |
-| Label | `AthenaFontSize.label` | 12 | — | 400-600 | UI | 标签、chip、小按钮 |
-| Caption | `AthenaFontSize.caption` | 12 | — | 400 | UI | 元信息、分组标题（`--cds-font-size-caption`） |
-| Mono | `AthenaFontSize.mono` | 12 | — | 400 | Mono | 代码、工具参数、输出（`--cds-font-size-code`） |
-
-| Row | `AthenaFontSize.row` | 14 | — | 400 | UI | 菜单条目、选择器行、设置行（Claude 默认档 body） |
-
-`row` 与 `section` 同号不同角色：`section` 是加粗的标题，`row` 是常规字重的行文字。
-
-**调用方不直接拼 `TextStyle`**，而是取 `AthenaTextStyle` 的预设再补颜色：
-
-```dart
-Text(title, style: AthenaTextStyle.section.copyWith(color: colors.textPrimary));
-```
-
-| 预设 | 字号 / 字重 | 行盒 |
-|------|------------|------|
-| `AthenaTextStyle.hero` | 22 / w600 | — |
-| `AthenaTextStyle.title` | 15 / w600 | — |
-| `AthenaTextStyle.section` | 14 / w500 | — |
-| `AthenaTextStyle.row` | 14 / w400 | — |
-| `AthenaTextStyle.prose` | 13 / w400 | **20**（烧进预设） |
-| `AthenaTextStyle.body` | 13 / w400 | 不带；多行时加 `height: AthenaFontSize.bodyHeight` |
-| `AthenaTextStyle.label` | 12 / w500 | — |
-| `AthenaTextStyle.caption` | 12 / w400 | — |
-| `athenaMono()` | 12 / w400 | — |
-
-字重与预设不同时用 `copyWith(fontWeight:)` 覆盖；行高只有 `prose` 烧进预设（它
-一定是多行正文），`body` 多数时候是单行控件文字，多行时再显式给 `bodyHeight`。
-
-**主字号表没有 16 与 20 这两档**。曾经的 16（移动端列表标题）归入 `section`，
-20（移动端页标题、桌面表单对话框标题）归入 `title`、页内的分区标题归入 `section`，
-24（移动端首页大标题）归入 `hero`——层级靠字重与灰度，不靠再多一档字号。全仓只剩两处字面量字号，都不是
-文字档位：空态头像里的 emoji 字形（26）与脚注 / 引用徽标的字形（10）。
-
-设置面板的字号（`AthenaSettings.navFontSize` / `rowFontSize` / `controlFontSize` 等）
-都是主字号表的别名（`row` / `body` / `label` / `caption`）；唯一的例外是分区标题
-`headingFontSize` = 16，它是设置面板独有的实测值。
-
-**本仓把 UI 正文与消息正文拉平成同一号（都是 13）**。Claude 有意让消息比界面
-大一号（默认档 14 / 15），但侧栏与工作区字号不一致会让界面读起来像两个层级，
-故不跟这条。行高是**绝对行盒**（prose 20 / body 19），不是随字号缩放的比例；
-`proseHeight` / `bodyHeight` 是换算后的比值。
-
-**密度口径**：Claude 桌面端 `index.html` 的 `<html>` 带
-`data-density="comfortable"`，该档比默认档整体大一档（body 14→15、
-caption 12→13、radius 6→8、icon 16→24）。本仓不跟 comfortable 档——圆角、图标、
-控件高都按默认档铺满全仓，整体切换是另一件事。
-
-**列表行用 Body，不是 Label**：侧栏会话行取 `AthenaFontSize.body`（13），设置页
-各行取 `AthenaSettings.rowFontSize`（14）。实测 Claude 的侧栏会话行与消息正文
-同号；用 Label 12 会让侧栏比工作区小一整号，看上去像两个不同层级的界面。
-`label` 只留给 chip、小按钮、工具卡这类真正的"控件标签"。
-
-### Principles
-
-- 层级靠**字重 + 灰度**，不靠字号。只有空态欢迎语明显放大。
-- 技术信息（工具名、参数、输出）要保持"技术感"，但不能抢正文的视觉中心。
-- 工具**名**用 UI 字体（w600），工具**参数 / 输出**用等宽。
-
----
-
-### Font Size Setting（字号档位）
-
-设置 → Advanced → Appearance 里的 **Font size**（Small / Medium / Large），
-对应 `AthenaTextSize`（0.85 / 1.0 / 1.15），默认 Medium；Claude 桌面端在同一个
-位置也有一档文字大小设置，这里与它同形。移动端在设置 → Appearance 弹层里给同
-三档（`Small / Medium / Large text`）。
-
-机制是**在应用根部叠一层 `TextScaler`**（`main.dart` 的 `applyTextSize`），
-而不是把 token 值改成动态的——这样全站文字（UI、正文、Markdown、代码、输入框）
-一次性生效，调用点一处都不用改。它**乘在系统无障碍缩放之上**，不覆盖系统设置
-（按正文号取等效系数再相乘，因为系统缩放在 Android 14+ 是非线性的）。
-
-**只缩放字号，不动几何**。1.15 倍下所有含文字的固定高度都仍有余量：侧栏行
-26 / 字号 13、设置导航行 32 / 字号 14、列表行 40 / 字号 14、分段控件与输入框
-32、composer 上下文条 40、顶栏 46。**注意**：若以后把档位拉大到 ~1.3，这些固定
-高度会先顶不住，届时要改成"字号与几何一起缩放"（Claude 的 `data-density` 正是
-两者一起动）。
-
-## 4. Component Stylings
-
-### Buttons
-
-**Primary CTA**
-- Background: `surfaceRaised`（浅色=近黑，深色=白）
-- Text: `textOnRaised`，`label` 12 / w600
-- Shape: `AthenaRadius.control`（7）
-- Padding: `horizontal 16, vertical 10`
-- Hover: 填充向画布色混入 12%
-- Disabled: `surfaceButtonSecondary` 底 + `textSecondary` 字
-
-**Secondary Button**
-- Background: transparent
-- Border: `1px solid border`
-- Text: `textPrimary`，`label` 12 / w500
-- Shape: `AthenaRadius.control`（7）
-- Hover: 底 `surfaceHover` + 边框提亮到 `borderStrong`
-
-**Icon Button**
-- Background: `surfaceRaised`
-- Icon: `iconOnRaised` 16，内边距 12
-- Shape: `AthenaRadius.control`（7），不是圆形
-
-**Ghost Icon Button**（`AthenaGhostIconButton`）
-- 静止无底无边；hover 填充前景色 5%（Claude 的 `--cds-fill-ghost-hover`）
-- 盒 28、图标 14、圆角 `row`（7）；图标色 `textRowLabel`
-- 用于设置面板的关闭 / 新增键与桌面对话框的关闭键
-
-**Send Button**
-- 桌面（composer 输入容器右端内部）：22×22 的 ghost 图标按钮，无填充无描边，
-  图标 16 取 `accent`，hover 前景色 5%，按下 `scale(.975)`。这是桌面端 `accent`
-  作为实色出现的唯一位置
-- 移动端：`accent` 实心胶囊 + 白色图标 16——全站唯一一处彩色实心块
-
-### Inputs
-
-**Canonical Input Style**
-- Background: `inputBackground`
-- Border: `1px solid border`（聚焦提亮到 `borderStrong`）
-- Radius: `AthenaRadius.control`（7）
-- 字号 `body` 13
-- Padding: `horizontal 12, vertical 10`
-- 聚焦不出现焦点环、不出现光晕。
-
-**Composer（版式取自 Claude 桌面端）**
-
-版式取自 Claude 桌面端：两个**独立的圆角容器**上下堆叠（上下文条 + 输入框），
-控制项排在容器**外面**单独一行。
-
-- **上下文条**（上容器）：`surfaceButtonSecondary` 灰底、**无描边**、
-  圆角 `container`（10）、高 40，左边放当前 Sentinel 与工作文件夹 chip，最右是会话配置
-  （Configure）chip。Sentinel chip 点开的是与模型菜单同一套的弹出菜单（锚在 chip
-  上方左对齐、每行只有角色名、当前角色打钩、封顶 320 内滚），菜单里**没有**
-  「No Sentinel」项——清掉角色只走 chip 上的清除按钮
-- 间距 **5**
-- **输入容器**（下容器）：**纯白**（`surfaceMobile`）底 + 1px **中性灰**描边
-  （常态 `neutralBorder`、聚焦 `neutralBorderStrong`，见 §2「白底上的中性灰」）、
-  圆角 `container`（10），含输入区与右端的发送键
-- 间距 **4**
-- **容器外的一行**：左（审批模式、加号），右（模型、推理强度、上下文指示）
-- 上下文条不带阴影；输入容器带一层**向下偏移的柔投影**（见下），是全站唯一
-  "描边 + 阴影"并用的容器
-- 桌面居中，宽 **768**（`kChatColumnWidth`），两侧最少留 32，底部留白 **12**
-- 实测（与 Claude 逐项对齐）：
-  - 上容器高 **40**、内边距水平 **6**（加上 chip 自身 10，布局内缩 16，与 Claude 的 17 同档。
-    两边的「首个墨迹」不能直接比，因为图标字形的留白不同）
-  - 间距 **5**
-  - 输入容器高 **44**、**纯白**底，边框**随焦点切换**：
-    常态 `neutralBorder`（实测 `#E1E1E0`）→ 聚焦 `neutralBorderStrong`（`#BFBFBE`）。
-    两个值都是中性灰，本仓的 `border` / `borderStrong` 属暖灰系，白底上会偏黄。
-    Claude 的 CSS 里对应 `focus:border-[...]` 效用类
-  - 输入容器下方还有一层**向下偏移的柔投影**（`0x0C000000`、blur 20、offset `(0,4)`）：
-    紧贴下边框处比画布暗约 **7/255**，约 **18 逻辑**内平滑衰减到 0，上方几乎没有。
-    这是"下边框看起来比上边框深"的真正原因，不是第二条边框色
-  - 占位符距容器左缘 **10**，颜色是**浅灰 `#898782`**（`gray-400` = 本仓 `textWeak`）。
-    不要把光标误当占位符：聚焦时占位符左侧会有一条深色 caret，按"首个墨迹"取值
-    会得到 caret 的颜色
-  - 间距 **4**
-  - 容器外那一行总高约 **34**（控件高约 24）、底部留白 **12**
-  - 两个容器与容器的左右边界都在逻辑 408..1176，即宽 **768**
-
-- **容器外那一行不用任何填充或描边**（Claude 的语言是「文字 + 细线」）：
-  - 左：一段**纯文字**（审批模式，如 `Bypass permissions`，13 无框无底，点开 Mode
-    菜单：标题 + 三行「名称 + 说明」，当前档打钩）+ 一个裸加号（选图片）
-  - 右：**纯文字**模型名（只显示模型名，不带 provider、不带图标）、推理强度
-    （与模型名同字号、**常规字重**；只在推理模型下显示）、细线圆环（上下文占用）
-  - 推理强度点开的是 Claude 的 Effort 面板（浮层样式同菜单，宽 248，锚在文字上方
-    右对齐）：标题行「Effort + 当前档」+ 右端 `?`（hover 出深色 tooltip）、
-    `Faster / Smarter` 两端标注、一条五档滑杆（Low / Medium / High / Extra High /
-    Max，`neutralRule` 胶囊轨道 + `neutralBorderStrong` 小点 + 带 `raised` 阴影的
-    白色圆钮）。点或拖即生效、面板不关。没有 Default / None / Minimal，
-    新会话默认 High
-  - **发送/停止键在输入容器的右端内部**（Claude 的位置），不在容器外那一行
-  - 容器外那一行最右是上下文圆环：hover 只给一句深色 tooltip（`surfaceRaised`
-    底 + `textOnRaised` 字，`Context 181.6k / 1M (18%)`），点击才在圆环上方弹出
-    右对齐的明细面板（浮层样式同菜单）：标题行 + 6 高分段占用条（缓存命中
-    `accent` / 未命中 `textSecondary` / 剩余 `border`）+ 三行图例。只看上下文，
-    不统计会话累计用量
-  - 控件状态（取自 Claude CSS）：
-    - hover：ghost 填充 = **前景色 5%**（暗色 7.5%），圆角 4
-    - 按下：`scale(.975)`，按下 60ms 快档、回弹 200ms 带弹簧
-    - 输入框聚焦：**不加焦点环**，容器边框保持不变（Claude 的 `.cds-input:focus`
-      只清 box-shadow，`:focus-visible` 才加 1px accent + 6px 辉光；composer 的
-      编辑器没有焦点规则）
-  - **控件阶梯**（Claude 的 `[data-step=1..5]`，实测）：
-    `radius / control 高 / 嵌套高` = `5/20/16`、`6/24/18`、`7/28/20`、`8/32/22`、`10/40/28`。
-    容器内的嵌套按钮取 `嵌套高`，圆角为 `radius − (control − 嵌套高)/2`
-  - 容器内按钮**不是圆形**，是圆角 3–4 的小方块
-  - 这一行所有图标 16、文字 13（`AthenaFontSize.body`）、统一 `textPrimary`
-  - 模型名与推理强度之间 4，推理强度与圆环之间 12（Claude 实测约 20）
-
-- 桌面端 `Enter` 发送、`Shift+Enter` 换行；小键盘 Enter 同样发送
-
-### Chips
-
-**AthenaTag / AthenaTagButton**（筛选类）
-- Shape: `pill`
-- Border: `1px solid border`
-- Unselected: `surfaceDeep` 底 + `textSecondary` 字
-- Selected: `surfaceSelected` 底 + `textPrimary` 字 + `w600`
-- Hover: `surfaceHover` 底 + `borderStrong` 边框
-
-**AthenaContextChip**（composer 上下文条上的项）
-- Shape: `AthenaRadius.xs` = **4**（**不是胶囊**）。上下文条是容器（`_SquishButton` 的
-  hover 底同样是 `xs`），条内的可点控件取嵌套档的小方块——与 Claude 的
-  `[data-step]` 阶梯一致（容器内按钮取嵌套高、圆角 3–4 的小方块）。
-- `filled: false`（默认使用）：**完全不画底色**——它坐在已经是浅灰的上下文条上，
-  再画一层同色底就成了"看不见的胶囊"。Claude 的上下文项就是条上直接排的文字 + 图标。
-  操作行里单独出现的模型名也用 `filled: false`，与 Claude 桌面端的
-  底部模型文字一致（不画底）。
-- `filled: true` 用于带外单独出现的场景
-- 左侧可选 13px 图标；文字 `textSecondary`
-- `trailing`（如清除按钮）：**静止透明、hover 才显形**（与消息操作条同一条规则），
-  进入用 `AnimatedOpacity` 120ms；占位始终保留（不摘控件），否则 hover 进出会让
-  chip 宽度跳；不可见时同时 `IgnorePointer`，免得点到看不见的叉。
-- Hover: **前景色 5% 的 alpha 叠加层**（`textPrimary.withValues(alpha: 0.05)`），
-  不是固定灰。上下文带的底色就是 `surfaceButtonSecondary`，而表面状态灰在浅色下
-  几乎与它同值——`surfaceHover` 与它完全相同，`surfaceSelected` 只深 3/255
-  （`#F0EFEC` → `#EDECE9`），落在带上 hover 等于没有反馈。
-  合成像素：浅色 `#F0EFEC` → `#E5E4E1`（Δ11），深色 `#2C2C2A` → `#363634`（Δ10）。
-  这与 Claude「hover 中的 chip」同档：它的 chip 静止 `bg-neutral-chip` =
-  neutral-900 的 5%（`#F0F0EF`，等于本仓的条底色）、hover `bg-neutral-chip-hover`
-  = 10%（`#E4E4E3`）。`filled: true` 的 chip 把叠加层合成到自己的底色上
-  （`Color.alphaBlend`），静止与 hover 都保持不透明，避免插值中途出现半透明深色。
-
-**原则**：容器内（composer）的 chip 不画边、用嵌套档小圆角（4）；独立出现的筛选
-chip 画边、用胶囊。上下文条左边两个 chip（Sentinel、工作文件夹）都能**清除**：
-清掉 Sentinel 就是「不使用 Sentinel」（`ChatEntity.noSentinelId`），chip 显示
-`No Sentinel` 且不再出现清除按钮；清掉文件夹则显示 `No folder`。
-
-### Switch / Toggle
-
-- Track: `34 × 18`，圆角 7（`inline` + 2）
-- Knob: `12 × 12` 圆形，`switchKnob`
-- On: `statusSuccess`
-- Off: `switchTrackOff`
-- Duration: `120ms`
-
-### Checkbox
-
-- 尺寸 `16 × 16`，圆角 `inline`（5）
-- 选中：`surfaceRaised` 实心 + `iconOnRaised` 勾
-- 未选中：`checkboxOff` 描边
-
-### Dialogs & Sheets
-
-**Desktop Dialog**（`AthenaDesktopDialog`）
-- Background: `surfaceMobile`
-- Radius: `AthenaRadius.panel`（12）
-- Shadow: `AthenaShadow.overlay`
-- Width: `min 320 / max 520`
-- Padding: 24
-- Title: `title` 15 / w600，右端可选 ghost 关闭键；正文 `body` 13、`textSecondary`
-- 确认 / 输入对话框与设置里的四个表单对话框都从它派生，不要再各自画容器
-
-**Mobile Sheet**
-- Background: `surfaceMobile`
-- Padding: `horizontal 20, vertical 16`
-- 按钮全宽、圆角 `control`（7）
-
-**Toast / Message Overlay**
-- Background: `surfaceMobile`
-- Radius: `container`（10）；**无阴影**，只有 1px 描边
-- 边框取语义色 40% 透明度（仅用于提示，不用于常规面板）
-
-### Cards & Surfaces
-
-- 对话框、菜单这类浮层用**柔阴影**（`AthenaShadow.overlay`），不用硬描边。
-- composer 输入容器是例外：1px 中性灰描边 + 一层向下的柔投影并用（见 §4 Composer）。
-- 引用块只有**左侧 1px `border` 竖线**，无底色；代码块**不描边**——它靠 `codeBackground` 与页面底色的差自成一层，header 再用 `cardHeader` 提亮一档划分标题与正文。
-- 会话内的权限审批卡与提问卡是浅色面板（`surfaceMobile` + `overlay` 阴影）。
-- 助手消息不画底板，直接坐在画布上。
-
-### Sidebar Row（Claude 实测）
-
-- 行高 **26**（**固定高度**，不要靠垂直内边距撑），左右内缩各 **8**，圆角 `row`（7）。
-  hover 才出现的 `⋮` 高 20，比标签的行盒（约 17）高；靠内容撑会把整行顶高，
-  表现为"hover 上去整行变高"
-- **leading 是状态点**（直径 6），不是图标：静止 `iconSecondary` @45%，
-  hover 加深到 @75%；运行中用 `accent`，固定用 `textRowLabel`
-- **尾部静止时为空**，hover 才出现一个 `⋮` 按钮（`iconSecondary`，14px）。
-  旧版把图钉 / 进度圈常驻在行尾，与 Claude 不符
-- 标签用 `textRowLabel`（`#52514E`），**hover 不变色**——只有底色变
-
-### Chat Preview Card（悬浮预览卡，本仓新增）
-
-轮次条 hover 时，在条右侧弹出的一张只读浮层（触发与延迟见下节的 Turn Indicator）。
-侧栏会话行曾用它做过悬浮预览，那处弹卡已经去掉——**它是这张卡唯一的使用处**。
-它不是 Claude 的组件（交互取自 Codex 桌面端），规格由本仓自定：
-
-- **两行内容**：第一行是标题行（`body` 13 / w600 / `textPrimary`，单行省略），
-  轮次条传的是**该轮的用户消息**；第二行是正文（`caption` 12 / `textSecondary`，
-  最多 3 行省略，换行与缩进压平成单段），本轮还没收尾（回答还没落库）时为空，
-  就不画这一行。卡自己不取数：给它哪两段文本就画哪两段。
-- **尺寸与底色**：宽 248，圆角 `container`(10)，内边距 12/10，底色 `surfaceMobile`
-  + `AthenaShadow.overlay`，不描边（与右键菜单同档，不再新增浮层等级）。
-- **位置**：左边缘 = 锚点右缘 + 8，顶边与锚点对齐；贴到窗口右 / 下沿时回退，
-  四周各留 8。轮次条传的锚点右缘取**条长上限**而不是这条当前宽度（见下节），
-  否则卡片会跟着条的 hover 动画抖。
-- **不吃指针**：卡片只读，整张卡 `IgnorePointer`。指针停在锚点上才是它的常态；
-  卡片压在指针旁边时若把 hover 抢走，条的 hover 长度会缩回去（表现为卡片弹出
-  时条抖一下）。
-- **触发与收起**：延迟、`onExit` 与点选的收卡时机都由锚点决定（轮次条：150ms
-  延迟，见下节）。卡片按锚点 State 归属，锚点销毁时只关自己那张。
-- **进出场**：淡入 + 从下浮起约 6px + 从 0.98 放大到 1，进场 140ms（`easeOut`）、
-  退场 100ms（`easeIn`）——指针已移开，收卡要跟手。换一条锚点弹卡时上一张直接
-  摘掉（不等淡出），不叠卡。这是全站第一处给浮层加动画的地方：右键菜单与
-  对话框仍是瞬时出现，不要顺手去改它们。
-
-### Turn Indicator（轮次指示器，本仓新增）
-
-消息区左侧留白里的一列短横条，**一条 = 一轮**（轮次口径见 `util/chat_turn_util.dart`：
-一条用户消息 + 它之后第一条有正文的回答）。它不是 Claude 的组件，规格由本仓自定：
-
-- **整段有多少轮 = 整段会话的 user 消息数，与窗口无关**（它决定列画到哪一页，
-  同时画出来的只有一页）：消息列表的窗口**够小的会话就是
-  整段**（`JsonlSessionRepository.loadInitialMessages`：文件 ≤ 8MB 一次读入，
-  `hasOlder=false`），更大的会话才分页（首屏 50 条，每次向上翻页再加 50），所以
-  这个数字总是单独取——整文件扫一遍的 user 行（`getTurnStartIds`，按 chatId 缓存）。**计数只认这一份结果**：此后新发出的
-  user 消息就地 +1、删消息按 id 截断，不从消息列表里推。扫描还没回来时不画
-  （宁可空着也不给一个错的数字）。窗口只决定哪几条有内容可预览，以及它们摆在
-  整段里的第几行（≤8MB 的会话窗口 = 整段，条条都能 hover 出卡、点哪一轮都立即
-  滚过去，不存在下面这条"未加载"的分支）。**未加载的历史照样一条条画**——一条也是
-  = 一条 user message，
-  **长度与颜色与窗口里的条同一套公式**（`TurnIndicator.barWidthFor` /
-  `barColorFor`）：没有"未加载就更短 / 更淡"的专用档位，它们也照样能当 hover 的
-  锚点、照样带动两侧邻居；与窗口里的条唯一的区别是没有内容可预览，所以 hover
-  不弹卡。渲染上只有一条路径：**只画视口当前轮所在的那一页**（见下），页内最多
-  `TurnIndicator.maxBars`（20）条，每条一个控件——既是 hover 命中区、弹卡与卡片
-  锚点的 RenderBox，也自己补间 120ms 的长度与颜色。已加载与未加载的条在这里不
-  分叉（同一个 `_buildBar`，`_isLoaded` 只决定弹不弹卡）；旧版为"条数可能上百上千"
-  分出的两条渲染路径（窗口那几轮用控件、历史那几段用一次 `CustomPaint`）随之取消。
-  **点未加载的条会先向上翻页把那一轮补进窗口，再滚过去**（最多 8 页），点了不会
-  没反应。
-- **只在指得出轮次时出现**：轮次少于 2 条不显示（单根条说明不了什么）；左留白
-  窄于 12 也不显示——定宽列被窗口挤窄时留白先收缩，条再短下去就会压到正文上。
-- **位置与形状**：落在消息区左留白内，距留白左缘 12，与正文留 12 的间隙，即条长
-  可用宽度 = 留白宽 − 24，上限 40。条高 4、圆角 `pill`；行高 12（条居中，上下
-  各留 4 才点得中），**只有这一小条吃指针**，其余地方穿透。
-- **整列只画一页，最多 20 条**：一条 = 一轮不变，但列里**同时只出现视口当前轮所在
-  的那一页**（每 `TurnIndicator.maxBars`（20）轮一页，页起点 `_pageStart`）。轮次
-  多的会话不再把整列拉长：页内保持正常行高（20 × 12 = 240 高，摆得下又点得中）与
-  稳定摆位，只有窗口矮到放不下这一页时才压行高；跨页（滚动，或跳转把当前轮带过页
-  边界）时整列按新的一页重建。当前轮还没上报时（打开会话的首帧）按"停在最新"算
-  最后一页，不会先闪一页再跳过去。要看别的轮次就滚到那一页——视口当前轮由消息
-  sliver 上报，窗口自己会跟过来。它取代了此前两条路：只按可用高压行高（几十轮就铺满
-  整个消息区高度，像一条从顶到底的长列），以及给整列封一个 260 的高度上限（30 轮
-  8.7px、50 轮 5.2px，条密到点不中）。条数与"一条 = 一轮"的对应关系不变，所以点哪条
-  仍是精确跳到那一轮。
-- **条长**：静止 = 上限的一半；鼠标停在哪条哪条最长（= 上限），其余按与它的
-  **距离**线性递减，相隔 4 条及以上回到静止长度；没有 hover 时整列等长。
-- **颜色**：视口当前所在的那一轮与 hover 那一轮都用 `textRowLabel`（`#52514E`），
-  其余压到 `iconSecondary` @45%——与侧栏会话行状态点的静止档同一套灰阶。条长与
-  颜色的过渡 120ms（`easeOut`）。
-- **交互**：hover 150ms 后弹出预览卡（`ChatPreviewCard`，第一行 = 该轮用户消息，
-  第二行 = 该轮回答）——**它是这张卡唯一的使用处**（侧栏会话行不再弹卡）；延迟
-  取短档：条是小目标，停上去本身就是明确意图。单击把那一轮滚到视口顶部；**跳转整段挂起贴底
-  跟随**（`MessageListScrollController.jumpWithoutFollowing`）：刚打开会话时列表
-  处于跟随态，跟随会在每次内容尺寸变化时把偏移拉回底部，而跳转路过懒加载列表
-  必然改了尺寸——不挂起的话刚跳上去的视口会被立刻拽回来，只剩原地闪一下。落点
-  不在底部时跟随随之解除（点条即"要去看别处"，与用户自己向上滚动同一语义）。
-- **锚点用最大条宽**：卡片左边缘按条的**长度上限**算，不取这条当前宽度——条的
-  宽度正随 hover 动画生长，跟着它算卡片会抖，位置也会随"哪条被 hover"而变。
-- **视口当前轮**取"占视口面积最多的那一项"所属的轮次，不是"视口顶那一项"：
-  贴着列表底部时视口顶往往还留着上一轮的尾巴，用它会一直高亮上一轮。
-
-### Message Actions（消息操作条，Claude 实测）
-
-Claude 的操作条**不在消息右侧**，而是排在**正文下方**；静止时全透明，
-指针进入**整条消息行**才淡入。助手消息与用户消息用同一套。
-
-- **位置**：助手消息排在卡片最后一段的正下方、与正文左对齐；用户消息排在
-  气泡正下方、跟气泡一起右对齐。它**常驻占位**（`AnimatedOpacity`，不是
-  `Visibility`），所以卡片高度不随 hover 变化，正文宽度也不会被挤压。
-- **不要为了操作条在正文右侧预留空白**。它已经不在右侧了，再留一条内缩只会
-  让整块正文看着没对齐列宽。
-- **显形条件**：整行 hover（`.group/message-row:hover [data-cds=MessageActions]`），
-  不是指针压到按钮才显形。**但尚未结束的那一轮的助手消息是例外**：`loading` 期间，
-  最后一条用户消息之后的那张助手卡不显形——这一轮还在跑，Copy 只能拿到半截正文，
-  收尾后才恢复。**用户消息不受影响**（它照常 hover 显形），上一轮及更早的助手卡
-  也不受影响。`loading` 期间仍保留占位高度（`visible: false`，不要把控件摘掉），
-  否则收尾瞬间卡片高度变 28、末尾跳一下。
-- **时序**：**只动 `opacity`**——`--cds-message-actions-reveal-scale` 在
-  `.cds-root` 上是 `none`，不要加缩放。进入用 `--cds-dur-snap`(120ms) 且延迟
-  `--cds-message-actions-reveal-in-delay`(100ms)；退出用 `--cds-dur-fast`(60ms)
-  且无延迟。
-- **按钮**：ghost 图标按钮，控件高 24（`--cds-h-control`）、图标 16
-  （`--cds-icon`）、圆角 7（`--cds-radius--lg`），hover 填充
-  `--cds-fill-ghost-hover`（浅色 alpha-1 ≈ 5%）。
-
-### Menus（右键 / 弹出）
-
-- 面板：`surfaceMobile` 白底 + `AthenaShadow.overlay`（无描边），圆角 `menu`（12），内边距 4
-- 条目：高约 **32**（内边距 12 × 7），文字 14，圆角 `row`（7）
-- 分组之间用 `DesktopContextMenuSeparator`（1px `border`，上下间距 4）
-- 危险项（Delete）用 `dangerText`（浅色 `#832F2B`，比 `statusError` 更深）
-
-### Settings Panel（设置面板，Claude 实测）
-
-桌面端设置是 **Claude 桌面端设置面板的复刻**。数值来自对 Claude 设置窗口的整窗
-截图实测（1296×783 逻辑窗口、2× Retina，按像素量取后折半）；该截图对本仓色板是
-**色彩准确**的（画布量到 `#FCFCFB`、内容区量到 `#FFFFFF`、分组标题量到
-`#898781`，与既有 token 一致）。几何在 `theme/athena_settings.dart` 的
-`AthenaSettings`；颜色取 `AthenaColors` 的 `neutral*` 组（§2）与既有 token，
-面板没有自己的色板。
-
-- **居中浮层**：宽 `min(1024, 可用宽 − 64)`、高 `可用高 − 88`（实测 1026×695，
-  上下各留 44）、圆角 12；外圈阴影**很窄**（约 10px 内衰减完），不是 overlay
-  那种大范围投影。设置路由是**非透明路由**（`DesktopRoute(opaque: false)`），
-  所以面板浮在应用之上，背后看得见会话。
-- **遮罩**：画布压 40% 黑（实测面板外 `#979795` = `#FCFCFB × 0.6`），只吸收
-  点击、**不关闭面板**——设置行有显式 Save，误触会丢未保存的编辑。关闭走右上角
-  的 ghost X（14，内缩 15）或 Esc。
-- **左栏 192**：底色 `surfacePanel` + 右侧 1px `neutralBorder`。自上而下：**搜索框**
-  （高 32、圆角 8、底 `surfaceMobile`、描边 `neutralBorder`、图标与占位 `textWeak`）→
-  **分组标题**（`caption` 12、`textWeak`，与行的图标列对齐，上方 28、下方 13）→
-  **图标行**（高 32、圆角 8、左内缩 12、图标 16、图标与标签间距 12、标签 `row` 14；
-  静止字 `textRowLabel`，hover 底 `neutralRule`，选中底 `neutralSelected` + `textPrimary`）。
-- **右栏内容区**：**纯白**底、左右内边距 24；分区标题 16/600、其下 28。
-  行是「标签 + 说明」在左、**控件在右**，上下内边距 16（行高约 69）；标签与说明
-  **同号 14**（实测大写高都是 10.0），标签半粗近黑、说明常规 `textWeak`。行间是
-  1px `neutralRule` 发丝线，只跨内容区的左右内边距。
-- **分段控件**：轨道 `neutralRule`**无描边**、高 32、圆角 8；选中块是
-  **`neutralControlFill` 填充 + 1px `neutralBorder` 描边**且**铺满轨道高**；
-  选中 12 半粗近黑，未选中 12 常规 `textWeak`。
-- **下拉**：`neutralControlFill` 底 + 1px `neutralBorder` + 高 32 + 圆角 8 + 右端 chevron。
-- **二阶导航在 Claude 里不存在**：Claude 的一个导航项对应**同一内容区里的多个
-  分区**（它的 Claude Code 下面是 Code appearance + Appearance）。所以 Agent 的
-  General/Tools、Advanced 的 Appearance/Data、Default Model 的三个模型都改成
-  **分区标题**，不再有第二列导航。
-- **列表类分区**（Provider / Sentinel / Skills / Experiences）保留「列表 + 详情」
-  两列，但列表是**内容列表**不是导航：白底、行高 40、行间发丝线、没有圆角选中块，
-  靠右侧 1px `neutralBorder` 与详情分开。
-
-**为什么用中性灰**：Claude 的设置面板用一组**中性灰**，而 `AthenaColors` 的暖灰
-（`divider` `#E1E0D9` 等）铺在纯白面板上会偏黄。这组灰与 composer 输入容器共用，
-定义在 §2「白底上的中性灰」，面板自己不再持有色板。
-
-**已知偏差**：设置里的文本输入仍用 canonical `AthenaInput`（高约 40、描边
-`#E1E0D9`、13 号），而 Claude 的设置控件是 32 高、`#E6E6E6`、14 号。理由是全站
-只保留一个输入样式，不为设置页再引入一套；含输入的行因此比 Claude 高约 3px。
-
-### Component Coverage Rules
-
-- 所有主路径操作按钮必须从 **Primary CTA** 派生。
-- 所有筛选 chip 从 **AthenaTag** 派生；composer 内 chip 从 **AthenaContextChip** 派生。
-- 所有文本输入从 **Canonical Input Style** 派生；会话输入必须用 **Composer**。
-- 所有桌面模态必须从 **`AthenaDesktopDialog`** 派生。
-- 移动端网格里的实体卡（Skill / Sentinel / Experience）从 **`MobileGridTile`** 派生。
-- 所有文字样式从 **`AthenaTextStyle`** 预设派生；等宽走 `athenaMono()`。
-
-### Allowed Exceptions
-
-- 工具执行中的标题可以有一条流动 shimmer 高光。
-- macOS 窗口控制灯保持系统样式；头像保持圆形。
-- 例外组件只能弱化 Claude 语言，不能创造第二套语言。
-
----
-
-## 5. Layout Principles
-
-### Spacing System
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `AthenaSpace.xs` | 4 | 微调 |
-| `AthenaSpace.sm` | 8 | 紧凑控件间距 |
-| `AthenaSpace.md` | 12 | 常规模块内间距 |
-| `AthenaSpace.lg` | 16 | 页面常规留白 |
-| `AthenaSpace.xl` | 20 | 面板内边距 |
-| `AthenaSpace.xxl` | 24 | 对话框内边距 |
-| `AthenaSpace.xxxl` | 32 | 桌面工作区留白 |
-| `AthenaSpace.sidebar` | 288 | 桌面左侧栏宽度 |
-
-### Grid & Density
-
-- 保持 **高密度工具界面**：紧凑但不拥挤。
-- 不走营销网站的大留白路线。
-
-### Desktop Layout
-
-实测值（参考侧为窗口像素量取）：
-
-| 项 | 值 |
-|----|-----|
-| 侧栏宽 | **288**（实测：分界线在逻辑 287） |
-| 侧栏行 | 高 **26**（垂直内边距 4）、左右内缩各 **8**、图标起于行内 **11**、文字起于 **30** |
-| 会话列宽 | **768** = `kChatColumnWidth`；消息列与 composer 同宽并居中，左右对齐。注意 Claude 的 composer 实测约 810，是本仓保留 768 的已知偏差 |
-| Composer 高 | 约 127（上下文条 40 + 5 + 输入容器 44 + 4 + 容器外一行 34） |
-| Composer 底距 | 12（两侧最少留 32） |
-| 顶栏 | 只有侧栏那一段是 `surfacePanel`，画布上方透明；内含会话标题 |
-
-- 侧栏底色 `surfacePanel`，与画布以 1px `borderChrome` 分开（见 §5 的 `borderChrome`）
-- 顶栏**有会话标题**（Claude 的顶栏不是空的）：左侧是窗口控制，中间是当前会话标题。
-  Athena 没有导航箭头与右面板，所以只保留标题
-- 顶栏实测：高 **46 逻辑**，底色与画布相同（相当于透明），底边是一条**极浅**的线
-  `neutralHairline`（`#F7F7F7`，只比画布暗 5/255）——它是顶栏唯一的轮廓
-- **顶栏底线只画在工作区那一段**（x ≥ 288）：侧栏上方是侧栏面板的延伸，不画横线，
-  否则这条线会横穿侧栏右边线。顶栏里的侧栏条本身**满高 0..46**，它的右边线才是
-  与下方侧栏右边线相接的同一段竖线（`AthenaAppBar` 里的 `sidebarStrip` /
-  `workspaceStrip`，外层 `CrossAxisAlignment.stretch`）
-- 侧栏内容：分组列表（Pinned / Chats）+ 底部页脚。页脚是一整行可点的应用标识
-  （标识 + 名称 + 下拉箭头，行高 32、圆角 `row`，hover 与展开中上 `surfaceHover`），
-  点击在行上方 4 处弹出与行同宽的菜单：头部「应用名 + 版本」，条目 Settings /
-  About Athena（带 16 图标）；面板样式同右键菜单
-- **会话列定宽居中**：消息与 composer 走同一条 768 宽的列（`chatColumnPadding()`
-  按画布宽度算两侧留白），左右边缘对齐；画布不够宽时退回 32 的最小留白
-- **消息不带头像**（Claude 的对话渲染里没有头像元素）
-- **用户消息是右对齐的浅灰气泡**：前景色 5% 填充、圆角 8、内边距 12×8、
-  最宽为列宽的 77%
-- **助手消息没有气泡**：内容直接铺满列宽
-- 结构：侧栏 → 顶栏 → 主内容区 → 底部 composer
-
-### Mobile Layout
-
-- Horizontal padding: `16px`
-- 单列，`surfaceMobile` 底；composer 是**单个浮起容器**（`surface` 底、圆角
-  `composer` 12、`AthenaShadow.raised`、内边距 12），不是桌面的双容器版式
-
-### Border Radius Scale
-
-取自 Claude 的 `--cds-radius-*`：最小档 5，
-控件档 7，**composer 也只有 12**，没有 20/24 这种大圆角。
-
-| Claude 变量 | 值 | 本仓 token | 组件 |
-|-----------|-----|-----------|------|
-| `--cds-radius` | 4 | `xs` | 极小元素 |
-| `--cds-radius--sm` / `--xs` | 5 | `inline` | 徽标、行内代码、勾选框 |
-| `--cds-radius--lg` | 7 | `row` / `control` | 列表行、按钮、输入框 |
-| （卡片 / 面板） | 10 | `container` | 卡片、代码块、桌面 composer 的两个容器 |
-| `--cds-radius-composer` | 12 | `panel` / `menu` / `composer` | 对话框、菜单、移动端 composer |
-| `--radius-full` | 9999 | `pill` | chip、发送按钮、头像 |
-
-### Page Archetypes
-
-**Desktop Chat Workspace**
-- 分区：侧栏列表、顶栏标题、主内容区、底部 composer
-- 主内容区最安静；composer 是视觉重心（白底描边 + 向下柔投影）
-- 空态是居中大标题 + 胶囊标签
-
-**Settings / Configuration**
-- 工具化、列表化、表单化布局
-- 强调清晰层级，不强调装饰性卡片堆叠
-
----
-
-## 6. Depth & Elevation
-
-| Level | Treatment | Use |
-|-------|-----------|-----|
-| Canvas | `surface`，无阴影无边框 | 主工作区 |
-| Panel | `surfacePanel` + 1px `borderChrome` | 侧栏、顶栏 |
-| Quote | 左侧 1px `border` 竖线，无底色 | 引用块 |
-| Code block | `codeBackground`，header 为 `cardHeader`，**无边框** | 代码块、脚注区 |
-| Selected | `surfaceSelected` | 选中行、选中 chip |
-| Hover | `surfaceHover` | 悬停行 |
-| **Floating (mobile)** | `surface` + `AthenaShadow.raised` | 移动端 composer |
-| **Floating (desktop)** | `surfaceMobile` + 1px `neutralBorder` + 向下柔投影 | 桌面 composer 输入容器 |
-| **Overlay** | `surfaceMobile` + `AthenaShadow.overlay` | 对话框、菜单 |
-
-### Principles
-
-- **静态容器用边框，浮起容器用阴影**——这是本体系最重要的一条分工。
-- 不要给静态卡片加阴影，也不要给对话框 / 菜单加硬描边
-  （composer 输入容器的"描边 + 柔投影"是唯一的例外）。
-- 真正的视觉焦点应当很少，这样它们才有力量。
-
----
-
-## 7. Do's and Don'ts
-
-### Do
-
-- 用暖白 `#FCFCFB`（浅色）/ `#1A1A19`（深色）作为主画布
-- 用系统字体承载 UI 与正文，等宽只给代码
-- 用柔阴影表达"浮起"，用淡边框表达"分隔"
-- 主操作用"画布的反色块"（`surfaceRaised`）；`accent` 只给发送键与运行中状态点
-- 筛选 chip 是胶囊；composer 上下文条内的 chip 是圆角 4 的小方块，不画边不画底
-- 保持高密度，紧凑但不拥挤
-
-### Don't
-
-- 不要使用纯黑画布
-- 不要把整个 UI 做成等宽字体
-- 不要引入渐变边框、发光、光晕
-- 不要给静态卡片加阴影，也不要给对话框 / 菜单加硬描边
-- 不要新增彩色；`accent` 之外只允许功能语义色
-- 不要新增圆角等级
-- 不要使用默认 Material 风格白底输入框或系统原生弹窗视觉
-
----
-
-## 8. Responsive Behavior
-
-### Shared Language, Different Shell
-
-- **视觉语言一致**，**交互壳层适配平台**。
-- 桌面和移动可以有不同的布局与容器形式，但不能有不同视觉人格。
-
-### Desktop
-
-- 白底工作台 + `surfacePanel` 侧栏与顶栏
-- 分栏、长时间停留、信息并行
-- 对话框居中浮层
-- Composer 居中，宽 768（`kChatColumnWidth`），两侧最少留 32
-
-### Mobile
-
-- 单列，`surfaceMobile` 背景
-- bottom sheet 代替大多数模态居中弹窗
-- Composer 是单个浮起容器（见 §5 Mobile Layout）
-
-### Motion & State Principles
-
-- 所有交互动效服务于"状态确认"，而不是炫技。
-- hover 只做轻微强调，不改变组件类型。
-- 时长：hover / 选中 `120-150ms`，开关 `120ms`。
-
----
-
-## 9. Agent Prompt Guide
-
-本节是给 Agent 的速查摘要，数值与 §2–§6 及 `theme/` 代码一致；两者冲突时以
-代码为准，并回来修这里。
-
-### Athena Visual Summary
-
-- Claude-desktop-derived AI workspace
-- Light-first: warm white canvas (`#FCFCFB`), `#FBFBF9` sidebar, `#E1E0D9`
-  container borders, `#EFEFED` chrome seams
-- **System UI font**; monospace (`athenaMono()`) only for code, inline code,
-  tool args and output
-- Body and prose are both 13 with fixed line boxes (19 / 20); titles 15,
-  section headings 14, labels and captions 12
-- Radii 4 / 5 / 7 / 10 / 12 (`AthenaRadius.xs / inline / control / container /
-  panel`); pills only for filter chips, the mobile send button and avatars
-- Static containers use hairline borders; dialogs and menus use
-  `AthenaShadow.overlay`
-- One chromatic accent: `#2A78D6` (dark `#5598E7`)
-- Calm, technical, high-density, non-marketing, non-social
-
-### Quick Color Reference
-
-| Use | Light | Dark |
-|-----|-------|------|
-| Canvas (`surface`) | `#FCFCFB` | `#1A1A19` |
-| Sidebar / app bar (`surfacePanel`) | `#FBFBF9` | `#151515` |
-| Dialog / menu / composer input (`surfaceMobile`) | `#FFFFFF` | `#1E1E1D` |
-| Container border (`border`) | `#E1E0D9` | `#2C2C2A` |
-| Chrome seam (`borderChrome`) | `#EFEFED` | `#212121` |
-| Hover row (`surfaceHover`) | `#F0EFEC` | `#2C2C2A` |
-| Selected row (`surfaceSelected`) | `#EDECE9` | `#383835` |
-| Primary text (`textPrimary`) | `#0B0B0B` | `#F6F6F4` |
-| Secondary text (`textSecondary`) | `#6D6B67` | `#A5A49A` |
-| Weak text (`textWeak`) | `#898781` | `#898781` |
-| Accent (`accent`) | `#2A78D6` | `#5598E7` |
-
-### Prompt Fragments
-
-**For the Athena Composer (desktop)**
-"Build a chat composer as TWO stacked rounded containers, 768 wide, centered,
-12 above the window bottom. Top: a 40-high context bar with `#F0EFEC` fill, no
-border, 10 radius, holding the Sentinel and workspace chips as bare text plus
-13px icons (4 radius, no fill, no border). 5 below it, the input container:
-pure white fill, 1px `#E4E4E3` border (`#BFBFBE` when focused), 10 radius, a
-soft downward shadow (`0x0C000000`, blur 20, offset 0/4), and a 22×22 ghost
-send button at its right end whose icon is `#2A78D6`. 4 below, a bare row:
-`Configure` and an image icon on the left, model name / reasoning effort /
-token ring on the right, all 13px text and 16px icons, no fills, no borders."
-
-**For Athena Chips**
-"Filter chips are pills: 1px `#E1E0D9` border, `#F3F3F0` fill, `#6D6B67` 12px
-system-font label; selected is `#EDECE9` fill, `#C3C2B7` border and `#0B0B0B`
-w600 text. Chips inside the composer context bar are NOT pills: 4 radius, no
-border, no fill; hover adds a 5% foreground overlay. No gradient, no glow."
-
-**For Athena Code Block**
-"Build a code block: `#F6F6F4` fill, NO border, 10 radius, a `#F0EFEC` header
-strip carrying the language label and a copy button, and `#20201F` 12px
-monospace body text. Code is the only monospace in the UI."
-
-**For the Athena Sidebar**
-"Build a `#FBFBF9` sidebar, 288 wide, separated from the `#FCFCFB` canvas by a
-1px `#EFEFED` line. Rows are 26 high with 7 radius and 13px system-font labels
-in `#52514E` that do not change on hover; hover fill `#F0EFEC`, selected fill
-`#EDECE9` with w400 text. Leading is a 6px status dot; trailing is empty until
-hover reveals a `⋮` button. The footer is one hoverable 32px row (app mark,
-name, chevron) that opens a same-width menu above itself: a name/version
-header, then Settings and About items with 16px icons."
-
-### Final Instruction to Agents
-
-1. 先保证它像 Claude 桌面端：暖白底、系统字体、克制的圆角、少量阴影。
-2. 对话框与菜单用阴影浮起，静态容器用边框——不要混用；composer 输入容器的
-   "描边 + 向下柔投影"是唯一的组合体。
-3. 等宽只给代码；UI 与正文一律系统字体。
-4. 筛选 chip 是胶囊，composer 内的 chip 是圆角 4 的小方块；`#2A78D6` 是唯一的彩色。
-5. 桌面与移动共享气质，只改变结构，不改变人格。
-6. 不新增颜色、圆角或阴影体系，先从现有 token 派生。
-7. 多个方向都合理时，选更克制、更工具化的那个。
+## Overview
+
+Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + nocterm 终端客户端）。它的视觉语言是对
+**Claude 桌面端 `--cds-*` 设计系统**的语义化重建：暖调中性灰画布、近黑文字、几乎无彩色、层级靠"表面色差 +
+发丝接缝线"建立。整体观感安静、克制、偏专业，没有任何装饰性渐变、光晕、彩色插图或阴影堆叠。
+
+**氛围与语气**
+
+- 冷暖由表面决定，不由强调色决定：画布是暖白 `#FCFCFB`（深色近黑 `#1A1A19`），文字是 `#0B0B0B`；
+  全站只有一抹彩色（`accent` 蓝 `#2A78D6`），出现位置极少——发送键图标、会话行"运行中"状态点、
+  Material 组件的默认强调（滑块、进度条、光标）。
+- "安静"是硬性取向：同类容器在浅色主题下的明度差只有 3–6/255，靠一档提亮与 1px 线区分层次，
+  而不是靠边框加粗或投影加深。
+
+**密度与版式**
+
+- 紧凑但留呼吸：控件高 32（设置面板）/ 约 40（全站标准输入），列表行高 26（侧栏会话行）、
+  32（设置导航行）、40（设置内容行，含说明时约 69）；间距按 4 / 8 / 12 / 16 / 20 / 24 / 32 一档刻度取用。
+- 桌面是"双区工作台"：288 侧栏（`AthenaSpace.sidebar`）+ 定宽 768 的内容列居中（`kChatColumnWidth`），
+  列外左右至少留 32（`kChatColumnMinPadding`）；移动是单列滚动页 + 底部 sheet。
+- 顶栏高 46，只在工作区上方画一条极浅底线（`neutralHairline` `#F7F7F7`）；侧栏右边界与页脚上边用
+  `borderChrome` `#EFEFED`（"面与面的接缝"，比容器轮廓线轻一档）。
+
+**主题与无障碍取向**
+
+- 浅色（默认，对齐 Claude 桌面端原生观感）/ 深色（同语义镜像，画布近黑但**不用纯黑**），跟随系统。
+- 主文字对画布的对比度约 16:1（`#0B0B0B` on `#FCFCFB`）；UI 正文与消息正文同号（13），保证一轮对话里
+  问与答是同一阅读层级。
+- 全站三档字号（Small 0.85 / Medium 1.0 / Large 1.15）**叠在系统无障碍缩放之上**，只缩放字号、不动几何；
+  运行中 shimmer 尊重 `MediaQuery.disableAnimations`；全局 `NoSplash`，交互反馈不依赖 Material ripple，
+  改由前景色 alpha 叠加与按压缩放表达。
+
+**证据与口径**
+
+- 本文所有几何、色值、字重均可在 `packages/athena_gui/lib/theme/athena_tokens.dart`（不随主题变化的常量）、
+  `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）、`theme/athena_settings.dart`（设置面板实测几何）
+  中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
+- 色值来源是 Claude `app.asar` 里的 `--cds-*` 变量，并与窗口截图采样交叉验证；带 "实测" 字样的几何值同源。
+- 过渡时长取自各组件源码的显式声明（`Duration` 出现频次：120ms 二十处、150ms 四处、200ms 三处、
+  100ms 三处、140ms / 240ms / 1800ms 各一处）。据此归纳出的"节奏档位"是聚合结论，不是单一 token。
+
+## Colors
+
+调色板是**两级中性**：画布族用偏暖的中性灰（白端带黄绿感 `#FCFCFB` / `#FBFBF9` / `#F3F3F0`，黑端 `#0B0B0B`），
+而铺在纯白容器上的线、控件底、行底另用一组**真中性灰**（`neutral*`）——暖灰压在纯白上会偏黄。
+浅色为实测基准，深色是同一语义体系的镜像。
+
+**Primary**
+
+- **`accent`** (light `#2A78D6` / dark `#5598E7`): 全局唯一的彩色强调，同时挂到 `ColorScheme.primary`。
+  角色：composer 发送 / 终止键的图标色、侧栏会话行"Agent 运行中"状态点、Material 强调（滑块、进度条、输入光标）。
+  深色档比浅色档提亮两档，因为深色画布会吃掉蓝色的对比度。
+- **`markdownLink`** (light `#256ABF` / dark `#6DA7EC`): Markdown 链接与引用条目文字。比 `accent` 深一档，
+  因为它是正文里的小字，需要更高的文字对比度。
+
+**Secondary（反色墨块：主操作与"对比块"的填充色）**
+
+- **`surfaceRaised`** (light `#0B0B0B` / dark `#FFFFFF`): 主按钮实心底、确认键、Checkbox 选中块、
+  图标按钮底、移动端网格卡（Skill / Sentinel / Experience）反色底。它是"画布的反色块"，随主题翻转。
+- **`textOnRaised`** (light `#FFFFFF` / dark `#0B0B0B`): 上述反色块上的主文字与图标。
+- **`textSecondaryOnRaised`** (light `#A5A49A` / dark `#5F5E5A`): 反色块上的次级文字（如复制成功后的 "Copied"）。
+
+**Tertiary（状态与危险）**
+
+- **`statusSuccess`** (light `#0CA30C` / dark `#35B231`): 开关开启轨道、成功 toast 图标。
+- **`statusWarning`** (light `#EB6834` / dark `#F09978`): 警告 toast 图标、会话行"重命名中"状态点。
+- **`statusError`** (light `#D03B3B` / dark `#E66767`): 错误 toast 图标、错误边界图标、工具结果正文的
+  `Error:` 前缀。
+- **`dangerText`** (light `#832F2B` / dark `#E66767`): 菜单危险项（Delete）与设置行校验错误的**文字**专用色，
+  比 `statusError` 更深——大面积色块与一行小字对明度的要求不同。
+- **`markdownStrikethrough`** (light `#898781` / dark `#898781`): 删除线文字与线色。
+- **`markdownMath`** (light `#0B0B0B` / dark `#E1E0D9`): 公式文字。
+
+**Neutral — 画布族（暖灰，用于表面、文字、边框）**
+
+| 角色 | Token | Light | Dark |
+|---|---|---|---|
+| 主画布 | `surface` | `#FCFCFB` | `#1A1A19` |
+| 侧栏 / 顶栏 / 次级面板 | `surfacePanel` | `#FBFBF9` | `#151515` |
+| 对话 / sheet / 弹出层 | `surfaceMobile` | `#FFFFFF` | `#1E1E1D` |
+| 深层容器 / 未选中 chip 内层 | `surfaceDeep` | `#F3F3F0` | `#151515` |
+| 次级按钮底 / 上下文条 / 中性色块 | `surfaceButtonSecondary` | `#F0EFEC` | `#2C2C2A` |
+| 行 hover 底 | `surfaceHover` | `#F0EFEC` | `#2C2C2A` |
+| 行选中底 | `surfaceSelected` | `#EDECE9` | `#383835` |
+| 主文字 / 关键图标 | `textPrimary` | `#0B0B0B` | `#F6F6F4` |
+| 输入框文字 | `textInput` | `#20201F` | `#E7E6E1` |
+| 次级辅助文字 | `textSecondary` | `#6D6B67` | `#A5A49A` |
+| 最弱文字 / 占位符 | `textWeak` | `#898781` | `#898781` |
+| 列表行静止标签 | `textRowLabel` | `#52514E` | `#A5A49A` |
+| 容器描边 / 分隔线 | `border` / `divider` | `#E1E0D9` | `#2C2C2A` |
+| 聚焦 / 激活描边 | `borderStrong` | `#C3C2B7` | `#454442` |
+| 窗口外壳接缝线 | `borderChrome` | `#EFEFED` | `#212121` |
+| 次级图标 | `iconSecondary` | `#898781` | `#A5A49A` |
+| 反色块上的图标 | `iconOnRaised` | `#FFFFFF` | `#0B0B0B` |
+| 顶部发丝线 | `neutralHairline` | `#F7F7F7` | `#212121` |
+| 输入容器 / 分段控件轨道底 | `inputBackground` | `#FFFFFF` | `#1E1E1D` |
+| 代码 / 引用 / 工具输出底 | `codeBackground` | `#F6F6F4` | `#20201F` |
+| 代码块语言条 / 表头 / 脚注头 | `cardHeader` | `#F0EFEC` | `#2C2C2A` |
+| 头像圆底 | `avatarBackground` | `#E4E3DD` | `#383835` |
+| 反色块上的正文与代码 | `textOnCode` | `#20201F` | `#E1E0D9` |
+| 代码面上的次级文字 | `textSecondaryOnCode` | `#6D6B67` | `#A5A49A` |
+
+**Neutral — 白底中性灰族（`neutral*`，只用在纯白容器内）**
+
+| 角色 | Token | Light | Dark |
+|---|---|---|---|
+| 顶栏底线（只比画布暗 5/255） | `neutralHairline` | `#F7F7F7` | `#212121` |
+| 设置面板发丝线 / 分段轨道 / 设置行 hover 底 | `neutralRule` | `#F3F3F3` | `#2A2A28` |
+| 白底容器 1px 描边（composer 常态、设置控件、搜索框） | `neutralBorder` | `#E4E4E3` | `#2C2C2A` |
+| composer / 输入框聚焦描边 | `neutralBorderStrong` | `#BFBFBE` | `#454442` |
+| 设置导航与列表选中行底 | `neutralSelected` | `#E3E3E2` | `#2C2C2A` |
+| 分段控件选中块 / 下拉框底 | `neutralControlFill` | `#FFFFFF` | `#383835` |
+
+**控件与遮罩**
+
+- **`switchKnob`** (light `#FFFFFF` / dark `#FFFFFF`): 开关滑块（始终为白圆）。
+- **`switchTrackOff`** (light `#C3C2B7` / dark `#454442`): 开关关闭轨道。
+- **`checkboxOff`** (light `#B4B3A8` / dark `#5F5E5A`): Checkbox 未选中描边。
+- **`scrim`** (light `#66000000` / dark `#7A000000`): 设置面板遮罩，相当于画布压 40%（深色 48%）黑。
+- **`shadow`** (light `#0B0B0B` / dark `#000000`): 所有柔阴影的基色，按 alpha 取用（见 Elevation）。
+
+**派生规则**
+
+- 状态反馈一律用"前景色 + alpha"派生，不用固定灰：hover / ghost 填充 = `textPrimary` 5%，
+  主按钮 hover = `surface` 12% 叠在 `surfaceRaised` 上，用户消息气泡底 = `textPrimary` 5%。
+- 浅色下 `surfaceHover` 与 `surfaceButtonSecondary` 同值（`#F0EFEC`）——所以落在灰底上的控件（上下文 chip、
+  设置行）不能靠换灰阶表达 hover，必须叠一层 alpha 填充，否则"hover 等于没反应"。
+
+## Typography
+
+**字体族**
+
+- **Headline Font**: 系统 UI 字体（`AthenaFont.ui = null`，交给平台默认：macOS SF Pro / Windows Segoe UI），
+  显式回退链 `PingFang SC` / `Microsoft YaHei` / `Noto Sans CJK SC`。字重 w500–w600。
+- **Body Font**: 与 Headline **同一字体族**，w400。UI 正文与消息正文都以它渲染，不切换到衬线或等宽。
+- **Mono Font**: `Menlo`，回退 `SF Mono` / `Consolas` / `Cascadia Mono` / `DejaVu Sans Mono` / `monospace`
+  再回退 CJK 字体（`athenaMono()` 是唯一入口）。**只用于**代码块、行内代码、工具名与参数、终端文本、
+  技术标签（模型 id、URL、引用徽标）；正文与 UI 一律不传 `fontFamily`。
+
+**层级（一个角色 = 字号 + 默认字重）**
+
+| 角色 | Token | 字号 | 字重 | 行盒 | 用途 |
+|---|---|---|---|---|---|
+| 空态大标题 | `AthenaTextStyle.hero` | 22 | w600 | 1.25 | 会话空态的角色名 |
+| 页 / 对话框标题 | `title` | 15 | w600 | — | 桌面对话框标题、移动顶栏标题 |
+| 分区 / 卡片 / 列表项标题 | `section` | 14 | w500（表单标签用 w600） | 1.4 | 卡片名、设置行标签 |
+| 菜单条目 / 选择器行 / 设置行 | `row` | 14 | w400 | 1.3–1.4 | 菜单项、导航行、下拉框文字 |
+| 消息正文（Markdown） | `prose` | 13 | w400 | 20（≈1.538） | 助手正文、用户气泡文字 |
+| UI 正文 / 输入框 / 列表行 | `body` | 13 | w400 | 19（≈1.462） | 侧栏会话行、输入框、卡片磁贴 |
+| 标签 / chip / 小按钮 / 工具名 | `label` | 12 | w500 | 1.4 | 按钮文字、chip、徽标、工具名 |
+| 说明 / 元信息 / 步骤头 | `caption` | 12 | w400 | 1.4–1.6 | 卡片描述、设置说明、工具折叠头 |
+| 代码 / 终端 | `mono` | 12 | 继承 | 1.5–1.6 | 代码块、工具参数与输出 |
+
+**排版关系与规则**
+
+- **标题不放大字号**：Markdown 的 h1–h6 与正文**同号、同行盒、同字族**，只用 `bold` 区分层级
+  （`w700`）；表头与正文同理，只保留 `w600` 的加粗差异。层级交给字重与间距，不靠字号跳档。
+- **菜单与设置行仍是 14**：`row` 与 `section` 同号但角色不同——前者是常规字重的行文字，后者是加粗的标题；
+  不要写成 `section + w400`。
+- 设置面板有两个**主字号表之外**的实测档：分区标题 16 / w600（面板独有，主表没有 16 这一档）、
+  分段控件与徽标 12。移动端导航组标题 12 / w400 / `textWeak`。
+- 行高是"绝对行盒"而非比例：`prose` = 20 / 13，`body` = 19 / 13 只在多行时附加（单行控件文字不设行高）。
+  设置行标签与说明同为 14，说明的行高 1.5（14 号字落在 22 行盒内）。
+- **字号档位**：Small 0.85 / Medium 1.0 / Large 1.15，作为一层 `TextScaler` 叠在系统缩放之上
+  （`scale = 系统缩放 × 档位系数`）。放大到 1.15 时侧栏行（26 / 13）、设置导航行（32 / 14）、
+  列表行（40 / 14）、分段与输入框（32）都仍有余量，因此既有固定高度不随字号档位改变。
+- 禁止把整个 UI 做成等宽字体——那是对参照实现的误读；等宽只是代码与技术值的局部语言。
+- emoji 不进文档、注释与界面文案（角色头像里的 emoji 属于产品数据，不受此限）。
+
+## Elevation
+
+**深度不靠阴影，靠表面色差与发丝线。** 浅色主题下画布 `#FCFCFB`、侧栏 `#FBFBF9`、深层容器 `#F3F3F0`、
+浮层 `#FFFFFF` 相邻两档只差 3–6/255；层次由"提亮一档的底 + 1px 的分隔线"表达。壳层只有三种线：
+顶栏底线（`neutralHairline`，只比画布暗 5/255，且只画在工作区上方）、侧栏右边界与页脚上边
+（`borderChrome`，5% 中性黑）、容器轮廓（`border`，10% 中性黑）。
+
+**阴影只有两条配方 + 一条面板专用**（基色取 `colors.shadow`，随主题翻转）：
+
+- **`AthenaShadow.raised`** —— 低浮起：基色 5% / blur 12 / offset (0, 3) 叠 4% / blur 2 / offset (0, 1)。
+  用于移动端 composer、行内浮层（如推理强度面板）。
+- **`AthenaShadow.overlay`** —— 高浮起：基色 10% / blur 28 / offset (0, 10) 叠 6% / blur 6 / offset (0, 2)。
+  用于桌面对话框、右键与选择菜单、悬浮预览卡、加载提示。
+- **设置面板专用**：10% / blur 12 / offset (0, 4)。参照实现的整窗面板阴影很窄（约 10px 内衰减完、紧贴边缘最深），
+  用 `overlay` 那种 28px 大范围投影会显得"飘"。
+- 桌面 composer 另有一层向下偏移的极淡投影：`0x0C000000` / blur 20 / offset (0, 4)，紧贴下边框处比画布暗约 7/255。
+
+**不用阴影的地方同样有规则**：静态容器（权限卡、提问卡、排队消息面板、标准输入框）用 **1px 边框 + 平涂底色**；
+代码块、引用块、脚注区**连边框都不要**，靠 `codeBackground` 与画布的底色差自成一层，语言条再用
+`cardHeader` 提亮一档划分标题与正文。
+
+**交互深度**
+
+- 全局禁用 Material ripple（`splashFactory: NoSplash.splashFactory`）；也不做 focus ring、不做光晕。
+- 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 12%）+ 按压缩放 0.975
+  （按下 60ms `easeOut`、回弹 200ms `easeOutBack`，仅用于 composer 内的压缩按钮）。
+- 过渡节奏：**120ms 是唯一主档**（hover、描边加深、分段切换、行底变化），chip / tag 用 150ms，
+  透明淡出用 60–100ms（菜单与预览卡退场要跟手），预览卡进场 140ms（淡入 + 上浮 6% + 0.98 缩放），
+  消息操作条显形为"延迟 100ms + 120ms 淡入"、隐去为 60ms，工具头 shimmer 以 1800ms 循环。
+- 遮罩：设置面板 `#66000000`（40% 黑）；遮罩只吸收点击、**不关闭面板**（编辑区有显式 Save，误触不应丢草稿）。
+
+## Components
+
+**Buttons**
+
+- **Primary（`AthenaPrimaryButton`）**：填充 `surfaceRaised`，前景 `textOnRaised`，圆角 7（`control`），
+  内边距 `16 × 10`（`.small` 为 `12 × 6`，高约 28），文字 `label` 12 / w600，图标 14。
+  hover 只把填充微压暗/提亮（`surface` 12% 叠在实心底上），**不做光晕、不做位移**；禁用态填 `surfaceButtonSecondary`、
+  文字 `textSecondary`。它是主路径操作的唯一来源（确认键、允许一次等）。
+- **Secondary（`AthenaSecondaryButton`）**：线框——`border` 1px + 透明底，圆角 7，前景 `textPrimary`；
+  hover 底色变 `surfaceHover` 并把描边加深到 `borderStrong`；禁用态文字降为 `textSecondary`。
+- **Text button（`AthenaTextButton`）**：无描边无底，`label` 12 / `textSecondary`，hover 填 `surfaceHover`、
+  文字转 `textPrimary`，圆角 7（移动端页面里的次要动作，如新增模型）。
+- **Ghost icon button（`AthenaGhostIconButton`）**：默认盒 28、图标 14，静止无底，hover 填 `textPrimary` 5%，
+  圆角 7；设置面板里的关闭 / 新增键、行尾 `⋯` 键（盒 24）与对话框关闭键都用它。
+- **Icon-only（composer 内）**：22 × 22、图标 16，圆角 4（嵌套档小方块），按下缩放 0.975。
+- **反色图标按钮（`AthenaIconButton`）**：`surfaceRaised` 底 + 16 图标，圆角 7，内边距 12——
+  移动端页头动作按钮（同步、新增、返回）用它，内边距常按需收窄。
+
+**Inputs**
+
+- **标准输入（`AthenaInput`）**：平涂 `inputBackground` + 1px `border`，圆角 7，内边距 `12 × 10`，
+  文字 `body` 13 / 行高 1.5 / 色 `textInput`，占位符 `textSecondary`，光标高 15 / 宽 1.5。
+  **聚焦只把描边加深到 `borderStrong`，不做焦点环、不做光晕**；失焦 / 点外部即回调 `onBlur`。
+- **设置面板输入（`AthenaSettingsTextField`）**：高 32、圆角 8、描边 `neutralBorder`（聚焦 `neutralBorderStrong`）、
+  文字 14；`mono: true` 用于 URL 与模型 id；密钥型默认遮住、右端一枚 24 盒的 ghost 眼睛键切换明文。
+  它比全站标准输入矮一档，为的是与同一行的其他设置控件齐平。
+- **多行输入（`AthenaSettingsTextArea`）**：同一套描边与圆角，最少 6 行、随内容增高，行高 1.5。
+- **搜索框（`AthenaSettingsSearchField`）**：高 32、圆角 8、白底 + 1px `neutralBorder`，图标 14 / `textWeak`，
+  有输入时右端出现 12 号清除叉。
+
+**Chips & Tags**
+
+- **筛选 chip（`AthenaTag` / `AthenaTagButton`）**：**胶囊**（圆角 999）+ 1px 描边 + 平涂底，
+  未选中底 `surfaceDeep` / 描边 `border` / 文字 `textSecondary` w500；选中底 `surfaceSelected` /
+  描边 `borderStrong` / 文字 `textPrimary` w600。选中态靠"提亮底色 + 加粗文字"表达，
+  **不做明暗反转的实心填充**。大档 `12 × 6` / `label` 12，小档 `8 × 3` / `caption` 12。
+- **上下文 chip（`AthenaContextChip`，composer 内）**：小圆角方块（圆角 4）、**无描边**，
+  静止填 `surfaceButtonSecondary`，hover 叠前景色 5%；左侧常带 13px 图标，标签最宽 200 并省略；
+  尾随控件静止透明、hover 才显形（占位常驻 + `IgnorePointer`，避免 hover 进出行宽跳动）。
+
+**Cards & Containers**
+
+- **助手消息没有卡片底板**：内容直接铺在画布上，卡片级内边距上下各 16、左右 4；轮次之间留 16。
+- **用户消息气泡**：右对齐，底 `textPrimary` 5%、圆角 8、内边距 `12 × 8`、最大宽度为列宽的 **77%**，
+  文字 `prose` 13 / 行高 20。图片是输入内容的一部分，渲染在文字之前。
+- **弹窗卡片（权限审批 / 提问）**：`surfaceMobile` 底 + 1px `border` + 圆角 10 + 内边距 16，
+  非模态、随会话渲染在消息列表里；桌面按钮行右对齐（次要在左、主操作最右），移动改为全宽堆叠、主操作在最上。
+- **代码块 / 脚注区**：`codeBackground` 底 + 圆角 10，无边框；语言条用 `cardHeader` 圆角只取上两角，
+  12 号 mono + 12 图标 + 40% 透明度的复制键；正文 mono 12 / 行高 1.5、内边距 `12 × 8`。
+- **行内代码 / 引用徽标**：`codeBackground` 底 + 圆角 5 / 4，mono 12（引用徽标字形 10，属徽标尺寸而非文字档位）。
+- **排队消息面板**：`inputBackground` 底 + 1px `border` + 圆角 10 + 内边距 12，头部 `label` + `caption`，
+  列表最多 120 高、逐条两行省略。
+- **移动端卡片**：网格实体卡（Skill / Sentinel / Experience）用**反色底** `surfaceRaised` + 圆角 10 +
+  内边距 12，标题 `section`、副标题 `caption`，均为 `textOnRaised`；首页卡片行 `160 × 160`、圆角 10、
+  底 `surfaceButtonSecondary`。
+- **详情/引用块（References）**：圆角 8 + `codeBackground` + 内边距 16，首行 `w600`、逐条 `textPrimary`。
+
+**Menus & Popovers**
+
+- 面板：`surfaceMobile` + 圆角 12 + `AthenaShadow.overlay`，内边距 4，默认宽 120（选择菜单可传更宽，
+  子菜单 168），越界时四边各留 8 收回窗内，碰到窗底改向上展开。
+- 条目：高约 32（内边距 `12 × 7`，次级条目 `12 × 8`），圆角 7，hover 填 `surfaceHover`，
+  文字 `row` 14；危险项用 `dangerText`；禁用项文字降为 `textSecondary`；带图标时图标 16、间距 10。
+- 分组小标题 `caption` 12 / `textWeak`（内边距 12/8/12/4）；分组之间用 1px `border` 分隔线，上下各留 4。
+- 浮层不在 Material 之下，文字样式必须写全（含 `decoration`）——这是浮层里常见的漏色点。
+
+**Dialogs & Sheets**
+
+- **桌面对话框（`AthenaDesktopDialog`）**：`surfaceMobile` 底 + 圆角 12 + `AthenaShadow.overlay`，
+  内边距 24，宽 320–520；标题 `title` 15 / w600、`title` 与内容之间留 16；
+  按钮行右对齐、间距 8（次要在前、主操作在后）。所有桌面模态都从这里派生，不再各自画容器。
+- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底；确认面板主/次按钮都是全宽矩形
+  （内边距 14、圆角 7）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
+- **加载提示**：`surfaceMobile` + 圆角 12 + `overlay` 阴影，16 × 16 描边 2 的进度环 + `caption` 文字。
+- **轻提示**：桌面是左下角浮层（`surfaceMobile` + 圆角 10 + 描边取状态色 40% + 内边距 `16 × 12`，
+  图标 16 + `caption`，3 秒后自动消失）；移动用 floating SnackBar，同样是浮层底色 + 状态图标。
+
+**Rows & Lists**
+
+- **侧栏会话行（`DesktopMenuTile`）**：**固定高 26**（不靠内容撑，避免 hover 出现 `⋮` 时行高跳动）、
+  圆角 7、水平内边距 11；文字 `body` 13 / 行高 19，静止 `textRowLabel`、选中 `textPrimary`；
+  hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点
+  （静止 `iconSecondary` 45%、hover 75%、运行中 `accent`、重命名中 `statusWarning`），
+  尾部 `⋮` 只在 hover 出现。
+- **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
+  文字仍与分区标题对齐），圆角 8；hover 底 `neutralRule`、选中底 `neutralSelected`、归档项文字降为 `textSecondary`；
+  标签 14 / w600、说明 14 / w400 / `textWeak`、校验错误 `dangerText`；标签后的徽标
+  （圆角 4 + `surfaceButtonSecondary` + `caption` 12，内边距 `5 × 1`）；左侧状态点直径 6、头像盒 20；
+  行尾控件与标签之间留 24，钻取箭头 14 / `iconSecondary`。
+- **设置导航行（`AthenaSettingsNavItem`）**：高 32、圆角 8、行距 2、左内边距 12 / 右 8，
+  图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `textPrimary`（w500），**不靠加粗**避免整列跳动。
+- **移动端设置行（`MobileSettingTile` / `MobileGridTile`）**：`ListTile` + 16 号图标 + 右端箭头；
+  网格卡见 Cards。
+- **步骤 / 工具行（`StepHeader`）**：无底板、直接坐在页面上，前景 `textSecondary`，图标 15、圆角 8，
+  文案 `caption` 12（技术值是 mono 12）；运行中带一条流动 shimmer（前景色 45% → 95%，
+  `disableAnimations` 时自动关闭）；展开正文最多 10 行 mono、`Error:` 前缀转 `statusError`。
+- **消息操作条（`MessageActionBar`）**：排在正文**下方**（不浮在右侧），常驻占位、默认全透明；
+  按钮 24 × 24、图标 16 / `iconSecondary`、圆角 7、hover 填 `textPrimary` 5%。
+  本轮未结束的助手消息不显形（但控件不摘下树，否则收尾瞬间卡片高度跳 28）。
+
+**Navigation & Shell**
+
+- **顶栏**：高 46；左侧 288 与侧栏同色并自带右边线（`borderChrome`），右侧工作区上方只有一条
+  `neutralHairline` 底线（不画满整宽，否则会横穿侧栏竖线）；标题 `section` 14 / `textPrimary`，左缩进 12。
+- **侧栏**：宽 288、底 `surfacePanel` + 右侧 `borderChrome` 1px；会话列表内边距 `8 / 8 / 8 / 12`，
+  分组标题 `label` 12 / w600 / `textWeak` / 字距 +0.3（上 14 下 6）；底部常驻页脚一整行可点，
+  页脚上边 `borderChrome`、内边距 8。
+- **内容列**：消息与 composer 共用同一条 768 定宽列并居中，列内左右再加 4，窗宽不足 832 时退回两侧各 32 的留白。
+- **轮次指示器**：贴消息列左留白（距消息区左缘 12），一条 = 一轮；条高 4、命中行高 12、整列最多 20 条一页，
+  宽上限由可用留白算出（留白不足 12 就不显示）；静止长为上限的 50%、hover 那条最长、其余按距离线性递减
+  （相隔 4 条回到静止）；颜色只有两档——视口当前轮与 hover 轮用 `textRowLabel`，其余 `iconSecondary` 45%；圆角胶囊。
+- **悬浮预览卡（`ChatPreviewCard`）**：挂在轮次条右侧 8、宽 248、圆角 10 + `overlay` 阴影、
+  内边距 `12 / 10 / 12 / 12`；第一行 `body` 13 / w600 / `textPrimary` 单行省略，第二行 `caption` 12 /
+  `textSecondary` 最多 3 行；hover 条 150ms 后弹出，卡片不参与命中测试（避免把 hover 从条上抢走）。
+
+**Switch / Checkbox / Segmented / Select**
+
+- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 7（`inline + 2`）、内边距 3，滑块 12 白圆；
+  开启轨道 `statusSuccess`，关闭轨道 `switchTrackOff`。
+- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 5；未选中 1px `checkboxOff` 描边，选中块填 `surfaceRaised` +
+  11 号 `iconOnRaised` 对勾。
+- **分段控件（`AthenaSettingsSegmented`）**：轨道 `neutralRule` 无描边、高 32、圆角 8；
+  选中块是**纯白 `neutralControlFill` + 1px `neutralBorder` 并铺满轨道高**（不是内缩小块）；
+  选中文字 12 / w600 / `textPrimary`，未选中 12 / w400 / `textWeak`，每段水平内边距 16。
+- **下拉（`AthenaSettingsSelect`）**：白底 + 1px `neutralBorder`（hover 加深到 `neutralBorderStrong`）、
+  高 32、圆角 8、文字 14、右端 chevron 14 / `textWeak`；控件宽度三档：窄 120 / 常规 316 / 宽 360。
+
+**Empty & Status**
+
+- 空态：48 圆底头像（自定义角色用 emoji 字形 26，内置角色用应用图标）→ 28 间距 → `hero` 22 / w600 名称 →
+  10 间距 → `body` 13 / `textSecondary` 说明 → 18 间距 → 胶囊标签（`surfaceButtonSecondary` + `label` 12 + `12 × 6`）。
+- 设置面板空态：28 号图标 + 12 间距 + 标题 14 / w600 + 4 间距 + `textWeak` 提示（最大宽 360）+ 16 间距 + 动作按钮。
+- 错误边界：48 号 `statusError` 图标 + 16 间距 + `title` 标题 + 8 间距 + `body` 说明 + 24 间距 + 重试主按钮。
+- 桌面窗口左上角的三枚圆形按钮（红 / 橙 / 绿，取自 Material `Colors.red/orange/green`，实心圆 + 2 内边距 +
+  10 号图标）是**平台外壳例外**，不属于语义色板，不要在其他位置引用这三个色值。
+
+## Do's and Don'ts
+
+- **Do** 所有颜色、几何、字号只从 `theme/athena_colors.dart`（颜色，走 `ThemeExtension`）与
+  `theme/athena_tokens.dart`（几何 / 排版 / 阴影）取用；设置面板的实测几何在 `theme/athena_settings.dart`。
+  页面上出现裸 `Color(0x…)` 或 `Colors.xxx` 就是漏 token 的信号。
+- **Do** 用"同色不同 alpha"表达 hover 与选中：填充取前景色 5%（ghost）、主按钮 hover 取 `surface` 12%。
+  在 `AnimatedContainer` 里**永远不要**用 `Colors.transparent` 参与插值——它的 RGB 是黑，
+  中途会渲染成半透明深灰，表现为 hover 先闪一下深色；请用目标色的 0 透明度版本。
+- **Do** 让状态不止靠颜色：运行中 / 重命名中同时有状态点与文字，错误在正文里带 `Error:` 前缀，
+  危险菜单项用 `dangerText` 而非直接把 `statusError` 当文字色。
+- **Do** 圆角只用 4 / 5 / 7 / 8 / 10 / 12 这几档（胶囊 999 仅限筛选 chip、头像、轮次条）；
+  浮层只从 `AthenaShadow.raised` / `overlay` / 设置面板专用三条配方里取，静态容器用 1px 边框而不是阴影。
+- **Don't** 引入第二主色。GUI 的唯一强调是 `accent` 蓝 `#2A78D6`（深色 `#5598E7`）；
+  终端客户端 `athena_tui/lib/ui/theme.dart` 里的品牌 teal `#6ABEB9` 是历史遗留，
+  不应反向影响 GUI 色板，新代码也不要再引用它（终端侧如需对齐，应以 accent 蓝为准并同步该文件）。
+- **Don't** 给助手消息加气泡或卡片底板，也不要给容器加渐变、光晕、focus ring、ripple，或 20 以上的大圆角——
+  参照实现的圆角很克制（最小 4、控件 7、composer 12），层级靠字重、间距与底色差，不靠放大字号或加深投影。
+- **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FCFCFB`、
+  文字 `#0B0B0B`，深色画布 `#1A1A19`）；纯黑只出现在深色主题的阴影基色里。
+- **Don't** 让文档与代码脱钩：本文件已按 Overview / Colors / Typography / Elevation / Components /
+  Do's and Don'ts 六节重排，源代码注释里对旧章节号（DESIGN.md §2 / §3 / §4）的引用需要在
+  下一批改动里同步更新（`athena_settings.dart`、`athena_tokens.dart`、`widget/dialog.dart`、
+  `widget/markdown.dart`、`component/sentinel_placeholder.dart`、`component/permission_card.dart`）；
+  改动视觉行为时同步本文件，并核对文中引用的常量仍然存在。

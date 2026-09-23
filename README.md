@@ -1,346 +1,199 @@
 # Athena
 
-<div align="center">
+跨平台 AI Agent 应用：Flutter 桌面/移动客户端（`athena_gui`）与终端客户端（`athena_tui`）共用同一个纯 Dart Agent 引擎（`athena_core`）。Agent 循环、内置工具、自我进化与权限模型都在引擎里，两个客户端只负责交互。
 
-一个跨平台 AI Agent 应用，使用 Flutter 构建。Athena 具备完整的 Agent 循环（推理 → 工具调用 → 结果 → 再推理）、内置 13 个工具实现类（桌面端注册 13 个、移动端 9 个）、可自我进化的 Skill 系统、以及严谨的权限与安全模型。桌面端（GUI）、移动端（GUI）与终端（TUI）三种客户端共用同一套 Agent 引擎。
+- 仓库：<https://github.com/CalsRanna/athena>
+- 许可：MIT（见 [LICENSE](LICENSE)）
 
-![Version](https://img.shields.io/badge/version-3.6.1-blue)
-![Flutter](https://img.shields.io/badge/Flutter-3.8.0+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
-
-</div>
-
-## 核心能力
-
-### Agent 系统
-
-Athena 内置完整的 AI Agent，可自主调用工具完成复杂任务：
-
-- **推理-工具循环**：Agent 在每轮迭代中进行推理、调用工具、获取结果、再推理，最大 100 轮可配置
-- **并行工具执行**：同一轮内可并行的工具调用（只读/已放行）自动分组并发执行，最多 8 个并发，信号量限流，取消优先响应
-- **流式响应**：文本和推理过程（reasoning）实时流式呈现，工具调用卡片随流实时产出（参数增量逐片追加）
-- **参数校验**：工具调用参数在执行前经过 JSON Schema 校验，非法参数直接拒绝并返回错误信息
-- **截断保护**：响应被输出 token 上限切断时拒绝执行工具调用，防止截断参数被误执行
-- **工具输出续读**：24,000 字符以内完整返回；超长结果完整保存，返回前 2,000 字符预览与结果 ID，通过 `tool_output_read` 按字符续读（默认 6,000，单页上限 12,000）。Shell 不再提前截断，历史回放复用模型可见内容
-- **日期上下文**：自动注入本地日期 `YYYY-MM-DD`，同一天保持稳定，跨日更新
-- **每轮上下文检查**：已知模型窗口时预留输出空间，按估算预算将较早的工具结果替换为可续读引用；最新工具结果保留，仍超限时在请求前报错。估算会根据 API 返回的实际用量向上校正
-- **取消令牌**：支持随时中断 Agent 运行，取消时保留已生成内容并标记 `[Cancelled]`
-- **自动压缩**：上下文占用超过窗口 80% 时自动将早期对话压缩为摘要（`retention = -1` 模式），保持长对话可继续
-- **运行中输入排队**：Agent 运行中收到的新消息立即落库可见（不打断当前轮），当前轮结束后自动作为新一轮继续运行；打断与输入正交——随时可停止当前轮（保留已生成内容标记 `[Cancelled]`）
-- **会话工作文件夹（可选）**：每个对话可指定一个工作文件夹（桌面端在输入框上方的上下文条选择/清除），shell 命令默认在其中执行、文件工具的相对路径以它为基准；未指定时保持原行为（shell 用用户主目录）。目录被删除后自动按未指定处理，不影响后续对话
-
-#### 内置工具（桌面端 15 个，移动端 11 个）
-
-| 工具 | 说明 |
-|------|------|
-| `bash` / `powershell` | 执行终端命令，支持自定义工作目录和超时（默认上限 3600s，可用环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 覆盖），超时自动 kill 进程 |
-| `tool_output_read` | 按结果 ID 和字符 offset/limit 读取完整工具输出，支持长单行，桌面/移动端均可用 |
-| `file_read` | 读取文件，支持 offset/limit 分段读取和行号输出 |
-| `file_write` | 创建或覆写文件，自动递归创建父目录 |
-| `file_update` | 精确字符串替换编辑文件，支持 replace_all、自动去除行号前缀、智能引号归一化、外部修改检测 |
-| `web_fetch` | HTTP GET/POST 抓取网页（200KB 上限），支持自定义 headers 和 body，自动 HTML→Markdown 转换 |
-| `web_search` | Brave Search API 网络搜索，为 Agent 提供实时信息 |
-| `skill` | 加载 Skill 的完整 Level 2 指令到当前上下文 |
-| `skill_evolve` | Agent 自我进化：创建/更新 Skill（SKILL.md），扩展未来能力 |
-| `experience_learn` | 经现有危险工具审批后记录/更新/归档长期经验，支持 Sentinel 私有或全局共享 |
-| `experience_recall` | 检索过往经验以指导当前任务 |
-| `sentinel_list` / `sentinel_get` | 列出 Sentinel 或读取完整角色配置 |
-| `sentinel_evolve` | 改进当前角色（系统提示词），支持重命名、原地更新，内置 Sentinel 不可改名 |
-| `sentinel_revert` | 回滚 Sentinel 最近一次演进，恢复历史快照 |
-
-#### 权限模型
-
-所有工具类型共用规则与 AI 自动审核：
-
-1. **拒绝优先**：持久 `deny` 规则或本轮已拒绝的相同调用直接拦截。
-2. **模型主动确认**：工具参数可携带 `approval_recommendation: proceed|ask` 和 `approval_reason`；`ask` 转人工，`proceed` 仅是建议，不能覆盖规则。
-3. **已有授权**：只读工具/命令、本轮已批准的相同执行参数、持久 allow 规则继续直接放行。`web_fetch` 的 POST 或自定义 headers 需额外判定。
-4. **独立 AI 审核**：其余调用使用当前会话模型发起独立、无工具的审核请求，结合原始对话和完整实际参数判断授权；不继承技能、经验、系统摘要或工具返回指令。自动批准只对本次调用有效，不写入授权缓存或持久规则。
-5. **人工审批**：审核要求确认、20 秒超时、返回格式错误、上下文超出审核预算时，进入现有审批界面，完整展示实际参数。
-
-审批模式分手动、AI 自动审核、所有权限三档，默认 AI 自动审核；GUI 在输入框左下角的 Mode 菜单或 **Settings → Agent → General → Approval Mode** 切换，TUI 使用 `/review manual|ai|bypass`，下一轮生效。所有权限只跳过 AI 与人工审批，明确拒绝规则仍然生效。每次独立审核增加一次模型请求；审核结论与原因保存在工具结果的 `approvalReview` 中。模型判断可能出错，明确拒绝规则和工具内部保护始终保留。
-
-会话授权按工具名和完整执行参数匹配，忽略展示/审核建议字段。批准 `git push` 不会放行 `git push --force`、不同工作目录或不同文件内容；用户拒绝后，同一轮不会自动重试批准相同调用。
-
-#### 工具自我保护
-
-独立于权限系统，在工具内部执行的安全检查：
-
-- **Shell 进程管理**：超时主动 SIGTERM → SIGKILL 杀死进程，防止孤儿进程泄漏
-- **文件修改检测**：`file_update` 在写入前校验 mtime，防止覆盖外部并发修改
-
-删除类命令（`rm -rf`、`del /s` 等）**没有**工具内拦截，也**不再**由宿主匹配命令文本：是否放行完全交给权限规则与 AI/人工审批。宿主不解析 shell 语法，因此不会因为命令里出现某个字符串而误拦只读命令（`grep -rn "rm -rf" docs/`），也不会因为模型换一种写法就假装拦得住（`bash scripts/clean.sh`、变量展开、`git clean`）。
-
-### Skill 系统
-
-采用 Claude Code 风格的三级渐进式加载：
-
-| 层级 | 内容 | 加载时机 | Token 消耗 |
-|------|------|---------|-----------|
-| Level 1 | name + description（最近使用 Top 20，按访问时间排序） | AgentService 在 run 开始时自动注入系统提示词 | 按需 |
-| Level 2 | SKILL.md 完整指令 | Agent 调用 `skill("name")` 时按需加载 | 按需 |
-| Level 3 | references、模板与脚本源码等文本资源 | `skill` 携带 `resource` 相对路径时分页读取 | 按需 |
-
-最多展示最近使用的 20 个 Skill（按访问时间排序），其余需显式调用。
-
-#### Skill 文件格式
-
-```markdown
 ---
-name: my-skill
-description: What this skill does and when to use it
+
+## 能力
+
+### Agent 引擎
+
+- **完整 Agent 循环**：一次 run 内反复「推理 → 工具调用 → 结果 → 再推理」，默认上限 100 轮（`AgentSettings.maxAgentIterations`，桌面端在「设置 → Agent」里改）。
+- **混合串并行**：同一轮内可并行的工具调用并发执行，并发上限 8；需要人工审批的调用被降级为串行——多个审批卡片不会同时出现。
+- **截断保护**：模型响应撞上输出 token 上限时，该轮所有工具调用一律不执行，并回一条「参数可能不完整，请用完整参数重发」的结果，避免拿着半截参数动文件或执行命令。
+- **可取消、可接续**：停止立即中断当前轮（已累积内容照常落库）；运行中发消息先落库排队，当前 run 结束后自动接续成新 run，事件流对 UI 连续。
+- **多会话并发**：多个对话可同时运行，run 之间按 `runId` 隔离状态、权限缓存与工作文件夹。
+- **任何一轮都重新估算上下文**，包括工具循环内部（见下文「上下文管理」）。
+
+### 内置工具
+
+工具清单的唯一来源是 `athena_core` 的 `buildToolRegistry()`；桌面端注册 16 个，移动端 11 个（移动端不注册文件、shell 与提问工具）。
+
+| 工具 | 作用 | 危险等级 | 默认执行 |
+|---|---|---|---|
+| `file_read` | 按行分页读文本文件（单次最多 2000 行，大文件流式读） | 只读 | 并行 |
+| `file_write` | 新建或整文件覆盖 | 危险 | 串行 |
+| `file_update` | 精确字符串替换，`replace_all=false` 时 `old_string` 必须唯一 | 危险 | 串行 |
+| `bash` / `powershell` | 执行 shell 命令（按操作系统二选一），单次超时默认 120s、上限 3600s | 危险 | 按命令判定（只读命令可并行） |
+| `web_fetch` | 抓取 URL 并转 Markdown；POST 或带自定义 headers 时需审批 | 只读 | 并行 |
+| `web_search` | Brave 搜索（需在设置里填 Brave API key） | 只读 | 并行 |
+| `ask_user_question` | 向用户提结构化问题（选项卡片），不触发审批弹窗 | 只读 | 串行 |
+| `skill` | 按名加载 Skill（三级渐进加载的第 2 级） | 危险 | 串行 |
+| `skill_evolve` | 新建/更新 Skill，写入用户级技能目录 | 危险 | 串行 |
+| `experience_learn` | 记录/修订/归档经验（长期记忆） | 危险 | 串行 |
+| `experience_recall` | 检索经验（lesson / tags / context 加权匹配） | 只读 | 串行 |
+| `sentinel_list` / `sentinel_get` | 列出、读取角色定义 | 只读 | 并行 |
+| `sentinel_evolve` / `sentinel_revert` | 改进角色提示词、回滚到历史快照 | 危险 | 串行 |
+| `tool_output_read` | 分页回读超长工具输出 | 只读 | 并行 |
+
+每个工具调用都必须带一个展示用的 `call_description`（由 schema 强制、缺失即判参数非法）；模型还可以给出 `approval_recommendation` / `approval_reason`，这三个字段在权限匹配与执行前会被剥离。
+
+### 权限模型
+
+判定顺序（`PermissionService.check`，与 Claude Code 的 deny → ask → allow 一致）：
+
+1. **deny 规则**：整条命令或复合命令的任一子命令命中即拒绝，优先于一切放行路径；
+2. **只读短路**：只读工具、只读 shell 命令（`ls`、`git status` 等）直接放行，永不弹窗。例外是 `web_fetch` 的 POST 或自定义 headers——它们能驱动内网接口；
+3. **会话级缓存**：本 run 内已批准的同工具、同完整参数直接放行（缓存按 `runId` 隔离）；被用户拒绝过的同一调用在本 run 内不再放行；
+4. **持久规则**：命中放行规则则放行。
+
+审批模式三档（`AgentSettings.approvalMode`，桌面端 composer 左下角、TUI `/review` 共用，下一轮 run 生效）：
+
+- `manual`——需要审批的调用一律问人；
+- `ai_review`（默认）——先由一个独立的、无工具、单独的提示词请求审核（20s 超时，只对本次调用有效）；拿不准或模型自己标 `ask` 的仍问人；
+- `bypass`——需要审批的调用直接放行，不问 AI 也不问人；**deny 规则仍然生效**。
+
+拒绝与放行都会作为「用户决定」喂给后续的 AI 审核，AI 审核不会写入会话或持久规则。桌面端审批以会话内卡片呈现，TUI 是终端内模态。
+
+### 自我进化与长期记忆
+
+- **Skill**：三级渐进加载。Level 1 只注入技能目录（最多 20 条，按最近使用排序），命中任务时用 `skill` 工具加载正文。用户级技能存放在 `~/.athena/skills/{name}/SKILL.md`；内置 `self-evolve` 由代码注册，不可编辑或删除。
+- **经验（长期记忆）**：每次 run 开始时，把当前 Sentinel 可见的全部 active 经验以「一条一行」的稳定目录注入上下文（顺序稳定，利于 provider 复用 prompt 前缀缓存），只列出 `lesson`；`context` / `tags` 等细节由 `experience_recall` 按需加载。经验分 `self`（仅当前 Sentinel）与 `shared`（所有 Sentinel）。
+- **失败反思**：run 结束时若失败可归因（同一工具失败 ≥2 次，或迭代耗尽），引擎会用一次独立的 LLM 调用提炼教训，再走标准 `experience_learn` 工具路径（校验 → 审批 → 执行）写入。用户取消、单次工具失败、单纯的权限拒绝都不会被包装成「需要学习的失败」。
+- **Sentinel 优化**：`sentinel_evolve` / `sentinel_revert` 每次写入前先落一条历史快照，可回滚，回滚本身也可回滚。
+
+### 上下文管理
+
+- **保留策略**（`ChatEntity.retention`）：`0` = 零上下文（每次只带当前用户消息）；`-1`（默认）= 自动管理。
+- **自动压缩**：仅 `retention == -1` 时启用。每轮请求前估算上下文，达到 `min(窗口 80%, 输入上限)` 就把全部有效历史快照压缩成一条带覆盖范围的摘要消息；原始消息保留在库里（标记 `compacted`，不参与组装）。压缩过程本身是一条可观察的步骤（触发 → 汇总 → 落盘 → 完成/失败/取消），同一消息 id 逐阶段更新。
+- **预算**：输入上限 = 窗口 − `min(8192, max(256, 窗口/5))`（给输出留空间）；估算按 UTF-8 字节数 / 2，外加每张图片 4096 token，并随真实 usage 向上校准。若仍超限，较旧的工具结果会被替换为引用（可用 `tool_output_read` 回读），最新的工具批次始终保留。
+- **长输出**：超过 24000 字符的工具输出落盘到 `~/.athena/tool_outputs/`（按内容哈希寻址），模型只看到前 2000 字符与回读提示；单次回读上限 12000 字符。
+
+### 客户端
+
+**桌面（macOS / Windows / Linux）**
+
+- 多区工作台：288 宽侧栏（会话列表、置顶、批量选择、删除）+ 工作区（消息流、轮次条、composer）。
+- Claude 桌面端风格的设置浮层面板：Providers / Default models / Agent / Sentinels / Skills / Experiences / General / About，导航带搜索，改动即存。
+- composer 上可切换模型、角色、工作文件夹、推理强度、保留策略、审批模式，并显示上下文占用圆环（≥80% 变警示色）。
+- 会话内审批卡片与提问卡片；会话级工作文件夹（只影响后续 run）。
+- 发送首条消息时用模型自动命名会话；角色元数据（名称/描述/标签/头像）也可由模型生成。
+- 系统托盘、Cmd+W 隐藏窗口、Win 单实例守卫（macOS 由 LaunchServices 保证）。
+
+**移动（iOS / Android）**
+
+- 分段浏览页面：首页（欢迎 / 新建会话 / 最近会话 / 经验 / 角色）、聊天、最近会话列表、角色、Skill、经验、Provider、设置（Agent / Provider / Sentinels / Skills / Experiences / Default Model / Data / Appearance / About）。
+- 用户级数据（Skill、经验、Sentinel 历史）落在应用沙盒的 Application Support 目录，而非 `$HOME`。
+- 不注册文件、shell 与提问工具。
+
+**终端（`athena_tui`）**
+
+- 基于 nocterm 的 TUI，工作区为命令行参数或当前目录（不存在时自动创建）。
+- 斜杠命令：`/new` `/list` `/switch` `/delete` `/json` `/model` `/sentinels` `/providers` `/help` `/review` `/quit`。
+- 终端内审批与提问模态；与 GUI 共用同一份引擎、工具集、权限规则与数据目录。
+
 ---
-## Process
-1. Step one
-2. Step two
-```
 
-#### 放置位置
+## 安装
 
-- `~/.athena/skills/` — 用户级（移动端为应用沙盒内目录），对所有对话可用
+### 预编译包
 
-技能目录（Level 1）会自动注入系统提示词，完整指令通过 `skill` 工具按需加载；工具调用仍需经过权限检查。内置 `self-evolve` Skill 提供完整的自我进化指导。
+打 `v*` tag 会触发 Release workflow，产出三个平台的压缩包：
 
-#### 引用附属文件和脚本
+| 平台 | 产物 | 包内可执行文件 |
+|---|---|---|
+| macOS | `Athena-macOS.zip` | `Athena.app` |
+| Windows | `Athena-Windows.zip` | `athena.exe` |
+| Linux | `Athena-Linux.tar.gz` | 解压后的 bundle 目录 |
 
-每个用户技能目录可以包含参考文档、脚本和模板：
+包管理器清单（Homebrew Cask `athena`、Windows 清单元数据）的模板放在 `packages/athena_gui/dist/`，该目录是发布中转产物、不入库。
 
-```text
-demo/
-├── SKILL.md
-├── references/guide.md
-└── scripts/run.py
-```
+### 从源码构建
 
-`SKILL.md` 中使用相对路径引用这些文件，例如 `[参考文档](references/guide.md)`。
-调用 `skill` 加载正文时会同时返回技能的绝对目录；这些引用以技能目录为基准。
-需要参考内容时，继续调用同一个工具：
-
-```json
-{"name":"demo","resource":"references/guide.md","offset":0,"limit":200}
-```
-
-资源仅按需读取，不会随着正文自动载入。`offset` 为从 0 开始的行号，`limit` 默认 200、最大 2000；返回内容带行号、总行数和下一页提示。
-只允许读取技能目录内的 UTF-8 文本文件，绝对路径、目录越界及指向目录外的符号链接会被拒绝。内置技能没有附属资源目录。
-
-桌面端、TUI 和移动端均可通过 `skill` 读取资源。执行脚本时，桌面端/TUI 复用 Bash/PowerShell 工具，使用脚本的绝对路径，并按技能指令设置 `workdir`；执行仍走现有权限流程。移动端不提供本地脚本执行。
-
-### Agent 自我进化
-
-Agent 可通过以下机制持续改进自身：
-
-- **Skill Evolution**（`skill_evolve`）：创建或改进 Skill，扩展未来能力
-- **Experience Learning**（`experience_learn` / `experience_recall`）：经现有权限审批构建长期经验记忆，存储在 `~/.athena/experiences/`
-- **Failure Reflection**：最大迭代或同一工具重复失败时生成候选经验；候选仍以普通 `experience_learn` 调用进入现有审批和执行管线
-- **Sentinel Optimization**（`sentinel_evolve`）：基于使用反馈优化系统提示词
-- **Sentinel Revert**（`sentinel_revert`）：回滚最近一次演进（`.athena` 沙盒内的历史快照）
-
-每次任务都会临时注入当前 Sentinel 可见的全部 active Memory lesson（不写入消息历史、不按当前任务动态筛选）；只有经验新增、更新或归档时目录才变化。`context` 与标签通过 `experience_recall` 按需读取，同时注入极简进化提示；完整指南通过内置 `self-evolve` Skill 按需加载。
-
-### 核心功能
-
-- **Sentinel 系统**：预定义角色和系统提示词，支持 AI 元数据生成（名称、描述、标签、头像 Emoji），内置默认 "Athena" Sentinel
-- **Skill 与经验管理**：可视化管理技能（SKILL.md，含内置只读）与经验记忆（归档/恢复/删除）；移动端首页 Experiences 卡片行，与 Agent 自我进化同一数据源
-- **多 AI 提供商管理**：支持 OpenAI API 兼容的任何提供商，预设 DeepSeek、OpenRouter、阿里云百炼、硅基流动、火山方舟、智谱、MiniMax；启动时后台自动从 models.dev 同步模型元数据（7 天缓存，失败降级）
-- **重试机制**：指数退避 + 随机抖动，可重试网络错误（连接异常、超时、限流、5xx），不重试业务错误（4xx、解析错误）
-- **聊天管理**：会话置顶、批量删除、AI 自动命名、上下文管理（零上下文 / 自动压缩 / 全量）、温度参数调整、Token 用量追踪
-- **视觉与推理**：支持视觉模型（图片附件）和推理模型（DeepSeek-R1 等 reasoning 展示）
-- **数据导入/导出**：JSON 格式完整数据迁移，自动重整悬空引用
-
-### 扩展功能
-
-- **网络搜索**：Brave Search 集成
-
-### 平台支持
-
-- **桌面端**：macOS、Windows、Linux。窗口管理、系统托盘、全局快捷键（Meta+W 隐藏）
-- **移动端**：iOS、Android。触摸优化界面
-- **终端**：athena_tui（nocterm），与 GUI 共享 `~/.athena/` 下的同一份会话/模型/角色数据，可同时运行
-
-## 快速开始
-
-### 环境要求
-
-- Flutter SDK >= 3.8.0
-- Dart SDK >= 3.8.0
-
-### 安装与运行
-
-项目为 monorepo 多包结构：`athena_core`（纯 Dart 核心）、`athena_gui`（Flutter 桌面/移动应用）与 `athena_tui`（终端客户端）。
+前置：Flutter **3.41.4** stable（与本仓 CI / release 使用的版本一致），Dart SDK `>=3.8.0`。根目录没有 `pubspec.yaml`，三个包各自 `pub get`。
 
 ```bash
-# GUI（桌面 / 移动）
-git clone https://github.com/CalsRanna/athena.git
-cd athena/packages/athena_gui
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-flutter run -d <device>
-
-# TUI（终端）
-cd ../athena_tui
-dart pub get
-dart run bin/athena.dart
-```
-
-### 开发命令
-
-```bash
-# GUI（Flutter 应用）
+# 桌面 / 移动客户端
 cd packages/athena_gui
-flutter analyze       # 静态代码分析
-flutter test          # 运行 GUI 测试
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs   # 生成路由等代码，必需
+flutter run -d macos                                        # 或 windows / linux / <device id>
+flutter build macos                                         # 打发布包
 
-# 核心（纯 Dart，无 Flutter 依赖）
-cd packages/athena_core
-dart analyze
-dart test             # 运行核心测试（Agent 引擎、服务、工具等）
+# 终端客户端
+cd packages/athena_tui
+dart pub get
+dart run bin/athena.dart [工作区目录]
 ```
 
-## 架构
+VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / release 三种启动配置。
 
-项目拆分为三个 package，依赖方向严格单向：`athena_gui → athena_core`、`athena_tui → athena_core`。
+---
+
+## 首次配置
+
+1. **填 Provider**：桌面端「设置 → Providers」填 base URL 与 API key；TUI 用 `/providers`。provider 的权威存储是 `~/.athena/setting.yaml`（含 API key，可手工编辑，重启生效）。
+2. **选默认模型**：桌面端「设置 → Default models」有会话、话题命名、角色元数据三个用途各一行；TUI 用 `/model`（写回 `setting.yaml`）。
+3. **可选**：`设置 → Agent` 里填 Brave API key（`web_search` 用）、改最大迭代次数与最大重试次数。
+
+预设 provider（Deep Seek、Open Router、阿里云百炼、硅基流动、MiniMax、智谱AI、OpenAI、Google、xAI、月之暗面 Kimi、阶跃星辰）的模型元数据会在启动时后台从 [models.dev](https://models.dev/api.json) 同步（3.2MB，7 天 TTL 缓存，只同步最近一年发布且支持推理的模型）；同步失败自动降级到上次缓存，不阻塞启动。不在预设列表里的 provider 不受同步影响。任何 OpenAI 兼容服务都可以手工加。
+
+---
+
+## 数据与配置
+
+桌面端数据根目录是 `~/.athena/`（GUI 与 TUI 共用，可同时运行）；移动端是应用沙盒的 Application Support 目录。
+
+| 路径 | 内容 |
+|---|---|
+| `sessions/{chatId}.jsonl` | 一个对话一个文件：首行会话元数据，之后每行一条消息 |
+| `models.json` | 模型列表（JSON 数组） |
+| `sentinels.json` | 角色列表（JSON 数组） |
+| `meta.json` | 自增 id 计数（key 为文件/目录路径） |
+| `setting.yaml` | provider 配置（含 API key）与 TUI 默认模型 |
+| `models_dev_cache.json` | models.dev 目录缓存 |
+| `permissions.json` | 持久权限规则（「始终允许」） |
+| `tool_outputs/{sha256}.txt` | 超长工具输出（内容寻址） |
+| `experiences/shared/`、`experiences/{sentinelId}/` | 经验（一条一个 JSON 文件） |
+| `sentinels/{encodedName}/history/` | Sentinel 变更历史快照 |
+| `skills/{name}/SKILL.md` | 用户级 Skill |
+| `kv.json` | TUI 的键值设置（GUI 用 SharedPreferences） |
+
+写入采用「进程内串行 + 跨进程文件锁 + 临时文件 rename」三条保障：GUI 与 TUI 可能同时打开同一目录，读到的要么是旧文件要么是新文件，不会读到写坏一半的内容。文件永远是唯一真相，缓存类数据都可删除重建。
+
+配置的导出 / 导入 / 重置：桌面端在「设置 → General」（Data 分区：显示数据目录、导出为 JSON 备份、导入并替换现有 Provider 与 Model；Danger zone：Reset Athena），移动端在设置里的 Data 页。重置会删除本机全部会话、Provider、Model 与 Sentinel 并恢复默认设置，但不动目录缓存与工具输出。
+
+---
+
+## 仓库结构
 
 ```
 packages/
-├── athena_core/         # ★ 纯 Dart 核心，零 Flutter / 零 SQL 依赖
-│   ├── agent/           #   Agent 引擎：工具、权限、Skill、进化、取消令牌
-│   ├── coordinator/     #   AgentRunCoordinator：UI 无关的 run 编排层（RunEvent 流）
-│   ├── service/         #   LlmClient、Chat 等
-│   ├── repository/      #   存储接口（Chat/Message/Model/Provider/...）
-│   ├── storage/         #   本地文件持久化（FileStorage 布局 + JSONL/JSON/YAML 仓储 + 跨进程锁）
-│   ├── seed/            #   内置 Athena 角色种子
-│   └── entity/ model/ extension/ util/
-├── athena_gui/          # ★ Flutter 桌面/移动应用
-│   ├── page/            #   UI 层（desktop 多区工作台 / mobile 分段浏览）
-│   ├── view_model/      #   Signals 状态管理
-│   │   └── delegate/    #   AgentStreamDelegate：包装核心协调层 + 对话框注入
-│   ├── router/ widget/ component/ util/
-│   └── storage/         #   KeyValueStore 的 SharedPreferences 实现
-└── athena_tui/          # ★ 终端客户端（nocterm）
-    ├── bin/athena.dart  #   CLI 入口
-    ├── bridge/          #   tui_agent_bridge：Agent 引擎 → TUI 状态桥
-    └── ui/ view_model/  #   终端 UI 与响应式层
+  athena_core/    纯 Dart 引擎：Agent 循环、工具、权限、Skill、进化、领域模型、服务、本地存储
+  athena_gui/     Flutter 桌面/移动应用：页面、组件、设计系统、ViewModel、路由
+  athena_tui/     nocterm 终端客户端：终端 UI、桥接层、控制器
 ```
 
-核心通过**存储接口**（`repository/`）与**注入回调**（权限审批）
-与 UI 解耦。持久化是纯 Dart 的本地文件实现（`athena_core/lib/storage/`），
-GUI 与 TUI 共用同一套仓储并共享 `~/.athena/` 数据目录；没有数据库。
-
-### 技术栈
-
-| 层 | 技术 |
-|----|------|
-| UI | Flutter（athena_gui）/ nocterm（athena_tui） |
-| 核心 | 纯 Dart（athena_core，零 Flutter 依赖） |
-| 状态管理 | Signals（Computed、Signal、listSignal、setSignal） |
-| 依赖注入 | GetIt（LazySingleton，仅客户端装配层） |
-| 路由 | AutoRoute（桌面无过渡，移动标准过渡） |
-| 持久化 | 本地文件：`~/.athena/` 下的 JSONL（会话）/ JSON（模型、角色）/ YAML（provider），跨进程文件锁 + 原子写 |
-| AI API | openai_dart ^8.1.0（流式 + 工具调用 + 推理） |
-| HTTP | http v1.x（web_fetch、web_search） |
-| 测试 | athena_core：`dart test`；athena_gui：`flutter test` |
-
-### 分层架构
-
-```
-┌─────────────────────────────────────────────┐
-│            athena_gui（Flutter）             │
-│  UI Layer（page / widget / component）      │
-│  ViewModel Layer（signals + Delegate 委托） │
-├─────────────────────────────────────────────┤
-│            athena_core（纯 Dart）            │
-│  AgentRunCoordinator（run 编排层，RunEvent）│
-│  Service Layer（LLM 通信 / 数据转换 / 编排）│
-│  Repository 接口（存储抽象，port）          │
-│  Storage（FileStorage：JSONL/JSON/YAML 实现）│
-│  Agent Layer（Agent Service / Tool /        │
-│              Permission / Skill）           │
-│  Entity / Util                              │
-└─────────────────────────────────────────────┘
-   GUI 通过 GetIt 装配：注入文件仓储 + 权限弹窗；
-   TUI 手动装配：同一套文件仓储 + stdin 权限审批
-```
-
-## 配置
-
-### AI 提供商
-
-在应用内设置页面添加 OpenAI API 兼容的提供商。预设包括：
-
-| 提供商 | 内置模型示例 |
-|--------|---------|
-| DeepSeek | deepseek-chat, deepseek-reasoner |
-| OpenRouter | Claude 系列、Gemini 系列、GPT-5 / o3 / o4 系列、DeepSeek、Qwen3、Grok、MiniMax（按家族保留最新版） |
-| 阿里云百炼 | 通义千问系列, DeepSeek 系列 |
-| 硅基流动 | DeepSeek 系列 |
-| 火山方舟 | 豆包系列, DeepSeek 系列 |
-| 智谱 | GLM 系列 |
-| MiniMax | MiniMax-Text-01 |
-
-> 模型元数据（名称、上下文窗口、价格、reasoning/vision 标志）由应用启动时后台从 [models.dev](https://models.dev) 自动同步，预设模型列表随上游更新，无需手工维护。
-
-### Skill 开发
-
-1. 创建 `SKILL.md` 文件，包含 YAML front matter 和 Markdown body
-2. 放入 `~/.athena/skills/<skill-name>/`（移动端为应用沙盒内目录）
-3. 重启应用或新开会话即可发现
-
-### 权限管理
-
-用户持久化规则存储在 `~/.athena/permissions.json`，格式：
-```json
-{
-  "rules": [
-    {"tool": "bash", "action": "git", "pattern": "push*"},
-    {"tool": "bash", "pattern": "ls *"},
-    {"tool": "file_read", "pattern": "/home/user/projects/*"},
-    {"tool": "web_fetch", "pattern": "https://example.com"}
-  ]
-}
-```
-
-- 文件类工具（file_read / file_write / file_update）：pattern 为路径，支持 `*` / `?` 通配符
-- Shell 工具（bash / powershell）：action 为命令动作（git、ls、npm…），pattern 为参数模式；不加通配符时按前缀匹配
-- web_fetch：pattern 为 URL origin（scheme://host[:port]）
-- pattern 为空表示允许该工具（及 action，若指定）的所有调用
-
-## 测试
-
-项目为三包结构，测试覆盖：
-
-- **Agent 层**（athena_core）：工具执行、并行执行分组、权限规则、Skill 加载、Shell 进程管理、Schema 校验
-- **Service 层**（athena_core）：消息转换、聊天服务、会话管理、模型目录同步
-- **ViewModel 层**（athena_gui）：聊天流、设置、技能、经验
-- **UI 层**（athena_gui）：移动端主页和聊天页 widget 测试
-- **数据库**（athena_gui）：迁移、CASCADE 行为验证
-
-```bash
-# 核心包（纯 Dart）
-cd packages/athena_core && dart test
-
-# GUI 包（Flutter）
-cd packages/athena_gui && flutter test
-
-# TUI 包
-cd packages/athena_tui && dart test
-```
-
-## 贡献
-
-1. Fork 仓库
-2. 创建功能分支 (`git checkout -b feature/xxx`)
-3. 提交更改 (`git commit -m 'Add xxx'`)
-4. 推送 (`git push origin feature/xxx`)
-5. 创建 Pull Request
-
-## 许可证
-
-MIT License
+依赖方向严格单向：`athena_gui` / `athena_tui` → `athena_core`，`athena_core` 不依赖 Flutter，也不含任何 SQL。
 
 ---
 
-<div align="center">
+## 测试与 CI
 
-**[报告问题](https://github.com/CalsRanna/athena/issues)**
+| 范围 | 命令 |
+|---|---|
+| `athena_core` | `dart analyze`、`dart test`（`test/storage/`、`test/agent/permission/`） |
+| `athena_gui` | `flutter analyze`、`flutter test`（`test/widget/`） |
+| `athena_tui` | `dart analyze`（目前无测试目录） |
 
-</div>
+CI 在 push / PR 到 `main` 时跑 `athena_core` 与 `athena_gui` 两个 job；`athena_gui` 的 job 会先跑 `build_runner` 再 analyze（生成代码缺失会直接失败）。`athena_core` 里的 `tool/bench_message_loading.dart` 是只读的加载性能基准脚本，不参与 CI。
+
+---
+
+## 相关文档
+
+- [AGENTS.md](AGENTS.md)——面向在本仓改代码的工程指南：命令、分层、硬约束、常见任务。
+- [DESIGN.md](DESIGN.md)——视觉与交互设计口径（设计 token、色板、组件规格）。
