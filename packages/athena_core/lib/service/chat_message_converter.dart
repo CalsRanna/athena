@@ -132,6 +132,20 @@ class ChatMessageConverter {
           // 会被 OpenAI 兼容端 400 拒绝。
           if (toolCalls.isEmpty) toolCalls = null;
         }
+        final hasContent = msg.content.trim().isNotEmpty;
+        // 空载荷记录整批丢弃：不产出
+        // `AssistantMessage(content: null, tool_calls: null)`。
+        //
+        // 这类记录没有正文、也没有能被接受的 tool_calls，唯一来源是"没走完
+        // 收尾流程"的迭代占位：进程被强杀 / 崩溃 / 断电（取消、错误、正常
+        // 结束都会写入文本），或思考模式下只输出 reasoning 就被截断。
+        // OpenAI 兼容端对空 assistant 一律 400（DeepSeek 报
+        // `Invalid assistant message: content or tool_calls must be set`），
+        // 而它只要留在历史里，该会话**此后每次请求都被拒**——用户看到的就是
+        // "中断后再也继续不了"。丢弃它是安全的：没有正文可失去，其
+        // toolResults（如果有）同样没有归属，必须一并丢弃，否则会变成没有
+        // 前置 tool_calls 的孤立 tool 消息，那是另一种 400。
+        if (!hasContent && toolCalls == null) return const [];
         final reasoning = includeReasoning && msg.reasoningContent.isNotEmpty
             ? msg.reasoningContent
             : null;
@@ -139,7 +153,7 @@ class ChatMessageConverter {
           AssistantMessage(
             // 与 agent_service 当轮构建一致：空 content 序列化为 null，
             // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
-            content: msg.content.isEmpty ? null : msg.content,
+            content: hasContent ? msg.content : null,
             toolCalls: toolCalls,
             reasoningContent: reasoning,
           ),

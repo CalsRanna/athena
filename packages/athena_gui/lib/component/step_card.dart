@@ -61,6 +61,11 @@ class StepCard extends StatefulWidget {
   static String argPreview(String toolName, String arguments) =>
       toolArgPreview(toolName, arguments);
 
+  /// 工具步骤头部文案：模型自述的 call description；解析不出（缺该字段，或参数
+  /// 还是流式中的半截 JSON）时退回通用文案，由头部图标说明是哪个工具。
+  static String toolLabel(String arguments) =>
+      toolCallDescription(arguments) ?? 'Using a tool';
+
   /// 推理结束态标题：`Thought 2.0 seconds`。
   static String thoughtLabel(MessageEntity message) {
     final duration =
@@ -109,7 +114,7 @@ class StepCard extends StatefulWidget {
   /// 组进行中折叠头文案：当前（最后一个）步骤。
   static String currentLabel(AssistantStep last) => switch (last) {
     ReasoningStep() => 'Thinking',
-    ToolCallStep step => argPreview(step.toolName, step.arguments),
+    ToolCallStep step => toolLabel(step.arguments),
     ContextCompactionStep step => compactionLabel(step),
   };
 
@@ -222,10 +227,17 @@ class _StepCardState extends State<StepCard> {
             ReasoningStep() => false,
           },
         );
+    // 汇总口径（结束态，或当前步不是工具）用的通用图标。
+    final genericIcon = hasTool
+        ? HugeIcons.strokeRoundedTools
+        : HugeIcons.strokeRoundedSparkles;
     return (
-      icon: hasTool
-          ? HugeIcons.strokeRoundedTools
-          : HugeIcons.strokeRoundedSparkles,
+      icon: switch (last) {
+        // 进行中时头部跟随当前步骤：文案可能只是通用的 `Using a tool`，
+        // 图标负责说明是哪个工具。
+        ToolCallStep tool when widget.live => StepCard.toolIcon(tool.toolName),
+        _ => genericIcon,
+      },
       label: widget.live
           ? StepCard.currentLabel(last)
           : StepCard.summaryLabel(steps),

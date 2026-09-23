@@ -23,6 +23,10 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 class DesktopMessageInput extends StatelessWidget {
   final TextEditingController controller;
+
+  /// 输入框的焦点节点，由首页持有并 dispose：新建对话、启动落到草稿页时
+  /// 首页靠它把焦点放进输入框。
+  final FocusNode focusNode;
   final void Function(int)? onRetentionChange;
   final void Function(List<String>)? onImageSelected;
   final void Function(String)? onImagePasted;
@@ -47,6 +51,7 @@ class DesktopMessageInput extends StatelessWidget {
   const DesktopMessageInput({
     super.key,
     required this.controller,
+    required this.focusNode,
     this.onRetentionChange,
     this.onImageSelected,
     this.onImagePasted,
@@ -132,6 +137,7 @@ class DesktopMessageInput extends StatelessWidget {
                 const SizedBox(height: 5),
                 // 输入容器：白底（surfaceMobile 是纯白那档）+ 1px 描边
                 _ComposerInputBox(
+                  focusNode: focusNode,
                   builder: (focusNode) => Row(
                     children: [
                       Expanded(
@@ -646,26 +652,34 @@ class _SquishButtonState extends State<_SquishButton> {
 /// （CSS 里对应 `focus:border-[...]` 效用类）。两个值都是中性灰，
 /// 而本仓的 `border` / `borderStrong` 属暖灰系，白底上会偏黄，所以这里单独定义。
 class _ComposerInputBox extends StatefulWidget {
+  /// 外部持有的焦点节点：容器只监听它来切边框色，不负责 dispose。
+  final FocusNode focusNode;
   final Widget Function(FocusNode focusNode) builder;
-  const _ComposerInputBox({required this.builder});
+  const _ComposerInputBox({required this.focusNode, required this.builder});
 
   @override
   State<_ComposerInputBox> createState() => _ComposerInputBoxState();
 }
 
 class _ComposerInputBoxState extends State<_ComposerInputBox> {
-  final _focusNode = FocusNode();
-
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(_handleFocusChanged);
+    widget.focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(_ComposerInputBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      oldWidget.focusNode.removeListener(_handleFocusChanged);
+      widget.focusNode.addListener(_handleFocusChanged);
+    }
   }
 
   @override
   void dispose() {
-    _focusNode.removeListener(_handleFocusChanged);
-    _focusNode.dispose();
+    widget.focusNode.removeListener(_handleFocusChanged);
     super.dispose();
   }
 
@@ -680,7 +694,7 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
         border: Border.all(
-          color: _focusNode.hasFocus
+          color: widget.focusNode.hasFocus
               ? colors.neutralBorderStrong
               : colors.neutralBorder,
         ),
@@ -698,7 +712,7 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
       ),
       duration: const Duration(milliseconds: 120),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: widget.builder(_focusNode),
+      child: widget.builder(widget.focusNode),
     );
   }
 }
