@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
@@ -40,7 +41,15 @@ void main(List<String> args) async {
     await WindowUtil.instance.ensureInitialized(
       backgroundColor: windowBg.surface,
     );
-    await SystemTrayUtil.instance.ensureInitialized();
+    await SystemTrayUtil.instance.ensureInitialized(
+      onBeforeQuit: () async {
+        // 优雅退出：停止所有后台任务（强杀时走不到这里，由下次启动的
+        // recoverOrphans 清理遗留进程）。
+        await GetIt.instance<BackgroundTaskService>().stopAll();
+      },
+    );
+    // 上次进程被强杀会留下后台任务子进程：启动时核对并清理。
+    unawaited(GetIt.instance<BackgroundTaskService>().recoverOrphans());
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   // 禁用 Signals 的 devtools 集成（桌面端无需信号调试面板，避免额外开销）

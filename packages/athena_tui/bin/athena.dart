@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_tui/di/tui_di.dart';
@@ -26,6 +27,9 @@ Future<void> main(List<String> args) async {
   await di.initialize();
   stdout.writeln('Athena TUI 就绪。');
 
+  // 上次进程被强杀会留下后台任务子进程：启动时核对并清理（与 GUI 一致）。
+  unawaited(di.toolRegistry.backgroundTasks.recoverOrphans());
+
   // 包装 StdioBackend:过滤 OSC 52 剪贴板写入,避免 macOS 26.4+ 在
   // 终端粘贴内容时弹出 "tried to write to your clipboard" 安全警告
   // (nocterm 会在粘贴事件里把内容写回系统剪贴板)。
@@ -33,4 +37,8 @@ Future<void> main(List<String> args) async {
     AthenaApp(di: di),
     backend: NoClipboardBackend(StdioBackend()),
   );
+
+  // 优雅退出：后台任务属于应用进程，进程走了就不该留在系统里跑。
+  // （被强杀时这里没有机会执行，遗留进程由下次启动的 recoverOrphans 清理。）
+  await di.toolRegistry.backgroundTasks.stopAll();
 }

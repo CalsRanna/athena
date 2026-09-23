@@ -56,6 +56,10 @@ class SettingViewModel {
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
   Signal<ApprovalMode> get approvalMode => _agentSettings.approvalMode;
 
+  /// 后台任务完成后是否自动起一个汇报回合。
+  Signal<bool> get backgroundTaskReports =>
+      _agentSettings.backgroundTaskReports;
+
   Future<void> updateApprovalMode(ApprovalMode mode) =>
       _agentSettings.updateApprovalMode(mode);
   final maxRetries = signal(10);
@@ -219,6 +223,11 @@ class SettingViewModel {
   /// 更新最大 Agent 迭代次数
   Future<void> updateMaxAgentIterations(int max) async {
     await _agentSettings.updateMaxAgentIterations(max);
+  }
+
+  /// 开关后台任务完成后的自动汇报。
+  Future<void> updateBackgroundTaskReports(bool enabled) async {
+    await _agentSettings.updateBackgroundTaskReports(enabled);
   }
 
   /// 更新窗口尺寸

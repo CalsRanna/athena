@@ -102,6 +102,82 @@ Map<String, String> _buildEnvironment() {
   return env;
 }
 
+/// 启动 shell 进程但不等待它结束（后台任务的启动路径）。
+///
+/// 与 [runShellProcess] 共用同一份环境变量与工作目录口径，只是把
+/// 「等到退出/超时/取消」这一步交给调用方：后台任务的退出由
+/// BackgroundTaskService 观察。
+Future<Process> startShellProcess({
+  required String executable,
+  required List<String> arguments,
+  required String workdir,
+}) => Process.start(
+  executable,
+  arguments,
+  workingDirectory: workdir,
+  environment: _buildEnvironment(),
+);
+
+/// 终止 [process] 及其全部后代进程，返回退出码。
+///
+/// 与前台 shell 的超时/取消共用同一条路径：只 kill shell 本身会遗留
+/// 构建/测试等子进程。
+Future<int> terminateShellProcessTree(Process process) =>
+    _terminateProcessTree(process);
+
+/// 按 pid 终止一棵进程树，供「上次进程被强杀后遗留的孤儿」清理使用。
+///
+/// 调用方必须先确认该 pid 上的进程确实是本应用启动的任务（孤儿记录里的
+/// 命令行比对），否则 pid 复用会误杀无关进程。
+Future<void> terminateShellProcessTreeByPid(int pid) async {
+  if (Platform.isWindows) {
+    try {
+      await Process.run('taskkill', [
+        '/PID',
+        '$pid',
+        '/T',
+        '/F',
+      ]).timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // 进程可能已退出；孤儿清理是尽力而为。
+    }
+    return;
+  }
+
+  final descendants = await _unixDescendantPids(pid);
+  for (final child in descendants.reversed) {
+    try {
+      Process.killPid(child, ProcessSignal.sigterm);
+    } catch (_) {
+      // 已退出。
+    }
+  }
+  var alive = true;
+  try {
+    alive = Process.killPid(pid, ProcessSignal.sigterm);
+  } catch (_) {
+    alive = false;
+  }
+  if (!alive) return;
+  await Future<void>.delayed(const Duration(seconds: 1));
+  try {
+    // 仍在运行（忽略 SIGTERM 的构建进程）时强杀。
+    if (Process.killPid(pid, ProcessSignal.sigterm)) {
+      final remaining = await _unixDescendantPids(pid);
+      for (final child in remaining.reversed) {
+        try {
+          Process.killPid(child, ProcessSignal.sigkill);
+        } catch (_) {
+          // 已退出。
+        }
+      }
+      Process.killPid(pid, ProcessSignal.sigkill);
+    }
+  } catch (_) {
+    // 已退出。
+  }
+}
+
 /// 用 [Process.start] 跑一个 shell 进程，对超时主动 kill。
 ///
 /// 与 [Process.run] 的关键差异：超时不再只是抛 TimeoutException 任由后台进程

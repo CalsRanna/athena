@@ -5,6 +5,7 @@ import 'package:athena_core/agent/evolution/evolution_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
+import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
@@ -44,24 +45,45 @@ class DI {
   /// `~/.athena/`);移动端无可靠 `$HOME`,用 Application Support
   /// ([dataDirectory])。写入端(skill_evolve / experience 工具)必须与
   /// 这里读同一目录。
-  static String _homeDir(String? dataDirectory) {
+  static String _homeDir(String? dataDirectory, String? homeDirOverride) {
+    // 测试专用:把用户级数据根整个指到临时目录。生产调用一律不传——
+    // 桌面端必须与 TUI 共享 `$HOME/.athena`。
+    if (homeDirOverride != null) return homeDirOverride;
     if (PlatformUtil.isMobile && dataDirectory != null) return dataDirectory;
     return Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         Directory.current.path;
   }
 
-  static void ensureInitialized({String? dataDirectory}) {
+  /// [homeDirOverride] 只给测试用(见 [_homeDir])：让 GUI 的 widget 测试能装出
+  /// 一份隔离的依赖图，不碰真实的 `~/.athena`。不传时行为与之前完全一致。
+  static void ensureInitialized({
+    String? dataDirectory,
+    String? homeDirOverride,
+  }) {
     final getIt = GetIt.instance;
+
+    // 需要按"用户级数据根"定位的两处(经验目录、用户级技能目录)共用同一个值:
+    // 生产上移动端用 Application Support,桌面端留空让它们回退到 `$HOME`。
+    final userHomeDir =
+        homeDirOverride ?? (PlatformUtil.isMobile ? dataDirectory : null);
 
     // 文件持久化(布局见 FileStorage):root = $HOME/.athena
     final storage = FileStorage(
-      root: Directory('${_homeDir(dataDirectory)}/.athena'),
+      root: Directory('${_homeDir(dataDirectory, homeDirOverride)}/.athena'),
     );
     getIt.registerSingleton<FileStorage>(storage);
 
     getIt.registerLazySingleton(
       () => ToolOutputStore(directory: storage.toolOutputsDir),
+    );
+
+    // 后台任务登记表：孤儿记录目录让「上次被强杀」的遗留进程能在下次启动
+    // 被清理（强杀时没有钩子可挂，只能事后发现）。
+    getIt.registerLazySingleton(
+      () => BackgroundTaskService(
+        stateDirectory: storage.backgroundTasksDir,
+      ),
     );
 
     // Repositories (no dependencies)
@@ -187,6 +209,7 @@ class DI {
         sentinelRepository: getIt<SentinelRepository>(),
         store: getIt<KeyValueStore>(),
         outputStore: getIt<ToolOutputStore>(),
+        backgroundTasks: getIt<BackgroundTaskService>(),
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),
         mobileHomeDir: dataDirectory,
       ),

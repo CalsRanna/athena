@@ -5,6 +5,7 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:athena_gui/widget/settings/row.dart';
+import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -113,6 +114,21 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
         AthenaSettingsSection(
           title: 'Tools',
           children: [
+            Watch((context) {
+              return AthenaSettingsRow(
+                label: 'Report finished background tasks',
+                description:
+                    'When a background command finishes, start a run that '
+                    'reads its output and reports back. That run uses this '
+                    'session\'s model, so it costs a request; it only has '
+                    'read-only tools and never asks for approval.',
+                control: AthenaSwitch(
+                  value: viewModel.backgroundTaskReports.value,
+                  onChanged: (value) =>
+                      viewModel.updateBackgroundTaskReports(value),
+                ),
+              );
+            }),
             AthenaSettingsRow(
               label: 'Brave Search API key',
               description:
