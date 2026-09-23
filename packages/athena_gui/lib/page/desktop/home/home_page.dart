@@ -6,6 +6,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
+import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
@@ -39,6 +40,9 @@ class DesktopHomePage extends StatefulWidget {
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
   final controller = TextEditingController();
+
+  /// composer 输入框的焦点：新建对话、启动落到草稿页时把焦点放进去。
+  final composerFocusNode = FocusNode(debugLabel: 'composer');
   final scrollController = MessageListScrollController();
   final chatViewModel = GetIt.instance<ChatViewModel>();
   final modelViewModel = GetIt.instance<ModelViewModel>();
@@ -52,21 +56,30 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         _buildLeftBar(context),
         Expanded(child: _buildWorkspace()),
       ];
-      return AthenaScaffold(
-        appBar: _buildAppBar(context),
-        body: Row(children: children),
+      // 页级快捷键（⌘N / Ctrl+N 新建对话）包在最外层：设置页、对话框是压在
+      // 首页之上的路由，它们打开时焦点不在这棵子树里，快捷键自然不生效。
+      return DesktopHomeShortcuts(
+        onNewChat: startNewChat,
+        child: AthenaScaffold(
+          appBar: _buildAppBar(context),
+          body: Row(children: children),
+        ),
       );
     });
   }
 
-  /// 侧栏 "New chat"：进入草稿态，不落盘。
+  /// 侧栏 "New chat" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
   ///
   /// 对齐 Claude 桌面端：新对话只是一个空页面，会话文件与侧栏条目要等首条
   /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
-  /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话。
+  /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话——
+  /// 但焦点照样放回输入框，这样在草稿页按快捷键也等于"回到输入框"。
   Future<void> startNewChat() async {
-    if (chatViewModel.currentChat.value == null) return;
-    await chatViewModel.prepareNewChatDraft();
+    if (chatViewModel.currentChat.value != null) {
+      await chatViewModel.prepareNewChatDraft();
+    }
+    if (!mounted) return;
+    composerFocusNode.requestFocus();
   }
 
   Future<void> batchDestroyChats(List<ChatEntity> chats) async {
@@ -91,6 +104,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   @override
   void dispose() {
     controller.dispose();
+    composerFocusNode.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -299,6 +313,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
     var desktopMessageInput = DesktopMessageInput(
       controller: controller,
+      focusNode: composerFocusNode,
       onRetentionChange: updateRetention,
       onImageSelected: updateImage,
       onImagePasted: chatViewModel.addPendingImage,
@@ -325,6 +340,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   Future<void> _initState() async {
     await settingViewModel.initSignals();
     await chatViewModel.initSignals();
+    // 启动落在空草稿页，和点 New chat 一样把焦点放到输入框，开屏即可打字
+    if (mounted) composerFocusNode.requestFocus();
     await modelViewModel.loadEnabledModels();
     await sentinelViewModel.getSentinels();
   }

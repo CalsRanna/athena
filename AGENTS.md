@@ -102,7 +102,7 @@ Release（`.github/workflows/release.yml`）由 `v*` tag 触发，三平台并�
 7. **id 分配不缓存计数**。`IdAllocator` 每次都在跨进程文件锁内「读 meta → 加一 → 原子写回」，因为 GUI 与 TUI 可能同时运行。
 8. **所有改文件的写操作走 `atomicWriteString` / 临时文件 + rename**，修改再套 `withFileLock(...)`（`.lock` 文件只做互斥，内容始终为空）。GUI 与 TUI 共享同一目录。
 9. **不要用 `Stream.timeout`**：Dart 3.12 里它对「async* 生成器 + await for」不触发。用 `util`/`service/llm_client.dart` 的 `withIdleTimeout`（Timer 手动实现）。
-10. **assistant 消息的 `tool_calls` 必须被 tool 结果全覆盖**。取消、异常、流提前结束时都要用 `_closeOpenToolCalls` 合成占位结果，否则下次组装上下文会被 OpenAI 兼容端 400 拒绝，该会话再也发不出消息。
+10. **assistant 消息的 `tool_calls` 必须被 tool 结果全覆盖**。取消、异常、流提前结束时都要用 `_closeOpenToolCalls` 合成占位结果，否则下次组装上下文会被 OpenAI 兼容端 400 拒绝，该会话再也发不出消息。空载荷的 assistant 记录（content 与 tool_calls 都为空）同样不能进请求：`ChatMessageConverter.convertMessage` 直接整批丢弃（连带丢弃它的 tool 结果，否则会变成孤立的 tool 消息）。
 11. **不要用文件工具去读写 `~/.athena/` 下的应用数据**。那是运行时数据（sentinels / chats / experiences / skills），由工具与仓储管理；文档里的这条要求同样写进了注入模型的运行时提示（`runtime_context.dart`）。
 12. **生成的代码不要手改**：`athena_gui/lib/router/router.gr.dart` 由 `build_runner` 产生；改路由后重跑生成命令并把产物一起提交。
 
@@ -297,6 +297,7 @@ entity + ~/.athena/ 下的文件
 - **会话锁形同虚设**：每次新建 `SessionJsonlStore` → 流式期间的整文件重写与 append 交错丢行。
 - **`Stream.timeout` 不触发**：改用 `withIdleTimeout`。
 - **tool_calls 未闭合**：取消/异常路径漏合成 tool 结果 → 该会话后续请求被 400 拒绝。
+- **空 assistant 记录进上下文**：进程被强杀 / 崩溃 / 断电时迭代占位没走完收尾，或思考模式只输出 reasoning 就被截断 → 组装出 `AssistantMessage(content: null, toolCalls: null)`，兼容端报 `Invalid assistant message: content or tool_calls must be set`，该会话此后每次请求都被拒（用户看到"中断后再也继续不了"）。空记录在 UI 上不渲染（`buildAssistantMessageLayouts` 跳过无片段的布局），所以肉眼看不到是哪条坏。会话重新加载后由 `ChatMessageConverter` 自动丢弃即可恢复。
 - **截断的 tool_calls 直接执行**：参数半截就写文件/跑命令 → 撞输出上限时一律不执行。
 - **展示元数据混进参数**：`call_description` / `approval_recommendation` / `approval_reason` 必须剥离后再匹配规则与执行。
 - **读写应用数据目录**：`~/.athena/` 只能经仓储与工具访问，不要用文件工具直接改。

@@ -1,0 +1,104 @@
+import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_gui/component/step_card.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/util/message_display_util.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hugeicons/hugeicons.dart';
+
+/// 工具步骤头部的两条口径：
+/// 1. **文案只认 call_description**：解析得出就用模型自述，解析不出（缺该字段，
+///    或参数还是流式中的半截 JSON）一律 `Using a tool`，不把原始参数摆到头部。
+/// 2. **组头图标跟随当前步骤**：进行中且当前步是工具调用时用它自己的图标——文案
+///    可能只是通用的 `Using a tool`，图标负责说明是哪个工具；结束态是汇总文案，
+///    仍用通用图标。
+void main() {
+  ToolCallStep tool(
+    String arguments, {
+    String name = 'file_read',
+    String? result = 'ok',
+  }) => ToolCallStep(
+    id: 'call-1',
+    toolName: name,
+    arguments: arguments,
+    result: result,
+  );
+
+  ReasoningStep reasoning() => ReasoningStep(
+    MessageEntity(chatId: 1, role: 'assistant', reasoningContent: '想想'),
+  );
+
+  Future<void> pumpCard(
+    WidgetTester tester,
+    List<AssistantStep> steps, {
+    bool live = true,
+  }) => tester.pumpWidget(
+    MaterialApp(
+      theme: buildAthenaThemeData(AthenaColorMode.light),
+      home: Scaffold(
+        body: StepCard(steps: steps, live: live),
+      ),
+    ),
+  );
+
+  group('currentLabel', () {
+    test('有 call_description 时用模型自述', () {
+      expect(
+        StepCard.currentLabel(tool('{"call_description":"读取配置文件"}')),
+        '读取配置文件',
+      );
+    });
+
+    test('缺 call_description 时退回通用文案', () {
+      expect(StepCard.currentLabel(tool('{"path":"a.dart"}')), 'Using a tool');
+      expect(StepCard.currentLabel(tool('{}')), 'Using a tool');
+      expect(StepCard.currentLabel(tool('')), 'Using a tool');
+      expect(
+        StepCard.currentLabel(tool('{"call_description":"   "}')),
+        'Using a tool',
+      );
+    });
+
+    test('流式半截 JSON 解析不出时同样退回通用文案', () {
+      expect(
+        StepCard.currentLabel(tool('{"call_description":"读取配')),
+        'Using a tool',
+      );
+    });
+  });
+
+  group('组头（多步）', () {
+    testWidgets('当前步缺 call_description：文案通用、图标是该工具的图标', (tester) async {
+      await pumpCard(tester, [reasoning(), tool('{"path":"a.dart"}')]);
+
+      expect(find.text('Using a tool'), findsOneWidget);
+      expect(find.byIcon(HugeIcons.strokeRoundedFile01), findsOneWidget);
+      expect(find.byIcon(HugeIcons.strokeRoundedTools), findsNothing);
+    });
+
+    testWidgets('当前步有 call_description：文案是自述，图标仍是该工具的图标', (tester) async {
+      await pumpCard(tester, [
+        reasoning(),
+        tool(
+          '{"call_description":"抓取文档","url":"https://x"}',
+          name: 'web_search',
+        ),
+      ]);
+
+      expect(find.text('抓取文档'), findsOneWidget);
+      expect(find.byIcon(HugeIcons.strokeRoundedSearch01), findsOneWidget);
+    });
+
+    testWidgets('结束态是汇总文案，仍用通用图标', (tester) async {
+      await pumpCard(tester, [
+        reasoning(),
+        tool('{"path":"a.dart"}'),
+      ], live: false);
+
+      expect(find.textContaining('Used 1 tool'), findsOneWidget);
+      expect(find.byIcon(HugeIcons.strokeRoundedTools), findsOneWidget);
+      expect(find.byIcon(HugeIcons.strokeRoundedFile01), findsNothing);
+    });
+  });
+}
