@@ -13,6 +13,7 @@ import 'package:athena_core/agent/tool/tool_output_read_tool.dart';
 import 'package:athena_core/agent/evolution/reflection.dart';
 import 'package:athena_core/agent/permission/ai_permission_reviewer.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
+import 'package:athena_core/agent/project_instructions.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/tool/run_workspace.dart';
 import 'package:athena_core/agent/tool/tool_result.dart';
@@ -164,12 +165,18 @@ class AgentService {
     // Level 1 技能目录在此统一注入：任一前端只要装配了 SkillRegistry，
     // 本轮就会带上可用技能清单（含内置 self-evolve）；显式传入可覆盖。
     final effectiveSkillPrompt = skillPrompt ?? _skillRegistry?.level1Prompt;
-    final prompts = _injectPrompts(
-      baseMessages,
-      effectiveSkillPrompt,
-      evolutionPrompt,
-      runtimePrompt,
+
+    // 工作文件夹根目录的项目约定（AGENTS.md）：存在即全文注入、不裁剪。
+    // 与其它稳定目录同一约定——只拼入本次请求，不落库。用户可能在 run 进行中
+    // 编辑它，所以把快照交给循环在每次请求前复核 size/mtime。
+    final projectInstructions = ProjectInstructions.load(workspace);
+    final prompts = layoutPromptMessages(
+      base: baseMessages,
+      runtimeText: _runtimePromptWithDate(runtimePrompt),
       hasSentinelPrompt: hasSentinelPrompt,
+      skillPrompt: effectiveSkillPrompt,
+      evolutionPrompt: evolutionPrompt,
+      projectPrompt: projectInstructions?.prompt,
     );
     _skillRegistry?.clearContext();
 
@@ -204,6 +211,8 @@ class AgentService {
         messages: prompts.messages,
         runtimeMessageIndex: prompts.runtimeMessageIndex,
         runtimePrompt: runtimePrompt,
+        projectMessageIndex: prompts.projectMessageIndex,
+        projectInstructions: projectInstructions,
         onCompact: onCompact,
         runId: runId,
         sentinelId: sentinelId,
@@ -558,67 +567,6 @@ class AgentService {
         : PermissionVerdict.allow;
   }
 
-  /// 首轮注入 runtime / evolution / skill prompt。
-  ///
-  /// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
-  ///   [sentinel, evolution, skill, memory?, runtime-with-date, history...]
-  ///
-  /// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
-  /// true 时首个 system 是 sentinel，其后的 system 是稳定的 Memory 目录；
-  /// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
-  /// 包括按覆盖范围定位的 compact 摘要。
-  /// - evolution / skill 插在 sentinel 之后、Memory 之前。
-  /// - runtime + date 作为最后一条 system 消息，紧接对话历史之前。
-  ({List<ChatMessage> messages, int runtimeMessageIndex}) _injectPrompts(
-    List<ChatMessage> base,
-    String? skillPrompt,
-    String? evolutionPrompt,
-    String? runtimePrompt, {
-    required bool hasSentinelPrompt,
-  }) {
-    var sentinelEnd = -1;
-    if (hasSentinelPrompt) {
-      for (var i = 0; i < base.length; i++) {
-        if (base[i] is SystemMessage) {
-          sentinelEnd = i;
-          break;
-        }
-      }
-    }
-
-    final injectedBlocks = <ChatMessage>[
-      if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
-        ChatMessage.system(evolutionPrompt),
-      if (skillPrompt != null && skillPrompt.isNotEmpty)
-        ChatMessage.system(skillPrompt),
-    ];
-
-    final head = <ChatMessage>[];
-    final summaries = <ChatMessage>[];
-    final history = <ChatMessage>[];
-    for (var i = 0; i < base.length; i++) {
-      final m = base[i];
-      if (i == sentinelEnd) {
-        head.add(m); // sentinel
-      } else if (m is SystemMessage) {
-        summaries.add(m); // 稳定的附加上下文（memory digest）
-      } else {
-        history.add(m);
-      }
-    }
-    return (
-      messages: [
-        ...head,
-        ...injectedBlocks,
-        ...summaries,
-        ChatMessage.system(_runtimePromptWithDate(runtimePrompt)),
-        ...history,
-      ],
-      runtimeMessageIndex:
-          head.length + injectedBlocks.length + summaries.length,
-    );
-  }
-
   String _runtimePromptWithDate(String? runtimePrompt) {
     final date = currentDatePrompt(_now());
     return runtimePrompt == null || runtimePrompt.isEmpty
@@ -646,6 +594,79 @@ class AgentService {
   }
 }
 
+/// 首轮请求的消息布局（纯函数：同样输入得到同样布局，便于单测固定块顺序）。
+///
+/// 目标布局（运行环境与日期合为一条消息，同一天内容稳定）：
+///   [sentinel, evolution, skill, memory?, project?, runtime-with-date, history...]
+///
+/// base 约定（ChatMessageConverter.buildMessages）：[hasSentinelPrompt] 为
+/// true 时首个 system 是 sentinel，其后的 system 是稳定的 Memory 目录；
+/// 为 false 时所有 system 都是附加上下文。非 system 是对话历史，
+/// 包括按覆盖范围定位的 compact 摘要。
+/// - evolution / skill 插在 sentinel 之后、Memory 之前。
+/// - project（工作文件夹根目录的 AGENTS.md）与 runtime 都是随外部状态变化的
+///   块，放在最靠后：前缀缓存只在前缀相同的部分命中，块越靠后，它变化时被
+///   重算的 token 越少。
+/// - runtime + date 保持「最后一条 system 消息、紧接对话历史之前」。
+///
+/// 返回的两个下标供 run 循环在每次请求前就地刷新对应消息（runtime 跨天、
+/// project 被用户编辑）。压缩会原样保留全部 system 消息并保持相对顺序
+/// （ConversationCompactor 的 candidate 由 `whereType<SystemMessage>()` 构造），
+/// 所以下标在压缩后依然有效。
+({List<ChatMessage> messages, int runtimeMessageIndex, int projectMessageIndex})
+layoutPromptMessages({
+  required List<ChatMessage> base,
+  required String runtimeText,
+  required bool hasSentinelPrompt,
+  String? skillPrompt,
+  String? evolutionPrompt,
+  String? projectPrompt,
+}) {
+  var sentinelEnd = -1;
+  if (hasSentinelPrompt) {
+    for (var i = 0; i < base.length; i++) {
+      if (base[i] is SystemMessage) {
+        sentinelEnd = i;
+        break;
+      }
+    }
+  }
+
+  final injectedBlocks = <ChatMessage>[
+    if (evolutionPrompt != null && evolutionPrompt.isNotEmpty)
+      ChatMessage.system(evolutionPrompt),
+    if (skillPrompt != null && skillPrompt.isNotEmpty)
+      ChatMessage.system(skillPrompt),
+  ];
+
+  final head = <ChatMessage>[];
+  final summaries = <ChatMessage>[];
+  final history = <ChatMessage>[];
+  for (var i = 0; i < base.length; i++) {
+    final m = base[i];
+    if (i == sentinelEnd) {
+      head.add(m); // sentinel
+    } else if (m is SystemMessage) {
+      summaries.add(m); // 稳定的附加上下文（memory digest）
+    } else {
+      history.add(m);
+    }
+  }
+
+  final lead = <ChatMessage>[...head, ...injectedBlocks, ...summaries];
+  final hasProject = projectPrompt != null && projectPrompt.isNotEmpty;
+  return (
+    messages: [
+      ...lead,
+      if (hasProject) ChatMessage.system(projectPrompt),
+      ChatMessage.system(runtimeText),
+      ...history,
+    ],
+    runtimeMessageIndex: lead.length + (hasProject ? 1 : 0),
+    projectMessageIndex: hasProject ? lead.length : -1,
+  );
+}
+
 /// 单次 Agent run 的驱动循环（外层 followUp 循环 + 内层工具迭代）。
 ///
 /// 从 [AgentService.run] 中独立出来，把一次 run 的完整生命周期
@@ -661,6 +682,8 @@ class _AgentLoop {
     required List<ChatMessage> messages,
     required int runtimeMessageIndex,
     required String? runtimePrompt,
+    required int projectMessageIndex,
+    required ProjectInstructions? projectInstructions,
     required ContextCompactionCallback? onCompact,
     required int runId,
     required String? sentinelId,
@@ -681,6 +704,8 @@ class _AgentLoop {
        _budget = ContextBudget(model.contextWindow),
        _runtimeMessageIndex = runtimeMessageIndex,
        _runtimePrompt = runtimePrompt,
+       _projectMessageIndex = projectMessageIndex,
+       _projectInstructions = projectInstructions,
        _onCompact = onCompact,
        _messages = messages,
        _runId = runId,
@@ -703,6 +728,12 @@ class _AgentLoop {
   final ContextBudget _budget;
   final int _runtimeMessageIndex;
   final String? _runtimePrompt;
+
+  /// 注入的项目约定块下标；-1 表示本次 run 未注入。
+  final int _projectMessageIndex;
+
+  /// 已注入的项目约定快照（随文件变化更新）。
+  ProjectInstructions? _projectInstructions;
   final ContextCompactionCallback? _onCompact;
 
   /// 正在演进的上下文（本轮工具结果 / steering / followUp 持续追加）。
@@ -809,6 +840,15 @@ class _AgentLoop {
         yield AgentCompactionEvent(update.step);
       }
       _token.throwIfCancelled();
+    }
+    // 项目约定由用户手工维护，run 进行中也可能被编辑：size/mtime 变化即就地
+    // 替换（文件消失或清空时保留已注入内容，见 ProjectInstructions.refresh）。
+    if (_projectMessageIndex >= 0) {
+      final updated = _projectInstructions?.refresh();
+      if (updated != null) {
+        _projectInstructions = updated;
+        _messages[_projectMessageIndex] = ChatMessage.system(updated.prompt);
+      }
     }
     // Summarization may span midnight; refresh immediately before the request.
     final runtime = _service._runtimePromptWithDate(_runtimePrompt);
