@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
 import 'package:athena_gui/util/message_display_util.dart';
@@ -266,11 +267,27 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
 
   /// 把第 [turnIndex] 轮滚到视口顶部。
   Future<void> _scrollToTurn(int turnIndex) async {
-    final position = _position;
-    if (position == null || turnIndex < 0 || turnIndex >= _turnStarts.length) {
+    if (_position == null || turnIndex < 0 || turnIndex >= _turnStarts.length) {
       return;
     }
     final targetItem = _turnStarts[turnIndex];
+    // 整段跳转挂起贴底跟随：列表刚打开（切会话、发消息）时处于跟随态，而跟随
+    // 会在每次内容尺寸变化时把偏移拉回底部——懒加载列表跳转时必然要建新项、
+    // 尺寸必然变，于是刚跳上去的视口被立刻拽回来（用户看到的是闪一下又停在
+    // 原处，粗跳永远到不了目标）。跟随由控制器上的状态决定，见
+    // [MessageListScrollController.jumpWithoutFollowing]。
+    final controller = MessageListScrollController.of(context);
+    if (controller == null) {
+      await _jumpToItem(targetItem);
+    } else {
+      await controller.jumpWithoutFollowing(() => _jumpToItem(targetItem));
+    }
+  }
+
+  /// 把第 [targetItem] 项顶到视口首边；该项未被构建时按索引差粗跳一段再复测。
+  Future<void> _jumpToItem(int targetItem) async {
+    final position = _position;
+    if (position == null) return;
     for (var attempt = 0; attempt < _maxScrollAttempts; attempt++) {
       final offset = _viewportOffsetOfItem(targetItem);
       if (offset != null) {

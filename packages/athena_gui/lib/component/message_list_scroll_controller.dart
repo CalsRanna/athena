@@ -26,12 +26,25 @@ class MessageListScrollController extends ScrollController {
   bool _followBottom = true;
   bool _followExplicitly = false;
   bool _programmaticScroll = false;
+
+  /// 正在执行 [jumpWithoutFollowing]：期间贴底跟随整体挂起。
+  bool _followSuspended = false;
   bool _frameScheduled = false;
   bool _rescheduleRequested = false;
   bool _disposed = false;
 
   MessageListScrollController({this.atBottomEpsilon = defaultAtBottomEpsilon}) {
     addListener(_updateFollowState);
+  }
+
+  /// 从滚动视图上取到本控制器；不是本控制器（如移动端默认的
+  /// [ScrollController]）时返回 null。
+  ///
+  /// 消息 sliver 要挂起贴底跟随时用（见 [jumpWithoutFollowing]）：它只拿得到
+  /// 祖先 [Scrollable]，而贴底状态在控制器上。
+  static MessageListScrollController? of(BuildContext context) {
+    final controller = Scrollable.maybeOf(context)?.widget.controller;
+    return controller is MessageListScrollController ? controller : null;
   }
 
   /// agent 是否正在工作中（当前会话流式生成）。
@@ -46,7 +59,29 @@ class MessageListScrollController extends ScrollController {
   /// 滚动。跟随状态本身只由用户手势（见 [_updateFollowState]）和
   /// [followBottom] 改变。
   bool get shouldStickToBottom =>
-      _followBottom && (isWorking || _followExplicitly);
+      !_followSuspended && _followBottom && (isWorking || _followExplicitly);
+
+  /// 执行一次「用户要求跳到别处」的滚动（点轮次条跳到某一轮），期间挂起贴底跟随。
+  ///
+  /// 跟随有两处会自己动偏移：布局阶段
+  /// [_MessageListScrollPosition.correctForNewDimensions] 的贴底校正，与 post-frame
+  /// 的 [maintainBottom]。而跳转过程中内容尺寸必然变化（懒加载列表要建出新项才
+  /// 知道高度），校正会把刚跳上去的偏移拉回底部——视口跳一下又弹回来，粗跳永远
+  /// 到不了目标。跳完若落点不在底部，跟随一并解除：用户已经选择去看别处，此后
+  /// 内容增量不该再把他拽回底部（与用户自己向上滚动同一语义）。
+  Future<void> jumpWithoutFollowing(Future<void> Function() jump) async {
+    _followSuspended = true;
+    try {
+      await jump();
+    } finally {
+      _followSuspended = false;
+    }
+    if (!hasClients) return;
+    if (position.maxScrollExtent - position.pixels > atBottomEpsilon) {
+      _followBottom = false;
+      _followExplicitly = false;
+    }
+  }
 
   @override
   ScrollPosition createScrollPosition(
