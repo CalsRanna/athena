@@ -41,11 +41,14 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   static const double _turnIndicatorLeft = 12;
 
   /// 单条最大宽度。
-  static const double _maxBarWidth = 40;
+  static const double _maxBarWidth = 20;
 
   /// 可用留白窄于这个值时干脆不显示指示器：定宽列被挤到窗口边缘时，
   /// 条会压到正文上。
   static const double _minBarWidth = 12;
+
+  /// 点了窗口外那一轮时，最多向上翻几页去把它补进窗口。
+  static const int _maxTurnJumpPages = 8;
 
   late final ChatViewModel chatViewModel;
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
@@ -75,6 +78,9 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
       final loading = chatViewModel.isCurrentChatStreaming.value;
       final loadingHistory = chatViewModel.isLoadingMessages.value;
       final chatId = chatViewModel.currentChat.value?.id;
+      // 整段会话的轮次起点（整文件扫描，可能比首屏晚到）：读在 Watch 里才
+      // 订阅得到，扫完指示器随之重画。
+      final allTurnIds = chatViewModel.turnStartIds.value;
       final sentinel = _displaySentinel();
       // 当前对话挂起的权限审批卡片（非模态，随会话渲染）
       final approvals = chatViewModel.pendingApprovals.value
@@ -115,24 +121,29 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
             _maxBarWidth,
           );
           final turns = buildChatTurns(messages);
+          // 条数 = 整段会话的 user 消息数（扫描结果，与窗口无关）；窗口只决定
+          // 哪几条能 hover/预览，以及它们摆在整段的第几位（见 windowFirstTurnIndex）。
+          // 计数还没到手时 turnIds 为空 → 不画，避免先给一个错的数字。
+          final totalTurns = allTurnIds.length;
+          final firstTurnIndex = windowFirstTurnIndex(allTurnIds, turns);
           return Column(
             children: [
               Expanded(
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: loadingHistory
-                          ? const SizedBox.expand()
-                          : _buildList(
-                              messages,
-                              loading: loading,
-                              sentinel: sentinel,
-                              columnPadding: columnPadding,
-                            ),
+                      child: _buildList(
+                        messages,
+                        loading: loading,
+                        loadingHistory: loadingHistory,
+                        sentinel: sentinel,
+                        columnPadding: columnPadding,
+                      ),
                     ),
-                    // 一条 = 一轮；只有一轮时不显示，单根条说明不了什么
+                    // 一条 = 一轮（按整段会话算，含未加载的历史）；只有一轮时
+                    // 不显示，单根条说明不了什么
                     if (!loadingHistory &&
-                        turns.length >= 2 &&
+                        totalTurns >= 2 &&
                         barWidth >= _minBarWidth)
                       Positioned(
                         left: _turnIndicatorLeft,
@@ -144,6 +155,9 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                             turns: turns,
                             navigator: turnNavigator,
                             maxBarWidth: barWidth,
+                            totalTurns: totalTurns,
+                            firstTurnIndex: firstTurnIndex,
+                            onTurnSelected: _selectTurn,
                           ),
                         ),
                       ),
@@ -224,6 +238,28 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     return false;
   }
 
+  /// 点了第 [absoluteTurnIndex] 轮（整段会话下标）。
+  ///
+  /// 已经在窗口里就直接滚过去；在窗口之前（更早、还没加载）就先向上翻页，直到
+  /// 那一轮进窗口再滚——否则点了没有任何反应。翻页有上限，到头（没有更早的
+  /// 历史）也停下，避免点到一个已不存在的轮次后一直翻。
+  Future<void> _selectTurn(int absoluteTurnIndex) async {
+    for (var attempt = 0; attempt <= _maxTurnJumpPages; attempt++) {
+      final windowTurns = buildChatTurns(chatViewModel.messages.value);
+      final windowIndex =
+          absoluteTurnIndex -
+          windowFirstTurnIndex(chatViewModel.turnStartIds.value, windowTurns);
+      if (windowIndex >= 0 && windowIndex < windowTurns.length) {
+        turnNavigator.scrollToTurn(windowIndex);
+        return;
+      }
+      // 比窗口还新（正常不会发生）或没有更早的历史了：停下
+      if (windowIndex >= 0 || !chatViewModel.hasOlderMessages) return;
+      final added = await chatViewModel.loadOlderMessages();
+      if (added <= 0) return;
+    }
+  }
+
   SentinelEntity _displaySentinel() {
     if (chatViewModel.currentChat.value?.hasSentinel == false ||
         chatViewModel.currentSentinel.value?.id ==
@@ -236,13 +272,25 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
 
   /// 消息列表本体：空会话显示角色占位，否则是带懒加载的滚动列表。
   /// 只接收 build 阶段读好的值，自己不碰信号。
+  ///
+  /// **历史加载期间也要保留这条滚动视图**（[loadingHistory] 为真时只是不给
+  /// sliver），只有"确实是空会话"才换成占位控件。原因：`selectChat` 是先把
+  /// messages 清空、置 isLoadingMessages 再回填，若此时把整棵 CustomScrollView
+  /// 摘掉，它的 ScrollPosition 会被销毁——新 position 的首帧没有尺寸，
+  /// `correctForNewDimensions` 那条同帧贴底校正不会被调用（见
+  /// `_MessageListScrollPosition`），于是这一帧按偏移 0（列表顶部）画出来，
+  /// 贴底只剩 post-frame 的 jumpTo，晚一帧才生效，表现为切会话时列表先闪一下
+  /// 新会话的开头再跳到底部。空会话没有可滚动内容，换掉它不会丢位置。
   Widget _buildList(
     List<MessageEntity> messages, {
     required bool loading,
+    required bool loadingHistory,
     required SentinelEntity sentinel,
     required double columnPadding,
   }) {
-    if (messages.isEmpty) return SentinelPlaceholder(sentinel: sentinel);
+    if (messages.isEmpty && !loadingHistory) {
+      return SentinelPlaceholder(sentinel: sentinel);
+    }
     return NotificationListener<ScrollNotification>(
       onNotification: _handleScrollNotification,
       child: NotificationListener<ScrollMetricsNotification>(
@@ -250,21 +298,22 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
         child: CustomScrollView(
           controller: widget.controller,
           slivers: [
-            MessageCardListSliver(
-              messages: messages,
-              loading: loading,
-              sentinel: sentinel,
-              navigator: turnNavigator,
-              // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
-              // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
-              // 这里再加内边距会让正文比 Claude 右移 24。
-              padding: EdgeInsets.symmetric(
-                horizontal: columnPadding,
-                vertical: 12,
+            if (!loadingHistory)
+              MessageCardListSliver(
+                messages: messages,
+                loading: loading,
+                sentinel: sentinel,
+                navigator: turnNavigator,
+                // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
+                // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
+                // 这里再加内边距会让正文比 Claude 右移 24。
+                padding: EdgeInsets.symmetric(
+                  horizontal: columnPadding,
+                  vertical: 12,
+                ),
+                onResend: widget.onResend,
+                onSecondaryTapUp: openContextMenu,
               ),
-              onResend: widget.onResend,
-              onSecondaryTapUp: openContextMenu,
-            ),
           ],
         ),
       ),

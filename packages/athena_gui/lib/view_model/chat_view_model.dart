@@ -24,8 +24,6 @@ import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
 
-typedef _MessagePage = ({bool hasOlder, List<MessageEntity> messages});
-
 class _QueuedChatInput {
   final MessageEntity message;
   final ChatEntity chat;
@@ -65,6 +63,16 @@ class ChatViewModel {
   /// 删对话时清掉对应项:会话文件删了,id 将来可能被别的会话用上。
   final Map<int, String> _openingAnswerPreviews = {};
 
+  /// 轮次指示器的全量轮次起点，按 chatId 缓存：一次整文件扫描的代价不低，
+  /// 切回同一会话时直接用缓存。消息被删除（会连带删掉后面的轮次）时按 id 截断。
+  final Map<int, List<int>> _turnStartIdsByChat = {};
+
+  /// 扫描期间新发出、还没并进扫描结果的 user 消息 id(按 chatId)。
+  ///
+  /// 整文件扫描是个快照,期间用户可能又发了一条;等扫描回来时把它并进去,
+  /// 这样轮次数始终等于"整段会话的 user 消息数",不必为了追上发送而重扫。
+  final Map<int, List<int>> _pendingTurnIds = {};
+
   bool get hasOlderMessages => _oldestLoadedMessageId != null;
 
   // ─── Signals ───
@@ -73,6 +81,16 @@ class ChatViewModel {
   final chatHistories = listSignal<ChatHistoryEntity>([]);
   final currentChat = signal<ChatEntity?>(null);
   final messages = listSignal<MessageEntity>([]);
+
+  /// 整段会话里每一轮的起点 id（含尚未加载的历史），轮次指示器用。
+  ///
+  /// 消息列表是窗口化分页的，只持有最近若干条，而指示器要按整段会话的
+  /// 轮数来画，所以由仓储整文件扫一遍得到（见
+  /// `MessageRepository.getTurnStartIds`）。**计数与窗口无关**：扫描是唯一
+  /// 来源，此后新发出的 user 消息由 [_recordNewTurn] 就地补上、删消息按 id
+  /// 截断。计数还没到手时本信号为空，指示器不画——不给错的数字。
+  final turnStartIds = listSignal<int>([]);
+
   final _queuedInputs = listSignal<_QueuedChatInput>([]);
 
   /// Unsent messages for the selected chat, displayed above its composer.
@@ -203,7 +221,16 @@ class ChatViewModel {
     return text;
   }
 
-  Future<_MessagePage> _loadMessagePage(int chatId, {int? beforeId}) async {
+  Future<MessageWindow> _loadMessagePage(int chatId, {int? beforeId}) async {
+    final repository = _messageRepo;
+    if (beforeId == null && repository is RecentMessageRepository) {
+      // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
+      // 仍只给尾部一页。轮次条 hover/点击、列表高度因此不再分两段。
+      return (repository as RecentMessageRepository).loadInitialMessages(
+        chatId,
+        pageSize: messagePageSize,
+      );
+    }
     final loaded = await _loadRecentMessages(
       chatId,
       count: messagePageSize + 1,
@@ -216,7 +243,7 @@ class ChatViewModel {
     return (hasOlder: hasOlder, messages: page);
   }
 
-  void _applyMessagePage(_MessagePage page) {
+  void _applyMessagePage(MessageWindow page) {
     _discardPendingMessages();
     messages.value = page.messages;
     _oldestLoadedMessageId = page.hasOlder && page.messages.isNotEmpty
@@ -510,6 +537,8 @@ class ChatViewModel {
 
       await _manageService.deleteChat(chat.id!);
       _openingAnswerPreviews.remove(chat.id);
+      _turnStartIdsByChat.remove(chat.id);
+      _pendingTurnIds.remove(chat.id);
 
       final shouldSelectReplacement = currentChat.value?.id == chat.id;
       final replacement = shouldSelectReplacement
@@ -552,6 +581,8 @@ class ChatViewModel {
 
       await _manageService.deleteChats(ids);
       ids.forEach(_openingAnswerPreviews.remove);
+      ids.forEach(_turnStartIdsByChat.remove);
+      ids.forEach(_pendingTurnIds.remove);
 
       final shouldSelectReplacement =
           currentChat.value != null && ids.contains(currentChat.value!.id);
@@ -608,6 +639,10 @@ class ChatViewModel {
     // 新会话的 IO 返回前先卸载旧消息，避免用新 chatId 将旧长列表重建并回底。
     _discardPendingMessages();
     messages.value = [];
+    // 轮次指示器：先给缓存值（没有就退回"已加载窗口"的口径），整文件扫描
+    // 在后台补，扫完由信号驱动重画，不挡这条 await 链。
+    turnStartIds.value = _turnStartIdsByChat[chat.id!] ?? const [];
+    unawaited(_loadTurnStartIds(chat.id!, loadGeneration));
 
     try {
       final page = await _loadMessagePage(chat.id!);
@@ -639,6 +674,64 @@ class ChatViewModel {
         isLoadingMessages.value = false;
       }
     }
+  }
+
+  /// 从 [deletedId] 起截断轮次起点缓存：删消息连带删掉它之后的全部消息
+  /// （见 [ChatStoreService.deleteMessagesFromIndex]），而 id 在文件里单调，
+  /// 所以 `id < deletedId` 就是删完后仍存在的那些轮次，不必重扫整个文件。
+  void _dropTurnStartIdsFrom(int chatId, int? deletedId) {
+    final cached = _turnStartIdsByChat[chatId];
+    if (deletedId == null || cached == null) return;
+    final kept = [
+      for (final id in cached)
+        if (id < deletedId) id,
+    ];
+    _turnStartIdsByChat[chatId] = kept;
+    if (currentChat.value?.id == chatId) turnStartIds.value = kept;
+  }
+
+  /// 读一次整段会话的轮次起点并缓存。
+  ///
+  /// 整文件扫描可能较慢（长会话的 JSONL 可达几百 MB），所以不阻塞会话切换。
+  /// 扫描期间指示器不显示（计数未知时宁可空着，也不给一个错的数字）；扫完由
+  /// 信号驱动画出来。失败记一条警告——装饰性的东西不该挡住会话。
+  Future<void> _loadTurnStartIds(int chatId, int generation) async {
+    try {
+      final scanned = await _messageRepo.getTurnStartIds(chatId);
+      final pending = _pendingTurnIds.remove(chatId) ?? const <int>[];
+      final ids = [
+        ...scanned,
+        for (final id in pending)
+          if (!scanned.contains(id)) id,
+      ];
+      _turnStartIdsByChat[chatId] = ids;
+      if (generation != _messageLoadGeneration ||
+          currentChat.value?.id != chatId) {
+        return;
+      }
+      turnStartIds.value = ids;
+    } catch (e) {
+      LoggerUtil.w('轮次起点扫描失败,指示器本次不显示', error: e);
+    }
+  }
+
+  /// 新落库一条 user 消息 = 会话多了一轮。
+  ///
+  /// 计数只认文件：扫描结果已到手就地追加，还没到手先记进待并清单（见
+  /// [_pendingTurnIds]）。**不**从消息列表里推——列表是窗口，而轮次数是整段
+  /// 会话的属性，跟加载到哪无关。
+  void _recordNewTurn(int chatId, int? messageId) {
+    if (messageId == null) return;
+    final cached = _turnStartIdsByChat[chatId];
+    if (cached == null) {
+      final pending = _pendingTurnIds.putIfAbsent(chatId, () => []);
+      if (!pending.contains(messageId)) pending.add(messageId);
+      return;
+    }
+    if (cached.contains(messageId)) return;
+    final updated = [...cached, messageId];
+    _turnStartIdsByChat[chatId] = updated;
+    if (currentChat.value?.id == chatId) turnStartIds.value = updated;
   }
 
   /// 若 [chatId] 正在流式,用 coordinator 的内存快照覆盖/追加最后一条消息。
@@ -890,6 +983,8 @@ class ChatViewModel {
             _flushMessages();
           }
         case RunMessageStored(:final message):
+          // 用户消息落库 = 会话多了一轮，轮次计数就地跟上（见 _recordNewTurn）
+          if (message.role == 'user') _recordNewTurn(chatId, message.id);
           batch(() {
             if (_queuedInputs.value.contains(input)) {
               _queuedInputs.value = _queuedInputs.value
@@ -990,6 +1085,7 @@ class ChatViewModel {
       final index = messages.value.indexWhere((item) => item.id == message.id);
       if (index >= 0) {
         await _manageService.deleteMessagesFromIndex(messages.value, index);
+        _dropTurnStartIdsFrom(message.chatId, message.id);
         await refreshMessages(message.chatId);
       }
     } catch (e) {

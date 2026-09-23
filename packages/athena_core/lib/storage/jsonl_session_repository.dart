@@ -322,6 +322,51 @@ class JsonlSessionRepository
     return '';
   }
 
+  /// 整段会话里每一轮的起点(每条 user 消息)的 id,按文件顺序。
+  ///
+  /// 窗口化分页只加载尾部若干条,轮次指示器却要按"整段会话有多少轮"来画,
+  /// 所以这里要整文件扫一遍(见 [SessionJsonlStore.loadUserMessageIds]);
+  /// 结果由调用方(ChatViewModel)按 chatId 缓存,不要每次构建都调。
+  @override
+  Future<List<int>> getTurnStartIds(int chatId) {
+    return _storeFor(chatId).loadUserMessageIds();
+  }
+
+  /// 小于该字节数的会话就一次读完整段，不再分页（见 [loadInitialMessages]）。
+  ///
+  /// 8MB 的依据（实测，见 `tool/bench_message_loading.dart`）：整读的峰值内存
+  /// ≈ 文件大小 × 3.6~4.6（8MB → 约 +37MB），首屏耗时 ≈ 4~7ms/MB（8MB →
+  /// 40ms 上下）。这是"小会话不分页"的唯一旋钮：调大它，更多会话不再分页、
+  /// 换来更多内存占用。
+  static const int wholeSessionMaxBytes = 8 * 1024 * 1024;
+
+  /// 首屏窗口：文件够小就给整段（此后不再翻页），否则只给最新的 [pageSize] 条。
+  ///
+  /// 走哪条路只看文件大小——整读的开销（时间与内存）都由字节数决定；条数只
+  /// 影响每帧重建的走查量（实测 2 万条 3.7ms，几千条 0.7ms，可忽略）。
+  @override
+  Future<MessageWindow> loadInitialMessages(
+    int chatId, {
+    required int pageSize,
+  }) async {
+    final store = _storeFor(chatId);
+    if (await _fitsInOneRead(store.file)) {
+      final messages = _toMessages(await store.readMessageRows())
+        ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+      return (messages: messages, hasOlder: false);
+    }
+    // 多要一条判断还有没有更早的
+    final rows = await store.loadRecentRows(pageSize + 1);
+    final hasOlder = rows.length > pageSize;
+    final page = hasOlder ? rows.sublist(rows.length - pageSize) : rows;
+    return (messages: _toMessages(page), hasOlder: hasOlder);
+  }
+
+  Future<bool> _fitsInOneRead(File file) async {
+    if (!await file.exists()) return true;
+    return await file.length() <= wholeSessionMaxBytes;
+  }
+
   /// 从文件尾部向前扫描读取消息(不读整个文件),窗口化分页用。
   ///
   /// 长对话的 JSONL 可达几百 MB,`getMessagesByChatId` 全量读既慢又占
@@ -337,12 +382,17 @@ class JsonlSessionRepository
     final rows = await _storeFor(
       chatId,
     ).loadRecentRows(count, beforeId: beforeId);
+    return _toMessages(rows);
+  }
+
+  /// 行 → 实体，损坏行跳过（与 [getMessagesByChatId] 的容错一致）。
+  List<MessageEntity> _toMessages(List<Map<String, dynamic>> rows) {
     final messages = <MessageEntity>[];
     for (final row in rows) {
       try {
         messages.add(MessageEntity.fromJson(row));
       } catch (_) {
-        // 损坏行跳过,与 readMessageRows 的容错一致
+        // 损坏行跳过
       }
     }
     return messages;
