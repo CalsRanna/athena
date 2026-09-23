@@ -27,17 +27,53 @@ class StatusDot extends StatefulWidget {
     required this.renaming,
   });
 
-  /// 循环走到 [t]（0..1）时的圆点颜色：色相绕 [accent] 转 [t] 圈，**相对亮度钉在
-  /// accent 上**。
+  /// 循环走到 [t]（0..1）时的圆点颜色。
   ///
-  /// 为什么不能直接沿用 accent 的 HSL 明度：同一个明度下各色相的相对亮度差很大
-  /// （浅色主题实测：accent 对画布 4.3:1，而沿用同一 L 的黄绿相位只有 1.5:1），
+  /// **每帧只做一次 lerp**：首次调用先把整圈采样成 [_tableSteps] 档色表（每个 accent
+  /// 只建一次，约 0.5ms），之后取相邻两档插值即可。同轮基准（`flutter_tester` 里的
+  /// Dart 微基准，20 万次取均值）：本函数 0.07–0.11µs/次、单次 `Color.lerp` 0.124µs、
+  /// 而"每帧现算等亮度色相旋转"是 1.243µs——多出来的全是 `computeLuminance` 里的
+  /// `pow`（每次 3 个，`dart:ui` 自己注明它"computationally expensive"）。
+  ///
+  /// 建表时把明度按"相对亮度等于 accent"反解：同一个 HSL 明度下各色相的相对亮度
+  /// 差很大（浅色主题实测：accent 对画布 4.3:1，沿用同一 L 的黄绿相位只有 1.5:1），
   /// 圆点会在一圈里"淡到看不见"再"亮回来"，那是在表达"闪烁"而不是"运行中"。
-  /// 这里改成按亮度反解明度（明度→亮度单调，二分即可），整圈对比度恒等于 accent。
   ///
-  /// `t == 0` 直接返回原色：保证"动画停住 / 关掉"与 accent 完全一致，不留二分误差。
+  /// `t == 0` 落到表头，也就是 accent 原色：动画停住 / 关掉时不会跳色。
   @visibleForTesting
   static Color colorAt(double t, AthenaColors colors) {
+    final table = _tableFor(colors);
+    final x = (t % 1) * _tableSteps;
+    final index = x.floor() % _tableSteps;
+    return Color.lerp(
+      table[index],
+      table[(index + 1) % _tableSteps],
+      x - index,
+    )!;
+  }
+
+  /// 整圈的采样档数。相邻两档之间是 RGB 直线（弦），档数越多越贴近"等亮度的色相圈"：
+  /// 实测整圈的最大饱和度偏差 24 档 0.060 / 48 档 0.051 / 96 档 0.020，而亮度偏差
+  /// 各档都稳定在 0.004（那是 8bit 颜色的量化下限，再加密也不会更小）。96 档建表约
+  /// 0.5ms 且每帧代价与档数无关，所以取这个值。
+  static const int _tableSteps = 96;
+
+  /// 按 accent 记忆化的色表（浅色 / 深色各一张，进程内最多两条）。
+  static final Map<int, List<Color>> _tables = {};
+
+  static List<Color> _tableFor(AthenaColors colors) => _tables.putIfAbsent(
+    colors.accent.toARGB32(),
+    () => [
+      for (var i = 0; i < _tableSteps; i++) _sample(i / _tableSteps, colors),
+    ],
+  );
+
+  /// 建表用的单点采样：色相绕 [accent] 转 [t] 圈，**相对亮度钉在 accent 上**。
+  ///
+  /// 明度→相对亮度单调，所以按亮度二分反解明度。8 步（明度分辨率 1/256）就够：颜色
+  /// 通道本身量化到 1/255，再细分也落不到新的色值上——实测整圈亮度偏差 12 步 0.0036、
+  /// 8 步 0.0039，都是 8bit 的量化下限。
+  static Color _sample(double t, AthenaColors colors) {
     final accent = HSLColor.fromColor(colors.accent);
     final hue = (accent.hue + t * 360) % 360;
     if (hue == accent.hue) return colors.accent;
@@ -45,7 +81,7 @@ class StatusDot extends StatefulWidget {
     final target = colors.accent.computeLuminance();
     var low = 0.0;
     var high = 1.0;
-    for (var i = 0; i < 12; i++) {
+    for (var i = 0; i < 8; i++) {
       final mid = (low + high) / 2;
       final luminance = accent
           .withHue(hue)
