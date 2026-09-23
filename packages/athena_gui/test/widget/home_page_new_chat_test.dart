@@ -6,6 +6,7 @@ import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/home_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +130,34 @@ void main() {
     await tester.pump();
 
     expect(composerFocused(tester), isTrue);
+  });
+
+  testWidgets('侧栏 New chat 的快捷键提示：静止没有，hover 才出现', (tester) async {
+    await pumpHome(tester);
+    // 提示文案按宿主平台只有一套（与 home_shortcuts.dart 的绑定同一条规则），
+    // 这里按平台写死期望值——实现若在 macOS 上显示 Ctrl+N，这条会失败。
+    var hintLabel = Platform.isMacOS ? '⌘N' : 'Ctrl+N';
+    var row = find.descendant(
+      of: find.byType(DesktopChatListView),
+      matching: find.text('New chat'),
+    );
+    var hint = find.descendant(
+      of: find.byType(DesktopChatListView),
+      matching: find.text(hintLabel),
+    );
+    expect(row, findsOneWidget);
+    expect(hint, findsNothing, reason: '静止的导航行没有尾部');
+
+    var mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(row));
+    await tester.pump();
+    expect(hint, findsOneWidget, reason: 'hover 后才挂出提示');
+
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    expect(hint, findsNothing, reason: '指针移开提示收回');
   });
 
   testWidgets('已经在草稿页时按 ⌘N：焦点照样回到 composer', (tester) async {

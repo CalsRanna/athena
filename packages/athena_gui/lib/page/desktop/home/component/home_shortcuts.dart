@@ -37,6 +37,12 @@ class DesktopHomeShortcuts extends StatelessWidget {
     includeRepeats: false,
   );
 
+  /// 新建对话快捷键在界面上的显示文本（侧栏 New chat 行的 hover 提示用）。
+  ///
+  /// 与 [newChatActivator] 同源：提示写的是哪套修饰键，就必须是这台机器上
+  /// 真正注册的那套，否则 Windows 上会提示一个按不出来的 ⌘N。
+  static String get newChatLabel => PlatformUtil.isMacOS ? '⌘N' : 'Ctrl+N';
+
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
