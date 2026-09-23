@@ -38,11 +38,15 @@ class ChatStoreService {
     return (chats, histories);
   }
 
+  /// 落库一个新会话。[reasoningEffort] / [workspacePath] 与其余参数一样，
+  /// 由调用方从草稿态带过来；不传即为新会话默认值。
   Future<ChatEntity> createChat({
     required ModelEntity model,
     required SentinelEntity sentinel,
     int retention = -1,
     double temperature = 1.0,
+    String reasoningEffort = ChatEntity.defaultReasoningEffort,
+    String? workspacePath,
   }) async {
     final now = DateTime.now();
     var chat = ChatEntity(
@@ -50,7 +54,9 @@ class ChatStoreService {
       modelId: model.id!,
       sentinelId: sentinel.id!,
       temperature: temperature,
+      reasoningEffort: reasoningEffort,
       retention: retention,
+      workspacePath: workspacePath,
       createdAt: now,
       updatedAt: now,
     );

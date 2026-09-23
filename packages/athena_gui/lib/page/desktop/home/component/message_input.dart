@@ -108,10 +108,12 @@ class DesktopMessageInput extends StatelessWidget {
                         onClear: onSentinelClear,
                       ),
                       const SizedBox(width: 4),
+                      // 草稿态也能设工作文件夹（随草稿一起落盘），所以读
+                      // current* 信号而不是 chat 字段，两种状态一个来源
                       DesktopWorkspaceIndicator(
-                        path: chat?.workspacePath,
-                        onTap: chat == null ? null : onWorkspaceTap,
-                        onClear: chat == null ? null : onWorkspaceClear,
+                        path: chatViewModel.currentWorkspacePath.value,
+                        onTap: onWorkspaceTap,
+                        onClear: onWorkspaceClear,
                       ),
                       const Spacer(),
                       // 会话配置（上下文保留 / 温度）从容器外那一行挪到
