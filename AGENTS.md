@@ -257,6 +257,7 @@ entity + ~/.athena/ 下的文件
 - 新对话的草稿参数（`ChatViewModel.prepareNewChatDraft`）：模型/保留策略/温度/推理强度一律回默认；**角色与工作文件夹从 `inheritFrom` 继承**——桌面点 New chat 传当前选中对话的快照，移动端传最近打开的对话但 `inheritWorkspace: false`（那边不注册 shell / 文件工具）。启动落草稿、删掉当前对话不传来源，回默认角色 + 不指定文件夹。**删除对话的视图落点**（`ChatViewModel.deleteChat` / `deleteChats`）：删的不是正在看的那条就停在原处（当前对话与消息都不动）；删的正是当前这条则回草稿态，**不自动落到邻居**。继承值只是草稿初值，composer 上仍可改，`createChat` 落库读的就是这些 `current*` 信号。
 - composer 里没发出去的内容（文字 + 待发图片）**按对话分开存**，切走时存回原对话、切回来时取出：文字由页面在切换点存取（`DesktopHomePage._restoreComposerDraft`，槽位 key = chatId，`null` 是还没落盘的"新对话"），待发图片由 ViewModel 存（`ChatViewModel._retargetPendingImages`，`pendingImages` 始终只是当前那一槽）。槽位只活在内存里；空内容不留条目；取出即删，避免旧副本把改过的内容顶回去。**新增任何会换 `currentChat` 的入口，都要在同一帧内调一次 `_restoreComposerDraft`**（等 IO 回来再换会覆盖用户在这段延迟里敲的字），否则 A 里打的字会跟着串进 B。桌面 composer 只有一个 `TextEditingController` 跨对话复用，别指望它自己按对话隔离。
 - widget 测试要挂真实页面时，用 `DI.ensureInitialized(homeDirOverride: 临时目录)` 装依赖图：数据根整体指到临时目录，不碰真实的 `~/.athena`（例见 `test/widget/home_page_new_chat_test.dart`）。注意页面 `_initState` 是一串串行的真实文件 I/O，测试里要交替「`runAsync` 真实异步窗口 + `pump`」才能把它推完——单放一次 `runAsync` 只够第一段 I/O。
+- 桌面附件由 `PendingImage` 保存稳定标识、解析状态及就绪字节；`pasteClipboardImages` 先占位再读取，异步结果按标识回填原槽，移除或删除后不恢复。`pendingImages` 必须直接在 `Watch` 中读取，不能藏进延迟执行的 composer `builder`，否则新增附件不会重绘。快捷键、标准 `PasteTextIntent` 与右键菜单共用图片粘贴流程；占位仅显示图片图标与加载圆环，不显示阶段名称，解码失败可移除。预览与发送共用验证过的字节，全部就绪后才能发送（支持仅图片）。
 
 **TUI（`athena_tui`）**
 

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:athena_gui/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
@@ -12,8 +10,8 @@ import 'package:athena_gui/page/desktop/home/component/token_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,7 +27,7 @@ class DesktopMessageInput extends StatelessWidget {
   final FocusNode focusNode;
   final void Function(int)? onRetentionChange;
   final void Function(List<String>)? onImageSelected;
-  final void Function(String)? onImagePasted;
+  final Future<bool> Function()? onPasteImages;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   final void Function(String)? onReasoningEffortChange;
@@ -53,7 +51,7 @@ class DesktopMessageInput extends StatelessWidget {
     required this.focusNode,
     this.onRetentionChange,
     this.onImageSelected,
-    this.onImagePasted,
+    this.onPasteImages,
     this.onImageRemoved,
     this.onSubmitted,
     this.onReasoningEffortChange,
@@ -72,6 +70,9 @@ class DesktopMessageInput extends StatelessWidget {
     final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
     return Watch((context) {
       final queued = chatViewModel.queuedMessages.value;
+      // 在 Watch 内订阅；放进下方 builder 会延迟到另一个 build，图片变化就不重绘。
+      final images = chatViewModel.pendingImages.value;
+      final chatId = chatViewModel.currentChat.value?.id;
       // 推理强度只对推理模型有意义（发送端也只给推理模型带参数），
       // 非推理模型不摆这个控件——摆了也没有任何效果。
       final reasoningModel =
@@ -134,12 +135,15 @@ class DesktopMessageInput extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _Input(
+                          key: ValueKey(chatId),
                           controller: controller,
                           focusNode: focusNode,
-                          images: chatViewModel.pendingImages.value,
-                          onImagePasted: onImagePasted,
+                          images: images,
+                          onPasteImages: onPasteImages,
                           onImageRemoved: onImageRemoved,
-                          onSubmitted: onSubmitted,
+                          onSubmitted: images.every((image) => image.isReady)
+                              ? onSubmitted
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -231,15 +235,16 @@ class _Input extends StatefulWidget {
 
   /// 外部传入的焦点节点：composer 的容器要靠它切换边框色。
   final FocusNode? focusNode;
-  final List<String> images;
-  final void Function(String)? onImagePasted;
+  final List<PendingImage> images;
+  final Future<bool> Function()? onPasteImages;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
   const _Input({
+    super.key,
     required this.controller,
     this.focusNode,
     this.images = const [],
-    this.onImagePasted,
+    this.onPasteImages,
     this.onImageRemoved,
     this.onSubmitted,
   });
@@ -254,10 +259,6 @@ class _SendIntent extends Intent {
 
 class _NewlineIntent extends Intent {
   const _NewlineIntent();
-}
-
-class _PasteIntent extends Intent {
-  const _PasteIntent();
 }
 
 class _InputState extends State<_Input> {
@@ -298,14 +299,39 @@ class _InputState extends State<_Input> {
       maxLines: 4,
       minLines: 1,
       onChanged: (_) => _scrollToCaret(),
+      contextMenuBuilder: (context, editable) {
+        void paste() {
+          editable.hideToolbar();
+          _pasteImageAware();
+        }
+        final items = editable.contextMenuButtonItems.map((item) =>
+          item.type == ContextMenuButtonType.paste
+              ? ContextMenuButtonItem(
+                  type: ContextMenuButtonType.paste,
+                  onPressed: paste,
+                )
+              : item,
+        ).toList();
+        // 纯图片剪贴板没有文本，默认菜单可能不提供 Paste。
+        if (!items.any((item) => item.type == ContextMenuButtonType.paste)) {
+          items.add(ContextMenuButtonItem(
+            type: ContextMenuButtonType.paste,
+            onPressed: paste,
+          ));
+        }
+        return AdaptiveTextSelectionToolbar.buttonItems(
+          anchors: editable.contextMenuAnchors,
+          buttonItems: items,
+        );
+      },
     );
     var shortcuts = Shortcuts(
       shortcuts: const {
         _SendActivator(): _SendIntent(),
         _SendNumpadActivator(): _SendIntent(),
         _NewlineActivator(): _NewlineIntent(),
-        _PasteMacActivator(): _PasteIntent(),
-        _PasteCtrlActivator(): _PasteIntent(),
+        _PasteMacActivator(): PasteTextIntent(SelectionChangedCause.keyboard),
+        _PasteCtrlActivator(): PasteTextIntent(SelectionChangedCause.keyboard),
       },
       child: Actions(
         actions: {
@@ -318,7 +344,8 @@ class _InputState extends State<_Input> {
           _NewlineIntent: CallbackAction<_NewlineIntent>(
             onInvoke: (_) => _insertNewline(),
           ),
-          _PasteIntent: CallbackAction<_PasteIntent>(
+          // 使用标准粘贴 Intent，让其他系统粘贴入口也复用图片处理。
+          PasteTextIntent: CallbackAction<PasteTextIntent>(
             onInvoke: (_) => _pasteImageAware(),
           ),
         },
@@ -378,14 +405,9 @@ class _InputState extends State<_Input> {
   Future<void> _pasteImageAware() async {
     if (_pasting) return;
     _pasting = true;
-    var pasted = false;
     try {
-      // 文件路径先回调（占位立即出现），转换数据逐张回填
-      await ClipboardImageService.readClipboardImages((path) {
-        pasted = true;
-        widget.onImagePasted?.call(path);
-      });
-      if (pasted) return;
+      final pasted = await widget.onPasteImages?.call() ?? false;
+      if (pasted || !mounted) return;
       await _pasteClipboardText();
     } finally {
       _pasting = false;
@@ -394,6 +416,7 @@ class _InputState extends State<_Input> {
 
   Future<void> _pasteClipboardText() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
     final text = data?.text;
     if (text == null || text.isEmpty) return;
     final controller = widget.controller;
@@ -412,7 +435,7 @@ class _InputState extends State<_Input> {
 }
 
 class _PendingImageStrip extends StatelessWidget {
-  final List<String> images;
+  final List<PendingImage> images;
   final void Function(int)? onRemoved;
   const _PendingImageStrip({required this.images, this.onRemoved});
 
@@ -424,35 +447,32 @@ class _PendingImageStrip extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         itemCount: images.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) => _buildItem(context, index),
+        itemBuilder: (context, index) => KeyedSubtree(
+          key: ObjectKey(images[index].id),
+          child: _buildItem(context, index),
+        ),
       ),
     );
   }
 
   Widget _buildItem(BuildContext context, int index) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 缩略图只按 2x 显示尺寸解码（48x48 ≈ 96），避免大图全尺寸解码卡顿；
-    // frameBuilder 在图片数据就绪前渲染占位底色，避免整块空白后突然弹出
-    var image = Image.file(
-      File(images[index]),
-      fit: BoxFit.cover,
-      height: double.infinity,
-      width: double.infinity,
-      cacheWidth: 96,
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded || frame != null) return child;
-        return ColoredBox(
-          color: colors.inputBackground,
-          child: Center(
-            child: Icon(
-              LucideIcons.image,
-              color: colors.border,
-              size: 16,
-            ),
-          ),
-        );
-      },
-    );
+    final pending = images[index];
+    final image = !pending.isReady
+        ? _ImageProgress(stage: pending.stage)
+        : Image.memory(
+            pending.bytes!,
+            fit: BoxFit.cover,
+            height: double.infinity,
+            width: double.infinity,
+            cacheWidth: 96,
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (wasSynchronouslyLoaded || frame != null) return child;
+              return const _ImageProgress(stage: PendingImageStage.decoding);
+            },
+            errorBuilder: (context, error, stackTrace) =>
+                const _ImageProgress(stage: PendingImageStage.failed),
+          );
     var icon = Icon(
       LucideIcons.x,
       color: colors.textPrimary,
@@ -462,15 +482,19 @@ class _PendingImageStrip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: colors.surfaceMobile,
     );
-    var removeButton = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onRemoved?.call(index),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: decoration,
-          padding: EdgeInsets.all(2),
-          child: icon,
+    var removeButton = Semantics(
+      label: 'Remove image',
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onRemoved?.call(index),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Container(
+            decoration: decoration,
+            padding: EdgeInsets.all(2),
+            child: icon,
+          ),
         ),
       ),
     );
@@ -484,6 +508,49 @@ class _PendingImageStrip extends StatelessWidget {
             image,
             Positioned(right: 2, top: 2, child: removeButton),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImageProgress extends StatelessWidget {
+  final PendingImageStage stage;
+  const _ImageProgress({required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    final failed = stage == PendingImageStage.failed;
+    return Tooltip(
+      message: failed
+          ? 'Could not load image. Remove it and paste again.'
+          : 'Loading image',
+      child: ColoredBox(
+        color: colors.inputBackground,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 24,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  failed ? LucideIcons.imageOff : LucideIcons.image,
+                  size: 12,
+                  color: failed ? colors.statusError : colors.textWeak,
+                  semanticLabel: failed ? 'Could not load image' : null,
+                ),
+                if (!failed)
+                  Positioned.fill(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.accent,
+                      semanticsLabel: 'Loading image',
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -536,13 +603,15 @@ class _SendButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Watch((context) {
       final streaming = chatViewModel.isCurrentChatStreaming.value;
+      final imagesReady = chatViewModel.pendingImages.value
+          .every((image) => image.isReady);
       // Claude 的 ghost 按钮 hover 填充：前景色 5%
       final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
       // 规格取自 Claude 的 CSS（`[data-cds=Button][data-cds-icon-only]`）：
       // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
       // 取 step4 档：22×22。按下缩放到 0.975 也是从 CSS 取的。
       return _SquishButton(
-        onTap: streaming ? onTerminated : onSubmitted,
+        onTap: streaming ? onTerminated : imagesReady ? onSubmitted : null,
         hoverFill: ghostHover,
         child: Container(
           alignment: Alignment.center,
@@ -552,7 +621,7 @@ class _SendButton extends StatelessWidget {
             streaming
                 ? LucideIcons.square
                 : LucideIcons.arrowUp,
-            color: colors.accent,
+            color: streaming || imagesReady ? colors.accent : colors.textWeak,
             size: 16,
           ),
         ),
