@@ -4,7 +4,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 
 /// 列出全部 Sentinel（角色的只读工具。
 ///
-/// 返回轻量元数据（名称、描述、标签、头像），**不含** prompt 全文——
+/// 返回轻量元数据（名称、描述、标签），**不含** prompt 全文——
 /// 需要完整内容（含 prompt）时用 sentinel_get。结果按名称排序,
 /// 保证输出稳定可复现。
 class SentinelListTool implements Tool {
@@ -25,7 +25,7 @@ class SentinelListTool implements Tool {
   @override
   String get description =>
       'List all sentinels (role definitions / system prompts) with their '
-      'name, description, tags, and avatar — but NOT the full prompt. '
+      'name, description, and tags — but NOT the full prompt. '
       'Use this to discover which sentinels exist before evolving one. '
       'Call sentinel_get with a name to see its full prompt.';
 
@@ -57,9 +57,6 @@ class SentinelListTool implements Tool {
       final tagList = s.tagList;
       if (tagList.isNotEmpty) {
         buffer.writeln('  Tags: ${tagList.join(', ')}');
-      }
-      if (s.avatar.trim().isNotEmpty) {
-        buffer.writeln('  Avatar: ${s.avatar}');
       }
     }
     buffer.writeln();

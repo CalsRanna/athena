@@ -73,7 +73,6 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
       id: 0,
       name: name,
       prompt: '',
-      avatar: '',
       description: '',
       tags: '',
     );

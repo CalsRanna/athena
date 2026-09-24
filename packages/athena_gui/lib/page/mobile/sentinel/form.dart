@@ -228,7 +228,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     var sentinel = SentinelEntity(
       id: 0,
       name: nameController.text,
-      avatar: '',
       description: descriptionController.text,
       tags: '',
       prompt: promptController.text,

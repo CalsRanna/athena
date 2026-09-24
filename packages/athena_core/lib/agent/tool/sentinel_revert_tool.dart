@@ -125,7 +125,6 @@ class SentinelRevertTool implements Tool {
         name: target.name,
         description: target.description,
         prompt: target.prompt,
-        avatar: target.avatar,
         tags: target.tags,
       );
       await _repository.updateSentinel(restored);

@@ -58,7 +58,6 @@ class SentinelGetTool implements Tool {
     final buffer = StringBuffer();
     buffer.writeln('**${sentinel.name}**');
     buffer.writeln('- Name: ${sentinel.name}');
-    buffer.writeln('- Avatar: ${sentinel.avatar.isEmpty ? '(none)' : sentinel.avatar}');
     buffer.writeln('- Tags: ${sentinel.tags.isEmpty ? '(none)' : sentinel.tags}');
     buffer.writeln(
         '- Description: ${sentinel.description.isEmpty ? '(none)' : sentinel.description}');

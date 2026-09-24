@@ -14,7 +14,6 @@ class SentinelSeed {
     await sentinelRepo.createSentinel(
       SentinelEntity(
         name: 'Athena',
-        avatar: '',
         description: '专业、冷静且深度的AI助手，以精准执行与逻辑严谨著称。',
         prompt: athenaPresetPrompt,
         tags: '专业助手, 冷静执行, 逻辑严谨, AI助手, 深度分析',

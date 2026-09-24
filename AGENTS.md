@@ -239,6 +239,7 @@ entity + ~/.athena/ 下的文件
 - 失败反思（`ReflectionPolicy.shouldReflect`）：`maxIterations` 结束且失败不全是权限拒绝，或 `completed` 且同一工具失败 ≥2 次才触发。反思只做一次 LLM 提案调用，经验写入完全复用 `experience_learn` 的标准工具路径（校验/审批/执行），**不要直接写 `ExperienceRepository`**。
 - 经验长度上限 `ExperienceEntity.maxLessonLength = 500`；lesson 是给上下文直接用的精炼摘要，详细背景放 `context`。反思提案的置信度门槛 0.7。
 - Sentinel 演进前必写快照（`SentinelHistoryStore`），`sentinel_revert` 本身也可回滚。
+- Sentinel 不提供头像：`SentinelEntity`、生成提示词、工具 schema/输出与 GUI 均不包含头像能力。旧角色、备份和历史快照里的 `avatar` 在反序列化时忽略，后续保存/导出不再写出；名称、描述、标签与提示词仍可正常编辑、生成、演进和回滚。
 
 ---
 
@@ -274,7 +275,7 @@ entity + ~/.athena/ 下的文件
 - **导入**：跨目录引用普遍用 `package:athena_core/...` 绝对导入，同一目录内部也有相对导入（如 `tool/` 内）。改动沿用所在文件既有风格即可。
 - **测试**：`athena_core/test` 用 `package:test`，GUI 用 `flutter_test`。用例要断言可观察的行为或量出来的几何（`.expect(..., reason: ...)`），不是「调用了哪个方法」；交互/动画类断言需要多帧 `pump` 才能拿到过渡终态（单次 `pump(200ms)` 可能仍是起点值）。写完顺手确认它真的会因为回归而失败。
 - **文档同步**：改行为时同步 README（用户可见能力）、AGENTS（本文件）、DESIGN（视觉口径），并核对文中引用的常量仍存在。
-- 文档与代码注释不使用 emoji（仓库现有文档与注释均无 emoji；角色头像里的 emoji 是产品数据，不在此列）。
+- 文档与代码注释不使用 emoji。
 
 ---
 

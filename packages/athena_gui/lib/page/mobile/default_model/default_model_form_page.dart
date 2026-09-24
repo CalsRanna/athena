@@ -51,7 +51,7 @@ class _MobileDefaultModelFormPageState
       style: tipTextStyle,
     );
     var generationTip = Text(
-      'Model designated for generating sentinel name, description, avatar, and tags',
+      'Model designated for generating sentinel name, description, and tags',
       style: tipTextStyle,
     );
     return Watch((context) {
