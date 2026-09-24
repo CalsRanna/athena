@@ -1,8 +1,11 @@
+import 'package:athena_core/entity/api_format.dart';
+
 /// models.dev(https://models.dev/api.json)与本地预设 provider 的映射配置。
 ///
 /// [ModelCatalogService] 依据此配置,把 models.dev 的模型目录同步到本地数据库:
 /// 模型名称、上下文窗口、价格、发布日期、reasoning/vision 标志全部来自
 /// models.dev 权威数据源,不再手工维护。
+/// Provider 的默认 API 格式由 npm 推断，本地端点协议差异显式覆盖。
 ///
 /// 注意:models.dev 的 `api` 字段多为国际版地址(如 alibaba 是 dashscope-intl、
 /// minimax 是 api.minimax.io),不能直接用作本地 base_url,必须在此显式覆盖。
@@ -19,6 +22,9 @@ class CatalogProviderConfig {
   /// 本地 base_url(models.dev 的 api 不可直接用,见上方说明)
   final String localBaseUrl;
 
+  /// 本地端点与上游 SDK 使用不同协议时显式指定，不能只替换域名。
+  final ApiFormat? apiFormatOverride;
+
   /// 模型 id 通配符白名单(`*` 通配),空列表 = 导入全部模型
   final List<String> include;
 
@@ -34,6 +40,7 @@ class CatalogProviderConfig {
     required this.sourceId,
     required this.localName,
     required this.localBaseUrl,
+    this.apiFormatOverride,
     this.include = const [],
     this.exclude = const [],
     this.reasoningOnly = true,
@@ -42,6 +49,23 @@ class CatalogProviderConfig {
   /// 生效的排除列表:显式 exclude + 共享默认(默认排除放在前面,
   /// 显式排除可覆盖——glob 匹配只做判断,不要求唯一,顺序无实际影响)
   List<String> get effectiveExcludes => [...defaultCatalogExcludes, ...exclude];
+
+  /// npm 只用于推断默认调用格式，不代表供应商支持的完整协议列表。
+  /// 模型级 provider.shape 不上提为供应商默认值，避免混合目录互相覆盖。
+  ApiFormat? resolveApiFormat(Map<String, dynamic> providerJson) {
+    if (apiFormatOverride != null) return apiFormatOverride;
+    switch (providerJson['npm']) {
+      case '@ai-sdk/openai':
+        return ApiFormat.responses;
+      case '@ai-sdk/anthropic':
+        return ApiFormat.messages;
+      case '@ai-sdk/openai-compatible':
+      case '@openrouter/ai-sdk-provider':
+        return ApiFormat.chatCompletions;
+      default:
+        return null;
+    }
+  }
 }
 
 /// 共享默认排除:各 provider 通用的变体噪声模型。
@@ -138,6 +162,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     sourceId: 'minimax',
     localName: 'MiniMax',
     localBaseUrl: 'https://api.minimaxi.com/v1',
+    apiFormatOverride: ApiFormat.chatCompletions,
   ),
 
   // ---- 智谱AI ----
@@ -163,6 +188,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     sourceId: 'google',
     localName: 'Google',
     localBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    apiFormatOverride: ApiFormat.chatCompletions,
   ),
 
   // ---- xAI(官方直连;models.dev 无 api 字段) ----
@@ -170,6 +196,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     sourceId: 'xai',
     localName: 'xAI',
     localBaseUrl: 'https://api.x.ai/v1',
+    apiFormatOverride: ApiFormat.chatCompletions,
     exclude: [
       'grok-build*', // build 专用模型,通用 API 不可用
     ],

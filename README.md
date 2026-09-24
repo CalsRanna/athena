@@ -160,6 +160,10 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 预设 provider（Deep Seek、Open Router、阿里云百炼、硅基流动、MiniMax、智谱AI、OpenAI、Google、xAI、月之暗面 Kimi、阶跃星辰）的模型元数据会在启动时后台从 [models.dev](https://models.dev/api.json) 同步（3.2MB，7 天 TTL 缓存，只同步最近一年发布且支持推理的模型）；同步失败自动降级到上次缓存，不阻塞启动。不在预设列表里的 provider 不受同步影响。任何 OpenAI 兼容服务都可以手工加。
 
+同步还会根据 models.dev 的 `npm` 推断 Provider 默认 API 格式，保存为 `setting.yaml` 的 `apiFormat`（`chat_completions` / `responses` / `messages`）。OpenAI 默认推断为 Responses；Google、MiniMax 与 xAI 按 Athena 现有端点保留 Chat Completions。模型级 `provider.shape` 不作为整个 Provider 的默认格式。未知 SDK 保留原值，修改过预设地址的 Provider 不自动更新格式；旧配置默认 Chat Completions，并可直接从七天 TTL 内的已有缓存补齐格式。
+
+`apiFormatAuto: true` 表示允许目录同步；手动指定格式时同时设为 `false`，该选择会随配置备份保留。**目前 `apiFormat` 仅是同步元数据，实际 LLM 请求仍使用 Chat Completions；Responses / Messages 的请求适配尚未接入。**
+
 ---
 
 ## 数据与配置

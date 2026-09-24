@@ -18,7 +18,8 @@ import 'package:http/http.dart' as http;
 /// models.dev 权威数据源,不再手工维护。
 ///
 /// 行为:
-/// - [syncIfNeeded] 在 TTL(默认 7 天)内直接跳过,避免每次启动拉取 3.2MB
+/// - [syncIfNeeded] 在 TTL(默认 7 天)内仅从缓存同步 Provider 格式元数据，
+///   跳过模型同步与网络拉取，避免每次启动拉取 3.2MB
 /// - 拉取成功 → 写本地缓存 → 同步 DB(新模型插入、已有模型更新元数据、
 ///   下架模型删除,仅删除未被 chat 引用的 preset 模型)
 /// - 拉取失败 → 降级用上次缓存数据同步;无缓存(首次失败)→ 跳过,下次启动重试
@@ -71,8 +72,8 @@ class ModelCatalogService {
   final Duration _fetchTimeout;
   final Duration _releaseWindow;
 
-  /// 同步模型目录并返回统计。TTL 内直接返回空结果(除非 [force]);
-  /// 过期则拉取 → 缓存 → 同步,失败降级缓存。
+  /// 同步模型目录并返回统计。TTL 内仅同步缓存中的 Provider 格式元数据，
+  /// 返回空模型统计(除非 [force]);过期则拉取 → 缓存 → 同步,失败降级缓存。
   ///
   /// [force] 用于用户手动触发(设置页"同步"按钮):忽略 TTL 强制拉取。
   Future<CatalogSyncResult> syncIfNeeded({bool force = false}) async {
@@ -83,7 +84,9 @@ class ModelCatalogService {
           cached == null ||
           !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
       if (!needFetch) {
-        LoggerUtil.d('Model catalog: cache fresh, skip sync');
+        // 新版本增加的格式元数据可直接由缓存补齐，不必等待七天 TTL。
+        await _syncProviderApiFormats(cached.data);
+        LoggerUtil.d('Model catalog: cache fresh, skip model sync');
         return const CatalogSyncResult();
       }
 
@@ -123,13 +126,15 @@ class ModelCatalogService {
   /// 把 models.dev 目录数据同步到本地数据库(幂等,可重复执行),返回统计。
   ///
   /// 对每个 [modelCatalogConfig] 配置:
-  /// 1. 按名字查找 preset provider,不存在则创建
+  /// 1. 按名字查找 preset provider,不存在则创建；匹配预设端点且处于
+  ///    自动模式时同步 API 格式元数据，未知 npm 保留原格式
   /// 2. 按 include/exclude 白名单筛选模型 → reasoning 过滤 → 发布时间
   ///    窗口过滤(最近一年),逐模型插入或更新
   /// 3. 清理下架模型:白名单外、reasoning 过滤淘汰、发布时间窗口外的
   ///    老版本,若未被 chat 引用则删除
   @visibleForTesting
   Future<CatalogSyncResult> applyCatalog(Map<String, dynamic> catalog) async {
+    await _syncProviderApiFormats(catalog);
     var createdProviders = 0;
     var createdModels = 0;
     var updatedModels = 0;
@@ -163,6 +168,8 @@ class ModelCatalogService {
               name: config.localName,
               baseUrl: config.localBaseUrl,
               apiKey: '',
+              apiFormat: config.resolveApiFormat(providerJson),
+              apiFormatAuto: true,
               enabled: false,
               isPreset: true,
               createdAt: DateTime.now(),
@@ -213,6 +220,23 @@ class ModelCatalogService {
       updatedModels: updatedModels,
       removedModels: removedModels,
     );
+  }
+
+  Future<void> _syncProviderApiFormats(Map<String, dynamic> catalog) async {
+    for (final config in modelCatalogConfig) {
+      final providerJson = catalog[config.sourceId];
+      if (providerJson is! Map<String, dynamic>) continue;
+      final format = config.resolveApiFormat(providerJson);
+      if (format == null) continue;
+      final provider = await _providerRepository
+          .getPresetProviderByName(config.localName);
+      if (provider?.id == null) continue;
+      await _providerRepository.syncApiFormat(
+        id: provider!.id!,
+        baseUrl: config.localBaseUrl,
+        apiFormat: format,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------

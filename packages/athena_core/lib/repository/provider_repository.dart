@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
 /// Provider（模型服务商）存储接口。持久化策略由实现方决定。
@@ -11,6 +12,13 @@ abstract class ProviderRepository {
   Future<int> storeProvider(ProviderEntity provider);
 
   Future<void> updateProvider(ProviderEntity provider);
+
+  /// 在同一次读改写中核对预设端点与自动模式，仅同步格式元数据。
+  Future<void> syncApiFormat({
+    required int id,
+    required String baseUrl,
+    required ApiFormat apiFormat,
+  });
 
   Future<void> deleteProvider(int id);
 

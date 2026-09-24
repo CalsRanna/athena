@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
@@ -86,6 +87,38 @@ class YamlProviderRepository implements ProviderRepository {
       final index = id == null ? -1 : all.indexWhere((p) => p.id == id);
       if (index >= 0) all[index] = provider;
     });
+  }
+
+  @override
+  Future<void> syncApiFormat({
+    required int id,
+    required String baseUrl,
+    required ApiFormat apiFormat,
+  }) {
+    // 同步可能与 GUI/TUI 编辑配置并发，必须在文件锁内读取最新实体，
+    // 不能把同步开始时读到的 API key、启用状态或手动选择写回去。
+    return serialLock(
+      _lock,
+      () => withFileLock(lockFileFor(_store.file), () async {
+        final all = await _store.loadProviders();
+        final index = all.indexWhere((p) => p.id == id);
+        if (index < 0) return;
+        final provider = all[index];
+        final trailingSlashes = RegExp(r'/+$');
+        if (!provider.isPreset || !provider.apiFormatAuto ||
+            provider.baseUrl.replaceFirst(trailingSlashes, '') !=
+                baseUrl.replaceFirst(trailingSlashes, '') ||
+            provider.apiFormat == apiFormat) {
+          return;
+        }
+        all[index] = provider.copyWith(
+          apiFormat: apiFormat,
+          apiFormatAuto: true,
+        );
+        await _store.saveProviders(all);
+      }),
+      (f) => _lock = f,
+    );
   }
 
   @override

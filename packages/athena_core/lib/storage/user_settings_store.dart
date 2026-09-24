@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:yaml/yaml.dart';
@@ -22,6 +23,8 @@ import 'package:yaml/yaml.dart';
 ///     name: Deep Seek
 ///     baseUrl: https://api.deepseek.com/v1
 ///     apiKey: sk-xxx
+///     apiFormat: chat_completions # 格式元数据，尚不切换请求协议
+///     apiFormatAuto: true         # false 时保留手动配置
 ///     enabled: false
 ///     isPreset: true
 /// ```
@@ -53,6 +56,10 @@ class UserSettingsStore {
         name: entry['name'] is String ? entry['name'] as String : '',
         baseUrl: entry['baseUrl'] is String ? entry['baseUrl'] as String : '',
         apiKey: entry['apiKey'] is String ? entry['apiKey'] as String : '',
+        apiFormat: ApiFormat.tryParse(entry['apiFormat']),
+        apiFormatAuto: entry['apiFormatAuto'] is bool
+            ? entry['apiFormatAuto'] as bool
+            : null,
         enabled: entry['enabled'] == true,
         isPreset: entry['isPreset'] == true,
         createdAt: entry['createdAt'] is String
@@ -74,6 +81,8 @@ class UserSettingsStore {
           'name': provider.name,
           'baseUrl': provider.baseUrl,
           'apiKey': provider.apiKey,
+          'apiFormat': provider.apiFormat.value,
+          'apiFormatAuto': provider.apiFormatAuto,
           'enabled': provider.enabled,
           'isPreset': provider.isPreset,
           'createdAt': provider.createdAt.toIso8601String(),
@@ -139,6 +148,13 @@ class UserSettingsStore {
           buf.writeln('    name: ${_escapeScalar(item['name'])}');
           buf.writeln('    baseUrl: ${_escapeScalar(item['baseUrl'])}');
           buf.writeln('    apiKey: ${_escapeScalar(item['apiKey'])}');
+          // 保存默认模型时列表仍是原始 YAML，保留缺省字段的自动模式语义。
+          if (item.containsKey('apiFormat')) {
+            buf.writeln('    apiFormat: ${_escapeScalar(item['apiFormat'])}');
+          }
+          if (item['apiFormatAuto'] is bool) {
+            buf.writeln('    apiFormatAuto: ${item['apiFormatAuto']}');
+          }
           buf.writeln('    enabled: ${item['enabled'] == true}');
           buf.writeln('    isPreset: ${item['isPreset'] == true}');
           buf.writeln('    createdAt: ${_escapeScalar(item['createdAt'])}');

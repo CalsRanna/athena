@@ -17,7 +17,7 @@ import 'package:path/path.dart' as p;
 ///   models.json               # 模型列表(JSON 数组)
 ///   sentinels.json            # 角色列表(JSON 数组，旧 avatar 字段读取时忽略)
 ///   meta.json                 # 自增 id 计数(key 为文件/目录路径)
-///   setting.yaml              # provider 配置(含 API key)与 TUI 默认模型
+///   setting.yaml              # provider 配置(含 API key、API 格式元数据与自动同步开关)与 TUI 默认模型
 ///   models_dev_cache.json     # models.dev 目录缓存
 ///   tool_outputs/             # 工具长输出(内容寻址)
 /// ```
