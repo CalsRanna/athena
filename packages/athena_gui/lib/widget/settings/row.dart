@@ -26,7 +26,7 @@ class AthenaSettingsRow extends StatefulWidget {
   /// 标签后面的小徽标（`Built-in` / `Archived` / `Custom`）。
   final String? badge;
 
-  /// 标签左侧的小元素（状态点、头像），盒 20。
+  /// 标签左侧的小元素（状态点等），盒 20。
   final Widget? leading;
 
   /// 右侧控件。
@@ -231,34 +231,6 @@ class AthenaSettingsDot extends StatelessWidget {
       width: 6,
       height: 6,
       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-/// 行首的圆形小头像（盒 20）：放一个 emoji 或首字母。
-class AthenaSettingsAvatar extends StatelessWidget {
-  final String text;
-  const AthenaSettingsAvatar({super.key, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Container(
-      width: 20,
-      height: 20,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.avatarBackground,
-        shape: BoxShape.circle,
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: 11,
-          height: 1,
-        ),
-      ),
     );
   }
 }

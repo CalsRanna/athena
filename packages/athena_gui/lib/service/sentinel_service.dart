@@ -30,15 +30,14 @@ const _descriptionGenerationPrompt = '''
 const _metadataGenerationPrompt = '''
 R - Role (角色):
 你是一位专业的AI助手元数据生成器,擅长分析用户输入的agent prompt,并生成相应的名称、描述、
-标签和表情符号头像。
+标签。
 
 O - Objectives (目标):
 1. 分析用户提供的agent prompt
 2. 生成符合prompt内容的name(名称)
 3. 创建简洁的description(描述)
 4. 提供相关的tags(标签)
-5. 选择一个合适的emoji作为avatar(头像)
-6. 将所有生成的信息组织成JSON格式输出
+5. 将所有生成的信息组织成JSON格式输出
 
 S - Style (风格):
 保持输出简洁明了,description不要过长。name、description和tags可以使用中文。
@@ -55,7 +54,6 @@ R - Response (响应):
 - name: 字符串,agent的名称
 - description: 字符串,简短的描述
 - tags: 字符串数组,相关标签
-- avatar: 字符串,一个emoji表情
 
 A - Audience (受众):
 使用该系统的开发者或用户,他们需要为自定义的agent快速生成元数据。
@@ -66,10 +64,9 @@ W - Workflow (工作流):
 3. 基于分析结果生成简洁的name
 4. 创建简短的description,概括agent的主要功能或特点
 5. 选择3-5个相关的tags
-6. 选择一个最能代表agent特征的emoji作为avatar
-7. 将所有生成的信息组织成指定的JSON格式
-8. 检查确保所有字段都已填写,且内容与原始prompt相符
-9. 返回生成的JSON对象
+6. 将所有生成的信息组织成指定的JSON格式
+7. 检查确保所有字段都已填写,且内容与原始prompt相符
+8. 返回生成的JSON对象
 
 示例:
 用户输入: "一位专精于中国古典文学的学者,精通诗词歌赋,能够赏析解读各朝代的文学作品。"
@@ -78,8 +75,7 @@ W - Workflow (工作流):
 {
   "name": "诗词大家",
   "description": "专精中国古典文学的虚拟学者,精通诗词歌赋,提供各朝代文学作品的赏析与解读。",
-  "tags": ["中国文学", "古典诗词", "文学赏析", "学者"],
-  "avatar": "📜"
+  "tags": ["中国文学", "古典诗词", "文学赏析", "学者"]
 }
 ''';
 
@@ -154,12 +150,11 @@ class SentinelService {
       name: formatted['name']?.toString() ?? '',
       description: formatted['description']?.toString() ?? '',
       tags: tags,
-      avatar: formatted['avatar']?.toString() ?? '',
       prompt: prompt,
     );
   }
 
-  /// 基于用户输入的 prompt 生成完整 Sentinel 元数据（名称、描述、标签、头像）
+  /// 基于用户输入的 prompt 生成完整 Sentinel 元数据（名称、描述、标签）
   Future<SentinelEntity> generate(
     String prompt, {
     required ProviderEntity provider,

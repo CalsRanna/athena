@@ -81,7 +81,7 @@ class _DesktopSettingDefaultModelPageState
                 AthenaSettingsRow(
                   label: 'Sentinel metadata',
                   description:
-                      'Generates a Sentinel\'s name, description, avatar '
+                      'Generates a Sentinel\'s name, description '
                       'and tags from its prompt.',
                   control: _buildSelect(
                     settingViewModel.sentinelMetadataGenerationModelId.value,

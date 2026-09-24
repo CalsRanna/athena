@@ -19,7 +19,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 桌面端 Sentinels：单列列表 → 点进一个角色的编辑页。
 ///
-/// 编辑页有名字、头像、描述、标签、提示词五个字段，**改动先攒着**，底部
+/// 编辑页有名字、描述、标签、提示词四个字段，**改动先攒着**，底部
 /// 出现「未保存」粘性栏（Discard / Save）——提示词往往要改很久，逐字段
 /// 失焦保存会把半成品写进磁盘。内置角色（Athena）只读：字段禁用、没有
 /// 保存栏，标题带 `Built-in` 徽标。
@@ -42,7 +42,6 @@ class _DesktopSettingSentinelPageState
   int? openId;
   final _selection = DesktopListSelection<int>();
   final nameController = TextEditingController();
-  final avatarController = TextEditingController();
   final descriptionController = TextEditingController();
   final tagsController = TextEditingController();
   final promptController = TextEditingController();
@@ -68,7 +67,6 @@ class _DesktopSettingSentinelPageState
 
   List<TextEditingController> get _controllers => [
     nameController,
-    avatarController,
     descriptionController,
     tagsController,
     promptController,
@@ -132,19 +130,11 @@ class _DesktopSettingSentinelPageState
       badge: sentinel.isPreset ? 'Built-in' : null,
       description: description.isEmpty ? 'No description' : description,
       descriptionMaxLines: 1,
-      leading: AthenaSettingsAvatar(text: _avatarGlyph(sentinel)),
       chevron: true,
       selected: _selection.selectedIds.contains(sentinel.id),
       onTap: () => _handleSentinelTap(sentinel),
       onSecondaryTap: (details) => _openContextMenu(details, sentinel),
     );
-  }
-
-  static String _avatarGlyph(SentinelEntity sentinel) {
-    final avatar = sentinel.avatar.trim();
-    if (avatar.isNotEmpty) return avatar.characters.first;
-    final name = sentinel.name.trim();
-    return name.isEmpty ? '?' : name.characters.first.toUpperCase();
   }
 
   void _handleSentinelTap(SentinelEntity sentinel) {
@@ -275,18 +265,6 @@ class _DesktopSettingSentinelPageState
                 ),
               ),
             AthenaSettingsRow(
-              label: 'Avatar',
-              description: 'A single emoji shown next to the name.',
-              control: SizedBox(
-                width: AthenaSettingsControlWidth.narrow,
-                child: AthenaSettingsTextField(
-                  controller: avatarController,
-                  enabled: !readOnly,
-                  placeholder: '🦉',
-                ),
-              ),
-            ),
-            AthenaSettingsRow(
               label: 'Description',
               description: 'One line shown in the Sentinel list and picker.',
               control: SizedBox(
@@ -315,7 +293,7 @@ class _DesktopSettingSentinelPageState
           title: 'System prompt',
           description: readOnly
               ? null
-              : 'Generate fills in the name, avatar, description and tags '
+              : 'Generate fills in the name, description and tags '
                     'from this prompt using the Sentinel metadata model.',
           trailing: readOnly
               ? null
@@ -393,7 +371,6 @@ class _DesktopSettingSentinelPageState
 
   void _fill(SentinelEntity sentinel) {
     nameController.text = sentinel.name;
-    avatarController.text = sentinel.avatar;
     descriptionController.text = sentinel.description;
     tagsController.text = sentinel.tags;
     promptController.text = sentinel.prompt;
@@ -406,7 +383,6 @@ class _DesktopSettingSentinelPageState
     if (sentinel == null) return;
     final next =
         nameController.text != sentinel.name ||
-        avatarController.text != sentinel.avatar ||
         descriptionController.text != sentinel.description ||
         tagsController.text != sentinel.tags ||
         promptController.text != sentinel.prompt;
@@ -427,7 +403,6 @@ class _DesktopSettingSentinelPageState
     if (nameError != null || promptError != null) return;
     var copied = sentinel.copyWith(
       name: name,
-      avatar: avatarController.text.trim(),
       description: descriptionController.text.trim(),
       tags: tagsController.text.trim(),
       prompt: prompt,
@@ -466,9 +441,6 @@ class _DesktopSettingSentinelPageState
       if (nameController.text.trim().isEmpty) {
         nameController.text = generated.name;
       }
-      if (avatarController.text.trim().isEmpty) {
-        avatarController.text = generated.avatar;
-      }
       if (descriptionController.text.trim().isEmpty) {
         descriptionController.text = generated.description;
       }
@@ -494,7 +466,6 @@ class _DesktopSettingSentinelPageState
     final copy = SentinelEntity(
       id: 0,
       name: '${source.name} copy',
-      avatar: source.avatar,
       description: source.description,
       prompt: source.prompt,
       tags: source.tags,

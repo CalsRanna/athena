@@ -97,7 +97,6 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 | 输入容器 / 分段控件轨道底 | `inputBackground` | `#FFFFFF` | `#1E1E1D` |
 | 代码 / 引用 / 工具输出底 | `codeBackground` | `#F6F6F4` | `#20201F` |
 | 代码块语言条 / 表头 / 脚注头 | `cardHeader` | `#F0EFEC` | `#2C2C2A` |
-| 头像圆底 | `avatarBackground` | `#E4E3DD` | `#383835` |
 | 反色块上的正文与代码 | `textOnCode` | `#20201F` | `#E1E0D9` |
 | 代码面上的次级文字 | `textSecondaryOnCode` | `#6D6B67` | `#A5A49A` |
 
@@ -166,7 +165,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   （`scale = 系统缩放 × 档位系数`）。放大到 1.15 时侧栏行（26 / 13）、设置导航行（32 / 14）、
   列表行（40 / 14）、分段与输入框（32）都仍有余量，因此既有固定高度不随字号档位改变。
 - 禁止把整个 UI 做成等宽字体——那是对参照实现的误读；等宽只是代码与技术值的局部语言。
-- emoji 不进文档、注释与界面文案（角色头像里的 emoji 属于产品数据，不受此限）。
+- emoji 不进文档、注释与界面文案。
 
 ## Icons
 
@@ -309,7 +308,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
   文字仍与分区标题对齐），圆角 8；hover 底 `neutralRule`、选中底 `neutralSelected`、归档项文字降为 `textSecondary`；
   标签 14 / w600、说明 14 / w400 / `textWeak`、校验错误 `dangerText`；标签后的徽标
-  （圆角 4 + `surfaceButtonSecondary` + `caption` 12，内边距 `5 × 1`）；左侧状态点直径 6、头像盒 20；
+  （圆角 4 + `surfaceButtonSecondary` + `caption` 12，内边距 `5 × 1`）；左侧状态点直径 6；Sentinel 列表直接展示名称与说明，不放头像；
   行尾控件与标签之间留 24，钻取箭头 14 / `iconSecondary`。
 - **设置导航行（`AthenaSettingsNavItem`）**：高 32、圆角 8、行距 2、左内边距 12 / 右 8，
   图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `textPrimary`（w500），**不靠加粗**避免整列跳动。
@@ -353,7 +352,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 **Empty & Status**
 
-- 空态：48 圆底头像（自定义角色用 emoji 字形 26，内置角色用应用图标）→ 28 间距 → `hero` 22 / w600 名称 →
+- 会话空态：直接以 `hero` 22 / w600 名称起头，不展示角色头像或替代图标 →
   10 间距 → `body` 13 / `textSecondary` 说明 → 18 间距 → 胶囊标签（`surfaceButtonSecondary` + `label` 12 + `12 × 6`）。
 - 设置面板空态：28 号图标 + 12 间距 + 标题 14 / w600 + 4 间距 + `textWeak` 提示（最大宽 360）+ 16 间距 + 动作按钮。
 - 错误边界：48 号 `statusError` 图标 + 16 间距 + `title` 标题 + 8 间距 + `body` 说明 + 24 间距 + 重试主按钮。

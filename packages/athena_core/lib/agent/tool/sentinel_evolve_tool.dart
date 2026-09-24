@@ -91,11 +91,6 @@ class SentinelEvolveTool implements Tool {
                 'Comma-separated tags for the sentinel (optional, '
                 'defaults to current tags).',
           },
-          'new_avatar': {
-            'type': 'string',
-            'description':
-                'Emoji avatar for the sentinel (optional, defaults to current).',
-          },
         },
         'required': ['sentinel_name', 'improvements', 'new_prompt'],
       };
@@ -108,7 +103,6 @@ class SentinelEvolveTool implements Tool {
     final newPrompt = args['new_prompt'] as String;
     final newDescription = args['new_description'] as String?;
     final newTags = args['new_tags'] as String?;
-    final newAvatar = args['new_avatar'] as String?;
 
     // 查找原 sentinel
     final original = await _repository.getSentinelByName(sentinelName);
@@ -128,7 +122,7 @@ class SentinelEvolveTool implements Tool {
           (newName != null && newName.isNotEmpty) ? newName : original.name;
       if (requestedName != builtinSentinelName) {
         return 'Error: The built-in "$builtinSentinelName" sentinel cannot be '
-            'renamed. You can improve its prompt, description, tags, and avatar, '
+            'renamed. You can improve its prompt, description, and tags, '
             'but the name must remain "$builtinSentinelName".';
       }
     }
@@ -146,9 +140,6 @@ class SentinelEvolveTool implements Tool {
         }
       }
 
-      final avatar = newAvatar != null && newAvatar.isNotEmpty
-          ? newAvatar
-          : original.avatar;
       final tags = newTags ?? original.tags;
       final description = newDescription != null && newDescription.isNotEmpty
           ? newDescription
@@ -159,7 +150,6 @@ class SentinelEvolveTool implements Tool {
         name: effectiveName,
         description: description,
         prompt: newPrompt,
-        avatar: avatar,
         tags: tags,
       );
 

@@ -16,7 +16,6 @@ class SentinelViewModel {
   static final directChatSentinel = SentinelEntity(
     id: ChatEntity.noSentinelId,
     name: directChatName,
-    avatar: '💬',
     description: 'Talk directly to the model without a Sentinel prompt.',
     prompt: '',
     isPreset: true,

@@ -98,7 +98,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 代码 / 内容容器 ----
   final Color cardHeader; // 代码块语言条 / 表头 / 脚注头
   final Color codeBackground; // 代码块 / 引用块 / 工具输出底
-  final Color avatarBackground; // 头像圆底
 
   // ---- Markdown ----
   final Color markdownLink; // Markdown 链接文字
@@ -148,7 +147,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.shadow,
     required this.cardHeader,
     required this.codeBackground,
-    required this.avatarBackground,
     required this.markdownLink,
     required this.markdownStrikethrough,
     required this.markdownMath,
@@ -198,7 +196,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     shadow: Color(0xFF0B0B0B),
     cardHeader: Color(0xFFF0EFEC),
     codeBackground: Color(0xFFF6F6F4),
-    avatarBackground: Color(0xFFE4E3DD),
     markdownLink: Color(0xFF256ABF),
     markdownStrikethrough: Color(0xFF898781),
     markdownMath: Color(0xFF0B0B0B),
@@ -248,7 +245,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     shadow: Color(0xFF000000),
     cardHeader: Color(0xFF2C2C2A),
     codeBackground: Color(0xFF20201F),
-    avatarBackground: Color(0xFF383835),
     markdownLink: Color(0xFF6DA7EC),
     markdownStrikethrough: Color(0xFF898781),
     markdownMath: Color(0xFFE1E0D9),
@@ -298,7 +294,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? shadow,
     Color? cardHeader,
     Color? codeBackground,
-    Color? avatarBackground,
     Color? markdownLink,
     Color? markdownStrikethrough,
     Color? markdownMath,
@@ -348,7 +343,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       shadow: shadow ?? this.shadow,
       cardHeader: cardHeader ?? this.cardHeader,
       codeBackground: codeBackground ?? this.codeBackground,
-      avatarBackground: avatarBackground ?? this.avatarBackground,
       markdownLink: markdownLink ?? this.markdownLink,
       markdownStrikethrough:
           markdownStrikethrough ?? this.markdownStrikethrough,
@@ -422,11 +416,6 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       shadow: Color.lerp(shadow, other.shadow, t)!,
       cardHeader: Color.lerp(cardHeader, other.cardHeader, t)!,
       codeBackground: Color.lerp(codeBackground, other.codeBackground, t)!,
-      avatarBackground: Color.lerp(
-        avatarBackground,
-        other.avatarBackground,
-        t,
-      )!,
       markdownLink: Color.lerp(markdownLink, other.markdownLink, t)!,
       markdownStrikethrough: Color.lerp(
         markdownStrikethrough,
