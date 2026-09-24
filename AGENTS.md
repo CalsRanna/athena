@@ -249,6 +249,7 @@ entity + ~/.athena/ 下的文件
 
 - 依赖注入唯一入口是 `lib/di.dart`（GetIt）；新增 ViewModel/Service 在那里注册，别在页面里自行 new。
 - 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
+- `SettingViewModel.textSize` 仅通过 `AthenaWorkspaceTextSize` 包裹桌面与移动端的 `MessageCardListSliver`，调整会话消息与代码；不能挂到 `MaterialApp.builder` 或整个工作区。composer、空会话 placeholder、轮次导航、审批控件、侧栏、标题栏、设置与根 Overlay 菜单只跟随系统文字缩放。
 - 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。设置面板用 `widget/settings/` 三件套（panel / row / control），一般设置改动即存，角色、技能等编辑页通过 Save 保存。`AthenaSettingsPane` 的滚动视口从固定标题带 `AthenaSettings.paneTopPadding` 下方开始，不能用 ListView 顶部 padding 代替，否则滚动正文会叠到返回链接和关闭按钮上；列表另设 `AthenaSettings.panePadding`（24）顶部内边距，为正文留白。标题带底边沿用工作区的 1 逻辑像素 `neutralHairline`，底部保存栏独立固定。
 - 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，通过 Flutter `Icon` 渲染；新增图标沿用默认线条字重、既有尺寸与语义色，不混用其他图标库。同类功能保持同一字形，工具与审批卡共用 `StepCard.toolIcon` 映射。
 - 桌面 composer 的 `DesktopContextSelector` 只设置聊天历史保留策略（`-1` 携带 / `0` 不携带），读取 `currentRetention`，草稿与已有会话共用。入口用 Lucide `clock4` / `clockFading` 和 `Context on / Context off`，无下拉箭头；复用 `DesktopContextMenu` 向上、右对齐展开，选择后关闭并经既有回调保存，不提供温度入口。

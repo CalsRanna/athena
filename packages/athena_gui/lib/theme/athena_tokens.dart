@@ -174,16 +174,11 @@ abstract final class AthenaTextStyle {
   );
 }
 
-/// 全站字号档位（设置里的「Font size」）。
+/// 会话消息字号档位（设置里的「Text size」）。
 ///
-/// Claude 桌面端在 Appearance 里有一档文字大小设置（分段控件，Small / Medium /
-/// Large）。本仓同样给三档，做法是整个应用叠一层 `TextScaler`：
-/// **只缩放字号，不动几何**——放大到 1.15 倍时，侧栏行（高 26 / 字号 13）、
-/// 设置导航行（高 32 / 字号 14）、列表行（高 40 / 字号 14）、分段控件与输入框
-/// （高 32）都仍有余量，所以既有固定高度不必跟着改。
-///
-/// 它叠在系统无障碍缩放**之上**（见 `main.dart` 的 `applyTextSize`），不覆盖
-/// 系统设置。
+/// `AthenaWorkspaceTextSize` 只在消息列表内叠加 `TextScaler`，缩放消息与代码；
+/// composer、placeholder、侧栏、顶栏、设置与菜单均不受档位影响。
+/// 档位叠在系统无障碍缩放之上，不覆盖系统设置。
 enum AthenaTextSize {
   small('Small', 0.85),
   medium('Medium', 1.0),

@@ -9,12 +9,15 @@ import 'package:athena_gui/page/mobile/chat/component/edit_message_dialog.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:athena_gui/component/elicit_card.dart';
 import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -65,6 +68,7 @@ class _MessageListViewState extends State<MessageListView> {
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
+      final textSize = GetIt.instance<SettingViewModel>().textSize.value;
       var sentinel = widget.chat.hasSentinel
           ? sentinelViewModel.sentinels.value
                 .where((s) => s.id == widget.chat.sentinelId)
@@ -105,13 +109,16 @@ class _MessageListViewState extends State<MessageListView> {
                 child: CustomScrollView(
                   controller: controller,
                   slivers: [
-                    MessageCardListSliver(
-                      messages: messages,
-                      loading: loading,
-                      sentinel: sentinel,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      onLongPress: openBottomSheet,
-                      onResend: resendMessage,
+                    AthenaWorkspaceTextSize(
+                      size: textSize,
+                      child: MessageCardListSliver(
+                        messages: messages,
+                        loading: loading,
+                        sentinel: sentinel,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        onLongPress: openBottomSheet,
+                        onResend: resendMessage,
+                      ),
                     ),
                   ],
                 ),
