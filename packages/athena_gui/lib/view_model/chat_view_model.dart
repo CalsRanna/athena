@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
@@ -21,6 +23,8 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
+import 'package:athena_gui/util/clipboard_image_service.dart';
+import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
 
@@ -139,7 +143,7 @@ class ChatViewModel {
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
-  final pendingImages = listSignal<String>([]);
+  final pendingImages = listSignal<PendingImage>([]);
 
   /// [pendingImages] 当前属于哪条对话的槽位；null 是还没落盘的"新对话"槽，
   /// 也是启动时的状态。它只是"当前这一槽"的实时值，其余槽位存在
@@ -148,7 +152,7 @@ class ChatViewModel {
 
   /// 非当前对话的待发图片（见 [_pendingImagesKey]）。当前槽的真相在
   /// [pendingImages] 里，所以这张表里不会出现当前槽。
-  final Map<int?, List<String>> _pendingImagesByChat = {};
+  final Map<int?, List<PendingImage>> _pendingImagesByChat = {};
 
   /// composer 里没发出去的文字，按对话分开存（key 同 [_pendingImagesKey]）。
   /// 文字的真相同样在输入框（`TextEditingController`）里，这张表只放"当前不在
@@ -1225,8 +1229,98 @@ class ChatViewModel {
   // 图片与导出
   // ═══════════════════════════════════════════════════════════════
 
-  void addPendingImage(String base64Image) {
-    pendingImages.value = [...pendingImages.value, base64Image];
+  Future<void> addPendingImage(String path) => addPendingImages([path]);
+
+  Future<void> addPendingImages(List<String> paths) async {
+    final images = paths.map((path) => PendingImage(
+      path: path,
+      stage: PendingImageStage.preparing,
+    )).toList();
+    pendingImages.value = [...pendingImages.value, ...images];
+    for (final image in images) {
+      await _preparePendingImage(image);
+    }
+  }
+
+  /// 先占位再读取；按附件标识回填，切换或删除对话后不会写进当前输入框。
+  /// 返回 false 才表示没有图片，此时输入框继续粘贴纯文本。
+  Future<bool> pasteClipboardImages() async {
+    final placeholder = PendingImage();
+    pendingImages.value = [...pendingImages.value, placeholder];
+    try {
+      final paths = await ClipboardImageService.readClipboardImages(
+        onPreparing: () => _replacePendingImage(placeholder.id, [
+          placeholder.withStage(PendingImageStage.preparing),
+        ]),
+      );
+      final images = paths.map((path) => PendingImage(
+        path: path,
+        stage: PendingImageStage.preparing,
+      )).toList();
+      if (!_replacePendingImage(placeholder.id, images)) return true;
+      for (final image in images) {
+        await _preparePendingImage(image);
+      }
+      return paths.isNotEmpty;
+    } catch (e) {
+      LoggerUtil.e('Failed to read clipboard image: $e');
+      _replacePendingImage(placeholder.id, [
+        placeholder.withStage(PendingImageStage.failed),
+      ]);
+      return true;
+    }
+  }
+
+  Future<void> _preparePendingImage(PendingImage image) async {
+    try {
+      final bytes = await File(image.path!).readAsBytes();
+      if (!_replacePendingImage(image.id, [
+        image.withStage(PendingImageStage.decoding),
+      ])) {
+        return;
+      }
+      // 验证解码后才允许发送；预览与发送共用同一份字节，源文件变化不会串图。
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: 96);
+      try {
+        final frame = await codec.getNextFrame();
+        frame.image.dispose();
+      } finally {
+        codec.dispose();
+      }
+      _replacePendingImage(image.id, [
+        image.withStage(PendingImageStage.ready, bytes: bytes),
+      ]);
+    } catch (e) {
+      LoggerUtil.e('Failed to prepare image: $e');
+      _replacePendingImage(image.id, [
+        image.withStage(PendingImageStage.failed),
+      ]);
+    }
+  }
+
+  bool _replacePendingImage(Object id, List<PendingImage> replacements) {
+    List<PendingImage>? replace(List<PendingImage> images) {
+      final index = images.indexWhere((image) => identical(image.id, id));
+      if (index < 0) return null;
+      return [...images.take(index), ...replacements, ...images.skip(index + 1)];
+    }
+
+    final current = replace(pendingImages.value);
+    if (current != null) {
+      pendingImages.value = current;
+      return true;
+    }
+    for (final entry in _pendingImagesByChat.entries) {
+      final updated = replace(entry.value);
+      if (updated == null) continue;
+      if (updated.isEmpty) {
+        _pendingImagesByChat.remove(entry.key);
+      } else {
+        _pendingImagesByChat[entry.key] = updated;
+      }
+      return true;
+    }
+    return false;
   }
 
   void clearPendingImages() {
@@ -1234,7 +1328,7 @@ class ChatViewModel {
   }
 
   void removePendingImage(int index) {
-    final images = List<String>.from(pendingImages.value);
+    final images = List<PendingImage>.from(pendingImages.value);
     if (index >= 0 && index < images.length) {
       images.removeAt(index);
       pendingImages.value = images;
@@ -1254,10 +1348,10 @@ class ChatViewModel {
     if (leaving.isEmpty) {
       _pendingImagesByChat.remove(_pendingImagesKey);
     } else {
-      _pendingImagesByChat[_pendingImagesKey] = List<String>.of(leaving);
+      _pendingImagesByChat[_pendingImagesKey] = List<PendingImage>.of(leaving);
     }
     _pendingImagesKey = next;
-    pendingImages.value = List<String>.of(
+    pendingImages.value = List<PendingImage>.of(
       _pendingImagesByChat.remove(next) ?? const [],
     );
   }

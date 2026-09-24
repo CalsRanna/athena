@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -17,7 +18,7 @@ import 'package:path_provider/path_provider.dart';
 ///   否则会把文件管理器附带的图标预览当成图片粘贴
 ///
 /// 图片数据会先写入临时目录再返回路径，
-/// 与 [Image.file] / 发送流程（按路径读取文件）保持一致。
+/// 交给 composer 读取、验证并保留同一份字节用于预览与发送。
 class ClipboardImageService {
   ClipboardImageService._();
 
@@ -35,13 +36,11 @@ class ClipboardImageService {
   @visibleForTesting
   static Future<Directory> Function() tempDirProvider = getTemporaryDirectory;
 
-  /// 读取剪贴板中的全部图片并按就绪顺序回调：
-  /// 文件路径立即回调（UI 可马上渲染占位），图片数据
-  /// 处理完回调一次，避免一次性解码全部造成的卡顿；
-  /// 剪贴板中没有可发送的图片时不做任何回调。
-  static Future<void> readClipboardImages(
-    void Function(String path) onImage,
-  ) async {
+  /// 原生剪贴板没有字节进度，读取与落盘只报告真实阶段。
+  /// 没有图片返回空列表；读取失败交给输入框展示错误。
+  static Future<List<String>> readClipboardImages({
+    VoidCallback? onPreparing,
+  }) async {
     // 文件优先：文件管理器复制文件时剪贴板会同时携带图标预览数据，
     // 此时应以文件本身为准，否则发送的是图标而不是图片内容。
     final existingFiles = <String>[];
@@ -49,9 +48,8 @@ class ClipboardImageService {
       for (final path in await Pasteboard.files()) {
         if (await File(path).exists()) existingFiles.add(path);
       }
-    } catch (_) {
-      // 平台不支持或读取失败（如移动端部分场景），按无图片处理
-      return;
+    } on MissingPluginException {
+      // 有些平台仅提供图片读取，不能因文件列表接口缺席而漏掉截图。
     }
 
     final ready = existingFiles
@@ -59,24 +57,17 @@ class ClipboardImageService {
             supportedExtensions.contains(_extensionOf(path).toLowerCase()))
         .toList();
     if (ready.isNotEmpty) {
-      for (final path in ready) {
-        onImage(path);
-      }
-      return;
+      return ready;
     }
     // 剪贴板中存在本地文件但格式均不支持时，与"复制了 txt"一致，
     // 不再读取图片数据（避免把图标预览当作图片）
-    if (existingFiles.isNotEmpty) return;
+    if (existingFiles.isNotEmpty) return [];
 
     // 无本地文件：读取图片数据（系统截图、浏览器复制图片等）
-    Uint8List? bytes;
-    try {
-      bytes = await Pasteboard.image;
-    } catch (_) {
-      return;
-    }
-    if (bytes == null || bytes.isEmpty) return;
-    onImage(await _writeTempFile(bytes));
+    final bytes = await Pasteboard.image;
+    if (bytes == null || bytes.isEmpty) return [];
+    onPreparing?.call();
+    return [await _writeTempFile(bytes)];
   }
 
   static String _extensionOf(String path) {
@@ -88,11 +79,11 @@ class ClipboardImageService {
 
   static Future<String> _writeTempFile(Uint8List bytes) async {
     final directory = await tempDirProvider();
-    final file = File(
-      '${directory.path}${Platform.pathSeparator}'
-      'athena_paste_${DateTime.now().millisecondsSinceEpoch}.png',
-    );
-    await file.writeAsBytes(bytes, flush: true);
+    final temp = await directory.createTemp('athena_paste_');
+    final file = File('${temp.path}${Platform.pathSeparator}image.png');
+    final writing = File('${file.path}.tmp');
+    await writing.writeAsBytes(bytes, flush: true);
+    await writing.rename(file.path);
     return file.path;
   }
 }

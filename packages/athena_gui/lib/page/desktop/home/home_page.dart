@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -193,10 +192,18 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Future<void> sendMessage() async {
     var text = controller.text.trim();
-    if (text.isEmpty) return;
+    final images = chatViewModel.pendingImages.value;
+    final sourceChatId = chatViewModel.currentChat.value?.id;
+    if (images.any((image) => !image.isReady)) return;
+    if (text.isEmpty && images.isEmpty) return;
 
     // 检查是否有可用的模型
     await modelViewModel.loadEnabledModels();
+    if (!mounted ||
+        chatViewModel.currentChat.value?.id != sourceChatId ||
+        !identical(images, chatViewModel.pendingImages.value)) {
+      return;
+    }
     if (modelViewModel.enabledModels.value.isEmpty) {
       AthenaDialog.warning('You should enable a provider first');
       return;
@@ -211,6 +218,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       // 又把刚发出的句子填回输入框
       _composerKey = chat.id;
     }
+    // 模型读取、草稿落盘期间可能又贴入图片，不能发送旧快照后清掉新附件。
+    if (!mounted ||
+        chatViewModel.currentChat.value?.id != chat.id ||
+        !identical(images, chatViewModel.pendingImages.value)) {
+      return;
+    }
 
     // 检查当前聊天的模型是否有效
     var model = chatViewModel.currentModel.value;
@@ -221,12 +234,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
     controller.clear();
     scrollController.followBottom();
-    var imageUrls = <String>[];
-    var images = chatViewModel.pendingImages.value;
-    for (var image in images) {
-      var bytes = await File(image).readAsBytes();
-      imageUrls.add(base64Encode(bytes));
-    }
+    final imageUrls = images.map((image) => base64Encode(image.bytes!)).toList();
 
     var message = MessageEntity(
       id: 0,
@@ -255,7 +263,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   void updateImage(List<String> images) {
-    chatViewModel.pendingImages.value = images;
+    chatViewModel.addPendingImages(images);
   }
 
   Future<void> updateModel(ModelEntity newModel) async {
@@ -363,7 +371,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       focusNode: composerFocusNode,
       onRetentionChange: updateRetention,
       onImageSelected: updateImage,
-      onImagePasted: chatViewModel.addPendingImage,
+      onPasteImages: chatViewModel.pasteClipboardImages,
       onImageRemoved: chatViewModel.removePendingImage,
       onSubmitted: sendMessage,
       onReasoningEffortChange: updateReasoningEffort,
