@@ -164,6 +164,7 @@ entity + ~/.athena/ 下的文件
 约定：
 
 - **文件永远是唯一真相**，索引/缓存必须可删除可重建，不反向持有数据。
+- Provider 的 `apiFormat`（`ApiFormat`：`chat_completions` / `responses` / `messages`）与 `apiFormatAuto` 一起持久化到 `setting.yaml`，JSON 备份使用 `api_format` / `api_format_auto`。旧配置缺少字段时为 Chat Completions + 自动模式，显式指定格式且未指定自动模式时视为手动。`CatalogProviderConfig.resolveApiFormat` 根据 models.dev 的 `npm` 推断默认格式，本地端点差异由 `apiFormatOverride` 覆盖（Google、MiniMax、xAI）；不把模型级 `provider.shape` 上提为 Provider 默认值。未知 SDK 保留已有值，预设地址被改动或手动模式时不覆盖。已有缓存 TTL 内也同步格式元数据，但跳过模型同步与网络拉取。更新必须经 `ProviderRepository.syncApiFormat` 在文件锁内读最新配置，仅改格式，不覆盖并发修改的凭据。当前仅同步元数据，`LlmClient` 仍统一调用 Chat Completions，未接入原生协议路由。
 - 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。
 - 会话消息的窗口化：`RecentMessageRepository.loadInitialMessages` / `loadRecentMessages` 只读尾部窗口（GUI 每页 50），轮次总数靠 `getTurnStartIds` 的整文件扫描。
 
