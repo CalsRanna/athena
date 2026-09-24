@@ -114,7 +114,7 @@ class SettingPage extends StatelessWidget {
           _appearanceTile(viewModel, ThemeMode.light, 'Light'),
           _appearanceTile(viewModel, ThemeMode.system, 'System'),
           const SizedBox(height: 12),
-          _sheetLabel('Font size', colors),
+          _sheetLabel('Chat text size', colors),
           for (final size in AthenaTextSize.values) _textSizeTile(viewModel, size),
         ],
       ),

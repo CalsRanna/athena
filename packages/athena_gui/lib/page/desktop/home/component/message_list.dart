@@ -9,11 +9,14 @@ import 'package:athena_gui/page/desktop/home/component/message_context_menu.dart
 import 'package:athena_gui/page/desktop/home/component/turn_indicator.dart';
 import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/chat_turn_util.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:athena_gui/component/elicit_card.dart';
 import 'package:athena_gui/component/permission_card.dart';
 import 'package:flutter/material.dart';
@@ -75,6 +78,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
       // 列表的变化就不会触发重建，卡片只能搭消息流下一次更新的车才
       // 出现或消失。
       final messages = chatViewModel.messages.value;
+      final textSize = GetIt.instance<SettingViewModel>().textSize.value;
       final loading = chatViewModel.isCurrentChatStreaming.value;
       final loadingHistory = chatViewModel.isLoadingMessages.value;
       final chatId = chatViewModel.currentChat.value?.id;
@@ -137,6 +141,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                         loading: loading,
                         loadingHistory: loadingHistory,
                         sentinel: sentinel,
+                        textSize: textSize,
                         columnPadding: columnPadding,
                       ),
                     ),
@@ -286,6 +291,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
     required bool loading,
     required bool loadingHistory,
     required SentinelEntity sentinel,
+    required AthenaTextSize textSize,
     required double columnPadding,
   }) {
     if (messages.isEmpty && !loadingHistory) {
@@ -299,20 +305,23 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
           controller: widget.controller,
           slivers: [
             if (!loadingHistory)
-              MessageCardListSliver(
-                messages: messages,
-                loading: loading,
-                sentinel: sentinel,
-                navigator: turnNavigator,
-                // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
-                // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
-                // 这里再加内边距会让正文比 Claude 右移 24。
-                padding: EdgeInsets.symmetric(
-                  horizontal: columnPadding,
-                  vertical: 12,
+              AthenaWorkspaceTextSize(
+                size: textSize,
+                child: MessageCardListSliver(
+                  messages: messages,
+                  loading: loading,
+                  sentinel: sentinel,
+                  navigator: turnNavigator,
+                  // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
+                  // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
+                  // 这里再加内边距会让正文比 Claude 右移 24。
+                  padding: EdgeInsets.symmetric(
+                    horizontal: columnPadding,
+                    vertical: 12,
+                  ),
+                  onResend: widget.onResend,
+                  onSecondaryTapUp: openContextMenu,
                 ),
-                onResend: widget.onResend,
-                onSecondaryTapUp: openContextMenu,
               ),
           ],
         ),

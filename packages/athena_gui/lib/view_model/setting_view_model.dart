@@ -67,7 +67,7 @@ class SettingViewModel {
   // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统
   final themeMode = signal<ThemeMode>(ThemeMode.light);
 
-  /// 全站字号档位（设置 → Advanced → Appearance → Font size）。
+  /// 会话消息字号档位（设置 → General → Appearance → Text size）。
   final textSize = signal<AthenaTextSize>(AthenaTextSize.medium);
 
   final ModelRepository _modelRepository;
@@ -158,7 +158,7 @@ class SettingViewModel {
         AthenaTextSize.values.asNameMap()[saved] ?? AthenaTextSize.medium;
   }
 
-  /// 切换字号档位并持久化。真正的缩放发生在 `main.dart` 的 `applyTextSize`。
+  /// 切换字号档位并持久化，由 `AthenaWorkspaceTextSize` 在消息列表内应用。
   Future<void> setTextSize(AthenaTextSize size) async {
     final instance = await SharedPreferences.getInstance();
     await instance.setString(_keyTextSize, size.name);
