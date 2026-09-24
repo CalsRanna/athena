@@ -148,7 +148,7 @@ class AthenaSettingsPane extends StatelessWidget {
     var list = ListView(
       padding: const EdgeInsets.fromLTRB(
         horizontal,
-        AthenaSettings.paneTopPadding,
+        AthenaSettings.panePadding,
         horizontal,
         AthenaSettings.paneBottomPadding,
       ),
@@ -164,7 +164,19 @@ class AthenaSettingsPane extends StatelessWidget {
       );
     }
     var stackChildren = [
-      Positioned.fill(child: body),
+      // 标题带留在滚动视口外，不能用随内容滚走的 ListView 顶部 padding。
+      Positioned.fill(top: AthenaSettings.paneTopPadding, child: body),
+      Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        height: AthenaSettings.paneTopPadding,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: colors.neutralHairline)),
+          ),
+        ),
+      ),
       if (header != null)
         Positioned(
           top: AthenaSettings.closeInset,
