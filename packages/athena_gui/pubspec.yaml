@@ -2,7 +2,7 @@ name: athena_gui
 description: Athena desktop/mobile GUI (Flutter), consuming athena_core.
 publish_to: "none"
 
-version: 4.0.0+1005
+version: 4.0.1+1012
 
 environment:
   sdk: ">=3.8.0 <4.0.0"
