@@ -22,9 +22,6 @@ class ExperienceLearnTool implements Tool {
     : _repository = repository;
 
   @override
-  ToolRisk get risk => ToolRisk.dangerous;
-
-  @override
   String get name => 'experience_learn';
 
   @override
@@ -229,9 +226,6 @@ class ExperienceRecallTool implements Tool {
 
   ExperienceRecallTool({required ExperienceRepository repository})
     : _repository = repository;
-
-  @override
-  ToolRisk get risk => ToolRisk.readOnly;
 
   @override
   String get name => 'experience_recall';

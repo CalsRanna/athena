@@ -22,7 +22,6 @@ import 'package:athena_core/agent/tool/schema_validator.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart'
     show
         CancellableTool,
-        ToolRisk,
         toolApprovalRecommendationKey,
         toolBackgroundDisabledKey,
         toolChatIdKey,
@@ -141,11 +140,8 @@ class AgentService {
     CancelToken? cancelToken,
     bool jsonMode = false,
 
-    /// 只暴露只读工具，并跳过失败反思（反思会写经验）。
-    ///
-    /// 自动汇报回合用：它由后台任务完成触发、用户并不在场，因此不能拥有
-    /// 任何写能力，也不能落任何未经请求的副作用。
-    bool readOnlyToolsOnly = false,
+    /// 自动汇报回合不触发失败反思，避免为附加汇报写入经验。
+    bool allowReflection = true,
 
     /// 本轮是否允许启动后台任务。false 时 shell 的 background=true 直接
     /// 被拒——否则「任务完成→自动汇报→再启任务」会形成无限链。
@@ -223,7 +219,8 @@ class AgentService {
         onPermission: onPermission,
         elicitChannel: elicitChannel,
         workspace: workspace,
-        readOnlyToolsOnly: readOnlyToolsOnly,
+        allowReflection: allowReflection,
+        bypassPermissions: bypassPermissions,
         allowBackgroundTasks: allowBackgroundTasks,
       ).run();
     } on CancelledException {
@@ -389,12 +386,9 @@ class AgentService {
   ///
   /// 预检目的：并行组内不得出现需要审批弹窗的调用（多个模态 dialog
   /// 同时弹出会互相覆盖），因此：
-  /// - [permissionService] 非空时，`check` 返回 [PermissionVerdict.allow]
-  ///   （readOnly / 会话缓存 / 持久规则命中）才留在并行组，
-  ///   需弹窗或拒绝（[PermissionVerdict.prompt] / [deny]）的降级串行;
-  /// - [permissionService] 为空但 [onPermission] 非空（无预检能力）时，
-  ///   候选并行调用全部降级串行（保守）；
-  /// - 两者皆空（无权限系统）时不做降级。
+  /// - 已获显式授权的调用可并行，需要审批的调用保持串行；
+  /// - [bypassPermissions] 下无需审批的调用可并行，deny 仍优先；
+  /// - 没有权限服务时按执行路径同样的口径收口。
   ///
   /// 参数解析失败、工具不存在或工具判定不可并行的调用归入串行组。
   @visibleForTesting
@@ -404,6 +398,7 @@ class AgentService {
     PermissionService? permissionService,
     PermissionCallback? onPermission,
     String? workspace,
+    bool bypassPermissions = false,
   }) {
     final parallelCalls = <ToolCall>[];
     for (final tc in toolCalls) {
@@ -411,7 +406,10 @@ class AgentService {
       Map<String, dynamic>? args;
       try {
         args = jsonDecode(tc.function.arguments) as Map<String, dynamic>;
-        if (args[toolApprovalRecommendationKey] == 'ask') continue;
+        if (!bypassPermissions &&
+            args[toolApprovalRecommendationKey] == 'ask') {
+          continue;
+        }
         args = toolExecutionArguments(args);
         // 与 executeToolCallInternal 同一解析口径：两处不一致会出现
         // 「预检放行、执行时被拦」或反向的判定漂移
@@ -424,18 +422,10 @@ class AgentService {
         continue;
       }
 
-      // 权限预检分级：需弹窗的调用降级串行
-      if (permissionService != null) {
-        if (permissionService.check(
-              runId,
-              tc.function.name,
-              args,
-              risk: tool.risk,
-            ) !=
-            PermissionVerdict.allow) {
-          continue;
-        }
-      } else if (onPermission != null) {
+      final verdict = permissionService?.check(runId, tc.function.name, args) ??
+          _verdictWithoutPermissionService(onPermission);
+      if (verdict == PermissionVerdict.deny ||
+          (!bypassPermissions && verdict != PermissionVerdict.allow)) {
         continue;
       }
 
@@ -472,26 +462,29 @@ class AgentService {
         runId,
         ctx.name,
         ctx.args,
-        risk: tool?.risk,
       );
       final verdict =
           serviceVerdict ??
-          _verdictWithoutPermissionService(tool?.risk, onPermission);
+          (tool is ElicitChannelAware
+              ? PermissionVerdict.allow
+              : _verdictWithoutPermissionService(onPermission));
 
       if (verdict == PermissionVerdict.deny) {
-        // 两种 deny 要能分辨:规则拒绝,与「没有权限服务时危险工具兜底拒绝」
+        // 两种 deny 要能分辨:规则拒绝,与「没有权限服务时工具兜底拒绝」
         // (后者没有任何规则存在,沿用前者的措辞会把排查带偏)。
         return (
           block: true,
           reason: serviceVerdict != null
               ? 'Tool call denied by a permission rule.'
-              : 'Error: Dangerous tool denied because no permission service is '
+              : 'Error: Tool denied because no permission service is '
                     'configured.',
         );
       }
 
-      // 所有权限模式：过了 deny 这一关就放行，不再问 AI 也不弹窗。
-      if (bypassPermissions) return (block: false, reason: '');
+      // 提问本身就是人机通道；显式 deny 仍生效，但不叠加审批卡片。
+      if (tool is ElicitChannelAware || bypassPermissions) {
+        return (block: false, reason: '');
+      }
 
       if (asksUser || verdict == PermissionVerdict.prompt) {
         if (!asksUser && reviewContext != null && tool != null) {
@@ -514,7 +507,6 @@ class AgentService {
                 runId,
                 ctx.name,
                 ctx.args,
-                risk: tool.risk,
               ) ==
               PermissionVerdict.deny) {
             return (
@@ -553,18 +545,12 @@ class AgentService {
   }
 
   /// 权限服务缺席时的兜底（库被无权限装配调用，如自定义宿主只装了
-  /// AgentService）。危险工具直接拒绝，其余保持放行；有审批回调时一律弹窗。
-  ///
-  /// 旧行为是本路径无条件 allow，由 shell 工具内的递归删除硬拦掩盖——
-  /// 硬拦移除后必须在此收口，否则「没有权限系统」就等于「没有权限」。
+  /// AgentService）。有审批回调时交给宿主，其余直接拒绝。
   static PermissionVerdict _verdictWithoutPermissionService(
-    ToolRisk? risk,
     PermissionCallback? onPermission,
   ) {
     if (onPermission != null) return PermissionVerdict.prompt;
-    return risk == ToolRisk.dangerous
-        ? PermissionVerdict.deny
-        : PermissionVerdict.allow;
+    return PermissionVerdict.deny;
   }
 
   String _runtimePromptWithDate(String? runtimePrompt) {
@@ -575,12 +561,8 @@ class AgentService {
   }
 
   /// 从 ToolRegistry 构建 OpenAI Tool 列表。
-  ///
-  /// [readOnlyOnly] 用于自动汇报回合：无人值守的 run 不得有写能力。
-  List<Tool>? _buildTools({bool readOnlyOnly = false}) {
-    final defs = readOnlyOnly
-        ? _toolRegistry.readOnlyDefinitions
-        : _toolRegistry.definitions;
+  List<Tool>? _buildTools() {
+    final defs = _toolRegistry.definitions;
     if (defs.isEmpty) return null;
     return defs
         .map(
@@ -694,7 +676,8 @@ class _AgentLoop {
     required PermissionCallback? onPermission,
     required ElicitChannel elicitChannel,
     required String? workspace,
-    required bool readOnlyToolsOnly,
+    required bool allowReflection,
+    required bool bypassPermissions,
     required bool allowBackgroundTasks,
   }) : _service = service,
        _state = state,
@@ -717,7 +700,8 @@ class _AgentLoop {
        _onPermission = onPermission,
        _elicitChannel = elicitChannel,
        _workspace = workspace,
-       _readOnlyToolsOnly = readOnlyToolsOnly,
+       _allowReflection = allowReflection,
+       _bypassPermissions = bypassPermissions,
        _allowBackgroundTasks = allowBackgroundTasks;
 
   final AgentService _service;
@@ -750,8 +734,9 @@ class _AgentLoop {
   /// 本次 run 的工作文件夹（相对路径解析基准），null = 不指定。
   final String? _workspace;
 
-  /// 只暴露只读工具（自动汇报回合）。
-  final bool _readOnlyToolsOnly;
+  /// 自动汇报跳过失败反思；审批模式独立决定工具的放行方式。
+  final bool _allowReflection;
+  final bool _bypassPermissions;
 
   /// 本轮是否允许启动后台任务。
   final bool _allowBackgroundTasks;
@@ -819,7 +804,7 @@ class _AgentLoop {
     yield AgentEvent.turnStart(iteration: iteration);
     _iterationsExecuted++;
 
-    final tools = _service._buildTools(readOnlyOnly: _readOnlyToolsOnly);
+    final tools = _service._buildTools();
     if (_chat.retention == -1 &&
         _onCompact != null &&
         _budget.shouldCompact(_messages, tools)) {
@@ -1064,6 +1049,7 @@ class _AgentLoop {
       permissionService: _permissionService,
       onPermission: _onPermission,
       workspace: _workspace,
+      bypassPermissions: _bypassPermissions,
     );
     final sequentialCalls = [
       for (final tc in toolCalls)
@@ -1138,8 +1124,8 @@ class _AgentLoop {
       toolFailures: List.unmodifiable(_toolFailures),
     );
     if (ReflectionPolicy.shouldReflect(outcome) &&
-        // 反思会写经验（experience_learn），自动汇报回合不做任何写操作。
-        !_readOnlyToolsOnly &&
+        // 自动汇报是附加路径，不为汇报失败额外生成经验。
+        _allowReflection &&
         _service._toolRegistry.get('experience_learn') != null) {
       _reflectionAttempted = true;
       try {

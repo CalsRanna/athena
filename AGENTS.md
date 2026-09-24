@@ -22,7 +22,7 @@ packages/
       cancel_token.dart run_outcome.dart runtime_context.dart
       elicit/elicit_prompt.dart # 提问通道（「你要哪个」）
       evolution/                # 进化提示词、记忆目录注入、失败反思、Sentinel 快照
-      permission/               # 权限服务、规则与存储、命令分析、AI 审核
+      permission/               # 权限服务、规则与存储、AI 审核
       skill/                    # SkillRegistry（三级加载）+ SkillLoader（SKILL.md 读写）
       tool/                     # 工具接口、注册表、工具集装配、各工具实现、输出存储
     lib/coordinator/
@@ -96,8 +96,8 @@ Release（`.github/workflows/release.yml`）由 `v*` tag 触发，三平台并�
 1. **`athena_core` 保持零 Flutter、零 SQL**。加入 `package:flutter` 或数据库依赖会同时破坏 GUI/TUI 共用与纯 Dart 可测性。判定：`grep -rn "package:flutter\|sqflite" packages/athena_core/lib` 必须为空。
 2. **工具清单只有一处**：`athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry()`。「有哪些工具、注册顺序、哪个平台注册哪些」是引擎的事实，不是装配层的选择；`di.dart` / `tui_di.dart` 只传自己特有的差异项（`outputStore`、`onSentinelChanged`、`mobileHomeDir`、`defaultWorkdir`）。加工具只改这一处，两端同时生效。
 3. **工作文件夹的路径解析必须三处共用**（`applyRunWorkspace`）：执行（`AgentService.executeToolCallInternal`）、并行预检（`selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。三处口径不一致会出现「预检放行、执行被拦」或「同一 run 内已批准仍重复弹窗 / 始终允许失效」。
-4. **并行组里不得有需要弹窗的调用**。多个审批模态会互相覆盖，所以 `selectParallelCalls` 先用权限预检分级：只有 `allow` 的调用留在并行组，`prompt` / `deny` 一律降级串行；没有权限服务但有审批回调时，候选并行调用全部串行（保守）。
-5. **权限系统缺席也要收口**。`AgentService._verdictWithoutPermissionService`：无权限服务时危险工具直接拒绝（旧行为是无条件放行，靠 shell 工具里的硬拦掩盖）。别把它退回成 allow。
+4. **并行组里不得有需要弹窗的调用**。多个审批模态会互相覆盖，所以 `selectParallelCalls` 先用权限预检分级：已有授权或 `bypassPermissions` 下无需审批的调用，才按工具的并行声明分组；deny 不进入并行组。执行路径仍重新检查权限。
+5. **权限系统缺席也要收口**。`AgentService._verdictWithoutPermissionService`：无权限服务时，有审批回调就交给宿主，否则拒绝工具调用。提问类工具直接使用提问通道，不能因缺少审批服务而把问题卡住。
 6. **会话文件的锁必须在共享实例上**。`JsonlSessionRepository` 按 chatId 缓存 `SessionJsonlStore`——串行锁是实例字段，每次新建实例等于没锁，`update`（整文件重写）与 `append` 交错会丢行。
 7. **id 分配不缓存计数**。`IdAllocator` 每次都在跨进程文件锁内「读 meta → 加一 → 原子写回」，因为 GUI 与 TUI 可能同时运行。
 8. **所有改文件的写操作走 `atomicWriteString` / 临时文件 + rename**，修改再套 `withFileLock(...)`（`.lock` 文件只做互斥，内容始终为空）。GUI 与 TUI 共享同一目录。
@@ -186,10 +186,11 @@ entity + ~/.athena/ 下的文件
 
 ## 7. 权限系统
 
-`PermissionVerdict` 三态与判定顺序见 `PermissionService.check`：deny 规则 → 只读短路（含只读 shell 命令）→ 会话缓存（按 `runId` 隔离）→ 持久 allow 规则 → 需要弹窗。复合命令的放行要求**每个子命令**都过；命中 deny 则整条拒绝。
+`PermissionVerdict` 三态与判定顺序见 `PermissionService.check`：deny 规则 → 会话缓存（按 `runId` 隔离）→ 持久 allow 规则 → 按审批模式处理。工具不声明风险等级，读取与写入统一进入审批流程；shell 规则只匹配整条命令，不分析动作、子命令或只读性。
 
-- `CommandAnalyzer` 是纯字符串分析（引号/括号感知，不执行 shell），负责拆子命令、提取动作、判定只读。
-- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。`RuleKind.action` 只为读旧的 `permissions.json` 保留，**不要新写**。
+- Shell 调用统一串行，包括看似只读的命令与后台启动调用；后台命令启动后仍可继续运行。不再通过静态命令分析决定免审批或并行资格。
+- `ElicitChannelAware` 工具直接进入提问通道，不叠加 AI 审核或人工审批；显式 deny 优先。
+- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
 - 会话缓存键 = 工具名 + 规范化后的完整参数（排序、剥离三个展示/建议元数据字段）：换个参数就是另一次授权。
 - `ApprovalMode`：`manual` / `ai_review`（默认）/ `bypass`，存 `KeyValueStore`（键 `approval_mode`，旧布尔键 `ai_approval_enabled` 只做一次性迁移），改动下一轮 run 生效。三档都越过不了 deny。
 - AI 审核（`AiPermissionReviewer`）：独立提示词、无工具、20s 超时、单次调用有效，输入是**原始用户/助手对话**（摘要、技能、记忆、工具输出都不构成授权）；非法输出、超时、异常一律降级为「问人」。审核通过后要**重新检查 deny 规则**。
@@ -199,20 +200,19 @@ entity + ~/.athena/ 下的文件
 
 ## 8. 工具
 
-`Tool` 接口（`lib/agent/tool/tool_interface.dart`）：`name` / `description` / `parameters`（JSON Schema）/ `executionMode` / `canExecuteParallel(args)` / `risk`。可选实现 `CancellableTool`（长阻塞工具接取消信号）与 `ElicitChannelAware`（提问类工具）。
+`Tool` 接口（`lib/agent/tool/tool_interface.dart`）：`name` / `description` / `parameters`（JSON Schema）/ `executionMode` / `canExecuteParallel(args)`。可选实现 `CancellableTool`（长阻塞工具接取消信号）与 `ElicitChannelAware`（提问类工具）。
 
-| 工具 | risk | 并行 |
-|---|---|---|
-| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` `background_task` | readOnly | 是 |
-| `ask_user_question` | readOnly | 否 |
-| `experience_recall` | readOnly | 否 |
-| `file_write` `file_update` `bash` / `powershell` `skill` `skill_evolve` `experience_learn` `sentinel_evolve` `sentinel_revert` | dangerous | 否（shell 按命令动态判定） |
+| 工具 | 并行 |
+|---|---|
+| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` | 是 |
+| `ask_user_question` `background_task` `experience_recall` | 否 |
+| `file_write` `file_update` `bash` / `powershell` `skill` `skill_evolve` `experience_learn` `sentinel_evolve` `sentinel_revert` | 否 |
 
 其它要点：
 
 - 每个工具的 model-facing schema 由 `ToolRegistry.parametersFor` 注入三个元数据字段：`call_description`（必填，缺失即判参数非法并要求模型重发）、`approval_recommendation`、`approval_reason`。三者在权限匹配与执行前由 `toolExecutionArguments` 剥离——**别把它们算进参数或权限判断**。
 - 引擎还会在执行前注入两个隐藏键（`tool_interface.dart`，同样不进展示 JSON、不参与规则匹配）：`_chat_id`（会话归属，后台任务用）与 `_background_disabled`（本轮禁止启动后台任务，自动汇报回合用）。
-- 危险等级默认 `dangerous`，只读工具必须显式覆写。
+- 审批与并行资格分开：读取、搜索等操作也按当前模式审批，不根据工具类型自动放行。
 - 移动端只注册 11 个工具（不注册文件、shell、提问、后台任务）；新增工具时先想清楚移动端是否可用，再决定放在哪个分支。
 - `ToolOutputStore`：超过 24000 字符才落盘（内存实例用于测试），预览 2000 字符，单次回读上限 12000 字符，按内容哈希寻址（同内容重跑不会重复落盘）。
 - shell 超时策略在 `ShellTimeoutPolicy`：默认 120s，上限 3600s（环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 可抬高，低于默认值视为非法并回退）。
@@ -225,7 +225,7 @@ entity + ~/.athena/ 下的文件
 - **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI `runApp` 返回）同样杀。
 - **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
 - **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
-- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）、只读工具（`ToolRegistry.readOnlyDefinitions`）、不弹审批（`onPermission: null`，需要审批即拒绝）、`allowBackgroundTasks: false`（否则「任务→汇报→任务」无限链）、跳过失败反思（会写经验）、迭代上限 3。
+- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据），继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
 - **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
 
 ---
@@ -281,7 +281,7 @@ entity + ~/.athena/ 下的文件
 
 **加一个工具**
 
-1. 在 `lib/agent/tool/` 新建实现（给出 `name` / `description` / `parameters` / `risk` / `canExecuteParallel`），需要取消能力就实现 `CancellableTool`；
+1. 在 `lib/agent/tool/` 新建实现（给出 `name` / `description` / `parameters` / `canExecuteParallel`），需要取消能力就实现 `CancellableTool`；
 2. 在 `tool_set.dart` 注册：判断移动端是否可用，决定放进移动分支、桌面分支还是两者；
 3. 若需要持久化，走已有 repository（新增仓储要同时在 `FileStorage` 里装配）；
 4. 在 README 的工具表里补一行。

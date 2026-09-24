@@ -11,9 +11,6 @@ class FileReadTool implements Tool {
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => true;
 
-  @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
   /// Maximum lines returned per call, to avoid blowing up the LLM context.
   static const _maxReturnLines = TextFileReader.maxReturnLines;
 

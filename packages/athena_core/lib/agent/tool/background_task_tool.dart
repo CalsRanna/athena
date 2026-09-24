@@ -13,12 +13,6 @@ class BackgroundTaskTool extends Tool {
   @override
   String get name => 'background_task';
 
-  /// 只读：list/read 无副作用；stop 终止的进程只能是本会话自己启动、
-  /// 且经过审批的命令，它只会减少副作用，不会新增——为它弹审批弹窗等于
-  /// 让用户为「停止自己刚批准的事」再确认一次。
-  @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
   @override
   String get description =>
       'Inspect background shell tasks started with bash/powershell '

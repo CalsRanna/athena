@@ -11,9 +11,6 @@ class ToolOutputReadTool extends Tool {
   String get name => 'tool_output_read';
 
   @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
-  @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
 
   @override

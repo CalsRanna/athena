@@ -14,9 +14,6 @@ class WebFetchTool implements Tool, CancellableTool {
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => true;
 
-  @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
   static const _maxResponseBytes = 200 * 1024; // 200KB
   static const _defaultTimeout = Duration(seconds: 30);
   static const _maxRedirects = 5;

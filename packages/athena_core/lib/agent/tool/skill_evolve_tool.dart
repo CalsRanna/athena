@@ -28,9 +28,6 @@ class SkillEvolveTool implements Tool {
         _homeDir = homeDir;
 
   @override
-  ToolRisk get risk => ToolRisk.dangerous;
-
-  @override
   String get name => 'skill_evolve';
 
   @override

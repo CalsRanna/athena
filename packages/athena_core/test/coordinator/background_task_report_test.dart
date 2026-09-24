@@ -12,6 +12,7 @@ import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -49,8 +50,14 @@ void main() {
   late AgentSettings settings;
   late _ScriptedLlm llm;
   late AgentRunCoordinator coordinator;
+  late List<String> approvalTools;
 
-  Future<void> setUpHarness({bool temporary = true}) async {
+  Future<void> setUpHarness({
+    bool temporary = true,
+    String command = 'echo build-ok',
+    int readLimit = 6000,
+    ApprovalMode approvalMode = ApprovalMode.manual,
+  }) async {
     tmp = await Directory.systemTemp.createTemp('athena_bg_report_');
     storage = FileStorage(root: Directory(p.join(tmp.path, '.athena')));
     await storage.load();
@@ -95,7 +102,7 @@ void main() {
           id: 'call_bg',
           name: 'bash',
           arguments: {
-            'command': 'echo build-ok',
+            'command': command,
             'background': true,
             'call_description': '后台跑一次构建',
           },
@@ -104,7 +111,7 @@ void main() {
       ],
       // ② 用户回合收尾：模型回一句
       [_text('已经开始了。'), _finish('stop')],
-      // ③ 汇报回合：模型自己去读任务输出
+      // ③ 汇报回合：模型通过工具读取任务输出
       [
         _toolCall(
           id: 'call_read',
@@ -112,6 +119,7 @@ void main() {
           arguments: {
             'action': 'read',
             'task_id': 'bg-1',
+            'limit': readLimit,
             'call_description': '读后台任务输出',
           },
         ),
@@ -134,7 +142,9 @@ void main() {
     );
 
     settings = AgentSettings();
+    settings.approvalMode.value = approvalMode;
     settings.backgroundTaskReports.value = temporary;
+    approvalTools = [];
 
     coordinator = AgentRunCoordinator(
       agentService: AgentService(
@@ -165,8 +175,10 @@ void main() {
       agentSettings: settings,
       permissionService: PermissionService(store: PermissionStore()),
       // 审批一律放行：本用例验的是汇报链路，不是权限链路。
-      permissionPrompt: (chatId, toolName, arguments, cancelToken) async =>
-          const PermissionDecision(approved: true),
+      permissionPrompt: (chatId, toolName, arguments, cancelToken) async {
+        approvalTools.add(toolName);
+        return const PermissionDecision(approved: true);
+      },
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
     );
 
@@ -245,22 +257,21 @@ void main() {
       reason: '汇报结论应当作为 assistant 消息留在会话里',
     );
 
-    // 汇报回合的请求：带任务提示、只挂只读工具（没有 shell）。
+    // 汇报回合使用同一工具集和审批模式，不再按风险标签筛选。
     expect(llm.requests, hasLength(4));
     final reportRequest = llm.requests[2];
     final systemText = (reportRequest['messages'] as List)
         .where((m) => (m as Map)['role'] == 'system')
         .map((m) => (m as Map)['content'] as String)
         .join('\n');
-    expect(systemText, contains('后台任务已结束'));
+    expect(systemText, contains('Background tasks have completed'));
     expect(systemText, contains('bg-1'));
 
     final toolNames = (reportRequest['tools'] as List)
         .map((t) => ((t as Map)['function'] as Map)['name'])
         .toList();
-    expect(toolNames, contains('background_task'));
-    expect(toolNames, isNot(contains('bash')));
-    expect(toolNames, isNot(contains('file_write')));
+    expect(toolNames, containsAll(['background_task', 'bash', 'file_write']));
+    expect(approvalTools, ['bash', 'background_task']);
 
     // 汇报内容里带上了读到的任务输出。
     final reportReadResult = (llm.requests[3]['messages'] as List)
@@ -268,7 +279,54 @@ void main() {
         .map((m) => (m as Map)['content'] as String)
         .join();
     expect(reportReadResult, contains('build-ok'));
+    expect((reportRequest['messages'] as List)
+        .where((m) => (m as Map)['role'] == 'user'), hasLength(1));
   }, skip: isWindows);
+
+  test('汇报仍可通过工具读取超过 6000 字符的完整输出', () async {
+    await setUpHarness(
+      command: 'printf START; printf "%07000d" 0; echo END',
+      readLimit: 8000,
+    );
+    await coordinator.send(
+      message: MessageEntity(chatId: chat.id!, role: 'user', content: '跑构建'),
+      chat: chat,
+    ).drain<void>();
+
+    final output = (llm.requests[3]['messages'] as List)
+        .cast<Map>()
+        .singleWhere((m) => m['tool_call_id'] == 'call_read');
+    final content = output['content'] as String;
+    expect(content, contains('START${'0' * 7000}END'));
+    expect(content, contains('End of task output.'));
+  }, skip: isWindows);
+
+  for (final mode in [ApprovalMode.aiReview, ApprovalMode.bypass]) {
+    test('后台汇报沿用 ${mode.key} 审批模式', () async {
+      await setUpHarness(approvalMode: mode);
+      await coordinator.send(
+        message: MessageEntity(chatId: chat.id!, role: 'user', content: '跑构建'),
+        chat: chat,
+      ).drain<void>();
+
+      expect(approvalTools, isEmpty);
+      final reviews = llm.requests.where((r) => r['stream'] != true).toList();
+      expect(reviews, hasLength(mode == ApprovalMode.aiReview ? 2 : 0));
+      if (reviews.isNotEmpty) {
+        final input = jsonDecode(
+          ((reviews.last['messages'] as List).last as Map)['content'] as String,
+        ) as Map;
+        expect((input['tool'] as Map)['name'], 'background_task');
+        expect((input['conversation'] as List)
+            .where((m) => (m as Map)['role'] == 'user')
+            .map((m) => (m as Map)['content']), ['跑构建']);
+      }
+      final finalRequest = llm.requests.last;
+      final output = (finalRequest['messages'] as List).cast<Map>()
+          .singleWhere((m) => m['tool_call_id'] == 'call_read');
+      expect(output['content'], contains('build-ok'));
+    }, skip: isWindows);
+  }
 
   test('被取消的任务不触发汇报', () async {
     await setUpHarness();
@@ -382,6 +440,28 @@ class _ScriptedLlm {
     final body =
         jsonDecode(await bodyStream.bytesToString()) as Map<String, dynamic>;
     requests.add(body);
+    if (body['stream'] != true) {
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode({
+          'id': 'review',
+          'object': 'chat.completion',
+          'created': 0,
+          'model': 'fake-model',
+          'choices': [
+            {
+              'index': 0,
+              'message': {
+                'role': 'assistant',
+                'content': '{"decision":"allow","reason":"测试审批通过"}',
+              },
+              'finish_reason': 'stop',
+            },
+          ],
+        }))),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
     final chunks = _served < _script.length
         ? _script[_served++]
         : <Map<String, dynamic>>[_text(''), _finish('stop')];

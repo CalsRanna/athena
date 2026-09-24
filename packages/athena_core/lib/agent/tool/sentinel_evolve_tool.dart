@@ -33,9 +33,6 @@ class SentinelEvolveTool implements Tool {
         _onChanged = onChanged;
 
   @override
-  ToolRisk get risk => ToolRisk.dangerous;
-
-  @override
   String get name => 'sentinel_evolve';
 
   @override

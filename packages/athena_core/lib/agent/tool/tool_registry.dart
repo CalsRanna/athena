@@ -24,13 +24,9 @@ class ToolRegistry {
   /// 循环每轮迭代都要取一次，没必要每次重建 N 个嵌套 Map。
   List<Map<String, dynamic>>? _definitions;
 
-  /// 只读子集缓存（自动汇报回合用）。
-  List<Map<String, dynamic>>? _readOnlyDefinitions;
-
   void register(Tool tool) {
     _tools[tool.name] = tool;
     _definitions = null;
-    _readOnlyDefinitions = null;
   }
 
   void registerAll(Iterable<Tool> tools) {
@@ -104,14 +100,4 @@ class ToolRegistry {
   List<Map<String, dynamic>> get definitions => _definitions ??= _tools.values
       .map(definitionOf)
       .toList();
-
-  /// 只读工具子集：自动汇报回合（无人值守、用户不在场）的可用能力。
-  ///
-  /// 这一类 run 由任务完成自动触发，因此不得拥有任何写能力，也不得
-  /// 弹审批——它们没有 [ToolRisk.dangerous] 工具可选。
-  List<Map<String, dynamic>> get readOnlyDefinitions => _readOnlyDefinitions ??=
-      _tools.values
-          .where((t) => t.risk == ToolRisk.readOnly)
-          .map(definitionOf)
-          .toList();
 }

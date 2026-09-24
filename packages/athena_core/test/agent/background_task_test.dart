@@ -6,7 +6,6 @@ import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/background_task_tool.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
-import 'package:athena_core/agent/tool/tool_registry.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -276,21 +275,6 @@ void main() {
 
       expect(result, contains('not allowed in this run'));
       expect(tasks.runningTasks, isEmpty);
-    }, skip: isWindows);
-  });
-
-  group('只读工具子集', () {
-    test('自动汇报回合看不到任何危险工具', () {
-      final registry = ToolRegistry()
-        ..register(BashShellTool())
-        ..register(BackgroundTaskTool(BackgroundTaskService()));
-
-      final readOnlyNames = registry.readOnlyDefinitions
-          .map((d) => (d['function'] as Map<String, dynamic>)['name'])
-          .toList();
-
-      expect(readOnlyNames, contains('background_task'));
-      expect(readOnlyNames, isNot(contains('bash')));
     }, skip: isWindows);
   });
 }

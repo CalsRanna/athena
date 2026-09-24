@@ -32,14 +32,6 @@ class AskUserQuestionTool implements Tool, ElicitChannelAware {
   @override
   String get name => 'ask_user_question';
 
-  /// 只读：交互由宿主卡片承载，永不触发审批弹窗。
-  ///
-  /// 这不只是风险声明：引擎对 [ElicitChannelAware] 工具会忽略模型自填的
-  /// `approval_recommendation: ask`——模型把「这件事得问用户」标成需要授权
-  /// 是合理的，但提问本身就是人机交互，再叠一层审批弹窗只会让问题被卡住。
-  @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
   /// 串行：执行期间等待用户作答，不能与其他调用并发。
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;

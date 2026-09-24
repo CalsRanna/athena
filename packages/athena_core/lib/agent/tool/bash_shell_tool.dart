@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 
 import 'shell_background.dart';
@@ -21,15 +20,10 @@ class BashShellTool implements Tool, CancellableTool {
 
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
-  @override
-  ToolRisk get risk => ToolRisk.dangerous;
 
-  /// 只读命令（ls、git status 等）可并行执行，有副作用命令必须串行。
+  /// shell 统一串行,由审批模式处理完整调用,不推断命令的副作用。
   @override
-  bool canExecuteParallel(Map<String, dynamic> args) {
-    final command = args['command'] as String?;
-    return command != null && CommandAnalyzer.isReadOnlyCommand(command);
-  }
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
 
   @override
   String get name => 'bash';
