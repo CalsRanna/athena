@@ -4,10 +4,10 @@ import 'package:test/test.dart';
 /// 「始终允许」落库形态的边界用例。
 ///
 /// shell 工具落 [RuleKind.exact]（整条命令精确匹配），不再落
-/// [RuleKind.action]（动作 + 参数前缀）。后者会把一次授权顺带扩展到用户
+/// action（动作 + 参数前缀）。后者会把一次授权顺带扩展到用户
 /// 没看到的变体：`npm test` 的授权会放行 `npm test -- --watch`，
 /// `rm -rf build` 的授权会放行 `rm -rf build -f`，而这两次都没有二次确认。
-/// action 规则仅为读取旧版本落下的 `permissions.json` 保留。
+/// 旧 action 规则不再生效,避免通过命令分析扩展授权。
 void main() {
   group('shell 落整条命令的 exact', () {
     test('单条命令 → exact，pattern 为完整命令', () {
@@ -43,8 +43,8 @@ void main() {
       ]) {
         final rules = PermissionRule.forToolCall('bash', command);
         expect(
-          rules.any((rule) => rule.kind == RuleKind.action),
-          isFalse,
+          rules.single.kind,
+          RuleKind.exact,
           reason: command,
         );
       }
@@ -98,28 +98,36 @@ void main() {
     });
   });
 
-  group('旧 action 规则仍可读取与匹配（兼容）', () {
-    final legacy = PermissionRule.fromJson({
-      'tool': 'bash',
-      'kind': 'action',
-      'action': 'git',
-      'pattern': 'status',
-    })!;
-
-    test('按动作 + 参数前缀命中带参变体', () {
-      expect(legacy.matches('bash', 'git status', action: 'git'), isTrue);
-      expect(legacy.matches('bash', 'git status -s', action: 'git'), isTrue);
+  group('持久规则读取', () {
+    test('旧 action 规则停止生效,不再解析命令动作或参数前缀', () {
+      for (final effect in RuleEffect.values) {
+        final legacy = PermissionRule.fromJson({
+          'tool': 'bash',
+          'kind': 'action',
+          'action': 'git',
+          'pattern': 'status',
+          'effect': effect.name,
+        });
+        expect(legacy, isNull);
+      }
     });
 
-    test('动作或参数不匹配则不命中', () {
-      expect(legacy.matches('bash', 'git diff', action: 'git'), isFalse);
-      expect(legacy.matches('bash', 'git status -s', action: 'ls'), isFalse);
-    });
-
-    test('exact 规则忽略 action 参数', () {
-      final exact = PermissionRule.forToolCall('bash', 'npm test').single;
-      expect(exact.matches('bash', 'npm test'), isTrue);
-      expect(exact.matches('bash', 'npm test -- --watch'), isFalse);
+    test('现有 exact、path、origin 规则仍可往返序列化', () {
+      for (final rule in [
+        PermissionRule.forToolCall('bash', 'npm test').single,
+        PermissionRule.forToolCall('file_write', '/tmp/*.txt').single,
+        PermissionRule.forToolCall('web_fetch', 'https://a.com').single,
+        const PermissionRule(
+          tool: 'bash',
+          kind: RuleKind.exact,
+          pattern: 'npm test',
+          effect: RuleEffect.deny,
+        ),
+      ]) {
+        final decoded = PermissionRule.fromJson(rule.toJson());
+        expect(decoded?.toJson(), rule.toJson());
+        expect(decoded?.matches(rule.tool, rule.pattern), isTrue);
+      }
     });
   });
 }

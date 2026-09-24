@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:athena_core/agent/permission/command_analyzer.dart';
 import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/shell_runner.dart';
 
@@ -22,15 +21,9 @@ class PowerShellShellTool implements Tool, CancellableTool {
   @override
   ExecutionMode get executionMode => ExecutionMode.sequential;
 
+  /// shell 统一串行,由审批模式处理完整调用,不推断命令的副作用。
   @override
-  ToolRisk get risk => ToolRisk.dangerous;
-
-  /// 只读命令（CommandAnalyzer 白名单内）可并行执行，其余必须串行。
-  @override
-  bool canExecuteParallel(Map<String, dynamic> args) {
-    final command = args['command'] as String?;
-    return command != null && CommandAnalyzer.isReadOnlyCommand(command);
-  }
+  bool canExecuteParallel(Map<String, dynamic> args) => false;
 
   @override
   String get name => 'powershell';

@@ -14,37 +14,27 @@ const kShellToolNames = {'bash', 'powershell'};
 
 /// 规则匹配方式(显式存储,不再由 pattern 内容推导)。
 ///
-/// - [action]:shell 工具,按「动作 + 参数前缀」匹配。宿主**不再写入**该形态,
-///   仅为读取旧版本落下的 `permissions.json` 保留
 /// - [exact]:shell 工具。命令 trim 后与 pattern 完全相等(当前唯一的落库形态)
 /// - [origin]:web_fetch。pattern 为 URL origin,前缀 + 主机边界
 /// - [path]:文件工具。归一化路径 + 目录前缀(/ 边界)或路径 glob
-enum RuleKind { action, exact, origin, path }
+enum RuleKind { exact, origin, path }
 
-/// 规则效果。deny 优先于 allow(以及只读/会话缓存等一切放行路径)。
+/// 规则效果。deny 优先于 allow(以及会话缓存等一切放行路径)。
 enum RuleEffect { allow, deny }
 
 /// 单条权限规则:工具名 + 匹配方式 + 模式。
 ///
 /// 匹配语义宁窄勿宽:
-/// - pattern 为空(任意 kind)→ 允许该工具(及 action,若指定)的所有调用
-/// - 通配符(仅 action/path 的 glob 模式):命令参数 `*` 匹配任意文本
-///   (含 `/`,`rm -rf *` 必须能拦住 `rm -rf /tmp/x`)、`?` 单个字符;
-///   路径 `*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨;其余字符按字面匹配
+/// - pattern 为空(任意 kind)→ 匹配该工具的所有调用
+/// - 仅路径支持通配符:`*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨;
+///   命令内容按字面匹配,不解析命令语法
 class PermissionRule {
   final String tool;
   final RuleKind kind;
 
-  /// action 规则的命令动作(git、ls...),其余 kind 为 null。
-  final String? action;
-
-  /// 匹配模式:action 规则的参数模式 / exact 的完整命令 / origin /
+  /// 匹配模式:exact 的完整命令 / origin /
   /// path 目录前缀或路径 glob。空串 = 放行全部。
   final String pattern;
-
-  /// action 规则专属:true → pattern 对参数整串 glob;
-  /// false → 参数前缀 + 词边界(允许子命令及其带参变体)。
-  final bool wildcard;
 
   /// 效果:默认放行;deny 规则在权限检查中优先。
   final RuleEffect effect;
@@ -52,13 +42,11 @@ class PermissionRule {
   const PermissionRule({
     required this.tool,
     required this.kind,
-    this.action,
     this.pattern = '',
-    this.wildcard = false,
     this.effect = RuleEffect.allow,
   });
 
-  /// 严格解析;非法组合(kind 与工具不匹配、action 规则缺 action 等)
+  /// 严格解析;非法组合或已移除的 action 规则
   /// 返回 null,由存储层跳过——损坏规则不能拖垮整个权限检查。
   static PermissionRule? fromJson(Map<String, dynamic> json) {
     final tool = json['tool'] as String?;
@@ -66,23 +54,13 @@ class PermissionRule {
     if (tool == null || kindName == null) return null;
     final kind = RuleKind.values.asNameMap()[kindName];
     if (kind == null) return null;
-    final action = json['action'] as String?;
     final pattern = json['pattern'] as String? ?? '';
     final wildcard = json['wildcard'] as bool? ?? false;
     final effect = RuleEffect.values.asNameMap()[json['effect'] as String? ?? 'allow'];
     if (effect == null) return null;
 
-    // kind 与工具组合校验:
-    // - action 规则仅限 shell 工具且必须带 action
-    // - origin 规则仅限 web_fetch
-    // - path 规则仅限文件工具
-    // - wildcard 仅对 action 规则有意义
-    if (kind == RuleKind.action) {
-      if ((action == null || action.isEmpty) ||
-          !kShellToolNames.contains(tool)) {
-        return null;
-      }
-    } else if (kind == RuleKind.origin && tool != 'web_fetch') {
+    // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
+    if (kind == RuleKind.origin && tool != 'web_fetch') {
       return null;
     } else if (kind == RuleKind.path && !kFileToolNames.contains(tool)) {
       return null;
@@ -92,9 +70,7 @@ class PermissionRule {
     return PermissionRule(
       tool: tool,
       kind: kind,
-      action: action,
       pattern: pattern,
-      wildcard: wildcard,
       effect: effect,
     );
   }
@@ -103,9 +79,7 @@ class PermissionRule {
         'tool': tool,
         'kind': kind.name,
         if (effect == RuleEffect.deny) 'effect': 'deny',
-        if (action != null) 'action': action,
         'pattern': pattern,
-        if (wildcard) 'wildcard': true,
       };
 
   /// 「始终允许」落库用:按工具类别选择规则形态。
@@ -116,7 +90,7 @@ class PermissionRule {
   /// - 其余工具,或 [keyArg] 缺失 → 空 pattern 的 [RuleKind.exact],
   ///   即放行该工具的所有调用
   ///
-  /// shell 不落 [RuleKind.action]:按「动作 + 参数前缀」匹配会把一次授权
+  /// shell 按「动作 + 参数前缀」匹配会把一次授权
   /// 顺带扩展到用户没看到的变体(`npm test` 放行 `npm test -- --watch`),
   /// 而这中间没有二次确认。精确匹配把授权范围钉在用户当时看到的那条命令上。
   static List<PermissionRule> forToolCall(String tool, String? keyArg) {
@@ -138,18 +112,10 @@ class PermissionRule {
   }
 
   /// [keyArg] 是归一化后的参数(路径/命令/origin)。
-  /// [action] 是调用方解析出的 shell 命令动作(git、ls...),仅 action 规则需要。
-  bool matches(String toolName, String? keyArg, {String? action}) {
+  bool matches(String toolName, String? keyArg) {
     if (tool != toolName) return false;
 
     switch (kind) {
-      case RuleKind.action:
-        // action 规则先校验动作一致性,再按 pattern 匹配;
-        // pattern 为空 → 允许该动作的所有调用
-        if (this.action != action) return false;
-        if (pattern.isEmpty) return true;
-        if (keyArg == null) return false;
-        return _matchesArgs(_stripAction(keyArg));
       case RuleKind.exact:
         // pattern 为空 → 允许该工具的所有调用
         if (pattern.isEmpty) return true;
@@ -164,25 +130,6 @@ class PermissionRule {
         if (keyArg == null) return false;
         return _matchesPath(keyArg);
     }
-  }
-
-  /// 从完整命令中剥离动作前缀。
-  /// `'git status -s'` → `'status -s'`;参数为空 → null。
-  String? _stripAction(String? keyArg) {
-    if (keyArg == null) return null;
-    final trimmed = keyArg.trim();
-    if (!trimmed.startsWith(action!)) return keyArg;
-    final rest = trimmed.substring(action!.length).trim();
-    return rest.isEmpty ? null : rest;
-  }
-
-  /// action 规则的参数匹配:glob 整串,或前缀 + 词边界。
-  bool _matchesArgs(String? args) {
-    if (args == null) return false;
-    if (wildcard) return _globMatch(pattern, args);
-    if (args == pattern) return true;
-    if (!args.startsWith(pattern)) return false;
-    return _isWhitespace(args[pattern.length]);
   }
 
   /// origin 匹配:前缀 + 主机边界(`:` 端口或 `/` 路径)。
@@ -204,41 +151,23 @@ class PermissionRule {
     if (p.endsWith('/')) p = p.substring(0, p.length - 1);
     if (k.endsWith('/')) k = k.substring(0, k.length - 1);
     if (p.contains('*') || p.contains('?')) {
-      return _globMatch(p, k, slashSensitive: true);
+      return _globMatch(p, k);
     }
     return k == p || k.startsWith('$p/');
   }
 
-  /// 通配符 → 正则,按域区分:
-  ///
-  /// - 命令参数([slashSensitive] false):`*` 匹配任意文本(含 `/`),
-  ///   `?` 单个字符——`Bash(rm -rf *)` 必须拦住 `rm -rf /tmp/x`
-  /// - 路径([slashSensitive] true):`*` 不跨 `/`,`**` 跨 `/`,
-  ///   `?` 单字符不跨 `/`(`rm *.log` 在路径语义下不变宽)
+  /// 路径通配符 → 正则:`*` 不跨 `/`,`**` 跨 `/`,`?` 单字符不跨 `/`。
   ///
   /// 先 RegExp.escape 转义全部元字符,再还原通配符——`(` `|` `[` 等
-  /// 一律按字面匹配,从根上避免把含 grep 正则的命令拼进 RegExp 后
-  /// 编译失败(FormatException: Unterminated group)或正则注入。
-  static bool _globMatch(
-    String glob,
-    String value, {
-    bool slashSensitive = false,
-  }) {
-    var escaped = RegExp.escape(glob);
-    if (slashSensitive) {
-      escaped = escaped
-          .replaceAll(r'\*\*', '___DSTAR___')
-          .replaceAll(r'\*', r'[^/]*')
-          .replaceAll(r'\?', r'[^/]')
-          .replaceAll('___DSTAR___', r'.*');
-    } else {
-      escaped = escaped.replaceAll(r'\*', r'.*').replaceAll(r'\?', '.');
-    }
+  /// 一律按字面匹配,避免路径中的正则元字符造成编译失败或正则注入。
+  static bool _globMatch(String glob, String value) {
+    final escaped = RegExp.escape(glob)
+        .replaceAll(r'\*\*', '___DSTAR___')
+        .replaceAll(r'\*', r'[^/]*')
+        .replaceAll(r'\?', r'[^/]')
+        .replaceAll('___DSTAR___', r'.*');
     return RegExp('^$escaped\$').hasMatch(value);
   }
-
-  static bool _isWhitespace(String char) =>
-      char == ' ' || char == '\t' || char == '\n';
 }
 
 /// 规则持久化存储(`~/.athena/permissions.json`)。
@@ -286,9 +215,7 @@ class PermissionStore {
       (r) =>
           r.tool == rule.tool &&
           r.kind == rule.kind &&
-          r.action == rule.action &&
-          r.pattern == rule.pattern &&
-          r.wildcard == rule.wildcard,
+          r.pattern == rule.pattern,
     );
     if (exists) return;
     rules.add(rule);

@@ -19,9 +19,6 @@ class SentinelGetTool implements Tool {
   bool canExecuteParallel(Map<String, dynamic> args) => true;
 
   @override
-  ToolRisk get risk => ToolRisk.readOnly;
-
-  @override
   String get name => 'sentinel_get';
 
   @override

@@ -22,23 +22,23 @@
 
 工具清单的唯一来源是 `athena_core` 的 `buildToolRegistry()`；桌面端注册 17 个，移动端 11 个（移动端不注册文件、shell、提问与后台任务工具）。
 
-| 工具 | 作用 | 危险等级 | 默认执行 |
-|---|---|---|---|
-| `file_read` | 按行分页读文本文件（单次最多 2000 行，大文件流式读） | 只读 | 并行 |
-| `file_write` | 新建或整文件覆盖 | 危险 | 串行 |
-| `file_update` | 精确字符串替换，`replace_all=false` 时 `old_string` 必须唯一 | 危险 | 串行 |
-| `bash` / `powershell` | 执行 shell 命令（按操作系统二选一），单次超时默认 120s、上限 3600s；`background: true` 时不等待、不超时（见「后台任务」） | 危险 | 按命令判定（只读命令可并行） |
-| `background_task` | 查看/读取/停止后台任务（`list` / `read` / `stop`） | 只读 | 并行 |
-| `web_fetch` | 抓取 URL 并转 Markdown；POST 或带自定义 headers 时需审批 | 只读 | 并行 |
-| `web_search` | Brave 搜索（需在设置里填 Brave API key） | 只读 | 并行 |
-| `ask_user_question` | 向用户提结构化问题（选项卡片），不触发审批弹窗 | 只读 | 串行 |
-| `skill` | 按名加载 Skill（三级渐进加载的第 2 级） | 危险 | 串行 |
-| `skill_evolve` | 新建/更新 Skill，写入用户级技能目录 | 危险 | 串行 |
-| `experience_learn` | 记录/修订/归档经验（长期记忆） | 危险 | 串行 |
-| `experience_recall` | 检索经验（lesson / tags / context 加权匹配） | 只读 | 串行 |
-| `sentinel_list` / `sentinel_get` | 列出、读取角色定义 | 只读 | 并行 |
-| `sentinel_evolve` / `sentinel_revert` | 改进角色提示词、回滚到历史快照 | 危险 | 串行 |
-| `tool_output_read` | 分页回读超长工具输出 | 只读 | 并行 |
+| 工具 | 作用 | 默认执行 |
+|---|---|---|
+| `file_read` | 按行分页读文本文件（单次最多 2000 行，大文件流式读） | 并行 |
+| `file_write` | 新建或整文件覆盖 | 串行 |
+| `file_update` | 精确字符串替换，`replace_all=false` 时 `old_string` 必须唯一 | 串行 |
+| `bash` / `powershell` | 执行 shell 命令（按操作系统二选一），单次超时默认 120s、上限 3600s；`background: true` 时不等待、不超时（见「后台任务」） | 串行 |
+| `background_task` | 查看/读取/停止后台任务（`list` / `read` / `stop`） | 串行 |
+| `web_fetch` | 抓取 URL 并转 Markdown，支持 POST 和自定义 headers | 并行 |
+| `web_search` | Brave 搜索（需在设置里填 Brave API key） | 并行 |
+| `ask_user_question` | 向用户提结构化问题（选项卡片），不叠加审批弹窗 | 串行 |
+| `skill` | 按名加载 Skill（三级渐进加载的第 2 级） | 串行 |
+| `skill_evolve` | 新建/更新 Skill，写入用户级技能目录 | 串行 |
+| `experience_learn` | 记录/修订/归档经验（长期记忆） | 串行 |
+| `experience_recall` | 检索经验（lesson / tags / context 加权匹配） | 串行 |
+| `sentinel_list` / `sentinel_get` | 列出、读取角色定义 | 并行 |
+| `sentinel_evolve` / `sentinel_revert` | 改进角色提示词、回滚到历史快照 | 串行 |
+| `tool_output_read` | 分页回读超长工具输出 | 并行 |
 
 每个工具调用都必须带一个展示用的 `call_description`（由 schema 强制、缺失即判参数非法）；模型还可以给出 `approval_recommendation` / `approval_reason`，这三个字段在权限匹配与执行前会被剥离。
 
@@ -47,17 +47,16 @@
 长命令（构建、测试套件、安装）可以 `bash(command: "...", background: true)` 启动：调用立刻返回一个任务 id，命令继续在后台跑，本轮不必等它，用 `background_task(action="read")` 看输出、`action="stop"` 停掉它。生命周期口径：
 
 - run 正常结束**不**停止任务；用户点停止（取消 run）会**同时停止该会话的全部后台任务**，会话删除与退出应用同理（保留已产生的输出，状态记为 `cancelled`）；
-- 任务跑完后会自动起一个**汇报回合**把结论带回会话（默认开，可在设置里关）；该回合只有只读工具、不弹审批、不落用户消息、也不能再启动后台任务；
+- 任务跑完后会自动起一个**汇报回合**把结论带回会话（默认开，可在设置里关）；通过工具分页读取输出，沿用当前审批模式，不落用户消息、不能再启动后台任务，也不触发失败反思；
 - 进程被强杀（崩溃 / kill -9）时会留下孤儿进程——这是已知残余，下次启动时会按记录核对 pid 与命令行后清理。
 
 ### 权限模型
 
-判定顺序（`PermissionService.check`，与 Claude Code 的 deny → ask → allow 一致）：
+判定顺序（`PermissionService.check`）：
 
-1. **deny 规则**：整条命令或复合命令的任一子命令命中即拒绝，优先于一切放行路径；
-2. **只读短路**：只读工具、只读 shell 命令（`ls`、`git status` 等）直接放行，永不弹窗。例外是 `web_fetch` 的 POST 或自定义 headers——它们能驱动内网接口；
-3. **会话级缓存**：本 run 内已批准的同工具、同完整参数直接放行（缓存按 `runId` 隔离）；被用户拒绝过的同一调用在本 run 内不再放行；
-4. **持久规则**：命中放行规则则放行。
+1. **deny 规则**：完整调用命中即拒绝，shell 按整条命令精确匹配，优先于一切放行路径；
+2. **会话级缓存**：本 run 内已批准的同工具、同完整参数直接放行（缓存按 `runId` 隔离）；被用户拒绝过的同一调用在本 run 内不再放行；
+3. **持久规则**：命中放行规则则放行。
 
 审批模式三档（`AgentSettings.approvalMode`，桌面端 composer 左下角、TUI `/review` 共用，下一轮 run 生效）：
 
@@ -66,6 +65,10 @@
 - `bypass`——需要审批的调用直接放行，不问 AI 也不问人；**deny 规则仍然生效**。
 
 拒绝与放行都会作为「用户决定」喂给后续的 AI 审核，AI 审核不会写入会话或持久规则。桌面端审批以会话内卡片呈现，TUI 是终端内模态。
+
+工具不再声明风险等级。读取文件、搜索、读取任务输出等调用，未命中已有授权时也进入当前审批模式。`ask_user_question` 直接进入提问流程，显式 deny 仍生效。并行资格独立于审批：需要审批的调用串行处理，已有授权或 `bypass` 模式下按工具的并行声明执行。
+
+Shell 调用统一串行，未命中显式授权时按上述三种模式处理，包括 `ls`、`git status` 等命令。复合命令作为一个完整调用审批，不拆分子命令拼接授权或匹配 deny；「始终允许」仍保存整条命令的精确授权。旧版 `action` 规则（含 allow / deny）停止生效，原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。
 
 ### 自我进化与长期记忆
 

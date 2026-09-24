@@ -13,9 +13,6 @@ class FileUpdateTool implements Tool {
   FileUpdateTool();
 
   @override
-  ToolRisk get risk => ToolRisk.dangerous;
-
-  @override
   String get name => 'file_update';
 
   @override
