@@ -48,7 +48,7 @@
 
 - run 正常结束**不**停止任务；用户点停止（取消 run）会**同时停止该会话的全部后台任务**，会话删除与退出应用同理（保留已产生的输出，状态记为 `cancelled`）；
 - 任务跑完后会自动起一个**汇报回合**把结论带回会话（默认开，可在设置里关）；通过工具分页读取输出，沿用当前审批模式，不落用户消息、不能再启动后台任务，也不触发失败反思；
-- 进程被强杀（崩溃 / kill -9）时会留下孤儿进程——这是已知残余，下次启动时会按记录核对 pid 与命令行后清理。
+- 进程被强杀（崩溃 / kill -9）时会留下孤儿进程——这是已知残余，下次启动时会按记录核对 pid 与命令行后清理；同时开着的另一个 GUI / TUI 实例的任务不受影响。
 
 ### 权限模型
 
@@ -180,7 +180,7 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 | `sessions/{chatId}.jsonl` | 一个对话一个文件：首行会话元数据，之后每行一条消息 |
 | `models.json` | 模型列表（JSON 数组） |
 | `sentinels.json` | 角色列表（JSON 数组） |
-| `meta.json` | 自增 id 计数（key 为文件/目录路径） |
+| `meta.json` | 自增 id 计数（key 为文件/目录路径；丢失后不会覆盖已有会话） |
 | `setting.yaml` | provider 配置（含 API key）与 TUI 默认模型 |
 | `models_dev_cache.json` | models.dev 目录缓存 |
 | `permissions.json` | 持久权限规则（「始终允许」） |

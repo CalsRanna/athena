@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 
 /// 文件路径类工具:规则按路径匹配(路径前缀 + 通配符)。
@@ -180,10 +182,27 @@ class PermissionRule {
 }
 
 /// 规则持久化存储(`~/.athena/permissions.json`)。
+///
+/// GUI 与 TUI 共用这个文件,用户也会手工编辑它(deny 规则只能手写):
+/// - **写**:跨进程锁内「读磁盘最新内容 → 合并 → 原子写回」,不拿进程里的
+///   旧列表整表覆盖——否则另一端刚加的规则、手写的 deny 会被静默抹掉
+/// - **读**:[load] 之后每次 [refreshIfChanged] 按 mtime / 大小发现外部修改
+///   并重读,另一端新加的 deny 不用等重启才生效
+/// - **损坏**:单条坏规则跳过并记日志;整文件解析失败时保留内存中最后一份
+///   有效规则,下次写入前把坏文件备份成 `.corrupt-{时间戳}` 再重写
+///
+/// 未调用 [load] 的实例只用内存里的 [rules](测试用),不读磁盘。
 class PermissionStore {
+  PermissionStore({File? file}) : _fileOverride = file;
+
+  final File? _fileOverride;
   List<PermissionRule> rules = [];
 
+  bool _loaded = false;
+  (DateTime, int)? _loadedStamp;
+
   File get _file {
+    if (_fileOverride != null) return _fileOverride;
     final home = Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '';
@@ -191,43 +210,96 @@ class PermissionStore {
   }
 
   Future<void> load() async {
-    final file = _file;
-    if (!await file.exists()) return;
-    try {
-      final content = await file.readAsString();
-      final json = jsonDecode(content) as Map<String, dynamic>;
-      final list = json['rules'] as List?;
-      if (list == null) return;
-      rules = list
-          .whereType<Map<String, dynamic>>()
-          .map(PermissionRule.fromJson)
-          .whereType<PermissionRule>()
-          .toList();
-    } catch (_) {
-      rules = [];
-    }
+    _loaded = true;
+    _reload();
   }
 
-  Future<void> save() async {
-    final file = _file;
-    await file.parent.create(recursive: true);
-    final json = {
-      'rules': rules.map((r) => r.toJson()).toList(),
-    };
-    await file.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(json),
-    );
+  /// 文件自上次读取后被改过(另一进程写入、手工编辑)就重读。
+  ///
+  /// 同步实现:权限检查是同步的,且在每次工具调用前执行;未变化时只有
+  /// 一次 stat。
+  void refreshIfChanged() {
+    if (!_loaded) return;
+    if (_stamp() != _loadedStamp) _reload();
   }
 
   Future<void> add(PermissionRule rule) async {
-    final exists = rules.any(
-      (r) =>
-          r.tool == rule.tool &&
-          r.kind == rule.kind &&
-          r.pattern == rule.pattern,
-    );
-    if (exists) return;
-    rules.add(rule);
-    await save();
+    if (!_loaded) {
+      // 纯内存实例(测试):不落盘
+      if (!_contains(rules, rule)) rules.add(rule);
+      return;
+    }
+    final file = _file;
+    await withFileLock(lockFileFor(file), () async {
+      var current = _parse(file);
+      if (current == null) {
+        // 坏文件以内存里最后一份有效规则为基础重写,先留备份
+        final backup = await preserveCorruptFile(file);
+        LoggerUtil.w('${file.path} is corrupt, backed up to $backup');
+        current = List.of(rules);
+      }
+      if (!_contains(current, rule)) current.add(rule);
+      await atomicWriteString(
+        file,
+        const JsonEncoder.withIndent('  ').convert({
+          'rules': current.map((r) => r.toJson()).toList(),
+        }),
+      );
+      rules = current;
+      _loadedStamp = _stamp();
+    });
   }
+
+  void _reload() {
+    final parsed = _parse(_file);
+    // 解析失败保留已有规则:清空会让 deny 规则在这段时间里失效
+    if (parsed != null) rules = parsed;
+    _loadedStamp = _stamp();
+  }
+
+  (DateTime, int)? _stamp() {
+    final stat = _file.statSync();
+    if (stat.type == FileSystemEntityType.notFound) return null;
+    return (stat.modified, stat.size);
+  }
+
+  /// 读取并解析规则文件。文件不存在返回空列表;整体无法解析返回 null。
+  static List<PermissionRule>? _parse(File file) {
+    final String content;
+    try {
+      if (!file.existsSync()) return [];
+      content = file.readAsStringSync();
+    } catch (e) {
+      LoggerUtil.w('Failed to read ${file.path}: $e');
+      return null;
+    }
+    try {
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      final list = json['rules'] as List? ?? const [];
+      final result = <PermissionRule>[];
+      for (final item in list) {
+        final rule =
+            item is Map<String, dynamic> ? PermissionRule.fromJson(item) : null;
+        if (rule != null) {
+          result.add(rule);
+        } else {
+          // 旧 action 规则按设计停止生效,同样落在这里
+          LoggerUtil.w('Permission rule skipped: $item');
+        }
+      }
+      return result;
+    } catch (e) {
+      LoggerUtil.w('${file.path} is not valid JSON: $e');
+      return null;
+    }
+  }
+
+  static bool _contains(List<PermissionRule> list, PermissionRule rule) =>
+      list.any(
+        (r) =>
+            r.tool == rule.tool &&
+            r.kind == rule.kind &&
+            r.pattern == rule.pattern &&
+            r.effect == rule.effect,
+      );
 }

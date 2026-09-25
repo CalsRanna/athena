@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 /// JSON 数组文件存储:`[ {...}, {...} ]` 单文件,`id` 字段为行主键。
 ///
@@ -12,7 +13,8 @@ import 'package:athena_core/storage/serial_lock.dart';
 ///   同进程与另一进程(GUI/TUI 共享目录)的并发写都不互相覆盖
 /// - **原子写**:临时文件 + rename 替换,避免写一半损坏文件;读不加锁,
 ///   读到的要么是旧文件要么是新文件
-/// - 损坏文件按空列表容错(不覆盖,等下次写入重建)
+/// - 损坏文件读时按空列表容错;下次写入前先备份成 `.corrupt-{时间戳}`
+///   ([preserveCorruptFile])再以空列表为基础重建,原内容不会被静默覆盖
 class JsonArrayStore {
   JsonArrayStore({required this.file, required this.idAllocator});
 
@@ -32,17 +34,22 @@ class JsonArrayStore {
 
   Future<List<Map<String, dynamic>>> readAll() => _readAll();
 
-  Future<List<Map<String, dynamic>>> _readAll() async {
+  /// [forWrite] 为 true 时(写锁内、随后要整文件重写)遇到损坏文件先备份。
+  Future<List<Map<String, dynamic>>> _readAll({bool forWrite = false}) async {
     if (!await file.exists()) return [];
     try {
       final value = jsonDecode(await file.readAsString());
-      if (value is! List) return [];
+      if (value is! List) throw const FormatException('not a JSON array');
       return [
         for (final item in value)
           if (item is Map) Map<String, dynamic>.from(item),
       ];
-    } catch (_) {
+    } catch (e) {
       // 损坏文件按空列表处理
+      if (forWrite) {
+        final backup = await preserveCorruptFile(file);
+        LoggerUtil.w('${file.path} is corrupt ($e), backed up to $backup');
+      }
       return [];
     }
   }
@@ -55,7 +62,7 @@ class JsonArrayStore {
     return _serialized(() async {
       final id = await idAllocator.next(file.path);
       json['id'] = id;
-      final rows = await _readAll();
+      final rows = await _readAll(forWrite: true);
       rows.add(json);
       await _writeAll(rows);
       return id;
@@ -65,7 +72,7 @@ class JsonArrayStore {
   /// 按 id 整条替换(不存在则追加)。
   Future<void> replaceById(int id, Map<String, dynamic> json) {
     return _serialized(() async {
-      final rows = await _readAll();
+      final rows = await _readAll(forWrite: true);
       json['id'] = id;
       final index = rows.indexWhere((r) => r['id'] == id);
       if (index >= 0) {
@@ -81,7 +88,7 @@ class JsonArrayStore {
   /// 抬到不低于该值。导入/恢复保留原 id 的数据时使用。
   Future<void> restore(int id, Map<String, dynamic> json) {
     return _serialized(() async {
-      final rows = await _readAll();
+      final rows = await _readAll(forWrite: true);
       json['id'] = id;
       final index = rows.indexWhere((r) => r['id'] == id);
       if (index >= 0) {
@@ -108,6 +115,7 @@ class JsonArrayStore {
           pending.add(row);
         }
       }
+      await _readAll(forWrite: true); // 仅为损坏时留备份
       if (maxId > 0) await idAllocator.ensureAtLeast(file.path, maxId);
       for (final row in pending) {
         row['id'] = await idAllocator.next(file.path);
@@ -122,7 +130,7 @@ class JsonArrayStore {
 
   Future<void> deleteWhere(bool Function(Map<String, dynamic> json) test) {
     return _serialized(() async {
-      final rows = await _readAll();
+      final rows = await _readAll(forWrite: true);
       rows.removeWhere(test);
       await _writeAll(rows);
     });

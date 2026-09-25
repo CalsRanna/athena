@@ -16,11 +16,16 @@ import 'package:path/path.dart' as p;
 ///   sessions/{chatId}.jsonl   # 一个对话一个文件:首行会话元数据 + 消息行
 ///   models.json               # 模型列表(JSON 数组)
 ///   sentinels.json            # 角色列表(JSON 数组，旧 avatar 字段读取时忽略)
-///   meta.json                 # 自增 id 计数(key 为文件/目录路径)
+///   meta.json                 # 自增 id 计数(key 为文件/目录的绝对路径)
 ///   setting.yaml              # provider 配置(含 API key、API 格式元数据与自动同步开关)与 TUI 默认模型
 ///   models_dev_cache.json     # models.dev 目录缓存
 ///   tool_outputs/             # 工具长输出(内容寻址)
+///   background_tasks/         # 运行中的后台任务(按属主进程记账,供孤儿清理)
 /// ```
+///
+/// meta.json 的 key 是绝对路径,数据目录迁移或文件损坏后计数会从头开始;
+/// 会话 id / 消息 id 在分配时对照已有文件兜底,不会覆盖已有数据。
+/// JSON / YAML 数据文件损坏时,下一次写入前先备份为 `.corrupt-{时间戳}`。
 ///
 /// 文件永远是唯一真相;将来若需全文检索,索引应作为可删除可重建的缓存,
 /// 不反向持有数据。

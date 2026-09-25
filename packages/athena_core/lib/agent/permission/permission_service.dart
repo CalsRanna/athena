@@ -48,6 +48,9 @@ class PermissionService {
     Map<String, dynamic> args, {
     String? workspace,
   }) {
+    // 另一进程(GUI/TUI)或手工编辑改了规则文件时先重读
+    _store.refreshIfChanged();
+
     // ① deny 优先:完整调用命中 deny 规则 → 直接拒绝
     final keyArg = _primaryArg(toolName, args) ?? '';
     if (_ruleHits(toolName, keyArg, effect: RuleEffect.deny)) {
