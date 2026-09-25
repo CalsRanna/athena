@@ -42,6 +42,8 @@ String formatToolArgsForApproval(String toolName, String arguments) {
   final args = _decodeArgs(arguments);
   if (args == null) return arguments;
   args.remove(toolCallDescriptionKey);
+  args.remove(toolApprovalRecommendationKey);
+  args.remove(toolApprovalReasonKey);
 
   final lines = <String>[];
   if (kShellToolNames.contains(toolName)) {

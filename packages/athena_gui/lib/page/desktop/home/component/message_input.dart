@@ -135,8 +135,8 @@ class DesktopMessageInput extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _Input(
-                          key: ValueKey(chatId),
                           controller: controller,
+                          chatId: chatId,
                           focusNode: focusNode,
                           images: images,
                           onPasteImages: onPasteImages,
@@ -233,15 +233,23 @@ class DesktopMessageInput extends StatelessWidget {
 class _Input extends StatefulWidget {
   final TextEditingController controller;
 
+  /// 当前对话的 id（草稿态是 null）。只在换对话时用来重置本组件自己的状态；
+  /// 注意**不能让它变成 key**，理由见 [_InputState.didUpdateWidget]。
+  final int? chatId;
+
   /// 外部传入的焦点节点：composer 的容器要靠它切换边框色。
   final FocusNode? focusNode;
   final List<PendingImage> images;
   final Future<bool> Function()? onPasteImages;
   final void Function(int)? onImageRemoved;
   final void Function()? onSubmitted;
+
+  /// 刻意不收 `key`：这个元素承载 composer 的焦点节点，换 key 会把它重建掉，
+  /// 从而导致换对话后"看着聚焦却打不进字"（见 [_InputState.didUpdateWidget]）。
+  /// 需要按对话重置状态就往 [chatId] 里传，别在这里加 key。
   const _Input({
-    super.key,
     required this.controller,
+    this.chatId,
     this.focusNode,
     this.images = const [],
     this.onPasteImages,
@@ -264,6 +272,27 @@ class _NewlineIntent extends Intent {
 class _InputState extends State<_Input> {
   bool _pasting = false;
   final _scrollController = ScrollController();
+
+  @override
+  void didUpdateWidget(_Input oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 换对话（草稿↔对话、对话 A↔对话 B）时重置本组件自己的状态。
+    //
+    // **不能用换 key 来重建**：这个元素承载着 composer 的焦点节点（`focusNode`
+    // 一路传给 TextField）。换 key 会销毁旧的 EditableText 连同它的文本输入连接，
+    // 而焦点节点是同一个对象、焦点自始至终没有变化，新建的 EditableText 只会在
+    // 焦点变化时才重开连接（`EditableText._handleFocusChanged` → `_openInputConnection`），
+    // 于是输入框"看起来聚焦、实际打不进字"——⌘N 新建对话（对话→草稿）后正是
+    // 这个状态，页里那次 `requestFocus` 也救不回来：节点仍持焦，请求会被
+    // FocusNode 当作无变化直接忽略。
+    if (widget.chatId == oldWidget.chatId) return;
+    _pasting = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
+    });
+  }
 
   @override
   void dispose() {

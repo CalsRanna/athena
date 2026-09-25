@@ -328,6 +328,7 @@ entity + ~/.athena/ 下的文件
 - **读写应用数据目录**：`~/.athena/` 只能经仓储与工具访问，不要用文件工具直接改。
 - **移动端的 `$HOME`**：移动端没有可靠的 `HOME`，用户级目录（Skill、经验、Sentinel 历史）与 `FileStorage` 根必须同为装配层传入的沙盒目录。
 - **忘记生成代码**：GUI 改了路由不跑 `build_runner` → analyze 直接失败。
+- **composer 输入元素按对话换 key**：`_Input`（`message_input.dart`）承托着 composer 的 `FocusNode`，`key: ValueKey(chatId)` 会在换对话时重建 `EditableText`，旧的连同文本输入连接一起销毁；焦点节点还是同一个、焦点没有变化，新的 `EditableText` 不会重开连接（只在焦点变化时开），于是输入框看着聚焦、真实平台却打不进字，页里那次 `requestFocus` 也救不回来（节点仍持焦，FocusNode 直接忽略）。要按对话重置状态就传 `chatId` 在 `didUpdateWidget` 里重置；`tester.enterText` 会先 `requestKeyboard` 把连接接回去，所以只有 `tester.testTextInput.hasAnyClients` 能测出这类回归。
 - **对既有文件跑 `dart format`**：产出大面积无关改动，评审无法看。
 - **用索引当下标口径**：UI 里的「第几轮 / 第几项」有窗口内相对下标与整段会话绝对下标两套（见 `util/chat_turn_util.dart` 与 `TurnIndicator` 的分页），传参前先核对。
 
