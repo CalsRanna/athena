@@ -210,6 +210,37 @@ void main() {
     expect(composerFocused(tester), isTrue);
   });
 
+  testWidgets('从已打开的对话按 ⌘N：输入框仍连着平台的文本输入', (tester) async {
+    // 这条覆盖"从对话回到草稿"的换槽场景：composer 的输入元素若在换对话时被
+    // 重建（例如把它按 chatId 换 key），它承托的焦点节点还是同一个、焦点没有
+    // 变化，新的 EditableText 不会重开文本输入连接——于是输入框看着还聚焦，
+    // 真实平台上却打不进字，页里那次 requestFocus 也救不回来。
+    final source = await seedSourceChat(tester);
+    await pumpHome(tester);
+    await selectSourceChat(tester, source);
+
+    await tester.tap(composerInput());
+    await tester.pump();
+    expect(composerFocused(tester), isTrue, reason: '前置：composer 持焦');
+    expect(
+      tester.testTextInput.hasAnyClients,
+      isTrue,
+      reason: '前置：平台文本输入已连到这个输入框',
+    );
+
+    await pressNewChat(tester);
+    await settle(tester);
+
+    expect(composerFocused(tester), isTrue);
+    // 只看 hasFocus 会漏掉这个回归：`tester.enterText` 内部会先 requestKeyboard
+    // 把连接接回去，同样测不出来，所以这里直接断言连接还在。
+    expect(
+      tester.testTextInput.hasAnyClients,
+      isTrue,
+      reason: '⌘N 之后输入框必须仍连着平台文本输入，否则新对话里打字没有反应',
+    );
+  });
+
   testWidgets('侧栏 New chat 的快捷键提示：静止没有，hover 才出现', (tester) async {
     await pumpHome(tester);
     // 提示文案按宿主平台只有一套（与 home_shortcuts.dart 的绑定同一条规则），
