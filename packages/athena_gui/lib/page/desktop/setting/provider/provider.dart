@@ -1,6 +1,8 @@
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
+import 'package:athena_gui/page/desktop/setting/provider/component/api_format_menu.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -326,6 +328,18 @@ class _DesktopSettingProviderPageState
                 ),
               ),
             ),
+            AthenaSettingsRow(
+              label: 'API format',
+              description: _apiFormatDescription(provider),
+              control: SizedBox(
+                width: AthenaSettingsControlWidth.wide,
+                child: DesktopSettingApiFormatSelect(
+                  provider: provider,
+                  onSelected: ({required bool auto, ApiFormat? format}) =>
+                      _commitApiFormat(provider, auto: auto, format: format),
+                ),
+              ),
+            ),
           ],
         ),
         AthenaSettingsSection(
@@ -482,6 +496,37 @@ class _DesktopSettingProviderPageState
     final url = urlController.text.trim();
     if (url == provider.baseUrl) return;
     await providerViewModel.updateProvider(provider.copyWith(baseUrl: url));
+  }
+
+  /// 手动选择会把 `apiFormatAuto` 置为 false（`copyWith(apiFormat:)` 的语义，
+  /// 见 `ProviderEntity`）；选回 Auto 只把开关打回去，格式值保留当前同步结果，
+  /// 等下次目录同步覆盖。
+  Future<void> _commitApiFormat(
+    ProviderEntity provider, {
+    required bool auto,
+    ApiFormat? format,
+  }) async {
+    if (auto) {
+      if (provider.apiFormatAuto) return;
+      await providerViewModel.updateProvider(
+        provider.copyWith(apiFormatAuto: true),
+      );
+      return;
+    }
+    if (format == null) return;
+    if (!provider.apiFormatAuto && provider.apiFormat == format) return;
+    await providerViewModel.updateProvider(provider.copyWith(apiFormat: format));
+  }
+
+  String _apiFormatDescription(ProviderEntity provider) {
+    if (provider.apiFormatAuto) {
+      return 'Follows the format inferred from models.dev during sync.';
+    }
+    if (provider.apiFormat == ApiFormat.messages) {
+      return 'Chosen manually. Messages is not wired up yet — requests fail '
+          'until it ships.';
+    }
+    return 'Chosen manually; sync will not overwrite it.';
   }
 
   Future<void> checkConnection(ModelEntity model) async {

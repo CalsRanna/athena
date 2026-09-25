@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -362,6 +363,32 @@ class ChatController {
     }
     // provider 由 YamlProviderRepository 直接持久化到 setting.yaml,
     // 无需额外写回
+  }
+
+  /// 保存 provider 的 API 格式(供 /format)。
+  ///
+  /// [auto] 为 true 表示交还给 models.dev 同步(`apiFormatAuto = true`,格式值
+  /// 保留当前结果,等下次同步覆盖);手动选择时 `copyWith(apiFormat:)` 会把
+  /// `apiFormatAuto` 落成 false,与设置界面同一套语义。
+  Future<void> updateProviderApiFormat(
+    ProviderEntity provider, {
+    required bool auto,
+    ApiFormat? format,
+  }) async {
+    if (!_active) return;
+    if (!auto && format == null) return;
+    final updated = auto
+        ? provider.copyWith(apiFormatAuto: true)
+        : provider.copyWith(apiFormat: format);
+    if (updated.apiFormat == provider.apiFormat &&
+        updated.apiFormatAuto == provider.apiFormatAuto) {
+      return;
+    }
+    await _providerRepo.updateProvider(updated);
+    // 若当前会话用的正是该 provider,同步状态栏
+    if (currentProvider.value?.id == provider.id) {
+      currentProvider.value = updated;
+    }
   }
 
   /// 向消息区推入一条临时消息(不落库,如 /help 输出)。

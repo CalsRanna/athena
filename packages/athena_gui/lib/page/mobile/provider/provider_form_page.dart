@@ -1,5 +1,7 @@
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_gui/component/api_format_label.dart';
 import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -13,6 +15,7 @@ import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
+import 'package:athena_gui/widget/tag.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,10 +35,16 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   final keyController = TextEditingController();
   final urlController = TextEditingController();
   var _obscureKey = true;
+  ApiFormat _apiFormat = ApiFormat.chatCompletions;
+  bool _apiFormatAuto = true;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
+    var tipTextStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.textSecondary,
+      height: 1.5,
+    );
     var keyVisibilityToggle = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _obscureKey = !_obscureKey),
@@ -59,6 +68,31 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       AthenaFormTileLabel.large(title: 'API Url'),
       SizedBox(height: 12),
       AthenaInput(controller: urlController),
+      SizedBox(height: 20),
+      AthenaFormTileLabel.large(title: 'API Format'),
+      SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          AthenaTagButton.small(
+            selected: _apiFormatAuto,
+            onTap: () => setState(() => _apiFormatAuto = true),
+            child: const Text('Auto'),
+          ),
+          for (final format in ApiFormat.values)
+            AthenaTagButton.small(
+              selected: !_apiFormatAuto && _apiFormat == format,
+              onTap: () => setState(() {
+                _apiFormatAuto = false;
+                _apiFormat = format;
+              }),
+              child: Text(format.label),
+            ),
+        ],
+      ),
+      SizedBox(height: 8),
+      Text(_apiFormatHint(), style: tipTextStyle),
     ];
     var column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,6 +175,8 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     super.initState();
     keyController.text = widget.provider.apiKey;
     urlController.text = widget.provider.baseUrl;
+    _apiFormat = widget.provider.apiFormat;
+    _apiFormatAuto = widget.provider.apiFormatAuto;
     _initializeModels();
   }
 
@@ -185,12 +221,26 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   Future<void> updateProvider() async {
     var viewModel = GetIt.instance<ProviderViewModel>();
+    // 手动选择时传 apiFormat，`copyWith` 会把 apiFormatAuto 落成 false；
+    // 选 Auto 时传 apiFormatAuto: true，格式值等下次目录同步覆盖。
     var provider = widget.provider.copyWith(
       enabled: true,
       apiKey: keyController.text,
       baseUrl: urlController.text,
+      apiFormat: _apiFormatAuto ? null : _apiFormat,
+      apiFormatAuto: _apiFormatAuto,
     );
     await viewModel.updateProvider(provider);
+  }
+
+  String _apiFormatHint() {
+    if (_apiFormatAuto) {
+      return 'Follows the format inferred from models.dev during sync.';
+    }
+    if (_apiFormat == ApiFormat.messages) {
+      return 'Messages is not wired up yet — requests fail until it ships.';
+    }
+    return 'Chosen manually; sync will not overwrite it.';
   }
 
   Widget _buildModelFormLabel(BuildContext context) {
