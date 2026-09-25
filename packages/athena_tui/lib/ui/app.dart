@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:athena_core/agent/elicit/elicit_prompt.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
@@ -43,6 +44,7 @@ class _AthenaAppState extends State<AthenaApp> {
     ('/model', '选择模型(仅显示已配置 API key 的)'),
     ('/sentinels', '选择角色'),
     ('/providers', '配置 Provider API key'),
+    ('/format', '配置 Provider API 格式'),
     ('/help', '显示本帮助'),
     ('/review', '审批模式: manual / ai / bypass'),
     ('/quit', '退出'),
@@ -55,8 +57,8 @@ class _AthenaAppState extends State<AthenaApp> {
     final commands = [
       '  /new 新建 · /list 列出 · /switch 切换',
       '  /delete 删除 · /json JSON 模式 · /model 模型',
-      '  /sentinels 角色 · /providers 配置 Key · /help 帮助',
-      '  /review manual|ai|bypass 审批 · /quit 退出',
+      '  /sentinels 角色 · /providers Key · /format 格式',
+      '  /help 帮助 · /review 审批 · /quit 退出',
     ].join('\n');
     return 'Athena TUI 命令:\n'
         '$commands\n'
@@ -381,6 +383,8 @@ class _AthenaAppState extends State<AthenaApp> {
         await _pickSentinel();
       case '/providers':
         await _manageProviders();
+      case '/format':
+        await _pickApiFormat();
       case '/json':
         if (args.isEmpty) {
           _pushSystemMessage('用法:/json <文本> —— 以 JSON 模式运行 Agent。');
@@ -676,6 +680,62 @@ class _AthenaAppState extends State<AthenaApp> {
     if (picked == null || picked >= providers.length) return;
     setState(() => _keyInputProvider = providers[picked]);
     _pushSystemMessage('为 ${providers[picked].name} 输入 API key(回车保存,留空取消)。');
+  }
+
+  /// /format 的选项:首项是「跟随 models.dev」,其余是三种固定协议。
+  static final List<({String label, bool auto, ApiFormat? format})>
+  _apiFormatOptions = [
+    (label: 'Auto (models.dev)', auto: true, format: null),
+    for (final format in ApiFormat.values)
+      (label: _apiFormatName(format), auto: false, format: format),
+  ];
+
+  /// 协议在界面上的名字(`ApiFormat.value` 是落库标识,不直接展示)。
+  static String _apiFormatName(ApiFormat format) => switch (format) {
+    ApiFormat.chatCompletions => 'Chat Completions',
+    ApiFormat.responses => 'Responses',
+    ApiFormat.messages => 'Messages',
+  };
+
+  /// /format:先选 provider,再选 API 格式。
+  Future<void> _pickApiFormat() async {
+    final providers = await _controller.availableProviders;
+    if (providers.isEmpty) {
+      _pushSystemMessage('暂无 provider。');
+      return;
+    }
+    final picked = await _openPicker(
+      title: '选择 Provider(配置 API 格式)',
+      labels: [
+        for (final p in providers)
+          '${p.name} — ${p.apiFormatAuto ? 'Auto' : _apiFormatName(p.apiFormat)}',
+      ],
+      initialIndex: 0,
+    );
+    if (picked == null || picked >= providers.length) return;
+    final provider = providers[picked];
+    final initial = provider.apiFormatAuto
+        ? 0
+        : _apiFormatOptions.indexWhere((o) => o.format == provider.apiFormat);
+    final formatPicked = await _openPicker(
+      title: '选择 API 格式(${provider.name})',
+      labels: [for (final option in _apiFormatOptions) option.label],
+      initialIndex: initial < 0 ? 0 : initial,
+    );
+    if (formatPicked == null) return;
+    final choice = _apiFormatOptions[formatPicked];
+    await _controller.updateProviderApiFormat(
+      provider,
+      auto: choice.auto,
+      format: choice.format,
+    );
+    // Messages 尚未接入,选它会在发送时直接报错,这里先讲清楚。
+    final warning = choice.format == ApiFormat.messages
+        ? '注意:Messages 尚未接入,发送会失败。'
+        : '';
+    _pushSystemMessage(
+      '${provider.name} 的 API 格式已设为 ${choice.label}。$warning',
+    );
   }
 
   /// 输入变化时实时计算斜杠命令建议:文本以 `/` 开头时按命令前缀过滤
