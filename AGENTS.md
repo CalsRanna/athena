@@ -58,7 +58,7 @@ packages/
 
 ## 2. 常用命令
 
-根目录没有 `pubspec.yaml`，三个包各自 `pub get`。CI 与 release 都锁定 Flutter **3.41.4** stable；SDK 约束 `>=3.8.0 <4.0.0`。
+根目录没有 `pubspec.yaml`，三个包各自 `pub get`。CI 与 release 都锁定 Flutter **3.47.1** stable；SDK 约束 `>=3.12.0 <4.0.0`（下限由 `anthropic_sdk_dart` 9.x 决定）。
 
 ```bash
 # athena_core
