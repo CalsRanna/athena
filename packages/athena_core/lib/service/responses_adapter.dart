@@ -77,14 +77,16 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
   // function call 的索引按出现顺序重新编号：ChatStreamAccumulator 把
   // tool_calls 的 index 直接当列表下标用，而 Responses 的 outputIndex 会
   // 因为 reasoning / message item 占据槽位而出现空洞。
-  final callIndexes = <String, int>{};
+  // 键用 outputIndex：参数增量事件的 item_id 是 item 自身的 id（fc_…），
+  // 与 call_id（call_…）不是同一个值，且可为空；outputIndex 两边都必有。
+  final callIndexes = <int, int>{};
 
   await for (final event in events) {
     switch (event) {
-      case OutputItemAddedEvent(:final item):
+      case OutputItemAddedEvent(:final outputIndex, :final item):
         if (item is FunctionCallOutputItemResponse) {
           final index = callIndexes.length;
-          callIndexes[item.callId] = index;
+          callIndexes[outputIndex] = index;
           // id 与 name 同时给出，保证上层立刻能建卡
           // （AgentService 建卡条件是两者齐备）。
           yield _chunk(
@@ -107,8 +109,8 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
       case ReasoningTextDeltaEvent(:final delta):
         if (delta.isNotEmpty) yield _chunk(ChatDelta(reasoning: delta));
 
-      case FunctionCallArgumentsDeltaEvent(:final itemId, :final delta):
-        final index = itemId == null ? null : callIndexes[itemId];
+      case FunctionCallArgumentsDeltaEvent(:final outputIndex, :final delta):
+        final index = callIndexes[outputIndex];
         if (index == null || delta.isEmpty) break;
         yield _chunk(
           ChatDelta(

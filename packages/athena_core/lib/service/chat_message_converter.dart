@@ -183,10 +183,16 @@ class ChatMessageConverter {
       default:
         if (msg.imageUrls.isNotEmpty) {
           final images = msg.imageUrls.split(',');
-          final parts = <ContentPart>[ContentPart.text(msg.content)];
-          for (final url in images) {
+          // 仅图片的消息不带空 text part：Messages 协议要求 text block 非空。
+          final parts = <ContentPart>[
+            if (msg.content.isNotEmpty) ContentPart.text(msg.content),
+          ];
+          for (final data in images) {
             parts.add(
-              ContentPart.imageBase64(data: url, mediaType: 'image/jpeg'),
+              ContentPart.imageBase64(
+                data: data,
+                mediaType: sniffImageMediaType(data),
+              ),
             );
           }
           return [ChatMessage.user(parts)];
@@ -194,4 +200,36 @@ class ChatMessageConverter {
         return [ChatMessage.user(msg.content)];
     }
   }
+}
+
+/// 按文件头识别 base64 图片的媒体类型。
+///
+/// 客户端存的是原始文件字节（粘贴的截图多为 PNG），而 Messages 协议会校验
+/// 声明的媒体类型与实际内容是否一致，不一致直接 400；识别不出时沿用 JPEG。
+String sniffImageMediaType(String base64Data) {
+  final List<int> head;
+  try {
+    // 16 个 base64 字符解出 12 字节，足够覆盖下面所有签名。
+    final prefix = base64Data.length > 16
+        ? base64Data.substring(0, 16)
+        : base64Data;
+    head = base64Decode(prefix);
+  } on FormatException {
+    return 'image/jpeg';
+  }
+  bool startsWith(List<int> sig, [int offset = 0]) {
+    if (head.length < offset + sig.length) return false;
+    for (var i = 0; i < sig.length; i++) {
+      if (head[offset + i] != sig[i]) return false;
+    }
+    return true;
+  }
+
+  if (startsWith(const [0x89, 0x50, 0x4E, 0x47])) return 'image/png';
+  if (startsWith(const [0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+  if (startsWith(const [0x52, 0x49, 0x46, 0x46]) &&
+      startsWith(const [0x57, 0x45, 0x42, 0x50], 8)) {
+    return 'image/webp';
+  }
+  return 'image/jpeg';
 }

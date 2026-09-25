@@ -201,6 +201,25 @@ void main() {
       expect(source['data'], 'AAAA');
     });
 
+    test('空 text part 被丢弃，仅图片消息只剩 image block', () {
+      final request = toMessageRequest(
+        chatRequest(
+          messages: [
+            UserMessage(
+              content: UserPartsContent([
+                const TextContentPart(text: ''),
+                const ImageContentPart(url: 'data:image/png;base64,AAAA'),
+              ]),
+            ),
+          ],
+        ),
+      );
+
+      final blocks = blocksOf(request.messages.single);
+      expect(blocks.map((b) => b['type']), ['image'],
+          reason: 'Messages 协议拒绝空 text block');
+    });
+
     test('http(s) 图片用 url source', () {
       final request = toMessageRequest(
         chatRequest(

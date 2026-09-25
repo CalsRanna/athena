@@ -225,7 +225,11 @@ List<anthropic.InputContentBlock> _toUserBlocks(UserMessageContent content) {
     case UserTextContent(:final text):
       return text.isEmpty ? const [] : [anthropic.InputContentBlock.text(text)];
     case UserPartsContent(:final parts):
-      return parts.map(_toContentBlock).toList();
+      // 与纯文本分支同口径：空 text block 会被 Messages 协议 400 拒绝。
+      return parts
+          .where((part) => !(part is TextContentPart && part.text.isEmpty))
+          .map(_toContentBlock)
+          .toList();
   }
 }
 

@@ -12,9 +12,11 @@ import 'package:nocterm/nocterm.dart';
 /// (核心层基于 Directory.current 解析路径)。未指定时默认使用当前目录;
 /// 目录不存在时自动创建。
 Future<void> main(List<String> args) async {
+  // 取绝对路径：下面会把 Directory.current 切过去，之后相对路径会被再
+  // 解析一次（sub → sub/sub），shell 默认 workdir 就指向了不存在的目录。
   final workspace = args.isEmpty
       ? Directory.current
-      : Directory(args.first);
+      : Directory(args.first).absolute;
   await workspace.create(recursive: true);
   // 全局工作区:核心层(shell workdir 默认值、file 工具相对路径、
   // skill 项目目录)都基于 Directory.current 解析

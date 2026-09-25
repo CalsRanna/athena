@@ -225,4 +225,37 @@ void main() {
       expect('${(messages.single as UserMessage).content}', contains('第二问'));
     });
   });
+
+  group('用户图片', () {
+    // 各格式文件头的前 12 字节
+    final png = base64Encode(
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D]);
+    final jpeg = base64Encode([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46]);
+    final gif = base64Encode([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0]);
+    final webp = base64Encode(
+        [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]);
+
+    test('按文件头声明媒体类型，识别不出时沿用 JPEG', () {
+      expect(sniffImageMediaType(png), 'image/png');
+      expect(sniffImageMediaType(jpeg), 'image/jpeg');
+      expect(sniffImageMediaType(gif), 'image/gif');
+      expect(sniffImageMediaType(webp), 'image/webp');
+      expect(sniffImageMediaType('not base64!'), 'image/jpeg');
+      expect(sniffImageMediaType(''), 'image/jpeg');
+    });
+
+    test('仅图片的消息不带空 text part，data URL 带真实媒体类型', () async {
+      final messages = await _build([
+        MessageEntity(id: 1, chatId: 1, role: 'user', imageUrls: png),
+      ]);
+
+      final content = (messages.single as UserMessage).content;
+      final parts = (content as UserPartsContent).parts;
+      expect(parts, hasLength(1), reason: '正文为空时不应生成 text part');
+      expect(
+        (parts.single as ImageContentPart).url,
+        startsWith('data:image/png;base64,'),
+      );
+    });
+  });
 }
