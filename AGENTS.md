@@ -191,7 +191,7 @@ entity + ~/.athena/ 下的文件
 
 - Shell 调用统一串行，包括看似只读的命令与后台启动调用；后台命令启动后仍可继续运行。不再通过静态命令分析决定免审批或并行资格。
 - `ElicitChannelAware` 工具直接进入提问通道，不叠加 AI 审核或人工审批；显式 deny 优先。
-- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。前三类缺少关键参数（如 URL 不合法）时不落规则，不能退化成整工具放行。持久 allow 规则只按关键参数匹配，覆盖不到的维度由 `PermissionService._persistentAllowApplies` 排除：`web_fetch` 的 origin 规则只放行不带 body / headers 的 GET。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
+- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。前三类缺少关键参数（如 URL 不合法）时不落规则，不能退化成整工具放行。持久 allow 规则只按关键参数匹配，覆盖不到的维度由 `PermissionService._persistentAllowApplies` 排除：`web_fetch` 的 origin 规则只放行不带 body / headers 的 GET；shell 的 exact 规则只在 workdir 为空或等于本次 run 的工作文件夹、且非 `background` 时生效（因此 `check` 需要传入 `workspace`）。deny 规则不受这些限制。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
 - 会话缓存键 = 工具名 + 规范化后的完整参数（排序、剥离三个展示/建议元数据字段）：换个参数就是另一次授权。
 - `ApprovalMode`：`manual` / `ai_review`（默认）/ `bypass`，存 `KeyValueStore`（键 `approval_mode`，旧布尔键 `ai_approval_enabled` 只做一次性迁移），改动下一轮 run 生效。三档都越过不了 deny。
 - AI 审核（`AiPermissionReviewer`）：独立提示词、无工具、20s 超时、单次调用有效，输入是**原始用户/助手对话**（摘要、技能、记忆、工具输出都不构成授权）；非法输出、超时、异常一律降级为「问人」。审核通过后要**重新检查 deny 规则**。

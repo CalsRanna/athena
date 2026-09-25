@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
 import 'package:athena_core/util/logger_util.dart';
+import 'package:athena_core/util/path_normalizer.dart';
 
 /// 权限检查结论。
 enum PermissionVerdict {
@@ -39,11 +40,14 @@ class PermissionService {
   /// - [deny] → 被 deny 规则拒绝,调用方应直接 block
   ///
   /// [runId] 为本次 Agent run 的标识(会话级缓存按 run 隔离);
+  /// [workspace] 为本次 run 的工作文件夹,用来判断 shell 的 workdir 是否由
+  /// 模型另行指定(见 [_persistentAllowApplies])。
   PermissionVerdict check(
     int runId,
     String toolName,
-    Map<String, dynamic> args,
-  ) {
+    Map<String, dynamic> args, {
+    String? workspace,
+  }) {
     // ① deny 优先:完整调用命中 deny 规则 → 直接拒绝
     final keyArg = _primaryArg(toolName, args) ?? '';
     if (_ruleHits(toolName, keyArg, effect: RuleEffect.deny)) {
@@ -60,7 +64,7 @@ class PermissionService {
     }
 
     // ③ 持久 allow 规则命中则放行
-    if (_persistentAllowApplies(toolName, args) &&
+    if (_persistentAllowApplies(toolName, args, workspace) &&
         _ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
       return PermissionVerdict.allow;
     }
@@ -72,10 +76,25 @@ class PermissionService {
   /// web_fetch 的规则只有 origin：对某站点一次 GET 点了「始终允许」，不能
   /// 顺带放行之后对同一站点的 POST、带 body 或自定义 headers（令牌）的
   /// 请求——这些都要每次审批（同一 run 内的会话缓存按完整参数照常生效）。
+  ///
+  /// shell 的规则只有命令文本：批准过的 `git clean -fdx` 不能被模型换个
+  /// workdir 挪到主目录执行，也不能加 `background: true` 在 run 结束后继续
+  /// 跑。所以只在未另行指定 workdir（为空，或就是 `applyRunWorkspace`
+  /// 注入的工作文件夹）且不在后台运行时生效。deny 规则不受此限。
   static bool _persistentAllowApplies(
     String toolName,
     Map<String, dynamic> args,
+    String? workspace,
   ) {
+    if (kShellToolNames.contains(toolName)) {
+      if (args['background'] == true) return false;
+      final workdir = args['workdir'];
+      if (workdir == null) return true;
+      return workdir is String &&
+          workspace != null &&
+          workspace.isNotEmpty &&
+          normalizePathForMatch(workdir) == normalizePathForMatch(workspace);
+    }
     if (toolName != 'web_fetch') return true;
     final method = (args['method'] as String? ?? 'GET').toUpperCase();
     final body = args['body'];

@@ -109,6 +109,66 @@ void main() {
     );
   });
 
+  test('shell 规则只在未另行指定 workdir 且不在后台时生效', () {
+    store.rules.addAll(PermissionRule.forToolCall('bash', 'git clean -fdx'));
+    const command = 'git clean -fdx';
+    const workspace = '/work/proj';
+
+    PermissionVerdict checkArgs(
+      Map<String, dynamic> extra, {
+      String? workspace,
+    }) =>
+        service.check(
+          1,
+          'bash',
+          {'command': command, ...extra},
+          workspace: workspace,
+        );
+
+    // 未指定 workdir，或就是本次 run 的工作文件夹（applyRunWorkspace 注入）
+    expect(checkArgs({}), PermissionVerdict.allow);
+    expect(
+      checkArgs({'workdir': workspace}, workspace: workspace),
+      PermissionVerdict.allow,
+    );
+    expect(
+      checkArgs({'workdir': '/work/proj/'}, workspace: workspace),
+      PermissionVerdict.allow,
+      reason: '同一目录的不同写法',
+    );
+
+    // 模型换了目录，或转到后台
+    expect(
+      checkArgs({'workdir': '/Users/me'}, workspace: workspace),
+      PermissionVerdict.prompt,
+    );
+    expect(checkArgs({'workdir': '/Users/me'}), PermissionVerdict.prompt);
+    expect(checkArgs({'background': true}), PermissionVerdict.prompt);
+    expect(
+      checkArgs({'workdir': workspace, 'background': true}, workspace: workspace),
+      PermissionVerdict.prompt,
+    );
+  });
+
+  test('shell 的 deny 规则不受 workdir / background 影响', () {
+    store.rules.add(
+      const PermissionRule(
+        tool: 'bash',
+        kind: RuleKind.exact,
+        pattern: 'rm -rf /',
+        effect: RuleEffect.deny,
+      ),
+    );
+    expect(
+      service.check(1, 'bash', {
+        'command': 'rm -rf /',
+        'workdir': '/tmp',
+        'background': true,
+      }),
+      PermissionVerdict.deny,
+    );
+  });
+
   test('web_fetch 的 origin 规则只放行不带 body / headers 的 GET', () {
     store.rules.addAll(
       PermissionRule.forToolCall('web_fetch', 'https://api.example.com'),
