@@ -4,12 +4,19 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:openai_dart/openai_dart.dart';
 import 'package:test/test.dart';
 
-/// 覆盖 `LlmClient` 的协议分派：未接入的格式必须显式失败且以流错误呈现，
-/// Chat Completions 必须仍然走到原有的 openai_dart 调用路径。
+/// `LlmClient` 按 `provider.apiFormat` 分派三条协议路径：Chat Completions 与
+/// Responses 都用 openai_dart 客户端（Responses 走 `client.responses`），
+/// Messages 用 anthropic_sdk_dart 客户端。
+///
+/// 这里用「注入的工厂直接抛错」证明进了哪条分支，避免真的发请求；
+/// 顺带钉住 Messages 的地址归一化（SDK 自己会拼 `/v1/messages`）。
 void main() {
-  ProviderEntity provider(ApiFormat format) => ProviderEntity(
+  ProviderEntity provider(
+    ApiFormat format, {
+    String baseUrl = 'https://example.com',
+  }) => ProviderEntity(
     name: 'probe',
-    baseUrl: 'https://example.com',
+    baseUrl: baseUrl,
     apiKey: 'test-key',
     apiFormat: format,
     createdAt: DateTime(2026, 1, 1),
@@ -20,134 +27,92 @@ void main() {
     messages: [ChatMessage.user('hi')],
   );
 
-  group('未接入的协议', () {
-    for (final format in [ApiFormat.messages]) {
-      test('${format.value}：stream 以流错误呈现 UnsupportedError', () async {
-        final client = LlmClient();
+  LlmClient openAiClient() => LlmClient(
+    clientFactory: ({required String apiKey, required String? baseUrl}) =>
+        throw StateError('openai-client-created'),
+  );
 
-        // 同步调用本身不能抛：上层把 await for 包在 try 里做取消归一化，
-        // 同步抛出会绕过那段逻辑。
-        late final Stream<ChatStreamEvent> stream;
-        expect(
-          () => stream = client.stream(
-            provider: provider(format),
-            request: request(),
-          ),
-          returnsNormally,
+  LlmClient anthropicClient({void Function(String baseUrl)? onBaseUrl}) =>
+      LlmClient(
+        anthropicClientFactory:
+            ({required String apiKey, required String baseUrl}) {
+              onBaseUrl?.call(baseUrl);
+              throw StateError('anthropic-client-created');
+            },
+      );
+
+  Matcher marker(String message) =>
+      isA<StateError>().having((e) => e.message, 'message', message);
+
+  group('协议分派', () {
+    for (final format in [ApiFormat.chatCompletions, ApiFormat.responses]) {
+      test('${format.value}：走 openai_dart 客户端', () async {
+        final client = openAiClient();
+
+        await expectLater(
+          client.stream(provider: provider(format), request: request()),
+          emitsError(marker('openai-client-created')),
         );
-
-        await expectLater(stream, emitsError(isA<UnsupportedError>()));
-      });
-
-      test('${format.value}：fetch 抛出 UnsupportedError', () async {
-        final client = LlmClient();
         await expectLater(
           client.fetch(provider: provider(format), request: request()),
-          throwsA(isA<UnsupportedError>()),
+          throwsA(marker('openai-client-created')),
         );
       });
     }
 
-    test('错误信息包含 provider 名与格式，指出恢复方式', () async {
-      final client = LlmClient();
-      final error = await client
-          .fetch(provider: provider(ApiFormat.messages), request: request())
-          .then<Object?>((_) => null, onError: (Object e) => e);
-
-      final message = (error! as UnsupportedError).message;
-      expect(message, contains('probe'));
-      expect(message, contains('messages'));
-      expect(message, contains('chat_completions'));
-    });
-  });
-
-  group('Responses', () {
-    test('stream 进入 Responses 分支，不报 UnsupportedError', () async {
-      final client = LlmClient(
-        clientFactory: ({required apiKey, required baseUrl}) =>
-            throw StateError('responses-reached'),
-      );
+    test('messages：走 anthropic_sdk_dart 客户端', () async {
+      final client = anthropicClient();
 
       await expectLater(
         client.stream(
-          provider: provider(ApiFormat.responses),
+          provider: provider(ApiFormat.messages),
           request: request(),
         ),
-        emitsError(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'responses-reached',
-          ),
+        emitsError(marker('anthropic-client-created')),
+      );
+      await expectLater(
+        client.fetch(
+          provider: provider(ApiFormat.messages),
+          request: request(),
         ),
+        throwsA(marker('anthropic-client-created')),
       );
     });
 
-    test('fetch 进入 Responses 分支，不报 UnsupportedError', () async {
-      final client = LlmClient(
-        clientFactory: ({required apiKey, required baseUrl}) =>
-            throw StateError('responses-reached'),
-      );
+    test('messages：地址尾部的 /v1 被剥掉', () async {
+      String? seen;
+      final client = anthropicClient(onBaseUrl: (url) => seen = url);
 
       await expectLater(
         client.fetch(
-          provider: provider(ApiFormat.responses),
+          provider: provider(
+            ApiFormat.messages,
+            baseUrl: 'https://api.anthropic.com/v1',
+          ),
           request: request(),
         ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'responses-reached',
-          ),
-        ),
-      );
-    });
-  });
-
-  group('Chat Completions', () {
-    test('stream 进入 Chat Completions 分支，不报 UnsupportedError', () async {
-      // 用抛自定义异常的工厂证明「确实走到了 openai_dart 分支」：
-      // 若被误判为未接入协议，错误类型会是 UnsupportedError。
-      final client = LlmClient(
-        clientFactory: ({required apiKey, required baseUrl}) =>
-            throw StateError('chat-completions-reached'),
+        throwsA(isA<StateError>()),
       );
 
-      await expectLater(
-        client.stream(
-          provider: provider(ApiFormat.chatCompletions),
-          request: request(),
-        ),
-        emitsError(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'chat-completions-reached',
-          ),
-        ),
-      );
+      expect(seen, 'https://api.anthropic.com');
     });
 
-    test('fetch 进入 Chat Completions 分支，不报 UnsupportedError', () async {
-      final client = LlmClient(
-        clientFactory: ({required apiKey, required baseUrl}) =>
-            throw StateError('chat-completions-reached'),
-      );
+    test('messages：不带 /v1 的地址（含尾斜杠）原样传递', () async {
+      String? seen;
+      final client = anthropicClient(onBaseUrl: (url) => seen = url);
 
       await expectLater(
         client.fetch(
-          provider: provider(ApiFormat.chatCompletions),
+          provider: provider(
+            ApiFormat.messages,
+            baseUrl: 'https://proxy.example.com/anthropic/',
+          ),
           request: request(),
         ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'chat-completions-reached',
-          ),
-        ),
+        throwsA(isA<StateError>()),
       );
+
+      expect(seen, 'https://proxy.example.com/anthropic');
     });
   });
 }

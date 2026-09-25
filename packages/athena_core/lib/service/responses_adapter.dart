@@ -146,7 +146,7 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
 }
 
 /// 把 Responses 的完整响应转成 Chat Completion（非流式路径）。
-ChatCompletion toChatCompletion(Response response) {
+ChatCompletion responseToChatCompletion(Response response) {
   return ChatCompletion(
     id: response.id,
     object: 'chat.completion',

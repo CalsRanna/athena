@@ -1,4 +1,5 @@
-/// Provider 的 API 格式元数据；原生协议适配完成前不参与请求路由。
+/// Provider 的 API 格式：`LlmClient` 按它分派请求实现
+/// （Chat Completions / Responses / Messages 三条路径都已接入）。
 enum ApiFormat {
   chatCompletions('chat_completions'),
   responses('responses'),

@@ -729,13 +729,7 @@ class _AthenaAppState extends State<AthenaApp> {
       auto: choice.auto,
       format: choice.format,
     );
-    // Messages 尚未接入,选它会在发送时直接报错,这里先讲清楚。
-    final warning = choice.format == ApiFormat.messages
-        ? '注意:Messages 尚未接入,发送会失败。'
-        : '';
-    _pushSystemMessage(
-      '${provider.name} 的 API 格式已设为 ${choice.label}。$warning',
-    );
+    _pushSystemMessage('${provider.name} 的 API 格式已设为 ${choice.label}。');
   }
 
   /// 输入变化时实时计算斜杠命令建议:文本以 `/` 开头时按命令前缀过滤
