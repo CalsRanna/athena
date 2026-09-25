@@ -92,6 +92,7 @@ Shell 调用统一串行，未命中显式授权时按上述三种模式处理�
 
 - 多区工作台：288 宽侧栏（会话列表、置顶、批量选择、删除）+ 工作区（消息流、轮次条、composer）。
 - Text size 的三档字号只调整会话消息与代码；composer、空会话 placeholder、侧栏、标题栏、设置和弹出菜单不受影响。桌面与移动端范围一致，保留系统无障碍文字缩放。
+- 桌面端滚动不带 iOS 式回弹：滚轮与触控板滚到边界即停，不会先拉出一段空白再弹回；桌面滚动条照常显示。移动端沿用系统默认（iOS 回弹）。
 - Claude 桌面端风格的设置浮层面板：Providers / Default models / Agent / Sentinels / Skills / Experiences / General / About，导航带搜索；内容在固定标题栏下方滚动，不遮挡返回链接和关闭按钮，标题栏底部分隔线与工作区一致，正文顶部保留 24 逻辑像素的留白。一般设置改动即存，角色、技能等编辑页通过 Save 保存。
 - composer 上可切换模型、角色、工作文件夹、推理强度、保留策略、审批模式，并显示上下文占用圆环（≥80% 变警示色）；未发送的文字与图片按对话各自保留，切换对话不会带到别的对话里。
 - 支持快捷键与右键菜单粘贴图片：立即显示可移除的图片占位和加载圆环（无阶段文字），解析完成后显示缩略图；失败时显示错误图标。图片就绪后可单独发送，也可随文字发送；解析期间与失败项移除前暂停发送，切换对话不会改变附件归属。
@@ -162,7 +163,7 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 同步还会根据 models.dev 的 `npm` 推断 Provider 默认 API 格式，保存为 `setting.yaml` 的 `apiFormat`（`chat_completions` / `responses` / `messages`）。OpenAI 默认推断为 Responses；Google、MiniMax 与 xAI 按 Athena 现有端点保留 Chat Completions。模型级 `provider.shape` 不作为整个 Provider 的默认格式。未知 SDK 保留原值，修改过预设地址的 Provider 不自动更新格式；旧配置默认 Chat Completions，并可直接从七天 TTL 内的已有缓存补齐格式。
 
-`apiFormatAuto: true` 表示允许目录同步；手动指定格式时同时设为 `false`，该选择会随配置备份保留。**目前 `apiFormat` 仅是同步元数据，实际 LLM 请求仍使用 Chat Completions；Responses / Messages 的请求适配尚未接入。**
+`apiFormatAuto: true` 表示允许目录同步；手动指定格式时同时设为 `false`，该选择会随配置备份保留。**Chat Completions 与 Responses 都可实际发起请求**（Responses 会自动完成请求与流事件的形状转换，音频、文件消息与 JSON Schema 输出格式暂不支持）；把格式改成 `messages` 会直接失败并提示改回 `chat_completions`，不会静默按 OpenAI 兼容端点发出。
 
 ---
 

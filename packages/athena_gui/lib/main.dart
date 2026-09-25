@@ -8,6 +8,7 @@ import 'package:athena_gui/di.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_scroll_behavior.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/util/single_instance_util.dart';
@@ -101,6 +102,8 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
         theme: buildAthenaThemeData(AthenaColorMode.light),
         darkTheme: buildAthenaThemeData(AthenaColorMode.dark),
         themeMode: themeMode,
+        // 桌面端关闭滚动回弹（macOS 默认是 BouncingScrollPhysics）
+        scrollBehavior: const AthenaScrollBehavior(),
       );
     });
   }

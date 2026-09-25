@@ -382,6 +382,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   参照实现的圆角很克制（最小 4、控件 7、composer 12），层级靠字重、间距与底色差，不靠放大字号或加深投影。
 - **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FCFCFB`、
   文字 `#0B0B0B`，深色画布 `#1A1A19`）；纯黑只出现在深色主题的阴影基色里。
+- **Don't** 在桌面端做 iOS 式滚动回弹。滚到底就停住（`ClampingScrollPhysics`），不要先拉出一段空白再弹回去——
+  桌面三平台（macOS / Windows / Linux）统一，移动端保留系统默认回弹。口径落在 `AthenaScrollBehavior`
+  （`theme/athena_scroll_behavior.dart`），由 `main.dart` 的 `MaterialApp.router(scrollBehavior:)` 注入；
+  不要在单个 ScrollView 上零散写 `physics:`（`NeverScrollableScrollPhysics` 这类功能性禁用除外）。
 - **Don't** 让文档与代码脱钩：本文件已按 Overview / Colors / Typography / Elevation / Components /
   Do's and Don'ts 六节重排，源代码注释里对旧章节号（DESIGN.md §2 / §3 / §4）的引用需要在
   下一批改动里同步更新（`athena_settings.dart`、`athena_tokens.dart`、`widget/dialog.dart`、
