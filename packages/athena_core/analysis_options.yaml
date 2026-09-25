@@ -7,3 +7,10 @@ analyzer:
   language:
     strict-casts: true
     strict-inference: true
+
+linter:
+  rules:
+    # 语言版本下限从 3.8 提到 3.12 后，analyzer 开始启用该规则，
+    # 存量代码因此新增 92 条 info。仓库既有风格是在构造体里赋值
+    # （`_x = x`），逐个改写属于大范围无关重排，故显式关闭。
+    prefer_initializing_formals: false

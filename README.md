@@ -132,7 +132,7 @@ Shell 调用统一串行，未命中显式授权时按上述三种模式处理�
 
 ### 从源码构建
 
-前置：Flutter **3.41.4** stable（与本仓 CI / release 使用的版本一致），Dart SDK `>=3.8.0`。根目录没有 `pubspec.yaml`，三个包各自 `pub get`。
+前置：Flutter **3.47.1** stable（与本仓 CI / release 使用的版本一致），Dart SDK `>=3.12.0`。根目录没有 `pubspec.yaml`，三个包各自 `pub get`。
 
 ```bash
 # 桌面 / 移动客户端

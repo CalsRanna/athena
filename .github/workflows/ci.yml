@@ -16,7 +16,7 @@ jobs:
         with:
           channel: stable
           # 与 release workflow 及本地开发版本保持一致
-          flutter-version: 3.41.4
+          flutter-version: 3.47.1
           cache: true
 
       - name: Pub get (athena_core)
@@ -44,7 +44,7 @@ jobs:
         with:
           channel: stable
           # 与 release workflow 及本地开发版本保持一致
-          flutter-version: 3.41.4
+          flutter-version: 3.47.1
           cache: true
 
       - name: Pub get (athena_gui)

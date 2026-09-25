@@ -4,9 +4,12 @@ version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: ">=3.8.0 <4.0.0"
+  # 下限由 anthropic_sdk_dart 9.x 决定（要求 Dart >=3.12.0）；
+  # CI / release / 本地开发统一 Flutter 3.47.1（Dart 3.13.1）。
+  sdk: ">=3.12.0 <4.0.0"
 
 dependencies:
+  anthropic_sdk_dart: ^9.0.0
   crypto: ^3.0.7
   http: ^1.1.0
   html: ^0.15.5

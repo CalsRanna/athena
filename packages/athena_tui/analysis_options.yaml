@@ -13,3 +13,8 @@ analyzer:
   language:
     strict-casts: true
     strict-inference: true
+
+linter:
+  rules:
+    # 同 athena_core：语言版本下限提到 3.12 后该规则被启用，存量风格不改。
+    prefer_initializing_formals: false
