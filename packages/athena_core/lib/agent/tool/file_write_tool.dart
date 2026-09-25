@@ -39,10 +39,14 @@ class FileWriteTool implements Tool {
     final path = args['path'] as String;
     final content = args['content'] as String;
 
-    // 归一化（词法）→ canonicalize 已存在部分（best-effort）：
-    // 与权限层 PermissionRule 匹配使用同一路径，堵住 `..` 穿越
-    // 在「规则命中」与「实际写入」之间不一致的问题。
-    final normalized = await canonicalizePathForExecution(path);
+    // 引擎已把 path 解析为真实路径（applyRunWorkspace）并据此审批；
+    // 这里复核审批后链接没有被替换，保证写入的正是审批时看到的文件。
+    final changed = realPathChangedSinceApproval(path);
+    if (changed != null) return symlinkChangedError(path, changed);
+    final normalized = normalizePathForMatch(path);
+    if (isProtectedWritePath(normalized)) {
+      return protectedWritePathError(path);
+    }
 
     final file = File(normalized);
     await file.parent.create(recursive: true);

@@ -305,13 +305,21 @@ class AgentService {
 
     // 会话工作文件夹：在权限门之前解析，使规则匹配与文件执行共用同一
     // 绝对路径（展示用的 toolCall.function.arguments 保持原样）
+    final rawArgs = args;
     args = applyRunWorkspace(toolCall.function.name, args, workspace);
+    final approvalArguments = approvalArgumentsFor(
+      toolCall.function.name,
+      rawArguments: toolCall.function.arguments,
+      rawArgs: rawArgs,
+      resolvedArgs: args,
+      workspace: workspace,
+    );
 
     // 权限门（拦截或放行）
     if (permissionGate != null) {
       final gateResult = await permissionGate((
         name: toolCall.function.name,
-        arguments: toolCall.function.arguments,
+        arguments: approvalArguments,
         args: args,
         recordReview: (review) => approvalReview = review,
       ));

@@ -109,6 +109,56 @@ void main() {
     );
   });
 
+  test('web_fetch 的 origin 规则只放行不带 body / headers 的 GET', () {
+    store.rules.addAll(
+      PermissionRule.forToolCall('web_fetch', 'https://api.example.com'),
+    );
+    const url = 'https://api.example.com/gists';
+
+    expect(service.check(1, 'web_fetch', {'url': url}), PermissionVerdict.allow);
+    expect(
+      service.check(1, 'web_fetch', {'url': url, 'method': 'get'}),
+      PermissionVerdict.allow,
+    );
+    for (final args in <Map<String, dynamic>>[
+      {'url': url, 'method': 'POST'},
+      {'url': url, 'body': '{"public":true}'},
+      {
+        'url': url,
+        'headers': {'Authorization': 'Bearer x'},
+      },
+    ]) {
+      expect(
+        service.check(1, 'web_fetch', args),
+        PermissionVerdict.prompt,
+        reason: '$args 超出了 origin 规则覆盖的范围',
+      );
+    }
+
+    // 同一 run 内逐次批准过的完整调用照常复用
+    final post = {'url': url, 'method': 'POST', 'body': 'x'};
+    service.approveForSession(1, 'web_fetch', post);
+    expect(service.check(1, 'web_fetch', post), PermissionVerdict.allow);
+  });
+
+  test('web_fetch 的 deny 规则对任何 method 都生效', () {
+    store.rules.add(
+      PermissionRule(
+        tool: 'web_fetch',
+        kind: RuleKind.origin,
+        pattern: 'https://evil.example',
+        effect: RuleEffect.deny,
+      ),
+    );
+    expect(
+      service.check(1, 'web_fetch', {
+        'url': 'https://evil.example/x',
+        'method': 'POST',
+      }),
+      PermissionVerdict.deny,
+    );
+  });
+
   test('读取、搜索、任务查询统一进入审批,不按工具类型免审批', () {
     for (final call in <String, Map<String, dynamic>>{
       'file_read': {'path': '/workspace/notes.txt'},

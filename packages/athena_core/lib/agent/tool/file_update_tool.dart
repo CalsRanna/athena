@@ -67,8 +67,13 @@ class FileUpdateTool implements Tool {
       return 'Error: old_string must not be empty';
     }
 
-    // 归一化路径：与权限层 PermissionRule 匹配一致，堵住 `..` 穿越
-    final resolvedPath = await canonicalizePathForExecution(path);
+    // 引擎已把 path 解析为真实路径并据此审批；复核审批后链接没有被替换
+    final changed = realPathChangedSinceApproval(path);
+    if (changed != null) return symlinkChangedError(path, changed);
+    final resolvedPath = normalizePathForMatch(path);
+    if (isProtectedWritePath(resolvedPath)) {
+      return protectedWritePathError(path);
+    }
     final file = File(resolvedPath);
     if (!await file.exists()) {
       return 'Error: File not found: $path';

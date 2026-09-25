@@ -63,9 +63,11 @@ class FileReadTool implements Tool {
     final offset = args['offset'] as int? ?? 0;
     final limit = args['limit'] as int?;
 
-    // 归一化（词法）→ canonicalize（真实路径）→ 敏感路径检查。
-    // 与权限层 PermissionRule 使用同一归一化函数，保证匹配与执行一致。
-    final normalized = await canonicalizePathForExecution(path);
+    // 引擎已把 path 解析为真实路径并据此审批；复核链接未被替换后再做
+    // 敏感路径检查（基于真实路径，链接绕不过去）。
+    final changed = realPathChangedSinceApproval(path);
+    if (changed != null) return symlinkChangedError(path, changed);
+    final normalized = normalizePathForMatch(path);
     if (isSensitivePath(normalized)) {
       return 'Error: Blocked: reading sensitive credential paths '
           '($path) requires approval';

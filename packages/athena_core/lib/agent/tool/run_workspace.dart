@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:athena_core/util/path_normalizer.dart';
 import 'package:path/path.dart' as p;
 
 import '../permission/permission_rule.dart';
@@ -18,24 +21,30 @@ import '../permission/permission_rule.dart';
 /// 之后拿绝对路径匹配永远不命中，表现为「同一 run 内已批准仍重复弹窗」与
 /// 「始终允许」规则失效。
 ///
-/// [workspace] 为 null 或空串 = 不指定：原样返回，维持引入本能力之前的行为
-/// （shell 默认用户主目录、文件工具相对路径按进程当前目录解析）。
+/// 文件工具的路径同时解析符号链接（[resolveRealPathSync]）：审批卡、AI
+/// 审核、会话缓存、持久规则与执行都落在同一个真实目标上，项目里一个指向
+/// `~/.zshrc` 的链接不能借项目路径的授权写出去。
+///
+/// [workspace] 为 null 或空串 = 不指定：shell 不注入 workdir（工具默认用户
+/// 主目录），文件工具相对路径按进程当前目录解析——同样在这里落成绝对路径，
+/// 否则「始终允许」会存成相对路径规则，换个目录启动就跨项目生效。
 Map<String, dynamic> applyRunWorkspace(
   String toolName,
   Map<String, dynamic> args,
   String? workspace,
 ) {
-  if (workspace == null || workspace.isEmpty) return args;
+  final hasWorkspace = workspace != null && workspace.isNotEmpty;
 
-  // 文件工具：相对路径以工作文件夹为基准解析为绝对路径（词法归一化，
-  // 不访问文件系统，与 normalizePathForMatch 的口径一致）
   if (kFileToolNames.contains(toolName)) {
     final path = args['path'];
-    if (path is String && path.isNotEmpty && !p.isAbsolute(path)) {
-      return {...args, 'path': p.normalize(p.join(workspace, path))};
-    }
-    return args;
+    if (path is! String || path.isEmpty) return args;
+    final absolute = hasWorkspace && !p.isAbsolute(path)
+        ? p.join(workspace, path)
+        : path;
+    return {...args, 'path': resolveRealPathSync(absolute)};
   }
+
+  if (!hasWorkspace) return args;
 
   // shell 工具：调用参数里显式传入的 workdir 优先，缺省时才用工作文件夹
   // （工具自身再退化到注入的 defaultWorkdir / 用户主目录）
@@ -43,4 +52,33 @@ Map<String, dynamic> applyRunWorkspace(
     if (args['workdir'] == null) return {...args, 'workdir': workspace};
   }
   return args;
+}
+
+/// 审批卡展示用的参数 JSON：默认就是模型给的原始参数；文件工具的路径经
+/// 符号链接指到别处时，把 path 换成真实目标——否则用户批准的是
+/// `docs/setup.md`，实际写的是 `~/.zshrc`。纯粹的相对→绝对变化不改写，
+/// 保持审批卡与工具卡的展示一致。
+///
+/// [rawArgs] 是 [applyRunWorkspace] 之前的参数，[resolvedArgs] 是之后的。
+String approvalArgumentsFor(
+  String toolName, {
+  required String rawArguments,
+  required Map<String, dynamic> rawArgs,
+  required Map<String, dynamic> resolvedArgs,
+  required String? workspace,
+}) {
+  if (!kFileToolNames.contains(toolName)) return rawArguments;
+  final rawPath = rawArgs['path'];
+  final realPath = resolvedArgs['path'];
+  if (rawPath is! String || realPath is! String) return rawArguments;
+  final lexical = normalizePathForMatch(
+    workspace == null || workspace.isEmpty
+        ? rawPath
+        : p.join(workspace, rawPath),
+  );
+  if (lexical == realPath) return rawArguments;
+  return jsonEncode({
+    ...jsonDecode(rawArguments) as Map<String, dynamic>,
+    'path': realPath,
+  });
 }

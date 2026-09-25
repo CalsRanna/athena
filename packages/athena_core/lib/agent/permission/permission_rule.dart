@@ -87,15 +87,19 @@ class PermissionRule {
   /// - shell 工具 → [RuleKind.exact](整条命令精确匹配)
   /// - 文件工具   → [RuleKind.path](归一化路径前缀 / glob)
   /// - web_fetch  → [RuleKind.origin](scheme://host[:port])
-  /// - 其余工具,或 [keyArg] 缺失 → 空 pattern 的 [RuleKind.exact],
-  ///   即放行该工具的所有调用
+  /// - 其余工具 → 空 pattern 的 [RuleKind.exact],即放行该工具的所有调用
+  /// - 以上三类缺少 [keyArg](如 URL 不合法) → 不落规则。退化成整工具放行
+  ///   会让一次针对坏参数的「始终允许」放开该工具的全部调用
   ///
   /// shell 按「动作 + 参数前缀」匹配会把一次授权
   /// 顺带扩展到用户没看到的变体(`npm test` 放行 `npm test -- --watch`),
   /// 而这中间没有二次确认。精确匹配把授权范围钉在用户当时看到的那条命令上。
   static List<PermissionRule> forToolCall(String tool, String? keyArg) {
-    if (keyArg == null) {
-      return [PermissionRule(tool: tool, kind: RuleKind.exact)];
+    final keyed = kShellToolNames.contains(tool) ||
+        kFileToolNames.contains(tool) ||
+        tool == 'web_fetch';
+    if (keyArg == null || keyArg.isEmpty) {
+      return keyed ? const [] : [PermissionRule(tool: tool, kind: RuleKind.exact)];
     }
     if (kShellToolNames.contains(tool)) {
       return [PermissionRule(tool: tool, kind: RuleKind.exact, pattern: keyArg)];
@@ -145,9 +149,14 @@ class PermissionRule {
 
   /// 路径匹配:归一化(分隔符、.. 词法解析、相对路径绝对化)后,
   /// 含通配符按路径 glob,否则目录前缀(/ 边界)。
+  ///
+  /// 两侧都解析符号链接(通配符段不存在,原样保留):执行侧的 keyArg 已由
+  /// `applyRunWorkspace` 解析为真实路径,若 pattern 仍是词法路径,写在链接
+  /// 目录下的规则(macOS 的 `/tmp` 即 `/private/tmp`)不再命中,deny 规则
+  /// 也能被链接绕开。对已解析的 keyArg 再解析一次结果不变。
   bool _matchesPath(String keyArg) {
-    var p = normalizePathForMatch(pattern);
-    var k = normalizePathForMatch(keyArg);
+    var p = resolveRealPathSync(pattern);
+    var k = resolveRealPathSync(keyArg);
     if (p.endsWith('/')) p = p.substring(0, p.length - 1);
     if (k.endsWith('/')) k = k.substring(0, k.length - 1);
     if (p.contains('*') || p.contains('?')) {

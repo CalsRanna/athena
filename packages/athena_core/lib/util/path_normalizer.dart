@@ -20,21 +20,79 @@ String normalizePathForMatch(String path) {
   return abs.replaceAll('\\', '/');
 }
 
-/// Best-effort 解析符号链接与真实路径（文件不存在时回退到词法归一化）。
+/// 同步解析符号链接，得到调用真正会读写的路径（Windows 下为 best-effort）。
 ///
-/// 与 [normalizePathForMatch] 配合：规则层只做词法归一化（同步、
-/// 不访问文件系统），工具执行前再 canonicalize——若真实路径与规则
-/// 匹配路径不一致则规则不命中、走弹窗（偏安全）。
-Future<String> canonicalizePathForExecution(String path) async {
+/// 权限判定（规则、会话缓存、AI 审核、审批卡）与执行都必须基于这个结果：
+/// 只做词法归一化时，`docs/setup.md -> ~/.zshrc` 这样的链接会让审批看到
+/// 项目内路径、实际却写到主目录。逐段解析而不是直接
+/// `resolveSymbolicLinksSync`，是因为后者要求整条路径存在——新建文件、
+/// 链接到不存在目标的悬空链接（写入会凭空创建目标）都得一并解析。
+/// 目标尚不存在的尾部原样保留。
+String resolveRealPathSync(String path) {
   final normalized = normalizePathForMatch(path);
   try {
-    // resolveSymbolicLinks（旧 API File.canonicalize 在 Dart 3.12 移除）
-    final real = await File(normalized).resolveSymbolicLinks();
-    return normalizePathForMatch(real);
+    final parts = p.split(normalized);
+    var resolved = parts.first;
+    final pending = parts.sublist(1);
+    var hops = 0;
+    while (pending.isNotEmpty) {
+      final segment = pending.removeAt(0);
+      if (segment == '.') continue;
+      if (segment == '..') {
+        resolved = p.dirname(resolved);
+        continue;
+      }
+      final candidate = p.join(resolved, segment);
+      if (FileSystemEntity.typeSync(candidate, followLinks: false) !=
+          FileSystemEntityType.link) {
+        resolved = candidate;
+        continue;
+      }
+      // 与内核的 ELOOP 上限同量级，防止链接环
+      if (++hops > 40) return normalized;
+      final target = Link(candidate).targetSync();
+      final absolute = p.isAbsolute(target) ? target : p.join(resolved, target);
+      final targetParts = p.split(absolute);
+      resolved = targetParts.first;
+      pending.insertAll(0, targetParts.sublist(1));
+    }
+    return normalizePathForMatch(resolved);
   } catch (_) {
-    // 文件不存在（新建/不存在的读取目标）无法解析,用词法结果
+    // 无权读取链接等异常：退回词法结果，执行侧的复核会拦住不一致
     return normalized;
   }
+}
+
+/// 执行前复核路径：[path] 应已由 `applyRunWorkspace` 解析为真实路径。
+///
+/// 返回 null 表示路径仍指向审批时的位置；否则返回解析后的真实路径——
+/// 说明审批之后链接被替换（或调用方传入了未解析的路径），调用方应拒绝执行，
+/// 让新的真实路径重新走一遍审批。
+String? realPathChangedSinceApproval(String path) {
+  final real = resolveRealPathSync(path);
+  return real == normalizePathForMatch(path) ? null : real;
+}
+
+/// [realPathChangedSinceApproval] 命中时回给模型的错误：让它用真实路径
+/// 重新发起调用，从而按真实目标重新审批。
+String symlinkChangedError(String path, String realPath) =>
+    'Error: $path resolves through a symbolic link to $realPath, which was '
+    'not the path reviewed for this call. Call the tool again with the real '
+    'path if you still intend to access it.';
+
+String protectedWritePathError(String path) =>
+    'Error: Blocked: writing to credential or Athena data directories '
+    '($path) is not allowed. Athena data is managed by its own tools.';
+
+/// 写入禁区：凭据目录与应用数据目录（`~/.athena` 由仓储管理，写
+/// `permissions.json` 等于给自己授权）。只拦写入而不像读取那样连 `.env`
+/// 一并拦截——写 `.env` 不会把密钥带进上下文，仍按正常审批处理。
+bool isProtectedWritePath(String normalizedPath) {
+  for (final seg in normalizedPath.split('/')) {
+    final lower = seg.toLowerCase();
+    if (lower == '.ssh' || lower == '.aws' || lower == '.athena') return true;
+  }
+  return false;
 }
 
 /// 判断归一化后的绝对路径是否触及敏感凭据位置（.ssh / .aws / .athena /
