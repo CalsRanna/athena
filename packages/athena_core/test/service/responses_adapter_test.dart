@@ -246,13 +246,13 @@ void main() {
       }),
       ResponseStreamEvent.fromJson({
         'type': 'response.function_call_arguments.delta',
-        'item_id': 'call_1',
+        'item_id': 'fc_1',
         'output_index': 0,
         'delta': '{"command":',
       }),
       ResponseStreamEvent.fromJson({
         'type': 'response.function_call_arguments.delta',
-        'item_id': 'call_1',
+        'item_id': 'fc_1',
         'output_index': 0,
         'delta': '"ls"}',
       }),
@@ -298,6 +298,52 @@ void main() {
         chunks[2].choices!.single.delta.toolCalls!.single.function!.arguments,
         '"ls"}',
       );
+    });
+
+    test('多个工具调用：参数增量按 output_index 归位，reasoning 占位不留空洞',
+        () async {
+      Map<String, dynamic> added(int outputIndex, String n) => {
+            'type': 'response.output_item.added',
+            'output_index': outputIndex,
+            'item': {
+              'type': 'function_call',
+              'id': 'fc_$n',
+              'call_id': 'call_$n',
+              'name': 'tool_$n',
+              'arguments': '',
+            },
+          };
+      Map<String, dynamic> delta(int outputIndex, String n, String d) => {
+            'type': 'response.function_call_arguments.delta',
+            'item_id': 'fc_$n',
+            'output_index': outputIndex,
+            'delta': d,
+          };
+
+      final accumulator = ChatStreamAccumulator();
+      await for (final chunk in normalizeResponsesStream(
+        Stream.fromIterable([
+          // output_index 0 被 reasoning item 占据
+          {
+            'type': 'response.output_item.added',
+            'output_index': 0,
+            'item': {'type': 'reasoning', 'id': 'rs_1', 'summary': <Object>[]},
+          },
+          added(1, 'a'),
+          added(2, 'b'),
+          delta(2, 'b', '{"y":'),
+          delta(1, 'a', '{"x":'),
+          delta(1, 'a', '1}'),
+          delta(2, 'b', '2}'),
+        ].map(ResponseStreamEvent.fromJson)),
+      )) {
+        accumulator.add(chunk);
+      }
+
+      final calls = accumulator.toolCalls;
+      expect(calls.map((c) => c.id), ['call_a', 'call_b']);
+      expect(calls.map((c) => c.function.arguments), ['{"x":1}', '{"y":2}'],
+          reason: '参数分片必须按 output_index 归到各自的调用上');
     });
 
     test('归一流可被 ChatStreamAccumulator 直接消费（上层零改动）', () async {

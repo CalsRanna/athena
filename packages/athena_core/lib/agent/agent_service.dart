@@ -336,24 +336,33 @@ class AgentService {
       args[toolBackgroundDisabledKey] = true;
     }
 
-    final String rawResult;
+    String rawResult;
     var status = ToolResultStatus.success;
-    if (tool == null) {
-      rawResult = 'Error: Unknown tool "${toolCall.function.name}"';
-      status = ToolResultStatus.executionError;
-    } else if (elicitChannel != null && tool is ElicitChannelAware) {
-      // 通道随 run 传入（工具集是长生命周期单例，通道不是）
-      rawResult = await (tool as ElicitChannelAware).executeWithElicit(
-        args,
-        channel: elicitChannel,
-      );
-    } else if (cancelToken != null && tool is CancellableTool) {
-      rawResult = await (tool as CancellableTool).executeCancellable(
-        args,
-        cancelSignal: cancelToken.whenCancelled,
-      );
-    } else {
-      rawResult = await tool.execute(args);
+    try {
+      if (tool == null) {
+        rawResult = 'Error: Unknown tool "${toolCall.function.name}"';
+        status = ToolResultStatus.executionError;
+      } else if (elicitChannel != null && tool is ElicitChannelAware) {
+        // 通道随 run 传入（工具集是长生命周期单例，通道不是）
+        rawResult = await (tool as ElicitChannelAware).executeWithElicit(
+          args,
+          channel: elicitChannel,
+        );
+      } else if (cancelToken != null && tool is CancellableTool) {
+        rawResult = await (tool as CancellableTool).executeCancellable(
+          args,
+          cancelSignal: cancelToken.whenCancelled,
+        );
+      } else {
+        rawResult = await tool.execute(args);
+      }
+    } on CancelledException {
+      rethrow;
+    } catch (e) {
+      // 工具抛出的异常（读到非 UTF-8 文件、写入无权限目录……）作为工具结果
+      // 交还模型，而不是冒泡终止整个 run；并行组里的 Future.any 同样受益。
+      LoggerUtil.w('tool ${toolCall.function.name} threw: $e');
+      rawResult = 'Error: Tool "${toolCall.function.name}" failed: $e';
     }
     cancelToken?.throwIfCancelled();
 
