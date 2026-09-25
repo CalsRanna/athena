@@ -237,9 +237,6 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     if (_apiFormatAuto) {
       return 'Follows the format inferred from models.dev during sync.';
     }
-    if (_apiFormat == ApiFormat.messages) {
-      return 'Messages is not wired up yet — requests fail until it ships.';
-    }
     return 'Chosen manually; sync will not overwrite it.';
   }
 

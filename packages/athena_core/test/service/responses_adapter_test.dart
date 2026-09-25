@@ -413,7 +413,7 @@ void main() {
 
   group('非流式路径', () {
     test('toChatCompletion 提取文本、用量与 finishReason', () {
-      final completion = toChatCompletion(
+      final completion = responseToChatCompletion(
         response(
           output: [
             {
@@ -436,7 +436,7 @@ void main() {
     });
 
     test('incomplete 状态的响应对应 length', () {
-      final completion = toChatCompletion(response(status: 'incomplete'));
+      final completion = responseToChatCompletion(response(status: 'incomplete'));
 
       expect(completion.choices.single.finishReason, FinishReason.length);
       expect(completion.text, '');

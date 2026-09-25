@@ -522,10 +522,6 @@ class _DesktopSettingProviderPageState
     if (provider.apiFormatAuto) {
       return 'Follows the format inferred from models.dev during sync.';
     }
-    if (provider.apiFormat == ApiFormat.messages) {
-      return 'Chosen manually. Messages is not wired up yet — requests fail '
-          'until it ships.';
-    }
     return 'Chosen manually; sync will not overwrite it.';
   }
 

@@ -87,9 +87,12 @@ class PermissionApprovalCard extends StatelessWidget {
     return Scrollbar(
       child: SingleChildScrollView(
         primary: false,
-        child: Text(
-          formatToolArgsForApproval(request.toolName, request.arguments),
-          style: athenaMono(color: colors.textPrimary, height: 1.6),
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            formatToolArgsForApproval(request.toolName, request.arguments),
+            style: athenaMono(color: colors.textPrimary, height: 1.6),
+          ),
         ),
       ),
     );

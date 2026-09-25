@@ -163,9 +163,9 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 同步还会根据 models.dev 的 `npm` 推断 Provider 默认 API 格式，保存为 `setting.yaml` 的 `apiFormat`（`chat_completions` / `responses` / `messages`）。OpenAI 默认推断为 Responses；Google、MiniMax 与 xAI 按 Athena 现有端点保留 Chat Completions。模型级 `provider.shape` 不作为整个 Provider 的默认格式。未知 SDK 保留原值，修改过预设地址的 Provider 不自动更新格式；旧配置默认 Chat Completions，并可直接从七天 TTL 内的已有缓存补齐格式。
 
-`apiFormatAuto: true` 表示允许目录同步；手动指定格式时同时设为 `false`，该选择会随配置备份保留。**Chat Completions 与 Responses 都可实际发起请求**（Responses 会自动完成请求与流事件的形状转换，音频、文件消息与 JSON Schema 输出格式暂不支持）；把格式改成 `messages` 会直接失败并提示改回 `chat_completions`，不会静默按 OpenAI 兼容端点发出。
+`apiFormatAuto: true` 表示允许目录同步；手动指定格式时同时设为 `false`，该选择会随配置备份保留。**三种格式都可实际发起请求**：Chat Completions 直接调用兼容端点，Responses 与 Messages 会各自完成请求与流事件的形状转换（两者都暂不支持音频、文件消息与 JSON Schema 输出格式）。
 
-手动切换的入口：桌面与移动端的 Provider 编辑界面各有 **API format** 一项（`Auto` 交给 models.dev 同步；选 Chat Completions / Responses / Messages 即为手动指定，此后同步不再覆盖，界面会提示 Messages 尚未接入）；终端客户端用 `/format`。
+手动切换的入口：桌面与移动端的 Provider 编辑界面各有 **API format** 一项（`Auto` 交给 models.dev 同步；选 Chat Completions / Responses / Messages 即为手动指定，此后同步不再覆盖）；终端客户端用 `/format`。
 
 ---
 
