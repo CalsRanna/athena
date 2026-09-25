@@ -187,6 +187,7 @@ class AgentService {
       provider: provider,
       model: model,
       sentinelId: sentinelId,
+      workspace: workspace,
     );
 
     // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
@@ -439,7 +440,12 @@ class AgentService {
         continue;
       }
 
-      final verdict = permissionService?.check(runId, tc.function.name, args) ??
+      final verdict = permissionService?.check(
+            runId,
+            tc.function.name,
+            args,
+            workspace: workspace,
+          ) ??
           _verdictWithoutPermissionService(onPermission);
       if (verdict == PermissionVerdict.deny ||
           (!bypassPermissions && verdict != PermissionVerdict.allow)) {
@@ -462,6 +468,7 @@ class AgentService {
     required ProviderEntity provider,
     required ModelEntity model,
     String? sentinelId,
+    String? workspace,
   }) {
     final userDecisions = <Map<String, Object?>>[];
     return (ctx) async {
@@ -479,6 +486,7 @@ class AgentService {
         runId,
         ctx.name,
         ctx.args,
+        workspace: workspace,
       );
       final verdict =
           serviceVerdict ??
@@ -524,6 +532,7 @@ class AgentService {
                 runId,
                 ctx.name,
                 ctx.args,
+                workspace: workspace,
               ) ==
               PermissionVerdict.deny) {
             return (
