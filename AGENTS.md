@@ -150,12 +150,12 @@ entity + ~/.athena/ 下的文件
 |---|---|---|
 | `sessions/{chatId}.jsonl` | `JsonlSessionRepository` + `SessionJsonlStore` | 一个对话一个文件；首行 chat 元数据，之后每行一条消息，行序即消息序。同一实例同时实现 `ChatRepository` 与 `MessageRepository`，删对话即删文件 |
 | `models.json` / `sentinels.json` | `JsonArrayStore` 系列 | JSON 数组，`id` 为主键；读-改-整文件写 |
-| `meta.json` | `IdAllocator` | 自增计数，key 为文件/目录路径（chat id、message id 各自独立计数） |
+| `meta.json` | `IdAllocator` | 自增计数，key 为文件/目录的**绝对路径**（chat id、message id 各自独立计数）。目录迁移或文件损坏后计数会从头开始，因此 `createChat` 跳过已存在的会话文件、`appendMessage` 保证新 id 大于文件里最后一条 |
 | `setting.yaml` | `UserSettingsStore` + `YamlProviderRepository` | provider 的**权威**存储（含 API key，可手工编辑），以及 TUI 默认模型（modelId 字符串） |
 | `models_dev_cache.json` | `ModelCatalogService` | 目录缓存 |
-| `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root` |
+| `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root`。写入在锁内合并磁盘最新内容，`check` 前按 mtime 重读（另一端或手工编辑的规则即时生效）；未 `load()` 的实例只用内存规则（测试用） |
 | `tool_outputs/{sha256}.txt` | `ToolOutputStore` | 内容寻址的长工具输出 |
-| `background_tasks/background_tasks.json` | `BackgroundTaskService` | 运行中的后台任务（pid + 命令行），仅用于下次启动清理强杀遗留的孤儿进程 |
+| `background_tasks/background_tasks.json` | `BackgroundTaskService` | 运行中的后台任务（pid + 命令行 + 属主进程 `owner_pid`），仅用于下次启动清理强杀遗留的孤儿进程。多实例共用，每个进程只改写自己的记录 |
 | `experiences/shared/`、`experiences/{sentinelId}/` | `ExperienceRepository` | 一条经验一个 JSON，文件名即 id |
 | `sentinels/{Uri.encodeComponent(name)}/history/` | `SentinelHistoryStore` | 演进前快照 |
 | `skills/{name}/SKILL.md` | `SkillLoader` / `SkillRegistry` | 用户级技能 |
@@ -165,7 +165,7 @@ entity + ~/.athena/ 下的文件
 
 - **文件永远是唯一真相**，索引/缓存必须可删除可重建，不反向持有数据。
 - Provider 的 `apiFormat`（`ApiFormat`：`chat_completions` / `responses` / `messages`）与 `apiFormatAuto` 一起持久化到 `setting.yaml`，JSON 备份使用 `api_format` / `api_format_auto`。旧配置缺少字段时为 Chat Completions + 自动模式，显式指定格式且未指定自动模式时视为手动。`CatalogProviderConfig.resolveApiFormat` 根据 models.dev 的 `npm` 推断默认格式，本地端点差异由 `apiFormatOverride` 覆盖（Google、MiniMax、xAI）；不把模型级 `provider.shape` 上提为 Provider 默认值。未知 SDK 保留已有值，预设地址被改动或手动模式时不覆盖。已有缓存 TTL 内也同步格式元数据，但跳过模型同步与网络拉取。更新必须经 `ProviderRepository.syncApiFormat` 在文件锁内读最新配置，仅改格式，不覆盖并发修改的凭据。`LlmClient.stream` / `fetch` 已按 `apiFormat` 分派：Chat Completions 直接交给 openai_dart；Responses 经 `service/responses_adapter.dart` 把请求摊平成 `input` items、把 SSE 事件归一成 `ChatStreamEvent`（上层不感知协议差异，`ChatStreamAccumulator` 可直接消费），表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃；Messages 经 `service/messages_adapter.dart` 把 system 上提到顶层、把连续同角色的消息合并成一条（Anthropic 要求 user / assistant 交替）、在 JSON 字符串与对象之间转换工具参数，并给 `max_tokens` 兜底默认值（Chat Completions 下 Athena 从不传，Messages 里必填）；地址里 OpenAI 兼容写法带的 `/v1` 会被剥掉，因为 SDK 自己拼`/v1/messages`。两条适配路径都不让上层感知协议差异，`ChatStreamAccumulator` 可直接消费；表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃。手动切换入口：`DesktopSettingProviderPage` 详情页的 **API format** 行（`component/api_format_menu.dart`）、移动端 `MobileProviderFormPage` 的表单项、TUI 的 `/format`；手动选择即 `copyWith(apiFormat:)`（会把 `apiFormatAuto` 落成 false），选回 Auto 走 `copyWith(apiFormatAuto: true)`（格式值保留到下次同步）。
-- 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。
+- 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。会话文件按宽松 UTF-8 读取，追加前补齐缺失的换行。整文件无法解析的 JSON / YAML（`sentinels.json`、`models.json`、`setting.yaml`、`permissions.json`）读时按空处理，**写入前先用 `preserveCorruptFile` 备份成 `.corrupt-{时间戳}`**，不能被下一次写入静默覆盖。
 - 会话消息的窗口化：`RecentMessageRepository.loadInitialMessages` / `loadRecentMessages` 只读尾部窗口（GUI 每页 50），轮次总数靠 `getTurnStartIds` 的整文件扫描。
 
 ---
@@ -225,7 +225,7 @@ entity + ~/.athena/ 下的文件
 - **归属会话，不归属 run**。登记表按 `chatId` 分组，`_chat_id` 由引擎注入；工具自己不知道会话，也不允许模型指定。
 - **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI `runApp` 返回）同样杀。
 - **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
-- **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
+- **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。属主（`owner_pid`）仍是运行中的 Athena 进程的记录属于另一个实例（GUI 与 TUI 同时开），原样保留不杀。Windows 无法核对命令行，不清理孤儿。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
 - **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据），继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
 - **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
 

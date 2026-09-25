@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 /// 单会话文件存储:`sessions/{chatId}.jsonl`。
 ///
@@ -24,7 +25,8 @@ import 'package:athena_core/storage/serial_lock.dart';
 ///   另一进程的重写(rename 换 inode)不会吞掉本进程的 append
 /// - **原子写**:整文件重写走临时文件 + rename;读不加锁,读到的要么是
 ///   旧文件要么是新文件
-/// - **损坏容错**:损坏行跳过,chat 记录缺失时按无会话处理
+/// - **损坏容错**:损坏行(含非法 UTF-8)跳过并记日志,chat 记录缺失时按无会话
+///   处理;追加前补齐上一行缺失的换行,写一半的行不会吞掉下一条消息
 /// - 行更新采用整文件重写:会话数据规模有限,重写简单可靠
 class SessionJsonlStore {
   SessionJsonlStore({required this.file, required this.idAllocator});
@@ -140,9 +142,19 @@ class SessionJsonlStore {
   }
 
   /// 分配 id 并追加一条消息,返回新 id。
+  ///
+  /// 分配到的 id 必须大于文件里最后一条消息的 id:meta.json 丢失 / 损坏或
+  /// 数据目录迁移后计数会从头开始,重复的 id 会让按 id 替换 / 删除命中
+  /// 旧消息。行序即 id 序,所以只需看文件最后一条。
   Future<int> appendMessage(Map<String, dynamic> row) {
     return _mutate(() async {
-      final id = await idAllocator.next(file.path);
+      var id = await idAllocator.next(file.path);
+      final last = await _loadRecentRowsUnlocked(1);
+      final lastId = last.isEmpty ? null : last.single['id'];
+      if (lastId is int && id <= lastId) {
+        await idAllocator.ensureAtLeast(file.path, lastId);
+        id = await idAllocator.next(file.path);
+      }
       row['id'] = id;
       row['type'] = messageType;
       await _appendRow(row);
@@ -243,52 +255,58 @@ class SessionJsonlStore {
     int count, {
     int? beforeId,
   }) {
-    return _serialized(() async {
-      if (count <= 0 || !await file.exists()) return const [];
-      final raf = await file.open();
-      try {
-        final length = await raf.length();
-        final result = <Map<String, dynamic>>[];
-        // 已读未切出完整行的字节（开头方向 = 更早，末尾方向 = 更晚）
-        var buffer = Uint8List(0);
-        var blockSize = _readBlockSize;
-        var pos = length;
-        while (pos > 0 && result.length < count) {
-          final size = math.min(blockSize, pos);
-          final start = pos - size;
-          await raf.setPosition(start);
-          final block = await raf.read(size);
-          pos = start;
-          final combined = _concatBytes(block, buffer);
-          // 从末尾向前切完整行,直到块内没有可切的(悬浮行首留到下一轮)。
-          // 索引指针 [end) 单调前移,整块一次线性扫描(不反复 lastIndexOf
-          // + sublist 复制,避免 O(n²)——每行只复制行字节本身)
-          var end = combined.length;
-          while (end > 0 && result.length < count) {
-            final nl = combined.lastIndexOf(0x0A, end - 1);
-            if (nl < 0) break;
-            final lineBytes = combined.sublist(nl + 1, end);
-            end = nl;
-            if (lineBytes.isNotEmpty) {
-              final row = _decodeLineBytes(lineBytes);
-              if (row == null || row['type'] != messageType) continue;
-              final id = row['id'];
-              if (beforeId == null || id is int && id < beforeId) {
-                result.add(row);
-              }
+    return _serialized(() => _loadRecentRowsUnlocked(count, beforeId: beforeId));
+  }
+
+  /// [loadRecentRows] 的实现,不取锁:供已持锁的修改操作内部调用。
+  Future<List<Map<String, dynamic>>> _loadRecentRowsUnlocked(
+    int count, {
+    int? beforeId,
+  }) async {
+    if (count <= 0 || !await file.exists()) return const [];
+    final raf = await file.open();
+    try {
+      final length = await raf.length();
+      final result = <Map<String, dynamic>>[];
+      // 已读未切出完整行的字节（开头方向 = 更早，末尾方向 = 更晚）
+      var buffer = Uint8List(0);
+      var blockSize = _readBlockSize;
+      var pos = length;
+      while (pos > 0 && result.length < count) {
+        final size = math.min(blockSize, pos);
+        final start = pos - size;
+        await raf.setPosition(start);
+        final block = await raf.read(size);
+        pos = start;
+        final combined = _concatBytes(block, buffer);
+        // 从末尾向前切完整行,直到块内没有可切的(悬浮行首留到下一轮)。
+        // 索引指针 [end) 单调前移,整块一次线性扫描(不反复 lastIndexOf
+        // + sublist 复制,避免 O(n²)——每行只复制行字节本身)
+        var end = combined.length;
+        while (end > 0 && result.length < count) {
+          final nl = combined.lastIndexOf(0x0A, end - 1);
+          if (nl < 0) break;
+          final lineBytes = combined.sublist(nl + 1, end);
+          end = nl;
+          if (lineBytes.isNotEmpty) {
+            final row = _decodeLineBytes(lineBytes);
+            if (row == null || row['type'] != messageType) continue;
+            final id = row['id'];
+            if (beforeId == null || id is int && id < beforeId) {
+              result.add(row);
             }
           }
-          buffer = combined.sublist(0, end);
-          // 还剩下半行 = 这块的边界落在一条很长的行里:下一块按它翻倍读
-          blockSize = math.max(_readBlockSize, buffer.length * 2);
         }
-        // 所有块读完:缓冲里剩的是文件首行(会话元数据),跳过
-        // 逆序收集(最新在前),翻转为升序
-        return result.reversed.toList();
-      } finally {
-        await raf.close();
+        buffer = combined.sublist(0, end);
+        // 还剩下半行 = 这块的边界落在一条很长的行里:下一块按它翻倍读
+        blockSize = math.max(_readBlockSize, buffer.length * 2);
       }
-    });
+      // 所有块读完:缓冲里剩的是文件首行(会话元数据),跳过
+      // 逆序收集(最新在前),翻转为升序
+      return result.reversed.toList();
+    } finally {
+      await raf.close();
+    }
   }
 
   /// 单次读块的基准大小。块越大,跨块的半行越少;真正的上限由"半行翻倍"决定。
@@ -325,24 +343,52 @@ class SessionJsonlStore {
   }
 
   /// 读取全部可解析行(按文件行序,跳过损坏行)。
+  ///
+  /// 按宽松 UTF-8 解码:写到一半断电的行可能截在多字节字符中间,严格解码
+  /// (`readAsLines`)会让整个文件读失败,连带会话列表都列不出来。
   Future<List<Map<String, dynamic>>> _readAllRows() async {
     if (!await file.exists()) return [];
-    final lines = await file.readAsLines();
+    final text = utf8.decode(await file.readAsBytes(), allowMalformed: true);
     final rows = <Map<String, dynamic>>[];
-    for (final line in lines) {
+    var skipped = 0;
+    for (final line in const LineSplitter().convert(text)) {
       if (line.trim().isEmpty) continue;
       final row = _decodeRow(line);
-      if (row != null) rows.add(row);
+      if (row != null) {
+        rows.add(row);
+      } else {
+        skipped++;
+      }
+    }
+    if (skipped > 0) {
+      LoggerUtil.w('session ${file.path}: skipped $skipped corrupt line(s)');
     }
     return rows;
   }
 
   Future<void> _appendRow(Map<String, dynamic> row) async {
     await file.parent.create(recursive: true);
+    // 上次追加写到一半(崩溃 / 磁盘满)会留下没有换行的半截行,直接接在
+    // 后面会把这条新消息也拼成坏行,被读取时静默丢弃
+    final needsNewline = await _endsWithoutNewline();
     final sink = file.openWrite(mode: FileMode.append);
+    if (needsNewline) sink.write('\n');
     sink.write(jsonEncode(row));
     sink.write('\n');
     await sink.close();
+  }
+
+  Future<bool> _endsWithoutNewline() async {
+    if (!await file.exists()) return false;
+    final raf = await file.open();
+    try {
+      final length = await raf.length();
+      if (length == 0) return false;
+      await raf.setPosition(length - 1);
+      return (await raf.readByte()) != 0x0A;
+    } finally {
+      await raf.close();
+    }
   }
 
   /// 整文件重写:临时文件 + rename 原子替换。GUI 与 TUI 共享数据目录,

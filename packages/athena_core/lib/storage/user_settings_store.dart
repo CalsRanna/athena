@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/util/logger_util.dart';
 import 'package:yaml/yaml.dart';
 
 /// 用户配置的持久化(`~/.athena/setting.yaml`):provider 配置(含 API key)
@@ -23,7 +24,7 @@ import 'package:yaml/yaml.dart';
 ///     name: Deep Seek
 ///     baseUrl: https://api.deepseek.com/v1
 ///     apiKey: sk-xxx
-///     apiFormat: chat_completions # 格式元数据，尚不切换请求协议
+///     apiFormat: chat_completions # 请求协议（LlmClient 按此分派）
 ///     apiFormatAuto: true         # false 时保留手动配置
 ///     enabled: false
 ///     isPreset: true
@@ -71,9 +72,10 @@ class UserSettingsStore {
     return result;
   }
 
-  /// 保存全部 provider 配置(整段覆写)。
+  /// 保存全部 provider 配置(整段覆写)。调用方须持有 [file] 的写锁
+  /// (`YamlProviderRepository` 的读-改-写都在锁内)。
   Future<void> saveProviders(List<ProviderEntity> providers) async {
-    final map = await _readMap();
+    final map = await _readMap(forWrite: true);
     map[_providersKey] = [
       for (final provider in providers)
         {
@@ -99,21 +101,31 @@ class UserSettingsStore {
   }
 
   /// 保存默认模型(modelId 字符串)。
-  Future<void> saveModelId(String modelId) async {
-    final map = await _readMap();
-    map[_modelKey] = modelId;
-    await _writeMap(map);
+  ///
+  /// 会把 providers 段整体读出再写回,必须在跨进程锁内:否则与 GUI 同时
+  /// 保存 API key 时,这里手里的旧列表会把对方的修改盖掉。
+  Future<void> saveModelId(String modelId) {
+    return withFileLock(lockFileFor(_file), () async {
+      final map = await _readMap(forWrite: true);
+      map[_modelKey] = modelId;
+      await _writeMap(map);
+    });
   }
 
   // ---------------------------------------------------------------------------
   // 内部
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> _readMap() async {
+  /// [forWrite] 为 true 时(写锁内、随后要整文件重写)遇到损坏文件先备份:
+  /// 这个文件标明可以手工编辑,一个 YAML 语法错误不能让下一次写入把全部
+  /// provider 与 API key 清空。
+  Future<Map<String, dynamic>> _readMap({bool forWrite = false}) async {
     if (!await _file.exists()) return {};
     try {
       final content = await _file.readAsString();
       final value = loadYaml(content);
+      // 空文件 / 只有注释时 loadYaml 返回 null,属正常的空配置
+      if (value == null) return {};
       if (value is Map) {
         final map = Map<String, dynamic>.from(value);
         // 只保留已知键:丢弃旧 GUI 遗留的 currentModel/models 等脏段,
@@ -123,8 +135,13 @@ class UserSettingsStore {
             if (map.containsKey(key)) key: map[key],
         };
       }
-    } catch (_) {
-      // 损坏的 yaml 按空配置处理(不覆盖,等下次写入重建)
+      throw const FormatException('top level is not a map');
+    } catch (e) {
+      // 损坏的 yaml 读时按空配置处理;写入前先留备份
+      if (forWrite) {
+        final backup = await preserveCorruptFile(_file);
+        LoggerUtil.w('${_file.path} is corrupt ($e), backed up to $backup');
+      }
     }
     return {};
   }

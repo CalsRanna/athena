@@ -47,8 +47,9 @@ Future<void> atomicWriteString(File target, String content) async {
   await target.parent.create(recursive: true);
   final suffix = '${pid}_${_random.nextInt(1 << 32)}';
   final tmp = File('${target.path}.$suffix.tmp');
-  await tmp.writeAsString(content, flush: true);
   try {
+    // 写入也在 try 内：磁盘满等写入失败时同样要清掉临时文件
+    await tmp.writeAsString(content, flush: true);
     await tmp.rename(target.path);
   } catch (_) {
     try {
@@ -56,4 +57,19 @@ Future<void> atomicWriteString(File target, String content) async {
     } catch (_) {}
     rethrow;
   }
+}
+
+/// 把无法解析的 [file] 复制一份到同目录的 `{name}.corrupt-{时间戳}`，返回
+/// 副本路径；文件不存在时返回 null。
+///
+/// 损坏的数据文件读时按空处理，但下一次写入会以空内容为基础整文件重写，
+/// 原内容（手工编辑出一个语法错误的 setting.yaml、写一半的 JSON）就此
+/// 永久丢失。写入前先留副本，用户还能把数据找回来。须在该文件的写锁内
+/// 调用，避免与另一进程的修复写入交错。
+Future<String?> preserveCorruptFile(File file) async {
+  if (!await file.exists()) return null;
+  final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+  final backup = '${file.path}.corrupt-$stamp';
+  await file.copy(backup);
+  return backup;
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/tool/shell_runner.dart' as shell;
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:path/path.dart' as p;
 
@@ -283,34 +284,34 @@ class BackgroundTaskService {
   ///
   /// 无法避免孤儿（强杀时没有钩子可挂），只能发现并清理，因此崩溃期间
   /// 遗留的副作用窗口是这套设计的已知残余，需在文档中如实标注。
+  ///
+  /// GUI 与 TUI（以及多个 TUI）共用登记表：属主进程（`owner_pid`）仍在运行
+  /// 的记录是**另一个活着的实例**的任务，原样保留、不许杀——只凭「任务 pid
+  /// 活着且命令行匹配」会在打开第二个实例时杀掉第一个实例正在跑的任务。
   Future<int> recoverOrphans() async {
-    final dir = _stateDirectory;
-    if (dir == null) return 0;
-    final file = File(p.join(dir.path, _orphanFileName));
-    if (!await file.exists()) return 0;
-
-    List<Map<String, dynamic>> entries;
-    try {
-      final decoded = jsonDecode(await file.readAsString());
-      entries = decoded is List
-          ? decoded.whereType<Map<String, dynamic>>().toList()
-          : <Map<String, dynamic>>[];
-    } catch (e) {
-      LoggerUtil.w('Background task orphan state unreadable: $e');
-      entries = <Map<String, dynamic>>[];
-    }
-
     var killed = 0;
-    for (final entry in entries) {
-      final pid = entry['pid'];
-      final command = entry['command'];
-      if (pid is! int || command is! String) continue;
-      if (!await _isOurProcess(pid, command)) continue;
-      LoggerUtil.w('Killing orphaned background task process $pid ($command)');
-      await shell.terminateShellProcessTreeByPid(pid);
-      killed++;
-    }
-    await _writeOrphanState();
+    await _updateOrphanState(
+      recover: (entries) async {
+        final keep = <Map<String, dynamic>>[];
+        for (final entry in entries) {
+          final pidValue = entry['pid'];
+          final command = entry['command'];
+          if (pidValue is! int || command is! String) continue;
+          final owner = entry['owner_pid'];
+          if (owner is int && owner != pid && await _isLiveAthena(owner)) {
+            keep.add(entry);
+            continue;
+          }
+          if (!await _isOurProcess(pidValue, command)) continue;
+          LoggerUtil.w(
+            'Killing orphaned background task process $pidValue ($command)',
+          );
+          await shell.terminateShellProcessTreeByPid(pidValue);
+          killed++;
+        }
+        return keep;
+      },
+    );
     return killed;
   }
 
@@ -386,30 +387,97 @@ class BackgroundTaskService {
   static const _orphanFileName = 'background_tasks.json';
 
   /// 记录当前运行中的任务（pid + 命令行），供下次启动清理孤儿。
-  Future<void> _writeOrphanState() async {
+  Future<void> _writeOrphanState() => _updateOrphanState();
+
+  /// 在登记表的跨进程锁内「读磁盘 → 保留别的实例的记录 → 换上本进程当前
+  /// 运行中的任务 → 原子写回」。每个进程只拥有 `owner_pid` 是自己的记录，
+  /// 整表覆盖会抹掉另一个实例的任务，它崩溃后遗留的进程就再也清理不到。
+  ///
+  /// [recover] 为 null 时保留所有非本进程的记录；否则把「除本进程当前任务
+  /// 以外的全部记录」交给它，只保留它返回的（启动时的孤儿清理）。
+  Future<void> _updateOrphanState({
+    Future<List<Map<String, dynamic>>> Function(
+      List<Map<String, dynamic>> entries,
+    )? recover,
+  }) async {
     final dir = _stateDirectory;
     if (dir == null) return;
+    final file = File(p.join(dir.path, _orphanFileName));
     try {
-      await dir.create(recursive: true);
-      final entries = <Map<String, Object?>>[];
-      for (final task in runningTasks) {
-        final pid = task._process?.pid;
-        if (pid == null) continue;
-        entries.add({
-          'id': task.id,
-          'pid': pid,
-          'command': task.command,
-          'chat_id': task.chatId,
-          'started_at': task.startedAt.toIso8601String(),
-        });
-      }
-      final file = File(p.join(dir.path, _orphanFileName));
-      final temporary = File('${file.path}.tmp');
-      await temporary.writeAsString(jsonEncode(entries), flush: true);
-      await temporary.rename(file.path);
+      await withFileLock(lockFileFor(file), () async {
+        final mine = <Map<String, Object?>>[];
+        for (final task in runningTasks) {
+          final taskPid = task._process?.pid;
+          if (taskPid == null) continue;
+          mine.add({
+            'id': task.id,
+            'pid': taskPid,
+            'owner_pid': pid,
+            'command': task.command,
+            'chat_id': task.chatId,
+            'started_at': task.startedAt.toIso8601String(),
+          });
+        }
+        final minePids = {for (final entry in mine) entry['pid']};
+
+        final onDisk = await _readOrphanEntries(file);
+        final List<Map<String, dynamic>> others;
+        if (recover == null) {
+          others = [
+            for (final entry in onDisk)
+              if (entry['owner_pid'] != pid) entry,
+          ];
+        } else {
+          // 与本进程同 pid 的旧记录来自 pid 复用的上一个实例，同样是孤儿
+          // 候选；只有本进程此刻真正在跑的任务不交给清理
+          others = await recover([
+            for (final entry in onDisk)
+              if (!(entry['owner_pid'] == pid &&
+                  minePids.contains(entry['pid'])))
+                entry,
+          ]);
+        }
+        await atomicWriteString(file, jsonEncode([...others, ...mine]));
+      });
     } catch (e) {
       // 孤儿记录是尽力而为：写不进去不该影响任务的启动与停止。
       LoggerUtil.w('Failed to record background task state: $e');
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> _readOrphanEntries(
+    File file,
+  ) async {
+    if (!await file.exists()) return [];
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      return decoded is List
+          ? decoded.whereType<Map<String, dynamic>>().toList()
+          : [];
+    } catch (e) {
+      LoggerUtil.w('Background task orphan state unreadable: $e');
+      return [];
+    }
+  }
+
+  /// [ownerPid] 是否是一个仍在运行的 Athena 实例（GUI 或 TUI）。
+  ///
+  /// 除了存活还要求命令行里带 `athena`：属主退出后 pid 被别的程序复用时，
+  /// 它的任务才会被认定为孤儿。Windows 无法免依赖地查询命令行，按「不在
+  /// 运行」处理——那里 [_isOurProcess] 本就不杀进程，只是丢掉记录。
+  Future<bool> _isLiveAthena(int ownerPid) async {
+    if (Platform.isWindows) return false;
+    try {
+      final result = await Process.run('ps', [
+        '-o',
+        'command=',
+        '-p',
+        '$ownerPid',
+      ]).timeout(const Duration(seconds: 2));
+      if (result.exitCode != 0) return false;
+      return result.stdout.toString().toLowerCase().contains('athena');
+    } catch (_) {
+      return false;
     }
   }
 

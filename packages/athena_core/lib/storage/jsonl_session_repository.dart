@@ -7,6 +7,7 @@ import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
+import 'package:athena_core/util/logger_util.dart';
 
 /// ChatRepository + MessageRepository 的会话文件实现
 /// (`~/.athena/sessions/{chatId}.jsonl`,GUI 与 TUI 共用)。
@@ -81,9 +82,8 @@ class JsonlSessionRepository
   Future<List<ChatEntity>> getAllChats() async {
     final chats = <ChatEntity>[];
     for (final file in await _sessionFiles()) {
-      final row = await _storeForFile(file).readChatRow();
-      if (row == null) continue; // 损坏/不完整会话跳过
-      chats.add(ChatEntity.fromJson(row));
+      final chat = await _readChatSafely(file);
+      if (chat != null) chats.add(chat); // 损坏/不完整会话跳过
     }
     chats.sort((a, b) {
       final pinned = (b.pinned ? 1 : 0).compareTo(a.pinned ? 1 : 0);
@@ -101,7 +101,12 @@ class JsonlSessionRepository
 
   @override
   Future<int> createChat(ChatEntity chat) async {
-    final id = await _idAllocator.next(_sessionsDir.path);
+    // 跳过已有文件的 id:meta.json 丢失 / 损坏或数据目录迁移后计数从头
+    // 开始,直接写会把新对话的首行盖到已有会话上,旧消息挂到新对话名下
+    var id = await _idAllocator.next(_sessionsDir.path);
+    while (await File('${_sessionsDir.path}/$id.jsonl').exists()) {
+      id = await _idAllocator.next(_sessionsDir.path);
+    }
     await _storeFor(id).writeChatRow(chat.toJson()..['id'] = id);
     return id;
   }
@@ -153,9 +158,21 @@ class JsonlSessionRepository
   Future<int> getChatsCount() async {
     var count = 0;
     for (final file in await _sessionFiles()) {
-      if (await _storeForFile(file).readChatRow() != null) count++;
+      if (await _readChatSafely(file) != null) count++;
     }
     return count;
+  }
+
+  /// 读单个会话的元数据;读不了(无权限、首行损坏等)返回 null 并记日志,
+  /// 一个坏文件不能让整个会话列表都列不出来。
+  Future<ChatEntity?> _readChatSafely(File file) async {
+    try {
+      final row = await _storeForFile(file).readChatRow();
+      return row == null ? null : ChatEntity.fromJson(row);
+    } catch (e) {
+      LoggerUtil.w('session ${file.path} skipped: $e');
+      return null;
+    }
   }
 
   @override
@@ -174,8 +191,12 @@ class JsonlSessionRepository
   Future<List<ChatHistoryEntity>> getAllChatsWithLastMessage() async {
     final histories = <ChatHistoryEntity>[];
     for (final file in await _sessionFiles()) {
-      final history = await _historyFor(_storeForFile(file));
-      if (history != null) histories.add(history);
+      try {
+        final history = await _historyFor(_storeForFile(file));
+        if (history != null) histories.add(history);
+      } catch (e) {
+        LoggerUtil.w('session ${file.path} skipped: $e');
+      }
     }
     // 与 SQLite 实现同序:置顶优先,再按更新时间倒序(目录遍历序不可靠)
     histories.sort((a, b) {
