@@ -95,7 +95,7 @@ Release（`.github/workflows/release.yml`）由 `v*` tag 触发，三平台并�
 
 1. **`athena_core` 保持零 Flutter、零 SQL**。加入 `package:flutter` 或数据库依赖会同时破坏 GUI/TUI 共用与纯 Dart 可测性。判定：`grep -rn "package:flutter\|sqflite" packages/athena_core/lib` 必须为空。
 2. **工具清单只有一处**：`athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry()`。「有哪些工具、注册顺序、哪个平台注册哪些」是引擎的事实，不是装配层的选择；`di.dart` / `tui_di.dart` 只传自己特有的差异项（`outputStore`、`onSentinelChanged`、`mobileHomeDir`、`defaultWorkdir`）。加工具只改这一处，两端同时生效。
-3. **工作文件夹的路径解析必须三处共用**（`applyRunWorkspace`）：执行（`AgentService.executeToolCallInternal`）、并行预检（`selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。三处口径不一致会出现「预检放行、执行被拦」或「同一 run 内已批准仍重复弹窗 / 始终允许失效」。
+3. **工作文件夹的路径解析必须三处共用**（`applyRunWorkspace`）：执行（`AgentService.executeToolCallInternal`）、并行预检（`selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。三处口径不一致会出现「预检放行、执行被拦」或「同一 run 内已批准仍重复弹窗 / 始终允许失效」。文件工具的路径在这里一并解析符号链接（`resolveRealPathSync`），审批卡展示用 `approvalArgumentsFor`；文件工具执行前用 `realPathChangedSinceApproval` 复核，不要在工具里另做一套路径解析。
 4. **并行组里不得有需要弹窗的调用**。多个审批模态会互相覆盖，所以 `selectParallelCalls` 先用权限预检分级：已有授权或 `bypassPermissions` 下无需审批的调用，才按工具的并行声明分组；deny 不进入并行组。执行路径仍重新检查权限。
 5. **权限系统缺席也要收口**。`AgentService._verdictWithoutPermissionService`：无权限服务时，有审批回调就交给宿主，否则拒绝工具调用。提问类工具直接使用提问通道，不能因缺少审批服务而把问题卡住。
 6. **会话文件的锁必须在共享实例上**。`JsonlSessionRepository` 按 chatId 缓存 `SessionJsonlStore`——串行锁是实例字段，每次新建实例等于没锁，`update`（整文件重写）与 `append` 交错会丢行。
@@ -191,7 +191,7 @@ entity + ~/.athena/ 下的文件
 
 - Shell 调用统一串行，包括看似只读的命令与后台启动调用；后台命令启动后仍可继续运行。不再通过静态命令分析决定免审批或并行资格。
 - `ElicitChannelAware` 工具直接进入提问通道，不叠加 AI 审核或人工审批；显式 deny 优先。
-- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
+- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。前三类缺少关键参数（如 URL 不合法）时不落规则，不能退化成整工具放行。持久 allow 规则只按关键参数匹配，覆盖不到的维度由 `PermissionService._persistentAllowApplies` 排除：`web_fetch` 的 origin 规则只放行不带 body / headers 的 GET。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
 - 会话缓存键 = 工具名 + 规范化后的完整参数（排序、剥离三个展示/建议元数据字段）：换个参数就是另一次授权。
 - `ApprovalMode`：`manual` / `ai_review`（默认）/ `bypass`，存 `KeyValueStore`（键 `approval_mode`，旧布尔键 `ai_approval_enabled` 只做一次性迁移），改动下一轮 run 生效。三档都越过不了 deny。
 - AI 审核（`AiPermissionReviewer`）：独立提示词、无工具、20s 超时、单次调用有效，输入是**原始用户/助手对话**（摘要、技能、记忆、工具输出都不构成授权）；非法输出、超时、异常一律降级为「问人」。审核通过后要**重新检查 deny 规则**。

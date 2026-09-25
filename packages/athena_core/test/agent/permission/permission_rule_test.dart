@@ -90,11 +90,20 @@ void main() {
       expect(rules.single.kind, RuleKind.origin);
     });
 
-    test('keyArg 缺失 → 空 pattern 的 exact，放行该工具全部调用', () {
-      final rules = PermissionRule.forToolCall('bash', null);
+    test('按参数匹配的工具缺 keyArg 时不落规则，不退化成整工具放行', () {
+      // 如 web_fetch 的 URL 缺 scheme：对这次坏调用点「始终允许」，不能
+      // 放开之后访问任意站点
+      for (final tool in ['bash', 'file_write', 'web_fetch']) {
+        expect(PermissionRule.forToolCall(tool, null), isEmpty, reason: tool);
+        expect(PermissionRule.forToolCall(tool, ''), isEmpty, reason: tool);
+      }
+    });
+
+    test('其余工具 → 空 pattern 的 exact，放行该工具全部调用', () {
+      final rules = PermissionRule.forToolCall('skill', null);
       expect(rules.single.kind, RuleKind.exact);
       expect(rules.single.pattern, '');
-      expect(rules.single.matches('bash', 'anything'), isTrue);
+      expect(rules.single.matches('skill', 'anything'), isTrue);
     });
   });
 

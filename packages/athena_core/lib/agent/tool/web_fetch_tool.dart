@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:athena_core/agent/cancel_token.dart';
+import 'package:meta/meta.dart';
 
 import 'html_to_markdown.dart';
 import 'tool_interface.dart';
@@ -123,7 +124,7 @@ class WebFetchTool implements Tool, CancellableTool {
         var currentMethod = methodUpper;
         var redirects = 0;
         while (true) {
-          final blocked = _blockedReason(currentUri);
+          final blocked = blockedReason(currentUri);
           if (blocked != null) {
             completed = true;
             client.close();
@@ -149,7 +150,20 @@ class WebFetchTool implements Tool, CancellableTool {
             if (location == null || redirects >= _maxRedirects) {
               break; // 无跳转目标或超限：把当前 3xx 响应当最终响应返回
             }
-            currentUri = currentUri.resolve(location);
+            final nextUri = currentUri.resolve(location);
+            // 跨 origin 的跳转不在工具内部跟随：权限只审过首个 URL 的
+            // origin，自定义 headers（Authorization 等）也不能带到别的站点。
+            // 交还模型用新 URL 重新调用，让新 origin 走一遍审批。
+            if (nextUri.origin != currentUri.origin) {
+              completed = true;
+              client.close();
+              return 'Status: ${response.statusCode}\n'
+                  'Redirect: $nextUri\n\n'
+                  'The server redirected to a different origin. The redirect '
+                  'was not followed; call web_fetch again with the URL above '
+                  'if you want its content.';
+            }
+            currentUri = nextUri;
             redirects++;
             // 301/302/303 按惯例转 GET（丢弃 body）；307/308 保留原方法
             if (response.statusCode != 307 && response.statusCode != 308) {
@@ -275,17 +289,30 @@ class WebFetchTool implements Tool, CancellableTool {
   ///   解析器会当作 IP 而非域名）
   ///
   /// 已知局限：恶意域名解析到内网（DNS rebinding）在直连模式下仍可
-  /// 绕过——fake-ip 代理下由代理层缓解；直连场景由 POST/自定义 headers
-  /// 弹窗（PermissionService）与手动重定向校验兜底。
-  static String? _blockedReason(Uri uri) {
-    final host = uri.host.toLowerCase();
+  /// 绕过——fake-ip 代理下由代理层缓解；直连场景由 POST / body / 自定义
+  /// headers 不吃持久 allow 规则（PermissionService）、跨 origin 跳转不跟随
+  /// 兜底。
+  @visibleForTesting
+  static String? blockedReason(Uri uri) {
+    // 末尾的点是合法的 FQDN 写法（`localhost.` 同样解析到本机）
+    var host = uri.host.toLowerCase();
+    while (host.endsWith('.')) {
+      host = host.substring(0, host.length - 1);
+    }
     if (host.isEmpty) return 'empty host';
-    if (host == 'localhost' || host.endsWith('.local')) {
+    if (host == 'localhost' ||
+        host.endsWith('.localhost') ||
+        host.endsWith('.local')) {
       return 'localhost / .local hosts are not allowed';
     }
-    // 整数/十六进制 IP 形态（点分 IPv6 字面量会被 tryParse 正常识别）
-    if (RegExp(r'^(0x[0-9a-f]+|\d+)$').hasMatch(host)) {
-      return 'numeric IP address is not allowed';
+    // 整数 / 十六进制 / 八进制（`0177.0.0.1`）/ 省略段（`127.1`）等非规范
+    // IPv4 写法：系统解析器（inet_aton）当作 IP，而 tryParse 要么不认、要么
+    // 按十进制读成另一个地址。只接受规范的点分十进制，其余一律拒绝。
+    final labels = host.split('.');
+    if (labels.every(RegExp(r'^(0x[0-9a-f]*|\d+)$').hasMatch) &&
+        (labels.length != 4 ||
+            !labels.every(RegExp(r'^(0|[1-9]\d{0,2})$').hasMatch))) {
+      return 'non-canonical numeric IP address $host is not allowed';
     }
     final addr = InternetAddress.tryParse(host);
     if (addr != null && _isPrivateOrReserved(addr)) {
@@ -314,6 +341,19 @@ class WebFetchTool implements Tool, CancellableTool {
     }
     // IPv6
     if (bytes.length != 16) return false;
+    // IPv4 映射 / 兼容地址（::ffff:a.b.c.d、::a.b.c.d）直达内嵌的 IPv4，
+    // 按内嵌地址判定
+    final v4Embedded = bytes.take(10).every((b) => b == 0) &&
+        ((bytes[10] == 0xFF && bytes[11] == 0xFF) ||
+            (bytes[10] == 0 && bytes[11] == 0));
+    if (v4Embedded) {
+      return _isPrivateOrReserved(
+        InternetAddress.fromRawAddress(
+          bytes.sublist(12),
+          type: InternetAddressType.IPv4,
+        ),
+      );
+    }
     final isZero = bytes.every((b) => b == 0);
     final isLoopback =
         bytes[15] == 1 && bytes.take(15).every((b) => b == 0);

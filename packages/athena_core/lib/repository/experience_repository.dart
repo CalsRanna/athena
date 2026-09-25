@@ -323,6 +323,7 @@ class ExperienceRepository {
   /// 定位经验的 JSON 文件：当前 Sentinel 私有目录与 shared 目录各试一次。
   /// 返回 null 表示未找到。
   File? _locateFile(String sentinelId, String id) {
+    if (!_isValidId(id)) return null;
     for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
       final file = File('$dirPath/$id.json');
       if (file.existsSync()) return file;
@@ -391,6 +392,7 @@ class ExperienceRepository {
 
   /// 按 ID + sentinelId 删除。
   Future<bool> delete(String sentinelId, String id) async {
+    if (!_isValidId(id)) return false;
     // 尝试在私有目录和 shared 目录中查找
     for (final dirPath in ['$_basePath/$sentinelId', _sharedPath]) {
       final file = File('$dirPath/$id.json');
@@ -457,6 +459,11 @@ class ExperienceRepository {
   }
 
   static final Random _random = Random();
+
+  /// id 直接拼进文件路径，来自模型的 `experience_id` 必须是单个文件名段：
+  /// `../5/<id>` 这样的值会穿越到别的 Sentinel 的私有目录。
+  static bool _isValidId(String id) =>
+      RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
 
   static String _randomSuffix(int length) {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';

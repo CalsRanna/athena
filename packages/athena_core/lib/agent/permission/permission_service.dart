@@ -60,10 +60,29 @@ class PermissionService {
     }
 
     // ③ 持久 allow 规则命中则放行
-    if (_ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
+    if (_persistentAllowApplies(toolName, args) &&
+        _ruleHits(toolName, keyArg, effect: RuleEffect.allow)) {
       return PermissionVerdict.allow;
     }
     return PermissionVerdict.prompt;
+  }
+
+  /// 持久 allow 规则只按 [primaryArg] 匹配，覆盖不到的维度要排除在外。
+  ///
+  /// web_fetch 的规则只有 origin：对某站点一次 GET 点了「始终允许」，不能
+  /// 顺带放行之后对同一站点的 POST、带 body 或自定义 headers（令牌）的
+  /// 请求——这些都要每次审批（同一 run 内的会话缓存按完整参数照常生效）。
+  static bool _persistentAllowApplies(
+    String toolName,
+    Map<String, dynamic> args,
+  ) {
+    if (toolName != 'web_fetch') return true;
+    final method = (args['method'] as String? ?? 'GET').toUpperCase();
+    final body = args['body'];
+    final headers = args['headers'];
+    return method == 'GET' &&
+        (body == null || (body is String && body.isEmpty)) &&
+        (headers == null || (headers is Map && headers.isEmpty));
   }
 
   /// 记录一次会话级放行(弹窗批准后调用)。
