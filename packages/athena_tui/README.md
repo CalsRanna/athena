@@ -62,7 +62,7 @@ cd packages/athena_tui
 dart analyze       # 零警告
 ```
 
-存储层单测位于 `packages/athena_core/test/storage/`;TUI 包自身暂无测试套件。
+存储层单测位于 `packages/athena_core/test/storage/`;TUI 包的用例在 `packages/athena_tui/test/`(`dart test`),CI 的 tui job 会跑。
 
 开发热重载:`dart --enable-vm-service run bin/athena.dart`。
 

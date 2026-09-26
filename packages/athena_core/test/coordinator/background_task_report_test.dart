@@ -260,12 +260,18 @@ void main() {
     // 汇报回合使用同一工具集和审批模式，不再按风险标签筛选。
     expect(llm.requests, hasLength(4));
     final reportRequest = llm.requests[2];
-    final systemText = (reportRequest['messages'] as List)
-        .where((m) => (m as Map)['role'] == 'system')
-        .map((m) => (m as Map)['content'] as String)
-        .join('\n');
-    expect(systemText, contains('Background tasks have completed'));
-    expect(systemText, contains('bg-1'));
+    final reportMessages = (reportRequest['messages'] as List).cast<Map>();
+    // 汇报说明是请求的最后一条 user 消息：历史以上一轮 assistant 回答结尾，
+    // 不补这一条，Messages 协议会当作 prefill 拒绝
+    expect(reportMessages.last['role'], 'user');
+    final reportPrompt = reportMessages.last['content'] as String;
+    expect(reportPrompt, contains('Background tasks have completed'));
+    expect(reportPrompt, contains('bg-1'));
+    expect(
+      messages.map((m) => m.content),
+      isNot(contains(contains('Background tasks have completed'))),
+      reason: '汇报说明不落库',
+    );
 
     final toolNames = (reportRequest['tools'] as List)
         .map((t) => ((t as Map)['function'] as Map)['name'])
@@ -279,8 +285,11 @@ void main() {
         .map((m) => (m as Map)['content'] as String)
         .join();
     expect(reportReadResult, contains('build-ok'));
-    expect((reportRequest['messages'] as List)
-        .where((m) => (m as Map)['role'] == 'user'), hasLength(1));
+    expect(
+      reportMessages.where((m) => m['role'] == 'user').map((m) => m['content']),
+      ['跑构建', reportPrompt],
+      reason: '除了末尾的汇报说明，不能多出别的 user 消息（任务输出不以 user 角色进上下文）',
+    );
   }, skip: isWindows);
 
   test('汇报仍可通过工具读取超过 6000 字符的完整输出', () async {

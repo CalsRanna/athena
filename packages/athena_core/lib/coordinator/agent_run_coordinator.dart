@@ -31,6 +31,7 @@ import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/util/logger_util.dart';
+import 'package:openai_dart/openai_dart.dart' show ChatMessage;
 
 /// UI 无关的 Agent run 编排层。
 ///
@@ -234,11 +235,12 @@ class AgentRunCoordinator {
       final model = await _modelRepo.getModelById(chat.modelId);
       cancelToken.throwIfCancelled();
       if (model == null) {
-        // 用户消息已落库；必须发错误事件，否则 UI 侧静默无响应
-        yield RunError(
-          'Model not found (id: ${chat.modelId}). '
-          'Please select a valid model and retry.',
-        );
+        // 用户消息已落库；错误也要落进会话，否则 UI 侧静默无响应
+        final message =
+            'Model not found (id: ${chat.modelId}). '
+            'Please select a valid model and retry.';
+        yield await _recordSetupError(chatId, message);
+        yield RunError(message);
         yield const RunOutcomeChanged(
           AgentRunOutcome(
             termination: AgentRunTermination.error,
@@ -254,10 +256,11 @@ class AgentRunCoordinator {
       );
       cancelToken.throwIfCancelled();
       if (provider == null) {
-        yield RunError(
-          'Provider not found for model "${model.modelId}". '
-          'Please check provider configuration and retry.',
-        );
+        final message =
+            'Provider not found for model "${model.modelId}". '
+            'Please check provider configuration and retry.';
+        yield await _recordSetupError(chatId, message);
+        yield RunError(message);
         yield const RunOutcomeChanged(
           AgentRunOutcome(
             termination: AgentRunTermination.error,
@@ -416,6 +419,19 @@ class AgentRunCoordinator {
     // ─── 接续待汇报的后台任务 ───
     // 会话此刻已空闲：run 期间攒下的任务完成事件在这里合并成一次汇报回合。
     await _drainPendingReport(chatId);
+  }
+
+  /// run 还没开始就失败（模型 / provider 找不到）时，把错误作为一条 assistant
+  /// 消息落进会话：与运行中出错（[ChatStoreService.recordErrorOnMessage]）
+  /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
+  /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
+  Future<RunEvent> _recordSetupError(int chatId, String message) async {
+    final placeholder = await _manageService.appendAssistantPlaceholder(chatId);
+    final failed = await _manageService.recordErrorOnMessage(
+      placeholder,
+      message,
+    );
+    return RunAssistantAppended(failed);
   }
 
   /// 把该会话排队中的用户消息接续成新 run，产出它的事件流。
@@ -580,7 +596,16 @@ class AgentRunCoordinator {
         includeReasoning: model.reasoning,
       );
       cancelToken.throwIfCancelled();
-      final baseMessages = [...persistedMessages, ...?digestMessages];
+      final baseMessages = [
+        ...persistedMessages,
+        ...?digestMessages,
+        // 汇报说明作为本轮最后一条 user 消息（不落库）：汇报回合不写用户
+        // 消息，历史以上一轮的 assistant 回答结尾，直接发出去 Messages 协议
+        // 会当作 prefill 拒绝（部分兼容端同样要求末条是 user / tool），其余
+        // 模型则会接着续写上一条回答。它只含固定说明与任务命令，不含任务
+        // 输出；AI 审核读的是落库的对话，这条不会成为授权依据。
+        ChatMessage.user(_backgroundReportPrompt(tasks)),
+      ];
       final approvalMode = _agentSettings.approvalMode.value;
       final reviewContext = approvalMode == ApprovalMode.aiReview
           ? PermissionReviewContext.fromMessages(
@@ -602,7 +627,14 @@ class AgentRunCoordinator {
         model: model,
         baseMessages: baseMessages,
         evolutionPrompt: EvolutionPrompt.hint,
-        runtimePrompt: _backgroundReportPrompt(tasks),
+        // 与 send 相同的运行时上下文（平台、工作文件夹、数据目录规则）；
+        // 汇报说明在上面的末条 user 消息里，不能顶替掉它
+        runtimePrompt: _runtimeEnvironment == null
+            ? null
+            : runtimeContextPrompt(
+                _runtimeEnvironment,
+                workspace: _workspaceByChat[chatId],
+              ),
         sentinelId: sentinelKey,
         hasSentinelPrompt: sentinel != null && sentinel.prompt.isNotEmpty,
         maxIterations: _reportMaxIterations,
@@ -669,7 +701,7 @@ class AgentRunCoordinator {
   /// 汇报回合迭代上限：它是「读结果 → 汇报」，不是干活的回合。
   static const _reportMaxIterations = 3;
 
-  /// 汇报回合的运行时提示（system 消息，不进持久化历史）。
+  /// 汇报回合的说明（作为请求末尾的 user 消息发送，不进持久化历史）。
   String _backgroundReportPrompt(List<BackgroundTask> tasks) {
     final buffer = StringBuffer()
       ..writeln(

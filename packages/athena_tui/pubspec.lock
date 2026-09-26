@@ -318,7 +318,7 @@ packages:
     source: hosted
     version: "2.0.2"
   openai_dart:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: openai_dart
       sha256: "75612562082498b8271ffa030308db032c65b68aa862b458ee752376e0341311"
@@ -611,7 +611,7 @@ packages:
     source: hosted
     version: "7.0.1"
   yaml:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: yaml
       sha256: b9da305ac7c39faa3f030eccd175340f968459dae4af175130b3fc47e40d76ce

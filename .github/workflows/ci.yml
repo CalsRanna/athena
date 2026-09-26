@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # release workflow 在打包前调用本 workflow：发布出去的版本必须过同一套检查
+  workflow_call:
 
 jobs:
   core:
@@ -27,12 +29,33 @@ jobs:
         working-directory: packages/athena_core
         run: dart analyze
 
-      # athena_core/test 现已有用例（command_analyzer_test / file_storage_test），
-      # 此步会执行；目录若再次清空（dart test 会以 exit 65
-      # "default test/ directory doesn't exist" 失败）则自动跳过
+      # 不加「目录为空就跳过」的守卫：测试目录被误删时应当失败，而不是静默变绿
       - name: Test (athena_core)
-        if: hashFiles('packages/athena_core/test/**', 'packages/athena_core/test/*') != ''
         working-directory: packages/athena_core
+        run: dart test
+
+  tui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # 与 release workflow 及本地开发版本保持一致
+          flutter-version: 3.47.1
+          cache: true
+
+      - name: Pub get (athena_tui)
+        working-directory: packages/athena_tui
+        run: dart pub get
+
+      - name: Analyze (athena_tui)
+        working-directory: packages/athena_tui
+        run: dart analyze
+
+      - name: Test (athena_tui)
+        working-directory: packages/athena_tui
         run: dart test
 
   gui:
@@ -59,8 +82,6 @@ jobs:
         working-directory: packages/athena_gui
         run: flutter analyze
 
-      # 同上：测试目录为空时跳过，有测试后自动恢复
       - name: Test (athena_gui)
-        if: hashFiles('packages/athena_gui/test/**', 'packages/athena_gui/test/*') != ''
         working-directory: packages/athena_gui
         run: flutter test
