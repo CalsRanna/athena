@@ -1,6 +1,7 @@
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -164,7 +165,9 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
     );
     if (!mounted || confirmed != true) return;
     await _runDataOperation(
-      action: viewModel.resetData,
+      // 经 ChatViewModel 包一层：先停掉运行中的对话，清空后刷新会话列表
+      action: () =>
+          GetIt.instance<ChatViewModel>().runDataReset(viewModel.resetData),
       successMessage: 'Athena has been reset',
       cancelledMessage: 'Reset cancelled',
       failureMessage: 'Unable to reset Athena',

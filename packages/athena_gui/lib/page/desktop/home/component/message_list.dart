@@ -204,8 +204,15 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   }
 
   Future<void> destroyMessage(MessageEntity message) async {
+    final chatId = chatViewModel.currentChat.value?.id;
+    // 运行中删除会删掉正在运行的 run 的消息，run 随后的写入又把它们补回来
+    if (chatId != null && chatViewModel.isStreamingChat(chatId)) {
+      AthenaDialog.info('Please wait for the current chat to finish.');
+      return;
+    }
+    // 删除会连带删掉这条之后的全部消息（deleteMessage 按位置截断）
     var result = await AthenaDialog.confirm(
-      'Do you want to delete this message?',
+      'Delete this message and all messages after it?',
     );
     if (result == true) {
       await chatViewModel.deleteMessage(message);
