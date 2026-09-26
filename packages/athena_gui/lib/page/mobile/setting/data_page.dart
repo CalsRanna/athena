@@ -1,3 +1,4 @@
+import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/dialog.dart';
@@ -88,7 +89,10 @@ class _MobileDataPageState extends State<MobileDataPage> {
     if (confirmed != true) return;
     AthenaDialog.loading();
     try {
-      final success = await viewModel.resetData();
+      // 经 ChatViewModel 包一层：先停掉运行中的对话，清空后刷新会话列表
+      final success = await GetIt.instance<ChatViewModel>().runDataReset(
+        viewModel.resetData,
+      );
       if (!mounted) return;
       if (success) {
         AthenaDialog.success('Reset successful');

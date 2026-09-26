@@ -178,16 +178,21 @@ class _MessageListViewState extends State<MessageListView> {
     });
   }
 
-  void destroyMessage(MessageEntity message) {
-    controller.followBottom();
-    viewModel.deleteMessage(message);
+  Future<void> destroyMessage(MessageEntity message) async {
     AthenaDialog.dismiss();
+    if (_blockWhileStreaming()) return;
+    // 与桌面端一致先确认：删除会连带删掉这条之后的全部消息
+    final confirmed = await AthenaDialog.confirm(
+      'Delete this message and all messages after it?',
+    );
+    if (confirmed != true) return;
+    controller.followBottom();
+    await viewModel.deleteMessage(message);
   }
 
-  void editMessage(MessageEntity message) {
-    controller.followBottom();
-    viewModel.deleteMessage(message);
-  }
+  /// 编辑 = 用改过的内容重发：从这条起截断，再发出编辑后的消息。
+  /// [message] 是编辑框回传的副本（id 不变、content 为新内容）。
+  Future<void> editMessage(MessageEntity message) => resendMessage(message);
 
   void openBottomSheet(MessageEntity message) {
     HapticFeedback.heavyImpact();
@@ -225,8 +230,17 @@ class _MessageListViewState extends State<MessageListView> {
   }
 
   Future<void> resendMessage(MessageEntity message) async {
+    if (_blockWhileStreaming()) return;
     controller.followBottom();
     await viewModel.deleteMessage(message);
     await viewModel.sendMessage(message, chat: widget.chat);
+  }
+
+  /// 运行中不许重发 / 编辑 / 删除：会删掉正在运行的 run 的消息，run 随后
+  /// 的写入又把它们补回来（与桌面端同一拦截）。
+  bool _blockWhileStreaming() {
+    if (!viewModel.isStreamingChat(widget.chat.id!)) return false;
+    AthenaDialog.info('Please wait for the current chat to finish.');
+    return true;
   }
 }

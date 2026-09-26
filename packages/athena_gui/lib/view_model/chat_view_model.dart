@@ -25,6 +25,7 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
+import 'package:athena_gui/widget/dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
 
@@ -122,6 +123,7 @@ class ChatViewModel {
   /// 当前挂起的提问请求（会话内卡片，按 chatId 归属）。
   final pendingElicits = listSignal<ElicitRequest>([]);
 
+  /// 最近一次失败的描述（同时以提示条告知用户，见 [_reportError]）。
   final error = signal<String?>(null);
 
   // 下面这组 `current*` 是"当前选中对话"的参数；没有选中对话时
@@ -320,8 +322,8 @@ class ChatViewModel {
   /// 直接把 UI 线程打满；合并后恒定 10 次/秒，与 token 速率解耦。
   final Duration _flushInterval;
 
-  /// 当前运行指示是否由自动汇报点亮（决定收尾时是否清除指示）。
-  bool _reporting = false;
+  /// 运行指示由自动汇报点亮的会话（汇报 run 收尾时据此熄灭）。
+  final Set<int> _reportingChatIds = {};
 
   /// 取出可变的 pending 列表（首次从当前信号值复制一份，之后原地变异，
   /// 省掉每个事件一次的整表复制）。
@@ -447,7 +449,7 @@ class ChatViewModel {
       chats.value = chatsList;
       chatHistories.value = histories;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -481,7 +483,7 @@ class ChatViewModel {
             currentModel.value?.id ?? _settingViewModel.chatModelId.value,
       );
       if (resolved == null) {
-        error.value = 'Failed to create chat';
+        _reportError('Failed to create chat');
         return null;
       }
       final model = resolved.model;
@@ -495,7 +497,7 @@ class ChatViewModel {
       final sentinel =
           currentSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
       if (sentinel.id == null) {
-        error.value = 'Failed to create chat';
+        _reportError('Failed to create chat');
         return null;
       }
 
@@ -535,7 +537,7 @@ class ChatViewModel {
 
       return chat;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
       return null;
     } finally {
       isLoading.value = false;
@@ -578,7 +580,7 @@ class ChatViewModel {
       }
       _dropChatDrafts({chat.id!});
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -620,10 +622,47 @@ class ChatViewModel {
       }
       _dropChatDrafts(ids);
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// 设置里的「重置」：用 [reset] 清空全部本地数据，前后收拾会话状态。
+  ///
+  /// 清空前先停掉所有运行中的对话（含协调层自己发起的汇报 run）并等它们
+  /// 收尾：run 若在会话文件删掉之后继续写入，会重建出没有会话头的文件，
+  /// 侧栏里也会留着已经不存在的对话。清空后回草稿态、重读角色与会话列表，
+  /// 并清掉按会话 id 存的草稿槽——重置后 id 从头分配，旧槽会串到新对话上。
+  Future<T> runDataReset<T>(Future<T> Function() reset) async {
+    _queuedInputs.value = [];
+    final running = {
+      ...streamingChatIds.value,
+      ..._runSettledByChat.keys,
+      ..._stream.streamingChatIds,
+    };
+    final settling = <Future<void>>[];
+    for (final id in running) {
+      final done = _runSettledByChat[id]?.future ?? _stream.settledOf(id);
+      _stream.stop(id);
+      _rename.cancel(id);
+      if (done != null) settling.add(done);
+    }
+    await Future.wait(settling);
+
+    final result = await reset();
+
+    _turnStartIdsByChat.clear();
+    _pendingTurnIds.clear();
+    chats.value = [];
+    chatHistories.value = [];
+    await _sentinelViewModel.getSentinels();
+    await _clearToDraft();
+    _composerDrafts.clear();
+    _pendingImagesByChat.clear();
+    clearPendingImages();
+    await getChats();
+    return result;
   }
 
   /// 删掉当前对话后的落点：回草稿态，列表里的选中项一并清空。
@@ -757,7 +796,7 @@ class ChatViewModel {
       await _manageService.togglePin(chat);
       await getChats();
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -786,7 +825,7 @@ class ChatViewModel {
         model.providerId,
       );
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -800,7 +839,7 @@ class ChatViewModel {
       _updateChatInLists(updated);
       currentSentinel.value = sentinel;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -814,7 +853,7 @@ class ChatViewModel {
       _updateChatInLists(updated);
       currentRetention.value = updated.retention;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -831,7 +870,7 @@ class ChatViewModel {
       _updateChatInLists(updated);
       currentTemperature.value = updated.temperature;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -845,7 +884,7 @@ class ChatViewModel {
       _updateChatInLists(updated);
       currentReasoningEffort.value = updated.reasoningEffort;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -867,7 +906,7 @@ class ChatViewModel {
         await updateWorkspacePath(path, chat: chat);
       }
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -882,7 +921,7 @@ class ChatViewModel {
       _updateChatInLists(updated);
       currentWorkspacePath.value = updated.workspacePath;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     }
   }
 
@@ -929,12 +968,18 @@ class ChatViewModel {
     // Keep unsent input out of history and model context until its turn starts.
     while (true) {
       if (_runSettledByChat.containsKey(chatId)) {
-        _queuedInputs.value = [..._queuedInputs.value, input];
+        _enqueue(input);
         return;
       }
       final previous = _stream.settledOf(chatId);
       if (previous != null) {
+        // 协调层自己发起的 run（后台任务自动汇报）正在跑：输入框已经清空，
+        // 先挂进排队区让用户看得到这条消息，删除会话时也能一并丢弃
+        _enqueue(input);
         await previous;
+        // 等待期间会话被删（排队项已丢弃），或另一条等待中的发送已经把它
+        // 带走发出：不再重复发送
+        if (!_queuedInputs.value.contains(input)) return;
         continue;
       }
       break;
@@ -945,7 +990,7 @@ class ChatViewModel {
     // If an earlier input could not be stored, preserve FIFO on the next send.
     final waiting = _nextQueuedInput(chatId);
     if (waiting != null) {
-      _queuedInputs.value = [..._queuedInputs.value, input];
+      _enqueue(input);
       input = waiting;
     }
     try {
@@ -961,7 +1006,7 @@ class ChatViewModel {
         input = next;
       }
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       _flushMessages();
       streamingChatIds.value = streamingChatIds.value
@@ -979,7 +1024,9 @@ class ChatViewModel {
   }
 
   Future<void> _sendInput(_QueuedChatInput input) async {
-    final chat = input.chat;
+    // 排队期间用户可能在 composer 上改了模型、角色、工作文件夹等：这些修改
+    // 已写回会话列表，出队时按最新的会话参数执行，而不是入队那一刻的快照
+    final chat = _chatForEvent(input.chat.id!) ?? input.chat;
     final eventStream = _stream.send(
       message: input.message,
       chat: chat,
@@ -1053,7 +1100,13 @@ class ChatViewModel {
         unawaited(getChats());
       case RunError(:final message):
         LoggerUtil.e("sendMessage RunError: $message");
-        error.value = message;
+        // 协调层会把错误作为 assistant 消息落进会话：当前对话里用户已经看得到，
+        // 不再叠一个提示条；在别的对话上发生的错误则要告诉用户
+        if (belongsToCurrent) {
+          error.value = message;
+        } else {
+          _reportError('${chat.title}: $message');
+        }
     }
   }
 
@@ -1063,23 +1116,33 @@ class ChatViewModel {
   /// 照常落库，只有当前对话的汇报会点亮运行指示。
   void _handleInternalRunEvent(InternalRunEvent internal) {
     final chatId = internal.chatId;
-    final chat = _chatForEvent(chatId);
-    if (chat == null) return;
-    final belongsToCurrent = chatId == currentChat.value?.id;
-    if (belongsToCurrent && internal.event is RunAssistantAppended) {
-      _reporting = true;
-      if (!isStreamingChat(chatId)) {
-        streamingChatIds.value = [...streamingChatIds.value, chatId];
+    // 指示按会话记账，不看当前显示的是哪条：汇报中途切走再切回，这条对话
+    // 仍要显示运行中；汇报结束时不管当前在看哪条都要熄灭——否则它会一直
+    // 卡在「运行中」，发送键变成停止键。收尾以协调层的 settled 为准，
+    // 正常结束、取消、出错都会完成它，不依赖某个具体事件是否到达。
+    if (internal.event is RunAssistantAppended &&
+        !_reportingChatIds.contains(chatId)) {
+      final settled = _stream.settledOf(chatId);
+      if (settled != null) {
+        _reportingChatIds.add(chatId);
+        if (!isStreamingChat(chatId)) {
+          streamingChatIds.value = [...streamingChatIds.value, chatId];
+        }
+        unawaited(settled.whenComplete(() => _finishReport(chatId)));
       }
     }
-    _applyRunEvent(internal.event, chat: chat);
-    if (_reporting &&
-        belongsToCurrent &&
-        internal.event is RunOutcomeChanged) {
-      _reporting = false;
-      streamingChatIds.value = streamingChatIds.value
-          .where((id) => id != chatId)
-          .toList();
+    final chat = _chatForEvent(chatId);
+    if (chat != null) _applyRunEvent(internal.event, chat: chat);
+  }
+
+  void _finishReport(int chatId) {
+    if (!_reportingChatIds.remove(chatId)) return;
+    // 汇报刚结束、用户的消息已接着开跑：指示归那条 sendMessage 管
+    if (_runSettledByChat.containsKey(chatId)) return;
+    streamingChatIds.value = streamingChatIds.value
+        .where((id) => id != chatId)
+        .toList();
+    if (currentChat.value?.id == chatId) {
       currentIteration.value = 0;
       currentToolName.value = null;
     }
@@ -1107,6 +1170,11 @@ class ChatViewModel {
     }
   }
 
+  void _enqueue(_QueuedChatInput input) {
+    if (_queuedInputs.value.contains(input)) return;
+    _queuedInputs.value = [..._queuedInputs.value, input];
+  }
+
   _QueuedChatInput? _nextQueuedInput(int chatId) =>
       _queuedInputs.value.where((input) => input.chat.id == chatId).firstOrNull;
 
@@ -1118,6 +1186,15 @@ class ChatViewModel {
 
   /// 指定对话是否正在流式运行。
   bool isStreamingChat(int chatId) => streamingChatIds.value.contains(chatId);
+
+  /// 记录失败并以提示条告知用户。
+  ///
+  /// [error] 信号在界面上没有常驻的展示位：只写信号的话，建会话、删消息、
+  /// 读列表之类的失败对用户完全不可见。
+  void _reportError(String message) {
+    error.value = message;
+    AthenaDialog.error(message);
+  }
 
   /// 停止指定对话的 Agent 运行。
   void stopGenerating(int chatId) {
@@ -1161,7 +1238,7 @@ class ChatViewModel {
         await refreshMessages(message.chatId);
       }
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -1203,7 +1280,7 @@ class ChatViewModel {
       }
       return updated;
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
       return null;
     } finally {
       _selection.renamingTitle.value = '';
@@ -1219,7 +1296,7 @@ class ChatViewModel {
       final updated = await _supportService.renameChatManually(chat, title);
       _updateChatInLists(updated);
     } catch (e) {
-      error.value = e.toString();
+      _reportError(e.toString());
     } finally {
       isLoading.value = false;
     }
