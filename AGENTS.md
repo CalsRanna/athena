@@ -35,7 +35,7 @@ packages/
     lib/seed/                   # Athena 预设角色与预设提示词
     lib/util/                   # 平台判定、路径归一化、重试、日志、文本分页读
     tool/bench_message_loading.dart # 只读性能基准脚本（手工跑，不参与 CI）
-    test/                       # dart test：storage/、agent/permission/
+    test/                       # dart test：storage/、agent/、agent/permission/、coordinator/、service/
   athena_gui/                   # Flutter 桌面 / 移动应用
     lib/main.dart               # 入口：单实例 → DI → 存储 → 种子 → 窗口/托盘 → 后台同步模型目录
     lib/di.dart                 # GetIt 装配（GUI 侧唯一依赖注入点）
@@ -49,6 +49,7 @@ packages/
   athena_tui/                   # nocterm 终端客户端
     bin/athena.dart             # CLI 入口（参数 = 工作区目录；会改 Directory.current）
     lib/di/tui_di.dart          # 手写装配（不用 GetIt），镜像 GUI 的 di.dart
+    lib/exit_hook_backend.dart  # 进程退出前的收尾挂点（停后台任务）
     lib/bridge/ lib/ui/ lib/view_model/
 ```
 
@@ -79,15 +80,16 @@ flutter run -d macos          # 或 windows / linux / <device id>
 cd packages/athena_tui
 dart pub get
 dart analyze
-dart run bin/athena.dart [工作区目录]     # 无测试目录
+dart test
+dart run bin/athena.dart [工作区目录]
 
 # 只读基准（cwd = packages/athena_core）
 dart run tool/bench_message_loading.dart time <file.jsonl>
 ```
 
-CI（`.github/workflows/ci.yml`）只跑 `athena_core` 与 `athena_gui` 两个 job：core 是 `dart analyze` + `dart test`，gui 是 `build_runner` + `flutter analyze` + `flutter test`。两个测试步骤都带 `hashFiles(...)` 守卫（目录为空时跳过）。**`athena_tui` 不在 CI 里**，改它要自己 `dart analyze`。
+CI（`.github/workflows/ci.yml`）有三个 job：core 与 tui 是 `dart analyze` + `dart test`，gui 是 `build_runner` + `flutter analyze` + `flutter test`。测试步骤不带「目录为空就跳过」的守卫：测试目录被误删应当让 CI 失败，而不是静默变绿。
 
-Release（`.github/workflows/release.yml`）由 `v*` tag 触发，三平台并行出包：`Athena-macOS.zip` / `Athena-Windows.zip` / `Athena-Linux.tar.gz`。发布中转产物在 `packages/athena_gui/dist/`，该目录被 `.gitignore` 忽略、不入库。
+Release（`.github/workflows/release.yml`）由 `v*` tag 触发，先经 `workflow_call` 跑一遍完整的 CI（`checks` job），通过后才建 Release、三平台并行出包：`Athena-macOS.zip` / `Athena-Windows.zip` / `Athena-Linux.tar.gz`。发布中转产物在 `packages/athena_gui/dist/`，该目录被 `.gitignore` 忽略、不入库。
 
 ---
 
@@ -130,7 +132,7 @@ entity + ~/.athena/ 下的文件
 
 1. 注册 run（`runId`、取消令牌、工作文件夹、`settled`）；
 2. 落库用户消息；标题为默认值时，若是首条用户消息则触发自动命名；
-3. 解析模型与 provider，缺任一就发 `RunError` 并结束（用户消息已落库，不能静默无响应）；
+3. 解析模型与 provider，缺任一就把错误写成一条 assistant 消息（`_recordSetupError`，与运行中出错的 `recordErrorOnMessage` 同形态）、发 `RunError` 并结束（用户消息已落库，不能静默无响应）；
 4. 计算记忆作用域（`chat.sentinelId` 或直接对话专用的 `direct`），注入 MemoryDigest，组装历史消息；
 5. 追加 assistant 占位消息 → 启动 `AgentService.run`；
 6. 消费事件流：文本/推理增量写进占位消息、工具调用与结果累积进 JSON 列、用量覆盖写回会话、迭代边界把当前消息落地并开新占位消息；
@@ -138,7 +140,7 @@ entity + ~/.athena/ 下的文件
 
 事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。UI 侧因此有两条订阅：`send()` 返回的那条（用户消息触发的 run），以及 `internalEvents`（协调层自己发起的自动汇报 run，带 `chatId`，见下）。
 
-**内部 run（后台任务自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ 会话空闲则 `_runReport`，正忙则攒进 `_pendingReports`，由 `send` 收尾时的 `_drainPendingReport` 合并成一次汇报。它不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。
+**内部 run（后台任务自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ 会话空闲则 `_runReport`，正忙则攒进 `_pendingReports`，由 `send` 收尾时的 `_drainPendingReport` 合并成一次汇报。它不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。GUI 的汇报指示按会话记账（`_reportingChatIds`），以协调层的 `settledOf` 完成为收尾信号，不看当前显示的是哪条对话，也不依赖某个具体事件到达。
 
 ---
 
@@ -175,7 +177,7 @@ entity + ~/.athena/ 下的文件
 `ContextBudget`（`lib/agent/context_budget.dart`）：
 
 - 输入上限 `inputLimit = contextWindow - min(8192, max(256, contextWindow ~/ 5))`（给输出留空）；
-- 估算 = `utf8(JSON(messages+tools)).length / 2`，每张图片额外 4096，估算值再乘 `_usageScale`（由真实 `prompt_tokens` 向上校准，只增不减）；
+- 估算 = `utf8(JSON(messages+tools)).length / 2` + 每条消息 16，每张图片按 4096 计（不计 base64 数据本身），估算值再乘 `_usageScale`（由真实 `prompt_tokens` 向上校准，只增不减）；
 - 触发压缩的条件：`contextWindow > 0 && estimate >= min(窗口 80%, inputLimit)`；
 - 仍超限时 `prepare()` 把较旧的长工具结果替换成 `tool_output_read` 引用，**最新一批工具结果始终保留**（可能正是刚分页读出来的内容）；无法压缩到上限内就抛 `StateError` 而不是静默截断。
 
@@ -223,10 +225,10 @@ entity + ~/.athena/ 下的文件
 `bash` / `powershell` 的 `background: true` 走 `BackgroundTaskService`（`lib/agent/task/background_task.dart`）：**启动即返回**任务 id（`bg-1`…），命令继续跑，输出持续累积在任务对象里，用 `background_task(action="list"|"read"|"stop")` 查看与停止。归属与生命周期是这套能力的关键，改动前先读懂这几条：
 
 - **归属会话，不归属 run**。登记表按 `chatId` 分组，`_chat_id` 由引擎注入；工具自己不知道会话，也不允许模型指定。
-- **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI `runApp` 返回）同样杀。
+- **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI 退出）同样杀。TUI 的退出收尾挂在 `ExitHookBackend.requestExit` 上：nocterm 的 /quit、Ctrl+C、SIGINT / SIGTERM 最终都经 `requestExit` 直接 `exit()`，`runApp` 不会返回，写在它后面的代码是死代码。
 - **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
 - **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。属主（`owner_pid`）仍是运行中的 Athena 进程的记录属于另一个实例（GUI 与 TUI 同时开），原样保留不杀。Windows 无法核对命令行，不清理孤儿。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
-- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据），继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
+- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）。汇报说明（固定文字 + 任务命令，不含输出）作为请求**末尾的 user 消息**发送、不落库——请求不能以 assistant 结尾（Messages 协议当作 prefill 拒绝）；运行时上下文与 `send` 相同，不能被汇报说明顶替。继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
 - **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
 
 ---
@@ -249,6 +251,9 @@ entity + ~/.athena/ 下的文件
 **GUI（`athena_gui`）**
 
 - 依赖注入唯一入口是 `lib/di.dart`（GetIt）；新增 ViewModel/Service 在那里注册，别在页面里自行 new。
+- `ChatViewModel` 的失败统一走 `_reportError`（写 `error` 信号并弹提示条）；`error` 信号在界面上没有常驻展示位，只写信号等于对用户静默。当前对话的 `RunError` 已作为 assistant 消息落进会话，不再叠提示条，其他对话的才提示。
+- 同一会话的输入在 ViewModel 里排队（`_queuedInputs`，composer 上方显示）：用户 run 进行中、或协调层自己的汇报 run 进行中发送的消息都先进这里，出队时按会话**最新**参数发送（`_chatForEvent`），不用入队时的快照。
+- 设置里的「重置」经 `ChatViewModel.runDataReset` 包一层：先停掉所有运行中的对话并等其收尾，再清数据，之后回草稿态、重读角色与列表、清空按 chatId 存的草稿槽（重置后 id 从头分配）。
 - 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
 - `SettingViewModel.textSize` 仅通过 `AthenaWorkspaceTextSize` 包裹桌面与移动端的 `MessageCardListSliver`，调整会话消息与代码；不能挂到 `MaterialApp.builder` 或整个工作区。composer、空会话 placeholder、轮次导航、审批控件、侧栏、标题栏、设置与根 Overlay 菜单只跟随系统文字缩放。
 - 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。设置面板用 `widget/settings/` 三件套（panel / row / control），一般设置改动即存，角色、技能等编辑页通过 Save 保存。`AthenaSettingsPane` 的滚动视口从固定标题带 `AthenaSettings.paneTopPadding` 下方开始，不能用 ListView 顶部 padding 代替，否则滚动正文会叠到返回链接和关闭按钮上；列表另设 `AthenaSettings.panePadding`（24）顶部内边距，为正文留白。标题带底边沿用工作区的 1 逻辑像素 `neutralHairline`，底部保存栏独立固定。
