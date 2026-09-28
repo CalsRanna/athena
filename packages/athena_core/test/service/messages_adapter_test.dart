@@ -359,7 +359,7 @@ void main() {
       expect(calls.single.function.arguments, '{"command":"ls"}');
       expect(accumulator.finishReason, FinishReason.toolCalls);
       // input 用量来自 message_start，output 来自 message_delta
-      expect(accumulator.usage!.promptTokens, 10);
+      expect(accumulator.usage!.promptTokens, 14);
       expect(accumulator.usage!.completionTokens, 7);
       expect(accumulator.usage!.promptTokensDetails!.cachedTokens, 4);
     });
@@ -444,9 +444,9 @@ void main() {
 
       expect(completion.text, '第一段第二段');
       expect(completion.choices.single.finishReason, FinishReason.stop);
-      expect(completion.usage!.promptTokens, 10);
+      expect(completion.usage!.promptTokens, 16);
       expect(completion.usage!.completionTokens, 4);
-      expect(completion.usage!.totalTokens, 14);
+      expect(completion.usage!.totalTokens, 20);
       expect(completion.usage!.promptTokensDetails!.cachedTokens, 6);
     });
 

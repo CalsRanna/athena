@@ -171,9 +171,14 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 手动切换的入口：桌面与移动端的 Provider 编辑界面各有 **API format** 一项（`Auto` 交给 models.dev 同步；选 Chat Completions / Responses / Messages 即为手动指定，此后同步不再覆盖）；终端客户端用 `/format`。
 
-Responses 推理模型会请求并显示推理摘要，流式与非流式调用都支持。完整响应的原生推理状态随会话保存，在同一供应商、端点和模型的工具续接及会话重载后回传；切换供应商或模型时使用普通文本与工具历史。请求使用 `store: false`，由本地保存并回传推理密文；取消或截断的响应不保存新的原生状态。
+Responses 推理模型会请求并显示推理摘要，流式与非流式调用都支持。完整响应的原生推理状态随会话保存，在同一供应商、端点和模型的工具续接及会话重载后回传；切换供应商或模型时使用普通文本与工具历史。请求默认使用 `store: false`，由本地保存并回传推理密文；取消或截断的响应不保存新的原生状态。
 
 Messages 同样支持推理显示与续接：Claude 4.6 及之后支持 adaptive 的模型使用 `thinking` + `output_config.effort`，早期 Claude 与未识别的 Messages 兼容推理模型使用手动 `budget_tokens`。手动预算按强度映射，并受输出上限和窗口余量限制；启用推理时省略不兼容的温度参数。完整响应的 thinking、signature 与 redacted thinking 按原顺序保存，工具续接和重载后回传；取消、截断或缺少签名时不保存新状态。切换来源、编辑消息、压缩历史或修改系统提示/工具清单后，不回传已经失效的旧签名。协议约束见 [Claude thinking 文档](https://platform.claude.com/docs/en/build-with-claude/thinking)。
+
+
+三条协议会保留原始停止原因和用量明细，拒答文字也会正常显示并保存。Responses 的流内错误、失败状态及提前断流会按失败处理；Chat Completions 同样检查结束标记。窗口/输出截断与内容过滤不会执行未完成的工具调用。Messages 的输入 token 统计包含未缓存输入、缓存读取和缓存写入；缓存写入明细独立保留。`pause_turn` 与服务端压缩续接尚未接入，收到这些状态会明确报错。
+
+Chat Completions 兼容端的 `reasoning`、`reasoning_content`、`reasoning_details`（含签名和密文）也会随会话保存，在相同供应商、端点和模型的工具续接及重载后回传；编辑正文、过滤工具调用或切换来源后不回传旧状态。Responses / Messages 适配器现已映射输出上限、`top_p`、工具选择、并行开关和工具 `strict` 等控制参数；Messages 显式输出上限还受模型和窗口预算约束。无法等价表达或尚未接入的显式参数会报错，不再静默忽略。这些参数映射属于客户端接口能力，不代表设置界面已新增对应入口。
 
 ---
 

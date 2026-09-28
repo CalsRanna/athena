@@ -33,6 +33,8 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/chat_completions_state.dart';
+import 'package:athena_core/service/completion_details.dart';
 import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:meta/meta.dart';
@@ -895,11 +897,16 @@ class _AgentLoop {
 
     // 追加 assistant 消息（含 tool_calls）
     // 注意：toolCall 事件已由流式循环实时产出，此处不再重复 yield
-    final rc = _model.reasoning && st.accumulator.reasoningContent.isNotEmpty
-        ? st.accumulator.reasoningContent
-        : null;
+    final reasoning = st.accumulator.reasoningContent.isNotEmpty
+        ? st.accumulator.reasoningContent : st.accumulator.reasoning;
+    final rc = _model.reasoning && reasoning.isNotEmpty ? reasoning : null;
     _messages.add(
-      st.messagesState != null ? MessagesAssistantMessage(
+      st.chatCompletionsState != null ? ChatCompletionsAssistantMessage(
+        chatCompletionsState: st.chatCompletionsState,
+        content: st.accumulator.content.isNotEmpty ? st.accumulator.content : null,
+        toolCalls: toolCalls,
+        reasoningContent: rc,
+      ) : st.messagesState != null ? MessagesAssistantMessage(
         messagesState: st.messagesState,
         content: st.accumulator.content.isNotEmpty ? st.accumulator.content : null,
         toolCalls: toolCalls,
@@ -920,6 +927,10 @@ class _AgentLoop {
       return;
     }
 
+    if (st.accumulator.finishReason == FinishReason.contentFilter ||
+        st.accumulator.refusal.isNotEmpty) {
+      throw StateError('Tool calls were not executed because the response was refused or filtered');
+    }
     // 执行工具调用（串行 + 并行混合）
     yield* _executeToolCalls(toolCalls, st.accumulator.content);
   }
@@ -951,7 +962,12 @@ class _AgentLoop {
       await for (final chunk in stream) {
         _token.throwIfCancelled();
         st.accumulator.add(chunk);
-        if (chunk is ResponsesStateChunk) {
+        if (chunk is ChatCompletionsStateChunk) {
+          st.chatCompletionsState = chunk.state;
+          yield AgentChatCompletionsStateEvent(chunk.state);
+        } else if (chunk is CompletionDetailsChunk) {
+          yield AgentCompletionDetailsEvent(chunk.details);
+        } else if (chunk is ResponsesStateChunk) {
           st.responsesState = chunk.state;
           yield AgentResponsesStateEvent(chunk.state);
         } else if (chunk is MessagesStateChunk) {
@@ -1029,6 +1045,7 @@ class _AgentLoop {
           totalTokens: usage.totalTokens,
           reasoningTokens: usage.completionTokensDetails?.reasoningTokens,
           cachedTokens: usage.promptTokensDetails?.cachedTokens,
+          cacheCreationTokens: usage is CacheUsage ? usage.cacheCreationTokens : null,
         ),
       );
     }
@@ -1311,6 +1328,7 @@ class _TurnState {
   final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
   ResponsesState? responsesState;
   MessagesState? messagesState;
+  ChatCompletionsState? chatCompletionsState;
 
   /// 模型未发起工具调用、主动结束本轮。
   bool done = false;
@@ -1435,6 +1453,16 @@ sealed class AgentEvent {
 
   const factory AgentEvent.outcome(AgentRunOutcome outcome) =
       AgentRunOutcomeEvent;
+}
+
+class AgentCompletionDetailsEvent extends AgentEvent {
+  final Map<String, dynamic> details;
+  const AgentCompletionDetailsEvent(this.details);
+}
+
+class AgentChatCompletionsStateEvent extends AgentEvent {
+  final ChatCompletionsState state;
+  const AgentChatCompletionsStateEvent(this.state);
 }
 
 class AgentMessagesStateEvent extends AgentEvent {

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/messages_state.dart';
 import 'package:openai_dart/openai_dart.dart';
 
@@ -112,6 +113,10 @@ class ContextBudget {
         }) +
         messages.whereType<MessagesAssistantMessage>().fold<int>(0, (sum, message) {
           final state = message.messagesState;
+          return sum + (state != null && state.matchesMessage(message) ? state.reasoningTokens : 0);
+        }) +
+        messages.whereType<ChatCompletionsAssistantMessage>().fold<int>(0, (sum, message) {
+          final state = message.chatCompletionsState;
           return sum + (state != null && state.matchesMessage(message) ? state.reasoningTokens : 0);
         }) +
         imageTokens;

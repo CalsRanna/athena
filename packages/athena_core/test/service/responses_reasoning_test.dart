@@ -61,7 +61,7 @@ void main() {
           delta: '正在分析',
         ),
       ),
-    ).single;
+    ).first;
     expect(chunk.firstChoice!.delta.reasoningContent, '正在分析');
   });
 
@@ -203,11 +203,12 @@ void main() {
     expect(incomplete.whereType<ResponsesStateChunk>(), isEmpty);
     expect(incomplete.last.firstChoice!.finishReason, FinishReason.length);
     final events = reasoningEvents(reasoningResponse())..removeLast();
-    final partial = await normalizeResponsesStream(
+    final partial = <ChatStreamEvent>[];
+    await expectLater(normalizeResponsesStream(
       Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
       provider: provider,
       model: model,
-    ).toList();
+    ).forEach(partial.add), throwsStateError);
     expect(partial.whereType<ResponsesStateChunk>(), isEmpty);
     final seen = <ChatStreamEvent>[];
     Stream<ResponseStreamEvent> aborted() async* {

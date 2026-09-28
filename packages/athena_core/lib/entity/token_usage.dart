@@ -9,6 +9,7 @@ class TokenUsage {
   final int totalTokens;
   final int? reasoningTokens;
   final int? cachedTokens;
+  final int? cacheCreationTokens;
 
   const TokenUsage({
     required this.promptTokens,
@@ -16,6 +17,7 @@ class TokenUsage {
     required this.totalTokens,
     this.reasoningTokens,
     this.cachedTokens,
+    this.cacheCreationTokens,
   });
 
   @override
@@ -27,7 +29,8 @@ class TokenUsage {
           completionTokens == other.completionTokens &&
           totalTokens == other.totalTokens &&
           reasoningTokens == other.reasoningTokens &&
-          cachedTokens == other.cachedTokens;
+          cachedTokens == other.cachedTokens &&
+          cacheCreationTokens == other.cacheCreationTokens;
 
   @override
   int get hashCode => Object.hash(
@@ -36,11 +39,12 @@ class TokenUsage {
         totalTokens,
         reasoningTokens,
         cachedTokens,
+        cacheCreationTokens,
       );
 
   @override
   String toString() =>
       'TokenUsage(prompt: $promptTokens, completion: $completionTokens, '
       'total: $totalTokens, reasoning: $reasoningTokens, '
-      'cached: $cachedTokens)';
+      'cached: $cachedTokens, cacheCreated: $cacheCreationTokens)';
 }

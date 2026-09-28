@@ -227,6 +227,29 @@ void main() {
     expect(jsonEncode(bodies.last), isNot(contains('signature_')));
   });
 
+  test('窗口耗尽不执行工具，并保留原始停止原因和缓存用量', () async {
+    final response = thinkingMessage(stop: 'model_context_window_exceeded');
+    response['usage'] = {
+      'input_tokens': 10, 'output_tokens': 30,
+      'cache_read_input_tokens': 100, 'cache_creation_input_tokens': 20,
+    };
+    replies[0] = thinkingEvents(response);
+    (replies[0].first['message'] as Map)['usage'] = response['usage'];
+    replies[0].singleWhere((e) => e['type'] == 'message_delta')['usage'] = {'output_tokens': 30};
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    expect(echo.values, isEmpty);
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    final message = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
+    final details = jsonDecode(message.completionDetails);
+    expect(details['stop_reason'], 'model_context_window_exceeded');
+    expect(message.messagesState, isEmpty);
+    final usage = events.whereType<RunUsageChanged>().first.usage;
+    expect(usage.promptTokens, 130);
+    expect(usage.totalTokens, 160);
+    expect(usage.cacheCreationTokens, 20);
+  });
+
   test('fetch 经真实 SDK 保留 thinking、signature 与工具', () async {
     final provider = messagesProvider();
     final client = LlmClient(

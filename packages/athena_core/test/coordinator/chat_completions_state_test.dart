@@ -19,7 +19,8 @@ import 'package:athena_core/service/chat_message_converter.dart';
 import 'package:athena_core/service/chat_store_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
-import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/chat_completions_state.dart';
+import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/util/retry.dart';
@@ -46,7 +47,7 @@ void main() {
     storage = FileStorage(root: tmp);
     await storage.load();
     final providerId = await storage.providerRepository.storeProvider(
-      responsesProvider(),
+      responsesProvider().copyWith(apiFormat: ApiFormat.chatCompletions),
     );
     final modelId = await storage.modelRepository.createModel(
       ModelEntity(
@@ -68,21 +69,17 @@ void main() {
     );
     chat = chat.copyWith(id: await storage.sessionRepository.createChat(chat));
     bodies = [];
-    replies = [
-      reasoningEvents(reasoningResponse()),
-      reasoningEvents(reasoningResponse(tools: false, suffix: '2')),
-      reasoningEvents(reasoningResponse(tools: false, suffix: '3')),
-    ];
+    replies = [chatEvents(tools: true), chatEvents(), chatEvents()];
     var index = 0;
     final chatService = ChatCompletionsService(
       llmClient: LlmClient(
         retryConfig: const RetryConfig(maxAttempts: 1),
         clientFactory: ({required apiKey, required baseUrl}) {
           final mock = MockClient((request) async {
-            expect(request.url.path, '/v1/responses');
+            expect(request.url.path, '/v1/chat/completions');
             bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
             return http.Response(
-              responsesSse(replies[index++]),
+              replies[index++].map((e) => 'data: ${jsonEncode(e)}\n\n').join(),
               200,
               headers: {'content-type': 'text/event-stream; charset=utf-8'},
             );
@@ -144,154 +141,152 @@ void main() {
       )
       .toList();
 
-  test('摘要显示并落库；同 run 工具续接和下一次用户输入都回传原生推理', () async {
+  test('reasoning 与 reasoning_details 在工具续接及文件重载后完整回传', () async {
     final events = await send();
     expect(events.whereType<RunError>(), isEmpty);
     expect(echo.values, ['0', '1']);
-    expect(bodies, hasLength(2));
-    expect(bodies.first['reasoning'], {'effort': 'high', 'summary': 'auto'});
-    expect(bodies.first['store'], isFalse);
-    expect(bodies.first['include'], contains('reasoning.encrypted_content'));
-    final input = bodies[1]['input'] as List;
-    final reasoningIndex = input.indexWhere(
-      (item) => item['type'] == 'reasoning',
+    final assistant = (bodies[1]['messages'] as List).singleWhere(
+      (m) => m['role'] == 'assistant',
     );
-    final raw = Response.fromJson(
-      reasoningResponse(),
-    ).output.map((item) => item.toJson()).toList();
-    expect(input.sublist(reasoningIndex, reasoningIndex + 4), raw);
-    expect(input.sublist(reasoningIndex + 4).map((item) => item['call_id']), [
-      'call_1_0',
-      'call_1_1',
-    ]);
+    expect(assistant['reasoning'], '思考中');
+    expect(assistant['reasoning_details'], reasoningDetails);
     final reopened = FileStorage(root: tmp);
     await reopened.load();
     final saved = (await reopened.sessionRepository.getMessagesByChatId(
       chat.id!,
-    )).where((message) => message.role == 'assistant').toList();
-    expect(saved, hasLength(2));
+    )).where((m) => m.role == 'assistant').toList();
+    expect(saved.first.reasoningContent, '思考中');
     expect(
-      saved.map((message) => message.reasoningContent),
-      everyElement('先读取配置。\n\n再验证结果。'),
-    );
-    expect(ResponsesState.decode(saved.first.responsesState)!.output, raw);
-    expect(
-      ResponsesState.decode(saved.last.responsesState)!.output.first['id'],
-      'rs_2',
+      ChatCompletionsState.decode(
+        saved.first.chatCompletionsState,
+      )!.message.reasoning,
+      '思考中',
     );
     expect(
-      events.whereType<RunMessageUpdated>().any(
-        (event) => event.message.reasoningContent.contains('先读取'),
-      ),
-      isTrue,
+      jsonDecode(saved.first.completionDetails)['finish_reason'],
+      'tool_calls',
     );
-
     final next = await send();
     expect(next.whereType<RunError>(), isEmpty);
-    final nextInput = bodies.last['input'] as List;
-    expect(
-      nextInput
-          .where((item) => item['type'] == 'reasoning')
-          .map((item) => item['id']),
-      ['rs_1', 'rs_2'],
+    final history = (bodies.last['messages'] as List).where(
+      (m) => m['role'] == 'assistant',
     );
-    expect(echo.values, ['0', '1'], reason: '回传历史不会重新执行旧调用');
+    expect(history.first['reasoning_details'], reasoningDetails);
   });
 
-  test('截断响应不存原生状态，工具调用不执行，仍可继续下一轮', () async {
-    replies[0] = reasoningEvents(reasoningResponse(status: 'incomplete'));
+  test('提前 EOF 不执行工具、不保存原生状态，并闭合工具结果', () async {
+    replies[0].removeWhere(
+      (e) => (e['choices'] as List).any((c) => c['finish_reason'] != null),
+    );
     final events = await send();
-    expect(events.whereType<RunError>(), isEmpty);
+    expect(events.whereType<RunError>(), hasLength(1));
     expect(echo.values, isEmpty);
-    expect(
-      (bodies[1]['input'] as List).where((item) => item['type'] == 'reasoning'),
-      isEmpty,
-    );
     final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
-    final toolMessage = saved.firstWhere(
-      (message) => message.toolCalls.isNotEmpty,
-    );
-    expect(toolMessage.responsesState, isEmpty);
-    expect(toolMessage.reasoningContent, '先读取配置。\n\n再验证结果。');
+    final assistant = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
+    expect(assistant.chatCompletionsState, isEmpty);
+    expect(jsonDecode(assistant.toolResults), hasLength(2));
   });
 
-  for (final mode in ['eof', 'error', 'filtered']) {
-    test('$mode 不执行已收到的工具调用，落库闭合工具结果', () async {
-      replies[0].removeLast();
-      if (mode == 'error') {
-        replies[0].add({'type': 'error', 'code': 'server_error', 'message': 'broken'});
-      } else if (mode == 'filtered') {
-        replies[0].add({'type': 'response.incomplete', 'response': {
-          ...reasoningResponse(status: 'incomplete'),
-          'incomplete_details': {'reason': 'content_filter'},
-        }});
-      }
-      final events = await send();
-      expect(events.whereType<RunError>(), hasLength(1));
-      expect(echo.values, isEmpty);
-      expect(bodies, hasLength(1));
-      final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
-      final assistant = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
-      expect(jsonDecode(assistant.toolResults), hasLength(2));
-      expect(assistant.responsesState, isEmpty);
-      if (mode == 'filtered') {
-        expect(jsonDecode(assistant.completionDetails)['incomplete_details'],
-            {'reason': 'content_filter'});
-      }
-    });
-  }
-
-  test('仅拒答响应实时显示并落库，结束时不覆盖成空文本', () async {
+  test('拒答流在界面与落库正文中保留，历史回传仍使用原始 refusal', () async {
     replies[0] = [
-      {'type': 'response.refusal.delta', 'output_index': 0, 'content_index': 0, 'delta': 'Cannot answer'},
-      {'type': 'response.completed', 'response': {
-        ...reasoningResponse(tools: false),
-        'output': [{'type': 'message', 'id': 'msg', 'role': 'assistant', 'status': 'completed',
-          'content': [{'type': 'refusal', 'refusal': 'Cannot answer'}]}],
-      }},
+      {
+        'choices': [
+          {
+            'index': 0,
+            'delta': {'refusal': 'Cannot answer'},
+          },
+        ],
+      },
+      {
+        'choices': [
+          {'index': 0, 'delta': <String, dynamic>{}, 'finish_reason': 'stop'},
+        ],
+      },
     ];
     final events = await send();
     expect(events.whereType<RunError>(), isEmpty);
-    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
-    final assistant = saved.singleWhere((m) => m.role == 'assistant');
-    expect(assistant.content, 'Cannot answer');
-    expect(jsonDecode(assistant.completionDetails)['refusal'], 'Cannot answer');
-  });
-
-  test('fetch 经真实 SDK 提取摘要并携带原生状态', () async {
-    final provider = responsesProvider();
-    final client = LlmClient(
-      clientFactory: ({required apiKey, required baseUrl}) =>
-          OpenAIClient.withApiKey(
-            apiKey,
-            baseUrl: baseUrl,
-            httpClient: MockClient((request) async {
-              final body = jsonDecode(request.body) as Map<String, dynamic>;
-              expect(body['reasoning'], {'effort': 'high', 'summary': 'auto'});
-              return http.Response(
-                jsonEncode(reasoningResponse()),
-                200,
-                headers: {'content-type': 'application/json; charset=utf-8'},
-              );
-            }),
-          ),
-    );
-    final result = await client.fetch(
-      provider: provider,
-      request: ChatCompletionCreateRequest(
-        model: 'test-reasoner',
-        messages: [ChatMessage.user('hi')],
-        reasoningEffort: ReasoningEffort.high,
-      ),
-    );
-    final message = result.choices.single.message as ResponsesAssistantMessage;
-    expect(message.reasoningContent, '先读取配置。\n\n再验证结果。');
     expect(
-      message.responsesState!.matches(provider, 'test-reasoner', message),
+      events.whereType<RunMessageUpdated>().any(
+        (e) => e.message.content == 'Cannot answer',
+      ),
       isTrue,
     );
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    expect(
+      saved.singleWhere((m) => m.role == 'assistant').content,
+      'Cannot answer',
+    );
+    await send();
+    final history = (bodies.last['messages'] as List).firstWhere(
+      (m) => m['role'] == 'assistant',
+    );
+    expect(history['refusal'], 'Cannot answer');
+    expect(history['content'], isNull);
   });
 }
+
+final reasoningDetails = [
+  {
+    'type': 'reasoning.text',
+    'text': '思考中',
+    'signature': 'signature',
+    'index': 0,
+  },
+  {'type': 'reasoning.encrypted', 'data': 'opaque', 'index': 1},
+];
+
+List<Map<String, dynamic>> chatEvents({bool tools = false}) => [
+  {
+    'choices': [
+      {
+        'index': 0,
+        'delta': {'reasoning': '思考中', 'reasoning_details': reasoningDetails},
+      },
+    ],
+  },
+  {
+    'choices': [
+      {
+        'index': 0,
+        'delta': {'content': tools ? '准备执行。' : '完成。'},
+      },
+    ],
+  },
+  if (tools)
+    {
+      'choices': [
+        {
+          'index': 0,
+          'delta': {
+            'tool_calls': [
+              for (var i = 0; i < 2; i++)
+                {
+                  'index': i,
+                  'id': 'call_$i',
+                  'type': 'function',
+                  'function': {
+                    'name': 'echo',
+                    'arguments': jsonEncode({
+                      'value': '$i',
+                      'call_description': '测试读取',
+                    }),
+                  },
+                },
+            ],
+          },
+        },
+      ],
+    },
+  {
+    'choices': [
+      {
+        'index': 0,
+        'delta': <String, dynamic>{},
+        'finish_reason': tools ? 'tool_calls' : 'stop',
+      },
+    ],
+  },
+];
 
 class _Echo extends agent.Tool {
   final values = <String>[];

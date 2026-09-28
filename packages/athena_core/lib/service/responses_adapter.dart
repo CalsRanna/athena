@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/completion_details.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// Responses API 与 Chat Completions 形状之间的转换。
@@ -12,7 +13,7 @@ import 'package:openai_dart/openai_dart.dart';
 /// `input` items，响应侧把 SSE 事件归一成 [ChatStreamEvent]。推理摘要走公共
 /// 文本事件，原生输出经 [ResponsesStateChunk] 独立保存供下一次请求回传。
 ///
-/// 表达不了的内容（音频、文件、refusal、JSON Schema 输出格式）一律显式抛错，
+/// 表达不了的内容（音频、文件、JSON Schema 输出格式）一律显式抛错，
 /// 不静默丢弃——静默丢弃会让模型收到残缺上下文却看不出原因。
 
 /// 把 Chat Completions 形状的请求转成 Responses 请求。
@@ -25,6 +26,14 @@ CreateResponseRequest toResponseRequest(
   bool stream = false,
   ProviderEntity? provider,
 }) {
+  checkRequestFields(request, 'Responses', {
+    'model', 'messages', 'tools', 'tool_choice', 'parallel_tool_calls',
+    'temperature', 'top_p', 'max_tokens', 'max_completion_tokens',
+    'reasoning_effort', 'response_format', 'verbosity', 'metadata',
+    'service_tier', 'prompt_cache_key', 'safety_identifier', 'store',
+    'stream_options', 'frequency_penalty', 'presence_penalty', 'moderation',
+    'top_logprobs',
+  });
   final instructions = <String>[];
   final items = <Map<String, dynamic>>[];
 
@@ -45,7 +54,16 @@ CreateResponseRequest toResponseRequest(
           items.addAll(state.output);
           break;
         }
-        if (content != null && content.isNotEmpty) {
+        if (message.refusal?.isNotEmpty == true) {
+          items.add({
+            'type': 'message', 'role': 'assistant',
+            'content': [
+              if (content != null && content.isNotEmpty)
+                {'type': 'output_text', 'text': content, 'annotations': <dynamic>[]},
+              {'type': 'refusal', 'refusal': message.refusal},
+            ],
+          });
+        } else if (content != null && content.isNotEmpty) {
           items.add(MessageItem.assistantText(content).toJson());
         }
         // 每个 tool call 是一个独立 item，callId 必须原样回传，
@@ -73,6 +91,19 @@ CreateResponseRequest toResponseRequest(
     instructions: instructions.isEmpty ? null : instructions.join('\n\n'),
     tools: request.tools?.map(_toResponseTool).toList(),
     temperature: request.temperature,
+    topP: request.topP,
+    maxOutputTokens: request.maxCompletionTokens ?? request.maxTokens,
+    toolChoice: _responseToolChoice(request.toolChoice),
+    parallelToolCalls: request.parallelToolCalls,
+    metadata: request.metadata,
+    serviceTier: request.serviceTier == null
+        ? null : ServiceTier.fromJson(request.serviceTier!),
+    promptCacheKey: request.promptCacheKey,
+    safetyIdentifier: request.safetyIdentifier,
+    frequencyPenalty: request.frequencyPenalty,
+    presencePenalty: request.presencePenalty,
+    moderation: request.moderation,
+    topLogprobs: request.topLogprobs,
     // 两侧共用同一个 ReasoningEffort 枚举，Athena 侧已把 unknown 归一成 null
     reasoning: request.reasoningEffort == null
         ? null
@@ -81,9 +112,9 @@ CreateResponseRequest toResponseRequest(
             summary: request.reasoningEffort == ReasoningEffort.none
                 ? null : ReasoningSummary.auto,
           ),
-    store: false,
+    store: request.store ?? false,
     include: const [Include.reasoningEncryptedContent],
-    text: _toTextConfig(request.responseFormat),
+    text: _toTextConfig(request.responseFormat, request.verbosity),
     stream: stream,
   );
 }
@@ -101,6 +132,30 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
   // 与 call_id（call_…）不是同一个值，且可为空；outputIndex 两边都必有。
   final callIndexes = <int, int>{};
   final reasoning = _ReasoningText();
+  final refusals = <(int, int), String>{};
+  var terminated = false;
+
+  ChatStreamEvent refusalDelta((int, int) key, String delta) {
+    refusals[key] = '${refusals[key] ?? ''}$delta';
+    return _chunk(ChatDelta(content: delta, refusal: delta));
+  }
+
+  Stream<ChatStreamEvent> finishRefusals(Response response) async* {
+    for (var i = 0; i < response.output.length; i++) {
+      final item = response.output[i].toJson();
+      final content = item['content'];
+      if (content is! List) continue;
+      for (var j = 0; j < content.length; j++) {
+        if (content[j]['type'] != 'refusal') continue;
+        final text = content[j]['refusal'] as String;
+        final prior = refusals[(i, j)] ?? '';
+        if (!text.startsWith(prior)) throw const FormatException('Refusal prefix mismatch');
+        if (text.length > prior.length) {
+          yield refusalDelta((i, j), text.substring(prior.length));
+        }
+      }
+    }
+  }
 
   await for (final event in events) {
     switch (event) {
@@ -122,6 +177,16 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
               ],
             ),
           );
+        }
+
+      case RefusalDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
+        yield refusalDelta((outputIndex, contentIndex), delta);
+      case RefusalDoneEvent(:final outputIndex, :final contentIndex, :final refusal):
+        final key = (outputIndex, contentIndex);
+        final prior = refusals[key] ?? '';
+        if (!refusal.startsWith(prior)) throw const FormatException('Refusal prefix mismatch');
+        if (refusal.length > prior.length) {
+          yield refusalDelta(key, refusal.substring(prior.length));
         }
 
       case OutputTextDeltaEvent(:final delta):
@@ -157,31 +222,40 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
         );
 
       case ResponseCompletedEvent(:final response):
+        terminated = true;
         yield* reasoning.response(response);
+        yield* finishRefusals(response);
+        yield CompletionDetailsChunk(_responseDetails(response));
         yield _terminalChunk(
           response: response,
-          finishReason: FinishReason.stop,
+          finishReason: _responseFinishReason(response),
         );
         final state = _responseState(response, provider, model);
         if (state != null) yield ResponsesStateChunk(state);
 
       case ResponseIncompleteEvent(:final response):
+        terminated = true;
         yield* reasoning.response(response);
-        // 归一到 length：上层据此拒绝执行被截断的 tool_calls。
+        yield* finishRefusals(response);
+        yield CompletionDetailsChunk(_responseDetails(response));
+        // 保留截断原因；length 与 content_filter 都不得执行工具。
         yield _terminalChunk(
           response: response,
-          finishReason: FinishReason.length,
+          finishReason: _responseFinishReason(response),
         );
 
       case ResponseFailedEvent(:final response):
-        throw StateError(
-          'Responses 请求失败：${response.error?.message ?? response.status.name}',
-        );
+        throw _responseError(response.error?.code ?? 'server_error',
+          response.error?.message ?? 'Responses request failed');
+
+      case ErrorEvent(:final code, :final message):
+        throw _responseError(code, message);
 
       default:
         break;
     }
   }
+  if (!terminated) throw StateError('Responses stream ended before a terminal event');
 }
 
 /// 把 Responses 的完整响应转成 Chat Completion（非流式路径）。
@@ -189,7 +263,9 @@ ChatCompletion responseToChatCompletion(Response response, {
   ProviderEntity? provider,
   String? model,
 }) {
-  return ChatCompletion(
+  final finishReason = _responseFinishReason(response);
+  return DetailedChatCompletion(
+    details: _responseDetails(response),
     id: response.id,
     object: 'chat.completion',
     created: response.createdAt,
@@ -199,13 +275,13 @@ ChatCompletion responseToChatCompletion(Response response, {
         index: 0,
         message: ResponsesAssistantMessage(
           content: response.outputText,
+          refusal: _responseRefusal(response),
           reasoningContent: _reasoningContent(response),
           toolCalls: _toolCalls(response),
-          responsesState: _responseState(response, provider, model),
+          responsesState: _responseState(response, provider, model,
+            message: AssistantMessage(content: response.outputText, toolCalls: _toolCalls(response))),
         ),
-        finishReason: response.status == ResponseStatus.incomplete
-            ? FinishReason.length
-            : FinishReason.stop,
+        finishReason: finishReason,
       ),
     ],
     usage: _toUsage(response.usage),
@@ -237,7 +313,7 @@ String? _reasoningContent(Response response) {
   return parts.isEmpty ? null : parts.join('\n\n');
 }
 
-ResponsesState? _responseState(Response response, ProviderEntity? provider, String? model) {
+ResponsesState? _responseState(Response response, ProviderEntity? provider, String? model, {AssistantMessage? message}) {
   if (provider == null || model == null ||
       response.status != ResponseStatus.completed || response.reasoningItems.isEmpty) {
     return null;
@@ -246,7 +322,7 @@ ResponsesState? _responseState(Response response, ProviderEntity? provider, Stri
     provider: provider,
     model: model,
     output: response.output.map((item) => item.toJson()).toList(),
-    message: AssistantMessage(content: response.outputText, toolCalls: _toolCalls(response)),
+    message: message ?? AssistantMessage(content: _responseVisibleText(response), toolCalls: _toolCalls(response)),
     reasoningTokens: response.usage?.outputTokensDetails?.reasoningTokens ?? 0,
   );
 }
@@ -364,18 +440,79 @@ ResponseTool _toResponseTool(Tool tool) {
     name: tool.function.name,
     description: tool.function.description,
     parameters: tool.function.parameters,
+    strict: tool.function.strict,
   );
 }
 
-TextConfig? _toTextConfig(ResponseFormat? format) {
-  switch (format) {
-    case null:
-      return null;
-    case JsonObjectResponseFormat():
-      return const TextConfig(format: JsonObjectFormat());
+ResponseToolChoice? _responseToolChoice(ToolChoice? choice) {
+  return switch (choice) {
+    null => null,
+    ToolChoiceAuto() => ResponseToolChoice.auto,
+    ToolChoiceNone() => ResponseToolChoice.none,
+    ToolChoiceRequired() => ResponseToolChoice.required,
+    ToolChoiceFunction(:final name) => ResponseToolChoice.function(name: name),
+    _ => throw UnsupportedError('Responses does not support ${choice.runtimeType}'),
+  };
+}
+
+TextConfig? _toTextConfig(ResponseFormat? format, Verbosity? verbosity) {
+  final TextFormat? native = switch (format) {
+    null => null,
+    TextResponseFormat() => const PlainTextFormat(),
+    JsonObjectResponseFormat() => const JsonObjectFormat(),
+    _ => throw UnsupportedError(
+      'Responses 协议暂不支持 ${format.runtimeType} 形式的 response_format'),
+  };
+  return native == null && verbosity == null
+      ? null : TextConfig(format: native, verbosity: verbosity);
+}
+
+String? _responseRefusal(Response response) {
+  final text = [
+    for (final item in response.output)
+      for (final part in (item.toJson()['content'] as List? ?? const []))
+        if (part['type'] == 'refusal') part['refusal'] as String,
+  ].join();
+  return text.isEmpty ? null : text;
+}
+
+String _responseVisibleText(Response response) => [
+  for (final item in response.output)
+    for (final part in (item.toJson()['content'] as List? ?? const []))
+      if (part['type'] == 'output_text') part['text'] as String
+      else if (part['type'] == 'refusal') part['refusal'] as String,
+].join();
+
+Map<String, dynamic> _responseDetails(Response response) => {
+  'protocol': 'responses',
+  'status': response.status.name,
+  if (response.incompleteDetails != null)
+    'incomplete_details': response.incompleteDetails!.toJson(),
+  if (response.error != null) 'error': response.error!.toJson(),
+  if (_responseRefusal(response) case final String refusal) 'refusal': refusal,
+  if (response.usage != null) 'usage': response.usage!.toJson(),
+};
+
+FinishReason _responseFinishReason(Response response) {
+  switch (response.status) {
+    case ResponseStatus.completed:
+      if (_responseRefusal(response) != null) return FinishReason.contentFilter;
+      return response.functionCalls.isEmpty ? FinishReason.stop : FinishReason.toolCalls;
+    case ResponseStatus.incomplete:
+      final reason = response.incompleteDetails?.toJson()['reason'];
+      if (reason == 'max_output_tokens') return FinishReason.length;
+      if (reason == 'content_filter') return FinishReason.contentFilter;
+      throw StateError('Unsupported Responses incomplete reason: $reason');
+    case ResponseStatus.failed:
+      throw _responseError(response.error?.code ?? 'server_error',
+        response.error?.message ?? 'Responses request failed');
     default:
-      throw UnsupportedError(
-        'Responses 协议暂不支持 ${format.runtimeType} 形式的 response_format',
-      );
+      throw StateError('Responses request has not completed: ${response.status.name}');
   }
 }
+
+ApiException _responseError(String code, String message) => switch (code) {
+  'rate_limit_exceeded' => RateLimitException(message: message),
+  'server_error' || 'internal_server_error' => InternalServerException(statusCode: 500, message: message),
+  _ => ApiException(statusCode: 400, message: '$code: $message'),
+};

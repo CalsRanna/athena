@@ -172,6 +172,7 @@ class MessagesAssistantMessage extends AssistantMessage {
     super.content,
     super.toolCalls,
     super.reasoningContent,
+    super.refusal,
     this.messagesState,
   });
 }

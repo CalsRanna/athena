@@ -97,6 +97,7 @@ class ResponsesAssistantMessage extends AssistantMessage {
     super.content,
     super.toolCalls,
     super.reasoningContent,
+    super.refusal,
     this.responsesState,
   });
 }

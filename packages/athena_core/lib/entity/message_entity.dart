@@ -15,6 +15,10 @@ class MessageEntity {
   final String responsesState;
   /// Messages 原生 content（含 thinking 签名），与展示内容分开。
   final String messagesState;
+  /// Chat Completions 的原始推理扩展与拒答，仅向原始来源回传。
+  final String chatCompletionsState;
+  /// 原生停止原因、拒答说明和用量明细，不作为对话正文发送。
+  final String completionDetails;
   /// 是否已被 compact 压缩。被压缩的消息不参与上下文组装，但保留在 DB 中供回溯。
   final bool compacted;
   final DateTime reasoningStartedAt;
@@ -33,6 +37,8 @@ class MessageEntity {
     this.toolResults = '',
     this.responsesState = '',
     this.messagesState = '',
+    this.chatCompletionsState = '',
+    this.completionDetails = '',
     this.compacted = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -53,6 +59,8 @@ class MessageEntity {
       toolResults: json.getString('tool_results'),
       responsesState: json.getString('responses_state'),
       messagesState: json.getString('messages_state'),
+      chatCompletionsState: json.getString('chat_completions_state'),
+      completionDetails: json.getString('completion_details'),
       compacted: json.getBool('compacted'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
@@ -73,6 +81,8 @@ class MessageEntity {
       'tool_results': toolResults,
       'responses_state': responsesState,
       'messages_state': messagesState,
+      'chat_completions_state': chatCompletionsState,
+      'completion_details': completionDetails,
       'compacted': compacted ? 1 : 0,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
@@ -92,6 +102,8 @@ class MessageEntity {
     String? toolResults,
     String? responsesState,
     String? messagesState,
+    String? chatCompletionsState,
+    String? completionDetails,
     bool? compacted,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -109,6 +121,8 @@ class MessageEntity {
       toolResults: toolResults ?? this.toolResults,
       responsesState: responsesState ?? this.responsesState,
       messagesState: messagesState ?? this.messagesState,
+      chatCompletionsState: chatCompletionsState ?? this.chatCompletionsState,
+      completionDetails: completionDetails ?? this.completionDetails,
       compacted: compacted ?? this.compacted,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,

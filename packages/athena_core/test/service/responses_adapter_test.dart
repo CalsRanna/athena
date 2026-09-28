@@ -36,6 +36,7 @@ void main() {
       'object': 'response',
       'created_at': 1,
       'status': status,
+      if (status == 'incomplete') 'incomplete_details': {'reason': 'max_output_tokens'},
       'output': output,
       if (usage != null) 'usage': usage,
       if (error != null) 'error': error,
@@ -274,6 +275,7 @@ void main() {
             'content_index': 0,
             'delta': '思考中',
           }),
+          ResponseCompletedEvent(response: response()),
         ]),
       ).toList();
 
@@ -283,7 +285,7 @@ void main() {
 
     test('工具调用：先给 id 与 name 建卡，再追加参数分片', () async {
       final chunks = await normalizeResponsesStream(
-        Stream.fromIterable(toolCallEvents()),
+        Stream.fromIterable([...toolCallEvents(), ResponseCompletedEvent(response: response())]),
       ).toList();
 
       final built = chunks[0].choices!.single.delta.toolCalls!.single;
@@ -336,6 +338,7 @@ void main() {
           delta(1, 'a', '{"x":'),
           delta(1, 'a', '1}'),
           delta(2, 'b', '2}'),
+          {'type': 'response.completed', 'response': response().toJson()},
         ].map(ResponseStreamEvent.fromJson)),
       )) {
         accumulator.add(chunk);
@@ -399,7 +402,7 @@ void main() {
             },
           }),
         ),
-      ).single;
+      ).where((chunk) => chunk.firstChoice?.finishReason != null).single;
 
       expect(chunk.choices!.single.finishReason, FinishReason.stop);
       final usage = chunk.usage!;
@@ -425,7 +428,7 @@ void main() {
             },
           }),
         ),
-      ).single;
+      ).where((chunk) => chunk.firstChoice?.finishReason != null).single;
 
       expect(chunk.choices!.single.finishReason, FinishReason.length);
     });
@@ -448,7 +451,7 @@ void main() {
           ),
         ),
         emitsError(
-          isA<StateError>().having(
+          isA<ApiException>().having(
             (e) => e.message,
             'message',
             contains('boom'),

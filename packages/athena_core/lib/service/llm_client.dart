@@ -4,6 +4,7 @@ import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/messages_adapter.dart';
+import 'package:athena_core/service/chat_completions_state.dart';
 import 'package:athena_core/service/responses_adapter.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:meta/meta.dart';
@@ -208,9 +209,11 @@ class LlmClient {
     try {
       yield* retryStream(
         () => withIdleTimeout(
-          client.chat.completions.createStream(
-            request,
-            abortTrigger: cancelSignal,
+          normalizeChatCompletionsStream(
+            client.chat.completions.createStream(
+              restoreChatCompletionsRequest(request, provider),
+              abortTrigger: cancelSignal,
+            ), provider, request.model,
           ),
           _streamIdleTimeout,
         ),
@@ -257,13 +260,14 @@ class LlmClient {
   }) async {
     var client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      return await retry(
+      final response = await retry(
         () => client.chat.completions
-            .create(request, abortTrigger: cancelSignal)
+            .create(restoreChatCompletionsRequest(request, provider), abortTrigger: cancelSignal)
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
       );
+      return normalizeChatCompletion(response, provider, request.model);
     } finally {
       client.close();
     }
@@ -303,14 +307,14 @@ class LlmClient {
   }) async {
     var client = _createClient(provider.apiKey, provider.baseUrl);
     try {
-      final response = await retry(
-        () => client.responses
+      return await retry(
+        () async => responseToChatCompletion(
+          await client.responses
             .create(toResponseRequest(request, provider: provider), abortTrigger: cancelSignal)
-            .timeout(fetchTimeout),
+            .timeout(fetchTimeout), provider: provider, model: request.model),
         config: _retryConfig,
         abort: cancelSignal,
       );
-      return responseToChatCompletion(response, provider: provider, model: request.model);
     } finally {
       client.close();
     }

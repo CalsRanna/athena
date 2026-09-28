@@ -831,6 +831,10 @@ class AgentRunCoordinator {
             };
             current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
           }
+        } else if (event is AgentChatCompletionsStateEvent) {
+          current = current.copyWith(chatCompletionsState: event.state.encode());
+        } else if (event is AgentCompletionDetailsEvent) {
+          current = current.copyWith(completionDetails: jsonEncode(event.details));
         } else if (event is AgentResponsesStateEvent) {
           current = current.copyWith(responsesState: event.state.encode());
         } else if (event is AgentMessagesStateEvent) {
