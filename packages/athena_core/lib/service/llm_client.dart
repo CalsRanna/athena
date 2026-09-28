@@ -280,9 +280,11 @@ class LlmClient {
         () => withIdleTimeout(
           normalizeResponsesStream(
             client.responses.createStream(
-              toResponseRequest(request, stream: true),
+              toResponseRequest(request, stream: true, provider: provider),
               abortTrigger: cancelSignal,
             ),
+            provider: provider,
+            model: request.model,
           ),
           _streamIdleTimeout,
         ),
@@ -303,12 +305,12 @@ class LlmClient {
     try {
       final response = await retry(
         () => client.responses
-            .create(toResponseRequest(request), abortTrigger: cancelSignal)
+            .create(toResponseRequest(request, provider: provider), abortTrigger: cancelSignal)
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
       );
-      return responseToChatCompletion(response);
+      return responseToChatCompletion(response, provider: provider, model: request.model);
     } finally {
       client.close();
     }

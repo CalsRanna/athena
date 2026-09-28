@@ -171,6 +171,8 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 手动切换的入口：桌面与移动端的 Provider 编辑界面各有 **API format** 一项（`Auto` 交给 models.dev 同步；选 Chat Completions / Responses / Messages 即为手动指定，此后同步不再覆盖）；终端客户端用 `/format`。
 
+Responses 推理模型会请求并显示推理摘要，流式与非流式调用都支持。完整响应的原生推理状态随会话保存，在同一供应商、端点和模型的工具续接及会话重载后回传；切换供应商或模型时使用普通文本与工具历史。请求使用 `store: false`，由本地保存并回传推理密文；取消或截断的响应不保存新的原生状态。
+
 ---
 
 ## 数据与配置

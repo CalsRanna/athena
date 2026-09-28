@@ -32,6 +32,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
+import 'package:athena_core/service/responses_state.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -897,7 +898,8 @@ class _AgentLoop {
         ? st.accumulator.reasoningContent
         : null;
     _messages.add(
-      AssistantMessage(
+      ResponsesAssistantMessage(
+        responsesState: st.responsesState,
         content: st.accumulator.content.isNotEmpty
             ? st.accumulator.content
             : null,
@@ -943,6 +945,10 @@ class _AgentLoop {
       await for (final chunk in stream) {
         _token.throwIfCancelled();
         st.accumulator.add(chunk);
+        if (chunk is ResponsesStateChunk) {
+          st.responsesState = chunk.state;
+          yield AgentResponsesStateEvent(chunk.state);
+        }
 
         final delta = chunk.firstChoice?.delta;
         if (delta != null) {
@@ -1294,6 +1300,7 @@ class _AgentLoop {
 /// 避免把一轮的临时字段散落在循环类上。
 class _TurnState {
   final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
+  ResponsesState? responsesState;
 
   /// 模型未发起工具调用、主动结束本轮。
   bool done = false;
@@ -1418,6 +1425,11 @@ sealed class AgentEvent {
 
   const factory AgentEvent.outcome(AgentRunOutcome outcome) =
       AgentRunOutcomeEvent;
+}
+
+class AgentResponsesStateEvent extends AgentEvent {
+  final ResponsesState state;
+  const AgentResponsesStateEvent(this.state);
 }
 
 class AgentTextEvent extends AgentEvent {

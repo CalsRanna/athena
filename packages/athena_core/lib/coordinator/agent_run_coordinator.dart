@@ -831,6 +831,8 @@ class AgentRunCoordinator {
             };
             current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
           }
+        } else if (event is AgentResponsesStateEvent) {
+          current = current.copyWith(responsesState: event.state.encode());
         } else if (event is AgentToolResultEvent) {
           toolResultsJson.add({
             'id': event.id,

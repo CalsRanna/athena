@@ -43,7 +43,8 @@ void main() {
   }
 
   List<Item> itemsOf(CreateResponseRequest request) =>
-      (request.input as ResponseInputItems).items;
+      (request.input.toJson() as List)
+          .map((item) => Item.fromJson(item as Map<String, dynamic>)).toList();
 
   Map<String, dynamic> usageJson() => {
     'input_tokens': 10,
@@ -258,7 +259,7 @@ void main() {
       }),
     ];
 
-    test('文本与推理增量按 content / reasoning 呈现', () async {
+    test('文本与推理增量按 content / reasoningContent 呈现', () async {
       final chunks = await normalizeResponsesStream(
         Stream.fromIterable([
           ResponseStreamEvent.fromJson({
@@ -277,7 +278,7 @@ void main() {
       ).toList();
 
       expect(chunks[0].choices!.single.delta.content, '你好');
-      expect(chunks[1].choices!.single.delta.reasoning, '思考中');
+      expect(chunks[1].choices!.single.delta.reasoningContent, '思考中');
     });
 
     test('工具调用：先给 id 与 name 建卡，再追加参数分片', () async {
