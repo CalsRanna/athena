@@ -249,8 +249,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     scrollController.followBottom();
 
     var message = MessageEntity(
-      id: 0,
-      chatId: chat.id ?? 0,
+      chatId: chat.id ?? '',
       role: 'user',
       content: text,
       imageUrls: '',

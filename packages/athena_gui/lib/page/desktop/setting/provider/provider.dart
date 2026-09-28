@@ -47,8 +47,8 @@ class _DesktopSettingProviderPageState
   final catalogService = GetIt.instance<ModelCatalogService>();
 
   /// 正在查看的 provider；null 表示停在列表。
-  int? openId;
-  final _selection = DesktopListSelection<int>();
+  String? openId;
+  final _selection = DesktopListSelection<String>();
   final nameController = TextEditingController();
   final keyController = TextEditingController();
   final urlController = TextEditingController();

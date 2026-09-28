@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
 
@@ -12,9 +12,9 @@ import 'package:athena_core/util/logger_util.dart';
 ///
 /// 一个对话一个文件,首行是会话元数据,后续行是消息,行序即消息序:
 /// ```jsonl
-/// {"type":"chat","id":1,"title":"...","model_id":1,...}
-/// {"type":"message","id":1,"chat_id":1,"role":"user","content":"..."}
-/// {"type":"message","id":2,"chat_id":1,"role":"assistant","content":"..."}
+/// {"type":"chat","id":"chat-uuid","title":"...","model_id":"model-uuid",...}
+/// {"type":"message","id":"message-uuid-1","seq":1,"chat_id":"chat-uuid","role":"user","content":"..."}
+/// {"type":"message","id":"message-uuid-2","seq":2,"chat_id":"chat-uuid","role":"assistant","content":"..."}
 /// ```
 ///
 /// 设计要点:
@@ -29,10 +29,10 @@ import 'package:athena_core/util/logger_util.dart';
 ///   处理;追加前补齐上一行缺失的换行,写一半的行不会吞掉下一条消息
 /// - 行更新采用整文件重写:会话数据规模有限,重写简单可靠
 class SessionJsonlStore {
-  SessionJsonlStore({required this.file, required this.idAllocator});
+  SessionJsonlStore({required this.file, this.idGenerator = const IdGenerator()});
 
   final File file;
-  final IdAllocator idAllocator;
+  final IdGenerator idGenerator;
 
   Future<void>? _lock;
 
@@ -63,8 +63,11 @@ class SessionJsonlStore {
   }
 
   /// 替换首行的会话元数据;不存在则插入到文件头。
-  Future<void> writeChatRow(Map<String, dynamic> row) {
+  Future<void> writeChatRow(Map<String, dynamic> row, {bool createOnly = false}) {
     return _mutate(() async {
+      if (createOnly && await file.exists()) {
+        throw StateError('Session already exists: ${file.path}');
+      }
       final rows = await _readAllRows();
       row['type'] = chatType;
       final index = rows.indexWhere((r) => r['type'] == chatType);
@@ -117,10 +120,10 @@ class SessionJsonlStore {
   /// 分页只读文件尾部若干条,只能从这里补。这是一次**整文件**扫描(长对话的
   /// JSONL 可达几百 MB),因此只做廉价的行内判定,命中 user 行才解析 JSON,
   /// 不做逐行 JSON 解码;调用方按 chatId 缓存结果,不要每次构建都调。
-  Future<List<int>> loadUserMessageIds() {
+  Future<List<String>> loadUserMessageIds() {
     return _serialized(() async {
       if (!await file.exists()) return const [];
-      final ids = <int>[];
+      final ids = <String>[];
       final lines = file
           .openRead()
           .transform(const Utf8Decoder(allowMalformed: true))
@@ -135,35 +138,26 @@ class SessionJsonlStore {
           continue;
         }
         final id = row['id'];
-        if (id is int) ids.add(id);
+        if (id is String) ids.add(id);
       }
       return ids;
     });
   }
 
-  /// 分配 id 并追加一条消息,返回新 id。
-  ///
-  /// 分配到的 id 必须大于文件里最后一条消息的 id:meta.json 丢失 / 损坏或
-  /// 数据目录迁移后计数会从头开始,重复的 id 会让按 id 替换 / 删除命中
-  /// 旧消息。行序即 id 序,所以只需看文件最后一条。
-  Future<int> appendMessage(Map<String, dynamic> row) {
+  /// ID 无需协调；seq 在会话写锁内按尾部递增，顺序不依赖 UUID 的时间。
+  Future<Map<String, dynamic>> appendMessage(Map<String, dynamic> row) {
     return _mutate(() async {
-      var id = await idAllocator.next(file.path);
       final last = await _loadRecentRowsUnlocked(1);
-      final lastId = last.isEmpty ? null : last.single['id'];
-      if (lastId is int && id <= lastId) {
-        await idAllocator.ensureAtLeast(file.path, lastId);
-        id = await idAllocator.next(file.path);
-      }
-      row['id'] = id;
+      row['id'] = idGenerator.next();
+      row['seq'] = (last.isEmpty ? 0 : last.single['seq'] as int) + 1;
       row['type'] = messageType;
       await _appendRow(row);
-      return id;
+      return row;
     });
   }
 
-  /// 按 id 整行替换消息(不存在则追加)。
-  Future<void> replaceMessage(int id, Map<String, dynamic> row) {
+  /// 按 id 整行替换已有消息，保留原 seq；新增必须经 appendMessage。
+  Future<void> replaceMessage(String id, Map<String, dynamic> row) {
     return _mutate(() async {
       final rows = await _readAllRows();
       row['id'] = id;
@@ -172,9 +166,10 @@ class SessionJsonlStore {
         (r) => r['type'] == messageType && r['id'] == id,
       );
       if (index >= 0) {
+        row['seq'] = rows[index]['seq'];
         rows[index] = row;
       } else {
-        rows.add(row);
+        throw StateError('Message $id does not exist');
       }
       await _writeAll(rows);
     });
@@ -193,6 +188,7 @@ class SessionJsonlStore {
         if (row['type'] != messageType || !test(row)) continue;
         final updated = transform(row);
         updated['id'] = row['id'];
+        updated['seq'] = row['seq'];
         updated['type'] = messageType;
         rows[i] = updated;
         changed++;
@@ -234,7 +230,7 @@ class SessionJsonlStore {
   ///
   /// 长对话的 JSONL 可达几百 MB,`readAll` 全量读 + 逐行 jsonDecode 既慢
   /// 又占内存;窗口化(消息列表只持有最近 N 条,向上滚动加载更早)需要
-  /// 「读最近 [count] 条」与「读 id < [beforeId] 的最近 [count] 条」两个
+  /// 「读最近 [count] 条」与「读 seq < [beforeSeq] 的最近 [count] 条」两个
   /// 原语,这里用 RandomAccessFile 从末尾向前读块实现,读取量 ≈ 需要
   /// 的字节数,与文件总大小无关。
   ///
@@ -253,15 +249,15 @@ class SessionJsonlStore {
   /// 重写窗口内读到中间状态。
   Future<List<Map<String, dynamic>>> loadRecentRows(
     int count, {
-    int? beforeId,
+    int? beforeSeq,
   }) {
-    return _serialized(() => _loadRecentRowsUnlocked(count, beforeId: beforeId));
+    return _serialized(() => _loadRecentRowsUnlocked(count, beforeSeq: beforeSeq));
   }
 
   /// [loadRecentRows] 的实现,不取锁:供已持锁的修改操作内部调用。
   Future<List<Map<String, dynamic>>> _loadRecentRowsUnlocked(
     int count, {
-    int? beforeId,
+    int? beforeSeq,
   }) async {
     if (count <= 0 || !await file.exists()) return const [];
     final raf = await file.open();
@@ -291,8 +287,8 @@ class SessionJsonlStore {
           if (lineBytes.isNotEmpty) {
             final row = _decodeLineBytes(lineBytes);
             if (row == null || row['type'] != messageType) continue;
-            final id = row['id'];
-            if (beforeId == null || id is int && id < beforeId) {
+            final seq = row['seq'];
+            if (beforeSeq == null || seq is int && seq < beforeSeq) {
               result.add(row);
             }
           }

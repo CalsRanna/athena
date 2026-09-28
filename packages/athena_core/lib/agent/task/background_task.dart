@@ -51,7 +51,7 @@ class BackgroundTask {
 
   /// 面向前后端的短 id（bg-1、bg-2…）：模型要把它写进工具调用参数。
   final String id;
-  final int chatId;
+  final String chatId;
   final String command;
   final String workdir;
   final DateTime startedAt;
@@ -174,10 +174,10 @@ class BackgroundTaskService {
   /// 任务结束（含被停止）时发出，供协调层决定是否自动汇报。
   Stream<BackgroundTask> get completions => _completions.stream;
 
-  List<BackgroundTask> tasksOf(int chatId) =>
+  List<BackgroundTask> tasksOf(String chatId) =>
       _tasks.where((t) => t.chatId == chatId).toList();
 
-  BackgroundTask? task(String id, {int? chatId}) {
+  BackgroundTask? task(String id, {String? chatId}) {
     for (final task in _tasks) {
       if (task.id == id && (chatId == null || task.chatId == chatId)) {
         return task;
@@ -191,7 +191,7 @@ class BackgroundTaskService {
 
   /// 启动一个后台任务，**立即返回**（不等待进程结束）。
   Future<BackgroundTask> start({
-    required int chatId,
+    required String chatId,
     required String executable,
     required List<String> arguments,
     required String workdir,
@@ -248,7 +248,7 @@ class BackgroundTaskService {
   }
 
   /// 停止单个任务。返回是否真的停掉了一个运行中的任务。
-  Future<bool> stop(String taskId, {int? chatId}) async {
+  Future<bool> stop(String taskId, {String? chatId}) async {
     final task = this.task(taskId, chatId: chatId);
     if (task == null || !task.isRunning) return false;
     await _stopTask(task);
@@ -259,7 +259,7 @@ class BackgroundTaskService {
   ///
   /// 返回被停止的任务数，供 UI 明确告知「已同时停止 N 个后台任务」——
   /// 静默杀会让用户以为构建还在跑。
-  Future<int> stopChatTasks(int chatId) async {
+  Future<int> stopChatTasks(String chatId) async {
     final running = tasksOf(chatId).where((t) => t.isRunning).toList();
     for (final task in running) {
       await _stopTask(task);
@@ -370,7 +370,7 @@ class BackgroundTaskService {
 
   /// 淘汰最老的已完成任务，避免长时间运行的应用无限累积输出。
   void _prune() {
-    final byChat = <int, List<BackgroundTask>>{};
+    final byChat = <String, List<BackgroundTask>>{};
     for (final task in _tasks) {
       byChat.putIfAbsent(task.chatId, () => []).add(task);
     }

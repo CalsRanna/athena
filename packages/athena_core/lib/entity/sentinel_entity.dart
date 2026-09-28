@@ -1,7 +1,7 @@
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class SentinelEntity {
-  final int? id;
+  final String? id;
   final String name;
   final String description;
   final String prompt;
@@ -19,7 +19,7 @@ class SentinelEntity {
 
   factory SentinelEntity.fromJson(Map<String, dynamic> json) {
     return SentinelEntity(
-      id: json.getIntOrNull('id'),
+      id: json.getStringOrNull('id'),
       name: json.getString('name'),
       description: json.getString('description'),
       prompt: json.getString('prompt'),
@@ -55,7 +55,7 @@ class SentinelEntity {
   }
 
   SentinelEntity copyWith({
-    int? id,
+    String? id,
     String? name,
     String? description,
     String? prompt,

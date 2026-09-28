@@ -54,7 +54,7 @@ void main() {
       final id = await repo.createChat(
         ChatEntity(
           title: title,
-          modelId: 1,
+          modelId: '1',
           sentinelId: ChatEntity.noSentinelId,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -70,13 +70,13 @@ void main() {
   ///
   /// 用同步 Completer：用例体跑在 FakeAsync 里，普通 Completer 的完成通知会
   /// 排进创建它的假时钟微任务队列，在 runAsync 里等它就永远等不到。
-  Completer<void> startReport(int chatId) {
+  Completer<void> startReport(String chatId) {
     final settled = Completer<void>.sync();
     stream.settled[chatId] = settled;
     stream.emitInternal(
       chatId,
       RunAssistantAppended(
-        MessageEntity(id: 900, chatId: chatId, role: 'assistant'),
+        MessageEntity(id: '900', chatId: chatId, role: 'assistant'),
       ),
     );
     return settled;
@@ -85,7 +85,7 @@ void main() {
   /// 汇报 run 的收尾：真实协调层先发 outcome，再完成 settled。
   Future<void> finishReport(
     WidgetTester tester,
-    int chatId,
+    String chatId,
     Completer<void> settled,
   ) async {
     stream.emitInternal(
@@ -122,8 +122,8 @@ void main() {
     return (done: future);
   }
 
-  MessageEntity userMessage(int chatId, String content) =>
-      MessageEntity(id: 0, chatId: chatId, role: 'user', content: content);
+  MessageEntity userMessage(String chatId, String content) =>
+      MessageEntity(id: '0', chatId: chatId, role: 'user', content: content);
 
   testWidgets('汇报中途切到别的对话，汇报结束后原对话的运行指示照样熄灭', (tester) async {
     final a = await seedChat(tester, 'A');
@@ -260,14 +260,14 @@ class _SentRun {
 
 /// 只实现 ChatViewModel 用到的那部分协调层接口；run 的进度由用例推进。
 class _FakeStreamDelegate implements AgentStreamDelegate {
-  final Map<int, Completer<void>> settled = {};
+  final Map<String, Completer<void>> settled = {};
   final List<_SentRun> sent = [];
-  void Function(int chatId)? onStop;
+  void Function(String chatId)? onStop;
 
   final _internal = StreamController<InternalRunEvent>.broadcast(sync: true);
   StreamController<RunEvent>? _held;
 
-  void emitInternal(int chatId, RunEvent event) =>
+  void emitInternal(String chatId, RunEvent event) =>
       _internal.add(InternalRunEvent(chatId, event));
 
   /// 下一次 send 的事件流保持打开，直到返回的控制器被关闭。
@@ -284,16 +284,16 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
   Stream<ElicitRequest> get elicitRequests => const Stream.empty();
 
   @override
-  Set<int> get streamingChatIds => settled.keys.toSet();
+  Set<String> get streamingChatIds => settled.keys.toSet();
 
   @override
-  bool isStreamingChat(int chatId) => settled.containsKey(chatId);
+  bool isStreamingChat(String chatId) => settled.containsKey(chatId);
 
   @override
-  Future<void>? settledOf(int chatId) => settled[chatId]?.future;
+  Future<void>? settledOf(String chatId) => settled[chatId]?.future;
 
   @override
-  MessageEntity? liveMessage(int chatId) => null;
+  MessageEntity? liveMessage(String chatId) => null;
 
   int _nextMessageId = 1000;
 
@@ -307,12 +307,12 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
     sent.add(_SentRun(message, chat));
     final held = _held;
     _held = null;
-    yield RunMessageStored(message.copyWith(id: _nextMessageId++));
+    yield RunMessageStored(message.copyWith(id: (_nextMessageId++).toString(), seq: _nextMessageId));
     if (held != null) yield* held.stream;
   }
 
   @override
-  void stop(int chatId) => onStop?.call(chatId);
+  void stop(String chatId) => onStop?.call(chatId);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

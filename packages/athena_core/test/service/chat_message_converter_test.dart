@@ -15,29 +15,29 @@ class _FakeMessageRepository implements MessageRepository {
 
   @override
   Future<List<MessageEntity>> getMessagesByChatId(
-    int chatId, {
+    String chatId, {
     bool includeCompacted = true,
   }) async => messages
       .where((m) => m.chatId == chatId && (includeCompacted || !m.compacted))
       .toList();
 
   @override
-  Future<MessageEntity?> getMessageById(int id) async =>
+  Future<MessageEntity?> getMessageById(String chatId, String id) async =>
       messages.where((m) => m.id == id).firstOrNull;
 
   @override
-  Future<int> getMessagesCount(int chatId) async =>
+  Future<int> getMessagesCount(String chatId) async =>
       messages.where((m) => m.chatId == chatId).length;
 
   @override
-  Future<MessageEntity?> getLatestMessageByChatId(int chatId) async =>
+  Future<MessageEntity?> getLatestMessageByChatId(String chatId) async =>
       messages.where((m) => m.chatId == chatId).lastOrNull;
 
   @override
-  Future<List<int>> getTurnStartIds(int chatId) async => const [];
+  Future<List<String>> getTurnStartIds(String chatId) async => const [];
 
   @override
-  Future<int> storeMessage(MessageEntity message) =>
+  Future<MessageEntity> storeMessage(MessageEntity message) =>
       throw UnimplementedError('read-only fake');
 
   @override
@@ -45,22 +45,22 @@ class _FakeMessageRepository implements MessageRepository {
       throw UnimplementedError('read-only fake');
 
   @override
-  Future<void> deleteMessages(int chatId, Set<int> ids) =>
+  Future<void> deleteMessages(String chatId, Set<String> ids) =>
       throw UnimplementedError('read-only fake');
 
   @override
-  Future<void> deleteMessagesByChatId(int chatId) =>
+  Future<void> deleteMessagesByChatId(String chatId) =>
       throw UnimplementedError('read-only fake');
 
   @override
-  Future<void> markAsCompacted(int chatId, Set<int> ids) =>
+  Future<void> markAsCompacted(String chatId, Set<String> ids) =>
       throw UnimplementedError('read-only fake');
 }
 
 ChatEntity _chat({int retention = -1}) => ChatEntity(
-  id: 1,
+  id: '1',
   title: 't',
-  modelId: 1,
+  modelId: '1',
   sentinelId: ChatEntity.noSentinelId,
   retention: retention,
   createdAt: DateTime(2026),
@@ -68,7 +68,7 @@ ChatEntity _chat({int retention = -1}) => ChatEntity(
 );
 
 MessageEntity _message({
-  required int id,
+  required String id,
   required String role,
   String content = '',
   String reasoningContent = '',
@@ -76,7 +76,8 @@ MessageEntity _message({
   List<Map<String, dynamic>> toolResults = const [],
 }) => MessageEntity(
   id: id,
-  chatId: 1,
+  seq: int.tryParse(id) ?? 0,
+  chatId: '1',
   role: role,
   content: content,
   reasoningContent: reasoningContent,
@@ -116,8 +117,8 @@ void main() {
       // 硬中断（强杀 / 崩溃 / 断电）时收尾流程没跑，appendAssistantPlaceholder
       // 落下的空消息会永远留在历史里。
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '你好'),
-        _message(id: 2, role: 'assistant'),
+        _message(id: '1', role: 'user', content: '你好'),
+        _message(id: '2', role: 'assistant'),
       ]);
 
       expect(messages.where(_isIllegalAssistant), isEmpty);
@@ -129,8 +130,8 @@ void main() {
       // 思考模式 + 输出被截断：reasoning 有内容、正文为空，落库后同样会让
       // 整个会话卡死；即使调用方要求携带 reasoning 也必须丢弃。
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '你好'),
-        _message(id: 2, role: 'assistant', reasoningContent: '想了很久'),
+        _message(id: '1', role: 'user', content: '你好'),
+        _message(id: '2', role: 'assistant', reasoningContent: '想了很久'),
       ], includeReasoning: true);
 
       expect(messages.where(_isIllegalAssistant), isEmpty);
@@ -139,8 +140,8 @@ void main() {
 
     test('已宣布但全部无结果的 tool_calls 与空正文一并丢弃', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '你好'),
-        _message(id: 2, role: 'assistant', toolCalls: _call('c1', 'bash')),
+        _message(id: '1', role: 'user', content: '你好'),
+        _message(id: '2', role: 'assistant', toolCalls: _call('c1', 'bash')),
       ]);
 
       expect(messages.where(_isIllegalAssistant), isEmpty);
@@ -149,10 +150,10 @@ void main() {
 
     test('空记录不阻止其后历史继续发送', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '第一问'),
-        _message(id: 2, role: 'assistant'),
-        _message(id: 3, role: 'user', content: '第二问'),
-        _message(id: 4, role: 'assistant', content: '答'),
+        _message(id: '1', role: 'user', content: '第一问'),
+        _message(id: '2', role: 'assistant'),
+        _message(id: '3', role: 'user', content: '第二问'),
+        _message(id: '4', role: 'assistant', content: '答'),
       ]);
 
       expect(messages.where(_isIllegalAssistant), isEmpty);
@@ -163,8 +164,8 @@ void main() {
   group('回归：正常消息成对发出', () {
     test('纯文本 assistant 保留', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '你好'),
-        _message(id: 2, role: 'assistant', content: '你好呀'),
+        _message(id: '1', role: 'user', content: '你好'),
+        _message(id: '2', role: 'assistant', content: '你好呀'),
       ]);
 
       final assistant = messages.singleWhere((m) => m is AssistantMessage);
@@ -173,9 +174,9 @@ void main() {
 
     test('tool_calls 与其 tool 消息成对，数量一致', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '查一下'),
+        _message(id: '1', role: 'user', content: '查一下'),
         _message(
-          id: 2,
+          id: '2',
           role: 'assistant',
           content: '我来查',
           toolCalls: _call('c1', 'bash'),
@@ -194,9 +195,9 @@ void main() {
 
     test('有正文但 tool_calls 全无结果：保留正文、丢掉 tool_calls', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '你好'),
+        _message(id: '1', role: 'user', content: '你好'),
         _message(
-          id: 2,
+          id: '2',
           role: 'assistant',
           content: '我准备调用工具',
           toolCalls: _call('c1', 'bash'),
@@ -215,9 +216,9 @@ void main() {
   group('retention == 0（零上下文）', () {
     test('只发最后一条用户消息', () async {
       final messages = await _build([
-        _message(id: 1, role: 'user', content: '第一问'),
-        _message(id: 2, role: 'assistant'),
-        _message(id: 3, role: 'user', content: '第二问'),
+        _message(id: '1', role: 'user', content: '第一问'),
+        _message(id: '2', role: 'assistant'),
+        _message(id: '3', role: 'user', content: '第二问'),
       ], retention: 0);
 
       expect(messages, hasLength(1));
@@ -246,7 +247,7 @@ void main() {
 
     test('仅图片的消息不带空 text part，data URL 带真实媒体类型', () async {
       final messages = await _build([
-        MessageEntity(id: 1, chatId: 1, role: 'user', imageUrls: png),
+        MessageEntity(id: '1', chatId: '1', role: 'user', imageUrls: png),
       ]);
 
       final content = (messages.single as UserMessage).content;

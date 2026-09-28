@@ -211,7 +211,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     if (widget.model == null) {
       var now = DateTime.now();
       var newModel = ModelEntity(
-        id: 0,
         modelId: modelId,
         name: name,
         providerId: widget.provider.id!,

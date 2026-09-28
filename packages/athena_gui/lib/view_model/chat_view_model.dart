@@ -59,22 +59,22 @@ class ChatViewModel {
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
 
-  int? _oldestLoadedMessageId;
+  int? _oldestLoadedMessageSeq;
   bool _loadingOlderMessages = false;
   int _messageLoadGeneration = 0;
   int _olderLoadGeneration = 0;
 
   /// 轮次指示器的全量轮次起点，按 chatId 缓存：一次整文件扫描的代价不低，
   /// 切回同一会话时直接用缓存。消息被删除（会连带删掉后面的轮次）时按 id 截断。
-  final Map<int, List<int>> _turnStartIdsByChat = {};
+  final Map<String, List<String>> _turnStartIdsByChat = {};
 
   /// 扫描期间新发出、还没并进扫描结果的 user 消息 id(按 chatId)。
   ///
   /// 整文件扫描是个快照,期间用户可能又发了一条;等扫描回来时把它并进去,
   /// 这样轮次数始终等于"整段会话的 user 消息数",不必为了追上发送而重扫。
-  final Map<int, List<int>> _pendingTurnIds = {};
+  final Map<String, List<String>> _pendingTurnIds = {};
 
-  bool get hasOlderMessages => _oldestLoadedMessageId != null;
+  bool get hasOlderMessages => _oldestLoadedMessageSeq != null;
 
   // ─── Signals ───
 
@@ -90,7 +90,7 @@ class ChatViewModel {
   /// `MessageRepository.getTurnStartIds`）。**计数与窗口无关**：扫描是唯一
   /// 来源，此后新发出的 user 消息由 [_recordNewTurn] 就地补上、删消息按 id
   /// 截断。计数还没到手时本信号为空，指示器不画——不给错的数字。
-  final turnStartIds = listSignal<int>([]);
+  final turnStartIds = listSignal<String>([]);
 
   final _queuedInputs = listSignal<_QueuedChatInput>([]);
 
@@ -109,7 +109,7 @@ class ChatViewModel {
   final isLoadingMessages = signal(false);
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
-  final streamingChatIds = listSignal<int>([]);
+  final streamingChatIds = listSignal<String>([]);
 
   /// 当前显示的对话是否正在流式（用于输入框/消息列表的流式状态展示）。
   late final isCurrentChatStreaming = computed(() {
@@ -150,17 +150,17 @@ class ChatViewModel {
   /// [pendingImages] 当前属于哪条对话的槽位；null 是还没落盘的"新对话"槽，
   /// 也是启动时的状态。它只是"当前这一槽"的实时值，其余槽位存在
   /// [_pendingImagesByChat] 里：切换对话时旧槽存回、新槽取出。
-  int? _pendingImagesKey;
+  String? _pendingImagesKey;
 
   /// 非当前对话的待发图片（见 [_pendingImagesKey]）。当前槽的真相在
   /// [pendingImages] 里，所以这张表里不会出现当前槽。
-  final Map<int?, List<PendingImage>> _pendingImagesByChat = {};
+  final Map<String?, List<PendingImage>> _pendingImagesByChat = {};
 
   /// composer 里没发出去的文字，按对话分开存（key 同 [_pendingImagesKey]）。
   /// 文字的真相同样在输入框（`TextEditingController`）里，这张表只放"当前不在
   /// 编辑的那几槽"——页面切走时存进来、切回来时取走。只活在内存里：草稿是
   /// 临时输入，进程退出即丢。
-  final Map<int?, String> _composerDrafts = {};
+  final Map<String?, String> _composerDrafts = {};
 
   // ─── Computed ───
 
@@ -197,36 +197,36 @@ class ChatViewModel {
   }
 
   void _resetMessagePagination() {
-    _oldestLoadedMessageId = null;
+    _oldestLoadedMessageSeq = null;
     _loadingOlderMessages = false;
     _olderLoadGeneration++;
   }
 
   Future<List<MessageEntity>> _loadRecentMessages(
-    int chatId, {
+    String chatId, {
     required int count,
-    int? beforeId,
+    int? beforeSeq,
   }) async {
     final repository = _messageRepo;
     if (repository is RecentMessageRepository) {
       return (repository as RecentMessageRepository).loadRecentMessages(
         chatId,
         count: count,
-        beforeId: beforeId,
+        beforeSeq: beforeSeq,
       );
     }
 
     final all = await repository.getMessagesByChatId(chatId);
-    final eligible = beforeId == null
+    final eligible = beforeSeq == null
         ? all
-        : all.where((message) => (message.id ?? 0) < beforeId).toList();
+        : all.where((message) => message.seq < beforeSeq).toList();
     if (eligible.length <= count) return eligible;
     return eligible.sublist(eligible.length - count);
   }
 
-  Future<MessageWindow> _loadMessagePage(int chatId, {int? beforeId}) async {
+  Future<MessageWindow> _loadMessagePage(String chatId, {int? beforeSeq}) async {
     final repository = _messageRepo;
-    if (beforeId == null && repository is RecentMessageRepository) {
+    if (beforeSeq == null && repository is RecentMessageRepository) {
       // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
       // 仍只给尾部一页。轮次条 hover/点击、列表高度因此不再分两段。
       return (repository as RecentMessageRepository).loadInitialMessages(
@@ -237,7 +237,7 @@ class ChatViewModel {
     final loaded = await _loadRecentMessages(
       chatId,
       count: messagePageSize + 1,
-      beforeId: beforeId,
+      beforeSeq: beforeSeq,
     );
     final hasOlder = loaded.length > messagePageSize;
     final page = hasOlder
@@ -249,22 +249,22 @@ class ChatViewModel {
   void _applyMessagePage(MessageWindow page) {
     _discardPendingMessages();
     messages.value = page.messages;
-    _oldestLoadedMessageId = page.hasOlder && page.messages.isNotEmpty
-        ? page.messages.first.id
+    _oldestLoadedMessageSeq = page.hasOlder && page.messages.isNotEmpty
+        ? page.messages.first.seq
         : null;
   }
 
   /// 向列表顶部追加一页更早的消息，返回实际新增条数。
   Future<int> loadOlderMessages() async {
     final chatId = currentChat.value?.id;
-    final beforeId = _oldestLoadedMessageId;
-    if (_loadingOlderMessages || chatId == null || beforeId == null) return 0;
+    final beforeSeq = _oldestLoadedMessageSeq;
+    if (_loadingOlderMessages || chatId == null || beforeSeq == null) return 0;
 
     _loadingOlderMessages = true;
     final selectionGeneration = _messageLoadGeneration;
     final loadGeneration = ++_olderLoadGeneration;
     try {
-      final page = await _loadMessagePage(chatId, beforeId: beforeId);
+      final page = await _loadMessagePage(chatId, beforeSeq: beforeSeq);
       if (selectionGeneration != _messageLoadGeneration ||
           loadGeneration != _olderLoadGeneration ||
           currentChat.value?.id != chatId) {
@@ -274,12 +274,12 @@ class ChatViewModel {
       // 分页 IO 期间可能收到了流式增量，合并旧消息前先把增量冲刷到当前列表。
       _flushMessages();
       if (page.messages.isEmpty) {
-        _oldestLoadedMessageId = null;
+        _oldestLoadedMessageSeq = null;
         return 0;
       }
 
       messages.value = [...page.messages, ...messages.value];
-      _oldestLoadedMessageId = page.hasOlder ? page.messages.first.id : null;
+      _oldestLoadedMessageSeq = page.hasOlder ? page.messages.first.seq : null;
       return page.messages.length;
     } finally {
       if (loadGeneration == _olderLoadGeneration) {
@@ -303,14 +303,14 @@ class ChatViewModel {
   List<MessageEntity>? _pendingMessages;
 
   /// [_pendingMessages] 所属对话；切换对话后残留的缓冲不得写入新列表。
-  int? _pendingChatId;
+  String? _pendingChatId;
 
   Timer? _flushTimer;
 
   /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出
   /// streaming，但同一对话的新消息要在旧 run 落库完成后再启动，避免迟到
   /// 事件/工具结果覆盖新一轮。
-  final Map<int, Completer<void>> _runSettledByChat = {};
+  final Map<String, Completer<void>> _runSettledByChat = {};
 
   /// 合并窗口。窗口内到达的所有增量只触发一次信号写入。
   ///
@@ -323,11 +323,11 @@ class ChatViewModel {
   final Duration _flushInterval;
 
   /// 运行指示由自动汇报点亮的会话（汇报 run 收尾时据此熄灭）。
-  final Set<int> _reportingChatIds = {};
+  final Set<String> _reportingChatIds = {};
 
   /// 取出可变的 pending 列表（首次从当前信号值复制一份，之后原地变异，
   /// 省掉每个事件一次的整表复制）。
-  List<MessageEntity> _pendingFor(int chatId) {
+  List<MessageEntity> _pendingFor(String chatId) {
     if (_pendingMessages == null || _pendingChatId != chatId) {
       _pendingMessages = List<MessageEntity>.of(messages.value);
       _pendingChatId = chatId;
@@ -340,7 +340,7 @@ class ChatViewModel {
   /// 流式增量几乎总是命中最后一条消息，先按尾部快速判定，避免每个事件
   /// 都对整个列表做一次 indexWhere——高 token 速率下这是每秒上千次
   /// O(消息数) 扫描。
-  void _bufferAppendMessage(MessageEntity message, int chatId) {
+  void _bufferAppendMessage(MessageEntity message, String chatId) {
     final pending = _pendingFor(chatId);
     if (pending.isNotEmpty && pending.last.id == message.id) {
       pending[pending.length - 1] = message;
@@ -493,10 +493,11 @@ class ChatViewModel {
         await _sentinelViewModel.getSentinels();
       }
       // 草稿没显式选过角色就是默认角色 Athena（见 _syncDraftDefaults）；
-      // 清掉角色是 directChatSentinel（保留 id 0），同样能落库。
+      // 清掉角色是 directChatSentinel（空 id），同样能落库。
       final sentinel =
           currentSentinel.value ?? _sentinelViewModel.defaultSentinel.value;
-      if (sentinel.id == null) {
+      if (sentinel.id == null &&
+          !identical(sentinel, SentinelViewModel.directChatSentinel)) {
         _reportError('Failed to create chat');
         return null;
       }
@@ -723,16 +724,11 @@ class ChatViewModel {
     }
   }
 
-  /// 从 [deletedId] 起截断轮次起点缓存：删消息连带删掉它之后的全部消息
-  /// （见 [ChatStoreService.deleteMessagesFromIndex]），而 id 在文件里单调，
-  /// 所以 `id < deletedId` 就是删完后仍存在的那些轮次，不必重扫整个文件。
-  void _dropTurnStartIdsFrom(int chatId, int? deletedId) {
+  /// 删除操作已持有被删的消息集合，按身份移除轮次，不能比较 UUID 大小。
+  void _dropTurnStartIds(String chatId, Set<String> deletedIds) {
     final cached = _turnStartIdsByChat[chatId];
-    if (deletedId == null || cached == null) return;
-    final kept = [
-      for (final id in cached)
-        if (id < deletedId) id,
-    ];
+    if (cached == null) return;
+    final kept = cached.where((id) => !deletedIds.contains(id)).toList();
     _turnStartIdsByChat[chatId] = kept;
     if (currentChat.value?.id == chatId) turnStartIds.value = kept;
   }
@@ -742,10 +738,10 @@ class ChatViewModel {
   /// 整文件扫描可能较慢（长会话的 JSONL 可达几百 MB），所以不阻塞会话切换。
   /// 扫描期间指示器不显示（计数未知时宁可空着，也不给一个错的数字）；扫完由
   /// 信号驱动画出来。失败记一条警告——装饰性的东西不该挡住会话。
-  Future<void> _loadTurnStartIds(int chatId, int generation) async {
+  Future<void> _loadTurnStartIds(String chatId, int generation) async {
     try {
       final scanned = await _messageRepo.getTurnStartIds(chatId);
-      final pending = _pendingTurnIds.remove(chatId) ?? const <int>[];
+      final pending = _pendingTurnIds.remove(chatId) ?? const <String>[];
       final ids = [
         ...scanned,
         for (final id in pending)
@@ -767,7 +763,7 @@ class ChatViewModel {
   /// 计数只认文件：扫描结果已到手就地追加，还没到手先记进待并清单（见
   /// [_pendingTurnIds]）。**不**从消息列表里推——列表是窗口，而轮次数是整段
   /// 会话的属性，跟加载到哪无关。
-  void _recordNewTurn(int chatId, int? messageId) {
+  void _recordNewTurn(String chatId, String? messageId) {
     if (messageId == null) return;
     final cached = _turnStartIdsByChat[chatId];
     if (cached == null) {
@@ -785,7 +781,7 @@ class ChatViewModel {
   ///
   /// 幂等：快照消息已存在于列表（id 相同）则替换，否则追加
   /// （竞态：快照对应的占位消息可能尚未落库）。
-  void _mergeLiveMessage(int chatId) {
+  void _mergeLiveMessage(String chatId) {
     final live = _stream.liveMessage(chatId);
     if (live != null) _appendOrReplaceMessage(live);
   }
@@ -801,7 +797,7 @@ class ChatViewModel {
   }
 
   void clearSelection() => _selection.clearSelection();
-  void toggleChatSelection(int chatId, int index) =>
+  void toggleChatSelection(String chatId, int index) =>
       _selection.toggleChatSelection(chatId, index);
   void rangeSelectChats(int endIndex) =>
       _selection.rangeSelectChats(endIndex, chats.value);
@@ -835,7 +831,7 @@ class ChatViewModel {
   }) async {
     error.value = null;
     try {
-      final updated = await _supportService.updateSentinel(chat, sentinel.id!);
+      final updated = await _supportService.updateSentinel(chat, sentinel.id);
       _updateChatInLists(updated);
       currentSentinel.value = sentinel;
     } catch (e) {
@@ -1135,7 +1131,7 @@ class ChatViewModel {
     if (chat != null) _applyRunEvent(internal.event, chat: chat);
   }
 
-  void _finishReport(int chatId) {
+  void _finishReport(String chatId) {
     if (!_reportingChatIds.remove(chatId)) return;
     // 汇报刚结束、用户的消息已接着开跑：指示归那条 sendMessage 管
     if (_runSettledByChat.containsKey(chatId)) return;
@@ -1153,7 +1149,7 @@ class ChatViewModel {
   /// 内部 run 的事件不带 ChatEntity（只有 chatId）：从已加载的会话列表里取，
   /// 列表尚未包含它（刚创建/已切换）时跳过——按会话 id 过滤的事件仍然生效，
   /// 这里只影响需要 ChatEntity 的那几种（自动重命名）。
-  ChatEntity? _chatForEvent(int chatId) {
+  ChatEntity? _chatForEvent(String chatId) {
     final current = currentChat.value;
     if (current?.id == chatId) return current;
     for (final history in chatHistories.value) {
@@ -1175,17 +1171,17 @@ class ChatViewModel {
     _queuedInputs.value = [..._queuedInputs.value, input];
   }
 
-  _QueuedChatInput? _nextQueuedInput(int chatId) =>
+  _QueuedChatInput? _nextQueuedInput(String chatId) =>
       _queuedInputs.value.where((input) => input.chat.id == chatId).firstOrNull;
 
-  void _discardQueuedInputs(Set<int> chatIds) {
+  void _discardQueuedInputs(Set<String> chatIds) {
     _queuedInputs.value = _queuedInputs.value
         .where((input) => !chatIds.contains(input.chat.id))
         .toList();
   }
 
   /// 指定对话是否正在流式运行。
-  bool isStreamingChat(int chatId) => streamingChatIds.value.contains(chatId);
+  bool isStreamingChat(String chatId) => streamingChatIds.value.contains(chatId);
 
   /// 记录失败并以提示条告知用户。
   ///
@@ -1197,7 +1193,7 @@ class ChatViewModel {
   }
 
   /// 停止指定对话的 Agent 运行。
-  void stopGenerating(int chatId) {
+  void stopGenerating(String chatId) {
     _stream.stop(chatId);
     // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
     // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
@@ -1234,7 +1230,10 @@ class ChatViewModel {
           messages.value,
           index,
         );
-        _dropTurnStartIdsFrom(message.chatId, message.id);
+        _dropTurnStartIds(message.chatId, {
+          for (final deleted in messages.value.skip(index))
+            if (deleted.id != null) deleted.id!,
+        });
         await refreshMessages(message.chatId);
       }
     } catch (e) {
@@ -1244,7 +1243,7 @@ class ChatViewModel {
     }
   }
 
-  Future<void> refreshMessages(int chatId) async {
+  Future<void> refreshMessages(String chatId) async {
     if (currentChat.value?.id != chatId) return;
     final loadGeneration = ++_messageLoadGeneration;
     _resetMessagePagination();
@@ -1260,8 +1259,8 @@ class ChatViewModel {
   // 重命名
   // ═══════════════════════════════════════════════════════════════
 
-  void startRenaming(int chatId) => _selection.startRenaming(chatId);
-  void stopRenaming(int chatId) => _selection.stopRenaming(chatId);
+  void startRenaming(String chatId) => _selection.startRenaming(chatId);
+  void stopRenaming(String chatId) => _selection.stopRenaming(chatId);
 
   Future<ChatEntity?> renameChat(ChatEntity chat) async {
     if (chat.id == null) return null;
@@ -1439,7 +1438,7 @@ class ChatViewModel {
 
   /// 存一段没发出去的输入，等这条对话再被选中时由 [takeComposerDraft] 取回。
   /// 空串等于不留：不给一个空输入框占条目。
-  void saveComposerDraft(int? chatId, String text) {
+  void saveComposerDraft(String? chatId, String text) {
     if (text.isEmpty) {
       _composerDrafts.remove(chatId);
     } else {
@@ -1448,14 +1447,14 @@ class ChatViewModel {
   }
 
   /// 取出 [chatId] 的输入草稿（取走即删，理由同 [_retargetPendingImages]）。
-  String takeComposerDraft(int? chatId) => _composerDrafts.remove(chatId) ?? '';
+  String takeComposerDraft(String? chatId) => _composerDrafts.remove(chatId) ?? '';
 
   /// 对话被删掉后清掉它的草稿槽（文字与待发图片）：留着只会在内存里越堆越多，
   /// 而 chat id 不复用，那个槽再也回不去了。
   ///
   /// 必须在 [_clearToDraft] 之后调用——切换会把当前槽先存回它自己的位置，
   /// 早一步清就会被那一步重新写回来。
-  void _dropChatDrafts(Set<int> chatIds) {
+  void _dropChatDrafts(Set<String> chatIds) {
     for (final id in chatIds) {
       _composerDrafts.remove(id);
       _pendingImagesByChat.remove(id);
@@ -1495,7 +1494,7 @@ class ChatViewModel {
     await _syncDraftDefaults(inheritFrom, inheritWorkspace: inheritWorkspace);
   }
 
-  /// 继承来源对话的角色。显式"不用角色"（sentinel_id = 0）继承成同一个保留
+  /// 继承来源对话的角色。显式"不用角色"（sentinel_id = null）继承成同一个保留
   /// 值；其余按 id 回仓储解析，这样隐藏的预设角色也能带过来（它们在
   /// [SentinelViewModel.sentinels] 里根本不出现）。
   Future<SentinelEntity?> _inheritedSentinel(ChatEntity chat) async {
@@ -1503,7 +1502,7 @@ class ChatViewModel {
     final listed = _sentinelViewModel.sentinels.value
         .where((s) => s.id == chat.sentinelId)
         .firstOrNull;
-    return listed ?? await _sentinelViewModel.getSentinelById(chat.sentinelId);
+    return listed ?? await _sentinelViewModel.getSentinelById(chat.sentinelId!);
   }
 
   Future<void> _syncDraftDefaults(

@@ -1,10 +1,10 @@
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class ModelEntity {
-  final int? id;
+  final String? id;
   final String name;
   final String modelId;
-  final int providerId;
+  final String providerId;
   final int contextWindow;
 
   /// 单次回复的输出 token 上限（models.dev 的 `limit.output`），0 = 未知。
@@ -37,10 +37,10 @@ class ModelEntity {
 
   factory ModelEntity.fromJson(Map<String, dynamic> json) {
     return ModelEntity(
-      id: json.getIntOrNull('id'),
+      id: json.getStringOrNull('id'),
       name: json.getString('name'),
       modelId: json.getString('model_id'),
-      providerId: json.getInt('provider_id'),
+      providerId: json.getString('provider_id'),
       contextWindow: json.getInt('context_window', defaultValue: 0),
       outputLimit: json.getInt('output_limit', defaultValue: 0),
       inputPrice: json.getString('input_price'),
@@ -74,10 +74,10 @@ class ModelEntity {
   }
 
   ModelEntity copyWith({
-    int? id,
+    String? id,
     String? name,
     String? modelId,
-    int? providerId,
+    String? providerId,
     int? contextWindow,
     int? outputLimit,
     String? inputPrice,

@@ -551,7 +551,7 @@ void main() {
             .chatCompletionsState!;
     final record = MessageEntity.fromJson(
       MessageEntity(
-        chatId: 1,
+        chatId: '1',
         role: 'assistant',
         content: 'answer',
         reasoningContent: 'think',

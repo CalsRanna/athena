@@ -29,16 +29,18 @@ class ConversationCompactor {
 
   Stream<ContextCompactionUpdate> compact({
     required ContextCompactionRequest request,
-    required int chatId,
+    required String chatId,
     required int runId,
-    required int beforeMessageId,
-    required Set<int> excludedMessageIds,
+    required String beforeMessageId,
+    required int beforeSeq,
+    required Set<String> excludedMessageIds,
     required ProviderEntity provider,
     required ModelEntity model,
   }) async* {
     final token = request.cancelToken;
     var step = CompactionStep(
       messageId: beforeMessageId,
+      seq: beforeSeq,
       chatId: chatId,
       runId: runId,
       phase: CompactionPhase.triggered,
@@ -60,7 +62,7 @@ class ConversationCompactor {
               )
               .where(
                 (m) =>
-                    m.id! < beforeMessageId &&
+                    m.seq < beforeSeq &&
                     !excludedMessageIds.contains(m.id),
               )
               .toList();
@@ -76,7 +78,7 @@ class ConversationCompactor {
         phase: CompactionPhase.summarizing,
         messageCount: records.length,
         coveredMessageIds: ConversationSummary.coveredIds(coverage).toList(),
-        throughMessageId: ConversationSummary.position(coverage),
+        throughSeq: ConversationSummary.position(coverage),
       );
       await _repository.updateMessage(step.toMessage());
       yield ContextCompactionUpdate(step);

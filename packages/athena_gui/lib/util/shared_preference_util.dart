@@ -14,17 +14,16 @@ class SharedPreferenceUtil {
 
   SharedPreferenceUtil._();
 
-  Future<int> getChatModelId() async {
-    return (await _preferences).getInt(_keyChatModelId) ?? 0;
+  Future<String> getChatModelId() async {
+    return (await _preferences).getString(_keyChatModelId) ?? '';
   }
 
-  Future<int> getChatNamingModelId() async {
-    return (await _preferences).getInt(_keyChatNamingModelId) ?? 0;
+  Future<String> getChatNamingModelId() async {
+    return (await _preferences).getString(_keyChatNamingModelId) ?? '';
   }
 
-  Future<int> getSentinelMetadataGenerationModelId() async {
-    return (await _preferences).getInt(_keySentinelMetadataGenerationModelId) ??
-        0;
+  Future<String> getSentinelMetadataGenerationModelId() async {
+    return (await _preferences).getString(_keySentinelMetadataGenerationModelId) ?? '';
   }
 
   Future<double> getWindowHeight() async {
@@ -35,16 +34,16 @@ class SharedPreferenceUtil {
     return (await _preferences).getDouble(_keyWindowWidth) ?? 1080.0;
   }
 
-  Future<void> setChatModelId(int modelId) async {
-    await (await _preferences).setInt(_keyChatModelId, modelId);
+  Future<void> setChatModelId(String modelId) async {
+    await (await _preferences).setString(_keyChatModelId, modelId);
   }
 
-  Future<void> setChatNamingModelId(int modelId) async {
-    await (await _preferences).setInt(_keyChatNamingModelId, modelId);
+  Future<void> setChatNamingModelId(String modelId) async {
+    await (await _preferences).setString(_keyChatNamingModelId, modelId);
   }
 
-  Future<void> setSentinelMetadataGenerationModelId(int modelId) async {
-    await (await _preferences).setInt(
+  Future<void> setSentinelMetadataGenerationModelId(String modelId) async {
+    await (await _preferences).setString(
       _keySentinelMetadataGenerationModelId,
       modelId,
     );

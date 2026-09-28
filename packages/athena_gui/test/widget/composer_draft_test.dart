@@ -108,7 +108,7 @@ void main() {
       final id = await chatRepo.createChat(
         ChatEntity(
           title: title,
-          modelId: 1,
+          modelId: '1',
           sentinelId: ChatEntity.noSentinelId,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),

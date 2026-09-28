@@ -1,8 +1,10 @@
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class MessageEntity {
-  final int? id;
-  final int chatId;
+  final String? id;
+  final String chatId;
+  /// 会话内写入顺序，由仓储在追加时分配，更新消息时保持不变。
+  final int seq;
   final String role;
   final String content;
   final String reasoningContent;
@@ -26,6 +28,7 @@ class MessageEntity {
 
   MessageEntity({
     this.id,
+    this.seq = 0,
     required this.chatId,
     required this.role,
     this.content = '',
@@ -47,8 +50,9 @@ class MessageEntity {
 
   factory MessageEntity.fromJson(Map<String, dynamic> json) {
     return MessageEntity(
-      id: json.getIntOrNull('id'),
-      chatId: json.getInt('chat_id'),
+      id: json.getStringOrNull('id'),
+      seq: json.getInt('seq'),
+      chatId: json.getString('chat_id'),
       role: json.getString('role', defaultValue: 'user'),
       content: json.getString('content'),
       reasoningContent: json.getString('reasoning_content'),
@@ -71,6 +75,7 @@ class MessageEntity {
     return {
       if (id != null) 'id': id,
       'chat_id': chatId,
+      'seq': seq,
       'role': role,
       'content': content,
       'reasoning_content': reasoningContent,
@@ -90,8 +95,9 @@ class MessageEntity {
   }
 
   MessageEntity copyWith({
-    int? id,
-    int? chatId,
+    String? id,
+    int? seq,
+    String? chatId,
     String? role,
     String? content,
     String? reasoningContent,
@@ -110,6 +116,7 @@ class MessageEntity {
   }) {
     return MessageEntity(
       id: id ?? this.id,
+      seq: seq ?? this.seq,
       chatId: chatId ?? this.chatId,
       role: role ?? this.role,
       content: content ?? this.content,

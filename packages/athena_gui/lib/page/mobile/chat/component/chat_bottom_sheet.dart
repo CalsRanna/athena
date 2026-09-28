@@ -52,8 +52,8 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   ModelViewModel get modelViewModel => widget.modelViewModel;
   ProviderViewModel get providerViewModel => widget.providerViewModel;
 
-  late final _sentinelId = signal<int>(0);
-  late final _modelId = signal<int>(0);
+  late final _sentinelId = signal<String?>(null);
+  late final _modelId = signal<String>('');
   late final _temperature = signal<double>(1.0);
   late final _retention = signal<int>(-1);
   late final _reasoningEffort = signal<String>(
@@ -72,13 +72,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _reasoningEffort.value = widget.chat!.reasoningEffort;
     } else {
       _sentinelId.value =
-          chatViewModel.currentSentinel.value?.id ??
-          sentinelViewModel.defaultSentinel.value.id ??
-          ChatEntity.noSentinelId;
+          (chatViewModel.currentSentinel.value ??
+          sentinelViewModel.defaultSentinel.value).id;
       _modelId.value =
           chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
-          0;
+          '';
       _temperature.value = chatViewModel.currentTemperature.value;
       _retention.value = chatViewModel.currentRetention.value;
       _reasoningEffort.value = chatViewModel.currentReasoningEffort.value;
@@ -93,7 +92,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
           : sentinelViewModel.sentinels.value
                 .where((s) => s.id == _sentinelId.value)
                 .firstOrNull;
-      // 非 0 的悬空引用仍沿用原有兜底；0 是用户显式选择，不能回退。
+      // 非空的悬空引用仍沿用原有兜底；null 是用户显式选择，不能回退。
       sentinel ??= sentinelViewModel.sentinels.value.firstOrNull;
 
       var model = modelViewModel.models.value
@@ -103,7 +102,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       model ??= modelViewModel.enabledModels.value.firstOrNull;
 
       var provider = providerViewModel.providers.value
-          .where((p) => p.id == (model?.providerId ?? 0))
+          .where((p) => p.id == (model?.providerId))
           .firstOrNull;
 
       var modelName = model?.name ?? '';
@@ -205,12 +204,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void _updateModel(ModelEntity model) {
     widget.onModelChanged?.call(model);
     AthenaDialog.dismiss();
-    _modelId.value = model.id ?? 0;
+    _modelId.value = model.id ?? '';
   }
 
   void _updateSentinel(SentinelEntity sentinel) {
     widget.onSentinelChanged?.call(sentinel);
     AthenaDialog.dismiss();
-    _sentinelId.value = sentinel.id ?? 0;
+    _sentinelId.value = sentinel.id;
   }
 }

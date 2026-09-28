@@ -13,22 +13,22 @@ class ConversationSummary {
           CompactionStep.fromMessage(message).phase ==
               CompactionPhase.completed);
 
-  static Set<int> coveredIds(MessageEntity message) {
+  static Set<String> coveredIds(MessageEntity message) {
     if (message.role != 'summary' && message.role != 'compaction') return {};
     final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
-    return (metadata['coveredMessageIds'] as List<dynamic>).cast<int>().toSet();
+    return (metadata['coveredMessageIds'] as List<dynamic>).cast<String>().toSet();
   }
 
   static int position(MessageEntity message) {
     // Legacy system summaries precede all retained history.
     if (message.role == 'system') return -1;
-    if (!isSummary(message)) return message.id ?? 0;
+    if (!isSummary(message)) return message.seq;
     final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
-    return metadata['throughMessageId'] as int;
+    return metadata['throughSeq'] as int;
   }
 
   static List<MessageEntity> activeHistory(List<MessageEntity> records) {
-    final covered = <int>{
+    final covered = <String>{
       for (final message in records)
         if (!message.compacted && isSummary(message)) ...coveredIds(message),
     };
@@ -42,16 +42,16 @@ class ConversationSummary {
         .toList()
       ..sort((a, b) {
         final byPosition = position(a).compareTo(position(b));
-        return byPosition != 0 ? byPosition : (a.id ?? 0).compareTo(b.id ?? 0);
+        return byPosition != 0 ? byPosition : a.seq.compareTo(b.seq);
       });
   }
 
   static MessageEntity create({
-    required int chatId,
+    required String chatId,
     required String content,
     required List<MessageEntity> coveredRecords,
   }) {
-    final ids = <int>{
+    final ids = <String>{
       for (final message in coveredRecords) ...[
         message.id!,
         if (isSummary(message)) ...coveredIds(message),
@@ -64,7 +64,7 @@ class ConversationSummary {
       content: content,
       reference: jsonEncode({
         'coveredMessageIds': ids,
-        'throughMessageId': positions.last,
+        'throughSeq': positions.last,
       }),
     );
   }

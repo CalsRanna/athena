@@ -8,7 +8,7 @@ import 'package:openai_dart/openai_dart.dart';
 
 /// thinking 的签名与原始 content 顺序一起保存，不能从展示文字重建。
 class MessagesState {
-  final int? providerId;
+  final String? providerId;
   final String baseUrl;
   final String model;
   final List<Map<String, dynamic>> content;
@@ -32,7 +32,7 @@ class MessagesState {
        _messageHash = _hashMessage(message);
 
   MessagesState._(Map<String, dynamic> json)
-    : providerId = json['provider_id'] as int?,
+    : providerId = json['provider_id'] as String?,
       baseUrl = json['base_url'] as String,
       model = json['model'] as String,
       content = (json['content'] as List)

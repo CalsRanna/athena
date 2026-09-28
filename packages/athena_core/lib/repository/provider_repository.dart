@@ -5,22 +5,22 @@ import 'package:athena_core/entity/provider_entity.dart';
 abstract class ProviderRepository {
   Future<List<ProviderEntity>> getAllProviders();
 
-  Future<ProviderEntity?> getProviderById(int id);
+  Future<ProviderEntity?> getProviderById(String id);
 
   Future<List<ProviderEntity>> getEnabledProviders();
 
-  Future<int> storeProvider(ProviderEntity provider);
+  Future<String> storeProvider(ProviderEntity provider);
 
   Future<void> updateProvider(ProviderEntity provider);
 
   /// 在同一次读改写中核对预设端点与自动模式，仅同步格式元数据。
   Future<void> syncApiFormat({
-    required int id,
+    required String id,
     required String baseUrl,
     required ApiFormat apiFormat,
   });
 
-  Future<void> deleteProvider(int id);
+  Future<void> deleteProvider(String id);
 
   Future<int> getProvidersCount();
 

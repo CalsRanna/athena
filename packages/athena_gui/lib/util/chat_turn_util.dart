@@ -25,7 +25,7 @@ class ChatTurn {
 /// （窗口首轮的消息还没有 id）时返回 0，条就从最上面一排开始摆。
 /// 注意轮次**总数**不从这里推：总数是整段会话的属性，只认扫描结果
 /// （见 `ChatViewModel.turnStartIds`），与窗口加载到哪无关。
-int windowFirstTurnIndex(List<int> allTurnIds, List<ChatTurn> windowTurns) {
+int windowFirstTurnIndex(List<String> allTurnIds, List<ChatTurn> windowTurns) {
   for (var position = 0; position < windowTurns.length; position++) {
     final id = windowTurns[position].user.id;
     if (id == null) continue;

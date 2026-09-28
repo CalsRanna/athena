@@ -48,7 +48,7 @@ class _MessageListViewState extends State<MessageListView> {
   ChatViewModel get viewModel => widget.viewModel;
   SentinelViewModel get sentinelViewModel => widget.sentinelViewModel;
   MessageListScrollController get controller => widget.controller;
-  int? _displayedChatId;
+  String? _displayedChatId;
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification.depth != 0 ||

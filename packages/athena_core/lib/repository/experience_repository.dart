@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+import 'package:athena_core/storage/id_generator.dart';
+import 'package:athena_core/storage/file_lock.dart';
 
 import 'package:athena_core/entity/experience_entity.dart';
 
@@ -13,7 +14,7 @@ import 'package:athena_core/entity/experience_entity.dart';
 ///   {sentinel_id}/     # 某 Sentinel 的私有经验（scope="self"）
 /// ```
 ///
-/// 每个经验一个 `.json` 文件。文件名格式：`{timestamp}_{randomSuffix}.json`。
+/// 每个经验一个 `.json` 文件。文件名格式：`{uuidv7}.json`（已有经验的文件名保持不变）。
 ///
 /// [homeDir] 可覆盖 `.athena` 的根目录（移动端沙盒没有可靠 `$HOME`，
 /// 由 GUI 装配层传入 Application Support 目录；桌面端不传，维持 `$HOME`）。
@@ -60,7 +61,7 @@ class ExperienceRepository {
     final isShared = scope == 'shared';
     final dir = isShared ? _sharedPath : '$_basePath/$sentinelId';
     _ensureDir(dir);
-    final id = await _uniqueId(dir);
+    final id = const IdGenerator().next();
     final entity = ExperienceEntity(
       id: id,
       createdAt: now,
@@ -73,7 +74,7 @@ class ExperienceRepository {
     );
 
     final file = File('$dir/$id.json');
-    await file.writeAsString(_prettyJson(entity.toJson()));
+    await atomicWriteString(file, _prettyJson(entity.toJson()));
     return entity;
   }
 
@@ -445,33 +446,10 @@ class ExperienceRepository {
 
   // === 工具 ===
 
-  /// 生成时间戳 + 随机后缀的文件名 ID，并确保文件不存在。
-  ///
-  /// 旧实现用 `DateTime.now().microsecond % chars.length` 生成"随机"后缀，
-  /// Windows 时钟粒度下连续保存极易碰撞、互相覆盖；改用 Random 并
-  /// 兜底重试（同毫秒连续碰撞时退回到更长后缀）。
-  static Future<String> _uniqueId(String dir) async {
-    for (var attempt = 0; attempt < 3; attempt++) {
-      final id = '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(6)}';
-      if (!await File('$dir/$id.json').exists()) return id;
-    }
-    return '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(12)}';
-  }
-
-  static final Random _random = Random();
-
   /// id 直接拼进文件路径，来自模型的 `experience_id` 必须是单个文件名段：
   /// `../5/<id>` 这样的值会穿越到别的 Sentinel 的私有目录。
   static bool _isValidId(String id) =>
       RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
-
-  static String _randomSuffix(int length) {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return List.generate(
-      length,
-      (_) => chars[_random.nextInt(chars.length)],
-    ).join();
-  }
 
   static String _prettyJson(Map<String, dynamic> json) {
     const encoder = JsonEncoder.withIndent('  ');

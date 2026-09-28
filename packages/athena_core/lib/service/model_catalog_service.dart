@@ -417,7 +417,7 @@ class ModelCatalogService {
   static ModelEntity mapModel(
     String modelId,
     Map<String, dynamic> json,
-    int providerId, {
+    String providerId, {
     DateTime? now,
   }) {
     final timestamp = now ?? DateTime.now();

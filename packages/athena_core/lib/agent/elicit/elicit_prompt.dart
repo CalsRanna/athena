@@ -47,7 +47,7 @@ class ElicitQuestion {
 /// [cancelToken] 供调用方在 run 取消时立即收起提问卡片。
 typedef ElicitPrompt =
     Future<Map<String, String>?> Function(
-      int chatId,
+      String chatId,
       List<ElicitQuestion> questions,
       CancelToken cancelToken,
     );
@@ -64,7 +64,7 @@ class ElicitChannel {
     required this.cancelToken,
   });
 
-  final int chatId;
+  final String chatId;
 
   /// null = 本会话没有提问 UI（移动端 / 未注入 onElicit / headless）。
   final ElicitPrompt? prompt;

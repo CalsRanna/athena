@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
 
@@ -19,7 +19,7 @@ import 'package:athena_core/storage/session_jsonl_store.dart';
 /// 口径：
 /// - **首屏窗口** = `loadRecentRows(messagePageSize + 1)`，即 GUI 打开会话时读的那一条
 ///   路径（多读 1 条判断还有没有更早的）。
-/// - **翻一页** = `loadRecentRows(51, beforeId: 窗口最早那条 id)`。
+/// - **翻一页** = `loadRecentRows(51, beforeSeq: 窗口最早那条 id)`。
 /// - **全量** = `readMessageRows()` + 逐行 `MessageEntity.fromJson`，等价于
 ///   `MessageRepository.getMessagesByChatId`。
 /// - **轮次扫描** = `loadUserMessageIds()`：现状**已经**在切会话时后台付这笔钱。
@@ -46,7 +46,7 @@ Future<void> main(List<String> args) async {
     case 'initial':
       await _initial(
         Directory(args[1]),
-        int.parse(args[2]),
+        args[2],
         int.parse(args[3]),
       );
     default:
@@ -56,10 +56,10 @@ Future<void> main(List<String> args) async {
 }
 
 /// 首屏窗口走的是仓储的新接口（小会话整段 / 大会话尾部一页）。
-Future<void> _initial(Directory dir, int chatId, int pageSize) async {
+Future<void> _initial(Directory dir, String chatId, int pageSize) async {
   final repository = JsonlSessionRepository(
     sessionsDir: dir,
-    idAllocator: IdAllocator(File('${dir.path}/meta.json')),
+    idGenerator: const IdGenerator(),
   );
   late MessageWindow window;
   final best = await _best(() async {
@@ -81,9 +81,9 @@ Future<void> _chainedPages(File file, int pages) async {
   final watch = Stopwatch()..start();
   var total = window.length;
   for (var i = 0; i < pages; i++) {
-    final beforeId = window.isEmpty ? null : window.first['id'] as int?;
-    if (beforeId == null) break;
-    window = await store.loadRecentRows(51, beforeId: beforeId);
+    final beforeSeq = window.isEmpty ? null : window.first['seq'] as int?;
+    if (beforeSeq == null) break;
+    window = await store.loadRecentRows(51, beforeSeq: beforeSeq);
     if (window.isEmpty) break;
     total += window.length;
   }
@@ -97,7 +97,7 @@ Future<void> _chainedPages(File file, int pages) async {
 
 SessionJsonlStore _store(File file) => SessionJsonlStore(
   file: file,
-  idAllocator: IdAllocator(File('${file.path}.ids')),
+  idGenerator: const IdGenerator(),
 );
 
 Future<double> _best(Future<void> Function() action, {int runs = 7}) async {
@@ -138,7 +138,7 @@ Future<void> _timeFile(File file) async {
       if (row['role'] == 'user') row['id'],
   ];
   final window = await store.loadRecentRows(51);
-  final beforeId = window.isEmpty ? null : window.first['id'] as int?;
+  final beforeSeq = window.isEmpty ? null : window.first['seq'] as int?;
 
   var lastPage = <Map<String, dynamic>>[];
   var lastHeld = <MessageEntity>[];
@@ -149,8 +149,8 @@ Future<void> _timeFile(File file) async {
     await store.loadRecentRows(51);
   });
   final nextPage = await _best(() async {
-    if (beforeId != null) {
-      lastPage = await store.loadRecentRows(51, beforeId: beforeId);
+    if (beforeSeq != null) {
+      lastPage = await store.loadRecentRows(51, beforeSeq: beforeSeq);
     }
   });
   final full = await _best(() async {

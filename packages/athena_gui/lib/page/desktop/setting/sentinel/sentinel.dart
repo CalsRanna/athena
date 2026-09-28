@@ -39,8 +39,8 @@ class _DesktopSettingSentinelPageState
   late final viewModel = GetIt.instance<SentinelViewModel>();
 
   /// 正在编辑的角色；null 表示停在列表。
-  int? openId;
-  final _selection = DesktopListSelection<int>();
+  String? openId;
+  final _selection = DesktopListSelection<String>();
   final nameController = TextEditingController();
   final descriptionController = TextEditingController();
   final tagsController = TextEditingController();
@@ -464,7 +464,6 @@ class _DesktopSettingSentinelPageState
 
   Future<void> duplicateSentinel(SentinelEntity source) async {
     final copy = SentinelEntity(
-      id: 0,
       name: '${source.name} copy',
       description: source.description,
       prompt: source.prompt,
@@ -511,7 +510,7 @@ class _DesktopSettingSentinelPageState
     });
   }
 
-  Future<int?> _getModelId() async {
+  Future<String?> _getModelId() async {
     final settingViewModel = GetIt.instance<SettingViewModel>();
     final modelResolver = GetIt.instance<ModelResolver>();
     final model = await modelResolver.resolveModel(

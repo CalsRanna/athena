@@ -25,22 +25,22 @@ void main() {
 
   final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
 
-  Future<int> createChat(String title) => storage.sessionRepository.createChat(
+  Future<String> createChat(String title) => storage.sessionRepository.createChat(
     ChatEntity(
       title: title,
-      modelId: 1,
-      sentinelId: 1,
+      modelId: '1',
+      sentinelId: '1',
       createdAt: now,
       updatedAt: now,
     ),
   );
 
-  Future<int> addMessage(int chatId, String content) =>
+  Future<MessageEntity> addMessage(String chatId, String content) =>
       storage.sessionRepository.storeMessage(
         MessageEntity(chatId: chatId, role: 'user', content: content),
       );
 
-  File sessionFile(int chatId) =>
+  File sessionFile(String chatId) =>
       File(p.join(storage.sessionsDir.path, '$chatId.jsonl'));
 
   List<File> backupsOf(File file) => file.parent
@@ -74,14 +74,14 @@ void main() {
         '第一条',
         '断电后的新消息',
       ], reason: '新消息不能被拼进半截行里一起丢弃');
-      expect(messages.last.id, id);
+      expect(messages.last.id, id.id);
     });
 
-    test('meta.json 丢失后新对话不覆盖已有会话，新消息 id 不与旧消息重复', () async {
+    test('没有 meta.json 时新对话与新消息仍使用独立身份', () async {
       final first = await createChat('旧会话');
       await addMessage(first, 'a');
       final lastOld = await addMessage(first, 'b');
-      storage.metaFile.deleteSync();
+      expect(await storage.metaFile.exists(), isFalse);
 
       final second = await createChat('新会话');
       expect(second, isNot(first));
@@ -91,7 +91,8 @@ void main() {
       );
 
       final newId = await addMessage(first, 'c');
-      expect(newId, greaterThan(lastOld));
+      expect(newId.id, isNot(lastOld.id));
+      expect(newId.seq, greaterThan(lastOld.seq));
       final ids = (await storage.sessionRepository.getMessagesByChatId(
         first,
       )).map((m) => m.id).toList();
@@ -168,10 +169,10 @@ void main() {
       final c = await repo.storeProvider(provider('c'));
 
       expect(c, isNot(b), reason: '复用会让 b 名下遗留的模型被 c 认领');
-      expect(c, greaterThan(b));
+      expect(c, matches(r'^[0-9a-f-]{36}$'));
     });
 
-    test('没有计数的旧配置从文件里已有的最大 id 往上分配', () async {
+    test('旧配置先迁移身份，新建 provider 不复用旧身份', () async {
       storage.settingFile
         ..createSync(recursive: true)
         ..writeAsStringSync(
@@ -182,9 +183,12 @@ void main() {
           '    apiKey: "k"\n',
         );
 
+      await storage.load();
+      final legacy = (await storage.providerRepository.getAllProviders()).single;
       final id = await storage.providerRepository.storeProvider(provider('n'));
 
-      expect(id, 8);
+      expect(id, isNot(legacy.id));
+      expect(await storage.providerRepository.getProvidersCount(), 2);
     });
   });
 

@@ -22,10 +22,10 @@ void main() {
   /// 长短不一的正文：懒加载列表的总高度估算会随已构建项变化，跟真机同形。
   List<MessageEntity> messagesOf() => [
     for (var i = 0; i < turnCount; i++) ...[
-      MessageEntity(id: i * 2, chatId: 1, role: 'user', content: 'user $i'),
+      MessageEntity(id: (i * 2).toString(), chatId: '1', role: 'user', content: 'user $i'),
       MessageEntity(
-        id: i * 2 + 1,
-        chatId: 1,
+        id: (i * 2 + 1).toString(),
+        chatId: '1',
         role: 'assistant',
         content: 'answer $i\n${'detail $i. ' * (2 + i % 7)}',
       ),

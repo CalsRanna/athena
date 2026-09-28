@@ -197,7 +197,7 @@ class AgentService {
     // 提问通道：按 run 绑定 chatId 与取消信号，run 结束即失效。
     // 无 onElicit 时通道不可用，工具据此降级而不是空等。
     final elicitChannel = ElicitChannel(
-      chatId: chat.id ?? 0,
+      chatId: chat.id ?? '',
       prompt: onElicit,
       cancelToken: token,
     );
@@ -252,7 +252,7 @@ class AgentService {
 
     /// 本次调用所属会话。后台任务按会话归属，工具据此把任务登记到正确的
     /// 会话，并在用户取消该会话时被连带终止。
-    int? chatId,
+    String? chatId,
 
     /// 本轮 run 是否允许启动后台任务（自动汇报回合为 false）。
     bool allowBackgroundTasks = true,

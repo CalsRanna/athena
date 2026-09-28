@@ -83,7 +83,6 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
       if (mounted) widget.onStored?.call(copiedProvider);
     } else {
       var newProvider = ProviderEntity(
-        id: 0,
         enabled: true,
         name: name,
         baseUrl: '',

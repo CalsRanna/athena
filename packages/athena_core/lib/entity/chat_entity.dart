@@ -1,10 +1,10 @@
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class ChatEntity {
-  /// `sentinel_id == 0` 表示用户显式选择不使用 Sentinel。
+  /// `sentinel_id == null` 表示用户显式选择不使用 Sentinel。
   ///
-  /// 持久化 Sentinel 使用正整数 ID，因此 0 可作为无需额外实体的保留值。
-  static const int noSentinelId = 0;
+  /// 持久化 Sentinel 使用 UUID，null 表示没有角色引用。
+  static const String? noSentinelId = null;
 
   /// 支持的推理强度档位，从弱到强。UI 的滑杆按这个顺序排点。
   static const reasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -17,10 +17,10 @@ class ChatEntity {
   static String normalizeReasoningEffort(String? value) =>
       reasoningEfforts.contains(value) ? value! : defaultReasoningEffort;
 
-  final int? id;
+  final String? id;
   final String title;
-  final int modelId;
-  final int sentinelId;
+  final String modelId;
+  final String? sentinelId;
   final double temperature;
 
   /// 推理强度，取 [reasoningEfforts] 之一，新会话默认 [defaultReasoningEffort]。
@@ -71,10 +71,10 @@ class ChatEntity {
 
   factory ChatEntity.fromJson(Map<String, dynamic> json) {
     return ChatEntity(
-      id: json.getIntOrNull('id'),
+      id: json.getStringOrNull('id'),
       title: json.getString('title'),
-      modelId: json.getInt('model_id'),
-      sentinelId: json.getInt('sentinel_id'),
+      modelId: json.getString('model_id'),
+      sentinelId: json.getStringOrNull('sentinel_id'),
       temperature: json.getDouble('temperature', defaultValue: 1.0),
       reasoningEffort: normalizeReasoningEffort(
         json.getStringOrNull('reasoning_effort'),
@@ -113,10 +113,10 @@ class ChatEntity {
   static const _unset = Object();
 
   ChatEntity copyWith({
-    int? id,
+    String? id,
     String? title,
-    int? modelId,
-    int? sentinelId,
+    String? modelId,
+    Object? sentinelId = _unset,
     double? temperature,
     String? reasoningEffort,
     int? retention,
@@ -131,7 +131,9 @@ class ChatEntity {
       id: id ?? this.id,
       title: title ?? this.title,
       modelId: modelId ?? this.modelId,
-      sentinelId: sentinelId ?? this.sentinelId,
+      sentinelId: identical(sentinelId, _unset)
+          ? this.sentinelId
+          : sentinelId as String?,
       temperature: temperature ?? this.temperature,
       reasoningEffort: reasoningEffort ?? this.reasoningEffort,
       retention: retention ?? this.retention,

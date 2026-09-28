@@ -44,7 +44,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 输入框里那段文字属于哪条对话；null 是还没落盘的"新对话"草稿槽（也是启动
   /// 时的状态）。composer 只有一个 controller，跨对话复用它，所以必须自己记着
   /// 文字归属于谁，切换时才能把它存回原地、把目标对话的草稿取出来。
-  int? _composerKey;
+  String? _composerKey;
 
   /// composer 输入框的焦点：新建对话、启动落到草稿页时把焦点放进去。
   final composerFocusNode = FocusNode(debugLabel: 'composer');
@@ -170,7 +170,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   /// 删除当前对话后回草稿、首条消息把草稿落盘成对话），否则 A 里打的字会跟着串进
   /// B。切换要在**发出切换动作的同一帧内**做完：等 IO 回来再换，这段延迟里用户
   /// 敲进去的字会被恢复出来的草稿覆盖。
-  void _restoreComposerDraft(int? key) {
+  void _restoreComposerDraft(String? key) {
     if (key == _composerKey) return;
     // 原对话已经被删掉就不再留草稿：那个槽再也回不去（chat id 不复用）
     if (_composerKey == null ||
@@ -227,7 +227,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
     // 检查当前聊天的模型是否有效
     var model = chatViewModel.currentModel.value;
-    if (model == null || model.id! <= 0) {
+    if (model == null || model.id == null) {
       AthenaDialog.warning('You should select a model first');
       return;
     }
@@ -237,8 +237,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     final imageUrls = images.map((image) => base64Encode(image.bytes!)).toList();
 
     var message = MessageEntity(
-      id: 0,
-      chatId: chat.id ?? 0,
+      chatId: chat.id ?? '',
       role: 'user',
       content: text,
       imageUrls: imageUrls.join(','),

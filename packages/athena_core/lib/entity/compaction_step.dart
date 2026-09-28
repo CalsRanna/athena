@@ -16,6 +16,7 @@ enum CompactionPhase {
 class CompactionStep {
   const CompactionStep({
     required this.messageId,
+    required this.seq,
     required this.chatId,
     required this.runId,
     required this.phase,
@@ -25,13 +26,14 @@ class CompactionStep {
     this.afterTokens,
     this.messageCount = 0,
     this.coveredMessageIds = const [],
-    this.throughMessageId,
+    this.throughSeq,
     this.summary = '',
     this.error,
   });
 
-  final int messageId;
-  final int chatId;
+  final String messageId;
+  final int seq;
+  final String chatId;
   final int runId;
   final CompactionPhase phase;
   final DateTime startedAt;
@@ -39,8 +41,8 @@ class CompactionStep {
   final int beforeTokens;
   final int? afterTokens;
   final int messageCount;
-  final List<int> coveredMessageIds;
-  final int? throughMessageId;
+  final List<String> coveredMessageIds;
+  final int? throughSeq;
   final String summary;
   final String? error;
 
@@ -57,12 +59,13 @@ class CompactionStep {
     DateTime? finishedAt,
     int? afterTokens,
     int? messageCount,
-    List<int>? coveredMessageIds,
-    int? throughMessageId,
+    List<String>? coveredMessageIds,
+    int? throughSeq,
     String? summary,
     String? error,
   }) => CompactionStep(
     messageId: messageId,
+    seq: seq,
     chatId: chatId,
     runId: runId,
     phase: phase ?? this.phase,
@@ -72,13 +75,14 @@ class CompactionStep {
     afterTokens: afterTokens ?? this.afterTokens,
     messageCount: messageCount ?? this.messageCount,
     coveredMessageIds: coveredMessageIds ?? this.coveredMessageIds,
-    throughMessageId: throughMessageId ?? this.throughMessageId,
+    throughSeq: throughSeq ?? this.throughSeq,
     summary: summary ?? this.summary,
     error: error ?? this.error,
   );
 
   MessageEntity toMessage() => MessageEntity(
     id: messageId,
+    seq: seq,
     chatId: chatId,
     role: 'compaction',
     content: summary,
@@ -92,7 +96,7 @@ class CompactionStep {
       if (afterTokens != null) 'afterTokens': afterTokens,
       'messageCount': messageCount,
       'coveredMessageIds': coveredMessageIds,
-      if (throughMessageId != null) 'throughMessageId': throughMessageId,
+      if (throughSeq != null) 'throughSeq': throughSeq,
       if (error != null) 'error': error,
     }),
   );
@@ -101,6 +105,7 @@ class CompactionStep {
     final data = jsonDecode(message.reference) as Map<String, dynamic>;
     return CompactionStep(
       messageId: message.id!,
+      seq: message.seq,
       chatId: message.chatId,
       runId: data['runId'] as int,
       phase: CompactionPhase.values.byName(data['phase'] as String),
@@ -112,8 +117,8 @@ class CompactionStep {
       afterTokens: data['afterTokens'] as int?,
       messageCount: data['messageCount'] as int,
       coveredMessageIds: (data['coveredMessageIds'] as List<dynamic>)
-          .cast<int>(),
-      throughMessageId: data['throughMessageId'] as int?,
+          .cast<String>(),
+      throughSeq: data['throughSeq'] as int?,
       summary: message.content,
       error: data['error'] as String?,
     );

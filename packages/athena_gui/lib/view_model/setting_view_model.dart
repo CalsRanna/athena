@@ -41,9 +41,9 @@ class SettingViewModel {
   final windowHeight = signal(720.0);
   final windowWidth = signal(960.0);
   // 模型 ID 设置
-  final chatModelId = signal(0);
-  final chatNamingModelId = signal(0);
-  final sentinelMetadataGenerationModelId = signal(0);
+  final chatModelId = signal('');
+  final chatNamingModelId = signal('');
+  final sentinelMetadataGenerationModelId = signal('');
   final chatModel = signal<ModelEntity?>(null);
   final chatNamingModel = signal<ModelEntity?>(null);
 
@@ -101,12 +101,19 @@ class SettingViewModel {
   /// 加载所有设置
   Future<void> initSignals() async {
     final instance = await SharedPreferences.getInstance();
+    for (final key in [_keyChatModelId, _keyChatNamingModelId,
+      _keySentinelMetadataGenerationModelId]) {
+      final old = instance.get(key);
+      if (old is int) {
+        await instance.setString(key, _storage.legacyModelIds['$old'] ?? '');
+      }
+    }
     windowHeight.value = instance.getDouble(_keyWindowHeight) ?? 720.0;
     windowWidth.value = instance.getDouble(_keyWindowWidth) ?? 960.0;
-    chatModelId.value = instance.getInt(_keyChatModelId) ?? 0;
-    chatNamingModelId.value = instance.getInt(_keyChatNamingModelId) ?? 0;
+    chatModelId.value = instance.getString(_keyChatModelId) ?? '';
+    chatNamingModelId.value = instance.getString(_keyChatNamingModelId) ?? '';
     sentinelMetadataGenerationModelId.value =
-        instance.getInt(_keySentinelMetadataGenerationModelId) ?? 0;
+        instance.getString(_keySentinelMetadataGenerationModelId) ?? '';
     await _agentSettings.init();
     maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
@@ -166,9 +173,9 @@ class SettingViewModel {
   }
 
   /// 更新聊天模型 ID
-  Future<void> updateChatModelId(int modelId) async {
+  Future<void> updateChatModelId(String modelId) async {
     final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keyChatModelId, modelId);
+    await instance.setString(_keyChatModelId, modelId);
     chatModelId.value = modelId;
     chatModel.value = await _modelRepository.getModelById(modelId);
     if (chatModel.value != null) {
@@ -179,9 +186,9 @@ class SettingViewModel {
   }
 
   /// 更新聊天命名模型 ID
-  Future<void> updateChatNamingModelId(int modelId) async {
+  Future<void> updateChatNamingModelId(String modelId) async {
     final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keyChatNamingModelId, modelId);
+    await instance.setString(_keyChatNamingModelId, modelId);
     chatNamingModelId.value = modelId;
     chatNamingModel.value = await _modelRepository.getModelById(modelId);
     if (chatNamingModel.value != null) {
@@ -192,9 +199,9 @@ class SettingViewModel {
   }
 
   /// 更新 Sentinel 元数据生成模型 ID
-  Future<void> updateSentinelMetadataGenerationModelId(int modelId) async {
+  Future<void> updateSentinelMetadataGenerationModelId(String modelId) async {
     final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keySentinelMetadataGenerationModelId, modelId);
+    await instance.setString(_keySentinelMetadataGenerationModelId, modelId);
     sentinelMetadataGenerationModelId.value = modelId;
     sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
       modelId,

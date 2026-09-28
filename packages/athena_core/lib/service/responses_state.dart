@@ -7,7 +7,7 @@ import 'package:openai_dart/openai_dart.dart';
 
 /// 保留完整输出顺序，reasoning item 与它关联的消息/工具调用不能拆开回传。
 class ResponsesState {
-  final int? providerId;
+  final String? providerId;
   final String baseUrl;
   final String model;
   final List<Map<String, dynamic>> output;
@@ -25,7 +25,7 @@ class ResponsesState {
        _messageHash = _hash(message);
 
   ResponsesState._(Map<String, dynamic> json)
-    : providerId = json['provider_id'] as int?,
+    : providerId = json['provider_id'] as String?,
       baseUrl = json['base_url'] as String,
       model = json['model'] as String,
       output = (json['output'] as List)

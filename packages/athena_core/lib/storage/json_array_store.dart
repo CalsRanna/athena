@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/util/logger_util.dart';
 
@@ -16,10 +16,10 @@ import 'package:athena_core/util/logger_util.dart';
 /// - 损坏文件读时按空列表容错;下次写入前先备份成 `.corrupt-{时间戳}`
 ///   ([preserveCorruptFile])再以空列表为基础重建,原内容不会被静默覆盖
 class JsonArrayStore {
-  JsonArrayStore({required this.file, required this.idAllocator});
+  JsonArrayStore({required this.file, this.idGenerator = const IdGenerator()});
 
   final File file;
-  final IdAllocator idAllocator;
+  final IdGenerator idGenerator;
 
   Future<void>? _lock;
 
@@ -58,11 +58,14 @@ class JsonArrayStore {
       atomicWriteString(file, jsonEncode(rows));
 
   /// 分配 id 并追加,返回新 id。
-  Future<int> insert(Map<String, dynamic> json) {
+  Future<String> insert(Map<String, dynamic> json) {
     return _serialized(() async {
-      final id = await idAllocator.next(file.path);
+      final id = idGenerator.next();
       json['id'] = id;
       final rows = await _readAll(forWrite: true);
+      if (rows.any((row) => row['id'] == id)) {
+        throw StateError('Entity ID already exists: $id');
+      }
       rows.add(json);
       await _writeAll(rows);
       return id;
@@ -70,7 +73,7 @@ class JsonArrayStore {
   }
 
   /// 按 id 整条替换(不存在则追加)。
-  Future<void> replaceById(int id, Map<String, dynamic> json) {
+  Future<void> replaceById(String id, Map<String, dynamic> json) {
     return _serialized(() async {
       final rows = await _readAll(forWrite: true);
       json['id'] = id;
@@ -84,9 +87,9 @@ class JsonArrayStore {
     });
   }
 
-  /// 以给定 [id] 原样写入(存在则整条覆盖,不存在则追加),并把 id 计数
-  /// 抬到不低于该值。导入/恢复保留原 id 的数据时使用。
-  Future<void> restore(int id, Map<String, dynamic> json) {
+  /// 以给定 [id] 原样写入(存在则整条覆盖,不存在则追加),不改变记录身份。
+  /// 导入/恢复保留原 id 的数据时使用。
+  Future<void> restore(String id, Map<String, dynamic> json) {
     return _serialized(() async {
       final rows = await _readAll(forWrite: true);
       json['id'] = id;
@@ -97,34 +100,22 @@ class JsonArrayStore {
         rows.add(json);
       }
       await _writeAll(rows);
-      await idAllocator.ensureAtLeast(file.path, id);
     });
   }
 
-  /// 整文件替换为 [rows](导入用):带 `id` 的行原样保留并抬高计数,
+  /// 整文件替换为 [rows](导入用):带 `id` 的行原样保留，
   /// 缺 `id` 的行分配新 id。
   Future<void> replaceAll(List<Map<String, dynamic>> rows) {
     return _serialized(() async {
-      var maxId = 0;
-      final pending = <Map<String, dynamic>>[];
+      await _readAll(forWrite: true);
       for (final row in rows) {
-        final id = row['id'];
-        if (id is int) {
-          if (id > maxId) maxId = id;
-        } else {
-          pending.add(row);
-        }
-      }
-      await _readAll(forWrite: true); // 仅为损坏时留备份
-      if (maxId > 0) await idAllocator.ensureAtLeast(file.path, maxId);
-      for (final row in pending) {
-        row['id'] = await idAllocator.next(file.path);
+        row['id'] ??= idGenerator.next();
       }
       await _writeAll(List.of(rows));
     });
   }
 
-  Future<void> deleteById(int id) {
+  Future<void> deleteById(String id) {
     return deleteWhere((row) => row['id'] == id);
   }
 

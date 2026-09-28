@@ -226,7 +226,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
 
   Future<void> _store() async {
     var sentinel = SentinelEntity(
-      id: 0,
       name: nameController.text,
       description: descriptionController.text,
       tags: '',
@@ -255,10 +254,10 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     return null;
   }
 
-  Future<int?> _getModelId() async {
+  Future<String?> _getModelId() async {
     var settingViewModel = GetIt.instance<SettingViewModel>();
     var modelId = settingViewModel.sentinelMetadataGenerationModelId.value;
-    if (modelId > 0) return modelId;
+    if (modelId.isNotEmpty) return modelId;
     var modelViewModel = GetIt.instance<ModelViewModel>();
     await modelViewModel.loadEnabledModels();
     if (modelViewModel.enabledModels.value.isEmpty) {

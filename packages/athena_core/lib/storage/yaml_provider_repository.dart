@@ -2,7 +2,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 
@@ -16,17 +16,17 @@ import 'package:athena_core/storage/user_settings_store.dart';
 ///   目录同步在 TTL 内会跳过,不能依赖同步重建
 /// - 修改在"进程内串行 + 跨进程文件锁"内完成读-改-写
 ///
-/// id 分配:新 provider 取 max(id)+1——与 models.json 的 providerId
+/// id 分配:新 provider 使用 UUIDv7，与 models.json 的 providerId
 /// 引用保持一致。
 class YamlProviderRepository implements ProviderRepository {
   YamlProviderRepository({
     required UserSettingsStore store,
-    required IdAllocator idAllocator,
+    IdGenerator idGenerator = const IdGenerator(),
   }) : _store = store,
-       _idAllocator = idAllocator;
+       _idGenerator = idGenerator;
 
   final UserSettingsStore _store;
-  final IdAllocator _idAllocator;
+  final IdGenerator _idGenerator;
   Future<void>? _lock;
 
   /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
@@ -51,7 +51,7 @@ class YamlProviderRepository implements ProviderRepository {
   Future<List<ProviderEntity>> getAllProviders() => _store.loadProviders();
 
   @override
-  Future<ProviderEntity?> getProviderById(int id) async {
+  Future<ProviderEntity?> getProviderById(String id) async {
     for (final provider in await getAllProviders()) {
       if (provider.id == id) return provider;
     }
@@ -64,7 +64,7 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
-  Future<int> storeProvider(ProviderEntity provider) {
+  Future<String> storeProvider(ProviderEntity provider) {
     return _mutate((all) async {
       if (provider.id != null) {
         // 已带 id(如导入保留原始 id):更新或追加
@@ -76,16 +76,7 @@ class YamlProviderRepository implements ProviderRepository {
         }
         return provider.id!;
       }
-      // 单调递增、不复用：按「当前最大 + 1」分配时，删掉 id 最大的 provider
-      // 再新建，新 provider 会拿到同一个 id，models.json 里旧 provider 的模型
-      // （provider_id 指向它）就被新 provider 认领——会话拿新地址和 key 去请求
-      // 旧模型名。计数下限对齐文件里已有的最大 id（旧数据没有计数）。
-      var maxId = 0;
-      for (final p in all) {
-        if ((p.id ?? 0) > maxId) maxId = p.id!;
-      }
-      await _idAllocator.ensureAtLeast(_store.file.path, maxId);
-      final newId = await _idAllocator.next(_store.file.path);
+      final newId = _idGenerator.next();
       all.add(provider.copyWith(id: newId));
       return newId;
     });
@@ -102,7 +93,7 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<void> syncApiFormat({
-    required int id,
+    required String id,
     required String baseUrl,
     required ApiFormat apiFormat,
   }) {
@@ -133,7 +124,7 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
-  Future<void> deleteProvider(int id) {
+  Future<void> deleteProvider(String id) {
     return _mutate((all) async {
       all.removeWhere((p) => p.id == id);
     });

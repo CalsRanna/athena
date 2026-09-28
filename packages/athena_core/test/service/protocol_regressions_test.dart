@@ -75,8 +75,8 @@ void main() {
             .getCompletion(
               chat: ChatEntity(
                 title: 'test',
-                modelId: 1,
-                sentinelId: 0,
+                modelId: '1',
+                sentinelId: '0',
                 temperature: 0.6,
                 reasoningEffort: effort,
                 createdAt: now,
@@ -86,7 +86,7 @@ void main() {
               model: ModelEntity(
                 name: id,
                 modelId: id,
-                providerId: 1,
+                providerId: '1',
                 reasoning: reasoning,
                 createdAt: now,
                 updatedAt: now,

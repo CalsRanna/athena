@@ -13,7 +13,7 @@ class ChatRenameDelegate {
   final MessageRepository _messageRepo;
   final ModelRepository _modelRepo;
   final ChatUpdateService _supportService;
-  final Map<int, CancelToken> _tokens = {};
+  final Map<String, CancelToken> _tokens = {};
 
   ChatRenameDelegate({
     required MessageRepository messageRepo,
@@ -85,7 +85,7 @@ class ChatRenameDelegate {
   }
 
   /// 取消指定 chat 的进行中重命名流，防止写入已删除的 chat
-  void cancel(int chatId) {
+  void cancel(String chatId) {
     _tokens[chatId]?.cancel();
     _tokens.remove(chatId);
   }

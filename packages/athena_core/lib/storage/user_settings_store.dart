@@ -13,14 +13,14 @@ import 'package:yaml/yaml.dart';
 /// - provider 的 name/baseUrl/apiKey 等直接读写 yaml,用户可手工编辑,
 ///   重启即生效
 /// - 模型选择存 modelId 字符串(如 `deepseek-v4-flash`),稳定可读,
-///   不依赖本地自增 id(仅 TUI 使用;GUI 的默认模型存 SharedPreferences)
+///   不依赖本地实体 id(仅 TUI 使用;GUI 的默认模型存 SharedPreferences)
 ///
 /// 文件格式:
 /// ```yaml
 /// # Athena 用户配置
 /// model: deepseek-v4-flash      # 默认模型(modelId,可选)
 /// providers:
-///   - id: 1                     # 与 models.json 的 providerId 对应
+///   - id: "019d1234-5678-7000-8000-000000000001"                     # 与 models.json 的 providerId 对应
 ///     name: Deep Seek
 ///     baseUrl: https://api.deepseek.com/v1
 ///     apiKey: sk-xxx
@@ -51,7 +51,7 @@ class UserSettingsStore {
     for (final entry in providers) {
       if (entry is! Map) continue;
       result.add(ProviderEntity(
-        id: entry['id'] is int ? entry['id'] as int : null,
+        id: entry['id'] is String ? entry['id'] as String : null,
         // 防御:手工编辑/历史数据可能写入非字符串值(如裸数字被 YAML
         // 解析为 int),降级为空字符串而不是抛类型错误炸掉整个配置
         name: entry['name'] is String ? entry['name'] as String : '',
@@ -190,7 +190,7 @@ class UserSettingsStore {
     if (s.isEmpty) return '""';
     // 字符串总是双引号:不引号的标量会被 YAML 解析为 int/bool/null/日期,
     // 读回时类型不符导致配置整体丢失(如纯数字 API key、'true'、'null')。
-    // id 是唯一的 int 字段,走上面的分支保持裸值。
+    // UUID 同样按字符串写出，避免 YAML 自动转换标量类型。
     final buf = StringBuffer('"');
     for (final unit in s.codeUnits) {
       if (unit == 0x5C) {

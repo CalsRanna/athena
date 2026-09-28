@@ -127,7 +127,7 @@ class _MobileDefaultModelFormPageState
 class _ModelDropdown extends StatelessWidget {
   final Map<String, List<ModelEntity>>? groupedModels;
   final ModelEntity? model;
-  final void Function(int)? onChanged;
+  final void Function(String)? onChanged;
   final ProviderEntity? provider;
   const _ModelDropdown({
     this.groupedModels,

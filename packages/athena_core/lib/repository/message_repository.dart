@@ -4,48 +4,46 @@ import 'package:athena_core/entity/message_entity.dart';
 abstract class MessageRepository {
   /// 获取聊天消息，[includeCompacted] 为 false 时排除已被 compact 压缩的消息。
   Future<List<MessageEntity>> getMessagesByChatId(
-    int chatId, {
+    String chatId, {
     bool includeCompacted = true,
   });
 
-  Future<MessageEntity?> getMessageById(int id);
+  Future<MessageEntity?> getMessageById(String chatId, String id);
 
-  Future<int> storeMessage(MessageEntity message);
+  Future<MessageEntity> storeMessage(MessageEntity message);
 
   Future<void> updateMessage(MessageEntity message);
 
   /// 删除 [chatId] 会话内 [ids] 命中的消息（一次读-改-写）。
   ///
-  /// **必须带 [chatId]**：消息 id 只在会话内唯一（`IdAllocator` 以会话文件
-  /// 路径为计数 key，每个会话都从 1 开始），只按 id 跨会话查找会命中别的
-  /// 会话——目标会话那条删不掉，另一个对话却少一条。
-  Future<void> deleteMessages(int chatId, Set<int> ids);
+  /// [chatId] 用来直接定位会话文件；UUID 是身份，不能用它比较消息顺序。
+  Future<void> deleteMessages(String chatId, Set<String> ids);
 
-  Future<void> deleteMessagesByChatId(int chatId);
+  Future<void> deleteMessagesByChatId(String chatId);
 
-  Future<int> getMessagesCount(int chatId);
+  Future<int> getMessagesCount(String chatId);
 
   /// 批量标记 [chatId] 会话内的消息为已压缩（同样必须带 chatId，理由见
   /// [deleteMessages]）。
-  Future<void> markAsCompacted(int chatId, Set<int> ids);
+  Future<void> markAsCompacted(String chatId, Set<String> ids);
 
-  Future<MessageEntity?> getLatestMessageByChatId(int chatId);
+  Future<MessageEntity?> getLatestMessageByChatId(String chatId);
 
   /// 整段会话里每一轮的起点(每条 user 消息)的 id,按文件顺序。
   ///
   /// 消息列表是窗口化分页的(只持有最近若干条),而轮次指示器要按整段会话
   /// 的轮数来画,所以只能从文件里补这一段。这是一次**整文件**扫描,调用方
   /// 必须按 chatId 缓存(见 `ChatViewModel.turnStartIds`),不要每次构建都调。
-  Future<List<int>> getTurnStartIds(int chatId);
+  Future<List<String>> getTurnStartIds(String chatId);
 }
 
-/// 一次读进来的消息窗口：[messages] 按 id 升序，[hasOlder] 表示还有更早的消息。
+/// 一次读进来的消息窗口：[messages] 按 seq 升序，[hasOlder] 表示还有更早的消息。
 typedef MessageWindow = ({List<MessageEntity> messages, bool hasOlder});
 
 /// 可选的消息游标分页能力。
 ///
-/// 返回 [beforeId] 之前、最接近游标的最近 [count] 条消息；未提供游标时
-/// 返回会话最新的 [count] 条。结果始终按 id 升序排列。
+/// 返回 [beforeSeq] 之前、最接近游标的最近 [count] 条消息；未提供游标时
+/// 返回会话最新的 [count] 条。结果始终按 seq 升序排列。
 abstract interface class RecentMessageRepository {
   /// 首屏窗口：会话小到能一次读进来时**直接给整段**（[MessageWindow.hasOlder]
   /// 为 false，此后不再翻页），超过阈值才只给最新的 [pageSize] 条。
@@ -57,13 +55,13 @@ abstract interface class RecentMessageRepository {
   /// 内存 ≈ 文件大小 × 3.6~4.6、首屏 ≈ 4~7ms/MB，在几 MB 这个量级上远比上面
   /// 那些体验代价便宜。阈值由实现方定。
   Future<MessageWindow> loadInitialMessages(
-    int chatId, {
+    String chatId, {
     required int pageSize,
   });
 
   Future<List<MessageEntity>> loadRecentMessages(
-    int chatId, {
+    String chatId, {
     required int count,
-    int? beforeId,
+    int? beforeSeq,
   });
 }

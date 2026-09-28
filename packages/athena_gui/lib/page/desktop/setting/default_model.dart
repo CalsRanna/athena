@@ -98,8 +98,8 @@ class _DesktopSettingDefaultModelPageState
   }
 
   Widget _buildSelect(
-    int modelId,
-    Future<void> Function(int) onChanged, {
+    String modelId,
+    Future<void> Function(String) onChanged, {
     bool clearable = false,
   }) {
     return SizedBox(

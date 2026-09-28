@@ -40,11 +40,11 @@ class ChatUpdateService {
 
   // ─── 配置更新 ───────────────────────────────────────────
 
-  Future<ChatEntity> updateModel(ChatEntity chat, int modelId) {
+  Future<ChatEntity> updateModel(ChatEntity chat, String modelId) {
     return _applyField(chat, (c) => c.copyWith(modelId: modelId));
   }
 
-  Future<ChatEntity> updateSentinel(ChatEntity chat, int sentinelId) {
+  Future<ChatEntity> updateSentinel(ChatEntity chat, String? sentinelId) {
     return _applyField(chat, (c) => c.copyWith(sentinelId: sentinelId));
   }
 
@@ -69,7 +69,7 @@ class ChatUpdateService {
 
   // ─── Provider 解析 ──────────────────────────────────────
 
-  Future<ProviderEntity?> getProviderForModel(int providerId) async {
+  Future<ProviderEntity?> getProviderForModel(String providerId) async {
     return _providerRepository.getProviderById(providerId);
   }
 

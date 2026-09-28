@@ -4,13 +4,13 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 abstract class SentinelRepository {
   Future<List<SentinelEntity>> getAllSentinels();
 
-  Future<SentinelEntity?> getSentinelById(int id);
+  Future<SentinelEntity?> getSentinelById(String id);
 
-  Future<int> createSentinel(SentinelEntity sentinel);
+  Future<String> createSentinel(SentinelEntity sentinel);
 
   Future<void> updateSentinel(SentinelEntity sentinel);
 
-  Future<void> deleteSentinel(int id);
+  Future<void> deleteSentinel(String id);
 
   Future<int> getSentinelsCount();
 

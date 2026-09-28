@@ -33,7 +33,7 @@ void main() {
 
   tearDown(() => temp.delete(recursive: true));
 
-  Future<int> createSentinel(String name, String prompt) => storage
+  Future<String> createSentinel(String name, String prompt) => storage
       .sentinelRepository
       .createSentinel(SentinelEntity(name: name, prompt: prompt));
 

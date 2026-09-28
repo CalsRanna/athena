@@ -2,7 +2,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class ProviderEntity {
-  final int? id;
+  final String? id;
   final String name;
   final String baseUrl;
   final String apiKey;
@@ -29,7 +29,7 @@ class ProviderEntity {
 
   factory ProviderEntity.fromJson(Map<String, dynamic> json) {
     return ProviderEntity(
-      id: json.getIntOrNull('id'),
+      id: json.getStringOrNull('id'),
       name: json.getString('name'),
       baseUrl: json.getString('base_url'),
       apiKey: json.getString('api_key'),
@@ -58,7 +58,7 @@ class ProviderEntity {
   }
 
   ProviderEntity copyWith({
-    int? id,
+    String? id,
     String? name,
     String? baseUrl,
     String? apiKey,

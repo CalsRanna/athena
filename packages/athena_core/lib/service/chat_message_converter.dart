@@ -75,7 +75,7 @@ class ChatMessageConverter {
   }
 
   /// 判断是否为聊天的第一条用户消息（用于自动重命名触发）
-  Future<bool> isFirstUserMessage(int chatId) async {
+  Future<bool> isFirstUserMessage(String chatId) async {
     final messages = await _messageRepository.getMessagesByChatId(chatId);
     return messages.where((m) => m.role == 'user').length == 1;
   }

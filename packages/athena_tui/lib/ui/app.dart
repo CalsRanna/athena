@@ -529,7 +529,7 @@ class _AthenaAppState extends State<AthenaApp> {
   // ─── 权限审批(M3) ────────────────────────────────────────
 
   Future<PermissionDecision> _handlePermission(
-    int chatId,
+    String chatId,
     String toolName,
     String arguments,
     Future<void> cancelled,
@@ -553,7 +553,7 @@ class _AthenaAppState extends State<AthenaApp> {
   }
 
   /// 模态标题:请求不属于当前会话时带上它的会话标题,否则看不出是谁在问。
-  String _requestTitle(String title, int chatId) {
+  String _requestTitle(String title, String chatId) {
     final queued = _permissionQueue.length + _elicitQueue.length;
     final more = queued > 1 ? '(还有 ${queued - 1} 个待处理)' : '';
     if (chatId == _controller.currentChat.value?.id) return '$title$more';
@@ -563,7 +563,7 @@ class _AthenaAppState extends State<AthenaApp> {
   // ─── 提问(向用户问「你要哪个」) ──────────────────────────
 
   Future<Map<String, String>?> _handleElicit(
-    int chatId,
+    String chatId,
     List<ElicitQuestion> questions,
     Future<void> cancelled,
   ) {
@@ -929,7 +929,7 @@ class _AthenaAppState extends State<AthenaApp> {
   void _pushSystemMessage(String content) {
     if (content.isEmpty) return;
     final message = MessageEntity(
-      chatId: _controller.currentChat.value?.id ?? -1,
+      chatId: _controller.currentChat.value?.id ?? '',
       role: 'system',
       content: content,
     );
@@ -1094,7 +1094,7 @@ class _AthenaAppState extends State<AthenaApp> {
 }
 
 class _PermissionRequest {
-  final int chatId;
+  final String chatId;
   final String toolName;
   final String arguments;
   final Completer<PermissionDecision> completer;
@@ -1105,7 +1105,7 @@ class _PermissionRequest {
 class _ElicitRequest {
   _ElicitRequest(this.chatId, this.questions, this.completer);
 
-  final int chatId;
+  final String chatId;
   final List<ElicitQuestion> questions;
   final Completer<Map<String, String>?> completer;
 

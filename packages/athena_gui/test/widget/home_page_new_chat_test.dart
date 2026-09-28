@@ -142,7 +142,7 @@ void main() {
       final id = await chatRepo.createChat(
         ChatEntity(
           title: 'Source chat',
-          modelId: 1,
+          modelId: '1',
           sentinelId: sentinelId,
           workspacePath: workspacePath,
           createdAt: DateTime.now(),
@@ -318,7 +318,7 @@ void main() {
   });
 
   testWidgets('来源对话「不用角色」时：草稿也是不用角色', (tester) async {
-    // sentinel_id = 0 是保留值，继承时必须原样带过来（同样不落 sentinels 表），
+    // sentinel_id = null 表示不使用角色，继承时必须保留（不落 sentinels 表），
     // 否则用户显式选的"直接对话"会被悄悄换成 Athena
     final source = await seedSourceChat(
       tester,

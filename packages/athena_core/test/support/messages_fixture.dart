@@ -4,7 +4,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
 ProviderEntity messagesProvider() => ProviderEntity(
-  id: 1,
+  id: '1',
   name: 'anthropic',
   baseUrl: 'https://api.anthropic.com/v1',
   apiKey: 'test-key',

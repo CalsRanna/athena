@@ -56,9 +56,9 @@ void main() {
         .run(
           runId: 1,
           chat: ChatEntity(
-            id: 1,
+            id: '1',
             title: 'test',
-            modelId: 1,
+            modelId: '1',
             sentinelId: ChatEntity.noSentinelId,
             createdAt: now,
             updatedAt: now,
@@ -72,7 +72,7 @@ void main() {
           model: ModelEntity(
             name: 'test',
             modelId: 'test',
-            providerId: 1,
+            providerId: '1',
             createdAt: now,
             updatedAt: now,
           ),
@@ -83,7 +83,7 @@ void main() {
               : null,
           permissionReviewContext: mode == ApprovalMode.aiReview
               ? PermissionReviewContext.fromMessages([
-                  MessageEntity(chatId: 1, role: 'user', content: '查看仓库状态'),
+                  MessageEntity(chatId: '1', role: 'user', content: '查看仓库状态'),
                 ])
               : null,
           bypassPermissions: mode == ApprovalMode.bypass,

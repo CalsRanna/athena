@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
 import 'package:athena_core/util/logger_util.dart';
 
@@ -19,49 +21,39 @@ import 'package:athena_core/util/logger_util.dart';
 /// - `updateChat`(读-改首行)与 `recordUsage`(独立读写)共用会话文件的
 ///   锁,不会互相覆盖
 ///
-/// id 分配(meta.json 计数):
-/// - chat id:会话目录路径为 key,所有会话共享递增计数
-/// - message id:会话文件路径为 key,每个会话独立递增计数
+/// 会话与消息使用 UUIDv7；消息 seq 在各自会话写锁内分配。
 class JsonlSessionRepository
     implements ChatRepository, MessageRepository, RecentMessageRepository {
   JsonlSessionRepository({
     required Directory sessionsDir,
-    required IdAllocator idAllocator,
+    IdGenerator idGenerator = const IdGenerator(),
   }) : _sessionsDir = sessionsDir,
-       _idAllocator = idAllocator;
+       _idGenerator = idGenerator;
 
   final Directory _sessionsDir;
-  final IdAllocator _idAllocator;
+  final IdGenerator _idGenerator;
 
   /// 按 chatId 缓存共享的 store:SessionJsonlStore 的串行锁是实例字段,
   /// 若每次调用新建实例则锁不跨调用生效(「单写者锁」名存实亡),
   /// 同一文件的 update(读-改-整文件重写)与 append 之间可能交错丢行。
-  final Map<int, SessionJsonlStore> _stores = {};
+  final Map<String, SessionJsonlStore> _stores = {};
 
-  SessionJsonlStore _storeFor(int chatId) {
+  SessionJsonlStore _storeFor(String chatId) {
+    if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(chatId)) {
+      throw ArgumentError.value(chatId, 'chatId', 'Expected one file name segment');
+    }
     return _stores.putIfAbsent(
       chatId,
       () => SessionJsonlStore(
-        file: File('${_sessionsDir.path}/$chatId.jsonl'),
-        idAllocator: _idAllocator,
+        file: File(p.join(_sessionsDir.path, '$chatId.jsonl')),
+        idGenerator: _idGenerator,
       ),
     );
   }
 
-  /// 按文件获取共享 store:文件名即 {chatId}.jsonl,解析后复用 [_storeFor]
-  /// 的缓存实例——同一文件的锁必须共享,文件扫描操作(读-改-整文件重写)
-  /// 与流式 append/update 才能真正串行。文件名解析失败(非标准命名)时
-  /// 退回独立实例,仅影响该文件自身的并发。
+  /// 文件名即会话身份，扫描与按 ID 访问必须共用同一 store 和串行锁。
   SessionJsonlStore _storeForFile(File file) {
-    final name = file.uri.pathSegments.last;
-    final chatId = int.tryParse(
-      name.endsWith('.jsonl')
-          ? name.substring(0, name.length - '.jsonl'.length)
-          : name,
-    );
-    return chatId == null
-        ? SessionJsonlStore(file: file, idAllocator: _idAllocator)
-        : _storeFor(chatId);
+    return _storeFor(p.basenameWithoutExtension(file.path));
   }
 
   /// sessions/ 目录下所有会话文件。
@@ -94,20 +86,15 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<ChatEntity?> getChatById(int id) async {
+  Future<ChatEntity?> getChatById(String id) async {
     final row = await _storeFor(id).readChatRow();
     return row == null ? null : ChatEntity.fromJson(row);
   }
 
   @override
-  Future<int> createChat(ChatEntity chat) async {
-    // 跳过已有文件的 id:meta.json 丢失 / 损坏或数据目录迁移后计数从头
-    // 开始,直接写会把新对话的首行盖到已有会话上,旧消息挂到新对话名下
-    var id = await _idAllocator.next(_sessionsDir.path);
-    while (await File('${_sessionsDir.path}/$id.jsonl').exists()) {
-      id = await _idAllocator.next(_sessionsDir.path);
-    }
-    await _storeFor(id).writeChatRow(chat.toJson()..['id'] = id);
+  Future<String> createChat(ChatEntity chat) async {
+    final id = _idGenerator.next();
+    await _storeFor(id).writeChatRow(chat.toJson()..['id'] = id, createOnly: true);
     return id;
   }
 
@@ -128,7 +115,7 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<void> deleteChat(int id) async {
+  Future<void> deleteChat(String id) async {
     _stores.remove(id);
     await _storeFor(id).deleteFile();
   }
@@ -141,7 +128,7 @@ class JsonlSessionRepository
 
   @override
   Future<void> recordUsage(
-    int chatId,
+    String chatId,
     int contextTokens,
     int cachedTokens,
   ) async {
@@ -176,15 +163,16 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<int> getChatCountByModelId(int modelId) async {
+  Future<int> getChatCountByModelId(String modelId) async {
     final chats = await getAllChats();
     return chats.where((c) => c.modelId == modelId).length;
   }
 
   @override
-  Future<List<ChatEntity>> getChatsAfterId(int chatId, {int limit = 10}) async {
+  Future<List<ChatEntity>> getChatsAfterId(String chatId, {int limit = 10}) async {
     final chats = await getAllChats();
-    return chats.where((c) => (c.id ?? 0) > chatId).take(limit).toList();
+    final index = chats.indexWhere((chat) => chat.id == chatId);
+    return index < 0 ? [] : chats.skip(index + 1).take(limit).toList();
   }
 
   @override
@@ -216,9 +204,9 @@ class JsonlSessionRepository
     if (chatRow == null) return null;
     final chat = ChatEntity.fromJson(chatRow);
     var lastContent = '';
-    int? beforeId;
+    int? beforeSeq;
     while (true) {
-      final rows = await store.loadRecentRows(20, beforeId: beforeId);
+      final rows = await store.loadRecentRows(20, beforeSeq: beforeSeq);
       if (rows.isEmpty) break;
       for (final row in rows.reversed) {
         final content = row['content'];
@@ -228,8 +216,8 @@ class JsonlSessionRepository
         }
       }
       if (rows.length < 20) break; // 已扫到文件头
-      final firstId = rows.first['id'];
-      beforeId = firstId is int ? firstId : null;
+      final firstId = rows.first['seq'];
+      beforeSeq = firstId is int ? firstId : null;
     }
     return ChatHistoryEntity(chat: chat, lastMessageContent: lastContent);
   }
@@ -238,7 +226,7 @@ class JsonlSessionRepository
 
   @override
   Future<List<MessageEntity>> getMessagesByChatId(
-    int chatId, {
+    String chatId, {
     bool includeCompacted = true,
   }) async {
     final rows = await _storeFor(chatId).readMessageRows();
@@ -247,26 +235,24 @@ class JsonlSessionRepository
             .map(MessageEntity.fromJson)
             .where((m) => includeCompacted || !m.compacted)
             .toList()
-          // 文件行序即插入序;防御性排序保证 id 升序
-          ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+          // 文件行序即插入序;防御性排序保证 seq 升序
+          ..sort((a, b) => a.seq.compareTo(b.seq));
     return messages;
   }
 
   @override
-  Future<MessageEntity?> getMessageById(int id) async {
-    // id 会话内唯一;遍历所有会话文件查找
-    for (final file in await _sessionFiles()) {
-      final rows = await _storeForFile(file).readMessageRows();
-      for (final row in rows) {
-        if (row['id'] == id) return MessageEntity.fromJson(row);
-      }
+  Future<MessageEntity?> getMessageById(String chatId, String id) async {
+    final rows = await _storeFor(chatId).readMessageRows();
+    for (final row in rows) {
+      if (row['id'] == id) return MessageEntity.fromJson(row);
     }
     return null;
   }
 
   @override
-  Future<int> storeMessage(MessageEntity message) {
-    return _storeFor(message.chatId).appendMessage(message.toJson());
+  Future<MessageEntity> storeMessage(MessageEntity message) async {
+    final row = await _storeFor(message.chatId).appendMessage(message.toJson());
+    return MessageEntity.fromJson(row);
   }
 
   @override
@@ -278,34 +264,30 @@ class JsonlSessionRepository
 
   /// 删除 [chatId] 会话内 id ∈ [ids] 的消息，**一次读-改-写**。
   ///
-  /// 只作用于该会话自己的文件：不按 id 跨会话查找。消息 id 是每会话独立的
-  /// 计数（见 [MessageRepository.deleteMessages]），跨文件按 id 匹配会删到
-  /// 别的会话；逐个 id 循环调用则会把整文件读改写重复 [ids] 次（实测 833KB
-  /// 的会话删 199 条要 1.5s）。
+  /// 按会话定位文件，一次读改写删除整批消息，不扫描其他会话。
   @override
-  Future<void> deleteMessages(int chatId, Set<int> ids) async {
+  Future<void> deleteMessages(String chatId, Set<String> ids) async {
     if (ids.isEmpty) return;
     await _storeFor(chatId).deleteMessageWhere((row) => ids.contains(row['id']));
   }
 
   @override
-  Future<void> deleteMessagesByChatId(int chatId) async {
+  Future<void> deleteMessagesByChatId(String chatId) async {
     _stores.remove(chatId);
     await _storeFor(chatId).deleteFile();
   }
 
   @override
-  Future<int> getMessagesCount(int chatId) async {
+  Future<int> getMessagesCount(String chatId) async {
     final rows = await _storeFor(chatId).readMessageRows();
     return rows.length;
   }
 
   /// 标记 [chatId] 会话内 id ∈ [ids] 的消息为已压缩（一次读-改-写）。
   ///
-  /// 与删除同理按会话定位：id 只在会话内唯一，跨文件按 id 扫会把别的会话的
-  /// 消息标成 compacted（等于从上下文里消失）。
+  /// 与删除同理按会话定位，一次更新所有命中消息。
   @override
-  Future<void> markAsCompacted(int chatId, Set<int> ids) async {
+  Future<void> markAsCompacted(String chatId, Set<String> ids) async {
     if (ids.isEmpty) return;
     await _storeFor(chatId).updateMessagesWhere(
       (row) => ids.contains(row['id']),
@@ -314,7 +296,7 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<MessageEntity?> getLatestMessageByChatId(int chatId) async {
+  Future<MessageEntity?> getLatestMessageByChatId(String chatId) async {
     final rows = await _storeFor(chatId).loadRecentRows(1);
     if (rows.isEmpty) return null;
     return MessageEntity.fromJson(rows.first);
@@ -326,7 +308,7 @@ class JsonlSessionRepository
   /// 所以这里要整文件扫一遍(见 [SessionJsonlStore.loadUserMessageIds]);
   /// 结果由调用方(ChatViewModel)按 chatId 缓存,不要每次构建都调。
   @override
-  Future<List<int>> getTurnStartIds(int chatId) {
+  Future<List<String>> getTurnStartIds(String chatId) {
     return _storeFor(chatId).loadUserMessageIds();
   }
 
@@ -344,13 +326,13 @@ class JsonlSessionRepository
   /// 影响每帧重建的走查量（实测 2 万条 3.7ms，几千条 0.7ms，可忽略）。
   @override
   Future<MessageWindow> loadInitialMessages(
-    int chatId, {
+    String chatId, {
     required int pageSize,
   }) async {
     final store = _storeFor(chatId);
     if (await _fitsInOneRead(store.file)) {
       final messages = _toMessages(await store.readMessageRows())
-        ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+        ..sort((a, b) => a.seq.compareTo(b.seq));
       return (messages: messages, hasOlder: false);
     }
     // 多要一条判断还有没有更早的
@@ -369,17 +351,17 @@ class JsonlSessionRepository
   ///
   /// 长对话的 JSONL 可达几百 MB,`getMessagesByChatId` 全量读既慢又占
   /// 内存;窗口化(消息列表只持有最近 N 条,向上滚动加载更早)需要
-  /// 「读最近 [count] 条」与「读 id < [beforeId] 的最近 [count] 条」两个
+  /// 「读最近 [count] 条」与「读 seq < [beforeSeq] 的最近 [count] 条」两个
   /// 原语,底层由 [SessionJsonlStore.loadRecentRows] 实现。
   @override
   Future<List<MessageEntity>> loadRecentMessages(
-    int chatId, {
+    String chatId, {
     required int count,
-    int? beforeId,
+    int? beforeSeq,
   }) async {
     final rows = await _storeFor(
       chatId,
-    ).loadRecentRows(count, beforeId: beforeId);
+    ).loadRecentRows(count, beforeSeq: beforeSeq);
     return _toMessages(rows);
   }
 

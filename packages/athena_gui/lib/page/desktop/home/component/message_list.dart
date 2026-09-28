@@ -56,7 +56,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
   late final ChatViewModel chatViewModel;
   final sentinelViewModel = GetIt.instance<SentinelViewModel>();
   final turnNavigator = TurnNavigator();
-  int? _displayedChatId;
+  String? _displayedChatId;
 
   @override
   void initState() {

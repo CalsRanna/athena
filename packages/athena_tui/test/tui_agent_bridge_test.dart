@@ -68,7 +68,7 @@ void main() {
   });
 
   test('审批请求带上发起的会话；run 取消时立即按拒绝返回并通知 UI', () async {
-    int? seenChat;
+    String? seenChat;
     var uiNotified = false;
     bridge.permissionHandler = (chatId, toolName, arguments, cancelled) {
       seenChat = chatId;
@@ -80,7 +80,7 @@ void main() {
     final decision = bridge.requestPermissionForTest(
       'bash',
       '{}',
-      chatId: 7,
+      chatId: '7',
       cancelToken: token,
     );
     await Future<void>.delayed(Duration.zero); // 让请求先到达 UI
@@ -88,12 +88,12 @@ void main() {
 
     expect((await decision).approved, isFalse);
     await Future<void>.delayed(Duration.zero);
-    expect(seenChat, 7);
+    expect(seenChat, '7');
     expect(uiNotified, isTrue, reason: 'UI 要据此撤下这张卡片');
   });
 
   test('提问同样带上会话；取消时按未作答返回', () async {
-    int? seenChat;
+    String? seenChat;
     bridge.elicitHandler = (chatId, questions, cancelled) {
       seenChat = chatId;
       return Completer<Map<String, String>?>().future;
@@ -111,12 +111,12 @@ void main() {
           ],
         ),
       ],
-      chatId: 3,
+      chatId: '3',
       cancelToken: token,
     );
     token.cancel();
 
     expect(await answers, isNull);
-    expect(seenChat, 3);
+    expect(seenChat, '3');
   });
 }

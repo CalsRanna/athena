@@ -61,7 +61,7 @@ class BackgroundTaskTool extends Tool {
     void Function(String)? onUpdate,
   }) async {
     final chatId = args[toolChatIdKey];
-    if (chatId is! int) {
+    if (chatId is! String) {
       return 'Error: background tasks require a session context.';
     }
 
@@ -86,7 +86,7 @@ class BackgroundTaskTool extends Tool {
     }
   }
 
-  String _list(int chatId) {
+  String _list(String chatId) {
     final all = tasks.tasksOf(chatId);
     if (all.isEmpty) {
       return 'No background tasks in this session. Start one with '
@@ -102,7 +102,7 @@ class BackgroundTaskTool extends Tool {
     return buffer.toString();
   }
 
-  String _read(int chatId, String taskId, Map<String, dynamic> args) {
+  String _read(String chatId, String taskId, Map<String, dynamic> args) {
     final task = tasks.task(taskId, chatId: chatId);
     if (task == null) {
       return 'Error: no background task "$taskId" in this session. '
@@ -132,7 +132,7 @@ class BackgroundTaskTool extends Tool {
     return buffer.toString();
   }
 
-  Future<String> _stop(int chatId, String taskId) async {
+  Future<String> _stop(String chatId, String taskId) async {
     final task = tasks.task(taskId, chatId: chatId);
     if (task == null) {
       return 'Error: no background task "$taskId" in this session. '

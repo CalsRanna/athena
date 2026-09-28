@@ -358,7 +358,7 @@ void main() {
     final chatId = await storage.sessionRepository.createChat(
       ChatEntity(
         title: 'test',
-        modelId: 1,
+        modelId: '1',
         sentinelId: ChatEntity.noSentinelId,
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),

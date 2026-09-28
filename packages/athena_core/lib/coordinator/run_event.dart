@@ -11,7 +11,7 @@ import 'package:athena_core/entity/token_usage.dart';
 class InternalRunEvent {
   const InternalRunEvent(this.chatId, this.event);
 
-  final int chatId;
+  final String chatId;
   final RunEvent event;
 }
 

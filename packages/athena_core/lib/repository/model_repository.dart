@@ -4,17 +4,17 @@ import 'package:athena_core/entity/model_entity.dart';
 abstract class ModelRepository {
   Future<List<ModelEntity>> getAllModels();
 
-  Future<ModelEntity?> getModelById(int id);
+  Future<ModelEntity?> getModelById(String id);
 
-  Future<List<ModelEntity>> getModelsByProviderId(int providerId);
+  Future<List<ModelEntity>> getModelsByProviderId(String providerId);
 
-  Future<int> createModel(ModelEntity model);
+  Future<String> createModel(ModelEntity model);
 
   Future<void> updateModel(ModelEntity model);
 
-  Future<void> deleteModel(int id);
+  Future<void> deleteModel(String id);
 
-  Future<void> deleteModelsByProviderId(int providerId);
+  Future<void> deleteModelsByProviderId(String providerId);
 
   Future<int> getModelsCount();
 
@@ -22,13 +22,13 @@ abstract class ModelRepository {
 
   Future<ModelEntity?> getModelByNameAndProviderId(
     String name,
-    int providerId,
+    String providerId,
   );
 
   /// 按 API 模型 id 查找模型,供模型目录同步使用。
   Future<ModelEntity?> getModelByModelIdAndProviderId(
     String modelId,
-    int providerId,
+    String providerId,
   );
 
   Future<void> deleteAllModels();

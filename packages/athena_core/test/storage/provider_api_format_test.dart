@@ -20,12 +20,12 @@ void main() {
   test('旧 YAML 默认兼容格式并允许自动同步，显式格式默认手动', () async {
     await atomicWriteString(storage.settingFile, '''
 providers:
-  - id: 1
+  - id: '1'
     name: Legacy
-  - id: 2
+  - id: '2'
     name: Manual
     apiFormat: messages
-  - id: 3
+  - id: '3'
     name: Invalid
     apiFormat: [responses]
 ''');
@@ -40,9 +40,9 @@ providers:
   test('保存 TUI 默认模型不会改变旧配置与显式配置的自动模式', () async {
     await atomicWriteString(storage.settingFile, '''
 providers:
-  - id: 1
+  - id: '1'
     name: Legacy
-  - id: 2
+  - id: '2'
     name: Manual
     apiFormat: messages
 ''');

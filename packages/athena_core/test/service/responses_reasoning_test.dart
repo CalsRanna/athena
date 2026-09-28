@@ -137,7 +137,7 @@ void main() {
     final message = assistant();
     final state = message.responsesState!;
     for (final other in [
-      provider.copyWith(id: 2),
+      provider.copyWith(id: '2'),
       provider.copyWith(baseUrl: 'https://other.test/v1'),
       provider.copyWith(apiFormat: ApiFormat.chatCompletions),
     ]) {
@@ -249,7 +249,7 @@ void main() {
     final chatId = await storage.sessionRepository.createChat(
       ChatEntity(
         title: 'test',
-        modelId: 1,
+        modelId: '1',
         sentinelId: ChatEntity.noSentinelId,
         createdAt: DateTime(2026),
         updatedAt: DateTime(2026),

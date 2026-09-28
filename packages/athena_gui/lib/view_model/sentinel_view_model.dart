@@ -12,7 +12,7 @@ class SentinelViewModel {
   static const directChatOptionLabel = 'No Sentinel (Direct chat)';
 
   /// 仅用于 GUI 状态与渲染，不写入 sentinels 表。
-  /// ChatStoreService 只会读取其保留 ID 并写入 chats.sentinel_id。
+  /// ChatStoreService 将其保存为 sentinel_id: null。
   static final directChatSentinel = SentinelEntity(
     id: ChatEntity.noSentinelId,
     name: directChatName,
@@ -98,7 +98,7 @@ class SentinelViewModel {
     }
   }
 
-  Future<SentinelEntity?> getSentinelById(int id) async {
+  Future<SentinelEntity?> getSentinelById(String id) async {
     try {
       return await _sentinelRepository.getSentinelById(id);
     } catch (e) {
@@ -129,7 +129,7 @@ class SentinelViewModel {
   /// 仅生成并返回 Sentinel 名称
   Future<String?> generateSentinelName(
     String prompt, {
-    required int modelId,
+    required String modelId,
   }) async {
     isGenerating.value = true;
     error.value = null;
@@ -160,7 +160,7 @@ class SentinelViewModel {
   /// 仅生成并返回 Sentinel 描述
   Future<String?> generateSentinelDescription(
     String prompt, {
-    required int modelId,
+    required String modelId,
     String existingName = '',
   }) async {
     isGenerating.value = true;
@@ -192,7 +192,7 @@ class SentinelViewModel {
 
   Future<SentinelEntity?> generateSentinel(
     String prompt, {
-    required int modelId,
+    required String modelId,
   }) async {
     isGenerating.value = true;
     error.value = null;

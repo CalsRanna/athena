@@ -43,8 +43,8 @@ void main() {
 
   late Directory tmp;
   late FileStorage storage;
-  late int providerId;
-  late int modelId;
+  late String providerId;
+  late String modelId;
   late ChatEntity chat;
   late BackgroundTaskService tasks;
   late AgentSettings settings;

@@ -13,7 +13,7 @@ class PermissionDecision {
 /// [cancelToken] 供调用方在 run 取消时自动拒绝审批。
 typedef PermissionPrompt =
     Future<PermissionDecision> Function(
-      int chatId,
+      String chatId,
       String toolName,
       String arguments,
       CancelToken cancelToken,

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:athena_core/storage/storage_id_migration.dart';
+
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -11,7 +13,7 @@ import 'package:athena_core/repository/sentinel_repository.dart';
 /// 数据导入/导出与迁移服务。
 ///
 /// 负责将 Provider/Model/Sentinel 序列化为 JSON、从 JSON 反序列化导入、
-/// 重整悬空的 chat 引用、以及数据库重置。
+/// 重整悬空的 chat 引用、以及文件数据重置。
 ///
 /// 文件 I/O 和文件选择 UI 由上层（ViewModel）负责。
 class DataMigrationService {
@@ -38,6 +40,7 @@ class DataMigrationService {
     final sentinels = await _sentinelRepo.getAllSentinels();
 
     final data = {
+      'storage_version': StorageIdMigration.version,
       'providers': providers.map((p) => p.toJson()).toList(),
       'models': models.map((m) => m.toJson()).toList(),
       'sentinels': sentinels.map((s) => s.toJson()).toList(),
@@ -51,9 +54,11 @@ class DataMigrationService {
   /// [chatModelId] 用于重整导入后悬空的 chat.model_id 引用。
   Future<bool> importFromJson(
     String json, {
-    required int chatModelId,
+    required String chatModelId,
   }) async {
-    final data = jsonDecode(json) as Map<String, dynamic>;
+    final data = LegacyIdMap().convertCatalog(
+      jsonDecode(json) as Map<String, dynamic>,
+    );
 
     // 先清空本地数据，避免同 ID 不同名导致关联错误
     await _modelRepo.deleteAllModels();
@@ -91,9 +96,9 @@ class DataMigrationService {
   /// 扫描所有会话，将 model_id 指向已不存在模型的会话重置为 [preferredModelId]
   /// （若有效），否则取第一个可用模型。
   /// 扫描所有会话，将悬空的 model_id 引用重置。
-  Future<void> reconcileChatModelReferences(int preferredModelId) async {
+  Future<void> reconcileChatModelReferences(String preferredModelId) async {
     final models = await _modelRepo.getAllModels();
-    final validIds = models.map((m) => m.id).whereType<int>().toSet();
+    final validIds = models.map((m) => m.id).whereType<String>().toSet();
     if (validIds.isEmpty) return;
 
     final defaultId = validIds.contains(preferredModelId)

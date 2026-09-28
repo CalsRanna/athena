@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/repository/model_repository.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/json_array_store.dart';
 
 /// ModelRepository 的 JSON 数组实现(`~/.athena/models.json`,GUI 与 TUI 共用)。
@@ -12,8 +12,8 @@ import 'package:athena_core/storage/json_array_store.dart';
 class JsonArrayModelRepository implements ModelRepository {
   JsonArrayModelRepository({
     required File file,
-    required IdAllocator idAllocator,
-  }) : _store = JsonArrayStore(file: file, idAllocator: idAllocator);
+    IdGenerator idGenerator = const IdGenerator(),
+  }) : _store = JsonArrayStore(file: file, idGenerator: idGenerator);
 
   final JsonArrayStore _store;
 
@@ -24,7 +24,7 @@ class JsonArrayModelRepository implements ModelRepository {
   }
 
   @override
-  Future<ModelEntity?> getModelById(int id) async {
+  Future<ModelEntity?> getModelById(String id) async {
     final rows = await _store.readAll();
     for (final row in rows) {
       if (row['id'] == id) return ModelEntity.fromJson(row);
@@ -33,13 +33,13 @@ class JsonArrayModelRepository implements ModelRepository {
   }
 
   @override
-  Future<List<ModelEntity>> getModelsByProviderId(int providerId) async {
+  Future<List<ModelEntity>> getModelsByProviderId(String providerId) async {
     final models = await getAllModels();
     return models.where((m) => m.providerId == providerId).toList();
   }
 
   @override
-  Future<int> createModel(ModelEntity model) => _store.insert(model.toJson());
+  Future<String> createModel(ModelEntity model) => _store.insert(model.toJson());
 
   @override
   Future<void> updateModel(ModelEntity model) async {
@@ -49,10 +49,10 @@ class JsonArrayModelRepository implements ModelRepository {
   }
 
   @override
-  Future<void> deleteModel(int id) => _store.deleteById(id);
+  Future<void> deleteModel(String id) => _store.deleteById(id);
 
   @override
-  Future<void> deleteModelsByProviderId(int providerId) {
+  Future<void> deleteModelsByProviderId(String providerId) {
     return _store.deleteWhere((row) => row['provider_id'] == providerId);
   }
 
@@ -69,7 +69,7 @@ class JsonArrayModelRepository implements ModelRepository {
   @override
   Future<ModelEntity?> getModelByNameAndProviderId(
     String name,
-    int providerId,
+    String providerId,
   ) async {
     final models = await getAllModels();
     for (final m in models) {
@@ -81,7 +81,7 @@ class JsonArrayModelRepository implements ModelRepository {
   @override
   Future<ModelEntity?> getModelByModelIdAndProviderId(
     String modelId,
-    int providerId,
+    String providerId,
   ) async {
     final models = await getAllModels();
     for (final m in models) {

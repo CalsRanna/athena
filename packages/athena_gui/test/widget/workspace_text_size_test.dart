@@ -125,6 +125,16 @@ void main() {
       // 挂真实应用根节点，防止字号设置再次被挪回 MaterialApp 全局。
       await tester.pumpWidget(const AthenaApp());
       await settle(tester);
+      // 尺寸比较必须等草稿角色初始化完成，不能拿加载占位与最终角色比较。
+      for (var i = 0; i < 100 &&
+          GetIt.instance<ChatViewModel>().currentSentinel.value == null; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+      }
+      expect(GetIt.instance<ChatViewModel>().currentSentinel.value, isNotNull);
+      await tester.pumpAndSettle();
 
       final sidebar = find.descendant(
         of: find.byType(DesktopChatListView),
@@ -195,7 +205,7 @@ void main() {
         final chatId = await chats.createChat(
           ChatEntity(
             title: 'Text size conversation',
-            modelId: 0,
+            modelId: '0',
             sentinelId: ChatEntity.noSentinelId,
             createdAt: DateTime(2026, 9, 24),
             updatedAt: DateTime(2026, 9, 24),

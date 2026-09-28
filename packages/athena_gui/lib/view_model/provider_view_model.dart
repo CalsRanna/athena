@@ -37,7 +37,7 @@ class ProviderViewModel {
     }
   }
 
-  Future<ProviderEntity?> getProviderById(int id) async {
+  Future<ProviderEntity?> getProviderById(String id) async {
     try {
       return await _repository.getProviderById(id);
     } catch (e) {

@@ -70,7 +70,6 @@ class _DesktopSentinelFormDialogState extends State<DesktopSentinelFormDialog> {
       return;
     }
     var newSentinel = SentinelEntity(
-      id: 0,
       name: name,
       prompt: '',
       description: '',

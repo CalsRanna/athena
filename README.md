@@ -193,17 +193,22 @@ Chat Completions 兼容端的 `reasoning`、`reasoning_content`、`reasoning_det
 | `sessions/{chatId}.jsonl` | 一个对话一个文件：首行会话元数据，之后每行一条消息 |
 | `models.json` | 模型列表（JSON 数组） |
 | `sentinels.json` | 角色列表（JSON 数组） |
-| `meta.json` | 自增 id 计数（key 为文件/目录路径；丢失后不会覆盖已有会话） |
+| `storage_version.json` | 数据格式版本、旧模型 ID 映射（默认模型设置迁移用） |
+| `backups/ids-v1/` | 首次 UUID 迁移前的原始数据备份 |
 | `setting.yaml` | provider 配置（含 API key）与 TUI 默认模型 |
 | `models_dev_cache.json` | models.dev 目录缓存 |
 | `permissions.json` | 持久权限规则（「始终允许」） |
 | `tool_outputs/{sha256}.txt` | 超长工具输出（内容寻址） |
 | `experiences/shared/`、`experiences/{sentinelId}/` | 经验（一条一个 JSON 文件） |
-| `sentinels/{encodedName}/history/` | Sentinel 变更历史快照 |
+| `sentinels/by-id/{sentinelId}/history/` | Sentinel 变更历史快照 |
 | `skills/{name}/SKILL.md` | 用户级 Skill |
 | `kv.json` | TUI 的键值设置（GUI 用 SharedPreferences） |
 
 写入采用「进程内串行 + 跨进程文件锁 + 临时文件 rename」三条保障：GUI 与 TUI 可能同时打开同一目录，读到的要么是旧文件要么是新文件，不会读到写坏一半的内容。文件永远是唯一真相，缓存类数据都可删除重建。
+
+持久化实体使用 UUIDv7 字符串 ID，生成不依赖共享计数或绝对路径；消息另有会话内递增的 `seq`，用于分页与压缩摘要定位。删除或重置后新建的实体使用新的身份。「不使用角色」保存为 `sentinel_id: null`。
+
+**首次升级前请关闭全部旧版 GUI/TUI。** 新版启动时自动把整数 ID 转成 UUID，并同步转换会话、模型、角色、经验归属、历史快照和协议续接状态的引用。原始文件先完整备份到 `backups/ids-v1/`，目标文件生成完毕后才开始提交；中断后下次启动自动继续，迁移失败会阻止启动，不会继续使用半迁移数据。升级完成后不要用旧版程序打开该目录。JSON 导出的旧整数 ID 备份也可导入。迁移仅解决身份引用，不合并不同设备对同一记录的修改。
 
 旧版角色数据、备份与历史快照中的 `avatar` 字段在读取时忽略；重新保存或导出角色时不再写出该字段，其余角色内容照常保留。
 

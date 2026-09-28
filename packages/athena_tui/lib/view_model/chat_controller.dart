@@ -81,17 +81,17 @@ class ChatController {
   static const int messageWindowSize = 500;
 
   /// 窗口最旧消息的 id;null = 已加载到文件头,没有更早的消息了。
-  int? _windowMinId;
+  int? _windowMinSeq;
 
   /// 是否还有更早的消息可加载(UI 滚动到顶时据此触发分页)。
-  bool get hasOlder => _windowMinId != null;
+  bool get hasOlder => _windowMinSeq != null;
 
   /// 分页加载进行中(UI 防重入)。
   bool _loadingOlder = false;
 
   /// 加载最近窗口大小的消息(JSONL 实现走尾部扫描,不读整个文件;
   /// 其他实现防御性全量后取末尾)。
-  Future<List<MessageEntity>> _loadRecentMessages(int chatId) async {
+  Future<List<MessageEntity>> _loadRecentMessages(String chatId) async {
     final repo = _messageRepo;
     if (repo is JsonlSessionRepository) {
       return repo.loadRecentMessages(chatId, count: messageWindowSize);
@@ -104,9 +104,9 @@ class ChatController {
 
   /// 向上加载更早的一批消息(插入列表头部),返回新增条数。
   ///
-  /// 已到文件头(_windowMinId == null)或加载进行中时返回 0。
+  /// 已到文件头(_windowMinSeq == null)或加载进行中时返回 0。
   Future<int> loadOlderMessages() async {
-    final minId = _windowMinId;
+    final minId = _windowMinSeq;
     final chat = currentChat.value;
     if (!_active || _loadingOlder || minId == null || chat?.id == null) {
       return 0;
@@ -118,16 +118,16 @@ class ChatController {
           ? await repo.loadRecentMessages(
               chat!.id!,
               count: messageWindowSize,
-              beforeId: minId,
+              beforeSeq: minId,
             )
           : <MessageEntity>[]; // 非 JSONL 实现不支持分页,不再加载
       if (older.isEmpty) {
-        _windowMinId = null; // 没有更早的消息了
+        _windowMinSeq = null; // 没有更早的消息了
         return 0;
       }
       messages.value = [...older, ...messages.value];
       // 返回不足窗口 → 扫描已到文件头,没有更早的了;正好满窗口 → 还有
-      _windowMinId = older.length >= messageWindowSize ? older.first.id : null;
+      _windowMinSeq = older.length >= messageWindowSize ? older.first.seq : null;
       return older.length;
     } finally {
       _loadingOlder = false;
@@ -140,7 +140,7 @@ class ChatController {
     if (list.length <= messageWindowSize) return list;
     final dropped = list.length - messageWindowSize;
     final trimmed = list.sublist(dropped);
-    _windowMinId = trimmed.first.id;
+    _windowMinSeq = trimmed.first.seq;
     return trimmed;
   }
 
@@ -427,14 +427,14 @@ class ChatController {
     final messages = await _loadRecentMessages(chat.id!);
     if (!_active) return; // 等待 IO 期间 UI 拆解
     // 返回满窗口 → 文件里可能还有更早的;不足 → 已到文件头
-    _windowMinId = messages.length >= messageWindowSize
-        ? messages.first.id
+    _windowMinSeq = messages.length >= messageWindowSize
+        ? messages.first.seq
         : null;
     final model = await _modelRepo.getModelById(chat.modelId);
     final provider = model == null
         ? null
         : await _supportService.getProviderForModel(model.providerId);
-    final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+    final sentinel = chat.sentinelId == null ? null : await _sentinelRepo.getSentinelById(chat.sentinelId!);
     if (!_active) return;
     currentChat.value = chat;
     this.messages.value = messages;
@@ -481,7 +481,7 @@ class ChatController {
   Future<void> switchSentinel(SentinelEntity sentinel) async {
     final chat = currentChat.value;
     if (chat?.id == null) return;
-    final updated = await _supportService.updateSentinel(chat!, sentinel.id!);
+    final updated = await _supportService.updateSentinel(chat!, sentinel.id);
     currentChat.value = updated;
     currentSentinel.value = sentinel;
     await _reloadChats();
@@ -582,7 +582,7 @@ class ChatController {
   }
 
   /// 会话标题（找不到时用 id），用于标注不属于当前会话的审批与错误。
-  String chatTitleOf(int chatId) {
+  String chatTitleOf(String chatId) {
     if (currentChat.value?.id == chatId) return currentChat.value!.title;
     for (final history in chatList.value) {
       if (history.chat.id == chatId) return history.chat.title;
@@ -771,10 +771,10 @@ class ChatController {
   void _applyMessageUpdate(MessageEntity message) {
     // 同上:跨聊天更新(如旧聊天 finalize 的落库回读)不得污染当前列表
     if (message.chatId != currentChat.value?.id) return;
-    final minId = _windowMinId;
+    final minId = _windowMinSeq;
     // 已被窗口裁掉的旧消息(如长时间流式后 finalize 的早期占位消息):
     // 丢弃,不 add——否则会错位插到列表尾部
-    if (minId != null && (message.id ?? 0) < minId) return;
+    if (minId != null && message.seq < minId) return;
     final pending = _pendingList ?? List<MessageEntity>.of(messages.value);
     final index = pending.indexWhere((m) => m.id == message.id);
     if (index >= 0) {

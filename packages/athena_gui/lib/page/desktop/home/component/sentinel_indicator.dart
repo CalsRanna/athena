@@ -1,5 +1,5 @@
-import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
+import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/tag.dart';
 import 'package:flutter/material.dart';
@@ -29,9 +29,9 @@ class DesktopSentinelIndicator extends StatelessWidget {
     return Watch((context) {
       final sentinel = chatViewModel.currentSentinel.value;
       // ViewModel 会把「不使用 Sentinel」的会话解析成 directChatSentinel
-      // （保留 ID = 0 的假实体，不写 sentinels 表），所以按 ID 判有没有角色。
+      // 默认角色尚未落盘时 ID 也为空，只把明确的直接对话占位视为无角色。
       final hasSentinel =
-          sentinel != null && sentinel.id != ChatEntity.noSentinelId;
+          sentinel != null && !identical(sentinel, SentinelViewModel.directChatSentinel);
       final label = hasSentinel ? sentinel.name : 'No Sentinel';
       // Builder 拿到 chip 自己的矩形回传，菜单左边要与它对齐
       return Builder(

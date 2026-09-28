@@ -65,34 +65,34 @@ class AgentRunCoordinator {
   int _nextRunId = 0;
 
   /// 正在流式运行的对话 id 集合（支持多对话同时运行）。
-  final Set<int> _streamingChatIds = {};
+  final Set<String> _streamingChatIds = {};
 
   /// chatId → runId 映射（取消/等待 settle/注入消息时定位到对应 run）。
-  final Map<int, int> _runIdByChat = {};
+  final Map<String, int> _runIdByChat = {};
 
   /// chatId → 本次 run 的工作文件夹（审批落库时按同一口径解析路径）。
   ///
   /// 按会话而非进程持有：多对话可同时运行，各自的工作文件夹不能串台。
-  final Map<int, String?> _workspaceByChat = {};
+  final Map<String, String?> _workspaceByChat = {};
 
   /// Coordinator 从 run 建立的第一刻就持有取消令牌。此前令牌直到
   /// AgentService.run 才创建，用户在上下文构建/自动压缩期间点击停止会丢失。
-  final Map<int, CancelToken> _cancelTokenByChat = {};
+  final Map<String, CancelToken> _cancelTokenByChat = {};
 
   /// 完整 run（含取消落库和时间戳收尾）结束后完成，而非仅 Agent 内循环结束。
-  final Map<int, Completer<void>> _settledByChat = {};
+  final Map<String, Completer<void>> _settledByChat = {};
 
   /// 运行中输入队列（chatId → 待接续的落库消息）。
   ///
   /// 当前 run 结束后按序取出，以 [persistUserMessage: false] 自动接续为
   /// 新 run——事件流连续，UI 方无需感知 run 边界。
-  final Map<int, List<MessageEntity>> _pendingInputs = {};
+  final Map<String, List<MessageEntity>> _pendingInputs = {};
 
   /// 流式运行中的消息快照（chatId → 当前正在生成的 assistant 消息）。
   ///
   /// 流式中间态只存在于内存（迭代边界才落库），UI 切换到正在运行的对话时
   /// 需要据此恢复实时进度；run 结束时移除（届时 DB 已是最终态）。
-  final Map<int, MessageEntity> _liveMessages = {};
+  final Map<String, MessageEntity> _liveMessages = {};
 
   /// 协调层自己发起的 run（后台任务完成的自动汇报）的事件流。
   ///
@@ -105,10 +105,10 @@ class AgentRunCoordinator {
   ///
   /// 攒着而不是打断：正在跑的 run 属于用户当下的指令，汇报优先级更低；
   /// 同一会话内先后结束的多个任务合并成一次汇报，避免 N 倍成本。
-  final Map<int, List<BackgroundTask>> _pendingReports = {};
+  final Map<String, List<BackgroundTask>> _pendingReports = {};
 
   /// 正在跑汇报回合的会话（一次一个）。
-  final Set<int> _reportingChatIds = {};
+  final Set<String> _reportingChatIds = {};
 
   StreamSubscription<BackgroundTask>? _taskCompletionSub;
 
@@ -163,20 +163,20 @@ class AgentRunCoordinator {
   }
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
-  Set<int> get streamingChatIds => _streamingChatIds;
+  Set<String> get streamingChatIds => _streamingChatIds;
 
   /// 指定对话是否正在流式运行。
-  bool isStreamingChat(int chatId) => _streamingChatIds.contains(chatId);
+  bool isStreamingChat(String chatId) => _streamingChatIds.contains(chatId);
 
   /// 等待指定对话的 run 完成后 resolve 的 Future（无运行返回 null）。
-  Future<void>? settledOf(int chatId) {
+  Future<void>? settledOf(String chatId) {
     return _settledByChat[chatId]?.future;
   }
 
   /// 指定对话当前正在流式生成的消息快照；未在流式中返回 null。
   ///
   /// 用于 UI 切换到运行中的对话时恢复实时进度（DB 里只有迭代边界前的旧态）。
-  MessageEntity? liveMessage(int chatId) => _liveMessages[chatId];
+  MessageEntity? liveMessage(String chatId) => _liveMessages[chatId];
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -212,8 +212,8 @@ class AgentRunCoordinator {
       // 1. 保存用户消息（接续 run 的消息已在 queueInput 落库，跳过存储）
       MessageEntity userMessage;
       if (persistUserMessage) {
-        final id = await _messageRepo.storeMessage(message);
-        userMessage = message.copyWith(id: id);
+        final stored = await _messageRepo.storeMessage(message);
+        userMessage = stored;
       } else {
         userMessage = message;
       }
@@ -286,7 +286,9 @@ class AgentRunCoordinator {
       );
       cancelToken.throwIfCancelled();
 
-      final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+      final sentinel = chat.sentinelId == null
+          ? null
+          : await _sentinelRepo.getSentinelById(chat.sentinelId!);
       cancelToken.throwIfCancelled();
       final includeReasoning = model.reasoning;
       final persistedMessages = await _messageService.buildMessages(
@@ -340,6 +342,7 @@ class AgentRunCoordinator {
           // The placeholder bounds this snapshot, including inputs queued
           // while the repository read is still in flight.
           beforeMessageId: _liveMessages[chatId]!.id!,
+          beforeSeq: _liveMessages[chatId]!.seq,
           excludedMessageIds: {
             for (final pending in _pendingInputs[chatId] ?? <MessageEntity>[])
               pending.id!,
@@ -425,7 +428,7 @@ class AgentRunCoordinator {
   /// 消息落进会话：与运行中出错（[ChatStoreService.recordErrorOnMessage]）
   /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
   /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
-  Future<RunEvent> _recordSetupError(int chatId, String message) async {
+  Future<RunEvent> _recordSetupError(String chatId, String message) async {
     final placeholder = await _manageService.appendAssistantPlaceholder(chatId);
     final failed = await _manageService.recordErrorOnMessage(
       placeholder,
@@ -441,7 +444,7 @@ class AgentRunCoordinator {
   /// 没有那一段收尾。
   Stream<RunEvent> _continuePendingInputs(
     ChatEntity chat,
-    int chatId, {
+    String chatId, {
     required bool jsonMode,
   }) async* {
     final pending = _pendingInputs[chatId];
@@ -466,7 +469,7 @@ class AgentRunCoordinator {
   /// 状态记为 cancelled）。会话归属而非 run 归属：用户点停止的意思是「这个
   /// 会话先停下」，而不是「这一轮先停」，且任务正文与新指令冲突时（两个构建
   /// 抢同一把锁）后果由用户承担。
-  void stop(int chatId) {
+  void stop(String chatId) {
     final runId = _runIdByChat[chatId];
     _cancelTokenByChat[chatId]?.cancel();
     if (runId != null) _agentService.abort(runId);
@@ -477,10 +480,9 @@ class AgentRunCoordinator {
   ///
   /// 返回落库后的消息（调用方据此立即显示）；无活跃 run 时返回 null，
   /// 调用方应走 [send] 正常发送。
-  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) async {
+  Future<MessageEntity?> queueInput(String chatId, MessageEntity message) async {
     if (!_runIdByChat.containsKey(chatId)) return null;
-    final id = await _messageRepo.storeMessage(message);
-    final stored = message.copyWith(id: id);
+    final stored = await _messageRepo.storeMessage(message);
     final pending = _pendingInputs.putIfAbsent(chatId, () => []);
     pending.add(stored);
     // 竞态：storeMessage 落库期间 run 可能已结束（接续检查已执行过），
@@ -507,7 +509,7 @@ class AgentRunCoordinator {
   }
 
   /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
-  Future<void> _drainPendingReport(int chatId) async {
+  Future<void> _drainPendingReport(String chatId) async {
     if (_reportingChatIds.contains(chatId)) return;
     if (_streamingChatIds.contains(chatId)) return;
     final pending = _pendingReports[chatId];
@@ -588,7 +590,9 @@ class AgentRunCoordinator {
         sentinelId: sentinelKey,
       );
       cancelToken.throwIfCancelled();
-      final sentinel = await _sentinelRepo.getSentinelById(chat.sentinelId);
+      final sentinel = chat.sentinelId == null
+          ? null
+          : await _sentinelRepo.getSentinelById(chat.sentinelId!);
       cancelToken.throwIfCancelled();
       final persistedMessages = await _messageService.buildMessages(
         chat: chat,
@@ -1002,7 +1006,7 @@ class AgentRunCoordinator {
 
   Future<bool> _askPermission(
     int runId,
-    int chatId,
+    String chatId,
     String toolName,
     String arguments,
     CancelToken cancelToken,

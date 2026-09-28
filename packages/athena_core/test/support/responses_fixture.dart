@@ -4,7 +4,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 
 ProviderEntity responsesProvider() => ProviderEntity(
-  id: 1,
+  id: '1',
   name: 'test',
   baseUrl: 'https://example.test/v1',
   apiKey: 'test-secret',

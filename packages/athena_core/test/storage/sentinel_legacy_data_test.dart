@@ -16,7 +16,7 @@ void main() {
   late FileStorage storage;
   late SentinelHistoryStore history;
   final legacy = <String, dynamic>{
-    'id': 7,
+    'id': '7',
     'name': 'Reviewer',
     'avatar': 'legacy-avatar',
     'description': 'Review code',
@@ -47,7 +47,7 @@ void main() {
     expect(saved, {...currentFields, 'description': 'Updated'});
 
     await repository.importSentinels([SentinelEntity.fromJson(legacy)]);
-    expect((await repository.getSentinelById(7))!.toJson(), currentFields);
+    expect((await repository.getSentinelById('7'))!.toJson(), currentFields);
     final listing = await SentinelListTool(repository: repository).execute({});
     final details = await SentinelGetTool(
       repository: repository,
@@ -84,7 +84,7 @@ void main() {
       historyStore: history,
     ).execute({'sentinel_name': 'Reviewer', 'snapshot_id': 'legacy'});
     expect(reverted, isNot(startsWith('Error:')));
-    expect((await repository.getSentinelById(7))!.toJson(), {
+    expect((await repository.getSentinelById('7'))!.toJson(), {
       ...currentFields,
       'prompt': 'Previous instructions.',
     });
@@ -100,11 +100,11 @@ void main() {
       'new_prompt': 'Improved instructions.',
     });
     expect(result, isNot(startsWith('Error:')));
-    expect((await repository.getSentinelById(7))!.toJson(), {
+    expect((await repository.getSentinelById('7'))!.toJson(), {
       ...currentFields,
       'prompt': 'Improved instructions.',
     });
-    final current = (await repository.getSentinelById(7))!;
+    final current = (await repository.getSentinelById('7'))!;
     final snapshots = await history.list(current);
     expect(snapshots, hasLength(3), reason: '旧布局的快照按 id 认领，与新快照合并');
     final byId = p.join(
@@ -120,7 +120,7 @@ void main() {
       final data =
           jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       expect(data['sentinel'], isNot(contains('avatar')));
-      expect((await history.load(current, meta.id))!.id, 7);
+      expect((await history.load(current, meta.id))!.id, '7');
     }
   });
 }

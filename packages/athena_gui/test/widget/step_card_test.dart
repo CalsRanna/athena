@@ -28,7 +28,7 @@ void main() {
   );
 
   ReasoningStep reasoning() => ReasoningStep(
-    MessageEntity(chatId: 1, role: 'assistant', reasoningContent: '想想'),
+    MessageEntity(chatId: '1', role: 'assistant', reasoningContent: '想想'),
   );
 
   Future<void> pumpCard(

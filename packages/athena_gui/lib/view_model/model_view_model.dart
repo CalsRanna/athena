@@ -79,7 +79,7 @@ class ModelViewModel {
     }
   }
 
-  Future<ModelEntity?> getModelById(int id) async {
+  Future<ModelEntity?> getModelById(String id) async {
     try {
       return await _repository.getModelById(id);
     } catch (e) {
@@ -88,7 +88,7 @@ class ModelViewModel {
     }
   }
 
-  Future<List<ModelEntity>> getModelsByProviderId(int providerId) async {
+  Future<List<ModelEntity>> getModelsByProviderId(String providerId) async {
     try {
       var providerModels = await _repository.getModelsByProviderId(providerId);
       providerModels.sort((a, b) => a.name.compareTo(b.name));
@@ -99,7 +99,7 @@ class ModelViewModel {
     }
   }
 
-  Future<List<ModelEntity>> getEnabledModelsByProviderId(int providerId) async {
+  Future<List<ModelEntity>> getEnabledModelsByProviderId(String providerId) async {
     try {
       // 只需检查 provider 是否 enabled，所有该 provider 下的 models 都视为 enabled
       var provider = await _providerRepository.getProviderById(providerId);
@@ -168,7 +168,7 @@ class ModelViewModel {
   /// 删除某个 provider 名下的全部模型（删 provider 时级联调用）。
   ///
   /// 调用方负责 loading / 错误展示；这里只维护本地列表。
-  Future<void> deleteModelsOfProvider(int providerId) async {
+  Future<void> deleteModelsOfProvider(String providerId) async {
     await _repository.deleteModelsByProviderId(providerId);
     models.value =
         models.value.where((m) => m.providerId != providerId).toList();

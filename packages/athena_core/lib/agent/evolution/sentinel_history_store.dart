@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+import 'package:athena_core/storage/id_generator.dart';
+import 'package:athena_core/storage/file_lock.dart';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:path/path.dart' as p;
@@ -26,7 +27,7 @@ class SentinelSnapshotMeta {
 /// 存储结构：
 /// ```
 /// $HOME/.athena/sentinels/
-///   by-id/{sentinel_id}/history/{millis}_{rand}.json   # 当前布局
+///   by-id/{sentinel_id}/history/{uuidv7}.json         # 当前布局
 ///   {encoded_name}/history/{millis}_{rand}.json         # 旧布局（只读）
 /// ```
 ///
@@ -34,7 +35,7 @@ class SentinelSnapshotMeta {
 /// 之后用新名字回滚会找不到，改名这一步无法撤销；反过来，别的角色日后
 /// 用了这个旧名字，又会「继承」不属于它的快照，回滚会把别人的提示词
 /// 恢复到它身上。旧布局的快照继续可读：每条快照都存着完整的角色 JSON
-/// （含 id），按 id 认领，不看目录名。`by-id/` 下是纯数字目录，而旧布局
+/// （含 id），按 id 认领，不看目录名。`by-id/` 下是角色 UUID 目录，而旧布局
 /// 的名字目录下直接就是 `history/`，两者不会混淆。
 ///
 /// 每个快照文件包含完整的 sentinel 旧态 + 变更原因 + 时间。
@@ -55,7 +56,7 @@ class SentinelHistoryStore {
 
   static const _byIdDir = 'by-id';
 
-  String _historyDirOf(int sentinelId) =>
+  String _historyDirOf(String sentinelId) =>
       '$_basePath/$_byIdDir/$sentinelId/history';
 
   Directory _ensureDir(String path) {
@@ -76,7 +77,7 @@ class SentinelHistoryStore {
       throw ArgumentError('Cannot snapshot a sentinel without an id.');
     }
     final historyDir = _ensureDir(_historyDirOf(sentinelId));
-    final id = await _uniqueId(historyDir);
+    final id = const IdGenerator().next();
     final json = {
       'snapshot_id': id,
       'saved_at': DateTime.now().toIso8601String(),
@@ -84,13 +85,7 @@ class SentinelHistoryStore {
       'sentinel': entity.toJson(),
     };
     final target = File('${historyDir.path}/$id.json');
-    final temporary = File('${target.path}.tmp');
-    await temporary.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(json),
-      flush: true,
-    );
-    // 临时文件 + rename：写一半崩溃不会留下一条被当作损坏而跳过的快照
-    await temporary.rename(target.path);
+    await atomicWriteString(target, const JsonEncoder.withIndent('  ').convert(json));
     return id;
   }
 
@@ -174,22 +169,4 @@ class SentinelHistoryStore {
     }
   }
 
-  /// 生成时间戳 + 随机后缀的快照 id，并确保文件不存在。
-  static Future<String> _uniqueId(Directory dir) async {
-    for (var attempt = 0; attempt < 3; attempt++) {
-      final id = '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(6)}';
-      if (!await File('${dir.path}/$id.json').exists()) return id;
-    }
-    return '${DateTime.now().millisecondsSinceEpoch}_${_randomSuffix(12)}';
-  }
-
-  static final Random _random = Random();
-
-  static String _randomSuffix(int length) {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return List.generate(
-      length,
-      (_) => chars[_random.nextInt(chars.length)],
-    ).join();
-  }
 }

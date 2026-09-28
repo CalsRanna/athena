@@ -19,7 +19,7 @@ Future<String> startBackgroundShellTask({
   }
 
   final chatId = args[toolChatIdKey];
-  if (chatId is! int) {
+  if (chatId is! String) {
     return 'Error: background tasks are unavailable: this host has no '
         'session context (background tasks need a session to belong to).';
   }

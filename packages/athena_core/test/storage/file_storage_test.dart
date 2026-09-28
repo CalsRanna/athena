@@ -29,15 +29,15 @@ void main() {
         (i.isEven ? a : b).sessionRepository.createChat(
           ChatEntity(
             title: '$i',
-            modelId: 1,
-            sentinelId: 1,
+            modelId: '1',
+            sentinelId: '1',
             createdAt: now,
             updatedAt: now,
           ),
         ),
     ]);
     expect(ids.toSet().length, 20);
-    expect(ids.reduce((x, y) => x > y ? x : y), 20);
+    expect(ids, everyElement(matches(r'^[0-9a-f-]{36}$')));
   });
 
   test('provider 读穿透:另一实例的写入立即可见', () async {
@@ -67,8 +67,8 @@ void main() {
     final chatId = await a.sessionRepository.createChat(
       ChatEntity(
         title: 't',
-        modelId: 1,
-        sentinelId: 1,
+        modelId: '1',
+        sentinelId: '1',
         createdAt: now,
         updatedAt: now,
       ),
@@ -95,8 +95,8 @@ void main() {
     await a.sessionRepository.createChat(
       ChatEntity(
         title: 't',
-        modelId: 1,
-        sentinelId: 1,
+        modelId: '1',
+        sentinelId: '1',
         createdAt: now,
         updatedAt: now,
       ),
@@ -106,18 +106,18 @@ void main() {
     await a.reset();
     expect(await a.hasData(), isFalse);
     expect(await a.catalogCacheFile.exists(), isTrue);
-    // 计数也清零:重置后 id 从头分配
+    // 重置后的实体仍使用新的 UUID，无需计数文件。
     expect(
       await a.sessionRepository.createChat(
         ChatEntity(
           title: 'n',
-          modelId: 1,
-          sentinelId: 1,
+          modelId: '1',
+          sentinelId: '1',
           createdAt: now,
           updatedAt: now,
         ),
       ),
-      1,
+      matches(r'^[0-9a-f-]{36}$'),
     );
   });
 }

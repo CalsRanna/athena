@@ -27,7 +27,7 @@ import 'package:athena_core/storage/agent_settings.dart';
 /// UI 要标出它属于哪个会话。[cancelled] 在该 run 取消时完成——此时桥已
 /// 按拒绝返回,UI 据此撤下这张卡片,不留一张再也等不到结果的审批。
 typedef TuiPermissionHandler = Future<PermissionDecision> Function(
-  int chatId,
+  String chatId,
   String toolName,
   String arguments,
   Future<void> cancelled,
@@ -38,7 +38,7 @@ typedef TuiPermissionHandler = Future<PermissionDecision> Function(
 /// 返回 null = 未作答(UI 未就绪或用户跳过),工具据此按标注过的假定继续。
 typedef TuiElicitHandler =
     Future<Map<String, String>?> Function(
-      int chatId,
+      String chatId,
       List<ElicitQuestion> questions,
       Future<void> cancelled,
     );
@@ -93,12 +93,12 @@ class TuiAgentBridge {
   }
 
   /// 等待指定对话的 run 完成后 resolve 的 Future（TUI 单对话）。
-  Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
+  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
 
   /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
   Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
 
-  MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
+  MessageEntity? liveMessage(String chatId) => _coordinator.liveMessage(chatId);
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -112,12 +112,12 @@ class TuiAgentBridge {
     );
   }
 
-  void stop(int chatId) {
+  void stop(String chatId) {
     _coordinator.stop(chatId);
   }
 
   /// 运行中输入：落库排队，当前 run 结束后自动接续为新 run。
-  Future<MessageEntity?> queueInput(int chatId, MessageEntity message) {
+  Future<MessageEntity?> queueInput(String chatId, MessageEntity message) {
     return _coordinator.queueInput(chatId, message);
   }
 
@@ -128,7 +128,7 @@ class TuiAgentBridge {
   Future<PermissionDecision> requestPermissionForTest(
     String toolName,
     String arguments, {
-    int chatId = 0,
+    String chatId = '',
     CancelToken? cancelToken,
   }) {
     return _askPermission(
@@ -143,14 +143,14 @@ class TuiAgentBridge {
   @visibleForTesting
   Future<Map<String, String>?> requestElicitForTest(
     List<ElicitQuestion> questions, {
-    int chatId = 0,
+    String chatId = '',
     CancelToken? cancelToken,
   }) {
     return _askElicit(chatId, questions, cancelToken ?? CancelToken());
   }
 
   Future<Map<String, String>?> _askElicit(
-    int chatId,
+    String chatId,
     List<ElicitQuestion> questions,
     CancelToken cancelToken,
   ) {
@@ -165,7 +165,7 @@ class TuiAgentBridge {
   }
 
   Future<PermissionDecision> _askPermission(
-    int chatId,
+    String chatId,
     String toolName,
     String arguments,
     CancelToken cancelToken,

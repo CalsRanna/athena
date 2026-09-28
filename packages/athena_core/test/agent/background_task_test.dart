@@ -20,7 +20,7 @@ void main() {
   Future<BackgroundTask> start(
     BackgroundTaskService tasks, {
     required String command,
-    int chatId = 1,
+    String chatId = '1',
   }) => tasks.start(
     chatId: chatId,
     executable: 'bash',
@@ -98,7 +98,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       final childPid = int.parse((await pidFile.readAsString()).trim());
 
-      final stopped = await tasks.stop(task.id, chatId: 1);
+      final stopped = await tasks.stop(task.id, chatId: '1');
 
       expect(stopped, isTrue);
       expect(task.status, BackgroundTaskStatus.cancelled);
@@ -112,10 +112,10 @@ void main() {
 
     test('stopChatTasks 只影响本会话，其他会话的任务照常运行', () async {
       final tasks = service();
-      final mine = await start(tasks, command: 'sleep 30', chatId: 7);
-      final other = await start(tasks, command: 'sleep 30', chatId: 8);
+      final mine = await start(tasks, command: 'sleep 30', chatId: '7');
+      final other = await start(tasks, command: 'sleep 30', chatId: '8');
 
-      final killed = await tasks.stopChatTasks(7);
+      final killed = await tasks.stopChatTasks('7');
 
       expect(killed, 1);
       expect(mine.status, BackgroundTaskStatus.cancelled);
@@ -169,27 +169,27 @@ void main() {
       final tasks = service();
       final tool = BackgroundTaskTool(tasks);
       final task = await tasks.start(
-        chatId: 3,
+        chatId: '3',
         executable: 'bash',
         arguments: ['-c', 'echo hello; sleep 30'],
         workdir: Directory.systemTemp.path,
         command: 'echo hello; sleep 30',
       );
 
-      final list = await tool.execute({toolChatIdKey: 3, 'action': 'list'});
+      final list = await tool.execute({toolChatIdKey: '3', 'action': 'list'});
       expect(list, contains(task.id));
       expect(list, contains('running'));
 
       await Future<void>.delayed(const Duration(milliseconds: 300));
       final read = await tool.execute({
-        toolChatIdKey: 3,
+        toolChatIdKey: '3',
         'action': 'read',
         'task_id': task.id,
       });
       expect(read, contains('hello'));
 
       final stopped = await tool.execute({
-        toolChatIdKey: 3,
+        toolChatIdKey: '3',
         'action': 'stop',
         'task_id': task.id,
       });
@@ -198,7 +198,7 @@ void main() {
 
       // 停止后输出仍可读，且状态不再显示 running。
       final after = await tool.execute({
-        toolChatIdKey: 3,
+        toolChatIdKey: '3',
         'action': 'read',
         'task_id': task.id,
       });
@@ -215,26 +215,26 @@ void main() {
         contains('Error: background tasks require a session context'),
       );
       expect(
-        await tool.execute({toolChatIdKey: 1, 'action': 'read'}),
+        await tool.execute({toolChatIdKey: '1', 'action': 'read'}),
         contains('requires task_id'),
       );
       expect(
         await tool.execute({
-          toolChatIdKey: 1,
+          toolChatIdKey: '1',
           'action': 'read',
           'task_id': 'bg-404',
         }),
         contains('no background task'),
       );
       expect(
-        await tool.execute({toolChatIdKey: 1, 'action': 'explode'}),
+        await tool.execute({toolChatIdKey: '1', 'action': 'explode'}),
         contains('unknown action'),
       );
       // 别的会话的任务查不到（会话隔离，不是全局任务表）。
-      final other = await start(tasks, command: 'sleep 30', chatId: 99);
+      final other = await start(tasks, command: 'sleep 30', chatId: '99');
       expect(
         await tool.execute({
-          toolChatIdKey: 1,
+          toolChatIdKey: '1',
           'action': 'read',
           'task_id': other.id,
         }),
@@ -250,7 +250,7 @@ void main() {
       final tool = BashShellTool(tasks: tasks);
 
       final result = await tool.execute({
-        toolChatIdKey: 5,
+        toolChatIdKey: '5',
         'command': 'sleep 30',
         'background': true,
       });
@@ -267,7 +267,7 @@ void main() {
       final tool = BashShellTool(tasks: tasks);
 
       final result = await tool.execute({
-        toolChatIdKey: 5,
+        toolChatIdKey: '5',
         toolBackgroundDisabledKey: true,
         'command': 'sleep 30',
         'background': true,

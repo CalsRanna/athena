@@ -52,7 +52,7 @@ class ChatStoreService {
     var chat = ChatEntity(
       title: 'New Chat',
       modelId: model.id!,
-      sentinelId: sentinel.id!,
+      sentinelId: sentinel.id,
       temperature: temperature,
       reasoningEffort: reasoningEffort,
       retention: retention,
@@ -64,12 +64,12 @@ class ChatStoreService {
     return chat.copyWith(id: id);
   }
 
-  Future<void> deleteChat(int chatId) async {
-    // messages 表外键 ON DELETE CASCADE，无需手动删除
+  Future<void> deleteChat(String chatId) async {
+    // 会话与消息共用一个 JSONL 文件，删除会话即删除全部消息。
     await _chatRepository.deleteChat(chatId);
   }
 
-  Future<void> deleteChats(Set<int> ids) async {
+  Future<void> deleteChats(Set<String> ids) async {
     for (final id in ids) {
       await _chatRepository.deleteChat(id);
     }
@@ -90,7 +90,9 @@ class ChatStoreService {
     final provider = model != null
         ? await _providerRepository.getProviderById(model.providerId)
         : null;
-    final sentinel = await _sentinelRepository.getSentinelById(chat.sentinelId);
+    final sentinel = chat.sentinelId == null
+        ? null
+        : await _sentinelRepository.getSentinelById(chat.sentinelId!);
     return (messages: messages, model: model, provider: provider, sentinel: sentinel);
   }
 
@@ -108,11 +110,11 @@ class ChatStoreService {
   /// 一次性收集 id 交给仓储按会话删除：一次读-改-写，而不是逐条删
   /// （逐条 = 每条都要把整会话文件读+写一遍）。
   Future<void> deleteMessagesFromIndex(
-    int chatId,
+    String chatId,
     List<MessageEntity> messages,
     int fromIndex,
   ) async {
-    final ids = <int>{
+    final ids = <String>{
       for (var i = fromIndex; i < messages.length; i++) messages[i].id!,
     };
     if (ids.isEmpty) return;
@@ -126,15 +128,14 @@ class ChatStoreService {
     }
   }
 
-  /// 创建并落库一条空的 assistant 占位消息，返回带 id 的 entity
-  Future<MessageEntity> appendAssistantPlaceholder(int chatId) async {
+  /// 创建并落库一条空的 assistant 占位消息，返回带 id 与 seq 的 entity
+  Future<MessageEntity> appendAssistantPlaceholder(String chatId) async {
     final placeholder = MessageEntity(
       chatId: chatId,
       role: 'assistant',
       content: '',
     );
-    final id = await _messageRepository.storeMessage(placeholder);
-    return placeholder.copyWith(id: id);
+    return _messageRepository.storeMessage(placeholder);
   }
 
   /// 持久化 assistant 消息最终内容（含 toolCalls/toolResults/reasoning）

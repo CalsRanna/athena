@@ -54,7 +54,7 @@ void main() {
       final id = await chatRepo.createChat(
         ChatEntity(
           title: title,
-          modelId: 1,
+          modelId: '1',
           sentinelId: ChatEntity.noSentinelId,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
@@ -68,7 +68,7 @@ void main() {
     return chat;
   }
 
-  List<int?> chatIds() => viewModel.chats.value.map((c) => c.id).toList();
+  List<String?> chatIds() => viewModel.chats.value.map((c) => c.id).toList();
 
   List<String> messageContents() =>
       viewModel.messages.value.map((m) => m.content).toList();

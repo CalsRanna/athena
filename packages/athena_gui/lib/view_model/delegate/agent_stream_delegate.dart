@@ -24,7 +24,7 @@ import 'package:athena_core/storage/agent_settings.dart';
 
 /// 一个挂起的权限审批请求（按 [chatId] 隔离，渲染到对应会话）。
 class ApprovalRequest {
-  final int chatId;
+  final String chatId;
   final String toolName;
 
   /// Original argument JSON, including optional call description metadata.
@@ -41,7 +41,7 @@ class ApprovalRequest {
 
 /// 一个挂起的提问请求（按 [chatId] 隔离，渲染到对应会话）。
 class ElicitRequest {
-  final int chatId;
+  final String chatId;
   final List<ElicitQuestion> questions;
 
   /// 用户提交答案后完成；run 取消时以 null 完成（卡片随之移除）。
@@ -92,19 +92,19 @@ class AgentStreamDelegate {
   }
 
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
-  Set<int> get streamingChatIds => _coordinator.streamingChatIds;
+  Set<String> get streamingChatIds => _coordinator.streamingChatIds;
 
   /// 指定对话是否正在流式运行。
-  bool isStreamingChat(int chatId) => _coordinator.isStreamingChat(chatId);
+  bool isStreamingChat(String chatId) => _coordinator.isStreamingChat(chatId);
 
   /// 协调层自己发起的 run（后台任务完成后的自动汇报）的事件流。
   Stream<InternalRunEvent> get internalEvents => _coordinator.internalEvents;
 
   /// 等待指定对话的 run 完成后 resolve 的 Future。
-  Future<void>? settledOf(int chatId) => _coordinator.settledOf(chatId);
+  Future<void>? settledOf(String chatId) => _coordinator.settledOf(chatId);
 
   /// 指定对话当前流式中的消息快照（用于切换到运行中的对话时恢复进度）。
-  MessageEntity? liveMessage(int chatId) => _coordinator.liveMessage(chatId);
+  MessageEntity? liveMessage(String chatId) => _coordinator.liveMessage(chatId);
 
   Stream<RunEvent> send({
     required MessageEntity message,
@@ -118,7 +118,7 @@ class AgentStreamDelegate {
     );
   }
 
-  void stop(int chatId) {
+  void stop(String chatId) {
     _coordinator.stop(chatId);
   }
 
@@ -139,7 +139,7 @@ class AgentStreamDelegate {
   // ─── GUI 侧实现：会话内审批卡片（非模态） ────────────────
 
   Future<PermissionDecision> _askPermission(
-    int chatId,
+    String chatId,
     String toolName,
     String arguments,
     CancelToken cancelToken,
@@ -168,7 +168,7 @@ class AgentStreamDelegate {
   /// GUI 侧实现：会话内提问卡片。卡片提交答案即完成；run 取消时以
   /// null 完成——工具据此返回「未作答」并按既定策略降级，不挂死。
   Future<Map<String, String>?> _askElicit(
-    int chatId,
+    String chatId,
     List<ElicitQuestion> questions,
     CancelToken cancelToken,
   ) async {

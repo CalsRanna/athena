@@ -235,7 +235,7 @@ class _Input extends StatefulWidget {
 
   /// 当前对话的 id（草稿态是 null）。只在换对话时用来重置本组件自己的状态；
   /// 注意**不能让它变成 key**，理由见 [_InputState.didUpdateWidget]。
-  final int? chatId;
+  final String? chatId;
 
   /// 外部传入的焦点节点：composer 的容器要靠它切换边框色。
   final FocusNode? focusNode;

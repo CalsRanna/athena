@@ -21,17 +21,17 @@ void main() {
 
   final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
 
-  Future<int> createChat() => storage.sessionRepository.createChat(
+  Future<String> createChat() => storage.sessionRepository.createChat(
     ChatEntity(
       title: 't',
-      modelId: 1,
-      sentinelId: 1,
+      modelId: '1',
+      sentinelId: '1',
       createdAt: now,
       updatedAt: now,
     ),
   );
 
-  Future<void> addMessage(int chatId, String role, String content) {
+  Future<void> addMessage(String chatId, String role, String content) {
     return storage.sessionRepository.storeMessage(
       MessageEntity(chatId: chatId, role: role, content: content),
     );
@@ -64,14 +64,14 @@ void main() {
       final chatId = await createChat();
 
       expect(await storage.sessionRepository.getTurnStartIds(chatId), isEmpty);
-      expect(await storage.sessionRepository.getTurnStartIds(999), isEmpty);
+      expect(await storage.sessionRepository.getTurnStartIds('999'), isEmpty);
     });
   });
 
   group('loadRecentRows', () {
-    SessionJsonlStore storeOf(int chatId) => SessionJsonlStore(
+    SessionJsonlStore storeOf(String chatId) => SessionJsonlStore(
       file: File(p.join(storage.sessionsDir.path, '$chatId.jsonl')),
-      idAllocator: storage.idAllocator,
+      idGenerator: storage.idGenerator,
     );
 
     test('从尾部往回取给个条数，结果按 id 升序', () async {
@@ -87,7 +87,7 @@ void main() {
       // 游标：取 id 小于它的最近几条
       final older = await store.loadRecentRows(
         3,
-        beforeId: latest.first['id'] as int,
+        beforeSeq: latest.first['seq'] as int,
       );
       expect(older.map((row) => row['content']), ['q2', 'q3', 'q4']);
     });
@@ -118,12 +118,12 @@ void main() {
       // 这一页必须扫过那条超长行才对（旧实现会在这里反复复制半行）
       final middle = await store.loadRecentRows(
         1,
-        beforeId: newest.single['id'] as int,
+        beforeSeq: newest.single['seq'] as int,
       );
       expect(middle.single['content'], huge);
       final oldest = await store.loadRecentRows(
         1,
-        beforeId: middle.single['id'] as int,
+        beforeSeq: middle.single['seq'] as int,
       );
       expect(oldest.single['content'], 'q0');
     });
@@ -175,7 +175,7 @@ void main() {
         pageSize: 5,
       );
       final missing = await storage.sessionRepository.loadInitialMessages(
-        chatId + 1,
+        '${chatId}1',
         pageSize: 5,
       );
 
@@ -186,24 +186,23 @@ void main() {
     });
   });
 
-  // 消息 id 是每会话独立计数（都从 1 开始），所以「按 id 跨会话查找」的删除与
-  // 标记一定会命中别的会话：目标会话删不掉、另一个对话静默丢消息。
+  // 批量删除与标记仅作用于指定会话，不遍历或修改其他会话文件。
   group('deleteMessages / markAsCompacted 按会话隔离', () {
     /// 建 [count] 条消息，返回 (chatId, ids)。
-    Future<(int, List<int>)> chatWith(int count, String prefix) async {
+    Future<(String, List<String>)> chatWith(int count, String prefix) async {
       final chatId = await createChat();
-      final ids = <int>[];
+      final ids = <String>[];
       for (var i = 0; i < count; i++) {
         ids.add(
-          await storage.sessionRepository.storeMessage(
+          (await storage.sessionRepository.storeMessage(
             MessageEntity(chatId: chatId, role: 'user', content: '$prefix$i'),
-          ),
+          )).id!,
         );
       }
       return (chatId, ids);
     }
 
-    Future<List<(int, String)>> rows(int chatId) async {
+    Future<List<(String, String)>> rows(String chatId) async {
       final messages = await storage.sessionRepository.getMessagesByChatId(
         chatId,
       );
@@ -220,10 +219,10 @@ void main() {
       return names;
     }
 
-    test('两个会话同 id 时只删目标会话，另一个会话原样保留', () async {
+    test('只删目标会话，另一个会话原样保留', () async {
       final (a, aIds) = await chatWith(3, 'A');
       final (b, bIds) = await chatWith(3, 'B');
-      expect(aIds, bIds); // 前提：id 跨会话重名
+      expect(aIds.toSet().intersection(bIds.toSet()), isEmpty);
 
       // 按 id 跨会话查找命中的是目录序里第一个含该 id 的文件（`_sessionFiles`
       // 走的就是目录序），所以删除必须挑「排在后面」的会话：只有这样才能
@@ -260,7 +259,7 @@ void main() {
       expect((await rows(b)).map((r) => r.$1), bIds);
     });
 
-    test('markAsCompacted 只标目标会话，另一个会话的同 id 行不受影响', () async {
+    test('markAsCompacted 只标目标会话，另一个会话不受影响', () async {
       final (a, aIds) = await chatWith(3, 'A');
       final (b, bIds) = await chatWith(3, 'B');
 

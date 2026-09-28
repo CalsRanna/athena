@@ -94,10 +94,9 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     if (widget.model == null) {
       var now = DateTime.now();
       var newModel = ModelEntity(
-        id: 0,
         name: nameController.text,
         modelId: valueController.text,
-        providerId: widget.provider!.id ?? 0,
+        providerId: widget.provider!.id!,
         contextWindow: 0,
         inputPrice: inputController.text,
         outputPrice: outputController.text,

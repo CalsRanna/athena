@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/id_allocator.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/json_array_store.dart';
 
 /// SentinelRepository 的 JSON 数组实现(`~/.athena/sentinels.json`,GUI 与 TUI 共用)。
@@ -11,8 +11,8 @@ import 'package:athena_core/storage/json_array_store.dart';
 class JsonArraySentinelRepository implements SentinelRepository {
   JsonArraySentinelRepository({
     required File file,
-    required IdAllocator idAllocator,
-  }) : _store = JsonArrayStore(file: file, idAllocator: idAllocator);
+    IdGenerator idGenerator = const IdGenerator(),
+  }) : _store = JsonArrayStore(file: file, idGenerator: idGenerator);
 
   final JsonArrayStore _store;
 
@@ -23,7 +23,7 @@ class JsonArraySentinelRepository implements SentinelRepository {
   }
 
   @override
-  Future<SentinelEntity?> getSentinelById(int id) async {
+  Future<SentinelEntity?> getSentinelById(String id) async {
     final rows = await _store.readAll();
     for (final row in rows) {
       if (row['id'] == id) return SentinelEntity.fromJson(row);
@@ -32,7 +32,7 @@ class JsonArraySentinelRepository implements SentinelRepository {
   }
 
   @override
-  Future<int> createSentinel(SentinelEntity sentinel) {
+  Future<String> createSentinel(SentinelEntity sentinel) {
     return _store.insert(sentinel.toJson());
   }
 
@@ -44,7 +44,7 @@ class JsonArraySentinelRepository implements SentinelRepository {
   }
 
   @override
-  Future<void> deleteSentinel(int id) => _store.deleteById(id);
+  Future<void> deleteSentinel(String id) => _store.deleteById(id);
 
   @override
   Future<int> getSentinelsCount() => _store.count();

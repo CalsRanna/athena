@@ -112,6 +112,7 @@ class TuiDi {
   /// TTL(7 天)内缓存新鲜则秒返回。
   /// [syncModels] 在测试中置 false,避免发起网络请求。
   Future<void> initialize({bool syncModels = true}) async {
+    await storage.load();
     await permissionService.load();
     await agentSettings.init();
     await _importUserSettings();
@@ -135,7 +136,6 @@ class TuiDi {
   /// 启动时选中(provider 由 YamlProviderRepository 直接读 yaml)。
   Future<void> _importUserSettings() async {
     try {
-      await storage.load();
       currentModelId = await userSettings.loadModelId();
       // ChatController 在 _build(构造)时创建,此时 yaml 尚未读;
       // 导入完成后注入默认模型

@@ -17,7 +17,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 展开更自然，贴近窗底时再翻到上方。
 class DesktopSettingModelMenu extends StatelessWidget {
   final Rect anchor;
-  final int? selectedId;
+  final String? selectedId;
   final void Function(ModelEntity)? onSelected;
 
   /// 允许清空（`No model` 一项）。
@@ -34,7 +34,7 @@ class DesktopSettingModelMenu extends StatelessWidget {
   static void show(
     BuildContext context,
     Rect anchor, {
-    int? selectedId,
+    String? selectedId,
     void Function(ModelEntity)? onSelected,
     VoidCallback? onCleared,
   }) {
@@ -63,7 +63,7 @@ class DesktopSettingModelMenu extends StatelessWidget {
         _ModelTile(
           label: 'No model',
           muted: true,
-          selected: selectedId == null || selectedId == 0,
+          selected: selectedId == null || selectedId == '',
           onTap: onCleared,
         ),
       for (final entry in groups.entries) ...[
@@ -204,8 +204,8 @@ class _ModelTileState extends State<_ModelTile> {
 
 /// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [DesktopSettingModelMenu]。
 class DesktopSettingModelSelect extends StatelessWidget {
-  final int? modelId;
-  final void Function(int)? onChanged;
+  final String? modelId;
+  final void Function(String)? onChanged;
 
   /// 允许清空为「No model」（传 0）。
   final bool clearable;
@@ -227,13 +227,13 @@ class DesktopSettingModelSelect extends StatelessWidget {
         anchor,
         selectedId: modelId,
         onSelected: (model) => onChanged?.call(model.id!),
-        onCleared: clearable ? () => onChanged?.call(0) : null,
+        onCleared: clearable ? () => onChanged?.call('') : null,
       ),
     );
   }
 
   String? _label() {
-    if (modelId == null || modelId == 0) return null;
+    if (modelId == null || modelId == '') return null;
     final groups = GetIt.instance<ModelViewModel>().groupedEnabledModels.value;
     for (final entry in groups.entries) {
       for (final model in entry.value) {

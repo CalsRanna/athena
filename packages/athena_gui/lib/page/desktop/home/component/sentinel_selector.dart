@@ -1,4 +1,3 @@
-import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
@@ -28,10 +27,8 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final sentinels = GetIt.instance<SentinelViewModel>().sentinels.value;
     final current = GetIt.instance<ChatViewModel>().currentSentinel.value;
-    // 「不使用 Sentinel」在 ViewModel 里是 ID = 0 的占位实体，不算选中任何行
-    final currentId = current != null && current.id != ChatEntity.noSentinelId
-        ? current.id
-        : null;
+    // Direct chat 与未保存的默认角色都没有 ID，按占位实体区分。
+    final direct = identical(current, SentinelViewModel.directChatSentinel);
     final tick = Icon(
       LucideIcons.check,
       size: 16,
@@ -48,7 +45,10 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
             for (final sentinel in sentinels)
               DesktopContextMenuTile(
                 text: sentinel.name,
-                trailing: sentinel.id == currentId ? tick : null,
+                trailing: !direct && current != null &&
+                    (identical(sentinel, current) ||
+                        (sentinel.id != null && sentinel.id == current.id))
+                    ? tick : null,
                 onTap: () => onSelected?.call(sentinel),
               ),
           ],

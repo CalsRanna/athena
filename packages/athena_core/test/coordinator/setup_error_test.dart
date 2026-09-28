@@ -76,7 +76,7 @@ void main() {
   });
 
   Future<(List<RunEvent>, List<MessageEntity>)> sendWithModel(
-    int modelId,
+    String modelId,
   ) async {
     final chat = ChatEntity(
       title: 't',
@@ -99,7 +99,7 @@ void main() {
   }
 
   test('模型不存在：错误作为 assistant 消息落库，并发出 RunError', () async {
-    final (events, messages) = await sendWithModel(999);
+    final (events, messages) = await sendWithModel('999');
 
     expect(messages.map((m) => m.role), ['user', 'assistant']);
     expect(messages.last.content, startsWith('Error: Model not found'));
@@ -116,7 +116,7 @@ void main() {
       ModelEntity(
         name: 'orphan',
         modelId: 'orphan-model',
-        providerId: 999,
+        providerId: '999',
         createdAt: now,
         updatedAt: now,
       ),

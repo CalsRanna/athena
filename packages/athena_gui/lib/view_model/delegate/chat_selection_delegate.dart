@@ -4,11 +4,11 @@ import 'package:signals/signals.dart';
 /// 聊天多选与重命名 UI 交互状态管理
 class ChatSelectionDelegate {
   // 多选状态
-  final selectedChatIds = setSignal<int>({});
+  final selectedChatIds = setSignal<String>({});
   final lastSelectedIndex = signal<int?>(null);
 
   // AI 重命名状态
-  final renamingChatIds = setSignal<int>({});
+  final renamingChatIds = setSignal<String>({});
   final renamingTitle = signal<String>('');
 
   late final isMultiSelect = computed(() {
@@ -22,8 +22,8 @@ class ChatSelectionDelegate {
   }
 
   /// 切换单个对话的选中状态 (Cmd/Ctrl+Click)
-  void toggleChatSelection(int chatId, int index) {
-    var newSet = Set<int>.from(selectedChatIds.value);
+  void toggleChatSelection(String chatId, int index) {
+    var newSet = Set<String>.from(selectedChatIds.value);
     if (newSet.contains(chatId)) {
       newSet.remove(chatId);
       if (newSet.isEmpty) {
@@ -63,7 +63,7 @@ class ChatSelectionDelegate {
       end = temp;
     }
 
-    var newSet = Set<int>.from(selectedChatIds.value);
+    var newSet = Set<String>.from(selectedChatIds.value);
     for (var i = start; i <= end; i++) {
       if (i < chats.length) {
         var chatId = chats[i].id;
@@ -86,13 +86,13 @@ class ChatSelectionDelegate {
   }
 
   /// 开始 AI 重命名
-  void startRenaming(int chatId) {
+  void startRenaming(String chatId) {
     renamingChatIds.value = {...renamingChatIds.value, chatId};
   }
 
   /// 结束 AI 重命名
-  void stopRenaming(int chatId) {
-    var newSet = Set<int>.from(renamingChatIds.value);
+  void stopRenaming(String chatId) {
+    var newSet = Set<String>.from(renamingChatIds.value);
     newSet.remove(chatId);
     renamingChatIds.value = newSet;
   }

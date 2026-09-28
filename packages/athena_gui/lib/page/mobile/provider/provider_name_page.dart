@@ -47,7 +47,6 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
     if (controller.text.isEmpty) return;
     var viewModel = GetIt.instance<ProviderViewModel>();
     var provider = ProviderEntity(
-      id: 0,
       enabled: true,
       name: controller.text,
       baseUrl: '',

@@ -20,9 +20,9 @@ class ModelResolver {
   /// 解析模型和 Provider。若 [preferredModelId] 有效，优先使用；
   /// 否则回退到第一个启用 Provider 的第一个模型。返回 null 表示无可用。
   Future<({ModelEntity model, ProviderEntity provider})?> resolve({
-    int? preferredModelId,
+    String? preferredModelId,
   }) async {
-    if (preferredModelId != null && preferredModelId > 0) {
+    if (preferredModelId != null && preferredModelId.isNotEmpty) {
       final model = await _modelRepo.getModelById(preferredModelId);
       if (model != null) {
         final provider = await _providerRepo.getProviderById(model.providerId);
@@ -44,8 +44,8 @@ class ModelResolver {
 
   /// 仅解析模型。若 [preferredModelId] 有效，优先使用；
   /// 否则回退到数据库中第一个模型。返回 null 表示无可用。
-  Future<ModelEntity?> resolveModel({int? preferredModelId}) async {
-    if (preferredModelId != null && preferredModelId > 0) {
+  Future<ModelEntity?> resolveModel({String? preferredModelId}) async {
+    if (preferredModelId != null && preferredModelId.isNotEmpty) {
       final model = await _modelRepo.getModelById(preferredModelId);
       if (model != null) return model;
     }
