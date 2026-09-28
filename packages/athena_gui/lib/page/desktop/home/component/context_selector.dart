@@ -57,14 +57,14 @@ class _ContextMenu extends StatelessWidget {
       width: width,
       children: [
         const DesktopContextMenuGroupLabel(text: 'Conversation context'),
-        _ContextOption(
-          title: 'Use chat history',
+        DesktopContextMenuTile(
+          text: 'Use chat history',
           description: 'Include earlier messages in this chat.',
           selected: enabled,
           onTap: () => onSelected?.call(-1),
         ),
-        _ContextOption(
-          title: 'Current message only',
+        DesktopContextMenuTile(
+          text: 'Current message only',
           description: 'Leave out earlier messages in this chat.',
           selected: !enabled,
           onTap: () => onSelected?.call(0),
@@ -72,95 +72,6 @@ class _ContextMenu extends StatelessWidget {
         const DesktopContextMenuSeparator(),
         const _ContextMenuHint(),
       ],
-    );
-  }
-}
-
-class _ContextOption extends StatefulWidget {
-  final String title;
-  final String description;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ContextOption({
-    required this.title,
-    required this.description,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  State<_ContextOption> createState() => _ContextOptionState();
-}
-
-class _ContextOptionState extends State<_ContextOption> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Semantics(
-      button: true,
-      selected: widget.selected,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          DesktopContextMenuManager.instance.dismiss();
-          widget.onTap();
-        },
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => hover = true),
-          onExit: (_) => setState(() => hover = false),
-          child: Container(
-            width: DesktopContextMenuConfiguration.widthOf(context),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: hover ? colors.surfaceHover : null,
-              borderRadius: BorderRadius.circular(AthenaRadius.row),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: AthenaTextStyle.row.copyWith(
-                          color: colors.textPrimary,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        widget.description,
-                        style: AthenaTextStyle.caption.copyWith(
-                          color: colors.textSecondary,
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 两档都留出勾选位置，说明文字不会随选中状态换行。
-                SizedBox(
-                  width: 16,
-                  child: widget.selected
-                      ? Icon(
-                          LucideIcons.check,
-                          size: 16,
-                          color: colors.textPrimary,
-                        )
-                      : null,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

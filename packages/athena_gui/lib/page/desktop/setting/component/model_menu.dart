@@ -1,19 +1,17 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置里「选一个模型」的下拉菜单：锚在 select 控件下方、与它同宽，
 /// 按 provider 分组、当前值行尾打钩；条目多时在面板内滚。
 ///
-/// 与 composer 的模型菜单是同一套视觉（`DesktopContextMenu` 面板 + 32 高
-/// 条目 + 分组小标题），只是锚定方向不同：设置控件在内容区里，菜单向下
+/// 与 composer 的模型菜单是同一套视觉（`DesktopContextMenu` 面板 + 统一的
+/// 菜单条目 + 分组小标题），只是锚定方向不同：设置控件在内容区里，菜单向下
 /// 展开更自然，贴近窗底时再翻到上方。
 class DesktopSettingModelMenu extends StatelessWidget {
   final Rect anchor;
@@ -60,8 +58,8 @@ class DesktopSettingModelMenu extends StatelessWidget {
     final maxHeight = (upward ? anchor.top - 16 : below).clamp(120.0, 360.0);
     final children = <Widget>[
       if (onCleared != null)
-        _ModelTile(
-          label: 'No model',
+        DesktopContextMenuTile(
+          text: 'No model',
           muted: true,
           selected: selectedId == null || selectedId == '',
           onTap: onCleared,
@@ -69,16 +67,16 @@ class DesktopSettingModelMenu extends StatelessWidget {
       for (final entry in groups.entries) ...[
         DesktopContextMenuGroupLabel(text: entry.key),
         for (final model in entry.value)
-          _ModelTile(
-            label: model.name,
-            reasoning: model.reasoning,
-            vision: model.vision,
+          DesktopContextMenuTile(
+            text: model.name,
+            // 能力图标排在名字后、勾选前，属标题行的一部分。
+            badge: _capabilityIcons(context, model),
             selected: model.id == selectedId,
             onTap: () => onSelected?.call(model),
           ),
       ],
       if (groups.isEmpty)
-        const _ModelTile(label: 'No enabled models', muted: true),
+        const DesktopContextMenuTile(text: 'No enabled models', muted: true),
     ];
     return DesktopContextMenu(
       offset: upward
@@ -93,115 +91,24 @@ class DesktopSettingModelMenu extends StatelessWidget {
   }
 }
 
-/// 一行模型：名字 + 能力小图标，选中行尾打钩。
-class _ModelTile extends StatefulWidget {
-  final String label;
-  final bool reasoning;
-  final bool vision;
-  final bool selected;
-  final bool muted;
-  final void Function()? onTap;
-
-  const _ModelTile({
-    required this.label,
-    this.reasoning = false,
-    this.vision = false,
-    this.selected = false,
-    this.muted = false,
-    this.onTap,
-  });
-
-  @override
-  State<_ModelTile> createState() => _ModelTileState();
-}
-
-class _ModelTileState extends State<_ModelTile> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final width = DesktopContextMenuConfiguration.widthOf(context);
-    // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
-    final nameStyle = AthenaTextStyle.row.copyWith(
-      color: widget.muted ? colors.textSecondary : colors.textPrimary,
-      decoration: TextDecoration.none,
-    );
-    final row = Row(
-      children: [
-        Expanded(
-          child: Text(
-            widget.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: nameStyle,
-          ),
-        ),
-        if (widget.reasoning) ...[
-          const SizedBox(width: 8),
-          Icon(
-            LucideIcons.brainCircuit,
-            size: 14,
-            color: colors.iconSecondary,
-          ),
-        ],
-        if (widget.vision) ...[
-          const SizedBox(width: 6),
-          Icon(
-            LucideIcons.eye,
-            size: 14,
-            color: colors.iconSecondary,
-          ),
-        ],
-        if (widget.selected) ...[
-          const SizedBox(width: 8),
-          Icon(
-            LucideIcons.check,
-            size: 16,
-            color: colors.textPrimary,
-          ),
-        ],
+/// 模型能力小标：推理 / 视觉各一枚，都没有时返回 null（不占位）。
+Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
+  var icons = [
+    if (model.reasoning) LucideIcons.brainCircuit,
+    if (model.vision) LucideIcons.eye,
+  ];
+  if (icons.isEmpty) return null;
+  final colors = Theme.of(context).extension<AthenaColors>()!;
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (var i = 0; i < icons.length; i++) ...[
+        if (i > 0) const SizedBox(width: 6),
+        Icon(icons[i], size: 14, color: colors.iconSecondary),
       ],
-    );
-    final container = Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-        color: hover && widget.onTap != null ? colors.surfaceHover : null,
-      ),
-      // 与其他菜单条目同一档：12 × 7，高约 32
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      width: width,
-      child: row,
-    );
-    final mouseRegion = MouseRegion(
-      cursor: widget.onTap == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap == null ? null : handleTap,
-      child: mouseRegion,
-    );
-  }
-
-  void handleTap() {
-    DesktopContextMenuManager.instance.dismiss();
-    widget.onTap?.call();
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() => hover = true);
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() => hover = false);
-  }
+    ],
+  );
 }
-
 /// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [DesktopSettingModelMenu]。
 class DesktopSettingModelSelect extends StatelessWidget {
   final String? modelId;

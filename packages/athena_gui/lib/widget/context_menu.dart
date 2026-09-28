@@ -6,6 +6,7 @@ import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class DesktopContextMenu extends StatelessWidget {
   final Offset offset;
@@ -138,21 +139,47 @@ class DesktopContextMenuTile extends StatefulWidget {
   final void Function()? onTap;
   final String text;
 
+  /// 第二行说明（选择类菜单用）：`caption` / `textSecondary`。
+  ///
+  /// 给了它就是两行条目（内边距与单行一致，高度由内容撑开）。
+  final String? description;
+
+  /// 选中态：行尾补一枚 `check`，并让条目带上「按钮 + 选中」的语义。
+  ///
+  /// `null`（默认）= 这条不是选择项（右键菜单的 Edit / Delete），什么也不加；
+  /// 非 null 才声明语义，所以**未选中的选择项会如实报 `selected: false`**。
+  /// 与 [trailing] 同时给出时 [trailing] 负责渲染，本字段只驱动语义。
+  final bool? selected;
+
+  /// 紧跟在标题后面的小标（如模型行的 `Default`）。
+  ///
+  /// 与 [trailing] 不同：它属于标题的一部分，标题省略号在它之前生效，
+  /// 不会因为它把标题挤窄到换行之外。
+  final Widget? badge;
+
   /// 危险项（如 Delete）：Claude 用深红文字。
   final bool danger;
 
   /// 条目左侧的图标（Claude 的账号菜单有，右键菜单没有）。
   final IconData? icon;
 
+  /// 弱化文字但不影响交互（`No model` 这类占位项：灰字，仍可点）。
+  /// 与 [enabled] 不同，后者会一并禁用点击与 hover。
+  final bool muted;
+
   /// 条目右侧的附加内容（快捷键提示之类），样式由调用方定。
   final Widget? trailing;
 
   const DesktopContextMenuTile({
     super.key,
+    this.badge,
     this.danger = false,
+    this.description,
     this.enabled = true,
     this.icon,
+    this.muted = false,
     this.onTap,
+    this.selected,
     required this.text,
     this.trailing,
   });
@@ -167,7 +194,8 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textColor = !widget.enabled
+    // 浮层不在 Material 之下，文字样式要写全（含 decoration）。
+    var textColor = !widget.enabled || widget.muted
         ? colors.textSecondary
         : widget.danger
         ? colors.dangerText
@@ -181,30 +209,75 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       color: hover && widget.enabled ? colors.surfaceHover : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
-    var label = Text(
+    Widget label = Text(
       widget.text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
-    // 没有图标和尾部时保持纯文字，右键菜单不受影响。
-    Widget content = widget.icon == null && widget.trailing == null
+    // 小标跟在标题后：标题退成 Flexible，长名先省略，不被小标挤掉。
+    if (widget.badge != null) {
+      label = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: label),
+          const SizedBox(width: 8),
+          widget.badge!,
+        ],
+      );
+    }
+    // 两行条目：标题 `row`、说明 `caption`，间距 2。
+    Widget textBlock = widget.description == null
         ? label
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              label,
+              const SizedBox(height: 2),
+              Text(
+                widget.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AthenaTextStyle.caption.copyWith(
+                  color: colors.textSecondary,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          );
+    // 选择项的勾选槽位**常驻**（选中与否都占 16）：否则说明文字会随选中
+    // 状态换行。调用方给的 [trailing] 原样贴边，与既有菜单一致。
+    var selected = widget.selected;
+    Widget? trailing = widget.trailing;
+    if (trailing == null && selected != null) {
+      trailing = Padding(
+        padding: const EdgeInsets.only(left: 8),
+        child: SizedBox(
+          width: 16,
+          child: selected
+              ? Icon(LucideIcons.check, size: 16, color: colors.textPrimary)
+              : null,
+        ),
+      );
+    }
+    // 没有图标和尾部时保持纯文字，右键菜单不受影响。
+    Widget content = widget.icon == null && trailing == null
+        ? textBlock
         : Row(
             children: [
               if (widget.icon != null) ...[
                 Icon(widget.icon, size: 16, color: textColor),
                 const SizedBox(width: 10),
               ],
-              Expanded(child: label),
-              if (widget.trailing != null) widget.trailing!,
+              Expanded(child: textBlock),
+              if (trailing != null) trailing,
             ],
           );
     var container = Container(
       alignment: Alignment.centerLeft,
       decoration: boxDecoration,
-      // Claude 实测：菜单项高约 32 逻辑
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       width: width,
       child: content,
     );
@@ -216,11 +289,15 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
       onExit: handleExit,
       child: container,
     );
-    return GestureDetector(
+    var tile = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.enabled ? handleTap : null,
       child: mouseRegion,
     );
+    // 只有选择类条目才声称自己是按钮 / 选中项；普通右键菜单条目保持
+    // 原样，避免给无选中语义的菜单项平白加上 selected: false。
+    if (selected == null) return tile;
+    return Semantics(button: true, selected: selected, child: tile);
   }
 
   void handleTap() {

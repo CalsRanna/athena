@@ -39,7 +39,10 @@
 
 ## 三、方案主体
 
-### 方案 1：菜单条目统一到 `DesktopContextMenuTile`
+### 方案 1：菜单条目统一到 `DesktopContextMenuTile` ✅ 已完成（2026-09-28）
+
+> 执行结果：5 个手搓 tile 全部消除，共减 487 行（含 `context_menu.dart` 因扩展 API 增加的 82 行），
+> 净减约 400 行。`flutter analyze` 干净、101 个测试全通过。详见文末「执行记录」。
 
 **问题证据**
 
@@ -292,3 +295,62 @@ GUI 有 22 个 widget 测试（3864 行），但**覆盖不均匀**：
 **建议**：第二、四轮重构前，先给对应区域补测试。特别是 `AthenaSettingsRow` 这种 12 个参数的组件，改之前需要确定现有行为。
 
 `test/widget/home_page_new_chat_test.dart` 提供了挂真实页面的正确姿势（`DI.ensureInitialized(homeDirOverride: 临时目录)` + 交替 `runAsync`/`pump`），可直接复用。
+
+---
+
+## 九、执行记录
+
+### 第一轮：速赢（2026-09-28 完成）
+
+净减 87 行，两处反向依赖清零。`flutter analyze` 干净，101 个测试全通过。
+
+| # | 项 | 结果 |
+|---|---|---|
+| 1 | `DesktopPopButton` | 删（零引用） |
+| 2 | `DesktopEditDeleteContextMenu` | 删（35 行，零引用） |
+| 3 | `AthenaSecondaryButton.medium` | 删（padding 与默认构造器完全相同） |
+| 4 | `AthenaSettingsControlWidth.{narrow,normal}` | **改为保留**（见下方修正） |
+| 5 | `AthenaAppBar.leading` | 删（21 处调用，0 处传） |
+| 6 | `CopyButton` | 移到 `widget/copy_button.dart` |
+| 7 | `TurnNavigator` | 移到 `component/`（消除 `component/` → `page/` 依赖） |
+| 8 | `settings_nav.dart` | 移到 `widget/settings/nav.dart`（三件套 → 四件套） |
+
+**执行中修正的判断**：原方案要删 `AthenaSettingsControlWidth.{narrow,normal}`，理由是"10 处调用全是 `.wide`"。
+这是错的——底层常量 `AthenaSettings.controlNarrowWidth` 被 `agent_page.dart:160` **绕过别名直接使用**，
+且 DESIGN.md:358 已文档化"控件宽度三档"。正确做法是反向的：让 `agent_page.dart` 改用 `.narrow` 别名。
+已按此执行，AGENTS.md 的"三件套"表述同步改为四件套。
+
+### 第二轮：菜单条目统一（2026-09-28 完成）
+
+5 个手搓 tile 全部消除，净减约 400 行。
+
+| 文件 | 行数变化 |
+|---|---|
+| `widget/context_menu.dart` | 566 → 648（+82，扩展 API 的成本） |
+| `page/desktop/home/component/permission_mode_selector.dart` | 182 → 69（−113） |
+| `page/desktop/home/component/context_selector.dart` | 188 → 99（−89） |
+| `page/desktop/home/component/model_selector.dart` | 351 → 232（−119） |
+| `page/desktop/setting/provider/component/api_format_menu.dart` | 177 → 104（−73） |
+| `page/desktop/setting/component/model_menu.dart` | 249 → 156（−93） |
+| **合计** | **−405** |
+
+`DesktopContextMenuTile` 新增四个参数：`description`（两行）、`selected`（勾选 + 语义）、
+`badge`（标题后小标）、`muted`（灰字但可点）。
+
+**实施中的三处关键判断**（都偏离了原方案，理由如下）：
+
+1. **`selected` 用 `bool?` 而不是 `bool`**。原方案写 `this.selected = false`，但 `context_selector_test` 依赖
+   `Semantics(selected:)` 语义，且未选中的选择项必须**如实报 `selected: false`**。用 `bool?`（`null` = 非选择项）
+   才能让普通右键菜单条目不被平白加上 `selected: false`。
+2. **勾选槽位常驻 16、内边距按行数分档**。这是 `_ContextOption` 原有的"两档都留出勾选位置，说明文字不会随
+   选中状态换行"的讲究，必须保留。实测原五处的 padding 与归纳规则**完全吻合**（三个单行都是 7、两个双行都是 8），
+   即 DESIGN.md 的「主条目高 36 / 次级条目高 38」，零视觉变化。
+3. **`_DefaultBadge` 与能力图标走新增的 `badge` 而不是复用 `trailing`**。它们是标题行的一部分
+   （长模型名先省略、不被小标挤掉），`trailing` 是行尾独立控件——语义不同，混用会让省略号位置错误。
+
+**顺带消除**：`_MenuHeader`（permission_mode_selector）与 `_GroupLabel`（model_selector）两处
+`DesktopContextMenuGroupLabel` 的重复实现。
+
+**未做**：`reasoning_effort_selector` / `sidebar_footer` / `token_indicator` 里三处直接使用
+`DesktopContextMenuConfiguration.widthOf` 的自定义面板内容（滑块面板、菜单头部、明细面板）——
+它们不是"条目"，是各菜单里的特有内容，强行套 tile 会得到比内容还多的参数。保留。

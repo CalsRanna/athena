@@ -38,12 +38,14 @@ class DesktopModelSelectMenu extends StatelessWidget {
     const contentWidth = 264.0;
     final children = <Widget>[
       for (final entry in groups.entries) ...[
-        if (groups.length > 1) _GroupLabel(entry.key),
+        if (groups.length > 1)
+          DesktopContextMenuGroupLabel(text: entry.key),
         for (final model in entry.value)
-          _ModelTile(
-            model: model,
+          DesktopContextMenuTile(
+            text: model.name,
+            // `Default` 小标跟着名字走，所以并入标题而不是行尾。
+            badge: model.id == defaultId ? const _DefaultBadge() : null,
             selected: model.id == currentId,
-            isDefault: model.id == defaultId,
             onTap: () => onSelected?.call(model),
           ),
       ],
@@ -60,127 +62,6 @@ class DesktopModelSelectMenu extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-/// 分组标题（provider 名）。
-class _GroupLabel extends StatelessWidget {
-  final String name;
-  const _GroupLabel(this.name);
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AthenaTextStyle.caption.copyWith(
-          color: colors.textWeak,
-          decoration: TextDecoration.none,
-        ),
-      ),
-    );
-  }
-}
-
-/// 一行模型：名字（+ `Default` 小标）……行尾打钩表示当前在用。
-class _ModelTile extends StatefulWidget {
-  final ModelEntity model;
-  final bool selected;
-  final bool isDefault;
-  final void Function()? onTap;
-
-  const _ModelTile({
-    required this.model,
-    required this.selected,
-    required this.isDefault,
-    this.onTap,
-  });
-
-  @override
-  State<_ModelTile> createState() => _ModelTileState();
-}
-
-class _ModelTileState extends State<_ModelTile> {
-  bool hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final width = DesktopContextMenuConfiguration.widthOf(context);
-    // 浮层不在 Material 之下，文字样式要写全（含 decoration），与菜单条目一致
-    final nameStyle = AthenaTextStyle.row.copyWith(
-      color: colors.textPrimary,
-      decoration: TextDecoration.none,
-    );
-    final name = Flexible(
-      child: Text(
-        widget.model.name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: nameStyle,
-      ),
-    );
-    final row = Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              name,
-              if (widget.isDefault) ...[
-                const SizedBox(width: 8),
-                const _DefaultBadge(),
-              ],
-            ],
-          ),
-        ),
-        if (widget.selected) ...[
-          const SizedBox(width: 8),
-          Icon(
-            LucideIcons.check,
-            size: 16,
-            color: colors.textPrimary,
-          ),
-        ],
-      ],
-    );
-    final container = Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-        color: hover ? colors.surfaceHover : null,
-      ),
-      // 与其他菜单条目同一档：12 × 7，高约 32
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      width: width,
-      child: row,
-    );
-    final mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: handleTap,
-      child: mouseRegion,
-    );
-  }
-
-  void handleTap() {
-    DesktopContextMenuManager.instance.dismiss();
-    widget.onTap?.call();
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() => hover = true);
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() => hover = false);
   }
 }
 

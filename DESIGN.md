@@ -281,8 +281,13 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 - 面板：`surfaceMobile` + 圆角 12 + `AthenaShadow.overlay`，内边距 4，默认宽 120（选择菜单可传更宽，
   子菜单 168），越界时四边各留 8 收回窗内，碰到窗底改向上展开。
-- 条目：主条目高 36、次级条目高 38（内边距 `12 × 7`，次级条目 `12 × 8`），圆角 8，hover 填 `surfaceHover`，
+- 条目：内边距 `12 × 8`（单行高 38，两行由内容撑开），圆角 8，hover 填 `surfaceHover`，
   文字 `row` 14；危险项用 `dangerText`；禁用项文字降为 `textSecondary`；带图标时图标 16、间距 10。
+  三种形态由同一个 `DesktopContextMenuTile` 表达，不要再手搓：**单行**（只给 `text`）、
+  **带说明的两行**（加 `description`）、**选择项**（加 `selected`：标题、可选
+  `description`、可选 `badge` 跟在标题后、行尾常驻 16 的勾选槽位，并声明「按钮 + 选中」语义）。
+  `badge` 属于标题行（省略号在它之前生效），`trailing` 属于行尾（调用方给的内容原样贴边）；
+  另 `muted` 只弱化文字、仍可点，`enabled: false` 才连同点击与 hover 一起禁用。
 - 分组小标题 `caption` 12 / `textWeak`（内边距 12/8/12/4）；分组之间用 1px `border` 分隔线，上下各留 4。
 - 浮层不在 Material 之下，文字样式必须写全（含 `decoration`）——这是浮层里常见的漏色点。
 
