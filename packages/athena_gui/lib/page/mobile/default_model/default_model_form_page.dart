@@ -42,7 +42,7 @@ class _MobileDefaultModelFormPageState
       style: titleTextStyle,
     );
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.border,
+      color: colors.textSecondary,
     );
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
     var namingTip = Text(

@@ -1,11 +1,9 @@
 import 'package:athena_core/agent/skill/skill_loader.dart';
-import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/skill_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
+import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -51,23 +49,33 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
   Widget build(BuildContext context) {
     var listChildren = [
       if (!isEdit) ...[
-        const AthenaFormTileLabel.large(title: 'Name'),
-        const SizedBox(height: 12),
-        AthenaInput(controller: nameController, placeholder: 'kebab-case-name'),
-        const SizedBox(height: 4),
-        Text(
-          'Used as the skill directory name; cannot be changed later',
-          style: AthenaTextStyle.caption.copyWith(color: Theme.of(context).extension<AthenaColors>()!.border),
+        AthenaFormField(
+          label: 'Name',
+          control: AthenaInput(
+            controller: nameController,
+            placeholder: 'kebab-case-name',
+          ),
+          description: 'Used as the skill directory name; cannot be changed later',
         ),
         const SizedBox(height: 16),
       ],
-      const AthenaFormTileLabel.large(title: 'Description'),
-      const SizedBox(height: 12),
-      AthenaInput(controller: descriptionController, maxLines: 4, minLines: 4),
+      AthenaFormField(
+        label: 'Description',
+        control: AthenaInput(
+          controller: descriptionController,
+          maxLines: 4,
+          minLines: 4,
+        ),
+      ),
       const SizedBox(height: 16),
-      const AthenaFormTileLabel.large(title: 'Instructions'),
-      const SizedBox(height: 12),
-      AthenaInput(controller: bodyController, maxLines: 16, minLines: 16),
+      AthenaFormField(
+        label: 'Instructions',
+        control: AthenaInput(
+          controller: bodyController,
+          maxLines: 16,
+          minLines: 16,
+        ),
+      ),
       const SizedBox(height: 32),
       SafeArea(top: false, child: const SizedBox()),
     ];

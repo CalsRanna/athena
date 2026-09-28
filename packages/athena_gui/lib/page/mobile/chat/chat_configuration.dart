@@ -1,9 +1,8 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
+import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:athena_gui/widget/switch.dart';
 import 'package:auto_route/auto_route.dart';
@@ -30,24 +29,19 @@ class _MobileChatConfigurationPageState
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
     var children = [
-      AthenaFormTileLabel.large(title: 'Temperature'),
-      SizedBox(height: 12),
-      _buildTemperatureSlider(),
+      AthenaFormField(
+        label: 'Temperature',
+        control: _buildTemperatureSlider(),
+      ),
       SizedBox(height: 24),
-      AthenaFormTileLabel.large(title: 'Zero Context'),
-      SizedBox(height: 12),
-      _buildRetentionSwitch(),
-      Padding(
-        padding: EdgeInsets.only(top: 8),
-        child: Text(
-          'When enabled, each message is sent independently '
-          'without any conversation history.',
-          style: AthenaTextStyle.body.copyWith(
-            color: colors.textPrimary.withValues(alpha: 0.6),
-          ),
-        ),
+      AthenaFormField(
+        label: 'Zero Context',
+        control: _buildRetentionSwitch(),
+        description:
+            'When enabled, each message is sent independently '
+            'without any conversation history.',
+        descriptionGap: 8,
       ),
     ];
     var listView = ListView(

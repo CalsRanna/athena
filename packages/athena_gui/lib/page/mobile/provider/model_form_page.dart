@@ -6,7 +6,7 @@ import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/checkbox.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
+import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -36,25 +36,30 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
   @override
   Widget build(BuildContext context) {
     var listViewChildren = [
-      AthenaFormTileLabel.large(title: 'Id'),
-      SizedBox(height: 12),
-      AthenaInput(controller: valueController),
+      AthenaFormField(
+        label: 'Id',
+        control: AthenaInput(controller: valueController),
+      ),
       SizedBox(height: 16),
-      AthenaFormTileLabel.large(title: 'Name'),
-      SizedBox(height: 12),
-      AthenaInput(controller: nameController),
+      AthenaFormField(
+        label: 'Name',
+        control: AthenaInput(controller: nameController),
+      ),
       SizedBox(height: 16),
-      AthenaFormTileLabel.large(title: 'Input Price'),
-      SizedBox(height: 12),
-      AthenaInput(controller: inputController),
+      AthenaFormField(
+        label: 'Input Price',
+        control: AthenaInput(controller: inputController),
+      ),
       SizedBox(height: 16),
-      AthenaFormTileLabel.large(title: 'Output Price'),
-      SizedBox(height: 12),
-      AthenaInput(controller: outputController),
+      AthenaFormField(
+        label: 'Output Price',
+        control: AthenaInput(controller: outputController),
+      ),
       SizedBox(height: 16),
-      AthenaFormTileLabel.large(title: 'Features'),
-      SizedBox(height: 12),
-      _buildFeatures(context),
+      AthenaFormField(
+        label: 'Features',
+        control: _buildFeatures(context),
+      ),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),

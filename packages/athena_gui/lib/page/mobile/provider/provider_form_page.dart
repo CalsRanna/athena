@@ -13,6 +13,7 @@ import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/form_tile_label.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
@@ -45,13 +46,15 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
       color: colors.textSecondary,
     );
     var children = [
-      AthenaFormTileLabel.large(title: 'API Key'),
-      SizedBox(height: 12),
-      AthenaInput(controller: keyController, obscureText: true),
+      AthenaFormField(
+        label: 'API Key',
+        control: AthenaInput(controller: keyController, obscureText: true),
+      ),
       SizedBox(height: 16),
-      AthenaFormTileLabel.large(title: 'API Url'),
-      SizedBox(height: 12),
-      AthenaInput(controller: urlController),
+      AthenaFormField(
+        label: 'API Url',
+        control: AthenaInput(controller: urlController),
+      ),
       SizedBox(height: 20),
       AthenaFormTileLabel.large(title: 'API Format'),
       SizedBox(height: 12),
@@ -250,7 +253,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   Widget _buildTip(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
-      color: colors.border,
+      color: colors.textSecondary,
     );
     var tipText = Text(
       'See ${widget.provider.name} documentation for more details',

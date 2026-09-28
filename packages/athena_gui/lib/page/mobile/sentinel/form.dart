@@ -6,7 +6,7 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/form_tile_label.dart';
+import 'package:athena_gui/widget/form_field.dart';
 import 'package:athena_gui/widget/input.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
@@ -34,24 +34,29 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
   Widget build(BuildContext context) {
     var isPreset = widget.sentinel?.isPreset ?? false;
     var listViewChildren = [
-      const AthenaFormTileLabel.large(title: 'Prompt'),
-      const SizedBox(height: 12),
-      AthenaInput(
-        controller: promptController,
-        maxLines: 8,
-        minLines: 8,
+      AthenaFormField(
+        label: 'Prompt',
+        control: AthenaInput(
+          controller: promptController,
+          maxLines: 8,
+          minLines: 8,
+        ),
       ),
       const SizedBox(height: 32),
-      _buildNameLabel(context),
-      const SizedBox(height: 12),
-      AthenaInput(controller: nameController),
+      AthenaFormField(
+        label: 'Name',
+        control: AthenaInput(controller: nameController),
+        trailing: _buildGenerateIcon(generateSentinelName),
+      ),
       const SizedBox(height: 16),
-      _buildDescriptionLabel(context),
-      const SizedBox(height: 12),
-      AthenaInput(
-        controller: descriptionController,
-        maxLines: 4,
-        minLines: 4,
+      AthenaFormField(
+        label: 'Description',
+        control: AthenaInput(
+          controller: descriptionController,
+          maxLines: 4,
+          minLines: 4,
+        ),
+        trailing: _buildGenerateIcon(generateSentinelDescription),
       ),
     ];
     var listView = ListView(
@@ -177,21 +182,13 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     _update();
   }
 
-  Widget _buildDescriptionLabel(BuildContext context) {
+  /// 标签行右端的「生成」星标，点一下让模型填这个字段。
+  Widget _buildGenerateIcon(VoidCallback onTap) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final icon = Icon(
-      LucideIcons.sparkles,
-      color: colors.textPrimary,
-      size: 16,
-    );
-    var gestureDetector = GestureDetector(
+    return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: generateSentinelDescription,
-      child: icon,
-    );
-    return AthenaFormTileLabel.large(
-      title: 'Description',
-      trailing: gestureDetector,
+      onTap: onTap,
+      child: Icon(LucideIcons.sparkles, color: colors.textPrimary, size: 16),
     );
   }
 
@@ -200,21 +197,6 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
       onTap: generateSentinel,
       child: Center(child: Text('Generate')),
     );
-  }
-
-  Widget _buildNameLabel(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final icon = Icon(
-      LucideIcons.sparkles,
-      color: colors.textPrimary,
-      size: 16,
-    );
-    var gestureDetector = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: generateSentinelName,
-      child: icon,
-    );
-    return AthenaFormTileLabel.large(title: 'Name', trailing: gestureDetector);
   }
 
   Widget _buildStoreButton(BuildContext context) {

@@ -140,8 +140,10 @@ class DesktopModelSelectDialog extends StatelessWidget {
 
   Widget _buildItemGroupTitle(BuildContext context, String title) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var textStyle = AthenaTextStyle.row.copyWith(
-      color: colors.border,
+    // 分组小标题与 DesktopContextMenuGroupLabel 同档：caption + textWeak。
+    // 曾经用 colors.border，那是描边色，对画布对比度只有 1.26:1，等于隐形。
+    var textStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.textWeak,
       decoration: TextDecoration.none,
     );
     return Padding(
