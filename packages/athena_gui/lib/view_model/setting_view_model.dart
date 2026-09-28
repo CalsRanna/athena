@@ -165,7 +165,7 @@ class SettingViewModel {
         AthenaTextSize.values.asNameMap()[saved] ?? AthenaTextSize.medium;
   }
 
-  /// 切换字号档位并持久化，由 `AthenaWorkspaceTextSize` 在消息列表内应用。
+  /// 切换固定字号档位并持久化，由 `AthenaWorkspaceTextSize` 在消息列表内应用。
   Future<void> setTextSize(AthenaTextSize size) async {
     final instance = await SharedPreferences.getInstance();
     await instance.setString(_keyTextSize, size.name);

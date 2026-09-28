@@ -53,12 +53,10 @@ abstract final class AthenaSpace {
   static const sidebar = 288.0;
 }
 
-/// 字号等级。取值来自 **Claude 桌面端 `.cds-root` 的 `--cds-font-size-*`**。
+/// 字号等级。UI 尺寸参考 Claude 桌面端，正文使用 Athena 的固定档位。
 ///
-/// 该变量的默认档（未叠加 `data-density` / `data-text-size`）是
-/// caption 12 / body 14 / prose 15 / heading 14；本仓的 [body] 与 [prose]
-/// 取的是文字档 small 解析后的值（`--textsm` = 13，见各自注释里的实测
-/// 交叉验证），标题、标签、说明仍按默认档。
+/// UI 沿用紧凑尺寸；消息正文默认 14 / 22，并由 [AthenaTextSize]
+/// 提供三组独立的字号与行盒，不再通过倍率调整整棵消息子树。
 abstract final class AthenaFontSize {
   /// 空态标题。
   static const hero = 22.0;
@@ -76,28 +74,21 @@ abstract final class AthenaFontSize {
   /// 设置行实测仍是 14，所以单独留一个名字，免得写成 `section` + w400。
   static const row = 14.0;
 
-  /// **消息正文（Markdown）**：文字档 small 下取
-  /// `--cds-font-size-prose--textsm` = 13，行高 `--cds-leading-prose` = 20。
-  ///
-  /// 与 UI 正文同号。实测交叉验证：Claude 窗口里
-  /// 「解压完成，我来检查并定位 Claude 的真实 CSS。」(16 全角 + 9 西文)
-  /// 总宽 276.5 逻辑像素 → 反推 13.0；按 15 算会得到 319，对不上。
-  static const prose = 13.0;
+  /// 消息正文（Markdown）的默认 Medium 档，行盒 22。
+  static const prose = 14.0;
 
   /// 正文、输入框、列表行（`--cds-font-size-body`）。
   ///
   /// 取按文字档 small 解析后的值：`--cds-font-size-body--textsm` = 13，
-  /// 行高 `--cds-leading-body` = 19。与消息正文同号（都是 13），
-  /// 侧栏与工作区读起来是同一层级。
+  /// 行高 `--cds-leading-body` = 19。
+  /// 侧栏与输入框保持紧凑，不随消息字号档位改变。
   ///
   /// 实测交叉验证：Claude 侧栏「Athena 与 Claude 工作区 UI 对齐」
   /// 总宽 192 → 反推 12.6；按 14 算会得到 213，对不上。
   static const body = 13.0;
 
-  /// 消息正文行高比例：`--cds-leading-prose`(20) / `--cds-font-size-prose`(13)。
-  /// Claude 的行高是"绝对行盒"，不是随字号缩放的比例；
-  /// 这里换算成 Flutter 的 `TextStyle.height`。
-  static const proseHeight = 20.0 / prose;
+  /// 默认消息行盒 22，换算成 Flutter 的 `TextStyle.height`。
+  static const proseHeight = 22.0 / prose;
 
   /// UI 正文行高比例：`--cds-leading-body`(19) / `--cds-font-size-body`(13)。
   static const bodyHeight = 19.0 / body;
@@ -108,7 +99,7 @@ abstract final class AthenaFontSize {
   /// 说明、元信息（`--cds-font-size-caption` = 12）。
   static const caption = 12.0;
 
-  /// 代码、工具名、参数（`--cds-font-size-code` = 12）。
+  /// 技术标签的默认等宽字号；会话代码使用 [AthenaTextSize.code]。
   static const mono = 12.0;
 }
 
@@ -118,7 +109,7 @@ abstract final class AthenaFontSize {
 /// 字重与预设不同时再覆盖 `fontWeight`。角色与字号的对应见 [AthenaFontSize]，
 /// 设计口径见 DESIGN.md §3。
 ///
-/// 行高：只有 [prose]（消息正文）把 Claude 的绝对行盒（20）烧进预设；
+/// 行高：只有 [prose]（消息正文）把默认行盒（22）写进预设；
 /// [body] 不带行高——它多数时候是单行控件文字，多行时按需加
 /// `height: AthenaFontSize.bodyHeight`（19 / 13）。
 ///
@@ -148,7 +139,7 @@ abstract final class AthenaTextStyle {
     fontWeight: FontWeight.w400,
   );
 
-  /// 消息正文（Markdown）：13 / w400，行盒 20。
+  /// 消息正文（Markdown）：默认 14 / w400，行盒 22。
   static const prose = TextStyle(
     fontSize: AthenaFontSize.prose,
     fontWeight: FontWeight.w400,
@@ -176,21 +167,35 @@ abstract final class AthenaTextStyle {
 
 /// 会话消息字号档位（设置里的「Text size」）。
 ///
-/// `AthenaWorkspaceTextSize` 只在消息列表内叠加 `TextScaler`，缩放消息与代码；
+/// `AthenaWorkspaceTextSize` 只在消息列表内提供正文与代码共用的固定排版；
 /// composer、placeholder、侧栏、顶栏、设置与菜单均不受档位影响。
-/// 档位叠在系统无障碍缩放之上，不覆盖系统设置。
+/// 各档使用逻辑像素，不替换系统无障碍 `TextScaler`。
 enum AthenaTextSize {
-  small('Small', 0.85),
-  medium('Medium', 1.0),
-  large('Large', 1.15);
+  small('Small', 13.0, 20.0),
+  medium('Medium', AthenaFontSize.prose, 22.0),
+  large('Large', 15.0, 24.0);
 
   /// 分段控件上的显示名。
   final String label;
 
-  /// 相对默认档的字号系数。
-  final double scale;
+  /// 消息正文与代码的固定字号（逻辑像素）。
+  final double fontSize;
 
-  const AthenaTextSize(this.label, this.scale);
+  /// 消息正文与代码的固定行盒（系统无障碍缩放前）。
+  final double lineHeight;
+
+  const AthenaTextSize(this.label, this.fontSize, this.lineHeight);
+
+  TextStyle get prose => AthenaTextStyle.prose.copyWith(
+    fontSize: fontSize,
+    height: lineHeight / fontSize,
+  );
+
+  TextStyle get code => athenaMono(
+    fontSize: fontSize,
+    fontWeight: FontWeight.w400,
+    height: lineHeight / fontSize,
+  );
 }
 
 /// 字体族。

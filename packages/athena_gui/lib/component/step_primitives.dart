@@ -1,5 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
 
 /// 步骤类卡片（工具 / 推理 / 压缩 / 步骤组）共用的视觉原语。
@@ -117,9 +118,8 @@ class StepResultBody extends StatelessWidget {
           text,
           maxLines: 10,
           overflow: TextOverflow.ellipsis,
-          style: athenaMono(
+          style: AthenaWorkspaceTextSize.of(context).code.copyWith(
             color: isError ? colors.statusError : colors.textSecondary,
-            height: 1.6,
           ),
         ),
       ),

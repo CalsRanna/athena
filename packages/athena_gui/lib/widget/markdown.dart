@@ -5,6 +5,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -88,7 +89,9 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
         element.textContent,
-        style: athenaMono(height: 1.5, color: colors.textOnCode),
+        style: AthenaWorkspaceTextSize.of(context).code.copyWith(
+          color: colors.textOnCode,
+        ),
       ),
     );
     var widgetSpan = WidgetSpan(
@@ -133,7 +136,9 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.codeBackground,
     );
-    var textStyle = athenaMono(height: 1.5, color: colors.textOnCode);
+    var textStyle = AthenaWorkspaceTextSize.of(context).code.copyWith(
+      color: colors.textOnCode,
+    );
     var contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
@@ -330,12 +335,15 @@ class _FlutterMarkdown extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.extension<AthenaColors>()!;
     final base = MarkdownStyleSheet.fromTheme(theme);
+    final body = base.p
+        ?.merge(AthenaWorkspaceTextSize.of(context).prose)
+        .copyWith(color: colors.textPrimary);
     Map<String, MarkdownElementBuilder> builders = {};
     builders['pre'] = _CodeBlockBuilder();
     builders['code'] = _InlineCodeBuilder();
     builders['a'] = _FootnoteBackrefBuilder(onTap: openLink);
     builders['latex'] = LatexElementBuilder(
-      textStyle: base.p?.copyWith(color: colors.markdownMath),
+      textStyle: body?.copyWith(color: colors.markdownMath),
     );
     builders['sup'] = _SupBuilder();
     builders['reference'] = _ReferenceBuilder(onTap: openReference);
@@ -351,11 +359,6 @@ class _FlutterMarkdown extends StatelessWidget {
     final extensions = md.ExtensionSet(blockSyntaxes, inlineSyntaxes);
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
-    // 正文样式：助手消息直接坐在页面底色上，正文用页面族文字色；
-    // 字号与行盒取 [AthenaTextStyle.prose]（13 / 20）。
-    var body = base.p
-        ?.merge(AthenaTextStyle.prose)
-        .copyWith(color: colors.textPrimary);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
     var heading = body?.copyWith(fontWeight: FontWeight.bold);
@@ -372,19 +375,20 @@ class _FlutterMarkdown extends StatelessWidget {
         decorationColor: colors.markdownStrikethrough,
       ),
       p: body,
-      code: base.code?.copyWith(color: colors.textOnCode),
+      code: AthenaWorkspaceTextSize.of(context).code.copyWith(
+        color: colors.textOnCode,
+      ),
       h1: heading,
       h2: heading,
       h3: heading,
       h4: heading,
       h5: heading,
       h6: heading,
-      blockquote: base.blockquote?.copyWith(color: colors.textPrimary),
+      blockquote: body,
       img: base.img?.copyWith(color: colors.textPrimary),
-      listBullet: base.listBullet?.copyWith(color: colors.textPrimary),
+      listBullet: body,
       // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
-      // 默认取主题的 textTheme.bodyMedium（14 / 1.43），而正文走 prose
-      // （13 / 1.538），表格会比周围正文大一号、行盒也更紧。
+      // 默认取主题的 textTheme.bodyMedium，不会跟随会话正文的固定档位。
       // 表头只保留字重差异（w600），与标题"同号不同重"的处理一致。
       tableHead: body?.copyWith(
         color: colors.textPrimary,

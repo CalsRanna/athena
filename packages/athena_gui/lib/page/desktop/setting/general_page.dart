@@ -60,7 +60,7 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
             ),
             AthenaSettingsRow(
               label: 'Text size',
-              description: 'Applies only to message text and code in conversations.',
+              description: 'Applies to message text and code in conversations.',
               control: Watch((context) {
                 return AthenaSettingsSegmented<AthenaTextSize>(
                   selected: viewModel.textSize.value,

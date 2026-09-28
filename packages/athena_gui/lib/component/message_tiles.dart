@@ -10,6 +10,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/markdown.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -447,9 +448,11 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
   Widget _buildContent(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 用户消息为正文级别，用主题化正文色（浅色模式下近黑）。
-    // 字号 / 行高与助手正文同一档（prose 13 / 20），否则一轮对话里
+    // 字号 / 行高与助手正文同一档，否则一轮对话里
     // 问与答的字号会不一致。
-    var textStyle = AthenaTextStyle.prose.copyWith(color: colors.textPrimary);
+    var textStyle = AthenaWorkspaceTextSize.of(context).prose.copyWith(
+      color: colors.textPrimary,
+    );
     var text = Text(widget.message.content, style: textStyle);
     var images = widget.message.imageUrls.isNotEmpty
         ? widget.message.imageUrls.split(',')

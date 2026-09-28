@@ -6,6 +6,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_gui/component/sentinel_placeholder.dart';
+import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/main.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
@@ -13,11 +14,15 @@ import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/mobile/chat/component/user_input.dart';
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
+import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/widget/markdown.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -93,27 +98,62 @@ void main() {
     );
   }
 
-  void expectMessageScale(WidgetTester tester, double scale) {
-    for (final text in [
-      'User message probe',
-      'Assistant message probe',
-      'print(42);',
-    ]) {
-      final rendered = find.byWidgetPredicate(
-        (widget) =>
-            widget is RichText && widget.text.toPlainText().trim() == text,
-      );
-      expect(rendered, findsOneWidget);
+  void expectTypography(
+    WidgetTester tester,
+    String text,
+    double fontSize,
+    double lineHeight,
+    TextScaler systemScaler, {
+    bool mono = false,
+  }) {
+    final rendered = find.byWidgetPredicate(
+      (widget) =>
+          widget is RichText && widget.text.toPlainText().trim() == text,
+    );
+    expect(rendered, findsOneWidget);
+    final paragraph = tester.renderObject<RenderParagraph>(rendered);
+    final styles = <TextStyle>[];
+    void collectStyles(InlineSpan span, TextStyle inherited) {
+      if (span is! TextSpan) return;
+      final style = inherited.merge(span.style);
+      if (span.text?.trim().isNotEmpty ?? false) styles.add(style);
+      for (final child in span.children ?? <InlineSpan>[]) {
+        collectStyles(child, style);
+      }
+    }
+    collectStyles(paragraph.text, const TextStyle());
+    expect(styles, isNotEmpty);
+    for (final style in styles) {
+      expect(style.fontSize, fontSize, reason: text);
+      expect(style.height! * style.fontSize!, closeTo(lineHeight, 0.001));
+      if (mono) expect(style.fontFamily, AthenaFont.mono);
       expect(
-        tester.renderObject<RenderParagraph>(rendered).textScaler.scale(20),
-        closeTo(20 * scale, 0.001),
-        reason: '消息正文与代码应应用字号档位：$text',
+        paragraph.textScaler.scale(style.fontSize!),
+        closeTo(systemScaler.scale(fontSize), 0.001),
+        reason: '固定字号只叠加系统缩放：$text',
       );
     }
   }
 
+  (double, double) proseMetrics(AthenaTextSize size) => switch (size) {
+    AthenaTextSize.small => (13, 20),
+    AthenaTextSize.medium => (14, 22),
+    AthenaTextSize.large => (15, 24),
+  };
+
+  void expectMessageTypography(WidgetTester tester, AthenaTextSize size) {
+    final (fontSize, lineHeight) = proseMetrics(size);
+    const systemScaler = TextScaler.linear(1.2);
+    for (final text in ['User message probe', 'Assistant message probe']) {
+      expectTypography(tester, text, fontSize, lineHeight, systemScaler);
+    }
+    expectTypography(
+      tester, 'print(42);', fontSize, lineHeight, systemScaler, mono: true,
+    );
+  }
+
   testWidgets(
-    'Text size only scales messages, excluding composer and placeholder',
+    'Text size gives messages and code the same fixed styles, excluding other UI',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 900);
       tester.view.devicePixelRatio = 1;
@@ -233,7 +273,7 @@ void main() {
       for (final size in AthenaTextSize.values) {
         await tester.runAsync(() => settings.setTextSize(size));
         await settle(tester);
-        expectMessageScale(tester, 1.2 * size.scale);
+        expectMessageTypography(tester, size);
         expectInputScale(tester, DesktopMessageInput, 1.2);
         expect(tester.getSize(find.byType(DesktopMessageInput)), composerSize);
       }
@@ -253,7 +293,7 @@ void main() {
       for (final size in AthenaTextSize.values) {
         await tester.runAsync(() => settings.setTextSize(size));
         await settle(tester);
-        expectMessageScale(tester, 1.2 * size.scale);
+        expectMessageTypography(tester, size);
         expectInputScale(tester, UserInput, 1.2);
         expect(tester.getSize(find.byType(UserInput)), mobileComposerSize);
         expectTextScale(tester, find.text('Text size conversation'), 1.2);
@@ -263,4 +303,72 @@ void main() {
       await settle(tester);
     },
   );
+
+  testWidgets('Fixed Markdown presets preserve nonlinear system scaling',
+      (tester) async {
+    tester.view.physicalSize = const Size(1000, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    const systemScaler = _NonlinearTextScaler();
+    final message = MessageEntity(
+      chatId: 'typography-probe',
+      role: 'assistant',
+      content: '# Heading probe\n\n'
+          'Paragraph probe\n\n'
+          '> Quote probe\n\n'
+          '- List probe\n\n'
+          '| Table header |\n| --- |\n| Table cell |\n\n'
+          '[Link probe](https://example.com)\n\n'
+          '`inline_code`\n\n'
+          '```dart\nprint(42);\n```',
+    );
+    for (final size in AthenaTextSize.values) {
+      await tester.pumpWidget(MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: systemScaler),
+          child: Scaffold(
+            body: AthenaWorkspaceTextSize(
+              size: size,
+              child: Column(
+                children: [
+                  AthenaMarkdown(message: message),
+                  const StepResultBody(text: 'Tool output probe'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final (fontSize, lineHeight) = proseMetrics(size);
+      for (final text in [
+        'Heading probe',
+        'Paragraph probe',
+        'Quote probe',
+        'List probe',
+        'Table header',
+        'Table cell',
+        'Link probe',
+      ]) {
+        expectTypography(tester, text, fontSize, lineHeight, systemScaler);
+      }
+      for (final text in ['inline_code', 'print(42);', 'Tool output probe']) {
+        expectTypography(
+          tester, text, fontSize, lineHeight, systemScaler, mono: true,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+}
+
+class _NonlinearTextScaler extends TextScaler {
+  const _NonlinearTextScaler();
+
+  @override
+  double scale(double fontSize) => fontSize + (fontSize < 14 ? 3 : 4);
+
+  @override
+  double get textScaleFactor => 1.2;
 }
