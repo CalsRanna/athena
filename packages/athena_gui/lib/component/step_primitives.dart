@@ -1,5 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
 
@@ -9,11 +10,8 @@ import 'package:flutter/material.dart';
 /// 15 号图标、单行省略文案；运行中的折叠头带一条流动 shimmer 高光。
 /// 之前同一套「Material > InkWell > Shimmer > Row[Icon, Text]」在五处各写了
 /// 一份，此处合并为唯一实现，只保留头部与结果正文两个原语。
-
-/// 步骤头部圆角：与展开区对齐，比 [AthenaRadius.row] 略大以匹配 15 号图标。
-const kStepHeaderRadius = AthenaRadius.row;
-
-/// 步骤头部与结果正文的字号。
+/// 头部那次合并遗留了 `Material` + `InkWell`：全站 `splashFactory` 已关掉水波，
+/// 这层 `Material` 只为满足 InkWell 的祖先要求而存在，已换成 [AthenaHover]。
 
 /// 折叠头：图标 + 单行文案（[mono] 时等宽）+ 运行中 shimmer。
 ///
@@ -44,56 +42,42 @@ class StepHeader extends StatefulWidget {
 }
 
 class _StepHeaderState extends State<StepHeader> {
-  bool _hovered = false;
-
-  void _setHovered(bool value) {
-    if (_hovered == value) return;
-    setState(() => _hovered = value);
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final interactive = widget.onTap != null;
-    final foreground = interactive && _hovered
-        ? colors.textPrimary
-        : colors.textSecondary;
-    final style = widget.mono
-        ? athenaMono(color: foreground)
-        : AthenaTextStyle.caption.copyWith(color: foreground);
-    return MouseRegion(
-      // 不可点的头不挂 hover 回调：光标已是普通箭头，再提亮就成了假的可点信号。
-      onEnter: interactive ? (_) => _setHovered(true) : null,
-      onExit: interactive ? (_) => _setHovered(false) : null,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(kStepHeaderRadius),
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(kStepHeaderRadius),
-          mouseCursor: interactive
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-          child: StepHeaderShimmer(
-            active: widget.running,
-            child: Row(
-              children: [
-                Icon(widget.icon, size: 15, color: foreground),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: style,
-                  ),
+    // 不可点的头不接 hover：光标已是普通箭头，再提亮就成了假的可点信号。
+    return AthenaHover(
+      enabled: interactive,
+      onTap: widget.onTap,
+      cursor: interactive
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      builder: (context, hovered) {
+        final foreground = interactive && hovered
+            ? colors.textPrimary
+            : colors.textSecondary;
+        final style = widget.mono
+            ? athenaMono(color: foreground)
+            : AthenaTextStyle.caption.copyWith(color: foreground);
+        return StepHeaderShimmer(
+          active: widget.running,
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 15, color: foreground),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -166,7 +150,7 @@ class _StepHeaderShimmerState extends State<StepHeaderShimmer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: AthenaMotion.cycle,
     );
   }
 
