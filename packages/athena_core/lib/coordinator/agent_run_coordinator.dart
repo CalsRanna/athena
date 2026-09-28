@@ -103,8 +103,7 @@ class AgentRunCoordinator {
 
   /// chatId → 已完成待汇报的后台任务（会话正忙时先攒着）。
   ///
-  /// 攒着而不是打断：正在跑的 run 属于用户当下的指令，汇报优先级更低；
-  /// 同一会话内先后结束的多个任务合并成一次汇报，避免 N 倍成本。
+  /// 运行中在下一次模型请求前通知；尚未确认通知的任务在空闲时合并汇报。
   final Map<String, List<BackgroundTask>> _pendingReports = {};
 
   /// 正在跑汇报回合的会话（一次一个）。
@@ -362,6 +361,7 @@ class AgentRunCoordinator {
         onElicit: _elicitPrompt,
         jsonMode: jsonMode,
         cancelToken: cancelToken,
+        pendingBackgroundTasks: () => _pendingBackgroundTasks(chatId),
       );
 
       // 5. 消费流（取消/错误均在 _consumeStream 内部处理并落库）
@@ -420,7 +420,7 @@ class AgentRunCoordinator {
     yield* _continuePendingInputs(chat, chatId, jsonMode: jsonMode);
 
     // ─── 接续待汇报的后台任务 ───
-    // 会话此刻已空闲：run 期间攒下的任务完成事件在这里合并成一次汇报回合。
+    // 会话此刻已空闲：尚未在 run 中确认通知的任务合并成一次汇报回合。
     await _drainPendingReport(chatId);
   }
 
@@ -508,12 +508,14 @@ class AgentRunCoordinator {
     unawaited(_drainPendingReport(chatId));
   }
 
+  List<BackgroundTask> _pendingBackgroundTasks(String chatId) =>
+      List.of(_pendingReports[chatId] ?? const <BackgroundTask>[]);
+
   /// 会话空闲时把攒下的任务完成事件合并成一次汇报回合。
   Future<void> _drainPendingReport(String chatId) async {
     if (_reportingChatIds.contains(chatId)) return;
     if (_streamingChatIds.contains(chatId)) return;
-    final pending = _pendingReports[chatId];
-    if (pending == null || pending.isEmpty) return;
+    if (_pendingReports[chatId]?.isNotEmpty != true) return;
 
     // 先确认会话还在，再清队列：读失败时任务留在待汇报里等下一次收尾，
     // 不静默丢掉（汇报是附加路径，但「什么都没发生」最难排查）。
@@ -529,10 +531,11 @@ class AgentRunCoordinator {
       return;
     }
 
-    final tasks = List<BackgroundTask>.of(pending);
-    pending.clear();
-    _pendingReports.remove(chatId);
-    await _runReport(chat, tasks);
+    // 仓库读取期间可能启动了 run 或确认了通知，不能使用读取前的队列快照。
+    if (_streamingChatIds.contains(chatId)) return;
+    final pending = _pendingReports.remove(chatId);
+    if (pending == null || pending.isEmpty) return;
+    await _runReport(chat, List.of(pending));
   }
 
   /// 自动汇报回合。
@@ -651,6 +654,7 @@ class AgentRunCoordinator {
         workspace: _workspaceByChat[chatId],
         allowReflection: false,
         allowBackgroundTasks: false,
+        pendingBackgroundTasks: () => _pendingBackgroundTasks(chatId),
       );
 
       await for (final event in _consumeStream(
@@ -793,6 +797,14 @@ class AgentRunCoordinator {
         }
         cancelToken.throwIfCancelled();
 
+        if (event is AgentBackgroundTasksNotifiedEvent) {
+          final pending = _pendingReports[chat.id!];
+          pending?.removeWhere((task) => event.taskIds.contains(task.id));
+          if (pending != null && pending.isEmpty) {
+            _pendingReports.remove(chat.id!);
+          }
+          continue;
+        }
         if (event is AgentTurnStartEvent) {
           turns++;
           // 迭代边界以 turnStart 为准：上一轮以工具结果结束（或截断保护

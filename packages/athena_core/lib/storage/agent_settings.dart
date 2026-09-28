@@ -20,7 +20,7 @@ class AgentSettings {
   final maxAgentIterations = signal(100);
   final approvalMode = signal(ApprovalMode.aiReview);
 
-  /// 后台任务结束后是否自动起一个汇报回合。
+  /// 后台任务结束后是否通知运行中的 Agent，或在空闲时自动起汇报回合。
   ///
   /// 默认开：任务跑完不回来，用户就得自己去问。但它是花钱的——汇报回合用
   /// 当前会话的模型，所以在 UI 上必须能看到这个开关的后果（默认开启）。

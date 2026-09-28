@@ -140,7 +140,7 @@ entity + ~/.athena/ 下的文件
 
 事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。UI 侧因此有两条订阅：`send()` 返回的那条（用户消息触发的 run），以及 `internalEvents`（协调层自己发起的自动汇报 run，带 `chatId`，见下）。
 
-**内部 run（后台任务自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ 会话空闲则 `_runReport`，正忙则攒进 `_pendingReports`，由 `send` 收尾时的 `_drainPendingReport` 合并成一次汇报。它不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。GUI 的汇报指示按会话记账（`_reportingChatIds`），以协调层的 `settledOf` 完成为收尾信号，不看当前显示的是哪条对话，也不依赖某个具体事件到达。
+**后台任务通知与内部 run（自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ `_pendingReports`。会话运行中，`AgentService.run.pendingBackgroundTasks` 在下一次模型请求前读取待通知任务，追加不落库的通知；模型完整响应后发 `AgentBackgroundTasksNotifiedEvent`，协调层只移除该批任务，避免重复汇报。请求失败、取消、截断或没有下一次请求时，未确认的任务仍留在队列；会话空闲则由 `_drainPendingReport` 合并后 `_runReport`。汇报 run 不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。GUI 的汇报指示按会话记账（`_reportingChatIds`），以协调层的 `settledOf` 完成为收尾信号，不看当前显示的是哪条对话，也不依赖某个具体事件到达。
 
 ---
 
@@ -237,7 +237,8 @@ entity + ~/.athena/ 下的文件
 - **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI 退出）同样杀。TUI 的退出收尾挂在 `ExitHookBackend.requestExit` 上：nocterm 的 /quit、Ctrl+C、SIGINT / SIGTERM 最终都经 `requestExit` 直接 `exit()`，`runApp` 不会返回，写在它后面的代码是死代码。
 - **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
 - **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。属主（`owner_pid`）仍是运行中的 Athena 进程的记录属于另一个实例（GUI 与 TUI 同时开），原样保留不杀。Windows 无法核对命令行，不清理孤儿。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
-- **自动汇报回合**（任务完成后自动起，可在设置里关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）。汇报说明（固定文字 + 任务命令，不含输出）作为请求**末尾的 user 消息**发送、不落库——请求不能以 assistant 结尾（Messages 协议当作 prefill 拒绝）；运行时上下文与 `send` 相同，不能被汇报说明顶替。继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
+- **运行中通知**：成功/失败的任务在下一次模型请求前以临时 user 消息追加到整批工具结果之后，仅含固定说明、id、状态与命令；日志通过 `background_task(read)` 读取，通知不落库、不进入 AI 审批授权上下文。正常 run 和汇报 run 都可接收，不打断流式响应/工具调用，不额外增加迭代；压缩重建上下文后重新加入尚未确认的通知。只有模型完整响应且未截断、过滤或拒答才确认该批任务，期间新完成的任务留待后续请求。
+- **自动汇报回合**（会话空闲且仍有待汇报任务时自动起，与运行中通知共用 `backgroundTaskReports` 开关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）。汇报说明（固定文字 + 任务命令，不含输出）作为请求**末尾的 user 消息**发送、不落库——请求不能以 assistant 结尾（Messages 协议当作 prefill 拒绝）；运行时上下文与 `send` 相同，不能被汇报说明顶替。继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
 - **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
 
 ---

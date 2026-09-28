@@ -57,6 +57,7 @@ void main() {
     String command = 'echo build-ok',
     int readLimit = 6000,
     ApprovalMode approvalMode = ApprovalMode.manual,
+    List<List<Map<String, dynamic>>>? script,
   }) async {
     tmp = await Directory.systemTemp.createTemp('athena_bg_report_');
     storage = FileStorage(root: Directory(p.join(tmp.path, '.athena')));
@@ -95,14 +96,18 @@ void main() {
       defaultWorkdir: tmp.path,
     );
 
-    llm = _ScriptedLlm([
+    // 原有汇报用例明确让任务在最后一条回答的请求发出后结束，避免与
+    // 新增的运行中通知竞争；运行中通知用例自行控制任务完成时机。
+    final reportGate = File(p.join(tmp.path, 'report-ready'));
+    llm = _ScriptedLlm(script ?? [
       // ① 用户回合：模型要求后台跑一条命令
       [
         _toolCall(
           id: 'call_bg',
           name: 'bash',
           arguments: {
-            'command': command,
+            'command': 'while [ ! -f "${reportGate.path}" ]; '
+                'do sleep 0.01; done; $command',
             'background': true,
             'call_description': '后台跑一次构建',
           },
@@ -128,6 +133,16 @@ void main() {
       // ④ 汇报结论
       [_text('构建成功：build-ok'), _finish('stop')],
     ]);
+    if (script == null) {
+      llm.beforeResponse = (index) async {
+        if (index != 1) return;
+        final finished = tasks.completions.firstWhere(
+          (task) => task.id == 'bg-1',
+        );
+        await reportGate.writeAsString('ready');
+        await finished;
+      };
+    }
 
     final chatService = ChatCompletionsService(
       llmClient: LlmClient(
@@ -210,6 +225,217 @@ void main() {
 
   Future<List<MessageEntity>> storedMessages() =>
       storage.sessionRepository.getMessagesByChatId(chat.id!);
+
+  Future<void> sendMessage() => coordinator
+      .send(
+        message: MessageEntity(chatId: chat.id!, role: 'user', content: '跑构建'),
+        chat: chat,
+      )
+      .drain<void>();
+
+  Future<BackgroundTask> completeTask({
+    String? chatId,
+    String command = 'build',
+    int exitCode = 0,
+  }) async {
+    final finished = tasks.completions.firstWhere(
+      (task) => task.command == command,
+    );
+    await tasks.start(
+      chatId: chatId ?? chat.id!,
+      executable: 'bash',
+      arguments: ['-c', 'echo PRIVATE-BUILD-OUTPUT; exit $exitCode'],
+      workdir: tmp.path,
+      command: command,
+    );
+    return finished;
+  }
+
+  List<Map> streamRequests() =>
+      llm.requests.where((request) => request['stream'] == true).toList();
+
+  List<Map<String, dynamic>> backgroundCall(String action, {String? taskId}) => [
+    _toolCall(
+      id: 'call_${action}_${taskId ?? "all"}',
+      name: 'background_task',
+      arguments: {
+        'action': action,
+        if (taskId != null) 'task_id': taskId,
+        'call_description': '查看后台任务',
+      },
+    ),
+    _finish('tool_calls'),
+  ];
+
+  for (final mode in [ApprovalMode.manual, ApprovalMode.aiReview]) {
+    test('运行中完成的任务在下一次请求合并通知，沿用 ${mode.key} 审批且不重复汇报', () async {
+      await setUpHarness(approvalMode: mode, script: [
+        backgroundCall('list'),
+        backgroundCall('read', taskId: 'bg-1'),
+        [_text('根据构建结果继续处理。'), _finish('stop')],
+      ]);
+      final internal = <InternalRunEvent>[];
+      final sub = coordinator.internalEvents.listen(internal.add);
+      addTearDown(sub.cancel);
+      llm.beforeResponse = (index) async {
+        if (index != 0) return;
+        await completeTask(command: 'failed-build', exitCode: 7);
+        await completeTask(command: 'successful-build');
+        await completeTask(chatId: 'another-chat', command: 'other-chat-build');
+      };
+
+      await sendMessage();
+
+      final requests = streamRequests();
+      expect(requests, hasLength(3));
+      final messages = (requests[1]['messages'] as List).cast<Map>();
+      final notification = messages.last['content'] as String;
+      expect(messages.last['role'], 'user');
+      expect(notification, contains('while this run is active'));
+      expect(notification, contains('bg-1: failed'));
+      expect(notification, contains('exit code 7'));
+      expect(notification, contains('bg-2: completed'));
+      expect(notification, isNot(contains('other-chat-build')));
+      expect(notification, isNot(contains('PRIVATE-BUILD-OUTPUT')));
+      expect(
+        messages[messages.length - 2]['tool_call_id'],
+        'call_list_all',
+        reason: '通知应在整批工具结果之后，不破坏 assistant/tool 配对',
+      );
+      final finalMessages = (requests[2]['messages'] as List).cast<Map>();
+      expect(
+        finalMessages.where((m) => m['content'] == notification),
+        hasLength(1),
+      );
+      final readResult = finalMessages.singleWhere(
+        (m) => m['tool_call_id'] == 'call_read_bg-1',
+      );
+      expect(readResult['content'], contains('PRIVATE-BUILD-OUTPUT'));
+      expect(internal, isEmpty, reason: '已完整响应的通知不再另起汇报回合');
+      expect(
+        (await storedMessages())
+            .where((m) => m.role == 'user')
+            .map((m) => m.content),
+        ['跑构建'],
+        reason: '运行时通知不落成用户消息',
+      );
+      if (mode == ApprovalMode.manual) {
+        expect(approvalTools, ['background_task', 'background_task']);
+      } else {
+        expect(approvalTools, isEmpty);
+        final reviews = llm.requests.where((r) => r['stream'] != true);
+        expect(reviews, hasLength(2));
+        for (final review in reviews) {
+          final input = jsonDecode(
+            ((review['messages'] as List).last as Map)['content'] as String,
+          ) as Map;
+          expect(
+            (input['conversation'] as List).map((m) => (m as Map)['content']),
+            ['跑构建'],
+            reason: '任务通知和日志均不能成为 AI 审批授权来源',
+          );
+        }
+      }
+    }, skip: isWindows);
+  }
+
+  test('确认通知期间新完成的任务留到下一次模型请求', () async {
+    await setUpHarness(script: [
+      backgroundCall('list'),
+      backgroundCall('read', taskId: 'bg-1'),
+      [_text('完成。'), _finish('stop')],
+    ]);
+    llm.beforeResponse = (index) async {
+      if (index < 2) await completeTask(command: 'build-$index');
+    };
+    await sendMessage();
+
+    final requests = streamRequests();
+    expect(requests, hasLength(3));
+    final firstNotice =
+        ((requests[1]['messages'] as List).last as Map)['content'] as String;
+    expect(firstNotice, contains('bg-1'));
+    expect(firstNotice, isNot(contains('bg-2')));
+    final nextNotice =
+        ((requests[2]['messages'] as List).last as Map)['content'] as String;
+    expect(nextNotice, contains('bg-2'));
+    expect(nextNotice, isNot(contains('bg-1')));
+  }, skip: isWindows);
+
+  test('带通知的请求截断后仍保留任务并在收尾汇报', () async {
+    await setUpHarness(script: [
+      backgroundCall('list'),
+      [_text('回答被截断'), _finish('length')],
+      backgroundCall('read', taskId: 'bg-1'),
+      [_text('补充汇报构建结果。'), _finish('stop')],
+    ]);
+    llm.beforeResponse = (index) async {
+      if (index == 0) await completeTask();
+    };
+    final internal = <InternalRunEvent>[];
+    final sub = coordinator.internalEvents.listen(internal.add);
+    addTearDown(sub.cancel);
+    await sendMessage();
+
+    final requests = streamRequests();
+    expect(requests, hasLength(4));
+    expect(
+      ((requests[1]['messages'] as List).last as Map)['content'],
+      contains('while this run is active'),
+    );
+    expect(
+      ((requests[2]['messages'] as List).last as Map)['content'],
+      contains('This is an automatic report'),
+    );
+    expect(internal, isNotEmpty);
+  }, skip: isWindows);
+
+  test('工具响应截断重试时保留同一条通知，成功后不再汇报', () async {
+    await setUpHarness(script: [
+      backgroundCall('list'),
+      [
+        ...backgroundCall('read', taskId: 'bg-1').take(1),
+        _finish('length'),
+      ],
+      [_text('已收到任务完成通知。'), _finish('stop')],
+    ]);
+    llm.beforeResponse = (index) async {
+      if (index == 0) await completeTask();
+    };
+    await sendMessage();
+
+    final requests = streamRequests();
+    expect(requests, hasLength(3));
+    for (final request in requests.skip(1)) {
+      expect(
+        (request['messages'] as List).cast<Map>().where((m) =>
+            m['role'] == 'user' &&
+            (m['content'] as String).contains('while this run is active')),
+        hasLength(1),
+      );
+    }
+    expect(approvalTools, ['background_task'], reason: '截断的 read 调用不能执行');
+  }, skip: isWindows);
+
+  test('关闭开关时运行中的会话也不注入通知', () async {
+    await setUpHarness(temporary: false, script: [
+      backgroundCall('list'),
+      [_text('完成。'), _finish('stop')],
+    ]);
+    llm.beforeResponse = (index) async {
+      if (index == 0) await completeTask();
+    };
+    await sendMessage();
+    final requests = streamRequests();
+    expect(requests, hasLength(2));
+    expect(
+      (requests[1]['messages'] as List)
+          .cast<Map>()
+          .where((m) => m['role'] == 'user')
+          .map((m) => m['content']),
+      ['跑构建'],
+    );
+  }, skip: isWindows);
 
   test('任务结束后自动起汇报回合，结论落库', () async {
     await setUpHarness();
@@ -441,6 +667,7 @@ class _ScriptedLlm {
   final List<List<Map<String, dynamic>>> _script;
   final List<Map<String, dynamic>> requests = [];
   int _served = 0;
+  Future<void> Function(int index)? beforeResponse;
 
   late final http.Client client = MockClient.streaming((
     request,
@@ -471,8 +698,10 @@ class _ScriptedLlm {
         headers: {'content-type': 'application/json'},
       );
     }
-    final chunks = _served < _script.length
-        ? _script[_served++]
+    final index = _served++;
+    await beforeResponse?.call(index);
+    final chunks = index < _script.length
+        ? _script[index]
         : <Map<String, dynamic>>[_text(''), _finish('stop')];
     final sse =
         '${chunks.map((c) => 'data: ${jsonEncode(c)}\n\n').join()}'
