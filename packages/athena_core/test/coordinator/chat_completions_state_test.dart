@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -173,6 +174,44 @@ void main() {
     );
     expect(history.first['reasoning_details'], reasoningDetails);
   });
+
+  test('仅有 reasoning_details 时仍逐步显示、落库并回传原始状态', () async {
+    for (final reply in replies) {
+      for (final event in reply) {
+        for (final choice in event['choices'] as List) {
+          (choice['delta'] as Map).remove('reasoning');
+        }
+      }
+    }
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    expect(saved.where((m) => m.role == 'assistant').map((m) => m.reasoningContent),
+      everyElement('思考中'));
+    expect(events.whereType<RunMessageUpdated>().any(
+      (e) => e.message.reasoningContent == '思考中'), isTrue);
+    final history = (bodies.last['messages'] as List).firstWhere((m) => m['role'] == 'assistant');
+    expect(history['reasoning_details'], reasoningDetails);
+    expect(history['reasoning_content'], isNull);
+  });
+
+  for (final content in ['', '部分回答']) {
+    test('无工具的 length 响应明确失败并保留内容：$content', () async {
+      replies[0] = [{
+        'choices': [{'index': 0, 'delta': {'content': content}, 'finish_reason': 'length'}],
+      }];
+      final events = await send();
+      expect(events.whereType<RunError>(), hasLength(1));
+      expect(events.whereType<RunOutcomeChanged>().last.outcome.termination,
+        AgentRunTermination.error);
+      final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+      final assistant = saved.singleWhere((m) => m.role == 'assistant');
+      expect(assistant.content, startsWith(content));
+      expect(jsonDecode(assistant.completionDetails)['finish_reason'], 'length');
+      expect(assistant.chatCompletionsState, isEmpty);
+      expect((await send()).whereType<RunError>(), isEmpty);
+    });
+  }
 
   test('提前 EOF 不执行工具、不保存原生状态，并闭合工具结果', () async {
     replies[0].removeWhere(

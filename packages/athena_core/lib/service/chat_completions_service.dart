@@ -83,15 +83,16 @@ class ChatCompletionsService {
     Future<void>? cancelSignal,
     int? outputRoom,
   }) async* {
+    final effort = model.reasoning
+        ? _parseReasoningEffort(chat.reasoningEffort) : null;
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
-      temperature: chat.temperature,
+      temperature: _acceptsTemperature(model.modelId, effort)
+          ? chat.temperature : null,
       // 只有推理模型才带这个参数：会话上总有一档（默认 high），
       // 非推理模型收到它会直接 400
-      reasoningEffort: model.reasoning
-          ? _parseReasoningEffort(chat.reasoningEffort)
-          : null,
+      reasoningEffort: effort,
       tools: tools,
       responseFormat: responseFormat,
       streamOptions: const StreamOptions(includeUsage: true),
@@ -140,6 +141,17 @@ class ChatCompletionsService {
       yield chunk.choices!.first.delta.content ?? '';
     }
   }
+}
+
+// 会话温度是默认注入的采样参数；OpenAI 推理模型不接受时应省略。
+// 仅识别已知的 OpenAI 模型名（含 OpenRouter 命名空间），不禁用其他家的采样。
+bool _acceptsTemperature(String model, ReasoningEffort? effort) {
+  final id = model.toLowerCase().replaceFirst(RegExp(r'^openai/'), '');
+  if (RegExp(r'^o[134](?:-|$)').hasMatch(id)) return false;
+  if (!RegExp(r'^gpt-5(?:[.-]|$)').hasMatch(id)) return true;
+  // GPT-5 / mini / nano 没有 none 模式；后续版本仅在显式关闭推理时采样。
+  return RegExp(r'^gpt-5\.[1-9]').hasMatch(id) &&
+      effort == ReasoningEffort.none;
 }
 
 /// 解析会话存储的推理强度字符串为官方枚举；未识别值返回 null

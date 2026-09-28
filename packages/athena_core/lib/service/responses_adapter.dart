@@ -131,6 +131,9 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
   // 键用 outputIndex：参数增量事件的 item_id 是 item 自身的 id（fc_…），
   // 与 call_id（call_…）不是同一个值，且可为空；outputIndex 两边都必有。
   final callIndexes = <int, int>{};
+  final calls = <int, FunctionCallOutputItemResponse>{};
+  final arguments = <int, String>{};
+  final texts = <(int, int), String>{};
   final reasoning = _ReasoningText();
   final refusals = <(int, int), String>{};
   var terminated = false;
@@ -140,44 +143,79 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
     return _chunk(ChatDelta(content: delta, refusal: delta));
   }
 
-  Stream<ChatStreamEvent> finishRefusals(Response response) async* {
-    for (var i = 0; i < response.output.length; i++) {
-      final item = response.output[i].toJson();
-      final content = item['content'];
-      if (content is! List) continue;
-      for (var j = 0; j < content.length; j++) {
-        if (content[j]['type'] != 'refusal') continue;
-        final text = content[j]['refusal'] as String;
-        final prior = refusals[(i, j)] ?? '';
-        if (!text.startsWith(prior)) throw const FormatException('Refusal prefix mismatch');
-        if (text.length > prior.length) {
-          yield refusalDelta((i, j), text.substring(prior.length));
-        }
+  String suffix(String prior, String complete) {
+    if (!complete.startsWith(prior)) {
+      throw const FormatException('Responses output differs from its streamed prefix');
+    }
+    return complete.substring(prior.length);
+  }
+
+  ChatStreamEvent textDelta((int, int) key, String delta) {
+    texts[key] = '${texts[key] ?? ''}$delta';
+    return _chunk(ChatDelta(content: delta));
+  }
+
+  Stream<ChatStreamEvent> finishPart((int, int) key, Map<String, dynamic> part) async* {
+    if (part['type'] == 'output_text') {
+      final delta = suffix(texts[key] ?? '', part['text'] as String);
+      if (delta.isNotEmpty) yield textDelta(key, delta);
+    } else if (part['type'] == 'refusal') {
+      final delta = suffix(refusals[key] ?? '', part['refusal'] as String);
+      if (delta.isNotEmpty) yield refusalDelta(key, delta);
+    }
+  }
+
+  Stream<ChatStreamEvent> argumentDelta(int outputIndex, String delta) async* {
+    if (delta.isEmpty) return;
+    arguments[outputIndex] = '${arguments[outputIndex] ?? ''}$delta';
+    final index = callIndexes[outputIndex];
+    if (index != null) {
+      yield _chunk(ChatDelta(toolCalls: [ToolCallDelta(
+        index: index, function: FunctionCallDelta(arguments: delta),
+      )]));
+    }
+  }
+
+  Stream<ChatStreamEvent> finishArguments(int outputIndex, String complete) async* {
+    yield* argumentDelta(outputIndex, suffix(arguments[outputIndex] ?? '', complete));
+  }
+
+  // added / done / completed 都可能是首次携带完整内容的事件；仅补齐未发出的后缀。
+  Stream<ChatStreamEvent> finishItem(int outputIndex, OutputItem item) async* {
+    if (item is FunctionCallOutputItemResponse) {
+      final prior = calls[outputIndex];
+      if (prior != null && (prior.callId != item.callId || prior.name != item.name)) {
+        throw const FormatException('Responses function call identity changed');
       }
+      if (prior == null) {
+        final index = callIndexes.length;
+        callIndexes[outputIndex] = index;
+        calls[outputIndex] = item;
+        yield _chunk(ChatDelta(toolCalls: [ToolCallDelta(
+          index: index, id: item.callId, type: 'function',
+          function: FunctionCallDelta(name: item.name, arguments: arguments[outputIndex]),
+        )]));
+      }
+      yield* finishArguments(outputIndex, item.arguments);
+    } else {
+      final content = item.toJson()['content'];
+      if (content is! List) return;
+      for (var j = 0; j < content.length; j++) {
+        yield* finishPart((outputIndex, j), content[j] as Map<String, dynamic>);
+      }
+    }
+  }
+
+  Stream<ChatStreamEvent> finishOutput(Response response) async* {
+    for (var i = 0; i < response.output.length; i++) {
+      yield* finishItem(i, response.output[i]);
     }
   }
 
   await for (final event in events) {
     switch (event) {
       case OutputItemAddedEvent(:final outputIndex, :final item):
-        if (item is FunctionCallOutputItemResponse) {
-          final index = callIndexes.length;
-          callIndexes[outputIndex] = index;
-          // id 与 name 同时给出，保证上层立刻能建卡
-          // （AgentService 建卡条件是两者齐备）。
-          yield _chunk(
-            ChatDelta(
-              toolCalls: [
-                ToolCallDelta(
-                  index: index,
-                  id: item.callId,
-                  type: 'function',
-                  function: FunctionCallDelta(name: item.name),
-                ),
-              ],
-            ),
-          );
-        }
+        yield* finishItem(outputIndex, item);
 
       case RefusalDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
         yield refusalDelta((outputIndex, contentIndex), delta);
@@ -189,8 +227,17 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
           yield refusalDelta(key, refusal.substring(prior.length));
         }
 
-      case OutputTextDeltaEvent(:final delta):
-        if (delta.isNotEmpty) yield _chunk(ChatDelta(content: delta));
+      case OutputTextDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
+        if (delta.isNotEmpty) yield textDelta((outputIndex, contentIndex), delta);
+
+      case OutputTextDoneEvent(:final outputIndex, :final contentIndex, :final text):
+        yield* finishPart((outputIndex, contentIndex), {'type': 'output_text', 'text': text});
+
+      case ContentPartAddedEvent(:final outputIndex, :final contentIndex, :final part):
+        yield* finishPart((outputIndex, contentIndex), part.toJson());
+
+      case ContentPartDoneEvent(:final outputIndex, :final contentIndex, :final part):
+        yield* finishPart((outputIndex, contentIndex), part.toJson());
 
       case ReasoningTextDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
         yield* reasoning.add((outputIndex, false, contentIndex ?? 0), delta);
@@ -206,25 +253,18 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
 
       case OutputItemDoneEvent(:final outputIndex, :final item):
         if (item is ReasoningItem) yield* reasoning.item(outputIndex, item);
+        yield* finishItem(outputIndex, item);
 
       case FunctionCallArgumentsDeltaEvent(:final outputIndex, :final delta):
-        final index = callIndexes[outputIndex];
-        if (index == null || delta.isEmpty) break;
-        yield _chunk(
-          ChatDelta(
-            toolCalls: [
-              ToolCallDelta(
-                index: index,
-                function: FunctionCallDelta(arguments: delta),
-              ),
-            ],
-          ),
-        );
+        yield* argumentDelta(outputIndex, delta);
+
+      case FunctionCallArgumentsDoneEvent(:final outputIndex, :final arguments):
+        yield* finishArguments(outputIndex, arguments);
 
       case ResponseCompletedEvent(:final response):
         terminated = true;
         yield* reasoning.response(response);
-        yield* finishRefusals(response);
+        yield* finishOutput(response);
         yield CompletionDetailsChunk(_responseDetails(response));
         yield _terminalChunk(
           response: response,
@@ -236,7 +276,7 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
       case ResponseIncompleteEvent(:final response):
         terminated = true;
         yield* reasoning.response(response);
-        yield* finishRefusals(response);
+        yield* finishOutput(response);
         yield CompletionDetailsChunk(_responseDetails(response));
         // 保留截断原因；length 与 content_filter 都不得执行工具。
         yield _terminalChunk(
@@ -256,6 +296,9 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
     }
   }
   if (!terminated) throw StateError('Responses stream ended before a terminal event');
+  if (arguments.keys.any((index) => !callIndexes.containsKey(index))) {
+    throw StateError('Responses function call is missing its identity');
+  }
 }
 
 /// 把 Responses 的完整响应转成 Chat Completion（非流式路径）。

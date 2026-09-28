@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -198,6 +199,23 @@ void main() {
     ]);
     expect(echo.values, ['0', '1'], reason: '回传的历史工具不会重新执行');
   });
+
+  for (final reason in ['max_tokens', 'model_context_window_exceeded']) {
+    test('无工具的 $reason 不再误报正常完成', () async {
+      final response = thinkingMessage(tools: false)..['stop_reason'] = reason;
+      replies[0] = thinkingEvents(response);
+      final events = await send();
+      expect(events.whereType<RunError>(), hasLength(1));
+      expect(events.whereType<RunOutcomeChanged>().last.outcome.termination,
+        AgentRunTermination.error);
+      final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+      final message = saved.singleWhere((m) => m.role == 'assistant');
+      expect(message.content, startsWith('准备执行。'));
+      expect(message.messagesState, isEmpty);
+      expect(jsonDecode(message.completionDetails)['stop_reason'], reason);
+      expect((await send()).whereType<RunError>(), isEmpty);
+    });
+  }
 
   test('截断不保存原生推理、不执行工具，下轮请求继续成功', () async {
     replies[0] = thinkingEvents(thinkingMessage(stop: 'max_tokens'));

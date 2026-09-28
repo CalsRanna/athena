@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/agent_service.dart';
+import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/permission/permission_service.dart';
@@ -196,6 +197,33 @@ void main() {
       ['rs_1', 'rs_2'],
     );
     expect(echo.values, ['0', '1'], reason: '回传历史不会重新执行旧调用');
+  });
+
+  test('只有 completed 快照也能展示并执行完整工具、原样续接', () async {
+    replies[0] = [{'type': 'response.completed', 'response': reasoningResponse()}];
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    expect(echo.values, ['0', '1']);
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    final message = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
+    expect(message.content, '准备执行。');
+    expect(message.responsesState, isNotEmpty);
+    expect((bodies[1]['input'] as List).any((i) => i['type'] == 'reasoning'), isTrue);
+  });
+
+  test('无工具的 incomplete 保留正文、失败状态及原始停止原因', () async {
+    replies[0] = [{'type': 'response.incomplete',
+      'response': reasoningResponse(tools: false, status: 'incomplete')}];
+    final events = await send();
+    expect(events.whereType<RunError>(), hasLength(1));
+    expect(events.whereType<RunOutcomeChanged>().last.outcome.termination,
+      AgentRunTermination.error);
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    final message = saved.singleWhere((m) => m.role == 'assistant');
+    expect(message.content, startsWith('完成。'));
+    expect(message.responsesState, isEmpty);
+    expect(jsonDecode(message.completionDetails)['status'], 'incomplete');
+    expect((await send()).whereType<RunError>(), isEmpty);
   });
 
   test('截断响应不存原生状态，工具调用不执行，仍可继续下一轮', () async {

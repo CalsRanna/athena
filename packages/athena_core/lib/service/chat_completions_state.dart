@@ -119,8 +119,52 @@ ChatCompletionCreateRequest restoreChatCompletionsRequest(
 AssistantMessage _visibleMessage(AssistantMessage original) => AssistantMessage(
   content: '${original.content ?? ''}${original.refusal ?? ''}',
   toolCalls: original.toolCalls,
-  reasoningContent: original.reasoningContent ?? original.reasoning,
+  reasoningContent: _visibleReasoning(original),
 );
+
+String? _visibleReasoning(AssistantMessage message) {
+  final text = _ReasoningDisplay().add(ChatDelta(
+    reasoningContent: message.reasoningContent,
+    reasoning: message.reasoning,
+    reasoningDetails: message.reasoningDetails,
+  ));
+  return text.isEmpty ? null : text;
+}
+
+// 同一供应商可能同时发送旧字段和 details。选择最先出现的可读通道，
+// 同包时优先旧字段，避免两个通道的相同文字在界面重复；原始数据另存。
+class _ReasoningDisplay {
+  String? _source;
+  Object? _lastPart;
+
+  String add(ChatDelta delta) {
+    if (_source == null) {
+      if (delta.reasoningContent?.isNotEmpty == true) {
+        _source = 'content';
+      } else if (delta.reasoning?.isNotEmpty == true) {
+        _source = 'reasoning';
+      } else if (delta.reasoningDetails?.any((d) =>
+          (d.isSummary && d.summary?.isNotEmpty == true) ||
+          (d.isText && d.text?.isNotEmpty == true)) == true) {
+        _source = 'details';
+      }
+    }
+    if (_source == 'content') return delta.reasoningContent ?? '';
+    if (_source == 'reasoning') return delta.reasoning ?? '';
+    if (_source != 'details') return '';
+    final text = StringBuffer();
+    for (final detail in delta.reasoningDetails ?? <ReasoningDetail>[]) {
+      final part = detail.isSummary ? detail.summary
+          : detail.isText ? detail.text : null;
+      if (part == null || part.isEmpty) continue;
+      final key = (detail.type, detail.index ?? detail.id);
+      if (_lastPart != null && _lastPart != key) text.write('\n\n');
+      _lastPart = key;
+      text.write(part);
+    }
+    return text.toString();
+  }
+}
 
 /// 拒答也进入文本事件；原始字段另存，避免回传时重复正文或丢失拒答语义。
 Stream<ChatStreamEvent> normalizeChatCompletionsStream(
@@ -129,9 +173,23 @@ Stream<ChatStreamEvent> normalizeChatCompletionsStream(
   String model,
 ) async* {
   final raw = ChatStreamAccumulator();
+  final displays = <int, _ReasoningDisplay>{};
   await for (final event in events) {
     raw.add(event);
-    yield event;
+    yield ChatStreamEvent.fromJson({
+      ...event.toJson(),
+      if (event.choices != null) 'choices': [
+        for (final choice in event.choices!) {
+          ...choice.toJson(),
+          'delta': {
+            ...choice.delta.toJson(),
+            'reasoning': null,
+            'reasoning_content': displays.putIfAbsent(
+              choice.index ?? 0, _ReasoningDisplay.new).add(choice.delta),
+          },
+        },
+      ],
+    });
     final refusal = event.firstChoice?.delta.refusal;
     if (refusal != null && refusal.isNotEmpty) {
       yield ChatStreamEvent(
@@ -195,8 +253,7 @@ ChatCompletion normalizeChatCompletion(
         logprobs: choice.logprobs,
         message: ChatCompletionsAssistantMessage(
           content: choice.message.content,
-          reasoningContent:
-              choice.message.reasoningContent ?? choice.message.reasoning,
+          reasoningContent: _visibleReasoning(choice.message),
           refusal: choice.message.refusal,
           toolCalls: choice.message.toolCalls,
           chatCompletionsState:

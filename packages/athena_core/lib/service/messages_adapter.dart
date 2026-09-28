@@ -605,9 +605,11 @@ anthropic.InputSchema _toInputSchema(Map<String, dynamic>? parameters) {
 Map<String, dynamic> _decodeArguments(String arguments) {
   if (arguments.trim().isEmpty) return const <String, dynamic>{};
   try {
-    return Map<String, dynamic>.from(jsonDecode(arguments) as Map);
+    final decoded = jsonDecode(arguments);
+    return decoded is Map<String, dynamic>
+        ? decoded : const <String, dynamic>{};
   } on FormatException {
-    // 上游给的参数半截或非 JSON：下发空对象，让模型重新发起调用，
+    // 上游给的参数半截、非 JSON 或非对象：下发空对象，让模型重新发起调用，
     // 而不是把整轮对话打挂。
     return const <String, dynamic>{};
   }

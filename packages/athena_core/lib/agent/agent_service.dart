@@ -890,6 +890,10 @@ class _AgentLoop {
     final truncated = st.accumulator.finishReason == FinishReason.length;
 
     if (toolCalls.isEmpty) {
+      if (truncated) {
+        throw StateError('Model response was truncated by the output or context limit. '
+          'The partial response has been preserved; retry with more output room or less context.');
+      }
       yield AgentEvent.done(content: st.accumulator.content);
       st.done = true;
       return;
