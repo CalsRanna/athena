@@ -23,7 +23,8 @@ class WebFetchTool implements Tool, CancellableTool {
   String get name => 'web_fetch';
 
   @override
-  String get description => 'Fetch content from a URL and return it as '
+  String get description =>
+      'Fetch content from a URL and return it as '
       'Markdown (default) or raw HTML. '
       'Markdown mode strips unnecessary tags and converts the page to '
       'readable text — ideal for most tasks. '
@@ -33,55 +34,50 @@ class WebFetchTool implements Tool, CancellableTool {
 
   @override
   Map<String, dynamic> get parameters => {
+    'type': 'object',
+    'properties': {
+      'url': {
+        'type': 'string',
+        'description': 'The URL to fetch. Must be http or https.',
+      },
+      'method': {
+        'type': 'string',
+        'enum': ['GET', 'POST'],
+        'description': 'HTTP method. Defaults to GET.',
+      },
+      'format': {
+        'type': 'string',
+        'enum': ['markdown', 'html'],
+        'description':
+            'Output format. "markdown" (default) converts HTML to '
+            'clean readable text. "html" returns the raw HTML (useful '
+            'for analyzing page structure, extracting specific elements, '
+            'or debugging markup).',
+      },
+      'headers': {
         'type': 'object',
-        'properties': {
-          'url': {
-            'type': 'string',
-            'description': 'The URL to fetch. Must be http or https.',
-          },
-          'method': {
-            'type': 'string',
-            'enum': ['GET', 'POST'],
-            'description': 'HTTP method. Defaults to GET.',
-          },
-          'format': {
-            'type': 'string',
-            'enum': ['markdown', 'html'],
-            'description':
-                'Output format. "markdown" (default) converts HTML to '
-                'clean readable text. "html" returns the raw HTML (useful '
-                'for analyzing page structure, extracting specific elements, '
-                'or debugging markup).',
-          },
-          'headers': {
-            'type': 'object',
-            'description': 'Optional HTTP headers as key-value pairs.',
-          },
-          'body': {
-            'type': 'string',
-            'description': 'Request body for POST requests.',
-          },
-        },
-        'required': ['url'],
-      };
+        'description': 'Optional HTTP headers as key-value pairs.',
+      },
+      'body': {
+        'type': 'string',
+        'description': 'Request body for POST requests.',
+      },
+    },
+    'required': ['url'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {
+  Future<String> execute(
+    Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) =>
-      _execute(args, onUpdate: onUpdate);
+  }) => _execute(args, onUpdate: onUpdate);
 
   @override
   Future<String> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
-  }) =>
-      _execute(
-        args,
-        onUpdate: onUpdate,
-        cancelSignal: cancelSignal,
-      );
+  }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
   Future<String> _execute(
     Map<String, dynamic> args, {
@@ -91,8 +87,10 @@ class WebFetchTool implements Tool, CancellableTool {
     final url = args['url'] as String;
     final method = args['method'] as String? ?? 'GET';
     final format = args['format'] as String? ?? 'markdown';
-    final headers = (args['headers'] as Map<String, dynamic>?)
-            ?.map((k, v) => MapEntry(k, v.toString())) ??
+    final headers =
+        (args['headers'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, v.toString()),
+        ) ??
         {};
     final body = args['body'] as String?;
 
@@ -113,10 +111,12 @@ class WebFetchTool implements Tool, CancellableTool {
       final client = HttpClient();
       var completed = false;
       if (cancelSignal != null) {
-        unawaited(cancelSignal.then((_) {
-          cancelled = true;
-          if (!completed) client.close(force: true);
-        }));
+        unawaited(
+          cancelSignal.then((_) {
+            cancelled = true;
+            if (!completed) client.close(force: true);
+          }),
+        );
       }
       late HttpClientResponse response;
       try {
@@ -190,9 +190,9 @@ class WebFetchTool implements Tool, CancellableTool {
             break;
           }
           final remaining = _maxResponseBytes - bodyBytes.length;
-          bodyBytes.add(chunk.length <= remaining
-              ? chunk
-              : chunk.sublist(0, remaining));
+          bodyBytes.add(
+            chunk.length <= remaining ? chunk : chunk.sublist(0, remaining),
+          );
         }
       } finally {
         completed = true;
@@ -202,10 +202,13 @@ class WebFetchTool implements Tool, CancellableTool {
       // dart:io 无 content-length 时为 -1
       final knownTotal = response.contentLength;
       final tooLarge =
-          (knownTotal > 0 ? knownTotal : bodyBytes.length) > _maxResponseBytes ||
-              overLimit;
-      final raw =
-          _decodeBody(bodyBytes.toBytes(), response.headers.value('content-type'));
+          (knownTotal > 0 ? knownTotal : bodyBytes.length) >
+              _maxResponseBytes ||
+          overLimit;
+      final raw = _decodeBody(
+        bodyBytes.toBytes(),
+        response.headers.value('content-type'),
+      );
 
       // Markdown 模式且响应看起来像 HTML 时才转换
       final contentType = response.headers.value('content-type') ?? '';
@@ -222,7 +225,8 @@ class WebFetchTool implements Tool, CancellableTool {
         result.writeln('Reason: ${response.reasonPhrase}');
       }
       result.writeln(
-          'Content-Type: ${contentType.isNotEmpty ? contentType : '(unknown)'}');
+        'Content-Type: ${contentType.isNotEmpty ? contentType : '(unknown)'}',
+      );
       result.writeln();
 
       if (tooLarge) {
@@ -232,12 +236,14 @@ class WebFetchTool implements Tool, CancellableTool {
             ? '${knownTotal ~/ 1024}KB'
             : '>${_maxResponseBytes ~/ 1024}KB';
         result.writeln(
-            '[Response truncated: limit ${_maxResponseBytes ~/ 1024}KB / '
-            '$totalNote total]');
+          '[Response truncated: limit ${_maxResponseBytes ~/ 1024}KB / '
+          '$totalNote total]',
+        );
         result.writeln(
-            'Hint: to reduce payload, use a more specific URL or API '
-            'endpoint, add query parameters to filter results, or retry '
-            'with Accept-Encoding: gzip if the server supports it.');
+          'Hint: to reduce payload, use a more specific URL or API '
+          'endpoint, add query parameters to filter results, or retry '
+          'with Accept-Encoding: gzip if the server supports it.',
+        );
       } else {
         result.write(output);
       }
@@ -263,8 +269,10 @@ class WebFetchTool implements Tool, CancellableTool {
   static String _decodeBody(List<int> bytes, String? contentType) {
     final match = contentType == null
         ? null
-        : RegExp(r'charset=([\w-]+)', caseSensitive: false)
-            .firstMatch(contentType);
+        : RegExp(
+            r'charset=([\w-]+)',
+            caseSensitive: false,
+          ).firstMatch(contentType);
     final encoding = match != null ? Encoding.getByName(match[1]!) : null;
     // 各具体 codec 的 allowMalformed 默认均为 true，无需显式传入。
     return (encoding ?? latin1).decode(bytes);
@@ -273,9 +281,10 @@ class WebFetchTool implements Tool, CancellableTool {
   /// 简单试探：检测文本是否包含 HTML 标签。
   static bool _hasHtmlTags(String text) {
     final upper = text.length > 2000 ? text.substring(0, 2000) : text;
-    return RegExp(r'<\s*(html|head|body|div|p|h[1-6]|span|a\s|table)',
-            caseSensitive: false)
-        .hasMatch(upper);
+    return RegExp(
+      r'<\s*(html|head|body|div|p|h[1-6]|span|a\s|table)',
+      caseSensitive: false,
+    ).hasMatch(upper);
   }
 
   /// SSRF 字面量地址检查。返回拒绝原因；null = 放行。
@@ -343,7 +352,8 @@ class WebFetchTool implements Tool, CancellableTool {
     if (bytes.length != 16) return false;
     // IPv4 映射 / 兼容地址（::ffff:a.b.c.d、::a.b.c.d）直达内嵌的 IPv4，
     // 按内嵌地址判定
-    final v4Embedded = bytes.take(10).every((b) => b == 0) &&
+    final v4Embedded =
+        bytes.take(10).every((b) => b == 0) &&
         ((bytes[10] == 0xFF && bytes[11] == 0xFF) ||
             (bytes[10] == 0 && bytes[11] == 0));
     if (v4Embedded) {
@@ -355,8 +365,7 @@ class WebFetchTool implements Tool, CancellableTool {
       );
     }
     final isZero = bytes.every((b) => b == 0);
-    final isLoopback =
-        bytes[15] == 1 && bytes.take(15).every((b) => b == 0);
+    final isLoopback = bytes[15] == 1 && bytes.take(15).every((b) => b == 0);
     if (isZero || isLoopback) return true; // :: 与 ::1
     if (bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80) {
       return true; // fe80::/10 link-local

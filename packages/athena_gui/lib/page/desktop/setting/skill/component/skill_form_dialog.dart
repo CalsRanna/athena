@@ -83,7 +83,9 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
       nameError = !SkillLoader.isValidSkillName(name)
           ? 'Use letters, digits and dashes only.'
           : null;
-      descriptionError = description.isEmpty ? 'Description is required.' : null;
+      descriptionError = description.isEmpty
+          ? 'Description is required.'
+          : null;
     });
     if (nameError != null || descriptionError != null) return;
     final ok = await viewModel.createSkill(

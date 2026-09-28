@@ -11,7 +11,7 @@ class SentinelListTool implements Tool {
   final SentinelRepository _repository;
 
   SentinelListTool({required SentinelRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
@@ -31,13 +31,15 @@ class SentinelListTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => <String, dynamic>{
-        'type': 'object',
-        'properties': <String, dynamic>{},
-      };
+    'type': 'object',
+    'properties': <String, dynamic>{},
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args,
-      {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final sentinels = await _repository.getAllSentinels();
     if (sentinels.isEmpty) {
       return 'No sentinels found.';
@@ -48,11 +50,12 @@ class SentinelListTool implements Tool {
     buffer.writeln('Available sentinels (${sorted.length}):');
     buffer.writeln();
     for (final s in sorted) {
-      buffer.writeln('- **${s.name}**'
-          '${s.isListVisible ? '' : ' (hidden preset)'}');
+      buffer.writeln(
+        '- **${s.name}**'
+        '${s.isListVisible ? '' : ' (hidden preset)'}',
+      );
       if (s.description.trim().isNotEmpty) {
-        buffer.writeln(
-            '  Description: ${_oneLine(s.description)}');
+        buffer.writeln('  Description: ${_oneLine(s.description)}');
       }
       final tagList = s.tagList;
       if (tagList.isNotEmpty) {
@@ -60,12 +63,13 @@ class SentinelListTool implements Tool {
       }
     }
     buffer.writeln();
-    buffer.writeln('Use sentinel_get <name> to view the full prompt of a '
-        'specific sentinel.');
+    buffer.writeln(
+      'Use sentinel_get <name> to view the full prompt of a '
+      'specific sentinel.',
+    );
     return buffer.toString();
   }
 
   /// 折叠为单行（description 可能含换行）。
-  String _oneLine(String text) =>
-      text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String _oneLine(String text) => text.replaceAll(RegExp(r'\s+'), ' ').trim();
 }

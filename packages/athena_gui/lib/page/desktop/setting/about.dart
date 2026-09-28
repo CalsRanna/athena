@@ -70,10 +70,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
             children: [
               Text('Athena', style: nameStyle),
               const SizedBox(height: 2),
-              Text(
-                'A cross-platform AI agent workspace.',
-                style: taglineStyle,
-              ),
+              Text('A cross-platform AI agent workspace.', style: taglineStyle),
             ],
           ),
         ),

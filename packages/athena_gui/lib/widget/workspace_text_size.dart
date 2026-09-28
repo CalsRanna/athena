@@ -12,7 +12,9 @@ class AthenaWorkspaceTextSize extends InheritedWidget {
   });
 
   static AthenaTextSize of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<AthenaWorkspaceTextSize>()?.size ??
+      context
+          .dependOnInheritedWidgetOfExactType<AthenaWorkspaceTextSize>()
+          ?.size ??
       AthenaTextSize.medium;
 
   @override

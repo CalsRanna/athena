@@ -50,9 +50,7 @@ class _StepHeaderState extends State<StepHeader> {
     return AthenaHover(
       enabled: interactive,
       onTap: widget.onTap,
-      cursor: interactive
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
+      cursor: interactive ? SystemMouseCursors.click : SystemMouseCursors.basic,
       builder: (context, hovered) {
         final foreground = interactive && hovered
             ? colors.textPrimary

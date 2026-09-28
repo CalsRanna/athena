@@ -513,7 +513,8 @@ class _DesktopSettingSentinelPageState
     final settingViewModel = GetIt.instance<SettingViewModel>();
     final modelResolver = GetIt.instance<ModelResolver>();
     final model = await modelResolver.resolveModel(
-      preferredModelId: settingViewModel.sentinelMetadataGenerationModelId.value,
+      preferredModelId:
+          settingViewModel.sentinelMetadataGenerationModelId.value,
     );
     if (model == null) {
       if (mounted) AthenaDialog.warning('No enabled models found');

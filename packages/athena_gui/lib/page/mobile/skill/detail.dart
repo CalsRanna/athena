@@ -52,11 +52,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
           ),
         ),
         if (skill.isBuiltin)
-          Icon(
-            LucideIcons.lockKeyhole,
-            size: 16,
-            color: colors.iconSecondary,
-          ),
+          Icon(LucideIcons.lockKeyhole, size: 16, color: colors.iconSecondary),
       ];
       var children = [
         Row(children: nameRowChildren),
@@ -107,9 +103,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
       padding: const EdgeInsets.all(12),
       child: SelectableText(
         body,
-        style: AthenaTextStyle.caption.copyWith(
-          color: colors.textOnRaised,
-        ),
+        style: AthenaTextStyle.caption.copyWith(color: colors.textOnRaised),
       ),
     );
   }
@@ -134,7 +128,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
   }
 
   void navigateFormPage(BuildContext context, Skill skill) {
-    MobileSkillFormRoute(skill: skill).push(context);
+    MobileSkillFormRoute(skill: skill).push<void>(context);
   }
 
   Future<void> destroySkill(BuildContext context, Skill skill) async {

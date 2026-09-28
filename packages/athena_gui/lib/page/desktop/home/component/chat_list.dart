@@ -253,11 +253,8 @@ class _ChatTile extends StatelessWidget {
       active: active || selected,
       label: chat.title,
       // 会话行 leading 是一个状态点（hover 时加深），不是图标
-      leadingBuilder: (hover) => StatusDot(
-        hover: hover,
-        streaming: streaming,
-        renaming: isRenaming,
-      ),
+      leadingBuilder: (hover) =>
+          StatusDot(hover: hover, streaming: streaming, renaming: isRenaming),
       // 尾部只在 hover 时出现：一个 `⋮` 按钮。旧版把图钉/进度圈常驻在行尾，
       // 与"静止行没有尾部"的规则不符。
       hoverTrailing: onMore == null ? null : _MoreButton(onTap: onMore!),
@@ -286,11 +283,7 @@ class _MoreButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Icon(
-            AthenaIcons.more,
-            size: 14,
-            color: colors.iconSecondary,
-          ),
+          child: Icon(AthenaIcons.more, size: 14, color: colors.iconSecondary),
         ),
       ),
     );

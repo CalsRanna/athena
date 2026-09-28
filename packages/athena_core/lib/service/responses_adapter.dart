@@ -27,11 +27,27 @@ CreateResponseRequest toResponseRequest(
   ProviderEntity? provider,
 }) {
   checkRequestFields(request, 'Responses', {
-    'model', 'messages', 'tools', 'tool_choice', 'parallel_tool_calls',
-    'temperature', 'top_p', 'max_tokens', 'max_completion_tokens',
-    'reasoning_effort', 'response_format', 'verbosity', 'metadata',
-    'service_tier', 'prompt_cache_key', 'safety_identifier', 'store',
-    'stream_options', 'frequency_penalty', 'presence_penalty', 'moderation',
+    'model',
+    'messages',
+    'tools',
+    'tool_choice',
+    'parallel_tool_calls',
+    'temperature',
+    'top_p',
+    'max_tokens',
+    'max_completion_tokens',
+    'reasoning_effort',
+    'response_format',
+    'verbosity',
+    'metadata',
+    'service_tier',
+    'prompt_cache_key',
+    'safety_identifier',
+    'store',
+    'stream_options',
+    'frequency_penalty',
+    'presence_penalty',
+    'moderation',
     'top_logprobs',
   });
   final instructions = <String>[];
@@ -49,17 +65,23 @@ CreateResponseRequest toResponseRequest(
         final state = message is ResponsesAssistantMessage
             ? message.responsesState
             : null;
-        if (state != null && provider != null &&
+        if (state != null &&
+            provider != null &&
             state.matches(provider, request.model, message)) {
           items.addAll(state.output);
           break;
         }
         if (message.refusal?.isNotEmpty == true) {
           items.add({
-            'type': 'message', 'role': 'assistant',
+            'type': 'message',
+            'role': 'assistant',
             'content': [
               if (content != null && content.isNotEmpty)
-                {'type': 'output_text', 'text': content, 'annotations': <dynamic>[]},
+                {
+                  'type': 'output_text',
+                  'text': content,
+                  'annotations': <dynamic>[],
+                },
               {'type': 'refusal', 'refusal': message.refusal},
             ],
           });
@@ -79,7 +101,10 @@ CreateResponseRequest toResponseRequest(
         }
       case ToolMessage(:final toolCallId, :final content):
         items.add(
-          FunctionCallOutputItem.string(callId: toolCallId, output: content).toJson(),
+          FunctionCallOutputItem.string(
+            callId: toolCallId,
+            output: content,
+          ).toJson(),
         );
     }
   }
@@ -97,7 +122,8 @@ CreateResponseRequest toResponseRequest(
     parallelToolCalls: request.parallelToolCalls,
     metadata: request.metadata,
     serviceTier: request.serviceTier == null
-        ? null : ServiceTier.fromJson(request.serviceTier!),
+        ? null
+        : ServiceTier.fromJson(request.serviceTier!),
     promptCacheKey: request.promptCacheKey,
     safetyIdentifier: request.safetyIdentifier,
     frequencyPenalty: request.frequencyPenalty,
@@ -110,7 +136,8 @@ CreateResponseRequest toResponseRequest(
         : ReasoningConfig(
             effort: request.reasoningEffort,
             summary: request.reasoningEffort == ReasoningEffort.none
-                ? null : ReasoningSummary.auto,
+                ? null
+                : ReasoningSummary.auto,
           ),
     store: request.store ?? false,
     include: const [Include.reasoningEncryptedContent],
@@ -145,7 +172,9 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
 
   String suffix(String prior, String complete) {
     if (!complete.startsWith(prior)) {
-      throw const FormatException('Responses output differs from its streamed prefix');
+      throw const FormatException(
+        'Responses output differs from its streamed prefix',
+      );
     }
     return complete.substring(prior.length);
   }
@@ -155,7 +184,10 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
     return _chunk(ChatDelta(content: delta));
   }
 
-  Stream<ChatStreamEvent> finishPart((int, int) key, Map<String, dynamic> part) async* {
+  Stream<ChatStreamEvent> finishPart(
+    (int, int) key,
+    Map<String, dynamic> part,
+  ) async* {
     if (part['type'] == 'output_text') {
       final delta = suffix(texts[key] ?? '', part['text'] as String);
       if (delta.isNotEmpty) yield textDelta(key, delta);
@@ -170,31 +202,56 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
     arguments[outputIndex] = '${arguments[outputIndex] ?? ''}$delta';
     final index = callIndexes[outputIndex];
     if (index != null) {
-      yield _chunk(ChatDelta(toolCalls: [ToolCallDelta(
-        index: index, function: FunctionCallDelta(arguments: delta),
-      )]));
+      yield _chunk(
+        ChatDelta(
+          toolCalls: [
+            ToolCallDelta(
+              index: index,
+              function: FunctionCallDelta(arguments: delta),
+            ),
+          ],
+        ),
+      );
     }
   }
 
-  Stream<ChatStreamEvent> finishArguments(int outputIndex, String complete) async* {
-    yield* argumentDelta(outputIndex, suffix(arguments[outputIndex] ?? '', complete));
+  Stream<ChatStreamEvent> finishArguments(
+    int outputIndex,
+    String complete,
+  ) async* {
+    yield* argumentDelta(
+      outputIndex,
+      suffix(arguments[outputIndex] ?? '', complete),
+    );
   }
 
   // added / done / completed 都可能是首次携带完整内容的事件；仅补齐未发出的后缀。
   Stream<ChatStreamEvent> finishItem(int outputIndex, OutputItem item) async* {
     if (item is FunctionCallOutputItemResponse) {
       final prior = calls[outputIndex];
-      if (prior != null && (prior.callId != item.callId || prior.name != item.name)) {
+      if (prior != null &&
+          (prior.callId != item.callId || prior.name != item.name)) {
         throw const FormatException('Responses function call identity changed');
       }
       if (prior == null) {
         final index = callIndexes.length;
         callIndexes[outputIndex] = index;
         calls[outputIndex] = item;
-        yield _chunk(ChatDelta(toolCalls: [ToolCallDelta(
-          index: index, id: item.callId, type: 'function',
-          function: FunctionCallDelta(name: item.name, arguments: arguments[outputIndex]),
-        )]));
+        yield _chunk(
+          ChatDelta(
+            toolCalls: [
+              ToolCallDelta(
+                index: index,
+                id: item.callId,
+                type: 'function',
+                function: FunctionCallDelta(
+                  name: item.name,
+                  arguments: arguments[outputIndex],
+                ),
+              ),
+            ],
+          ),
+        );
       }
       yield* finishArguments(outputIndex, item.arguments);
     } else {
@@ -217,38 +274,85 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
       case OutputItemAddedEvent(:final outputIndex, :final item):
         yield* finishItem(outputIndex, item);
 
-      case RefusalDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
+      case RefusalDeltaEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final delta,
+      ):
         yield refusalDelta((outputIndex, contentIndex), delta);
-      case RefusalDoneEvent(:final outputIndex, :final contentIndex, :final refusal):
+      case RefusalDoneEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final refusal,
+      ):
         final key = (outputIndex, contentIndex);
         final prior = refusals[key] ?? '';
-        if (!refusal.startsWith(prior)) throw const FormatException('Refusal prefix mismatch');
+        if (!refusal.startsWith(prior)) {
+          throw const FormatException('Refusal prefix mismatch');
+        }
         if (refusal.length > prior.length) {
           yield refusalDelta(key, refusal.substring(prior.length));
         }
 
-      case OutputTextDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
-        if (delta.isNotEmpty) yield textDelta((outputIndex, contentIndex), delta);
+      case OutputTextDeltaEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final delta,
+      ):
+        if (delta.isNotEmpty) {
+          yield textDelta((outputIndex, contentIndex), delta);
+        }
 
-      case OutputTextDoneEvent(:final outputIndex, :final contentIndex, :final text):
-        yield* finishPart((outputIndex, contentIndex), {'type': 'output_text', 'text': text});
+      case OutputTextDoneEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final text,
+      ):
+        yield* finishPart(
+          (outputIndex, contentIndex),
+          {'type': 'output_text', 'text': text},
+        );
 
-      case ContentPartAddedEvent(:final outputIndex, :final contentIndex, :final part):
+      case ContentPartAddedEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final part,
+      ):
         yield* finishPart((outputIndex, contentIndex), part.toJson());
 
-      case ContentPartDoneEvent(:final outputIndex, :final contentIndex, :final part):
+      case ContentPartDoneEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final part,
+      ):
         yield* finishPart((outputIndex, contentIndex), part.toJson());
 
-      case ReasoningTextDeltaEvent(:final outputIndex, :final contentIndex, :final delta):
+      case ReasoningTextDeltaEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final delta,
+      ):
         yield* reasoning.add((outputIndex, false, contentIndex ?? 0), delta);
 
-      case ReasoningSummaryTextDeltaEvent(:final outputIndex, :final summaryIndex, :final delta):
+      case ReasoningSummaryTextDeltaEvent(
+        :final outputIndex,
+        :final summaryIndex,
+        :final delta,
+      ):
         yield* reasoning.add((outputIndex, true, summaryIndex), delta);
 
-      case ReasoningTextDoneEvent(:final outputIndex, :final contentIndex, :final text):
+      case ReasoningTextDoneEvent(
+        :final outputIndex,
+        :final contentIndex,
+        :final text,
+      ):
         yield* reasoning.finish((outputIndex, false, contentIndex ?? 0), text);
 
-      case ReasoningSummaryTextDoneEvent(:final outputIndex, :final summaryIndex, :final text):
+      case ReasoningSummaryTextDoneEvent(
+        :final outputIndex,
+        :final summaryIndex,
+        :final text,
+      ):
         yield* reasoning.finish((outputIndex, true, summaryIndex), text);
 
       case OutputItemDoneEvent(:final outputIndex, :final item):
@@ -285,8 +389,10 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
         );
 
       case ResponseFailedEvent(:final response):
-        throw _responseError(response.error?.code ?? 'server_error',
-          response.error?.message ?? 'Responses request failed');
+        throw _responseError(
+          response.error?.code ?? 'server_error',
+          response.error?.message ?? 'Responses request failed',
+        );
 
       case ErrorEvent(:final code, :final message):
         throw _responseError(code, message);
@@ -295,14 +401,17 @@ Stream<ChatStreamEvent> normalizeResponsesStream(
         break;
     }
   }
-  if (!terminated) throw StateError('Responses stream ended before a terminal event');
+  if (!terminated) {
+    throw StateError('Responses stream ended before a terminal event');
+  }
   if (arguments.keys.any((index) => !callIndexes.containsKey(index))) {
     throw StateError('Responses function call is missing its identity');
   }
 }
 
 /// 把 Responses 的完整响应转成 Chat Completion（非流式路径）。
-ChatCompletion responseToChatCompletion(Response response, {
+ChatCompletion responseToChatCompletion(
+  Response response, {
   ProviderEntity? provider,
   String? model,
 }) {
@@ -321,8 +430,15 @@ ChatCompletion responseToChatCompletion(Response response, {
           refusal: _responseRefusal(response),
           reasoningContent: _reasoningContent(response),
           toolCalls: _toolCalls(response),
-          responsesState: _responseState(response, provider, model,
-            message: AssistantMessage(content: response.outputText, toolCalls: _toolCalls(response))),
+          responsesState: _responseState(
+            response,
+            provider,
+            model,
+            message: AssistantMessage(
+              content: response.outputText,
+              toolCalls: _toolCalls(response),
+            ),
+          ),
         ),
         finishReason: finishReason,
       ),
@@ -333,11 +449,15 @@ ChatCompletion responseToChatCompletion(Response response, {
 
 List<ToolCall>? _toolCalls(Response response) {
   if (response.functionCalls.isEmpty) return null;
-  return response.functionCalls.map((call) => ToolCall(
-    id: call.callId,
-    type: 'function',
-    function: FunctionCall(name: call.name, arguments: call.arguments),
-  )).toList();
+  return response.functionCalls
+      .map(
+        (call) => ToolCall(
+          id: call.callId,
+          type: 'function',
+          function: FunctionCall(name: call.name, arguments: call.arguments),
+        ),
+      )
+      .toList();
 }
 
 String? _reasoningContent(Response response) {
@@ -356,16 +476,28 @@ String? _reasoningContent(Response response) {
   return parts.isEmpty ? null : parts.join('\n\n');
 }
 
-ResponsesState? _responseState(Response response, ProviderEntity? provider, String? model, {AssistantMessage? message}) {
-  if (provider == null || model == null ||
-      response.status != ResponseStatus.completed || response.reasoningItems.isEmpty) {
+ResponsesState? _responseState(
+  Response response,
+  ProviderEntity? provider,
+  String? model, {
+  AssistantMessage? message,
+}) {
+  if (provider == null ||
+      model == null ||
+      response.status != ResponseStatus.completed ||
+      response.reasoningItems.isEmpty) {
     return null;
   }
   return ResponsesState(
     provider: provider,
     model: model,
     output: response.output.map((item) => item.toJson()).toList(),
-    message: message ?? AssistantMessage(content: _responseVisibleText(response), toolCalls: _toolCalls(response)),
+    message:
+        message ??
+        AssistantMessage(
+          content: _responseVisibleText(response),
+          toolCalls: _toolCalls(response),
+        ),
     reasoningTokens: response.usage?.outputTokensDetails?.reasoningTokens ?? 0,
   );
 }
@@ -386,7 +518,9 @@ class _ReasoningText {
   Stream<ChatStreamEvent> finish((int, bool, int) key, String text) async* {
     final prior = _parts[key] ?? '';
     if (!text.startsWith(prior)) {
-      throw const FormatException('Reasoning text differs from its streamed prefix.');
+      throw const FormatException(
+        'Reasoning text differs from its streamed prefix.',
+      );
     }
     yield* add(key, text.substring(prior.length));
   }
@@ -398,7 +532,8 @@ class _ReasoningText {
     if (item.summary.isEmpty) {
       final content = item.content ?? <Map<String, dynamic>>[];
       for (var i = 0; i < content.length; i++) {
-        if (content[i]['type'] == 'reasoning_text' && content[i]['text'] is String) {
+        if (content[i]['type'] == 'reasoning_text' &&
+            content[i]['text'] is String) {
           yield* finish((index, false, i), content[i]['text'] as String);
         }
       }
@@ -472,9 +607,7 @@ InputContent _toInputContent(ContentPart part) {
       // 可直接沿用同一条 url。
       return InputImageContent.url(url, detail: detail);
     default:
-      throw UnsupportedError(
-        'Responses 协议暂不支持 ${part.runtimeType} 类型的消息内容',
-      );
+      throw UnsupportedError('Responses 协议暂不支持 ${part.runtimeType} 类型的消息内容');
   }
 }
 
@@ -494,7 +627,9 @@ ResponseToolChoice? _responseToolChoice(ToolChoice? choice) {
     ToolChoiceNone() => ResponseToolChoice.none,
     ToolChoiceRequired() => ResponseToolChoice.required,
     ToolChoiceFunction(:final name) => ResponseToolChoice.function(name: name),
-    _ => throw UnsupportedError('Responses does not support ${choice.runtimeType}'),
+    _ => throw UnsupportedError(
+      'Responses does not support ${choice.runtimeType}',
+    ),
   };
 }
 
@@ -504,10 +639,12 @@ TextConfig? _toTextConfig(ResponseFormat? format, Verbosity? verbosity) {
     TextResponseFormat() => const PlainTextFormat(),
     JsonObjectResponseFormat() => const JsonObjectFormat(),
     _ => throw UnsupportedError(
-      'Responses 协议暂不支持 ${format.runtimeType} 形式的 response_format'),
+      'Responses 协议暂不支持 ${format.runtimeType} 形式的 response_format',
+    ),
   };
   return native == null && verbosity == null
-      ? null : TextConfig(format: native, verbosity: verbosity);
+      ? null
+      : TextConfig(format: native, verbosity: verbosity);
 }
 
 String? _responseRefusal(Response response) {
@@ -522,8 +659,10 @@ String? _responseRefusal(Response response) {
 String _responseVisibleText(Response response) => [
   for (final item in response.output)
     for (final part in (item.toJson()['content'] as List? ?? const []))
-      if (part['type'] == 'output_text') part['text'] as String
-      else if (part['type'] == 'refusal') part['refusal'] as String,
+      if (part['type'] == 'output_text')
+        part['text'] as String
+      else if (part['type'] == 'refusal')
+        part['refusal'] as String,
 ].join();
 
 Map<String, dynamic> _responseDetails(Response response) => {
@@ -540,22 +679,31 @@ FinishReason _responseFinishReason(Response response) {
   switch (response.status) {
     case ResponseStatus.completed:
       if (_responseRefusal(response) != null) return FinishReason.contentFilter;
-      return response.functionCalls.isEmpty ? FinishReason.stop : FinishReason.toolCalls;
+      return response.functionCalls.isEmpty
+          ? FinishReason.stop
+          : FinishReason.toolCalls;
     case ResponseStatus.incomplete:
       final reason = response.incompleteDetails?.toJson()['reason'];
       if (reason == 'max_output_tokens') return FinishReason.length;
       if (reason == 'content_filter') return FinishReason.contentFilter;
       throw StateError('Unsupported Responses incomplete reason: $reason');
     case ResponseStatus.failed:
-      throw _responseError(response.error?.code ?? 'server_error',
-        response.error?.message ?? 'Responses request failed');
+      throw _responseError(
+        response.error?.code ?? 'server_error',
+        response.error?.message ?? 'Responses request failed',
+      );
     default:
-      throw StateError('Responses request has not completed: ${response.status.name}');
+      throw StateError(
+        'Responses request has not completed: ${response.status.name}',
+      );
   }
 }
 
 ApiException _responseError(String code, String message) => switch (code) {
   'rate_limit_exceeded' => RateLimitException(message: message),
-  'server_error' || 'internal_server_error' => InternalServerException(statusCode: 500, message: message),
+  'server_error' || 'internal_server_error' => InternalServerException(
+    statusCode: 500,
+    message: message,
+  ),
   _ => ApiException(statusCode: 400, message: '$code: $message'),
 };

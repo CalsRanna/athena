@@ -190,9 +190,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
             onTap: () => openSection(entry.section),
           ),
       ];
-      visible.add(
-        AthenaSettingsNavGroup(title: group.title, children: items),
-      );
+      visible.add(AthenaSettingsNavGroup(title: group.title, children: items));
     }
     if (visible.isEmpty) return [_buildNoResult(context)];
     return visible;

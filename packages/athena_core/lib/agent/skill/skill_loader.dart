@@ -134,7 +134,10 @@ class SkillLoader {
 
     final name = frontmatter['name'] as String?;
     final description = frontmatter['description'] as String?;
-    if (name == null || description == null || name.isEmpty || description.isEmpty) {
+    if (name == null ||
+        description == null ||
+        name.isEmpty ||
+        description.isEmpty) {
       return null;
     }
     if (!isValidSkillName(name)) return null;

@@ -44,11 +44,7 @@ Future<void> main(List<String> args) async {
     case 'pages':
       await _chainedPages(File(args[1]), int.parse(args[2]));
     case 'initial':
-      await _initial(
-        Directory(args[1]),
-        args[2],
-        int.parse(args[3]),
-      );
+      await _initial(Directory(args[1]), args[2], int.parse(args[3]));
     default:
       stderr.writeln('未知子命令：${args.first}');
       exitCode = 2;
@@ -95,10 +91,8 @@ Future<void> _chainedPages(File file, int pages) async {
   );
 }
 
-SessionJsonlStore _store(File file) => SessionJsonlStore(
-  file: file,
-  idGenerator: const IdGenerator(),
-);
+SessionJsonlStore _store(File file) =>
+    SessionJsonlStore(file: file, idGenerator: const IdGenerator());
 
 Future<double> _best(Future<void> Function() action, {int runs = 7}) async {
   final samples = <double>[];

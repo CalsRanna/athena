@@ -9,11 +9,7 @@ import 'package:nocterm/nocterm.dart';
 /// 用 [AnimationController.repeat] 循环驱动,[AnimatedBuilder] 每帧重建,
 /// 亮块位置由动画值 0..1 映射,形成平滑的跑马灯效果。
 class StreamingProgressBar extends StatefulComponent {
-  const StreamingProgressBar({
-    super.key,
-    this.width = 20,
-    this.pulseWidth = 6,
-  });
+  const StreamingProgressBar({super.key, this.width = 20, this.pulseWidth = 6});
 
   /// 进度条总宽度(字符数)。
   final int width;
@@ -81,10 +77,6 @@ class _StreamingProgressBarState extends State<StreamingProgressBar>
     final beforeLen = start;
     final pulseLen = end - start;
     final afterLen = barWidth - end;
-    return (
-      '░' * beforeLen,
-      '█' * pulseLen,
-      '░' * afterLen,
-    );
+    return ('░' * beforeLen, '█' * pulseLen, '░' * afterLen);
   }
 }

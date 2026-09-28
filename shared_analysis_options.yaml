@@ -1,0 +1,23 @@
+# 三包共用的分析配置。各包的 analysis_options.yaml 只保留一行 include，并把本文件
+# 放在数组**末尾**——include 数组里靠后的覆盖靠前的，放在前面会被 package:lints /
+# package:flutter_lints 里同名的规则覆盖回来（prefer_initializing_formals 就是这样）。
+
+analyzer:
+  exclude:
+    - build/**
+  language:
+    strict-casts: true
+    strict-inference: true
+
+formatter:
+  # 官方默认档：格式器按 page_width 自行决定参数列表何时展开，不需要记住
+  # "打不打尾逗号"，新成员零学习成本。
+  page_width: 80
+  trailing_commas: automate
+
+linter:
+  rules:
+    # 语言版本下限从 3.8 提到 3.12 后，analyzer 开始启用该规则，存量代码因此
+    # 新增大量 info。仓库既有风格是在构造体里赋值（`_x = x`），逐个改写属于
+    # 大范围无关重排，故显式关闭。
+    prefer_initializing_formals: false

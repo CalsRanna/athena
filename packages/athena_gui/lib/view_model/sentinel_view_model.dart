@@ -31,10 +31,10 @@ class SentinelViewModel {
     required ProviderRepository providerRepository,
     required ModelRepository modelRepository,
     required SentinelService sentinelService,
-  })  : _sentinelRepository = sentinelRepository,
-        _providerRepository = providerRepository,
-        _modelRepository = modelRepository,
-        _sentinelService = sentinelService;
+  }) : _sentinelRepository = sentinelRepository,
+       _providerRepository = providerRepository,
+       _modelRepository = modelRepository,
+       _sentinelService = sentinelService;
 
   // Signals 状态
   final sentinels = listSignal<SentinelEntity>([]);
@@ -53,11 +53,11 @@ class SentinelViewModel {
   static const defaultName = SentinelEntity.athenaName;
 
   static SentinelEntity get defaultSentinelEntity => SentinelEntity(
-        name: defaultName,
-        description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
-        prompt: '你是一个智能聊天助手。',
-        tags: '',
-      );
+    name: defaultName,
+    description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
+    prompt: '你是一个智能聊天助手。',
+    tags: '',
+  );
 
   late final tags = computed(() {
     var allTags = <String>[];
@@ -111,9 +111,9 @@ class SentinelViewModel {
   Future<SentinelEntity?> getSentinelByName(String name) async {
     // 优先从已加载列表查找
     var match = sentinels.value.cast<SentinelEntity?>().firstWhere(
-          (s) => s!.name == name,
-          orElse: () => null,
-        );
+      (s) => s!.name == name,
+      orElse: () => null,
+    );
     if (match != null) return match;
     // 回退到数据库
     return await _sentinelRepository.getSentinelByName(name);
@@ -139,7 +139,9 @@ class SentinelViewModel {
         error.value = 'Model not found';
         return null;
       }
-      var provider = await _providerRepository.getProviderById(model.providerId);
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
       if (provider == null) {
         error.value = 'Provider not found';
         return null;
@@ -171,7 +173,9 @@ class SentinelViewModel {
         error.value = 'Model not found';
         return null;
       }
-      var provider = await _providerRepository.getProviderById(model.providerId);
+      var provider = await _providerRepository.getProviderById(
+        model.providerId,
+      );
       if (provider == null) {
         error.value = 'Provider not found';
         return null;

@@ -26,12 +26,13 @@ import 'package:athena_core/storage/agent_settings.dart';
 /// [chatId] 是发起请求的会话:自动汇报 run 会在非当前会话上请求审批,
 /// UI 要标出它属于哪个会话。[cancelled] 在该 run 取消时完成——此时桥已
 /// 按拒绝返回,UI 据此撤下这张卡片,不留一张再也等不到结果的审批。
-typedef TuiPermissionHandler = Future<PermissionDecision> Function(
-  String chatId,
-  String toolName,
-  String arguments,
-  Future<void> cancelled,
-);
+typedef TuiPermissionHandler =
+    Future<PermissionDecision> Function(
+      String chatId,
+      String toolName,
+      String arguments,
+      Future<void> cancelled,
+    );
 
 /// 提问回调:由 TUI UI 层注册(终端内模态)。参数含义同 [TuiPermissionHandler]。
 ///
@@ -105,11 +106,7 @@ class TuiAgentBridge {
     required ChatEntity chat,
     bool jsonMode = false,
   }) {
-    return _coordinator.send(
-      message: message,
-      chat: chat,
-      jsonMode: jsonMode,
-    );
+    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
   }
 
   void stop(String chatId) {
@@ -183,5 +180,4 @@ class TuiAgentBridge {
       ),
     ]);
   }
-
 }

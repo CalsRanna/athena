@@ -186,28 +186,51 @@ void main() {
     final events = await send();
     expect(events.whereType<RunError>(), isEmpty);
     final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
-    expect(saved.where((m) => m.role == 'assistant').map((m) => m.reasoningContent),
-      everyElement('思考中'));
-    expect(events.whereType<RunMessageUpdated>().any(
-      (e) => e.message.reasoningContent == '思考中'), isTrue);
-    final history = (bodies.last['messages'] as List).firstWhere((m) => m['role'] == 'assistant');
+    expect(
+      saved.where((m) => m.role == 'assistant').map((m) => m.reasoningContent),
+      everyElement('思考中'),
+    );
+    expect(
+      events.whereType<RunMessageUpdated>().any(
+        (e) => e.message.reasoningContent == '思考中',
+      ),
+      isTrue,
+    );
+    final history = (bodies.last['messages'] as List).firstWhere(
+      (m) => m['role'] == 'assistant',
+    );
     expect(history['reasoning_details'], reasoningDetails);
     expect(history['reasoning_content'], isNull);
   });
 
   for (final content in ['', '部分回答']) {
     test('无工具的 length 响应明确失败并保留内容：$content', () async {
-      replies[0] = [{
-        'choices': [{'index': 0, 'delta': {'content': content}, 'finish_reason': 'length'}],
-      }];
+      replies[0] = [
+        {
+          'choices': [
+            {
+              'index': 0,
+              'delta': {'content': content},
+              'finish_reason': 'length',
+            },
+          ],
+        },
+      ];
       final events = await send();
       expect(events.whereType<RunError>(), hasLength(1));
-      expect(events.whereType<RunOutcomeChanged>().last.outcome.termination,
-        AgentRunTermination.error);
-      final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+      expect(
+        events.whereType<RunOutcomeChanged>().last.outcome.termination,
+        AgentRunTermination.error,
+      );
+      final saved = await storage.sessionRepository.getMessagesByChatId(
+        chat.id!,
+      );
       final assistant = saved.singleWhere((m) => m.role == 'assistant');
       expect(assistant.content, startsWith(content));
-      expect(jsonDecode(assistant.completionDetails)['finish_reason'], 'length');
+      expect(
+        jsonDecode(assistant.completionDetails)['finish_reason'],
+        'length',
+      );
       expect(assistant.chatCompletionsState, isEmpty);
       expect((await send()).whereType<RunError>(), isEmpty);
     });

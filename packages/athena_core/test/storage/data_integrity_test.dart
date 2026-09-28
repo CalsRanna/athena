@@ -25,15 +25,16 @@ void main() {
 
   final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
 
-  Future<String> createChat(String title) => storage.sessionRepository.createChat(
-    ChatEntity(
-      title: title,
-      modelId: '1',
-      sentinelId: '1',
-      createdAt: now,
-      updatedAt: now,
-    ),
-  );
+  Future<String> createChat(String title) =>
+      storage.sessionRepository.createChat(
+        ChatEntity(
+          title: title,
+          modelId: '1',
+          sentinelId: '1',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
 
   Future<MessageEntity> addMessage(String chatId, String content) =>
       storage.sessionRepository.storeMessage(
@@ -184,7 +185,8 @@ void main() {
         );
 
       await storage.load();
-      final legacy = (await storage.providerRepository.getAllProviders()).single;
+      final legacy =
+          (await storage.providerRepository.getAllProviders()).single;
       final id = await storage.providerRepository.storeProvider(provider('n'));
 
       expect(id, isNot(legacy.id));

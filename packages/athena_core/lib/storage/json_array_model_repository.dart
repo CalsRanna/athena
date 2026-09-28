@@ -39,7 +39,8 @@ class JsonArrayModelRepository implements ModelRepository {
   }
 
   @override
-  Future<String> createModel(ModelEntity model) => _store.insert(model.toJson());
+  Future<String> createModel(ModelEntity model) =>
+      _store.insert(model.toJson());
 
   @override
   Future<void> updateModel(ModelEntity model) async {

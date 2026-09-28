@@ -353,9 +353,7 @@ class _ElicitCardState extends State<ElicitCard> {
                 // 否则圈体亮着但答案不是它
                 if (value.trim().isNotEmpty) _selected[index]?.clear();
               }),
-              style: AthenaTextStyle.body.copyWith(
-                color: colors.textPrimary,
-              ),
+              style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
               decoration: InputDecoration.collapsed(
                 hintText: 'Or type your own answer',
                 hintStyle: AthenaTextStyle.body.copyWith(
@@ -376,9 +374,7 @@ class _ElicitCardState extends State<ElicitCard> {
     IconData? placeholderIcon,
     EdgeInsets margin = const EdgeInsets.only(top: 1),
   }) {
-    final side = BorderSide(
-      color: selected ? colors.accent : colors.border,
-    );
+    final side = BorderSide(color: selected ? colors.accent : colors.border);
     return Container(
       height: 16,
       width: 16,

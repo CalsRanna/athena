@@ -38,11 +38,7 @@ class _CopyButtonState extends State<CopyButton> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final base = widget.color ?? colors.textOnRaised;
     final color = base.withValues(alpha: 0.4);
-    Widget child = Icon(
-      LucideIcons.copy,
-      color: color,
-      size: 12.0,
-    );
+    Widget child = Icon(LucideIcons.copy, color: color, size: 12.0);
     if (copied) child = _buildCopiedRow();
     var animatedSwitcher = AnimatedSwitcher(
       duration: AthenaMotion.hover,
@@ -58,20 +54,13 @@ class _CopyButtonState extends State<CopyButton> {
   Widget _buildCopiedRow() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final color = widget.color ?? colors.textSecondaryOnRaised;
-    var iconWidget = Icon(
-      LucideIcons.check,
-      color: color,
-      size: 12.0,
-    );
+    var iconWidget = Icon(LucideIcons.check, color: color, size: 12.0);
     var isDesktop = PlatformUtil.isDesktop;
     if (!isDesktop) return iconWidget;
     var children = [
       iconWidget,
       const SizedBox(width: 4),
-      Text(
-        'Copied',
-        style: AthenaTextStyle.caption.copyWith(color: color),
-      ),
+      Text('Copied', style: AthenaTextStyle.caption.copyWith(color: color)),
     ];
     return Row(children: children);
   }

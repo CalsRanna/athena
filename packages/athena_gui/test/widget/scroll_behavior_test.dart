@@ -36,7 +36,11 @@ Future<ScrollPosition> _pumpScrollable(
 /// 所以不能只比较最外层类型，要看整条链上有没有目标 physics。
 List<ScrollPhysics> _physicsChain(ScrollPhysics physics) {
   final chain = <ScrollPhysics>[];
-  for (ScrollPhysics? current = physics; current != null; current = current.parent) {
+  for (
+    ScrollPhysics? current = physics;
+    current != null;
+    current = current.parent
+  ) {
     chain.add(current);
   }
   return chain;

@@ -57,16 +57,15 @@ Stream<T> withIdleTimeout<T>(Stream<T> source, Duration timeout) {
 }
 
 /// 创建 [OpenAIClient] 的工厂签名。可通过构造参数注入，便于测试。
-typedef OpenAIClientFactory = OpenAIClient Function({
-  required String apiKey,
-  required String? baseUrl,
-});
+typedef OpenAIClientFactory =
+    OpenAIClient Function({required String apiKey, required String? baseUrl});
 
 /// 创建 [anthropic.AnthropicClient] 的工厂签名。可通过构造参数注入，便于测试。
-typedef AnthropicClientFactory = anthropic.AnthropicClient Function({
-  required String apiKey,
-  required String baseUrl,
-});
+typedef AnthropicClientFactory =
+    anthropic.AnthropicClient Function({
+      required String apiKey,
+      required String baseUrl,
+    });
 
 /// 统一的 LLM API 客户端。
 ///
@@ -97,11 +96,11 @@ class LlmClient {
     @visibleForTesting OpenAIClientFactory? clientFactory,
     @visibleForTesting AnthropicClientFactory? anthropicClientFactory,
     Duration streamIdleTimeout = streamIdleTimeout,
-  })  : _retryConfig = retryConfig,
-        _clientFactory = clientFactory ?? _defaultClientFactory,
-        _anthropicClientFactory =
-            anthropicClientFactory ?? _defaultAnthropicClientFactory,
-        _streamIdleTimeout = streamIdleTimeout;
+  }) : _retryConfig = retryConfig,
+       _clientFactory = clientFactory ?? _defaultClientFactory,
+       _anthropicClientFactory =
+           anthropicClientFactory ?? _defaultAnthropicClientFactory,
+       _streamIdleTimeout = streamIdleTimeout;
 
   void updateRetryConfig(RetryConfig config) {
     _retryConfig = config;
@@ -213,7 +212,9 @@ class LlmClient {
             client.chat.completions.createStream(
               restoreChatCompletionsRequest(request, provider),
               abortTrigger: cancelSignal,
-            ), provider, request.model,
+            ),
+            provider,
+            request.model,
           ),
           _streamIdleTimeout,
         ),
@@ -262,7 +263,10 @@ class LlmClient {
     try {
       final response = await retry(
         () => client.chat.completions
-            .create(restoreChatCompletionsRequest(request, provider), abortTrigger: cancelSignal)
+            .create(
+              restoreChatCompletionsRequest(request, provider),
+              abortTrigger: cancelSignal,
+            )
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
@@ -310,8 +314,14 @@ class LlmClient {
       return await retry(
         () async => responseToChatCompletion(
           await client.responses
-            .create(toResponseRequest(request, provider: provider), abortTrigger: cancelSignal)
-            .timeout(fetchTimeout), provider: provider, model: request.model),
+              .create(
+                toResponseRequest(request, provider: provider),
+                abortTrigger: cancelSignal,
+              )
+              .timeout(fetchTimeout),
+          provider: provider,
+          model: request.model,
+        ),
         config: _retryConfig,
         abort: cancelSignal,
       );
@@ -327,7 +337,11 @@ class LlmClient {
     required int maxTokens,
   }) async* {
     final nativeRequest = toMessageRequest(
-      request, stream: true, maxTokens: maxTokens, provider: provider);
+      request,
+      stream: true,
+      maxTokens: maxTokens,
+      provider: provider,
+    );
     final client = _createAnthropicClient(provider);
     // SDK 的 abortTrigger 只在收到下一个 SSE 事件时才检查：首个事件到达前
     // 点停止，要等到事件到达或空闲超时（2 分钟）。取消时直接关掉客户端，
@@ -370,7 +384,10 @@ class LlmClient {
         abort: cancelSignal,
       );
       return messageToChatCompletion(
-        message, provider: provider, request: nativeRequest);
+        message,
+        provider: provider,
+        request: nativeRequest,
+      );
     } finally {
       client.close();
     }

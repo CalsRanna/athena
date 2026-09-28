@@ -12,7 +12,7 @@ class SkillViewModel {
   final SkillRegistry _skillRegistry;
 
   SkillViewModel({required SkillRegistry skillRegistry})
-      : _skillRegistry = skillRegistry;
+    : _skillRegistry = skillRegistry;
 
   /// 全部 Skill（含内置 self-evolve）。
   final skills = listSignal<Skill>([]);

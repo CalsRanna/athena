@@ -36,7 +36,8 @@ class MessageItem extends StatelessComponent {
       return CompactionCard(
         key: ValueKey(step.compactionId),
         step: step,
-        isLive: controller.isStreaming.value &&
+        isLive:
+            controller.isStreaming.value &&
             controller.bridge.liveMessage(message.chatId)?.id == message.id,
       );
     }
@@ -46,7 +47,8 @@ class MessageItem extends StatelessComponent {
     // 避免用户消息内容含字面 "[Cancelled]" 或 "Error:" 开头被误渲染
     // 成取消/错误卡片(灰色虚线/红卡)
     final isCancelled = isAssistant && message.content.endsWith('[Cancelled]');
-    final isError = isAssistant &&
+    final isError =
+        isAssistant &&
         (message.content.startsWith('Error:') ||
             message.content.contains('[Error:'));
     final isSystem = message.role == 'system' || message.role == 'summary';
@@ -218,7 +220,11 @@ class _ReasoningCard extends StatelessComponent {
     return _Card(
       color: AthenaCardColors.reasoning,
       child: content.isNotEmpty
-          ? Text(sanitizeAnsi(content), style: AthenaTextStyles.dim, softWrap: true)
+          ? Text(
+              sanitizeAnsi(content),
+              style: AthenaTextStyles.dim,
+              softWrap: true,
+            )
           : // 流式刚开始、内容未到时用省略号占位
             const Text('Thinking…', style: AthenaTextStyles.warning),
     );

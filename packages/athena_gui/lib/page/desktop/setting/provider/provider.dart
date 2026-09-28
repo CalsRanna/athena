@@ -269,12 +269,11 @@ class _DesktopSettingProviderPageState
     final models = modelViewModel.models.value
         .where((m) => m.providerId == provider.id)
         .toList();
-    final modelCount = models.length == 1 ? '1 model' : '${models.length} models';
+    final modelCount = models.length == 1
+        ? '1 model'
+        : '${models.length} models';
     return AthenaSettingsPane(
-      header: AthenaSettingsBackLink(
-        label: 'Providers',
-        onTap: _closeProvider,
-      ),
+      header: AthenaSettingsBackLink(label: 'Providers', onTap: _closeProvider),
       children: [
         AthenaSettingsSection(
           first: true,
@@ -451,11 +450,7 @@ class _DesktopSettingProviderPageState
       if (model.vision)
         Tooltip(
           message: 'Vision',
-          child: Icon(
-            LucideIcons.eye,
-            size: 14,
-            color: colors.iconSecondary,
-          ),
+          child: Icon(LucideIcons.eye, size: 14, color: colors.iconSecondary),
         ),
     ];
     if (icons.isEmpty) return const SizedBox();
@@ -516,7 +511,9 @@ class _DesktopSettingProviderPageState
     }
     if (format == null) return;
     if (!provider.apiFormatAuto && provider.apiFormat == format) return;
-    await providerViewModel.updateProvider(provider.copyWith(apiFormat: format));
+    await providerViewModel.updateProvider(
+      provider.copyWith(apiFormat: format),
+    );
   }
 
   String _apiFormatDescription(ProviderEntity provider) {

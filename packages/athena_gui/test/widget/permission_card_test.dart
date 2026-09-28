@@ -77,10 +77,9 @@ void main() {
       ),
     );
 
-    final header = find.ancestor(
-      of: find.text('file_read'),
-      matching: find.byType(Row),
-    ).first;
+    final header = find
+        .ancestor(of: find.text('file_read'), matching: find.byType(Row))
+        .first;
     final headerTexts = tester.widgetList<Text>(
       find.descendant(of: header, matching: find.byType(Text)),
     );

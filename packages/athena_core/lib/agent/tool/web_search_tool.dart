@@ -26,7 +26,8 @@ class WebSearchTool implements Tool, CancellableTool {
   String get name => 'web_search';
 
   @override
-  String get description => 'Search the web using Brave Search. '
+  String get description =>
+      'Search the web using Brave Search. '
       'Returns a list of results with title, URL, and description. '
       'Use when you need up-to-date information beyond your knowledge cutoff. '
       'For reading full page content, use web_fetch on the result URLs. '
@@ -34,33 +35,25 @@ class WebSearchTool implements Tool, CancellableTool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'query': {
-            'type': 'string',
-            'description': 'The search query.',
-          },
-        },
-        'required': ['query'],
-      };
+    'type': 'object',
+    'properties': {
+      'query': {'type': 'string', 'description': 'The search query.'},
+    },
+    'required': ['query'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {
+  Future<String> execute(
+    Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) =>
-      _execute(args, onUpdate: onUpdate);
+  }) => _execute(args, onUpdate: onUpdate);
 
   @override
   Future<String> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
-  }) =>
-      _execute(
-        args,
-        onUpdate: onUpdate,
-        cancelSignal: cancelSignal,
-      );
+  }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
   Future<String> _execute(
     Map<String, dynamic> args, {
@@ -80,30 +73,34 @@ class WebSearchTool implements Tool, CancellableTool {
           'Get a free key at https://brave.com/search/api/';
     }
 
-    final uri = Uri.https(
-      'api.search.brave.com',
-      '/res/v1/web/search',
-      {'q': query, 'count': _maxResults.toString()},
-    );
+    final uri = Uri.https('api.search.brave.com', '/res/v1/web/search', {
+      'q': query,
+      'count': _maxResults.toString(),
+    });
 
     var cancelled = false;
     try {
       final client = http.Client();
       var completed = false;
       if (cancelSignal != null) {
-        unawaited(cancelSignal.then((_) {
-          cancelled = true;
-          if (!completed) client.close();
-        }));
+        unawaited(
+          cancelSignal.then((_) {
+            cancelled = true;
+            if (!completed) client.close();
+          }),
+        );
       }
       http.Response response;
       try {
         response = await client
-            .get(uri, headers: {
-              'Accept': 'application/json',
-              'Accept-Encoding': 'gzip',
-              'X-Subscription-Token': apiKey,
-            })
+            .get(
+              uri,
+              headers: {
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip',
+                'X-Subscription-Token': apiKey,
+              },
+            )
             .timeout(_defaultTimeout);
       } finally {
         completed = true;

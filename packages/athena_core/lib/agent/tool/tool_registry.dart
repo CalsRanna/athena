@@ -97,7 +97,6 @@ class ToolRegistry {
     };
   }
 
-  List<Map<String, dynamic>> get definitions => _definitions ??= _tools.values
-      .map(definitionOf)
-      .toList();
+  List<Map<String, dynamic>> get definitions =>
+      _definitions ??= _tools.values.map(definitionOf).toList();
 }

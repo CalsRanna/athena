@@ -1,44 +1,18 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
+# athena_gui 分析配置。
 #
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
+# 用 flutter_lints 而非 package:lints：本包是 Flutter 前端，需要 Flutter 特有的
+# lint（use_build_context_synchronously 等）。
+include:
+  - package:flutter_lints/flutter.yaml
+  - ../../shared_analysis_options.yaml
 
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
 analyzer:
   exclude:
-    - build/**
+    # 平台目录由 Flutter 脚手架生成，不参与本仓库的风格约束。
     - android/**
     - ios/**
     - web/**
     - windows/**
     - macos/**
     - linux/**
-  language:
-    strict-casts: true
-include: package:flutter_lints/flutter.yaml
-
-linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at
-  # https://dart-lang.github.io/linter/lints/index.html.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
-  rules:
-    # 语言版本下限从 3.8 提到 3.12 后，analyzer 开始启用该规则，
-    # 存量代码因此新增 33 条 info。仓库既有风格是在构造体里赋值
-    # （`_x = x`），逐个改写属于大范围无关重排，故显式关闭。
-    prefer_initializing_formals: false
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true # Uncomment to enable the `prefer_single_quotes` rule
-
-  # Additional information about this file can be found at
-  # https://dart.dev/guides/language/analysis-options
+    - build/**

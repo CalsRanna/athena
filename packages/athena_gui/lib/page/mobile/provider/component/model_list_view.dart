@@ -68,11 +68,7 @@ class _ModelTile extends StatelessWidget {
       Flexible(child: nameText),
       if (model.isPreset) SizedBox(width: 8),
       if (model.isPreset)
-        Icon(
-          LucideIcons.lockKeyhole,
-          size: 16,
-          color: colors.iconSecondary,
-        ),
+        Icon(LucideIcons.lockKeyhole, size: 16, color: colors.iconSecondary),
       const SizedBox(width: 8),
       AthenaTag.small(text: model.modelId),
     ];

@@ -200,7 +200,9 @@ void main() {
   });
 
   test('只有 completed 快照也能展示并执行完整工具、原样续接', () async {
-    replies[0] = [{'type': 'response.completed', 'response': reasoningResponse()}];
+    replies[0] = [
+      {'type': 'response.completed', 'response': reasoningResponse()},
+    ];
     final events = await send();
     expect(events.whereType<RunError>(), isEmpty);
     expect(echo.values, ['0', '1']);
@@ -208,16 +210,25 @@ void main() {
     final message = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
     expect(message.content, '准备执行。');
     expect(message.responsesState, isNotEmpty);
-    expect((bodies[1]['input'] as List).any((i) => i['type'] == 'reasoning'), isTrue);
+    expect(
+      (bodies[1]['input'] as List).any((i) => i['type'] == 'reasoning'),
+      isTrue,
+    );
   });
 
   test('无工具的 incomplete 保留正文、失败状态及原始停止原因', () async {
-    replies[0] = [{'type': 'response.incomplete',
-      'response': reasoningResponse(tools: false, status: 'incomplete')}];
+    replies[0] = [
+      {
+        'type': 'response.incomplete',
+        'response': reasoningResponse(tools: false, status: 'incomplete'),
+      },
+    ];
     final events = await send();
     expect(events.whereType<RunError>(), hasLength(1));
-    expect(events.whereType<RunOutcomeChanged>().last.outcome.termination,
-      AgentRunTermination.error);
+    expect(
+      events.whereType<RunOutcomeChanged>().last.outcome.termination,
+      AgentRunTermination.error,
+    );
     final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
     final message = saved.singleWhere((m) => m.role == 'assistant');
     expect(message.content, startsWith('完成。'));
@@ -247,36 +258,63 @@ void main() {
     test('$mode 不执行已收到的工具调用，落库闭合工具结果', () async {
       replies[0].removeLast();
       if (mode == 'error') {
-        replies[0].add({'type': 'error', 'code': 'server_error', 'message': 'broken'});
+        replies[0].add({
+          'type': 'error',
+          'code': 'server_error',
+          'message': 'broken',
+        });
       } else if (mode == 'filtered') {
-        replies[0].add({'type': 'response.incomplete', 'response': {
-          ...reasoningResponse(status: 'incomplete'),
-          'incomplete_details': {'reason': 'content_filter'},
-        }});
+        replies[0].add({
+          'type': 'response.incomplete',
+          'response': {
+            ...reasoningResponse(status: 'incomplete'),
+            'incomplete_details': {'reason': 'content_filter'},
+          },
+        });
       }
       final events = await send();
       expect(events.whereType<RunError>(), hasLength(1));
       expect(echo.values, isEmpty);
       expect(bodies, hasLength(1));
-      final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+      final saved = await storage.sessionRepository.getMessagesByChatId(
+        chat.id!,
+      );
       final assistant = saved.firstWhere((m) => m.toolCalls.isNotEmpty);
       expect(jsonDecode(assistant.toolResults), hasLength(2));
       expect(assistant.responsesState, isEmpty);
       if (mode == 'filtered') {
-        expect(jsonDecode(assistant.completionDetails)['incomplete_details'],
-            {'reason': 'content_filter'});
+        expect(jsonDecode(assistant.completionDetails)['incomplete_details'], {
+          'reason': 'content_filter',
+        });
       }
     });
   }
 
   test('仅拒答响应实时显示并落库，结束时不覆盖成空文本', () async {
     replies[0] = [
-      {'type': 'response.refusal.delta', 'output_index': 0, 'content_index': 0, 'delta': 'Cannot answer'},
-      {'type': 'response.completed', 'response': {
-        ...reasoningResponse(tools: false),
-        'output': [{'type': 'message', 'id': 'msg', 'role': 'assistant', 'status': 'completed',
-          'content': [{'type': 'refusal', 'refusal': 'Cannot answer'}]}],
-      }},
+      {
+        'type': 'response.refusal.delta',
+        'output_index': 0,
+        'content_index': 0,
+        'delta': 'Cannot answer',
+      },
+      {
+        'type': 'response.completed',
+        'response': {
+          ...reasoningResponse(tools: false),
+          'output': [
+            {
+              'type': 'message',
+              'id': 'msg',
+              'role': 'assistant',
+              'status': 'completed',
+              'content': [
+                {'type': 'refusal', 'refusal': 'Cannot answer'},
+              ],
+            },
+          ],
+        },
+      },
     ];
     final events = await send();
     expect(events.whereType<RunError>(), isEmpty);

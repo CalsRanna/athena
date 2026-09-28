@@ -126,23 +126,18 @@ class SentinelService {
     required ProviderEntity provider,
     required ModelEntity model,
   }) async {
-    var messages = [
-      ChatMessage.system(systemPrompt),
-      ChatMessage.user(prompt),
-    ];
+    var messages = [ChatMessage.system(systemPrompt), ChatMessage.user(prompt)];
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
       responseFormat: ResponseFormat.jsonObject(),
     );
-    var response = await _llmClient.fetch(
-      provider: provider,
-      request: request,
-    );
+    var response = await _llmClient.fetch(provider: provider, request: request);
     final content = response.text ?? '';
     final decoded = jsonDecode(content);
-    final formatted =
-        decoded is Map<String, dynamic> ? decoded : const <String, dynamic>{};
+    final formatted = decoded is Map<String, dynamic>
+        ? decoded
+        : const <String, dynamic>{};
     final tags = formatted['tags'] is List
         ? (formatted['tags'] as List).map((e) => e.toString()).join(',')
         : (formatted['tags']?.toString() ?? '');

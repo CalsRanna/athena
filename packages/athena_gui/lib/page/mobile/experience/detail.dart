@@ -132,9 +132,7 @@ class _MobileExperienceDetailPageState
       Expanded(
         child: AthenaPrimaryButton(
           onTap: () => _toggleStatus(experience, isArchived),
-          child: Center(
-            child: Text(isArchived ? 'Restore' : 'Archive'),
-          ),
+          child: Center(child: Text(isArchived ? 'Restore' : 'Archive')),
         ),
       ),
       const SizedBox(width: 8),

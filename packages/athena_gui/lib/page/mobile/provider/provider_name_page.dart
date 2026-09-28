@@ -28,10 +28,7 @@ class _MobileProviderNamePageState extends State<MobileProviderNamePage> {
 
   @override
   Widget build(BuildContext context) {
-    final button = AthenaIconButton(
-      icon: LucideIcons.check,
-      onTap: handleTap,
-    );
+    final button = AthenaIconButton(icon: LucideIcons.check, onTap: handleTap);
     var input = AthenaInput(
       controller: controller,
       autoFocus: true,

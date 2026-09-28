@@ -6,7 +6,8 @@ import 'package:athena_core/entity/model_entity.dart';
 String? modelSubtitle(ModelEntity model) {
   var parts = <String>[
     if (model.releasedAt.isNotEmpty) model.releasedAt,
-    if (model.contextWindow > 0) '${compactTokens(model.contextWindow)} context',
+    if (model.contextWindow > 0)
+      '${compactTokens(model.contextWindow)} context',
     if (model.inputPrice.isNotEmpty) '${pricePerMillion(model.inputPrice)} in',
     if (model.outputPrice.isNotEmpty)
       '${pricePerMillion(model.outputPrice)} out',

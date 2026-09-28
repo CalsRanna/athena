@@ -110,10 +110,7 @@ class _AthenaInputState extends State<AthenaInput> {
     );
     var children = [
       Expanded(child: textField),
-      if (widget.suffix != null) ...[
-        const SizedBox(width: 8),
-        widget.suffix!,
-      ],
+      if (widget.suffix != null) ...[const SizedBox(width: 8), widget.suffix!],
       if (widget.obscureText) ...[
         const SizedBox(width: 8),
         GestureDetector(

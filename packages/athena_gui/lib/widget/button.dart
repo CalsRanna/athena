@@ -44,11 +44,8 @@ class AthenaPrimaryButton extends StatefulWidget {
     : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 9);
 
   /// 行内小号（与 [AthenaSecondaryButton.small] 同尺度，高 32）。
-  const AthenaPrimaryButton.small({
-    super.key,
-    this.onTap,
-    required this.child,
-  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 5);
+  const AthenaPrimaryButton.small({super.key, this.onTap, required this.child})
+    : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 5);
 
   @override
   State<AthenaPrimaryButton> createState() => _AthenaPrimaryButtonState();
@@ -63,9 +60,7 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
     return AthenaHover(
       enabled: !disabled,
       onTap: widget.onTap,
-      cursor: disabled
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       builder: (context, hover) {
         // 以配套前景保证青瓷底上的文字可读；hover 只轻微调整填充明度。
         final background = disabled
@@ -126,9 +121,7 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
     return AthenaHover(
       enabled: !disabled,
       onTap: widget.onTap,
-      cursor: disabled
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
+      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       builder: (context, hover) => AnimatedContainer(
         decoration: BoxDecoration(
           // 同样不能用 Colors.transparent：它的 RGB 是黑，插值会闪深色

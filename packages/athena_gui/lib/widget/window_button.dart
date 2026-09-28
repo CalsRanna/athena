@@ -102,11 +102,7 @@ class _MinimumButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
-    final icon = Icon(
-      LucideIcons.minus,
-      color: color,
-      size: 10,
-    );
+    final icon = Icon(LucideIcons.minus, color: color, size: 10);
     const placeholder = SizedBox(height: 10, width: 10);
     const boxDecoration = BoxDecoration(
       color: Colors.orange,
@@ -143,11 +139,7 @@ class _FullScreenButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final color = colorScheme.onSurface;
-    final child = Icon(
-      LucideIcons.maximize2,
-      color: color,
-      size: 10,
-    );
+    final child = Icon(LucideIcons.maximize2, color: color, size: 10);
     const placeholder = SizedBox(height: 10, width: 10);
     const boxDecoration = BoxDecoration(
       color: Colors.green,

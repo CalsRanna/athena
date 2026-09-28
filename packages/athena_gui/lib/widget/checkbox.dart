@@ -19,7 +19,7 @@ class AthenaCheckbox extends StatefulWidget {
 
 class AthenaCheckboxGroup extends StatelessWidget {
   final Widget checkbox;
-  final Function()? onTap;
+  final void Function()? onTap;
   final Widget? trailing;
   const AthenaCheckboxGroup({
     super.key,
@@ -83,10 +83,6 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
 
   Widget _buildCheckIcon() {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    return Icon(
-      LucideIcons.check,
-      color: colors.textOnAccent,
-      size: 11,
-    );
+    return Icon(LucideIcons.check, color: colors.textOnAccent, size: 11);
   }
 }

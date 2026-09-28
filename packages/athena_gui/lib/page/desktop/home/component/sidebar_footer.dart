@@ -68,12 +68,12 @@ class _DesktopSidebarFooterState extends State<DesktopSidebarFooter> {
         DesktopContextMenuTile(
           icon: LucideIcons.settings,
           text: 'Settings',
-          onTap: () => DesktopSettingProviderRoute().push(context),
+          onTap: () => DesktopSettingProviderRoute().push<void>(context),
         ),
         DesktopContextMenuTile(
           icon: LucideIcons.info,
           text: 'About Athena',
-          onTap: () => DesktopSettingAboutRoute().push(context),
+          onTap: () => DesktopSettingAboutRoute().push<void>(context),
         ),
       ],
     );

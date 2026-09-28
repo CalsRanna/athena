@@ -27,7 +27,9 @@ class SkillRegistry {
     _homeDir = homeDir ?? _homePath;
 
     _skills.clear();
-    _skillAccessTimestamps.removeWhere((k, _) => !_builtinSkills.containsKey(k));
+    _skillAccessTimestamps.removeWhere(
+      (k, _) => !_builtinSkills.containsKey(k),
+    );
 
     final userSkillsPath = '$_homeDir/.athena/skills';
     final userSkills = _loader.loadFromDirectory(userSkillsPath);
@@ -60,11 +62,15 @@ class SkillRegistry {
 
     final buffer = StringBuffer();
     buffer.writeln('## Available Skills');
-    buffer.writeln('You have access to the following skills. '
-        'Use the "skill" tool to load one when it would help with the task.');
+    buffer.writeln(
+      'You have access to the following skills. '
+      'Use the "skill" tool to load one when it would help with the task.',
+    );
     if (remaining > 0) {
-      buffer.writeln('(${display.length} shown, $remaining more available. '
-          'Use the "skill" tool to load any by name.)');
+      buffer.writeln(
+        '(${display.length} shown, $remaining more available. '
+        'Use the "skill" tool to load any by name.)',
+      );
     }
     buffer.writeln();
     for (final skill in display) {

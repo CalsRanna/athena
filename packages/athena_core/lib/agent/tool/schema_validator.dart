@@ -12,7 +12,10 @@ class SchemaValidator {
   /// 校验 [args] 是否匹配 [parameters] JSON Schema。
   ///
   /// 返回 null 表示通过，否则返回人类可读的错误消息。
-  static String? validate(Map<String, dynamic> parameters, Map<String, dynamic> args) {
+  static String? validate(
+    Map<String, dynamic> parameters,
+    Map<String, dynamic> args,
+  ) {
     final required = _extractRequired(parameters);
     if (required.isNotEmpty) {
       for (final field in required) {
@@ -31,7 +34,8 @@ class SchemaValidator {
       if (propSchema == null) continue;
 
       final value = args[propName];
-      if (value == null) continue; // optional field, already checked for required
+      // optional field, already checked for required
+      if (value == null) continue;
 
       final error = _checkType(propName, value, propSchema);
       if (error != null) return error;
@@ -40,7 +44,11 @@ class SchemaValidator {
     return null;
   }
 
-  static String? _checkType(String name, dynamic value, Map<String, dynamic> schema) {
+  static String? _checkType(
+    String name,
+    dynamic value,
+    Map<String, dynamic> schema,
+  ) {
     final expectedType = schema['type'] as String?;
     if (expectedType == null) return null;
 
@@ -61,7 +69,9 @@ class SchemaValidator {
         if (value is! List) return _typeError(name, 'array', value);
         break;
       case 'object':
-        if (value is! Map<String, dynamic>) return _typeError(name, 'object', value);
+        if (value is! Map<String, dynamic>) {
+          return _typeError(name, 'object', value);
+        }
         break;
     }
 

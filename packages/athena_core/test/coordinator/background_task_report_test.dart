@@ -99,40 +99,44 @@ void main() {
     // 原有汇报用例明确让任务在最后一条回答的请求发出后结束，避免与
     // 新增的运行中通知竞争；运行中通知用例自行控制任务完成时机。
     final reportGate = File(p.join(tmp.path, 'report-ready'));
-    llm = _ScriptedLlm(script ?? [
-      // ① 用户回合：模型要求后台跑一条命令
-      [
-        _toolCall(
-          id: 'call_bg',
-          name: 'bash',
-          arguments: {
-            'command': 'while [ ! -f "${reportGate.path}" ]; '
-                'do sleep 0.01; done; $command',
-            'background': true,
-            'call_description': '后台跑一次构建',
-          },
-        ),
-        _finish('tool_calls'),
-      ],
-      // ② 用户回合收尾：模型回一句
-      [_text('已经开始了。'), _finish('stop')],
-      // ③ 汇报回合：模型通过工具读取任务输出
-      [
-        _toolCall(
-          id: 'call_read',
-          name: 'background_task',
-          arguments: {
-            'action': 'read',
-            'task_id': 'bg-1',
-            'limit': readLimit,
-            'call_description': '读后台任务输出',
-          },
-        ),
-        _finish('tool_calls'),
-      ],
-      // ④ 汇报结论
-      [_text('构建成功：build-ok'), _finish('stop')],
-    ]);
+    llm = _ScriptedLlm(
+      script ??
+          [
+            // ① 用户回合：模型要求后台跑一条命令
+            [
+              _toolCall(
+                id: 'call_bg',
+                name: 'bash',
+                arguments: {
+                  'command':
+                      'while [ ! -f "${reportGate.path}" ]; '
+                      'do sleep 0.01; done; $command',
+                  'background': true,
+                  'call_description': '后台跑一次构建',
+                },
+              ),
+              _finish('tool_calls'),
+            ],
+            // ② 用户回合收尾：模型回一句
+            [_text('已经开始了。'), _finish('stop')],
+            // ③ 汇报回合：模型通过工具读取任务输出
+            [
+              _toolCall(
+                id: 'call_read',
+                name: 'background_task',
+                arguments: {
+                  'action': 'read',
+                  'task_id': 'bg-1',
+                  'limit': readLimit,
+                  'call_description': '读后台任务输出',
+                },
+              ),
+              _finish('tool_calls'),
+            ],
+            // ④ 汇报结论
+            [_text('构建成功：build-ok'), _finish('stop')],
+          ],
+    );
     if (script == null) {
       llm.beforeResponse = (index) async {
         if (index != 1) return;
@@ -254,26 +258,30 @@ void main() {
   List<Map> streamRequests() =>
       llm.requests.where((request) => request['stream'] == true).toList();
 
-  List<Map<String, dynamic>> backgroundCall(String action, {String? taskId}) => [
-    _toolCall(
-      id: 'call_${action}_${taskId ?? "all"}',
-      name: 'background_task',
-      arguments: {
-        'action': action,
-        if (taskId != null) 'task_id': taskId,
-        'call_description': '查看后台任务',
-      },
-    ),
-    _finish('tool_calls'),
-  ];
+  List<Map<String, dynamic>> backgroundCall(String action, {String? taskId}) =>
+      [
+        _toolCall(
+          id: 'call_${action}_${taskId ?? "all"}',
+          name: 'background_task',
+          arguments: {
+            'action': action,
+            if (taskId != null) 'task_id': taskId,
+            'call_description': '查看后台任务',
+          },
+        ),
+        _finish('tool_calls'),
+      ];
 
   for (final mode in [ApprovalMode.manual, ApprovalMode.aiReview]) {
     test('运行中完成的任务在下一次请求合并通知，沿用 ${mode.key} 审批且不重复汇报', () async {
-      await setUpHarness(approvalMode: mode, script: [
-        backgroundCall('list'),
-        backgroundCall('read', taskId: 'bg-1'),
-        [_text('根据构建结果继续处理。'), _finish('stop')],
-      ]);
+      await setUpHarness(
+        approvalMode: mode,
+        script: [
+          backgroundCall('list'),
+          backgroundCall('read', taskId: 'bg-1'),
+          [_text('根据构建结果继续处理。'), _finish('stop')],
+        ],
+      );
       final internal = <InternalRunEvent>[];
       final sub = coordinator.internalEvents.listen(internal.add);
       addTearDown(sub.cancel);
@@ -326,9 +334,12 @@ void main() {
         final reviews = llm.requests.where((r) => r['stream'] != true);
         expect(reviews, hasLength(2));
         for (final review in reviews) {
-          final input = jsonDecode(
-            ((review['messages'] as List).last as Map)['content'] as String,
-          ) as Map;
+          final input =
+              jsonDecode(
+                    ((review['messages'] as List).last as Map)['content']
+                        as String,
+                  )
+                  as Map;
           expect(
             (input['conversation'] as List).map((m) => (m as Map)['content']),
             ['跑构建'],
@@ -340,11 +351,13 @@ void main() {
   }
 
   test('确认通知期间新完成的任务留到下一次模型请求', () async {
-    await setUpHarness(script: [
-      backgroundCall('list'),
-      backgroundCall('read', taskId: 'bg-1'),
-      [_text('完成。'), _finish('stop')],
-    ]);
+    await setUpHarness(
+      script: [
+        backgroundCall('list'),
+        backgroundCall('read', taskId: 'bg-1'),
+        [_text('完成。'), _finish('stop')],
+      ],
+    );
     llm.beforeResponse = (index) async {
       if (index < 2) await completeTask(command: 'build-$index');
     };
@@ -363,12 +376,14 @@ void main() {
   }, skip: isWindows);
 
   test('带通知的请求截断后仍保留任务并在收尾汇报', () async {
-    await setUpHarness(script: [
-      backgroundCall('list'),
-      [_text('回答被截断'), _finish('length')],
-      backgroundCall('read', taskId: 'bg-1'),
-      [_text('补充汇报构建结果。'), _finish('stop')],
-    ]);
+    await setUpHarness(
+      script: [
+        backgroundCall('list'),
+        [_text('回答被截断'), _finish('length')],
+        backgroundCall('read', taskId: 'bg-1'),
+        [_text('补充汇报构建结果。'), _finish('stop')],
+      ],
+    );
     llm.beforeResponse = (index) async {
       if (index == 0) await completeTask();
     };
@@ -391,14 +406,13 @@ void main() {
   }, skip: isWindows);
 
   test('工具响应截断重试时保留同一条通知，成功后不再汇报', () async {
-    await setUpHarness(script: [
-      backgroundCall('list'),
-      [
-        ...backgroundCall('read', taskId: 'bg-1').take(1),
-        _finish('length'),
+    await setUpHarness(
+      script: [
+        backgroundCall('list'),
+        [...backgroundCall('read', taskId: 'bg-1').take(1), _finish('length')],
+        [_text('已收到任务完成通知。'), _finish('stop')],
       ],
-      [_text('已收到任务完成通知。'), _finish('stop')],
-    ]);
+    );
     llm.beforeResponse = (index) async {
       if (index == 0) await completeTask();
     };
@@ -408,9 +422,11 @@ void main() {
     expect(requests, hasLength(3));
     for (final request in requests.skip(1)) {
       expect(
-        (request['messages'] as List).cast<Map>().where((m) =>
-            m['role'] == 'user' &&
-            (m['content'] as String).contains('while this run is active')),
+        (request['messages'] as List).cast<Map>().where(
+          (m) =>
+              m['role'] == 'user' &&
+              (m['content'] as String).contains('while this run is active'),
+        ),
         hasLength(1),
       );
     }
@@ -418,10 +434,13 @@ void main() {
   }, skip: isWindows);
 
   test('关闭开关时运行中的会话也不注入通知', () async {
-    await setUpHarness(temporary: false, script: [
-      backgroundCall('list'),
-      [_text('完成。'), _finish('stop')],
-    ]);
+    await setUpHarness(
+      temporary: false,
+      script: [
+        backgroundCall('list'),
+        [_text('完成。'), _finish('stop')],
+      ],
+    );
     llm.beforeResponse = (index) async {
       if (index == 0) await completeTask();
     };
@@ -523,10 +542,16 @@ void main() {
       command: 'printf START; printf "%07000d" 0; echo END',
       readLimit: 8000,
     );
-    await coordinator.send(
-      message: MessageEntity(chatId: chat.id!, role: 'user', content: '跑构建'),
-      chat: chat,
-    ).drain<void>();
+    await coordinator
+        .send(
+          message: MessageEntity(
+            chatId: chat.id!,
+            role: 'user',
+            content: '跑构建',
+          ),
+          chat: chat,
+        )
+        .drain<void>();
 
     final output = (llm.requests[3]['messages'] as List)
         .cast<Map>()
@@ -539,26 +564,39 @@ void main() {
   for (final mode in [ApprovalMode.aiReview, ApprovalMode.bypass]) {
     test('后台汇报沿用 ${mode.key} 审批模式', () async {
       await setUpHarness(approvalMode: mode);
-      await coordinator.send(
-        message: MessageEntity(chatId: chat.id!, role: 'user', content: '跑构建'),
-        chat: chat,
-      ).drain<void>();
+      await coordinator
+          .send(
+            message: MessageEntity(
+              chatId: chat.id!,
+              role: 'user',
+              content: '跑构建',
+            ),
+            chat: chat,
+          )
+          .drain<void>();
 
       expect(approvalTools, isEmpty);
       final reviews = llm.requests.where((r) => r['stream'] != true).toList();
       expect(reviews, hasLength(mode == ApprovalMode.aiReview ? 2 : 0));
       if (reviews.isNotEmpty) {
-        final input = jsonDecode(
-          ((reviews.last['messages'] as List).last as Map)['content'] as String,
-        ) as Map;
+        final input =
+            jsonDecode(
+                  ((reviews.last['messages'] as List).last as Map)['content']
+                      as String,
+                )
+                as Map;
         expect((input['tool'] as Map)['name'], 'background_task');
-        expect((input['conversation'] as List)
-            .where((m) => (m as Map)['role'] == 'user')
-            .map((m) => (m as Map)['content']), ['跑构建']);
+        expect(
+          (input['conversation'] as List)
+              .where((m) => (m as Map)['role'] == 'user')
+              .map((m) => (m as Map)['content']),
+          ['跑构建'],
+        );
       }
       final finalRequest = llm.requests.last;
-      final output = (finalRequest['messages'] as List).cast<Map>()
-          .singleWhere((m) => m['tool_call_id'] == 'call_read');
+      final output = (finalRequest['messages'] as List).cast<Map>().singleWhere(
+        (m) => m['tool_call_id'] == 'call_read',
+      );
       expect(output['content'], contains('build-ok'));
     }, skip: isWindows);
   }
@@ -678,22 +716,26 @@ class _ScriptedLlm {
     requests.add(body);
     if (body['stream'] != true) {
       return http.StreamedResponse(
-        Stream.value(utf8.encode(jsonEncode({
-          'id': 'review',
-          'object': 'chat.completion',
-          'created': 0,
-          'model': 'fake-model',
-          'choices': [
-            {
-              'index': 0,
-              'message': {
-                'role': 'assistant',
-                'content': '{"decision":"allow","reason":"测试审批通过"}',
-              },
-              'finish_reason': 'stop',
-            },
-          ],
-        }))),
+        Stream.value(
+          utf8.encode(
+            jsonEncode({
+              'id': 'review',
+              'object': 'chat.completion',
+              'created': 0,
+              'model': 'fake-model',
+              'choices': [
+                {
+                  'index': 0,
+                  'message': {
+                    'role': 'assistant',
+                    'content': '{"decision":"allow","reason":"测试审批通过"}',
+                  },
+                  'finish_reason': 'stop',
+                },
+              ],
+            }),
+          ),
+        ),
         200,
         headers: {'content-type': 'application/json'},
       );

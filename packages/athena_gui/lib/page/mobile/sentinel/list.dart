@@ -83,7 +83,7 @@ class MobileSentinelListPage extends StatelessWidget {
   }
 
   void navigateSentinelFormPage(BuildContext context) {
-    MobileSentinelFormRoute().push(context);
+    MobileSentinelFormRoute().push<void>(context);
   }
 
   Widget _buildData(List<SentinelEntity> sentinels) {
@@ -111,7 +111,7 @@ class MobileSentinelListPage extends StatelessWidget {
   }
 
   void editSentinel(BuildContext context, SentinelEntity sentinel) {
-    MobileSentinelFormRoute(sentinel: sentinel).push(context);
+    MobileSentinelFormRoute(sentinel: sentinel).push<void>(context);
   }
 
   void openBottomSheet(BuildContext context, SentinelEntity sentinel) {

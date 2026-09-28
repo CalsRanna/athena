@@ -10,7 +10,7 @@ class SentinelGetTool implements Tool {
   final SentinelRepository _repository;
 
   SentinelGetTool({required SentinelRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
@@ -29,21 +29,23 @@ class SentinelGetTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'sentinel_name': {
-            'type': 'string',
-            'description':
-                'The exact name of the sentinel to fetch (as shown in '
-                'sentinel_list).',
-          },
-        },
-        'required': ['sentinel_name'],
-      };
+    'type': 'object',
+    'properties': {
+      'sentinel_name': {
+        'type': 'string',
+        'description':
+            'The exact name of the sentinel to fetch (as shown in '
+            'sentinel_list).',
+      },
+    },
+    'required': ['sentinel_name'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args,
-      {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final name = (args['sentinel_name'] as String?)?.trim() ?? '';
     if (name.isEmpty) {
       return 'Error: sentinel_name must not be empty.';
@@ -58,9 +60,12 @@ class SentinelGetTool implements Tool {
     final buffer = StringBuffer();
     buffer.writeln('**${sentinel.name}**');
     buffer.writeln('- Name: ${sentinel.name}');
-    buffer.writeln('- Tags: ${sentinel.tags.isEmpty ? '(none)' : sentinel.tags}');
     buffer.writeln(
-        '- Description: ${sentinel.description.isEmpty ? '(none)' : sentinel.description}');
+      '- Tags: ${sentinel.tags.isEmpty ? '(none)' : sentinel.tags}',
+    );
+    buffer.writeln(
+      '- Description: ${sentinel.description.isEmpty ? '(none)' : sentinel.description}',
+    );
     buffer.writeln('- Preset: ${sentinel.isPreset}');
     buffer.writeln();
     buffer.writeln('**Prompt:**');

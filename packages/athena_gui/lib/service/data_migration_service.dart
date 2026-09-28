@@ -27,10 +27,10 @@ class DataMigrationService {
     required ModelRepository modelRepo,
     required SentinelRepository sentinelRepo,
     required ChatRepository chatRepo,
-  })  : _providerRepo = providerRepo,
-        _modelRepo = modelRepo,
-        _sentinelRepo = sentinelRepo,
-        _chatRepo = chatRepo;
+  }) : _providerRepo = providerRepo,
+       _modelRepo = modelRepo,
+       _sentinelRepo = sentinelRepo,
+       _chatRepo = chatRepo;
 
   /// 将 Provider/Model/Sentinel 序列化为 JSON 字符串。
   /// 文件写入由上层负责。
@@ -115,5 +115,4 @@ class DataMigrationService {
       }
     }
   }
-
 }

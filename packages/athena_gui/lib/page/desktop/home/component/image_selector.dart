@@ -42,11 +42,7 @@ class DesktopImageSelector extends StatelessWidget {
     var row = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          LucideIcons.image,
-          color: colors.textPrimary,
-          size: 14,
-        ),
+        Icon(LucideIcons.image, color: colors.textPrimary, size: 14),
         const SizedBox(width: 8),
         Text(label ?? 'Images'),
       ],

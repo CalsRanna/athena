@@ -60,10 +60,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
-    var icon = Icon(
-      AthenaIcons.more,
-      color: colors.textPrimary,
-    );
+    var icon = Icon(AthenaIcons.more, color: colors.textPrimary);
     var gestureDetector = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _openBottomSheet(context, chat),
@@ -112,7 +109,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
   }
 
   void _navigateMobileChatPage(BuildContext context, ChatEntity chat) {
-    MobileChatRoute(chat: chat).push(context);
+    MobileChatRoute(chat: chat).push<void>(context);
   }
 
   void _openBottomSheet(BuildContext context, ChatEntity chat) {

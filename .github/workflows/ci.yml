@@ -29,6 +29,11 @@ jobs:
         working-directory: packages/athena_core
         run: dart analyze
 
+      # 只扫 lib test：生成文件不符合格式器口径，且会被 build_runner 覆盖
+      - name: Format check (athena_core)
+        working-directory: packages/athena_core
+        run: dart format --output=none --set-exit-if-changed $(find lib test -name '*.dart' ! -name '*.g.dart' ! -name '*.gr.dart')
+
       # 不加「目录为空就跳过」的守卫：测试目录被误删时应当失败，而不是静默变绿
       - name: Test (athena_core)
         working-directory: packages/athena_core
@@ -53,6 +58,10 @@ jobs:
       - name: Analyze (athena_tui)
         working-directory: packages/athena_tui
         run: dart analyze
+
+      - name: Format check (athena_tui)
+        working-directory: packages/athena_tui
+        run: dart format --output=none --set-exit-if-changed $(find lib test -name '*.dart' ! -name '*.g.dart' ! -name '*.gr.dart')
 
       - name: Test (athena_tui)
         working-directory: packages/athena_tui
@@ -81,6 +90,12 @@ jobs:
       - name: Analyze (athena_gui)
         working-directory: packages/athena_gui
         run: flutter analyze
+
+      # 在 build_runner 之后跑：生成文件若不合格式器口径，应由 build_runner 负责，
+      # 不该被这里拦下——所以只扫 lib test，生成文件不在其中。
+      - name: Format check (athena_gui)
+        working-directory: packages/athena_gui
+        run: dart format --output=none --set-exit-if-changed $(find lib test -name '*.dart' ! -name '*.g.dart' ! -name '*.gr.dart')
 
       - name: Test (athena_gui)
         working-directory: packages/athena_gui

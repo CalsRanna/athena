@@ -66,9 +66,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
 
   Widget _buildExperiencesListView() {
     return Watch((context) {
-      var experiences = experienceViewModel.experiences.value
-          .take(10)
-          .toList();
+      var experiences = experienceViewModel.experiences.value.take(10).toList();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: 8,
@@ -91,7 +89,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
                         '${experienceViewModel.ownerLabel(experience)} · ${_formatDate(experience.createdAt)}',
                     onTap: () => MobileExperienceDetailRoute(
                       experience: experience,
-                    ).push(context),
+                    ).push<void>(context),
                   );
                 },
               ),
@@ -102,7 +100,7 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void navigateExperienceList(BuildContext context) {
-    MobileExperienceListRoute().push(context);
+    MobileExperienceListRoute().push<void>(context);
   }
 
   String _formatDate(DateTime dt) {
@@ -143,10 +141,10 @@ class _MobileHomePageState extends State<MobileHomePage> {
   }
 
   void navigateChatList(BuildContext context) {
-    MobileChatListRoute().push(context);
+    MobileChatListRoute().push<void>(context);
   }
 
   void navigateSentinelList(BuildContext context) {
-    MobileSentinelListRoute().push(context);
+    MobileSentinelListRoute().push<void>(context);
   }
 }

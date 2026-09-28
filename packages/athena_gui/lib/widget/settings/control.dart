@@ -246,9 +246,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
     var focused = focusNode.hasFocus;
     var decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
-      border: Border.all(
-        color: focused ? colors.accent : colors.neutralBorder,
-      ),
+      border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var base = widget.mono
@@ -287,9 +285,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
         const SizedBox(width: 4),
         AthenaGhostIconButton(
           box: 24,
-          icon: revealed
-              ? LucideIcons.eyeOff
-              : LucideIcons.eye,
+          icon: revealed ? LucideIcons.eyeOff : LucideIcons.eye,
           iconSize: 14,
           onTap: () => setState(() => revealed = !revealed),
         ),
@@ -359,9 +355,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
     var focused = focusNode.hasFocus;
     var decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
-      border: Border.all(
-        color: focused ? colors.accent : colors.neutralBorder,
-      ),
+      border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
     var base = widget.mono

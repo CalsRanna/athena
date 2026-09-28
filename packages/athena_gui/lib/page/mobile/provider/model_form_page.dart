@@ -56,10 +56,7 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
         control: AthenaInput(controller: outputController),
       ),
       SizedBox(height: 16),
-      AthenaFormField(
-        label: 'Features',
-        control: _buildFeatures(context),
-      ),
+      AthenaFormField(label: 'Features', control: _buildFeatures(context)),
     ];
     var listView = ListView(
       padding: EdgeInsets.symmetric(horizontal: 16),

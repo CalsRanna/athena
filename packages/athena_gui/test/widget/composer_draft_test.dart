@@ -38,8 +38,9 @@ void main() {
       'athena_composer_draft_test',
     );
     for (final name in ['a', 'b', 'draft']) {
-      File('asset/image/launcher_icon_macos_512x512.png')
-          .copySync('${tempRoot.path}/$name.png');
+      File(
+        'asset/image/launcher_icon_macos_512x512.png',
+      ).copySync('${tempRoot.path}/$name.png');
     }
     DI.ensureInitialized(homeDirOverride: tempRoot.path);
   });
@@ -205,20 +206,28 @@ void main() {
     final chatB = await seedChat(tester, 'Chat B');
 
     await tester.runAsync(() => viewModel.selectChat(chatA));
-    await tester.runAsync(() => viewModel.addPendingImage('${tempRoot.path}/a.png'));
-    expect(viewModel.pendingImages.value.map((image) => image.path), ['${tempRoot.path}/a.png']);
+    await tester.runAsync(
+      () => viewModel.addPendingImage('${tempRoot.path}/a.png'),
+    );
+    expect(viewModel.pendingImages.value.map((image) => image.path), [
+      '${tempRoot.path}/a.png',
+    ]);
 
     await tester.runAsync(() => viewModel.selectChat(chatB));
     expect(viewModel.pendingImages.value, isEmpty, reason: 'B 不该看见 A 贴的图');
 
-    await tester.runAsync(() => viewModel.addPendingImage('${tempRoot.path}/b.png'));
+    await tester.runAsync(
+      () => viewModel.addPendingImage('${tempRoot.path}/b.png'),
+    );
     await tester.runAsync(() => viewModel.selectChat(chatA));
     expect(viewModel.pendingImages.value.map((image) => image.path), [
       '${tempRoot.path}/a.png',
     ], reason: '切回 A 时它自己的图还在');
 
     await tester.runAsync(() => viewModel.selectChat(chatB));
-    expect(viewModel.pendingImages.value.map((image) => image.path), ['${tempRoot.path}/b.png']);
+    expect(viewModel.pendingImages.value.map((image) => image.path), [
+      '${tempRoot.path}/b.png',
+    ]);
   });
 
   testWidgets('草稿槽（还没落盘的新对话）的待发图片同样独立', (tester) async {
@@ -226,7 +235,9 @@ void main() {
     final chatA = await seedChat(tester, 'Chat A');
 
     await tester.runAsync(() => viewModel.prepareNewChatDraft());
-    await tester.runAsync(() => viewModel.addPendingImage('${tempRoot.path}/draft.png'));
+    await tester.runAsync(
+      () => viewModel.addPendingImage('${tempRoot.path}/draft.png'),
+    );
 
     await tester.runAsync(() => viewModel.selectChat(chatA));
     expect(viewModel.pendingImages.value, isEmpty, reason: '草稿里贴的图不该出现在 A 上');

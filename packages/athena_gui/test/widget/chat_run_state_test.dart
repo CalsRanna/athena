@@ -307,7 +307,9 @@ class _FakeStreamDelegate implements AgentStreamDelegate {
     sent.add(_SentRun(message, chat));
     final held = _held;
     _held = null;
-    yield RunMessageStored(message.copyWith(id: (_nextMessageId++).toString(), seq: _nextMessageId));
+    yield RunMessageStored(
+      message.copyWith(id: (_nextMessageId++).toString(), seq: _nextMessageId),
+    );
     if (held != null) yield* held.stream;
   }
 

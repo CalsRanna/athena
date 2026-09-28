@@ -449,7 +449,8 @@ class AgentService {
         continue;
       }
 
-      final verdict = permissionService?.check(
+      final verdict =
+          permissionService?.check(
             runId,
             tc.function.name,
             args,
@@ -936,8 +937,10 @@ class _AgentLoop {
 
     if (toolCalls.isEmpty) {
       if (truncated) {
-        throw StateError('Model response was truncated by the output or context limit. '
-          'The partial response has been preserved; retry with more output room or less context.');
+        throw StateError(
+          'Model response was truncated by the output or context limit. '
+          'The partial response has been preserved; retry with more output room or less context.',
+        );
       }
       yield AgentEvent.done(content: st.accumulator.content);
       st.done = true;
@@ -947,27 +950,36 @@ class _AgentLoop {
     // 追加 assistant 消息（含 tool_calls）
     // 注意：toolCall 事件已由流式循环实时产出，此处不再重复 yield
     final reasoning = st.accumulator.reasoningContent.isNotEmpty
-        ? st.accumulator.reasoningContent : st.accumulator.reasoning;
+        ? st.accumulator.reasoningContent
+        : st.accumulator.reasoning;
     final rc = _model.reasoning && reasoning.isNotEmpty ? reasoning : null;
     _messages.add(
-      st.chatCompletionsState != null ? ChatCompletionsAssistantMessage(
-        chatCompletionsState: st.chatCompletionsState,
-        content: st.accumulator.content.isNotEmpty ? st.accumulator.content : null,
-        toolCalls: toolCalls,
-        reasoningContent: rc,
-      ) : st.messagesState != null ? MessagesAssistantMessage(
-        messagesState: st.messagesState,
-        content: st.accumulator.content.isNotEmpty ? st.accumulator.content : null,
-        toolCalls: toolCalls,
-        reasoningContent: rc,
-      ) : ResponsesAssistantMessage(
-        responsesState: st.responsesState,
-        content: st.accumulator.content.isNotEmpty
-            ? st.accumulator.content
-            : null,
-        toolCalls: toolCalls,
-        reasoningContent: rc,
-      ),
+      st.chatCompletionsState != null
+          ? ChatCompletionsAssistantMessage(
+              chatCompletionsState: st.chatCompletionsState,
+              content: st.accumulator.content.isNotEmpty
+                  ? st.accumulator.content
+                  : null,
+              toolCalls: toolCalls,
+              reasoningContent: rc,
+            )
+          : st.messagesState != null
+          ? MessagesAssistantMessage(
+              messagesState: st.messagesState,
+              content: st.accumulator.content.isNotEmpty
+                  ? st.accumulator.content
+                  : null,
+              toolCalls: toolCalls,
+              reasoningContent: rc,
+            )
+          : ResponsesAssistantMessage(
+              responsesState: st.responsesState,
+              content: st.accumulator.content.isNotEmpty
+                  ? st.accumulator.content
+                  : null,
+              toolCalls: toolCalls,
+              reasoningContent: rc,
+            ),
     );
 
     // 截断保护：响应被 token 限制切断时，拒绝执行所有工具调用
@@ -978,7 +990,9 @@ class _AgentLoop {
 
     if (st.accumulator.finishReason == FinishReason.contentFilter ||
         st.accumulator.refusal.isNotEmpty) {
-      throw StateError('Tool calls were not executed because the response was refused or filtered');
+      throw StateError(
+        'Tool calls were not executed because the response was refused or filtered',
+      );
     }
     // 执行工具调用（串行 + 并行混合）
     yield* _executeToolCalls(toolCalls, st.accumulator.content);
@@ -1094,7 +1108,9 @@ class _AgentLoop {
           totalTokens: usage.totalTokens,
           reasoningTokens: usage.completionTokensDetails?.reasoningTokens,
           cachedTokens: usage.promptTokensDetails?.cachedTokens,
-          cacheCreationTokens: usage is CacheUsage ? usage.cacheCreationTokens : null,
+          cacheCreationTokens: usage is CacheUsage
+              ? usage.cacheCreationTokens
+              : null,
         ),
       );
     }

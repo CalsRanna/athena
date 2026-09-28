@@ -330,9 +330,7 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
     if (average <= 0) return 0;
     final distance = deltaItems.abs() * average;
     final cap = sliver.constraints.viewportMainAxisExtent * _maxJumpViewports;
-    return deltaItems > 0
-        ? math.min(distance, cap)
-        : -math.min(distance, cap);
+    return deltaItems > 0 ? math.min(distance, cap) : -math.min(distance, cap);
   }
 }
 

@@ -14,28 +14,32 @@ class FileWriteTool implements Tool {
   String get name => 'file_write';
 
   @override
-  String get description => 'Write content to a file. Creates the file if it '
+  String get description =>
+      'Write content to a file. Creates the file if it '
       'does not exist, overwrites it if it does. '
       'Use when you need to create or update a file.';
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'path': {
-            'type': 'string',
-            'description': 'The path to the file to write.',
-          },
-          'content': {
-            'type': 'string',
-            'description': 'The content to write to the file.',
-          },
-        },
-        'required': ['path', 'content'],
-      };
+    'type': 'object',
+    'properties': {
+      'path': {
+        'type': 'string',
+        'description': 'The path to the file to write.',
+      },
+      'content': {
+        'type': 'string',
+        'description': 'The content to write to the file.',
+      },
+    },
+    'required': ['path', 'content'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final path = args['path'] as String;
     final content = args['content'] as String;
 

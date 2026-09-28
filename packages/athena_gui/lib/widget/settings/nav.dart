@@ -80,9 +80,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
     var focused = focusNode.hasFocus;
     var decoration = BoxDecoration(
       color: colors.surfaceMobile,
-      border: Border.all(
-        color: focused ? colors.accent : colors.neutralBorder,
-      ),
+      border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );
     var icon = Icon(
@@ -122,11 +120,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
             onTap: _clear,
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
-              child: Icon(
-                LucideIcons.x,
-                color: colors.textWeak,
-                size: 12,
-              ),
+              child: Icon(LucideIcons.x, color: colors.textWeak, size: 12),
             ),
           );
     var children = [

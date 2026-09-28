@@ -18,8 +18,9 @@ class NoClipboardBackend implements TerminalBackend {
 
   /// OSC 52 剪贴板写入(目标 c):`\x1b]52;c;<base64>` 以 BEL(`\x07`)
   /// 或 ST(`\x1b\`)终止。
-  static final RegExp _osc52Copy =
-      RegExp(r'\x1b\]52;c;[^\x07\x1b\\]*(\x07|\x1b\\)');
+  static final RegExp _osc52Copy = RegExp(
+    r'\x1b\]52;c;[^\x07\x1b\\]*(\x07|\x1b\\)',
+  );
 
   @override
   void writeRaw(String data) {

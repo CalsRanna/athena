@@ -20,25 +20,81 @@ class _Context {
 
 /// 不产生可视内容的标签——跳过其本体但遍历其子节点。
 const _transparentTags = {
-  'html', 'head', 'body', 'div', 'span', 'section', 'article',
-  'main', 'aside', 'header', 'footer', 'nav', 'figure', 'figcaption',
-  'details', 'summary', 'dialog', 'data', 'time', 'abbr', 'bdi', 'bdo',
-  'dfn', 'kbd', 'mark', 'ruby', 'rt', 'rp', 'samp', 'small', 'sub',
-  'sup', 'template', 'wbr', 'noscript', 'map', 'area', 'canvas',
-  'svg', 'math', 'picture', 'source', 'track', 'video', 'audio',
-  'embed', 'object', 'param', 'iframe',
+  'html',
+  'head',
+  'body',
+  'div',
+  'span',
+  'section',
+  'article',
+  'main',
+  'aside',
+  'header',
+  'footer',
+  'nav',
+  'figure',
+  'figcaption',
+  'details',
+  'summary',
+  'dialog',
+  'data',
+  'time',
+  'abbr',
+  'bdi',
+  'bdo',
+  'dfn',
+  'kbd',
+  'mark',
+  'ruby',
+  'rt',
+  'rp',
+  'samp',
+  'small',
+  'sub',
+  'sup',
+  'template',
+  'wbr',
+  'noscript',
+  'map',
+  'area',
+  'canvas',
+  'svg',
+  'math',
+  'picture',
+  'source',
+  'track',
+  'video',
+  'audio',
+  'embed',
+  'object',
+  'param',
+  'iframe',
 };
 
 /// 完全跳过的标签（及其子节点）：脚本、样式、元数据。
-const _skipTags = {
-  'script', 'style', 'meta', 'link', 'title',
-};
+const _skipTags = {'script', 'style', 'meta', 'link', 'title'};
 
 /// 块级标签：其前后应产生换行。
 const _blockTags = {
-  'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'ul', 'ol', 'li', 'blockquote', 'pre', 'hr',
-  'table', 'tr', 'dl', 'dt', 'dd', 'fieldset',
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'ul',
+  'ol',
+  'li',
+  'blockquote',
+  'pre',
+  'hr',
+  'table',
+  'tr',
+  'dl',
+  'dt',
+  'dd',
+  'fieldset',
 };
 
 void _walk(Node node, StringBuffer buffer, _Context ctx) {
@@ -239,10 +295,10 @@ void _walkChildren(List<Node> children, StringBuffer buffer, _Context ctx) {
 /// 写入文本节点，合并空白并解码常见 HTML 实体。
 void _writeText(StringBuffer buffer, String text) {
   var cleaned = text
-      .replaceAll('\u00A0', ' ')   // non-breaking space
-      .replaceAll('\u200B', '')    // zero-width space
-      .replaceAll('\u2003', ' ')   // em space
-      .replaceAll('\u2002', ' ')   // en space
+      .replaceAll('\u00A0', ' ') // non-breaking space
+      .replaceAll('\u200B', '') // zero-width space
+      .replaceAll('\u2003', ' ') // em space
+      .replaceAll('\u2002', ' ') // en space
       .replaceAll('\t', ' ')
       .replaceAll(RegExp(r' {2,}'), ' ')
       .replaceAll('&amp;', '&')

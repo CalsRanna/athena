@@ -42,7 +42,8 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
           children: [
             AthenaSettingsRow(
               label: 'Theme',
-              description: 'System follows the appearance selected on this device.',
+              description:
+                  'System follows the appearance selected on this device.',
               control: Watch((context) {
                 return AthenaSettingsSegmented<ThemeMode>(
                   selected: viewModel.themeMode.value,
@@ -67,10 +68,7 @@ class _DesktopSettingGeneralPageState extends State<DesktopSettingGeneralPage> {
                   onChanged: viewModel.setTextSize,
                   options: [
                     for (final option in AthenaTextSize.values)
-                      AthenaSegmentOption(
-                        value: option,
-                        label: option.label,
-                      ),
+                      AthenaSegmentOption(value: option, label: option.label),
                   ],
                 );
               }),

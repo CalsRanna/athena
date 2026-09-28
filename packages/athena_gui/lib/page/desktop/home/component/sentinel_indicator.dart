@@ -31,7 +31,8 @@ class DesktopSentinelIndicator extends StatelessWidget {
       // ViewModel 会把「不使用 Sentinel」的会话解析成 directChatSentinel
       // 默认角色尚未落盘时 ID 也为空，只把明确的直接对话占位视为无角色。
       final hasSentinel =
-          sentinel != null && !identical(sentinel, SentinelViewModel.directChatSentinel);
+          sentinel != null &&
+          !identical(sentinel, SentinelViewModel.directChatSentinel);
       final label = hasSentinel ? sentinel.name : 'No Sentinel';
       // Builder 拿到 chip 自己的矩形回传，菜单左边要与它对齐
       return Builder(

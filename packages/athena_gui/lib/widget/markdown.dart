@@ -89,9 +89,9 @@ class _InlineCodeBuilder extends MarkdownElementBuilder {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Text(
         element.textContent,
-        style: AthenaWorkspaceTextSize.of(context).code.copyWith(
-          color: colors.textOnCode,
-        ),
+        style: AthenaWorkspaceTextSize.of(
+          context,
+        ).code.copyWith(color: colors.textOnCode),
       ),
     );
     var widgetSpan = WidgetSpan(
@@ -136,9 +136,9 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.codeBackground,
     );
-    var textStyle = AthenaWorkspaceTextSize.of(context).code.copyWith(
-      color: colors.textOnCode,
-    );
+    var textStyle = AthenaWorkspaceTextSize.of(
+      context,
+    ).code.copyWith(color: colors.textOnCode);
     var contentText = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Text(displayText, style: textStyle),
@@ -188,11 +188,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       style: textStyle,
     );
     // header 左端是"这是什么"（图标 + 语言标签），右端是"能对它做什么"（复制）
-    var icon = Icon(
-      LucideIcons.code,
-      size: 12,
-      color: colors.textOnCode,
-    );
+    var icon = Icon(LucideIcons.code, size: 12, color: colors.textOnCode);
     // CopyButton 的图标按传入色 40% 透明度渲染。默认取色 textOnRaised 在浅色
     // 主题下是纯白，落在近白的语言条上等于隐形；这里显式用代码面上的正文色。
     var copyButton = Tooltip(
@@ -375,9 +371,9 @@ class _FlutterMarkdown extends StatelessWidget {
         decorationColor: colors.markdownStrikethrough,
       ),
       p: body,
-      code: AthenaWorkspaceTextSize.of(context).code.copyWith(
-        color: colors.textOnCode,
-      ),
+      code: AthenaWorkspaceTextSize.of(
+        context,
+      ).code.copyWith(color: colors.textOnCode),
       h1: heading,
       h2: heading,
       h3: heading,

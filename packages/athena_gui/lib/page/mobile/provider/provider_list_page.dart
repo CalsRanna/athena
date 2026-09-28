@@ -67,7 +67,7 @@ class _MobileProviderListPageState extends State<MobileProviderListPage> {
   }
 
   void navigateProviderNamePage(BuildContext context) {
-    MobileProviderNameRoute().push(context);
+    MobileProviderNameRoute().push<void>(context);
   }
 
   /// 一键同步 models.dev 的常用推理模型目录(force 忽略本地缓存)。
@@ -130,17 +130,9 @@ class _ProviderListTile extends StatelessWidget {
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) SizedBox(width: 8),
       if (provider.enabled)
-        Icon(
-          LucideIcons.toggleRight,
-          size: 16,
-          color: colors.iconSecondary,
-        ),
+        Icon(LucideIcons.toggleRight, size: 16, color: colors.iconSecondary),
     ];
-    var icon = Icon(
-      AthenaIcons.more,
-      color: colors.iconSecondary,
-      size: 16,
-    );
+    var icon = Icon(AthenaIcons.more, color: colors.iconSecondary, size: 16);
     var actionButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => openBottomSheet(context),
@@ -176,7 +168,7 @@ class _ProviderListTile extends StatelessWidget {
   }
 
   void navigateProviderForm(BuildContext context) {
-    MobileProviderFormRoute(provider: provider).push(context);
+    MobileProviderFormRoute(provider: provider).push<void>(context);
   }
 
   void openBottomSheet(BuildContext context) {

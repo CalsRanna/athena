@@ -3,6 +3,7 @@ import 'package:athena_core/extension/json_map_extension.dart';
 class MessageEntity {
   final String? id;
   final String chatId;
+
   /// 会话内写入顺序，由仓储在追加时分配，更新消息时保持不变。
   final int seq;
   final String role;
@@ -13,14 +14,19 @@ class MessageEntity {
   final String reference;
   final String toolCalls;
   final String toolResults;
+
   /// Responses 原生输出（含推理密文），独立于用于显示的 reasoningContent。
   final String responsesState;
+
   /// Messages 原生 content（含 thinking 签名），与展示内容分开。
   final String messagesState;
+
   /// Chat Completions 的原始推理扩展与拒答，仅向原始来源回传。
   final String chatCompletionsState;
+
   /// 原生停止原因、拒答说明和用量明细，不作为对话正文发送。
   final String completionDetails;
+
   /// 是否已被 compact 压缩。被压缩的消息不参与上下文组装，但保留在 DB 中供回溯。
   final bool compacted;
   final DateTime reasoningStartedAt;

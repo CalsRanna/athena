@@ -12,8 +12,8 @@ class ProviderViewModel {
   ProviderViewModel({
     required ProviderRepository repository,
     required ModelViewModel modelViewModel,
-  })  : _repository = repository,
-        _modelViewModel = modelViewModel;
+  }) : _repository = repository,
+       _modelViewModel = modelViewModel;
 
   // Signals 状态
   final providers = listSignal<ProviderEntity>([]);

@@ -142,11 +142,7 @@ class _ModelDropdown extends StatelessWidget {
       color: colors.inputBackground.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
-    var icon = Icon(
-      AthenaIcons.dropdown,
-      color: colors.textInput,
-      size: 20,
-    );
+    var icon = Icon(AthenaIcons.dropdown, color: colors.textInput, size: 20);
     var children = [Expanded(child: _buildText()), icon];
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -184,9 +180,7 @@ class _ModelDropdown extends StatelessWidget {
   Widget _buildText() {
     return Watch((context) {
       final colors = Theme.of(context).extension<AthenaColors>()!;
-      final textStyle = AthenaTextStyle.row.copyWith(
-        color: colors.textInput,
-      );
+      final textStyle = AthenaTextStyle.row.copyWith(color: colors.textInput);
       if (model == null) {
         return Text(
           'No Model',

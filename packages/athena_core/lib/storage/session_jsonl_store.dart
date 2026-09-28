@@ -29,7 +29,10 @@ import 'package:athena_core/util/logger_util.dart';
 ///   处理;追加前补齐上一行缺失的换行,写一半的行不会吞掉下一条消息
 /// - 行更新采用整文件重写:会话数据规模有限,重写简单可靠
 class SessionJsonlStore {
-  SessionJsonlStore({required this.file, this.idGenerator = const IdGenerator()});
+  SessionJsonlStore({
+    required this.file,
+    this.idGenerator = const IdGenerator(),
+  });
 
   final File file;
   final IdGenerator idGenerator;
@@ -63,7 +66,10 @@ class SessionJsonlStore {
   }
 
   /// 替换首行的会话元数据;不存在则插入到文件头。
-  Future<void> writeChatRow(Map<String, dynamic> row, {bool createOnly = false}) {
+  Future<void> writeChatRow(
+    Map<String, dynamic> row, {
+    bool createOnly = false,
+  }) {
     return _mutate(() async {
       if (createOnly && await file.exists()) {
         throw StateError('Session already exists: ${file.path}');
@@ -204,7 +210,9 @@ class SessionJsonlStore {
   ///
   /// 调用方要删一批 id 时,**把整批放进 [test]**（一次读-改-写）；按 id 循环
   /// 调用会把整文件读写重复 N 遍（实测 833KB 的会话逐条删 199 条要 1.5s）。
-  Future<int> deleteMessageWhere(bool Function(Map<String, dynamic> json) test) {
+  Future<int> deleteMessageWhere(
+    bool Function(Map<String, dynamic> json) test,
+  ) {
     return _mutate(() async {
       final rows = await _readAllRows();
       final before = rows.length;
@@ -251,7 +259,9 @@ class SessionJsonlStore {
     int count, {
     int? beforeSeq,
   }) {
-    return _serialized(() => _loadRecentRowsUnlocked(count, beforeSeq: beforeSeq));
+    return _serialized(
+      () => _loadRecentRowsUnlocked(count, beforeSeq: beforeSeq),
+    );
   }
 
   /// [loadRecentRows] 的实现,不取锁:供已持锁的修改操作内部调用。

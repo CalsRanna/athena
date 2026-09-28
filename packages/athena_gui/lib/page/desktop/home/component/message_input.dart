@@ -331,20 +331,25 @@ class _InputState extends State<_Input> {
           editable.hideToolbar();
           _pasteImageAware();
         }
-        final items = editable.contextMenuButtonItems.map((item) =>
-          item.type == ContextMenuButtonType.paste
-              ? ContextMenuButtonItem(
-                  type: ContextMenuButtonType.paste,
-                  onPressed: paste,
-                )
-              : item,
-        ).toList();
+
+        final items = editable.contextMenuButtonItems
+            .map(
+              (item) => item.type == ContextMenuButtonType.paste
+                  ? ContextMenuButtonItem(
+                      type: ContextMenuButtonType.paste,
+                      onPressed: paste,
+                    )
+                  : item,
+            )
+            .toList();
         // 纯图片剪贴板没有文本，默认菜单可能不提供 Paste。
         if (!items.any((item) => item.type == ContextMenuButtonType.paste)) {
-          items.add(ContextMenuButtonItem(
-            type: ContextMenuButtonType.paste,
-            onPressed: paste,
-          ));
+          items.add(
+            ContextMenuButtonItem(
+              type: ContextMenuButtonType.paste,
+              onPressed: paste,
+            ),
+          );
         }
         return AdaptiveTextSelectionToolbar.buttonItems(
           anchors: editable.contextMenuAnchors,
@@ -500,11 +505,7 @@ class _PendingImageStrip extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) =>
                 const _ImageProgress(stage: PendingImageStage.failed),
           );
-    var icon = Icon(
-      LucideIcons.x,
-      color: colors.textPrimary,
-      size: 12,
-    );
+    var icon = Icon(LucideIcons.x, color: colors.textPrimary, size: 12);
     var decoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
       color: colors.surfaceMobile,
@@ -630,23 +631,26 @@ class _SendButton extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Watch((context) {
       final streaming = chatViewModel.isCurrentChatStreaming.value;
-      final imagesReady = chatViewModel.pendingImages.value
-          .every((image) => image.isReady);
+      final imagesReady = chatViewModel.pendingImages.value.every(
+        (image) => image.isReady,
+      );
       // ghost 按钮 hover 填充：前景色 5%
       final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
       // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
       // 取 step4 档：22×22。
       return _SquishButton(
-        onTap: streaming ? onTerminated : imagesReady ? onSubmitted : null,
+        onTap: streaming
+            ? onTerminated
+            : imagesReady
+            ? onSubmitted
+            : null,
         hoverFill: ghostHover,
         child: Container(
           alignment: Alignment.center,
           height: 22,
           width: 22,
           child: Icon(
-            streaming
-                ? LucideIcons.square
-                : LucideIcons.arrowUp,
+            streaming ? LucideIcons.square : LucideIcons.arrowUp,
             color: streaming || imagesReady ? colors.accent : colors.textWeak,
             size: 16,
           ),

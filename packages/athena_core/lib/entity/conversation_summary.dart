@@ -16,7 +16,9 @@ class ConversationSummary {
   static Set<String> coveredIds(MessageEntity message) {
     if (message.role != 'summary' && message.role != 'compaction') return {};
     final metadata = jsonDecode(message.reference) as Map<String, dynamic>;
-    return (metadata['coveredMessageIds'] as List<dynamic>).cast<String>().toSet();
+    return (metadata['coveredMessageIds'] as List<dynamic>)
+        .cast<String>()
+        .toSet();
   }
 
   static int position(MessageEntity message) {

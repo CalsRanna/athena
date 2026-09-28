@@ -75,9 +75,9 @@ class DesktopContextMenu extends StatelessWidget {
     return DesktopContextMenuConfiguration(
       width: width,
       child: DefaultTextStyle(
-        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: colors.textPrimary,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium!.copyWith(color: colors.textPrimary),
         child: container,
       ),
     );
@@ -91,7 +91,10 @@ class DesktopContextMenu extends StatelessWidget {
 class _ContextMenuLayoutDelegate extends SingleChildLayoutDelegate {
   final Offset offset;
   final bool upward;
-  const _ContextMenuLayoutDelegate({required this.offset, required this.upward});
+  const _ContextMenuLayoutDelegate({
+    required this.offset,
+    required this.upward,
+  });
 
   static const _margin = 8.0;
 

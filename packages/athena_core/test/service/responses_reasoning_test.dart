@@ -204,11 +204,14 @@ void main() {
     expect(incomplete.last.firstChoice!.finishReason, FinishReason.length);
     final events = reasoningEvents(reasoningResponse())..removeLast();
     final partial = <ChatStreamEvent>[];
-    await expectLater(normalizeResponsesStream(
-      Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
-      provider: provider,
-      model: model,
-    ).forEach(partial.add), throwsStateError);
+    await expectLater(
+      normalizeResponsesStream(
+        Stream.fromIterable(events.map(ResponseStreamEvent.fromJson)),
+        provider: provider,
+        model: model,
+      ).forEach(partial.add),
+      throwsStateError,
+    );
     expect(partial.whereType<ResponsesStateChunk>(), isEmpty);
     final seen = <ChatStreamEvent>[];
     Stream<ResponseStreamEvent> aborted() async* {

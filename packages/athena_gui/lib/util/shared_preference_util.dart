@@ -23,7 +23,10 @@ class SharedPreferenceUtil {
   }
 
   Future<String> getSentinelMetadataGenerationModelId() async {
-    return (await _preferences).getString(_keySentinelMetadataGenerationModelId) ?? '';
+    return (await _preferences).getString(
+          _keySentinelMetadataGenerationModelId,
+        ) ??
+        '';
   }
 
   Future<double> getWindowHeight() async {

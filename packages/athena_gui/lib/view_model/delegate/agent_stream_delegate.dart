@@ -111,11 +111,7 @@ class AgentStreamDelegate {
     required ChatEntity chat,
     bool jsonMode = false,
   }) {
-    return _coordinator.send(
-      message: message,
-      chat: chat,
-      jsonMode: jsonMode,
-    );
+    return _coordinator.send(message: message, chat: chat, jsonMode: jsonMode);
   }
 
   void stop(String chatId) {

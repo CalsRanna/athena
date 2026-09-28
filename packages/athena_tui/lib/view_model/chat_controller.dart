@@ -127,7 +127,9 @@ class ChatController {
       }
       messages.value = [...older, ...messages.value];
       // 返回不足窗口 → 扫描已到文件头,没有更早的了;正好满窗口 → 还有
-      _windowMinSeq = older.length >= messageWindowSize ? older.first.seq : null;
+      _windowMinSeq = older.length >= messageWindowSize
+          ? older.first.seq
+          : null;
       return older.length;
     } finally {
       _loadingOlder = false;
@@ -434,7 +436,9 @@ class ChatController {
     final provider = model == null
         ? null
         : await _supportService.getProviderForModel(model.providerId);
-    final sentinel = chat.sentinelId == null ? null : await _sentinelRepo.getSentinelById(chat.sentinelId!);
+    final sentinel = chat.sentinelId == null
+        ? null
+        : await _sentinelRepo.getSentinelById(chat.sentinelId!);
     if (!_active) return;
     currentChat.value = chat;
     this.messages.value = messages;

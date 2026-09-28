@@ -398,7 +398,8 @@ class BackgroundTaskService {
   Future<void> _updateOrphanState({
     Future<List<Map<String, dynamic>>> Function(
       List<Map<String, dynamic>> entries,
-    )? recover,
+    )?
+    recover,
   }) async {
     final dir = _stateDirectory;
     if (dir == null) return;

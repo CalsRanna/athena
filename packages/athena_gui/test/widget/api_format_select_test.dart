@@ -103,15 +103,14 @@ void main() {
     bool? pickedAuto;
     ApiFormat? pickedFormat;
     var called = false;
-    await pumpSelect(
-      tester,
-      probe(apiFormat: ApiFormat.chatCompletions),
-      ({required bool auto, ApiFormat? format}) {
-        called = true;
-        pickedAuto = auto;
-        pickedFormat = format;
-      },
-    );
+    await pumpSelect(tester, probe(apiFormat: ApiFormat.chatCompletions), ({
+      required bool auto,
+      ApiFormat? format,
+    }) {
+      called = true;
+      pickedAuto = auto;
+      pickedFormat = format;
+    });
 
     await tester.tap(find.text('Auto · Chat Completions'));
     await tester.pumpAndSettle();

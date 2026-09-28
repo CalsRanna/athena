@@ -50,24 +50,26 @@ class UserSettingsStore {
     final result = <ProviderEntity>[];
     for (final entry in providers) {
       if (entry is! Map) continue;
-      result.add(ProviderEntity(
-        id: entry['id'] is String ? entry['id'] as String : null,
-        // 防御:手工编辑/历史数据可能写入非字符串值(如裸数字被 YAML
-        // 解析为 int),降级为空字符串而不是抛类型错误炸掉整个配置
-        name: entry['name'] is String ? entry['name'] as String : '',
-        baseUrl: entry['baseUrl'] is String ? entry['baseUrl'] as String : '',
-        apiKey: entry['apiKey'] is String ? entry['apiKey'] as String : '',
-        apiFormat: ApiFormat.tryParse(entry['apiFormat']),
-        apiFormatAuto: entry['apiFormatAuto'] is bool
-            ? entry['apiFormatAuto'] as bool
-            : null,
-        enabled: entry['enabled'] == true,
-        isPreset: entry['isPreset'] == true,
-        createdAt: entry['createdAt'] is String
-            ? DateTime.tryParse(entry['createdAt'] as String) ??
-                DateTime.fromMillisecondsSinceEpoch(0)
-            : DateTime.fromMillisecondsSinceEpoch(0),
-      ));
+      result.add(
+        ProviderEntity(
+          id: entry['id'] is String ? entry['id'] as String : null,
+          // 防御:手工编辑/历史数据可能写入非字符串值(如裸数字被 YAML
+          // 解析为 int),降级为空字符串而不是抛类型错误炸掉整个配置
+          name: entry['name'] is String ? entry['name'] as String : '',
+          baseUrl: entry['baseUrl'] is String ? entry['baseUrl'] as String : '',
+          apiKey: entry['apiKey'] is String ? entry['apiKey'] as String : '',
+          apiFormat: ApiFormat.tryParse(entry['apiFormat']),
+          apiFormatAuto: entry['apiFormatAuto'] is bool
+              ? entry['apiFormatAuto'] as bool
+              : null,
+          enabled: entry['enabled'] == true,
+          isPreset: entry['isPreset'] == true,
+          createdAt: entry['createdAt'] is String
+              ? DateTime.tryParse(entry['createdAt'] as String) ??
+                    DateTime.fromMillisecondsSinceEpoch(0)
+              : DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+      );
     }
     return result;
   }

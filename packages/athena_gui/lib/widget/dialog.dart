@@ -29,8 +29,7 @@ class AthenaDialog {
   /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
   static bool _isMobile(BuildContext context) {
     var platform = Theme.of(context).platform;
-    return platform == TargetPlatform.android ||
-        platform == TargetPlatform.iOS;
+    return platform == TargetPlatform.android || platform == TargetPlatform.iOS;
   }
 
   static Future<bool?> confirm(String text, {bool dismissible = true}) async {
@@ -79,7 +78,7 @@ class AthenaDialog {
   }
 
   static void loading() {
-    showDialog(
+    showDialog<void>(
       barrierDismissible: false,
       context: router.navigatorKey.currentContext!,
       builder: (context) => const _DesktopLoadingDialog(),
@@ -121,14 +120,14 @@ class AthenaDialog {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
       FocusManager.instance.primaryFocus?.unfocus();
-      showModalBottomSheet(
+      showModalBottomSheet<void>(
         backgroundColor: _colors.surfaceMobile,
         builder: (_) => child,
         context: context,
       );
       return;
     }
-    showDialog(
+    showDialog<void>(
       barrierDismissible: barrierDismissible,
       builder: (_) => child,
       context: context,
@@ -210,10 +209,7 @@ class AthenaDesktopDialog extends StatelessWidget {
                 ),
               ),
               if (onClose != null)
-                AthenaGhostIconButton(
-                  icon: LucideIcons.x,
-                  onTap: onClose,
-                ),
+                AthenaGhostIconButton(icon: LucideIcons.x, onTap: onClose),
             ],
           );
     var children = [
@@ -323,7 +319,8 @@ class _ConfirmDialog extends StatelessWidget {
       Text(text, style: textStyle),
       const SizedBox(height: AthenaSpace.xxl),
       AthenaPrimaryButton(
-        onTap: () => Navigator.of(router.navigatorKey.currentContext!).pop(true),
+        onTap: () =>
+            Navigator.of(router.navigatorKey.currentContext!).pop(true),
         child: const Center(child: Text('Confirm')),
       ),
       const SizedBox(height: AthenaSpace.sm),

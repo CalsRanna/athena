@@ -31,6 +31,6 @@ class SentinelTile extends StatelessWidget {
   }
 
   void navigateChatPage(BuildContext context) {
-    MobileChatRoute(sentinel: sentinel).push(context);
+    MobileChatRoute(sentinel: sentinel).push<void>(context);
   }
 }

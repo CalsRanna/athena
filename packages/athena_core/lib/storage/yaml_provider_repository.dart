@@ -32,9 +32,7 @@ class YamlProviderRepository implements ProviderRepository {
   /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
   Future<void> load() async {}
 
-  Future<T> _mutate<T>(
-    Future<T> Function(List<ProviderEntity> all) action,
-  ) {
+  Future<T> _mutate<T>(Future<T> Function(List<ProviderEntity> all) action) {
     return serialLock(
       _lock,
       () => withFileLock(lockFileFor(_store.file), () async {
@@ -60,7 +58,10 @@ class YamlProviderRepository implements ProviderRepository {
 
   @override
   Future<List<ProviderEntity>> getEnabledProviders() async {
-    return [for (final p in await getAllProviders()) if (p.enabled) p];
+    return [
+      for (final p in await getAllProviders())
+        if (p.enabled) p,
+    ];
   }
 
   @override
@@ -107,7 +108,8 @@ class YamlProviderRepository implements ProviderRepository {
         if (index < 0) return;
         final provider = all[index];
         final trailingSlashes = RegExp(r'/+$');
-        if (!provider.isPreset || !provider.apiFormatAuto ||
+        if (!provider.isPreset ||
+            !provider.apiFormatAuto ||
             provider.baseUrl.replaceFirst(trailingSlashes, '') !=
                 baseUrl.replaceFirst(trailingSlashes, '') ||
             provider.apiFormat == apiFormat) {

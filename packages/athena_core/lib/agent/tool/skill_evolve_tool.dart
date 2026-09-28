@@ -21,11 +21,9 @@ class SkillEvolveTool implements Tool {
   /// 用户级 `.athena` 根目录。空 = 使用 `$HOME`（桌面端）。
   final String? _homeDir;
 
-  SkillEvolveTool({
-    required SkillRegistry skillRegistry,
-    String? homeDir,
-  })  : _skillRegistry = skillRegistry,
-        _homeDir = homeDir;
+  SkillEvolveTool({required SkillRegistry skillRegistry, String? homeDir})
+    : _skillRegistry = skillRegistry,
+      _homeDir = homeDir;
 
   @override
   String get name => 'skill_evolve';
@@ -45,38 +43,41 @@ class SkillEvolveTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'name': {
-            'type': 'string',
-            'description':
-                'Skill name (kebab-case, max 64 chars). Must match existing '
-                'skill name when updating.',
-          },
-          'action': {
-            'type': 'string',
-            'enum': ['create', 'update'],
-            'description':
-                'Whether to create a new skill or update an existing one.',
-          },
-          'description': {
-            'type': 'string',
-            'description':
-                'Brief description of what the skill does (required for create, optional for update).',
-          },
-          'body': {
-            'type': 'string',
-            'description':
-                'The full SKILL.md body content — the instructions, workflows, '
-                'and guidance that define how the skill operates. Use Markdown. '
-                'For updates, provide the complete new body.',
-          },
-        },
-        'required': ['name', 'action', 'body'],
-      };
+    'type': 'object',
+    'properties': {
+      'name': {
+        'type': 'string',
+        'description':
+            'Skill name (kebab-case, max 64 chars). Must match existing '
+            'skill name when updating.',
+      },
+      'action': {
+        'type': 'string',
+        'enum': ['create', 'update'],
+        'description':
+            'Whether to create a new skill or update an existing one.',
+      },
+      'description': {
+        'type': 'string',
+        'description':
+            'Brief description of what the skill does (required for create, optional for update).',
+      },
+      'body': {
+        'type': 'string',
+        'description':
+            'The full SKILL.md body content — the instructions, workflows, '
+            'and guidance that define how the skill operates. Use Markdown. '
+            'For updates, provide the complete new body.',
+      },
+    },
+    'required': ['name', 'action', 'body'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final skillName = args['name'] as String;
     final action = args['action'] as String;
     final description = args['description'] as String? ?? '';
@@ -95,7 +96,9 @@ class SkillEvolveTool implements Tool {
       }
       return _writeSkill(
         skillName: skillName,
-        description: description.isNotEmpty ? description : existing.description,
+        description: description.isNotEmpty
+            ? description
+            : existing.description,
         body: body,
         targetDir: existing.sourcePath,
       );
@@ -110,7 +113,8 @@ class SkillEvolveTool implements Tool {
       return 'Error: description is required when creating a new skill.';
     }
 
-    final home = _homeDir ??
+    final home =
+        _homeDir ??
         Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '/';

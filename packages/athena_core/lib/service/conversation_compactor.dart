@@ -61,9 +61,7 @@ class ConversationCompactor {
                 ),
               )
               .where(
-                (m) =>
-                    m.seq < beforeSeq &&
-                    !excludedMessageIds.contains(m.id),
+                (m) => m.seq < beforeSeq && !excludedMessageIds.contains(m.id),
               )
               .toList();
       token.throwIfCancelled();

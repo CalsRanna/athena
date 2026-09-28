@@ -81,9 +81,7 @@ class DI {
     // 后台任务登记表：孤儿记录目录让「上次被强杀」的遗留进程能在下次启动
     // 被清理（强杀时没有钩子可挂，只能事后发现）。
     getIt.registerLazySingleton(
-      () => BackgroundTaskService(
-        stateDirectory: storage.backgroundTasksDir,
-      ),
+      () => BackgroundTaskService(stateDirectory: storage.backgroundTasksDir),
     );
 
     // Repositories (no dependencies)
@@ -252,9 +250,7 @@ class DI {
     getIt.registerLazySingleton<MessageRepository>(
       () => storage.sessionRepository,
     );
-    getIt.registerLazySingleton<ModelRepository>(
-      () => storage.modelRepository,
-    );
+    getIt.registerLazySingleton<ModelRepository>(() => storage.modelRepository);
     getIt.registerLazySingleton<ProviderRepository>(
       () => storage.providerRepository,
     );

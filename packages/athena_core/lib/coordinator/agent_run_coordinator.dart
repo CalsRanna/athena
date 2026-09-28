@@ -480,7 +480,10 @@ class AgentRunCoordinator {
   ///
   /// 返回落库后的消息（调用方据此立即显示）；无活跃 run 时返回 null，
   /// 调用方应走 [send] 正常发送。
-  Future<MessageEntity?> queueInput(String chatId, MessageEntity message) async {
+  Future<MessageEntity?> queueInput(
+    String chatId,
+    MessageEntity message,
+  ) async {
     if (!_runIdByChat.containsKey(chatId)) return null;
     final stored = await _messageRepo.storeMessage(message);
     final pending = _pendingInputs.putIfAbsent(chatId, () => []);
@@ -848,9 +851,13 @@ class AgentRunCoordinator {
             current = current.copyWith(toolCalls: jsonEncode(toolCallsJson));
           }
         } else if (event is AgentChatCompletionsStateEvent) {
-          current = current.copyWith(chatCompletionsState: event.state.encode());
+          current = current.copyWith(
+            chatCompletionsState: event.state.encode(),
+          );
         } else if (event is AgentCompletionDetailsEvent) {
-          current = current.copyWith(completionDetails: jsonEncode(event.details));
+          current = current.copyWith(
+            completionDetails: jsonEncode(event.details),
+          );
         } else if (event is AgentResponsesStateEvent) {
           current = current.copyWith(responsesState: event.state.encode());
         } else if (event is AgentMessagesStateEvent) {

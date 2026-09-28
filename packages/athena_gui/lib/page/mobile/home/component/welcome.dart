@@ -38,7 +38,7 @@ class _MobileHomeWelcomeState extends State<MobileHomeWelcome> {
   }
 
   void handleTap(BuildContext context) {
-    SettingRoute().push(context);
+    SettingRoute().push<void>(context);
   }
 
   void handleVisibilityChanged(VisibilityInfo info) {

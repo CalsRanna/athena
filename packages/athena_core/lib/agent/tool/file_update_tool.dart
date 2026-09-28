@@ -16,7 +16,8 @@ class FileUpdateTool implements Tool {
   String get name => 'file_update';
 
   @override
-  String get description => 'Perform exact string replacements in a file. '
+  String get description =>
+      'Perform exact string replacements in a file. '
       'Finds old_string occurrences and replaces them with new_string. '
       'When replace_all is false (default), old_string must appear exactly once. '
       'Use for targeted edits without rewriting the entire file. '
@@ -24,33 +25,39 @@ class FileUpdateTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'path': {
-            'type': 'string',
-            'description': 'The path to the file to update.',
-          },
-          'old_string': {
-            'type': 'string',
-            'description': 'The exact text to find and replace. '
-                'Must match including whitespace and indentation. '
-                'Line number prefixes from file_read output are automatically stripped.',
-          },
-          'new_string': {
-            'type': 'string',
-            'description': 'The text to replace it with (must differ from old_string).',
-          },
-          'replace_all': {
-            'type': 'boolean',
-            'description': 'Replace all occurrences (default: false). '
-                'When false, old_string must appear exactly once.',
-          },
-        },
-        'required': ['path', 'old_string', 'new_string'],
-      };
+    'type': 'object',
+    'properties': {
+      'path': {
+        'type': 'string',
+        'description': 'The path to the file to update.',
+      },
+      'old_string': {
+        'type': 'string',
+        'description':
+            'The exact text to find and replace. '
+            'Must match including whitespace and indentation. '
+            'Line number prefixes from file_read output are automatically stripped.',
+      },
+      'new_string': {
+        'type': 'string',
+        'description':
+            'The text to replace it with (must differ from old_string).',
+      },
+      'replace_all': {
+        'type': 'boolean',
+        'description':
+            'Replace all occurrences (default: false). '
+            'When false, old_string must appear exactly once.',
+      },
+    },
+    'required': ['path', 'old_string', 'new_string'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final path = args['path'] as String;
     final rawOld = args['old_string'] as String;
     final rawNew = args['new_string'] as String;
@@ -91,7 +98,13 @@ class FileUpdateTool implements Tool {
         return 'Error: old_string not found in file. '
             'Make sure the string matches exactly, including whitespace and indentation.';
       }
-      final updated = _applyReplace(content, oldString, newString, replaceAll, lineEnding);
+      final updated = _applyReplace(
+        content,
+        oldString,
+        newString,
+        replaceAll,
+        lineEnding,
+      );
       return _writeSafely(file, mtimeBefore, updated);
     }
 
@@ -101,9 +114,19 @@ class FileUpdateTool implements Tool {
           'or provide more surrounding context to make old_string unique.';
     }
 
-    final updated = _applyReplace(normalized, oldString, newString, replaceAll, lineEnding);
+    final updated = _applyReplace(
+      normalized,
+      oldString,
+      newString,
+      replaceAll,
+      lineEnding,
+    );
     final restored = _restoreQuotes(updated, content);
-    return _writeSafely(file, mtimeBefore, _normalizeLineEndings(restored, lineEnding));
+    return _writeSafely(
+      file,
+      mtimeBefore,
+      _normalizeLineEndings(restored, lineEnding),
+    );
   }
 
   String _preprocess(String text) {
@@ -190,7 +213,11 @@ class FileUpdateTool implements Tool {
     return content;
   }
 
-  Future<String> _writeSafely(File file, DateTime mtimeBefore, String updated) async {
+  Future<String> _writeSafely(
+    File file,
+    DateTime mtimeBefore,
+    String updated,
+  ) async {
     final mtimeNow = await file.lastModified();
     if (mtimeNow != mtimeBefore) {
       return 'Error: File was modified externally since reading. '

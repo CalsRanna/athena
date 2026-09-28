@@ -230,9 +230,7 @@ class _StepCardState extends State<StepCard> {
           },
         );
     // 结束态的汇总使用通用图标；进行中与当前单步使用同一图标。
-    final genericIcon = hasTool
-        ? LucideIcons.wrench
-        : LucideIcons.sparkles;
+    final genericIcon = hasTool ? LucideIcons.wrench : LucideIcons.sparkles;
     return (
       icon: widget.live ? _faceOf(last).icon : genericIcon,
       label: widget.live
@@ -282,9 +280,7 @@ class _ReasoningBody extends StatelessWidget {
         width: double.infinity,
         child: Text(
           message.reasoningContent,
-          style: AthenaTextStyle.caption.copyWith(
-            color: colors.textSecondary,
-          ),
+          style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
         ),
       ),
     );

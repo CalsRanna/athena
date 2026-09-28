@@ -53,8 +53,10 @@ class ClipboardImageService {
     }
 
     final ready = existingFiles
-        .where((path) =>
-            supportedExtensions.contains(_extensionOf(path).toLowerCase()))
+        .where(
+          (path) =>
+              supportedExtensions.contains(_extensionOf(path).toLowerCase()),
+        )
         .toList();
     if (ready.isNotEmpty) {
       return ready;

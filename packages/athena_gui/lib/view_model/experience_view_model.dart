@@ -16,8 +16,8 @@ class ExperienceViewModel {
   ExperienceViewModel({
     required ExperienceRepository experienceRepository,
     required SentinelRepository sentinelRepository,
-  })  : _experienceRepository = experienceRepository,
-        _sentinelRepository = sentinelRepository;
+  }) : _experienceRepository = experienceRepository,
+       _sentinelRepository = sentinelRepository;
 
   final experiences = listSignal<ExperienceEntity>([]);
   final isLoading = signal(false);

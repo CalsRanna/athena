@@ -124,11 +124,11 @@ class _MobileSkillListPageState extends State<MobileSkillListPage> {
   }
 
   void navigateFormPage(BuildContext context, Skill? skill) {
-    MobileSkillFormRoute(skill: skill).push(context);
+    MobileSkillFormRoute(skill: skill).push<void>(context);
   }
 
   void navigateDetailPage(BuildContext context, Skill skill) {
-    MobileSkillDetailRoute(skill: skill).push(context);
+    MobileSkillDetailRoute(skill: skill).push<void>(context);
   }
 
   void openBottomSheet(BuildContext context, Skill skill) {

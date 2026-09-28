@@ -97,7 +97,8 @@ class _MessageListViewState extends State<MessageListView> {
           .where((r) => r.chatId == widget.chat.id)
           .toList();
 
-      final loadingHistory = viewModel.isLoadingMessages.value &&
+      final loadingHistory =
+          viewModel.isLoadingMessages.value &&
           viewModel.currentChat.value?.id == widget.chat.id;
 
       final content = messages.isEmpty
@@ -221,7 +222,7 @@ class _MessageListViewState extends State<MessageListView> {
       message: message,
       onSubmitted: editMessage,
     );
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       backgroundColor: Colors.transparent,
       context: context,
       builder: (_) => dialog,

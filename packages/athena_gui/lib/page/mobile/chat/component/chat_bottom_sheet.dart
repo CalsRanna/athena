@@ -74,7 +74,8 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
     } else {
       _sentinelId.value =
           (chatViewModel.currentSentinel.value ??
-          sentinelViewModel.defaultSentinel.value).id;
+                  sentinelViewModel.defaultSentinel.value)
+              .id;
       _modelId.value =
           chatViewModel.currentModel.value?.id ??
           modelViewModel.enabledModels.value.firstOrNull?.id ??
@@ -152,7 +153,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
 
   void navigateChatConfiguration() {
     if (widget.chat == null) return;
-    MobileChatConfigurationRoute(chat: widget.chat!).push(context);
+    MobileChatConfigurationRoute(chat: widget.chat!).push<void>(context);
   }
 
   void openModelSelectorDialog() {

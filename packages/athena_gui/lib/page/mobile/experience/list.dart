@@ -103,9 +103,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
           subtitle: '$owner · ${_formatDate(experience.createdAt)}',
           titleMaxLines: 3,
           subtitleMaxLines: 2,
-          trailing: isArchived
-              ? const Icon(LucideIcons.archive)
-              : null,
+          trailing: isArchived ? const Icon(LucideIcons.archive) : null,
           onTap: () => _navigateDetailPage(context, experience),
           onLongPress: () => openBottomSheet(context, experience),
         );
@@ -115,7 +113,7 @@ class _MobileExperienceListPageState extends State<MobileExperienceListPage> {
   }
 
   void _navigateDetailPage(BuildContext context, ExperienceEntity experience) {
-    MobileExperienceDetailRoute(experience: experience).push(context);
+    MobileExperienceDetailRoute(experience: experience).push<void>(context);
   }
 
   void openBottomSheet(BuildContext context, ExperienceEntity experience) {

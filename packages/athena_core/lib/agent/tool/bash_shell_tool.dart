@@ -57,55 +57,50 @@ class BashShellTool implements Tool, CancellableTool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'command': {
-            'type': 'string',
-            'description': shellCommandParamDescription('bash'),
-          },
-          'timeout': {
-            'type': 'integer',
-            'description': shellTimeoutParamDescription(),
-            'minimum': ShellTimeoutPolicy.minSeconds,
-            'maximum': ShellTimeoutPolicy.maxSeconds,
-            'default': ShellTimeoutPolicy.defaultSeconds,
-          },
-          'background': {
-            'type': 'boolean',
-            'description':
-                'Run the command in the background: the call returns '
-                'immediately with a task id instead of waiting, and the '
-                'command keeps running after this turn ends (timeout does not '
-                'apply). Use it for long builds, test suites and installs, '
-                'then keep working; read progress with the background_task '
-                'tool. Say so in call_description: the user approving it must '
-                'know the command will keep running after the turn.',
-          },
-          'workdir': {
-            'type': 'string',
-            'description': shellWorkdirParamDescription(_defaultWorkdir),
-          },
-        },
-        'required': ['command'],
-      };
+    'type': 'object',
+    'properties': {
+      'command': {
+        'type': 'string',
+        'description': shellCommandParamDescription('bash'),
+      },
+      'timeout': {
+        'type': 'integer',
+        'description': shellTimeoutParamDescription(),
+        'minimum': ShellTimeoutPolicy.minSeconds,
+        'maximum': ShellTimeoutPolicy.maxSeconds,
+        'default': ShellTimeoutPolicy.defaultSeconds,
+      },
+      'background': {
+        'type': 'boolean',
+        'description':
+            'Run the command in the background: the call returns '
+            'immediately with a task id instead of waiting, and the '
+            'command keeps running after this turn ends (timeout does not '
+            'apply). Use it for long builds, test suites and installs, '
+            'then keep working; read progress with the background_task '
+            'tool. Say so in call_description: the user approving it must '
+            'know the command will keep running after the turn.',
+      },
+      'workdir': {
+        'type': 'string',
+        'description': shellWorkdirParamDescription(_defaultWorkdir),
+      },
+    },
+    'required': ['command'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {
+  Future<String> execute(
+    Map<String, dynamic> args, {
     void Function(String)? onUpdate,
-  }) =>
-      _execute(args, onUpdate: onUpdate);
+  }) => _execute(args, onUpdate: onUpdate);
 
   @override
   Future<String> executeCancellable(
     Map<String, dynamic> args, {
     void Function(String)? onUpdate,
     required Future<void> cancelSignal,
-  }) =>
-      _execute(
-        args,
-        onUpdate: onUpdate,
-        cancelSignal: cancelSignal,
-      );
+  }) => _execute(args, onUpdate: onUpdate, cancelSignal: cancelSignal);
 
   Future<String> _execute(
     Map<String, dynamic> args, {
@@ -114,7 +109,8 @@ class BashShellTool implements Tool, CancellableTool {
   }) async {
     final command = args['command'] as String;
     final timeout = ShellTimeoutPolicy.normalize(args['timeout'] as int?);
-    final home = Platform.environment['HOME'] ??
+    final home =
+        Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         Directory.current.path;
     // 优先级:调用参数 > 注入的默认工作目录(工作区) > 用户主目录
@@ -169,8 +165,7 @@ class BashShellTool implements Tool, CancellableTool {
     try {
       final where = Process.runSync('where.exe', ['sh.exe']);
       if (where.exitCode == 0) {
-        final first =
-            (where.stdout as String).trim().split('\n').first.trim();
+        final first = (where.stdout as String).trim().split('\n').first.trim();
         if (first.isNotEmpty) return first;
       }
     } catch (_) {
@@ -178,6 +173,4 @@ class BashShellTool implements Tool, CancellableTool {
     }
     return '/bin/sh';
   }
-
-
 }

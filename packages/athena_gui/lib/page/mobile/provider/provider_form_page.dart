@@ -137,7 +137,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   }
 
   void createModel(BuildContext context) {
-    MobileModelFormRoute(provider: widget.provider).push(context);
+    MobileModelFormRoute(provider: widget.provider).push<void>(context);
   }
 
   void destroyModel(ModelEntity model) {
@@ -154,7 +154,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
 
   void editModel(ModelEntity model) {
     if (model.isPreset) return;
-    MobileModelFormRoute(model: model).push(context);
+    MobileModelFormRoute(model: model).push<void>(context);
   }
 
   @override

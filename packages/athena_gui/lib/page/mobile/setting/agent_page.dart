@@ -75,13 +75,15 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
             controller: iterationsController,
             placeholder: '100',
           ),
-          description:
-              'Maximum number of agent loop iterations (default: 100)',
+          description: 'Maximum number of agent loop iterations (default: 100)',
         ),
         const SizedBox(height: 16),
         AthenaFormField(
           label: 'Max Retries',
-          control: AthenaInput(controller: retriesController, placeholder: '10'),
+          control: AthenaInput(
+            controller: retriesController,
+            placeholder: '10',
+          ),
           description:
               'Maximum network retry attempts for LLM API calls (default: 10)',
         ),
@@ -105,9 +107,7 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           'Manual always asks you; AI review lets the current model decide and '
           'asks you when unsure; Bypass permissions runs tools without asking. '
           'Deny rules always apply. Takes effect from the next run.',
-          style: AthenaTextStyle.caption.copyWith(
-            color: colors.textSecondary,
-          ),
+          style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
         ),
         const SizedBox(height: 16),
         Align(

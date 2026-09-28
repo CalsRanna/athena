@@ -117,13 +117,10 @@ void main() {
     PermissionVerdict checkArgs(
       Map<String, dynamic> extra, {
       String? workspace,
-    }) =>
-        service.check(
-          1,
-          'bash',
-          {'command': command, ...extra},
-          workspace: workspace,
-        );
+    }) => service.check(1, 'bash', {
+      'command': command,
+      ...extra,
+    }, workspace: workspace);
 
     // 未指定 workdir，或就是本次 run 的工作文件夹（applyRunWorkspace 注入）
     expect(checkArgs({}), PermissionVerdict.allow);
@@ -145,7 +142,10 @@ void main() {
     expect(checkArgs({'workdir': '/Users/me'}), PermissionVerdict.prompt);
     expect(checkArgs({'background': true}), PermissionVerdict.prompt);
     expect(
-      checkArgs({'workdir': workspace, 'background': true}, workspace: workspace),
+      checkArgs({
+        'workdir': workspace,
+        'background': true,
+      }, workspace: workspace),
       PermissionVerdict.prompt,
     );
   });
@@ -175,7 +175,10 @@ void main() {
     );
     const url = 'https://api.example.com/gists';
 
-    expect(service.check(1, 'web_fetch', {'url': url}), PermissionVerdict.allow);
+    expect(
+      service.check(1, 'web_fetch', {'url': url}),
+      PermissionVerdict.allow,
+    );
     expect(
       service.check(1, 'web_fetch', {'url': url, 'method': 'get'}),
       PermissionVerdict.allow,

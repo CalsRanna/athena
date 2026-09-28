@@ -46,10 +46,7 @@ void main() {
     test('system 消息上提为顶层 system，不进 messages', () {
       final request = toMessageRequest(
         chatRequest(
-          messages: [
-            ChatMessage.system('你是 Athena'),
-            ChatMessage.user('你好'),
-          ],
+          messages: [ChatMessage.system('你是 Athena'), ChatMessage.user('你好')],
         ),
       );
 
@@ -216,8 +213,9 @@ void main() {
       );
 
       final blocks = blocksOf(request.messages.single);
-      expect(blocks.map((b) => b['type']), ['image'],
-          reason: 'Messages 协议拒绝空 text block');
+      expect(blocks.map((b) => b['type']), [
+        'image',
+      ], reason: 'Messages 协议拒绝空 text block');
     });
 
     test('http(s) 图片用 url source', () {
@@ -233,8 +231,7 @@ void main() {
         ),
       );
 
-      final source =
-          blocksOf(request.messages.single).single['source'] as Map;
+      final source = blocksOf(request.messages.single).single['source'] as Map;
       expect(source['type'], 'url');
       expect(source['url'], 'https://example.com/a.png');
     });
@@ -472,7 +469,10 @@ void main() {
 
       expect(completion.choices.single.finishReason, FinishReason.toolCalls);
       expect(completion.text, isNull);
-      expect(completion.choices.single.message.toolCalls!.single.function.arguments, '{"command":"ls"}');
+      expect(
+        completion.choices.single.message.toolCalls!.single.function.arguments,
+        '{"command":"ls"}',
+      );
     });
   });
 }

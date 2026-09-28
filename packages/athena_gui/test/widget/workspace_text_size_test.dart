@@ -121,6 +121,7 @@ void main() {
         collectStyles(child, style);
       }
     }
+
     collectStyles(paragraph.text, const TextStyle());
     expect(styles, isNotEmpty);
     for (final style in styles) {
@@ -148,7 +149,12 @@ void main() {
       expectTypography(tester, text, fontSize, lineHeight, systemScaler);
     }
     expectTypography(
-      tester, 'print(42);', fontSize, lineHeight, systemScaler, mono: true,
+      tester,
+      'print(42);',
+      fontSize,
+      lineHeight,
+      systemScaler,
+      mono: true,
     );
   }
 
@@ -166,8 +172,12 @@ void main() {
       await tester.pumpWidget(const AthenaApp());
       await settle(tester);
       // 尺寸比较必须等草稿角色初始化完成，不能拿加载占位与最终角色比较。
-      for (var i = 0; i < 100 &&
-          GetIt.instance<ChatViewModel>().currentSentinel.value == null; i++) {
+      for (
+        var i = 0;
+        i < 100 &&
+            GetIt.instance<ChatViewModel>().currentSentinel.value == null;
+        i++
+      ) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );
@@ -304,8 +314,9 @@ void main() {
     },
   );
 
-  testWidgets('Fixed Markdown presets preserve nonlinear system scaling',
-      (tester) async {
+  testWidgets('Fixed Markdown presets preserve nonlinear system scaling', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1000, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -313,7 +324,8 @@ void main() {
     final message = MessageEntity(
       chatId: 'typography-probe',
       role: 'assistant',
-      content: '# Heading probe\n\n'
+      content:
+          '# Heading probe\n\n'
           'Paragraph probe\n\n'
           '> Quote probe\n\n'
           '- List probe\n\n'
@@ -323,23 +335,25 @@ void main() {
           '```dart\nprint(42);\n```',
     );
     for (final size in AthenaTextSize.values) {
-      await tester.pumpWidget(MaterialApp(
-        theme: buildAthenaThemeData(AthenaColorMode.light),
-        home: MediaQuery(
-          data: const MediaQueryData(textScaler: systemScaler),
-          child: Scaffold(
-            body: AthenaWorkspaceTextSize(
-              size: size,
-              child: Column(
-                children: [
-                  AthenaMarkdown(message: message),
-                  const StepResultBody(text: 'Tool output probe'),
-                ],
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAthenaThemeData(AthenaColorMode.light),
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: systemScaler),
+            child: Scaffold(
+              body: AthenaWorkspaceTextSize(
+                size: size,
+                child: Column(
+                  children: [
+                    AthenaMarkdown(message: message),
+                    const StepResultBody(text: 'Tool output probe'),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
       final (fontSize, lineHeight) = proseMetrics(size);
       for (final text in [
@@ -355,7 +369,12 @@ void main() {
       }
       for (final text in ['inline_code', 'print(42);', 'Tool output probe']) {
         expectTypography(
-          tester, text, fontSize, lineHeight, systemScaler, mono: true,
+          tester,
+          text,
+          fontSize,
+          lineHeight,
+          systemScaler,
+          mono: true,
         );
       }
       expect(tester.takeException(), isNull);

@@ -84,12 +84,14 @@ class ChatCompletionsService {
     int? outputRoom,
   }) async* {
     final effort = model.reasoning
-        ? _parseReasoningEffort(chat.reasoningEffort) : null;
+        ? _parseReasoningEffort(chat.reasoningEffort)
+        : null;
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
       messages: messages,
       temperature: _acceptsTemperature(model.modelId, effort)
-          ? chat.temperature : null,
+          ? chat.temperature
+          : null,
       // 只有推理模型才带这个参数：会话上总有一档（默认 high），
       // 非推理模型收到它会直接 400
       reasoningEffort: effort,

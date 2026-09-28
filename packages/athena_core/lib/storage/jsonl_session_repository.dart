@@ -40,7 +40,11 @@ class JsonlSessionRepository
 
   SessionJsonlStore _storeFor(String chatId) {
     if (!RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(chatId)) {
-      throw ArgumentError.value(chatId, 'chatId', 'Expected one file name segment');
+      throw ArgumentError.value(
+        chatId,
+        'chatId',
+        'Expected one file name segment',
+      );
     }
     return _stores.putIfAbsent(
       chatId,
@@ -94,7 +98,9 @@ class JsonlSessionRepository
   @override
   Future<String> createChat(ChatEntity chat) async {
     final id = _idGenerator.next();
-    await _storeFor(id).writeChatRow(chat.toJson()..['id'] = id, createOnly: true);
+    await _storeFor(
+      id,
+    ).writeChatRow(chat.toJson()..['id'] = id, createOnly: true);
     return id;
   }
 
@@ -169,7 +175,10 @@ class JsonlSessionRepository
   }
 
   @override
-  Future<List<ChatEntity>> getChatsAfterId(String chatId, {int limit = 10}) async {
+  Future<List<ChatEntity>> getChatsAfterId(
+    String chatId, {
+    int limit = 10,
+  }) async {
     final chats = await getAllChats();
     final index = chats.indexWhere((chat) => chat.id == chatId);
     return index < 0 ? [] : chats.skip(index + 1).take(limit).toList();
@@ -268,7 +277,9 @@ class JsonlSessionRepository
   @override
   Future<void> deleteMessages(String chatId, Set<String> ids) async {
     if (ids.isEmpty) return;
-    await _storeFor(chatId).deleteMessageWhere((row) => ids.contains(row['id']));
+    await _storeFor(
+      chatId,
+    ).deleteMessageWhere((row) => ids.contains(row['id']));
   }
 
   @override

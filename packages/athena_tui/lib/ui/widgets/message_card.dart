@@ -95,15 +95,19 @@ class _MessageCardState extends State<MessageCard> {
   @override
   Component build(BuildContext context) {
     final barChar = _barChars
-        .firstWhere((c) => component.borderWidth >= c.$1,
-            orElse: () => _barChars.last)
+        .firstWhere(
+          (c) => component.borderWidth >= c.$1,
+          orElse: () => _barChars.last,
+        )
         .$2;
 
     // 布局阶段才构建 Row:此时拿到真实约束宽度,竖条行数精确可算。
     return LayoutBuilder(
       builder: (context, constraints) {
-        final barLines =
-            _calculateBarLines(component.child, constraints.maxWidth);
+        final barLines = _calculateBarLines(
+          component.child,
+          constraints.maxWidth,
+        );
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -143,7 +147,8 @@ class _MessageCardState extends State<MessageCard> {
             (maxWidth - _barColumnWidth - _horizontalPadding * 2).toInt(),
           )
         : _fallbackTextWidth;
-    final totalHeight = _measureHeight(component, textWidth.toDouble()) +
+    final totalHeight =
+        _measureHeight(component, textWidth.toDouble()) +
         this.component.verticalPadding * 2;
     return math.max(1, totalHeight.ceil());
   }
@@ -161,8 +166,11 @@ class _MessageCardState extends State<MessageCard> {
   /// - [Padding]:累加垂直 padding,水平 padding 缩减文本可用宽度
   ///   (浮点减法链与布局的 constraints.deflate 一致);
   /// - 其他组件:1 行兜底(当前调用处只用到 Text/Column/Padding)。
-  double _measureHeight(Component component, double textWidth,
-      {String path = ''}) {
+  double _measureHeight(
+    Component component,
+    double textWidth, {
+    String path = '',
+  }) {
     if (component is Padding) {
       final horizontal = component.padding.left + component.padding.right;
       final vertical = component.padding.top + component.padding.bottom;
@@ -195,8 +203,11 @@ class _MessageCardState extends State<MessageCard> {
     if (component is Column) {
       var height = 0.0;
       for (var i = 0; i < component.children.length; i++) {
-        height += _measureHeight(component.children[i], textWidth,
-            path: '$path/$i');
+        height += _measureHeight(
+          component.children[i],
+          textWidth,
+          path: '$path/$i',
+        );
       }
       return height;
     }

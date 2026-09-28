@@ -34,13 +34,13 @@ class TokenUsage {
 
   @override
   int get hashCode => Object.hash(
-        promptTokens,
-        completionTokens,
-        totalTokens,
-        reasoningTokens,
-        cachedTokens,
-        cacheCreationTokens,
-      );
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    reasoningTokens,
+    cachedTokens,
+    cacheCreationTokens,
+  );
 
   @override
   String toString() =>

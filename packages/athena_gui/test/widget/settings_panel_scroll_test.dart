@@ -54,9 +54,7 @@ void main() {
             : null;
         expect(
           tester.getTopLeft(find.text('Long settings content 0')).dy,
-          pane.top +
-              AthenaSettings.paneTopPadding +
-              AthenaSettings.panePadding,
+          pane.top + AthenaSettings.paneTopPadding + AthenaSettings.panePadding,
           reason: '首项内容与标题栏底边之间保留顶部内边距',
         );
 

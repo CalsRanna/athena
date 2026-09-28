@@ -212,9 +212,7 @@ class _DesktopSettingExperiencePageState
           child: Text(archived ? 'Restore' : 'Archive'),
         ),
         const SizedBox(width: 8),
-        AthenaSettingsMenuButton(
-          items: _menuItems(experience, open: false),
-        ),
+        AthenaSettingsMenuButton(items: _menuItems(experience, open: false)),
       ],
     );
     return AthenaSettingsPane(

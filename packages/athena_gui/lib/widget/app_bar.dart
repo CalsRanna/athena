@@ -127,9 +127,7 @@ class _MobileAppBar extends StatelessWidget {
       child: MobilePopButton(),
     );
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final textStyle = AthenaTextStyle.title.copyWith(
-      color: colors.textPrimary,
-    );
+    final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     final wrappedTitle = DefaultTextStyle(
       style: textStyle,
       maxLines: 1,

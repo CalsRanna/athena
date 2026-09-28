@@ -30,7 +30,12 @@ void main() {
   List<ChatTurn> turnsOf(int from, int count) => [
     for (var i = from; i < from + count; i++)
       ChatTurn(
-        user: MessageEntity(id: (i).toString(), chatId: '1', role: 'user', content: 'user $i'),
+        user: MessageEntity(
+          id: (i).toString(),
+          chatId: '1',
+          role: 'user',
+          content: 'user $i',
+        ),
         answer: 'answer $i',
       ),
   ];

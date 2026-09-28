@@ -155,24 +155,28 @@ class ChatMessageConverter {
         final messagesState = MessagesState.decode(msg.messagesState);
         final chatState = ChatCompletionsState.decode(msg.chatCompletionsState);
         messages.add(
-          chatState != null ? ChatCompletionsAssistantMessage(
-            chatCompletionsState: chatState,
-            content: hasContent ? msg.content : null,
-            toolCalls: toolCalls,
-            reasoningContent: reasoning,
-          ) : messagesState != null ? MessagesAssistantMessage(
-            messagesState: messagesState,
-            content: hasContent ? msg.content : null,
-            toolCalls: toolCalls,
-            reasoningContent: reasoning,
-          ) : ResponsesAssistantMessage(
-            responsesState: ResponsesState.decode(msg.responsesState),
-            // 与 agent_service 当轮构建一致：空 content 序列化为 null，
-            // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
-            content: hasContent ? msg.content : null,
-            toolCalls: toolCalls,
-            reasoningContent: reasoning,
-          ),
+          chatState != null
+              ? ChatCompletionsAssistantMessage(
+                  chatCompletionsState: chatState,
+                  content: hasContent ? msg.content : null,
+                  toolCalls: toolCalls,
+                  reasoningContent: reasoning,
+                )
+              : messagesState != null
+              ? MessagesAssistantMessage(
+                  messagesState: messagesState,
+                  content: hasContent ? msg.content : null,
+                  toolCalls: toolCalls,
+                  reasoningContent: reasoning,
+                )
+              : ResponsesAssistantMessage(
+                  responsesState: ResponsesState.decode(msg.responsesState),
+                  // 与 agent_service 当轮构建一致：空 content 序列化为 null，
+                  // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
+                  content: hasContent ? msg.content : null,
+                  toolCalls: toolCalls,
+                  reasoningContent: reasoning,
+                ),
         );
         for (final tr in toolResults) {
           final m = tr as Map<String, dynamic>;

@@ -63,7 +63,9 @@ ThemeData buildAthenaThemeData(AthenaColorMode mode) {
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AthenaRadius.panel)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AthenaRadius.panel),
+        ),
       ),
     ),
     scaffoldBackgroundColor: colors.surface,

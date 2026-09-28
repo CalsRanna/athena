@@ -128,13 +128,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     sourceId: 'alibaba',
     localName: '阿里云百炼',
     localBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    include: [
-      'qwen3*',
-      'qwen-vl*',
-      'qwen-max*',
-      'qwen-plus*',
-      'qwen-turbo*',
-    ],
+    include: ['qwen3*', 'qwen-vl*', 'qwen-max*', 'qwen-plus*', 'qwen-turbo*'],
     exclude: [
       // 专用场景模型(语音/OCR/实时翻译等),不适合通用聊天
       '*asr*', '*ocr*', '*character*', '*livetranslate*',
@@ -146,11 +140,7 @@ const modelCatalogConfig = <CatalogProviderConfig>[
     sourceId: 'siliconflow',
     localName: '硅基流动',
     localBaseUrl: 'https://api.siliconflow.cn/v1',
-    include: [
-      'deepseek-ai/*',
-      'zai-org/GLM-5*',
-      'Qwen/*',
-    ],
+    include: ['deepseek-ai/*', 'zai-org/GLM-5*', 'Qwen/*'],
     exclude: [
       'Qwen/Qwen2.5*', // 旧代 Qwen 已由 Qwen3+ 替代
       'deepseek-ai/DeepSeek-V3.1-Terminus', // 特殊开源版,家族去重不覆盖

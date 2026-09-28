@@ -29,11 +29,7 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
     final current = GetIt.instance<ChatViewModel>().currentSentinel.value;
     // Direct chat 与未保存的默认角色都没有 ID，按占位实体区分。
     final direct = identical(current, SentinelViewModel.directChatSentinel);
-    final tick = Icon(
-      LucideIcons.check,
-      size: 16,
-      color: colors.textPrimary,
-    );
+    final tick = Icon(LucideIcons.check, size: 16, color: colors.textPrimary);
     return DesktopContextMenu(
       offset: Offset(anchor.left, anchor.top - 8),
       upward: true,
@@ -45,10 +41,13 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
             for (final sentinel in sentinels)
               DesktopContextMenuTile(
                 text: sentinel.name,
-                trailing: !direct && current != null &&
-                    (identical(sentinel, current) ||
-                        (sentinel.id != null && sentinel.id == current.id))
-                    ? tick : null,
+                trailing:
+                    !direct &&
+                        current != null &&
+                        (identical(sentinel, current) ||
+                            (sentinel.id != null && sentinel.id == current.id))
+                    ? tick
+                    : null,
                 onTap: () => onSelected?.call(sentinel),
               ),
           ],

@@ -47,7 +47,8 @@ class SentinelHistoryStore {
   final String? _homeDir;
 
   String get _basePath {
-    final home = _homeDir ??
+    final home =
+        _homeDir ??
         Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '/';
@@ -85,7 +86,10 @@ class SentinelHistoryStore {
       'sentinel': entity.toJson(),
     };
     final target = File('${historyDir.path}/$id.json');
-    await atomicWriteString(target, const JsonEncoder.withIndent('  ').convert(json));
+    await atomicWriteString(
+      target,
+      const JsonEncoder.withIndent('  ').convert(json),
+    );
     return id;
   }
 
@@ -97,11 +101,13 @@ class SentinelHistoryStore {
       final json = await _readSnapshot(file);
       if (json == null) continue;
       try {
-        metas.add(SentinelSnapshotMeta(
-          id: json['snapshot_id'] as String,
-          savedAt: DateTime.parse(json['saved_at'] as String),
-          reason: (json['reason'] as String?) ?? '',
-        ));
+        metas.add(
+          SentinelSnapshotMeta(
+            id: json['snapshot_id'] as String,
+            savedAt: DateTime.parse(json['saved_at'] as String),
+            reason: (json['reason'] as String?) ?? '',
+          ),
+        );
       } catch (_) {
         // 跳过损坏文件
       }
@@ -122,7 +128,9 @@ class SentinelHistoryStore {
       final json = await _readSnapshot(file);
       if (json == null) return null;
       try {
-        return SentinelEntity.fromJson(json['sentinel'] as Map<String, dynamic>);
+        return SentinelEntity.fromJson(
+          json['sentinel'] as Map<String, dynamic>,
+        );
       } catch (_) {
         return null;
       }
@@ -168,5 +176,4 @@ class SentinelHistoryStore {
       return null;
     }
   }
-
 }

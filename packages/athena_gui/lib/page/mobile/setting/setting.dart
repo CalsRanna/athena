@@ -23,46 +23,43 @@ class SettingPage extends StatelessWidget {
     var children = [
       MobileSettingTile(
         leading: Icon(LucideIcons.workflow, size: 24),
-        onTap: () => MobileAgentRoute().push(context),
+        onTap: () => MobileAgentRoute().push<void>(context),
         title: 'Agent',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(AthenaIcons.connection, size: 24),
-        onTap: () => MobileProviderListRoute().push(context),
+        onTap: () => MobileProviderListRoute().push<void>(context),
         title: 'Provider',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(
-          LucideIcons.userRound,
-          size: 24,
-        ),
-        onTap: () => MobileSentinelListRoute().push(context),
+        leading: Icon(LucideIcons.userRound, size: 24),
+        onTap: () => MobileSentinelListRoute().push<void>(context),
         title: 'Sentinel',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(LucideIcons.bookOpen, size: 24),
-        onTap: () => MobileSkillListRoute().push(context),
+        onTap: () => MobileSkillListRoute().push<void>(context),
         title: 'Skills',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(LucideIcons.brain, size: 24),
-        onTap: () => MobileExperienceListRoute().push(context),
+        onTap: () => MobileExperienceListRoute().push<void>(context),
         title: 'Experiences',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(LucideIcons.cpu, size: 24),
-        onTap: () => MobileDefaultModelFormRoute().push(context),
+        onTap: () => MobileDefaultModelFormRoute().push<void>(context),
         title: 'Default Model',
         trailing: '',
       ),
       MobileSettingTile(
         leading: Icon(LucideIcons.database, size: 24),
-        onTap: () => MobileDataRoute().push(context),
+        onTap: () => MobileDataRoute().push<void>(context),
         title: 'Data',
         trailing: '',
       ),
@@ -77,7 +74,7 @@ class SettingPage extends StatelessWidget {
       }),
       MobileSettingTile(
         leading: Icon(LucideIcons.info, size: 24),
-        onTap: () => MobileAboutRoute().push(context),
+        onTap: () => MobileAboutRoute().push<void>(context),
         title: 'About Athena',
         trailing: '',
       ),
@@ -116,14 +113,17 @@ class SettingPage extends StatelessWidget {
           _appearanceTile(viewModel, ThemeMode.system, 'System'),
           const SizedBox(height: 12),
           _sheetLabel('Chat text size', colors),
-          for (final size in AthenaTextSize.values) _textSizeTile(viewModel, size),
+          for (final size in AthenaTextSize.values)
+            _textSizeTile(viewModel, size),
         ],
       ),
     );
   }
 
   Widget _sheetLabel(String text, AthenaColors colors) {
-    var textStyle = AthenaTextStyle.caption.copyWith(color: colors.textSecondary);
+    var textStyle = AthenaTextStyle.caption.copyWith(
+      color: colors.textSecondary,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Text(text, style: textStyle),

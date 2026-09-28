@@ -30,10 +30,7 @@ class _MobileChatConfigurationPageState
   @override
   Widget build(BuildContext context) {
     var children = [
-      AthenaFormField(
-        label: 'Temperature',
-        control: _buildTemperatureSlider(),
-      ),
+      AthenaFormField(label: 'Temperature', control: _buildTemperatureSlider()),
       SizedBox(height: 24),
       AthenaFormField(
         label: 'Zero Context',

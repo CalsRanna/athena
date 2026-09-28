@@ -13,6 +13,7 @@ class SentinelRevertTool implements Tool {
   ExecutionMode get executionMode => ExecutionMode.sequential;
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => false;
+
   /// 内置 sentinel 的名称（与 SentinelEvolveTool 约定一致）。
   static const builtinSentinelName = 'Athena';
 
@@ -24,9 +25,9 @@ class SentinelRevertTool implements Tool {
     required SentinelRepository repository,
     required SentinelHistoryStore historyStore,
     void Function()? onChanged,
-  })  : _repository = repository,
-        _historyStore = historyStore,
-        _onChanged = onChanged;
+  }) : _repository = repository,
+       _historyStore = historyStore,
+       _onChanged = onChanged;
 
   @override
   String get name => 'sentinel_revert';
@@ -44,33 +45,36 @@ class SentinelRevertTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'sentinel_name': {
-            'type': 'string',
-            'description':
-                'The name of the sentinel to revert. Use the exact name as '
-                'shown in the sentinel list.',
-          },
-          'snapshot_id': {
-            'type': 'string',
-            'description':
-                'ID of the snapshot to restore (omit to restore the most '
-                'recent snapshot). Snapshot IDs are shown in sentinel_evolve '
-                'change reports and in the history listing.',
-          },
-          'reason': {
-            'type': 'string',
-            'description':
-                'Why this revert is needed. This is recorded in the history '
-                'snapshot for future reference.',
-          },
-        },
-        'required': ['sentinel_name'],
-      };
+    'type': 'object',
+    'properties': {
+      'sentinel_name': {
+        'type': 'string',
+        'description':
+            'The name of the sentinel to revert. Use the exact name as '
+            'shown in the sentinel list.',
+      },
+      'snapshot_id': {
+        'type': 'string',
+        'description':
+            'ID of the snapshot to restore (omit to restore the most '
+            'recent snapshot). Snapshot IDs are shown in sentinel_evolve '
+            'change reports and in the history listing.',
+      },
+      'reason': {
+        'type': 'string',
+        'description':
+            'Why this revert is needed. This is recorded in the history '
+            'snapshot for future reference.',
+      },
+    },
+    'required': ['sentinel_name'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final sentinelName = args['sentinel_name'] as String;
     final snapshotId = args['snapshot_id'] as String?;
     final reason = args['reason'] as String? ?? '';
@@ -168,8 +172,10 @@ class SentinelRevertTool implements Tool {
     }
     buffer.writeln();
     buffer.writeln('**Changes:**');
-    buffer.writeln('- Prompt length: ${originalPrompt.length} → '
-        '${restoredPrompt.length} chars');
+    buffer.writeln(
+      '- Prompt length: ${originalPrompt.length} → '
+      '${restoredPrompt.length} chars',
+    );
     return buffer.toString();
   }
 }

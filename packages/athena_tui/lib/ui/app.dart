@@ -1098,7 +1098,12 @@ class _PermissionRequest {
   final String toolName;
   final String arguments;
   final Completer<PermissionDecision> completer;
-  _PermissionRequest(this.chatId, this.toolName, this.arguments, this.completer);
+  _PermissionRequest(
+    this.chatId,
+    this.toolName,
+    this.arguments,
+    this.completer,
+  );
 }
 
 /// 一次提问的进行中状态:问题、选项选择、自填文本、当前问题、作答器。

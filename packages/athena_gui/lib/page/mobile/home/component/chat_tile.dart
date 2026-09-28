@@ -41,7 +41,7 @@ class ChatTile extends StatelessWidget {
   }
 
   void handlePressed(BuildContext context) async {
-    MobileChatRoute(chat: chat).push(context);
+    MobileChatRoute(chat: chat).push<void>(context);
   }
 
   void handleLongPress(BuildContext context) {

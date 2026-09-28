@@ -59,7 +59,13 @@ class AthenaRouter extends RootStackRouter {
   }
 }
 
-class DesktopRoute<R> extends CustomRoute<R> {
+/// 桌面端路由：与 [AutoRoute] 唯一的区别是取消转场动画（桌面端页面主由设置
+/// 面板这类非透明浮层构成，做转场反而像在做无谓的动画）。
+///
+/// `R` 保留为类型参数是为了配合 `CustomRoute<R>`，但仓库里 10 个调用点全是
+/// 无参页面（`DesktopHomeRoute.page` 之类），没有一处能推出 `R`，所以给一个
+/// `Object?` 默认值——显式写出 `<Object?>` 不会带来任何信息，只会让路由表变噪。
+class DesktopRoute<R extends Object?> extends CustomRoute<R> {
   DesktopRoute({
     super.initial,
     required super.page,

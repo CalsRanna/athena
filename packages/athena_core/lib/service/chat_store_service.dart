@@ -9,6 +9,7 @@ import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+
 /// 会话与消息的持久化编排。
 ///
 /// 职责：会话 CRUD、消息删除/占位/最终化、取消/错误标记。
@@ -26,11 +27,11 @@ class ChatStoreService {
     required ModelRepository modelRepository,
     required ProviderRepository providerRepository,
     required SentinelRepository sentinelRepository,
-  })  : _chatRepository = chatRepository,
-        _messageRepository = messageRepository,
-        _modelRepository = modelRepository,
-        _providerRepository = providerRepository,
-        _sentinelRepository = sentinelRepository;
+  }) : _chatRepository = chatRepository,
+       _messageRepository = messageRepository,
+       _modelRepository = modelRepository,
+       _providerRepository = providerRepository,
+       _sentinelRepository = sentinelRepository;
 
   Future<(List<ChatEntity>, List<ChatHistoryEntity>)> getChats() async {
     final chats = await _chatRepository.getAllChats();
@@ -75,16 +76,17 @@ class ChatStoreService {
     }
   }
 
-  Future<({
-    List<MessageEntity> messages,
-    ModelEntity? model,
-    ProviderEntity? provider,
-    SentinelEntity? sentinel,
-  })> selectChat(
-    ChatEntity chat, {
-    List<MessageEntity>? preloadedMessages,
-  }) async {
-    final messages = preloadedMessages ??
+  Future<
+    ({
+      List<MessageEntity> messages,
+      ModelEntity? model,
+      ProviderEntity? provider,
+      SentinelEntity? sentinel,
+    })
+  >
+  selectChat(ChatEntity chat, {List<MessageEntity>? preloadedMessages}) async {
+    final messages =
+        preloadedMessages ??
         await _messageRepository.getMessagesByChatId(chat.id!);
     final model = await _modelRepository.getModelById(chat.modelId);
     final provider = model != null
@@ -93,7 +95,12 @@ class ChatStoreService {
     final sentinel = chat.sentinelId == null
         ? null
         : await _sentinelRepository.getSentinelById(chat.sentinelId!);
-    return (messages: messages, model: model, provider: provider, sentinel: sentinel);
+    return (
+      messages: messages,
+      model: model,
+      provider: provider,
+      sentinel: sentinel,
+    );
   }
 
   Future<void> togglePin(ChatEntity chat) async {
@@ -124,7 +131,9 @@ class ChatStoreService {
   Future<void> updateChatTimestamp(ChatEntity chat) async {
     final latest = await _chatRepository.getChatById(chat.id!);
     if (latest != null) {
-      await _chatRepository.updateChat(latest.copyWith(updatedAt: DateTime.now()));
+      await _chatRepository.updateChat(
+        latest.copyWith(updatedAt: DateTime.now()),
+      );
     }
   }
 

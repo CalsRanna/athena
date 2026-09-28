@@ -52,9 +52,21 @@ anthropic.MessageCreateRequest toMessageRequest(
   ProviderEntity? provider,
 }) {
   checkRequestFields(request, 'Messages', {
-    'model', 'messages', 'tools', 'tool_choice', 'parallel_tool_calls',
-    'temperature', 'top_p', 'top_k', 'max_tokens', 'max_completion_tokens',
-    'reasoning_effort', 'response_format', 'stop', 'user', 'stream_options',
+    'model',
+    'messages',
+    'tools',
+    'tool_choice',
+    'parallel_tool_calls',
+    'temperature',
+    'top_p',
+    'top_k',
+    'max_tokens',
+    'max_completion_tokens',
+    'reasoning_effort',
+    'response_format',
+    'stop',
+    'user',
+    'stream_options',
   });
   // 当前适配器尚未接入 output_config.format。
   // 不显式失败的话，`/json` 模式下会静默按普通对话发出，用户拿到的是
@@ -74,7 +86,8 @@ anthropic.MessageCreateRequest toMessageRequest(
         message.content,
   ];
   final systemPrompt = system.isEmpty
-      ? null : anthropic.SystemPrompt.text(system.join('\n\n'));
+      ? null
+      : anthropic.SystemPrompt.text(system.join('\n\n'));
   final tools = request.tools?.map(_toToolDefinition).toList();
   final messages = <anthropic.InputMessage>[];
   final pending = <anthropic.InputContentBlock>[];
@@ -120,8 +133,10 @@ anthropic.MessageCreateRequest toMessageRequest(
           if (state != null &&
               state.matches(provider, request.model, message, prefix)) {
             lastAssistantState = state;
-            push(_Role.assistant,
-              state.content.map(anthropic.InputContentBlock.fromJson).toList());
+            push(
+              _Role.assistant,
+              state.content.map(anthropic.InputContentBlock.fromJson).toList(),
+            );
             continue;
           }
         }
@@ -154,24 +169,35 @@ anthropic.MessageCreateRequest toMessageRequest(
   final explicitLimit = request.maxCompletionTokens ?? request.maxTokens;
   final outputLimit = explicitLimit == null
       ? maxTokens ?? messagesMaxTokens()
-      : maxTokens == null ? explicitLimit : min(explicitLimit, maxTokens);
+      : maxTokens == null
+      ? explicitLimit
+      : min(explicitLimit, maxTokens);
   var thinking = MessagesThinking.resolve(
-    request.model, request.reasoningEffort, outputLimit);
+    request.model,
+    request.reasoningEffort,
+    outputLimit,
+  );
   // 工具循环属于同一个 assistant turn，不能中途改变 thinking 配置。
   final continuation = request.messages.lastOrNull is ToolMessage
-      ? lastAssistantState : null;
+      ? lastAssistantState
+      : null;
   if (continuation != null) {
     final config = continuation.thinking == null
-        ? null : anthropic.ThinkingConfig.fromJson(continuation.thinking!);
+        ? null
+        : anthropic.ThinkingConfig.fromJson(continuation.thinking!);
     if (config is anthropic.ThinkingEnabled &&
         config.budgetTokens >= outputLimit) {
-      throw StateError('Insufficient output room to continue Messages thinking');
+      throw StateError(
+        'Insufficient output room to continue Messages thinking',
+      );
     }
     thinking = MessagesThinking(
       config,
       continuation.outputConfig == null
-          ? null : anthropic.OutputConfig.fromJson(continuation.outputConfig!),
-      thinking.omitTemperature || config is anthropic.ThinkingEnabled ||
+          ? null
+          : anthropic.OutputConfig.fromJson(continuation.outputConfig!),
+      thinking.omitTemperature ||
+          config is anthropic.ThinkingEnabled ||
           config is anthropic.ThinkingAdaptive,
     );
   }
@@ -181,17 +207,23 @@ anthropic.MessageCreateRequest toMessageRequest(
     system: systemPrompt,
     messages: messages,
     tools: tools,
-    toolChoice: _messageToolChoice(request.toolChoice, request.parallelToolCalls),
+    toolChoice: _messageToolChoice(
+      request.toolChoice,
+      request.parallelToolCalls,
+    ),
     topP: request.topP,
     topK: request.topK,
     stopSequences: request.stop,
-    metadata: request.user == null ? null : anthropic.Metadata(userId: request.user),
+    metadata: request.user == null
+        ? null
+        : anthropic.Metadata(userId: request.user),
     thinking: thinking.thinking,
     outputConfig: thinking.outputConfig,
     // Messages 只接受 0–1，而会话温度按 OpenAI 口径可调到 2（移动端滑杆）：
     // 推理模式及新版 Claude 不接受自定义温度，必须省略。
     temperature: thinking.omitTemperature
-        ? null : request.temperature?.clamp(0.0, 1.0).toDouble(),
+        ? null
+        : request.temperature?.clamp(0.0, 1.0).toDouble(),
     stream: stream,
   );
 }
@@ -258,15 +290,17 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
       case anthropic.ContentBlockStartEvent(:final index, :final contentBlock):
         blocks[index] = contentBlock.toJson();
         openBlocks.add(index);
-        if (contentBlock is anthropic.TextBlock && contentBlock.text.isNotEmpty) {
+        if (contentBlock is anthropic.TextBlock &&
+            contentBlock.text.isNotEmpty) {
           hasText = true;
           yield _chunk(ChatDelta(content: contentBlock.text));
         } else if (contentBlock is anthropic.ThinkingBlock &&
             contentBlock.thinking.isNotEmpty) {
           final separator = reasoningParts.isEmpty ? '' : '\n\n';
           reasoningParts.add(index);
-          yield _chunk(ChatDelta(
-            reasoningContent: '$separator${contentBlock.thinking}'));
+          yield _chunk(
+            ChatDelta(reasoningContent: '$separator${contentBlock.thinking}'),
+          );
         }
         if (contentBlock is anthropic.ToolUseBlock) {
           final toolIndex = callIndexes.length;
@@ -282,7 +316,8 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
                   function: FunctionCallDelta(
                     name: contentBlock.name,
                     arguments: contentBlock.input.isEmpty
-                        ? null : jsonEncode(contentBlock.input),
+                        ? null
+                        : jsonEncode(contentBlock.input),
                   ),
                 ),
               ],
@@ -305,8 +340,10 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
               block['thinking'] = '${block['thinking'] ?? ''}$thinking';
             }
             if (thinking.isNotEmpty) {
-              final separator = !reasoningParts.contains(index) &&
-                  reasoningParts.isNotEmpty ? '\n\n' : '';
+              final separator =
+                  !reasoningParts.contains(index) && reasoningParts.isNotEmpty
+                  ? '\n\n'
+                  : '';
               reasoningParts.add(index);
               yield _chunk(ChatDelta(reasoningContent: '$separator$thinking'));
             }
@@ -345,31 +382,43 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
           throw StateError('Messages stream ended without stop_reason');
         }
         if (request != null && openBlocks.isNotEmpty) {
-          throw StateError('Messages stream ended with unfinished content blocks');
+          throw StateError(
+            'Messages stream ended with unfinished content blocks',
+          );
         }
-        if (provider != null && request != null && id != null &&
-            openBlocks.isEmpty && _completeStop(stopReason)) {
+        if (provider != null &&
+            request != null &&
+            id != null &&
+            openBlocks.isEmpty &&
+            _completeStop(stopReason)) {
           for (final entry in arguments.entries) {
             blocks[entry.key]!['input'] = jsonDecode(entry.value.toString());
           }
           final content = blocks.values.toList();
-          if (content.any((block) => block['type'] == 'thinking' ||
-                  block['type'] == 'redacted_thinking') &&
+          if (content.any(
+                (block) =>
+                    block['type'] == 'thinking' ||
+                    block['type'] == 'redacted_thinking',
+              ) &&
               !MessagesState.hasCompleteThinking(content)) {
-            throw StateError('Messages thinking response is missing its signature');
+            throw StateError(
+              'Messages thinking response is missing its signature',
+            );
           }
           if (MessagesState.hasCompleteThinking(content)) {
-            yield MessagesStateChunk(MessagesState(
-              provider: provider,
-              model: request.model,
-              content: content,
-              // 旧端点没有推理明细时，用总输出保守预留隐藏推理空间。
-              reasoningTokens: reasoningTokens ?? outputTokens,
-              prefixHash: MessagesState.hashPrefix(request),
-              thinking: request.thinking?.toJson(),
-              outputConfig: request.outputConfig?.toJson(),
-              message: _assistantFromContent(content),
-            ));
+            yield MessagesStateChunk(
+              MessagesState(
+                provider: provider,
+                model: request.model,
+                content: content,
+                // 旧端点没有推理明细时，用总输出保守预留隐藏推理空间。
+                reasoningTokens: reasoningTokens ?? outputTokens,
+                prefixHash: MessagesState.hashPrefix(request),
+                thinking: request.thinking?.toJson(),
+                outputConfig: request.outputConfig?.toJson(),
+                message: _assistantFromContent(content),
+              ),
+            );
           }
         }
 
@@ -378,18 +427,23 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
         outputTokens = usage.outputTokens;
         inputTokens = usage.inputTokens ?? inputTokens;
         cachedTokens = usage.cacheReadInputTokens ?? cachedTokens;
-        cacheCreationTokens = usage.cacheCreationInputTokens ?? cacheCreationTokens;
+        cacheCreationTokens =
+            usage.cacheCreationInputTokens ?? cacheCreationTokens;
         rawUsage.addAll(usage.toJson());
-        details.addAll(delta.toJson()..removeWhere((key, value) => value == null));
+        details.addAll(
+          delta.toJson()..removeWhere((key, value) => value == null),
+        );
         details['usage'] = Map<String, dynamic>.of(rawUsage);
         yield CompletionDetailsChunk(Map<String, dynamic>.of(details));
         if (stopReason == anthropic.StopReason.refusal && !hasText) {
-          final refusal = (details['stop_details'] as Map?)?['explanation'] as String?
-              ?? 'Request refused.';
+          final refusal =
+              (details['stop_details'] as Map?)?['explanation'] as String? ??
+              'Request refused.';
           hasText = true;
           yield _chunk(ChatDelta(content: refusal, refusal: refusal));
         }
-        reasoningTokens = usage.outputTokensDetails?.thinkingTokens ?? reasoningTokens;
+        reasoningTokens =
+            usage.outputTokensDetails?.thinkingTokens ?? reasoningTokens;
         yield _terminalChunk(
           id: id,
           model: model,
@@ -435,34 +489,43 @@ int _statusForErrorType(String errorType) => switch (errorType) {
 };
 
 /// 把 Messages 的完整响应转成 Chat Completion（非流式路径）。
-ChatCompletion messageToChatCompletion(anthropic.Message message, {
+ChatCompletion messageToChatCompletion(
+  anthropic.Message message, {
   ProviderEntity? provider,
   anthropic.MessageCreateRequest? request,
 }) {
   final content = message.content.map((block) => block.toJson()).toList();
   final assistant = _assistantFromContent(content);
-  final state = provider != null && request != null &&
-      _completeStop(message.stopReason) &&
-      MessagesState.hasCompleteThinking(content)
+  final state =
+      provider != null &&
+          request != null &&
+          _completeStop(message.stopReason) &&
+          MessagesState.hasCompleteThinking(content)
       ? MessagesState(
           provider: provider,
           model: request.model,
           content: content,
-          reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens ??
+          reasoningTokens:
+              message.usage.outputTokensDetails?.thinkingTokens ??
               message.usage.outputTokens,
           prefixHash: MessagesState.hashPrefix(request),
           thinking: request.thinking?.toJson(),
           outputConfig: request.outputConfig?.toJson(),
           message: assistant,
-        ) : null;
+        )
+      : null;
   final refusal = message.stopReason == anthropic.StopReason.refusal
-      ? assistant.content ?? message.stopDetails?.explanation ?? 'Request refused.' : null;
+      ? assistant.content ??
+            message.stopDetails?.explanation ??
+            'Request refused.'
+      : null;
   return DetailedChatCompletion(
     details: {
       'protocol': 'messages',
       'stop_reason': message.stopReason?.value,
       'stop_sequence': message.stopSequence,
-      if (message.stopDetails != null) 'stop_details': message.stopDetails!.toJson(),
+      if (message.stopDetails != null)
+        'stop_details': message.stopDetails!.toJson(),
       'usage': message.usage.toJson(),
     },
     id: message.id,
@@ -497,11 +560,15 @@ bool _completeStop(anthropic.StopReason? reason) =>
     reason == anthropic.StopReason.stopSequence;
 
 AssistantMessage _assistantFromContent(List<Map<String, dynamic>> blocks) {
-  final text = blocks.where((b) => b['type'] == 'text')
-      .map((b) => b['text'] as String).join();
-  final reasoning = blocks.where((b) => b['type'] == 'thinking')
+  final text = blocks
+      .where((b) => b['type'] == 'text')
+      .map((b) => b['text'] as String)
+      .join();
+  final reasoning = blocks
+      .where((b) => b['type'] == 'thinking')
       .map((b) => b['thinking'] as String)
-      .where((s) => s.isNotEmpty).join('\n\n');
+      .where((s) => s.isNotEmpty)
+      .join('\n\n');
   final calls = [
     for (final block in blocks)
       if (block['type'] == 'tool_use')
@@ -543,9 +610,7 @@ anthropic.InputContentBlock _toContentBlock(ContentPart part) {
     case ImageContentPart(:final url):
       return anthropic.InputContentBlock.image(_toImageSource(url));
     default:
-      throw UnsupportedError(
-        'Messages 协议暂不支持 ${part.runtimeType} 类型的消息内容',
-      );
+      throw UnsupportedError('Messages 协议暂不支持 ${part.runtimeType} 类型的消息内容');
   }
 }
 
@@ -596,7 +661,9 @@ anthropic.InputSchema _toInputSchema(Map<String, dynamic>? parameters) {
         entry.key: entry.value,
   };
   return anthropic.InputSchema(
-    properties: properties is Map ? Map<String, dynamic>.from(properties) : null,
+    properties: properties is Map
+        ? Map<String, dynamic>.from(properties)
+        : null,
     required: required is List ? required.cast<String>() : null,
     extra: extra,
   );
@@ -607,7 +674,8 @@ Map<String, dynamic> _decodeArguments(String arguments) {
   try {
     final decoded = jsonDecode(arguments);
     return decoded is Map<String, dynamic>
-        ? decoded : const <String, dynamic>{};
+        ? decoded
+        : const <String, dynamic>{};
   } on FormatException {
     // 上游给的参数半截、非 JSON 或非对象：下发空对象，让模型重新发起调用，
     // 而不是把整轮对话打挂。
@@ -625,7 +693,9 @@ FinishReason? _finishReason(anthropic.StopReason? stopReason) {
     anthropic.StopReason.endTurn ||
     anthropic.StopReason.stopSequence => FinishReason.stop,
     // Athena 尚未请求服务端工具或服务端压缩，不能假装已完成这些回合。
-    _ => throw UnsupportedError('Messages continuation is not supported: ${stopReason.value}'),
+    _ => throw UnsupportedError(
+      'Messages continuation is not supported: ${stopReason.value}',
+    ),
   };
 }
 
@@ -644,7 +714,8 @@ Usage _usage({
     totalTokens: totalInput + outputTokens,
     promptTokensDetails: PromptTokensDetails(cachedTokens: cachedTokens),
     completionTokensDetails: reasoningTokens == null
-        ? null : CompletionTokensDetails(reasoningTokens: reasoningTokens),
+        ? null
+        : CompletionTokensDetails(reasoningTokens: reasoningTokens),
   );
 }
 
@@ -679,13 +750,23 @@ ChatStreamEvent _terminalChunk({
 anthropic.ToolChoice? _messageToolChoice(ToolChoice? choice, bool? parallel) {
   final disable = parallel == null ? null : !parallel;
   return switch (choice) {
-    null => parallel == null ? null
-        : anthropic.ToolChoice.auto(disableParallelToolUse: disable),
-    ToolChoiceAuto() => anthropic.ToolChoice.auto(disableParallelToolUse: disable),
+    null =>
+      parallel == null
+          ? null
+          : anthropic.ToolChoice.auto(disableParallelToolUse: disable),
+    ToolChoiceAuto() => anthropic.ToolChoice.auto(
+      disableParallelToolUse: disable,
+    ),
     ToolChoiceNone() => anthropic.ToolChoice.none(),
-    ToolChoiceRequired() => anthropic.ToolChoice.any(disableParallelToolUse: disable),
-    ToolChoiceFunction(:final name) =>
-      anthropic.ToolChoice.tool(name, disableParallelToolUse: disable),
-    _ => throw UnsupportedError('Messages does not support ${choice.runtimeType}'),
+    ToolChoiceRequired() => anthropic.ToolChoice.any(
+      disableParallelToolUse: disable,
+    ),
+    ToolChoiceFunction(:final name) => anthropic.ToolChoice.tool(
+      name,
+      disableParallelToolUse: disable,
+    ),
+    _ => throw UnsupportedError(
+      'Messages does not support ${choice.runtimeType}',
+    ),
   };
 }

@@ -25,7 +25,7 @@ class NewChatButton extends StatelessWidget {
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => MobileChatRoute().push(context),
+      onTap: () => MobileChatRoute().push<void>(context),
       child: button,
     );
   }

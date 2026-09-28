@@ -42,11 +42,7 @@ void main() {
         'sudo rm -rf /',
       ]) {
         final rules = PermissionRule.forToolCall('bash', command);
-        expect(
-          rules.single.kind,
-          RuleKind.exact,
-          reason: command,
-        );
+        expect(rules.single.kind, RuleKind.exact, reason: command);
       }
     });
   });
@@ -83,10 +79,7 @@ void main() {
     });
 
     test('web_fetch → origin 规则', () {
-      final rules = PermissionRule.forToolCall(
-        'web_fetch',
-        'https://a.com/x',
-      );
+      final rules = PermissionRule.forToolCall('web_fetch', 'https://a.com/x');
       expect(rules.single.kind, RuleKind.origin);
     });
 

@@ -109,6 +109,7 @@ Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
     ],
   );
 }
+
 /// 设置行里的模型下拉：显示 `模型名 · provider`，点开 [DesktopSettingModelMenu]。
 class DesktopSettingModelSelect extends StatelessWidget {
   final String? modelId;

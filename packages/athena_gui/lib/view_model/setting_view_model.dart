@@ -101,8 +101,11 @@ class SettingViewModel {
   /// 加载所有设置
   Future<void> initSignals() async {
     final instance = await SharedPreferences.getInstance();
-    for (final key in [_keyChatModelId, _keyChatNamingModelId,
-      _keySentinelMetadataGenerationModelId]) {
+    for (final key in [
+      _keyChatModelId,
+      _keyChatNamingModelId,
+      _keySentinelMetadataGenerationModelId,
+    ]) {
       final old = instance.get(key);
       if (old is int) {
         await instance.setString(key, _storage.legacyModelIds['$old'] ?? '');

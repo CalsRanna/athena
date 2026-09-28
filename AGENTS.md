@@ -155,15 +155,15 @@ lib/
 ## 9. 常用命令
 
 ```bash
-cd packages/athena_core && dart analyze && dart test
+cd packages/athena_core && dart analyze && dart test && dart format --output=none --set-exit-if-changed lib test
 ```
 
 ```bash
-cd packages/athena_tui && dart analyze && dart test
+cd packages/athena_tui && dart analyze && dart test && dart format --output=none --set-exit-if-changed lib test
 ```
 
 ```bash
-cd packages/athena_gui && flutter analyze && flutter test
+cd packages/athena_gui && flutter analyze && flutter test && dart format --output=none --set-exit-if-changed lib test
 ```
 
 `athena_gui` 还要在首次拉取依赖后、以及改了带 `@RoutePage` 的页面之后重新生成路由：
@@ -172,7 +172,9 @@ cd packages/athena_gui && flutter analyze && flutter test
 cd packages/athena_gui && dart run build_runner build --delete-conflicting-outputs
 ```
 
-改完 Dart / Flutter 代码后跑一次 hot reload（或 hot restart）；提交前跑对应包的 `analyze` 与 `test`——CI 跑的就是这两条，本地过了 CI 就不会红。
+改完 Dart / Flutter 代码后跑一次 hot reload（或 hot restart）；提交前跑对应包的 `analyze`、`test` 与 `format --set-exit-if-changed`——CI 跑的就是这三条，本地过了 CI 就不会红。
+
+`format` 那条只扫 `lib test` 两个目录，`.g.dart` / `.gr.dart` 不在其中：生成文件不符合格式器口径，且 build_runner 会覆盖，格式化它们没有意义。
 
 ---
 
@@ -204,6 +206,11 @@ GUI 由 tag 触发三平台构建与 `tapster publish`，流程见 [README.md](R
 
 - 用 `const` 构造与 `final` 字段；能用 `switch` 表达式表达的分支不要写成 `if/else` 链
 - 集合操作优先（`map` / `where` / `fold`），不手写索引循环
-- 一个文件只放一个公开类（及其私有伴生类）；工具类用 `abstract final class` 防止实例化与继承
+- 一个文件放一个**主**类，并把它承担不了的小件（同族的 sealed 子类、纯值对象、token 常量类、同一处私有的伴生类）留在同文件；工具类用 `abstract final class` 防止实例化与继承
+  - 判断标准是「这个类能不能独立站住」，不是数量。`run_event.dart` 里 13 个 sealed 事件子类、`athena_tokens.dart` 里 8 个 token 类都刻意留在一起——拆开只会让调用方多跑几个 import
+  - 反之，一个类有独立的行为与测试就该独立成文件
 - 不在 widget 里写业务逻辑；状态一律通过 ViewModel / Controller 的 signal 流动
-- 静态分析：三个包都开 `strict-casts`，`athena_core` / `athena_tui` 另开 `strict-inference`；`prefer_initializing_formals` 因存量风格统一关闭（见各包 `analysis_options.yaml` 的注释）
+- 静态分析配置集中在仓库根 `shared_analysis_options.yaml`，三个包各自留一份只做 include 的薄壳。改规则改那一份，**不要**在各包里就地加
+  - include 数组里**靠后的覆盖靠前的**，共享文件必须放数组末尾，否则会被 `package:lints` / `flutter_lints` 里的同名规则覆盖（`prefer_initializing_formals` 就是这样）
+  - analyzer 对解析失败的 include 只报一条 `include_file_not_found` 而**不中断**，路径写错会静默失效——改完跑一次 `dart analyze` 确认它不是 0 issue 而是真的没 issue
+- 格式化用 `dart format`，配置同样在 `shared_analysis_options.yaml`（80 列、`trailing_commas: automate`）。生成文件（`*.g.dart` / `*.gr.dart`）不格式化，它们由 build_runner 覆盖

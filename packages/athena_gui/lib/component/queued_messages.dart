@@ -29,11 +29,7 @@ class QueuedMessages extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                AthenaIcons.time,
-                size: 14,
-                color: colors.textSecondary,
-              ),
+              Icon(AthenaIcons.time, size: 14, color: colors.textSecondary),
               const SizedBox(width: 6),
               Text(
                 'Queued (${messages.length})',

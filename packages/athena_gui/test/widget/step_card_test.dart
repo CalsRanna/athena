@@ -85,9 +85,7 @@ void main() {
   });
 
   for (final grouped in [false, true]) {
-    testWidgets('${grouped ? '分组' : '单步'}工具头从占位变为描述，不泄露参数', (
-      tester,
-    ) async {
+    testWidgets('${grouped ? '分组' : '单步'}工具头从占位变为描述，不泄露参数', (tester) async {
       const description = '读取配置文件';
       const completeArgs =
           '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
@@ -246,28 +244,19 @@ void main() {
       ], live: false);
       final colors = colorsOf(tester);
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
-      expect(
-        iconColor(tester, LucideIcons.file),
-        colors.textSecondary,
-      );
+      expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
 
       final gesture = await movePointerTo(
         tester,
         tester.getCenter(find.byType(StepHeader)),
       );
       expect(labelColor(tester, '读取配置文件'), colors.textPrimary);
-      expect(
-        iconColor(tester, LucideIcons.file),
-        colors.textPrimary,
-      );
+      expect(iconColor(tester, LucideIcons.file), colors.textPrimary);
 
       await gesture.moveTo(const Offset(0, 0));
       await tester.pump();
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
-      expect(
-        iconColor(tester, LucideIcons.file),
-        colors.textSecondary,
-      );
+      expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
     });
 
     testWidgets('不可点头部（结果未返回）：hover 不提亮，仍是次级色', (tester) async {
@@ -278,10 +267,7 @@ void main() {
 
       await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
-      expect(
-        iconColor(tester, LucideIcons.file),
-        colors.textSecondary,
-      );
+      expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
     });
   });
 }

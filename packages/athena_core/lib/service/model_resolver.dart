@@ -14,8 +14,8 @@ class ModelResolver {
   ModelResolver({
     required ModelRepository modelRepo,
     required ProviderRepository providerRepo,
-  })  : _modelRepo = modelRepo,
-        _providerRepo = providerRepo;
+  }) : _modelRepo = modelRepo,
+       _providerRepo = providerRepo;
 
   /// 解析模型和 Provider。若 [preferredModelId] 有效，优先使用；
   /// 否则回退到第一个启用 Provider 的第一个模型。返回 null 表示无可用。

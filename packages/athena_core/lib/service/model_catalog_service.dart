@@ -80,7 +80,8 @@ class ModelCatalogService {
     try {
       final cachePath = await _resolveCachePath();
       final cached = await _readCache(cachePath);
-      final needFetch = force ||
+      final needFetch =
+          force ||
           cached == null ||
           !isCacheFresh(cached.fetchedAt, ttl: _cacheTtl);
       if (!needFetch) {
@@ -160,9 +161,11 @@ class ModelCatalogService {
       if (selected.isEmpty) continue;
 
       // ---- provider:匹配已有,不存在则创建 ----
-      var provider = await _providerRepository
-          .getPresetProviderByName(config.localName);
-      final providerId = provider?.id ??
+      var provider = await _providerRepository.getPresetProviderByName(
+        config.localName,
+      );
+      final providerId =
+          provider?.id ??
           await _providerRepository.storeProvider(
             ProviderEntity(
               name: config.localName,
@@ -187,8 +190,10 @@ class ModelCatalogService {
         final modelJson = entry.value;
         if (modelJson is! Map<String, dynamic>) continue;
 
-        final existing = await _modelRepository
-            .getModelByModelIdAndProviderId(entry.key, providerId);
+        final existing = await _modelRepository.getModelByModelIdAndProviderId(
+          entry.key,
+          providerId,
+        );
         final mapped = mapModel(entry.key, modelJson, providerId);
         if (existing == null) {
           await _modelRepository.createModel(mapped);
@@ -204,7 +209,9 @@ class ModelCatalogService {
       final all = await _modelRepository.getModelsByProviderId(providerId);
       for (var model in all) {
         if (!model.isPreset || keepIds.contains(model.modelId)) continue;
-        final chatCount = await _chatRepository.getChatCountByModelId(model.id!);
+        final chatCount = await _chatRepository.getChatCountByModelId(
+          model.id!,
+        );
         if (chatCount > 0) continue;
         await _modelRepository.deleteModel(model.id!);
         removedModels++;
@@ -228,8 +235,9 @@ class ModelCatalogService {
       if (providerJson is! Map<String, dynamic>) continue;
       final format = config.resolveApiFormat(providerJson);
       if (format == null) continue;
-      final provider = await _providerRepository
-          .getPresetProviderByName(config.localName);
+      final provider = await _providerRepository.getPresetProviderByName(
+        config.localName,
+      );
       if (provider?.id == null) continue;
       await _providerRepository.syncApiFormat(
         id: provider!.id!,
@@ -425,7 +433,8 @@ class ModelCatalogService {
     final cost = json['cost'];
     final released = json['release_date'];
 
-    final contextWindow = limit is Map<String, dynamic> && limit['context'] is num
+    final contextWindow =
+        limit is Map<String, dynamic> && limit['context'] is num
         ? (limit['context'] as num).toInt()
         : 0;
     final outputLimit = limit is Map<String, dynamic> && limit['output'] is num
@@ -437,11 +446,15 @@ class ModelCatalogService {
       providerId: providerId,
       contextWindow: contextWindow,
       outputLimit: outputLimit,
-      inputPrice: formatPrice(cost is Map<String, dynamic> ? cost['input'] : null),
-      outputPrice:
-          formatPrice(cost is Map<String, dynamic> ? cost['output'] : null),
-      releasedAt:
-          released is String && released.isNotEmpty ? 'Released $released' : '',
+      inputPrice: formatPrice(
+        cost is Map<String, dynamic> ? cost['input'] : null,
+      ),
+      outputPrice: formatPrice(
+        cost is Map<String, dynamic> ? cost['output'] : null,
+      ),
+      releasedAt: released is String && released.isNotEmpty
+          ? 'Released $released'
+          : '',
       reasoning: json['reasoning'] == true,
       vision: json['attachment'] == true,
       isPreset: true,

@@ -17,6 +17,7 @@ class SentinelEvolveTool implements Tool {
   ExecutionMode get executionMode => ExecutionMode.sequential;
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => false;
+
   /// 内置 sentinel 的名称，其内容可改进但名称不可修改
   static const builtinSentinelName = 'Athena';
 
@@ -28,9 +29,9 @@ class SentinelEvolveTool implements Tool {
     required SentinelRepository repository,
     required SentinelHistoryStore historyStore,
     void Function()? onChanged,
-  })  : _repository = repository,
-        _historyStore = historyStore,
-        _onChanged = onChanged;
+  }) : _repository = repository,
+       _historyStore = historyStore,
+       _onChanged = onChanged;
 
   @override
   String get name => 'sentinel_evolve';
@@ -52,51 +53,54 @@ class SentinelEvolveTool implements Tool {
 
   @override
   Map<String, dynamic> get parameters => {
-        'type': 'object',
-        'properties': {
-          'sentinel_name': {
-            'type': 'string',
-            'description':
-                'The name of the existing sentinel to improve. Use the exact '
-                'name as returned by sentinel_list.',
-          },
-          'new_name': {
-            'type': 'string',
-            'description':
-                'New name for the sentinel (optional). If provided and '
-                'different from the original, the sentinel will be renamed. '
-                'If omitted, the sentinel keeps its current name.',
-          },
-          'improvements': {
-            'type': 'string',
-            'description':
-                'Summary of what was improved and why. This helps the user '
-                'understand the changes.',
-          },
-          'new_prompt': {
-            'type': 'string',
-            'description':
-                'The complete, improved system prompt. This is the full '
-                'replacement prompt incorporating all improvements.',
-          },
-          'new_description': {
-            'type': 'string',
-            'description':
-                'Updated description for the sentinel (optional, '
-                'defaults to current description).',
-          },
-          'new_tags': {
-            'type': 'string',
-            'description':
-                'Comma-separated tags for the sentinel (optional, '
-                'defaults to current tags).',
-          },
-        },
-        'required': ['sentinel_name', 'improvements', 'new_prompt'],
-      };
+    'type': 'object',
+    'properties': {
+      'sentinel_name': {
+        'type': 'string',
+        'description':
+            'The name of the existing sentinel to improve. Use the exact '
+            'name as returned by sentinel_list.',
+      },
+      'new_name': {
+        'type': 'string',
+        'description':
+            'New name for the sentinel (optional). If provided and '
+            'different from the original, the sentinel will be renamed. '
+            'If omitted, the sentinel keeps its current name.',
+      },
+      'improvements': {
+        'type': 'string',
+        'description':
+            'Summary of what was improved and why. This helps the user '
+            'understand the changes.',
+      },
+      'new_prompt': {
+        'type': 'string',
+        'description':
+            'The complete, improved system prompt. This is the full '
+            'replacement prompt incorporating all improvements.',
+      },
+      'new_description': {
+        'type': 'string',
+        'description':
+            'Updated description for the sentinel (optional, '
+            'defaults to current description).',
+      },
+      'new_tags': {
+        'type': 'string',
+        'description':
+            'Comma-separated tags for the sentinel (optional, '
+            'defaults to current tags).',
+      },
+    },
+    'required': ['sentinel_name', 'improvements', 'new_prompt'],
+  };
 
   @override
-  Future<String> execute(Map<String, dynamic> args, {void Function(String)? onUpdate}) async {
+  Future<String> execute(
+    Map<String, dynamic> args, {
+    void Function(String)? onUpdate,
+  }) async {
     final sentinelName = args['sentinel_name'] as String;
     final newName = args['new_name'] as String?;
     final improvements = args['improvements'] as String;
@@ -118,8 +122,9 @@ class SentinelEvolveTool implements Tool {
 
     // 内置 sentinel 不允许改名
     if (original.name == builtinSentinelName) {
-      final requestedName =
-          (newName != null && newName.isNotEmpty) ? newName : original.name;
+      final requestedName = (newName != null && newName.isNotEmpty)
+          ? newName
+          : original.name;
       if (requestedName != builtinSentinelName) {
         return 'Error: The built-in "$builtinSentinelName" sentinel cannot be '
             'renamed. You can improve its prompt, description, and tags, '
@@ -128,8 +133,9 @@ class SentinelEvolveTool implements Tool {
     }
 
     try {
-      final effectiveName =
-          (newName != null && newName.isNotEmpty) ? newName : original.name;
+      final effectiveName = (newName != null && newName.isNotEmpty)
+          ? newName
+          : original.name;
 
       // 如果改名且新名称与当前名称不同，检查是否与其他 sentinel 冲突
       if (effectiveName != original.name) {
@@ -159,8 +165,10 @@ class SentinelEvolveTool implements Tool {
         await _historyStore.save(original, reason: improvements);
       } catch (e) {
         // 快照失败仅告警，进化仍继续
-        LoggerUtil.w('Sentinel history snapshot failed for '
-            '"${original.name}": $e');
+        LoggerUtil.w(
+          'Sentinel history snapshot failed for '
+          '"${original.name}": $e',
+        );
       }
 
       // 更新到数据库
@@ -209,8 +217,9 @@ class SentinelEvolveTool implements Tool {
     final diffStats = _lineDiffStats(originalPrompt, newPrompt);
     buffer.writeln('**Changes:**');
     buffer.writeln(
-        '- Prompt length: ${originalPrompt.length} → ${newPrompt.length} chars '
-        '(${_signed(newPrompt.length - originalPrompt.length)})');
+      '- Prompt length: ${originalPrompt.length} → ${newPrompt.length} chars '
+      '(${_signed(newPrompt.length - originalPrompt.length)})',
+    );
     buffer.writeln('- Lines: ${diffStats.$1} removed, ${diffStats.$2} added');
     buffer.writeln();
     buffer.writeln('**Diff (prompt, $_contextLines lines context):**');
@@ -279,8 +288,10 @@ class SentinelEvolveTool implements Tool {
     if (prefix > _contextLines) {
       buffer.writeln('... ${prefix - _contextLines} more lines ...');
     }
-    for (final line
-        in oldLines.sublist(math.max(0, prefix - _contextLines), prefix)) {
+    for (final line in oldLines.sublist(
+      math.max(0, prefix - _contextLines),
+      prefix,
+    )) {
       buffer.writeln('  $line');
     }
     for (final line in removed) {
@@ -291,12 +302,15 @@ class SentinelEvolveTool implements Tool {
     }
     final suffixStart = prefix + added.length;
     for (final line in newLines.sublist(
-        suffixStart, math.min(suffixStart + _contextLines, newLines.length))) {
+      suffixStart,
+      math.min(suffixStart + _contextLines, newLines.length),
+    )) {
       buffer.writeln('  $line');
     }
     if (newLines.length - suffixStart > _contextLines) {
       buffer.writeln(
-          '... ${newLines.length - suffixStart - _contextLines} more lines ...');
+        '... ${newLines.length - suffixStart - _contextLines} more lines ...',
+      );
     }
     return buffer.toString();
   }

@@ -74,8 +74,8 @@ class ProviderEntity {
       baseUrl: baseUrl ?? this.baseUrl,
       apiKey: apiKey ?? this.apiKey,
       apiFormat: apiFormat ?? this.apiFormat,
-      apiFormatAuto: apiFormatAuto ??
-          (apiFormat == null ? this.apiFormatAuto : false),
+      apiFormatAuto:
+          apiFormatAuto ?? (apiFormat == null ? this.apiFormatAuto : false),
       enabled: enabled ?? this.enabled,
       isPreset: isPreset ?? this.isPreset,
       createdAt: createdAt ?? this.createdAt,

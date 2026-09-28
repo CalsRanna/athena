@@ -58,7 +58,8 @@ class PermissionRule {
     if (kind == null) return null;
     final pattern = json['pattern'] as String? ?? '';
     final wildcard = json['wildcard'] as bool? ?? false;
-    final effect = RuleEffect.values.asNameMap()[json['effect'] as String? ?? 'allow'];
+    final effect = RuleEffect.values
+        .asNameMap()[json['effect'] as String? ?? 'allow'];
     if (effect == null) return null;
 
     // origin/path 只适用于对应工具;旧的命令通配符配置不再支持。
@@ -78,11 +79,11 @@ class PermissionRule {
   }
 
   Map<String, dynamic> toJson() => {
-        'tool': tool,
-        'kind': kind.name,
-        if (effect == RuleEffect.deny) 'effect': 'deny',
-        'pattern': pattern,
-      };
+    'tool': tool,
+    'kind': kind.name,
+    if (effect == RuleEffect.deny) 'effect': 'deny',
+    'pattern': pattern,
+  };
 
   /// 「始终允许」落库用:按工具类别选择规则形态。
   ///
@@ -97,14 +98,19 @@ class PermissionRule {
   /// 顺带扩展到用户没看到的变体(`npm test` 放行 `npm test -- --watch`),
   /// 而这中间没有二次确认。精确匹配把授权范围钉在用户当时看到的那条命令上。
   static List<PermissionRule> forToolCall(String tool, String? keyArg) {
-    final keyed = kShellToolNames.contains(tool) ||
+    final keyed =
+        kShellToolNames.contains(tool) ||
         kFileToolNames.contains(tool) ||
         tool == 'web_fetch';
     if (keyArg == null || keyArg.isEmpty) {
-      return keyed ? const [] : [PermissionRule(tool: tool, kind: RuleKind.exact)];
+      return keyed
+          ? const []
+          : [PermissionRule(tool: tool, kind: RuleKind.exact)];
     }
     if (kShellToolNames.contains(tool)) {
-      return [PermissionRule(tool: tool, kind: RuleKind.exact, pattern: keyArg)];
+      return [
+        PermissionRule(tool: tool, kind: RuleKind.exact, pattern: keyArg),
+      ];
     }
     if (kFileToolNames.contains(tool)) {
       return [PermissionRule(tool: tool, kind: RuleKind.path, pattern: keyArg)];
@@ -203,7 +209,8 @@ class PermissionStore {
 
   File get _file {
     if (_fileOverride != null) return _fileOverride;
-    final home = Platform.environment['HOME'] ??
+    final home =
+        Platform.environment['HOME'] ??
         Platform.environment['USERPROFILE'] ??
         '';
     return File('$home/.athena/permissions.json');
@@ -241,9 +248,9 @@ class PermissionStore {
       if (!_contains(current, rule)) current.add(rule);
       await atomicWriteString(
         file,
-        const JsonEncoder.withIndent('  ').convert({
-          'rules': current.map((r) => r.toJson()).toList(),
-        }),
+        const JsonEncoder.withIndent(
+          '  ',
+        ).convert({'rules': current.map((r) => r.toJson()).toList()}),
       );
       rules = current;
       _loadedStamp = _stamp();
@@ -278,8 +285,9 @@ class PermissionStore {
       final list = json['rules'] as List? ?? const [];
       final result = <PermissionRule>[];
       for (final item in list) {
-        final rule =
-            item is Map<String, dynamic> ? PermissionRule.fromJson(item) : null;
+        final rule = item is Map<String, dynamic>
+            ? PermissionRule.fromJson(item)
+            : null;
         if (rule != null) {
           result.add(rule);
         } else {

@@ -36,7 +36,8 @@ void main() {
       'object': 'response',
       'created_at': 1,
       'status': status,
-      if (status == 'incomplete') 'incomplete_details': {'reason': 'max_output_tokens'},
+      if (status == 'incomplete')
+        'incomplete_details': {'reason': 'max_output_tokens'},
       'output': output,
       if (usage != null) 'usage': usage,
       if (error != null) 'error': error,
@@ -45,7 +46,8 @@ void main() {
 
   List<Item> itemsOf(CreateResponseRequest request) =>
       (request.input.toJson() as List)
-          .map((item) => Item.fromJson(item as Map<String, dynamic>)).toList();
+          .map((item) => Item.fromJson(item as Map<String, dynamic>))
+          .toList();
 
   Map<String, dynamic> usageJson() => {
     'input_tokens': 10,
@@ -59,10 +61,7 @@ void main() {
     test('system 消息进 instructions，不进 input', () {
       final request = toResponseRequest(
         chatRequest(
-          messages: [
-            ChatMessage.system('你是 Athena'),
-            ChatMessage.user('你好'),
-          ],
+          messages: [ChatMessage.system('你是 Athena'), ChatMessage.user('你好')],
         ),
       );
 
@@ -200,7 +199,10 @@ void main() {
       final content = itemsOf(request).single.toJson()['content'] as List;
       expect(content[0], containsPair('type', 'input_text'));
       expect(content[1], containsPair('type', 'input_image'));
-      expect(content[1], containsPair('image_url', 'data:image/png;base64,AAAA'));
+      expect(
+        content[1],
+        containsPair('image_url', 'data:image/png;base64,AAAA'),
+      );
     });
 
     test('表达不了的内容显式失败，而不是静默丢弃', () {
@@ -285,7 +287,10 @@ void main() {
 
     test('工具调用：先给 id 与 name 建卡，再追加参数分片', () async {
       final chunks = await normalizeResponsesStream(
-        Stream.fromIterable([...toolCallEvents(), ResponseCompletedEvent(response: response())]),
+        Stream.fromIterable([
+          ...toolCallEvents(),
+          ResponseCompletedEvent(response: response()),
+        ]),
       ).toList();
 
       final built = chunks[0].choices!.single.delta.toolCalls!.single;
@@ -303,51 +308,58 @@ void main() {
       );
     });
 
-    test('多个工具调用：参数增量按 output_index 归位，reasoning 占位不留空洞',
-        () async {
+    test('多个工具调用：参数增量按 output_index 归位，reasoning 占位不留空洞', () async {
       Map<String, dynamic> added(int outputIndex, String n) => {
-            'type': 'response.output_item.added',
-            'output_index': outputIndex,
-            'item': {
-              'type': 'function_call',
-              'id': 'fc_$n',
-              'call_id': 'call_$n',
-              'name': 'tool_$n',
-              'arguments': '',
-            },
-          };
+        'type': 'response.output_item.added',
+        'output_index': outputIndex,
+        'item': {
+          'type': 'function_call',
+          'id': 'fc_$n',
+          'call_id': 'call_$n',
+          'name': 'tool_$n',
+          'arguments': '',
+        },
+      };
       Map<String, dynamic> delta(int outputIndex, String n, String d) => {
-            'type': 'response.function_call_arguments.delta',
-            'item_id': 'fc_$n',
-            'output_index': outputIndex,
-            'delta': d,
-          };
+        'type': 'response.function_call_arguments.delta',
+        'item_id': 'fc_$n',
+        'output_index': outputIndex,
+        'delta': d,
+      };
 
       final accumulator = ChatStreamAccumulator();
       await for (final chunk in normalizeResponsesStream(
-        Stream.fromIterable([
-          // output_index 0 被 reasoning item 占据
-          {
-            'type': 'response.output_item.added',
-            'output_index': 0,
-            'item': {'type': 'reasoning', 'id': 'rs_1', 'summary': <Object>[]},
-          },
-          added(1, 'a'),
-          added(2, 'b'),
-          delta(2, 'b', '{"y":'),
-          delta(1, 'a', '{"x":'),
-          delta(1, 'a', '1}'),
-          delta(2, 'b', '2}'),
-          {'type': 'response.completed', 'response': response().toJson()},
-        ].map(ResponseStreamEvent.fromJson)),
+        Stream.fromIterable(
+          [
+            // output_index 0 被 reasoning item 占据
+            {
+              'type': 'response.output_item.added',
+              'output_index': 0,
+              'item': {
+                'type': 'reasoning',
+                'id': 'rs_1',
+                'summary': <Object>[],
+              },
+            },
+            added(1, 'a'),
+            added(2, 'b'),
+            delta(2, 'b', '{"y":'),
+            delta(1, 'a', '{"x":'),
+            delta(1, 'a', '1}'),
+            delta(2, 'b', '2}'),
+            {'type': 'response.completed', 'response': response().toJson()},
+          ].map(ResponseStreamEvent.fromJson),
+        ),
       )) {
         accumulator.add(chunk);
       }
 
       final calls = accumulator.toolCalls;
       expect(calls.map((c) => c.id), ['call_a', 'call_b']);
-      expect(calls.map((c) => c.function.arguments), ['{"x":1}', '{"y":2}'],
-          reason: '参数分片必须按 output_index 归到各自的调用上');
+      expect(calls.map((c) => c.function.arguments), [
+        '{"x":1}',
+        '{"y":2}',
+      ], reason: '参数分片必须按 output_index 归到各自的调用上');
     });
 
     test('归一流可被 ChatStreamAccumulator 直接消费（上层零改动）', () async {
@@ -486,7 +498,9 @@ void main() {
     });
 
     test('incomplete 状态的响应对应 length', () {
-      final completion = responseToChatCompletion(response(status: 'incomplete'));
+      final completion = responseToChatCompletion(
+        response(status: 'incomplete'),
+      );
 
       expect(completion.choices.single.finishReason, FinishReason.length);
       expect(completion.text, '');

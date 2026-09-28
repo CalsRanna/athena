@@ -224,7 +224,10 @@ class ChatViewModel {
     return eligible.sublist(eligible.length - count);
   }
 
-  Future<MessageWindow> _loadMessagePage(String chatId, {int? beforeSeq}) async {
+  Future<MessageWindow> _loadMessagePage(
+    String chatId, {
+    int? beforeSeq,
+  }) async {
     final repository = _messageRepo;
     if (beforeSeq == null && repository is RecentMessageRepository) {
       // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
@@ -611,8 +614,8 @@ class ChatViewModel {
       ids.forEach(_turnStartIdsByChat.remove);
       ids.forEach(_pendingTurnIds.remove);
 
-      final removedCurrentChat = currentChat.value != null &&
-          ids.contains(currentChat.value!.id);
+      final removedCurrentChat =
+          currentChat.value != null && ids.contains(currentChat.value!.id);
       chats.value = chats.value.where((c) => !ids.contains(c.id)).toList();
       chatHistories.value = chatHistories.value
           .where((h) => !ids.contains(h.chat.id))
@@ -1181,7 +1184,8 @@ class ChatViewModel {
   }
 
   /// 指定对话是否正在流式运行。
-  bool isStreamingChat(String chatId) => streamingChatIds.value.contains(chatId);
+  bool isStreamingChat(String chatId) =>
+      streamingChatIds.value.contains(chatId);
 
   /// 记录失败并以提示条告知用户。
   ///
@@ -1308,10 +1312,12 @@ class ChatViewModel {
   Future<void> addPendingImage(String path) => addPendingImages([path]);
 
   Future<void> addPendingImages(List<String> paths) async {
-    final images = paths.map((path) => PendingImage(
-      path: path,
-      stage: PendingImageStage.preparing,
-    )).toList();
+    final images = paths
+        .map(
+          (path) =>
+              PendingImage(path: path, stage: PendingImageStage.preparing),
+        )
+        .toList();
     pendingImages.value = [...pendingImages.value, ...images];
     for (final image in images) {
       await _preparePendingImage(image);
@@ -1329,10 +1335,12 @@ class ChatViewModel {
           placeholder.withStage(PendingImageStage.preparing),
         ]),
       );
-      final images = paths.map((path) => PendingImage(
-        path: path,
-        stage: PendingImageStage.preparing,
-      )).toList();
+      final images = paths
+          .map(
+            (path) =>
+                PendingImage(path: path, stage: PendingImageStage.preparing),
+          )
+          .toList();
       if (!_replacePendingImage(placeholder.id, images)) return true;
       for (final image in images) {
         await _preparePendingImage(image);
@@ -1378,7 +1386,11 @@ class ChatViewModel {
     List<PendingImage>? replace(List<PendingImage> images) {
       final index = images.indexWhere((image) => identical(image.id, id));
       if (index < 0) return null;
-      return [...images.take(index), ...replacements, ...images.skip(index + 1)];
+      return [
+        ...images.take(index),
+        ...replacements,
+        ...images.skip(index + 1),
+      ];
     }
 
     final current = replace(pendingImages.value);
@@ -1447,7 +1459,8 @@ class ChatViewModel {
   }
 
   /// 取出 [chatId] 的输入草稿（取走即删，理由同 [_retargetPendingImages]）。
-  String takeComposerDraft(String? chatId) => _composerDrafts.remove(chatId) ?? '';
+  String takeComposerDraft(String? chatId) =>
+      _composerDrafts.remove(chatId) ?? '';
 
   /// 对话被删掉后清掉它的草稿槽（文字与待发图片）：留着只会在内存里越堆越多，
   /// 而 chat id 不复用，那个槽再也回不去了。

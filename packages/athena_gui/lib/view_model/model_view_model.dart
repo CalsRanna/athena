@@ -26,9 +26,9 @@ class ModelViewModel {
     required ModelRepository repository,
     required ProviderRepository providerRepository,
     required ChatCompletionsService chatService,
-  })  : _repository = repository,
-        _providerRepository = providerRepository,
-        _chatService = chatService;
+  }) : _repository = repository,
+       _providerRepository = providerRepository,
+       _chatService = chatService;
 
   // Signals 状态
   final models = listSignal<ModelEntity>([]);
@@ -99,7 +99,9 @@ class ModelViewModel {
     }
   }
 
-  Future<List<ModelEntity>> getEnabledModelsByProviderId(String providerId) async {
+  Future<List<ModelEntity>> getEnabledModelsByProviderId(
+    String providerId,
+  ) async {
     try {
       // 只需检查 provider 是否 enabled，所有该 provider 下的 models 都视为 enabled
       var provider = await _providerRepository.getProviderById(providerId);
@@ -170,8 +172,9 @@ class ModelViewModel {
   /// 调用方负责 loading / 错误展示；这里只维护本地列表。
   Future<void> deleteModelsOfProvider(String providerId) async {
     await _repository.deleteModelsByProviderId(providerId);
-    models.value =
-        models.value.where((m) => m.providerId != providerId).toList();
+    models.value = models.value
+        .where((m) => m.providerId != providerId)
+        .toList();
   }
 
   Future<ConnectionCheckResult> checkConnection(ModelEntity model) async {

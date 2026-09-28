@@ -93,7 +93,9 @@ class AthenaSettingsPanel extends StatelessWidget {
           decoration: decoration,
           foregroundDecoration: Theme.of(context).brightness == Brightness.dark
               ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+                  borderRadius: BorderRadius.circular(
+                    AthenaSettings.panelRadius,
+                  ),
                   border: Border.all(color: colors.border),
                 )
               : null,

@@ -65,6 +65,7 @@ class FileStorage {
   Directory get sessionsDir => Directory(p.join(root.path, 'sessions'));
   File get modelsFile => File(p.join(root.path, 'models.json'));
   File get sentinelsFile => File(p.join(root.path, 'sentinels.json'));
+
   /// 仅用于识别、清理旧格式，不再写入计数。
   File get metaFile => File(p.join(root.path, 'meta.json'));
   File get catalogCacheFile => File(p.join(root.path, 'models_dev_cache.json'));
@@ -89,7 +90,8 @@ class FileStorage {
 
   Future<void> load() async {
     legacyModelIds = await StorageIdMigration(
-      root: root, settingFile: settingFile,
+      root: root,
+      settingFile: settingFile,
     ).run();
     await providerRepository.load();
   }

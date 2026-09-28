@@ -33,11 +33,7 @@ class SectionTitle extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),
       padding: const EdgeInsets.all(7),
-      child: Icon(
-        AthenaIcons.forward,
-        size: 13,
-        color: colors.iconOnRaised,
-      ),
+      child: Icon(AthenaIcons.forward, size: 13, color: colors.iconOnRaised),
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

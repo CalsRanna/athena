@@ -38,8 +38,7 @@ class DesktopModelSelectMenu extends StatelessWidget {
     const contentWidth = 264.0;
     final children = <Widget>[
       for (final entry in groups.entries) ...[
-        if (groups.length > 1)
-          DesktopContextMenuGroupLabel(text: entry.key),
+        if (groups.length > 1) DesktopContextMenuGroupLabel(text: entry.key),
         for (final model in entry.value)
           DesktopContextMenuTile(
             text: model.name,

@@ -18,7 +18,9 @@ class SystemTrayUtil with TrayListener {
     await trayManager.destroy();
   }
 
-  Future<void> ensureInitialized({Future<void> Function()? onBeforeQuit}) async {
+  Future<void> ensureInitialized({
+    Future<void> Function()? onBeforeQuit,
+  }) async {
     this.onBeforeQuit = onBeforeQuit;
     trayManager.addListener(this);
     await _setContextMenu();

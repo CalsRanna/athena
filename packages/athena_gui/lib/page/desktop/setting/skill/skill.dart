@@ -311,7 +311,9 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
   Future<void> storeSkill(Skill skill) async {
     final description = descriptionController.text.trim();
     setState(() {
-      descriptionError = description.isEmpty ? 'Description is required.' : null;
+      descriptionError = description.isEmpty
+          ? 'Description is required.'
+          : null;
     });
     if (descriptionError != null) return;
     var ok = await viewModel.updateSkill(
@@ -344,7 +346,9 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
 
   Future<void> _reveal(Skill skill) async {
     final ok = await launchUrl(Uri.directory(skill.sourcePath));
-    if (!ok && mounted) AthenaDialog.error('Unable to open ${skill.sourcePath}');
+    if (!ok && mounted) {
+      AthenaDialog.error('Unable to open ${skill.sourcePath}');
+    }
   }
 
   Future<void> destroySkills(List<Skill> targets) async {

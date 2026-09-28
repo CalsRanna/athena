@@ -234,7 +234,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
     controller.clear();
     scrollController.followBottom();
-    final imageUrls = images.map((image) => base64Encode(image.bytes!)).toList();
+    final imageUrls = images
+        .map((image) => base64Encode(image.bytes!))
+        .toList();
 
     var message = MessageEntity(
       chatId: chat.id ?? '',

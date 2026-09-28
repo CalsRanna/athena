@@ -448,8 +448,7 @@ class ExperienceRepository {
 
   /// id 直接拼进文件路径，来自模型的 `experience_id` 必须是单个文件名段：
   /// `../5/<id>` 这样的值会穿越到别的 Sentinel 的私有目录。
-  static bool _isValidId(String id) =>
-      RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
+  static bool _isValidId(String id) => RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(id);
 
   static String _prettyJson(Map<String, dynamic> json) {
     const encoder = JsonEncoder.withIndent('  ');

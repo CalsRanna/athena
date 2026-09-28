@@ -43,12 +43,16 @@ Future<T> retry<T>(
       if (attempt >= config.maxAttempts || !_isRetryable(e)) {
         rethrow;
       }
-      final backoff = config.baseDelay.inMilliseconds *
-          pow(2, attempt - 1).toInt();
-      final delayMs = min(backoff + random.nextInt(500),
-          config.maxDelay.inMilliseconds);
-      LoggerUtil.w('Retry attempt $attempt/${config.maxAttempts} '
-          'after ${delayMs}ms: ${e.runtimeType}');
+      final backoff =
+          config.baseDelay.inMilliseconds * pow(2, attempt - 1).toInt();
+      final delayMs = min(
+        backoff + random.nextInt(500),
+        config.maxDelay.inMilliseconds,
+      );
+      LoggerUtil.w(
+        'Retry attempt $attempt/${config.maxAttempts} '
+        'after ${delayMs}ms: ${e.runtimeType}',
+      );
       await _waitBackoff(delayMs, abort);
     }
   }
@@ -99,10 +103,14 @@ Stream<T> retryStream<T>(
       }
       final backoff =
           config.baseDelay.inMilliseconds * pow(2, attempt - 1).toInt();
-      final delayMs =
-          min(backoff + random.nextInt(500), config.maxDelay.inMilliseconds);
-      LoggerUtil.w('Stream retry attempt $attempt/${config.maxAttempts} '
-          'after ${delayMs}ms: ${e.runtimeType}');
+      final delayMs = min(
+        backoff + random.nextInt(500),
+        config.maxDelay.inMilliseconds,
+      );
+      LoggerUtil.w(
+        'Stream retry attempt $attempt/${config.maxAttempts} '
+        'after ${delayMs}ms: ${e.runtimeType}',
+      );
       await _waitBackoff(delayMs, abort);
     }
   }

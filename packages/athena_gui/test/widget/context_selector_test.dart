@@ -88,8 +88,9 @@ void main() {
       expect(optionStyle.height! * optionStyle.fontSize!, closeTo(22, 0.001));
       expect(
         optionStyle.fontFamily,
-        Theme.of(tester.element(find.byType(DesktopContextSelector)))
-            .textTheme.bodyMedium!.fontFamily,
+        Theme.of(
+          tester.element(find.byType(DesktopContextSelector)),
+        ).textTheme.bodyMedium!.fontFamily,
         reason: '根浮层应使用应用字体，不能继承调试用的 monospace',
       );
       expect(

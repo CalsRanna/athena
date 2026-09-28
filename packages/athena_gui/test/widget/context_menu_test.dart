@@ -67,25 +67,26 @@ void main() {
     expect(rect.top, 100);
   });
 
-  testWidgets('upward menu hugs its content and its bottom sits at the anchor', (
-    tester,
-  ) async {
-    final context = await pumpHost(tester);
-    DesktopContextMenuManager.instance.show(
-      context,
-      const DesktopContextMenu(
-        offset: Offset(100, 500),
-        upward: true,
-        children: items,
-      ),
-    );
-    await tester.pump();
+  testWidgets(
+    'upward menu hugs its content and its bottom sits at the anchor',
+    (tester) async {
+      final context = await pumpHost(tester);
+      DesktopContextMenuManager.instance.show(
+        context,
+        const DesktopContextMenu(
+          offset: Offset(100, 500),
+          upward: true,
+          children: items,
+        ),
+      );
+      await tester.pump();
 
-    final rect = tester.getRect(panel());
-    expect(rect.height, lessThan(120), reason: '面板应贴合内容高，不应撑满窗口');
-    expect(rect.left, 100);
-    expect(rect.bottom, closeTo(500, 0.5));
-  });
+      final rect = tester.getRect(panel());
+      expect(rect.height, lessThan(120), reason: '面板应贴合内容高，不应撑满窗口');
+      expect(rect.left, 100);
+      expect(rect.bottom, closeTo(500, 0.5));
+    },
+  );
 
   testWidgets('menu near the window edge is shifted back inside', (
     tester,

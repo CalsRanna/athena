@@ -102,11 +102,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (widget.leading != null) ...[
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Center(child: widget.leading),
-          ),
+          SizedBox(width: 20, height: 20, child: Center(child: widget.leading)),
           const SizedBox(width: 10),
         ],
         Flexible(child: label),
@@ -135,7 +131,8 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
               style: descriptionStyle,
             ),
           ),
-        if (widget.error != null) const SizedBox(height: AthenaSettings.rowLabelGap),
+        if (widget.error != null)
+          const SizedBox(height: AthenaSettings.rowLabelGap),
         if (widget.error != null)
           Padding(
             padding: EdgeInsets.only(left: textIndent),

@@ -55,7 +55,8 @@ class _MobileSkillFormPageState extends State<MobileSkillFormPage> {
             controller: nameController,
             placeholder: 'kebab-case-name',
           ),
-          description: 'Used as the skill directory name; cannot be changed later',
+          description:
+              'Used as the skill directory name; cannot be changed later',
         ),
         const SizedBox(height: 16),
       ],

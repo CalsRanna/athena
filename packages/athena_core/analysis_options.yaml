@@ -1,16 +1,7 @@
-# athena_core 分析配置:纯 Dart 核心,与 athena_tui 保持一致的 lints 包。
-include: package:lints/recommended.yaml
-
-analyzer:
-  exclude:
-    - build/**
-  language:
-    strict-casts: true
-    strict-inference: true
-
-linter:
-  rules:
-    # 语言版本下限从 3.8 提到 3.12 后，analyzer 开始启用该规则，
-    # 存量代码因此新增 92 条 info。仓库既有风格是在构造体里赋值
-    # （`_x = x`），逐个改写属于大范围无关重排，故显式关闭。
-    prefer_initializing_formals: false
+# athena_core 分析配置。
+#
+# athena_core 必须保持零 Flutter 依赖（见 AGENTS.md §1），因此用纯 Dart 的
+# package:lints，与 athena_gui 的 flutter_lints 是两套基线。
+include:
+  - package:lints/recommended.yaml
+  - ../../shared_analysis_options.yaml

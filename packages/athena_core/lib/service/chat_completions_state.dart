@@ -123,11 +123,13 @@ AssistantMessage _visibleMessage(AssistantMessage original) => AssistantMessage(
 );
 
 String? _visibleReasoning(AssistantMessage message) {
-  final text = _ReasoningDisplay().add(ChatDelta(
-    reasoningContent: message.reasoningContent,
-    reasoning: message.reasoning,
-    reasoningDetails: message.reasoningDetails,
-  ));
+  final text = _ReasoningDisplay().add(
+    ChatDelta(
+      reasoningContent: message.reasoningContent,
+      reasoning: message.reasoning,
+      reasoningDetails: message.reasoningDetails,
+    ),
+  );
   return text.isEmpty ? null : text;
 }
 
@@ -143,9 +145,12 @@ class _ReasoningDisplay {
         _source = 'content';
       } else if (delta.reasoning?.isNotEmpty == true) {
         _source = 'reasoning';
-      } else if (delta.reasoningDetails?.any((d) =>
-          (d.isSummary && d.summary?.isNotEmpty == true) ||
-          (d.isText && d.text?.isNotEmpty == true)) == true) {
+      } else if (delta.reasoningDetails?.any(
+            (d) =>
+                (d.isSummary && d.summary?.isNotEmpty == true) ||
+                (d.isText && d.text?.isNotEmpty == true),
+          ) ==
+          true) {
         _source = 'details';
       }
     }
@@ -154,8 +159,11 @@ class _ReasoningDisplay {
     if (_source != 'details') return '';
     final text = StringBuffer();
     for (final detail in delta.reasoningDetails ?? <ReasoningDetail>[]) {
-      final part = detail.isSummary ? detail.summary
-          : detail.isText ? detail.text : null;
+      final part = detail.isSummary
+          ? detail.summary
+          : detail.isText
+          ? detail.text
+          : null;
       if (part == null || part.isEmpty) continue;
       final key = (detail.type, detail.index ?? detail.id);
       if (_lastPart != null && _lastPart != key) text.write('\n\n');
@@ -178,17 +186,20 @@ Stream<ChatStreamEvent> normalizeChatCompletionsStream(
     raw.add(event);
     yield ChatStreamEvent.fromJson({
       ...event.toJson(),
-      if (event.choices != null) 'choices': [
-        for (final choice in event.choices!) {
-          ...choice.toJson(),
-          'delta': {
-            ...choice.delta.toJson(),
-            'reasoning': null,
-            'reasoning_content': displays.putIfAbsent(
-              choice.index ?? 0, _ReasoningDisplay.new).add(choice.delta),
-          },
-        },
-      ],
+      if (event.choices != null)
+        'choices': [
+          for (final choice in event.choices!)
+            {
+              ...choice.toJson(),
+              'delta': {
+                ...choice.delta.toJson(),
+                'reasoning': null,
+                'reasoning_content': displays
+                    .putIfAbsent(choice.index ?? 0, _ReasoningDisplay.new)
+                    .add(choice.delta),
+              },
+            },
+        ],
     });
     final refusal = event.firstChoice?.delta.refusal;
     if (refusal != null && refusal.isNotEmpty) {

@@ -19,9 +19,9 @@ class ChatRenameDelegate {
     required MessageRepository messageRepo,
     required ModelRepository modelRepo,
     required ChatUpdateService supportService,
-  })  : _messageRepo = messageRepo,
-        _modelRepo = modelRepo,
-        _supportService = supportService;
+  }) : _messageRepo = messageRepo,
+       _modelRepo = modelRepo,
+       _supportService = supportService;
 
   /// 自动重命名：取首条用户消息 → AI 生成标题 → 写回数据库
   ///
