@@ -15,6 +15,7 @@ import 'package:path/path.dart' as p;
 /// root/
 ///   sessions/{chatId}.jsonl   # 一个对话一个文件:首行会话元数据 + 消息行
 ///                            # 消息 responses_state 保存 Responses 推理续接状态
+///                            # 消息 messages_state 保存 Messages thinking/signature 及请求前缀指纹
 ///   models.json               # 模型列表(JSON 数组)
 ///   sentinels.json            # 角色列表(JSON 数组，旧 avatar 字段读取时忽略)
 ///   meta.json                 # 自增 id 计数(key 为文件/目录的绝对路径)

@@ -33,6 +33,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/token_usage.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/messages_state.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:meta/meta.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -898,7 +899,12 @@ class _AgentLoop {
         ? st.accumulator.reasoningContent
         : null;
     _messages.add(
-      ResponsesAssistantMessage(
+      st.messagesState != null ? MessagesAssistantMessage(
+        messagesState: st.messagesState,
+        content: st.accumulator.content.isNotEmpty ? st.accumulator.content : null,
+        toolCalls: toolCalls,
+        reasoningContent: rc,
+      ) : ResponsesAssistantMessage(
         responsesState: st.responsesState,
         content: st.accumulator.content.isNotEmpty
             ? st.accumulator.content
@@ -948,6 +954,9 @@ class _AgentLoop {
         if (chunk is ResponsesStateChunk) {
           st.responsesState = chunk.state;
           yield AgentResponsesStateEvent(chunk.state);
+        } else if (chunk is MessagesStateChunk) {
+          st.messagesState = chunk.state;
+          yield AgentMessagesStateEvent(chunk.state);
         }
 
         final delta = chunk.firstChoice?.delta;
@@ -1301,6 +1310,7 @@ class _AgentLoop {
 class _TurnState {
   final ChatStreamAccumulator accumulator = ChatStreamAccumulator();
   ResponsesState? responsesState;
+  MessagesState? messagesState;
 
   /// 模型未发起工具调用、主动结束本轮。
   bool done = false;
@@ -1425,6 +1435,11 @@ sealed class AgentEvent {
 
   const factory AgentEvent.outcome(AgentRunOutcome outcome) =
       AgentRunOutcomeEvent;
+}
+
+class AgentMessagesStateEvent extends AgentEvent {
+  final MessagesState state;
+  const AgentMessagesStateEvent(this.state);
 }
 
 class AgentResponsesStateEvent extends AgentEvent {

@@ -3,13 +3,16 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
+import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/service/messages_state.dart';
+import 'package:athena_core/service/messages_thinking.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// Messages（Anthropic）与 Chat Completions 形状之间的转换。
 ///
 /// 与 `responses_adapter.dart` 同一套路：Athena 上层（`AgentService`、
 /// `ChatStreamAccumulator`、`ChatMessageConverter`）按 Chat Completions 形状
-/// 工作，接 Messages 时只在适配器里做双向映射。上层零改动。
+/// 工作，原生推理状态另经 MessagesStateChunk 保存与回传。
 ///
 /// 与另两条协议的三处实质差异，都在这里消化：
 /// 1. `system` 是顶层字段（不属于 messages），且 messages 必须 user /
@@ -45,6 +48,7 @@ anthropic.MessageCreateRequest toMessageRequest(
   ChatCompletionCreateRequest request, {
   bool stream = false,
   int? maxTokens,
+  ProviderEntity? provider,
 }) {
   // Messages 没有 JSON 输出格式对应的参数（Responses 至少能表达 json_object）。
   // 不显式失败的话，`/json` 模式下会静默按普通对话发出，用户拿到的是
@@ -56,10 +60,20 @@ anthropic.MessageCreateRequest toMessageRequest(
     );
   }
 
-  final system = <String>[];
+  final system = <String>[
+    for (final message in request.messages)
+      if (message is SystemMessage && message.content.isNotEmpty)
+        message.content
+      else if (message is DeveloperMessage && message.content.isNotEmpty)
+        message.content,
+  ];
+  final systemPrompt = system.isEmpty
+      ? null : anthropic.SystemPrompt.text(system.join('\n\n'));
+  final tools = request.tools?.map(_toToolDefinition).toList();
   final messages = <anthropic.InputMessage>[];
   final pending = <anthropic.InputContentBlock>[];
   _Role pendingRole = _Role.none;
+  MessagesState? lastAssistantState;
 
   void flush() {
     if (pending.isEmpty) return;
@@ -81,14 +95,30 @@ anthropic.MessageCreateRequest toMessageRequest(
 
   for (final message in request.messages) {
     switch (message) {
-      case SystemMessage(:final content):
-        // Anthropic 不接受 messages 里的 system：统一上提到顶层。
-        if (content.isNotEmpty) system.add(content);
-      case DeveloperMessage(:final content):
-        if (content.isNotEmpty) system.add(content);
+      case SystemMessage():
+        break;
+      case DeveloperMessage():
+        break;
       case UserMessage(:final content):
         push(_Role.user, _toUserBlocks(content));
       case AssistantMessage(:final content, :final toolCalls):
+        lastAssistantState = null;
+        if (message is MessagesAssistantMessage && provider != null) {
+          final state = message.messagesState;
+          flush();
+          final prefix = MessagesState.hashJson({
+            'system': systemPrompt?.toJson(),
+            'tools': tools?.map((tool) => tool.toJson()).toList(),
+            'messages': messages.map((message) => message.toJson()).toList(),
+          });
+          if (state != null &&
+              state.matches(provider, request.model, message, prefix)) {
+            lastAssistantState = state;
+            push(_Role.assistant,
+              state.content.map(anthropic.InputContentBlock.fromJson).toList());
+            continue;
+          }
+        }
         final blocks = <anthropic.InputContentBlock>[
           if (content != null && content.isNotEmpty)
             anthropic.InputContentBlock.text(content),
@@ -113,15 +143,39 @@ anthropic.MessageCreateRequest toMessageRequest(
   }
   flush();
 
+  final outputLimit = maxTokens ?? messagesMaxTokens();
+  var thinking = MessagesThinking.resolve(
+    request.model, request.reasoningEffort, outputLimit);
+  // 工具循环属于同一个 assistant turn，不能中途改变 thinking 配置。
+  final continuation = request.messages.lastOrNull is ToolMessage
+      ? lastAssistantState : null;
+  if (continuation != null) {
+    final config = continuation.thinking == null
+        ? null : anthropic.ThinkingConfig.fromJson(continuation.thinking!);
+    if (config is anthropic.ThinkingEnabled &&
+        config.budgetTokens >= outputLimit) {
+      throw StateError('Insufficient output room to continue Messages thinking');
+    }
+    thinking = MessagesThinking(
+      config,
+      continuation.outputConfig == null
+          ? null : anthropic.OutputConfig.fromJson(continuation.outputConfig!),
+      thinking.omitTemperature || config is anthropic.ThinkingEnabled ||
+          config is anthropic.ThinkingAdaptive,
+    );
+  }
   return anthropic.MessageCreateRequest(
     model: request.model,
-    maxTokens: maxTokens ?? messagesMaxTokens(),
-    system: system.isEmpty ? null : anthropic.SystemPrompt.text(system.join('\n\n')),
+    maxTokens: outputLimit,
+    system: systemPrompt,
     messages: messages,
-    tools: request.tools?.map(_toToolDefinition).toList(),
+    tools: tools,
+    thinking: thinking.thinking,
+    outputConfig: thinking.outputConfig,
     // Messages 只接受 0–1，而会话温度按 OpenAI 口径可调到 2（移动端滑杆）：
-    // 原样透传会被 400 拒绝，按端点收紧到可接受的范围
-    temperature: request.temperature?.clamp(0.0, 1.0).toDouble(),
+    // 推理模式及新版 Claude 不接受自定义温度，必须省略。
+    temperature: thinking.omitTemperature
+        ? null : request.temperature?.clamp(0.0, 1.0).toDouble(),
     stream: stream,
   );
 }
@@ -148,11 +202,21 @@ final _validToolUseId = RegExp(r'^[a-zA-Z0-9_-]+$');
 
 /// 把 Messages 的流式事件归一成 Chat Completions 形状的流。
 Stream<ChatStreamEvent> normalizeMessagesStream(
-  Stream<anthropic.MessageStreamEvent> events,
-) async* {
+  Stream<anthropic.MessageStreamEvent> events, {
+  ProviderEntity? provider,
+  anthropic.MessageCreateRequest? request,
+}) async* {
   // content block 下标 → toolCalls 下标：文本块也占下标，而
   // ChatStreamAccumulator 把 index 当列表下标用，必须重编号。
   final callIndexes = <int, int>{};
+  final blocks = <int, Map<String, dynamic>>{};
+  final arguments = <int, StringBuffer>{};
+  final openBlocks = <int>{};
+  final reasoningParts = <int>{};
+  var messageStopped = false;
+  anthropic.StopReason? stopReason;
+  var outputTokens = 0;
+  int? reasoningTokens;
   // input / 缓存用量只在 message_start 给，output 用量在 message_delta 给。
   var inputTokens = 0;
   var cachedTokens = 0;
@@ -166,8 +230,21 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
         model = message.model;
         inputTokens = message.usage.inputTokens;
         cachedTokens = message.usage.cacheReadInputTokens ?? 0;
+        outputTokens = message.usage.outputTokens;
+        reasoningTokens = message.usage.outputTokensDetails?.thinkingTokens;
 
       case anthropic.ContentBlockStartEvent(:final index, :final contentBlock):
+        blocks[index] = contentBlock.toJson();
+        openBlocks.add(index);
+        if (contentBlock is anthropic.TextBlock && contentBlock.text.isNotEmpty) {
+          yield _chunk(ChatDelta(content: contentBlock.text));
+        } else if (contentBlock is anthropic.ThinkingBlock &&
+            contentBlock.thinking.isNotEmpty) {
+          final separator = reasoningParts.isEmpty ? '' : '\n\n';
+          reasoningParts.add(index);
+          yield _chunk(ChatDelta(
+            reasoningContent: '$separator${contentBlock.thinking}'));
+        }
         if (contentBlock is anthropic.ToolUseBlock) {
           final toolIndex = callIndexes.length;
           callIndexes[index] = toolIndex;
@@ -179,7 +256,11 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
                   index: toolIndex,
                   id: contentBlock.id,
                   type: 'function',
-                  function: FunctionCallDelta(name: contentBlock.name),
+                  function: FunctionCallDelta(
+                    name: contentBlock.name,
+                    arguments: contentBlock.input.isEmpty
+                        ? null : jsonEncode(contentBlock.input),
+                  ),
                 ),
               ],
             ),
@@ -189,12 +270,30 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
       case anthropic.ContentBlockDeltaEvent(:final index, :final delta):
         switch (delta) {
           case anthropic.TextDelta(:final text):
+            final block = blocks[index];
+            if (block != null) block['text'] = '${block['text'] ?? ''}$text';
             if (text.isNotEmpty) yield _chunk(ChatDelta(content: text));
           case anthropic.ThinkingDelta(:final thinking):
+            final block = blocks[index];
+            if (block != null) {
+              block['thinking'] = '${block['thinking'] ?? ''}$thinking';
+            }
             if (thinking.isNotEmpty) {
-              yield _chunk(ChatDelta(reasoning: thinking));
+              final separator = !reasoningParts.contains(index) &&
+                  reasoningParts.isNotEmpty ? '\n\n' : '';
+              reasoningParts.add(index);
+              yield _chunk(ChatDelta(reasoningContent: '$separator$thinking'));
+            }
+          case anthropic.SignatureDelta(:final signature):
+            final block = blocks[index];
+            if (block != null) block['signature'] = signature;
+          case anthropic.CitationsDelta(:final citation):
+            final block = blocks[index];
+            if (block != null) {
+              (block['citations'] ??= <dynamic>[]).add(citation.toJson());
             }
           case anthropic.InputJsonDelta(:final partialJson):
+            (arguments[index] ??= StringBuffer()).write(partialJson);
             final toolIndex = callIndexes[index];
             if (toolIndex == null || partialJson.isEmpty) break;
             yield _chunk(
@@ -211,7 +310,44 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
             break;
         }
 
+      case anthropic.ContentBlockStopEvent(:final index):
+        openBlocks.remove(index);
+
+      case anthropic.MessageStopEvent():
+        messageStopped = true;
+        if (request != null && openBlocks.isNotEmpty) {
+          throw StateError('Messages stream ended with unfinished content blocks');
+        }
+        if (provider != null && request != null && id != null &&
+            openBlocks.isEmpty && _completeStop(stopReason)) {
+          for (final entry in arguments.entries) {
+            blocks[entry.key]!['input'] = jsonDecode(entry.value.toString());
+          }
+          final content = blocks.values.toList();
+          if (content.any((block) => block['type'] == 'thinking' ||
+                  block['type'] == 'redacted_thinking') &&
+              !MessagesState.hasCompleteThinking(content)) {
+            throw StateError('Messages thinking response is missing its signature');
+          }
+          if (MessagesState.hasCompleteThinking(content)) {
+            yield MessagesStateChunk(MessagesState(
+              provider: provider,
+              model: request.model,
+              content: content,
+              // 旧端点没有推理明细时，用总输出保守预留隐藏推理空间。
+              reasoningTokens: reasoningTokens ?? outputTokens,
+              prefixHash: MessagesState.hashPrefix(request),
+              thinking: request.thinking?.toJson(),
+              outputConfig: request.outputConfig?.toJson(),
+              message: _assistantFromContent(content),
+            ));
+          }
+        }
+
       case anthropic.MessageDeltaEvent(:final delta, :final usage):
+        stopReason = delta.stopReason ?? stopReason;
+        outputTokens = usage.outputTokens;
+        reasoningTokens = usage.outputTokensDetails?.thinkingTokens ?? reasoningTokens;
         yield _terminalChunk(
           id: id,
           model: model,
@@ -220,6 +356,7 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
             inputTokens: usage.inputTokens ?? inputTokens,
             outputTokens: usage.outputTokens,
             cachedTokens: usage.cacheReadInputTokens ?? cachedTokens,
+            reasoningTokens: reasoningTokens,
           ),
         );
 
@@ -234,6 +371,10 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
       default:
         break;
     }
+  }
+  // 提前 EOF 不能当成成功结束，否则会执行缺少完整续接状态的工具调用。
+  if (request != null && !messageStopped) {
+    throw StateError('Messages stream ended before message_stop');
   }
 }
 
@@ -251,11 +392,26 @@ int _statusForErrorType(String errorType) => switch (errorType) {
 };
 
 /// 把 Messages 的完整响应转成 Chat Completion（非流式路径）。
-ChatCompletion messageToChatCompletion(anthropic.Message message) {
-  final text = [
-    for (final block in message.content)
-      if (block is anthropic.TextBlock) block.text,
-  ].join();
+ChatCompletion messageToChatCompletion(anthropic.Message message, {
+  ProviderEntity? provider,
+  anthropic.MessageCreateRequest? request,
+}) {
+  final content = message.content.map((block) => block.toJson()).toList();
+  final assistant = _assistantFromContent(content);
+  final state = provider != null && request != null &&
+      _completeStop(message.stopReason) &&
+      MessagesState.hasCompleteThinking(content)
+      ? MessagesState(
+          provider: provider,
+          model: request.model,
+          content: content,
+          reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens ??
+              message.usage.outputTokens,
+          prefixHash: MessagesState.hashPrefix(request),
+          thinking: request.thinking?.toJson(),
+          outputConfig: request.outputConfig?.toJson(),
+          message: assistant,
+        ) : null;
   return ChatCompletion(
     id: message.id,
     object: 'chat.completion',
@@ -263,7 +419,12 @@ ChatCompletion messageToChatCompletion(anthropic.Message message) {
     choices: [
       ChatChoice(
         index: 0,
-        message: AssistantMessage(content: text),
+        message: MessagesAssistantMessage(
+          content: assistant.content,
+          toolCalls: assistant.toolCalls,
+          reasoningContent: assistant.reasoningContent,
+          messagesState: state,
+        ),
         finishReason: _finishReason(message.stopReason),
       ),
     ],
@@ -271,7 +432,38 @@ ChatCompletion messageToChatCompletion(anthropic.Message message) {
       inputTokens: message.usage.inputTokens,
       outputTokens: message.usage.outputTokens,
       cachedTokens: message.usage.cacheReadInputTokens ?? 0,
+      reasoningTokens: message.usage.outputTokensDetails?.thinkingTokens,
     ),
+  );
+}
+
+bool _completeStop(anthropic.StopReason? reason) =>
+    reason == anthropic.StopReason.endTurn ||
+    reason == anthropic.StopReason.toolUse ||
+    reason == anthropic.StopReason.stopSequence;
+
+AssistantMessage _assistantFromContent(List<Map<String, dynamic>> blocks) {
+  final text = blocks.where((b) => b['type'] == 'text')
+      .map((b) => b['text'] as String).join();
+  final reasoning = blocks.where((b) => b['type'] == 'thinking')
+      .map((b) => b['thinking'] as String)
+      .where((s) => s.isNotEmpty).join('\n\n');
+  final calls = [
+    for (final block in blocks)
+      if (block['type'] == 'tool_use')
+        ToolCall(
+          id: block['id'] as String,
+          type: 'function',
+          function: FunctionCall(
+            name: block['name'] as String,
+            arguments: jsonEncode(block['input']),
+          ),
+        ),
+  ];
+  return AssistantMessage(
+    content: text.isEmpty ? null : text,
+    reasoningContent: reasoning.isEmpty ? null : reasoning,
+    toolCalls: calls.isEmpty ? null : calls,
   );
 }
 
@@ -379,12 +571,15 @@ Usage _usage({
   required int inputTokens,
   required int outputTokens,
   required int cachedTokens,
+  int? reasoningTokens,
 }) {
   return Usage(
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     totalTokens: inputTokens + outputTokens,
     promptTokensDetails: PromptTokensDetails(cachedTokens: cachedTokens),
+    completionTokensDetails: reasoningTokens == null
+        ? null : CompletionTokensDetails(reasoningTokens: reasoningTokens),
   );
 }
 

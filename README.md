@@ -173,6 +173,8 @@ VS Code 的 `.vscode/launch.json` 已提供 `athena_gui` 的 debug / profile / r
 
 Responses 推理模型会请求并显示推理摘要，流式与非流式调用都支持。完整响应的原生推理状态随会话保存，在同一供应商、端点和模型的工具续接及会话重载后回传；切换供应商或模型时使用普通文本与工具历史。请求使用 `store: false`，由本地保存并回传推理密文；取消或截断的响应不保存新的原生状态。
 
+Messages 同样支持推理显示与续接：Claude 4.6 及之后支持 adaptive 的模型使用 `thinking` + `output_config.effort`，早期 Claude 与未识别的 Messages 兼容推理模型使用手动 `budget_tokens`。手动预算按强度映射，并受输出上限和窗口余量限制；启用推理时省略不兼容的温度参数。完整响应的 thinking、signature 与 redacted thinking 按原顺序保存，工具续接和重载后回传；取消、截断或缺少签名时不保存新状态。切换来源、编辑消息、压缩历史或修改系统提示/工具清单后，不回传已经失效的旧签名。协议约束见 [Claude thinking 文档](https://platform.claude.com/docs/en/build-with-claude/thinking)。
+
 ---
 
 ## 数据与配置

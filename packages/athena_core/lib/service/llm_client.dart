@@ -322,6 +322,8 @@ class LlmClient {
     Future<void>? cancelSignal,
     required int maxTokens,
   }) async* {
+    final nativeRequest = toMessageRequest(
+      request, stream: true, maxTokens: maxTokens, provider: provider);
     final client = _createAnthropicClient(provider);
     // SDK 的 abortTrigger 只在收到下一个 SSE 事件时才检查：首个事件到达前
     // 点停止，要等到事件到达或空闲超时（2 分钟）。取消时直接关掉客户端，
@@ -332,9 +334,11 @@ class LlmClient {
         () => withIdleTimeout(
           normalizeMessagesStream(
             client.messages.createStream(
-              toMessageRequest(request, stream: true, maxTokens: maxTokens),
+              nativeRequest,
               abortTrigger: cancelSignal,
             ),
+            provider: provider,
+            request: nativeRequest,
           ),
           _streamIdleTimeout,
         ),
@@ -351,16 +355,18 @@ class LlmClient {
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
   }) async {
+    final nativeRequest = toMessageRequest(request, provider: provider);
     final client = _createAnthropicClient(provider);
     try {
       final message = await retry(
         () => client.messages
-            .create(toMessageRequest(request), abortTrigger: cancelSignal)
+            .create(nativeRequest, abortTrigger: cancelSignal)
             .timeout(fetchTimeout),
         config: _retryConfig,
         abort: cancelSignal,
       );
-      return messageToChatCompletion(message);
+      return messageToChatCompletion(
+        message, provider: provider, request: nativeRequest);
     } finally {
       client.close();
     }

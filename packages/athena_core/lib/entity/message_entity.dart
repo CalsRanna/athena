@@ -13,6 +13,8 @@ class MessageEntity {
   final String toolResults;
   /// Responses 原生输出（含推理密文），独立于用于显示的 reasoningContent。
   final String responsesState;
+  /// Messages 原生 content（含 thinking 签名），与展示内容分开。
+  final String messagesState;
   /// 是否已被 compact 压缩。被压缩的消息不参与上下文组装，但保留在 DB 中供回溯。
   final bool compacted;
   final DateTime reasoningStartedAt;
@@ -30,6 +32,7 @@ class MessageEntity {
     this.toolCalls = '',
     this.toolResults = '',
     this.responsesState = '',
+    this.messagesState = '',
     this.compacted = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -49,6 +52,7 @@ class MessageEntity {
       toolCalls: json.getString('tool_calls'),
       toolResults: json.getString('tool_results'),
       responsesState: json.getString('responses_state'),
+      messagesState: json.getString('messages_state'),
       compacted: json.getBool('compacted'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
@@ -68,6 +72,7 @@ class MessageEntity {
       'tool_calls': toolCalls,
       'tool_results': toolResults,
       'responses_state': responsesState,
+      'messages_state': messagesState,
       'compacted': compacted ? 1 : 0,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
@@ -86,6 +91,7 @@ class MessageEntity {
     String? toolCalls,
     String? toolResults,
     String? responsesState,
+    String? messagesState,
     bool? compacted,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -102,6 +108,7 @@ class MessageEntity {
       toolCalls: toolCalls ?? this.toolCalls,
       toolResults: toolResults ?? this.toolResults,
       responsesState: responsesState ?? this.responsesState,
+      messagesState: messagesState ?? this.messagesState,
       compacted: compacted ?? this.compacted,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,

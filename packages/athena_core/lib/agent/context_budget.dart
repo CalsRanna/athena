@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/messages_state.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// Checks every request, including iterations within a single run.
@@ -107,6 +108,10 @@ class ContextBudget {
         // 密文长度不等于 token 数；回传的隐藏推理按已报告用量预留空间。
         messages.whereType<ResponsesAssistantMessage>().fold<int>(0, (sum, message) {
           final state = message.responsesState;
+          return sum + (state != null && state.matchesMessage(message) ? state.reasoningTokens : 0);
+        }) +
+        messages.whereType<MessagesAssistantMessage>().fold<int>(0, (sum, message) {
+          final state = message.messagesState;
           return sum + (state != null && state.matchesMessage(message) ? state.reasoningTokens : 0);
         }) +
         imageTokens;

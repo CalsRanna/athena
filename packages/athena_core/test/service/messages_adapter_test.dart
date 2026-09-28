@@ -289,7 +289,7 @@ void main() {
       },
     ];
 
-    test('文本与推理增量分别进 content / reasoning', () async {
+    test('文本与推理增量分别进 content / reasoningContent', () async {
       final chunks = await normalizeMessagesStream(
         Stream.fromIterable([
           event({
@@ -306,7 +306,7 @@ void main() {
       ).toList();
 
       expect(chunks[0].choices!.single.delta.content, '你好');
-      expect(chunks[1].choices!.single.delta.reasoning, '思考中');
+      expect(chunks[1].choices!.single.delta.reasoningContent, '思考中');
     });
 
     test('工具调用：content block 下标重编号后再呈现', () async {
@@ -471,7 +471,8 @@ void main() {
       );
 
       expect(completion.choices.single.finishReason, FinishReason.toolCalls);
-      expect(completion.text, '');
+      expect(completion.text, isNull);
+      expect(completion.choices.single.message.toolCalls!.single.function.arguments, '{"command":"ls"}');
     });
   });
 }

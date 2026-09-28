@@ -7,6 +7,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
 import 'package:athena_core/service/responses_state.dart';
+import 'package:athena_core/service/messages_state.dart';
 import 'package:openai_dart/openai_dart.dart';
 
 /// 消息格式转换与上下文组装。
@@ -150,8 +151,14 @@ class ChatMessageConverter {
         final reasoning = includeReasoning && msg.reasoningContent.isNotEmpty
             ? msg.reasoningContent
             : null;
+        final messagesState = MessagesState.decode(msg.messagesState);
         messages.add(
-          ResponsesAssistantMessage(
+          messagesState != null ? MessagesAssistantMessage(
+            messagesState: messagesState,
+            content: hasContent ? msg.content : null,
+            toolCalls: toolCalls,
+            reasoningContent: reasoning,
+          ) : ResponsesAssistantMessage(
             responsesState: ResponsesState.decode(msg.responsesState),
             // 与 agent_service 当轮构建一致：空 content 序列化为 null，
             // 避免 "content":"" 与 tool_calls 并存被部分兼容端 400。
