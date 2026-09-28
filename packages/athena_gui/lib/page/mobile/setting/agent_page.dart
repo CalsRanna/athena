@@ -137,7 +137,11 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
       children: [
         AthenaFormTileLabel.large(title: 'Brave API Key'),
         const SizedBox(height: 12),
-        AthenaInput(controller: braveApiKeyController, placeholder: 'BSA...'),
+        AthenaInput(
+          controller: braveApiKeyController,
+          obscureText: true,
+          placeholder: 'BSA...',
+        ),
         const SizedBox(height: 8),
         Text(
           'Required for web_search. Get a free key at brave.com/search/api/',

@@ -35,7 +35,6 @@ class MobileProviderFormPage extends StatefulWidget {
 class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   final keyController = TextEditingController();
   final urlController = TextEditingController();
-  var _obscureKey = true;
   ApiFormat _apiFormat = ApiFormat.chatCompletions;
   bool _apiFormatAuto = true;
 
@@ -45,25 +44,10 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
     );
-    var keyVisibilityToggle = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _obscureKey = !_obscureKey),
-      child: Icon(
-        _obscureKey
-            ? LucideIcons.eye
-            : LucideIcons.eyeOff,
-        size: 18,
-        color: colors.border,
-      ),
-    );
     var children = [
       AthenaFormTileLabel.large(title: 'API Key'),
       SizedBox(height: 12),
-      AthenaInput(
-        controller: keyController,
-        obscureText: _obscureKey,
-        suffix: keyVisibilityToggle,
-      ),
+      AthenaInput(controller: keyController, obscureText: true),
       SizedBox(height: 16),
       AthenaFormTileLabel.large(title: 'API Url'),
       SizedBox(height: 12),
