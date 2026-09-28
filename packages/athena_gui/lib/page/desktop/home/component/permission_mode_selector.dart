@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// composer 左下角的审批模式文字（Claude 的 `Bypass permissions` 那段纯文字）。
+/// composer 左下角的审批模式文字（如 `Bypass permissions`）。
 ///
 /// 只负责显示当前档；点击由外层 `_SquishButton` 接管，弹出
 /// [DesktopPermissionModeMenu]。
@@ -32,7 +32,7 @@ class DesktopPermissionModeLabel extends StatelessWidget {
 
 /// 审批模式菜单：`Mode` 标题 + 三行（名称 + 一句说明），当前档行尾打钩。
 ///
-/// 对齐 Claude 的 Mode 菜单，但不放数字快捷键——Athena 没有对应的按键。
+/// 不放数字快捷键——Athena 没有对应的按键。
 /// 锚在触发块 [anchor] 上方、左边与它对齐；选中即保存，下一轮 run 生效
 /// （与设置 → Agent 里是同一份设置）。
 class DesktopPermissionModeMenu extends StatelessWidget {

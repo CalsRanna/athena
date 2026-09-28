@@ -2,7 +2,7 @@ import 'package:athena_core/agent/cancel_token.dart';
 
 /// 一个选项：标签 + 一句话说明。
 ///
-/// 选项由模型生成、宿主渲染，形状与 Claude Code 的 AskUserQuestion 对齐
+/// 选项由模型生成、宿主渲染
 /// （每问 2-4 个选项）。`preview` 一类需要宿主额外开启的字段不在此列——
 /// 没有渲染方支持时生成它只会白烧 token。
 class ElicitOption {
@@ -78,8 +78,8 @@ class ElicitChannel {
   ///
   /// 无提问 UI 或 run 被取消时返回 null——与权限门同一写法
   /// （`Future.any` 让取消与作答竞速），保证等待**绝不**挂死：
-  /// 官方 Claude Code SDK 承认其回调可无限挂起、需另用 PreToolUse 的
-  /// defer 规避，这里用取消信号把这个问题在架构上消掉。
+  /// 同类 SDK 的提问回调有"可无限挂起"的已知问题（需另用 PreToolUse 的
+  /// defer 规避），这里用取消信号把这个问题在架构上消掉。
   Future<Map<String, String>?> ask(List<ElicitQuestion> questions) async {
     final prompt = this.prompt;
     if (prompt == null) return null;

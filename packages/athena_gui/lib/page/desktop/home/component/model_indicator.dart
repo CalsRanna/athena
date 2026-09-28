@@ -33,7 +33,7 @@ class _ModelIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Claude 的底部那一行只用**纯文字**（`Fable 5.1`），没有图标、不带 provider。
+    // 底部那一行只用**纯文字**（如 `Fable 5.1`），没有图标、不带 provider。
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 240),

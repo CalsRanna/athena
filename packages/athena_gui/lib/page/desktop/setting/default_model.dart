@@ -13,7 +13,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 桌面端默认模型设置：一个分区、三行，每行一个下拉。
 ///
 /// 旧版是三个各只有一行的分区，分区标题与行标签互相重复（`Agent` /
-/// `Agent Model`）。Claude 的做法是**一个分区放一组同类设置**，这里改成
+/// `Agent Model`）。做法是**一个分区放一组同类设置**，这里改成
 /// 「Default models」一个分区，三行分别是会话、话题命名、角色元数据。
 /// 选了即保存，没有 Save。
 @RoutePage()

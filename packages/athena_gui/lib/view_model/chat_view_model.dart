@@ -455,7 +455,7 @@ class ChatViewModel {
     }
   }
 
-  /// 启动：读会话列表，然后落在一个空草稿页上（对齐 Claude 桌面端），
+  /// 启动：读会话列表，然后落在一个空草稿页上，
   /// 不自动打开最近的对话。历史对话从侧栏点进去。
   Future<void> initSignals() async {
     final (chatsList, histories) = await _manageService.getChats();
@@ -467,7 +467,7 @@ class ChatViewModel {
   /// 把草稿落盘成一个真正的对话。
   ///
   /// 只在草稿态（[currentChat] 为 null）由"首条消息发送"调用：新建对话本身
-  /// 不落盘（对齐 Claude 桌面端），`sessions/` 目录与侧栏里只有真正聊过的
+  /// 不落盘，`sessions/` 目录与侧栏里只有真正聊过的
   /// 对话。会话参数全部取自草稿态的 `current*` 信号——用户在 composer 上改过
   /// 的模型/角色/温度/上下文保留/推理强度/工作文件夹都要带过去；草稿没定
   /// 模型时回退到设置里的默认对话模型。**不动 [pendingImages]**：调用方发送

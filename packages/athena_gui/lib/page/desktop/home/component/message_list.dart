@@ -321,7 +321,7 @@ class _DesktopMessageListState extends State<DesktopMessageList> {
                   navigator: turnNavigator,
                   // 消息列与 composer 用同一条 768 定宽列并左缘对齐；
                   // 列内的左右留白由各消息自己带（助手 4 / 用户 12），
-                  // 这里再加内边距会让正文比 Claude 右移 24。
+                  // 这里再加内边距会让正文右移 24。
                   padding: EdgeInsets.symmetric(
                     horizontal: columnPadding,
                     vertical: 12,

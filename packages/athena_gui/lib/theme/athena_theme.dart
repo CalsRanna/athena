@@ -23,7 +23,7 @@ AthenaColors colorsOf(AthenaColorMode mode) =>
 /// 构建指定模式下的 [ThemeData]。
 ///
 /// **字体**：UI 与正文走系统字体（[AthenaFont.ui] 为 `null`，用平台默认），
-/// 只有代码 / 工具 / 技术标签显式走 [athenaMono]。Claude 的侧栏、设置、
+/// 只有代码 / 工具 / 技术标签显式走 [athenaMono]。侧栏、设置、
 /// 按钮、正文都是比例字体——把整个 UI 做成等宽是对它的误读。
 ///
 /// **强调色**：[AthenaColors.accent] 挂到 `ColorScheme.primary`，

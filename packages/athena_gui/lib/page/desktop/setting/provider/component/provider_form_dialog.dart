@@ -95,7 +95,7 @@ class _DesktopProviderFormDialogState extends State<DesktopProviderFormDialog> {
   }
 }
 
-/// 设置表单对话框里的一项：标签在上、控件在下（Claude 的表单是纵向的，
+/// 设置表单对话框里的一项：标签在上、控件在下（表单是纵向的，
 /// 不是「左标签右输入」的两列）。
 class DesktopSettingFormField extends StatelessWidget {
   final String label;

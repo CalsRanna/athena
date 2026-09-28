@@ -46,7 +46,7 @@ class _SettingGroup {
   const _SettingGroup(this.title, this.entries);
 }
 
-/// 桌面端设置：Claude 桌面端设置面板的复刻。
+/// 桌面端设置面板。
 ///
 /// 版式（数值与来源见 `theme/athena_settings.dart`）：
 /// - **居中浮层**（最大宽 1024、上下留白 44、圆角 16）+ 40% 黑遮罩，右上角关闭；
@@ -55,7 +55,7 @@ class _SettingGroup {
 /// - **右栏纯白内容区**：顶部 60 的标题带（关闭键 / 返回链接）、分区标题、
 ///   行（标签 + 说明 + 右侧控件）、行间 1px `#F3F3F3` 发丝线。
 ///
-/// **没有第二列导航**：Claude 的一个导航项对应同一内容区里的多个分区。
+/// **没有第二列导航**：一个导航项对应同一内容区里的多个分区。
 /// Providers / Sentinels / Skills / Experiences 这类条目集合用**单列列表 →
 /// 钻取详情**（标题带里出现 `← 返回`）承载，而不是再开一列。
 @RoutePage()

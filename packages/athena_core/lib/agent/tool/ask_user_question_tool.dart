@@ -3,13 +3,13 @@ import 'package:athena_core/agent/tool/tool_interface.dart';
 
 /// 向用户提结构化问题（「你要哪个」），与审批弹窗（「要不要做」）分开。
 ///
-/// 形状与用法对齐 Claude Code 的 AskUserQuestion：每次 1-4 问、每问 2-4 选项、
+/// 形状与用法：每次 1-4 问、每问 2-4 选项、
 /// header ≤12 字符、用户永远可以自填、推荐项放首位并标 `(Recommended)`。
 /// 使用条件是**判据式**而非计数式：只在卡住一个真正属于用户的决定、
 /// 且从请求/代码/合理默认都推不出来时才问——这条判据写在工具描述里，
 /// 随工具一起下发给模型，不依赖某个角色的提示词。
 class AskUserQuestionTool implements Tool, ElicitChannelAware {
-  /// 硬约束：与 Claude Code 一致（每次调用 1-4 问、每问 2-4 选项）。
+  /// 硬约束（每次调用 1-4 问、每问 2-4 选项）。
   static const int maxQuestions = 4;
   static const int minOptionsPerQuestion = 2;
   static const int maxOptionsPerQuestion = 4;

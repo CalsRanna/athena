@@ -26,7 +26,7 @@ class AthenaRouter extends RootStackRouter {
       DesktopRoute(page: DesktopSettingAboutRoute.page),
     ];
     // 设置是**非透明**路由：它自己画遮罩与居中面板，浮在应用之上
-    // （与 Claude 桌面端一致——设置面板后面能看见会话）。
+    // （设置面板后面能看见会话）。
     var desktopSettingRoute = DesktopRoute(
       children: desktopSettingChildren,
       page: DesktopSettingRoute.page,

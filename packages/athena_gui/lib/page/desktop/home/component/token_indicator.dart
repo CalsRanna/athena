@@ -11,7 +11,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// 输入框工具栏最右的上下文占用指示器。
 ///
-/// 对齐 Claude：12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 只给一句
+/// 12 圆环表示上下文窗口占用率，≥ 80% 用警示色；hover 只给一句
 /// 深色 tooltip（`Context 181.6k / 1M (18%)`），点击才在圆环上方弹出明细面板
 /// （标题行 + 分段占用条 + 缓存命中 / 未命中 / 剩余三行图例）。
 ///
@@ -58,7 +58,7 @@ class _DesktopTokenIndicatorState extends State<DesktopTokenIndicator> {
         semanticsValue: stats.summary,
       ),
     );
-    // Claude 的 tooltip 是深色底白字的一句话，明细留给点击。
+    // tooltip 是深色底白字的一句话，明细留给点击。
     return Tooltip(
       message: 'Context ${stats.summary}',
       preferBelow: false,
@@ -116,7 +116,7 @@ class _ContextStats {
       '${_compact(used)} / ${_compact(window)} (${_percent(used, window)})';
 }
 
-/// Claude 的紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
+/// 紧凑计数：千以下原样，千位一位小数带 `k`，百万带 `M`，去掉 `.0`。
 String _compact(int value) {
   if (value < 1000) return '$value';
   var scaled = value / 1000;

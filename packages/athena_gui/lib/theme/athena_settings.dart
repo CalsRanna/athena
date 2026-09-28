@@ -1,6 +1,6 @@
-/// 设置面板的几何以 Claude 桌面端实测为起点，排版与控件密度统一到 Athena。
+/// 设置面板的几何以窗口实测为起点，排版与控件密度统一到 Athena。
 ///
-/// 采样方法：对 Claude 桌面端（macOS，浅色主题）的设置窗口整窗截图
+/// 采样方法：对设置窗口（macOS，浅色主题）整窗截图
 /// （1296×783 逻辑窗口，2x Retina），再按像素量取并折半成逻辑值。
 /// 几何沿用参照并适度放松，排版共用 Athena 的 14 / 22 基准，颜色使用青瓷色板。
 ///
@@ -78,7 +78,7 @@ abstract final class AthenaSettings {
   static const panePadding = 24.0;
 
   /// 行块相对文字列的外扩。可点行的 hover 底、选中底比文字列**每边宽 8**
-  /// （Claude 的列表行块比正文列宽一圈），所以内容区实际按
+  /// （列表行块比正文列宽一圈），所以内容区实际按
   /// `panePadding − rowInset` 内缩、每一行自带 `rowInset` 的水平内边距，
   /// 文字列仍落在 24 的位置上。
   static const rowInset = 8.0;
@@ -112,7 +112,7 @@ abstract final class AthenaSettings {
   /// 行标签与说明的字号。实测大写高均为 10.0 ≈ 13.9——**两者同号**，即 [AthenaFontSize.row]。
   static const rowFontSize = AthenaFontSize.row;
 
-  /// 行标签字重。Claude 的标签是半粗，说明是常规。
+  /// 行标签字重。标签是半粗，说明是常规。
   static const rowLabelWeight = FontWeight.w600;
 
   /// 行说明与常规 UI 共用 14 / 22。

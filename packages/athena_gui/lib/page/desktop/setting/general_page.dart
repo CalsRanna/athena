@@ -16,7 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// 桌面端 General（应用本身的设置）：Appearance / Data / Danger zone。
 ///
-/// 对应 Claude 设置里 `Desktop app → General`。旧名 Advanced 不准确——
+/// 旧名 Advanced 不准确——
 /// 这里放的是主题、字号、备份这些最常用的项，不是「高级」选项。
 @RoutePage()
 class DesktopSettingGeneralPage extends StatefulWidget {

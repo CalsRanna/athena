@@ -75,7 +75,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   /// 侧栏 "New chat" 与 ⌘N / Ctrl+N：进入草稿态（不落盘），焦点放到输入框。
   ///
-  /// 对齐 Claude 桌面端：新对话只是一个空页面，会话文件与侧栏条目要等首条
+  /// 新对话只是一个空页面，会话文件与侧栏条目要等首条
   /// 消息发出去才有（见 [sendMessage] → `ChatViewModel.createChat`）。已经在
   /// 草稿态时不重置——用户可能已经在草稿上换了角色、贴了图、打了半句话——
   /// 但焦点照样放回输入框，这样在草稿页按快捷键也等于"回到输入框"。
@@ -317,7 +317,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 
   Widget _buildAppBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Claude 的顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
+    // 顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
     // 右侧是一组视图操作。这里保留标题那一部分（Athena 没有导航与右面板）。
     var title = Watch((context) {
       final chat = chatViewModel.currentChat.value;

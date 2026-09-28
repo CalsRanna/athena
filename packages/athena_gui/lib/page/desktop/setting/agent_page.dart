@@ -14,7 +14,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// 桌面端 Agent 设置。
 ///
 /// 每一行**改了即存**，没有页面级 Save：分段控件点选即生效；数字与密钥
-/// 输入在失焦或回车时提交，非法值就地报错并回退。与 Claude 的设置一致，
+/// 输入在失焦或回车时提交，非法值就地报错并回退。与设置页的其余行一致，
 /// 也与本面板里的其他分区（Default models / General）一致。
 @RoutePage()
 class DesktopSettingAgentPage extends StatefulWidget {

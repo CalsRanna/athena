@@ -131,7 +131,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
         : rawText;
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 无边框：代码块靠 codeBackground 与页面底色的差自成一层，
-    // header 再用 cardHeader 提亮一档划分标题与正文（与 Claude 一致）。
+    // header 再用 cardHeader 提亮一档划分标题与正文。
     var boxDecoration = BoxDecoration(
       borderRadius: BorderRadius.circular(AthenaRadius.container),
       color: colors.codeBackground,
@@ -405,7 +405,7 @@ class _FlutterMarkdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       codeblockPadding: const EdgeInsets.all(8),
-      // 块间距取 Claude 的 `--cds-gap-xs`(6)：实测相邻段落行距 ≈ 28
+      // 块间距取 6：相邻段落行距 ≈ 28
       // = 行盒 22 + 段距 6。flutter_markdown 默认 8 会偏松。
       blockSpacing: 6,
     );
