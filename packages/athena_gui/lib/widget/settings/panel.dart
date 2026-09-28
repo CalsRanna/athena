@@ -16,7 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// 设置面板外壳：居中浮层 + 遮罩，版式取自 Claude 桌面端的设置。
+/// 设置面板外壳：居中浮层 + 遮罩。
 ///
 /// 实测（1296×783 逻辑窗口）：面板 1026×695，左右各留 135、上下各留 44，
 /// 圆角统一为 16；遮罩与表面颜色跟随 Athena 青瓷色板。
@@ -224,7 +224,7 @@ class AthenaSettingsBackLink extends StatelessWidget {
           color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
           borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         height: 28,
         padding: const EdgeInsets.symmetric(
           horizontal: AthenaSettings.rowInset,

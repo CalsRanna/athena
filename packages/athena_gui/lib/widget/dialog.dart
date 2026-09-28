@@ -171,7 +171,7 @@ class AthenaDialog {
     );
     overlay.insert(entry);
     _messageOverlay = entry;
-    _messageTimer = Timer(const Duration(seconds: 3), _dismissDesktopMessage);
+    _messageTimer = Timer(AthenaMotion.linger, _dismissDesktopMessage);
   }
 }
 

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/util/message_display_util.dart';
@@ -93,7 +94,7 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
   /// 粗跳时单次最多走几屏：估得太远会来回震荡。
   static const double _maxJumpViewports = 2.5;
 
-  static const Duration _jumpDuration = Duration(milliseconds: 240);
+  static const Duration _jumpDuration = AthenaMotion.slow;
 
   final hover = AssistantCardHover();
 

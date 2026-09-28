@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 /// AthenaHover(
 ///   onTap: widget.onTap,
 ///   builder: (context, hover) => AnimatedContainer(
-///     duration: const Duration(milliseconds: 120),
+///     duration: AthenaMotion.hover,
 ///     decoration: BoxDecoration(
 ///       color: hover ? colors.surfaceHover : colors.surfaceHover.withValues(alpha: 0),
 ///       borderRadius: BorderRadius.circular(AthenaRadius.row),

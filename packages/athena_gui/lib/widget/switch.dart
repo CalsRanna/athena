@@ -32,7 +32,7 @@ class AthenaSwitch extends StatelessWidget {
     var animatedContainer = AnimatedContainer(
       alignment: value ? Alignment.centerRight : Alignment.centerLeft,
       decoration: outerDecoration,
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       height: _trackHeight,
       padding: const EdgeInsets.all(3),
       width: _trackWidth,

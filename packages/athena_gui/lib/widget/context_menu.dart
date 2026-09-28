@@ -158,10 +158,10 @@ class DesktopContextMenuTile extends StatefulWidget {
   /// 不会因为它把标题挤窄到换行之外。
   final Widget? badge;
 
-  /// 危险项（如 Delete）：Claude 用深红文字。
+  /// 危险项（如 Delete）：用深红文字（`dangerText`）。
   final bool danger;
 
-  /// 条目左侧的图标（Claude 的账号菜单有，右键菜单没有）。
+  /// 条目左侧的图标（账号类菜单有，右键菜单没有）。
   final IconData? icon;
 
   /// 弱化文字但不影响交互（`No model` 这类占位项：灰字，仍可点）。
@@ -413,7 +413,7 @@ class _DesktopContextMenuTileWithSubmenuState
   void handleExit(PointerExitEvent event) {
     setState(() => hover = false);
     // 延迟隐藏子菜单，给用户时间移动鼠标到子菜单
-    _hideTimer = Timer(const Duration(milliseconds: 100), () {
+    _hideTimer = Timer(AthenaMotion.fast, () {
       if (!submenuHover) {
         _hideSubmenu();
       }
@@ -533,7 +533,7 @@ class DesktopContextMenuList extends StatelessWidget {
     required this.children,
   });
 
-  /// 弹在 [anchor] 上方的选择菜单能用的最大高度：Claude 的选择器就是一小段
+  /// 弹在 [anchor] 上方的选择菜单能用的最大高度：选择器就是一小段
   /// 列表，这里封顶 320（约十行）；同时不超过锚点上方、离窗顶留 12 的空间。
   static double maxHeightAbove(Rect anchor) =>
       math.min(320.0, math.max(anchor.top - 20, 120.0));
@@ -581,7 +581,7 @@ class DesktopContextMenuGroupLabel extends StatelessWidget {
   }
 }
 
-/// 菜单分组之间的 1px 细线（Claude 在 Archive / Delete 之前有一条）。
+/// 菜单分组之间的 1px 细线（Archive / Delete 之前有一条）。
 class DesktopContextMenuSeparator extends StatelessWidget {
   const DesktopContextMenuSeparator({super.key});
 

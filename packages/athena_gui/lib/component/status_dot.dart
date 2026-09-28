@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:flutter/material.dart';
 
-/// 会话行的状态点。Claude 实测：静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
+/// 会话行的状态点。静止 `#CAC8C4`、hover 加深到 `#8F8D89`，
 /// 直径约 6 逻辑。用 `iconSecondary` 调透明度即可复现这两个档位。
 ///
 /// **形状分两态**：没有在跑（静止 / hover / 重命名）画成 1px 描边的圆环，
@@ -16,8 +16,8 @@ class StatusDot extends StatefulWidget {
   final bool streaming;
   final bool renaming;
 
-  /// 色相绕一圈的时长。比 `StepHeaderShimmer` 的 1800ms 更慢：侧栏是常驻区域，
-  /// 圆点转太快会把注意力从正文抢走。
+  /// 色相绕一圈的时长。比 [AthenaMotion.cycle]（1800ms）更慢，这是刻意的：
+  /// 侧栏是常驻区域，圆点转太快会把注意力从正文抢走。
   static const Duration cycleDuration = Duration(milliseconds: 2400);
 
   const StatusDot({

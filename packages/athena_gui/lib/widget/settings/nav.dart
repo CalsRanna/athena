@@ -114,7 +114,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       onTapOutside: (_) => focusNode.unfocus(),
       style: textStyle,
     );
-    // 有输入时右端出现清除键，与 Claude 的搜索框一致
+    // 有输入时右端出现清除键
     var clear = widget.controller.text.isEmpty
         ? null
         : GestureDetector(
@@ -137,7 +137,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
       if (clear != null) clear,
     ];
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       height: AthenaSettings.searchHeight,
       decoration: decoration,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -201,8 +201,7 @@ class AthenaSettingsNavGroup extends StatelessWidget {
 /// 导航行：图标 + 标签。行高 36、圆角 8、左内缩 12、
 /// 图标 16、图标与标签间距 12。
 ///
-/// 选中行只换底色与文字色，**不加粗**：Claude 的导航选中行是 `#0B0B0B`
-/// 的常规字重（见截图 `Claude Code` 行），加粗会让整列在切换时跳动。
+/// 选中行只换底色与文字色，**不加粗**：加粗会让整列在切换时跳动。
 class AthenaSettingsNavItem extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -260,7 +259,7 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
               : colors.neutralRule.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         height: AthenaSettings.navRowHeight,
         padding: const EdgeInsets.only(
           left: AthenaSettings.navRowPadding,

@@ -13,10 +13,10 @@ class DesktopMenuTile extends StatefulWidget {
   final void Function()? onTap;
   final Widget? trailing;
 
-  /// 仅在 hover 时出现的尾部（Claude 的会话行 hover 才显示 `⋮`）。
+  /// 仅在 hover 时出现的尾部（会话行 hover 才显示 `⋮`）。
   final Widget? hoverTrailing;
 
-  /// 需要感知 hover 的 leading（Claude 的状态点在 hover 时会加深）。
+  /// 需要感知 hover 的 leading（状态点在 hover 时会加深）。
   final Widget Function(bool hover)? leadingBuilder;
 
   const DesktopMenuTile({
@@ -83,7 +83,7 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
             color: background,
             borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
-          duration: const Duration(milliseconds: 120),
+          duration: AthenaMotion.hover,
           // 固定高保证 hover 出现的操作按钮不改变行高，文字上下各留 5。
           height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 11),

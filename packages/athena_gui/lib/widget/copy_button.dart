@@ -45,7 +45,7 @@ class _CopyButtonState extends State<CopyButton> {
     );
     if (copied) child = _buildCopiedRow();
     var animatedSwitcher = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
+      duration: AthenaMotion.hover,
       child: child,
     );
     return GestureDetector(
@@ -82,7 +82,7 @@ class _CopyButtonState extends State<CopyButton> {
     setState(() {
       copied = true;
     });
-    _resetTimer = Timer(const Duration(seconds: 3), () {
+    _resetTimer = Timer(AthenaMotion.linger, () {
       setState(() {
         copied = false;
       });

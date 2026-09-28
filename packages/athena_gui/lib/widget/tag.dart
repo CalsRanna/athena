@@ -41,10 +41,10 @@ class AthenaTag extends StatelessWidget {
     );
     return AnimatedContainer(
       decoration: boxDecoration,
-      duration: const Duration(milliseconds: 150),
+      duration: AthenaMotion.hover,
       padding: padding,
       child: AnimatedDefaultTextStyle(
-        duration: const Duration(milliseconds: 150),
+        duration: AthenaMotion.hover,
         style: textStyle,
         child: Text(text),
       ),
@@ -98,7 +98,7 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
       onTap: widget.onTap,
       cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
       builder: (context, hover) => AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: AthenaMotion.hover,
         decoration: BoxDecoration(
           // 选中态靠"提亮底色 + 加粗文字"表达，不做明暗反转的实心填充。
           color: selected
@@ -140,7 +140,7 @@ class AthenaContextChip extends StatefulWidget {
   /// 是否绘制自己的底色。
   ///
   /// 放在 composer 的上下文带上时传 false：带本身已是浅灰填充，chip 再画一层
-  /// 同色底会变成"看不见的胶囊"。Claude 的上下文项就是带上直接排的文字 + 图标。
+  /// 同色底会变成"看不见的胶囊"。上下文项就是带上直接排的文字 + 图标。
   final bool filled;
 
   const AthenaContextChip({
@@ -193,7 +193,7 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
             // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
             borderRadius: BorderRadius.circular(AthenaRadius.xs),
           ),
-          duration: const Duration(milliseconds: 120),
+          duration: AthenaMotion.hover,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -220,7 +220,7 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
                   ignoring: !hover,
                   child: AnimatedOpacity(
                     opacity: hover ? 1 : 0,
-                    duration: const Duration(milliseconds: 120),
+                    duration: AthenaMotion.hover,
                     child: IconTheme(
                       data: IconThemeData(color: foreground),
                       child: widget.trailing!,

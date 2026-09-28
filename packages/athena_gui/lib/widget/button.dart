@@ -81,7 +81,7 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
             color: background,
             borderRadius: BorderRadius.circular(AthenaRadius.control),
           ),
-          duration: const Duration(milliseconds: 120),
+          duration: AthenaMotion.hover,
           padding: widget.padding,
           child: DefaultTextStyle(
             style: AthenaTextStyle.label.copyWith(
@@ -140,7 +140,7 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
           ),
           borderRadius: BorderRadius.circular(AthenaRadius.control),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         padding: widget.padding,
         child: DefaultTextStyle(
           style: AthenaTextStyle.label.copyWith(color: foreground),
@@ -189,8 +189,8 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
   }
 }
 
-/// Ghost 图标按钮：静止无底色，hover 填充前景色 5%（Claude 的
-/// `--cds-fill-ghost-hover`），圆角 [AthenaRadius.row]。
+/// Ghost 图标按钮：静止无底色，hover 填充前景色 5%，
+/// 圆角 [AthenaRadius.row]。
 ///
 /// 用于设置面板的关闭 / 新增键与桌面对话框的关闭键；默认盒 28、图标 14。
 class AthenaGhostIconButton extends StatefulWidget {
@@ -229,7 +229,7 @@ class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
           color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
           borderRadius: BorderRadius.circular(AthenaRadius.row),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         height: widget.box,
         width: widget.box,
         child: icon,

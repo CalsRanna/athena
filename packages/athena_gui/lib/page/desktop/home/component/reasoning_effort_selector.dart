@@ -5,7 +5,7 @@ import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// 工具栏上的推理强度文字（Claude 的 `High`）。只负责显示：点击由外层
+/// 工具栏上的推理强度文字（如 `High`）。只负责显示：点击由外层
 /// `_SquishButton` 接管，弹出 [DesktopReasoningEffortMenu]。
 class DesktopReasoningEffortLabel extends StatelessWidget {
   final String current;
@@ -16,13 +16,13 @@ class DesktopReasoningEffortLabel extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Text(
       reasoningEffortLabel(current),
-      // 与模型名同字号同字重（Claude 的 `High` 是常规字重）
+      // 与模型名同字号同字重（都是常规字重）
       style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
   }
 }
 
-/// 推理强度面板：对齐 Claude 的 Effort 弹层。
+/// 推理强度面板。
 ///
 /// 标题行「Effort + 当前档」与帮助图标、`Faster / Smarter` 两端标注、
 /// 一条五档滑杆（[reasoningEffortOptions] 从弱到强）。点或拖滑杆立即生效，
@@ -253,7 +253,7 @@ class _EffortSlider extends StatelessWidget {
             ),
         ];
         final knob = AnimatedPositioned(
-          duration: const Duration(milliseconds: 120),
+          duration: AthenaMotion.hover,
           curve: Curves.easeOut,
           left: centerOf(index) - _knob / 2,
           top: (_height - _knob) / 2,

@@ -111,11 +111,11 @@ class DesktopChatPreviewManager {
   /// 卡片离窗口边缘留的余量。
   static const double margin = 8;
 
-  /// 进场时长（淡入 + 从下浮起 + 轻微放大）。
-  static const Duration appearDuration = Duration(milliseconds: 140);
+  /// 进场时长（淡入 + 从下浮起 + 轻微放大）。用标准交互档。
+  static const Duration appearDuration = AthenaMotion.hover;
 
   /// 退场时长。比进场短：指针已经移开，收卡要跟手。
-  static const Duration hideDuration = Duration(milliseconds: 100);
+  static const Duration hideDuration = AthenaMotion.fast;
 
   /// 在 [anchor]（锚点的全局矩形）右侧弹出预览卡；右侧/下侧放不下时回退。
   void show(

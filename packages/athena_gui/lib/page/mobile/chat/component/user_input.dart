@@ -71,7 +71,7 @@ class _UserInputState extends State<UserInput> {
     );
     // 与桌面端共用圆角、柔阴影和青瓷聚焦边框，输入在上、操作在下。
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
         border: Border.all(

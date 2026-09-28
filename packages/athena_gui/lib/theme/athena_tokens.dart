@@ -43,7 +43,7 @@ abstract final class AthenaSpace {
   static const xxl = 24.0;
   static const xxxl = 32.0;
 
-  /// 桌面左侧栏宽度。Claude 实测：侧栏与画布的分界线在逻辑 287，即宽 288。
+  /// 桌面左侧栏宽度。侧栏与画布的分界线在逻辑 287，即宽 288。
   static const sidebar = 288.0;
 }
 
@@ -191,8 +191,8 @@ enum AthenaTextSize {
 /// 字体族。
 ///
 /// **UI 与正文走系统字体**（`null` = 平台默认：macOS SF Pro / Windows Segoe UI）——
-/// Claude 的侧栏、设置、按钮、正文都是比例字体，等宽只有代码与终端在用。
-/// 早期实现把整个 UI 做成等宽，是对 Claude 的误读。
+/// 侧栏、设置、按钮、正文都是比例字体，等宽只有代码与终端在用。
+/// 早期实现把整个 UI 做成等宽，那是误读。
 abstract final class AthenaFont {
   /// UI 与正文：交给平台默认字体（含 CJK 回退）。
   static const String? ui = null;
@@ -217,6 +217,43 @@ abstract final class AthenaFont {
     'Microsoft YaHei',
     'Noto Sans CJK SC',
   ];
+}
+
+/// 过渡时长。**按感知档位分级，不按组件分级。**
+///
+/// 五个档位是"人眼能分辨的快慢"：60–100 是"瞬间"，150 是"一下"，240 是"缓缓"，
+/// 1800+ 是"持续循环"，3 秒是"停留"。**不要**为某个组件新加一个贴着自己名字的
+/// 常量——差值在 20ms 以内的两档（如 140 与 150）人眼分不出，共用一档即可。
+///
+/// 选档只看两件事：**这是不是交互反馈**（是 → [hover]），**要不要跟手**
+/// （指针已移开、收得要更快 → [fast]）。语义描述得再贴切，值也不能另开一档。
+abstract final class AthenaMotion {
+  /// 快档：100ms。用于**退场与按压**——指针已经移开或按下的那一刻，
+  /// 用户已经在看下一个目标，收得慢会显得拖沓。
+  ///
+  /// 菜单 / 预览卡退场、按压缩放、预览卡弹出前的延迟，都用它。
+  static const Duration fast = Duration(milliseconds: 100);
+
+  /// 标准档：150ms。**交互反馈一律用它**：hover 底色、描边变色、分段切换、
+  /// 行底变化、图标两态切换、浮层进场、聚焦变色。
+  ///
+  /// 全站同档不只是"好看"——指针划过一串不同控件时，同档才有统一手感。
+  static const Duration hover = Duration(milliseconds: 150);
+
+  /// 慢档：240ms。用于**位置与视口迁移**：滚动跳转到某一轮、回弹（`easeOutBack`）。
+  /// 这类动画位移大，来得太快会让人失去空间感。
+  static const Duration slow = Duration(milliseconds: 240);
+
+  /// 循环档：1800ms。**持续重复**的装饰动画绕一圈的时长（工具头 shimmer）。
+  ///
+  /// 比它更慢的循环（状态点色相 2400ms）在 `StatusDot.cycleDuration` 自持——
+  /// 侧栏是常驻区域，圆点转太快会把注意力从正文抢走，这个差异是刻意的。
+  static const Duration cycle = Duration(milliseconds: 1800);
+
+  /// 停留档：3 秒。**瞬时提示在屏上留多久**（"已复制"的复原、桌面轻提示消失）。
+  ///
+  /// 这不是过渡时长，是可读性下限：短于它用户来不及看清。本档不参与"快慢"取舍。
+  static const Duration linger = Duration(seconds: 3);
 }
 
 /// 浮起容器的柔阴影。

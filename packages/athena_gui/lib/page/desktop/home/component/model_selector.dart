@@ -11,13 +11,13 @@ import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// composer 里的模型选择菜单：对齐 Claude 的模型选择器，但不放数字快捷键与
+/// composer 里的模型选择菜单：不放数字快捷键与
 /// 模型描述，每行只有模型名。
 ///
 /// 在触发行 [anchor]（composer 右下的模型名那一块）上方弹出，右边与它对齐。
 /// 当前会话在用的模型行尾打钩；设置里的默认模型带 `Default` 小标（新会话用它
 /// 起步）。启用了多个 provider 时按 provider 分组、组名用说明字号；只有一个
-/// provider 时不显示组名——Claude 的列表就是平铺的。
+/// provider 时不显示组名——只有一组时列表就是平铺的。
 ///
 /// 设置页里选默认模型仍用下面的 [DesktopModelSelectDialog]。
 class DesktopModelSelectMenu extends StatelessWidget {
@@ -65,7 +65,7 @@ class DesktopModelSelectMenu extends StatelessWidget {
   }
 }
 
-/// Claude 挂在默认模型名后的小标：浅灰底、说明字号、圆角 4。
+/// 挂在默认模型名后的小标：浅灰底、说明字号、圆角 4。
 class _DefaultBadge extends StatelessWidget {
   const _DefaultBadge();
 
@@ -203,7 +203,7 @@ class _DesktopModelSelectDialogTileState
           borderRadius: BorderRadius.circular(AthenaRadius.row),
           color: hover ? colors.surfaceButtonSecondary : null,
         ),
-        duration: const Duration(milliseconds: 200),
+        duration: AthenaMotion.hover,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(spacing: 8, children: children),
       ),

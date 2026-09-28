@@ -66,7 +66,7 @@ class DesktopMessageInput extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatViewModel = GetIt.instance<ChatViewModel>();
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Claude 的 ghost 按钮 hover 填充：前景色 5%
+    // ghost 按钮 hover 填充：前景色 5%
     final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
     return Watch((context) {
       final queued = chatViewModel.queuedMessages.value;
@@ -78,7 +78,7 @@ class DesktopMessageInput extends StatelessWidget {
       final reasoningModel =
           chatViewModel.currentModel.value?.reasoning ?? false;
       final reasoningEffort = chatViewModel.currentReasoningEffort.value;
-      // 版式取自 **Claude 桌面端**：
+      // 版式：
       // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
       // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
       return Padding(
@@ -97,7 +97,7 @@ class DesktopMessageInput extends StatelessWidget {
                 // 上下文条：灰底、无描边
                 Container(
                   height: 40,
-                  // Claude 实测：带内首个元素距容器左缘 17（含 chip 自身 10）
+                  // 带内首个元素距容器左缘 17（含 chip 自身 10）
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
@@ -158,7 +158,7 @@ class DesktopMessageInput extends StatelessWidget {
                 // 容器之外的一行
                 Row(
                   children: [
-                    // Claude 的左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
+                    // 左侧是「一段文字 + 一个裸字形」（Bypass permissions +）：
                     // 文字是审批模式，点开 Mode 菜单；字形是加号（选图片）。
                     // 菜单要锚在整块（含 hover 填充）上，用 Builder 拿它的矩形。
                     Builder(
@@ -216,7 +216,7 @@ class DesktopMessageInput extends StatelessWidget {
                         ),
                       ),
                     ],
-                    // Claude 实测：`High` 与右侧圆环之间约 20
+                    // `High` 与右侧圆环之间约 20
                     const SizedBox(width: 12),
                     const DesktopTokenIndicator(),
                   ],
@@ -304,7 +304,7 @@ class _InputState extends State<_Input> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var hintTextStyle = AthenaTextStyle.body.copyWith(
-      // Claude 实测：占位符是**浅灰** #898782（gray-400），不是深色。
+      // 占位符是**浅灰** #898782，不是深色。
       // 之前那条"深色"的结论是我把光标误当成了文字。
       color: colors.textWeak,
     );
@@ -395,7 +395,7 @@ class _InputState extends State<_Input> {
       ],
     );
     return Padding(
-      // Claude 实测：占位符距容器左缘 10
+      // 占位符距容器左缘 10
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: content,
     );
@@ -632,11 +632,10 @@ class _SendButton extends StatelessWidget {
       final streaming = chatViewModel.isCurrentChatStreaming.value;
       final imagesReady = chatViewModel.pendingImages.value
           .every((image) => image.isReady);
-      // Claude 的 ghost 按钮 hover 填充：前景色 5%
+      // ghost 按钮 hover 填充：前景色 5%
       final ghostHover = colors.textPrimary.withValues(alpha: 0.05);
-      // 规格取自 Claude 的 CSS（`[data-cds=Button][data-cds-icon-only]`）：
       // 高宽同为"嵌套档"、圆角同心算出（各档 3–4）、ghost 无填充无描边。
-      // 取 step4 档：22×22。按下缩放到 0.975 也是从 CSS 取的。
+      // 取 step4 档：22×22。
       return _SquishButton(
         onTap: streaming ? onTerminated : imagesReady ? onSubmitted : null,
         hoverFill: ghostHover,
@@ -659,13 +658,12 @@ class _SendButton extends StatelessWidget {
 
 /// 按压缩放按钮。
 ///
-/// 取自 Claude 的 `.cds-btn-squish:active { transform: scale(.975) }`，
-/// 过渡在按下时用快档（`--cds-dur-fast` ≈ 60ms）、回弹用慢档带弹簧。
+/// 按压缩放 0.975：按下用快档、回弹用标准档且带弹簧曲线（`easeOutBack`）。
 class _SquishButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
 
-  /// hover 时的圆角填充。Claude 的 ghost 按钮是前景色 5%（暗色 7.5%）。
+  /// hover 时的圆角填充：前景色 5%（暗色 7.5%）。
   /// 传 null 表示不做 hover 反馈。
   final Color? hoverFill;
 
@@ -701,7 +699,9 @@ class _SquishButtonState extends State<_SquishButton> {
           );
     result = AnimatedScale(
       scale: _pressed ? 0.975 : 1,
-      duration: Duration(milliseconds: _pressed ? 60 : 200),
+      // 按下要立刻跟手（快档）；回弹带弹簧、位移只有 2.5%，用标准档，
+      // 不用为"大位移"准备的慢档。
+      duration: _pressed ? AthenaMotion.fast : AthenaMotion.hover,
       curve: _pressed ? Curves.easeOut : Curves.easeOutBack,
       child: result,
     );
@@ -787,7 +787,7 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
         borderRadius: BorderRadius.circular(AthenaRadius.composer),
         boxShadow: AthenaShadow.raised(colors.shadow),
       ),
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: widget.builder(widget.focusNode),
     );

@@ -85,10 +85,12 @@ class TurnIndicator extends StatefulWidget {
   static const int maxBars = 20;
 
   /// 条长与颜色的过渡时长，跟全站 hover 过渡一致。
-  static const Duration barDuration = Duration(milliseconds: 120);
+  static const Duration barDuration = AthenaMotion.hover;
 
-  /// hover 多久弹预览卡。条是小目标，停在上面本身就是明确的意图，所以延迟
-  /// 取短档：150ms 就出卡，不必让人在条上等半拍。
+  /// hover 多久弹预览卡。
+  ///
+  /// 这是**延迟**不是过渡，所以不取 [AthenaMotion] 的档位：150ms 是"留在条上
+  /// 本身就是明确意图"的判断阈值——再短会让指针路过时误弹，再长要等半拍。
   static const Duration previewDelay = Duration(milliseconds: 150);
 
   /// 条长的**唯一**公式：静止 = 上限 × [restingWidthFactor]；有 hover 时那一条

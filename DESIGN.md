@@ -35,8 +35,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - 本文所有几何、色值、字重均可在 `packages/athena_gui/lib/theme/athena_tokens.dart`（不随主题变化的常量）、
   `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）、`theme/athena_settings.dart`（设置面板实测几何）
   中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
-- 色值以 `AthenaColors.light` / `dark` 的青瓷色板为准；带 "实测" 字样的几何仍沿用原 Claude 参照，不表示颜色继续跟随该参照。
-- 过渡时长取自各组件源码的显式声明。120ms 为主要交互节奏，其他时长服务淡入淡出、按压与运行状态；它们不是单一 token。
+- 色值以 `AthenaColors.light` / `dark` 的青瓷色板为准；带 "实测" 字样的几何是 Athena 自己的既有取值。
+- 过渡时长以 `theme/athena_tokens.dart` 的 `AthenaMotion.hover`（150ms）为交互反馈的唯一来源，
+  调用处不写字面量；其余时长服务淡入淡出、按压与运行状态，各由组件自持具名常量——它们不是单一 token。
+  详细口径见 §Elevation 下方「过渡节奏」。
 
 ## Colors
 
@@ -202,10 +204,25 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 - 全局禁用 Material ripple（`splashFactory: NoSplash.splashFactory`）；也不做 focus ring、不做光晕。
 - 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 8%）+ 按压缩放 0.975
-  （按下 60ms `easeOut`、回弹 200ms `easeOutBack`，仅用于 composer 内的压缩按钮）。
-- 过渡节奏：**120ms 是唯一主档**（hover、描边变色、分段切换、行底变化），chip / tag 用 150ms，
-  透明淡出用 60–100ms（菜单与预览卡退场要跟手），预览卡进场 140ms（淡入 + 上浮 6% + 0.98 缩放），
-  消息操作条显形为"延迟 100ms + 120ms 淡入"、隐去为 60ms，工具头 shimmer 以 1800ms 循环。
+  （按下用 `AthenaMotion.fast` / `easeOut`、回弹用 `AthenaMotion.hover` / `easeOutBack`，
+  仅用于 composer 内的压缩按钮；回弹位移只有 2.5%，不走为"大位移"准备的慢档）。
+- 过渡节奏：时长集中在 `AthenaMotion`（`theme/athena_tokens.dart`），**按感知档位分级，
+  不按组件分级**——不要为某个组件新加一个贴着自己名字的常量。选档只看两件事：
+  这是不是交互反馈（是 → `hover`），要不要跟手（指针已移开、收得更快 → `fast`）。
+
+  | 常量 | 值 | 用途 |
+  |---|---|---|
+  | `AthenaMotion.fast` | 100ms | 退场与按压：菜单 / 预览卡退场、按压缩放 |
+  | `AthenaMotion.hover` | 150ms | 交互反馈全档：hover 底色、描边变色、分段切换、行底变化、图标两态、浮层进场、聚焦变色 |
+  | `AthenaMotion.slow` | 240ms | 位置与视口迁移：滚动跳转、回弹 |
+  | `AthenaMotion.cycle` | 1800ms | 持续循环的装饰动画（工具头 shimmer） |
+  | `AthenaMotion.linger` | 3s | 瞬时提示停留多久（"已复制"复原、轻提示消失），不参与快慢取舍 |
+
+  差值在 20ms 以内的档（如 140 与 150）人眼分不出，共用一档即可；调用处**不写**
+  `Duration(milliseconds: ...)` 字面量。**不并入** `AthenaMotion` 的只有三类，都另有出处：
+  `StatusDot.cycleDuration`（2400ms，侧栏常驻、刻意比 shimmer 更慢）、
+  `TurnIndicator.previewDelay`（150ms，是延迟不是过渡，是"停留多久算明确意图"的阈值）、
+  `MessageActionBar` 的三段显隐时序（100/120/60ms，是一个动画的参数组，硬映射会破坏时序）。
 - 遮罩：设置面板 `#66000000`（40% 黑）；遮罩只吸收点击、**不关闭面板**（编辑区有显式 Save，误触不应丢草稿）。
 - 设置面板内容区顶部保留固定 60 高标题带（`AthenaSettings.paneTopPadding`），返回链接与关闭按钮保持固定；底边使用 1 逻辑像素的 `neutralHairline`，与工作区标题栏一致。滚动视口从标题带下方开始并裁剪正文，无返回链接的页面同样保留此区域；列表顶部内边距为 24（`AthenaSettings.panePadding`），让首项内容与底边分隔线留出空间。底部保存栏固定，不随正文滚动。
 
@@ -239,7 +256,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **搜索框（`AthenaSettingsSearchField`）**：高 36、圆角 8、白底 + 1px `neutralBorder`，图标 14 / `textWeak`，
   聚焦描边用 `accent`；有输入时右端出现 12 号清除叉。
 - **桌面 / 移动 composer**：`surfaceMobile` 底、圆角 12、`raised` 柔阴影；1px `neutralBorder` 描边，
-  聚焦切换为 `accent`，过渡 120ms，不改变边框粗细。
+  聚焦切换为 `accent`，过渡 150ms（`AthenaMotion.hover`），不改变边框粗细。
 
 **Chips & Tags**
 

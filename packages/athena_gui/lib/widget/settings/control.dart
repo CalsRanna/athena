@@ -25,7 +25,7 @@ abstract final class AthenaSettingsControlWidth {
   static const wide = AthenaSettings.controlWideWidth;
 }
 
-/// 分段控件（Claude 的 segmented control）。
+/// 分段控件。
 ///
 /// 轨道 neutralRule 无描边、高 36、圆角 8；选中块使用 neutralControlFill +
 /// 1px neutralBorder 并铺满轨道高；文字统一为 14 / 22，以字重区分选中状态。
@@ -83,7 +83,7 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
     var segment = AnimatedContainer(
       alignment: Alignment.center,
       decoration: decoration,
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       height: AthenaSettings.controlHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Text(option.label, style: textStyle, maxLines: 1),
@@ -104,7 +104,7 @@ class AthenaSegmentOption<T> {
   const AthenaSegmentOption({required this.value, required this.label});
 }
 
-/// 设置里的下拉选择（Claude 的 select 控件）。
+/// 设置里的下拉选择。
 ///
 /// 语义表面色、1px 描边、高 36、圆角 8、文字 14 / 22，
 /// 右端一个 chevron。它只管外观，点开的是调用方给的弹层；
@@ -153,7 +153,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
           ),
           borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         height: AthenaSettings.controlHeight,
         padding: const EdgeInsets.symmetric(
           horizontal: AthenaSettings.controlPaddingHorizontal,
@@ -177,8 +177,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
 
 /// 设置里的单行输入（与下拉、分段同一尺度：高 36、圆角 8、14 / 22 文字）。
 ///
-/// 实测 Claude 的设置控件是 32 高、`#E6E6E6` 描边、14 号，比全站的
-/// canonical 输入（40 高、13 号）矮一档；设置行里的输入统一用它，
+/// 比全站的标准输入（[AthenaInput]，40 高）矮一档：设置行里的输入统一用它，
 /// 与同一行的其他控件齐平。
 ///
 /// 聚焦时使用 `accent` 的 1px 边框，不做焦点环。
@@ -298,7 +297,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
     ];
     return AnimatedContainer(
       decoration: decoration,
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       height: AthenaSettings.controlHeight,
       padding: EdgeInsets.only(
         left: AthenaSettings.controlPaddingHorizontal,
@@ -395,7 +394,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
     );
     return AnimatedContainer(
       decoration: decoration,
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       padding: const EdgeInsets.symmetric(
         horizontal: AthenaSettings.controlPaddingHorizontal,
         vertical: 10,
@@ -405,7 +404,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
   }
 }
 
-/// 小徽标（Claude 挂在默认模型名后的 `Default` 那种）：浅灰底、说明字号、
+/// 小徽标（挂在默认模型名后的 `Default` 那种）：浅灰底、说明字号、
 /// 圆角 4。用在行标签后面（`Built-in` / `Archived`）与菜单条目里。
 class AthenaSettingsBadge extends StatelessWidget {
   final String text;

@@ -176,7 +176,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       onSecondaryTap: widget.onSecondaryTap,
       cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
       builder: (context, hover) => AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         decoration: BoxDecoration(
           // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
           color: widget.selected

@@ -129,7 +129,7 @@ class _AthenaInputState extends State<AthenaInput> {
     ];
     return AnimatedContainer(
       decoration: boxDecoration,
-      duration: const Duration(milliseconds: 120),
+      duration: AthenaMotion.hover,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(children: children),
     );

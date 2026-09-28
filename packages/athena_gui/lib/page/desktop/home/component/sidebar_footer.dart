@@ -10,7 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 /// 侧栏底部常驻页脚：一整行可点的应用标识，点击在行的上方弹出菜单。
 ///
-/// 对齐 Claude 的账号页脚交互：整行 hover 上底色、行尾一枚下拉箭头、
+/// 页脚交互：整行 hover 上底色、行尾一枚下拉箭头、
 /// 点击弹出带头部（名称 + 版本）的菜单，展开期间行底色保持。
 /// Athena 没有账号体系，菜单里只放设置与关于两个真实入口——不摆没有行为的
 /// 条目——顶栏因此不再重复放设置按钮。
@@ -141,7 +141,7 @@ class _FooterTileState extends State<_FooterTile> {
               : colors.surfaceHover.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(AthenaRadius.row),
         ),
-        duration: const Duration(milliseconds: 120),
+        duration: AthenaMotion.hover,
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: row,
@@ -156,7 +156,7 @@ class _FooterTileState extends State<_FooterTile> {
   }
 }
 
-/// 菜单头部：应用名 + 版本号（对应 Claude 账号菜单头部的用户名 + 套餐）。
+/// 菜单头部：应用名 + 版本号。
 class _FooterMenuHeader extends StatelessWidget {
   final String name;
   final String version;

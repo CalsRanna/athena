@@ -134,7 +134,7 @@ class AssistantMessageItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = layout.message;
     return Padding(
-      // 列内左右留白：Claude 的助手正文用 `--cds-assistant-message-text-inset`
+      // 列内左右留白：助手正文贴住定宽列的边缘
       // (4) 贴住 768 定宽列的边缘
       padding: EdgeInsets.fromLTRB(
         4,
@@ -202,11 +202,11 @@ class _AssistantMessageSegment extends StatelessWidget {
       children: [Expanded(child: _AssistantMessageContent(layout: layout))],
     );
     final showActions = isCardTail && !layout.waitingForFirstDelta;
-    // 操作条排在**整卡最后一段的正下方**（Claude 把它放在消息底部，不是浮在
+    // 操作条排在**整卡最后一段的正下方**（放在消息底部，不是浮在
     // 右侧）。它常驻占位、默认全透明，hover 才淡入，所以卡片高度不随 hover
     // 变化，正文也不会被压窄。
     //
-    // Claude 的显形条件是**整条消息行** hover（`.group\/message-row:hover
+    // 显形条件是**整条消息行** hover（`.group\/message-row:hover
     // [data-cds=MessageActions]`）：指针落在卡内任意一段都算。本仓每段消息各
     // 占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover] 上——
     // 各段只上报进出，最后一段订阅它决定操作条是否可见，正文不参与重建。
@@ -392,9 +392,8 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 用户消息：**右对齐的浅灰气泡**，取自 Claude 的类
-    // `bg-text/5 max-w-[77%] rounded-xl px-3 py-2`，容器 `items-end justify-end`。
-    // 没有头像。
+    // 用户消息：**右对齐的浅灰气泡**，最大宽度为列宽的 77%、圆角 12、
+    // 内边距 12 × 8。没有头像。
     //
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
     // 气泡右对齐，操作条也贴右缘。旧版把重发按钮常驻在气泡右侧，白占了一列
@@ -497,7 +496,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
 
 /// 助手卡的 hover 归属。
 ///
-/// Claude 的消息操作条挂在**整条消息行**上（`.group\/message-row:hover`
+/// 消息操作条挂在**整条消息行**上（`.group\/message-row:hover`
 /// 时 `[data-cds=MessageActions]` 显形），指针落在卡内任意一段都算 hover。
 /// 本仓每段消息各占一个独立列表项、各自持有 MouseRegion，因此用一个卡级的
 /// 共享 notifier 把各段的上报汇总起来：任意段进入即记为该卡，离开即清空。
@@ -520,7 +519,7 @@ class AssistantCardHover {
 
 /// 消息底部的操作条，默认全透明、hover 才淡入。
 ///
-/// 位置对齐 Claude：操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
+/// 操作条在**消息正文的下方**，不浮在右侧。它常驻在布局
 /// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
 /// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
 ///
@@ -529,7 +528,7 @@ class AssistantCardHover {
 /// 收尾后才恢复）；用户消息不受影响，照常 hover 显形。调用方**不要**在未结束时
 /// 把控件从树上摘掉，摘掉会让卡片高度在收尾瞬间变 28，末尾跳一下。
 ///
-/// 时序逐条对齐 Claude 的 `[data-cds=MessageActions][data-reveal]`：
+/// 时序：
 /// - **只动透明度**——`--cds-message-actions-reveal-scale` 在 `.cds-root`
 ///   上是 `none`，旧版加的 `scale(0.9)` 是自创的；
 /// - 进入用 `--cds-dur-snap`(120ms) **且延迟** `...-reveal-in-delay`(100ms)；
@@ -547,6 +546,9 @@ class MessageActionBar extends StatelessWidget {
     this.onResend,
   });
 
+  // 操作条的显隐时序，**刻意不取 [AthenaMotion] 的档位**：
+  // 这三个值是一个动画的参数组（延迟 + 时长要配套算 Interval），
+  // 本仓没有 60 / 120 两档，硬映射到 AthenaMotion 会破坏时序。
   static const _inDelayMs = 100.0;
   static const _inDurMs = 120.0;
   static const _outDurMs = 60.0;
@@ -595,7 +597,7 @@ class MessageActionBar extends StatelessWidget {
 
 /// 操作条上的一个 ghost 图标按钮。
 ///
-/// 尺寸取自 Claude：控件高 `--cds-h-control`(24)，图标 `--cds-icon`(16)，
+/// 尺寸：控件高 24，图标 16，
 /// 圆角 `--cds-radius--lg`(7)，hover 填充 `--cds-fill-ghost-hover`
 /// （浅色 alpha-1 ≈ 5%）。
 class _MessageActionButton extends StatefulWidget {
