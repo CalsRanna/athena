@@ -161,7 +161,6 @@ void main() {
     );
 
     settings = AgentSettings();
-    settings.approvalMode.value = approvalMode;
     settings.backgroundTaskReports.value = temporary;
     approvalTools = [];
 
@@ -206,6 +205,7 @@ void main() {
         title: 't',
         modelId: modelId,
         sentinelId: ChatEntity.noSentinelId,
+        approvalMode: approvalMode,
         createdAt: now,
         updatedAt: now,
       ),
@@ -215,6 +215,7 @@ void main() {
       title: 't',
       modelId: modelId,
       sentinelId: ChatEntity.noSentinelId,
+      approvalMode: approvalMode,
       createdAt: now,
       updatedAt: now,
     );

@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_gui/component/chat_column.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/desktop/home/component/context_selector.dart';
@@ -45,6 +46,9 @@ class DesktopMessageInput extends StatelessWidget {
   /// 选择/清除本会话的工作文件夹（目录选择器在 ViewModel 层弹）。
   final void Function()? onWorkspaceTap;
   final void Function()? onWorkspaceClear;
+
+  /// 切换本会话（或草稿）的审批档位。
+  final void Function(ApprovalMode)? onApprovalModeChange;
   const DesktopMessageInput({
     super.key,
     required this.controller,
@@ -61,6 +65,7 @@ class DesktopMessageInput extends StatelessWidget {
     this.onSentinelClear,
     this.onWorkspaceTap,
     this.onWorkspaceClear,
+    this.onApprovalModeChange,
   });
   @override
   Widget build(BuildContext context) {
@@ -78,6 +83,7 @@ class DesktopMessageInput extends StatelessWidget {
       final reasoningModel =
           chatViewModel.currentModel.value?.reasoning ?? false;
       final reasoningEffort = chatViewModel.currentReasoningEffort.value;
+      final approvalMode = chatViewModel.currentApprovalMode.value;
       // 版式：
       // 上面一条灰色上下文条、下面一个白底描边的输入框，两者是**独立的圆角容器**；
       // 权限/工具与模型/发送则在两个容器**外面**单独排一行。
@@ -171,8 +177,12 @@ class DesktopMessageInput extends StatelessWidget {
                         onTap: () => DesktopPermissionModeMenu.show(
                           context,
                           contextMenuAnchorOf(context),
+                          current: approvalMode,
+                          onSelected: onApprovalModeChange,
                         ),
-                        child: const DesktopPermissionModeLabel(),
+                        child: DesktopPermissionModeLabel(
+                          current: approvalMode,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),

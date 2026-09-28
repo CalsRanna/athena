@@ -1,5 +1,3 @@
-import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_gui/component/approval_mode_label.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
@@ -54,35 +52,6 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
       children: [
         AthenaSettingsSection(
           first: true,
-          title: 'Permissions',
-          children: [
-            Watch((context) {
-              return AthenaSettingsRow(
-                label: 'Approval mode',
-                description:
-                    'Who approves tool calls that need permission. Deny '
-                    'rules always apply. Takes effect from the next run.',
-                control: AthenaSettingsSegmented<ApprovalMode>(
-                  options: [
-                    for (final mode in ApprovalMode.values)
-                      AthenaSegmentOption(value: mode, label: mode.label),
-                  ],
-                  selected: viewModel.approvalMode.value,
-                  onChanged: viewModel.updateApprovalMode,
-                ),
-              );
-            }),
-            Watch((context) {
-              final mode = viewModel.approvalMode.value;
-              return AthenaSettingsRow(
-                label: mode.label,
-                description: mode.description,
-                leading: const _Marker(),
-              );
-            }),
-          ],
-        ),
-        AthenaSettingsSection(
           title: 'Limits',
           children: [
             AthenaSettingsRow(
@@ -194,15 +163,5 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     final value = braveApiKeyController.text.trim();
     if (value == viewModel.braveApiKey.value) return;
     await viewModel.updateBraveApiKey(value);
-  }
-}
-
-/// 「当前生效」那一行标签前的小点。
-class _Marker extends StatelessWidget {
-  const _Marker();
-
-  @override
-  Widget build(BuildContext context) {
-    return AthenaSettingsDot(color: Theme.of(context).colorScheme.primary);
   }
 }

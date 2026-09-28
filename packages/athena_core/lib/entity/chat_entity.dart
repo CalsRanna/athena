@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/extension/json_map_extension.dart';
 
 class ChatEntity {
@@ -16,6 +17,11 @@ class ChatEntity {
   /// （default / none / minimal）都回到默认档。
   static String normalizeReasoningEffort(String? value) =>
       reasoningEfforts.contains(value) ? value! : defaultReasoningEffort;
+
+  /// 把存储里的值收敛到已知档位：null（早期会话文件没有这一列）与无法
+  /// 识别的键都回 [ApprovalMode.defaultMode]。
+  static ApprovalMode normalizeApprovalMode(String? value) =>
+      ApprovalMode.fromKey(value) ?? ApprovalMode.defaultMode;
 
   final String? id;
   final String title;
@@ -48,6 +54,15 @@ class ChatEntity {
   ///
   /// 挂在会话上而不是进程上：多对话可同时运行，进程级可变基准会串台。
   final String? workspacePath;
+
+  /// 本会话的工具审批档位，新会话取 [ApprovalMode.defaultMode]。
+  ///
+  /// 挂在会话上而不是进程上：用户开一条会话跑构建（bypass）、另一条改配置
+  /// （manual）是自然的用法，全局单一档位会迫使他们在会话之间来回切。
+  ///
+  /// 与 [workspacePath] 同一处境：早期落库的会话文件没有这一列，读取时由
+  /// [normalizeApprovalMode] 回落默认档，不写迁移代码。
+  final ApprovalMode approvalMode;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -65,6 +80,7 @@ class ChatEntity {
     this.contextTokens = 0,
     this.cachedTokens = 0,
     this.workspacePath,
+    this.approvalMode = ApprovalMode.defaultMode,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -84,6 +100,9 @@ class ChatEntity {
       contextTokens: json.getInt('context_tokens', defaultValue: 0),
       cachedTokens: json.getInt('cached_tokens', defaultValue: 0),
       workspacePath: json.getStringOrNull('workspace_path'),
+      approvalMode: normalizeApprovalMode(
+        json.getStringOrNull('approval_mode'),
+      ),
       createdAt: json.getDateTime('created_at'),
       updatedAt: json.getDateTime('updated_at'),
     );
@@ -104,6 +123,7 @@ class ChatEntity {
       // 无条件写出（含 null）：updateChat 是「键存在才更新该列」，
       // 条件写法会让「清空工作文件夹」落不了库。
       'workspace_path': workspacePath,
+      'approval_mode': approvalMode.key,
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
     };
@@ -121,6 +141,7 @@ class ChatEntity {
     String? reasoningEffort,
     int? retention,
     Object? workspacePath = _unset,
+    ApprovalMode? approvalMode,
     bool? pinned,
     int? contextTokens,
     int? cachedTokens,
@@ -140,6 +161,7 @@ class ChatEntity {
       workspacePath: identical(workspacePath, _unset)
           ? this.workspacePath
           : workspacePath as String?,
+      approvalMode: approvalMode ?? this.approvalMode,
       pinned: pinned ?? this.pinned,
       contextTokens: contextTokens ?? this.contextTokens,
       cachedTokens: cachedTokens ?? this.cachedTokens,

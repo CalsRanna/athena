@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
@@ -65,6 +66,13 @@ class ChatUpdateService {
   /// 只影响后续 run：运行中的 run 已在开始时解析并持有自己的基准。
   Future<ChatEntity> updateWorkspacePath(ChatEntity chat, String? path) {
     return _applyField(chat, (c) => c.copyWith(workspacePath: path));
+  }
+
+  /// 设置本会话的工具审批档位。
+  ///
+  /// 只影响后续 run：运行中的 run 已在开始时读过自己那份档位。
+  Future<ChatEntity> updateApprovalMode(ChatEntity chat, ApprovalMode mode) {
+    return _applyField(chat, (c) => c.copyWith(approvalMode: mode));
   }
 
   // ─── Provider 解析 ──────────────────────────────────────

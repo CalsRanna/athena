@@ -54,14 +54,18 @@ class SettingViewModel {
 
   /// 委托核心 [AgentSettings]（持久化走 KeyValueStore）。
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
-  Signal<ApprovalMode> get approvalMode => _agentSettings.approvalMode;
+
+  /// 新建会话的审批档位起点（会话自己的档位在 `ChatEntity.approvalMode`）。
+  ///
+  /// 没有设置项：它只在启动时由 [AgentSettings.init] 从旧的全局设置播种
+  /// 一次，供 `ChatViewModel` 给草稿定初值。
+  Signal<ApprovalMode> get newChatApprovalMode =>
+      _agentSettings.newChatApprovalMode;
 
   /// 后台任务完成后是否自动起一个汇报回合。
   Signal<bool> get backgroundTaskReports =>
       _agentSettings.backgroundTaskReports;
 
-  Future<void> updateApprovalMode(ApprovalMode mode) =>
-      _agentSettings.updateApprovalMode(mode);
   final maxRetries = signal(10);
   final braveApiKey = signal('');
   // 主题模式：默认浅色，可在设置中切换深色/浅色/跟随系统

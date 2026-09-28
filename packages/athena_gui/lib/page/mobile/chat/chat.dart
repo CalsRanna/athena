@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -227,6 +228,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
       onSentinelChanged: (sentinel) => updateSentinel(sentinel),
       onTemperatureChanged: (value) => updateTemperature(value),
       onReasoningEffortChanged: (value) => updateReasoningEffort(value),
+      onApprovalModeChanged: (mode) => updateApprovalMode(mode),
     );
     AthenaDialog.show(mobileChatBottomSheet);
   }
@@ -300,6 +302,15 @@ class _MobileChatPageState extends State<MobileChatPage> {
       await viewModel.updateReasoningEffort(value, chat: chat);
     } else {
       viewModel.updateCurrentReasoningEffort(value);
+    }
+  }
+
+  Future<void> updateApprovalMode(ApprovalMode mode) async {
+    final chat = viewModel.currentChat.value;
+    if (chat != null) {
+      await viewModel.updateApprovalMode(mode, chat: chat);
+    } else {
+      viewModel.updateCurrentApprovalMode(mode);
     }
   }
 

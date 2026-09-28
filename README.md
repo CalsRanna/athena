@@ -39,7 +39,7 @@ athena
 
 **权限模型**
 
-- 三档审批模式，GUI 与 TUI 共用一份设置：手动 / AI 自动审核 / 所有权限。三档都不越过 deny 规则
+- 三档审批模式：手动 / AI 自动审核 / 所有权限。**挂在会话上**，多对话同时运行时各按各自的档位处理；改档位下一轮 run 生效。三档都不越过 deny 规则
 - 规则按工具类型收窄：shell 匹配整条命令（不做动作前缀分析），文件工具匹配路径（支持 `*` / `**` / `?`，两侧都先解析符号链接），`web_fetch` 匹配 origin
 - 会话级批准按 run 隔离，并发运行的任务之间不互相放行
 - AI 审核由当前模型独立请求完成，只把原始用户与助手消息作为证据；工具参数、文件内容、URL 与工具输出一律视为数据而非指令。审核结论仅作用于这一次调用，不落规则
@@ -97,7 +97,7 @@ cd packages/athena_tui && dart pub get && dart run bin/athena.dart
 | `/sentinels` `Ctrl+S` | 选择角色 |
 | `/providers` | 配置 Provider 的 API key |
 | `/format` | 配置 Provider 的 API 格式 |
-| `/review [manual\|ai\|bypass]` | 查看或切换审批模式（下一轮生效） |
+| `/review [manual\|ai\|bypass]` | 查看或切换当前会话的审批模式（下一轮生效） |
 | `/json <文本>` | 以 JSON 模式运行 |
 | `/help` / `/quit` | 帮助 / 退出 |
 

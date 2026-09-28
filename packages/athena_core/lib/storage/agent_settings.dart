@@ -9,16 +9,24 @@ class AgentSettings {
   AgentSettings({KeyValueStore? store}) : _store = store;
 
   static const _keyMaxAgentIterations = 'max_agent_iterations';
-  static const _keyApprovalMode = 'approval_mode';
   static const _keyBackgroundTaskReports = 'background_task_reports';
 
-  /// 旧的布尔开关（0 关 / 1 开），只在还没写过 [_keyApprovalMode] 时读一次做迁移。
-  static const _keyAiApprovalEnabled = 'ai_approval_enabled';
+  /// 审批模式改为会话级之前的两个旧键，只在启动时读一次做播种（见 [init]）。
+  static const _keyLegacyApprovalMode = 'approval_mode';
+
+  /// 更早的布尔开关（0 关 / 1 开），在 [_keyLegacyApprovalMode] 还没写过时读。
+  static const _keyLegacyAiApprovalEnabled = 'ai_approval_enabled';
 
   final KeyValueStore? _store;
 
   final maxAgentIterations = signal(100);
-  final approvalMode = signal(ApprovalMode.aiReview);
+
+  /// 新建会话的审批档位起点（会话本身的值在 `ChatEntity.approvalMode`）。
+  ///
+  /// 不作为设置项暴露：用户在界面上改的永远是会话，这里只是「新会话从哪档
+  /// 起步」。启动时由 [init] 从改为会话级之前的全局设置播种一次，之后不再
+  /// 变化——因此它是进程级只读值，没有 update 方法。
+  final newChatApprovalMode = signal(ApprovalMode.defaultMode);
 
   /// 后台任务结束后是否通知运行中的 Agent，或在空闲时自动起汇报回合。
   ///
@@ -34,19 +42,36 @@ class AgentSettings {
     if (v != null) {
       maxAgentIterations.value = v;
     }
-    final mode = ApprovalMode.fromKey(await store.getString(_keyApprovalMode));
-    if (mode != null) {
-      approvalMode.value = mode;
-    } else {
-      // 迁移旧开关：显式关过才是手动，否则沿用默认的 AI 审核
-      approvalMode.value = await store.getInt(_keyAiApprovalEnabled) == 0
-          ? ApprovalMode.manual
-          : ApprovalMode.aiReview;
-    }
+    await _seedNewChatApprovalMode(store);
     final reports = await store.getInt(_keyBackgroundTaskReports);
     if (reports != null) {
       backgroundTaskReports.value = reports != 0;
     }
+  }
+
+  /// 用旧的全局审批设置给 [newChatApprovalMode] 播种一次，然后删掉旧键。
+  ///
+  /// 播种而非忽略，是为了让升级后的第一次新建会话仍落在用户设过的档位
+  /// （改会话级之前，那个值是全局的，等价于「所有新会话的起点」）。两个键
+  /// 都读过之后删除，避免它们以无主状态长期留在存储里。
+  ///
+  /// 已有会话不受影响：它们的档位在各自的会话文件里，缺列的回落默认档。
+  Future<void> _seedNewChatApprovalMode(KeyValueStore store) async {
+    final mode = ApprovalMode.fromKey(
+      await store.getString(_keyLegacyApprovalMode),
+    );
+    if (mode != null) {
+      newChatApprovalMode.value = mode;
+    } else {
+      // 更早的布尔开关：显式关过才是手动，否则沿用默认的 AI 审核。
+      // 值为 null（从没写过）时同样落到默认档。
+      final enabled = await store.getInt(_keyLegacyAiApprovalEnabled);
+      newChatApprovalMode.value = enabled == 0
+          ? ApprovalMode.manual
+          : ApprovalMode.defaultMode;
+    }
+    await store.remove(_keyLegacyApprovalMode);
+    await store.remove(_keyLegacyAiApprovalEnabled);
   }
 
   /// 开关后台任务完成后的自动汇报。
@@ -59,10 +84,5 @@ class AgentSettings {
   Future<void> updateMaxAgentIterations(int max) async {
     maxAgentIterations.value = max;
     await _store?.setInt(_keyMaxAgentIterations, max);
-  }
-
-  Future<void> updateApprovalMode(ApprovalMode mode) async {
-    await _store?.setString(_keyApprovalMode, mode.key);
-    approvalMode.value = mode;
   }
 }

@@ -1,3 +1,5 @@
+import 'package:athena_core/entity/approval_mode.dart';
+import 'package:athena_gui/component/approval_mode_label.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -10,6 +12,7 @@ import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
+import 'package:athena_gui/widget/approval_mode_dialog.dart';
 import 'package:athena_gui/widget/bottom_sheet_tile.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/reasoning_effort_dialog.dart';
@@ -29,6 +32,7 @@ class MobileChatBottomSheet extends StatefulWidget {
   final void Function(SentinelEntity)? onSentinelChanged;
   final void Function(double)? onTemperatureChanged;
   final void Function(String)? onReasoningEffortChanged;
+  final void Function(ApprovalMode)? onApprovalModeChanged;
   const MobileChatBottomSheet({
     super.key,
     this.chat,
@@ -41,6 +45,7 @@ class MobileChatBottomSheet extends StatefulWidget {
     this.onSentinelChanged,
     this.onTemperatureChanged,
     this.onReasoningEffortChanged,
+    this.onApprovalModeChanged,
   });
 
   @override
@@ -60,6 +65,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   late final _reasoningEffort = signal<String>(
     ChatEntity.defaultReasoningEffort,
   );
+  late final _approvalMode = signal<ApprovalMode>(ApprovalMode.defaultMode);
 
   @override
   void initState() {
@@ -71,6 +77,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _temperature.value = widget.chat!.temperature;
       _retention.value = widget.chat!.retention;
       _reasoningEffort.value = widget.chat!.reasoningEffort;
+      _approvalMode.value = widget.chat!.approvalMode;
     } else {
       _sentinelId.value =
           (chatViewModel.currentSentinel.value ??
@@ -83,6 +90,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       _temperature.value = chatViewModel.currentTemperature.value;
       _retention.value = chatViewModel.currentRetention.value;
       _reasoningEffort.value = chatViewModel.currentReasoningEffort.value;
+      _approvalMode.value = chatViewModel.currentApprovalMode.value;
     }
   }
 
@@ -129,6 +137,12 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         title: 'Reasoning Effort',
         trailing: Text(reasoningEffortLabel(_reasoningEffort.value)),
       );
+      var approvalModeSheetTile = AthenaBottomSheetTile(
+        leading: Icon(LucideIcons.shieldCheck),
+        onTap: openApprovalModeDialog,
+        title: 'Approval Mode',
+        trailing: Text(_approvalMode.value.label),
+      );
       var chatConfigurationSheetTile = AthenaBottomSheetTile(
         leading: Icon(LucideIcons.slidersHorizontal),
         onTap: openConfigurationDialog,
@@ -140,6 +154,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         sentinelSheetTile,
         modelSheetTile,
         reasoningEffortSheetTile,
+        approvalModeSheetTile,
         chatConfigurationSheetTile,
       ];
 
@@ -192,6 +207,20 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
   void _updateReasoningEffort(String value) {
     widget.onReasoningEffortChanged?.call(value);
     _reasoningEffort.value = value;
+    AthenaDialog.dismiss();
+  }
+
+  void openApprovalModeDialog() {
+    var dialog = MobileApprovalModeSelectDialog(
+      current: _approvalMode.value,
+      onTap: _updateApprovalMode,
+    );
+    AthenaDialog.show(dialog);
+  }
+
+  void _updateApprovalMode(ApprovalMode mode) {
+    widget.onApprovalModeChanged?.call(mode);
+    _approvalMode.value = mode;
     AthenaDialog.dismiss();
   }
 

@@ -301,7 +301,9 @@ class AgentRunCoordinator {
 
       // Read original messages, including compacted user instructions. Generated
       // summaries, skills, memories and tool outputs cannot grant authorization.
-      final approvalMode = _agentSettings.approvalMode.value;
+      // 档位取自本会话（chat 由调用方按 id 取最新行），因此运行中改档位
+      // 不影响这一轮，下一轮生效。
+      final approvalMode = chat.approvalMode;
       final reviewContext = approvalMode == ApprovalMode.aiReview
           ? PermissionReviewContext.fromMessages(
               await _messageRepo.getMessagesByChatId(chatId),
@@ -548,7 +550,7 @@ class AgentRunCoordinator {
   ///   以 user 角色进历史会让它成为 AI 审批的授权依据
   ///   （PermissionReviewContext 只读 user/assistant 正文）。任务输出只以
   ///   `background_task` 工具结果的形态进入上下文，天然不是授权来源。
-  /// - **沿用审批模式**：工具调用仍由手动 / AI 审核 / 所有权限处理；
+  /// - **沿用该会话的审批模式**：工具调用仍由手动 / AI 审核 / 所有权限处理；
   ///   AI 审核只使用原始对话，任务输出不能成为授权依据。
   /// - **不能再启动后台任务**：避免「任务→汇报→任务」的无限链。
   Future<void> _runReport(ChatEntity chat, List<BackgroundTask> tasks) async {
@@ -616,7 +618,8 @@ class AgentRunCoordinator {
         // 输出；AI 审核读的是落库的对话，这条不会成为授权依据。
         ChatMessage.user(_backgroundReportPrompt(tasks)),
       ];
-      final approvalMode = _agentSettings.approvalMode.value;
+      // 档位取自本会话；chat 来自仓库读取，是用户刚改过档位后的最新一行。
+      final approvalMode = chat.approvalMode;
       final reviewContext = approvalMode == ApprovalMode.aiReview
           ? PermissionReviewContext.fromMessages(
               await _messageRepo.getMessagesByChatId(chatId),

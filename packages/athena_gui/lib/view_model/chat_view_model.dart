@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -142,6 +143,12 @@ class ChatViewModel {
 
   /// 当前对话（或草稿态）的工作文件夹，null = 不指定。
   final currentWorkspacePath = signal<String?>(null);
+
+  /// 当前对话（或草稿态）的工具审批档位。
+  ///
+  /// 草稿态的初值取 `AgentSettings.newChatApprovalMode`（启动时从旧的全局
+  /// 设置播种），草稿改档只写这里，首条消息发送时随草稿一起落盘。
+  final currentApprovalMode = signal(ApprovalMode.defaultMode);
   final currentIteration = signal(0);
   final currentToolName = signal<String?>(null);
   final currentTokenUsage = signal<TokenUsage?>(null);
@@ -512,6 +519,7 @@ class ChatViewModel {
         temperature: currentTemperature.value,
         reasoningEffort: currentReasoningEffort.value,
         workspacePath: currentWorkspacePath.value,
+        approvalMode: currentApprovalMode.value,
       );
 
       final pinned = chats.value.where((c) => c.pinned).toList();
@@ -715,6 +723,7 @@ class ChatViewModel {
       currentTemperature.value = chat.temperature;
       currentReasoningEffort.value = chat.reasoningEffort;
       currentWorkspacePath.value = chat.workspacePath;
+      currentApprovalMode.value = chat.approvalMode;
       currentTokenUsage.value = null;
 
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
@@ -924,6 +933,23 @@ class ChatViewModel {
     }
   }
 
+  /// 设置本会话的工具审批档位。
+  ///
+  /// 只影响后续 run：运行中的 run 已在开始时读过自己那份档位。
+  Future<void> updateApprovalMode(
+    ApprovalMode mode, {
+    required ChatEntity chat,
+  }) async {
+    error.value = null;
+    try {
+      final updated = await _supportService.updateApprovalMode(chat, mode);
+      _updateChatInLists(updated);
+      currentApprovalMode.value = updated.approvalMode;
+    } catch (e) {
+      _reportError(e.toString());
+    }
+  }
+
   Future<void> updateCurrentModel(ModelEntity model) async {
     currentModel.value = model;
     currentProvider.value = await _supportService.getProviderForModel(
@@ -950,6 +976,10 @@ class ChatViewModel {
 
   void updateCurrentWorkspacePath(String? path) {
     currentWorkspacePath.value = path;
+  }
+
+  void updateCurrentApprovalMode(ApprovalMode mode) {
+    currentApprovalMode.value = mode;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1551,5 +1581,9 @@ class ChatViewModel {
     currentWorkspacePath.value = inheritWorkspace
         ? inheritFrom?.workspacePath
         : null;
+    // 审批档位不继承来源会话：它是「这条会话里我打算放行到什么程度」，从
+    // 一条 bypass 的会话点新建对话时，用户多半正要开始改动别的项目。
+    // 起点是启动时从旧全局设置播种的那一档。
+    currentApprovalMode.value = _settingViewModel.newChatApprovalMode.value;
   }
 }

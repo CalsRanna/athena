@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
@@ -317,6 +318,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     await chatViewModel.updateWorkspacePath(null, chat: chat);
   }
 
+  /// 切换本会话的审批档位。没有选中对话时改的是草稿：
+  /// 首条消息发送时随草稿一起落盘。
+  Future<void> updateApprovalMode(ApprovalMode mode) async {
+    var chat = chatViewModel.currentChat.value;
+    if (chat == null) {
+      chatViewModel.updateCurrentApprovalMode(mode);
+      return;
+    }
+    await chatViewModel.updateApprovalMode(mode, chat: chat);
+  }
+
   Widget _buildAppBar(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     // 顶栏**是有内容的**：左边是窗口控制与导航，中间是会话标题，
@@ -382,6 +394,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       onSentinelClear: clearSentinel,
       onWorkspaceTap: pickWorkspaceFolder,
       onWorkspaceClear: clearWorkspaceFolder,
+      onApprovalModeChange: updateApprovalMode,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

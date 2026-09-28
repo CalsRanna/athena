@@ -65,6 +65,7 @@ void main() {
       title: 'test',
       modelId: modelId,
       sentinelId: ChatEntity.noSentinelId,
+      approvalMode: ApprovalMode.manual,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
@@ -121,7 +122,7 @@ void main() {
         providerRepository: storage.providerRepository,
         chatService: chatService,
       ),
-      agentSettings: AgentSettings()..approvalMode.value = ApprovalMode.manual,
+      agentSettings: AgentSettings(),
       permissionService: PermissionService(store: PermissionStore()),
       permissionPrompt: (chatId, name, arguments, cancelToken) async =>
           const PermissionDecision(approved: true),

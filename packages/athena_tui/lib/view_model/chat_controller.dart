@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/api_format.dart';
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -488,6 +489,17 @@ class ChatController {
     final updated = await _supportService.updateSentinel(chat!, sentinel.id);
     currentChat.value = updated;
     currentSentinel.value = sentinel;
+    await _reloadChats();
+  }
+
+  /// 切换当前会话的工具审批档位(`/review`)。
+  ///
+  /// 会话级而非全局:多对话可同时运行,各按各自的档位处理审批。
+  Future<void> switchApprovalMode(ApprovalMode mode) async {
+    final chat = currentChat.value;
+    if (chat?.id == null) return;
+    final updated = await _supportService.updateApprovalMode(chat!, mode);
+    currentChat.value = updated;
     await _reloadChats();
   }
 

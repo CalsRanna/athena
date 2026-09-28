@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/storage/file_storage.dart';
@@ -273,6 +275,79 @@ void main() {
       expect(allA.map((m) => m.compacted), [false, false, false]);
       expect(keptB.map((m) => m.id), [bIds[2]]);
       expect(aIds.length, 3);
+    });
+  });
+
+  group('审批档位随会话隔离', () {
+    test('改一条会话的档位，另一条不受影响', () async {
+      final a = await storage.sessionRepository.createChat(
+        ChatEntity(
+          title: 'a',
+          modelId: '1',
+          sentinelId: '1',
+          approvalMode: ApprovalMode.manual,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final b = await storage.sessionRepository.createChat(
+        ChatEntity(
+          title: 'b',
+          modelId: '1',
+          sentinelId: '1',
+          approvalMode: ApprovalMode.bypass,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final updated = await storage.sessionRepository.getChatById(a);
+      await storage.sessionRepository.updateChat(
+        updated!.copyWith(approvalMode: ApprovalMode.aiReview),
+      );
+
+      expect(
+        (await storage.sessionRepository.getChatById(a))!.approvalMode,
+        ApprovalMode.aiReview,
+      );
+      expect(
+        (await storage.sessionRepository.getChatById(b))!.approvalMode,
+        ApprovalMode.bypass,
+        reason: '档位挂在会话上，改 A 不该动到 B',
+      );
+    });
+
+    test('早期会话文件没有 approval_mode 键时回落默认档', () async {
+      final chatId = await createChat();
+      // 直接改文件首行，模拟会话级档位引入之前落库的会话
+      final file = File(p.join(storage.sessionsDir.path, '$chatId.jsonl'));
+      final lines = await file.readAsLines();
+      final row = jsonDecode(lines.first) as Map<String, dynamic>;
+      expect(row.remove('approval_mode'), isNotNull);
+      lines[0] = jsonEncode(row);
+      await file.writeAsString('${lines.join('\n')}\n');
+
+      expect(
+        (await storage.sessionRepository.getChatById(chatId))!.approvalMode,
+        ApprovalMode.defaultMode,
+      );
+    });
+
+    test('写入后重新读取保持一致', () async {
+      final chatId = await storage.sessionRepository.createChat(
+        ChatEntity(
+          title: 't',
+          modelId: '1',
+          sentinelId: '1',
+          approvalMode: ApprovalMode.bypass,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      expect(
+        (await storage.sessionRepository.getChatById(chatId))!.approvalMode,
+        ApprovalMode.bypass,
+      );
     });
   });
 }

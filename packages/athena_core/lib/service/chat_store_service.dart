@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -39,8 +40,8 @@ class ChatStoreService {
     return (chats, histories);
   }
 
-  /// 落库一个新会话。[reasoningEffort] / [workspacePath] 与其余参数一样，
-  /// 由调用方从草稿态带过来；不传即为新会话默认值。
+  /// 落库一个新会话。[reasoningEffort] / [workspacePath] / [approvalMode]
+  /// 与其余参数一样，由调用方从草稿态带过来；不传即为新会话默认值。
   Future<ChatEntity> createChat({
     required ModelEntity model,
     required SentinelEntity sentinel,
@@ -48,6 +49,7 @@ class ChatStoreService {
     double temperature = 1.0,
     String reasoningEffort = ChatEntity.defaultReasoningEffort,
     String? workspacePath,
+    ApprovalMode approvalMode = ApprovalMode.defaultMode,
   }) async {
     final now = DateTime.now();
     var chat = ChatEntity(
@@ -58,6 +60,7 @@ class ChatStoreService {
       reasoningEffort: reasoningEffort,
       retention: retention,
       workspacePath: workspacePath,
+      approvalMode: approvalMode,
       createdAt: now,
       updatedAt: now,
     );

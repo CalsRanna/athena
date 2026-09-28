@@ -46,7 +46,7 @@ class _AthenaAppState extends State<AthenaApp> {
     ('/providers', '配置 Provider API key'),
     ('/format', '配置 Provider API 格式'),
     ('/help', '显示本帮助'),
-    ('/review', '审批模式: manual / ai / bypass'),
+    ('/review', '本会话审批模式: manual / ai / bypass'),
     ('/quit', '退出'),
   ];
   static String get _helpText {
@@ -334,11 +334,16 @@ class _AthenaAppState extends State<AthenaApp> {
       case '/help':
         _pushSystemMessage(_helpText);
       case '/review':
+        // 档位挂在会话上：没有当前会话就无处可改，先提示而不是静默失败。
+        final chat = _controller.currentChat.value;
+        if (chat?.id == null) {
+          _pushSystemMessage('还没有会话，先发一条消息或 /new 新建。');
+          return;
+        }
         if (args.isNotEmpty) {
-          // on / off 是旧写法，分别等于 ai / manual
           final mode = switch (args) {
-            'manual' || 'off' => ApprovalMode.manual,
-            'ai' || 'on' => ApprovalMode.aiReview,
+            'manual' => ApprovalMode.manual,
+            'ai' => ApprovalMode.aiReview,
             'bypass' => ApprovalMode.bypass,
             _ => null,
           };
@@ -346,14 +351,14 @@ class _AthenaAppState extends State<AthenaApp> {
             _pushSystemMessage('用法: /review [manual|ai|bypass]');
             return;
           }
-          await component.di.agentSettings.updateApprovalMode(mode);
+          await _controller.switchApprovalMode(mode);
         }
-        final label = switch (component.di.agentSettings.approvalMode.value) {
+        final label = switch (_controller.currentChat.value!.approvalMode) {
           ApprovalMode.manual => '手动',
           ApprovalMode.aiReview => 'AI 自动审核',
           ApprovalMode.bypass => '所有权限',
         };
-        _pushSystemMessage('审批模式：$label，设置从下一轮生效。');
+        _pushSystemMessage('审批模式：$label（本会话），下一轮生效。');
       case '/new':
         if (_streamingGuard()) return;
         await _controller.newChat();
