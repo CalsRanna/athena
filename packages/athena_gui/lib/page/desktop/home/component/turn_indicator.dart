@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:athena_gui/page/desktop/home/component/chat_preview_card.dart';
-import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
+import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/chat_turn_util.dart';

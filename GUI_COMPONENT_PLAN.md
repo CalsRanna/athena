@@ -198,8 +198,8 @@ class AthenaHover extends StatefulWidget {
 | 1 | `DesktopPopButton` | `widget/app_bar.dart:26` | **删**。零引用——`MobilePopButton`（`:49`）在 `:154` 被用了，桌面分支忘了用 |
 | 2 | `DesktopEditDeleteContextMenu` | `widget/context_menu.dart:120` | **删**。零引用，`chat_list.dart:252` 与 `provider.dart:260` 各自手搓了菜单项 |
 | 3 | `AthenaSecondaryButton.medium` | `widget/button.dart:121` | **删**。零引用，且 padding 与默认构造器**完全相同**（都是 `16 × 8`） |
-| 4 | `AthenaSettingsControlWidth.{narrow,normal}` | `widget/settings/control.dart:22-23` | **删**。10 处调用**全是 `.wide`** |
-| 5 | `AthenaAppBar.leading` | `widget/app_bar.dart:12` | **删**。21 处调用，**0 处**传 |
+| 4 | ~~`AthenaSettingsControlWidth.{narrow,normal}`~~ | `widget/settings/control.dart:22-23` | **【已修正：改为保留】** 原判断有误——`narrow` 别名确实无人用，但底层常量 `AthenaSettings.controlNarrowWidth` 被 `agent_page.dart:160` **直接使用**（绕过了别名）；且 DESIGN.md:358 明确记载「控件宽度三档：窄 120 / 常规 316 / 宽 360」，是**已文档化的设计 token**。正确做法是把 `agent_page.dart:160` 改用 `.narrow` 别名，三档全部保留 |
+| 5 | `AthenaAppBar.leading` | `widget/app_bar.dart:12` | **删**。21 处调用，**0 处**传（含 `_DesktopAppBar` / `_MobileAppBar` 内部的 `leading ?? fallback` 分支，都随参数一并简化） |
 | 6 | `CopyButton` 搬到 `widget/` | `component/button.dart` | **移**。`widget/markdown.dart:3` import 了 `component/button.dart`——**这是全库唯一一处 `widget/` → `component/` 反向依赖**。它无业务耦合，应属原语层 |
 | 7 | `TurnNavigator` 上提 | `page/desktop/home/component/turn_navigator.dart` | **移**到 `component/`。`component/message_sliver.dart:7` import 了 `page/desktop/...`——全库唯一 `component/` → `page/` 依赖 |
 | 8 | `widget/settings_nav.dart` | `widget/settings_nav.dart` | **移**入 `widget/settings/nav.dart`。它全是 `AthenaSettings.*` token 驱动，是三件套的同体系成员，漏在外面 |

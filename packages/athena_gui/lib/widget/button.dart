@@ -118,12 +118,6 @@ class AthenaSecondaryButton extends StatefulWidget {
   const AthenaSecondaryButton({super.key, this.onTap, required this.child})
     : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
 
-  const AthenaSecondaryButton.medium({
-    super.key,
-    this.onTap,
-    required this.child,
-  }) : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
-
   const AthenaSecondaryButton.small({
     super.key,
     this.onTap,

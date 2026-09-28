@@ -40,7 +40,7 @@ packages/
     lib/main.dart               # 入口：单实例 → DI → 存储 → 种子 → 窗口/托盘 → 后台同步模型目录
     lib/di.dart                 # GetIt 装配（GUI 侧唯一依赖注入点）
     lib/page/desktop|mobile/    # 页面（桌面多区工作台 + 设置浮层；移动分段浏览）
-    lib/component/ lib/widget/  # 业务组件 / 设计系统控件（widget/settings/ 是设置面板三件套）
+    lib/component/ lib/widget/  # 业务组件 / 设计系统控件（widget/settings/ 是设置面板四件套）
     lib/view_model/             # signals 状态 + delegate/（Agent 流、重命名、选择）
     lib/theme/                  # 设计 token 与色板（口径见 DESIGN.md）
     lib/router/                 # auto_route 配置 + 生成产物 router.gr.dart
@@ -266,7 +266,7 @@ entity + ~/.athena/ 下的文件
 - 设置里的「重置」经 `ChatViewModel.runDataReset` 包一层：先停掉所有运行中的对话并等其收尾，再清数据，之后回草稿态、重读角色与列表、清空按 chatId 存的草稿槽（重置后 id 从头分配）。
 - 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
 - `SettingViewModel.textSize` 仅通过 `AthenaWorkspaceTextSize` 包裹桌面与移动端的 `MessageCardListSliver`，正文读取 `AthenaTextSize.prose`，行内代码、代码块与工具输出读取 `AthenaTextSize.code`，两者共用固定字号 / 行高（Small 13 / 20、Medium 14 / 22、Large 15 / 24），只区分字体族；不能用 `TextScaler` 倍率实现档位，也不能挂到 `MaterialApp.builder` 或整个工作区。composer、空会话 placeholder、轮次导航、审批控件、侧栏、标题栏、设置与根 Overlay 菜单不受档位影响；所有文字保留系统无障碍缩放。
-- 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。UI 以 Medium 正文 14 / 22 为基准，统一辅助 12 / 18、常规 14 / 22、标题 16 / 24、空态标题 20 / 28；直接复用带行盒的预设，不在组件里覆盖比例行高。侧栏行高 32、设置导航与控件高 36、标准 / 小按钮高 40 / 32。默认青瓷色板的主操作使用 `accent` / `textOnAccent`，深色亮青瓷底不能固定配白字；`surfaceRaised` / `textOnRaised` 仍服务中性反色卡片与提示框，不能整体替换成强调色。设置面板用 `widget/settings/` 三件套（panel / row / control），一般设置改动即存，角色、技能等编辑页通过 Save 保存。`AthenaSettingsPane` 的滚动视口从固定标题带 `AthenaSettings.paneTopPadding` 下方开始，不能用 ListView 顶部 padding 代替，否则滚动正文会叠到返回链接和关闭按钮上；列表另设 `AthenaSettings.panePadding`（24）顶部内边距，为正文留白。标题带底边沿用工作区的 1 逻辑像素 `neutralHairline`，底部保存栏独立固定。
+- 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。UI 以 Medium 正文 14 / 22 为基准，统一辅助 12 / 18、常规 14 / 22、标题 16 / 24、空态标题 20 / 28；直接复用带行盒的预设，不在组件里覆盖比例行高。侧栏行高 32、设置导航与控件高 36、标准 / 小按钮高 40 / 32。默认青瓷色板的主操作使用 `accent` / `textOnAccent`，深色亮青瓷底不能固定配白字；`surfaceRaised` / `textOnRaised` 仍服务中性反色卡片与提示框，不能整体替换成强调色。设置面板用 `widget/settings/` 四件套（panel / row / control / nav），一般设置改动即存，角色、技能等编辑页通过 Save 保存。`AthenaSettingsPane` 的滚动视口从固定标题带 `AthenaSettings.paneTopPadding` 下方开始，不能用 ListView 顶部 padding 代替，否则滚动正文会叠到返回链接和关闭按钮上；列表另设 `AthenaSettings.panePadding`（24）顶部内边距，为正文留白。标题带底边沿用工作区的 1 逻辑像素 `neutralHairline`，底部保存栏独立固定。
 - 圆角按 `AthenaRadius` 的角色使用 4 / 8 / 12 / 16（小元素 / 控件与行 / 卡片、菜单与 composer / 大面板），胶囊与圆形保留语义形状。阴影只用 `AthenaShadow.raised` / `overlay` / `modal`，静态卡片不加阴影；桌面与移动 composer 共用 `raised`。深色浮层用 `foregroundDecoration` 画 1px `border` 轮廓，不改变布局或菜单锚点；输入聚焦使用 1px `accent`，不加光晕。
 - 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，通过 Flutter `Icon` 渲染；新增图标沿用默认线条字重、既有尺寸与语义色，不混用其他图标库。同类功能保持同一字形，返回、前进、更多、时间、错误、连接、下拉统一引用 `theme/athena_icons.dart` 的 `AthenaIcons`；工具与审批卡共用 `StepCard.toolIcon` 映射。
 - 桌面 composer 的 `DesktopContextSelector` 只设置聊天历史保留策略（`-1` 携带 / `0` 不携带），读取 `currentRetention`，草稿与已有会话共用。入口用 `AthenaIcons.time`（Lucide `clock`）/ `clockFading` 和 `Context on / Context off`，无下拉箭头；复用 `DesktopContextMenu` 向上、右对齐展开，选择后关闭并经既有回调保存，不提供温度入口。

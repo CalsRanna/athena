@@ -4,45 +4,20 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:window_manager/window_manager.dart';
 
 class AthenaAppBar extends StatelessWidget {
   final Widget? action;
-  final Widget? leading;
   final Widget? title;
-  const AthenaAppBar({super.key, this.action, this.leading, this.title});
+  const AthenaAppBar({super.key, this.action, this.title});
 
   @override
   Widget build(BuildContext context) {
     var isDesktop = PlatformUtil.isDesktop;
     if (isDesktop) {
-      return _DesktopAppBar(action: action, leading: leading, title: title);
+      return _DesktopAppBar(action: action, title: title);
     }
-    return _MobileAppBar(action: action, leading: leading, title: title);
-  }
-}
-
-class DesktopPopButton extends StatelessWidget {
-  const DesktopPopButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var icon = Icon(
-      LucideIcons.x,
-      color: colors.textPrimary,
-      size: 18,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => handleTap(context),
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
-    );
-  }
-
-  void handleTap(BuildContext context) {
-    Navigator.of(context).pop();
+    return _MobileAppBar(action: action, title: title);
   }
 }
 
@@ -80,15 +55,14 @@ class MobilePopButton extends StatelessWidget {
 
 class _DesktopAppBar extends StatelessWidget {
   final Widget? action;
-  final Widget? leading;
   final Widget? title;
-  const _DesktopAppBar({this.action, this.leading, this.title});
+  const _DesktopAppBar({this.action, this.title});
 
   @override
   Widget build(BuildContext context) {
     var leadingChildren = [
       MacWindowButton(),
-      Expanded(child: leading ?? const SizedBox()),
+      const Spacer(),
       SizedBox(width: 16),
     ];
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -143,9 +117,8 @@ class _DesktopAppBar extends StatelessWidget {
 
 class _MobileAppBar extends StatelessWidget {
   final Widget? action;
-  final Widget? leading;
   final Widget? title;
-  const _MobileAppBar({this.action, this.leading, this.title});
+  const _MobileAppBar({this.action, this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +142,7 @@ class _MobileAppBar extends StatelessWidget {
       child: action ?? const SizedBox(),
     );
     final children = [
-      Expanded(child: leading ?? defaultLeading),
+      Expanded(child: defaultLeading),
       Expanded(flex: 2, child: center),
       Expanded(child: trailing),
     ];

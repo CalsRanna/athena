@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:athena_gui/component/button.dart';
+import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';

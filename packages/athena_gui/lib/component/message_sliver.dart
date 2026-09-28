@@ -4,7 +4,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/message_tiles.dart';
-import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
+import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/util/sliver_item_metrics.dart';
 import 'package:flutter/material.dart';

@@ -2,7 +2,7 @@ import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/message_sliver.dart';
-import 'package:athena_gui/page/desktop/home/component/turn_navigator.dart';
+import 'package:athena_gui/component/turn_navigator.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:flutter/material.dart';

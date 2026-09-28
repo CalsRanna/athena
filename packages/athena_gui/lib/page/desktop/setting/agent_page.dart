@@ -1,6 +1,5 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_gui/component/approval_mode_label.dart';
-import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
@@ -157,7 +156,7 @@ class _DesktopSettingAgentPageState extends State<DesktopSettingAgentPage> {
     required VoidCallback onCommit,
   }) {
     return SizedBox(
-      width: AthenaSettings.controlNarrowWidth,
+      width: AthenaSettingsControlWidth.narrow,
       child: AthenaSettingsTextField(
         controller: controller,
         placeholder: placeholder,
