@@ -1,32 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// 外观模式：浅色（默认，对齐 Claude 桌面端的原生观感）/ 深色。
+/// 外观模式：青瓷色板的浅色 / 深色。
 enum AthenaColorMode { light, dark }
 
-/// Athena 语义色（挂载于 ThemeData.extensions）。
+/// Athena 青瓷语义色（挂载于 ThemeData.extensions）。
 ///
-/// 取值来自 **Claude 桌面端 `app.asar` 里的 `--cds-*` 设计系统**
-/// （`MainWindowPage-*.css`），并与窗口截图采样交叉验证。
-///
-/// Claude 的色板是一套**偏暖的中性灰**（`--cds-gray-0..900`），和普通
-/// 中性灰一眼能分辨：白端带黄绿感（`#f9f9f7` / `#fcfcfb`），黑端是 `#0b0b0b`。
-///
-/// | 角色 | Claude 变量 | 值 |
-/// |------|------------|-----|
-/// | 画布 | `--cds-gray-10`（实测采样一致） | `#FCFCFB` |
-/// | 侧栏 / 面板 | 实测采样 | `#FBFBF9`（与画布几乎无差） |
-/// | 行 hover | 实测采样 | `#F0EFEC` |
-/// | 行选中 | `--cds-gray-60` | `#EDECE9` |
-/// | 弹出层 | `--cds-surface-2` = `gray-0` | `#FFFFFF` |
-/// | 分隔线 / 描边 | `--cds-gray-100` | `#E1E0D9` |
-/// | 主文字 | `--cds-gray-900` | `#0B0B0B` |
-/// | 次级文字 | `--cds-gray-500` | `#6D6B67` |
-/// | 弱文字 | `--cds-gray-400` | `#898781` |
-/// | 强调 | `--cds-role-accent-fill` = `blue-450` | `#2A78D6` |
-/// | 成功 / 警告 / 错误 | `green-400` / `orange-350` / `red-450` | `#0CA30C` / `#EB6834` / `#D03B3B` |
-///
-/// Claude 也用"基色 + alpha"派生：`--cds-alpha-0..9` 是 `neutral-900` 的
-/// 0/5/10/20/35/50/60/70/85/95%。本仓对应的 hover / 选中底直接取灰阶档位。
+/// 以中性瓷白 / 墨绿灰承载正文，青瓷强调色用于主操作、选中态与链接。
+/// 实心强调色单独配套 [textOnAccent]，深色主题使用深色前景保证对比度；
+/// [surfaceRaised] 仍是中性反色面，供卡片、提示框与导航图标使用。
 @immutable
 class AthenaColors extends ThemeExtension<AthenaColors> {
   // ---- 表面 ----
@@ -34,7 +15,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color surfacePanel; // 侧栏 / 顶栏 / 次级面板
   final Color surfaceMobile; // 对话框 / sheet / 弹出层
   final Color surfaceDeep; // 深层容器 / 未选中 chip 内层
-  final Color surfaceRaised; // 主操作实心底（浅色=近黑，深色=白）
+  final Color surfaceRaised; // 中性反色面（卡片 / 提示框 / 导航图标）
   final Color surfaceButtonSecondary; // 次级按钮底 / 中性色块
   final Color surfaceHover; // hover 态底
   final Color surfaceSelected; // 选中态底
@@ -44,10 +25,10 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color textInput; // 输入框文字
   final Color textSecondary; // 次级辅助文字
   final Color textWeak; // 最弱文字 / 占位
-  final Color textRowLabel; // 列表行标签的静止色（Claude 用 gray-600，比次级文字更深）
-  final Color dangerText; // 菜单危险项文字（Claude 用深红 #832F2B，比 statusError 深）
-  final Color textOnRaised; // 主操作实心底上的文字
-  final Color textSecondaryOnRaised; // 主操作实心底上的次级文字
+  final Color textRowLabel; // 列表行标签的静止色
+  final Color dangerText; // 菜单危险项与校验错误文字
+  final Color textOnRaised; // 中性反色面上的文字
+  final Color textSecondaryOnRaised; // 中性反色面上的次级文字
   final Color textOnCode; // 代码类容器上的正文与代码文字
   final Color textSecondaryOnCode; // 代码类容器上的次级文字与图标
 
@@ -55,33 +36,28 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color border; // 分隔线 / 容器描边
   final Color borderStrong; // 聚焦 / 激活边框
   final Color divider; // 分隔线
-  /// 窗口外壳的分隔线：侧栏右边界、侧栏页脚上边。比 [border] 轻一档
-  /// （neutral-900 5% 对 10%），因为外壳线是"面与面的接缝"，不是容器的轮廓。
+  /// 窗口外壳接缝：侧栏右边界与页脚，比容器轮廓更轻。
   final Color borderChrome;
 
-  // ---- 白底上的中性灰 ----
-  //
-  // Claude 的设置面板与 composer 输入容器用的是一组**中性灰**（neutral-900 的
-  // alpha 阶：约 3% / 5% / 10% / 25%），不是侧栏那套暖灰——暖灰铺在纯白容器上
-  // 会偏黄。浅色为实测值，深色按同一语义镜像推导（面板比画布亮一档、
-  // 线比底亮一档）。
-  final Color neutralHairline; // 顶栏底线：只比画布暗 5/255（实测 #F7F7F7）
-  final Color neutralRule; // 设置面板的发丝分隔线 / 分段控件轨道 / 行 hover 底（实测 #F3F3F3）
-  final Color
-  neutralBorder; // 白底容器的 1px 描边：composer 常态、设置控件、搜索框、列表分界（实测 #E1E1E0–#E7E7E7，取中值 #E4E4E3）
-  final Color neutralBorderStrong; // composer 聚焦描边（实测 #BFBFBE）
-  final Color neutralSelected; // 设置导航 / 列表的选中行底（实测 #E3E3E2）
-  final Color neutralControlFill; // 分段控件选中块 / 下拉框底：浅色纯白，深色比面板亮一档
+  // ---- 设置与输入容器 ----
+  // 沿用 neutral 命名区分控件角色；选中面使用青瓷浅填充。
+  final Color neutralHairline; // 顶栏发丝线
+  final Color neutralRule; // 设置分隔线 / 分段轨道 / 行 hover 底
+  final Color neutralBorder; // composer / 设置控件 / 搜索框描边
+  final Color neutralBorderStrong; // composer / 设置控件聚焦描边
+  final Color neutralSelected; // 设置导航 / 列表选中底
+  final Color neutralControlFill; // 分段选中块 / 下拉框底
   final Color scrim; // 设置面板遮罩：画布压 40% 黑
 
   // ---- 输入 ----
   final Color inputBackground; // 输入框底色
 
   // ---- 强调 ----
-  final Color accent; // 全局唯一彩色强调（发送键 / 运行中状态点 / ColorScheme.primary）
+  final Color accent; // 青瓷强调（主操作 / 选中控件 / 发送键 / 运行中状态）
+  final Color textOnAccent; // 实心青瓷底上的文字与图标
 
   // ---- 状态 ----
-  final Color statusSuccess; // 成功 / 开关开启
+  final Color statusSuccess; // 成功结果
   final Color statusWarning; // 警告
   final Color statusError; // 错误
 
@@ -90,7 +66,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
   final Color switchTrackOff; // 开关关闭轨道
   final Color checkboxOff; // Checkbox 未选中描边
   final Color iconSecondary; // 次级图标
-  final Color iconOnRaised; // 主操作实心底上的图标
+  final Color iconOnRaised; // 中性反色面上的图标
 
   // ---- 阴影 ----
   final Color shadow; // 柔阴影基色（见 AthenaShadow）
@@ -136,6 +112,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.scrim,
     required this.inputBackground,
     required this.accent,
+    required this.textOnAccent,
     required this.statusSuccess,
     required this.statusWarning,
     required this.statusError,
@@ -152,102 +129,104 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     required this.markdownMath,
   });
 
-  /// 浅色（默认）：Claude 桌面端的原生观感。取值为 `--cds-*` 变量 + 截图实测。
+  /// 浅色：瓷白画布、灰绿侧栏与深青瓷强调。
   static const light = AthenaColors(
-    surface: Color(0xFFFCFCFB),
-    surfacePanel: Color(0xFFFBFBF9),
+    surface: Color(0xFFFAFBFA),
+    surfacePanel: Color(0xFFF0F3F1),
     surfaceMobile: Color(0xFFFFFFFF),
-    surfaceDeep: Color(0xFFF3F3F0),
-    surfaceRaised: Color(0xFF0B0B0B),
-    surfaceButtonSecondary: Color(0xFFF0EFEC),
-    surfaceHover: Color(0xFFF0EFEC),
-    surfaceSelected: Color(0xFFEDECE9),
-    textPrimary: Color(0xFF0B0B0B),
-    textInput: Color(0xFF20201F),
-    textSecondary: Color(0xFF6D6B67),
-    textWeak: Color(0xFF898781),
-    textRowLabel: Color(0xFF52514E),
-    dangerText: Color(0xFF832F2B),
+    surfaceDeep: Color(0xFFEDF1EE),
+    surfaceRaised: Color(0xFF202824),
+    surfaceButtonSecondary: Color(0xFFEDF1EE),
+    surfaceHover: Color(0xFFE6ECE8),
+    surfaceSelected: Color(0xFFDEEEEA),
+    textPrimary: Color(0xFF202824),
+    textInput: Color(0xFF202824),
+    textSecondary: Color(0xFF626E67),
+    textWeak: Color(0xFF626E67),
+    textRowLabel: Color(0xFF4F5F55),
+    dangerText: Color(0xFF9F3636),
     textOnRaised: Color(0xFFFFFFFF),
-    textSecondaryOnRaised: Color(0xFFA5A49A),
-    textOnCode: Color(0xFF20201F),
-    textSecondaryOnCode: Color(0xFF6D6B67),
-    border: Color(0xFFE1E0D9),
-    borderStrong: Color(0xFFC3C2B7),
-    divider: Color(0xFFE1E0D9),
-    borderChrome: Color(0xFFEFEFED),
-    neutralHairline: Color(0xFFF7F7F7),
-    neutralRule: Color(0xFFF3F3F3),
-    neutralBorder: Color(0xFFE4E4E3),
-    neutralBorderStrong: Color(0xFFBFBFBE),
-    neutralSelected: Color(0xFFE3E3E2),
+    textSecondaryOnRaised: Color(0xFFA1AEA7),
+    textOnCode: Color(0xFF202824),
+    textSecondaryOnCode: Color(0xFF58675E),
+    border: Color(0xFFDCE3DE),
+    borderStrong: Color(0xFF83998C),
+    divider: Color(0xFFDCE3DE),
+    borderChrome: Color(0xFFE0E7E2),
+    neutralHairline: Color(0xFFE8EEE9),
+    neutralRule: Color(0xFFEDF1EE),
+    neutralBorder: Color(0xFFDCE3DE),
+    neutralBorderStrong: Color(0xFF83998C),
+    neutralSelected: Color(0xFFDEEEEA),
     neutralControlFill: Color(0xFFFFFFFF),
     scrim: Color(0x66000000),
     inputBackground: Color(0xFFFFFFFF),
-    accent: Color(0xFF2A78D6),
-    statusSuccess: Color(0xFF0CA30C),
-    statusWarning: Color(0xFFEB6834),
-    statusError: Color(0xFFD03B3B),
+    accent: Color(0xFF0F766E),
+    textOnAccent: Color(0xFFFFFFFF),
+    statusSuccess: Color(0xFF35734A),
+    statusWarning: Color(0xFF8E6019),
+    statusError: Color(0xFFB24141),
     switchKnob: Color(0xFFFFFFFF),
-    switchTrackOff: Color(0xFFC3C2B7),
-    checkboxOff: Color(0xFFB4B3A8),
-    iconSecondary: Color(0xFF898781),
+    switchTrackOff: Color(0xFF83998C),
+    checkboxOff: Color(0xFF718078),
+    iconSecondary: Color(0xFF626E67),
     iconOnRaised: Color(0xFFFFFFFF),
-    shadow: Color(0xFF0B0B0B),
-    cardHeader: Color(0xFFF0EFEC),
-    codeBackground: Color(0xFFF6F6F4),
-    markdownLink: Color(0xFF256ABF),
-    markdownStrikethrough: Color(0xFF898781),
-    markdownMath: Color(0xFF0B0B0B),
+    shadow: Color(0xFF202824),
+    cardHeader: Color(0xFFE6ECE8),
+    codeBackground: Color(0xFFEDF1EE),
+    markdownLink: Color(0xFF0F766E),
+    markdownStrikethrough: Color(0xFF626E67),
+    markdownMath: Color(0xFF202824),
   );
 
   /// 深色：同一语义体系的深色镜像，避开纯黑。
   static const dark = AthenaColors(
-    surface: Color(0xFF1A1A19),
-    surfacePanel: Color(0xFF151515),
-    surfaceMobile: Color(0xFF1E1E1D),
-    surfaceDeep: Color(0xFF151515),
-    surfaceRaised: Color(0xFFFFFFFF),
-    surfaceButtonSecondary: Color(0xFF2C2C2A),
-    surfaceHover: Color(0xFF2C2C2A),
-    surfaceSelected: Color(0xFF383835),
-    textPrimary: Color(0xFFF6F6F4),
-    textInput: Color(0xFFE7E6E1),
-    textSecondary: Color(0xFFA5A49A),
-    textWeak: Color(0xFF898781),
-    textRowLabel: Color(0xFFA5A49A),
-    dangerText: Color(0xFFE66767),
-    textOnRaised: Color(0xFF0B0B0B),
-    textSecondaryOnRaised: Color(0xFF5F5E5A),
-    textOnCode: Color(0xFFE1E0D9),
-    textSecondaryOnCode: Color(0xFFA5A49A),
-    border: Color(0xFF2C2C2A),
-    borderStrong: Color(0xFF454442),
-    divider: Color(0xFF2C2C2A),
-    borderChrome: Color(0xFF212121),
-    neutralHairline: Color(0xFF212121),
-    neutralRule: Color(0xFF2A2A28),
-    neutralBorder: Color(0xFF2C2C2A),
-    neutralBorderStrong: Color(0xFF454442),
-    neutralSelected: Color(0xFF2C2C2A),
-    neutralControlFill: Color(0xFF383835),
+    surface: Color(0xFF171B1A),
+    surfacePanel: Color(0xFF121615),
+    surfaceMobile: Color(0xFF202624),
+    surfaceDeep: Color(0xFF121615),
+    surfaceRaised: Color(0xFFE8EDE9),
+    surfaceButtonSecondary: Color(0xFF232C27),
+    surfaceHover: Color(0xFF2B3730),
+    surfaceSelected: Color(0xFF213E38),
+    textPrimary: Color(0xFFE8EDE9),
+    textInput: Color(0xFFE8EDE9),
+    textSecondary: Color(0xFFA1AEA7),
+    textWeak: Color(0xFFA1AEA7),
+    textRowLabel: Color(0xFFB5C2B9),
+    dangerText: Color(0xFFEB9595),
+    textOnRaised: Color(0xFF202824),
+    textSecondaryOnRaised: Color(0xFF4F5F55),
+    textOnCode: Color(0xFFE8EDE9),
+    textSecondaryOnCode: Color(0xFFAFBCB4),
+    border: Color(0xFF35413B),
+    borderStrong: Color(0xFF6D8778),
+    divider: Color(0xFF35413B),
+    borderChrome: Color(0xFF2A342E),
+    neutralHairline: Color(0xFF2A342E),
+    neutralRule: Color(0xFF232C27),
+    neutralBorder: Color(0xFF35413B),
+    neutralBorderStrong: Color(0xFF6D8778),
+    neutralSelected: Color(0xFF213E38),
+    neutralControlFill: Color(0xFF2B3730),
     scrim: Color(0x7A000000),
-    inputBackground: Color(0xFF1E1E1D),
-    accent: Color(0xFF5598E7),
-    statusSuccess: Color(0xFF35B231),
-    statusWarning: Color(0xFFF09978),
-    statusError: Color(0xFFE66767),
-    switchKnob: Color(0xFFFFFFFF),
-    switchTrackOff: Color(0xFF454442),
-    checkboxOff: Color(0xFF5F5E5A),
-    iconSecondary: Color(0xFFA5A49A),
-    iconOnRaised: Color(0xFF0B0B0B),
+    inputBackground: Color(0xFF202624),
+    accent: Color(0xFF65C7BC),
+    textOnAccent: Color(0xFF10251F),
+    statusSuccess: Color(0xFF8BC89D),
+    statusWarning: Color(0xFFE5B975),
+    statusError: Color(0xFFEB9595),
+    switchKnob: Color(0xFFE8EDE9),
+    switchTrackOff: Color(0xFF6D8778),
+    checkboxOff: Color(0xFF81978A),
+    iconSecondary: Color(0xFFA1AEA7),
+    iconOnRaised: Color(0xFF202824),
     shadow: Color(0xFF000000),
-    cardHeader: Color(0xFF2C2C2A),
-    codeBackground: Color(0xFF20201F),
-    markdownLink: Color(0xFF6DA7EC),
-    markdownStrikethrough: Color(0xFF898781),
-    markdownMath: Color(0xFFE1E0D9),
+    cardHeader: Color(0xFF2B3730),
+    codeBackground: Color(0xFF232C27),
+    markdownLink: Color(0xFF65C7BC),
+    markdownStrikethrough: Color(0xFFA1AEA7),
+    markdownMath: Color(0xFFE8EDE9),
   );
 
   @override
@@ -283,6 +262,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
     Color? scrim,
     Color? inputBackground,
     Color? accent,
+    Color? textOnAccent,
     Color? statusSuccess,
     Color? statusWarning,
     Color? statusError,
@@ -332,6 +312,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       scrim: scrim ?? this.scrim,
       inputBackground: inputBackground ?? this.inputBackground,
       accent: accent ?? this.accent,
+      textOnAccent: textOnAccent ?? this.textOnAccent,
       statusSuccess: statusSuccess ?? this.statusSuccess,
       statusWarning: statusWarning ?? this.statusWarning,
       statusError: statusError ?? this.statusError,
@@ -405,6 +386,7 @@ class AthenaColors extends ThemeExtension<AthenaColors> {
       scrim: Color.lerp(scrim, other.scrim, t)!,
       inputBackground: Color.lerp(inputBackground, other.inputBackground, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      textOnAccent: Color.lerp(textOnAccent, other.textOnAccent, t)!,
       statusSuccess: Color.lerp(statusSuccess, other.statusSuccess, t)!,
       statusWarning: Color.lerp(statusWarning, other.statusWarning, t)!,
       statusError: Color.lerp(statusError, other.statusError, t)!,

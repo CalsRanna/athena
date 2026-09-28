@@ -3,7 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为反色实心块。
+/// 勾选框：小圆角方块（[AthenaRadius.inline]），选中为青瓷实心块。
 class AthenaCheckbox extends StatefulWidget {
   final void Function(bool)? onChanged;
   final bool value;
@@ -52,12 +52,12 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var border = Border.all(
-      color: widget.value ? colors.surfaceRaised : colors.checkboxOff,
+      color: widget.value ? colors.accent : colors.checkboxOff,
     );
     // 同 menu.dart：不能从 Colors.transparent 插值，否则取消勾选时闪一下深色
     var color = widget.value
-        ? colors.surfaceRaised
-        : colors.surfaceRaised.withValues(alpha: 0);
+        ? colors.accent
+        : colors.accent.withValues(alpha: 0);
     var boxDecoration = BoxDecoration(
       border: border,
       borderRadius: BorderRadius.circular(AthenaRadius.inline),
@@ -85,7 +85,7 @@ class _AthenaCheckboxState extends State<AthenaCheckbox> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Icon(
       LucideIcons.check,
-      color: colors.iconOnRaised,
+      color: colors.textOnAccent,
       size: 11,
     );
   }

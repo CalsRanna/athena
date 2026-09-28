@@ -1,17 +1,16 @@
 ## Overview
 
-Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + nocterm 终端客户端）。它的视觉语言是对
-**Claude 桌面端 `--cds-*` 设计系统**的语义化重建：暖调中性灰画布、近黑文字、几乎无彩色、层级靠"表面色差 +
-发丝接缝线"建立。整体观感安静、克制、偏专业，没有任何装饰性渐变、光晕、彩色插图或阴影堆叠。
+Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + nocterm 终端客户端）。默认采用
+**青瓷配色**：中性瓷白 / 墨绿灰画布、清晰正文、克制的青绿色强调，层级靠表面色差与发丝接缝线建立。
+保留原有紧凑版式与控件几何；整体安静、偏专业，没有装饰性渐变、光晕、彩色插图或阴影堆叠。
 
 **氛围与语气**
 
-- 冷暖由表面决定，不由强调色决定：画布是暖白 `#FCFCFB`（深色近黑 `#1A1A19`），文字是 `#0B0B0B`；
-  全站只有一抹彩色（`accent` 蓝 `#2A78D6`），出现位置极少——发送键图标、会话行"运行中"状态点、
-  Material 组件的默认强调（滑块、进度条、光标）。唯一的例外是"运行中"状态点的色相循环：
-  它绕的是 `accent` 自己的色相、相对亮度恒等于 `accent`，不引入第二种强调色（见 Rows & Lists）。
-- "安静"是硬性取向：同类容器在浅色主题下的明度差只有 3–6/255，靠一档提亮与 1px 线区分层次，
-  而不是靠边框加粗或投影加深。
+- 浅色画布 `#FAFBFA`、侧栏 `#F0F3F1`、正文 `#202824`；深色使用墨绿灰，避免纯黑。
+- 青瓷强调 `accent`（浅色 `#0F766E` / 深色 `#65C7BC`）用于主按钮、确认键、选中控件、链接、
+  发送键与运行中状态。选中面使用低饱和青瓷填充，正文与大面积卡片保持中性。
+- 成功、警告、错误各有独立的结果色，不以品牌色代替状态语义。运行中状态点沿用围绕 accent 的等亮度色相循环。
+- 侧栏、画布、浮层以轻微底色差分层，分隔线保持 1px，不用厚边框或加深投影补层次。
 
 **密度与版式**
 
@@ -19,13 +18,13 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   32（设置导航行）、40（设置内容行，含说明时约 69）；间距按 4 / 8 / 12 / 16 / 20 / 24 / 32 一档刻度取用。
 - 桌面是"双区工作台"：288 侧栏（`AthenaSpace.sidebar`）+ 定宽 768 的内容列居中（`kChatColumnWidth`），
   列外左右至少留 32（`kChatColumnMinPadding`）；移动是单列滚动页 + 底部 sheet。
-- 顶栏高 46，只在工作区上方画一条极浅底线（`neutralHairline` `#F7F7F7`）；侧栏右边界与页脚上边用
-  `borderChrome` `#EFEFED`（"面与面的接缝"，比容器轮廓线轻一档）。
+- 顶栏高 46，只在工作区上方画一条极浅底线（`neutralHairline` `#E8EEE9`）；侧栏右边界与页脚上边用
+  `borderChrome` `#E0E7E2`（"面与面的接缝"，比容器轮廓线轻一档）。
 
 **主题与无障碍取向**
 
-- 浅色（默认，对齐 Claude 桌面端原生观感）/ 深色（同语义镜像，画布近黑但**不用纯黑**），跟随系统。
-- 主文字对画布的对比度约 16:1（`#0B0B0B` on `#FCFCFB`）；UI 正文与消息正文同号（13），保证一轮对话里
+- 浅色 / 深色采用同一青瓷语义体系，支持跟随系统，深色画布**不用纯黑**。
+- 主文字对画布的对比度约 14.6:1（`#202824` on `#FAFBFA`）；UI 正文与消息正文同号（13），保证一轮对话里
   问与答是同一阅读层级。
 - 会话消息三档字号（Small 0.85 / Medium 1.0 / Large 1.15）**叠在系统无障碍缩放之上**，只缩放消息与代码；composer、placeholder、侧栏、顶栏、设置与菜单不受档位影响。
   运行中 shimmer 尊重 `MediaQuery.disableAnimations`；全局 `NoSplash`，交互反馈不依赖 Material ripple，
@@ -36,95 +35,80 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - 本文所有几何、色值、字重均可在 `packages/athena_gui/lib/theme/athena_tokens.dart`（不随主题变化的常量）、
   `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）、`theme/athena_settings.dart`（设置面板实测几何）
   中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
-- 色值来源是 Claude `app.asar` 里的 `--cds-*` 变量，并与窗口截图采样交叉验证；带 "实测" 字样的几何值同源。
+- 色值以 `AthenaColors.light` / `dark` 的青瓷色板为准；带 "实测" 字样的几何仍沿用原 Claude 参照，不表示颜色继续跟随该参照。
 - 过渡时长取自各组件源码的显式声明（`Duration` 出现频次：120ms 二十处、150ms 四处、200ms 三处、
   100ms 三处、140ms / 240ms / 1800ms / 2400ms 各一处）。据此归纳出的"节奏档位"是聚合结论，不是单一 token。
 
 ## Colors
 
-调色板是**两级中性**：画布族用偏暖的中性灰（白端带黄绿感 `#FCFCFB` / `#FBFBF9` / `#F3F3F0`，黑端 `#0B0B0B`），
-而铺在纯白容器上的线、控件底、行底另用一组**真中性灰**（`neutral*`）——暖灰压在纯白上会偏黄。
-浅色为实测基准，深色是同一语义体系的镜像。
+色板按语义分为中性表面、青瓷操作色与结果状态色。浅色主按钮用深青瓷配白字，深色用亮青瓷配深色字，
+不能把白字固定到所有强调色底上。`neutral*` 保留既有控件角色命名，选中底也采用青瓷浅填充。
 
-**Primary**
+**主操作与反色面**
 
-- **`accent`** (light `#2A78D6` / dark `#5598E7`): 全局唯一的彩色强调，同时挂到 `ColorScheme.primary`。
-  角色：composer 发送 / 终止键的图标色、侧栏会话行"Agent 运行中"状态点、Material 强调（滑块、进度条、输入光标）。
-  深色档比浅色档提亮两档，因为深色画布会吃掉蓝色的对比度。
-- **`markdownLink`** (light `#256ABF` / dark `#6DA7EC`): Markdown 链接与引用条目文字。比 `accent` 深一档，
-  因为它是正文里的小字，需要更高的文字对比度。
+- `accent` / `textOnAccent`：主按钮、移动确认键、开关开启与 Checkbox 勾选的填充 / 前景；
+  同时映射 Material 的 primary / onPrimary 与 secondary / onSecondary。
+- `surfaceSelected` / `neutralSelected`：会话行、设置导航与列表选中面；会话与设置导航的选中文字用 `accent`。
+- `surfaceRaised` / `textOnRaised`：中性反色块，用于移动实体卡、提示框和导航图标按钮。
+- `markdownLink` 使用青瓷强调。成功、警告、错误独立于主操作；危险菜单项用 `dangerText`。
 
-**Secondary（反色墨块：主操作与"对比块"的填充色）**
-
-- **`surfaceRaised`** (light `#0B0B0B` / dark `#FFFFFF`): 主按钮实心底、确认键、Checkbox 选中块、
-  图标按钮底、移动端网格卡（Skill / Sentinel / Experience）反色底。它是"画布的反色块"，随主题翻转。
-- **`textOnRaised`** (light `#FFFFFF` / dark `#0B0B0B`): 上述反色块上的主文字与图标。
-- **`textSecondaryOnRaised`** (light `#A5A49A` / dark `#5F5E5A`): 反色块上的次级文字（如复制成功后的 "Copied"）。
-
-**Tertiary（状态与危险）**
-
-- **`statusSuccess`** (light `#0CA30C` / dark `#35B231`): 开关开启轨道、成功 toast 图标。
-- **`statusWarning`** (light `#EB6834` / dark `#F09978`): 警告 toast 图标、会话行"重命名中"状态点。
-- **`statusError`** (light `#D03B3B` / dark `#E66767`): 错误 toast 图标、错误边界图标、工具结果正文的
-  `Error:` 前缀。
-- **`dangerText`** (light `#832F2B` / dark `#E66767`): 菜单危险项（Delete）与设置行校验错误的**文字**专用色，
-  比 `statusError` 更深——大面积色块与一行小字对明度的要求不同。
-- **`markdownStrikethrough`** (light `#898781` / dark `#898781`): 删除线文字与线色。
-- **`markdownMath`** (light `#0B0B0B` / dark `#E1E0D9`): 公式文字。
-
-**Neutral — 画布族（暖灰，用于表面、文字、边框）**
-
-| 角色 | Token | Light | Dark |
-|---|---|---|---|
-| 主画布 | `surface` | `#FCFCFB` | `#1A1A19` |
-| 侧栏 / 顶栏 / 次级面板 | `surfacePanel` | `#FBFBF9` | `#151515` |
-| 对话 / sheet / 弹出层 | `surfaceMobile` | `#FFFFFF` | `#1E1E1D` |
-| 深层容器 / 未选中 chip 内层 | `surfaceDeep` | `#F3F3F0` | `#151515` |
-| 次级按钮底 / 上下文条 / 中性色块 | `surfaceButtonSecondary` | `#F0EFEC` | `#2C2C2A` |
-| 行 hover 底 | `surfaceHover` | `#F0EFEC` | `#2C2C2A` |
-| 行选中底 | `surfaceSelected` | `#EDECE9` | `#383835` |
-| 主文字 / 关键图标 | `textPrimary` | `#0B0B0B` | `#F6F6F4` |
-| 输入框文字 | `textInput` | `#20201F` | `#E7E6E1` |
-| 次级辅助文字 | `textSecondary` | `#6D6B67` | `#A5A49A` |
-| 最弱文字 / 占位符 | `textWeak` | `#898781` | `#898781` |
-| 列表行静止标签 | `textRowLabel` | `#52514E` | `#A5A49A` |
-| 容器描边 / 分隔线 | `border` / `divider` | `#E1E0D9` | `#2C2C2A` |
-| 聚焦 / 激活描边 | `borderStrong` | `#C3C2B7` | `#454442` |
-| 窗口外壳接缝线 | `borderChrome` | `#EFEFED` | `#212121` |
-| 次级图标 | `iconSecondary` | `#898781` | `#A5A49A` |
-| 反色块上的图标 | `iconOnRaised` | `#FFFFFF` | `#0B0B0B` |
-| 顶部发丝线 | `neutralHairline` | `#F7F7F7` | `#212121` |
-| 输入容器 / 分段控件轨道底 | `inputBackground` | `#FFFFFF` | `#1E1E1D` |
-| 代码 / 引用 / 工具输出底 | `codeBackground` | `#F6F6F4` | `#20201F` |
-| 代码块语言条 / 表头 / 脚注头 | `cardHeader` | `#F0EFEC` | `#2C2C2A` |
-| 反色块上的正文与代码 | `textOnCode` | `#20201F` | `#E1E0D9` |
-| 代码面上的次级文字 | `textSecondaryOnCode` | `#6D6B67` | `#A5A49A` |
-
-**Neutral — 白底中性灰族（`neutral*`，只用在纯白容器内）**
-
-| 角色 | Token | Light | Dark |
-|---|---|---|---|
-| 顶栏底线（只比画布暗 5/255） | `neutralHairline` | `#F7F7F7` | `#212121` |
-| 设置面板发丝线 / 分段轨道 / 设置行 hover 底 | `neutralRule` | `#F3F3F3` | `#2A2A28` |
-| 白底容器 1px 描边（composer 常态、设置控件、搜索框） | `neutralBorder` | `#E4E4E3` | `#2C2C2A` |
-| composer / 输入框聚焦描边 | `neutralBorderStrong` | `#BFBFBE` | `#454442` |
-| 设置导航与列表选中行底 | `neutralSelected` | `#E3E3E2` | `#2C2C2A` |
-| 分段控件选中块 / 下拉框底 | `neutralControlFill` | `#FFFFFF` | `#383835` |
-
-**控件与遮罩**
-
-- **`switchKnob`** (light `#FFFFFF` / dark `#FFFFFF`): 开关滑块（始终为白圆）。
-- **`switchTrackOff`** (light `#C3C2B7` / dark `#454442`): 开关关闭轨道。
-- **`checkboxOff`** (light `#B4B3A8` / dark `#5F5E5A`): Checkbox 未选中描边。
-- **`scrim`** (light `#66000000` / dark `#7A000000`): 设置面板遮罩，相当于画布压 40%（深色 48%）黑。
-- **`shadow`** (light `#0B0B0B` / dark `#000000`): 所有柔阴影的基色，按 alpha 取用（见 Elevation）。
+| Token | Light | Dark |
+|---|---|---|
+| `surface` | `#FAFBFA` | `#171B1A` |
+| `surfacePanel` | `#F0F3F1` | `#121615` |
+| `surfaceMobile` | `#FFFFFF` | `#202624` |
+| `surfaceDeep` | `#EDF1EE` | `#121615` |
+| `surfaceRaised` | `#202824` | `#E8EDE9` |
+| `surfaceButtonSecondary` | `#EDF1EE` | `#232C27` |
+| `surfaceHover` | `#E6ECE8` | `#2B3730` |
+| `surfaceSelected` | `#DEEEEA` | `#213E38` |
+| `textPrimary` | `#202824` | `#E8EDE9` |
+| `textInput` | `#202824` | `#E8EDE9` |
+| `textSecondary` | `#626E67` | `#A1AEA7` |
+| `textWeak` | `#626E67` | `#A1AEA7` |
+| `textRowLabel` | `#4F5F55` | `#B5C2B9` |
+| `dangerText` | `#9F3636` | `#EB9595` |
+| `textOnRaised` | `#FFFFFF` | `#202824` |
+| `textSecondaryOnRaised` | `#A1AEA7` | `#4F5F55` |
+| `textOnCode` | `#202824` | `#E8EDE9` |
+| `textSecondaryOnCode` | `#58675E` | `#AFBCB4` |
+| `border` | `#DCE3DE` | `#35413B` |
+| `borderStrong` | `#83998C` | `#6D8778` |
+| `divider` | `#DCE3DE` | `#35413B` |
+| `borderChrome` | `#E0E7E2` | `#2A342E` |
+| `neutralHairline` | `#E8EEE9` | `#2A342E` |
+| `neutralRule` | `#EDF1EE` | `#232C27` |
+| `neutralBorder` | `#DCE3DE` | `#35413B` |
+| `neutralBorderStrong` | `#83998C` | `#6D8778` |
+| `neutralSelected` | `#DEEEEA` | `#213E38` |
+| `neutralControlFill` | `#FFFFFF` | `#2B3730` |
+| `scrim` | `#66000000` | `#7A000000` |
+| `inputBackground` | `#FFFFFF` | `#202624` |
+| `accent` | `#0F766E` | `#65C7BC` |
+| `textOnAccent` | `#FFFFFF` | `#10251F` |
+| `statusSuccess` | `#35734A` | `#8BC89D` |
+| `statusWarning` | `#8E6019` | `#E5B975` |
+| `statusError` | `#B24141` | `#EB9595` |
+| `switchKnob` | `#FFFFFF` | `#E8EDE9` |
+| `switchTrackOff` | `#83998C` | `#6D8778` |
+| `checkboxOff` | `#718078` | `#81978A` |
+| `iconSecondary` | `#626E67` | `#A1AEA7` |
+| `iconOnRaised` | `#FFFFFF` | `#202824` |
+| `shadow` | `#202824` | `#000000` |
+| `cardHeader` | `#E6ECE8` | `#2B3730` |
+| `codeBackground` | `#EDF1EE` | `#232C27` |
+| `markdownLink` | `#0F766E` | `#65C7BC` |
+| `markdownStrikethrough` | `#626E67` | `#A1AEA7` |
+| `markdownMath` | `#202824` | `#E8EDE9` |
 
 **派生规则**
 
-- 状态反馈一律用"前景色 + alpha"派生，不用固定灰：hover / ghost 填充 = `textPrimary` 5%，
-  主按钮 hover = `surface` 12% 叠在 `surfaceRaised` 上，用户消息气泡底 = `textPrimary` 5%。
-- 浅色下 `surfaceHover` 与 `surfaceButtonSecondary` 同值（`#F0EFEC`）——所以落在灰底上的控件（上下文 chip、
-  设置行）不能靠换灰阶表达 hover，必须叠一层 alpha 填充，否则"hover 等于没反应"。
+- hover / ghost 填充 = `textPrimary` 5%；用户消息气泡底同样使用 `textPrimary` 5%。
+- 主按钮 hover = `surface` 8% 叠在 `accent` 上，文字始终取 `textOnAccent`，浅色悬停仍有至少 4.5:1 对比度；禁用态使用中性底与次级文字。
+- 上下文 chip 在已有底色上叠加前景色 5%，避免把 hover 与选中态混为一谈。
+- 开关开启的滑块用 `textOnAccent`，关闭时用 `switchKnob`；深色亮青瓷轨道上配深色滑块。
+- 正文 / 次级文字对画布、主按钮文字对实心底的对比度均至少 4.5:1；本表不等于所有透明叠加态的无障碍认证。
+- TUI 的品牌 teal 同步深色强调 `#65C7BC`，状态栏前景为 `#10251F`；终端背景继续由用户的终端主题决定。
 
 ## Typography
 
@@ -180,10 +164,9 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 ## Elevation
 
-**深度不靠阴影，靠表面色差与发丝线。** 浅色主题下画布 `#FCFCFB`、侧栏 `#FBFBF9`、深层容器 `#F3F3F0`、
-浮层 `#FFFFFF` 相邻两档只差 3–6/255；层次由"提亮一档的底 + 1px 的分隔线"表达。壳层只有三种线：
-顶栏底线（`neutralHairline`，只比画布暗 5/255，且只画在工作区上方）、侧栏右边界与页脚上边
-（`borderChrome`，5% 中性黑）、容器轮廓（`border`，10% 中性黑）。
+**深度靠表面色差与发丝线。** 浅色画布 `#FAFBFA`、侧栏 `#F0F3F1`、代码面 `#EDF1EE`、
+浮层 `#FFFFFF` 各有层次；深色画布 `#171B1A`、侧栏 `#121615`、浮层 `#202624` 同样区分。
+壳层的顶栏线用 `neutralHairline`，侧栏与页脚接缝用 `borderChrome`，容器轮廓用 `border`。
 
 **阴影只有两条配方 + 一条面板专用**（基色取 `colors.shadow`，随主题翻转）：
 
@@ -202,7 +185,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 **交互深度**
 
 - 全局禁用 Material ripple（`splashFactory: NoSplash.splashFactory`）；也不做 focus ring、不做光晕。
-- 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 12%）+ 按压缩放 0.975
+- 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 8%）+ 按压缩放 0.975
   （按下 60ms `easeOut`、回弹 200ms `easeOutBack`，仅用于 composer 内的压缩按钮）。
 - 过渡节奏：**120ms 是唯一主档**（hover、描边加深、分段切换、行底变化），chip / tag 用 150ms，
   透明淡出用 60–100ms（菜单与预览卡退场要跟手），预览卡进场 140ms（淡入 + 上浮 6% + 0.98 缩放），
@@ -214,9 +197,9 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 **Buttons**
 
-- **Primary（`AthenaPrimaryButton`）**：填充 `surfaceRaised`，前景 `textOnRaised`，圆角 7（`control`），
+- **Primary（`AthenaPrimaryButton`）**：填充 `accent`，前景 `textOnAccent`，圆角 7（`control`），
   内边距 `16 × 10`（`.small` 为 `12 × 6`，高约 28），文字 `label` 12 / w600，图标 14。
-  hover 只把填充微压暗/提亮（`surface` 12% 叠在实心底上），**不做光晕、不做位移**；禁用态填 `surfaceButtonSecondary`、
+  hover 只把填充微压暗/提亮（`surface` 8% 叠在实心底上），**不做光晕、不做位移**；禁用态填 `surfaceButtonSecondary`、
   文字 `textSecondary`。它是主路径操作的唯一来源（确认键、允许一次等）。
 - **Secondary（`AthenaSecondaryButton`）**：线框——`border` 1px + 透明底，圆角 7，前景 `textPrimary`；
   hover 底色变 `surfaceHover` 并把描边加深到 `borderStrong`；禁用态文字降为 `textSecondary`。
@@ -298,12 +281,12 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 **Rows & Lists**
 
 - **侧栏会话行（`DesktopMenuTile`）**：**固定高 26**（不靠内容撑，避免 hover 出现 `⋮` 时行高跳动）、
-  圆角 7、水平内边距 11；文字 `body` 13 / 行高 19，静止 `textRowLabel`、选中 `textPrimary`；
+  圆角 7、水平内边距 11；文字 `body` 13 / 行高 19，静止 `textRowLabel`、选中 `accent`；
   hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点，
   **不在跑时是 1px 描边的圆环、运行中是实心点**（形状本身也是一条不依赖颜色的状态线索），
   颜色档位：静止 `iconSecondary` 45%、hover 75%、重命名中 `statusWarning`；运行中 `accent` 实心
   且带**色相循环**：色相每 2400ms 绕一圈，明度按"相对亮度等于 `accent`"反解，所以整圈对比度都在
-  accent 那一档（浅色实测 4.2–4.4:1，±0.1 来自 8bit 颜色量化）——不这么做的话沿用同一 HSL 明度的
+  accent 那一档（浅色对画布约 5.3:1，允许 8bit 量化误差）——不这么做的话沿用同一 HSL 明度的
   黄绿相位在浅色画布上只有 1.5:1，圆点会淡到看不见；`disableAnimations` 时停在 `accent` 原色。
   尾部 `⋮` 只在 hover 出现。
 - **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
@@ -312,7 +295,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   （圆角 4 + `surfaceButtonSecondary` + `caption` 12，内边距 `5 × 1`）；左侧状态点直径 6；Sentinel 列表直接展示名称与说明，不放头像；
   行尾控件与标签之间留 24，钻取箭头 14 / `iconSecondary`。
 - **设置导航行（`AthenaSettingsNavItem`）**：高 32、圆角 8、行距 2、左内边距 12 / 右 8，
-  图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `textPrimary`（w500），**不靠加粗**避免整列跳动。
+  图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `accent`（w500），**不靠加粗**避免整列跳动。
 - **移动端设置行（`MobileSettingTile` / `MobileGridTile`）**：`ListTile` + 16 号图标 + 右端箭头；
   网格卡见 Cards。
 - **步骤 / 工具行（`StepHeader`）**：无底板、直接坐在页面上，前景 `textSecondary`，图标 15、圆角 8，
@@ -341,12 +324,12 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 **Switch / Checkbox / Segmented / Select**
 
-- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 7（`inline + 2`）、内边距 3，滑块 12 白圆；
-  开启轨道 `statusSuccess`，关闭轨道 `switchTrackOff`。
-- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 5；未选中 1px `checkboxOff` 描边，选中块填 `surfaceRaised` +
-  11 号 `iconOnRaised` 对勾。
+- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 7（`inline + 2`）、内边距 3，滑块直径 12；
+  开启轨道 `accent` 配 `textOnAccent` 滑块，关闭轨道 `switchTrackOff` 配 `switchKnob` 滑块。
+- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 5；未选中 1px `checkboxOff` 描边，选中块填 `accent` +
+  11 号 `textOnAccent` 对勾；提问卡的单选 / 多选标记使用同样配对。
 - **分段控件（`AthenaSettingsSegmented`）**：轨道 `neutralRule` 无描边、高 32、圆角 8；
-  选中块是**纯白 `neutralControlFill` + 1px `neutralBorder` 并铺满轨道高**（不是内缩小块）；
+  选中块是**`neutralControlFill` + 1px `neutralBorder` 并铺满轨道高**（不是内缩小块）；
   选中文字 12 / w600 / `textPrimary`，未选中 12 / w400 / `textWeak`，每段水平内边距 16。
 - **下拉（`AthenaSettingsSelect`）**：白底 + 1px `neutralBorder`（hover 加深到 `neutralBorderStrong`）、
   高 32、圆角 8、文字 14、右端 chevron 14 / `textWeak`；控件宽度三档：窄 120 / 常规 316 / 宽 360。
@@ -368,20 +351,19 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **Do** 需要 token 之外的颜色时**从 token 派生**，不要另写色值：目前唯一的派生点是运行中状态点的
   色相循环（`StatusDot.colorAt`），它取 `accent` 的色相 / 饱和度，明度由"相对亮度等于 `accent`"反解，
   因此整圈对比度与 `accent` 相同。
-- **Do** 用"同色不同 alpha"表达 hover 与选中：填充取前景色 5%（ghost）、主按钮 hover 取 `surface` 12%。
+- **Do** 用"同色不同 alpha"表达 hover 与选中：填充取前景色 5%（ghost）、主按钮 hover 取 `surface` 8%。
   在 `AnimatedContainer` 里**永远不要**用 `Colors.transparent` 参与插值——它的 RGB 是黑，
   中途会渲染成半透明深灰，表现为 hover 先闪一下深色；请用目标色的 0 透明度版本。
 - **Do** 让状态不止靠颜色：运行中 / 重命名中同时有状态点与文字（状态点自己再分实心 / 圆环两形），
   错误在正文里带 `Error:` 前缀，危险菜单项用 `dangerText` 而非直接把 `statusError` 当文字色。
 - **Do** 圆角只用 4 / 5 / 7 / 8 / 10 / 12 这几档（胶囊 999 仅限筛选 chip、头像、轮次条）；
   浮层只从 `AthenaShadow.raised` / `overlay` / 设置面板专用三条配方里取，静态容器用 1px 边框而不是阴影。
-- **Don't** 引入第二主色。GUI 的唯一强调是 `accent` 蓝 `#2A78D6`（深色 `#5598E7`）；
-  终端客户端 `athena_tui/lib/ui/theme.dart` 里的品牌 teal `#6ABEB9` 是历史遗留，
-  不应反向影响 GUI 色板，新代码也不要再引用它（终端侧如需对齐，应以 accent 蓝为准并同步该文件）。
+- **Don't** 引入第二主色。GUI 的强调为青瓷 `accent`，TUI 的品牌 teal 与 GUI 深色强调同值；
+  成功、警告、错误仅表达结果，不能拿来替代主操作色。
 - **Don't** 给助手消息加气泡或卡片底板，也不要给容器加渐变、光晕、focus ring、ripple，或 20 以上的大圆角——
   参照实现的圆角很克制（最小 4、控件 7、composer 12），层级靠字重、间距与底色差，不靠放大字号或加深投影。
-- **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FCFCFB`、
-  文字 `#0B0B0B`，深色画布 `#1A1A19`）；纯黑只出现在深色主题的阴影基色里。
+- **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FAFBFA`、
+  文字 `#202824`，深色画布 `#171B1A`）；纯黑只出现在深色主题的阴影基色里。
 - **Don't** 在桌面端做 iOS 式滚动回弹。滚到底就停住（`ClampingScrollPhysics`），不要先拉出一段空白再弹回去——
   桌面三平台（macOS / Windows / Linux）统一，移动端保留系统默认回弹。口径落在 `AthenaScrollBehavior`
   （`theme/athena_scroll_behavior.dart`），由 `main.dart` 的 `MaterialApp.router(scrollBehavior:)` 注入；

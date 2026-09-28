@@ -186,14 +186,8 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
     var foreground = widget.onTap == null
         ? colors.textWeak
         : colors.textSecondary;
-    // hover 的填充是**前景色 5% 的叠加层**，不是某个固定灰。上下文带的底色
-    // 就是 surfaceButtonSecondary（浅色 #F0EFEC），而表面状态灰在浅色下几乎与
-    // 它同值：surfaceHover 与它完全相同，surfaceSelected 只深 3/255
-    // （#EDECE9）——chip 落在带上 hover 等于没反应。
-    // Claude 的 hover 填充一律是中性色的 alpha 叠加（`--cds-alpha-1/2/3` =
-    // neutral-900 的 5/10/20%，chip 静止 5%、hover 10%），所以任何底色的容器上
-    // 都留得住对比度。本仓 chip 坐在已经是 5% 灰的带上，hover 再叠 5%，
-    // 合成像素 #E5E4E1 正好等于 Claude「hover 中的 chip」（#E4E4E3）。
+    // 上下文 chip 可能叠在次级容器上，hover 用前景色 5% 叠加，
+    // 让反馈随所在底色变化，同时不占用选中态的青瓷填充。
     final hoverFill = colors.textPrimary.withValues(alpha: 0.05);
     // 静止态不能写 `Colors.transparent`：它的 RGB 是黑，插值到浅色中途会渲染
     // 成"半透明深灰"，表现为 hover 先闪一下深色再变浅（同 menu.dart 的说明）。

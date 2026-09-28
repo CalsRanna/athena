@@ -325,14 +325,14 @@ class _ConfirmDialog extends StatelessWidget {
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: colors.surfaceRaised,
+          color: colors.accent,
           borderRadius: BorderRadius.circular(AthenaRadius.control),
         ),
         padding: const EdgeInsets.all(14),
         child: Text(
           'Confirm',
           style: AthenaTextStyle.label.copyWith(
-            color: colors.textOnRaised,
+            color: colors.textOnAccent,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -526,14 +526,14 @@ class _InputDialogState extends State<_InputDialog> {
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: colors.surfaceRaised,
+          color: colors.accent,
           borderRadius: BorderRadius.circular(AthenaRadius.control),
         ),
         padding: const EdgeInsets.all(14),
         child: Text(
           'Confirm',
           style: AthenaTextStyle.label.copyWith(
-            color: colors.textOnRaised,
+            color: colors.textOnAccent,
             fontWeight: FontWeight.w600,
           ),
         ),

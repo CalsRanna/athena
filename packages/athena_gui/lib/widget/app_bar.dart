@@ -104,8 +104,8 @@ class _DesktopAppBar extends StatelessWidget {
       ),
       child: Row(children: leadingChildren),
     );
-    // Claude 实测：顶栏高 **46 逻辑**（我原来是 38），底边是一条**极浅**的线
-    // （`neutralHairline`，只比画布暗 5/255）。它是顶栏唯一的轮廓，**只画在工作区上方**：
+    // 顶栏高 46 逻辑像素，底边沿用色板的 neutralHairline。
+    // 它是顶栏唯一的轮廓，只画在工作区上方：
     // 画满整宽的话会横穿侧栏那条竖线（并在交叉处留一个 1px 的缺口），
     // 而侧栏上方本该是侧栏面板本身的延伸，不该有横线。
     final workspaceStrip = Expanded(

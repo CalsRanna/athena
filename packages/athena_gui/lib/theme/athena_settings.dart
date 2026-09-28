@@ -2,13 +2,10 @@
 ///
 /// 采样方法：对 Claude 桌面端（macOS，浅色主题）的设置窗口整窗截图
 /// （1296×783 逻辑窗口，2x Retina），再按像素量取并折半成逻辑值。
-/// 该截图对本仓色板是**色彩准确**的——画布量到 `#FCFCFB`、面板内容量到
-/// `#FFFFFF`、分组标题量到 `#898781`，与 [AthenaColors] 里的
-/// `surface` / `surfaceMobile` / `textWeak` 完全一致。
+/// 这里只保留参照的几何与排版，颜色已改为 Athena 青瓷色板。
 ///
-/// 颜色不在这里：设置面板用的那组**中性灰**（分隔线、控件描边、选中底等）
-/// 已收进 [AthenaColors] 的 `neutral*` 字段，与 composer 输入容器共用一套，
-/// 见 DESIGN.md §2「白底上的中性灰」。
+/// 设置面板的分隔线、控件描边、选中底等使用 AthenaColors 的 `neutral*`
+/// 字段，与 composer 输入容器共用一套，见 DESIGN.md 的 Colors 节。
 library;
 
 import 'package:athena_gui/theme/athena_tokens.dart';
@@ -28,8 +25,7 @@ abstract final class AthenaSettings {
   /// 面板圆角。实测圆角弧长约 11–12。
   static const panelRadius = 12.0;
 
-  /// 面板遮罩。实测面板外底色 `#979795`，正是画布 `#FCFCFB` 压 40% 黑，
-  /// 即 `#FCFCFB × 0.6 = #979796`。
+  /// 浅色面板遮罩：在当前画布上压 40% 黑。
   static const scrimOpacity = 0.40;
 
   // ---- 左侧导航 ----

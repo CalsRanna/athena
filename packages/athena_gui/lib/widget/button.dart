@@ -3,11 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-/// 主操作实心按钮的填充色与前景色。
-///
-/// 深色主题下是白底黑字，浅色主题下是黑底白字——Claude 的主按钮在两种
-/// 主题里都是"画布的反色块"，因此取值全部来自 [AthenaColors] 的
-/// surfaceRaised / textOnRaised 这一对。
+/// 导航图标按钮使用中性反色面，避免把次要导航也渲染成青瓷主操作。
 class AthenaIconButton extends StatelessWidget {
   final IconData icon;
   final void Function()? onTap;
@@ -64,19 +60,18 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // Claude 没有 CTA 光晕：主按钮就是一块干净的反色实心矩形，
-    // 悬停只把填充微微压暗（深色主题）/ 提亮（浅色主题）。
+    // 以配套前景保证青瓷底上的文字可读；hover 只轻微调整填充明度。
     final background = widget.onTap == null
         ? colors.surfaceButtonSecondary
         : hover
         ? Color.alphaBlend(
-            colors.surface.withValues(alpha: 0.12),
-            colors.surfaceRaised,
+            colors.surface.withValues(alpha: 0.08),
+            colors.accent,
           )
-        : colors.surfaceRaised;
+        : colors.accent;
     final foreground = widget.onTap == null
         ? colors.textSecondary
-        : colors.textOnRaised;
+        : colors.textOnAccent;
     var container = AnimatedContainer(
       decoration: BoxDecoration(
         color: background,

@@ -5,9 +5,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置面板左栏：搜索框 + 分组标题 + 图标行。
 ///
-/// 实测：宽 192（含右侧 1px 分界 `#E4E4E3`）、底色 `#FCFCFB`、内边距 12。
-/// 行高 32、行距 2、行圆角 8；静止文字 `#52514F`，选中底 `#E3E3E2` +
-/// 近黑文字。
+/// 宽 192（含右侧 1px neutralBorder）、底色 surfacePanel、内边距 12。
+/// 行高 32、行距 2、行圆角 8；静止文字 textRowLabel，选中底 neutralSelected
+/// 配青瓷 accent 文字。
 class AthenaSettingsNav extends StatelessWidget {
   final Widget? search;
   final List<Widget> children;
@@ -33,7 +33,7 @@ class AthenaSettingsNav extends StatelessWidget {
 }
 
 /// 导航顶部的搜索框。实测高 32、宽与行同宽、圆角 8、
-/// 底色 `#FEFEFD`、描边 `#E6E6E5`、图标与占位都是 `#898781`。
+/// 底色 surfaceMobile、描边 neutralBorder，图标与占位跟随语义色。
 class AthenaSettingsSearchField extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
@@ -151,7 +151,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
 
 /// 导航里的一个分组：小号灰标题 + 若干行。
 ///
-/// 实测标题字号 12、色 `#898781`；标题上方留白 28、下方 13;
+/// 标题字号 12、色 textWeak；标题上方留白 28、下方 13；
 /// 标题左缩进 10（与行的图标列对齐）。
 class AthenaSettingsNavGroup extends StatelessWidget {
   final String title;
@@ -226,7 +226,7 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var contentColor = widget.active ? colors.textPrimary : colors.textRowLabel;
+    var contentColor = widget.active ? colors.accent : colors.textRowLabel;
     // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
     var background = widget.active
         ? colors.neutralSelected

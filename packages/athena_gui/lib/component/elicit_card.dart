@@ -378,7 +378,7 @@ class _ElicitCardState extends State<ElicitCard> {
     EdgeInsets margin = const EdgeInsets.only(top: 1),
   }) {
     final side = BorderSide(
-      color: selected ? colors.surfaceRaised : colors.border,
+      color: selected ? colors.accent : colors.border,
     );
     return Container(
       height: 16,
@@ -392,12 +392,12 @@ class _ElicitCardState extends State<ElicitCard> {
                 side: side,
               )
             : CircleBorder(side: side),
-        color: selected ? colors.surfaceRaised : null,
+        color: selected ? colors.accent : null,
       ),
       child: Icon(
         selected ? LucideIcons.check : (placeholderIcon ?? LucideIcons.check),
         size: 11,
-        color: selected ? colors.textPrimary : colors.textSecondary,
+        color: selected ? colors.textOnAccent : colors.textSecondary,
       ),
     );
   }

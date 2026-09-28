@@ -25,9 +25,9 @@ abstract final class AthenaSettingsControlWidth {
 
 /// 分段控件（Claude 的 segmented control）。
 ///
-/// 实测：轨道 `#F3F3F3` 无描边、高 32、圆角 8；选中块是**纯白填充 +
-/// 1px `#E7E7E7` 描边**并**铺满轨道高**（不是内缩的小块）；
-/// 选中文字 12 半粗近黑，未选中 12 常规灰 `#898781`。
+/// 轨道 neutralRule 无描边、高 32、圆角 8；选中块使用 neutralControlFill +
+/// 1px neutralBorder 并铺满轨道高；选中文字 12 半粗 textPrimary，
+/// 未选中文字 12 常规 textWeak。
 class AthenaSettingsSegmented<T> extends StatelessWidget {
   final List<AthenaSegmentOption<T>> options;
   final T selected;

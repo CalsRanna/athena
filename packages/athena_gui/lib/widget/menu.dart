@@ -42,9 +42,9 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     const duration = Duration(milliseconds: 120);
-    // Claude 实测：**hover 只改底色，文字不动**。选中行才提亮文字。
+    // hover 只改底色，文字不动；选中行才使用青瓷强调。
     // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
-    var contentColor = widget.active ? colors.textPrimary : colors.textRowLabel;
+    var contentColor = widget.active ? colors.accent : colors.textRowLabel;
     // 列表行取 UI 正文档 body（13），不是 label 档 12。
     // Claude 实测：侧栏会话行与消息正文同号；用 12 会让侧栏
     // 明显比工作区小一号。

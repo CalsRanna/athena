@@ -4,8 +4,8 @@ import 'package:nocterm/nocterm.dart';
 ///
 /// 终端是深色底,背景不设色(用终端默认),主要用文字色与边框表达层级。
 abstract class AthenaColors {
-  /// 品牌 teal(#6ABEB9):用户消息前缀、状态高亮。
-  static const Color teal = Color.fromRGB(106, 190, 185);
+  /// 青瓷强调(#65C7BC)，与 GUI 深色主题一致:用户消息前缀、状态高亮。
+  static const Color teal = Color.fromRGB(101, 199, 188);
 
   /// 次级文字(对应 Gray 600 #9E9E9E)。
   static const Color dim = Colors.gray;
@@ -17,7 +17,7 @@ abstract class AthenaColors {
   static const Color success = Colors.green;
 
   /// 工具卡片边框。
-  static const Color toolBorder = Color.fromRGB(88, 102, 130);
+  static const Color toolBorder = Color.fromRGB(109, 135, 120);
 }
 
 /// 消息卡片左侧竖线色:按消息类型分色,替代文字前缀标记。
@@ -55,10 +55,10 @@ abstract class AthenaTextStyles {
   static const TextStyle warning = TextStyle(color: AthenaColors.warning);
   static const TextStyle info = TextStyle(color: AthenaColors.info);
 
-  /// 状态栏:反色白字。
+  /// 状态栏:青瓷底配深色文字。
   static const TextStyle statusBar = TextStyle(
     backgroundColor: AthenaColors.teal,
-    color: Color.fromRGB(20, 30, 30),
+    color: Color.fromRGB(16, 37, 31),
     fontWeight: FontWeight.bold,
   );
 }

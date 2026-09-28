@@ -27,7 +27,7 @@ AthenaColors colorsOf(AthenaColorMode mode) =>
 /// 按钮、正文都是比例字体——把整个 UI 做成等宽是对它的误读。
 ///
 /// **强调色**：[AthenaColors.accent] 挂到 `ColorScheme.primary`，
-/// 让 Material 组件的默认强调（滑块、进度条、光标）与 Claude 唯一的那抹蓝一致。
+/// 让 Material 组件的强调与青瓷主操作一致，前景同步使用配套的 textOnAccent。
 ThemeData buildAthenaThemeData(AthenaColorMode mode) {
   final colors = colorsOf(mode);
   final isLight = mode == AthenaColorMode.light;
@@ -35,8 +35,9 @@ ThemeData buildAthenaThemeData(AthenaColorMode mode) {
   return ThemeData(
     colorScheme: base.copyWith(
       primary: colors.accent,
-      onPrimary: Colors.white,
+      onPrimary: colors.textOnAccent,
       secondary: colors.accent,
+      onSecondary: colors.textOnAccent,
       surface: colors.surface,
       onSurface: colors.textPrimary,
       error: colors.statusError,

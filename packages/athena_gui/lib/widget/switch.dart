@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 
 /// 开关：小圆角矩形轨道（34×18）+ 实心圆滑块，尺寸紧凑。
 ///
-/// 开启态用 [AthenaColors.statusSuccess]（功能绿），关闭态用
-/// [AthenaColors.switchTrackOff]（几乎融入画布的深灰）。
+/// 开启态用青瓷强调，滑块使用配套前景；关闭态回到中性轨道。
 class AthenaSwitch extends StatelessWidget {
   final void Function(bool)? onChanged;
   final bool value;
@@ -19,12 +18,12 @@ class AthenaSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var outerDecoration = BoxDecoration(
-      color: value ? colors.statusSuccess : colors.switchTrackOff,
+      color: value ? colors.accent : colors.switchTrackOff,
       borderRadius: BorderRadius.circular(AthenaRadius.inline + 2),
     );
     var knob = Container(
       decoration: BoxDecoration(
-        color: colors.switchKnob,
+        color: value ? colors.textOnAccent : colors.switchKnob,
         shape: BoxShape.circle,
       ),
       height: _knob,
