@@ -6,9 +6,7 @@
 ///
 /// 不支持：nested object, oneOf/anyOf, pattern, enum 等复杂约束。
 /// 这些由 LLM 自行保证，此处仅做安全兜底。
-class SchemaValidator {
-  SchemaValidator._();
-
+abstract final class SchemaValidator {
   /// 校验 [args] 是否匹配 [parameters] JSON Schema。
   ///
   /// 返回 null 表示通过，否则返回人类可读的错误消息。

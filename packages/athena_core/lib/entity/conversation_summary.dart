@@ -5,7 +5,7 @@ import 'package:athena_core/entity/compaction_step.dart';
 
 /// Summary coverage is stored with the summary so replay stays consistent even
 /// if marking the original records is interrupted. Originals remain recoverable.
-class ConversationSummary {
+abstract final class ConversationSummary {
   static bool isSummary(MessageEntity message) =>
       message.role == 'summary' ||
       message.role == 'system' ||

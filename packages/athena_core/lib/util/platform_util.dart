@@ -5,9 +5,7 @@ import 'dart:io';
 /// Prefer [isDesktop] and [isMobile] over raw [Platform] checks.
 /// Use individual [isWindows], [isMacOS], [isLinux], [isIOS], [isAndroid]
 /// for OS-specific behavior.
-class PlatformUtil {
-  PlatformUtil._();
-
+abstract final class PlatformUtil {
   /// True on macOS, Linux, or Windows.
   static bool get isDesktop =>
       Platform.isMacOS || Platform.isLinux || Platform.isWindows;

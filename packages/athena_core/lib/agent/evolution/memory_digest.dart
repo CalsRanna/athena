@@ -14,9 +14,7 @@ import 'package:openai_dart/openai_dart.dart';
 /// context / tags 等支持信息仍由 `experience_recall` 按需加载。
 /// 只要经验库没有新增、更新或归档，生成内容与顺序就保持完全一致，便于
 /// Provider 复用 prompt prefix cache。
-class MemoryDigest {
-  MemoryDigest._();
-
+abstract final class MemoryDigest {
   /// 即使经验经过写入审批，它仍是历史上下文而非高优先级指令，避免记忆内容
   /// 覆盖当前用户请求或 Sentinel 行为约束。
   static const String _header =

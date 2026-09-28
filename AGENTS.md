@@ -77,8 +77,17 @@ lib/
 - 工具类固定 `XxxTool`，文件名 `xxx_tool.dart`；工具名（下发给模型的 `name`）固定 `snake_case`，与用户可见文案一致
 - 私有实现类用 `_` 前缀；同类小私有类集中在使用它的文件尾部，不单独建文件
 - 概念三元组：`xxx_service.dart`（编排）、`xxx_rule.dart`（纯值对象）、`xxx_prompt.dart`（回调 typedef）
-- 常量集中在 `abstract final class`（如 `AthenaRadius`、`AthenaMotion`）或顶级 `const`，不散落在组件里
 - 持久化实体的 id 一律 `String?`（未入库时为 null），由 `IdGenerator` 生成 UUIDv7
+
+**纯静态容器一律 `abstract final class`**。只有一个用途是装 `static` 成员、不持有实例状态的类（工具类、校验器、提示词集）必须写成 `abstract final class`，而不是「普通 `class` + 私有构造 `Xxx._()`」。前者由语言挡住实例化与继承，后者只挡住了一半——`LoggerUtil` 就是这么被漏掉的。
+
+**缩写在标识符里一律小写**（`chatId` / `url` / `json` / `uuid`），只在注释与用户可见文案里出现全大写（`'Model ID'`、`'ID of the snapshot'`）。不要写 `chatID` 或 `modelUUID`。
+
+**常量放哪**由它是不是某个类的 API 决定：
+
+- 类的一部分（构造参数默认值、`@visibleForTesting` 的开关、该类的取值范围）→ 类内 `static const`，如 `ChatEntity.noSentinelId`、`TextFileReader.maxReturnLines`
+- 模块内部共用的字面量（下发给模型的键名、标签表、配置表）→ 文件的顶级 `const`，如 `toolCallDescriptionKey`、`defaultCatalogExcludes`
+- 纯几何/视觉尺度集中到 `abstract final class` 的 token 层（`AthenaRadius`、`AthenaMotion`），不散落在组件里
 
 ---
 

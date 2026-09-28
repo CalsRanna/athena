@@ -5,9 +5,7 @@ import 'package:athena_core/agent/skill/skill_loader.dart';
 /// 设计原则：避免 prompt 膨胀。
 /// - `hint`：极简提示（~30 token），每次对话注入，告知 Agent 可自我进化
 /// - `fullBody`：完整进化指南，作为内置 self-evolve Skill 的 body，按需加载
-class EvolutionPrompt {
-  EvolutionPrompt._();
-
+abstract final class EvolutionPrompt {
   /// 极简提示：始终注入，几乎不占 token 预算，仅告知能力的存在。
   ///
   /// 详细指导通过内置 `self-evolve` skill 按需加载。

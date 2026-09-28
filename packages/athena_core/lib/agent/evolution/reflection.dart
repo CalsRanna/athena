@@ -8,9 +8,7 @@ import 'package:athena_core/entity/experience_entity.dart';
 /// 失败后的轻量反思策略。
 ///
 /// 只对可归因的失败触发。用户取消、网络异常和单次工具失败不应生成长期经验。
-class ReflectionPolicy {
-  ReflectionPolicy._();
-
+abstract final class ReflectionPolicy {
   static bool shouldReflect(AgentRunOutcome outcome) {
     if (outcome.termination == AgentRunTermination.maxIterations) {
       // 迭代耗尽但唯一证据只是用户/规则拒绝授权时，不把权限选择包装成
