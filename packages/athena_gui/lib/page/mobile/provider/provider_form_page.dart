@@ -43,7 +43,6 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
-      height: 1.5,
     );
     var keyVisibilityToggle = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -267,7 +266,6 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     var tipText = Text(
       'See ${widget.provider.name} documentation for more details',

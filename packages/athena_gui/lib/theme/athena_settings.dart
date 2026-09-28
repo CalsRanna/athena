@@ -1,8 +1,8 @@
-/// 设置面板专属的几何与排版，取值来自 **Claude 桌面端设置面板的实测**。
+/// 设置面板的几何以 Claude 桌面端实测为起点，排版与控件密度统一到 Athena。
 ///
 /// 采样方法：对 Claude 桌面端（macOS，浅色主题）的设置窗口整窗截图
 /// （1296×783 逻辑窗口，2x Retina），再按像素量取并折半成逻辑值。
-/// 这里只保留参照的几何与排版，颜色已改为 Athena 青瓷色板。
+/// 几何沿用参照并适度放松，排版共用 Athena 的 14 / 22 基准，颜色使用青瓷色板。
 ///
 /// 设置面板的分隔线、控件描边、选中底等使用 AthenaColors 的 `neutral*`
 /// 字段，与 composer 输入容器共用一套，见 DESIGN.md 的 Colors 节。
@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 
 /// 设置面板的几何与排版（不随主题变化）。
 ///
-/// 每一项都标注了实测值；未标注的为实测换算或对齐既有 token。
+/// 保留参照值的项目标注实测来源，调整后的项目注明当前规则。
 abstract final class AthenaSettings {
   // ---- 面板 ----
   /// 面板最大宽度。实测 1026（1296 宽窗口，左右各留 135）。
@@ -35,11 +35,11 @@ abstract final class AthenaSettings {
   /// 导航内边距。实测 12（行左缘 148，导航左缘 136）。
   static const navPadding = 12.0;
 
-  /// 导航行高。实测选中行底色 241..273 = 32。
-  static const navRowHeight = 32.0;
+  /// 导航行高：22 行盒上下各留 7。
+  static const navRowHeight = 36.0;
 
-  /// 导航行距。实测行心距 33.5，即行高 32 + 间隙 2。
-  static const navRowGap = 2.0;
+  /// 导航行距。
+  static const navRowGap = 4.0;
 
   /// 导航行圆角。实测圆角弧约 7–8。
   static const navRowRadius = 8.0;
@@ -65,8 +65,8 @@ abstract final class AthenaSettings {
   /// 分组标题下方留白（标题底 128.5 → 首行顶 142）。实测 13.5。
   static const navGroupBottomMargin = 13.0;
 
-  /// 搜索框：实测高 32（57..89）、宽 167（与导航行同宽）、圆角 8（估）。
-  static const searchHeight = 32.0;
+  /// 搜索框与设置控件同高，给 22 行盒留出上下呼吸空间。
+  static const searchHeight = 36.0;
   static const searchRadius = 8.0;
   static const searchIconSize = 14.0;
   static const searchFontSize = AthenaFontSize.body;
@@ -93,9 +93,8 @@ abstract final class AthenaSettings {
   /// 内容区底部内边距。
   static const paneBottomPadding = 40.0;
 
-  /// 分区标题字号。实测大写高 11.2 / 0.72 ≈ 15.6。主字号表没有 16 这一档
-  /// （见 DESIGN.md §3），它是设置面板独有的实测值。
-  static const headingFontSize = 16.0;
+  /// 分区标题与页标题共用同一档。
+  static const headingFontSize = AthenaFontSize.title;
 
   /// 分区标题与首个控件的间距。实测标题底 123.5 → 首个控件顶 153（约 28，
   /// 扣掉行盒自身的上下余量）。
@@ -116,16 +115,16 @@ abstract final class AthenaSettings {
   /// 行标签字重。Claude 的标签是半粗，说明是常规。
   static const rowLabelWeight = FontWeight.w600;
 
-  /// 行说明的行高（14 号字在 22 行盒内）。
-  static const rowDescriptionHeight = 1.5;
+  /// 行说明与常规 UI 共用 14 / 22。
+  static const rowDescriptionHeight = AthenaFontSize.bodyHeight;
 
-  /// 控件高。实测下拉框 153..185、分段轨道 476..508 均为 32。
-  static const controlHeight = 32.0;
+  /// 控件高：22 行盒上下留出 14 的总空间。
+  static const controlHeight = 36.0;
 
   /// 控件圆角。实测下拉框圆角弧约 8。
   static const controlRadius = 8.0;
 
-  /// 控件文字字号。实测下拉框 14、分段 11–12。
+  /// 下拉、输入框与分段选择均使用常规 UI 字号。
   static const controlFontSize = AthenaFontSize.row;
   static const segmentFontSize = AthenaFontSize.label;
 
@@ -141,8 +140,8 @@ abstract final class AthenaSettings {
   /// 宽控件列：下拉、密钥、URL 这类长值用它（比 316 再宽一档）。
   static const controlWideWidth = 360.0;
 
-  /// 行内按钮高（Claude 的 `Manage` / `Export` 这类行尾按钮）。
-  static const buttonHeight = 28.0;
+  /// 行内按钮高。
+  static const buttonHeight = 32.0;
 
   /// 空搜索结果文字字号，与导航标签同号。
   static const fontSizeForEmptySearch = AthenaFontSize.row;

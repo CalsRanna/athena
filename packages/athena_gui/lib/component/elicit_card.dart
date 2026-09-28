@@ -354,7 +354,6 @@ class _ElicitCardState extends State<ElicitCard> {
                 if (value.trim().isNotEmpty) _selected[index]?.clear();
               }),
               style: AthenaTextStyle.body.copyWith(
-                height: 1.2,
                 color: colors.textPrimary,
               ),
               decoration: InputDecoration.collapsed(

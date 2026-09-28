@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/experience_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -278,7 +279,7 @@ class _DesktopSettingExperiencePageState
   Widget _value(String text, AthenaColors colors) {
     return Text(
       text,
-      style: TextStyle(color: colors.textSecondary, fontSize: 14, height: 1.3),
+      style: AthenaTextStyle.body.copyWith(color: colors.textSecondary),
     );
   }
 

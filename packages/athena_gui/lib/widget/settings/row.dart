@@ -5,6 +5,7 @@ library;
 
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -79,7 +80,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       color: widget.dimmed ? colors.textSecondary : colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
-      height: 1.4,
+      height: AthenaFontSize.bodyHeight,
     );
     var descriptionStyle = TextStyle(
       color: colors.textWeak,
@@ -208,7 +209,7 @@ class AthenaSettingsParagraph extends StatelessWidget {
     var textStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
-      height: 1.6,
+      height: AthenaFontSize.bodyHeight,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(

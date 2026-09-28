@@ -54,7 +54,6 @@ class ChatPreviewCard extends StatelessWidget {
             style: AthenaTextStyle.body.copyWith(
               color: colors.textPrimary,
               fontWeight: FontWeight.w600,
-              height: AthenaFontSize.bodyHeight,
               decoration: TextDecoration.none,
             ),
           ),
@@ -67,7 +66,6 @@ class ChatPreviewCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AthenaTextStyle.caption.copyWith(
                 color: colors.textSecondary,
-                height: AthenaFontSize.bodyHeight,
                 decoration: TextDecoration.none,
               ),
             ),

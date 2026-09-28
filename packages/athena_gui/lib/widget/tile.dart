@@ -23,11 +23,9 @@ class MobileSettingTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      height: 1.4,
     );
     final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textSecondary,
-      height: 1.4,
     );
     var titleChildren = [
       Text(title, style: titleTextStyle),
@@ -90,7 +88,6 @@ class MobileGridTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleStyle = AthenaTextStyle.section.copyWith(
       color: colors.textOnRaised,
-      height: 1.4,
     );
     var subtitleStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textOnRaised,

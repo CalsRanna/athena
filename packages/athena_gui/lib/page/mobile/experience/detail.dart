@@ -46,7 +46,7 @@ class _MobileExperienceDetailPageState
       var children = [
         Text(
           experience.lesson,
-          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary, height: 1.5),
+          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
         ),
         const SizedBox(height: 12),
         _metaRow(context, 'Owner', viewModel.ownerLabel(experience)),

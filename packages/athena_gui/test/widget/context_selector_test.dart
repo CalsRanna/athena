@@ -75,7 +75,23 @@ void main() {
       final menu = tester.getRect(panel());
       expect(menu.right, closeTo(anchor.right, 0.5));
       expect(menu.bottom, closeTo(anchor.top - 8, 0.5));
-      expect(menu.height, lessThan(260), reason: '菜单高度贴合两项内容');
+      // 测试字体把每个字母画成方块，固定 18 行盒下说明会折成三行。
+      expect(menu.height, lessThan(340), reason: '菜单高度贴合两项内容');
+      final optionText = tester.widget<RichText>(
+        find.descendant(
+          of: find.text('Use chat history'),
+          matching: find.byType(RichText),
+        ),
+      );
+      final optionStyle = optionText.text.style!;
+      expect(optionStyle.fontSize, 14);
+      expect(optionStyle.height! * optionStyle.fontSize!, closeTo(22, 0.001));
+      expect(
+        optionStyle.fontFamily,
+        Theme.of(tester.element(find.byType(DesktopContextSelector)))
+            .textTheme.bodyMedium!.fontFamily,
+        reason: '根浮层应使用应用字体，不能继承调试用的 monospace',
+      );
       expect(
         find.descendant(
           of: selectedOption(),

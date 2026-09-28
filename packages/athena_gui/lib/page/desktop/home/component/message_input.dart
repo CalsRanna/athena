@@ -307,7 +307,6 @@ class _InputState extends State<_Input> {
       // Claude 实测：占位符是**浅灰** #898782（gray-400），不是深色。
       // 之前那条"深色"的结论是我把光标误当成了文字。
       color: colors.textWeak,
-      height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: 'Ask me anything',
@@ -315,7 +314,6 @@ class _InputState extends State<_Input> {
     );
     final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
-      height: 1.5,
     );
     var textField = TextField(
       controller: widget.controller,

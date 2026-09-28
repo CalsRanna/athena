@@ -286,7 +286,6 @@ class _ReasoningBody extends StatelessWidget {
         child: Text(
           message.reasoningContent,
           style: AthenaTextStyle.caption.copyWith(
-            height: 1.6,
             color: colors.textSecondary,
           ),
         ),

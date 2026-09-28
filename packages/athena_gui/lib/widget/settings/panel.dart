@@ -215,7 +215,7 @@ class _AthenaSettingsBackLinkState extends State<AthenaSettingsBackLink> {
     var textStyle = TextStyle(
       color: colors.textRowLabel,
       fontSize: AthenaSettings.rowFontSize,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
     var children = [
       Icon(
@@ -279,7 +279,7 @@ class AthenaSettingsSection extends StatelessWidget {
       color: colors.textPrimary,
       fontSize: AthenaSettings.headingFontSize,
       fontWeight: FontWeight.w600,
-      height: 1.3,
+      height: AthenaFontSize.titleHeight,
     );
     var descriptionStyle = TextStyle(
       color: colors.textWeak,
@@ -387,7 +387,7 @@ class AthenaSettingsSaveBar extends StatelessWidget {
     var textStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.rowFontSize,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
     var children = [
       Expanded(child: Text(message, maxLines: 1, style: textStyle)),
@@ -433,7 +433,7 @@ class AthenaSettingsEmptyState extends StatelessWidget {
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
-      height: 1.4,
+      height: AthenaFontSize.bodyHeight,
     );
     var hintStyle = TextStyle(
       color: colors.textWeak,

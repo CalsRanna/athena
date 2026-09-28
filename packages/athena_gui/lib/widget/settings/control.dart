@@ -25,9 +25,8 @@ abstract final class AthenaSettingsControlWidth {
 
 /// 分段控件（Claude 的 segmented control）。
 ///
-/// 轨道 neutralRule 无描边、高 32、圆角 8；选中块使用 neutralControlFill +
-/// 1px neutralBorder 并铺满轨道高；选中文字 12 半粗 textPrimary，
-/// 未选中文字 12 常规 textWeak。
+/// 轨道 neutralRule 无描边、高 36、圆角 8；选中块使用 neutralControlFill +
+/// 1px neutralBorder 并铺满轨道高；文字统一为 14 / 22，以字重区分选中状态。
 class AthenaSettingsSegmented<T> extends StatelessWidget {
   final List<AthenaSegmentOption<T>> options;
   final T selected;
@@ -77,6 +76,7 @@ class AthenaSettingsSegmented<T> extends StatelessWidget {
       color: isSelected ? colors.textPrimary : colors.textWeak,
       fontSize: AthenaSettings.segmentFontSize,
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+      height: AthenaFontSize.bodyHeight,
     );
     var segment = AnimatedContainer(
       alignment: Alignment.center,
@@ -104,7 +104,7 @@ class AthenaSegmentOption<T> {
 
 /// 设置里的下拉选择（Claude 的 select 控件）。
 ///
-/// 实测：白底、1px `#E7E7E7` 描边、高 32、圆角 8、文字 14 近黑，
+/// 语义表面色、1px 描边、高 36、圆角 8、文字 14 / 22，
 /// 右端一个 chevron。它只管外观，点开的是调用方给的弹层；
 /// [onTap] 收到控件的全局矩形，供弹层锚定在控件下方。
 class AthenaSettingsSelect extends StatefulWidget {
@@ -144,7 +144,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       style: TextStyle(
         color: widget.placeholder ? colors.textWeak : colors.textPrimary,
         fontSize: AthenaSettings.controlFontSize,
-        height: 1.3,
+        height: AthenaFontSize.bodyHeight,
       ),
     );
     var chevron = Icon(
@@ -186,7 +186,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
   }
 }
 
-/// 设置里的单行输入（与下拉、分段同一尺度：高 32、圆角 8、14 号字）。
+/// 设置里的单行输入（与下拉、分段同一尺度：高 36、圆角 8、14 / 22 文字）。
 ///
 /// 实测 Claude 的设置控件是 32 高、`#E6E6E6` 描边、14 号，比全站的
 /// canonical 输入（40 高、13 号）矮一档；设置行里的输入统一用它，
@@ -268,9 +268,12 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
         : const TextStyle(fontSize: AthenaSettings.controlFontSize);
     var textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = base.copyWith(color: colors.textWeak, height: 1.3);
+    var hintStyle = base.copyWith(
+      color: colors.textWeak,
+      height: AthenaFontSize.bodyHeight,
+    );
     var field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,
@@ -378,9 +381,12 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
         : const TextStyle(fontSize: AthenaSettings.controlFontSize);
     var textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
-      height: 1.5,
+      height: AthenaFontSize.bodyHeight,
     );
-    var hintStyle = base.copyWith(color: colors.textWeak, height: 1.5);
+    var hintStyle = base.copyWith(
+      color: colors.textWeak,
+      height: AthenaFontSize.bodyHeight,
+    );
     var field = TextField(
       controller: widget.controller,
       cursorColor: colors.textInput,
@@ -466,8 +472,8 @@ class AthenaSettingsMenuButton extends StatelessWidget {
     final screenHeight = MediaQuery.sizeOf(context).height;
     // 面板自带 4 内边距，条目宽 + 8 才是面板外宽
     final left = anchor.right - menuWidth - 8;
-    // 估一个菜单高（每项约 32 + 内边距），够不到底就向上翻
-    final estimated = items.length * 32.0 + 8;
+    // 估一个菜单高（22 行盒 + 上下各 8），够不到底就向上翻
+    final estimated = items.length * 38.0 + 8;
     final upward = anchor.bottom + 4 + estimated > screenHeight - 12;
     final menu = DesktopContextMenu(
       offset: upward

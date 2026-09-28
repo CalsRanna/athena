@@ -146,7 +146,6 @@ class _MobileModelFormPageState extends State<MobileModelFormPage> {
     );
     var trailingTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      height: 1.5,
     );
     var reasoningCheckboxGroup = AthenaCheckboxGroup(
       checkbox: reasoningCheckbox,

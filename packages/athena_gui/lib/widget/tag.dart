@@ -33,7 +33,6 @@ class AthenaTag extends StatelessWidget {
     var textStyle = base.copyWith(
       color: selected ? colors.textPrimary : colors.textSecondary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-      height: 1.4,
     );
     var boxDecoration = BoxDecoration(
       color: selected ? colors.surfaceSelected : colors.surfaceDeep,
@@ -95,7 +94,6 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
       style: AthenaTextStyle.label.copyWith(
         color: foregroundColor,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-        height: 1.4,
       ),
       child: IconTheme.merge(
         data: IconThemeData(color: foregroundColor, size: 14),

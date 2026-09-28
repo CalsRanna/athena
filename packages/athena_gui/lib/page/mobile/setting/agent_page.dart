@@ -67,7 +67,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,7 +110,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
           'Deny rules always apply. Takes effect from the next run.',
           style: AthenaTextStyle.caption.copyWith(
             color: colors.textSecondary,
-            height: 1.5,
           ),
         ),
         const SizedBox(height: 16),
@@ -133,7 +131,6 @@ class _MobileAgentPageState extends State<MobileAgentPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

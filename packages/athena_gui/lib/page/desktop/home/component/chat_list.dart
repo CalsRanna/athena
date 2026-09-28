@@ -94,7 +94,7 @@ class DesktopChatListView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
       child: Text(
         label,
-        style: AthenaTextStyle.label.copyWith(
+        style: AthenaTextStyle.caption.copyWith(
           color: colors.textWeak,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.3,

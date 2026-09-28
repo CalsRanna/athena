@@ -108,7 +108,6 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
       child: SelectableText(
         body,
         style: AthenaTextStyle.caption.copyWith(
-          height: 1.6,
           color: colors.textOnRaised,
         ),
       ),

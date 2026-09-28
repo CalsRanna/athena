@@ -22,7 +22,6 @@ class AthenaFormTileLabel extends StatelessWidget {
     var titleTextStyle = base.copyWith(
       color: colors.textPrimary,
       fontWeight: FontWeight.w600,
-      height: 1.4,
     );
     var children = [
       Expanded(child: Text(title, style: titleTextStyle)),

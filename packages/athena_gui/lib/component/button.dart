@@ -70,7 +70,7 @@ class _CopyButtonState extends State<CopyButton> {
       const SizedBox(width: 4),
       Text(
         'Copied',
-        style: AthenaTextStyle.caption.copyWith(height: 1, color: color),
+        style: AthenaTextStyle.caption.copyWith(color: color),
       ),
     ];
     return Row(children: children);

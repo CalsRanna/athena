@@ -352,7 +352,6 @@ class _DesktopConfirmDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var messageStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
-      height: 1.6,
     );
     var children = [
       Text(message, style: messageStyle),
@@ -601,7 +600,6 @@ class _DesktopMessageOverlay extends StatelessWidget {
     final textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textPrimary,
       decoration: TextDecoration.none,
-      height: 1.5,
     );
     final screenWidth = MediaQuery.sizeOf(context).width;
     final children = [

@@ -46,7 +46,6 @@ class _MobileChatConfigurationPageState
           'without any conversation history.',
           style: AthenaTextStyle.body.copyWith(
             color: colors.textPrimary.withValues(alpha: 0.6),
-            height: 1.5,
           ),
         ),
       ),

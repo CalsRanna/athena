@@ -75,7 +75,6 @@ class _AthenaInputState extends State<AthenaInput> {
     );
     var hintTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,
-      height: 1.5,
     );
     var inputDecoration = InputDecoration.collapsed(
       hintText: widget.placeholder,
@@ -83,7 +82,6 @@ class _AthenaInputState extends State<AthenaInput> {
     );
     final inputTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textInput,
-      height: 1.5,
     );
     var textField = TextField(
       controller: widget.controller,

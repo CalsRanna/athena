@@ -118,15 +118,13 @@ class DesktopSettingFormField extends StatelessWidget {
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
       fontWeight: AthenaSettings.rowLabelWeight,
-      height: 1.4,
+      height: AthenaFontSize.bodyHeight,
     );
     var hintStyle = AthenaTextStyle.caption.copyWith(
       color: colors.textWeak,
-      height: 1.4,
     );
     var errorStyle = AthenaTextStyle.caption.copyWith(
       color: colors.dangerText,
-      height: 1.4,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

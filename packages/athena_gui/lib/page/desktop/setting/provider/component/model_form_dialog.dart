@@ -167,7 +167,7 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
     var labelStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.rowFontSize,
-      height: 1.4,
+      height: AthenaFontSize.bodyHeight,
     );
     var reasoning = AthenaCheckboxGroup(
       checkbox: AthenaCheckbox(

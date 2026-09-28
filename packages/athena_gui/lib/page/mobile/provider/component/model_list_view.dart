@@ -57,7 +57,6 @@ class _ModelTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var nameTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      height: 1.5,
     );
     var nameText = Text(
       model.name,
@@ -125,7 +124,6 @@ class _ModelTile extends StatelessWidget {
     ];
     var textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      height: 1.5,
     );
     var text = Text(
       parts.join(' · '),

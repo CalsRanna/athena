@@ -53,50 +53,41 @@ abstract final class AthenaSpace {
   static const sidebar = 288.0;
 }
 
-/// 字号等级。UI 尺寸参考 Claude 桌面端，正文使用 Athena 的固定档位。
+/// 以 Medium 正文 14 / 22 为基准的四级字号。
 ///
-/// UI 沿用紧凑尺寸；消息正文默认 14 / 22，并由 [AthenaTextSize]
-/// 提供三组独立的字号与行盒，不再通过倍率调整整棵消息子树。
+/// 辅助文字 12 / 18、常规 UI 14 / 22、标题 16 / 24、空态标题 20 / 28。
+/// 角色可以共用字号，通过字重区分；会话三档仅由 [AthenaTextSize] 提供。
 abstract final class AthenaFontSize {
   /// 空态标题。
-  static const hero = 22.0;
+  static const hero = 20.0;
 
-  /// 页 / 对话框标题（`--cds-font-size-heading--textlg` = 15）。
-  static const title = 15.0;
+  /// 页、对话框与设置分区标题。
+  static const title = 16.0;
 
-  /// 分区标题、卡片标题（`--cds-font-size-heading` = 14）。
-  static const section = 14.0;
+  /// 卡片、列表项与表单标签的强调文字，与常规 UI 同号。
+  static const section = body;
 
-  /// 菜单条目、选择器行、设置行（Claude 默认档 body = 14）。
-  ///
-  /// 与 [section] 同号但不同角色：[section] 是加粗的标题，这里是常规字重的
-  /// 行文字。本仓的 [body] 取的是文字档 small 的 13，而 Claude 的菜单与
-  /// 设置行实测仍是 14，所以单独留一个名字，免得写成 `section` + w400。
-  static const row = 14.0;
+  /// 菜单条目、选择器行与设置行。
+  static const row = body;
 
   /// 消息正文（Markdown）的默认 Medium 档，行盒 22。
-  static const prose = 14.0;
+  static const prose = body;
 
-  /// 正文、输入框、列表行（`--cds-font-size-body`）。
-  ///
-  /// 取按文字档 small 解析后的值：`--cds-font-size-body--textsm` = 13，
-  /// 行高 `--cds-leading-body` = 19。
-  /// 侧栏与输入框保持紧凑，不随消息字号档位改变。
-  ///
-  /// 实测交叉验证：Claude 侧栏「Athena 与 Claude 工作区 UI 对齐」
-  /// 总宽 192 → 反推 12.6；按 14 算会得到 213，对不上。
-  static const body = 13.0;
+  /// 常规 UI、输入框与侧栏行的共同基准，不随会话档位改变。
+  static const body = 14.0;
 
   /// 默认消息行盒 22，换算成 Flutter 的 `TextStyle.height`。
-  static const proseHeight = 22.0 / prose;
+  static const proseHeight = bodyHeight;
 
-  /// UI 正文行高比例：`--cds-leading-body`(19) / `--cds-font-size-body`(13)。
-  static const bodyHeight = 19.0 / body;
+  static const heroHeight = 28.0 / hero;
+  static const titleHeight = 24.0 / title;
+  static const bodyHeight = 22.0 / body;
+  static const captionHeight = 18.0 / caption;
 
-  /// 标签、chip、小按钮（`--cds-font-size-body--sm` = 12）。
-  static const label = 12.0;
+  /// 按钮、选择器与可操作标签，与常规 UI 同号。
+  static const label = body;
 
-  /// 说明、元信息（`--cds-font-size-caption` = 12）。
+  /// 辅助说明、元信息与分组标签。
   static const caption = 12.0;
 
   /// 技术标签的默认等宽字号；会话代码使用 [AthenaTextSize.code]。
@@ -109,34 +100,36 @@ abstract final class AthenaFontSize {
 /// 字重与预设不同时再覆盖 `fontWeight`。角色与字号的对应见 [AthenaFontSize]，
 /// 设计口径见 DESIGN.md §3。
 ///
-/// 行高：只有 [prose]（消息正文）把默认行盒（22）写进预设；
-/// [body] 不带行高——它多数时候是单行控件文字，多行时按需加
-/// `height: AthenaFontSize.bodyHeight`（19 / 13）。
+/// 每个预设都携带所属层级的行盒，组件不再各自覆盖比例行高。
 ///
 /// 等宽不在这里：代码 / 工具参数 / 输出走 [athenaMono]。
 abstract final class AthenaTextStyle {
-  /// 空态欢迎大标题：22 / w600。
+  /// 空态欢迎大标题：20 / 28 / w600。
   static const hero = TextStyle(
     fontSize: AthenaFontSize.hero,
     fontWeight: FontWeight.w600,
+    height: AthenaFontSize.heroHeight,
   );
 
-  /// 页 / 对话框标题：15 / w600。
+  /// 页 / 对话框 / 设置分区标题：16 / 24 / w600。
   static const title = TextStyle(
     fontSize: AthenaFontSize.title,
     fontWeight: FontWeight.w600,
+    height: AthenaFontSize.titleHeight,
   );
 
-  /// 分区标题、卡片标题、列表项标题：14 / w500。
+  /// 卡片标题、列表项标题与表单标签：14 / 22 / w600。
   static const section = TextStyle(
     fontSize: AthenaFontSize.section,
-    fontWeight: FontWeight.w500,
+    fontWeight: FontWeight.w600,
+    height: AthenaFontSize.bodyHeight,
   );
 
   /// 菜单条目、选择器行、设置行：14 / w400。
   static const row = TextStyle(
     fontSize: AthenaFontSize.row,
     fontWeight: FontWeight.w400,
+    height: AthenaFontSize.bodyHeight,
   );
 
   /// 消息正文（Markdown）：默认 14 / w400，行盒 22。
@@ -146,22 +139,25 @@ abstract final class AthenaTextStyle {
     height: AthenaFontSize.proseHeight,
   );
 
-  /// UI 正文、输入框、侧栏行：13 / w400。
+  /// UI 正文、输入框、侧栏行：14 / 22 / w400。
   static const body = TextStyle(
     fontSize: AthenaFontSize.body,
     fontWeight: FontWeight.w400,
+    height: AthenaFontSize.bodyHeight,
   );
 
-  /// 标签、chip、小按钮、工具名：12 / w500。
+  /// 按钮、选择器与可操作标签：14 / 22 / w500。
   static const label = TextStyle(
     fontSize: AthenaFontSize.label,
     fontWeight: FontWeight.w500,
+    height: AthenaFontSize.bodyHeight,
   );
 
-  /// 说明、元信息、分组标题：12 / w400。
+  /// 辅助说明、元信息、分组标题：12 / 18 / w400。
   static const caption = TextStyle(
     fontSize: AthenaFontSize.caption,
     fontWeight: FontWeight.w400,
+    height: AthenaFontSize.captionHeight,
   );
 }
 
@@ -271,7 +267,7 @@ TextStyle athenaMono({
   Color? color,
   double fontSize = AthenaFontSize.mono,
   FontWeight? fontWeight,
-  double? height,
+  double? height = AthenaFontSize.captionHeight,
 }) {
   return TextStyle(
     color: color,

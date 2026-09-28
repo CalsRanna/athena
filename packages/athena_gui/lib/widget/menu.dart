@@ -45,13 +45,10 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
     // hover 只改底色，文字不动；选中行才使用青瓷强调。
     // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
     var contentColor = widget.active ? colors.accent : colors.textRowLabel;
-    // 列表行取 UI 正文档 body（13），不是 label 档 12。
-    // Claude 实测：侧栏会话行与消息正文同号；用 12 会让侧栏
-    // 明显比工作区小一号。
+    // 列表行与输入框、菜单统一采用 14 / 22 的常规 UI 档。
     var textStyle = AthenaTextStyle.body.copyWith(
       color: contentColor,
       fontWeight: FontWeight.w400,
-      height: AthenaFontSize.bodyHeight,
     );
     var text = Text(
       widget.label,
@@ -91,10 +88,8 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
         borderRadius: BorderRadius.circular(AthenaRadius.row),
       ),
       duration: duration,
-      // Claude 实测行高 26，这里给**固定高度**而不是靠垂直内边距撑：
-      // hover 才出现的 `⋮` 按钮高 20，比标签的行盒（约 17）高，靠内容撑会把
-      // 整行从 25 顶到 28——就是"hover 上去整行变高"的原因。
-      height: 26,
+      // 固定高保证 hover 出现的操作按钮不改变行高，文字上下各留 5。
+      height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 11),
       child: Row(children: children),
     );

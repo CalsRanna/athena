@@ -328,7 +328,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           text.isEmpty ? 'New chat' : text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AthenaTextStyle.section.copyWith(color: colors.textPrimary),
+          style: AthenaTextStyle.title.copyWith(color: colors.textPrimary),
         ),
       );
     });

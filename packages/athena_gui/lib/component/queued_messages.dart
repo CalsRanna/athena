@@ -78,7 +78,6 @@ class QueuedMessages extends StatelessWidget {
                       child: Text(
                         '${index + 1}',
                         style: AthenaTextStyle.body.copyWith(
-                          height: 1.5,
                           color: colors.textWeak,
                         ),
                       ),
@@ -95,7 +94,6 @@ class QueuedMessages extends StatelessWidget {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: AthenaTextStyle.body.copyWith(
-                                  height: 1.5,
                                   color: colors.textInput,
                                 ),
                               ),
@@ -112,7 +110,6 @@ class QueuedMessages extends StatelessWidget {
                                 Text(
                                   '$imageCount ${imageCount == 1 ? 'image' : 'images'}',
                                   style: AthenaTextStyle.caption.copyWith(
-                                    height: 1.5,
                                     color: colors.textSecondary,
                                   ),
                                 ),

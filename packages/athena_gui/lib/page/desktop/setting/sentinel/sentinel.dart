@@ -2,6 +2,7 @@ import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/page/desktop/setting/sentinel/component/sentinel_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -334,10 +335,8 @@ class _DesktopSettingSentinelPageState
                     const SizedBox(height: 6),
                     Text(
                       promptError!,
-                      style: TextStyle(
+                      style: AthenaTextStyle.caption.copyWith(
                         color: colors.dangerText,
-                        fontSize: 12,
-                        height: 1.4,
                       ),
                     ),
                   ],

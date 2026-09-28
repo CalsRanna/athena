@@ -2,6 +2,7 @@ import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/settings_nav.dart';
 import 'package:athena_gui/widget/settings/panel.dart';
 import 'package:auto_route/auto_route.dart';
@@ -49,7 +50,7 @@ class _SettingGroup {
 /// 版式（数值与来源见 `theme/athena_settings.dart`）：
 /// - **居中浮层**（最大宽 1024、上下留白 44、圆角 12）+ 40% 黑遮罩，右上角关闭；
 ///   路由是**非透明**的，所以面板浮在应用之上而不是整窗替换。
-/// - **左栏 192**：搜索框 + 分组标题 + 图标行（行高 32、选中底 neutralSelected）。
+/// - **左栏 192**：搜索框 + 分组标题 + 图标行（行高 36、选中底 neutralSelected）。
 /// - **右栏纯白内容区**：顶部 60 的标题带（关闭键 / 返回链接）、分区标题、
 ///   行（标签 + 说明 + 右侧控件）、行间 1px `#F3F3F3` 发丝线。
 ///
@@ -201,7 +202,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
     var textStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.fontSizeForEmptySearch,
-      height: 1.5,
+      height: AthenaFontSize.bodyHeight,
     );
     return Padding(
       padding: const EdgeInsets.only(

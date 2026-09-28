@@ -63,7 +63,16 @@ class DesktopContextMenu extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       child: column,
     );
-    return DesktopContextMenuConfiguration(width: width, child: container);
+    // 根 Overlay 不在页面的 Material 下，显式继承应用排版，避免落入调试等宽字体。
+    return DesktopContextMenuConfiguration(
+      width: width,
+      child: DefaultTextStyle(
+        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+          color: colors.textPrimary,
+        ),
+        child: container,
+      ),
+    );
   }
 }
 
@@ -552,7 +561,7 @@ class DesktopContextMenuGroupLabel extends StatelessWidget {
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        // 浮层不在 Material 之下，文字样式要写全（含 decoration）
+        // 分组说明使用辅助档，清除从触发控件带入的文字装饰。
         style: AthenaTextStyle.caption.copyWith(
           color: colors.textWeak,
           decoration: TextDecoration.none,

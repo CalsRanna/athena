@@ -121,11 +121,9 @@ class _ProviderListTile extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      height: 1.5,
     );
     final subtitleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      height: 1.5,
     );
     var titleChildren = [
       Flexible(child: Text(provider.name, style: titleTextStyle)),

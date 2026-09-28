@@ -41,14 +41,14 @@ class AthenaPrimaryButton extends StatefulWidget {
   final EdgeInsets padding;
   final Widget child;
   const AthenaPrimaryButton({super.key, this.onTap, required this.child})
-    : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+    : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 9);
 
-  /// 行内小号（与 [AthenaSecondaryButton.small] 同尺度，高 28）。
+  /// 行内小号（与 [AthenaSecondaryButton.small] 同尺度，高 32）。
   const AthenaPrimaryButton.small({
     super.key,
     this.onTap,
     required this.child,
-  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 5);
 
   @override
   State<AthenaPrimaryButton> createState() => _AthenaPrimaryButtonState();
@@ -116,19 +116,19 @@ class AthenaSecondaryButton extends StatefulWidget {
   final Widget child;
 
   const AthenaSecondaryButton({super.key, this.onTap, required this.child})
-    : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+    : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
 
   const AthenaSecondaryButton.medium({
     super.key,
     this.onTap,
     required this.child,
-  }) : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+  }) : padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8);
 
   const AthenaSecondaryButton.small({
     super.key,
     this.onTap,
     required this.child,
-  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6);
+  }) : padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 4);
 
   @override
   State<AthenaSecondaryButton> createState() => _AthenaSecondaryButtonState();
@@ -212,7 +212,7 @@ class _AthenaTextButtonState extends State<AthenaTextButton> {
         color: hover ? colors.surfaceHover : Colors.transparent,
         borderRadius: BorderRadius.circular(AthenaRadius.control),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Text(
         widget.text,
         style: AthenaTextStyle.label.copyWith(

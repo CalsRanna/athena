@@ -52,7 +52,6 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     var chat = chatHistory.chat;
     var titleTextStyle = AthenaTextStyle.section.copyWith(
       color: colors.textPrimary,
-      height: 1.5,
     );
     var title = Text(
       chat.title.isNotEmpty ? chat.title.trim() : 'New Chat',
@@ -73,7 +72,6 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
     var content = chatHistory.lastMessageContent.replaceAll('\n', ' ').trim();
     var messageTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.iconSecondary,
-      height: 1.5,
     );
     var message = Text(
       content,

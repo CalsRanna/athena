@@ -1,12 +1,13 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 设置面板左栏：搜索框 + 分组标题 + 图标行。
 ///
 /// 宽 192（含右侧 1px neutralBorder）、底色 surfacePanel、内边距 12。
-/// 行高 32、行距 2、行圆角 8；静止文字 textRowLabel，选中底 neutralSelected
+/// 行高 36、行距 4、行圆角 8；静止文字 textRowLabel，选中底 neutralSelected
 /// 配青瓷 accent 文字。
 class AthenaSettingsNav extends StatelessWidget {
   final Widget? search;
@@ -32,7 +33,7 @@ class AthenaSettingsNav extends StatelessWidget {
   }
 }
 
-/// 导航顶部的搜索框。实测高 32、宽与行同宽、圆角 8、
+/// 导航顶部的搜索框。高 36、宽与行同宽、圆角 8、
 /// 底色 surfaceMobile、描边 neutralBorder，图标与占位跟随语义色。
 class AthenaSettingsSearchField extends StatefulWidget {
   final TextEditingController controller;
@@ -91,12 +92,12 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
     var textStyle = TextStyle(
       color: colors.textPrimary,
       fontSize: AthenaSettings.searchFontSize,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
     var hintStyle = TextStyle(
       color: colors.textWeak,
       fontSize: AthenaSettings.searchFontSize,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
     var field = TextField(
       controller: widget.controller,
@@ -169,7 +170,7 @@ class AthenaSettingsNavGroup extends StatelessWidget {
       color: colors.textWeak,
       fontSize: AthenaSettings.navGroupFontSize,
       fontWeight: FontWeight.w400,
-      height: 1.3,
+      height: AthenaFontSize.captionHeight,
     );
     var label = Padding(
       padding: const EdgeInsets.only(left: 10),
@@ -196,7 +197,7 @@ class AthenaSettingsNavGroup extends StatelessWidget {
   }
 }
 
-/// 导航行：图标 + 标签。实测行高 32、圆角 8、左内缩 12、
+/// 导航行：图标 + 标签。行高 36、圆角 8、左内缩 12、
 /// 图标 16、图标与标签间距 12。
 ///
 /// 选中行只换底色与文字色，**不加粗**：Claude 的导航选中行是 `#0B0B0B`
@@ -237,7 +238,7 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
       color: contentColor,
       fontSize: AthenaSettings.navFontSize,
       fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
-      height: 1.3,
+      height: AthenaFontSize.bodyHeight,
     );
     var children = [
       Icon(widget.icon, color: contentColor, size: AthenaSettings.navIconSize),

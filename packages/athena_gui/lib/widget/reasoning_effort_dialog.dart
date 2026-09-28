@@ -68,7 +68,6 @@ class _MobileReasoningEffortTile extends StatelessWidget {
     var textStyle = AthenaTextStyle.row.copyWith(
       color: colors.textPrimary,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-      height: 1.5,
     );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

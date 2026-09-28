@@ -19,7 +19,6 @@ class SentinelPlaceholder extends StatelessWidget {
     var nameTextStyle = AthenaTextStyle.hero.copyWith(
       color: colors.textPrimary,
       fontWeight: FontWeight.w600,
-      height: 1.25,
     );
     var descriptionTextStyle = AthenaTextStyle.body.copyWith(
       color: colors.textSecondary,

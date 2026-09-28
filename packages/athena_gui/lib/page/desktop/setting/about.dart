@@ -44,7 +44,7 @@ class _DesktopSettingAboutPageState extends State<DesktopSettingAboutPage> {
       color: colors.textPrimary,
       fontSize: AthenaSettings.headingFontSize,
       fontWeight: FontWeight.w600,
-      height: 1.3,
+      height: AthenaFontSize.titleHeight,
     );
     var taglineStyle = TextStyle(
       color: colors.textWeak,

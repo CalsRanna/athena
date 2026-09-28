@@ -43,7 +43,6 @@ class _MobileDefaultModelFormPageState
     );
     var tipTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     var chatTip = Text('Model designated for new chat', style: tipTextStyle);
     var namingTip = Text(
@@ -187,7 +186,6 @@ class _ModelDropdown extends StatelessWidget {
       final colors = Theme.of(context).extension<AthenaColors>()!;
       final textStyle = AthenaTextStyle.row.copyWith(
         color: colors.textInput,
-        height: 1.7,
       );
       if (model == null) {
         return Text(

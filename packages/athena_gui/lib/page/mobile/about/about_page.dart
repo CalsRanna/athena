@@ -25,7 +25,6 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var textStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     var image = Image.asset(
       'asset/image/launcher_icon_ios_512x512.jpg',

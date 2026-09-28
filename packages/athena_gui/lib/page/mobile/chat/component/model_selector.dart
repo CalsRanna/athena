@@ -19,7 +19,6 @@ class MobileModelSelectDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var titleTextStyle = AthenaTextStyle.caption.copyWith(
       color: colors.border,
-      height: 1.5,
     );
     List<Widget> children = [SizedBox(height: 16)];
     for (var entry in groupedModels.entries) {

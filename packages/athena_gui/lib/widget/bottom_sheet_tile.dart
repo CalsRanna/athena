@@ -26,11 +26,9 @@ class AthenaBottomSheetTile extends StatelessWidget {
     var textStyle = AthenaTextStyle.body.copyWith(
       color: textColor,
       fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-      height: 1.4,
     );
     var trailingTextStyle = AthenaTextStyle.body.copyWith(
       color: textColor,
-      height: 1.4,
     );
     var iconColor = enabled ? colors.iconSecondary : colors.textSecondary;
     var leadingIconThemeData = IconThemeData(color: iconColor);

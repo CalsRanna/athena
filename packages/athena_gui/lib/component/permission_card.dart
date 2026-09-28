@@ -91,7 +91,7 @@ class PermissionApprovalCard extends StatelessWidget {
           width: double.infinity,
           child: Text(
             formatToolArgsForApproval(request.toolName, request.arguments),
-            style: athenaMono(color: colors.textPrimary, height: 1.6),
+            style: athenaMono(color: colors.textPrimary),
           ),
         ),
       ),
