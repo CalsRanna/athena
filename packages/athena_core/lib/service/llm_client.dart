@@ -162,10 +162,16 @@ class LlmClient {
   ///
   /// 按 `provider.apiFormat` 选择协议实现（三条路径都已接入）；实现内部的
   /// 失败都以流错误呈现，保证上层的「取消优先于底层错误」归一化仍然生效。
+  ///
+  /// [outputLimit]（模型的输出上限，0 = 未知）与 [outputRoom]（这次请求的
+  /// 窗口余量）只有 Messages 协议使用：它的 `max_tokens` 必填，见
+  /// `messagesMaxTokens`。另两条协议不传输出上限，由服务端按模型默认。
   Stream<ChatStreamEvent> stream({
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
+    int outputLimit = 0,
+    int? outputRoom,
   }) {
     switch (provider.apiFormat) {
       case ApiFormat.chatCompletions:
@@ -185,6 +191,10 @@ class LlmClient {
           provider: provider,
           request: request,
           cancelSignal: cancelSignal,
+          maxTokens: messagesMaxTokens(
+            outputLimit: outputLimit,
+            outputRoom: outputRoom,
+          ),
         );
     }
   }
@@ -308,14 +318,19 @@ class LlmClient {
     required ProviderEntity provider,
     required ChatCompletionCreateRequest request,
     Future<void>? cancelSignal,
+    required int maxTokens,
   }) async* {
     final client = _createAnthropicClient(provider);
+    // SDK 的 abortTrigger 只在收到下一个 SSE 事件时才检查：首个事件到达前
+    // 点停止，要等到事件到达或空闲超时（2 分钟）。取消时直接关掉客户端，
+    // 在途请求随之失败，上层按「取消优先于底层错误」收尾（close 可重复调用）。
+    unawaited(cancelSignal?.then((_) => client.close()));
     try {
       yield* retryStream(
         () => withIdleTimeout(
           normalizeMessagesStream(
             client.messages.createStream(
-              toMessageRequest(request, stream: true),
+              toMessageRequest(request, stream: true, maxTokens: maxTokens),
               abortTrigger: cancelSignal,
             ),
           ),

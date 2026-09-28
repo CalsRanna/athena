@@ -151,6 +151,43 @@ void main() {
     });
   });
 
+  group('provider id', () {
+    ProviderEntity provider(String name) => ProviderEntity(
+      name: name,
+      baseUrl: 'https://$name.example',
+      apiKey: 'k',
+      createdAt: now,
+    );
+
+    test('删掉 id 最大的 provider 后新建，不复用它的 id', () async {
+      final repo = storage.providerRepository;
+      await repo.storeProvider(provider('a'));
+      final b = await repo.storeProvider(provider('b'));
+      await repo.deleteProvider(b);
+
+      final c = await repo.storeProvider(provider('c'));
+
+      expect(c, isNot(b), reason: '复用会让 b 名下遗留的模型被 c 认领');
+      expect(c, greaterThan(b));
+    });
+
+    test('没有计数的旧配置从文件里已有的最大 id 往上分配', () async {
+      storage.settingFile
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          'providers:\n'
+          '  - id: 7\n'
+          '    name: "legacy"\n'
+          '    baseUrl: "https://legacy.example"\n'
+          '    apiKey: "k"\n',
+        );
+
+      final id = await storage.providerRepository.storeProvider(provider('n'));
+
+      expect(id, 8);
+    });
+  });
+
   group('permissions.json', () {
     late File file;
     setUp(() => file = File(p.join(tmp.path, 'permissions.json')));

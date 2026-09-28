@@ -88,7 +88,7 @@ class SentinelRevertTool implements Tool {
     if (snapshotId != null && snapshotId.isNotEmpty) {
       targetId = snapshotId;
     } else {
-      final metas = await _historyStore.list(sentinelName);
+      final metas = await _historyStore.list(original);
       if (metas.isEmpty) {
         return 'Error: No history snapshots found for "$sentinelName". '
             'Revert is only possible after at least one sentinel_evolve '
@@ -97,7 +97,7 @@ class SentinelRevertTool implements Tool {
       targetId = metas.first.id;
     }
 
-    final target = await _historyStore.load(sentinelName, targetId);
+    final target = await _historyStore.load(original, targetId);
     if (target == null) {
       return 'Error: Snapshot "$targetId" not found or corrupt. '
           'Use a snapshot_id listed in the history.';
@@ -115,7 +115,6 @@ class SentinelRevertTool implements Tool {
 
       // 回滚前保存当前态快照（回滚同样可回滚）
       await _historyStore.save(
-        original.name,
         original,
         reason: 'pre-revert state (revert reason: $reason)',
       );

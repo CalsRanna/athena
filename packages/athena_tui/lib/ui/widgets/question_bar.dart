@@ -18,7 +18,11 @@ class QuestionBar extends StatelessComponent {
     required this.freeText,
     required this.hint,
     this.scrollController,
+    this.label = '提问',
   });
+
+  /// 标题前缀(默认「提问」);问题不属于当前会话时由 app 层带上会话标题。
+  final String label;
 
   final List<ElicitQuestion> questions;
   final int currentIndex;
@@ -47,8 +51,8 @@ class QuestionBar extends StatelessComponent {
         children: [
           Text(
             questions.length > 1
-                ? '提问 ${currentIndex + 1}/${questions.length}'
-                : '提问',
+                ? '$label ${currentIndex + 1}/${questions.length}'
+                : label,
             style: const TextStyle(
               color: AthenaColors.warning,
               fontWeight: FontWeight.bold,

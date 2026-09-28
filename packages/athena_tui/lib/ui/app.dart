@@ -74,12 +74,16 @@ class _AthenaAppState extends State<AthenaApp> {
   final _textController = TextEditingController();
   final List<void Function()> _disposers = [];
 
-  // 权限审批请求(M3 模态)
-  _PermissionRequest? _permissionRequest;
+  // 权限审批请求(M3 模态)。按到达顺序排队、一次只显示队首：自动汇报 run
+  // 可能在别的会话上同时发起审批,只有一个槽位时后来的会覆盖先来的,
+  // 先来的那个 run 就永远等不到结果。
+  final List<_PermissionRequest> _permissionQueue = [];
+  _PermissionRequest? get _permissionRequest => _permissionQueue.firstOrNull;
   final _permissionScrollController = ScrollController();
 
-  // 提问请求(模态)
-  _ElicitRequest? _elicitRequest;
+  // 提问请求(模态),同样排队
+  final List<_ElicitRequest> _elicitQueue = [];
+  _ElicitRequest? get _elicitRequest => _elicitQueue.firstOrNull;
   final _questionScrollController = ScrollController();
 
   // 选择模态(模型 / 角色 / 聊天)
@@ -155,7 +159,7 @@ class _AthenaAppState extends State<AthenaApp> {
             Flexible(
               flex: 2,
               child: PermissionBar(
-                title: '权限请求',
+                title: _requestTitle('权限请求', _permissionRequest!.chatId),
                 summary: toolCallDescription(_permissionRequest!.arguments),
                 scrollController: _permissionScrollController,
                 detail:
@@ -168,6 +172,7 @@ class _AthenaAppState extends State<AthenaApp> {
             Flexible(
               flex: 2,
               child: QuestionBar(
+                label: _requestTitle('提问', _elicitRequest!.chatId),
                 questions: _elicitRequest!.questions,
                 currentIndex: _elicitRequest!.index,
                 selected: _elicitRequest!.selected,
@@ -466,9 +471,14 @@ class _AthenaAppState extends State<AthenaApp> {
           _resolvePermission(true, true);
           return true;
         case LogicalKey.escape:
-          // Esc = 拒绝 + 停止生成。直接关闭审批条(不依赖 cancelToken:
-          // 无活动 run 时 currentCancelToken 为 null,依赖它审批会悬挂)
-          _controller.stopGenerating();
+          // Esc = 拒绝 + 停止发起这个请求的会话(不一定是当前会话)。直接
+          // 关闭审批条(不依赖 cancelToken:无活动 run 时它为 null,依赖它
+          // 审批会悬挂)
+          if (permission.chatId == _controller.currentChat.value?.id) {
+            _controller.stopGenerating();
+          } else {
+            _controller.bridge.stop(permission.chatId);
+          }
           _resolvePermission(false, false);
           return true;
       }
@@ -519,28 +529,57 @@ class _AthenaAppState extends State<AthenaApp> {
   // ─── 权限审批(M3) ────────────────────────────────────────
 
   Future<PermissionDecision> _handlePermission(
+    int chatId,
     String toolName,
     String arguments,
+    Future<void> cancelled,
   ) async {
     final completer = Completer<PermissionDecision>();
-    _permissionRequest = _PermissionRequest(toolName, arguments, completer);
-    _permissionScrollController.jumpTo(0);
-    setState(() {});
+    final request = _PermissionRequest(chatId, toolName, arguments, completer);
+    if (_permissionQueue.isEmpty) _permissionScrollController.jumpTo(0);
+    setState(() => _permissionQueue.add(request));
 
-    // 取消联动已由 TuiAgentBridge._askPermission 处理
-    // (cancelToken.whenCancelled → 自动拒绝)，此处只等用户决策。
+    // run 取消时桥已按拒绝返回(TuiAgentBridge._askPermission),这里只把
+    // 卡片撤下,排在后面的请求随之顶上来。
+    unawaited(cancelled.then((_) => _dropPermission(request)));
     return completer.future;
+  }
+
+  void _dropPermission(_PermissionRequest request) {
+    if (!mounted || !_permissionQueue.contains(request)) return;
+    final wasHead = identical(_permissionRequest, request);
+    setState(() => _permissionQueue.remove(request));
+    if (wasHead) _permissionScrollController.jumpTo(0);
+  }
+
+  /// 模态标题:请求不属于当前会话时带上它的会话标题,否则看不出是谁在问。
+  String _requestTitle(String title, int chatId) {
+    final queued = _permissionQueue.length + _elicitQueue.length;
+    final more = queued > 1 ? '(还有 ${queued - 1} 个待处理)' : '';
+    if (chatId == _controller.currentChat.value?.id) return '$title$more';
+    return '$title · ${_controller.chatTitleOf(chatId)}$more';
   }
 
   // ─── 提问(向用户问「你要哪个」) ──────────────────────────
 
-  Future<Map<String, String>?> _handleElicit(List<ElicitQuestion> questions) {
+  Future<Map<String, String>?> _handleElicit(
+    int chatId,
+    List<ElicitQuestion> questions,
+    Future<void> cancelled,
+  ) {
     final completer = Completer<Map<String, String>?>();
-    _questionScrollController.jumpTo(0);
-    setState(() => _elicitRequest = _ElicitRequest(questions, completer));
+    final request = _ElicitRequest(chatId, questions, completer);
+    if (_elicitQueue.isEmpty) _questionScrollController.jumpTo(0);
+    setState(() => _elicitQueue.add(request));
 
-    // 取消联动已由 TuiAgentBridge._askElicit 处理(取消 → null),
-    // 此处只等用户作答或跳过。
+    // run 取消时桥已按未作答返回(TuiAgentBridge._askElicit),这里只把
+    // 提问条撤下。
+    unawaited(
+      cancelled.then((_) {
+        if (!mounted || !_elicitQueue.contains(request)) return;
+        _resolveElicit(request, null);
+      }),
+    );
     return completer.future;
   }
 
@@ -631,11 +670,13 @@ class _AthenaAppState extends State<AthenaApp> {
     if (!request.completer.isCompleted) {
       request.completer.complete(answers);
     }
+    final wasHead = identical(_elicitRequest, request);
     setState(() {
-      if (identical(_elicitRequest, request)) _elicitRequest = null;
+      _elicitQueue.remove(request);
       request.textIndex = null;
-      _textController.clear();
+      if (wasHead) _textController.clear();
     });
+    if (wasHead) _questionScrollController.jumpTo(0);
   }
 
   /// picker 按键处理(全局键与输入区共用,模态期间拦截方向键)。
@@ -917,11 +958,13 @@ class _AthenaAppState extends State<AthenaApp> {
   void _resolvePermission(bool approved, bool persistExact) {
     final request = _permissionRequest;
     if (request == null) return;
-    request.completer.complete(
-      PermissionDecision(approved: approved, persistExact: persistExact),
-    );
-    _permissionRequest = null;
-    setState(() {});
+    if (!request.completer.isCompleted) {
+      request.completer.complete(
+        PermissionDecision(approved: approved, persistExact: persistExact),
+      );
+    }
+    setState(() => _permissionQueue.remove(request));
+    _permissionScrollController.jumpTo(0);
   }
 
   Future<void> _saveApiKey(ProviderEntity provider, String apiKey) async {
@@ -1051,16 +1094,18 @@ class _AthenaAppState extends State<AthenaApp> {
 }
 
 class _PermissionRequest {
+  final int chatId;
   final String toolName;
   final String arguments;
   final Completer<PermissionDecision> completer;
-  _PermissionRequest(this.toolName, this.arguments, this.completer);
+  _PermissionRequest(this.chatId, this.toolName, this.arguments, this.completer);
 }
 
 /// 一次提问的进行中状态:问题、选项选择、自填文本、当前问题、作答器。
 class _ElicitRequest {
-  _ElicitRequest(this.questions, this.completer);
+  _ElicitRequest(this.chatId, this.questions, this.completer);
 
+  final int chatId;
   final List<ElicitQuestion> questions;
   final Completer<Map<String, String>?> completer;
 

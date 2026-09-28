@@ -104,14 +104,23 @@ void main() {
       ...currentFields,
       'prompt': 'Improved instructions.',
     });
-    final snapshots = await history.list('Reviewer');
-    expect(snapshots, hasLength(3));
+    final current = (await repository.getSentinelById(7))!;
+    final snapshots = await history.list(current);
+    expect(snapshots, hasLength(3), reason: '旧布局的快照按 id 认领，与新快照合并');
+    final byId = p.join(
+      temp.path,
+      '.athena',
+      'sentinels',
+      'by-id',
+      '7',
+      'history',
+    );
     for (final meta in snapshots.where((meta) => meta.id != 'legacy')) {
-      final file = File(p.join(snapshot.parent.path, '${meta.id}.json'));
+      final file = File(p.join(byId, '${meta.id}.json'));
       final data =
           jsonDecode(await file.readAsString()) as Map<String, dynamic>;
       expect(data['sentinel'], isNot(contains('avatar')));
-      expect((await history.load('Reviewer', meta.id))!.id, 7);
+      expect((await history.load(current, meta.id))!.id, 7);
     }
   });
 }

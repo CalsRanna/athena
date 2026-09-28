@@ -39,6 +39,17 @@ class _MobileChatPageState extends State<MobileChatPage> {
   final controller = TextEditingController();
   final scrollController = MessageListScrollController();
 
+  /// 新对话页打开时 ViewModel 的当前对话（上一次打开的那条）。
+  ///
+  /// 进入草稿态（[ChatViewModel.prepareNewChatDraft]）要等模型与角色两段
+  /// IO 之后，这段时间 currentChat 仍是它：不能显示它的消息，也不能把输入
+  /// 发进它里面。见 [_resolveChat]。
+  ChatEntity? _openedFrom;
+
+  /// 新对话页还没进入草稿态。只在这段窗口内把 [_openedFrom] 当草稿看待；
+  /// 之后当前对话再切回它（如被显式选中）就照常显示。
+  bool _draftPending = false;
+
   late final viewModel = GetIt.instance<ChatViewModel>();
   late final modelViewModel = GetIt.instance<ModelViewModel>();
   late final sentinelViewModel = GetIt.instance<SentinelViewModel>();
@@ -49,8 +60,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
     var actionButton = AthenaIconButton(
       icon: LucideIcons.ellipsis,
       onTap: () {
-        final chat = viewModel.currentChat.value ?? widget.chat;
-        openBottomSheet(chat);
+        openBottomSheet(_resolveChat());
       },
     );
 
@@ -131,7 +141,13 @@ class _MobileChatPageState extends State<MobileChatPage> {
   ChatEntity? _resolveChat() {
     final requestedChat = widget.chat;
     final currentChat = viewModel.currentChat.value;
-    if (requestedChat != null && currentChat?.id != requestedChat.id) {
+    if (requestedChat == null) {
+      // 新对话页：还没切到草稿态时 currentChat 是来源对话，按草稿处理；
+      // 首条消息建出的新对话 id 不同，照常显示
+      if (_draftPending && currentChat?.id == _openedFrom?.id) return null;
+      return currentChat;
+    }
+    if (currentChat?.id != requestedChat.id) {
       return viewModel.chats.value
               .where((chat) => chat.id == requestedChat.id)
               .firstOrNull ??
@@ -167,6 +183,10 @@ class _MobileChatPageState extends State<MobileChatPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.chat == null) {
+      _openedFrom = viewModel.currentChat.value;
+      _draftPending = true;
+    }
     _initializeViewModels();
   }
 
@@ -177,10 +197,13 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (widget.chat != null) {
         await viewModel.selectChat(widget.chat!);
       } else {
+        // 上面两段 IO 期间用户可能已经发出首条消息、建好了新对话：不能再把
+        // 它卸掉回草稿
+        if (viewModel.currentChat.value?.id != _openedFrom?.id) return;
         // 移动端没有侧栏选中态，"当前对话"就是最近打开的那条；工作文件夹在
         // 移动端没有作用（不注册 shell / 文件工具），所以只继承角色。
         await viewModel.prepareNewChatDraft(
-          inheritFrom: viewModel.currentChat.value,
+          inheritFrom: _openedFrom,
           inheritWorkspace: false,
         );
         // 入口注入的专属 Sentinel：作为新聊天的角色
@@ -192,6 +215,8 @@ class _MobileChatPageState extends State<MobileChatPage> {
       if (mounted) {
         AthenaDialog.error('Failed to load chat. Please try again.');
       }
+    } finally {
+      if (mounted && _draftPending) setState(() => _draftPending = false);
     }
   }
 
@@ -286,7 +311,7 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
   Widget _buildInput() {
     return Watch((context) {
-      final chat = viewModel.currentChat.value ?? widget.chat;
+      final chat = _resolveChat();
       var userInput = UserInput(
         controller: controller,
         isStreaming: viewModel.isCurrentChatStreaming.value,

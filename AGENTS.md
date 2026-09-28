@@ -152,21 +152,21 @@ entity + ~/.athena/ 下的文件
 |---|---|---|
 | `sessions/{chatId}.jsonl` | `JsonlSessionRepository` + `SessionJsonlStore` | 一个对话一个文件；首行 chat 元数据，之后每行一条消息，行序即消息序。同一实例同时实现 `ChatRepository` 与 `MessageRepository`，删对话即删文件 |
 | `models.json` / `sentinels.json` | `JsonArrayStore` 系列 | JSON 数组，`id` 为主键；读-改-整文件写 |
-| `meta.json` | `IdAllocator` | 自增计数，key 为文件/目录的**绝对路径**（chat id、message id 各自独立计数）。目录迁移或文件损坏后计数会从头开始，因此 `createChat` 跳过已存在的会话文件、`appendMessage` 保证新 id 大于文件里最后一条 |
+| `meta.json` | `IdAllocator` | 自增计数，key 为文件/目录的**绝对路径**（chat id、message id、provider id 各自独立计数；provider id 以 `setting.yaml` 路径为 key，单调递增、删除后不复用）。目录迁移或文件损坏后计数会从头开始，因此 `createChat` 跳过已存在的会话文件、`appendMessage` 保证新 id 大于文件里最后一条 |
 | `setting.yaml` | `UserSettingsStore` + `YamlProviderRepository` | provider 的**权威**存储（含 API key，可手工编辑），以及 TUI 默认模型（modelId 字符串） |
 | `models_dev_cache.json` | `ModelCatalogService` | 目录缓存 |
 | `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root`。写入在锁内合并磁盘最新内容，`check` 前按 mtime 重读（另一端或手工编辑的规则即时生效）；未 `load()` 的实例只用内存规则（测试用） |
 | `tool_outputs/{sha256}.txt` | `ToolOutputStore` | 内容寻址的长工具输出 |
 | `background_tasks/background_tasks.json` | `BackgroundTaskService` | 运行中的后台任务（pid + 命令行 + 属主进程 `owner_pid`），仅用于下次启动清理强杀遗留的孤儿进程。多实例共用，每个进程只改写自己的记录 |
 | `experiences/shared/`、`experiences/{sentinelId}/` | `ExperienceRepository` | 一条经验一个 JSON，文件名即 id |
-| `sentinels/{Uri.encodeComponent(name)}/history/` | `SentinelHistoryStore` | 演进前快照 |
+| `sentinels/by-id/{sentinelId}/history/` | `SentinelHistoryStore` | 演进前快照，按角色 id 归档（演进可以改名）。旧布局 `sentinels/{Uri.encodeComponent(name)}/history/` 只读，按快照里的角色 id 认领 |
 | `skills/{name}/SKILL.md` | `SkillLoader` / `SkillRegistry` | 用户级技能 |
 | `kv.json` | `JsonFileKeyValueStore` | TUI 的 `KeyValueStore`；GUI 用 `SharedPreferences` |
 
 约定：
 
 - **文件永远是唯一真相**，索引/缓存必须可删除可重建，不反向持有数据。
-- Provider 的 `apiFormat`（`ApiFormat`：`chat_completions` / `responses` / `messages`）与 `apiFormatAuto` 一起持久化到 `setting.yaml`，JSON 备份使用 `api_format` / `api_format_auto`。旧配置缺少字段时为 Chat Completions + 自动模式，显式指定格式且未指定自动模式时视为手动。`CatalogProviderConfig.resolveApiFormat` 根据 models.dev 的 `npm` 推断默认格式，本地端点差异由 `apiFormatOverride` 覆盖（Google、MiniMax、xAI）；不把模型级 `provider.shape` 上提为 Provider 默认值。未知 SDK 保留已有值，预设地址被改动或手动模式时不覆盖。已有缓存 TTL 内也同步格式元数据，但跳过模型同步与网络拉取。更新必须经 `ProviderRepository.syncApiFormat` 在文件锁内读最新配置，仅改格式，不覆盖并发修改的凭据。`LlmClient.stream` / `fetch` 已按 `apiFormat` 分派：Chat Completions 直接交给 openai_dart；Responses 经 `service/responses_adapter.dart` 把请求摊平成 `input` items、把 SSE 事件归一成 `ChatStreamEvent`（上层不感知协议差异，`ChatStreamAccumulator` 可直接消费），表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃；Messages 经 `service/messages_adapter.dart` 把 system 上提到顶层、把连续同角色的消息合并成一条（Anthropic 要求 user / assistant 交替）、在 JSON 字符串与对象之间转换工具参数，并给 `max_tokens` 兜底默认值（Chat Completions 下 Athena 从不传，Messages 里必填）；地址里 OpenAI 兼容写法带的 `/v1` 会被剥掉，因为 SDK 自己拼`/v1/messages`。两条适配路径都不让上层感知协议差异，`ChatStreamAccumulator` 可直接消费；表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃。手动切换入口：`DesktopSettingProviderPage` 详情页的 **API format** 行（`component/api_format_menu.dart`）、移动端 `MobileProviderFormPage` 的表单项、TUI 的 `/format`；手动选择即 `copyWith(apiFormat:)`（会把 `apiFormatAuto` 落成 false），选回 Auto 走 `copyWith(apiFormatAuto: true)`（格式值保留到下次同步）。
+- Provider 的 `apiFormat`（`ApiFormat`：`chat_completions` / `responses` / `messages`）与 `apiFormatAuto` 一起持久化到 `setting.yaml`，JSON 备份使用 `api_format` / `api_format_auto`。旧配置缺少字段时为 Chat Completions + 自动模式，显式指定格式且未指定自动模式时视为手动。`CatalogProviderConfig.resolveApiFormat` 根据 models.dev 的 `npm` 推断默认格式，本地端点差异由 `apiFormatOverride` 覆盖（Google、MiniMax、xAI）；不把模型级 `provider.shape` 上提为 Provider 默认值。未知 SDK 保留已有值，预设地址被改动或手动模式时不覆盖。已有缓存 TTL 内也同步格式元数据，但跳过模型同步与网络拉取。更新必须经 `ProviderRepository.syncApiFormat` 在文件锁内读最新配置，仅改格式，不覆盖并发修改的凭据。`LlmClient.stream` / `fetch` 已按 `apiFormat` 分派：Chat Completions 直接交给 openai_dart；Responses 经 `service/responses_adapter.dart` 把请求摊平成 `input` items、把 SSE 事件归一成 `ChatStreamEvent`（上层不感知协议差异，`ChatStreamAccumulator` 可直接消费），表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃；Messages 经 `service/messages_adapter.dart` 把 system 上提到顶层、把连续同角色的消息合并成一条（Anthropic 要求 user / assistant 交替）、在 JSON 字符串与对象之间转换工具参数，并给出 `max_tokens`（Chat Completions 下 Athena 从不传，Messages 里必填）：取模型的输出上限（`ModelEntity.outputLimit`，来自 models.dev 的 `limit.output`，未知时 8192），再按本次请求的窗口余量（`ContextBudget.outputRoom`）收紧；温度收紧到 Messages 接受的 0–1；历史里含非法字符的 tool_use id 在 tool_use / tool_result 两侧一致改写；流内 error 事件按错误类型抛出带状态码的 `anthropic.ApiException`，与请求阶段的 429 / 5xx / 529 一起由 `retry.dart` 重试；地址里 OpenAI 兼容写法带的 `/v1` 会被剥掉，因为 SDK 自己拼`/v1/messages`。两条适配路径都不让上层感知协议差异，`ChatStreamAccumulator` 可直接消费；表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃。手动切换入口：`DesktopSettingProviderPage` 详情页的 **API format** 行（`component/api_format_menu.dart`）、移动端 `MobileProviderFormPage` 的表单项、TUI 的 `/format`；手动选择即 `copyWith(apiFormat:)`（会把 `apiFormatAuto` 落成 false），选回 Auto 走 `copyWith(apiFormatAuto: true)`（格式值保留到下次同步）。
 - 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。会话文件按宽松 UTF-8 读取，追加前补齐缺失的换行。整文件无法解析的 JSON / YAML（`sentinels.json`、`models.json`、`setting.yaml`、`permissions.json`）读时按空处理，**写入前先用 `preserveCorruptFile` 备份成 `.corrupt-{时间戳}`**，不能被下一次写入静默覆盖。
 - 会话消息的窗口化：`RecentMessageRepository.loadInitialMessages` / `loadRecentMessages` 只读尾部窗口（GUI 每页 50），轮次总数靠 `getTurnStartIds` 的整文件扫描。
 
@@ -241,7 +241,7 @@ entity + ~/.athena/ 下的文件
 - `MemoryDigest`：每次 run 注入当前 Sentinel 的**全部 active** 经验目录（lesson 一行一条，`shared` / `private` 标注 + 创建日期），顺序稳定（按创建时间倒序、同时间按 id）以便复用 prompt cache；没有经验时不注入空段。`context` / `tags` 由 `experience_recall` 按需取。
 - 失败反思（`ReflectionPolicy.shouldReflect`）：`maxIterations` 结束且失败不全是权限拒绝，或 `completed` 且同一工具失败 ≥2 次才触发。反思只做一次 LLM 提案调用，经验写入完全复用 `experience_learn` 的标准工具路径（校验/审批/执行），**不要直接写 `ExperienceRepository`**。
 - 经验长度上限 `ExperienceEntity.maxLessonLength = 500`；lesson 是给上下文直接用的精炼摘要，详细背景放 `context`。反思提案的置信度门槛 0.7。
-- Sentinel 演进前必写快照（`SentinelHistoryStore`），`sentinel_revert` 本身也可回滚。
+- Sentinel 演进前必写快照（`SentinelHistoryStore`），`sentinel_revert` 本身也可回滚。快照按角色 **id** 归档：按名字归档时改名那一步撤销不了，别的角色日后用了旧名字还会继承不属于它的快照。
 - Sentinel 不提供头像：`SentinelEntity`、生成提示词、工具 schema/输出与 GUI 均不包含头像能力。旧角色、备份和历史快照里的 `avatar` 在反序列化时忽略，后续保存/导出不再写出；名称、描述、标签与提示词仍可正常编辑、生成、演进和回滚。
 
 ---
@@ -272,6 +272,7 @@ entity + ~/.athena/ 下的文件
 - 组合根是 `lib/di/tui_di.dart`（手写装配，镜像 GUI 但不引入 GetIt）；数据目录、工具集、权限规则与 GUI 相同。
 - 启动会把 `Directory.current` 改成工作区目录——核心层（shell 默认 workdir、文件工具相对路径）都按 `Directory.current` 解析。
 - `ChatController` 不依赖 nocterm，保持纯 Dart 可测；UI 状态全在 signals 里。
+- 审批与提问在 `app.dart` 里按到达顺序排队、一次只显示队首（自动汇报 run 可能在别的会话上同时发起请求）；桥把发起会话的 `chatId` 与取消信号交给 UI，请求不属于当前会话时标题带上会话标题，run 取消时卡片随之撤下，Esc 停的是发起请求的那个会话。
 
 ---
 

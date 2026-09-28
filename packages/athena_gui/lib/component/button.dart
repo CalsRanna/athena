@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/theme/athena_colors.dart';
@@ -20,6 +22,16 @@ class CopyButton extends StatefulWidget {
 
 class _CopyButtonState extends State<CopyButton> {
   bool copied = false;
+
+  /// 3 秒后把「已复制」恢复原样。按钮可能在这之前被卸载（切换对话、流式
+  /// 重建），dispose 时取消，不对已销毁的 State 调 setState。
+  Timer? _resetTimer;
+
+  @override
+  void dispose() {
+    _resetTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,15 +76,16 @@ class _CopyButtonState extends State<CopyButton> {
     return Row(children: children);
   }
 
-  void handleTap() async {
+  void handleTap() {
     if (copied) return;
     widget.onTap?.call();
     setState(() {
       copied = true;
     });
-    await Future.delayed(const Duration(seconds: 3));
-    setState(() {
-      copied = false;
+    _resetTimer = Timer(const Duration(seconds: 3), () {
+      setState(() {
+        copied = false;
+      });
     });
   }
 }

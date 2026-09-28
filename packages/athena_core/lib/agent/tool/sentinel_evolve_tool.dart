@@ -156,11 +156,7 @@ class SentinelEvolveTool implements Tool {
       // 更新前写入快照：旧态 + 变更原因，供追溯与 sentinel_revert 回滚。
       // 快照失败不阻断进化（历史记录缺失不应阻止合法修改）。
       try {
-        await _historyStore.save(
-          original.name,
-          original,
-          reason: improvements,
-        );
+        await _historyStore.save(original, reason: improvements);
       } catch (e) {
         // 快照失败仅告警，进化仍继续
         LoggerUtil.w('Sentinel history snapshot failed for '

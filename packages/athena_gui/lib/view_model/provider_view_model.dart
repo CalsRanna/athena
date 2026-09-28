@@ -94,6 +94,9 @@ class ProviderViewModel {
       providers.value = providers.value
           .where((p) => p.id != provider.id)
           .toList();
+      // 模型随 provider 一起删：留在 models.json 里的孤儿模型选不到、也请求
+      // 不通，引用它们的会话会报「Provider not found」
+      await _modelViewModel.deleteModelsOfProvider(provider.id!);
       await _modelViewModel.loadEnabledModels();
     } catch (e) {
       error.value = e.toString();

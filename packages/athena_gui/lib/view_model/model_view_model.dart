@@ -165,6 +165,15 @@ class ModelViewModel {
     }
   }
 
+  /// 删除某个 provider 名下的全部模型（删 provider 时级联调用）。
+  ///
+  /// 调用方负责 loading / 错误展示；这里只维护本地列表。
+  Future<void> deleteModelsOfProvider(int providerId) async {
+    await _repository.deleteModelsByProviderId(providerId);
+    models.value =
+        models.value.where((m) => m.providerId != providerId).toList();
+  }
+
   Future<ConnectionCheckResult> checkConnection(ModelEntity model) async {
     try {
       var provider = await _providerRepository.getProviderById(

@@ -54,6 +54,7 @@ class _MobileAboutPageState extends State<MobileAboutPage> {
     var packageInfo = await PackageInfo.fromPlatform();
     var version = packageInfo.version;
     var buildNumber = packageInfo.buildNumber;
+    if (!mounted) return;
     setState(() {
       this.version = '$version ($buildNumber)';
     });

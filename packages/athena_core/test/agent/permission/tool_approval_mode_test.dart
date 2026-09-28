@@ -315,6 +315,7 @@ class _ToolCompletionService extends ChatCompletionsService {
     List<Tool>? tools,
     ResponseFormat? responseFormat,
     Future<void>? cancelSignal,
+    int? outputRoom,
   }) async* {
     final first = _turn++ == 0;
     yield ChatStreamEvent.fromJson({

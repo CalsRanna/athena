@@ -930,6 +930,7 @@ class _AgentLoop {
       tools: request.tools,
       responseFormat: request.responseFormat,
       cancelSignal: _token.whenCancelled,
+      outputRoom: _budget.outputRoom(request.messages, request.tools),
     );
 
     // 流式累积 tool_calls: id/name/arguments 分片到达，实时产出事件，

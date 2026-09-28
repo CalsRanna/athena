@@ -70,6 +70,9 @@ class ChatCompletionsService {
   }
 
   /// 获取聊天完成流
+  ///
+  /// [outputRoom] 是这次请求的窗口余量（见 `ContextBudget.outputRoom`），
+  /// 只用来给 Messages 协议的 `max_tokens` 封顶。
   Stream<ChatStreamEvent> getCompletion({
     required ChatEntity chat,
     required List<ChatMessage> messages,
@@ -78,6 +81,7 @@ class ChatCompletionsService {
     List<Tool>? tools,
     ResponseFormat? responseFormat,
     Future<void>? cancelSignal,
+    int? outputRoom,
   }) async* {
     var request = ChatCompletionCreateRequest(
       model: model.modelId,
@@ -96,6 +100,8 @@ class ChatCompletionsService {
       provider: provider,
       request: request,
       cancelSignal: cancelSignal,
+      outputLimit: model.outputLimit,
+      outputRoom: outputRoom,
     );
   }
 

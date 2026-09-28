@@ -2,6 +2,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/storage/file_lock.dart';
+import 'package:athena_core/storage/id_allocator.dart';
 import 'package:athena_core/storage/serial_lock.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 
@@ -18,9 +19,14 @@ import 'package:athena_core/storage/user_settings_store.dart';
 /// id 分配:新 provider 取 max(id)+1——与 models.json 的 providerId
 /// 引用保持一致。
 class YamlProviderRepository implements ProviderRepository {
-  YamlProviderRepository({required UserSettingsStore store}) : _store = store;
+  YamlProviderRepository({
+    required UserSettingsStore store,
+    required IdAllocator idAllocator,
+  }) : _store = store,
+       _idAllocator = idAllocator;
 
   final UserSettingsStore _store;
+  final IdAllocator _idAllocator;
   Future<void>? _lock;
 
   /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
@@ -70,11 +76,16 @@ class YamlProviderRepository implements ProviderRepository {
         }
         return provider.id!;
       }
+      // 单调递增、不复用：按「当前最大 + 1」分配时，删掉 id 最大的 provider
+      // 再新建，新 provider 会拿到同一个 id，models.json 里旧 provider 的模型
+      // （provider_id 指向它）就被新 provider 认领——会话拿新地址和 key 去请求
+      // 旧模型名。计数下限对齐文件里已有的最大 id（旧数据没有计数）。
       var maxId = 0;
       for (final p in all) {
         if ((p.id ?? 0) > maxId) maxId = p.id!;
       }
-      final newId = maxId + 1;
+      await _idAllocator.ensureAtLeast(_store.file.path, maxId);
+      final newId = await _idAllocator.next(_store.file.path);
       all.add(provider.copyWith(id: newId));
       return newId;
     });

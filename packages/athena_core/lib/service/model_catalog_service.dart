@@ -409,7 +409,8 @@ class ModelCatalogService {
 
   /// models.dev 模型 JSON → [ModelEntity](models 表字段映射)。
   ///
-  /// 映射关系:limit.context → context_window;cost.input/output →
+  /// 映射关系:limit.context → context_window;limit.output → output_limit;
+  /// cost.input/output →
   /// input_price/output_price;release_date → released_at;reasoning →
   /// reasoning;attachment(附件能力) → vision。
   @visibleForTesting
@@ -427,11 +428,15 @@ class ModelCatalogService {
     final contextWindow = limit is Map<String, dynamic> && limit['context'] is num
         ? (limit['context'] as num).toInt()
         : 0;
+    final outputLimit = limit is Map<String, dynamic> && limit['output'] is num
+        ? (limit['output'] as num).toInt()
+        : 0;
     return ModelEntity(
       name: json['name'] is String ? json['name'] as String : modelId,
       modelId: modelId,
       providerId: providerId,
       contextWindow: contextWindow,
+      outputLimit: outputLimit,
       inputPrice: formatPrice(cost is Map<String, dynamic> ? cost['input'] : null),
       outputPrice:
           formatPrice(cost is Map<String, dynamic> ? cost['output'] : null),

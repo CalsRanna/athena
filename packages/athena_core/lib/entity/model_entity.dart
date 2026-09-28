@@ -6,6 +6,9 @@ class ModelEntity {
   final String modelId;
   final int providerId;
   final int contextWindow;
+
+  /// 单次回复的输出 token 上限（models.dev 的 `limit.output`），0 = 未知。
+  final int outputLimit;
   final String inputPrice;
   final String outputPrice;
   final String releasedAt;
@@ -21,6 +24,7 @@ class ModelEntity {
     required this.modelId,
     required this.providerId,
     this.contextWindow = 0,
+    this.outputLimit = 0,
     this.inputPrice = '',
     this.outputPrice = '',
     this.releasedAt = '',
@@ -38,6 +42,7 @@ class ModelEntity {
       modelId: json.getString('model_id'),
       providerId: json.getInt('provider_id'),
       contextWindow: json.getInt('context_window', defaultValue: 0),
+      outputLimit: json.getInt('output_limit', defaultValue: 0),
       inputPrice: json.getString('input_price'),
       outputPrice: json.getString('output_price'),
       releasedAt: json.getString('released_at'),
@@ -56,6 +61,7 @@ class ModelEntity {
       'model_id': modelId,
       'provider_id': providerId,
       'context_window': contextWindow,
+      'output_limit': outputLimit,
       'input_price': inputPrice,
       'output_price': outputPrice,
       'released_at': releasedAt,
@@ -73,6 +79,7 @@ class ModelEntity {
     String? modelId,
     int? providerId,
     int? contextWindow,
+    int? outputLimit,
     String? inputPrice,
     String? outputPrice,
     String? releasedAt,
@@ -88,6 +95,7 @@ class ModelEntity {
       modelId: modelId ?? this.modelId,
       providerId: providerId ?? this.providerId,
       contextWindow: contextWindow ?? this.contextWindow,
+      outputLimit: outputLimit ?? this.outputLimit,
       inputPrice: inputPrice ?? this.inputPrice,
       outputPrice: outputPrice ?? this.outputPrice,
       releasedAt: releasedAt ?? this.releasedAt,

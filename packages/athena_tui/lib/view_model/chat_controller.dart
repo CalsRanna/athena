@@ -581,6 +581,15 @@ class ChatController {
     }
   }
 
+  /// 会话标题（找不到时用 id），用于标注不属于当前会话的审批与错误。
+  String chatTitleOf(int chatId) {
+    if (currentChat.value?.id == chatId) return currentChat.value!.title;
+    for (final history in chatList.value) {
+      if (history.chat.id == chatId) return history.chat.title;
+    }
+    return '对话 #$chatId';
+  }
+
   void stopGenerating() {
     final chatId = currentChat.value?.id;
     if (chatId == null) return;
@@ -605,7 +614,13 @@ class ChatController {
     final event = internal.event;
     if (chatId != currentChat.value?.id) {
       // 其他对话的汇报照常落库（切过去就能看到），但不改当前界面状态。
-      if (event is RunListReload || event is RunError) handleRunEvent(event);
+      if (event is RunListReload) handleRunEvent(event);
+      // 错误条只有一条，显示的是当前对话：别的对话的错误要带上它的标题，
+      // 否则看起来像当前对话出了错
+      if (event is RunError) {
+        LoggerUtil.e('report RunError (chat $chatId): ${event.message}');
+        error.value = '「${chatTitleOf(chatId)}」${event.message}';
+      }
       return;
     }
     if (event is RunAssistantAppended) {

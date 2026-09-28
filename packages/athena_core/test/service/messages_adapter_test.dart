@@ -395,20 +395,29 @@ void main() {
       expect(chunk.id, 'msg_1');
     });
 
-    test('error 事件带出服务端信息', () async {
-      await expectLater(
+    test('error 事件按错误类型抛出带状态码的 ApiException', () async {
+      Future<void> expectStatus(String type, int status) => expectLater(
         normalizeMessagesStream(
           Stream.value(
             event({
               'type': 'error',
-              'error': {'type': 'overloaded_error', 'message': 'boom'},
+              'error': {'type': type, 'message': 'boom'},
             }),
           ),
         ),
         emitsError(
-          isA<StateError>().having((e) => e.message, 'message', contains('boom')),
+          isA<anthropic.ApiException>()
+              .having((e) => e.statusCode, 'statusCode', status)
+              .having((e) => e.message, 'message', contains('boom')),
         ),
+        reason: type,
       );
+
+      // 过载 / 服务端错误可重试；请求本身有问题的不重试（见 retry.dart）
+      await expectStatus('overloaded_error', 529);
+      await expectStatus('api_error', 500);
+      await expectStatus('rate_limit_error', 429);
+      await expectStatus('invalid_request_error', 400);
     });
   });
 

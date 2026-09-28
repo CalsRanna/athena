@@ -22,6 +22,13 @@ class ContextBudget {
   int estimate(List<ChatMessage> messages, List<Tool>? tools) =>
       (_estimate(messages, tools) * _usageScale).ceil();
 
+  /// 这次请求还能留给输出的 token 数；窗口未知时为 null。
+  ///
+  /// 估算偏保守（见 [_estimate]），给出的余量只会偏小：按它设输出上限，
+  /// 「输入 + 输出」不会超出窗口。
+  int? outputRoom(List<ChatMessage> messages, List<Tool>? tools) =>
+      contextWindow > 0 ? contextWindow - estimate(messages, tools) : null;
+
   void observe({
     required int promptTokens,
     required List<ChatMessage> messages,

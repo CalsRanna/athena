@@ -22,16 +22,26 @@ import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 
 /// 权限审批回调:由 TUI UI 层注册(终端内模态)。
+///
+/// [chatId] 是发起请求的会话:自动汇报 run 会在非当前会话上请求审批,
+/// UI 要标出它属于哪个会话。[cancelled] 在该 run 取消时完成——此时桥已
+/// 按拒绝返回,UI 据此撤下这张卡片,不留一张再也等不到结果的审批。
 typedef TuiPermissionHandler = Future<PermissionDecision> Function(
+  int chatId,
   String toolName,
   String arguments,
+  Future<void> cancelled,
 );
 
-/// 提问回调:由 TUI UI 层注册(终端内模态)。
+/// 提问回调:由 TUI UI 层注册(终端内模态)。参数含义同 [TuiPermissionHandler]。
 ///
 /// 返回 null = 未作答(UI 未就绪或用户跳过),工具据此按标注过的假定继续。
 typedef TuiElicitHandler =
-    Future<Map<String, String>?> Function(List<ElicitQuestion> questions);
+    Future<Map<String, String>?> Function(
+      int chatId,
+      List<ElicitQuestion> questions,
+      Future<void> cancelled,
+    );
 
 /// TUI 侧的 Agent 流桥:包装核心 [AgentRunCoordinator]。
 ///
@@ -74,9 +84,9 @@ class TuiAgentBridge {
       agentSettings: agentSettings,
       permissionService: permissionService,
       permissionPrompt: (chatId, toolName, arguments, cancelToken) =>
-          _askPermission(toolName, arguments, cancelToken),
+          _askPermission(chatId, toolName, arguments, cancelToken),
       elicitPrompt: (chatId, questions, cancelToken) =>
-          _askElicit(questions, cancelToken),
+          _askElicit(chatId, questions, cancelToken),
       experienceRepository: experienceRepository,
       runtimeEnvironment: RuntimeEnvironment.tui,
     );
@@ -117,20 +127,30 @@ class TuiAgentBridge {
   @visibleForTesting
   Future<PermissionDecision> requestPermissionForTest(
     String toolName,
-    String arguments,
-  ) {
-    return _askPermission(toolName, arguments, CancelToken());
+    String arguments, {
+    int chatId = 0,
+    CancelToken? cancelToken,
+  }) {
+    return _askPermission(
+      chatId,
+      toolName,
+      arguments,
+      cancelToken ?? CancelToken(),
+    );
   }
 
   /// 测试入口:直接请求一次提问(走与 Agent 相同的 handler 逻辑)。
   @visibleForTesting
   Future<Map<String, String>?> requestElicitForTest(
-    List<ElicitQuestion> questions,
-  ) {
-    return _askElicit(questions, CancelToken());
+    List<ElicitQuestion> questions, {
+    int chatId = 0,
+    CancelToken? cancelToken,
+  }) {
+    return _askElicit(chatId, questions, cancelToken ?? CancelToken());
   }
 
   Future<Map<String, String>?> _askElicit(
+    int chatId,
     List<ElicitQuestion> questions,
     CancelToken cancelToken,
   ) {
@@ -139,12 +159,13 @@ class TuiAgentBridge {
     if (handler == null) return Future<Map<String, String>?>.value(null);
     // run 取消时立即返回未作答,卡片/提示条随之中止
     return Future.any<Map<String, String>?>([
-      handler(questions),
+      handler(chatId, questions, cancelToken.whenCancelled),
       cancelToken.whenCancelled.then<Map<String, String>?>((_) => null),
     ]);
   }
 
   Future<PermissionDecision> _askPermission(
+    int chatId,
     String toolName,
     String arguments,
     CancelToken cancelToken,
@@ -156,7 +177,7 @@ class TuiAgentBridge {
     }
     // run 取消时自动拒绝,避免审批请求挂起导致 Agent 卡死
     return Future.any<PermissionDecision>([
-      handler(toolName, arguments),
+      handler(chatId, toolName, arguments, cancelToken.whenCancelled),
       cancelToken.whenCancelled.then(
         (_) => const PermissionDecision(approved: false),
       ),

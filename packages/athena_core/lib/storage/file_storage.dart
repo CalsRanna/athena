@@ -46,7 +46,10 @@ class FileStorage {
       idAllocator: idAllocator,
     );
     userSettings = UserSettingsStore(file: this.settingFile);
-    providerRepository = YamlProviderRepository(store: userSettings);
+    providerRepository = YamlProviderRepository(
+      store: userSettings,
+      idAllocator: idAllocator,
+    );
   }
 
   final Directory root;

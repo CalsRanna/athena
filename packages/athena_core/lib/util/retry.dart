@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:athena_core/agent/cancel_token.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:http/http.dart' as http;
@@ -120,5 +121,14 @@ bool _isRetryable(Object e) {
   if (e is RequestTimeoutException) return true;
   if (e is RateLimitException) return true;
   if (e is InternalServerException) return true;
+  // anthropic_sdk_dart（Messages 协议）的类型化异常：同样只重试限流、服务端
+  // 错误与过载（529），含流内 error 事件（见 normalizeMessagesStream）。
+  // SDK 自带的重试不覆盖 POST 的 5xx，这里不补的话 Claude 常见的过载会直接
+  // 让 run 失败。
+  if (e is anthropic.ApiException) {
+    final status = e.statusCode;
+    return status == 408 || status == 429 || status >= 500;
+  }
+  if (e is anthropic.TimeoutException) return true;
   return false;
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:anthropic_sdk_dart/anthropic_sdk_dart.dart' as anthropic;
 import 'package:openai_dart/openai_dart.dart';
@@ -21,13 +22,29 @@ import 'package:openai_dart/openai_dart.dart';
 /// 表达不了的内容（JSON Schema 输出格式、文档与音频内容）显式抛错，不静默丢弃。
 
 /// Messages 的 `max_tokens` 是必填项，而 Chat Completions 里 Athena 从不传。
-/// 取与 `ContextBudget` 给输出预留的上限一致的值，避免默认过小把回复截断。
+/// 模型输出上限未知时的取值：与 `ContextBudget` 给输出预留的上限一致，且
+/// 不超过常见模型的上限（超过模型上限的值会被直接拒绝）。
 const _defaultMaxTokens = 8192;
 
+/// 一次 Messages 请求的 `max_tokens`。
+///
+/// 模型输出上限已知（[outputLimit]，来自 models.dev）就用它：固定 8192 时，
+/// 参数超过这个长度的工具调用（写一个大文件）每次都会被截断、被拒绝执行、
+/// 再重发，直到迭代上限。再按窗口余量 [outputRoom] 收紧：「输入 +
+/// max_tokens」超出窗口时请求同样会被拒绝。
+int messagesMaxTokens({int outputLimit = 0, int? outputRoom}) {
+  final cap = outputLimit > 0 ? outputLimit : _defaultMaxTokens;
+  if (outputRoom == null) return cap;
+  return max(1, min(cap, outputRoom));
+}
+
 /// 把 Chat Completions 形状的请求转成 Messages 请求。
+///
+/// [maxTokens] 缺省时用 [messagesMaxTokens] 的默认值。
 anthropic.MessageCreateRequest toMessageRequest(
   ChatCompletionCreateRequest request, {
   bool stream = false,
+  int? maxTokens,
 }) {
   // Messages 没有 JSON 输出格式对应的参数（Responses 至少能表达 json_object）。
   // 不显式失败的话，`/json` 模式下会静默按普通对话发出，用户拿到的是
@@ -77,7 +94,7 @@ anthropic.MessageCreateRequest toMessageRequest(
             anthropic.InputContentBlock.text(content),
           for (final call in toolCalls ?? const <ToolCall>[])
             anthropic.InputContentBlock.toolUse(
-              id: call.id,
+              id: _toolUseId(call.id),
               name: call.function.name,
               // Chat Completions 里参数是 JSON 字符串，Messages 要对象；
               // 解析失败说明上游给的不是 JSON，按空对象下发让模型重试。
@@ -88,7 +105,7 @@ anthropic.MessageCreateRequest toMessageRequest(
       case ToolMessage(:final toolCallId, :final content):
         push(_Role.user, [
           anthropic.InputContentBlock.toolResultText(
-            toolUseId: toolCallId,
+            toolUseId: _toolUseId(toolCallId),
             text: content,
           ),
         ]);
@@ -98,14 +115,36 @@ anthropic.MessageCreateRequest toMessageRequest(
 
   return anthropic.MessageCreateRequest(
     model: request.model,
-    maxTokens: _defaultMaxTokens,
+    maxTokens: maxTokens ?? messagesMaxTokens(),
     system: system.isEmpty ? null : anthropic.SystemPrompt.text(system.join('\n\n')),
     messages: messages,
     tools: request.tools?.map(_toToolDefinition).toList(),
-    temperature: request.temperature,
+    // Messages 只接受 0–1，而会话温度按 OpenAI 口径可调到 2（移动端滑杆）：
+    // 原样透传会被 400 拒绝，按端点收紧到可接受的范围
+    temperature: request.temperature?.clamp(0.0, 1.0).toDouble(),
     stream: stream,
   );
 }
+
+/// Messages 要求 tool_use id 只含字母、数字、`_`、`-`；历史里的 id 来自
+/// 生成它的那家 provider（有的带 `.` / `:`，如 `functions.bash:0`），切到
+/// Messages 后原样下发会让这个会话之后的每次请求都被拒绝。
+///
+/// 合法的 id 原样保留；否则替换非法字符并带上原 id 的短哈希，避免只差在
+/// 非法字符上的两个 id 撞成同一个。tool_use 与 tool_result 两侧用同一个
+/// 函数，映射保持一致。
+String _toolUseId(String id) {
+  if (_validToolUseId.hasMatch(id)) return id;
+  final sanitized = id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+  // FNV-1a（32 位）：确定性、无需额外依赖
+  var hash = 0x811c9dc5;
+  for (final unit in utf8.encode(id)) {
+    hash = ((hash ^ unit) * 0x01000193) & 0xffffffff;
+  }
+  return '${sanitized}_${hash.toRadixString(16).padLeft(8, '0')}';
+}
+
+final _validToolUseId = RegExp(r'^[a-zA-Z0-9_-]+$');
 
 /// 把 Messages 的流式事件归一成 Chat Completions 形状的流。
 Stream<ChatStreamEvent> normalizeMessagesStream(
@@ -184,14 +223,32 @@ Stream<ChatStreamEvent> normalizeMessagesStream(
           ),
         );
 
-      case anthropic.ErrorEvent():
-        throw StateError('Messages 请求失败：${event.errorType} ${event.message}');
+      case anthropic.ErrorEvent(:final errorType, :final message):
+        // 流内错误（最常见的是 overloaded_error）按对应的 HTTP 状态抛成 SDK
+        // 的 ApiException：与请求阶段的错误同一种类型，重试判定只需看状态码
+        throw anthropic.ApiException(
+          statusCode: _statusForErrorType(errorType),
+          message: '$errorType: $message',
+        );
 
       default:
         break;
     }
   }
 }
+
+/// Anthropic 错误类型对应的 HTTP 状态（与请求阶段返回的状态码一致）。
+/// 未知类型按服务端错误处理。
+int _statusForErrorType(String errorType) => switch (errorType) {
+  'invalid_request_error' => 400,
+  'authentication_error' => 401,
+  'permission_error' => 403,
+  'not_found_error' => 404,
+  'request_too_large' => 413,
+  'rate_limit_error' => 429,
+  'overloaded_error' => 529,
+  _ => 500,
+};
 
 /// 把 Messages 的完整响应转成 Chat Completion（非流式路径）。
 ChatCompletion messageToChatCompletion(anthropic.Message message) {
