@@ -315,6 +315,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **步骤 / 工具行（`StepHeader`）**：无底板、直接坐在页面上，前景 `textSecondary`，图标 15、圆角 8，
   文案 `caption` 12（技术值是 mono 12）；运行中带一条流动 shimmer（前景色 45% → 95%，
   `disableAnimations` 时自动关闭）；展开正文最多 10 行 mono、`Error:` 前缀转 `statusError`。
+  GUI 单步、分组进行中的工具头、展开后的工具项及审批卡标题共用 `StepCard.toolLabel`：
+  参数 JSON 尚未完整，或 `call_description` 缺失/为空时显示 `Using a tool`；解析到有效描述后
+  显示描述，工具完成后仍保留描述。头部不展示原始参数、关键参数或 JSON；完整参数只在审批详情展示。
+  分组结束后的外层头部继续显示步骤汇总。
 - **消息操作条（`MessageActionBar`）**：排在正文**下方**（不浮在右侧），常驻占位、默认全透明；
   按钮 24 × 24、图标 16 / `iconSecondary`、圆角 8、hover 填 `textPrimary` 5%。
   本轮未结束的助手消息不显形（但控件不摘下树，否则收尾瞬间卡片高度跳 28）。

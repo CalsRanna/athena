@@ -84,6 +84,67 @@ void main() {
     });
   });
 
+  for (final grouped in [false, true]) {
+    testWidgets('${grouped ? '分组' : '单步'}工具头从占位变为描述，不泄露参数', (
+      tester,
+    ) async {
+      const description = '读取配置文件';
+      const completeArgs =
+          '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
+      const stages = [
+        ('', 'Using a tool'),
+        ('{"path":"/tmp/config', 'Using a tool'),
+        ('{"path":"/tmp/config.json"}', 'Using a tool'),
+        ('{"call_description":"   "}', 'Using a tool'),
+        ('{"call_description":"读取配', 'Using a tool'),
+        (completeArgs, description),
+      ];
+      final thought = reasoning();
+      for (final (arguments, expected) in stages) {
+        await pumpCard(tester, [
+          if (grouped) thought,
+          tool(arguments, result: null),
+        ]);
+
+        final header = tester.widget<StepHeader>(find.byType(StepHeader));
+        expect(header.label, expected);
+        expect(header.label, isNot(contains('/tmp/config')));
+      }
+
+      await pumpCard(tester, [
+        if (grouped) thought,
+        tool(completeArgs),
+      ], live: grouped);
+      expect(
+        tester.widget<StepHeader>(find.byType(StepHeader)).label,
+        description,
+      );
+
+      if (grouped) {
+        await tester.tap(find.byType(StepHeader));
+        await tester.pump();
+        final headers = tester.widgetList<StepHeader>(find.byType(StepHeader));
+        expect(headers.first.label, description);
+        expect(headers.last.label, description);
+      }
+    });
+  }
+
+  testWidgets('已完成分组中的工具项缺少描述时仍不展示参数', (tester) async {
+    await pumpCard(tester, [
+      reasoning(),
+      tool('{"path":"/tmp/config.json"}'),
+    ], live: false);
+    await tester.tap(find.byType(StepHeader));
+    await tester.pump();
+
+    expect(
+      tester.widgetList<StepHeader>(find.byType(StepHeader)).last.label,
+      'Using a tool',
+    );
+    expect(find.textContaining('/tmp/config.json'), findsNothing);
+  });
+
   group('组头（多步）', () {
     testWidgets('当前步缺 call_description：文案通用、图标是该工具的图标', (tester) async {
       await pumpCard(tester, [reasoning(), tool('{"path":"a.dart"}')]);

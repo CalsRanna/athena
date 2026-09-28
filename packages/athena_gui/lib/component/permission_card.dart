@@ -12,7 +12,7 @@ const permissionCardMaxHeightFraction = 0.5;
 /// 会话内权限审批卡片（非模态）：渲染在所属对话的消息列表中。
 ///
 /// 容器是白底描边卡片；内部结构复用工具步骤行的标题行语言（工具图标 + 工具名 +
-/// 参数预览），命令完整展示，按钮直接用全站的 [AthenaPrimaryButton] /
+/// 调用描述），命令完整展示，按钮直接用全站的 [AthenaPrimaryButton] /
 /// [AthenaSecondaryButton]（DESIGN.md：主路径操作按钮一律从 Primary CTA 派生）。
 class PermissionApprovalCard extends StatelessWidget {
   final ApprovalRequest request;
@@ -56,7 +56,7 @@ class PermissionApprovalCard extends StatelessWidget {
     );
   }
 
-  /// 标题行：工具图标 + 工具名 + 参数预览（单行省略）。
+  /// 标题行：工具图标 + 工具名 + 调用描述（单行省略，不展示参数）。
   Widget _buildHeader(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Row(
@@ -77,7 +77,7 @@ class PermissionApprovalCard extends StatelessWidget {
         SizedBox(width: 8),
         Expanded(
           child: Text(
-            StepCard.argPreview(request.toolName, request.arguments),
+            StepCard.toolLabel(request.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: athenaMono(color: colors.textPrimary),

@@ -28,7 +28,8 @@ void main() {
                   request: ApprovalRequest(
                     chatId: 'chat-1',
                     toolName: toolName,
-                    arguments: '{"call_description":"回忆项目约定"}',
+                    arguments:
+                        '{"call_description":"回忆项目约定","query":"project rules"}',
                     completer: Completer<PermissionDecision>(),
                   ),
                   maxHeight: 400,
@@ -48,10 +49,43 @@ void main() {
       expect(icon.size, 15);
       expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
       expect(find.text(toolName), findsOneWidget);
+      expect(find.text('回忆项目约定'), findsOneWidget);
+      expect(find.text('query: project rules'), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.text('Allow Once'));
       expect(decision, (true, false));
     });
   }
+
+  testWidgets('审批标题缺少描述时用占位，完整参数仍在详情中', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAthenaThemeData(AthenaColorMode.light),
+        home: Scaffold(
+          body: PermissionApprovalCard(
+            request: ApprovalRequest(
+              chatId: 'chat-1',
+              toolName: 'file_read',
+              arguments: '{"path":"/tmp/config.json"}',
+              completer: Completer<PermissionDecision>(),
+            ),
+            maxHeight: 400,
+            onDecision: (_, _) {},
+          ),
+        ),
+      ),
+    );
+
+    final header = find.ancestor(
+      of: find.text('file_read'),
+      matching: find.byType(Row),
+    ).first;
+    final headerTexts = tester.widgetList<Text>(
+      find.descendant(of: header, matching: find.byType(Text)),
+    );
+    expect(headerTexts.map((text) => text.data), ['file_read', 'Using a tool']);
+    expect(find.text('path: /tmp/config.json'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

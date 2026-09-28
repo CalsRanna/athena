@@ -62,12 +62,9 @@ class StepCard extends StatefulWidget {
     };
   }
 
-  /// Shared GUI/TUI preview: call description, key argument, then compact JSON.
-  static String argPreview(String toolName, String arguments) =>
-      toolArgPreview(toolName, arguments);
-
-  /// 工具步骤头部文案：模型自述的 call description；解析不出（缺该字段，或参数
-  /// 还是流式中的半截 JSON）时退回通用文案，由头部图标说明是哪个工具。
+  /// 单步、组头、嵌套工具项与审批卡共用的标题，不展示参数预览。
+  ///
+  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则显示通用文案。
   static String toolLabel(String arguments) =>
       toolCallDescription(arguments) ?? 'Using a tool';
 
@@ -191,7 +188,7 @@ class _StepCardState extends State<StepCard> {
     ),
     ToolCallStep tool => (
       icon: StepCard.toolIcon(tool.toolName),
-      label: StepCard.argPreview(tool.toolName, tool.arguments),
+      label: StepCard.toolLabel(tool.arguments),
       mono: true,
       running: !tool.hasResult,
       body: tool.hasResult ? _resultBody(tool.result!) : null,
