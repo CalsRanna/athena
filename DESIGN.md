@@ -323,6 +323,19 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `accent`（w500），**不靠加粗**避免整列跳动。
 - **移动端设置行（`MobileSettingTile` / `MobileGridTile`）**：`ListTile` + 16 号图标 + 右端箭头；
   网格卡见 Cards。
+- **移动端表单字段（`AthenaFormField`）**：标签 16 / 24 / w600（复用 `AthenaFormTileLabel.large`，
+  可用 `trailing` 挂"生成"星标）→ **12** → 控件（通常是 `AthenaInput`）→ 4（或 `descriptionGap: 8`）
+  → 说明 `caption` / `textSecondary`。它是 `AthenaSettingsRow` 的**纵向版本**，
+  **两者不共用实现**——桌面行是「左标签 + 右控件」的横向布局、绑 36 高的控件尺度，
+  把它的几何带进移动端会得到一列挤在一起的控件。字段之间的间距（16 / 20 / 32）由调用方写
+  `SizedBox`，不属字段内部。`error` 给值时取代说明并转 `dangerText`。
+- **hover 骨架（`AthenaHover`）**：桌面 hover 的公共实现——状态机 + `MouseRegion` +
+  `GestureDetector`，**装饰由 `builder(context, hover)` 自己画**（各处底色 / 描边 / 时长差异太大，
+  不做成参数）。`cursor` 默认 `null` 表示不设置、交给父级（消息卡片这类"hover 只显形操作条、
+  本身不可点"的容器用）。**静止态不要写 `Colors.transparent`**：RGB 是黑，`AnimatedContainer`
+  从它插值到浅色会先闪一下深色——用目标色的 `withValues(alpha: 0)`；这条说明只在
+  `widget/hover.dart` 留一份。用 `Material` + `InkWell` 的交互（如 `StepHeader`）、
+  hover 由父级分发的（`MacWindowButton`）、有多个正交状态的（`TileWithSubmenu`）不套它。
 - **步骤 / 工具行（`StepHeader`）**：无底板、直接坐在页面上，前景 `textSecondary`，图标 15、圆角 8，
   文案 `caption` 12（技术值是 mono 12）；运行中带一条流动 shimmer（前景色 45% → 95%，
   `disableAnimations` 时自动关闭）；展开正文最多 10 行 mono、`Error:` 前缀转 `statusError`。

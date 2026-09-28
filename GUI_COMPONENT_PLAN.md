@@ -99,7 +99,7 @@ DesktopContextMenuTile(
 
 ---
 
-### 方案 2：移动端表单行组件
+### 方案 2：移动端表单行组件 ✅ 已完成（2026-09-28）
 
 **问题证据**
 
@@ -157,11 +157,16 @@ class AthenaFormField extends StatelessWidget {
 
 ---
 
-### 方案 3：hover 状态机抽象
+### 方案 3：hover 状态机抽象 ✅ 已完成（2026-09-28，含保留判断）
 
 **问题证据**
 
-`bool hover = false` 出现 **25 处，分布 17 个文件**。每处配套一段 `MouseRegion(onEnter/onExit) + setState + AnimatedContainer(120ms)` 样板，约 12 行。
+> **更正**：本节初稿写的「17 个文件 25 处」不准确——那是把 `MouseRegion` 与 hover 状态混为一谈。
+> 实测：`MouseRegion` 共 **48 处**，其中**「只有 hover 一个可变状态」的 State 类 16 个**
+> （按下一个 class 切边界、逐个统计字段得出）。真正值得收敛的是这 16 个；其余是纯 cursor
+> （4 处）、携带语义（4 处）、与其它状态混合（3 处）。
+
+`bool hover = false` 出现 **16 处可收敛站点**。每处配套一段 `MouseRegion(onEnter/onExit) + setState + AnimatedContainer(120ms)` 样板，约 12 行。
 
 更值得注意的是：**同一段踩坑注释被抄了 6 次**——「不能从 `Colors.transparent` 做插值：它的 RGB 是黑，AnimatedContainer 从中途经过时会渲染成半透明深灰，表现为 hover 先闪一下深色再变浅」。出现位置：
 
@@ -186,11 +191,22 @@ class AthenaHover extends StatefulWidget {
 }
 ```
 
-**适用范围（重要）**：
-- **适合**：`widget/menu.dart`、`widget/button.dart`、`widget/checkbox.dart`、`widget/tag.dart`、`widget/settings/*.dart` 这类**纯视觉 hover**。
-- **不适合**：`widget/settings/row.dart:73` 有 hover + selected + dimmed 三个正交状态；`widget/window_button.dart` 的 hover 由父级传入；`component/status_dot.dart` 的 hover 参与动画。**这些保留各自实现**，不要硬套。
+**设计取舍（实施时的关键决定）**：`AthenaHover` **只收敛骨架**（状态机 + `MouseRegion` +
+`GestureDetector`），**装饰仍由调用方在 `builder` 里画**。理由与「不给 `permission_card`
+抽卡片外壳」相同：各处的底色 / 描边 / 圆角 / 时长差异太大（120ms / 150ms / 200ms、有/无动画），
+做成参数会得到「参数比内容还多的包装」。签名最终为：
 
-**收益**：删掉约 200 行样板 + 5 份重复注释。**注意这是收益最小、风险最高的一项**——它改的是遍布全库的交互路径。如果只做一件事，先做方案 1。
+```dart
+AthenaHover({
+  required Widget Function(BuildContext, bool hover) builder,
+  VoidCallback? onTap,
+  void Function(TapUpDetails)? onSecondaryTap,
+  bool enabled = true,          // false 时禁用 onTap 与 hover 回调
+  MouseCursor? cursor,          // null = 不设置（纯 hover 容器用，交给父级）
+})
+```
+
+**已完成，结果见 §九「第四轮」**。共转换 20 处、12 个文件在用；3 处**刻意保留**。
 
 ---
 
@@ -227,17 +243,17 @@ class AthenaHover extends StatefulWidget {
 
 两个调用点（`page/mobile/home/home.dart:62`、`page/mobile/chat/chat.dart:69`）都传了 `onRetry: _initializeViewModels`，期望它能兜住初始化异常。**实际上错误视图永远不可达，68 行里只有 20 行是活的。**
 
-### 5.2 移动端 Brave API Key 明文显示
+### 5.2 移动端 Brave API Key 明文显示 ✅ 已修复（2026-09-28）
 
 `page/mobile/setting/agent_page.dart:140` 是 `AthenaInput(controller: braveApiKeyController, placeholder: 'BSA...')`——**没有 `obscureText`**。
 
 桌面端同一字段（`page/desktop/setting/agent_page.dart:142`）传了 `obscure: true`。
 
-### 5.3 移动端密钥没有显示切换键
+### 5.3 移动端密钥没有显示切换键 ✅ 已修复（2026-09-28）
 
 承接上条：`AthenaSettingsTextField` 自带 eye 切换（`control.dart:299-309`），`AthenaInput` 没有。这是 §方案 2 里两个输入框该合并的具体动机之一。
 
-### 5.4 `widget/dialog.dart` 的移动端按钮违反自家规范
+### 5.4 `widget/dialog.dart` 的移动端按钮违反自家规范 ✅ 已修复（2026-09-28）
 
 `widget/dialog.dart:337-349` 手搓了主按钮（`Container` + `BoxDecoration(accent)` + `Text`），而不是用 `AthenaPrimaryButton`。同样的问题在 `_InputDialogState`（`:501-551`）里重复。
 
@@ -245,7 +261,7 @@ class AthenaHover extends StatefulWidget {
 
 **同一个仓库里，一个文件引用规范，另一个文件违反规范。** 这 4 个手搓方法还都零 hover 反馈。
 
-### 5.5 移动端表单缺行内校验
+### 5.5 移动端表单缺行内校验 ⏳ 未做（*AthenaFormField* 已留出 `error` 参数；迁移后的页面尚无一处传它）
 
 `AthenaSettingsRow` 有 `error` 参数（`dangerText`），桌面端用得很足。移动端因为不用这套，**没有任何行内校验反馈**——例如 `provider_name_page.dart:47` 空名时静默 `return`，用户看不到任何提示。
 
@@ -391,3 +407,85 @@ GUI 有 22 个 widget 测试（3864 行），但**覆盖不均匀**：
 三处都做了**反向验证**（临时改坏产品代码，确认测试会失败），不是"永远绿"的装饰：
 - 去掉 `obscureText: true` → `Expected: true, Actual: false`
 - `_isMobile` 恒返回 false → `Found 0 widgets with type "BottomSheet"`
+
+### 穿插修复：`colors.border` 当文字色（2026-09-28）
+
+**这不是方案里的项，是做方案 2 时撞见的真实缺陷。**
+
+7 处把 `colors.border`（描边色）用作说明文字 / 分组标题的颜色：
+
+| 色 | 值 | 对画布对比度 |
+|---|---|---|
+| `colors.border` | `#DCE3DE` | **1.26:1** ❌ |
+| `colors.textSecondary` | `#626E67` | 5.13:1 ✅ |
+
+WCAG 正文最低 4.5:1——**1.26 基本等于隐形**。受害位置：`desktop/model_selector.dart`、
+`mobile/chat/component/model_selector.dart`、`default_model_form_page.dart`、
+`provider_form_page.dart`、`about_page.dart`、`mobile/setting/agent_page.dart` ×2。
+
+修法：说明文字 → `textSecondary`，分组标题 → `textWeak`（与 `DesktopContextMenuGroupLabel` 同档）；
+`desktop/model_selector` 那处还顺带把字号从 `row`(14) 改为 `caption`(12)，与同类分组标题一致。
+
+另核实：`token_indicator.dart` 的 `freeColor = colors.border` 是**进度条空闲轨道**，正当用途，未动
+（但提醒：`colors.border` 与 `divider` 同值 `#DCE3DE`，前者是描边语义，作填充时要想清楚）。
+
+### 第四轮：hover 抽象（2026-09-28 完成）
+
+新增 `lib/widget/hover.dart`（`AthenaHover`），**12 个文件在用**，转换 20 处：
+
+`widget/button.dart`（4）、`widget/tag.dart`（2）、`widget/context_menu.dart`（2）、
+`widget/menu.dart`、`widget/settings/{panel,row,nav,control}.dart`、
+`component/message_tiles.dart`（2）、`page/desktop/home/component/{sidebar_footer,model_selector}.dart`。
+
+**3 处刻意保留**（抽出来是为了说明「为什么不收」）：
+
+| 位置 | 保留理由 |
+|---|---|
+| `widget/window_button.dart` | hover 由**父级分发**给三枚红绿灯，不是本地状态 |
+| `widget/context_menu.dart` 的 `TileWithSubmenu` | hover + submenuHover + 计时器三个正交状态 |
+| `component/step_primitives.dart` 的 `StepHeader` | 用 `Material` + `InkWell`（不是 GestureDetector），`InkWell` 已处理点击，套 `AthenaHover` 会双层交互；且有 `_setHovered` 去重 |
+
+**收益**：多处 `StatefulWidget` 降为 `StatelessWidget`；`Colors.transparent` 坑注释从 6 份收敛到 1 份
+（`hover.dart` 里）；`_MessageActionButton` 等重复实现消除。
+
+**代价与坦白**：这次改动的净收益比方案预估的小（初版统计高估了站点数）。实施中我**三次用替换
+编辑留下了不存在的「残骸类」**，前两次试图修补反而更糟，最后靠 `git checkout` 恢复重做——
+正确做法是先用 `Read` 确认边界，或按「下一个顶层 class」精确切分。记录在此以免重蹈。
+
+### 第五轮：方案 2 落地 + 收尾（2026-09-28 完成）
+
+方案 2 新增 `lib/widget/form_field.dart`（`AthenaFormField`），迁移 5 个移动端表单页：
+`model_form_page.dart`（5 字段）、`agent_page.dart`（4）、`provider_form_page.dart`（2）、
+`skill/form.dart`（3）、`sentinel/form.dart`（3）、`chat_configuration.dart`（2）。
+
+顺带清掉 `sentinel/form.dart` 的两个重复 label builder（合并为 `_buildGenerateIcon`）与一处死代码。
+
+**两处引入的视觉变化**（刻意统一，已确认）：
+1. `chat_configuration.dart` 的说明文字 **14 → 12 号**（原用 `body`，其余页面都是 `caption`）；
+2. 同处说明文字色 `textPrimary@60%` → `textSecondary`。
+
+---
+
+## 十、全量结果
+
+| 轮次 | 内容 | 结果 |
+|---|---|---|
+| 一 | 速赢（僵尸组件 / 反向依赖 / 目录归位） | 净减 87 行，两处反向依赖清零 |
+| 二 | 菜单条目统一 | 净减 405 行（5 个手搓 tile 消除） |
+| 三 | 功能性缺陷 | 密钥明文、手搓按钮、删死错误边界；顺带 `AthenaDialog` 平台判定改用 `Theme.platform` |
+| 三·五 | 对比度 bug + 方案 2 | 7 处 1.26:1 隐形文字修复；移动端表单行统一 |
+| 四 | hover 抽象 | 12 文件收敛，3 处刻意保留 |
+
+测试：**101 → 111 个**（新增 `input_obscure_test`、`dialog_actions_test`、`dialog_platform_test`）。
+三处关键行为做了**反向验证**（临时改坏产品代码确认测试会失败），不是"永远绿"的装饰。
+
+文档同步：`AGENTS.md`（三件套→四件套、平台判定例外扩写）、`DESIGN.md`（菜单条目统一形态、
+移动端 sheet 按钮、错误呈现口径、`12 × 8` 内边距）。
+
+### 未做
+
+- **§5.5 移动端行内校验**：`AthenaFormField` 已留出 `error` 参数（`dangerText`），
+  但迁移后的页面尚无一处传它——移动端仍然只有 `AthenaDialog.warning` 的整页提示。
+  要补齐得逐页加校验状态，属独立一轮。
+- **§5.2 之外的全局错误兜底**：全库仍未设置 `FlutterError.onError` / `ErrorWidget.builder`，
+  构建期异常照旧红屏。当时评估过，未做（见 `project_no_subtree_error_boundary` 记忆）。
