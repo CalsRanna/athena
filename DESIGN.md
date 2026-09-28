@@ -161,6 +161,10 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   Skill 为 `bookOpen`、Agent 设置为 `workflow`；推理能力为 `brainCircuit`、视觉能力为 `eye`。
 - 操作图标：新增 `plus`、编辑 `pencilLine`、删除 `trash2`、关闭 `x`、确认 `check`、
   发送 `arrowUp`、停止 `square`；展开提示用 `chevronDown` / `chevronRight`。
+- 常用语义集中在 `theme/athena_icons.dart` 的 `AthenaIcons`：`back` → `chevronLeft`、
+  `forward` → `chevronRight`、`more` → `ellipsis`、`time` → `clock`、`error` → `circleAlert`、
+  `connection` → `plug`、`dropdown` → `chevronDown`。对应入口引用这些常量，桌面与移动保持一致；
+  Provider 与连通性检查共用连接图标，模型下拉选择使用下拉图标，警告仍使用 `triangleAlert`。
 - 工具步骤与审批卡共享 `StepCard.toolIcon`，所有内置工具必须显式映射：终端为 `terminal`、
   文件与工具输出读取为 `file`、写文件为 `pencilLine`、网页为 `globe`、搜索为 `search`，
   后台任务为 `listTodo`、提问为 `messageCircleQuestion`；技能读取/演进共用 `bookOpen`，
@@ -246,7 +250,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **上下文 chip（`AthenaContextChip`，composer 内）**：小圆角方块（圆角 4）、**无描边**，
   静止填 `surfaceButtonSecondary`，hover 叠前景色 5%；左侧常带 13px 图标，标签最宽 200 并省略；
   尾随控件静止透明、hover 才显形（占位常驻 + `IgnorePointer`，避免 hover 进出行宽跳动）。
-- **聊天历史入口（`DesktopContextSelector`）**：上下文条最右的无填充 chip，开启用 Lucide `clock4` +
+- **聊天历史入口（`DesktopContextSelector`）**：上下文条最右的无填充 chip，开启用 `AthenaIcons.time`（Lucide `clock`）+
   `Context on`，关闭用 `clockFading` + `Context off`，均沿用 13px 图标与中性前景色，无下拉箭头。
   点击使用统一菜单向上展开，间隔 8、右边对齐 chip；内容宽 280（另加面板两侧各 4 内边距），
   两项为 `Use chat history` / `Current message only`，附说明与当前项勾选，选择后立即保存并关闭。

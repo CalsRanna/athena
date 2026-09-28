@@ -4,6 +4,7 @@ import 'package:athena_core/util/platform_util.dart';
 
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/input.dart';
@@ -263,7 +264,7 @@ class _AthenaMessageVisualStyle {
       ),
       AthenaMessageType.error => _AthenaMessageVisualStyle(
         accentColor: colors.statusError,
-        icon: LucideIcons.circleX,
+        icon: AthenaIcons.error,
       ),
     };
   }

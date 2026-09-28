@@ -1,5 +1,6 @@
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
@@ -122,7 +123,7 @@ class _FooterTileState extends State<_FooterTile> {
       style: AthenaTextStyle.body.copyWith(color: colors.textPrimary),
     );
     var chevron = Icon(
-      LucideIcons.chevronDown,
+      AthenaIcons.dropdown,
       size: 14,
       color: colors.iconSecondary,
     );

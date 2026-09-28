@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/tag.dart';
@@ -20,7 +21,7 @@ class DesktopContextSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = currentRetention != 0;
     return AthenaContextChip(
-      leading: Icon(enabled ? LucideIcons.clock4 : LucideIcons.clockFading),
+      leading: Icon(enabled ? AthenaIcons.time : LucideIcons.clockFading),
       label: enabled ? 'Context on' : 'Context off',
       filled: false,
       onTap: () => DesktopContextMenuManager.instance.show(

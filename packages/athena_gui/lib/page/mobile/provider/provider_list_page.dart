@@ -2,6 +2,7 @@ import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
@@ -136,7 +137,7 @@ class _ProviderListTile extends StatelessWidget {
         ),
     ];
     var icon = Icon(
-      LucideIcons.ellipsis,
+      AthenaIcons.more,
       color: colors.iconSecondary,
       size: 16,
     );

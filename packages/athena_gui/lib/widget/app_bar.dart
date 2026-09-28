@@ -1,4 +1,5 @@
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_gui/widget/window_button.dart';
@@ -52,7 +53,7 @@ class MobilePopButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final iconWidget = Icon(
-      LucideIcons.arrowLeft,
+      AthenaIcons.back,
       color: colors.iconOnRaised,
       size: 16,
     );

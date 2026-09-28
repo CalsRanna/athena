@@ -1,5 +1,6 @@
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -27,7 +28,7 @@ class SettingPage extends StatelessWidget {
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.plug, size: 24),
+        leading: Icon(AthenaIcons.connection, size: 24),
         onTap: () => MobileProviderListRoute().push(context),
         title: 'Provider',
         trailing: '',

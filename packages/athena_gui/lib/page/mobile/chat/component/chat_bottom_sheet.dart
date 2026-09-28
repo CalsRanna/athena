@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
@@ -131,7 +132,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
         leading: Icon(LucideIcons.slidersHorizontal),
         onTap: openConfigurationDialog,
         title: 'Chat Configuration',
-        trailing: Icon(LucideIcons.arrowRight),
+        trailing: Icon(AthenaIcons.forward),
       );
 
       var children = <Widget>[

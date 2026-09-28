@@ -5,6 +5,7 @@ import 'package:athena_gui/component/api_format_label.dart';
 import 'package:athena_gui/page/mobile/provider/component/model_list_view.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
@@ -192,7 +193,7 @@ class _MobileProviderFormPageState extends State<MobileProviderFormPage> {
   void openBottomSheet(ModelEntity model) {
     HapticFeedback.heavyImpact();
     var connectTile = AthenaBottomSheetTile(
-      leading: Icon(LucideIcons.plugZap),
+      leading: Icon(AthenaIcons.connection),
       title: 'Connect',
       onTap: () => checkConnection(model),
     );

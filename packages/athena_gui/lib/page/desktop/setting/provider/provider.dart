@@ -6,6 +6,7 @@ import 'package:athena_gui/page/desktop/setting/provider/component/api_format_me
 import 'package:athena_gui/page/desktop/setting/provider/component/model_form_dialog.dart';
 import 'package:athena_gui/page/desktop/setting/provider/component/provider_form_dialog.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/desktop_list_selection.dart';
 import 'package:athena_gui/util/model_label_util.dart';
@@ -100,7 +101,7 @@ class _DesktopSettingProviderPageState
     if (rows.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
-          icon: LucideIcons.plug,
+          icon: AthenaIcons.connection,
           title: 'No providers',
           hint:
               'Sync the catalog from models.dev to get the preset providers, '

@@ -4,6 +4,7 @@ import 'package:athena_gui/page/desktop/home/component/chat_context_menu.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
 import 'package:athena_gui/page/desktop/home/component/sidebar_footer.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
@@ -286,7 +287,7 @@ class _MoreButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(3),
           child: Icon(
-            LucideIcons.ellipsisVertical,
+            AthenaIcons.more,
             size: 14,
             color: colors.iconSecondary,
           ),

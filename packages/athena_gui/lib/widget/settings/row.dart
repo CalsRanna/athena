@@ -4,11 +4,11 @@
 library;
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 一行设置：左侧标签（+ 徽标 + 说明 + 错误），右侧控件或钻取箭头。
 ///
@@ -147,7 +147,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
     var trailing = widget.control;
     if (trailing == null && widget.chevron) {
       trailing = Icon(
-        LucideIcons.chevronRight,
+        AthenaIcons.forward,
         color: colors.iconSecondary,
         size: 14,
       );

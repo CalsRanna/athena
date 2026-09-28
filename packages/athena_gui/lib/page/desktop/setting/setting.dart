@@ -1,6 +1,7 @@
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/settings_nav.dart';
@@ -71,7 +72,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.provider,
         'Providers',
-        LucideIcons.plug,
+        AthenaIcons.connection,
         keywords: ['api key', 'api url', 'models', 'models.dev', 'sync'],
       ),
       _SettingEntry(

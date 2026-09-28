@@ -61,7 +61,7 @@ void main() {
       await pumpHost(tester, retention);
 
       expect(find.text('Context on'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.clock4), findsOneWidget);
+      expect(find.byIcon(LucideIcons.clock), findsOneWidget);
       expect(find.byType(Icon), findsOneWidget, reason: '入口只有状态图标，无下拉箭头');
       final anchor = tester.getRect(find.byType(DesktopContextSelector));
 
@@ -107,7 +107,7 @@ void main() {
       expect(find.byType(DesktopContextMenu), findsNothing);
       expect(find.text('Context off'), findsOneWidget);
       expect(find.byIcon(LucideIcons.clockFading), findsOneWidget);
-      expect(find.byIcon(LucideIcons.clock4), findsNothing);
+      expect(find.byIcon(LucideIcons.clock), findsNothing);
 
       await tester.tap(find.text('Context off'));
       await tester.pumpAndSettle();
@@ -125,7 +125,7 @@ void main() {
       expect(retention.value, -1, reason: '重新开启历史必须恢复自动管理策略');
       expect(find.byType(DesktopContextMenu), findsNothing);
       expect(find.text('Context on'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.clock4), findsOneWidget);
+      expect(find.byIcon(LucideIcons.clock), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -143,7 +143,7 @@ void main() {
       retention.value = -1;
       await tester.pumpAndSettle();
       expect(find.text('Context on'), findsOneWidget);
-      expect(find.byIcon(LucideIcons.clock4), findsOneWidget);
+      expect(find.byIcon(LucideIcons.clock), findsOneWidget);
 
       await tester.tap(find.text('Context on'));
       await tester.pumpAndSettle();

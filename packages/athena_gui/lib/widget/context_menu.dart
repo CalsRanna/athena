@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class DesktopContextMenu extends StatelessWidget {
   final Offset offset;
@@ -377,7 +377,7 @@ class _DesktopContextMenuTileWithSubmenuState
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(widget.text, style: textStyle),
-        Icon(LucideIcons.chevronRight, color: textColor, size: 16),
+        Icon(AthenaIcons.forward, color: textColor, size: 16),
       ],
     );
     var container = Container(

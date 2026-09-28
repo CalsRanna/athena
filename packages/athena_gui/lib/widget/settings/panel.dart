@@ -7,6 +7,7 @@
 library;
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -217,7 +218,7 @@ class _AthenaSettingsBackLinkState extends State<AthenaSettingsBackLink> {
     );
     var children = [
       Icon(
-        LucideIcons.chevronLeft,
+        AthenaIcons.back,
         color: colors.textRowLabel,
         size: 14,
       ),

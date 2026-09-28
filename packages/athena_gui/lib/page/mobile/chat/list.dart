@@ -1,6 +1,7 @@
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -60,7 +61,7 @@ class _MobileChatListPageState extends State<MobileChatListPage> {
       overflow: TextOverflow.ellipsis,
     );
     var icon = Icon(
-      LucideIcons.ellipsis,
+      AthenaIcons.more,
       color: colors.textPrimary,
     );
     var gestureDetector = GestureDetector(

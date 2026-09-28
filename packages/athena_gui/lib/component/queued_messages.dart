@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -29,7 +30,7 @@ class QueuedMessages extends StatelessWidget {
           Row(
             children: [
               Icon(
-                LucideIcons.clock,
+                AthenaIcons.time,
                 size: 14,
                 color: colors.textSecondary,
               ),

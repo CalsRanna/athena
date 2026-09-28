@@ -8,6 +8,7 @@
 library;
 
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
@@ -148,7 +149,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
       ),
     );
     var chevron = Icon(
-      LucideIcons.chevronDown,
+      AthenaIcons.dropdown,
       color: colors.textWeak,
       size: 14,
     );
@@ -460,7 +461,7 @@ class AthenaSettingsMenuButton extends StatelessWidget {
     return Builder(
       builder: (context) => AthenaGhostIconButton(
         box: 24,
-        icon: LucideIcons.ellipsis,
+        icon: AthenaIcons.more,
         iconSize: 14,
         onTap: () => _open(context),
       ),
