@@ -83,7 +83,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.agent,
         'Agent',
-        LucideIcons.botMessageSquare,
+        LucideIcons.workflow,
         keywords: [
           'approval',
           'permissions',
@@ -98,7 +98,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage> {
       _SettingEntry(
         SettingSection.sentinel,
         'Sentinels',
-        LucideIcons.bot,
+        LucideIcons.userRound,
         keywords: ['prompt', 'persona', 'system prompt'],
       ),
       _SettingEntry(

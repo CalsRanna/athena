@@ -157,12 +157,17 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 - 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，由 Flutter `Icon`
   渲染；使用默认线条字重，不混用其他图标库。颜色跟随所在控件的语义色与 `IconTheme`，沿用各组件规定的尺寸。
-- 同类功能用同一字形：Provider 为 `plug`、模型为 `cpu`、角色为 `bot`、经验为 `brain`、
-  Skill 为 `bookOpen`；推理能力为 `brainCircuit`、视觉能力为 `eye`。
+- 同类功能用同一字形：Provider 为 `plug`、模型为 `cpu`、角色为 `userRound`、经验为 `brain`、
+  Skill 为 `bookOpen`、Agent 设置为 `workflow`；推理能力为 `brainCircuit`、视觉能力为 `eye`。
 - 操作图标：新增 `plus`、编辑 `pencilLine`、删除 `trash2`、关闭 `x`、确认 `check`、
   发送 `arrowUp`、停止 `square`；展开提示用 `chevronDown` / `chevronRight`。
-- 工具步骤与审批卡共享 `StepCard.toolIcon`，终端为 `terminal`、读文件为 `file`、
-  写文件为 `pencilLine`、网页为 `globe`、搜索为 `search`，通用工具为 `wrench`。
+- 工具步骤与审批卡共享 `StepCard.toolIcon`，所有内置工具必须显式映射：终端为 `terminal`、
+  文件与工具输出读取为 `file`、写文件为 `pencilLine`、网页为 `globe`、搜索为 `search`，
+  后台任务为 `listTodo`、提问为 `messageCircleQuestion`；技能读取/演进共用 `bookOpen`，
+  角色列表/读取/演进/回退共用 `userRound`，经验学习/回忆共用 `brain`。未知工具以 `wrench` 兜底。
+  审批卡标题使用 15 号工具图标，颜色跟随标题的 `textPrimary`。
+- 步骤组进行中的图标跟随当前步骤：工具用对应映射、推理用 `sparkles`、压缩用 `fileArchive`；
+  结束后使用汇总图标（含工具为 `wrench`，否则为 `sparkles`）。
 
 ## Elevation
 

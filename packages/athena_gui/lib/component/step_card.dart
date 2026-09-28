@@ -18,7 +18,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 ///   （`Used 2 tools · Thought 3.2 seconds · Compacted once`）；展开后按时间序
 ///   逐行嵌套单步 [StepCard]，各自可再展开。
 ///
-/// 每种步骤类型（推理 / 工具 / 压缩）只在 [_face] 里有一份"表现描述"，新增
+/// 每种步骤类型（推理 / 工具 / 压缩）只在 [_faceOf] 里有一份"表现描述"，新增
 /// 类型时先加 `AssistantStep` 子类，再补这一处 switch 与汇总计数。
 ///
 /// 展开状态只保留在 Widget 内存态，不落库；流式增量只替换消息实体、卡片位置
@@ -46,13 +46,18 @@ class StepCard extends StatefulWidget {
   static IconData toolIcon(String toolName) {
     return switch (toolName) {
       'bash' || 'powershell' => LucideIcons.terminal,
-      'file_read' => LucideIcons.file,
+      'background_task' => LucideIcons.listTodo,
+      'ask_user_question' => LucideIcons.messageCircleQuestion,
+      'file_read' || 'tool_output_read' => LucideIcons.file,
       'file_write' || 'file_update' => LucideIcons.pencilLine,
       'web_fetch' => LucideIcons.globe,
       'web_search' => LucideIcons.search,
-      'skill' => LucideIcons.bookOpen,
-      'sentinel_evolve' => LucideIcons.bot,
-      'experience_learn' => LucideIcons.brain,
+      'skill' || 'skill_evolve' => LucideIcons.bookOpen,
+      'sentinel_list' ||
+      'sentinel_get' ||
+      'sentinel_evolve' ||
+      'sentinel_revert' => LucideIcons.userRound,
+      'experience_learn' || 'experience_recall' => LucideIcons.brain,
       _ => LucideIcons.wrench,
     };
   }
@@ -227,17 +232,12 @@ class _StepCardState extends State<StepCard> {
             ReasoningStep() => false,
           },
         );
-    // 汇总口径（结束态，或当前步不是工具）用的通用图标。
+    // 结束态的汇总使用通用图标；进行中与当前单步使用同一图标。
     final genericIcon = hasTool
         ? LucideIcons.wrench
         : LucideIcons.sparkles;
     return (
-      icon: switch (last) {
-        // 进行中时头部跟随当前步骤：文案可能只是通用的 `Using a tool`，
-        // 图标负责说明是哪个工具。
-        ToolCallStep tool when widget.live => StepCard.toolIcon(tool.toolName),
-        _ => genericIcon,
-      },
+      icon: widget.live ? _faceOf(last).icon : genericIcon,
       label: widget.live
           ? StepCard.currentLabel(last)
           : StepCard.summaryLabel(steps),

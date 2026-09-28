@@ -21,7 +21,7 @@ class SettingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var children = [
       MobileSettingTile(
-        leading: Icon(LucideIcons.botMessageSquare, size: 24),
+        leading: Icon(LucideIcons.workflow, size: 24),
         onTap: () => MobileAgentRoute().push(context),
         title: 'Agent',
         trailing: '',
@@ -34,7 +34,7 @@ class SettingPage extends StatelessWidget {
       ),
       MobileSettingTile(
         leading: Icon(
-          LucideIcons.bot,
+          LucideIcons.userRound,
           size: 24,
         ),
         onTap: () => MobileSentinelListRoute().push(context),

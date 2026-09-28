@@ -305,6 +305,7 @@ entity + ~/.athena/ 下的文件
 2. 在 `tool_set.dart` 注册：判断移动端是否可用，决定放进移动分支、桌面分支还是两者；
 3. 若需要持久化，走已有 repository（新增仓储要同时在 `FileStorage` 里装配）；
 4. 在 README 的工具表里补一行。
+5. 在 GUI 的 `StepCard.toolIcon` 补上图标映射（同类功能共用字形），并运行 `test/widget/tool_icon_test.dart`：它按桌面/移动真实注册表检查覆盖，`wrench` 仅作未知工具兜底。
 
 **加一个页面 / 路由（GUI）**
 

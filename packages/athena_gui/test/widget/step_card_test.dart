@@ -1,3 +1,4 @@
+import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/component/step_primitives.dart';
@@ -12,9 +13,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 工具步骤头部的两条口径：
 /// 1. **文案只认 call_description**：解析得出就用模型自述，解析不出（缺该字段，
 ///    或参数还是流式中的半截 JSON）一律 `Using a tool`，不把原始参数摆到头部。
-/// 2. **组头图标跟随当前步骤**：进行中且当前步是工具调用时用它自己的图标——文案
-///    可能只是通用的 `Using a tool`，图标负责说明是哪个工具；结束态是汇总文案，
-///    仍用通用图标。
+/// 2. **组头图标跟随当前步骤**：进行中使用当前工具 / 推理 / 压缩自己的图标；
+///    工具文案可能只是通用的 `Using a tool`，图标负责说明是哪个工具；结束态是
+///    汇总文案，仍用通用图标。
 void main() {
   ToolCallStep tool(
     String arguments, {
@@ -29,6 +30,19 @@ void main() {
 
   ReasoningStep reasoning() => ReasoningStep(
     MessageEntity(chatId: '1', role: 'assistant', reasoningContent: '想想'),
+  );
+
+  ContextCompactionStep compaction({bool live = true}) => ContextCompactionStep(
+    step: CompactionStep(
+      messageId: 'compaction-1',
+      seq: 1,
+      chatId: '1',
+      runId: 1,
+      phase: live ? CompactionPhase.summarizing : CompactionPhase.completed,
+      startedAt: DateTime(2026),
+      beforeTokens: 1000,
+    ),
+    isLive: live,
   );
 
   Future<void> pumpCard(
@@ -101,6 +115,39 @@ void main() {
       expect(find.textContaining('Used 1 tool'), findsOneWidget);
       expect(find.byIcon(LucideIcons.wrench), findsOneWidget);
       expect(find.byIcon(LucideIcons.file), findsNothing);
+    });
+
+    testWidgets('工具后转入推理和压缩时切换图标，结束后恢复汇总', (tester) async {
+      final completedTool = tool('{}');
+      final thought = reasoning();
+      await pumpCard(tester, [completedTool, thought]);
+
+      expect(find.text('Thinking'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.sparkles), findsOneWidget);
+      expect(find.byIcon(LucideIcons.wrench), findsNothing);
+
+      await pumpCard(tester, [completedTool, thought, compaction()]);
+
+      expect(find.text('正在压缩上下文…'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.fileArchive), findsOneWidget);
+      expect(find.byIcon(LucideIcons.wrench), findsNothing);
+
+      await pumpCard(tester, [
+        completedTool,
+        thought,
+        compaction(live: false),
+      ], live: false);
+
+      expect(find.textContaining('Compacted once'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.wrench), findsOneWidget);
+      expect(find.byIcon(LucideIcons.fileArchive), findsNothing);
+    });
+
+    testWidgets('没有工具的步骤组在压缩中也使用压缩图标', (tester) async {
+      await pumpCard(tester, [reasoning(), compaction()]);
+
+      expect(find.byIcon(LucideIcons.fileArchive), findsOneWidget);
+      expect(find.byIcon(LucideIcons.sparkles), findsNothing);
     });
   });
 

@@ -110,7 +110,7 @@ class _MobileChatBottomSheetState extends State<MobileChatBottomSheet> {
       var modelFullName =
           '$modelName${providerName.isNotEmpty ? ' | $providerName' : ''}';
       var sentinelSheetTile = AthenaBottomSheetTile(
-        leading: Icon(LucideIcons.bot),
+        leading: Icon(LucideIcons.userRound),
         onTap: openSentinelSelectorDialog,
         title: 'Sentinel',
         trailing: Text(sentinel?.name ?? ''),

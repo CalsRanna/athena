@@ -94,7 +94,7 @@ class _DesktopSettingSentinelPageState
     if (rows.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
-          icon: LucideIcons.bot,
+          icon: LucideIcons.userRound,
           title: 'No Sentinels',
           hint:
               'A Sentinel is a reusable persona: a system prompt plus a name, '

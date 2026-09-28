@@ -37,7 +37,7 @@ class DesktopSentinelIndicator extends StatelessWidget {
       return Builder(
         builder: (context) => AthenaContextChip(
           label: label,
-          leading: const Icon(LucideIcons.bot),
+          leading: const Icon(LucideIcons.userRound),
           onTap: onTap == null
               ? null
               : () => onTap!(contextMenuAnchorOf(context)),
