@@ -218,7 +218,10 @@ class AthenaHover extends StatefulWidget {
 
 诊断过程中发现三处**不是风格问题、而是行为缺陷**的地方。它们不属于"抽组件"，但值得一并知道：
 
-### 5.1 `AthenaErrorBoundary` 从不捕获错误
+### 5.1 `AthenaErrorBoundary` 从不捕获错误 ✅ 已处理（2026-09-28）
+
+> **处理方式：整个组件删除**（用户决定）。原本的选项是"补上捕获"，但核实后发现补不了也不必要——
+> 见下方「为什么删而不是改」。
 
 `widget/error_boundary.dart:24` 声明了 `FlutterErrorDetails? _error`，`:28` 判断 `if (_error != null)`，`:58` 在 retry 时置 null——**但全文没有任何一处给 `_error` 赋值**。没有 `FlutterError.onError`、没有 `ErrorWidget.builder`、没有 try/catch。
 
@@ -354,3 +357,37 @@ GUI 有 22 个 widget 测试（3864 行），但**覆盖不均匀**：
 **未做**：`reasoning_effort_selector` / `sidebar_footer` / `token_indicator` 里三处直接使用
 `DesktopContextMenuConfiguration.widthOf` 的自定义面板内容（滑块面板、菜单头部、明细面板）——
 它们不是"条目"，是各菜单里的特有内容，强行套 tile 会得到比内容还多的参数。保留。
+
+### 第三轮：功能性缺陷（2026-09-28 完成）
+
+| # | 项 | 处理 |
+|---|---|---|
+| 5.2 / 5.3 | 移动端密钥明文 | 修复：`AthenaInput` 内置 eye 切换，`obscureText: true` 一行搞定；`provider_form_page` 那 14 行手搓 toggle 删除 |
+| 5.4 | `dialog.dart` 移动端手搓按钮 | 修复：4 个手搓方法（高 50）换成 `AthenaPrimaryButton` / `AthenaSecondaryButton`（高 40）；抽出 `AthenaDialogActions` 收掉三处按钮行 |
+| 5.1 | `AthenaErrorBoundary` 从不捕获错误 | **整个删除**（见下） |
+| 追加 | `AthenaDialog` 平台判定 | 4 处 `PlatformUtil.isDesktop` → `Theme.of(context).platform`，移动端分支首次被测试覆盖 |
+| 追加 | `dialog.dart` 高度 | 移动端 sheet 按钮 50 → 40，与 `permission_card` / 各表单页统一（DESIGN.md 同步） |
+
+**为什么 5.1 是删而不是改**：原方案说"补上错误捕获"，但核实后发现两件事——
+
+1. **`_error` 从来没有赋值点**，`build` 永远返回 `widget.child`，它是恒等包装。
+2. **它想兜的构建期异常，组件内部接不住**。Flutter 的 build/layout/paint 异常走
+   `FlutterError.onError` / `ErrorWidget.builder` 两个**全局单例**钩子，异常由框架冒泡到全局处理器，
+   不经过父组件的 `build`。全库没有设置过这两个钩子。
+3. **调用点的初始化异常本来就有 `try/catch`**（`home.dart:41-50`、`chat.dart:194-221`），
+   错误走 `AthenaDialog.error`。`AthenaErrorBoundary` 在这条路径上完全没参与。
+
+删掉后行为完全不变（有限兜底从未生效），收益是去掉 68 行死代码 + 一个**假信号**——
+它会让后来人以为移动端页面已有错误兜底。桌面端本来就没有这个组件。
+
+### 新增测试
+
+| 文件 | 覆盖 |
+|---|---|
+| `input_obscure_test.dart` | 密钥遮蔽默认值、eye 键来回切换、与 `suffix` 共存 |
+| `dialog_actions_test.dart` | 按钮次序、右对齐、回调触发 |
+| `dialog_platform_test.dart` | 桌面走 `Dialog`、Android/iOS 走 `BottomSheet`、confirm/input 回传值 |
+
+三处都做了**反向验证**（临时改坏产品代码，确认测试会失败），不是"永远绿"的装饰：
+- 去掉 `obscureText: true` → `Expected: true, Actual: false`
+- `_isMobile` 恒返回 false → `Found 0 widgets with type "BottomSheet"`

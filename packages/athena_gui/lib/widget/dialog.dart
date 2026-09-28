@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:athena_core/util/platform_util.dart';
-
 import 'package:athena_gui/router/router.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
@@ -21,14 +19,23 @@ class AthenaDialog {
   static AthenaColors get _colors =>
       Theme.of(router.navigatorKey.currentContext!).extension<AthenaColors>()!;
 
+  /// 移动端判定走 `ThemeData.platform` 而不是 `PlatformUtil`。
+  ///
+  /// 理由与 [AthenaScrollBehavior] 相同、也与 [PermissionApprovalCard] /
+  /// [ElicitCard] 现在的做法一致：`PlatformUtil` 读 `dart:io` 的 `Platform`，
+  /// 在 widget 测试里恒为宿主平台，**移动端的分支根本进不去**；而
+  /// `ThemeData.platform` 可以在测试里用 `theme.copyWith(platform:)` 指定，
+  /// 两端才都能断言。生产环境不显式设置 `ThemeData.platform`，
+  /// 它由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。
+  static bool _isMobile(BuildContext context) {
+    var platform = Theme.of(context).platform;
+    return platform == TargetPlatform.android ||
+        platform == TargetPlatform.iOS;
+  }
+
   static Future<bool?> confirm(String text, {bool dismissible = true}) async {
-    if (PlatformUtil.isDesktop) {
-      return showDialog<bool>(
-        barrierDismissible: dismissible,
-        builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
-        context: router.navigatorKey.currentContext!,
-      );
-    } else {
+    final context = router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
       FocusManager.instance.primaryFocus?.unfocus();
@@ -37,19 +44,19 @@ class AthenaDialog {
         isDismissible: dismissible,
         enableDrag: dismissible,
         builder: (_) => _ConfirmDialog(text: text),
-        context: router.navigatorKey.currentContext!,
+        context: context,
       );
     }
+    return showDialog<bool>(
+      barrierDismissible: dismissible,
+      builder: (_) => _DesktopConfirmDialog(title: 'Confirm', message: text),
+      context: context,
+    );
   }
 
   static Future<String?> input(String title, {String? initialValue}) async {
-    if (PlatformUtil.isDesktop) {
-      return showDialog<String>(
-        builder: (_) =>
-            _DesktopInputDialog(title: title, initialValue: initialValue),
-        context: router.navigatorKey.currentContext!,
-      );
-    } else {
+    final context = router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
       // 打开弹窗前释放焦点,防止关闭弹窗后焦点回落到输入框导致
       // 键盘自动弹出;弹窗内的输入框自身会重新申请焦点。
       FocusManager.instance.primaryFocus?.unfocus();
@@ -57,9 +64,14 @@ class AthenaDialog {
         backgroundColor: _colors.surfaceMobile,
         isScrollControlled: true,
         builder: (_) => _InputDialog(title: title, initialValue: initialValue),
-        context: router.navigatorKey.currentContext!,
+        context: context,
       );
     }
+    return showDialog<String>(
+      builder: (_) =>
+          _DesktopInputDialog(title: title, initialValue: initialValue),
+      context: context,
+    );
   }
 
   static void dismiss() {
@@ -78,8 +90,7 @@ class AthenaDialog {
     String message, {
     AthenaMessageType type = AthenaMessageType.info,
   }) {
-    var isWindow = PlatformUtil.isDesktop;
-    if (isWindow) {
+    if (!_isMobile(router.navigatorKey.currentContext!)) {
       _showDesktopMessage(message, type: type);
       return;
     }
@@ -105,22 +116,23 @@ class AthenaDialog {
   }
 
   static void show(Widget child, {bool barrierDismissible = false}) {
-    if (PlatformUtil.isDesktop) {
-      showDialog(
-        barrierDismissible: barrierDismissible,
-        builder: (_) => child,
-        context: router.navigatorKey.currentContext!,
-      );
-    } else {
+    final context = router.navigatorKey.currentContext!;
+    if (_isMobile(context)) {
       // 打开弹窗前释放焦点,否则弹窗关闭后焦点会回落到之前的
       // 输入框,导致键盘自动弹出。
       FocusManager.instance.primaryFocus?.unfocus();
       showModalBottomSheet(
         backgroundColor: _colors.surfaceMobile,
         builder: (_) => child,
-        context: router.navigatorKey.currentContext!,
+        context: context,
       );
+      return;
     }
+    showDialog(
+      barrierDismissible: barrierDismissible,
+      builder: (_) => child,
+      context: context,
+    );
   }
 
   static void info(String message) {
@@ -236,6 +248,34 @@ class AthenaDesktopDialog extends StatelessWidget {
   }
 }
 
+/// 桌面对话框底部的按钮行：次要在左、主操作在最右，右对齐、间距 8。
+///
+/// 确认、输入与各设置表单的模态共用这一行，不要再各自拼 `Row`。
+class AthenaDialogActions extends StatelessWidget {
+  final VoidCallback? onCancel;
+  final VoidCallback? onConfirm;
+  final String cancelLabel;
+  final String confirmLabel;
+
+  const AthenaDialogActions({
+    super.key,
+    this.onCancel,
+    this.onConfirm,
+    this.cancelLabel = 'Cancel',
+    this.confirmLabel = 'Confirm',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    var children = [
+      AthenaSecondaryButton(onTap: onCancel, child: Text(cancelLabel)),
+      const SizedBox(width: AthenaSpace.sm),
+      AthenaPrimaryButton(onTap: onConfirm, child: Text(confirmLabel)),
+    ];
+    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
+  }
+}
+
 class _AthenaMessageVisualStyle {
   final Color accentColor;
   final IconData icon;
@@ -282,68 +322,24 @@ class _ConfirmDialog extends StatelessWidget {
     var children = [
       Text(text, style: textStyle),
       const SizedBox(height: AthenaSpace.xxl),
-      _buildConfirmButton(context),
+      AthenaPrimaryButton(
+        onTap: () => Navigator.of(router.navigatorKey.currentContext!).pop(true),
+        child: const Center(child: Text('Confirm')),
+      ),
       const SizedBox(height: AthenaSpace.sm),
-      _buildCancelButton(context),
+      AthenaSecondaryButton(
+        onTap: () =>
+            Navigator.of(router.navigatorKey.currentContext!).pop(false),
+        child: const Center(child: Text('Cancel')),
+      ),
       SizedBox(height: MediaQuery.paddingOf(context).bottom),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-
-  void cancelDialog() {
-    Navigator.of(router.navigatorKey.currentContext!).pop(false);
-  }
-
-  void confirmDialog(BuildContext context) {
-    Navigator.of(router.navigatorKey.currentContext!).pop(true);
-  }
-
-  Widget _buildCancelButton(BuildContext context) {
-    var container = Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).extension<AthenaColors>()!.border,
-        ),
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Text(
-        'Cancel',
-        style: AthenaTextStyle.label.copyWith(
-          color: Theme.of(context).extension<AthenaColors>()!.textPrimary,
-        ),
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: cancelDialog,
-      child: container,
-    );
-  }
-
-  Widget _buildConfirmButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => confirmDialog(context),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: colors.accent,
-          borderRadius: BorderRadius.circular(AthenaRadius.control),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'Confirm',
-          style: AthenaTextStyle.label.copyWith(
-            color: colors.textOnAccent,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }
@@ -364,7 +360,10 @@ class _DesktopConfirmDialog extends StatelessWidget {
     var children = [
       Text(message, style: messageStyle),
       const SizedBox(height: AthenaSpace.xxl),
-      _buildButtons(context),
+      AthenaDialogActions(
+        onCancel: () => Navigator.of(context).maybePop(false),
+        onConfirm: () => Navigator.of(context).maybePop(true),
+      ),
     ];
     return AthenaDesktopDialog(
       title: title,
@@ -374,23 +373,6 @@ class _DesktopConfirmDialog extends StatelessWidget {
         children: children,
       ),
     );
-  }
-
-  Widget _buildButtons(BuildContext context) {
-    var cancelButton = AthenaSecondaryButton(
-      onTap: () => Navigator.of(context).maybePop(false),
-      child: const Text('Cancel'),
-    );
-    var confirmButton = AthenaPrimaryButton(
-      onTap: () => Navigator.of(context).maybePop(true),
-      child: const Text('Confirm'),
-    );
-    var children = [
-      cancelButton,
-      const SizedBox(width: AthenaSpace.sm),
-      confirmButton,
-    ];
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
   }
 }
 
@@ -424,7 +406,10 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
     var children = [
       AthenaInput(controller: controller, autoFocus: true),
       const SizedBox(height: AthenaSpace.xxl),
-      _buildButtons(context),
+      AthenaDialogActions(
+        onCancel: () => Navigator.of(context).maybePop(null),
+        onConfirm: () => Navigator.of(context).maybePop(controller.text.trim()),
+      ),
     ];
     return AthenaDesktopDialog(
       title: widget.title,
@@ -434,27 +419,6 @@ class _DesktopInputDialogState extends State<_DesktopInputDialog> {
         children: children,
       ),
     );
-  }
-
-  Widget _buildButtons(BuildContext context) {
-    var cancelButton = AthenaSecondaryButton(
-      onTap: () => Navigator.of(context).maybePop(null),
-      child: const Text('Cancel'),
-    );
-    var confirmButton = AthenaPrimaryButton(
-      onTap: _submit,
-      child: const Text('Confirm'),
-    );
-    var children = [
-      cancelButton,
-      const SizedBox(width: AthenaSpace.sm),
-      confirmButton,
-    ];
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
-  }
-
-  void _submit() {
-    Navigator.of(context).maybePop(controller.text.trim());
   }
 }
 
@@ -493,57 +457,23 @@ class _InputDialogState extends State<_InputDialog> {
       const SizedBox(height: AthenaSpace.lg),
       input,
       const SizedBox(height: AthenaSpace.xxl),
-      _buildConfirmButton(context),
+      AthenaPrimaryButton(
+        onTap: () => Navigator.of(context).maybePop(controller.text.trim()),
+        child: const Center(child: Text('Confirm')),
+      ),
       const SizedBox(height: AthenaSpace.sm),
-      _buildCancelButton(context),
+      AthenaSecondaryButton(
+        onTap: () => Navigator.of(context).maybePop(null),
+        child: const Center(child: Text('Cancel')),
+      ),
       SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
-
-  Widget _buildCancelButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    var container = Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        border: Border.all(color: colors.border),
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Text(
-        'Cancel',
-        style: AthenaTextStyle.label.copyWith(color: colors.textPrimary),
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.of(context).maybePop(null),
-      child: container,
-    );
-  }
-
-  Widget _buildConfirmButton(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.of(context).maybePop(controller.text.trim()),
-      child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: colors.accent,
-          borderRadius: BorderRadius.circular(AthenaRadius.control),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          'Confirm',
-          style: AthenaTextStyle.label.copyWith(
-            color: colors.textOnAccent,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }

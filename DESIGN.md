@@ -296,8 +296,9 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **桌面对话框（`AthenaDesktopDialog`）**：`surfaceMobile` 底 + 圆角 16 + `AthenaShadow.modal`，
   内边距 24，宽 320–520；标题 `title` 16 / 24 / w600、`title` 与内容之间留 16；
   按钮行右对齐、间距 8（次要在前、主操作在后）。确认、输入与表单模态共用这个外壳；默认模型列表沿用相同圆角、阴影与深色轮廓。
-- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底、上角 16（主题统一）；确认面板主/次按钮都是全宽矩形
-  （内边距 14、圆角 8）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
+- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底、上角 16（主题统一）；确认面板主/次按钮
+  **全宽堆叠、主操作在最上**，用全站的 `AthenaPrimaryButton` / `AthenaSecondaryButton`
+  （`child: Center(...)` 撑满，不要自己画 `Container`）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
 - **加载提示**：`surfaceMobile` + 圆角 12 + `overlay` 阴影，16 × 16 描边 2 的进度环 + `caption` 文字。
 - **轻提示**：桌面是左下角浮层（`surfaceMobile` + 圆角 12 + 描边取状态色 40% + 内边距 `16 × 12`，
   图标 16 + `caption`，3 秒后自动消失）；移动用 floating SnackBar，同样是浮层底色 + 状态图标。
@@ -367,7 +368,9 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - 会话空态：直接以 `hero` 20 / 28 / w600 名称起头，不展示角色头像或替代图标 →
   10 间距 → `body` 14 / 22 / `textSecondary` 说明 → 18 间距 → 胶囊标签（`surfaceButtonSecondary` + `label` 14 / 22 + `12 × 6`）。
 - 设置面板空态：28 号图标 + 12 间距 + 标题 14 / w600 + 4 间距 + `textWeak` 提示（最大宽 360）+ 16 间距 + 动作按钮。
-- 错误边界：48 号 `statusError` 图标 + 16 间距 + `title` 标题 + 8 间距 + `body` 说明 + 24 间距 + 重试主按钮。
+- **错误呈现**：页面初始化失败走 `AthenaDialog.error`（一次性提示，不打断页面）。全库**没有**子树级
+  错误边界组件——Flutter 的构建期异常走全局 `FlutterError.onError` / `ErrorWidget.builder`，
+  组件内部接不住子树的 build 异常；移动端页面各自的 `try/catch` 已经是全部兜底。
 - 桌面窗口左上角的三枚圆形按钮（红 / 橙 / 绿，取自 Material `Colors.red/orange/green`，实心圆 + 2 内边距 +
   10 号图标）是**平台外壳例外**，不属于语义色板，不要在其他位置引用这三个色值。
 

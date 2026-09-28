@@ -10,7 +10,6 @@ import 'package:athena_gui/view_model/experience_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/error_boundary.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -59,12 +58,8 @@ class _MobileHomePageState extends State<MobileHomePage> {
       _buildExperiencesListView(),
       _buildSentinelListView(),
     ];
-    var body = AthenaErrorBoundary(
-      message: 'Home page encountered an error',
-      onRetry: _initializeViewModels,
-      child: SingleChildScrollView(
-        child: Column(spacing: 24, children: children),
-      ),
+    var body = SingleChildScrollView(
+      child: Column(spacing: 24, children: children),
     );
     return AthenaScaffold(body: body);
   }

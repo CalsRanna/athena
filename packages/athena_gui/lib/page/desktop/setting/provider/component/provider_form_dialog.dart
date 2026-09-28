@@ -3,7 +3,6 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/provider_view_model.dart';
-import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
@@ -158,11 +157,10 @@ class DesktopSettingFormActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var children = [
-      AthenaSecondaryButton(onTap: onCancel, child: const Text('Cancel')),
-      const SizedBox(width: AthenaSpace.sm),
-      AthenaPrimaryButton(onTap: onConfirm, child: Text(confirmLabel)),
-    ];
-    return Row(mainAxisAlignment: MainAxisAlignment.end, children: children);
+    return AthenaDialogActions(
+      onCancel: onCancel,
+      onConfirm: onConfirm,
+      confirmLabel: confirmLabel,
+    );
   }
 }

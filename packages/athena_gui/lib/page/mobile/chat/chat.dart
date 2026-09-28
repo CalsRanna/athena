@@ -17,7 +17,6 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/dialog.dart';
-import 'package:athena_gui/widget/error_boundary.dart';
 import 'package:athena_gui/widget/scaffold.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -66,15 +65,11 @@ class _MobileChatPageState extends State<MobileChatPage> {
 
     return AthenaScaffold(
       appBar: AthenaAppBar(action: actionButton, title: _buildTitle()),
-      body: AthenaErrorBoundary(
-        message: 'Chat page encountered an error',
-        onRetry: _initializeViewModels,
-        child: Column(
-          children: [
-            Expanded(child: _buildContent()),
-            _buildInput(),
-          ],
-        ),
+      body: Column(
+        children: [
+          Expanded(child: _buildContent()),
+          _buildInput(),
+        ],
       ),
     );
   }
