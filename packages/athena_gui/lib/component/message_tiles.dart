@@ -529,10 +529,9 @@ class AssistantCardHover {
 /// 把控件从树上摘掉，摘掉会让卡片高度在收尾瞬间变 28，末尾跳一下。
 ///
 /// 时序：
-/// - **只动透明度**——`--cds-message-actions-reveal-scale` 在 `.cds-root`
-///   上是 `none`，旧版加的 `scale(0.9)` 是自创的；
-/// - 进入用 `--cds-dur-snap`(120ms) **且延迟** `...-reveal-in-delay`(100ms)；
-/// - 退出用 `--cds-dur-fast`(60ms) 且无延迟。
+/// - **只动透明度**，不做缩放（旧版加的 `scale(0.9)` 是自创的，无依据）；
+/// - 进入 120ms 且**延迟** 100ms；
+/// - 退出 60ms 且无延迟。
 /// 延迟用 `Interval` 曲线表达：前 100/220 的进度里保持全透明。
 class MessageActionBar extends StatelessWidget {
   final bool visible;
@@ -597,9 +596,8 @@ class MessageActionBar extends StatelessWidget {
 
 /// 操作条上的一个 ghost 图标按钮。
 ///
-/// 尺寸：控件高 24，图标 16，
-/// 圆角 `--cds-radius--lg`(7)，hover 填充 `--cds-fill-ghost-hover`
-/// （浅色 alpha-1 ≈ 5%）。
+/// 尺寸：控件高 24，图标 16，圆角 [AthenaRadius.row]，
+/// hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）。
 class _MessageActionButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;

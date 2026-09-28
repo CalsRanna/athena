@@ -1,361 +1,209 @@
-# AGENTS.md
+# AGENTS.md — 仓库工作约定
 
-在本仓库里动手改代码的工程指南：命令、分层、硬约束、约定与常见任务。
+本文件写给在本仓库工作的 AI Agent，也写给加入项目的开发者。它描述**约定**与**边界**；代码结构本身的细节以源码注释为准（本仓库的注释密度较高，重要的「为什么」都写在被约束的那处代码旁边）。
 
-阅读前提：
-
-- **代码是唯一真相**。本文是导航与约束清单，与代码冲突时以代码为准，并顺手把这里改对。
-- **引用前先确认它存在**。文中每个类名、常量、阈值都应在仓库里 grep 得到；过时的引用比没有引用更坏。
-- **改行为就改文档**。行为变化与 README / AGENTS / DESIGN 的对应修改应同一批完成。
+项目概览、构建步骤与数据布局见 [README.md](README.md)；视觉与交互口径见 [DESIGN.md](DESIGN.md)。
 
 ---
 
-## 1. 仓库地图
+## 1. 分层与依赖方向
 
 ```
-packages/
-  athena_core/                  # 纯 Dart 引擎：零 Flutter、零 SQL
-    lib/agent/
-      agent_service.dart        # AgentService.run + _AgentLoop（单 run 生命周期）、AgentEvent
-      context_budget.dart       # ContextBudget：估算、输入上限、按用量校准
-      context_compaction.dart   # 压缩请求/更新契约
-      cancel_token.dart run_outcome.dart runtime_context.dart
-      elicit/elicit_prompt.dart # 提问通道（「你要哪个」）
-      evolution/                # 进化提示词、记忆目录注入、失败反思、Sentinel 快照
-      permission/               # 权限服务、规则与存储、AI 审核
-      skill/                    # SkillRegistry（三级加载）+ SkillLoader（SKILL.md 读写）
-      tool/                     # 工具接口、注册表、工具集装配、各工具实现、输出存储
-    lib/coordinator/
-      agent_run_coordinator.dart # UI 无关的 run 编排（落库、流式消费、排队、审批落库）
-      run_event.dart             # RunEvent：对外纯数据事件契约
-    lib/service/                # LLM 客户端、补全、会话编排、上下文组装、压缩、模型目录/解析
-    lib/repository/             # Chat / Message / Model / Provider / Sentinel / Experience 接口
-    lib/storage/                # FileStorage 布局、JSONL 会话、JSON 数组、YAML、锁、id 分配
-    lib/entity/                 # 领域模型（Chat / Message / Model / Provider / Sentinel / Experience …）
-    lib/seed/                   # Athena 预设角色与预设提示词
-    lib/util/                   # 平台判定、路径归一化、重试、日志、文本分页读
-    tool/bench_message_loading.dart # 只读性能基准脚本（手工跑，不参与 CI）
-    test/                       # dart test：storage/、agent/、agent/permission/、coordinator/、service/
-  athena_gui/                   # Flutter 桌面 / 移动应用
-    lib/main.dart               # 入口：单实例 → DI → 存储 → 种子 → 窗口/托盘 → 后台同步模型目录
-    lib/di.dart                 # GetIt 装配（GUI 侧唯一依赖注入点）
-    lib/page/desktop|mobile/    # 页面（桌面多区工作台 + 设置浮层；移动分段浏览）
-    lib/component/ lib/widget/  # 业务组件 / 设计系统控件（widget/settings/ 是设置面板四件套）
-    lib/view_model/             # signals 状态 + delegate/（Agent 流、重命名、选择）
-    lib/theme/                  # 设计 token 与色板（口径见 DESIGN.md）
-    lib/router/                 # auto_route 配置 + 生成产物 router.gr.dart
-    lib/util/ lib/service/ lib/storage/
-    test/widget/                # flutter_test widget 用例
-  athena_tui/                   # nocterm 终端客户端
-    bin/athena.dart             # CLI 入口（参数 = 工作区目录；会改 Directory.current）
-    lib/di/tui_di.dart          # 手写装配（不用 GetIt），镜像 GUI 的 di.dart
-    lib/exit_hook_backend.dart  # 进程退出前的收尾挂点（停后台任务）
-    lib/bridge/ lib/ui/ lib/view_model/
+athena_gui ──┐
+             ├──→ athena_core
+athena_tui ──┘
 ```
 
-依赖方向**严格单向**：`athena_gui` / `athena_tui` → `athena_core`。`athena_core` 不 import Flutter，也不含 SQL；两端共用同一份工具集、权限规则、数据目录与事件契约。
+| 层 | 包 | 可以依赖 | 不可以依赖 |
+|---|---|---|---|
+| 引擎 | `athena_core` | Dart SDK、`anthropic_sdk_dart`、`openai_dart`、`signals`、`yaml` 等纯 Dart 库 | **Flutter、任何 UI 框架** |
+| 前端 | `athena_gui` / `athena_tui` | `athena_core` | 彼此（`athena_gui` 与 `athena_tui` 之间零依赖） |
+
+`athena_core` 必须保持零 Flutter 依赖——它同时服务 Flutter GUI 与纯 Dart TUI，且核心逻辑的单测不启动 Flutter 运行时。
+
+### 1.1 什么该放在 core
+
+判断标准是**「这是引擎的事实，还是装配层的选择」**。
+
+`lib/agent/tool/tool_set.dart` 里的 `buildToolRegistry` 是这条标准的样板：因为「有哪些工具、按什么顺序注册、哪个平台注册哪些」是引擎的事实，所以清单放在 core；而工作目录、角色变更回调这类每个前端各自的差异项，才由 `di.dart` / `tui_di.dart` 作为参数传入。
+
+同类判断适用于任何两端共用的逻辑：**两个前端都要的行为放 core，只有一端需要的放该端**。反面例子是把同一份清单在两个装配层各铺一遍，仅靠注释断言一致——加一个工具要同时改两个包，漏一处就是两端能力静默漂移。
+
+### 1.2 什么该放在前端
+
+- 页面、组件、主题、平台集成（窗口、托盘、剪贴板、单实例）
+- 前端专有的状态编排（`ChatViewModel` / `ChatController`）
+- 前端专有的持久化实现（GUI 的 `SharedPrefsKeyValueStore`）
+
+界面文案、交互反馈、平台差异（弹窗审批 vs 终端内联审批）属于前端。
 
 ---
 
-## 2. 常用命令
+## 2. 目录约定
 
-根目录没有 `pubspec.yaml`，三个包各自 `pub get`。CI 与 release 都锁定 Flutter **3.47.1** stable；SDK 约束 `>=3.12.0 <4.0.0`（下限由 `anthropic_sdk_dart` 9.x 决定）。
+### athena_core
+
+```
+lib/
+├── agent/          引擎本体
+│   ├── agent_service.dart    run 驱动与工具循环
+│   ├── context_*.dart        预算与压缩
+│   ├── tool/                 工具系统
+│   ├── permission/           权限编排、规则、AI 审核
+│   ├── skill/                技能加载与注册
+│   ├── evolution/            反思、进化提示词、记忆摘要、角色快照
+│   ├── task/                 后台任务
+│   └── elicit/               向用户提问的通道
+├── coordinator/    run 编排与对外事件（run_event.dart）
+├── service/        LLM 适配（三种协议）、会话与消息服务、模型目录
+├── storage/        文件存储、锁、JSONL 会话、id 迁移
+├── repository/     仓储接口
+├── entity/         领域模型
+├── util/           路径、日志、重试、分页读取等纯工具
+└── seed/           内置种子数据
+```
+
+`lib/entity/` 与 `lib/service/`、`lib/storage/` 是**接口与实现分离**的：仓储接口在 `repository/`，实现散在 `storage/`（文件）与 `repository/`（经验用独立文件布局）。
+
+### 前端
+
+两个前端都按 `page/`（页面）、`component/` 或 `ui/widgets/`（复用组件）、`view_model/`（状态）、`di.dart` / `tui_di.dart`（组合根）组织。GUI 额外有 `theme/`、`widget/`（基础控件）、`util/`（平台集成）。
+
+---
+
+## 3. 命名
+
+- 文件 `snake_case.dart`，类型 `UpperCamelCase`，成员 `lowerCamelCase`
+- 工具类固定 `XxxTool`，文件名 `xxx_tool.dart`；工具名（下发给模型的 `name`）固定 `snake_case`，与用户可见文案一致
+- 私有实现类用 `_` 前缀；同类小私有类集中在使用它的文件尾部，不单独建文件
+- 概念三元组：`xxx_service.dart`（编排）、`xxx_rule.dart`（纯值对象）、`xxx_prompt.dart`（回调 typedef）
+- 常量集中在 `abstract final class`（如 `AthenaRadius`、`AthenaMotion`）或顶级 `const`，不散落在组件里
+- 持久化实体的 id 一律 `String?`（未入库时为 null），由 `IdGenerator` 生成 UUIDv7
+
+---
+
+## 4. 注释
+
+**注释语言**：设计说明与「为什么」用中文；契约注释、对外错误文案、下发给模型的提示词用英文。这条界线是严格执行的——错误文案与提示词是产品行为的一部分，中英混用会影响模型表现与用户理解。
+
+**写什么**：
+
+- 自由的注释密度较高，但只写代码本身读不出来的东西——**约束、反直觉之处、被否决的方案、踩过的坑**。不要复述代码在做什么
+- 一条约束只写一处，写在最能防止违反的地方。例如「相对路径必须在三处共用同一解析口径」写在 `run_workspace.dart`，另外两处注释指回去
+- 被独立踩过多次的坑值得单独强调（如 `AthenaHover` 里「静止态不要用 `Colors.transparent`」）
+
+**不要写**：`// TODO` 式的空承诺、与代码不同步的旧注释、注释掉的死代码。
+
+**文档引用**：引用本文档用 `AGENTS.md`，引用设计口径用 `DESIGN.md §N`（章节号见 DESIGN.md，改动设计文档时同时更新引用处的编号）。**不要引用已删除的文档**。
+
+---
+
+## 5. 错误处理
+
+- **工具抛出的异常不冒泡**。工具内部异常（读到非 UTF-8 文件、写入无权限目录……）转成 `'Error: ...'` 文本作为工具结果交还模型，让模型自己纠正，而不是终止整个 run
+- **损失必须显式**。适配器遇到无法映射的请求字段、无法表达的响应内容时抛 `UnsupportedError` / `FormatException` / `StateError`，**不静默丢弃**。宁可让调用方收到明确失败，也不要让用户看到「看起来成功了」的错误结果
+- **取消优先于报错**。捕获异常时先 `throwIfCancelled()` 再 rethrow，避免取消被底层错误掩盖
+- **异步等待必须有取消出口**。任何等待用户或网络的 `Future` 都要与取消信号竞速（`Future.any`），保证等待绝不挂死
+
+---
+
+## 6. 安全约定
+
+安全边界集中在三处，改动它们时需要格外小心：
+
+- **权限判定**（`permission_service.dart`）：deny 规则永远优先于会话缓存与 allow 规则；规则匹配宁窄勿宽
+- **路径解析**（`run_workspace.dart` + `path_normalizer.dart`）：执行、并行预检、审批落库三处必须共用同一口径，否则会出现「预检放行、执行时被拦」或授权键存错形态导致规则永不命中
+- **不可信内容**：工具参数、文件内容、网页响应、工具输出都是**数据不是指令**。它们不得成为权限批准的依据，也不得写入会被当作授权的上下文（会话历史里的 user / assistant 消息才参与 AI 审核取证）
+
+新增工具时，先想清楚：它写不写文件、跑不跑命令、访不访问网络。这决定它归入哪一类权限规则，以及是否需要实现 `CancellableTool`。
+
+---
+
+## 7. 测试
+
+### 约定
+
+- 用例文件与被测单元同名：`tool_approval_mode.dart` 的测试是 `test/agent/permission/tool_approval_mode_test.dart`
+- 只为测试暴露的接口标 `@visibleForTesting`，不要为了测试把私有成员改成公开
+- **不要给测试加「目录为空就跳过」的守卫**。测试被误删时应当失败，而不是静默变绿
+
+### 各包的重点
+
+| 包 | 跑什么 | 说明 |
+|---|---|---|
+| `athena_core` | `dart test` | 引擎、权限、存储、协议适配、id 迁移。用临时目录，不碰真实的 `~/.athena` |
+| `athena_tui` | `dart test` | 组合根与桥接层的纯逻辑，不启动真实 UI |
+| `athena_gui` | `flutter test` | 组件级 widget 测试。`DI.ensureInitialized` 支持 `homeDirOverride`，用来安装一份隔离的依赖图 |
+
+平台分支用 `Theme.platform` / `getPlatform(context)` 判定，不用 `PlatformUtil`——后者在测试里恒为宿主平台，测不了多平台分支。
+
+### 数据库与目录
+
+测试一律使用临时目录注入，**绝不读写真实的 `~/.athena/`**。
+
+---
+
+## 8. 依赖与版本
+
+- **SDK 与 Flutter 版本全仓库统一**：Dart 下限 3.12.0，CI / 发布 / 本地开发统一 Flutter 3.47.1。三处（`ci.yml`、`release.yml`、本地环境）必须一致，改动时同时更新
+- **新增依赖前先确认它落在哪一层**：直接或间接引入 Flutter 的库不能进 `athena_core`
+- `dependency_overrides` 只用于无法立刻解决的版本冲突，并在旁边写明原因与解除条件（参见 `athena_gui/pubspec.yaml` 里 `windows_single_instance` 的注释）
+- 版本号只在发布时递增（`athena_gui/pubspec.yaml`），打 tag 前同步
+
+---
+
+## 9. 常用命令
 
 ```bash
-# athena_core
-cd packages/athena_core
-dart pub get
-dart analyze
-dart test
-
-# athena_gui（analyze 前必须先生成代码，否则路由/序列化产物缺失直接失败）
-cd packages/athena_gui
-flutter pub get
-dart run build_runner build --delete-conflicting-outputs
-flutter analyze
-flutter test
-flutter run -d macos          # 或 windows / linux / <device id>
-
-# athena_tui
-cd packages/athena_tui
-dart pub get
-dart analyze
-dart test
-dart run bin/athena.dart [工作区目录]
-
-# 只读基准（cwd = packages/athena_core）
-dart run tool/bench_message_loading.dart time <file.jsonl>
+cd packages/athena_core && dart analyze && dart test
 ```
 
-CI（`.github/workflows/ci.yml`）有三个 job：core 与 tui 是 `dart analyze` + `dart test`，gui 是 `build_runner` + `flutter analyze` + `flutter test`。测试步骤不带「目录为空就跳过」的守卫：测试目录被误删应当让 CI 失败，而不是静默变绿。
-
-Release（`.github/workflows/release.yml`）由 `v*` tag 触发，先经 `workflow_call` 跑一遍完整的 CI（`checks` job），通过后才建 Release、三平台并行出包：`Athena-macOS.zip` / `Athena-Windows.zip` / `Athena-Linux.tar.gz`。发布中转产物在 `packages/athena_gui/dist/`，该目录被 `.gitignore` 忽略、不入库。
-
----
-
-## 3. 硬约束
-
-1. **`athena_core` 保持零 Flutter、零 SQL**。加入 `package:flutter` 或数据库依赖会同时破坏 GUI/TUI 共用与纯 Dart 可测性。判定：`grep -rn "package:flutter\|sqflite" packages/athena_core/lib` 必须为空。
-2. **工具清单只有一处**：`athena_core/lib/agent/tool/tool_set.dart` 的 `buildToolRegistry()`。「有哪些工具、注册顺序、哪个平台注册哪些」是引擎的事实，不是装配层的选择；`di.dart` / `tui_di.dart` 只传自己特有的差异项（`outputStore`、`onSentinelChanged`、`mobileHomeDir`、`defaultWorkdir`）。加工具只改这一处，两端同时生效。
-3. **工作文件夹的路径解析必须三处共用**（`applyRunWorkspace`）：执行（`AgentService.executeToolCallInternal`）、并行预检（`selectParallelCalls`）、审批落库（`AgentRunCoordinator._askPermission`）。三处口径不一致会出现「预检放行、执行被拦」或「同一 run 内已批准仍重复弹窗 / 始终允许失效」。文件工具的路径在这里一并解析符号链接（`resolveRealPathSync`），审批卡展示用 `approvalArgumentsFor`；文件工具执行前用 `realPathChangedSinceApproval` 复核，不要在工具里另做一套路径解析。
-4. **并行组里不得有需要弹窗的调用**。多个审批模态会互相覆盖，所以 `selectParallelCalls` 先用权限预检分级：已有授权或 `bypassPermissions` 下无需审批的调用，才按工具的并行声明分组；deny 不进入并行组。执行路径仍重新检查权限。
-5. **权限系统缺席也要收口**。`AgentService._verdictWithoutPermissionService`：无权限服务时，有审批回调就交给宿主，否则拒绝工具调用。提问类工具直接使用提问通道，不能因缺少审批服务而把问题卡住。
-6. **会话文件的锁必须在共享实例上**。`JsonlSessionRepository` 按 chatId 缓存 `SessionJsonlStore`——串行锁是实例字段，每次新建实例等于没锁，`update`（整文件重写）与 `append` 交错会丢行。
-7. **身份与顺序分离**。持久化实体 ID 是 `IdGenerator` 生成的 UUIDv7 字符串，不读写全局计数；消息 `seq` 在会话写锁内从尾部递增。禁止比较 ID 大小做排序或分页，压缩位置使用 `throughSeq`。`MessageRepository.storeMessage` 返回带 ID 与 seq 的完整实体。
-8. **所有改文件的写操作走 `atomicWriteString` / 临时文件 + rename**，修改再套 `withFileLock(...)`（`.lock` 文件只做互斥，内容始终为空）。GUI 与 TUI 共享同一目录。
-9. **不要用 `Stream.timeout`**：Dart 3.12 里它对「async* 生成器 + await for」不触发。用 `util`/`service/llm_client.dart` 的 `withIdleTimeout`（Timer 手动实现）。
-10. **assistant 消息的 `tool_calls` 必须被 tool 结果全覆盖**。取消、异常、流提前结束时都要用 `_closeOpenToolCalls` 合成占位结果，否则下次组装上下文会被 OpenAI 兼容端 400 拒绝，该会话再也发不出消息。空载荷的 assistant 记录（content 与 tool_calls 都为空）同样不能进请求：`ChatMessageConverter.convertMessage` 直接整批丢弃（连带丢弃它的 tool 结果，否则会变成孤立的 tool 消息）。
-11. **不要用文件工具去读写 `~/.athena/` 下的应用数据**。那是运行时数据（sentinels / chats / experiences / skills），由工具与仓储管理；文档里的这条要求同样写进了注入模型的运行时提示（`runtime_context.dart`）。
-12. **生成的代码不要手改**：`athena_gui/lib/router/router.gr.dart` 由 `build_runner` 产生；改路由后重跑生成命令并把产物一起提交。
-
----
-
-## 4. 分层与数据流
-
-```
-page / widget / component          （GUI）或 ui/（TUI）
-  ↓ 读 signals、调 ViewModel/Controller
-view_model（signals 状态）+ view_model/delegate
-  ↓ AgentStreamDelegate（GUI）/ TuiAgentBridge（TUI）：包装协调层、把审批与提问接到本地 UI
-coordinator.AgentRunCoordinator    ← UI 无关的 run 编排，产出 RunEvent
-  ↓ 驱动 / 消费
-agent.AgentService（_AgentLoop）    ← 产出 AgentEvent（流式 token、工具调用、用量…）
-  ↓ 调用
-service（补全 / 会话编排 / 上下文组装 / 压缩 / 模型目录）
-  ↓ 接口
-repository（抽象）← storage（文件实现：JSONL / JSON / YAML + 锁）
-  ↓
-entity + ~/.athena/ 下的文件
+```bash
+cd packages/athena_tui && dart analyze && dart test
 ```
 
-**一次 send 的完整链路**（`AgentRunCoordinator.send`）：
+```bash
+cd packages/athena_gui && flutter analyze && flutter test
+```
 
-1. 注册 run（`runId`、取消令牌、工作文件夹、`settled`）；
-2. 落库用户消息；标题为默认值时，若是首条用户消息则触发自动命名；
-3. 解析模型与 provider，缺任一就把错误写成一条 assistant 消息（`_recordSetupError`，与运行中出错的 `recordErrorOnMessage` 同形态）、发 `RunError` 并结束（用户消息已落库，不能静默无响应）；
-4. 计算记忆作用域（`chat.sentinelId` 或直接对话专用的 `direct`），注入 MemoryDigest，组装历史消息；
-5. 追加 assistant 占位消息 → 启动 `AgentService.run`；
-6. 消费事件流：文本/推理增量写进占位消息、工具调用与结果累积进 JSON 列、用量覆盖写回会话、迭代边界把当前消息落地并开新占位消息；
-7. 收尾：`run` 结束（正常/取消/错误）都保证有落库与 outcome；随后取排队输入自动接续成下一个 run，事件流对 UI 连续。
+`athena_gui` 还要在首次拉取依赖后、以及改了带 `@RoutePage` 的页面之后重新生成路由：
 
-事件契约有两层，别混用：`AgentEvent`（引擎内部，含流式增量）与 `RunEvent`（协调层对外，纯数据，UI 只订阅这一层）。UI 侧因此有两条订阅：`send()` 返回的那条（用户消息触发的 run），以及 `internalEvents`（协调层自己发起的自动汇报 run，带 `chatId`，见下）。
+```bash
+cd packages/athena_gui && dart run build_runner build --delete-conflicting-outputs
+```
 
-**后台任务通知与内部 run（自动汇报）**：`BackgroundTaskService.completions` → `_onBackgroundTaskCompleted`（非 `completed`/`failed` 直接丢弃）→ `_pendingReports`。会话运行中，`AgentService.run.pendingBackgroundTasks` 在下一次模型请求前读取待通知任务，追加不落库的通知；模型完整响应后发 `AgentBackgroundTasksNotifiedEvent`，协调层只移除该批任务，避免重复汇报。请求失败、取消、截断或没有下一次请求时，未确认的任务仍留在队列；会话空闲则由 `_drainPendingReport` 合并后 `_runReport`。汇报 run 不走 `send`：不落用户消息、不加 assistant 占位以外的任何消息、不发 `RunAutoRename`。前端把 `InternalRunEvent` 复用同一份事件分发（GUI `_applyRunEvent` / TUI `handleRunEvent`），只有流式指示的收尾各自维护。GUI 的汇报指示按会话记账（`_reportingChatIds`），以协调层的 `settledOf` 完成为收尾信号，不看当前显示的是哪条对话，也不依赖某个具体事件到达。
+改完 Dart / Flutter 代码后跑一次 hot reload（或 hot restart）；提交前跑对应包的 `analyze` 与 `test`——CI 跑的就是这两条，本地过了 CI 就不会红。
 
 ---
 
-## 5. 领域模型与存储
+## 10. 提交与发布
 
-`FileStorage`（`lib/storage/file_storage.dart`）定义与装配整个布局，root 默认 `~/.athena/`（移动端由装配层传 Application Support）：
+### 提交信息
 
-| 路径 | 实现 | 说明 |
-|---|---|---|
-| `sessions/{chatId}.jsonl` | `JsonlSessionRepository` + `SessionJsonlStore` | 一个对话一个文件；首行 chat 元数据，之后每行一条消息，行序即消息序。同一实例同时实现 `ChatRepository` 与 `MessageRepository`，删对话即删文件 |
-| `models.json` / `sentinels.json` | `JsonArrayStore` 系列 | JSON 数组，`id` 为主键；读-改-整文件写 |
-| `storage_version.json` | `StorageIdMigration` | 版本 2 与旧模型 ID 映射；GUI 的整数默认模型偏好据此迁移 |
-| `backups/ids-v1/` | `StorageIdMigration` | UUID 迁移前原始文件的完整备份；中断提交从 `.id-migration-v2/ready.json` 恢复 |
-| `setting.yaml` | `UserSettingsStore` + `YamlProviderRepository` | provider 的**权威**存储（含 API key，可手工编辑），以及 TUI 默认模型（modelId 字符串） |
-| `models_dev_cache.json` | `ModelCatalogService` | 目录缓存 |
-| `permissions.json` | `PermissionStore`（在 `permission_rule.dart`） | 持久权限规则。注意它的路径由 `HOME` / `USERPROFILE` 直接推导，**不走** `FileStorage.root`。写入在锁内合并磁盘最新内容，`check` 前按 mtime 重读（另一端或手工编辑的规则即时生效）；未 `load()` 的实例只用内存规则（测试用） |
-| `tool_outputs/{sha256}.txt` | `ToolOutputStore` | 内容寻址的长工具输出 |
-| `background_tasks/background_tasks.json` | `BackgroundTaskService` | 运行中的后台任务（pid + 命令行 + 属主进程 `owner_pid`），仅用于下次启动清理强杀遗留的孤儿进程。多实例共用，每个进程只改写自己的记录 |
-| `experiences/shared/`、`experiences/{sentinelId}/` | `ExperienceRepository` | 一条经验一个 JSON，文件名即 id |
-| `sentinels/by-id/{sentinelId}/history/` | `SentinelHistoryStore` | 演进前快照，按角色 id 归档（演进可以改名）。旧布局 `sentinels/{Uri.encodeComponent(name)}/history/` 只读，按快照里的角色 id 认领 |
-| `skills/{name}/SKILL.md` | `SkillLoader` / `SkillRegistry` | 用户级技能 |
-| `kv.json` | `JsonFileKeyValueStore` | TUI 的 `KeyValueStore`；GUI 用 `SharedPreferences` |
+```
+<type>(<scope>): <summary>
+```
 
-约定：
+- type：`feat` / `fix` / `refactor` / `docs` / `chore` / `build` / `test`
+- scope：包名或子系统名（`agent` / `storage` / `theme` / `athena_gui` / `step-primitives` …）
+- summary 与正文用中文，说明**为什么**这样改——尤其是被否决的方案与它的代价
+- 提交信息中**不添加任何工具署名或生成标记**
+- 一次提交只做一件事；大范围重排（如全仓库改名、格式化）单独成一次提交
 
-- **文件永远是唯一真相**，索引/缓存必须可删除可重建，不反向持有数据。
-- **首次升级前关闭旧版 GUI/TUI**。两端必须先完成 `FileStorage.load` 再访问仓储；迁移失败不能吞掉错误继续启动。整数身份映射按实体类型隔离，消息按旧 chatId + messageId 隔离；摘要覆盖 ID、`throughSeq`、协议状态的 provider_id、经验目录与角色快照一并转换。新角色空引用为 null；runId 仍是进程内整数。生成器不使用磁盘锁，数据修改仍遵守文件锁与原子写。
-- 协议边界回归：`chat_completions_service.dart` 的 `_acceptsTemperature` 按已知 OpenAI 模型名（含 `openai/` 前缀）省略 o 系列与 GPT-5 推理请求的会话温度，GPT-5.1 及之后显式 `none` 可保留；未知模型不推断采样限制。Chat 的可读推理由 `normalizeChatCompletionsStream` 选最先出现的通道（同包优先 reasoning_content / reasoning），details 仅显示 summary/text，签名与密文只保留在原生状态；非流式也提取可读内容。Responses 的正文按 output/content index、工具按 output index 对增量与 added/done/最终 output 补齐并去重，前缀或调用身份冲突必须失败。Messages 历史工具参数若不是 JSON 对象，与格式损坏同样转换为空对象，保留配对的 tool_result。Agent 的无工具 length 响应必须抛错、保留部分正文与 completion_details，不得标为 completed；有工具时沿用合成错误结果后重试的路径。
-- Provider 的 `apiFormat`（`ApiFormat`：`chat_completions` / `responses` / `messages`）与 `apiFormatAuto` 一起持久化到 `setting.yaml`，JSON 备份使用 `api_format` / `api_format_auto`。旧配置缺少字段时为 Chat Completions + 自动模式，显式指定格式且未指定自动模式时视为手动。`CatalogProviderConfig.resolveApiFormat` 根据 models.dev 的 `npm` 推断默认格式，本地端点差异由 `apiFormatOverride` 覆盖（Google、MiniMax、xAI）；不把模型级 `provider.shape` 上提为 Provider 默认值。未知 SDK 保留已有值，预设地址被改动或手动模式时不覆盖。已有缓存 TTL 内也同步格式元数据，但跳过模型同步与网络拉取。更新必须经 `ProviderRepository.syncApiFormat` 在文件锁内读最新配置，仅改格式，不覆盖并发修改的凭据。`LlmClient.stream` / `fetch` 已按 `apiFormat` 分派：Chat Completions 直接交给 openai_dart；Responses 经 `service/responses_adapter.dart` 把请求摊平成 `input` items、把 SSE 事件归一成 `ChatStreamEvent`（文本与工具事件由 `ChatStreamAccumulator` 消费），表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃；Messages 经 `service/messages_adapter.dart` 把 system 上提到顶层、把连续同角色的消息合并成一条（Anthropic 要求 user / assistant 交替）、在 JSON 字符串与对象之间转换工具参数，并给出 `max_tokens`（Chat Completions 下 Athena 从不传，Messages 里必填）：取模型的输出上限（`ModelEntity.outputLimit`，来自 models.dev 的 `limit.output`，未知时 8192），再按本次请求的窗口余量（`ContextBudget.outputRoom`）收紧；温度收紧到 Messages 接受的 0–1；历史里含非法字符的 tool_use id 在 tool_use / tool_result 两侧一致改写；流内 error 事件按错误类型抛出带状态码的 `anthropic.ApiException`，与请求阶段的 429 / 5xx / 529 一起由 `retry.dart` 重试；地址里 OpenAI 兼容写法带的 `/v1` 会被剥掉，因为 SDK 自己拼`/v1/messages`。两条适配路径的文本与工具事件沿用公共契约，`ChatStreamAccumulator` 可直接消费；表达不了的内容（音频、文件、JSON Schema 输出格式）显式抛错而不是静默丢弃。手动切换入口：`DesktopSettingProviderPage` 详情页的 **API format** 行（`component/api_format_menu.dart`）、移动端 `MobileProviderFormPage` 的表单项、TUI 的 `/format`；手动选择即 `copyWith(apiFormat:)`（会把 `apiFormatAuto` 落成 false），选回 Auto 走 `copyWith(apiFormatAuto: true)`（格式值保留到下次同步）。
-- Responses 的推理摘要与原生状态分开：带推理强度（非 `none`）的请求增加 `reasoning.summary: auto`，`reasoning_summary_text` / `reasoning_text` 的增量、done 与终态摘要统一归入 `reasoningContent`，按 item/part 去重。请求默认使用 `store: false` + `include: [reasoning.encrypted_content]`；完整响应的有序 output 通过 `ResponsesStateChunk` → `AgentResponsesStateEvent` → `MessageEntity.responsesState`（JSON 键 `responses_state`）落库，取消/截断不产生新状态。`ResponsesAssistantMessage` 携带状态，由 `toResponseRequest` 仅在供应商 id、端点、模型及消息正文/工具调用指纹一致时原样回传；编辑消息、过滤孤立调用或切换来源后走普通历史转换，不能重新引入被删掉的内容。`toJson` 不携带原生状态，避免其他协议与压缩摘要读取推理密文；上下文预算额外计入状态报告的 reasoning token 数。旧记录缺少该字段时按空状态读取。
-- Messages 的 `MessagesThinking.resolve` 将 effort 转为对应模型的 adaptive/手动 thinking：adaptive 请求显示摘要，`minimal` 映射 low，4.6 与 Mythos Preview 的 `xhigh` 映射 max；手动预算 minimal/low/medium/high/xhigh、max 为 1024/2048/4096/8192/16384，再按 `max_tokens` 收紧并尽量留 1024 给回答，输出余量 ≤1024 时明确失败。`none` 对可关闭的模型发 disabled，常开模型明确报不支持；推理开启或模型固定采样时省略温度。`thinking_delta` 统一映射到 `reasoningContent`，`thinking`/`signature`/`redacted_thinking` 与正文、工具块按原顺序保存，仅完整 `message_stop` 且未截断、签名完整才发 `MessagesStateChunk` → `AgentMessagesStateEvent` → `MessageEntity.messagesState`（`messages_state`）。`MessagesAssistantMessage` 仅在来源、消息指纹及 system/tools/先前消息的请求前缀指纹一致时回传原生块；工具续接维持原 thinking 配置，余量不足不能静默改预算。原生状态不进普通 `toJson`；上下文预算用 `output_tokens_details.thinking_tokens`，旧端点缺明细时用总输出保守预留。旧记录或损坏状态按无状态读取。参数与回传约束见 [Claude thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) 和 [preserved thinking](https://platform.claude.com/docs/en/build-with-claude/preserved-thinking)。
-- 三条协议的原始停止/拒答原因与原生用量经 `CompletionDetailsChunk` → `AgentCompletionDetailsEvent` → `MessageEntity.completionDetails`（`completion_details`）落库；非流式结果用 `DetailedChatCompletion.details` 携带，`text` 在正文为空时返回拒答。流式拒答进入公共文本事件，结束时不能覆盖成空正文。Responses `error` / `failed` 抛类型化异常，非流式状态检查在重试范围内；Responses / Chat Completions 缺少结束事件/`finish_reason` 的 EOF 必须报错。Messages 的 `model_context_window_exceeded` 映射为 length，refusal 与 Responses content_filter 映射为 contentFilter；Agent 遇到截断、过滤或拒答均不执行工具。`pause_turn` / `compaction` 尚无服务端续接实现，明确抛 UnsupportedError。
-- Messages 用量的 `promptTokens` = `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`，`totalTokens` 再加输出。`CacheUsage.cacheCreationTokens` 经 `TokenUsage.cacheCreationTokens` 传给协调层，原生缓存创建的分档明细保留在 `completion_details.usage`；流式 delta 只覆盖实际返回的计数，不重置 start 中的缓存用量。
-- Chat Completions 的原始 assistant 字段由 `ChatCompletionsState` 保存（`chat_completions_state`），`restoreChatCompletionsRequest` 仅对供应商 id、端点、模型及正文/工具指纹匹配的历史回传，避免签名/密文跨来源泄漏。工具循环和重载都走同一状态路径；公共 `toJson` 不输出原生状态，上下文预算额外计入已报告的推理 token。
-- `checkRequestFields` 对 Responses / Messages 的显式参数执行支持清单检查：可表达的输出上限、top_p、tool_choice、parallel_tool_calls、工具 strict 等须映射，不可表达的参数明确报错；max_tokens 与 max_completion_tokens 冲突时失败。Responses 另映射 verbosity、metadata、service_tier、prompt_cache_key、safety_identifier、store 等；Messages 映射 stop_sequences、top_k 和 user → metadata.user_id，输出上限取显式值与预算的较小者。任意 metadata、prompt_cache_retention 等未接入的对应协议参数仍明确不支持；JSON Schema、文件/音频和服务端工具不是本适配器已实现能力。
-- 损坏容错：坏行/坏规则单条跳过并记日志，不能一坏就炸掉整个会话或所有工具调用。会话文件按宽松 UTF-8 读取，追加前补齐缺失的换行。整文件无法解析的 JSON / YAML（`sentinels.json`、`models.json`、`setting.yaml`、`permissions.json`）读时按空处理，**写入前先用 `preserveCorruptFile` 备份成 `.corrupt-{时间戳}`**，不能被下一次写入静默覆盖。
-- 会话消息的窗口化：`RecentMessageRepository.loadInitialMessages` / `loadRecentMessages` 只读尾部窗口（GUI 每页 50），轮次总数靠 `getTurnStartIds` 的整文件扫描。
+### 发布
+
+GUI 由 tag 触发三平台构建与 `tapster publish`，流程见 [README.md](README.md) 的发布小节。要点：
+
+- tag 推送会先复用 CI 的三包检查，检查不过就不出包
+- **Linux 平台的代码必须过 Linux CI**：CI 与发布都在 Ubuntu 上跑，只在 macOS 本地验证等于没验证
+- 打 tag 前同步 `pubspec.yaml` 的版本号
 
 ---
 
-## 6. 上下文预算与压缩
+## 11. 编码风格速查
 
-`ContextBudget`（`lib/agent/context_budget.dart`）：
-
-- 输入上限 `inputLimit = contextWindow - min(8192, max(256, contextWindow ~/ 5))`（给输出留空）；
-- 估算 = `utf8(JSON(messages+tools)).length / 2` + 每条消息 16，每张图片按 4096 计（不计 base64 数据本身），估算值再乘 `_usageScale`（由真实 `prompt_tokens` 向上校准，只增不减）；
-- 触发压缩的条件：`contextWindow > 0 && estimate >= min(窗口 80%, inputLimit)`；
-- 仍超限时 `prepare()` 把较旧的长工具结果替换成 `tool_output_read` 引用，**最新一批工具结果始终保留**（可能正是刚分页读出来的内容）；无法压缩到上限内就抛 `StateError` 而不是静默截断。
-
-`retention` 语义（`ChatEntity`）：`0` = 每次只带当前用户消息；`-1` = 全量历史 + 自动压缩。压缩回调只在 `retention == -1 && onCompact != null` 时进入。
-
-压缩落库形态：`CompactionStep` 用**同一条消息 id** 逐阶段更新（triggered → summarizing → persisting → completed/failed/cancelled），完成后其内容即摘要，覆盖范围写在 `reference` 里；被覆盖的原始消息标 `compacted`（保留可回溯，但不参与上下文）。组装历史统一走 `ConversationSummary.activeHistory()`，不要自己过滤 `compacted`。
-
----
-
-## 7. 权限系统
-
-`PermissionVerdict` 三态与判定顺序见 `PermissionService.check`：deny 规则 → 会话缓存（按 `runId` 隔离）→ 持久 allow 规则 → 按审批模式处理。工具不声明风险等级，读取与写入统一进入审批流程；shell 规则只匹配整条命令，不分析动作、子命令或只读性。
-
-- Shell 调用统一串行，包括看似只读的命令与后台启动调用；后台命令启动后仍可继续运行。不再通过静态命令分析决定免审批或并行资格。
-- `ElicitChannelAware` 工具直接进入提问通道，不叠加 AI 审核或人工审批；显式 deny 优先。
-- 规则形态（`PermissionRule.forToolCall`）：shell 落 `RuleKind.exact`（整条命令精确匹配）、文件工具落 `RuleKind.path`、`web_fetch` 落 `RuleKind.origin`（`scheme://host[:port]`）、其余工具落空 pattern 的 `exact`（整工具放行）。前三类缺少关键参数（如 URL 不合法）时不落规则，不能退化成整工具放行。持久 allow 规则只按关键参数匹配，覆盖不到的维度由 `PermissionService._persistentAllowApplies` 排除：`web_fetch` 的 origin 规则只放行不带 body / headers 的 GET；shell 的 exact 规则只在 workdir 为空或等于本次 run 的工作文件夹、且非 `background` 时生效（因此 `check` 需要传入 `workspace`）。deny 规则不受这些限制。旧 `action` 规则在读取时跳过（allow / deny 均停止生效）；原有授权需重新审批，禁止项需改为整条命令的 `exact` 规则。复合命令不会复用单个子命令的 allow / deny。
-- 会话缓存键 = 工具名 + 规范化后的完整参数（排序、剥离三个展示/建议元数据字段）：换个参数就是另一次授权。
-- `ApprovalMode`：`manual` / `ai_review`（默认）/ `bypass`，存 `KeyValueStore`（键 `approval_mode`，旧布尔键 `ai_approval_enabled` 只做一次性迁移），改动下一轮 run 生效。三档都越过不了 deny。
-- AI 审核（`AiPermissionReviewer`）：独立提示词、无工具、20s 超时、单次调用有效，输入是**原始用户/助手对话**（摘要、技能、记忆、工具输出都不构成授权）；非法输出、超时、异常一律降级为「问人」。审核通过后要**重新检查 deny 规则**。
-- `bypass` 只有 `bypassPermissions` 一条开关路径（`AgentRunCoordinator` 由 `approvalMode == ApprovalMode.bypass` 传入），不要在各工具里另加旁路。
-
----
-
-## 8. 工具
-
-`Tool` 接口（`lib/agent/tool/tool_interface.dart`）：`name` / `description` / `parameters`（JSON Schema）/ `executionMode` / `canExecuteParallel(args)`。可选实现 `CancellableTool`（长阻塞工具接取消信号）与 `ElicitChannelAware`（提问类工具）。
-
-| 工具 | 并行 |
-|---|---|
-| `file_read` `web_fetch` `web_search` `tool_output_read` `sentinel_list` `sentinel_get` | 是 |
-| `ask_user_question` `background_task` `experience_recall` | 否 |
-| `file_write` `file_update` `bash` / `powershell` `skill` `skill_evolve` `experience_learn` `sentinel_evolve` `sentinel_revert` | 否 |
-
-其它要点：
-
-- 每个工具的 model-facing schema 由 `ToolRegistry.parametersFor` 注入三个元数据字段：`call_description`（必填，缺失即判参数非法并要求模型重发）、`approval_recommendation`、`approval_reason`。三者在权限匹配与执行前由 `toolExecutionArguments` 剥离——**别把它们算进参数或权限判断**。
-- 引擎还会在执行前注入两个隐藏键（`tool_interface.dart`，同样不进展示 JSON、不参与规则匹配）：`_chat_id`（会话归属，后台任务用）与 `_background_disabled`（本轮禁止启动后台任务，自动汇报回合用）。
-- 审批与并行资格分开：读取、搜索等操作也按当前模式审批，不根据工具类型自动放行。
-- 移动端只注册 11 个工具（不注册文件、shell、提问、后台任务）；新增工具时先想清楚移动端是否可用，再决定放在哪个分支。
-- `ToolOutputStore`：超过 24000 字符才落盘（内存实例用于测试），预览 2000 字符，单次回读上限 12000 字符，按内容哈希寻址（同内容重跑不会重复落盘）。
-- shell 超时策略在 `ShellTimeoutPolicy`：默认 120s，上限 3600s（环境变量 `ATHENA_SHELL_MAX_TIMEOUT` 可抬高，低于默认值视为非法并回退）。
-
-### 后台任务（桌面端）
-
-`bash` / `powershell` 的 `background: true` 走 `BackgroundTaskService`（`lib/agent/task/background_task.dart`）：**启动即返回**任务 id（`bg-1`…），命令继续跑，输出持续累积在任务对象里，用 `background_task(action="list"|"read"|"stop")` 查看与停止。归属与生命周期是这套能力的关键，改动前先读懂这几条：
-
-- **归属会话，不归属 run**。登记表按 `chatId` 分组，`_chat_id` 由引擎注入；工具自己不知道会话，也不允许模型指定。
-- **run 正常结束不杀任务**（这正是后台化的意义）；**用户取消 run 时杀该会话全部后台任务**（`AgentRunCoordinator.stop`），保留已产生输出、状态记为 `cancelled`；会话删除、优雅退出（托盘退出 / TUI 退出）同样杀。TUI 的退出收尾挂在 `ExitHookBackend.requestExit` 上：nocterm 的 /quit、Ctrl+C、SIGINT / SIGTERM 最终都经 `requestExit` 直接 `exit()`，`runApp` 不会返回，写在它后面的代码是死代码。
-- **停止 ≠ 失败**：`cancelled` 与 `failed` 分开记账，用户要能区分「我停的」和「它自己挂了」，且 `cancelled` 不触发自动汇报（`shouldReportTaskCompletion`）。
-- **强杀留孤儿**：进程被 kill -9 / 崩溃时没有任何钩子可挂，子进程会被 reparent 继续跑。启动时 `recoverOrphans()` 按 `background_tasks.json` 核对「pid 存活 + 命令行匹配」后清理——只凭 pid 杀是错的（pid 会复用）。属主（`owner_pid`）仍是运行中的 Athena 进程的记录属于另一个实例（GUI 与 TUI 同时开），原样保留不杀。Windows 无法核对命令行，不清理孤儿。这是已知残余：崩溃期间的副作用窗口消不掉，只能事后发现。
-- **运行中通知**：成功/失败的任务在下一次模型请求前以临时 user 消息追加到整批工具结果之后，仅含固定说明、id、状态与命令；日志通过 `background_task(read)` 读取，通知不落库、不进入 AI 审批授权上下文。正常 run 和汇报 run 都可接收，不打断流式响应/工具调用，不额外增加迭代；压缩重建上下文后重新加入尚未确认的通知。只有模型完整响应且未截断、过滤或拒答才确认该批任务，期间新完成的任务留待后续请求。
-- **自动汇报回合**（会话空闲且仍有待汇报任务时自动起，与运行中通知共用 `backgroundTaskReports` 开关）：不落用户消息（任务输出是外部文本，以 user 角色进历史会成为 AI 审批的授权依据）。汇报说明（固定文字 + 任务命令，不含输出）作为请求**末尾的 user 消息**发送、不落库——请求不能以 assistant 结尾（Messages 协议当作 prefill 拒绝）；运行时上下文与 `send` 相同，不能被汇报说明顶替。继续通过 `background_task` 分页读取输出，使用相同工具集与当前审批模式。AI 审核只读取原始用户/助手对话，手动模式或 AI 无法确认时走原有审批回调；`allowBackgroundTasks: false` 避免「任务→汇报→任务」无限链，`allowReflection: false` 跳过失败反思，迭代上限 3。
-- **取消即杀是本设计的取舍**：进程树加上新建的进程都属于被杀范围，用户按停止的意思是「这个会话先停下」。长构建跑到一半被取消就是白跑，代价已接受。
-
----
-
-## 9. 自我进化与记忆
-
-- 注入顺序（`AgentService._injectPrompts`）：`[sentinel] → evolution hint → skill 目录 → MemoryDigest → runtime+日期 → 历史`。runtime 与日期合成同一条 system 消息（一天内内容稳定，跨午夜会在请求前刷新）。
-- `EvolutionPrompt.hint` 是每次注入的极简提示；完整指南是内置 `self-evolve` Skill 的 body，按需加载。两端装配都要 `registerBuiltin(kSelfEvolveSkill)`。
-- `SkillRegistry`：Level 1 目录上限 20 条、按最近访问倒序；`loadAll({homeDir})` 决定用户级根目录（`{homeDir}/.athena/skills`），移动端传沙盒目录——**写入端（`skill_evolve`）必须与读取端同目录**。`deleteSkill` 只允许删用户级 Skill。
-- `MemoryDigest`：每次 run 注入当前 Sentinel 的**全部 active** 经验目录（lesson 一行一条，`shared` / `private` 标注 + 创建日期），顺序稳定（按创建时间倒序、同时间按 id）以便复用 prompt cache；没有经验时不注入空段。`context` / `tags` 由 `experience_recall` 按需取。
-- 失败反思（`ReflectionPolicy.shouldReflect`）：`maxIterations` 结束且失败不全是权限拒绝，或 `completed` 且同一工具失败 ≥2 次才触发。反思只做一次 LLM 提案调用，经验写入完全复用 `experience_learn` 的标准工具路径（校验/审批/执行），**不要直接写 `ExperienceRepository`**。
-- 经验长度上限 `ExperienceEntity.maxLessonLength = 500`；lesson 是给上下文直接用的精炼摘要，详细背景放 `context`。反思提案的置信度门槛 0.7。
-- Sentinel 演进前必写快照（`SentinelHistoryStore`），`sentinel_revert` 本身也可回滚。快照按角色 **id** 归档：按名字归档时改名那一步撤销不了，别的角色日后用了旧名字还会继承不属于它的快照。
-- Sentinel 不提供头像：`SentinelEntity`、生成提示词、工具 schema/输出与 GUI 均不包含头像能力。旧角色、备份和历史快照里的 `avatar` 在反序列化时忽略，后续保存/导出不再写出；名称、描述、标签与提示词仍可正常编辑、生成、演进和回滚。
-
----
-
-## 10. 客户端约定
-
-**GUI（`athena_gui`）**
-
-- 依赖注入唯一入口是 `lib/di.dart`（GetIt）；新增 ViewModel/Service 在那里注册，别在页面里自行 new。
-- `ChatViewModel` 的失败统一走 `_reportError`（写 `error` 信号并弹提示条）；`error` 信号在界面上没有常驻展示位，只写信号等于对用户静默。当前对话的 `RunError` 已作为 assistant 消息落进会话，不再叠提示条，其他对话的才提示。
-- 同一会话的输入在 ViewModel 里排队（`_queuedInputs`，composer 上方显示）：用户 run 进行中、或协调层自己的汇报 run 进行中发送的消息都先进这里，出队时按会话**最新**参数发送（`_chatForEvent`），不用入队时的快照。
-- 设置里的「重置」经 `ChatViewModel.runDataReset` 包一层：先停掉所有运行中的对话并等其收尾，再清数据，之后回草稿态、重读角色与列表、清空按 chatId 存的草稿槽（重置后 id 从头分配）。
-- 状态用 `signals`（`Watch` 包裹订阅），跨 ViewModel 通信用 signal，异步 Agent 交互走 `AgentStreamDelegate`。
-- `SettingViewModel.textSize` 仅通过 `AthenaWorkspaceTextSize` 包裹桌面与移动端的 `MessageCardListSliver`，正文读取 `AthenaTextSize.prose`，行内代码、代码块与工具输出读取 `AthenaTextSize.code`，两者共用固定字号 / 行高（Small 13 / 20、Medium 14 / 22、Large 15 / 24），只区分字体族；不能用 `TextScaler` 倍率实现档位，也不能挂到 `MaterialApp.builder` 或整个工作区。composer、空会话 placeholder、轮次导航、审批控件、侧栏、标题栏、设置与根 Overlay 菜单不受档位影响；所有文字保留系统无障碍缩放。
-- 视觉只能取 `theme/athena_tokens.dart`（几何/排版）与 `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）；具体口径见 DESIGN.md。UI 以 Medium 正文 14 / 22 为基准，统一辅助 12 / 18、常规 14 / 22、标题 16 / 24、空态标题 20 / 28；直接复用带行盒的预设，不在组件里覆盖比例行高。侧栏行高 32、设置导航与控件高 36、标准 / 小按钮高 40 / 32。默认青瓷色板的主操作使用 `accent` / `textOnAccent`，深色亮青瓷底不能固定配白字；`surfaceRaised` / `textOnRaised` 仍服务中性反色卡片与提示框，不能整体替换成强调色。设置面板用 `widget/settings/` 四件套（panel / row / control / nav），一般设置改动即存，角色、技能等编辑页通过 Save 保存。`AthenaSettingsPane` 的滚动视口从固定标题带 `AthenaSettings.paneTopPadding` 下方开始，不能用 ListView 顶部 padding 代替，否则滚动正文会叠到返回链接和关闭按钮上；列表另设 `AthenaSettings.panePadding`（24）顶部内边距，为正文留白。标题带底边沿用工作区的 1 逻辑像素 `neutralHairline`，底部保存栏独立固定。
-- 圆角按 `AthenaRadius` 的角色使用 4 / 8 / 12 / 16（小元素 / 控件与行 / 卡片、菜单与 composer / 大面板），胶囊与圆形保留语义形状。阴影只用 `AthenaShadow.raised` / `overlay` / `modal`，静态卡片不加阴影；桌面与移动 composer 共用 `raised`。深色浮层用 `foregroundDecoration` 画 1px `border` 轮廓，不改变布局或菜单锚点；输入聚焦使用 1px `accent`，不加光晕。
-- 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，通过 Flutter `Icon` 渲染；新增图标沿用默认线条字重、既有尺寸与语义色，不混用其他图标库。同类功能保持同一字形，返回、前进、更多、时间、错误、连接、下拉统一引用 `theme/athena_icons.dart` 的 `AthenaIcons`；工具与审批卡共用 `StepCard.toolIcon` 映射。
-- 桌面 composer 的 `DesktopContextSelector` 只设置聊天历史保留策略（`-1` 携带 / `0` 不携带），读取 `currentRetention`，草稿与已有会话共用。入口用 `AthenaIcons.time`（Lucide `clock`）/ `clockFading` 和 `Context on / Context off`，无下拉箭头；复用 `DesktopContextMenu` 向上、右对齐展开，选择后关闭并经既有回调保存，不提供温度入口。
-- 桌面与移动是两套页面（`page/desktop/`、`page/mobile/`），路由在 `router/router.dart`，桌面路由是 0 时长无过渡，桌面设置路由 `opaque: false`（面板浮在应用之上）。
-- 平台判定统一用 `PlatformUtil`（`isDesktop` / `isMobile`），不要散落 `Platform.isXxx`。**例外**：凡是要在 widget 测试里断言"两端都走对分支"的地方，改用 `Theme.of(context).platform`（`TargetPlatform`）——`PlatformUtil` 读 `dart:io` 的 `Platform`，测试里恒为宿主平台，移动端分支根本进不去；`ThemeData.platform` 可以用 `theme.copyWith(platform:)` 指定。生产环境不显式设置它，由 `defaultTargetPlatform` 填充，与 `PlatformUtil` 同源。现有三处：`AthenaScrollBehavior`（滚动 physics 必须与 Flutter 的分派同源）、`PermissionApprovalCard` / `ElicitCard`（`Theme.of(context).platform`）、`AthenaDialog`（`widget/dialog.dart` 的 `_isMobile`，两端弹层形态不同）。其中滚动 physics 那处还有额外约束：`AthenaScrollBehavior`（`theme/athena_scroll_behavior.dart`）按 `getPlatform(context)`（即 `ThemeData.platform`）判定，因为 Flutter 默认 physics 正是按这个信号分派的，必须同源。它由 `main.dart` 的 `MaterialApp.router(scrollBehavior:)` 统一注入：桌面三平台一律 `ClampingScrollPhysics`（关掉 macOS 默认的 `BouncingScrollPhysics` 回弹，Windows / Linux 的默认值与之一致），移动端走 Flutter 默认。不要再在单个 ScrollView 上零散写 `physics:`（`NeverScrollableScrollPhysics` 这类功能性禁用除外）。
-- 页级快捷键挂页面（首页的 ⌘N / Ctrl+N 新建对话在 `page/desktop/home/component/home_shortcuts.dart`），不要塞进 `main.dart` 的全局 `HardwareKeyboard` 处理器——那条只服务窗口级动作（如 ⌘W 隐藏窗口）。路由是天然的生效边界：设置页/对话框压上来时焦点整体搬进新路由的 FocusScope，快捷键自动失效、关掉即恢复，不需要查路由名；页面自己再带一层 `FocusScope(autofocus: true)`，保证点画布失焦后焦点落回页面内部而不是路由 scope。
-- 新对话的草稿参数（`ChatViewModel.prepareNewChatDraft`）：模型/保留策略/温度/推理强度一律回默认；**角色与工作文件夹从 `inheritFrom` 继承**——桌面点 New chat 传当前选中对话的快照，移动端传最近打开的对话但 `inheritWorkspace: false`（那边不注册 shell / 文件工具）。启动落草稿、删掉当前对话不传来源，回默认角色 + 不指定文件夹。**删除对话的视图落点**（`ChatViewModel.deleteChat` / `deleteChats`）：删的不是正在看的那条就停在原处（当前对话与消息都不动）；删的正是当前这条则回草稿态，**不自动落到邻居**。继承值只是草稿初值，composer 上仍可改，`createChat` 落库读的就是这些 `current*` 信号。
-- composer 里没发出去的内容（文字 + 待发图片）**按对话分开存**，切走时存回原对话、切回来时取出：文字由页面在切换点存取（`DesktopHomePage._restoreComposerDraft`，槽位 key = chatId，`null` 是还没落盘的"新对话"），待发图片由 ViewModel 存（`ChatViewModel._retargetPendingImages`，`pendingImages` 始终只是当前那一槽）。槽位只活在内存里；空内容不留条目；取出即删，避免旧副本把改过的内容顶回去。**新增任何会换 `currentChat` 的入口，都要在同一帧内调一次 `_restoreComposerDraft`**（等 IO 回来再换会覆盖用户在这段延迟里敲的字），否则 A 里打的字会跟着串进 B。桌面 composer 只有一个 `TextEditingController` 跨对话复用，别指望它自己按对话隔离。
-- widget 测试要挂真实页面时，用 `DI.ensureInitialized(homeDirOverride: 临时目录)` 装依赖图：数据根整体指到临时目录，不碰真实的 `~/.athena`（例见 `test/widget/home_page_new_chat_test.dart`）。注意页面 `_initState` 是一串串行的真实文件 I/O，测试里要交替「`runAsync` 真实异步窗口 + `pump`」才能把它推完——单放一次 `runAsync` 只够第一段 I/O。
-- 桌面附件由 `PendingImage` 保存稳定标识、解析状态及就绪字节；`pasteClipboardImages` 先占位再读取，异步结果按标识回填原槽，移除或删除后不恢复。`pendingImages` 必须直接在 `Watch` 中读取，不能藏进延迟执行的 composer `builder`，否则新增附件不会重绘。快捷键、标准 `PasteTextIntent` 与右键菜单共用图片粘贴流程；占位仅显示图片图标与加载圆环，不显示阶段名称，解码失败可移除。预览与发送共用验证过的字节，全部就绪后才能发送（支持仅图片）。
-
-**TUI（`athena_tui`）**
-
-- 组合根是 `lib/di/tui_di.dart`（手写装配，镜像 GUI 但不引入 GetIt）；数据目录、工具集、权限规则与 GUI 相同。
-- 启动会把 `Directory.current` 改成工作区目录——核心层（shell 默认 workdir、文件工具相对路径）都按 `Directory.current` 解析。
-- `ChatController` 不依赖 nocterm，保持纯 Dart 可测；UI 状态全在 signals 里。
-- 审批与提问在 `app.dart` 里按到达顺序排队、一次只显示队首（自动汇报 run 可能在别的会话上同时发起请求）；桥把发起会话的 `chatId` 与取消信号交给 UI，请求不属于当前会话时标题带上会话标题，run 取消时卡片随之撤下，Esc 停的是发起请求的那个会话。
-
----
-
-## 11. 代码与文档约定
-
-- **注释与文档用中文**；面向模型的文本（工具描述、系统提示、回给模型的错误）用英文，与既有实现保持一致。注释解释「为什么」——现状为什么是这样、当初避开什么坑，而不是复述代码。
-- **格式化**：仓库**不是 format-clean**（`dart format` 会改写约四分之一既有文件）。新建文件保持 `dart format` 结果；既有文件按原风格手改，**不要**对既有文件跑 `dart format`，那会产出满屏无关重排。
-- **导入**：跨目录引用普遍用 `package:athena_core/...` 绝对导入，同一目录内部也有相对导入（如 `tool/` 内）。改动沿用所在文件既有风格即可。
-- **测试**：`athena_core/test` 用 `package:test`，GUI 用 `flutter_test`。用例要断言可观察的行为或量出来的几何（`.expect(..., reason: ...)`），不是「调用了哪个方法」；交互/动画类断言需要多帧 `pump` 才能拿到过渡终态（单次 `pump(200ms)` 可能仍是起点值）。写完顺手确认它真的会因为回归而失败。
-- **文档同步**：改行为时同步 README（用户可见能力）、AGENTS（本文件）、DESIGN（视觉口径），并核对文中引用的常量仍存在。
-- 文档与代码注释不使用 emoji。
-
----
-
-## 12. 常见任务
-
-**加一个工具**
-
-1. 在 `lib/agent/tool/` 新建实现（给出 `name` / `description` / `parameters` / `canExecuteParallel`），需要取消能力就实现 `CancellableTool`；
-2. 在 `tool_set.dart` 注册：判断移动端是否可用，决定放进移动分支、桌面分支还是两者；
-3. 若需要持久化，走已有 repository（新增仓储要同时在 `FileStorage` 里装配）；
-4. 在 README 的工具表里补一行。
-5. 在 GUI 的 `StepCard.toolIcon` 补上图标映射（同类功能共用字形），并运行 `test/widget/tool_icon_test.dart`：它按桌面/移动真实注册表检查覆盖，`wrench` 仅作未知工具兜底。
-
-**加一个页面 / 路由（GUI）**
-
-1. 建页面并加 `@RoutePage()`；
-2. 在 `router/router.dart` 注册（桌面页面用 `DesktopRoute`）；
-3. 跑 `dart run build_runner build --delete-conflicting-outputs`，把 `router.gr.dart` 一起提交。
-
-**加一个设置项**
-
-1. 值放 `AgentSettings`（核心，被协调层消费）或 `SettingViewModel`（GUI 本地偏好，走 SharedPreferences）；
-2. 两端的入口都要接上（GUI 设置面板行、TUI 斜杠命令或启动导入），否则同一份设置在不同端行为不一致；
-3. 旧键迁移只做一次：读不到新键时读旧键，写入后不再看旧键。
-
-**改存储格式**
-
-1. 只动 `storage/`（或 repository 实现），并在 `FileStorage` 的布局注释里同步；
-2. 保证向后兼容或提供迁移；损坏数据按容错处理（跳过 + 记日志）；
-3. 补 `athena_core/test/storage/` 用例（并发写、损坏文件、原子写至少覆盖一个）。
-
-**加一个 ViewModel / Service（GUI）**
-
-1. 在 `di.dart` 注册（lazy singleton）；
-2. 需要 Agent 事件的走 `AgentStreamDelegate`，不要自己 new `AgentRunCoordinator`。
-
----
-
-## 13. 易错点（都踩过）
-
-- **并行组的审批弹窗**：需要弹窗的调用放进并行组 → 多个模态互相覆盖。用 `selectParallelCalls` 的预检分级。
-- **路径口径三处不一致**：审批按相对路径落规则、执行按绝对路径匹配 → 「已批准仍重复弹窗」和「始终允许」失效。三处必须共用 `applyRunWorkspace`。
-- **会话锁形同虚设**：每次新建 `SessionJsonlStore` → 流式期间的整文件重写与 append 交错丢行。
-- **`Stream.timeout` 不触发**：改用 `withIdleTimeout`。
-- **tool_calls 未闭合**：取消/异常路径漏合成 tool 结果 → 该会话后续请求被 400 拒绝。
-- **空 assistant 记录进上下文**：进程被强杀 / 崩溃 / 断电时迭代占位没走完收尾，或思考模式只输出 reasoning 就被截断 → 组装出 `AssistantMessage(content: null, toolCalls: null)`，兼容端报 `Invalid assistant message: content or tool_calls must be set`，该会话此后每次请求都被拒（用户看到"中断后再也继续不了"）。空记录在 UI 上不渲染（`buildAssistantMessageLayouts` 跳过无片段的布局），所以肉眼看不到是哪条坏。会话重新加载后由 `ChatMessageConverter` 自动丢弃即可恢复。
-- **截断的 tool_calls 直接执行**：参数半截就写文件/跑命令 → 撞输出上限时一律不执行。
-- **展示元数据混进参数**：`call_description` / `approval_recommendation` / `approval_reason` 必须剥离后再匹配规则与执行。
-- **读写应用数据目录**：`~/.athena/` 只能经仓储与工具访问，不要用文件工具直接改。
-- **移动端的 `$HOME`**：移动端没有可靠的 `HOME`，用户级目录（Skill、经验、Sentinel 历史）与 `FileStorage` 根必须同为装配层传入的沙盒目录。
-- **忘记生成代码**：GUI 改了路由不跑 `build_runner` → analyze 直接失败。
-- **composer 输入元素按对话换 key**：`_Input`（`message_input.dart`）承托着 composer 的 `FocusNode`，`key: ValueKey(chatId)` 会在换对话时重建 `EditableText`，旧的连同文本输入连接一起销毁；焦点节点还是同一个、焦点没有变化，新的 `EditableText` 不会重开连接（只在焦点变化时开），于是输入框看着聚焦、真实平台却打不进字，页里那次 `requestFocus` 也救不回来（节点仍持焦，FocusNode 直接忽略）。要按对话重置状态就传 `chatId` 在 `didUpdateWidget` 里重置；`tester.enterText` 会先 `requestKeyboard` 把连接接回去，所以只有 `tester.testTextInput.hasAnyClients` 能测出这类回归。
-- **对既有文件跑 `dart format`**：产出大面积无关改动，评审无法看。
-- **用索引当下标口径**：UI 里的「第几轮 / 第几项」有窗口内相对下标与整段会话绝对下标两套（见 `util/chat_turn_util.dart` 与 `TurnIndicator` 的分页），传参前先核对。
-
----
-
-## 14. 交付前检查
-
-1. `dart analyze` / `flutter analyze` 干净（至少不新增问题）；
-2. `dart test` / `flutter test` 通过：改了 `athena_core` 就跑 `athena_core` 的，改了 GUI 就跑 GUI 的，两端都涉及就跑两遍；
-3. 改 GUI 前先 `build_runner`；
-4. `git diff` 复核：无调试残留、无无关文件、无大范围重排；
-5. 行为变化已在 README / AGENTS / DESIGN 中同步，且文中引用的常量仍存在。
+- 用 `const` 构造与 `final` 字段；能用 `switch` 表达式表达的分支不要写成 `if/else` 链
+- 集合操作优先（`map` / `where` / `fold`），不手写索引循环
+- 一个文件只放一个公开类（及其私有伴生类）；工具类用 `abstract final class` 防止实例化与继承
+- 不在 widget 里写业务逻辑；状态一律通过 ViewModel / Controller 的 signal 流动
+- 静态分析：三个包都开 `strict-casts`，`athena_core` / `athena_tui` 另开 `strict-inference`；`prefer_initializing_formals` 因存量风格统一关闭（见各包 `analysis_options.yaml` 的注释）

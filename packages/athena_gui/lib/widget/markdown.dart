@@ -360,7 +360,7 @@ class _FlutterMarkdown extends StatelessWidget {
     final hasFootnotes = _hasFootnoteSection(message.content, extensions);
     var borderSide = BorderSide(color: colors.border, width: 1);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
-    // 层级交给字重与间距，不靠放大字号（见 DESIGN.md「Principles」）
+    // 层级交给字重与间距，不靠放大字号（见 DESIGN.md §1）
     var heading = body?.copyWith(fontWeight: FontWeight.bold);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。

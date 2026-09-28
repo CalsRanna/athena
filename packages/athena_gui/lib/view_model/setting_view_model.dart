@@ -64,7 +64,7 @@ class SettingViewModel {
       _agentSettings.updateApprovalMode(mode);
   final maxRetries = signal(10);
   final braveApiKey = signal('');
-  // 主题模式：默认深色（保持历史行为），可在设置中切换深色/浅色/跟随系统
+  // 主题模式：默认浅色，可在设置中切换深色/浅色/跟随系统
   final themeMode = signal<ThemeMode>(ThemeMode.light);
 
   /// 会话消息字号档位（设置 → General → Appearance → Text size）。

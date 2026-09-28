@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// `bool hover` + `handleEnter`/`handleExit` + `MouseRegion` + `GestureDetector`
 /// （约 12 行样板）。这里只收敛这段骨架——**装饰仍由调用方在 [builder] 里画**，
 /// 因为各处的底色 / 描边 / 圆角 / 时长差异太大，硬塞进参数会得到一个参数比
-/// 内容还多的包装（见 AGENTS.md 对「卡片外壳」类的同类判断）。
+/// 内容还多的包装（见 AGENTS.md §1.1 对「卡片外壳」类的同类判断）。
 ///
 /// ```dart
 /// AthenaHover(

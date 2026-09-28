@@ -5,7 +5,7 @@
 /// 几何沿用参照并适度放松，排版共用 Athena 的 14 / 22 基准，颜色使用青瓷色板。
 ///
 /// 设置面板的分隔线、控件描边、选中底等使用 AthenaColors 的 `neutral*`
-/// 字段，与 composer 输入容器共用一套，见 DESIGN.md 的 Colors 节。
+/// 字段，与 composer 输入容器共用一套，见 DESIGN.md §2。
 library;
 
 import 'package:athena_gui/theme/athena_tokens.dart';

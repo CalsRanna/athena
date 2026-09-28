@@ -1,6 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 
-/// Athena 设计语言在终端的映射(源自 DESIGN.md 的色板)。
+/// Athena 设计语言在终端的映射(色板见 DESIGN.md §2 的 TUI 映射)。
 ///
 /// 终端是深色底,背景不设色(用终端默认),主要用文字色与边框表达层级。
 abstract class AthenaColors {

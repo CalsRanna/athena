@@ -1,436 +1,400 @@
-## Overview
+# DESIGN.md — Athena 设计系统
 
-Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + nocterm 终端客户端）。默认采用
-**青瓷配色**：中性瓷白 / 墨绿灰画布、清晰正文、克制的青绿色强调，层级靠表面色差与发丝接缝线建立。
-以 14 / 22 为常规文字基准，控件与列表适度留白；整体安静、偏专业，没有装饰性渐变、光晕、彩色插图或阴影堆叠。
+本文件是 GUI 与 TUI 共同的视觉与交互口径。**代码是唯一真相**：token 的取值在 [`athena_tokens.dart`](packages/athena_gui/lib/theme/athena_tokens.dart) 与 [`athena_colors.dart`](packages/athena_gui/lib/theme/athena_colors.dart)，本文解释它们**为什么**是这些值、以及什么时候用哪一个。
 
-**氛围与语气**
+新增组件前先读 §7；改动了本文描述的规则，请同时更新引用它的代码注释。
 
-- 浅色画布 `#FAFBFA`、侧栏 `#F0F3F1`、正文 `#202824`；深色使用墨绿灰，避免纯黑。
-- 青瓷强调 `accent`（浅色 `#0F766E` / 深色 `#65C7BC`）用于主按钮、确认键、选中控件、链接、
-  发送键与运行中状态。选中面使用低饱和青瓷填充，正文与大面积卡片保持中性。
-- 成功、警告、错误各有独立的结果色，不以品牌色代替状态语义。运行中状态点沿用围绕 accent 的等亮度色相循环。
-- 侧栏、画布、浮层以轻微底色差分层，分隔线保持 1px，不用厚边框或加深投影补层次。
+---
 
-**密度与版式**
+## §1 原则
 
-- 字号与间距一起适度放松：设置控件高 36，标准按钮高 40、小按钮高 32；侧栏会话行高 32，
-  设置导航行高 36、行距 4，设置内容行上下各留 16；间距按 4 / 8 / 12 / 16 / 20 / 24 / 32 一档刻度取用。
-- 桌面是"双区工作台"：288 侧栏（`AthenaSpace.sidebar`）+ 定宽 768 的内容列居中（`kChatColumnWidth`），
-  列外左右至少留 32（`kChatColumnMinPadding`）；移动是单列滚动页 + 底部 sheet。
-- 顶栏高 46，只在工作区上方画一条极浅底线（`neutralHairline` `#E8EEE9`）；侧栏右边界与页脚上边用
-  `borderChrome` `#E0E7E2`（"面与面的接缝"，比容器轮廓线轻一档）。
+**不为装饰而装饰。** 层次靠底色、描边与间距表达，不靠阴影堆叠、渐变或放大。视觉噪音是持续的注意力税——列表每滚到底都晃一下、每个卡片都投一层影，用户看不出问题在哪，只是觉得累。
 
-**主题与无障碍取向**
+**层级交给字重、间距与颜色，不靠放大字号。** Markdown 标题与正文同号同行高，只以加粗区分（见 §3）。字号变化会打乱行盒节奏，而字重变化不会。
 
-- 浅色 / 深色采用同一青瓷语义体系，支持跟随系统，深色画布**不用纯黑**。
-- 主文字对画布的对比度约 14.6:1（`#202824` on `#FAFBFA`）；UI 正文使用 14 / 22，用户与助手消息
-  共用所选正文档位，保证一轮对话里问与答是同一阅读层级。
-- 会话正文与代码共用三组固定字号 / 行高（Small 13 / 20、Medium 14 / 22、Large 15 / 24），保留系统无障碍缩放；composer、placeholder、侧栏、顶栏、设置与菜单不受档位影响。
-  运行中 shimmer 尊重 `MediaQuery.disableAnimations`；全局 `NoSplash`，交互反馈不依赖 Material ripple，
-  改由前景色 alpha 叠加与按压缩放表达。
+**同档复用，不为单个组件另开一档。** 动效时长按**感知档位**分级而非按组件分级（见 §6）；圆角按角色分级而非按组件分级（见 §4）。差 20ms 的两档人眼分不出，值不能另开一档——语义描述得再贴切也不行。全站同档不只是好看：指针划过一串不同控件时，同档才有统一手感。
 
-**证据与口径**
+**平台默认是对的，除非它有明确的错。** UI 与正文走系统字体；桌面滚动去掉 iOS 式回弹（见 §8）。改动平台默认需要理由，理由要写在代码旁边。
 
-- 本文所有几何、色值、字重均可在 `packages/athena_gui/lib/theme/athena_tokens.dart`（不随主题变化的常量）、
-  `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）、`theme/athena_settings.dart`（设置面板实测几何）
-  中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
-- 色值以 `AthenaColors.light` / `dark` 的青瓷色板为准；带 "实测" 字样的几何是 Athena 自己的既有取值。
-- 过渡时长以 `theme/athena_tokens.dart` 的 `AthenaMotion.hover`（150ms）为交互反馈的唯一来源，
-  调用处不写字面量；其余时长服务淡入淡出、按压与运行状态，各由组件自持具名常量——它们不是单一 token。
-  详细口径见 §Elevation 下方「过渡节奏」。
+**可点即提亮。** 静止态用次级文字色，hover 时整条（图标 + 文案）提亮到正文色。这是全站统一的「这里能点」信号（见 §8）。
 
-## Colors
+**不抽参数比内容还多的包装。** 公共组件只收敛**骨架**，不收敛装饰。当各处的底色 / 描边 / 圆角 / 时长差异很大时，硬塞进参数会得到一个参数比内容还多的包装——那时应当只抽状态机与手势，装饰仍由调用方画。`AthenaHover` 是这条的样板（见 §7）。
 
-色板按语义分为中性表面、青瓷操作色与结果状态色。浅色主按钮用深青瓷配白字，深色用亮青瓷配深色字，
-不能把白字固定到所有强调色底上。`neutral*` 保留既有控件角色命名，选中底也采用青瓷浅填充。
+---
 
-**主操作与反色面**
+## §2 色彩
 
-- `accent` / `textOnAccent`：主按钮、移动确认键、开关开启与 Checkbox 勾选的填充 / 前景；
-  同时映射 Material 的 primary / onPrimary 与 secondary / onSecondary。
-- `surfaceSelected` / `neutralSelected`：会话行、设置导航与列表选中面；会话与设置导航的选中文字用 `accent`。
-- `surfaceRaised` / `textOnRaised`：中性反色块，用于移动实体卡、提示框和导航图标按钮。
-- `markdownLink` 使用青瓷强调。成功、警告、错误独立于主操作；危险菜单项用 `dangerText`。
+**青瓷（celadon）色板**：中性瓷白 / 墨绿灰承载正文，青瓷强调色用于主操作、选中态与链接。
 
-| Token | Light | Dark |
+色板定义在 `AthenaColors`，作为 `ThemeExtension` 挂在 `ThemeData.extensions` 上，随主题切换。取色一律 `Theme.of(context).extension<AthenaColors>()!`，**不要**在组件里写死 `Color(0x...)`，也不要用 `Colors.blue` 这类 Material 具名色。
+
+### 强调色
+
+| | 浅色 | 深色 |
 |---|---|---|
-| `surface` | `#FAFBFA` | `#171B1A` |
-| `surfacePanel` | `#F0F3F1` | `#121615` |
-| `surfaceMobile` | `#FFFFFF` | `#202624` |
-| `surfaceDeep` | `#EDF1EE` | `#121615` |
-| `surfaceRaised` | `#202824` | `#E8EDE9` |
-| `surfaceButtonSecondary` | `#EDF1EE` | `#232C27` |
-| `surfaceHover` | `#E6ECE8` | `#2B3730` |
-| `surfaceSelected` | `#DEEEEA` | `#213E38` |
-| `textPrimary` | `#202824` | `#E8EDE9` |
-| `textInput` | `#202824` | `#E8EDE9` |
-| `textSecondary` | `#626E67` | `#A1AEA7` |
-| `textWeak` | `#626E67` | `#A1AEA7` |
-| `textRowLabel` | `#4F5F55` | `#B5C2B9` |
-| `dangerText` | `#9F3636` | `#EB9595` |
-| `textOnRaised` | `#FFFFFF` | `#202824` |
-| `textSecondaryOnRaised` | `#A1AEA7` | `#4F5F55` |
-| `textOnCode` | `#202824` | `#E8EDE9` |
-| `textSecondaryOnCode` | `#58675E` | `#AFBCB4` |
-| `border` | `#DCE3DE` | `#35413B` |
-| `borderStrong` | `#83998C` | `#6D8778` |
-| `divider` | `#DCE3DE` | `#35413B` |
-| `borderChrome` | `#E0E7E2` | `#2A342E` |
-| `neutralHairline` | `#E8EEE9` | `#2A342E` |
-| `neutralRule` | `#EDF1EE` | `#232C27` |
-| `neutralBorder` | `#DCE3DE` | `#35413B` |
-| `neutralBorderStrong` | `#83998C` | `#6D8778` |
-| `neutralSelected` | `#DEEEEA` | `#213E38` |
-| `neutralControlFill` | `#FFFFFF` | `#2B3730` |
-| `scrim` | `#66000000` | `#7A000000` |
-| `inputBackground` | `#FFFFFF` | `#202624` |
-| `accent` | `#0F766E` | `#65C7BC` |
+| `accent` | `#0F766E`（深青瓷） | `#65C7BC`（亮青瓷） |
 | `textOnAccent` | `#FFFFFF` | `#10251F` |
-| `statusSuccess` | `#35734A` | `#8BC89D` |
-| `statusWarning` | `#8E6019` | `#E5B975` |
-| `statusError` | `#B24141` | `#EB9595` |
-| `switchKnob` | `#FFFFFF` | `#E8EDE9` |
-| `switchTrackOff` | `#83998C` | `#6D8778` |
-| `checkboxOff` | `#718078` | `#81978A` |
-| `iconSecondary` | `#626E67` | `#A1AEA7` |
-| `iconOnRaised` | `#FFFFFF` | `#202824` |
-| `shadow` | `#202824` | `#000000` |
-| `cardHeader` | `#E6ECE8` | `#2B3730` |
-| `codeBackground` | `#EDF1EE` | `#232C27` |
-| `markdownLink` | `#0F766E` | `#65C7BC` |
-| `markdownStrikethrough` | `#626E67` | `#A1AEA7` |
-| `markdownMath` | `#202824` | `#E8EDE9` |
 
-**派生规则**
+浅色主题的强调是深青瓷，深色主题的强调是亮青瓷——两者都不是同一个色值的明度平移，而是为了让对比度达标各自选取的。
 
-- hover / ghost 填充 = `textPrimary` 5%；用户消息气泡底同样使用 `textPrimary` 5%。
-- 主按钮 hover = `surface` 8% 叠在 `accent` 上，文字始终取 `textOnAccent`，浅色悬停仍有至少 4.5:1 对比度；禁用态使用中性底与次级文字。
-- 上下文 chip 在已有底色上叠加前景色 5%，避免把 hover 与选中态混为一谈。
-- 开关开启的滑块用 `textOnAccent`，关闭时用 `switchKnob`；深色亮青瓷轨道上配深色滑块。
-- 正文 / 次级文字对画布、主按钮文字对实心底的对比度均至少 4.5:1；本表不等于所有透明叠加态的无障碍认证。
-- TUI 的品牌 teal 同步深色强调 `#65C7BC`，状态栏前景为 `#10251F`；终端背景继续由用户的终端主题决定。
+`accent` 同时挂到 `ColorScheme.primary` 与 `secondary`，让 Material 组件的强调与青瓷主操作一致；实心强调色上的前景一律用 `textOnAccent`，不要用 `textPrimary`。
 
-## Typography
+**强调色只用于主路径**：主按钮、选中控件、发送键、运行中状态。次要导航用中性反色面（`surfaceRaised`），不要渲染成青瓷——满屏青瓷等于没有强调。
 
-**字体族**
+### 表面
 
-- **Headline Font**: 系统 UI 字体（`AthenaFont.ui = null`，交给平台默认：macOS SF Pro / Windows Segoe UI），
-  显式回退链 `PingFang SC` / `Microsoft YaHei` / `Noto Sans CJK SC`。字重 w500–w600。
-- **Body Font**: 与 Headline **同一字体族**，w400。UI 正文与消息正文都以它渲染，不切换到衬线或等宽。
-- **Mono Font**: `Menlo`，回退 `SF Mono` / `Consolas` / `Cascadia Mono` / `DejaVu Sans Mono` / `monospace`
-  再回退 CJK 字体（`athenaMono()` 是唯一入口）。**只用于**代码块、行内代码、工具名与参数、终端文本、
-  技术标签（模型 id、URL、引用徽标）；正文与 UI 一律不传 `fontFamily`。
+七层中性面，按「离画布多远」递进：
 
-**层级（一个角色 = 字号 + 行盒 + 默认字重）**
+| token | 用途 |
+|---|---|
+| `surface` | 主画布 |
+| `surfacePanel` | 侧栏 / 顶栏 / 次级面板 |
+| `surfaceDeep` | 深层容器 / 未选中 chip 内层 |
+| `surfaceMobile` | 对话框 / sheet / 弹出层 |
+| `surfaceButtonSecondary` | 次级按钮底 / 中性色块 |
+| `surfaceHover` / `surfaceSelected` | hover 态 / 选中态底 |
+| `surfaceRaised` | 中性**反色**面（卡片 / 提示框 / 导航图标） |
 
-以 Medium 正文 14 / 22 为基准，UI 只使用四级：辅助 12 / 18、常规 14 / 22、标题 16 / 24、空态标题 20 / 28。
+`surfaceRaised` 在浅色下是深色（`#202824`）、深色下是浅色（`#E8EDE9`）——它是反色面，不是「更亮的表面」。放在它上面的文字用 `textOnRaised` / `textSecondaryOnRaised`，不要用 `textPrimary`。
 
-| 角色 | Token | 字号 | 字重 | 行盒 | 用途 |
-|---|---|---|---|---|---|
-| 空态大标题 | `AthenaTextStyle.hero` | 20 | w600 | 28 | 会话空态的角色名 |
-| 页 / 对话框 / 设置分区标题 | `title` | 16 | w600 | 24 | 顶栏、对话框、设置分区 |
-| 卡片 / 列表项标题与表单标签 | `section` | 14 | w600 | 22 | 卡片名、设置行标签 |
-| 菜单条目 / 选择器行 / 设置行 | `row` | 14 | w400 | 22 | 菜单项、导航行、下拉框文字 |
-| 消息正文（Markdown） | `prose` | 14（默认） | w400 | 22（≈1.571） | 助手正文、用户气泡文字；三档见下 |
-| UI 正文 / 输入框 / 列表行 | `body` | 14 | w400 | 22 | 侧栏会话行、输入框、卡片磁贴 |
-| 按钮 / chip / 可操作标签 | `label` | 14 | w500 | 22 | 按钮文字、上下文 chip |
-| 辅助说明 / 元信息 / 步骤头 | `caption` | 12 | w400 | 18 | 卡片描述、时间、分组名、工具折叠头 |
-| 消息代码 / 工具输出 | `AthenaTextSize.code` | 14（默认） | w400 | 22（≈1.571） | 行内代码、代码块与工具输出，与正文同档 |
-| 技术标签 | `mono` | 12 | 继承 | 18 | 代码语言条、工具名、模型 id 等；可编辑输入仍为 14 / 22 |
+### 文字
 
-**排版关系与规则**
+四级加两组面专用色：
 
-- **标题不放大字号**：Markdown 的 h1–h6 与正文**同号、同行盒、同字族**，只用 `bold` 区分层级
-  （`w700`）；表头与正文同理，只保留 `w600` 的加粗差异。层级交给字重与间距，不靠字号跳档。
-- **常规 UI 统一为 14 / 22**：`row` 与 `section` 同号但角色不同——前者是常规字重的行文字，后者是加粗的标题；
-  不要写成 `section + w400`。
-- 设置分区标题共用 16 / 24；分段控件使用 14 / 22，徽标与导航组标题使用 12 / 18。设置行标签与说明同为 14 / 22，以字重和颜色区分。
-- 所有文字预设都带固定行盒；Flutter 的 `height` 用行盒 / 字号换算，组件不另写比例覆盖。
-  Material `TextTheme` 同步这些预设，未显式指定样式的正文也使用 14 / 22。
-- **字号档位**：`AthenaTextSize` 定义 Small 13 / 20、Medium 14 / 22（默认）、Large 15 / 24 三组固定排版，`prose` 与 `code` 共用字号和行盒，只区分字体族。
-  `AthenaWorkspaceTextSize` 仅在消息列表内提供所选档位，用户消息、助手正文、Markdown 标题、表格、引用与列表共用，桌面与移动端范围一致。
-  行内代码、代码块与工具输出跟随同一档位；工具头、技术标签、composer、空会话 placeholder、轮次导航、审批控件、侧栏、顶栏、设置与弹出菜单不受档位影响。
-  固定值均指系统缩放前的逻辑像素；不替换或线性化系统 `TextScaler`，保留完整的无障碍文字缩放规则。
-- 禁止把整个 UI 做成等宽字体——那是对参照实现的误读；等宽只是代码与技术值的局部语言。
-- emoji 不进文档、注释与界面文案。
+| token | 用途 |
+|---|---|
+| `textPrimary` | 主文字 / 关键图标 |
+| `textInput` | 输入框文字 |
+| `textSecondary` / `textWeak` | 次级辅助文字 / 最弱文字与占位 |
+| `textRowLabel` | 列表行标签的静止色 |
+| `dangerText` | 菜单危险项与校验错误文字 |
+| `textSecondaryOnRaised` / `textOnRaised` | 反色面上的次级 / 主文字 |
+| `textOnCode` / `textSecondaryOnCode` | 代码类容器上的主 / 次级文字与图标 |
 
-## Icons
+### 边框与设置
 
-- 桌面、移动与通用组件的界面图标统一使用 `lucide_icons_flutter` 的 `LucideIcons`，由 Flutter `Icon`
-  渲染；使用默认线条字重，不混用其他图标库。颜色跟随所在控件的语义色与 `IconTheme`，沿用各组件规定的尺寸。
-- 同类功能用同一字形：Provider 为 `plug`、模型为 `cpu`、角色为 `userRound`、经验为 `brain`、
-  Skill 为 `bookOpen`、Agent 设置为 `workflow`；推理能力为 `brainCircuit`、视觉能力为 `eye`。
-- 操作图标：新增 `plus`、编辑 `pencilLine`、删除 `trash2`、关闭 `x`、确认 `check`、
-  发送 `arrowUp`、停止 `square`；展开提示用 `chevronDown` / `chevronRight`。
-- 常用语义集中在 `theme/athena_icons.dart` 的 `AthenaIcons`：`back` → `chevronLeft`、
-  `forward` → `chevronRight`、`more` → `ellipsis`、`time` → `clock`、`error` → `circleAlert`、
-  `connection` → `plug`、`dropdown` → `chevronDown`。对应入口引用这些常量，桌面与移动保持一致；
-  Provider 与连通性检查共用连接图标，模型下拉选择使用下拉图标，警告仍使用 `triangleAlert`。
-- 工具步骤与审批卡共享 `StepCard.toolIcon`，所有内置工具必须显式映射：终端为 `terminal`、
-  文件与工具输出读取为 `file`、写文件为 `pencilLine`、网页为 `globe`、搜索为 `search`，
-  后台任务为 `listTodo`、提问为 `messageCircleQuestion`；技能读取/演进共用 `bookOpen`，
-  角色列表/读取/演进/回退共用 `userRound`，经验学习/回忆共用 `brain`。未知工具以 `wrench` 兜底。
-  审批卡标题使用 15 号工具图标，颜色跟随标题的 `textPrimary`。
-- 步骤组进行中的图标跟随当前步骤：工具用对应映射、推理用 `sparkles`、压缩用 `fileArchive`；
-  结束后使用汇总图标（含工具为 `wrench`，否则为 `sparkles`）。
+- 容器轮廓用 `border`，聚焦 / 激活用 `borderStrong`，分隔线用 `divider`。窗口外壳接缝（侧栏右边界、页脚）用更轻的 `borderChrome`
+- `neutral*` 一组（`hairline` / `rule` / `border` / `borderStrong` / `selected` / `controlFill`）用于设置面板与 composer 输入容器，两者共用同一套——设置里的分隔线、控件描边、选中底与输入框是同一语言
 
-## Elevation
+### 状态与内容
 
-**深度靠表面色差与发丝线。** 浅色画布 `#FAFBFA`、侧栏 `#F0F3F1`、代码面 `#EDF1EE`、
-浮层 `#FFFFFF` 各有层次；深色画布 `#171B1A`、侧栏 `#121615`、浮层 `#202624` 同样区分。
-壳层的顶栏线用 `neutralHairline`，侧栏与页脚接缝用 `borderChrome`，容器轮廓用 `border`。
+- 状态色 `statusSuccess` / `statusWarning` / `statusError`。**深色主题的状态色是提亮的**，不要直接用浅色的值
+- 代码块、引用块、工具输出的底用 `codeBackground`，它们的语言条 / 表头 / 脚注头用 `cardHeader`
+- Markdown 专用：`markdownLink` / `markdownStrikethrough` / `markdownMath`
 
-**圆角收敛为四档**（`AthenaRadius`）：4 用于徽标、行内代码、勾选框；8 用于按钮、输入框、列表行；
-12 用于卡片、代码块、composer、菜单；16 用于对话框、设置面板与移动底部面板的上角。
-胶囊 chip、发送键、头像与圆形状态点保留角色形状。菜单外层 12、内边距 4、行圆角 8，嵌套轮廓一致。
+### TUI 映射
 
-**阴影共用三条配方**（基色取 `colors.shadow`，随主题变化）：
+终端是深色底，背景不设色（用终端默认），只靠文字色与边框表达层级。TUI 的 `AthenaColors` 取青瓷强调 `#65C7BC`（与 GUI 深色主题同一个值），消息卡片用**左侧竖线分色**替代文字前缀标记：
 
-- **`AthenaShadow.raised`**：基色 4% / blur 8 / offset (0, 2) 叠 3% / blur 2 / offset (0, 1)。
-  桌面与移动端 composer 共用；推理强度控件内的滑块也使用这一档。
-- **`AthenaShadow.overlay`**：基色 8% / blur 16 / offset (0, 4) 叠 4% / blur 3 / offset (0, 1)。
-  用于右键与选择菜单、悬浮预览卡、加载提示，投影贴近容器。
-- **`AthenaShadow.modal`**：基色 10% / blur 24 / offset (0, 8) 叠 5% / blur 6 / offset (0, 2)。
-  桌面对话框与设置面板共用，配合遮罩表达模态层级。
-- 深色菜单、预览、加载提示、对话框与设置面板另加 1px `border` 轮廓；通过 `foregroundDecoration`
-  绘制，不增加内边距、不改变菜单宽度或锚点位置。
+| 消息类型 | 竖线色 |
+|---|---|
+| 用户 | 青瓷 `#65C7BC` |
+| 助手 | 白（最亮，主要内容） |
+| 系统 | 灰（弱化） |
+| 推理 / 工具调用 / 工具结果 | 黄 / 蓝 / 绿 |
+| 错误 / 已取消 | 红 / 灰 |
 
-**不用阴影的地方同样有规则**：静态容器（权限卡、提问卡、排队消息面板、标准输入框）用 **1px 边框 + 平涂底色**；
-代码块、引用块、脚注区**连边框都不要**，靠 `codeBackground` 与画布的底色差自成一层，语言条再用
-`cardHeader` 提亮一档划分标题与正文。
+---
 
-**交互深度**
+## §3 排版
 
-- 全局禁用 Material ripple（`splashFactory: NoSplash.splashFactory`）；也不做 focus ring、不做光晕。
-- 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 8%）+ 按压缩放 0.975
-  （按下用 `AthenaMotion.fast` / `easeOut`、回弹用 `AthenaMotion.hover` / `easeOutBack`，
-  仅用于 composer 内的压缩按钮；回弹位移只有 2.5%，不走为"大位移"准备的慢档）。
-- 过渡节奏：时长集中在 `AthenaMotion`（`theme/athena_tokens.dart`），**按感知档位分级，
-  不按组件分级**——不要为某个组件新加一个贴着自己名字的常量。选档只看两件事：
-  这是不是交互反馈（是 → `hover`），要不要跟手（指针已移开、收得更快 → `fast`）。
+### 字体族
 
-  | 常量 | 值 | 用途 |
-  |---|---|---|
-  | `AthenaMotion.fast` | 100ms | 退场与按压：菜单 / 预览卡退场、按压缩放 |
-  | `AthenaMotion.hover` | 150ms | 交互反馈全档：hover 底色、描边变色、分段切换、行底变化、图标两态、浮层进场、聚焦变色 |
-  | `AthenaMotion.slow` | 240ms | 位置与视口迁移：滚动跳转、回弹 |
-  | `AthenaMotion.cycle` | 1800ms | 持续循环的装饰动画（工具头 shimmer） |
-  | `AthenaMotion.linger` | 3s | 瞬时提示停留多久（"已复制"复原、轻提示消失），不参与快慢取舍 |
+| | 取值 | 用途 |
+|---|---|---|
+| UI 与正文 | `null`（平台默认：macOS SF Pro / Windows Segoe UI，含 CJK 回退） | 侧栏、设置、按钮、正文 |
+| 等宽 `athenaMono` | `Menlo` + 回退链 | 代码、工具参数与输出、技术标签 |
 
-  差值在 20ms 以内的档（如 140 与 150）人眼分不出，共用一档即可；调用处**不写**
-  `Duration(milliseconds: ...)` 字面量。**不并入** `AthenaMotion` 的只有三类，都另有出处：
-  `StatusDot.cycleDuration`（2400ms，侧栏常驻、刻意比 shimmer 更慢）、
-  `TurnIndicator.previewDelay`（150ms，是延迟不是过渡，是"停留多久算明确意图"的阈值）、
-  `MessageActionBar` 的三段显隐时序（100/120/60ms，是一个动画的参数组，硬映射会破坏时序）。
-- 遮罩：设置面板 `#66000000`（40% 黑）；遮罩只吸收点击、**不关闭面板**（编辑区有显式 Save，误触不应丢草稿）。
-- 设置面板内容区顶部保留固定 60 高标题带（`AthenaSettings.paneTopPadding`），返回链接与关闭按钮保持固定；底边使用 1 逻辑像素的 `neutralHairline`，与工作区标题栏一致。滚动视口从标题带下方开始并裁剪正文，无返回链接的页面同样保留此区域；列表顶部内边距为 24（`AthenaSettings.panePadding`），让首项内容与底边分隔线留出空间。底部保存栏固定，不随正文滚动。
+**唯一入口是 `athenaMono()`。** UI 与正文一律不传 `fontFamily`，走主题里的系统字体。
 
-## Components
+侧栏、设置、按钮、正文都是**比例字体**——把整个 UI 做成等宽是对它的误读。等宽只属于代码与终端。同理，正文里的技术标签走 `athenaMono`，但普通正文绝不走。
 
-**Buttons**
+### 四级字号
 
-- **Primary（`AthenaPrimaryButton`）**：填充 `accent`，前景 `textOnAccent`，圆角 8（`control`），
-  内边距 `16 × 9`、高 40（`.small` 为 `12 × 5`、高 32），文字 `label` 14 / 22 / w600，图标 14。
-  hover 只把填充微压暗/提亮（`surface` 8% 叠在实心底上），**不做光晕、不做位移**；禁用态填 `surfaceButtonSecondary`、
-  文字 `textSecondary`。它是主路径操作的唯一来源（确认键、允许一次等）。
-- **Secondary（`AthenaSecondaryButton`）**：线框——`border` 1px + 透明底，圆角 8，前景 `textPrimary`；
-  内边距 `16 × 8`、高 40（`.small` 为 `12 × 4`、高 32）。hover 底色变 `surfaceHover` 并把描边加深到 `borderStrong`；禁用态文字降为 `textSecondary`。
-- **Text button（`AthenaTextButton`）**：无描边无底，高 32，`label` 14 / 22 / `textSecondary`，hover 填 `surfaceHover`、
-  文字转 `textPrimary`，圆角 8（移动端页面里的次要动作，如新增模型）。
-- **Ghost icon button（`AthenaGhostIconButton`）**：默认盒 28、图标 14，静止无底，hover 填 `textPrimary` 5%，
-  圆角 8；设置面板里的关闭 / 新增键、行尾 `⋯` 键（盒 24）与对话框关闭键都用它。
-- **Icon-only（composer 内）**：22 × 22、图标 16，圆角 4（嵌套档小方块），按下缩放 0.975。
-- **反色图标按钮（`AthenaIconButton`）**：`surfaceRaised` 底 + 16 图标，圆角 8，内边距 12——
-  移动端页头动作按钮（同步、新增、返回）用它，内边距常按需收窄。
+以 Medium 正文 **14 / 22** 为基准：
 
-**Inputs**
+| 角色 | 字号 / 行盒 | token |
+|---|---|---|
+| 空态标题 | 20 / 28 | `AthenaFontSize.hero` |
+| 页 / 对话框 / 设置分区标题 | 16 / 24 | `title` |
+| 常规 UI、输入框、侧栏行、消息正文 | 14 / 22 | `body` / `prose` |
+| 辅助说明、元信息、分组标签 | 12 / 18 | `caption` |
+| 技术标签（等宽） | 12 | `mono` |
 
-- **标准输入（`AthenaInput`）**：平涂 `inputBackground` + 1px `border`，圆角 8，内边距 `12 × 10`，
-  文字 `body` 14 / 行高 22 / 色 `textInput`，占位符 `textSecondary`，光标高 15 / 宽 1.5。
-  **聚焦使用 1px `accent` 边框，不做焦点环、不做光晕**；失焦 / 点外部即回调 `onBlur`。
-- **设置面板输入（`AthenaSettingsTextField`）**：高 36、圆角 8、描边 `neutralBorder`（聚焦 `accent`）、
-  文字 14；`mono: true` 用于 URL 与模型 id；密钥型默认遮住、右端一枚 24 盒的 ghost 眼睛键切换明文。
-  它比全站标准输入矮一档，为的是与同一行的其他设置控件齐平。
-- **多行输入（`AthenaSettingsTextArea`）**：同一套描边与圆角，最少 6 行、随内容增高，使用 14 / 22。
-- **搜索框（`AthenaSettingsSearchField`）**：高 36、圆角 8、白底 + 1px `neutralBorder`，图标 14 / `textWeak`，
-  聚焦描边用 `accent`；有输入时右端出现 12 号清除叉。
-- **桌面 / 移动 composer**：`surfaceMobile` 底、圆角 12、`raised` 柔阴影；1px `neutralBorder` 描边，
-  聚焦切换为 `accent`，过渡 150ms（`AthenaMotion.hover`），不改变边框粗细。
+角色可以共用字号，通过**字重**区分。
 
-**Chips & Tags**
+### 文字样式预设
 
-- **筛选 chip（`AthenaTag` / `AthenaTagButton`）**：**胶囊**（圆角 999）+ 1px 描边 + 平涂底，
-  未选中底 `surfaceDeep` / 描边 `border` / 文字 `textSecondary` w500；选中底 `surfaceSelected` /
-  描边 `borderStrong` / 文字 `textPrimary` w600。选中态靠"提亮底色 + 加粗文字"表达，
-  **不做明暗反转的实心填充**。大档 `12 × 6` / `label` 14 / 22，小档 `8 × 3` / `caption` 12。
-- **上下文 chip（`AthenaContextChip`，composer 内）**：小圆角方块（圆角 4）、**无描边**，
-  静止填 `surfaceButtonSecondary`，hover 叠前景色 5%；左侧常带 13px 图标，标签最宽 200 并省略；
-  尾随控件静止透明、hover 才显形（占位常驻 + `IgnorePointer`，避免 hover 进出行宽跳动）。
-- **聊天历史入口（`DesktopContextSelector`）**：上下文条最右的无填充 chip，开启用 `AthenaIcons.time`（Lucide `clock`）+
-  `Context on`，关闭用 `clockFading` + `Context off`，均沿用 13px 图标与中性前景色，无下拉箭头。
-  点击使用统一菜单向上展开，间隔 8、右边对齐 chip；内容宽 280（另加面板两侧各 4 内边距），
-  两项为 `Use chat history` / `Current message only`，附说明与当前项勾选，选择后立即保存并关闭。
-  原 Configure 对话框与桌面 composer 的 Temperature 设置入口移除。
+`AthenaTextStyle` 的每个预设 = 字号 + 默认字重 + **所属层级的行盒**。
 
-**Cards & Containers**
+| 预设 | 字号 / 字重 |
+|---|---|
+| `hero` | 20 / w600 |
+| `title` | 16 / w600 |
+| `section` | 14 / w600 |
+| `row` | 14 / w400 |
+| `prose` | 14 / w400 |
+| `body` | 14 / w400 |
+| `label` | 14 / w500 |
+| `caption` | 12 / w400 |
 
-- **助手消息没有卡片底板**：内容直接铺在画布上，卡片级内边距上下各 16、左右 4；轮次之间留 16。
-- **后台任务完成通知**：运行中交给 Agent 的状态通知不生成用户气泡或独立通知卡；读取输出与后续回答复用当前 run 的工具卡和助手正文。会话空闲时的自动汇报沿用普通助手消息与运行指示，已确认的运行中通知不再另起汇报。
-- **用户消息气泡**：右对齐，底 `textPrimary` 5%、圆角 12、内边距 `12 × 8`、最大宽度为列宽的 **77%**，
-  文字与助手正文共用所选 `AthenaTextSize.prose`，默认 14 / 行高 22。图片是输入内容的一部分，渲染在文字之前。
-- **弹窗卡片（权限审批 / 提问）**：`surfaceMobile` 底 + 1px `border` + 圆角 12 + 内边距 16，
-  非模态、随会话渲染在消息列表里；桌面按钮行右对齐（次要在左、主操作最右），移动改为全宽堆叠、主操作在最上。
-  工具按完整调用处理审批：手动模式问人、AI 模式先审核再按需问人、所有权限模式直接放行；
-  读取、搜索和后台汇报调用也遵循此流程，显式 deny 与已有授权优先处理。
-  提问工具直接呈现提问卡，不叠加审批卡；复合命令作为完整调用展示，不拆成多个子命令审批卡。
-- **代码块 / 脚注区**：`codeBackground` 底 + 圆角 12，无边框；语言条用 `cardHeader` 圆角只取上两角，
-  12 号 mono + 12 图标 + 40% 透明度的复制键；代码正文取 `AthenaTextSize.code`，默认 14 / 行高 22、内边距 `12 × 8`。
-- **行内代码 / 引用徽标**：`codeBackground` 底 + 圆角 4，行内代码取 `AthenaTextSize.code`，字号与行高和正文一致；引用徽标字形 10，属徽标尺寸而非文字档位。
-- **排队消息面板**：`inputBackground` 底 + 1px `border` + 圆角 12 + 内边距 12，头部 `label` + `caption`，
-  列表最多 120 高、逐条两行省略。
-- **移动端卡片**：网格实体卡（Skill / Sentinel / Experience）用**反色底** `surfaceRaised` + 圆角 12 +
-  内边距 12，标题 `section`、副标题 `caption`，均为 `textOnRaised`；首页卡片行 `160 × 160`、圆角 12、
-  底 `surfaceButtonSecondary`。
-- **详情/引用块（References）**：圆角 12 + `codeBackground` + 内边距 16，首行 `w600`、逐条 `textPrimary`。
+调用方只需补颜色：`AthenaTextStyle.section.copyWith(color: colors.textPrimary)`。**字重与预设不同时才覆盖 `fontWeight`**。
 
-**Menus & Popovers**
+每个预设都携带自己的行盒，**组件不再各自覆盖比例行高**——这是「同档复用」在排版上的落点：行盒属于层级，不属于组件。
 
-- 面板：`surfaceMobile` + 圆角 12 + `AthenaShadow.overlay`，内边距 4，默认宽 120（选择菜单可传更宽，
-  子菜单 168），越界时四边各留 8 收回窗内，碰到窗底改向上展开。
-- 条目：内边距 `12 × 8`（单行高 38，两行由内容撑开），圆角 8，hover 填 `surfaceHover`，
-  文字 `row` 14；危险项用 `dangerText`；禁用项文字降为 `textSecondary`；带图标时图标 16、间距 10。
-  三种形态由同一个 `DesktopContextMenuTile` 表达，不要再手搓：**单行**（只给 `text`）、
-  **带说明的两行**（加 `description`）、**选择项**（加 `selected`：标题、可选
-  `description`、可选 `badge` 跟在标题后、行尾常驻 16 的勾选槽位，并声明「按钮 + 选中」语义）。
-  `badge` 属于标题行（省略号在它之前生效），`trailing` 属于行尾（调用方给的内容原样贴边）；
-  另 `muted` 只弱化文字、仍可点，`enabled: false` 才连同点击与 hover 一起禁用。
-- 分组小标题 `caption` 12 / `textWeak`（内边距 12/8/12/4）；分组之间用 1px `border` 分隔线，上下各留 4。
-- 浮层不在 Material 之下，文字样式必须写全（含 `decoration`）——这是浮层里常见的漏色点。
+### 会话字号档位
 
-**Dialogs & Sheets**
+设置里的 Text size 只作用于**消息列表**（正文与代码）——composer、placeholder、侧栏、顶栏、设置与菜单均不受影响：
 
-- **桌面对话框（`AthenaDesktopDialog`）**：`surfaceMobile` 底 + 圆角 16 + `AthenaShadow.modal`，
-  内边距 24，宽 320–520；标题 `title` 16 / 24 / w600、`title` 与内容之间留 16；
-  按钮行右对齐、间距 8（次要在前、主操作在后）。确认、输入与表单模态共用这个外壳；默认模型列表沿用相同圆角、阴影与深色轮廓。
-- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底、上角 16（主题统一）；确认面板主/次按钮
-  **全宽堆叠、主操作在最上**，用全站的 `AthenaPrimaryButton` / `AthenaSecondaryButton`
-  （`child: Center(...)` 撑满，不要自己画 `Container`）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
-- **加载提示**：`surfaceMobile` + 圆角 12 + `overlay` 阴影，16 × 16 描边 2 的进度环 + `caption` 文字。
-- **轻提示**：桌面是左下角浮层（`surfaceMobile` + 圆角 12 + 描边取状态色 40% + 内边距 `16 × 12`，
-  图标 16 + `caption`，3 秒后自动消失）；移动用 floating SnackBar，同样是浮层底色 + 状态图标。
+| 档位 | 字号 / 行盒 |
+|---|---|
+| Small | 13 / 20 |
+| Medium（默认） | 14 / 22 |
+| Large | 15 / 24 |
 
-**Rows & Lists**
+各档使用逻辑像素，**不替换系统的无障碍 `TextScaler`**。由 `AthenaTextSize` 提供 `prose` 与 `code` 两个样式。
 
-- **侧栏会话行（`DesktopMenuTile`）**：**固定高 32**（不靠内容撑，避免 hover 出现 `⋮` 时行高跳动）、
-  圆角 8、水平内边距 11；文字 `body` 14 / 行高 22，静止 `textRowLabel`、选中 `accent`；
-  hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点，
-  **不在跑时是 1px 描边的圆环、运行中是实心点**（形状本身也是一条不依赖颜色的状态线索），
-  颜色档位：静止 `iconSecondary` 45%、hover 75%、重命名中 `statusWarning`；运行中 `accent` 实心
-  且带**色相循环**：色相每 2400ms 绕一圈，明度按"相对亮度等于 `accent`"反解，所以整圈对比度都在
-  accent 那一档（浅色对画布约 5.3:1，允许 8bit 量化误差）——不这么做的话沿用同一 HSL 明度的
-  黄绿相位在浅色画布上只有 1.5:1，圆点会淡到看不见；`disableAnimations` 时停在 `accent` 原色。
-  尾部 `⋮` 只在 hover 出现。
-- **设置行（`AthenaSettingsRow`）**：上下内边距 16、左右自带 8 的 `rowInset`（可点行的 hover/选中底比文字列宽一圈，
-  文字仍与分区标题对齐），圆角 8；hover 底 `neutralRule`、选中底 `neutralSelected`、归档项文字降为 `textSecondary`；
-  标签 14 / w600、说明 14 / w400 / `textWeak`、校验错误 `dangerText`；标签后的徽标
-  （圆角 4 + `surfaceButtonSecondary` + `caption` 12，内边距 `5 × 1`）；左侧状态点直径 6；Sentinel 列表直接展示名称与说明，不放头像；
-  行尾控件与标签之间留 24，钻取箭头 14 / `iconSecondary`。
-- **设置导航行（`AthenaSettingsNavItem`）**：高 36、圆角 8、行距 4、左内边距 12 / 右 8，
-  图标 16 + 间距 12，标签 14；选中换底 `neutralSelected` 与色 `accent`（w500），**不靠加粗**避免整列跳动。
-- **移动端设置行（`MobileSettingTile` / `MobileGridTile`）**：`ListTile` + 16 号图标 + 右端箭头；
-  网格卡见 Cards。
-- **移动端表单字段（`AthenaFormField`）**：标签 16 / 24 / w600（复用 `AthenaFormTileLabel.large`，
-  可用 `trailing` 挂"生成"星标）→ **12** → 控件（通常是 `AthenaInput`）→ 4（或 `descriptionGap: 8`）
-  → 说明 `caption` / `textSecondary`。它是 `AthenaSettingsRow` 的**纵向版本**，
-  **两者不共用实现**——桌面行是「左标签 + 右控件」的横向布局、绑 36 高的控件尺度，
-  把它的几何带进移动端会得到一列挤在一起的控件。字段之间的间距（16 / 20 / 32）由调用方写
-  `SizedBox`，不属字段内部。`error` 给值时取代说明并转 `dangerText`。
-- **hover 骨架（`AthenaHover`）**：桌面 hover 的公共实现——状态机 + `MouseRegion` +
-  `GestureDetector`，**装饰由 `builder(context, hover)` 自己画**（各处底色 / 描边 / 时长差异太大，
-  不做成参数）。`cursor` 默认 `null` 表示不设置、交给父级（消息卡片这类"hover 只显形操作条、
-  本身不可点"的容器用）。**静止态不要写 `Colors.transparent`**：RGB 是黑，`AnimatedContainer`
-  从它插值到浅色会先闪一下深色——用目标色的 `withValues(alpha: 0)`；这条说明只在
-  `widget/hover.dart` 留一份。用 `Material` + `InkWell` 的交互（如 `StepHeader`）、
-  hover 由父级分发的（`MacWindowButton`）、有多个正交状态的（`TileWithSubmenu`）不套它。
-- **步骤 / 工具行（`StepHeader`）**：无底板、直接坐在页面上，前景 `textSecondary`，图标 15、圆角 8，
-  文案 `caption` 12（技术值是 mono 12）；运行中带一条流动 shimmer（前景色 45% → 95%，
-  `disableAnimations` 时自动关闭）；展开正文最多 10 行 mono、`Error:` 前缀转 `statusError`。
-  GUI 单步、分组进行中的工具头、展开后的工具项及审批卡标题共用 `StepCard.toolLabel`：
-  参数 JSON 尚未完整，或 `call_description` 缺失/为空时显示 `Using a tool`；解析到有效描述后
-  显示描述，工具完成后仍保留描述。头部不展示原始参数、关键参数或 JSON；完整参数只在审批详情展示。
-  分组结束后的外层头部继续显示步骤汇总。
-- **消息操作条（`MessageActionBar`）**：排在正文**下方**（不浮在右侧），常驻占位、默认全透明；
-  按钮 24 × 24、图标 16 / `iconSecondary`、圆角 8、hover 填 `textPrimary` 5%。
-  本轮未结束的助手消息不显形（但控件不摘下树，否则收尾瞬间卡片高度跳 28）。
+### 文字上的例外
 
-**Navigation & Shell**
+- **Markdown 标题与正文同号、同行高、同字族**，只以字重区分。层级交给字重与间距，不靠放大字号
+- **引用徽标**（`[1]` 一类）用 `athenaMono(fontSize: 10)`，比 mono 档小 2。这是徽标尺寸，不是文字档位——不要因为看到 10 就在别处也开一个新档
 
-- **顶栏**：高 46；左侧 288 与侧栏同色并自带右边线（`borderChrome`），右侧工作区上方只有一条
-  `neutralHairline` 底线（不画满整宽，否则会横穿侧栏竖线）；标题 `title` 16 / 24 / `textPrimary`，左缩进 12。
-- **侧栏**：宽 288、底 `surfacePanel` + 右侧 `borderChrome` 1px；会话列表内边距 `8 / 8 / 8 / 12`，
-  分组标题 `caption` 12 / w600 / `textWeak` / 字距 +0.3（上 14 下 6）；分组之上是导航行（`New chat`，
-  行尾 hover 才出现快捷键提示 `⌘N` / `Ctrl+N`，`caption` / `textSecondary`）；底部常驻页脚一整行可点，
-  页脚上边 `borderChrome`、内边距 8。
-- **内容列**：消息与 composer 共用同一条 768 定宽列并居中，列内左右再加 4，窗宽不足 832 时退回两侧各 32 的留白。
-- **待发送图片**：输入框边框内、文字上方横排 48 × 48 缩略图，间隔 8、圆角 `inline`；读取和解码期间用 `inputBackground` 底、Lucide 图片图标及 `accent` 加载圆环占位，不显示阶段名称或虚构百分比。失败改为 `statusError` 图片错误图标，悬停显示说明；右上角移除按钮始终可用，解析中与失败项未移除时禁用发送，停止生成按钮仍可用。
-- **轮次指示器**：贴消息列左留白（距消息区左缘 12），一条 = 一轮；条高 4、命中行高 12、整列最多 20 条一页，
-  宽上限由可用留白算出（留白不足 12 就不显示）；静止长为上限的 50%、hover 那条最长、其余按距离线性递减
-  （相隔 4 条回到静止）；颜色只有两档——视口当前轮与 hover 轮用 `textRowLabel`，其余 `iconSecondary` 45%；圆角胶囊。
-- **悬浮预览卡（`ChatPreviewCard`）**：挂在轮次条右侧 8、宽 248、圆角 12 + `overlay` 阴影、
-  内边距 `12 / 10 / 12 / 12`；第一行 `body` 14 / 22 / w600 / `textPrimary` 单行省略，第二行 `caption` 12 /
-  `textSecondary` 最多 3 行；hover 条 150ms 后弹出，卡片不参与命中测试（避免把 hover 从条上抢走）。
+---
 
-**Switch / Checkbox / Segmented / Select**
+## §4 几何
 
-- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 8（`control`）、内边距 3，滑块直径 12；
-  开启轨道 `accent` 配 `textOnAccent` 滑块，关闭轨道 `switchTrackOff` 配 `switchKnob` 滑块。
-- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 4；未选中 1px `checkboxOff` 描边，选中块填 `accent` +
-  11 号 `textOnAccent` 对勾；提问卡的单选 / 多选标记使用同样配对。
-- **分段控件（`AthenaSettingsSegmented`）**：轨道 `neutralRule` 无描边、高 36、圆角 8；
-  选中块是**`neutralControlFill` + 1px `neutralBorder` 并铺满轨道高**（不是内缩小块）；
-  选中文字 14 / 22 / w600 / `textPrimary`，未选中 14 / 22 / w400 / `textWeak`，每段水平内边距 16。
-- **下拉（`AthenaSettingsSelect`）**：白底 + 1px `neutralBorder`（hover 加深到 `neutralBorderStrong`）、
-  高 36、圆角 8、文字 14 / 22、右端 chevron 14 / `textWeak`；控件宽度三档：窄 120 / 常规 316 / 宽 360。
+### 圆角
 
-**Empty & Status**
+按**角色**分四级，同类组件共用数值：
 
-- 会话空态：直接以 `hero` 20 / 28 / w600 名称起头，不展示角色头像或替代图标 →
-  10 间距 → `body` 14 / 22 / `textSecondary` 说明 → 18 间距 → 胶囊标签（`surfaceButtonSecondary` + `label` 14 / 22 + `12 × 6`）。
-- 设置面板空态：28 号图标 + 12 间距 + 标题 14 / w600 + 4 间距 + `textWeak` 提示（最大宽 360）+ 16 间距 + 动作按钮。
-- **错误呈现**：页面初始化失败走 `AthenaDialog.error`（一次性提示，不打断页面）。全库**没有**子树级
-  错误边界组件——Flutter 的构建期异常走全局 `FlutterError.onError` / `ErrorWidget.builder`，
-  组件内部接不住子树的 build 异常；移动端页面各自的 `try/catch` 已经是全部兜底。
-- 桌面窗口左上角的三枚圆形按钮（红 / 橙 / 绿，取自 Material `Colors.red/orange/green`，实心圆 + 2 内边距 +
-  10 号图标）是**平台外壳例外**，不属于语义色板，不要在其他位置引用这三个色值。
+| 值 | token | 组件 |
+|---|---|---|
+| 4 | `xs` / `inline` | 徽标、行内代码、勾选框 |
+| 8 | `row` / `control` | 列表行、按钮、输入框 |
+| 12 | `container` / `menu` / `composer` | 卡片、代码块、菜单、输入区 |
+| 16 | `panel` | 对话框、设置面板、底部面板 |
+| 999 | `pill` | chip、发送按钮、头像 |
 
-## Do's and Don'ts
+嵌套菜单的圆角组合是「外层 12 + 内边距 4 + 行 8」——外层容器比内层行大一级，视觉上才是同心圆。
 
-- **Do** 所有颜色、几何、字号只从 `theme/athena_colors.dart`（颜色，走 `ThemeExtension`）与
-  `theme/athena_tokens.dart`（几何 / 排版 / 阴影）取用；设置面板的实测几何在 `theme/athena_settings.dart`。
-  页面上出现裸 `Color(0x…)` 或 `Colors.xxx` 就是漏 token 的信号。
-- **Do** 需要 token 之外的颜色时**从 token 派生**，不要另写色值：目前唯一的派生点是运行中状态点的
-  色相循环（`StatusDot.colorAt`），它取 `accent` 的色相 / 饱和度，明度由"相对亮度等于 `accent`"反解，
-  因此整圈对比度与 `accent` 相同。
-- **Do** 用"同色不同 alpha"表达 hover 与选中：填充取前景色 5%（ghost）、主按钮 hover 取 `surface` 8%。
-  在 `AnimatedContainer` 里**永远不要**用 `Colors.transparent` 参与插值——它的 RGB 是黑，
-  中途会渲染成半透明深灰，表现为 hover 先闪一下深色；请用目标色的 0 透明度版本。
-- **Do** 让状态不止靠颜色：运行中 / 重命名中同时有状态点与文字（状态点自己再分实心 / 圆环两形），
-  错误在正文里带 `Error:` 前缀，危险菜单项用 `dangerText` 而非直接把 `statusError` 当文字色。
-- **Do** 圆角只用 4 / 8 / 12 / 16 四档（胶囊 999 仅限筛选 chip、头像、轮次条）；
-  浮层只从 `AthenaShadow.raised` / `overlay` / `modal` 三条配方里取，静态容器用 1px 边框而不是阴影。
-- **Don't** 引入第二主色。GUI 的强调为青瓷 `accent`，TUI 的品牌 teal 与 GUI 深色强调同值；
-  成功、警告、错误仅表达结果，不能拿来替代主操作色。
-- **Don't** 给助手消息加气泡或卡片底板，也不要给容器加渐变、光晕、focus ring、ripple，或 20 以上的大圆角——
-  Athena 按组件角色分配圆角（最小 4、控件 8、容器 12、大面板 16），层级靠字重、间距与底色差，不靠放大字号或加深投影。
-- **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FAFBFA`、
-  文字 `#202824`，深色画布 `#171B1A`）；纯黑只出现在深色主题的阴影基色里。
-- **Don't** 在桌面端做 iOS 式滚动回弹。滚到底就停住（`ClampingScrollPhysics`），不要先拉出一段空白再弹回去——
-  桌面三平台（macOS / Windows / Linux）统一，移动端保留系统默认回弹。口径落在 `AthenaScrollBehavior`
-  （`theme/athena_scroll_behavior.dart`），由 `main.dart` 的 `MaterialApp.router(scrollBehavior:)` 注入；
-  不要在单个 ScrollView 上零散写 `physics:`（`NeverScrollableScrollPhysics` 这类功能性禁用除外）。
-- **Don't** 让文档与代码脱钩：本文件已按 Overview / Colors / Typography / Elevation / Components /
-  Do's and Don'ts 六节重排，源代码注释里对旧章节号（DESIGN.md §2 / §3 / §4）的引用需要在
-  下一批改动里同步更新（`athena_settings.dart`、`athena_tokens.dart`、`widget/dialog.dart`、
-  `widget/markdown.dart`、`component/sentinel_placeholder.dart`、`component/permission_card.dart`）；
-  改动视觉行为时同步本文件，并核对文中引用的常量仍然存在。
+### 间距
+
+`AthenaSpace`：`xs` 4 / `sm` 8 / `md` 12 / `lg` 16 / `xl` 20 / `xxl` 24 / `xxxl` 32。另有 `sidebar` = 288（侧栏与画布的分界线在逻辑 287，即宽 288）。
+
+### 设置面板
+
+设置面板的几何以 **macOS 浅色主题整窗截图实测**为起点（1296×783 逻辑窗口，2x Retina），按像素量取后折半成逻辑值。以下取自 `AthenaSettings`：
+
+| 项 | 值 |
+|---|---|
+| 面板最大宽度 | 1024（实测 1296 宽窗口左右各留 135） |
+| 上下留白 | 44 |
+| 面板圆角 | 16（`AthenaRadius.panel`） |
+| 浅色遮罩 | 压 40% 黑 |
+| 导航宽（含 1px 分界线） | 192 |
+| 导航内边距 / 行左内缩 | 12 |
+| 导航行高 / 行距 | 36 / 4 |
+| 导航图标 / 图标与标签间距 | 16 / 12 |
+| 搜索框高 | 36 |
+| 内容区左右内边距 | 24 |
+| 行块外扩 | 8 |
+| 内容区顶部标题带 | 60 |
+| 内容区底部内边距 | 40 |
+| 分区标题与首控件间距 | 28 |
+| 分区之间间距 | 40 |
+| 行上下内边距 | 16 |
+| 控件高 | 36 |
+| 控件列宽（常规 / 窄 / 宽） | 316 / 120 / 360 |
+| 行内按钮高 | 32 |
+
+**行块外扩 8** 是个容易被改错的规则：可点行的 hover 底、选中底比文字列**每边宽 8**（列表行块比正文列宽一圈），所以内容区实际按 `panePadding − rowInset` 内缩，每一行自带 `rowInset` 的水平内边距——文字列仍落在 24 的位置上。
+
+**顶部标题带 60** 不是随手取的：关闭键独占面板顶部一条，若按旧值 24，首个分区标题会与关闭键同一水平线，分区标题右侧的控件（如 Provider 的启用开关）会直接压在关闭键上。
+
+### 设置面板的分组
+
+设置行统一用「标题 + 可选说明 + 右侧控件列」的形状：
+
+- 行标签与说明**同号**（14），标签 w600、说明 w400；说明用 `textSecondary`
+- 标签与说明间距 4
+- 分隔线、控件描边、选中底走 `neutral*` 一组（与 composer 共用）
+- **一个分区放一组同类设置**。别把三个各只有一行的设置拆成三个分区——分区标题与行标签会互相重复
+
+### 设置的保存契约
+
+两种契约，按内容的性质选：
+
+| 契约 | 用于 | 理由 |
+|---|---|---|
+| **改了即存**（无页面级 Save） | Provider、Default models、General、Agent | 分段控件点选即生效；数字与密钥在失焦或回车时提交，非法值就地报错并回退 |
+| **攒着 + 底部粘性保存栏**（Discard / Save）| Sentinel、Skill | 提示词往往要改很久，逐字段失焦保存会把半成品写进磁盘 |
+
+设置面板的遮罩**只吸收点击、不关闭面板**——编辑区有显式 Save 时，误触遮罩会丢掉未保存的编辑。关闭走右上角的 X 或 `Esc`。
+
+---
+
+## §5 层次与阴影
+
+**静态卡片无阴影。** 靠底色与细线分层。
+
+只有真正「浮起」的容器才投阴影，分三档（`AthenaShadow`）：
+
+| 档位 | 用途 | 强度 |
+|---|---|---|
+| `raised` | composer、控件内的滑块 | 最贴近表面 |
+| `overlay` | 弹出菜单、悬停预览、加载提示 | 小浮层 |
+| `modal` | 对话框、设置面板 | 最重，配合遮罩表达层级 |
+
+三档都是**双层柔阴影**（大模糊 + 小偏移的贴身层）。深色浮层另加 1px 轮廓——不占布局空间，避免深色面上浮层边界糊进背景。
+
+阴影基色取 `colors.shadow`，不要用 `Colors.black`：浅色主题下阴影带画布的墨绿灰，深色主题下才用纯黑。
+
+---
+
+## §6 动效
+
+**按感知档位分级，不按组件分级。** 五个档位就是人眼能分辨的快慢：
+
+| token | 时长 | 用途 |
+|---|---|---|
+| `fast` | 100ms | **退场与按压**——指针已经移开或按下的那一刻，用户已经在看下一个目标 |
+| `hover` | 150ms | **交互反馈**：hover 底色、描边变色、分段切换、行底变化、图标两态切换、浮层进场、聚焦变色 |
+| `slow` | 240ms | **位置与视口迁移**：滚动跳转到某一轮、回弹（`easeOutBack`） |
+| `cycle` | 1800ms | **持续循环**的装饰动画绕一圈（工具头 shimmer） |
+| `linger` | 3s | **瞬时提示在屏上留多久**（"已复制"的复原、桌面轻提示消失） |
+
+选档只看两件事：**这是不是交互反馈**（是 → `hover`），**要不要跟手**（指针已移开、收得要更快 → `fast`）。
+
+**交互反馈一律用 `hover`（150ms）。** 全站同档不只是好看——指针划过一串不同控件时，同档才有统一手感。
+
+`linger` 不是过渡时长，是**可读性下限**：短于它用户来不及看清。本档不参与快慢取舍。
+
+**不要**为某个组件新加一个贴着自己名字的常量。差值在 20ms 以内的两档（如 140 与 150）人眼分不出，共用一档即可。
+
+`cycle` 有一个刻意的例外：状态点的色相循环是 2400ms，写在 `StatusDot.cycleDuration`。侧栏是常驻区域，圆点转太快会把注意力从正文抢走——这个差异是刻意的，不是遗漏。
+
+---
+
+## §7 组件分层
+
+### 层次
+
+| 层 | 位置 | 职责 |
+|---|---|---|
+| 主题 | `theme/` | 色板、token、图标、滚动行为。**唯一的取值来源** |
+| 基础控件 | `widget/` | 无业务含义的通用件：按钮、输入框、菜单、对话框壳、Markdown、设置行 |
+| 复用组件 | `component/` | 跨页面复用的业务组件：消息渲染、步骤卡、权限卡、提问卡 |
+| 页面 | `page/` | 具体页面与其私有子件（`page/**/component/`） |
+
+依赖方向自上而下：基础控件不认识业务，复用组件不认识页面。改基础控件时不需要看页面。
+
+### 基础控件
+
+| 控件 | 说明 |
+|---|---|
+| `AthenaPrimaryButton` / `AthenaSecondaryButton` / `AthenaTextButton` / `AthenaIconButton` / `AthenaGhostIconButton` | 按钮五态。**主路径操作按钮一律从 Primary CTA 派生** |
+| `AthenaInput` / `AthenaFormField` / `AthenaFormTileLabel` | 输入框 / 带标签与校验的字段 / 表单标签 |
+| `AthenaSwitch` / `AthenaCheckbox` | 开关 / 勾选框 |
+| `AthenaTag` / `AthenaTagButton` / `AthenaContextChip` | 筛选 chip / 可点 tag 按钮 / composer 上的上下文 chip |
+| `AthenaHover` | hover 状态机骨架，见下 |
+| `AthenaScaffold` / `AthenaAppBar` | 页面外壳，按平台分叉 |
+| `AthenaDesktopDialog` / `AthenaDialogActions` | 桌面对话框外壳与底部动作行，见下 |
+| `DesktopContextMenu` 系列 | 桌面右键菜单，支持向上展开与二级菜单 |
+| `DesktopMenuTile` / `AthenaBottomSheetTile` / `MobileSettingTile` / `MobileGridTile` | 桌面菜单行 / 移动底部面板行 / 移动设置行 / 移动宫格块 |
+| `AthenaSettings*`（`panel` / `row` / `nav` / `control`） | 设置面板专用一组：面板与分区、设置行、左侧导航、分段与下拉等控件 |
+| `AthenaMarkdown` | Markdown 渲染 |
+| `AthenaWorkspaceTextSize` | 会话字号档位的 `InheritedWidget` 载体 |
+
+**按钮的语义**：主操作（青瓷实心）、次操作（中性面）、文字按钮（静止 `textSecondary`，hover 提亮 `textPrimary`）、图标按钮（中性反色面）。图标按钮用反色面是为了**避免把次要导航也渲染成青瓷主操作**。
+
+**`AthenaTag`**：胶囊 + 1px 实线边框，没有渐变边框。选中态靠「提亮底色 + 加粗文字」，**不做明暗反转的实心填充**——反转填充会在安静的灰阶层次里跳出一块高对比色块。
+
+### §7 Desktop Dialog
+
+桌面对话框外壳 = `surfaceMobile` 底 + `AthenaRadius.panel` 圆角 + `AthenaShadow.modal`，内边距 24，宽 320–520。给 `title` 就渲染标题行（`AthenaTextStyle.title`），再给 `onClose` 会在标题行右端放一个 ghost 关闭键。
+
+**所有桌面模态（确认、输入、设置里的表单）都从这里派生**，不要再各自画容器。
+
+### 什么该抽成公共组件
+
+收敛**骨架**，不收敛装饰。
+
+`AthenaHover` 是标准案例：全库有十几处「只有一个 hover 状态」的 State 类，各自写一遍 `bool hover` + `handleEnter`/`handleExit` + `MouseRegion` + `GestureDetector`（约 12 行样板）。抽出来的只有这段骨架——**装饰仍由调用方在 `builder` 里画**，因为各处的底色 / 描边 / 圆角 / 时长差异太大。
+
+同一条判断的另一面是**不要抽**：当包装的参数比它包裹的内容还多时，说明这几处的差异是真实的设计差异，硬抽会把差异藏进参数里。
+
+`AthenaHover` 里还有一条被反复踩到的坑：**`builder` 静止态不要用 `Colors.transparent`**——它的 RGB 是黑，`AnimatedContainer` 从它插值到浅色时会先闪一下深色。用目标色的 `withValues(alpha: 0)`，RGB 全程一致、只有 alpha 在动。
+
+### 步骤卡
+
+推理、工具调用、压缩在消息列表里都是**步骤**，共用一组视觉原语（`step_primitives.dart`）：折叠头 = 图标 + 单行省略文案（可选等宽）+ 运行中 shimmer。
+
+- 这些卡片**没有底板**，直接坐在页面底色上，因此统一用 `textSecondary` 前景、15 号图标
+- 可点的头在 hover 时整条提亮到 `textPrimary`（与文字按钮同口径）；运行中的头由 shimmer 的 `srcIn` 统一改色，此时提亮被覆盖
+- 步骤分组与渲染规则见代码：`step_card.dart`、`message_tiles.dart`
+
+### 图标
+
+图标库是 `lucide_icons_flutter`。两处集中：
+
+- `AthenaIcons` —— 跨页面共用的**导航与状态**语义（返回、前进、更多、时间、错误、连接、下拉）。同一功能必须用同一字形
+- `StepCard.toolIcon(toolName)` —— 工具名到字形的唯一映射表，权限卡也复用它。新增工具时在这里加一行
+
+其余一次性图标就地引 `LucideIcons.xxx` 即可。判据是：**这个字形会不会出现在两处以上**——会，就进映射表；不会，就不要为了整齐而绕一层。
+
+---
+
+## §8 交互与状态
+
+### hover
+
+可点区域一律：静止 `textSecondary` → hover `textPrimary`（前景提亮即「这里能点开」），或底色切到 `surfaceHover`。时长用 `AthenaMotion.hover`。
+
+**hover 只改底色，不改文字色**——把标签从次级灰跳到近黑，观感是「文字闪一下」。例外是「提亮即能点」的那一类（文字按钮、步骤折叠头），它们是整体提亮而非只改色。
+
+水波（splash）**全站关闭**（`splashFactory: NoSplash.splashFactory`）。桌面端不用 Material 的水波动效。因此 `Material` 只在结构必需处出现：设置面板内的 `TextField` 需要 `Material` 祖先（设置路由是非透明路由，没有 `Scaffold`），以及浮层的透明包装。
+
+**`Colors.transparent` 不能用作动画的静止态**——它的 RGB 是黑，`AnimatedContainer` 从它插值到浅色时会先闪一下深色。用目标色的 `withValues(alpha: 0)`，RGB 全程一致、只有 alpha 在动。这条在本项目被独立踩过多次，是全站最容易复发的坑。
+
+### 滚动
+
+桌面三平台统一 `ClampingScrollPhysics`，移动端保留平台默认（iOS 的回弹是系统预期）。
+
+Flutter 给 macOS 默认装的是 `BouncingScrollPhysics`——那是触摸屏的惯性语义，放在桌面窗口里是持续的视觉噪音：列表每滚到底都晃一下。
+
+平台判定走 `getPlatform(context)`（即 `ThemeData.platform`）而**不是** `PlatformUtil`：Flutter 默认 physics 正是按这个信号分派的，两者必须同源；顺带也让 widget 测试能换平台断言。
+
+### 加载与运行中
+
+- 运行中的步骤头用 shimmer（`AthenaMotion.cycle`）表达，不引入转圈图标
+- 状态点（`StatusDot`）用色相循环表达后台活动，周期 2400ms（见 §6 的例外说明）
+- 瞬时反馈（「已复制」、桌面轻提示）停留 `AthenaMotion.linger` 后自动复原/消失
+
+### 空态与错误
+
+- 空态用 `AthenaTextStyle.hero` 的标题 + `textSecondary` 的说明
+- 错误文字用 `statusError`（菜单里的危险项用 `dangerText`）
+- **不回退到子树级错误边界**：组件接不住子树的 build 异常，别想着加
+
+### 没有行为就不摆入口
+
+侧栏只放「新建会话」这一项导航行，设置菜单只放设置与关于——不摆没有对应能力的入口。空白入口比缺少入口更糟：用户点进去才发现是空的。
+
+同一条判断也适用于数字：**宁可空着也不给错的数字**。轮次指示器在整段会话的计数还没扫完时不画，而不是先画一个暂时正确的近似值。
+
+### 列表结构不得随状态变化
+
+**同一处控件的根类型不能随状态改变。** 例如消息列表根控件类型一旦随「有无审批卡」变化，滚动视图及其 `ScrollPosition` 会被整体重建，新 position 从偏移 0 起步，贴底校正要晚一帧才生效——表现为弹卡时列表先跳到顶部再跳回底部。
+
+同理，历史加载期间必须保留滚动视图（只是不给 sliver），只有「确实是空会话」才换成占位控件。
+
+### 两种状态不得靠同一种手段区分
+
+- 列表行的运行状态用**形状**（实心点 = 运行中，描边圆环 = 静止），形状本身是一条不依赖颜色的线索
+- 运行中的色相循环刻意不用 `statusSuccess` / `statusWarning` 一类的固定色——那会被读成结果状态，而「运行中」不是任何一种结果
+
+### 桌面专属
+
+- 窗口原生背景色跟随主题（浅色下避免露出默认黑底）；`⌘W` 隐藏窗口
+- 托盘常驻，退出前优雅停止后台任务
+- 单实例：重复启动的进程直接退出，不碰数据目录
