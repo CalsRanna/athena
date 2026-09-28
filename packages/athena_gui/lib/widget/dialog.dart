@@ -164,7 +164,7 @@ class AthenaDialog {
 
 /// 桌面对话框外壳（DESIGN.md §4 Desktop Dialog）。
 ///
-/// `surfaceMobile` 底 + [AthenaRadius.panel] 圆角 + [AthenaShadow.overlay]，
+/// `surfaceMobile` 底 + [AthenaRadius.panel] 圆角 + [AthenaShadow.modal]，
 /// 内边距 24，宽 320–520。给 [title] 就渲染标题行（[AthenaTextStyle.title]），
 /// 再给 [onClose] 会在标题行右端放一个 ghost 关闭键。
 ///
@@ -209,14 +209,21 @@ class AthenaDesktopDialog extends StatelessWidget {
       child,
     ];
     return Dialog(
+      elevation: 0,
       backgroundColor: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(minWidth: 320, maxWidth: 520),
         decoration: BoxDecoration(
           color: colors.surfaceMobile,
           borderRadius: BorderRadius.circular(AthenaRadius.panel),
-          boxShadow: AthenaShadow.overlay(colors.shadow),
+          boxShadow: AthenaShadow.modal(colors.shadow),
         ),
+        foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(AthenaRadius.panel),
+                border: Border.all(color: colors.border),
+              )
+            : null,
         padding: const EdgeInsets.all(AthenaSpace.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -572,9 +579,15 @@ class _DesktopLoadingDialog extends StatelessWidget {
     final container = Container(
       decoration: BoxDecoration(
         color: colors.surfaceMobile,
-        borderRadius: BorderRadius.circular(AthenaRadius.panel),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
         boxShadow: AthenaShadow.overlay(colors.shadow),
       ),
+      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AthenaRadius.container),
+              border: Border.all(color: colors.border),
+            )
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: row,
     );

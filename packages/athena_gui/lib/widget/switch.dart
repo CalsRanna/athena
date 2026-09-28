@@ -19,7 +19,7 @@ class AthenaSwitch extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var outerDecoration = BoxDecoration(
       color: value ? colors.accent : colors.switchTrackOff,
-      borderRadius: BorderRadius.circular(AthenaRadius.inline + 2),
+      borderRadius: BorderRadius.circular(AthenaRadius.control),
     );
     var knob = Container(
       decoration: BoxDecoration(

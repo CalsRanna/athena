@@ -22,9 +22,22 @@ class UserInput extends StatefulWidget {
 
 class _UserInputState extends State<UserInput> {
   final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  void _handleFocusChanged() {
+    setState(() {});
+  }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -40,6 +53,7 @@ class _UserInputState extends State<UserInput> {
     final textStyle = AthenaTextStyle.body.copyWith(color: colors.textInput);
     final textField = TextField(
       controller: widget.controller,
+      focusNode: _focusNode,
       scrollController: _scrollController,
       cursorColor: colors.textInput,
       decoration: inputDecoration,
@@ -55,10 +69,14 @@ class _UserInputState extends State<UserInput> {
       onTerminated: widget.onTerminated,
       isStreaming: widget.isStreaming,
     );
-    // 与桌面端同一形态：一整块圆角容器 + 柔阴影，输入在上、操作在下。
-    return Container(
+    // 与桌面端共用圆角、柔阴影和青瓷聚焦边框，输入在上、操作在下。
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
       decoration: BoxDecoration(
-        color: colors.surface,
+        color: colors.surfaceMobile,
+        border: Border.all(
+          color: _focusNode.hasFocus ? colors.accent : colors.neutralBorder,
+        ),
         borderRadius: BorderRadius.circular(AthenaRadius.composer),
         boxShadow: AthenaShadow.raised(colors.shadow),
       ),

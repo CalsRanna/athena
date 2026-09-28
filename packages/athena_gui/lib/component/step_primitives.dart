@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 /// 一份，此处合并为唯一实现，只保留头部与结果正文两个原语。
 
 /// 步骤头部圆角：与展开区对齐，比 [AthenaRadius.row] 略大以匹配 15 号图标。
-const kStepHeaderRadius = 8.0;
+const kStepHeaderRadius = AthenaRadius.row;
 
 /// 步骤头部与结果正文的字号。
 

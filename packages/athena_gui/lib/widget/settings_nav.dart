@@ -80,7 +80,7 @@ class _AthenaSettingsSearchFieldState extends State<AthenaSettingsSearchField> {
     var decoration = BoxDecoration(
       color: colors.surfaceMobile,
       border: Border.all(
-        color: focused ? colors.neutralBorderStrong : colors.neutralBorder,
+        color: focused ? colors.accent : colors.neutralBorder,
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.searchRadius),
     );

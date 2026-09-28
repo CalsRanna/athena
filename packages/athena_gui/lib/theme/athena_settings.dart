@@ -22,8 +22,8 @@ abstract final class AthenaSettings {
   /// 面板与窗口上下的留白。实测上下各 44。
   static const panelMarginVertical = 44.0;
 
-  /// 面板圆角。实测圆角弧长约 11–12。
-  static const panelRadius = 12.0;
+  /// 大面板统一使用 16 圆角。
+  static const panelRadius = AthenaRadius.panel;
 
   /// 浅色面板遮罩：在当前画布上压 40% 黑。
   static const scrimOpacity = 0.40;
@@ -41,8 +41,8 @@ abstract final class AthenaSettings {
   /// 导航行距。
   static const navRowGap = 4.0;
 
-  /// 导航行圆角。实测圆角弧约 7–8。
-  static const navRowRadius = 8.0;
+  /// 导航行与全局列表行共用 8 圆角。
+  static const navRowRadius = AthenaRadius.row;
 
   /// 导航行左内缩（图标起于行内 12）。实测行左缘 148、图标起于 160。
   static const navRowPadding = 12.0;
@@ -67,7 +67,7 @@ abstract final class AthenaSettings {
 
   /// 搜索框与设置控件同高，给 22 行盒留出上下呼吸空间。
   static const searchHeight = 36.0;
-  static const searchRadius = 8.0;
+  static const searchRadius = AthenaRadius.control;
   static const searchIconSize = 14.0;
   static const searchFontSize = AthenaFontSize.body;
   static const searchTopMargin = 13.0;
@@ -121,8 +121,8 @@ abstract final class AthenaSettings {
   /// 控件高：22 行盒上下留出 14 的总空间。
   static const controlHeight = 36.0;
 
-  /// 控件圆角。实测下拉框圆角弧约 8。
-  static const controlRadius = 8.0;
+  /// 控件圆角与全局输入框、按钮一致。
+  static const controlRadius = AthenaRadius.control;
 
   /// 下拉、输入框与分段选择均使用常规 UI 字号。
   static const controlFontSize = AthenaFontSize.row;

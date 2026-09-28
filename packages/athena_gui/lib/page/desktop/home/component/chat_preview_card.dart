@@ -37,11 +37,17 @@ class ChatPreviewCard extends StatelessWidget {
     return Container(
       width: width,
       decoration: BoxDecoration(
-        // 浮层底色与右键菜单同档：比侧栏面板亮一级 + 柔阴影，不描边
+        // 与菜单共用浮层底色和柔阴影，深色模式用细轮廓区分表面。
         color: colors.surfaceMobile,
         borderRadius: BorderRadius.circular(AthenaRadius.container),
         boxShadow: AthenaShadow.overlay(colors.shadow),
       ),
+      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AthenaRadius.container),
+              border: Border.all(color: colors.border),
+            )
+          : null,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

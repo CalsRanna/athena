@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const window = Size(800, 600);
 
-  // 两条约 32 高的条目 + 面板 4 内边距 ≈ 72，远小于窗高
+  // 两条 36 高的条目 + 面板 4 内边距 = 80，远小于窗高
   const items = [
     DesktopContextMenuTile(text: 'Edit'),
     DesktopContextMenuTile(text: 'Delete'),

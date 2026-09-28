@@ -60,6 +60,12 @@ class DesktopContextMenu extends StatelessWidget {
     );
     var container = Container(
       decoration: boxDecoration,
+      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AthenaRadius.menu),
+              border: Border.all(color: colors.border),
+            )
+          : null,
       padding: const EdgeInsets.all(4),
       child: column,
     );
@@ -435,6 +441,12 @@ class _DesktopContextMenuTileWithSubmenuState
     );
     var container = Container(
       decoration: boxDecoration,
+      foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(AthenaRadius.menu),
+              border: Border.all(color: colors.border),
+            )
+          : null,
       padding: const EdgeInsets.all(4),
       width: 168,
       child: column,

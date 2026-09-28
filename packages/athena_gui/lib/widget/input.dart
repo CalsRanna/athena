@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 /// 标准输入框：小圆角（[AthenaRadius.control]）+ 1px 实线边框 + 平涂底色。
 ///
-/// 聚焦只让边框加深到 [AthenaColors.borderStrong]，不做焦点环、不做光晕。
+/// 聚焦时使用 [AthenaColors.accent] 的 1px 边框，不做焦点环、不做光晕。
 class AthenaInput extends StatefulWidget {
   final bool autoFocus;
   final TextEditingController controller;
@@ -68,7 +68,7 @@ class _AthenaInputState extends State<AthenaInput> {
     final focused = focusNode.hasFocus;
     var boxDecoration = BoxDecoration(
       color: colors.inputBackground,
-      border: Border.all(color: focused ? colors.borderStrong : colors.border),
+      border: Border.all(color: focused ? colors.accent : colors.border),
       borderRadius: BorderRadius.circular(
         widget.radius ?? AthenaRadius.control,
       ),

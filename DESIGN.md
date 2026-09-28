@@ -36,8 +36,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   `theme/athena_colors.dart`（颜色，挂 `ThemeExtension`）、`theme/athena_settings.dart`（设置面板实测几何）
   中逐条核对；组件规格取自 `lib/widget/`（设计系统控件）与 `lib/component/`、`lib/page/`（业务组件与页面）。
 - 色值以 `AthenaColors.light` / `dark` 的青瓷色板为准；带 "实测" 字样的几何仍沿用原 Claude 参照，不表示颜色继续跟随该参照。
-- 过渡时长取自各组件源码的显式声明（`Duration` 出现频次：120ms 二十处、150ms 四处、200ms 三处、
-  100ms 三处、140ms / 240ms / 1800ms / 2400ms 各一处）。据此归纳出的"节奏档位"是聚合结论，不是单一 token。
+- 过渡时长取自各组件源码的显式声明。120ms 为主要交互节奏，其他时长服务淡入淡出、按压与运行状态；它们不是单一 token。
 
 ## Colors
 
@@ -171,15 +170,20 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 浮层 `#FFFFFF` 各有层次；深色画布 `#171B1A`、侧栏 `#121615`、浮层 `#202624` 同样区分。
 壳层的顶栏线用 `neutralHairline`，侧栏与页脚接缝用 `borderChrome`，容器轮廓用 `border`。
 
-**阴影只有两条配方 + 一条面板专用**（基色取 `colors.shadow`，随主题翻转）：
+**圆角收敛为四档**（`AthenaRadius`）：4 用于徽标、行内代码、勾选框；8 用于按钮、输入框、列表行；
+12 用于卡片、代码块、composer、菜单；16 用于对话框、设置面板与移动底部面板的上角。
+胶囊 chip、发送键、头像与圆形状态点保留角色形状。菜单外层 12、内边距 4、行圆角 8，嵌套轮廓一致。
 
-- **`AthenaShadow.raised`** —— 低浮起：基色 5% / blur 12 / offset (0, 3) 叠 4% / blur 2 / offset (0, 1)。
-  用于移动端 composer、行内浮层（如推理强度面板）。
-- **`AthenaShadow.overlay`** —— 高浮起：基色 10% / blur 28 / offset (0, 10) 叠 6% / blur 6 / offset (0, 2)。
-  用于桌面对话框、右键与选择菜单、悬浮预览卡、加载提示。
-- **设置面板专用**：10% / blur 12 / offset (0, 4)。参照实现的整窗面板阴影很窄（约 10px 内衰减完、紧贴边缘最深），
-  用 `overlay` 那种 28px 大范围投影会显得"飘"。
-- 桌面 composer 另有一层向下偏移的极淡投影：`0x0C000000` / blur 20 / offset (0, 4)，紧贴下边框处比画布暗约 7/255。
+**阴影共用三条配方**（基色取 `colors.shadow`，随主题变化）：
+
+- **`AthenaShadow.raised`**：基色 4% / blur 8 / offset (0, 2) 叠 3% / blur 2 / offset (0, 1)。
+  桌面与移动端 composer 共用；推理强度控件内的滑块也使用这一档。
+- **`AthenaShadow.overlay`**：基色 8% / blur 16 / offset (0, 4) 叠 4% / blur 3 / offset (0, 1)。
+  用于右键与选择菜单、悬浮预览卡、加载提示，投影贴近容器。
+- **`AthenaShadow.modal`**：基色 10% / blur 24 / offset (0, 8) 叠 5% / blur 6 / offset (0, 2)。
+  桌面对话框与设置面板共用，配合遮罩表达模态层级。
+- 深色菜单、预览、加载提示、对话框与设置面板另加 1px `border` 轮廓；通过 `foregroundDecoration`
+  绘制，不增加内边距、不改变菜单宽度或锚点位置。
 
 **不用阴影的地方同样有规则**：静态容器（权限卡、提问卡、排队消息面板、标准输入框）用 **1px 边框 + 平涂底色**；
 代码块、引用块、脚注区**连边框都不要**，靠 `codeBackground` 与画布的底色差自成一层，语言条再用
@@ -190,7 +194,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - 全局禁用 Material ripple（`splashFactory: NoSplash.splashFactory`）；也不做 focus ring、不做光晕。
 - 状态反馈 = 前景色 alpha 叠加（ghost / hover 填充 5%，主按钮 hover 8%）+ 按压缩放 0.975
   （按下 60ms `easeOut`、回弹 200ms `easeOutBack`，仅用于 composer 内的压缩按钮）。
-- 过渡节奏：**120ms 是唯一主档**（hover、描边加深、分段切换、行底变化），chip / tag 用 150ms，
+- 过渡节奏：**120ms 是唯一主档**（hover、描边变色、分段切换、行底变化），chip / tag 用 150ms，
   透明淡出用 60–100ms（菜单与预览卡退场要跟手），预览卡进场 140ms（淡入 + 上浮 6% + 0.98 缩放），
   消息操作条显形为"延迟 100ms + 120ms 淡入"、隐去为 60ms，工具头 shimmer 以 1800ms 循环。
 - 遮罩：设置面板 `#66000000`（40% 黑）；遮罩只吸收点击、**不关闭面板**（编辑区有显式 Save，误触不应丢草稿）。
@@ -200,31 +204,33 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 
 **Buttons**
 
-- **Primary（`AthenaPrimaryButton`）**：填充 `accent`，前景 `textOnAccent`，圆角 7（`control`），
+- **Primary（`AthenaPrimaryButton`）**：填充 `accent`，前景 `textOnAccent`，圆角 8（`control`），
   内边距 `16 × 9`、高 40（`.small` 为 `12 × 5`、高 32），文字 `label` 14 / 22 / w600，图标 14。
   hover 只把填充微压暗/提亮（`surface` 8% 叠在实心底上），**不做光晕、不做位移**；禁用态填 `surfaceButtonSecondary`、
   文字 `textSecondary`。它是主路径操作的唯一来源（确认键、允许一次等）。
-- **Secondary（`AthenaSecondaryButton`）**：线框——`border` 1px + 透明底，圆角 7，前景 `textPrimary`；
+- **Secondary（`AthenaSecondaryButton`）**：线框——`border` 1px + 透明底，圆角 8，前景 `textPrimary`；
   内边距 `16 × 8`、高 40（`.small` 为 `12 × 4`、高 32）。hover 底色变 `surfaceHover` 并把描边加深到 `borderStrong`；禁用态文字降为 `textSecondary`。
 - **Text button（`AthenaTextButton`）**：无描边无底，高 32，`label` 14 / 22 / `textSecondary`，hover 填 `surfaceHover`、
-  文字转 `textPrimary`，圆角 7（移动端页面里的次要动作，如新增模型）。
+  文字转 `textPrimary`，圆角 8（移动端页面里的次要动作，如新增模型）。
 - **Ghost icon button（`AthenaGhostIconButton`）**：默认盒 28、图标 14，静止无底，hover 填 `textPrimary` 5%，
-  圆角 7；设置面板里的关闭 / 新增键、行尾 `⋯` 键（盒 24）与对话框关闭键都用它。
+  圆角 8；设置面板里的关闭 / 新增键、行尾 `⋯` 键（盒 24）与对话框关闭键都用它。
 - **Icon-only（composer 内）**：22 × 22、图标 16，圆角 4（嵌套档小方块），按下缩放 0.975。
-- **反色图标按钮（`AthenaIconButton`）**：`surfaceRaised` 底 + 16 图标，圆角 7，内边距 12——
+- **反色图标按钮（`AthenaIconButton`）**：`surfaceRaised` 底 + 16 图标，圆角 8，内边距 12——
   移动端页头动作按钮（同步、新增、返回）用它，内边距常按需收窄。
 
 **Inputs**
 
-- **标准输入（`AthenaInput`）**：平涂 `inputBackground` + 1px `border`，圆角 7，内边距 `12 × 10`，
+- **标准输入（`AthenaInput`）**：平涂 `inputBackground` + 1px `border`，圆角 8，内边距 `12 × 10`，
   文字 `body` 14 / 行高 22 / 色 `textInput`，占位符 `textSecondary`，光标高 15 / 宽 1.5。
-  **聚焦只把描边加深到 `borderStrong`，不做焦点环、不做光晕**；失焦 / 点外部即回调 `onBlur`。
-- **设置面板输入（`AthenaSettingsTextField`）**：高 36、圆角 8、描边 `neutralBorder`（聚焦 `neutralBorderStrong`）、
+  **聚焦使用 1px `accent` 边框，不做焦点环、不做光晕**；失焦 / 点外部即回调 `onBlur`。
+- **设置面板输入（`AthenaSettingsTextField`）**：高 36、圆角 8、描边 `neutralBorder`（聚焦 `accent`）、
   文字 14；`mono: true` 用于 URL 与模型 id；密钥型默认遮住、右端一枚 24 盒的 ghost 眼睛键切换明文。
   它比全站标准输入矮一档，为的是与同一行的其他设置控件齐平。
 - **多行输入（`AthenaSettingsTextArea`）**：同一套描边与圆角，最少 6 行、随内容增高，使用 14 / 22。
 - **搜索框（`AthenaSettingsSearchField`）**：高 36、圆角 8、白底 + 1px `neutralBorder`，图标 14 / `textWeak`，
-  有输入时右端出现 12 号清除叉。
+  聚焦描边用 `accent`；有输入时右端出现 12 号清除叉。
+- **桌面 / 移动 composer**：`surfaceMobile` 底、圆角 12、`raised` 柔阴影；1px `neutralBorder` 描边，
+  聚焦切换为 `accent`，过渡 120ms，不改变边框粗细。
 
 **Chips & Tags**
 
@@ -244,47 +250,47 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 **Cards & Containers**
 
 - **助手消息没有卡片底板**：内容直接铺在画布上，卡片级内边距上下各 16、左右 4；轮次之间留 16。
-- **用户消息气泡**：右对齐，底 `textPrimary` 5%、圆角 8、内边距 `12 × 8`、最大宽度为列宽的 **77%**，
+- **用户消息气泡**：右对齐，底 `textPrimary` 5%、圆角 12、内边距 `12 × 8`、最大宽度为列宽的 **77%**，
   文字与助手正文共用所选 `AthenaTextSize.prose`，默认 14 / 行高 22。图片是输入内容的一部分，渲染在文字之前。
-- **弹窗卡片（权限审批 / 提问）**：`surfaceMobile` 底 + 1px `border` + 圆角 10 + 内边距 16，
+- **弹窗卡片（权限审批 / 提问）**：`surfaceMobile` 底 + 1px `border` + 圆角 12 + 内边距 16，
   非模态、随会话渲染在消息列表里；桌面按钮行右对齐（次要在左、主操作最右），移动改为全宽堆叠、主操作在最上。
   工具按完整调用处理审批：手动模式问人、AI 模式先审核再按需问人、所有权限模式直接放行；
   读取、搜索和后台汇报调用也遵循此流程，显式 deny 与已有授权优先处理。
   提问工具直接呈现提问卡，不叠加审批卡；复合命令作为完整调用展示，不拆成多个子命令审批卡。
-- **代码块 / 脚注区**：`codeBackground` 底 + 圆角 10，无边框；语言条用 `cardHeader` 圆角只取上两角，
+- **代码块 / 脚注区**：`codeBackground` 底 + 圆角 12，无边框；语言条用 `cardHeader` 圆角只取上两角，
   12 号 mono + 12 图标 + 40% 透明度的复制键；代码正文取 `AthenaTextSize.code`，默认 14 / 行高 22、内边距 `12 × 8`。
-- **行内代码 / 引用徽标**：`codeBackground` 底 + 圆角 5 / 4，行内代码取 `AthenaTextSize.code`，字号与行高和正文一致；引用徽标字形 10，属徽标尺寸而非文字档位。
-- **排队消息面板**：`inputBackground` 底 + 1px `border` + 圆角 10 + 内边距 12，头部 `label` + `caption`，
+- **行内代码 / 引用徽标**：`codeBackground` 底 + 圆角 4，行内代码取 `AthenaTextSize.code`，字号与行高和正文一致；引用徽标字形 10，属徽标尺寸而非文字档位。
+- **排队消息面板**：`inputBackground` 底 + 1px `border` + 圆角 12 + 内边距 12，头部 `label` + `caption`，
   列表最多 120 高、逐条两行省略。
-- **移动端卡片**：网格实体卡（Skill / Sentinel / Experience）用**反色底** `surfaceRaised` + 圆角 10 +
-  内边距 12，标题 `section`、副标题 `caption`，均为 `textOnRaised`；首页卡片行 `160 × 160`、圆角 10、
+- **移动端卡片**：网格实体卡（Skill / Sentinel / Experience）用**反色底** `surfaceRaised` + 圆角 12 +
+  内边距 12，标题 `section`、副标题 `caption`，均为 `textOnRaised`；首页卡片行 `160 × 160`、圆角 12、
   底 `surfaceButtonSecondary`。
-- **详情/引用块（References）**：圆角 8 + `codeBackground` + 内边距 16，首行 `w600`、逐条 `textPrimary`。
+- **详情/引用块（References）**：圆角 12 + `codeBackground` + 内边距 16，首行 `w600`、逐条 `textPrimary`。
 
 **Menus & Popovers**
 
 - 面板：`surfaceMobile` + 圆角 12 + `AthenaShadow.overlay`，内边距 4，默认宽 120（选择菜单可传更宽，
   子菜单 168），越界时四边各留 8 收回窗内，碰到窗底改向上展开。
-- 条目：高约 32（内边距 `12 × 7`，次级条目 `12 × 8`），圆角 7，hover 填 `surfaceHover`，
+- 条目：主条目高 36、次级条目高 38（内边距 `12 × 7`，次级条目 `12 × 8`），圆角 8，hover 填 `surfaceHover`，
   文字 `row` 14；危险项用 `dangerText`；禁用项文字降为 `textSecondary`；带图标时图标 16、间距 10。
 - 分组小标题 `caption` 12 / `textWeak`（内边距 12/8/12/4）；分组之间用 1px `border` 分隔线，上下各留 4。
 - 浮层不在 Material 之下，文字样式必须写全（含 `decoration`）——这是浮层里常见的漏色点。
 
 **Dialogs & Sheets**
 
-- **桌面对话框（`AthenaDesktopDialog`）**：`surfaceMobile` 底 + 圆角 12 + `AthenaShadow.overlay`，
-  内边距 24，宽 320–520；标题 `title` 15 / w600、`title` 与内容之间留 16；
-  按钮行右对齐、间距 8（次要在前、主操作在后）。所有桌面模态都从这里派生，不再各自画容器。
-- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底；确认面板主/次按钮都是全宽矩形
-  （内边距 14、圆角 7）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
+- **桌面对话框（`AthenaDesktopDialog`）**：`surfaceMobile` 底 + 圆角 16 + `AthenaShadow.modal`，
+  内边距 24，宽 320–520；标题 `title` 16 / 24 / w600、`title` 与内容之间留 16；
+  按钮行右对齐、间距 8（次要在前、主操作在后）。确认、输入与表单模态共用这个外壳；默认模型列表沿用相同圆角、阴影与深色轮廓。
+- **移动端 sheet**：`showModalBottomSheet` + `surfaceMobile` 底、上角 16（主题统一）；确认面板主/次按钮都是全宽矩形
+  （内边距 14、圆角 8）；打开前先释放焦点，避免关闭后键盘回落自动弹出。
 - **加载提示**：`surfaceMobile` + 圆角 12 + `overlay` 阴影，16 × 16 描边 2 的进度环 + `caption` 文字。
-- **轻提示**：桌面是左下角浮层（`surfaceMobile` + 圆角 10 + 描边取状态色 40% + 内边距 `16 × 12`，
+- **轻提示**：桌面是左下角浮层（`surfaceMobile` + 圆角 12 + 描边取状态色 40% + 内边距 `16 × 12`，
   图标 16 + `caption`，3 秒后自动消失）；移动用 floating SnackBar，同样是浮层底色 + 状态图标。
 
 **Rows & Lists**
 
 - **侧栏会话行（`DesktopMenuTile`）**：**固定高 32**（不靠内容撑，避免 hover 出现 `⋮` 时行高跳动）、
-  圆角 7、水平内边距 11；文字 `body` 14 / 行高 22，静止 `textRowLabel`、选中 `accent`；
+  圆角 8、水平内边距 11；文字 `body` 14 / 行高 22，静止 `textRowLabel`、选中 `accent`；
   hover 只换底色（`surfaceHover`）不动文字，选中底色 `surfaceSelected`；leading 是直径 6 的状态点，
   **不在跑时是 1px 描边的圆环、运行中是实心点**（形状本身也是一条不依赖颜色的状态线索），
   颜色档位：静止 `iconSecondary` 45%、hover 75%、重命名中 `statusWarning`；运行中 `accent` 实心
@@ -305,7 +311,7 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   文案 `caption` 12（技术值是 mono 12）；运行中带一条流动 shimmer（前景色 45% → 95%，
   `disableAnimations` 时自动关闭）；展开正文最多 10 行 mono、`Error:` 前缀转 `statusError`。
 - **消息操作条（`MessageActionBar`）**：排在正文**下方**（不浮在右侧），常驻占位、默认全透明；
-  按钮 24 × 24、图标 16 / `iconSecondary`、圆角 7、hover 填 `textPrimary` 5%。
+  按钮 24 × 24、图标 16 / `iconSecondary`、圆角 8、hover 填 `textPrimary` 5%。
   本轮未结束的助手消息不显形（但控件不摘下树，否则收尾瞬间卡片高度跳 28）。
 
 **Navigation & Shell**
@@ -321,15 +327,15 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
 - **轮次指示器**：贴消息列左留白（距消息区左缘 12），一条 = 一轮；条高 4、命中行高 12、整列最多 20 条一页，
   宽上限由可用留白算出（留白不足 12 就不显示）；静止长为上限的 50%、hover 那条最长、其余按距离线性递减
   （相隔 4 条回到静止）；颜色只有两档——视口当前轮与 hover 轮用 `textRowLabel`，其余 `iconSecondary` 45%；圆角胶囊。
-- **悬浮预览卡（`ChatPreviewCard`）**：挂在轮次条右侧 8、宽 248、圆角 10 + `overlay` 阴影、
+- **悬浮预览卡（`ChatPreviewCard`）**：挂在轮次条右侧 8、宽 248、圆角 12 + `overlay` 阴影、
   内边距 `12 / 10 / 12 / 12`；第一行 `body` 14 / 22 / w600 / `textPrimary` 单行省略，第二行 `caption` 12 /
   `textSecondary` 最多 3 行；hover 条 150ms 后弹出，卡片不参与命中测试（避免把 hover 从条上抢走）。
 
 **Switch / Checkbox / Segmented / Select**
 
-- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 7（`inline + 2`）、内边距 3，滑块直径 12；
+- **开关（`AthenaSwitch`）**：轨道 34 × 18、圆角 8（`control`）、内边距 3，滑块直径 12；
   开启轨道 `accent` 配 `textOnAccent` 滑块，关闭轨道 `switchTrackOff` 配 `switchKnob` 滑块。
-- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 5；未选中 1px `checkboxOff` 描边，选中块填 `accent` +
+- **勾选框（`AthenaCheckbox`）**：16 × 16、圆角 4；未选中 1px `checkboxOff` 描边，选中块填 `accent` +
   11 号 `textOnAccent` 对勾；提问卡的单选 / 多选标记使用同样配对。
 - **分段控件（`AthenaSettingsSegmented`）**：轨道 `neutralRule` 无描边、高 36、圆角 8；
   选中块是**`neutralControlFill` + 1px `neutralBorder` 并铺满轨道高**（不是内缩小块）；
@@ -359,12 +365,12 @@ Athena 是一个跨平台的 AI 工作台（Flutter 桌面 / 移动客户端 + n
   中途会渲染成半透明深灰，表现为 hover 先闪一下深色；请用目标色的 0 透明度版本。
 - **Do** 让状态不止靠颜色：运行中 / 重命名中同时有状态点与文字（状态点自己再分实心 / 圆环两形），
   错误在正文里带 `Error:` 前缀，危险菜单项用 `dangerText` 而非直接把 `statusError` 当文字色。
-- **Do** 圆角只用 4 / 5 / 7 / 8 / 10 / 12 这几档（胶囊 999 仅限筛选 chip、头像、轮次条）；
-  浮层只从 `AthenaShadow.raised` / `overlay` / 设置面板专用三条配方里取，静态容器用 1px 边框而不是阴影。
+- **Do** 圆角只用 4 / 8 / 12 / 16 四档（胶囊 999 仅限筛选 chip、头像、轮次条）；
+  浮层只从 `AthenaShadow.raised` / `overlay` / `modal` 三条配方里取，静态容器用 1px 边框而不是阴影。
 - **Don't** 引入第二主色。GUI 的强调为青瓷 `accent`，TUI 的品牌 teal 与 GUI 深色强调同值；
   成功、警告、错误仅表达结果，不能拿来替代主操作色。
 - **Don't** 给助手消息加气泡或卡片底板，也不要给容器加渐变、光晕、focus ring、ripple，或 20 以上的大圆角——
-  参照实现的圆角很克制（最小 4、控件 7、composer 12），层级靠字重、间距与底色差，不靠放大字号或加深投影。
+  Athena 按组件角色分配圆角（最小 4、控件 8、容器 12、大面板 16），层级靠字重、间距与底色差，不靠放大字号或加深投影。
 - **Don't** 把整个 UI 做成等宽字体，也不要用纯黑 `#000000` 当画布或文字色（浅色画布 `#FAFBFA`、
   文字 `#202824`，深色画布 `#171B1A`）；纯黑只出现在深色主题的阴影基色里。
 - **Don't** 在桌面端做 iOS 式滚动回弹。滚到底就停住（`ClampingScrollPhysics`），不要先拉出一段空白再弹回去——

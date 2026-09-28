@@ -736,9 +736,7 @@ class _SquishButtonState extends State<_SquishButton> {
 
 /// composer 的输入容器。
 ///
-/// Claude 实测：边框**常态 `#E1E1E0`（浅灰），聚焦后加深到 `#BFBFBE`**
-/// （CSS 里对应 `focus:border-[...]` 效用类）。两个值都是中性灰，
-/// 而本仓的 `border` / `borderStrong` 属暖灰系，白底上会偏黄，所以这里单独定义。
+/// 与移动端共用 12 圆角、贴近表面的柔阴影和 1px 青瓷聚焦边框。
 class _ComposerInputBox extends StatefulWidget {
   /// 外部持有的焦点节点：容器只监听它来切边框色，不负责 dispose。
   final FocusNode focusNode;
@@ -783,20 +781,11 @@ class _ComposerInputBoxState extends State<_ComposerInputBox> {
         color: colors.surfaceMobile,
         border: Border.all(
           color: widget.focusNode.hasFocus
-              ? colors.neutralBorderStrong
+              ? colors.accent
               : colors.neutralBorder,
         ),
-        borderRadius: BorderRadius.circular(AthenaRadius.container),
-        // Claude 实测：容器下方有一层很柔的投影——紧贴下边框处比画布暗约
-        // 7/255，在约 18 逻辑内平滑衰减到 0，且上方几乎没有，所以是**向下偏移**
-        // 的阴影，而不是第二条边框色。
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AthenaRadius.composer),
+        boxShadow: AthenaShadow.raised(colors.shadow),
       ),
       duration: const Duration(milliseconds: 120),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),

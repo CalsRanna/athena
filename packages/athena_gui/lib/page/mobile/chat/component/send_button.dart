@@ -26,7 +26,7 @@ class SendButton extends StatelessWidget {
       final streaming = isStreaming;
       var iconData = LucideIcons.arrowUp;
       if (streaming) iconData = LucideIcons.square;
-      var icon = Icon(iconData, color: Colors.white, size: 16);
+      var icon = Icon(iconData, color: colors.textOnAccent, size: 16);
       var container = Container(
         decoration: shapeDecoration,
         padding: const EdgeInsets.all(8),

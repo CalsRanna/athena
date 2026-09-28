@@ -61,6 +61,11 @@ ThemeData buildAthenaThemeData(AthenaColorMode mode) {
       labelMedium: AthenaTextStyle.label,
       labelSmall: AthenaTextStyle.caption,
     ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AthenaRadius.panel)),
+      ),
+    ),
     scaffoldBackgroundColor: colors.surface,
     dividerColor: colors.divider,
     splashFactory: NoSplash.splashFactory,

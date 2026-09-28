@@ -219,7 +219,8 @@ class DesktopModelSelectDialog extends StatelessWidget {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var boxDecoration = BoxDecoration(
       color: colors.surfaceMobile,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.panel),
+      boxShadow: AthenaShadow.modal(colors.shadow),
     );
 
     return Watch((context) {
@@ -227,6 +228,12 @@ class DesktopModelSelectDialog extends StatelessWidget {
       var child = _buildData(context, models);
       var container = Container(
         decoration: boxDecoration,
+        foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(AthenaRadius.panel),
+                border: Border.all(color: colors.border),
+              )
+            : null,
         padding: EdgeInsets.all(8),
         child: child,
       );
@@ -307,7 +314,7 @@ class _DesktopModelSelectDialogTileState
       if (widget.model.vision) visualIcon,
     ];
     var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AthenaRadius.row),
       color: hover ? colors.surfaceButtonSecondary : null,
     );
     var container = AnimatedContainer(

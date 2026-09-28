@@ -102,7 +102,7 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
       width: double.infinity,
       decoration: BoxDecoration(
         color: colors.surfaceRaised,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
       ),
       padding: const EdgeInsets.all(12),
       child: SelectableText(

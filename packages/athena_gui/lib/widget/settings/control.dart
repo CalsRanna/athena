@@ -192,7 +192,7 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
 /// canonical 输入（40 高、13 号）矮一档；设置行里的输入统一用它，
 /// 与同一行的其他控件齐平。
 ///
-/// 聚焦只把描边加深到 `neutralBorderStrong`，不做焦点环。
+/// 聚焦时使用 `accent` 的 1px 边框，不做焦点环。
 /// [obscure] 用于密钥：默认遮住，右端一个眼睛切换明文。
 /// 提交语义交给调用方：[onBlur] 失焦时回调、[onSubmitted] 回车时回调。
 class AthenaSettingsTextField extends StatefulWidget {
@@ -259,7 +259,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
     var decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
       border: Border.all(
-        color: focused ? colors.neutralBorderStrong : colors.neutralBorder,
+        color: focused ? colors.accent : colors.neutralBorder,
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
@@ -372,7 +372,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
     var decoration = BoxDecoration(
       color: widget.enabled ? colors.neutralControlFill : colors.neutralRule,
       border: Border.all(
-        color: focused ? colors.neutralBorderStrong : colors.neutralBorder,
+        color: focused ? colors.accent : colors.neutralBorder,
       ),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );

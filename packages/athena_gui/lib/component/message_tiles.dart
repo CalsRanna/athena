@@ -325,7 +325,7 @@ class _AssistantMessageListTileReferencePart extends StatelessWidget {
       );
       final colors = Theme.of(context).extension<AthenaColors>()!;
       var boxDecoration = BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AthenaRadius.container),
         color: colors.codeBackground,
       );
       var textStyle = TextStyle(
@@ -420,7 +420,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
                       ),
                       decoration: BoxDecoration(
                         color: colors.textPrimary.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AthenaRadius.container),
                       ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

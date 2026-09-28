@@ -17,7 +17,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 设置面板外壳：居中浮层 + 遮罩，版式取自 Claude 桌面端的设置。
 ///
 /// 实测（1296×783 逻辑窗口）：面板 1026×695，左右各留 135、上下各留 44，
-/// 圆角 12；遮罩与表面颜色跟随 Athena 青瓷色板。
+/// 圆角统一为 16；遮罩与表面颜色跟随 Athena 青瓷色板。
 /// 面板内左侧是导航、右侧是内容区，关闭按钮浮在内容区右上角的**标题带**里
 /// （内容区顶部留出 [AthenaSettings.paneTopPadding]，分区标题从标题带下方
 /// 开始，不会与关闭键同一水平线）。
@@ -64,15 +64,7 @@ class AthenaSettingsPanel extends StatelessWidget {
     var decoration = BoxDecoration(
       color: colors.surfaceMobile,
       borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
-      // Claude 实测：面板外的阴影很窄（约 10px 内衰减完，紧贴边缘最深），
-      // 不是 overlay 那种 28px 大范围投影。
-      boxShadow: [
-        BoxShadow(
-          color: colors.shadow.withValues(alpha: 0.10),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
-        ),
-      ],
+      boxShadow: AthenaShadow.modal(colors.shadow),
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -97,6 +89,12 @@ class AthenaSettingsPanel extends StatelessWidget {
           width: width,
           height: height,
           decoration: decoration,
+          foregroundDecoration: Theme.of(context).brightness == Brightness.dark
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+                  border: Border.all(color: colors.border),
+                )
+              : null,
           // 面板内必须有 Material：设置路由是**非透明**路由，没有 Scaffold，
           // 而内容区里的输入框（TextField）需要 Material 祖先。
           child: Material(

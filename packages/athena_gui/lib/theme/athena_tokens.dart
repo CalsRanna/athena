@@ -3,37 +3,31 @@
 /// 与 [AthenaColors] 的分工：`athena_colors.dart` 管颜色（挂 ThemeExtension，
 /// 随主题切换），本文件管不随主题变化的常量。
 ///
-/// 视觉语言来自 **Claude 桌面端**（取值来自它 `app.asar` 里的 `--cds-*` 变量，
-/// 并与窗口截图采样交叉验证）：
+/// Athena 青瓷主题的视觉规则：
 /// - UI 与正文用**系统字体**，等宽只用于代码块 / 终端 / 技术标签；
-/// - 圆角克制：行 / 控件 7、卡片 10、对话框 / 菜单 12；筛选 chip 是胶囊；
-/// - 层级靠"提亮一档的灰底 + 极淡的分隔线"，浮层带一层柔阴影；
-/// - 画布是暖白（浅色）/ 近黑（深色），**不使用纯黑**。
+/// - 圆角按角色分为 4 / 8 / 12 / 16，筛选 chip 与头像保留胶囊 / 圆形；
+/// - 静态内容靠底色与细线分层，输入区、菜单、模态依次使用三档柔阴影；
+/// - 画布使用青瓷中性色，输入框聚焦时使用青瓷强调色边框。
 library;
 
 import 'package:flutter/material.dart';
 
-/// 圆角等级。取值来自 **Claude 桌面端的 `--cds-radius-*`**。
+/// 圆角等级：同类组件共用数值，嵌套菜单用外层 12 + 内边距 4 + 行 8。
 ///
-/// Claude 的圆角很克制：最小档 5、控件档 7、composer 也只有 12。
-/// 没有 20/24 这种大圆角。
-///
-/// | Claude 变量 | 值 | 本仓 token | 组件 |
-/// |---|---|---|---|
-/// | `--cds-radius` | 4 | `xs` | 极小元素 |
-/// | `--cds-radius--sm` / `--xs` | 5 | `inline` | 徽标、行内代码、勾选框 |
-/// | `--cds-radius--lg` | 7 | `row` / `control` | 列表行、按钮、输入框 |
-/// | （卡片/面板） | 10 | `container` | 卡片、代码块 |
-/// | （对话框/菜单） | 12 | `panel` / `menu` | 对话框、弹出菜单 |
-/// | `--cds-radius-composer` | 12 | `composer` | composer |
-/// | `--radius-full` | 9999 | `pill` | chip、发送按钮、头像 |
+/// | 值 | token | 组件 |
+/// |---|---|---|
+/// | 4 | `xs` / `inline` | 徽标、行内代码、勾选框 |
+/// | 8 | `row` / `control` | 列表行、按钮、输入框 |
+/// | 12 | `container` / `menu` / `composer` | 卡片、代码块、菜单、输入区 |
+/// | 16 | `panel` | 对话框、设置面板、底部面板 |
+/// | 999 | `pill` | chip、发送按钮、头像 |
 abstract final class AthenaRadius {
   static const xs = 4.0;
-  static const inline = 5.0;
-  static const row = 7.0;
-  static const control = 7.0;
-  static const container = 10.0;
-  static const panel = 12.0;
+  static const inline = xs;
+  static const row = 8.0;
+  static const control = 8.0;
+  static const container = 12.0;
+  static const panel = 16.0;
   static const menu = 12.0;
   static const composer = 12.0;
   static const pill = 999.0;
@@ -227,32 +221,46 @@ abstract final class AthenaFont {
 
 /// 浮起容器的柔阴影。
 ///
-/// Claude 的对话框与弹出层不是硬 1px 描边，而是一圈非常柔和的投影；
-/// 移动端 composer 用 [raised]，对话框与菜单用 [overlay]。
+/// 静态卡片无阴影；两端 composer 用 [raised]，菜单 / 预览用 [overlay]，
+/// 对话框 / 设置面板用 [modal]。深色浮层另加不占布局空间的 1px 轮廓。
 abstract final class AthenaShadow {
-  /// 低浮起：composer、行内浮层。
+  /// 贴近表面：composer、控件内的滑块。
   static List<BoxShadow> raised(Color ink) => [
     BoxShadow(
-      color: ink.withValues(alpha: 0.05),
-      blurRadius: 12,
-      offset: const Offset(0, 3),
+      color: ink.withValues(alpha: 0.04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
     ),
     BoxShadow(
-      color: ink.withValues(alpha: 0.04),
+      color: ink.withValues(alpha: 0.03),
       blurRadius: 2,
       offset: const Offset(0, 1),
     ),
   ];
 
-  /// 高浮起：对话框、弹出菜单。
+  /// 小浮层：弹出菜单、悬停预览、加载提示。
   static List<BoxShadow> overlay(Color ink) => [
     BoxShadow(
-      color: ink.withValues(alpha: 0.10),
-      blurRadius: 28,
-      offset: const Offset(0, 10),
+      color: ink.withValues(alpha: 0.08),
+      blurRadius: 16,
+      offset: const Offset(0, 4),
     ),
     BoxShadow(
-      color: ink.withValues(alpha: 0.06),
+      color: ink.withValues(alpha: 0.04),
+      blurRadius: 3,
+      offset: const Offset(0, 1),
+    ),
+  ];
+
+  /// 模态面板：配合遮罩表达层级。
+  static List<BoxShadow> modal(Color ink) => [
+    BoxShadow(
+      color: ink.withValues(alpha: 0.10),
+      blurRadius: 24,
+      offset: const Offset(0, 8),
+    ),
+    BoxShadow(
+      color: ink.withValues(alpha: 0.05),
       blurRadius: 6,
       offset: const Offset(0, 2),
     ),
