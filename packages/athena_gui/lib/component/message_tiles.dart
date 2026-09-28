@@ -9,6 +9,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:athena_gui/widget/dialog.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/markdown.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
@@ -388,8 +389,6 @@ class _UserMessageListTile extends StatefulWidget {
 }
 
 class _UserMessageListTileState extends State<_UserMessageListTile> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -400,10 +399,9 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
     // 操作条与助手消息同一套：排在**气泡下方**、默认全透明、hover 才淡入。
     // 气泡右对齐，操作条也贴右缘。旧版把重发按钮常驻在气泡右侧，白占了一列
     // 横向位置，且静止时就能看见。
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Padding(
+    return AthenaHover(
+      // 消息卡片本身不可点，hover 只驱动操作条显形，所以不设 cursor。
+      builder: (context, hovered) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -434,7 +432,7 @@ class _UserMessageListTileState extends State<_UserMessageListTile> {
             ),
             MessageActionBar(
               // 用户消息不受"本轮未结束"影响：即使正在跑，也照常 hover 显形。
-              visible: _hovered,
+              visible: hovered,
               // Copy 始终可用；Retry 只有调用方给了回调才出现。
               onCopy: () => _copyMessageContent(widget.message.content),
               onResend: widget.onResend,
@@ -616,32 +614,23 @@ class _MessageActionButton extends StatefulWidget {
 }
 
 class _MessageActionButtonState extends State<_MessageActionButton> {
-  bool _hovered = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Tooltip(
       message: widget.tooltip,
-      child: MouseRegion(
+      child: AthenaHover(
+        onTap: widget.onTap,
         cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          child: Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? colors.textPrimary.withValues(alpha: 0.05)
-                  : colors.textPrimary.withValues(alpha: 0),
-              borderRadius: BorderRadius.circular(AthenaRadius.row),
-            ),
-            child: Icon(widget.icon, size: 16, color: colors.iconSecondary),
+        builder: (context, hover) => Container(
+          width: 24,
+          height: 24,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+            borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
+          child: Icon(widget.icon, size: 16, color: colors.iconSecondary),
         ),
       ),
     );

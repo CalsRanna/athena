@@ -11,6 +11,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
@@ -126,18 +127,9 @@ class AthenaSettingsSelect extends StatefulWidget {
 }
 
 class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var decoration = BoxDecoration(
-      color: colors.neutralControlFill,
-      border: Border.all(
-        color: hover ? colors.neutralBorderStrong : colors.neutralBorder,
-      ),
-      borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
-    );
     var label = Text(
       widget.label,
       maxLines: 1,
@@ -148,35 +140,31 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
         height: AthenaFontSize.bodyHeight,
       ),
     );
-    var chevron = Icon(
-      AthenaIcons.dropdown,
-      color: colors.textWeak,
-      size: 14,
-    );
-    var content = AnimatedContainer(
-      alignment: Alignment.centerLeft,
-      decoration: decoration,
-      duration: const Duration(milliseconds: 120),
-      height: AthenaSettings.controlHeight,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AthenaSettings.controlPaddingHorizontal,
-      ),
-      child: Row(
-        children: [
-          Expanded(child: label),
-          const SizedBox(width: 8),
-          chevron,
-        ],
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    var chevron = Icon(AthenaIcons.dropdown, color: colors.textWeak, size: 14);
+    return AthenaHover(
       onTap: _handleTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: content,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: colors.neutralControlFill,
+          border: Border.all(
+            color: hover ? colors.neutralBorderStrong : colors.neutralBorder,
+          ),
+          borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
+        ),
+        duration: const Duration(milliseconds: 120),
+        height: AthenaSettings.controlHeight,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthenaSettings.controlPaddingHorizontal,
+        ),
+        child: Row(
+          children: [
+            Expanded(child: label),
+            const SizedBox(width: 8),
+            chevron,
+          ],
+        ),
       ),
     );
   }

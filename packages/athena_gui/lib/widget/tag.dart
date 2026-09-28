@@ -1,6 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/gestures.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 
 /// 筛选 chip：胶囊 + 1px 实线边框，没有渐变边框。
@@ -77,19 +77,11 @@ class AthenaTagButton extends StatefulWidget {
 }
 
 class _AthenaTagButtonState extends State<AthenaTagButton> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var selected = widget.selected;
     var foregroundColor = selected ? colors.textPrimary : colors.textSecondary;
-    var background = selected
-        ? colors.surfaceSelected
-        : hover
-        ? colors.surfaceHover
-        : colors.surfaceDeep;
-    var borderColor = selected || hover ? colors.borderStrong : colors.border;
     var child = DefaultTextStyle.merge(
       style: AthenaTextStyle.label.copyWith(
         color: foregroundColor,
@@ -100,40 +92,29 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
         child: widget.child,
       ),
     );
-    var container = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      decoration: BoxDecoration(
-        color: background,
-        border: Border.all(color: borderColor),
-        borderRadius: BorderRadius.circular(AthenaRadius.pill),
-      ),
-      padding: widget.padding,
-      child: child,
-    );
-    var mouseRegion = MouseRegion(
-      cursor: widget.onTap == null
-          ? SystemMouseCursors.basic
-          : SystemMouseCursors.click,
-      onEnter: _handleEnter,
-      onExit: _handleExit,
-      child: container,
-    );
-    if (widget.onTap == null) return mouseRegion;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    final disabled = widget.onTap == null;
+    return AthenaHover(
+      enabled: !disabled,
       onTap: widget.onTap,
-      child: mouseRegion,
+      cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          // 选中态靠"提亮底色 + 加粗文字"表达，不做明暗反转的实心填充。
+          color: selected
+              ? colors.surfaceSelected
+              : hover
+              ? colors.surfaceHover
+              : colors.surfaceDeep,
+          border: Border.all(
+            color: selected || hover ? colors.borderStrong : colors.border,
+          ),
+          borderRadius: BorderRadius.circular(AthenaRadius.pill),
+        ),
+        padding: widget.padding,
+        child: child,
+      ),
     );
-  }
-
-  void _handleEnter(PointerEnterEvent event) {
-    if (!mounted) return;
-    setState(() => hover = true);
-  }
-
-  void _handleExit(PointerExitEvent event) {
-    if (!mounted) return;
-    setState(() => hover = false);
   }
 }
 
@@ -176,8 +157,6 @@ class AthenaContextChip extends StatefulWidget {
 }
 
 class _AthenaContextChipState extends State<AthenaContextChip> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -187,76 +166,72 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
     // 上下文 chip 可能叠在次级容器上，hover 用前景色 5% 叠加，
     // 让反馈随所在底色变化，同时不占用选中态的青瓷填充。
     final hoverFill = colors.textPrimary.withValues(alpha: 0.05);
-    // 静止态不能写 `Colors.transparent`：它的 RGB 是黑，插值到浅色中途会渲染
-    // 成"半透明深灰"，表现为 hover 先闪一下深色再变浅（同 menu.dart 的说明）。
-    // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
-    final resting = widget.filled
-        ? colors.surfaceButtonSecondary
-        : hoverFill.withValues(alpha: 0);
-    // hover 高亮只对可点的 chip 生效（放在上下文带上时 chip 不带底色，
-    // 但可点却毫无反馈同样不对）。自带宽度的 chip 要让叠加层压在自己的底色上
-    // （合成成不透明色，避免插值中途出现半透明深色）。
-    final background = hover && widget.onTap != null
-        ? (widget.filled
-              ? Color.alphaBlend(hoverFill, colors.surfaceButtonSecondary)
-              : hoverFill)
-        : resting;
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        color: background,
-        // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
-        // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
-        borderRadius: BorderRadius.circular(AthenaRadius.xs),
-      ),
-      duration: const Duration(milliseconds: 120),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.leading != null) ...[
-            IconTheme(
-              data: IconThemeData(color: foreground, size: 13),
-              child: widget.leading!,
-            ),
-            const SizedBox(width: 6),
-          ],
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 200),
-            child: Text(
-              widget.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AthenaTextStyle.label.copyWith(color: foreground),
-            ),
+    final canTap = widget.onTap != null;
+    return AthenaHover(
+      enabled: canTap,
+      onTap: widget.onTap,
+      cursor: canTap ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      builder: (context, hover) {
+        // 静止态不能写 `Colors.transparent`：它的 RGB 是黑，插值到浅色中途会渲染
+        // 成"半透明深灰"，表现为 hover 先闪一下深色再变浅。
+        // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
+        final resting = widget.filled
+            ? colors.surfaceButtonSecondary
+            : hoverFill.withValues(alpha: 0);
+        // hover 高亮只对可点的 chip 生效（放在上下文带上时 chip 不带底色，
+        // 但可点却毫无反馈同样不对）。自带宽度的 chip 要让叠加层压在自己的底色上
+        // （合成成不透明色，避免插值中途出现半透明深色）。
+        final background = hover && canTap
+            ? (widget.filled
+                  ? Color.alphaBlend(hoverFill, colors.surfaceButtonSecondary)
+                  : hoverFill)
+            : resting;
+        return AnimatedContainer(
+          decoration: BoxDecoration(
+            color: background,
+            // 与 composer 里「模型名」那个可点控件同档（`_SquishButton` 的 hover 底
+            // 也是 `AthenaRadius.xs`）：上下文条是容器，条内控件取嵌套档的小方块。
+            borderRadius: BorderRadius.circular(AthenaRadius.xs),
           ),
-          if (widget.trailing != null) ...[
-            const SizedBox(width: 4),
-            IgnorePointer(
-              ignoring: !hover,
-              child: AnimatedOpacity(
-                opacity: hover ? 1 : 0,
-                duration: const Duration(milliseconds: 120),
-                child: IconTheme(
-                  data: IconThemeData(color: foreground),
-                  child: widget.trailing!,
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.leading != null) ...[
+                IconTheme(
+                  data: IconThemeData(color: foreground, size: 13),
+                  child: widget.leading!,
+                ),
+                const SizedBox(width: 6),
+              ],
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AthenaTextStyle.label.copyWith(color: foreground),
                 ),
               ),
-            ),
-          ],
-        ],
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: widget.onTap == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
-      ),
+              if (widget.trailing != null) ...[
+                const SizedBox(width: 4),
+                IgnorePointer(
+                  ignoring: !hover,
+                  child: AnimatedOpacity(
+                    opacity: hover ? 1 : 0,
+                    duration: const Duration(milliseconds: 120),
+                    child: IconTheme(
+                      data: IconThemeData(color: foreground),
+                      child: widget.trailing!,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

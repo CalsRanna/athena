@@ -1,6 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -222,18 +223,10 @@ class AthenaSettingsNavItem extends StatefulWidget {
 }
 
 class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     var contentColor = widget.active ? colors.accent : colors.textRowLabel;
-    // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
-    var background = widget.active
-        ? colors.neutralSelected
-        : hover
-        ? colors.neutralRule
-        : colors.neutralRule.withValues(alpha: 0);
     var textStyle = TextStyle(
       color: contentColor,
       fontSize: AthenaSettings.navFontSize,
@@ -253,28 +246,27 @@ class _AthenaSettingsNavItemState extends State<AthenaSettingsNavItem> {
       ),
       if (widget.trailing != null) widget.trailing!,
     ];
-    var container = AnimatedContainer(
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-      ),
-      duration: const Duration(milliseconds: 120),
-      height: AthenaSettings.navRowHeight,
-      padding: const EdgeInsets.only(
-        left: AthenaSettings.navRowPadding,
-        right: 8,
-      ),
-      child: Row(children: children),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaHover(
       onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          // 不能用 Colors.transparent 做插值：它的 RGB 是黑，动画中途会闪深灰。
+          color: widget.active
+              ? colors.neutralSelected
+              : hover
+              ? colors.neutralRule
+              : colors.neutralRule.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+        ),
+        duration: const Duration(milliseconds: 120),
+        height: AthenaSettings.navRowHeight,
+        padding: const EdgeInsets.only(
+          left: AthenaSettings.navRowPadding,
+          right: 8,
+        ),
+        child: Row(children: children),
       ),
     );
   }

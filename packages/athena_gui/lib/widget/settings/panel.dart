@@ -11,6 +11,7 @@ import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/button.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -196,17 +197,10 @@ class AthenaSettingsPane extends StatelessWidget {
 ///
 /// ghost 样式：静止无底，hover 前景色 5%，高 28、圆角 8；图标 14 +
 /// 标签 14 `textRowLabel`。
-class AthenaSettingsBackLink extends StatefulWidget {
+class AthenaSettingsBackLink extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   const AthenaSettingsBackLink({super.key, required this.label, this.onTap});
-
-  @override
-  State<AthenaSettingsBackLink> createState() => _AthenaSettingsBackLinkState();
-}
-
-class _AthenaSettingsBackLinkState extends State<AthenaSettingsBackLink> {
-  bool hover = false;
 
   @override
   Widget build(BuildContext context) {
@@ -217,33 +211,25 @@ class _AthenaSettingsBackLinkState extends State<AthenaSettingsBackLink> {
       height: AthenaFontSize.bodyHeight,
     );
     var children = [
-      Icon(
-        AthenaIcons.back,
-        color: colors.textRowLabel,
-        size: 14,
-      ),
+      Icon(AthenaIcons.back, color: colors.textRowLabel, size: 14),
       const SizedBox(width: 6),
-      Text(widget.label, maxLines: 1, style: textStyle),
+      Text(label, maxLines: 1, style: textStyle),
     ];
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
-        color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-        borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-      ),
-      duration: const Duration(milliseconds: 120),
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: AthenaSettings.rowInset),
-      child: Row(mainAxisSize: MainAxisSize.min, children: children),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
+    return AthenaHover(
+      onTap: onTap,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        decoration: BoxDecoration(
+          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+          color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
+        ),
+        duration: const Duration(milliseconds: 120),
+        height: 28,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AthenaSettings.rowInset,
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: children),
       ),
     );
   }

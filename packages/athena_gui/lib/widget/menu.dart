@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// 桌面左侧栏/列表行：整行 hover 底色 + 选中行提亮，圆角 [AthenaRadius.row]，
 /// 没有渐变边框。
@@ -36,12 +36,9 @@ class DesktopMenuTile extends StatefulWidget {
 }
 
 class _DesktopMenuTileState extends State<DesktopMenuTile> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    const duration = Duration(milliseconds: 120);
     // hover 只改底色，文字不动；选中行才使用青瓷强调。
     // 旧版在 hover 时把标签从次级灰跳到近黑，观感是"文字闪一下"，是错的。
     var contentColor = widget.active ? colors.accent : colors.textRowLabel;
@@ -56,62 +53,50 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
       overflow: TextOverflow.ellipsis,
       style: textStyle,
     );
-    // 不能从 `Colors.transparent` 做插值：它的 RGB 是黑，AnimatedContainer
-    // 从中途经过时会渲染成"半透明深灰"，表现为 hover 先闪一下深色再变浅。
-    // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
-    var resting = colors.surfaceHover.withValues(alpha: 0);
-    var background = widget.active
-        ? colors.surfaceSelected
-        : hover
-        ? colors.surfaceHover
-        : resting;
-    var leading = widget.leadingBuilder != null
-        ? widget.leadingBuilder!(hover)
-        : widget.leading;
-    var iconTheme = IconTheme(
-      data: IconThemeData(color: contentColor, size: 15),
-      child: leading ?? const SizedBox(),
-    );
-    var trailing =
-        widget.trailing ??
-        (hover ? widget.hoverTrailing : null) ??
-        const SizedBox();
-    var children = [
-      iconTheme,
-      if (leading != null) const SizedBox(width: 8),
-      Expanded(child: text),
-      trailing,
-    ];
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-      ),
-      duration: duration,
-      // 固定高保证 hover 出现的操作按钮不改变行高，文字上下各留 5。
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 11),
-      child: Row(children: children),
-    );
-    var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: widget.onSecondaryTap,
+    return AthenaHover(
       onTap: widget.onTap,
-      child: mouseRegion,
+      onSecondaryTap: widget.onSecondaryTap,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) {
+        // 不能从 `Colors.transparent` 做插值：它的 RGB 是黑，AnimatedContainer
+        // 从中途经过时会渲染成"半透明深灰"，表现为 hover 先闪一下深色再变浅。
+        // 用目标色的 0 透明度版本，RGB 全程一致，只有 alpha 在动。
+        var resting = colors.surfaceHover.withValues(alpha: 0);
+        var background = widget.active
+            ? colors.surfaceSelected
+            : hover
+            ? colors.surfaceHover
+            : resting;
+        var leading = widget.leadingBuilder != null
+            ? widget.leadingBuilder!(hover)
+            : widget.leading;
+        var iconTheme = IconTheme(
+          data: IconThemeData(color: contentColor, size: 15),
+          child: leading ?? const SizedBox(),
+        );
+        var trailing =
+            widget.trailing ??
+            (hover ? widget.hoverTrailing : null) ??
+            const SizedBox();
+        return AnimatedContainer(
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(AthenaRadius.row),
+          ),
+          duration: const Duration(milliseconds: 120),
+          // 固定高保证 hover 出现的操作按钮不改变行高，文字上下各留 5。
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 11),
+          child: Row(
+            children: [
+              iconTheme,
+              if (leading != null) const SizedBox(width: 8),
+              Expanded(child: text),
+              trailing,
+            ],
+          ),
+        );
+      },
     );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() => hover = true);
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() => hover = false);
   }
 }

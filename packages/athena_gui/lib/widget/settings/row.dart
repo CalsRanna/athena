@@ -7,6 +7,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_settings.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/settings/control.dart';
 import 'package:flutter/material.dart';
 
@@ -70,8 +71,6 @@ class AthenaSettingsRow extends StatefulWidget {
 }
 
 class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -171,28 +170,23 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
     );
     var interactive = widget.onTap != null || widget.onSecondaryTap != null;
     if (!interactive && !widget.selected) return content;
-    // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
-    var background = widget.selected
-        ? colors.neutralSelected
-        : hover && interactive
-        ? colors.neutralRule
-        : colors.neutralRule.withValues(alpha: 0);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: widget.onSecondaryTap,
+    return AthenaHover(
+      enabled: interactive,
       onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
-          ),
-          child: content,
+      onSecondaryTap: widget.onSecondaryTap,
+      cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
+      builder: (context, hover) => AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+          color: widget.selected
+              ? colors.neutralSelected
+              : hover && interactive
+              ? colors.neutralRule
+              : colors.neutralRule.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaSettings.navRowRadius),
         ),
+        child: content,
       ),
     );
   }

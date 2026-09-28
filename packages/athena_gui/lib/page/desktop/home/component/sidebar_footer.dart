@@ -2,9 +2,9 @@ import 'package:athena_gui/router/router.gr.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -98,14 +98,9 @@ class _FooterTile extends StatefulWidget {
 }
 
 class _FooterTileState extends State<_FooterTile> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 与列表行一样从目标色的 0 透明度版本插值，避免中途经过黑色（见 menu.dart）
-    var resting = colors.surfaceHover.withValues(alpha: 0);
-    var background = hover || widget.open ? colors.surfaceHover : resting;
     var mark = ClipRRect(
       borderRadius: BorderRadius.circular(AthenaRadius.pill),
       child: Image.asset(
@@ -135,35 +130,23 @@ class _FooterTileState extends State<_FooterTile> {
         chevron,
       ],
     );
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-      ),
-      duration: const Duration(milliseconds: 120),
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: row,
-    );
-    var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaHover(
       onTap: handleTap,
-      child: mouseRegion,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        decoration: BoxDecoration(
+          // 与列表行一样从目标色的 0 透明度版本插值，避免中途经过黑色
+          color: hover || widget.open
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+        ),
+        duration: const Duration(milliseconds: 120),
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: row,
+      ),
     );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() => hover = true);
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() => hover = false);
   }
 
   void handleTap() {

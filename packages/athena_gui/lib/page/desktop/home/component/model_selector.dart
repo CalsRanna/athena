@@ -5,8 +5,8 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -172,8 +172,6 @@ class _DesktopModelSelectDialogTile extends StatefulWidget {
 
 class _DesktopModelSelectDialogTileState
     extends State<_DesktopModelSelectDialogTile> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -196,39 +194,19 @@ class _DesktopModelSelectDialogTileState
       if (widget.model.reasoning) thinkIcon,
       if (widget.model.vision) visualIcon,
     ];
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.row),
-      color: hover ? colors.surfaceButtonSecondary : null,
-    );
-    var container = AnimatedContainer(
-      alignment: Alignment.centerLeft,
-      decoration: boxDecoration,
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(spacing: 8, children: children),
-    );
-    var mouseRegion = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaHover(
       onTap: widget.onTap,
-      child: mouseRegion,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+          color: hover ? colors.surfaceButtonSecondary : null,
+        ),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(spacing: 8, children: children),
+      ),
     );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() {
-      hover = false;
-    });
   }
 }

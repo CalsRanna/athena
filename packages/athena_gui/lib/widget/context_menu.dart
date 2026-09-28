@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -189,8 +190,6 @@ class DesktopContextMenuTile extends StatefulWidget {
 }
 
 class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -203,10 +202,6 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
     var textStyle = AthenaTextStyle.row.copyWith(
       color: textColor,
       decoration: TextDecoration.none,
-    );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.row),
-      color: hover && widget.enabled ? colors.surfaceHover : null,
     );
     var width = DesktopContextMenuConfiguration.widthOf(context);
     Widget label = Text(
@@ -274,47 +269,30 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
               if (trailing != null) trailing,
             ],
           );
-    var container = Container(
-      alignment: Alignment.centerLeft,
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      width: width,
-      child: content,
-    );
-    var mouseRegion = MouseRegion(
+    var tile = AthenaHover(
+      enabled: widget.enabled,
       cursor: widget.enabled
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    var tile = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.enabled ? handleTap : null,
-      child: mouseRegion,
+      onTap: () {
+        DesktopContextMenuManager.instance.dismiss();
+        widget.onTap?.call();
+      },
+      builder: (context, hover) => Container(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+          color: hover && widget.enabled ? colors.surfaceHover : null,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        width: width,
+        child: content,
+      ),
     );
     // 只有选择类条目才声称自己是按钮 / 选中项；普通右键菜单条目保持
     // 原样，避免给无选中语义的菜单项平白加上 selected: false。
     if (selected == null) return tile;
     return Semantics(button: true, selected: selected, child: tile);
-  }
-
-  void handleTap() {
-    DesktopContextMenuManager.instance.dismiss();
-    widget.onTap?.call();
-  }
-
-  void handleEnter(PointerEnterEvent _) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void handleExit(PointerExitEvent _) {
-    setState(() {
-      hover = false;
-    });
   }
 }
 
@@ -330,8 +308,6 @@ class DesktopContextMenuSubItem extends StatefulWidget {
 }
 
 class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -339,42 +315,22 @@ class _DesktopContextMenuSubItemState extends State<DesktopContextMenuSubItem> {
       color: colors.textPrimary,
       decoration: TextDecoration.none,
     );
-    var boxDecoration = BoxDecoration(
-      borderRadius: BorderRadius.circular(AthenaRadius.row),
-      color: hover ? colors.surfaceHover : null,
-    );
-    var container = Container(
-      alignment: Alignment.centerLeft,
-      decoration: boxDecoration,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Text(widget.text, style: textStyle),
-    );
-    var mouseRegion = MouseRegion(
+    return AthenaHover(
       cursor: SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
       onTap: () {
         DesktopContextMenuManager.instance.dismiss();
         widget.onTap?.call();
       },
-      child: mouseRegion,
+      builder: (context, hover) => Container(
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+          color: hover ? colors.surfaceHover : null,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(widget.text, style: textStyle),
+      ),
     );
-  }
-
-  void handleEnter(PointerEnterEvent event) {
-    setState(() {
-      hover = true;
-    });
-  }
-
-  void handleExit(PointerExitEvent event) {
-    setState(() {
-      hover = false;
-    });
   }
 }
 

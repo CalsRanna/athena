@@ -1,6 +1,6 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:flutter/gestures.dart';
+import 'package:athena_gui/widget/hover.dart';
 import 'package:flutter/material.dart';
 
 /// 导航图标按钮使用中性反色面，避免把次要导航也渲染成青瓷主操作。
@@ -55,59 +55,48 @@ class AthenaPrimaryButton extends StatefulWidget {
 }
 
 class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    // 以配套前景保证青瓷底上的文字可读；hover 只轻微调整填充明度。
-    final background = widget.onTap == null
-        ? colors.surfaceButtonSecondary
-        : hover
-        ? Color.alphaBlend(
-            colors.surface.withValues(alpha: 0.08),
-            colors.accent,
-          )
-        : colors.accent;
-    final foreground = widget.onTap == null
-        ? colors.textSecondary
-        : colors.textOnAccent;
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      duration: const Duration(milliseconds: 120),
-      padding: widget.padding,
-      child: DefaultTextStyle(
-        style: AthenaTextStyle.label.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w600,
-        ),
-        child: IconTheme.merge(
-          data: IconThemeData(color: foreground, size: 14),
-          child: widget.child,
-        ),
-      ),
-    );
-    var mouseRegion = MouseRegion(
-      cursor: widget.onTap == null
+    final disabled = widget.onTap == null;
+    final foreground = disabled ? colors.textSecondary : colors.textOnAccent;
+    return AthenaHover(
+      enabled: !disabled,
+      onTap: widget.onTap,
+      cursor: disabled
           ? SystemMouseCursors.basic
           : SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: mouseRegion,
+      builder: (context, hover) {
+        // 以配套前景保证青瓷底上的文字可读；hover 只轻微调整填充明度。
+        final background = disabled
+            ? colors.surfaceButtonSecondary
+            : hover
+            ? Color.alphaBlend(
+                colors.surface.withValues(alpha: 0.08),
+                colors.accent,
+              )
+            : colors.accent;
+        return AnimatedContainer(
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(AthenaRadius.control),
+          ),
+          duration: const Duration(milliseconds: 120),
+          padding: widget.padding,
+          child: DefaultTextStyle(
+            style: AthenaTextStyle.label.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+            child: IconTheme.merge(
+              data: IconThemeData(color: foreground, size: 14),
+              child: widget.child,
+            ),
+          ),
+        );
+      },
     );
   }
-
-  void handleEnter(PointerEnterEvent event) => setState(() => hover = true);
-
-  void handleExit(PointerExitEvent event) => setState(() => hover = false);
 }
 
 class AthenaSecondaryButton extends StatefulWidget {
@@ -129,61 +118,40 @@ class AthenaSecondaryButton extends StatefulWidget {
 }
 
 class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var container = AnimatedContainer(
-      decoration: BoxDecoration(
-        // 同样不能用 Colors.transparent（见 menu.dart 的说明）
-        color: widget.onTap != null && hover
-            ? colors.surfaceHover
-            : colors.surfaceHover.withValues(alpha: 0),
-        border: Border.all(
-          color: hover && widget.onTap != null
-              ? colors.borderStrong
-              : colors.border,
-        ),
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      duration: const Duration(milliseconds: 120),
-      padding: widget.padding,
-      child: DefaultTextStyle(
-        style: AthenaTextStyle.label.copyWith(
-          color: widget.onTap == null
-              ? colors.textSecondary
-              : colors.textPrimary,
-        ),
-        child: IconTheme.merge(
-          data: IconThemeData(
-            color: widget.onTap == null
-                ? colors.textSecondary
-                : colors.textPrimary,
-            size: 14,
-          ),
-          child: widget.child,
-        ),
-      ),
-    );
-    var mouseRegion = MouseRegion(
-      cursor: widget.onTap == null
+    final disabled = widget.onTap == null;
+    final foreground = disabled ? colors.textSecondary : colors.textPrimary;
+    return AthenaHover(
+      enabled: !disabled,
+      onTap: widget.onTap,
+      cursor: disabled
           ? SystemMouseCursors.basic
           : SystemMouseCursors.click,
-      onEnter: handleEnter,
-      onExit: handleExit,
-      child: container,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      child: mouseRegion,
+      builder: (context, hover) => AnimatedContainer(
+        decoration: BoxDecoration(
+          // 同样不能用 Colors.transparent：它的 RGB 是黑，插值会闪深色
+          color: hover && !disabled
+              ? colors.surfaceHover
+              : colors.surfaceHover.withValues(alpha: 0),
+          border: Border.all(
+            color: hover && !disabled ? colors.borderStrong : colors.border,
+          ),
+          borderRadius: BorderRadius.circular(AthenaRadius.control),
+        ),
+        duration: const Duration(milliseconds: 120),
+        padding: widget.padding,
+        child: DefaultTextStyle(
+          style: AthenaTextStyle.label.copyWith(color: foreground),
+          child: IconTheme.merge(
+            data: IconThemeData(color: foreground, size: 14),
+            child: widget.child,
+          ),
+        ),
+      ),
     );
   }
-
-  void handleEnter(PointerEnterEvent event) => setState(() => hover = true);
-
-  void handleExit(PointerExitEvent event) => setState(() => hover = false);
 }
 
 class AthenaTextButton extends StatefulWidget {
@@ -196,32 +164,26 @@ class AthenaTextButton extends StatefulWidget {
 }
 
 class _AthenaTextButtonState extends State<AthenaTextButton> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    var container = Container(
-      decoration: BoxDecoration(
-        color: hover ? colors.surfaceHover : Colors.transparent,
-        borderRadius: BorderRadius.circular(AthenaRadius.control),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: Text(
-        widget.text,
-        style: AthenaTextStyle.label.copyWith(
-          color: hover ? colors.textPrimary : colors.textSecondary,
-        ),
-      ),
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaHover(
       onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => Container(
+        decoration: BoxDecoration(
+          // 这里用 Container（无动画）而不是 AnimatedContainer，颜色是瞬变的，
+          // 所以 `Colors.transparent` 安全——不会有插值经过黑色的问题。
+          color: hover ? colors.surfaceHover : Colors.transparent,
+          borderRadius: BorderRadius.circular(AthenaRadius.control),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Text(
+          widget.text,
+          style: AthenaTextStyle.label.copyWith(
+            color: hover ? colors.textPrimary : colors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -249,8 +211,6 @@ class AthenaGhostIconButton extends StatefulWidget {
 }
 
 class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
-  bool hover = false;
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
@@ -259,26 +219,20 @@ class _AthenaGhostIconButtonState extends State<AthenaGhostIconButton> {
       color: colors.textRowLabel,
       size: widget.iconSize,
     );
-    var container = AnimatedContainer(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色（见 menu.dart）
-        color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
-        borderRadius: BorderRadius.circular(AthenaRadius.row),
-      ),
-      duration: const Duration(milliseconds: 120),
-      height: widget.box,
-      width: widget.box,
-      child: icon,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaHover(
       onTap: widget.onTap,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => hover = true),
-        onExit: (_) => setState(() => hover = false),
-        child: container,
+      cursor: SystemMouseCursors.click,
+      builder: (context, hover) => AnimatedContainer(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          // 静止态用目标色的 0 透明度版；透明黑插值会先闪深色
+          color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
+          borderRadius: BorderRadius.circular(AthenaRadius.row),
+        ),
+        duration: const Duration(milliseconds: 120),
+        height: widget.box,
+        width: widget.box,
+        child: icon,
       ),
     );
   }
