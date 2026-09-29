@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/util/logger_util.dart';
 import 'package:yaml/yaml.dart';
 
 class Skill {
@@ -79,7 +80,7 @@ class SkillLoader {
     return '"$escaped"';
   }
 
-  /// 解析 YAML；语法错误返回 null（与"跳过非法 Skill 目录"的容错一致）。
+  /// 解析 YAML；语法错误返回 null，由调用方连同原因一起报出去。
   static Object? _tryLoadYaml(String yaml) {
     try {
       return loadYaml(yaml);
@@ -98,24 +99,43 @@ class SkillLoader {
       final skillFile = File('${entity.path}/SKILL.md');
       if (!skillFile.existsSync()) continue;
       try {
-        final skill = _parseSkill(skillFile);
+        // 内容非法由 parseSkillFile 记原因后返回 null（见那里的注释）
+        final skill = parseSkillFile(skillFile);
         if (skill != null) skills.add(skill);
-      } catch (_) {
-        // Skip invalid skill directories
+      } catch (error) {
+        // 读不出来（权限、非 UTF-8……）同样只跳过这一个，但要留痕：
+        // 一声不响地少一个技能，用户无从查起。
+        LoggerUtil.w('Skill unreadable (${skillFile.path}): $error');
       }
     }
     return skills;
   }
 
+  /// 解析 SKILL.md；内容非法时记一条日志并返回 null。
+  ///
+  /// 非法的 Skill 只跳过、不中断整目录扫描，但**不能没有声音**：用户手写的
+  /// SKILL.md 少一个 description 就整条消失，没有日志时只能靠猜。口径与坏
+  /// 权限规则一致（PermissionService._ruleHits 也是跳过 + 记日志）。
+  ///
+  /// 文件本身读不出来时 I/O 异常照常冒泡，交给调用方按工具错误处理——那不是
+  /// 「内容不合法」，不该被这里吞成 null。
   Skill? parseSkillFile(File file) {
-    return _parseSkill(file);
+    try {
+      return _parseSkill(file);
+    } on FormatException catch (error) {
+      LoggerUtil.w('Skill skipped (${file.path}): ${error.message}');
+      return null;
+    }
   }
 
-  Skill? _parseSkill(File file) {
+  /// 内容不合法时抛 [FormatException]，message 即原因。
+  Skill _parseSkill(File file) {
     final content = file.readAsStringSync();
     final lines = content.split('\n');
 
-    if (lines.isEmpty || lines.first.trim() != '---') return null;
+    if (lines.isEmpty || lines.first.trim() != '---') {
+      throw const FormatException('missing the opening --- of front matter');
+    }
 
     var endIndex = -1;
     for (var i = 1; i < lines.length; i++) {
@@ -124,23 +144,33 @@ class SkillLoader {
         break;
       }
     }
-    if (endIndex == -1) return null;
+    if (endIndex == -1) {
+      throw const FormatException('front matter is not closed with ---');
+    }
 
     final frontmatterYaml = lines.sublist(1, endIndex).join('\n');
     final body = lines.sublist(endIndex + 1).join('\n').trim();
 
     final frontmatter = _tryLoadYaml(frontmatterYaml);
-    if (frontmatter is! YamlMap) return null;
-
-    final name = frontmatter['name'] as String?;
-    final description = frontmatter['description'] as String?;
-    if (name == null ||
-        description == null ||
-        name.isEmpty ||
-        description.isEmpty) {
-      return null;
+    if (frontmatter is! YamlMap) {
+      throw const FormatException('front matter is not a YAML mapping');
     }
-    if (!isValidSkillName(name)) return null;
+
+    // 逐个判类型而不是 `as String?`：name 写成数字会让 cast 抛 TypeError，
+    // 那不在 FormatException 的捕获范围里，一条坏技能就能炸掉整个扫描。
+    final name = frontmatter['name'];
+    final description = frontmatter['description'];
+    if (name is! String || name.isEmpty) {
+      throw const FormatException('name is missing, empty or not a string');
+    }
+    if (description is! String || description.isEmpty) {
+      throw const FormatException(
+        'description is missing, empty or not a string',
+      );
+    }
+    if (!isValidSkillName(name)) {
+      throw FormatException('name is not a valid skill name: $name');
+    }
 
     return Skill(
       name: name,
