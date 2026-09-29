@@ -8,6 +8,7 @@ import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/widget/copy_button.dart';
 import 'package:athena_gui/widget/dialog.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/markdown.dart';
@@ -569,6 +570,7 @@ class MessageActionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
     return Padding(
       // 与正文之间的呼吸位。这块高度常驻，hover 前后不变。
       padding: const EdgeInsets.only(top: 4),
@@ -590,17 +592,12 @@ class MessageActionBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (leading != null) leading!,
-              if (onCopy != null)
-                _MessageActionButton(
-                  icon: LucideIcons.copy,
-                  tooltip: 'Copy',
-                  onTap: onCopy,
-                ),
+              if (onCopy != null) _CopyActionButton(onTap: onCopy!),
               if (onResend != null)
                 _MessageActionButton(
-                  icon: LucideIcons.refreshCw,
                   tooltip: 'Retry',
                   onTap: onResend,
+                  child: _actionBarIcon(LucideIcons.refreshCw, colors),
                 ),
               if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],
@@ -611,47 +608,86 @@ class MessageActionBar extends StatelessWidget {
   }
 }
 
-/// 操作条上的一个 ghost 图标按钮。
+/// 操作条上按钮的图标：整条工具条共用一档尺寸与配色。
+Widget _actionBarIcon(IconData icon, AthenaColors colors) =>
+    Icon(icon, size: AthenaIcon.regularSize, color: colors.iconSecondary);
+
+/// 操作条上的复制键。
 ///
-/// 尺寸：控件用紧凑档，图标用常规档，圆角 [AthenaRadius.row]，
-/// hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）。
-class _MessageActionButton extends StatefulWidget {
-  final IconData icon;
+/// 反馈口径与代码块的 `CopyButton` 一致（同一套 [CopyFeedback] 状态机 +
+/// [CopiedLabel] 外观）：点击后图标换成勾、右侧出现 "Copied"，
+/// [AthenaMotion.linger] 后复原，期间再点不重复复制。
+class _CopyActionButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _CopyActionButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return CopyFeedback(
+      onTap: onTap,
+      builder: (context, copied) => _MessageActionButton(
+        tooltip: 'Copy',
+        child: AnimatedSwitcher(
+          duration: AthenaMotion.hover,
+          child: copied
+              // 「已复制」比图标宽（勾 + 文字），内边距只在它身上出现，
+              // 静止态仍是 28 × 28 的方形。
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: CopiedLabel(
+                    color: colors.textSecondary,
+                    iconSize: AthenaIcon.regularSize,
+                  ),
+                )
+              : _actionBarIcon(LucideIcons.copy, colors),
+        ),
+      ),
+    );
+  }
+}
+
+/// 操作条上的一个 ghost 按钮外壳：紧凑高度、hover 才出现底色、带 tooltip。
+///
+/// 尺寸：控件用紧凑档（静止态是 [AthenaIconButtonSize.compact] 见方），圆角
+/// [AthenaRadius.row]，hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）；
+/// 图标由 [child] 按 [AthenaIcon.regularSize] 与 `iconSecondary` 自己建
+/// （见 [_actionBarIcon]），保证整条工具条同档。
+///
+/// 内容由 [child] 决定（图标，或复制键的「已复制」反馈）。可点性也是：
+/// [onTap] 为空时这里只负责 hover 与指针形状，点击由外层收（复制键的
+/// [CopyFeedback] 要在同一次点击里切状态）。
+class _MessageActionButton extends StatelessWidget {
   final String tooltip;
+  final Widget child;
   final VoidCallback? onTap;
 
   const _MessageActionButton({
-    required this.icon,
     required this.tooltip,
+    required this.child,
     this.onTap,
   });
 
   @override
-  State<_MessageActionButton> createState() => _MessageActionButtonState();
-}
-
-class _MessageActionButtonState extends State<_MessageActionButton> {
-  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
     return Tooltip(
-      message: widget.tooltip,
+      message: tooltip,
       child: AthenaHover(
-        onTap: widget.onTap,
+        onTap: onTap,
         cursor: SystemMouseCursors.click,
         builder: (context, hover) => Container(
-          width: AthenaIconButtonSize.compact,
           height: AthenaIconButtonSize.compact,
+          constraints: const BoxConstraints(
+            minWidth: AthenaIconButtonSize.compact,
+          ),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
             borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
-          child: Icon(
-            widget.icon,
-            size: AthenaIcon.regularSize,
-            color: colors.iconSecondary,
-          ),
+          child: child,
         ),
       ),
     );

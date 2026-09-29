@@ -6,10 +6,12 @@ import 'package:athena_gui/component/message_sliver.dart';
 import 'package:athena_gui/component/message_tiles.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 void main() {
   final startedAt = DateTime(2026, 9, 29, 12);
@@ -188,5 +190,68 @@ void main() {
     ], streaming: false);
     expect(find.text('— · — tokens · — tokens/s'), findsOneWidget);
     expect(find.byTooltip('Copy'), findsOneWidget);
+  });
+
+  testWidgets('工具条复制键换成勾 + Copied，3 秒复原且行高不变', (tester) async {
+    await pumpMessages(tester, [
+      message(id: 'user-1', role: 'user', content: 'Question'),
+    ], streaming: false);
+    final copies = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copies.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+
+    // 操作条 hover 才显形，且不显形时 IgnorePointer 收不到点击
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: const Offset(790, 590));
+    await mouse.moveTo(tester.getCenter(find.text('Question')));
+    await tester.pumpAndSettle();
+
+    final height = tester.getSize(find.byType(MessageActionBar)).height;
+    expect(find.byIcon(LucideIcons.copy), findsOneWidget);
+
+    await tester.tap(find.byIcon(LucideIcons.copy));
+    await tester.pump(AthenaMotion.hover);
+    await tester.pump();
+    expect(copies, ['Question']);
+    expect(find.byIcon(LucideIcons.check), findsOneWidget);
+    expect(find.text('Copied'), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(MessageActionBar)).height,
+      height,
+      reason: '「Copied」只该把按钮加宽，不该顶高工具条',
+    );
+
+    await tester.tap(find.text('Copied'));
+    await tester.pump();
+    expect(copies, ['Question'], reason: '「已复制」期间重复点击不再复制');
+
+    await tester.pump(AthenaMotion.linger);
+    await tester.pump(AthenaMotion.hover);
+    await tester.pump();
+    expect(find.byIcon(LucideIcons.copy), findsOneWidget);
+    expect(find.text('Copied'), findsNothing);
+
+    await tester.tap(find.byIcon(LucideIcons.copy));
+    await tester.pump();
+    expect(copies, ['Question', 'Question']);
+
+    // 复原前卸载（切换对话 / 流式重建）不能再对已销毁的 State 调 setState
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 4));
+    expect(tester.takeException(), isNull);
+    await mouse.removePointer();
   });
 }
