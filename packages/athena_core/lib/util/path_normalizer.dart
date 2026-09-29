@@ -34,23 +34,20 @@ String normalizePathForMatch(String path) {
 /// 执行位关掉）时，`typeSync` 与 `FileStat.statSync` 的返回与「路径真的不存在」
 /// 完全一样——实测两者都不抛异常，都返回 `notFound`。
 ///
-/// **能区分，但代价明确**（同一环境下实测，供将来真要关掉这个洞的人参考）：
-/// - `Directory(不可穿越目录).listSync()` 会抛 `PathAccessException`，`osError`
-///   的 errorCode 是 13（EACCES）——这是唯一能一刀切分开的判据，代价是列一次目录
-///   （目录很大时不便宜），而路径解析在权限判定里是热路径（每条规则的 pattern 与
-///   key 都要解析一次）；
-/// - `Directory(dir).statSync()` 甚至能正常返回 `directory`（stat 只需要父目录可
-///   穿越），所以从 mode 位看不出「能不能穿越它」。靠 mode 猜还会在 root、ACL 与
-///   属主不同的情况下判断错。
+/// 这个折中只给**规则匹配**用（规则能匹配上总比一条都匹配不上好）。**执行前**另有
+/// [unresolvablePathError] 兜底：它在无法确定真实目标时直接拒绝，判据是
+/// `openSync(read)` 的 errno——同一环境下实测，在不可穿越的目录里探一个不存在的
+/// 名字抛 EACCES（errorCode 13），在可穿越的目录里抛 ENOENT（errorCode 2）。用
+/// `openSync` 而不是 `listSync` 的两点理由写在那个函数上。
 ///
-/// 所以这里保持退回词法路径，把边界写清楚而不是假装关掉了：真要 fail-closed，
-/// 正确的位置是**文件工具执行前那一次复核**（一次调用一次，不是每条规则一次），
-/// 那时用 `listSync` 探一次父目录是付得起的。
+/// 所以这里能安全地保持退回词法路径：`Directory(dir).statSync()` 连不可穿越的目录
+/// 都能正常返回 `directory`（stat 只需要父目录可穿越），从 mode 位看不出「能不能
+/// 穿越它」——靠 mode 猜还会在 root、ACL 与属主不同的情形下判断错，这条是实测过
+/// 的，别再往这个方向试。
 ///
-/// 后果必须说清楚：链接的父目录读不了时，审批卡、会话缓存与 deny 规则都会基于
-/// **词法路径**判断，而文件真正落到哪里是未知的；`realPathChangedSinceApproval`
-/// 用的是同一个函数，会得出「没有变化」的结论，也拦不住。此前这里写的
-/// 「执行侧的复核会拦住不一致」在解析失败这条路上并不成立。
+/// 后果仍然要说清楚：审批卡、会话缓存与 deny 规则都会基于**词法路径**判断，而文件
+/// 真正落到哪里是未知的；`realPathChangedSinceApproval` 用的是同一个函数，会得出
+/// 「没有变化」的结论，也拦不住——拦住它的是执行前那次 [unresolvablePathError]。
 String resolveRealPathSync(String path) {
   final normalized = normalizePathForMatch(path);
   try {
@@ -86,6 +83,67 @@ String resolveRealPathSync(String path) {
     // 可达、写不出会先失败的测试，于是按上面的边界记录现状，不引入测不到的代码。
     return normalized;
   }
+}
+
+/// 路径上有**不可穿越**的目录时返回原因，否则返回 null。
+///
+/// 判据只要一次系统调用：对「最深的那个存在着的祖先目录」探测一个不存在的子项。
+/// 实测在不可穿越的目录里，`File(...).openSync(mode: read)` 抛 EACCES
+/// （errorCode 13），在可穿越的目录里抛 ENOENT（errorCode 2）——这正是
+/// [resolveRealPathSync] 的「已知边界」里 `typeSync` / `FileStat.statSync` 给不出
+/// 的区分。
+///
+/// 用 `openSync(read)` 而不是 `listSync` 有两点理由：读一个不存在的路径**不需要**
+/// 目录的读权限、只需要穿越权限，所以 mode 0111（只给穿越）的目录不会被误判；也
+/// 不会列出内容，代价是一条轻量的系统调用。
+///
+/// 从最深的祖先往上找，是因为哪一级存在本身也受同一种模糊影响：不可穿越目录的
+/// 子目录会被 `statSync` 报成不存在，而它自己（父目录可穿越时）能正常 stat 到。
+String? unresolvablePathReason(String path) {
+  var current = p.dirname(normalizePathForMatch(path));
+  while (true) {
+    try {
+      if (Directory(current).statSync().type ==
+          FileSystemEntityType.directory) {
+        // 在最深的那个存在的祖先目录里探一个不存在的名字
+        final probe = p.join(current, '.athena-traversal-probe');
+        try {
+          File(probe).openSync(mode: FileMode.read).closeSync();
+          // 探针竟然打开了：说明这个目录可穿越（也不影响正确性）
+          return null;
+        } on FileSystemException catch (e) {
+          final code = e.osError?.errorCode;
+          // 2 = ENOENT / 20 = ENOTDIR：目录可穿越，只是探针名字不存在 —— 正常
+          if (code == 2 || code == 20) return null;
+          // 13 = EACCES 等：这一级走不进去
+          return '$current is not searchable (${e.osError?.message ?? e.message})';
+        }
+      }
+    } catch (_) {
+      // statSync 自己失败：继续往上找
+    }
+    final parent = p.dirname(current);
+    if (parent == current || current.isEmpty) return null; // 走到根，没发现问题
+    current = parent;
+  }
+}
+
+/// 执行前的路径复核：**无法确定真实目标时拒绝执行**。
+///
+/// 与 [resolveRealPathSync] 的「解析不了就退回词法路径」不同——那个折中是给规则匹配
+/// 用的（规则要能匹配上总比一条都匹配不上好）。而执行前必须能确定目标：路径上有
+/// 不可穿越的目录时，审批卡、会话缓存与 deny 规则全都基于**词法路径**判断过一遍，
+/// 文件真正落到哪里却是未知的（链接可能指向别处），这时继续执行就是把未知当已知。
+///
+/// 只应在**文件工具执行前**调用（一次调用一次），不要放进权限判定那条热路径——
+/// 那里每条规则的 pattern 与 key 都要解析一次路径，代价会被放大。
+String? unresolvablePathError(String path) {
+  final reason = unresolvablePathReason(path);
+  if (reason == null) return null;
+  return 'Error: Blocked: cannot determine the real path of $path because '
+      '$reason. Approval, deny rules and the audit trail were all computed '
+      'from the literal path, so this call is refused. Fix the permissions of '
+      'the directories leading to it, or use a path that is fully searchable.';
 }
 
 /// 执行前复核路径：[path] 应已由 `applyRunWorkspace` 解析为真实路径。

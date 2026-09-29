@@ -65,6 +65,12 @@ class FileReadTool implements Tool {
 
     // 引擎已把 path 解析为真实路径并据此审批；复核链接未被替换后再做
     // 敏感路径检查（基于真实路径，链接绕不过去）。
+    // 路径上有不可穿越的目录时，审批与 deny 规则看到的都是词法路径，而真正
+    // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
+    // 能确定目标，否则拒绝。
+    final unresolved = unresolvablePathError(path);
+    if (unresolved != null) return unresolved;
+
     final changed = realPathChangedSinceApproval(path);
     if (changed != null) return symlinkChangedError(path, changed);
     final normalized = normalizePathForMatch(path);

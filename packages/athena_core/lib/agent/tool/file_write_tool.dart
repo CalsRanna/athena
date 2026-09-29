@@ -46,6 +46,12 @@ class FileWriteTool implements Tool {
 
     // 引擎已把 path 解析为真实路径（applyRunWorkspace）并据此审批；
     // 这里复核审批后链接没有被替换，保证写入的正是审批时看到的文件。
+    // 路径上有不可穿越的目录时，审批与 deny 规则看到的都是词法路径，而真正
+    // 落到哪是未知的（见 `path_normalizer.dart` 的「已知边界」）。执行前必须
+    // 能确定目标，否则拒绝。
+    final unresolved = unresolvablePathError(path);
+    if (unresolved != null) return unresolved;
+
     final changed = realPathChangedSinceApproval(path);
     if (changed != null) return symlinkChangedError(path, changed);
     final normalized = normalizePathForMatch(path);
