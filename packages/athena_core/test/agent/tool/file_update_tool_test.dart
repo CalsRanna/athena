@@ -136,4 +136,24 @@ void main() {
       expect(file.readAsStringSync(), original);
     });
   });
+
+  group('不丢文件权限', () {
+    // 写入改走「临时文件 + rename」后，临时文件是新 inode、默认 0644，
+    // 不把原 mode 套回去就会把可执行脚本改成不可执行——静默的功能损失。
+    test('编辑可执行脚本后 0755 仍在', () async {
+      final file = writeFile('run.sh', '#!/bin/sh\necho old\n');
+      await Process.run('chmod', ['755', file.path]);
+      expect(file.statSync().mode & 0xFFF, 0x1ED, reason: '前置条件：0755');
+
+      final result = await update(
+        file,
+        oldString: 'echo old',
+        newString: 'echo new',
+      );
+
+      expect(result, startsWith('Successfully updated'));
+      expect(file.statSync().mode & 0xFFF, 0x1ED);
+      expect(file.readAsStringSync(), '#!/bin/sh\necho new\n');
+    });
+  });
 }

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/util/atomic_file_write.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 
 import 'tool_interface.dart';
@@ -255,7 +256,8 @@ class FileUpdateTool implements Tool {
           'Re-read the file and try again.';
     }
 
-    await file.writeAsString(updated);
+    // 同 file_write：原子替换，且不跟随最后一段符号链接
+    await replaceFileContent(file, updated);
     return 'Successfully updated ${file.path}';
   }
 }

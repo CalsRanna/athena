@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/util/atomic_file_write.dart';
 import 'package:athena_core/util/path_normalizer.dart';
 
 import 'tool_interface.dart';
@@ -52,9 +53,9 @@ class FileWriteTool implements Tool {
       return protectedWritePathError(path);
     }
 
-    final file = File(normalized);
-    await file.parent.create(recursive: true);
-    await file.writeAsString(content);
+    // 原子替换，且不跟随最后一段符号链接：审批到这里之间目标若被换成链接，
+    // 直接写会改坏链接指向的文件（见 replaceFileContent）
+    await replaceFileContent(File(normalized), content);
 
     return 'Successfully wrote ${content.length} bytes to $path';
   }

@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:athena_core/storage/serial_lock.dart';
+import 'package:athena_core/util/atomic_file_write.dart';
 
 /// 在 [lockFile] 的排它锁内执行 [action]:先按锁文件路径在**进程内**串行
 /// (同一进程里指向同一文件的多个仓储实例互斥),再取**跨进程**文件锁。
@@ -37,27 +37,12 @@ final Map<String, Future<void>> _inProcess = {};
 /// [target] 对应的锁文件:同目录下的 `{name}.lock`。
 File lockFileFor(File target) => File('${target.path}.lock');
 
-final _random = Random();
-
 /// 原子替换 [target] 的内容:写到同目录的唯一临时文件再 rename。
 ///
-/// 临时文件名带随机后缀:同一进程里多个实例(或另一进程)同时写同一
-/// 目标时,固定的 `.tmp` 名会互相覆盖/抢先 rename 导致 PathNotFound。
-Future<void> atomicWriteString(File target, String content) async {
-  await target.parent.create(recursive: true);
-  final suffix = '${pid}_${_random.nextInt(1 << 32)}';
-  final tmp = File('${target.path}.$suffix.tmp');
-  try {
-    // 写入也在 try 内：磁盘满等写入失败时同样要清掉临时文件
-    await tmp.writeAsString(content, flush: true);
-    await tmp.rename(target.path);
-  } catch (_) {
-    try {
-      await tmp.delete();
-    } catch (_) {}
-    rethrow;
-  }
-}
+/// 实现已统一到 [replaceFileContent]——连符号链接窗口与权限位一起处理，
+/// 这里只保留这个更贴存储语境的旧名字供既有调用点使用。
+Future<void> atomicWriteString(File target, String content) =>
+    replaceFileContent(target, content);
 
 /// 把无法解析的 [file] 复制一份到同目录的 `{name}.corrupt-{时间戳}`，返回
 /// 副本路径；文件不存在时返回 null。
