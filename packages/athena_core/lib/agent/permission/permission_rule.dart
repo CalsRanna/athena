@@ -132,6 +132,10 @@ class PermissionRule {
         // pattern 为空 → 允许该工具的所有调用
         if (pattern.isEmpty) return true;
         if (keyArg == null) return false;
+        if (effect == RuleEffect.deny && kShellToolNames.contains(toolName)) {
+          return _normalizeCommandForDenyMatch(keyArg) ==
+              _normalizeCommandForDenyMatch(pattern);
+        }
         return keyArg.trim() == pattern.trim();
       case RuleKind.origin:
         if (pattern.isEmpty) return true;
@@ -153,6 +157,37 @@ class PermissionRule {
     if (!keyArg.startsWith(pattern)) return false;
     final next = keyArg[pattern.length];
     return next == ':' || next == '/';
+  }
+
+  /// deny 规则用的 shell 命令归一化：折叠空白、去掉每个参数末尾的 `/`。
+  ///
+  /// **只用于 deny。** deny 是安全方向，放宽匹配最坏是多拦住一条本来能跑的
+  /// 命令；allow 一旦放宽就变成「多放行一条用户没看过的命令」，所以 allow 继续
+  /// 字面精确（见 [matches]）。
+  ///
+  /// 它堵的是最廉价的扰动：`rm -rf ~` 与 `rm -rf ~/`、`rm  -rf\t~`。它**不是**
+  /// 命令语义分析——`rm -fr ~`、`/bin/rm -rf ~`、`bash -c 'rm -rf ~'` 依旧绕得
+  /// 过去。这条边界在 permission_rule_test 里有专门的用例写着，免得有人读到这里
+  /// 就以为有更强的保证。要真挡住那些得解析 shell 语法，而「在命令文本上做动作
+  /// 分析」是本仓库明确否决的方案（见 [forToolCall]）：它会把一次授权放大到用户
+  /// 没看到的变体。需要更强的约束请换手段——别把破坏性命令交给 agent，或收窄
+  /// 工作目录。
+  ///
+  /// 按空白切词会打散引号结构（`"a  b/"` 会被当成两个词），对 deny 可以接受：
+  /// 最坏是多拦或少拦一条，而不是多放行。
+  static String _normalizeCommandForDenyMatch(String command) {
+    return command
+        .trim()
+        .split(RegExp(r'\s+'))
+        .map((token) {
+          var trimmed = token;
+          // 保留单独的 `/`：`rm -rf /` 不能被归一化成 `rm -rf`
+          while (trimmed.length > 1 && trimmed.endsWith('/')) {
+            trimmed = trimmed.substring(0, trimmed.length - 1);
+          }
+          return trimmed;
+        })
+        .join(' ');
   }
 
   /// 路径匹配:归一化(分隔符、.. 词法解析、相对路径绝对化)后,

@@ -132,4 +132,50 @@ void main() {
       }
     });
   });
+
+  /// deny 是安全方向：放宽匹配最坏是多拦住一条本来能跑的命令。
+  /// allow 放宽会变成「多放行一条用户没看过的命令」——所以只有 deny 放宽。
+  group('deny 的 shell 匹配比 allow 宽', () {
+    PermissionRule deny(String pattern) => PermissionRule(
+      tool: 'bash',
+      kind: RuleKind.exact,
+      pattern: pattern,
+      effect: RuleEffect.deny,
+    );
+
+    PermissionRule allow(String pattern) =>
+        PermissionRule(tool: 'bash', kind: RuleKind.exact, pattern: pattern);
+
+    test('deny 命中参数末尾多一个斜杠的变体', () {
+      expect(deny('rm -rf ~').matches('bash', 'rm -rf ~/'), isTrue);
+    });
+
+    test('deny 命中空白差异（多空格 / 制表符 / 首尾空白）', () {
+      expect(deny('rm -rf ~').matches('bash', 'rm   -rf\t~/'), isTrue);
+      expect(deny('  rm -rf ~  ').matches('bash', 'rm -rf ~'), isTrue);
+    });
+
+    test('allow 保持字面，不放宽斜杠与空白', () {
+      expect(allow('rm -rf ~').matches('bash', 'rm -rf ~/'), isFalse);
+      expect(allow('rm -rf ~').matches('bash', 'rm   -rf ~'), isFalse);
+    });
+
+    test('放宽只针对 shell 工具，不牵连别的工具的同名 pattern', () {
+      const rule = PermissionRule(
+        tool: 'web_search',
+        kind: RuleKind.exact,
+        pattern: 'a/',
+        effect: RuleEffect.deny,
+      );
+      expect(rule.matches('web_search', 'a'), isFalse);
+    });
+
+    test('已知边界：不做命令语义分析，换写法仍绕得过', () {
+      // 这不只是「还没做」，而是本仓库明确不做的取舍：在 shell 命令文本上做动作
+      // 分析会把一次授权扩展到用户没看到的变体。要强约束请用 path deny 规则。
+      expect(deny('rm -rf ~').matches('bash', 'rm -fr ~'), isFalse);
+      expect(deny('rm -rf ~').matches('bash', '/bin/rm -rf ~'), isFalse);
+      expect(deny('rm -rf ~').matches('bash', 'bash -c "rm -rf ~"'), isFalse);
+    });
+  });
 }
