@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
@@ -199,6 +200,72 @@ void main() {
     );
 
     expect(result.message?.imageUrls, '');
+  });
+
+  /// 会话参数更新的表征测试。
+  ///
+  /// 这一段在 ViewModel 里是同一个模式抄了七遍（清错误 → 落库 → 就地更新列表 →
+  /// 同步草稿态信号），每遍自带一份 try/catch。合并之前先把可观测行为钉住：三条
+  /// 覆盖三种形状——值取自落库结果（retention）、值取自调用方（approvalMode）、
+  /// 可空值（workspacePath）。
+  group('会话参数更新', () {
+    Future<ChatEntity> seedChat() async {
+      final repo = GetIt.instance<ChatRepository>();
+      final id = await repo.createChat(
+        ChatEntity(
+          title: '参数',
+          modelId: 'm1',
+          sentinelId: null,
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        ),
+      );
+      await viewModel.getChats();
+      return (await repo.getChatById(id))!;
+    }
+
+    testWidgets('retention：落库、两条列表与草稿态信号都跟上', (tester) async {
+      await tester.runAsync(() async {
+        final chat = await seedChat();
+        viewModel.currentChat.value = chat;
+
+        await viewModel.updateRetention(7, chat: chat);
+
+        expect(viewModel.error.value, isNull);
+        expect(viewModel.chats.value.single.retention, 7);
+        expect(viewModel.chatHistories.value.single.chat.retention, 7);
+        expect(viewModel.currentChat.value?.retention, 7, reason: '当前对话要跟着更新');
+        expect(viewModel.currentRetention.value, 7);
+      });
+    });
+
+    testWidgets('approvalMode：落库并同步', (tester) async {
+      await tester.runAsync(() async {
+        final chat = await seedChat();
+        viewModel.currentChat.value = chat;
+        const mode = ApprovalMode.bypass;
+
+        await viewModel.updateApprovalMode(mode, chat: chat);
+
+        expect(viewModel.error.value, isNull);
+        expect(viewModel.chats.value.single.approvalMode, mode);
+        expect(viewModel.currentApprovalMode.value, mode);
+      });
+    });
+
+    testWidgets('workspacePath：可以清空成 null', (tester) async {
+      await tester.runAsync(() async {
+        final chat = await seedChat();
+        viewModel.currentChat.value = chat;
+        await viewModel.updateWorkspacePath('/tmp/x', chat: chat);
+        expect(viewModel.chats.value.single.workspacePath, '/tmp/x');
+
+        await viewModel.updateWorkspacePath(null, chat: chat);
+
+        expect(viewModel.chats.value.single.workspacePath, isNull);
+        expect(viewModel.currentWorkspacePath.value, isNull);
+      });
+    });
   });
 
   /// 失败以事件形式发出去，由页面呈现（`ChatErrorDialogListener`）。

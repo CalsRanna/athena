@@ -804,81 +804,66 @@ class ChatViewModel {
   // 会话参数操作
   // ═══════════════════════════════════════════════════════════════
 
-  Future<void> updateModel(
-    ModelEntity model, {
-    required ChatEntity chat,
+  /// 会话参数更新的统一外壳：清错误 → 落库 → 就地更新列表 → 同步草稿态信号。
+  ///
+  /// 这段顺序此前在七处各抄了一遍，每处都带着自己那份 `error` 重置与 try/catch。
+  /// 抄一遍的代价是漏掉任何一步都只能靠读七份代码发现，而「错误怎么记」也不能
+  /// 只改一处。集中之后 [sync] 里再抛的异常同样落到这里。
+  Future<void> _applyChatUpdate({
+    required Future<ChatEntity> Function() persist,
+    required FutureOr<void> Function(ChatEntity updated) sync,
   }) async {
     error.value = null;
     try {
-      final updated = await _supportService.updateModel(chat, model.id!);
+      final updated = await persist();
       _updateChatInLists(updated);
-      currentModel.value = model;
-      currentProvider.value = await _supportService.getProviderForModel(
-        model.providerId,
-      );
+      await sync(updated);
     } catch (e) {
       _reportError(e.toString());
     }
   }
+
+  Future<void> updateModel(ModelEntity model, {required ChatEntity chat}) =>
+      _applyChatUpdate(
+        persist: () => _supportService.updateModel(chat, model.id!),
+        // 用调用方传进来的实体而不是落库结果：provider 要按它的 id 去查
+        sync: (updated) async {
+          currentModel.value = model;
+          currentProvider.value = await _supportService.getProviderForModel(
+            model.providerId,
+          );
+        },
+      );
 
   Future<void> updateSentinel(
     SentinelEntity sentinel, {
     required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateSentinel(chat, sentinel.id);
-      _updateChatInLists(updated);
-      currentSentinel.value = sentinel;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  }) => _applyChatUpdate(
+    persist: () => _supportService.updateSentinel(chat, sentinel.id),
+    sync: (_) => currentSentinel.value = sentinel,
+  );
 
-  Future<void> updateRetention(
-    int retention, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateRetention(chat, retention);
-      _updateChatInLists(updated);
-      currentRetention.value = updated.retention;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  Future<void> updateRetention(int retention, {required ChatEntity chat}) =>
+      _applyChatUpdate(
+        persist: () => _supportService.updateRetention(chat, retention),
+        sync: (updated) => currentRetention.value = updated.retention,
+      );
 
   Future<void> updateTemperature(
     double temperature, {
     required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateTemperature(
-        chat,
-        temperature,
-      );
-      _updateChatInLists(updated);
-      currentTemperature.value = updated.temperature;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  }) => _applyChatUpdate(
+    persist: () => _supportService.updateTemperature(chat, temperature),
+    sync: (updated) => currentTemperature.value = updated.temperature,
+  );
 
   Future<void> updateReasoningEffort(
     String effort, {
     required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateReasoningEffort(chat, effort);
-      _updateChatInLists(updated);
-      currentReasoningEffort.value = updated.reasoningEffort;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  }) => _applyChatUpdate(
+    persist: () => _supportService.updateReasoningEffort(chat, effort),
+    sync: (updated) => currentReasoningEffort.value = updated.reasoningEffort,
+  );
 
   /// 弹出系统目录选择器设置本会话（或草稿）的工作文件夹。
   ///
@@ -903,19 +888,11 @@ class ChatViewModel {
   }
 
   /// 设置/清除本会话的工作文件夹（null = 不指定，回到默认行为）。
-  Future<void> updateWorkspacePath(
-    String? path, {
-    required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateWorkspacePath(chat, path);
-      _updateChatInLists(updated);
-      currentWorkspacePath.value = updated.workspacePath;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  Future<void> updateWorkspacePath(String? path, {required ChatEntity chat}) =>
+      _applyChatUpdate(
+        persist: () => _supportService.updateWorkspacePath(chat, path),
+        sync: (updated) => currentWorkspacePath.value = updated.workspacePath,
+      );
 
   /// 设置本会话的工具审批档位。
   ///
@@ -923,16 +900,10 @@ class ChatViewModel {
   Future<void> updateApprovalMode(
     ApprovalMode mode, {
     required ChatEntity chat,
-  }) async {
-    error.value = null;
-    try {
-      final updated = await _supportService.updateApprovalMode(chat, mode);
-      _updateChatInLists(updated);
-      currentApprovalMode.value = updated.approvalMode;
-    } catch (e) {
-      _reportError(e.toString());
-    }
-  }
+  }) => _applyChatUpdate(
+    persist: () => _supportService.updateApprovalMode(chat, mode),
+    sync: (updated) => currentApprovalMode.value = updated.approvalMode,
+  );
 
   Future<void> updateCurrentModel(ModelEntity model) async {
     currentModel.value = model;
