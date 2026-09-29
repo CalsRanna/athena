@@ -15,7 +15,6 @@ import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/run_event.dart';
-import 'package:athena_core/coordinator/streaming_message_buffer.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_selection_delegate.dart';
@@ -26,6 +25,7 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/view_model/pending_image_store.dart';
+import 'package:athena_gui/view_model/message_window_store.dart';
 import 'package:athena_gui/view_model/queued_input_queue.dart';
 import 'package:athena_gui/view_model/turn_start_cache.dart';
 import 'package:file_picker/file_picker.dart';
@@ -53,11 +53,6 @@ class ChatViewModel {
   final ModelViewModel _modelViewModel;
   final SentinelViewModel _sentinelViewModel;
 
-  int? _oldestLoadedMessageSeq;
-  bool _loadingOlderMessages = false;
-  int _messageLoadGeneration = 0;
-  int _olderLoadGeneration = 0;
-
   /// 轮次指示器的全量轮次起点，按 chatId 缓存：一次整文件扫描的代价不低，
   /// 切回同一会话时直接用缓存。消息被删除（会连带删掉后面的轮次）时按 id 截断。
 
@@ -66,14 +61,13 @@ class ChatViewModel {
   /// 整文件扫描是个快照,期间用户可能又发了一条;等扫描回来时把它并进去,
   /// 这样轮次数始终等于"整段会话的 user 消息数",不必为了追上发送而重扫。
 
-  bool get hasOlderMessages => _oldestLoadedMessageSeq != null;
+  bool get hasOlderMessages => _window.hasOlder;
 
   // ─── Signals ───
 
   final chats = listSignal<ChatEntity>([]);
   final chatHistories = listSignal<ChatHistoryEntity>([]);
   final currentChat = signal<ChatEntity?>(null);
-  final messages = listSignal<MessageEntity>([]);
 
   /// 整段会话里每一轮的起点 id（含尚未加载的历史），轮次指示器用。
   ///
@@ -155,7 +149,7 @@ class ChatViewModel {
   /// 也需要仓储去扫整文件，所以三样都注入。
   late final TurnStartCache _turns = TurnStartCache(
     currentChatId: () => currentChat.value?.id,
-    currentGeneration: () => _messageLoadGeneration,
+    currentGeneration: () => _window.generation,
     scan: (chatId) => _messageRepo.getTurnStartIds(chatId),
   );
 
@@ -199,115 +193,25 @@ class ChatViewModel {
     return chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
   }
 
-  void _resetMessagePagination() {
-    _oldestLoadedMessageSeq = null;
-    _loadingOlderMessages = false;
-    _olderLoadGeneration++;
-  }
+  /// 窗口分页、流式合并与加载代次整块在 [MessageWindowStore] 里；这里只转发。
+  Future<int> loadOlderMessages() => _window.loadOlder();
 
-  Future<List<MessageEntity>> _loadRecentMessages(
-    String chatId, {
-    required int count,
-    int? beforeSeq,
-  }) async {
-    final repository = _messageRepo;
-    if (repository is RecentMessageRepository) {
-      return (repository as RecentMessageRepository).loadRecentMessages(
-        chatId,
-        count: count,
-        beforeSeq: beforeSeq,
-      );
-    }
-
-    final all = await repository.getMessagesByChatId(chatId);
-    final eligible = beforeSeq == null
-        ? all
-        : all.where((message) => message.seq < beforeSeq).toList();
-    if (eligible.length <= count) return eligible;
-    return eligible.sublist(eligible.length - count);
-  }
-
-  Future<MessageWindow> _loadMessagePage(
-    String chatId, {
-    int? beforeSeq,
-  }) async {
-    final repository = _messageRepo;
-    if (beforeSeq == null && repository is RecentMessageRepository) {
-      // 首屏：够小的会话整段给（此后 hasOlder=false，不再翻页），超过阈值的
-      // 仍只给尾部一页。轮次条 hover/点击、列表高度因此不再分两段。
-      return (repository as RecentMessageRepository).loadInitialMessages(
-        chatId,
-        pageSize: messagePageSize,
-      );
-    }
-    final loaded = await _loadRecentMessages(
-      chatId,
-      count: messagePageSize + 1,
-      beforeSeq: beforeSeq,
-    );
-    final hasOlder = loaded.length > messagePageSize;
-    final page = hasOlder
-        ? loaded.sublist(loaded.length - messagePageSize)
-        : loaded;
-    return (hasOlder: hasOlder, messages: page);
-  }
-
-  void _applyMessagePage(MessageWindow page) {
-    _discardPendingMessages();
-    messages.value = page.messages;
-    _oldestLoadedMessageSeq = page.hasOlder && page.messages.isNotEmpty
-        ? page.messages.first.seq
-        : null;
-  }
-
-  /// 向列表顶部追加一页更早的消息，返回实际新增条数。
-  Future<int> loadOlderMessages() async {
-    final chatId = currentChat.value?.id;
-    final beforeSeq = _oldestLoadedMessageSeq;
-    if (_loadingOlderMessages || chatId == null || beforeSeq == null) return 0;
-
-    _loadingOlderMessages = true;
-    final selectionGeneration = _messageLoadGeneration;
-    final loadGeneration = ++_olderLoadGeneration;
-    try {
-      final page = await _loadMessagePage(chatId, beforeSeq: beforeSeq);
-      if (selectionGeneration != _messageLoadGeneration ||
-          loadGeneration != _olderLoadGeneration ||
-          currentChat.value?.id != chatId) {
-        return 0;
-      }
-
-      // 分页 IO 期间可能收到了流式增量，合并旧消息前先把增量冲刷到当前列表。
-      _flushMessages();
-      if (page.messages.isEmpty) {
-        _oldestLoadedMessageSeq = null;
-        return 0;
-      }
-
-      messages.value = [...page.messages, ...messages.value];
-      _oldestLoadedMessageSeq = page.hasOlder ? page.messages.first.seq : null;
-      return page.messages.length;
-    } finally {
-      if (loadGeneration == _olderLoadGeneration) {
-        _loadingOlderMessages = false;
-      }
-    }
-  }
-
-  // ─── 流式增量合并 ───────────────────────────────────────────────
+  // ─── 消息窗口 ───────────────────────────────────────────────────
   //
-  // 合并策略本身在 core 的 [StreamingMessageBuffer] 里（TUI 的 ChatController
-  // 用同一份）：LLM 每个 token 产生一个 RunMessageUpdated，直写 messages 信号
-  // 会让每个 delta 触发「整表复制 + 整个 ListView 重建 + markdown 全量重解析」，
-  // 消息数 M、输出 N token 时是 O(N·M) 复制加 O(N²) 解析。这里只负责把「提交到
-  // 哪里」定下来：写 messages 信号。
+  // 窗口列表、分页、流式增量合并与加载代次整块在 [MessageWindowStore] 里：它自
+  // 有一套状态（最旧一条的 seq、两个代次、合并缓冲）与完整的并发语义，与列表
+  // CRUD、参数、run 交互都不相干。这里只保留与页面同名的入口。
 
-  /// 合并窗口由构造参数给出（默认见 [StreamingMessageBuffer.defaultInterval]）。
-  late final StreamingMessageBuffer _buffer = StreamingMessageBuffer(
-    interval: _flushInterval,
-    snapshot: () => messages.value,
-    commit: (pending) => messages.value = pending,
+  late final MessageWindowStore _window = MessageWindowStore(
+    repository: _messageRepo,
+    currentChatId: () => currentChat.value?.id,
+    pageSize: messagePageSize,
+    flushInterval: _flushInterval,
   );
+
+  /// 当前显示的消息窗口。转发 [MessageWindowStore.messages]，页面照旧读
+  /// `chatViewModel.messages.value`。
+  ListSignal<MessageEntity> get messages => _window.messages;
 
   /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出
   /// streaming，但同一对话的新消息要在旧 run 落库完成后再启动，避免迟到
@@ -328,17 +232,16 @@ class ChatViewModel {
   final Set<String> _reportingChatIds = {};
 
   /// 流式追加/替换（占位消息、用户消息、内容增量）。
-  void _bufferAppendMessage(MessageEntity message, String chatId) {
-    _buffer.add(message, scope: chatId);
-  }
+  void _bufferAppendMessage(MessageEntity message, String chatId) =>
+      _window.addBuffered(message, chatId);
 
   /// 立即把挂起增量写入信号。收尾、以及任何需要读到最新列表的用户
-  /// 操作（删除、展开）之前必须调用，否则会读到过期的 messages.value。
-  void _flushMessages() => _buffer.flush();
+  /// 操作（删除、展开）之前必须调用，否则会读到过期的窗口。
+  void _flushMessages() => _window.flush();
 
   /// 丢弃挂起增量。整表被替换（切换对话、新建草稿）时使用——此时
   /// 冲刷旧缓冲只会把上一个对话的消息写进新列表。
-  void _discardPendingMessages() => _buffer.discard();
+  void _discardPendingMessages() => _window.discardPending();
 
   ChatViewModel({
     required ChatStoreService manageService,
@@ -472,8 +375,7 @@ class ChatViewModel {
       final unpinned = chats.value.where((c) => !c.pinned).toList();
       chats.value = [...pinned, chat, ...unpinned];
 
-      _messageLoadGeneration++;
-      _resetMessagePagination();
+      _window.beginLoad();
       isLoadingMessages.value = false;
       currentChat.value = chat;
       // 草稿落盘成对话：待发图片的槽位跟着改名（列表内容原地不动——调用方
@@ -487,7 +389,7 @@ class ChatViewModel {
       // _recordNewTurn 就地追加，指示器从第二轮起就能画，不必等重新选中。
       _turns.seedEmpty(chat.id!);
       _discardPendingMessages();
-      messages.value = [];
+      _window.clear();
 
       clearSelection();
       _selection.lastSelectedIndex.value = pinned.length;
@@ -630,8 +532,7 @@ class ChatViewModel {
   }
 
   Future<void> selectChat(ChatEntity chat) async {
-    final loadGeneration = ++_messageLoadGeneration;
-    _resetMessagePagination();
+    final loadGeneration = _window.beginLoad();
     currentChat.value = chat;
     // 待发图片按对话分开，跟着对话一起换（文字草稿由页面同步，见
     // `DesktopHomePage._restoreComposerDraft`）
@@ -639,25 +540,25 @@ class ChatViewModel {
     isLoadingMessages.value = true;
     // 新会话的 IO 返回前先卸载旧消息，避免用新 chatId 将旧长列表重建并回底。
     _discardPendingMessages();
-    messages.value = [];
+    _window.clear();
     // 轮次指示器：先给缓存值（没有就退回"已加载窗口"的口径），整文件扫描
     // 在后台补，扫完由信号驱动重画，不挡这条 await 链。
     _turns.selectChat(chat.id!);
     unawaited(_loadTurnStartIds(chat.id!, loadGeneration));
 
     try {
-      final page = await _loadMessagePage(chat.id!);
+      final page = await _window.loadInitial(chat.id!);
       final result = await _manageService.selectChat(
         chat,
         preloadedMessages: page.messages,
       );
-      if (loadGeneration != _messageLoadGeneration ||
+      if (loadGeneration != _window.generation ||
           currentChat.value?.id != chat.id) {
         return;
       }
 
       // 切走后旧对话的挂起增量不得写进新列表
-      _applyMessagePage((hasOlder: page.hasOlder, messages: result.messages));
+      _window.applyPage((hasOlder: page.hasOlder, messages: result.messages));
       currentModel.value = result.model;
       currentProvider.value = result.provider;
       currentSentinel.value = _displaySentinel(chat, result.sentinel);
@@ -671,7 +572,7 @@ class ChatViewModel {
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
       _mergeLiveMessage(chat.id!);
     } finally {
-      if (loadGeneration == _messageLoadGeneration &&
+      if (loadGeneration == _window.generation &&
           currentChat.value?.id == chat.id) {
         isLoadingMessages.value = false;
       }
@@ -1203,11 +1104,8 @@ class ChatViewModel {
 
   /// 追加或替换消息：切换对话的竞态下占位消息可能已在列表中
   /// （快照合并或 DB 预读），避免重复追加。
-  void _appendOrReplaceMessage(MessageEntity message) {
-    if (!messages.replaceWhere((m) => m.id == message.id, message)) {
-      messages.value = [...messages.value, message];
-    }
-  }
+  void _appendOrReplaceMessage(MessageEntity message) =>
+      _window.appendOrReplaceNow(message);
 
   /// 指定对话是否正在流式运行。
   bool isStreamingChat(String chatId) =>
@@ -1240,7 +1138,7 @@ class ChatViewModel {
     // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
     // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
     // 只冲刷属于这个对话的挂起增量：无条件冲刷会把别的对话的缓冲也提交掉
-    if (_buffer.hasPendingFor(chatId)) _buffer.flush();
+    _window.flushFor(chatId);
     streamingChatIds.value = streamingChatIds.value
         .where((id) => id != chatId)
         .toList();
@@ -1286,17 +1184,7 @@ class ChatViewModel {
     }
   }
 
-  Future<void> refreshMessages(String chatId) async {
-    if (currentChat.value?.id != chatId) return;
-    final loadGeneration = ++_messageLoadGeneration;
-    _resetMessagePagination();
-    final page = await _loadMessagePage(chatId);
-    if (loadGeneration != _messageLoadGeneration ||
-        currentChat.value?.id != chatId) {
-      return;
-    }
-    _applyMessagePage(page);
-  }
+  Future<void> refreshMessages(String chatId) => _window.refresh(chatId);
 
   // ═══════════════════════════════════════════════════════════════
   // 重命名
@@ -1410,12 +1298,11 @@ class ChatViewModel {
     ChatEntity? inheritFrom,
     bool inheritWorkspace = true,
   }) async {
-    _messageLoadGeneration++;
-    _resetMessagePagination();
+    _window.beginLoad();
     isLoadingMessages.value = false;
     currentChat.value = null;
     _discardPendingMessages();
-    messages.value = [];
+    _window.clear();
     // 上一个对话的轮次起点不能留着，否则空白草稿页会画出它的指示条
     _turns.clear();
     // 待发图片切回"新对话"槽（上一个对话的那份存回它自己的槽）
