@@ -131,6 +131,29 @@ void main() {
     });
   });
 
+  // 此前 responseFormat 非 null 会在 toMessageRequest 里抛 UnsupportedError，
+  // 请求根本发不出去：README 记录的 `/json` 模式对 Anthropic 用户必然失败。
+  test('/json 请求真的发得出去，并把 JSON 约束放进 system', () async {
+    await client([okStream])
+        .stream(
+          provider: provider,
+          request: ChatCompletionCreateRequest(
+            model: 'claude',
+            messages: [ChatMessage.user('hi')],
+            responseFormat: ResponseFormat.jsonObject(),
+          ),
+        )
+        .drain<void>();
+
+    expect(bodies, hasLength(1), reason: '请求必须真的发出去');
+    expect(jsonEncode(bodies.single['system']), contains('JSON'));
+    expect(
+      bodies.single.containsKey('response_format'),
+      isFalse,
+      reason: 'Messages 没有这个字段，不能硬塞',
+    );
+  });
+
   test('温度按 Messages 的 0–1 范围收紧', () async {
     await client([okStream])
         .stream(provider: provider, request: request(temperature: 1.6))

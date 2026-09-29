@@ -252,13 +252,44 @@ void main() {
         throwsA(isA<UnsupportedError>()),
       );
 
-      // /json 模式在 Messages 下没有对应参数，必须报错而不是静默失效
+      // json_schema 无法用提示词保证结构，继续显式失败，不假装支持
       expect(
         () => toMessageRequest(
-          chatRequest(responseFormat: const JsonObjectResponseFormat()),
+          chatRequest(
+            responseFormat: JsonSchemaResponseFormat(
+              name: 'out',
+              schema: const {'type': 'object'},
+            ),
+          ),
         ),
         throwsA(isA<UnsupportedError>()),
       );
+    });
+
+    // Messages 没有 response_format 字段。此前这里直接抛 UnsupportedError，于是
+    // README 记录的 `/json` 模式与「生成角色名」这类功能对 Anthropic 用户必然
+    // 失败。意图可以用提示词表达，那就该翻译过去。
+    test('jsonObject 翻译成系统提示词，而不是拒绝', () {
+      final request = toMessageRequest(
+        chatRequest(
+          messages: [ChatMessage.system('你是元数据生成器'), ChatMessage.user('生成名称')],
+          responseFormat: const JsonObjectResponseFormat(),
+        ),
+      );
+
+      final system = request.system!.toJson();
+      expect(system, contains('你是元数据生成器'), reason: '原有 system 不能被挤掉');
+      expect(system, contains('JSON'));
+      expect(request.messages, hasLength(1));
+    });
+
+    test('jsonObject 在原本没有 system 消息时也补上约束', () {
+      final request = toMessageRequest(
+        chatRequest(responseFormat: const JsonObjectResponseFormat()),
+      );
+
+      expect(request.system, isNotNull);
+      expect(request.system!.toJson(), contains('JSON'));
     });
   });
 

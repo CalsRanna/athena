@@ -23,7 +23,9 @@ import 'package:openai_dart/openai_dart.dart';
 /// 3. 用量字段名不同（`input_tokens` / `cache_read_input_tokens`），且 output
 ///    用量只在 `message_delta` 里给。
 ///
-/// 表达不了的内容（JSON Schema 输出格式、文档与音频内容）显式抛错，不静默丢弃。
+/// 表达不了的内容（JSON Schema 输出格式、文档与音频内容）显式抛错，不静默丢弃；
+/// 而 `jsonObject` 是能用提示词表达的，翻译过去而不是拒绝（见
+/// `_jsonOnlyInstruction`）。
 
 /// Messages 的 `max_tokens` 是必填项，而 Chat Completions 里 Athena 从不传。
 /// 模型输出上限未知时的取值：与 `ContextBudget` 给输出预留的上限一致，且
@@ -41,6 +43,16 @@ int messagesMaxTokens({int outputLimit = 0, int? outputRoom}) {
   if (outputRoom == null) return cap;
   return max(1, min(cap, outputRoom));
 }
+
+/// Messages 没有 `response_format` 字段，`jsonObject` 只能落到提示词上。
+///
+/// 面向模型的提示词按仓库约定用英文。措辞刻意保守：只要求「一个 JSON 对象」，
+/// 不承诺 schema。特别点明不要 Markdown 围栏——那是模型最常见的偏离方式，会
+/// 直接让调用方的 `jsonDecode` 失败。
+const _jsonOnlyInstruction =
+    'Return only a single valid JSON object as your entire response. '
+    'Do not wrap it in Markdown code fences and do not add any text before or '
+    'after the JSON.';
 
 /// 把 Chat Completions 形状的请求转成 Messages 请求。
 ///
@@ -68,15 +80,23 @@ anthropic.MessageCreateRequest toMessageRequest(
     'user',
     'stream_options',
   });
-  // 当前适配器尚未接入 output_config.format。
-  // 不显式失败的话，`/json` 模式下会静默按普通对话发出，用户拿到的是
-  // 「看起来生效但其实没有」的结果。
-  if (request.responseFormat != null) {
-    throw UnsupportedError(
+  // Messages 没有 response_format 字段，但「只输出一个 JSON 对象」这个意图可以
+  // 用提示词表达，所以翻译过去而不是拒绝。此前这里对所有非 null 都抛
+  // UnsupportedError，把本文件顶部声明的「表达不了的是 JSON Schema」扩大到了
+  // jsonObject，结果是 README 记录的 `/json` 模式与「生成角色名」这类功能对
+  // Anthropic 用户必然失败。
+  //
+  // 仍然不静默：只有 jsonObject 能这样表达。json_schema 要求结构可保证，提示词
+  // 兜不住，继续显式失败——宁可给调用方一个明确的错误，也不要一份「看起来符合
+  // schema、实际没有」的结果。
+  final jsonInstruction = switch (request.responseFormat) {
+    null => null,
+    JsonObjectResponseFormat() => _jsonOnlyInstruction,
+    _ => throw UnsupportedError(
       'Messages 协议暂不支持 ${request.responseFormat.runtimeType} 形式的 '
       'response_format',
-    );
-  }
+    ),
+  };
 
   final system = <String>[
     for (final message in request.messages)
@@ -84,6 +104,7 @@ anthropic.MessageCreateRequest toMessageRequest(
         message.content
       else if (message is DeveloperMessage && message.content.isNotEmpty)
         message.content,
+    if (jsonInstruction != null) jsonInstruction,
   ];
   final systemPrompt = system.isEmpty
       ? null
