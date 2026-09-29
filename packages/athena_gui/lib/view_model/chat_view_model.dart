@@ -26,16 +26,9 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/view_model/pending_image_store.dart';
+import 'package:athena_gui/view_model/queued_input_queue.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
-
-class _QueuedChatInput {
-  final MessageEntity message;
-  final ChatEntity chat;
-  final bool jsonMode;
-
-  const _QueuedChatInput(this.message, this.chat, this.jsonMode);
-}
 
 /// ChatViewModel 负责聊天会话的业务逻辑。
 ///
@@ -92,14 +85,12 @@ class ChatViewModel {
   /// 截断。计数还没到手时本信号为空，指示器不画——不给错的数字。
   final turnStartIds = listSignal<String>([]);
 
-  final _queuedInputs = listSignal<_QueuedChatInput>([]);
+  /// 待发输入的排队区（按会话 FIFO）。见 QueuedInputQueue。
+  late final QueuedInputQueue _queue = QueuedInputQueue();
 
   /// Unsent messages for the selected chat, displayed above its composer.
   late final queuedMessages = computed(
-    () => _queuedInputs.value
-        .where((input) => input.chat.id == currentChat.value?.id)
-        .map((input) => input.message)
-        .toList(),
+    () => _queue.messagesFor(currentChat.value?.id),
   );
   final isLoading = signal(false);
 
@@ -516,7 +507,7 @@ class ChatViewModel {
     isLoading.value = true;
     error.value = null;
     try {
-      _discardQueuedInputs({chat.id!});
+      _queue.discardChats({chat.id!});
       final done =
           _runSettledByChat[chat.id!]?.future ?? _stream.settledOf(chat.id!);
       if (done != null) {
@@ -551,7 +542,7 @@ class ChatViewModel {
     error.value = null;
     try {
       final ids = chatsToDelete.map((c) => c.id!).toSet();
-      _discardQueuedInputs(ids);
+      _queue.discardChats(ids);
 
       final settling = <Future<void>>[];
       for (final id in ids) {
@@ -595,7 +586,7 @@ class ChatViewModel {
   /// 侧栏里也会留着已经不存在的对话。清空后回草稿态、重读角色与会话列表，
   /// 并清掉按会话 id 存的草稿槽——重置后 id 从头分配，旧槽会串到新对话上。
   Future<T> runDataReset<T>(Future<T> Function() reset) async {
-    _queuedInputs.value = [];
+    _queue.clear();
     final running = {
       ...streamingChatIds.value,
       ..._runSettledByChat.keys,
@@ -1050,23 +1041,23 @@ class ChatViewModel {
     bool jsonMode = false,
   }) async {
     final chatId = chat.id!;
-    var input = _QueuedChatInput(message, chat, jsonMode);
+    var input = QueuedChatInput(message, chat, jsonMode);
     // The owner drains this chat's queue after each complete coordinator run.
     // Keep unsent input out of history and model context until its turn starts.
     while (true) {
       if (_runSettledByChat.containsKey(chatId)) {
-        _enqueue(input);
+        _queue.enqueue(input);
         return;
       }
       final previous = _stream.settledOf(chatId);
       if (previous != null) {
         // 协调层自己发起的 run（后台任务自动汇报）正在跑：输入框已经清空，
         // 先挂进排队区让用户看得到这条消息，删除会话时也能一并丢弃
-        _enqueue(input);
+        _queue.enqueue(input);
         await previous;
         // 等待期间会话被删（排队项已丢弃），或另一条等待中的发送已经把它
         // 带走发出：不再重复发送
-        if (!_queuedInputs.value.contains(input)) return;
+        if (!_queue.contains(input)) return;
         continue;
       }
       break;
@@ -1075,9 +1066,9 @@ class ChatViewModel {
     final settled = Completer<void>();
     _runSettledByChat[chatId] = settled;
     // If an earlier input could not be stored, preserve FIFO on the next send.
-    final waiting = _nextQueuedInput(chatId);
+    final waiting = _queue.nextFor(chatId);
     if (waiting != null) {
-      _enqueue(input);
+      _queue.enqueue(input);
       input = waiting;
     }
     try {
@@ -1088,7 +1079,7 @@ class ChatViewModel {
         if (currentChat.value?.id == chatId) currentTokenUsage.value = null;
         await _sendInput(input);
         _flushMessages();
-        final next = _nextQueuedInput(chatId);
+        final next = _queue.nextFor(chatId);
         if (next == null) break;
         input = next;
       }
@@ -1110,7 +1101,7 @@ class ChatViewModel {
     }
   }
 
-  Future<void> _sendInput(_QueuedChatInput input) async {
+  Future<void> _sendInput(QueuedChatInput input) async {
     // 排队期间用户可能在 composer 上改了模型、角色、工作文件夹等：这些修改
     // 已写回会话列表，出队时按最新的会话参数执行，而不是入队那一刻的快照
     final chat = _chatForEvent(input.chat.id!) ?? input.chat;
@@ -1131,7 +1122,7 @@ class ChatViewModel {
   void _applyRunEvent(
     RunEvent event, {
     required ChatEntity chat,
-    _QueuedChatInput? input,
+    QueuedChatInput? input,
   }) {
     final chatId = chat.id!;
     // 运行期间用户可能已切到其他对话：消息列表信号只反映当前显示的对话，
@@ -1150,11 +1141,7 @@ class ChatViewModel {
         // 用户消息落库 = 会话多了一轮，轮次计数就地跟上（见 _recordNewTurn）
         if (message.role == 'user') _recordNewTurn(chatId, message.id);
         batch(() {
-          if (input != null && _queuedInputs.value.contains(input)) {
-            _queuedInputs.value = _queuedInputs.value
-                .where((queued) => !identical(queued, input))
-                .toList();
-          }
+          if (input != null) _queue.remove(input);
           if (belongsToCurrent) {
             _bufferAppendMessage(message, chatId);
             _flushMessages();
@@ -1258,20 +1245,6 @@ class ChatViewModel {
     if (!messages.replaceWhere((m) => m.id == message.id, message)) {
       messages.value = [...messages.value, message];
     }
-  }
-
-  void _enqueue(_QueuedChatInput input) {
-    if (_queuedInputs.value.contains(input)) return;
-    _queuedInputs.value = [..._queuedInputs.value, input];
-  }
-
-  _QueuedChatInput? _nextQueuedInput(String chatId) =>
-      _queuedInputs.value.where((input) => input.chat.id == chatId).firstOrNull;
-
-  void _discardQueuedInputs(Set<String> chatIds) {
-    _queuedInputs.value = _queuedInputs.value
-        .where((input) => !chatIds.contains(input.chat.id))
-        .toList();
   }
 
   /// 指定对话是否正在流式运行。
