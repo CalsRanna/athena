@@ -23,6 +23,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
+import 'package:athena_gui/view_model/chat_run_state.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/view_model/pending_image_store.dart';
 import 'package:athena_gui/view_model/message_window_store.dart';
@@ -92,13 +93,17 @@ class ChatViewModel {
   /// 与通用 CRUD loading、LLM 流式状态分离，仅用于切换对话时的消息区反馈。
   final isLoadingMessages = signal(false);
 
+  /// 运行态（流式中的对话、实时进度、汇报记账）整块在 [ChatRunState] 里；
+  /// 这里转发它的信号，页面代码一行未改。
+  late final ChatRunState _runState = ChatRunState();
+
   /// 正在流式运行的对话 id 集合（多对话可同时运行）。
-  final streamingChatIds = listSignal<String>([]);
+  ListSignal<String> get streamingChatIds => _runState.streamingChatIds;
 
   /// 当前显示的对话是否正在流式（用于输入框/消息列表的流式状态展示）。
   late final isCurrentChatStreaming = computed(() {
     final id = currentChat.value?.id;
-    return id != null && streamingChatIds.value.contains(id);
+    return id != null && _runState.isStreaming(id);
   });
 
   /// 挂起的权限审批请求（按对话渲染为会话内卡片）。
@@ -132,9 +137,9 @@ class ChatViewModel {
   /// 草稿态的初值取 `AgentSettings.newChatApprovalMode`（启动时从旧的全局
   /// 设置播种），草稿改档只写这里，首条消息发送时随草稿一起落盘。
   final currentApprovalMode = signal(ApprovalMode.defaultMode);
-  final currentIteration = signal(0);
-  final currentToolName = signal<String?>(null);
-  final currentTokenUsage = signal<TokenUsage?>(null);
+  Signal<int> get currentIteration => _runState.currentIteration;
+  Signal<String?> get currentToolName => _runState.currentToolName;
+  Signal<TokenUsage?> get currentTokenUsage => _runState.currentTokenUsage;
 
   /// 待发图片的暂存、解码校验与按对话分槽，整块在 [PendingImageStore] 里。
   late final PendingImageStore _images = PendingImageStore(
@@ -216,7 +221,6 @@ class ChatViewModel {
   /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出
   /// streaming，但同一对话的新消息要在旧 run 落库完成后再启动，避免迟到
   /// 事件/工具结果覆盖新一轮。
-  final Map<String, Completer<void>> _runSettledByChat = {};
 
   /// 合并窗口。窗口内到达的所有增量只触发一次信号写入。
   ///
@@ -229,7 +233,6 @@ class ChatViewModel {
   final Duration _flushInterval;
 
   /// 运行指示由自动汇报点亮的会话（汇报 run 收尾时据此熄灭）。
-  final Set<String> _reportingChatIds = {};
 
   /// 流式追加/替换（占位消息、用户消息、内容增量）。
   void _bufferAppendMessage(MessageEntity message, String chatId) =>
@@ -384,7 +387,7 @@ class ChatViewModel {
       currentModel.value = model;
       currentProvider.value = provider;
       currentSentinel.value = sentinel;
-      currentTokenUsage.value = null;
+      _runState.noteUsage(null);
       // 新对话的轮次数是已知的 0：直接建缓存，之后每落一条 user 消息由
       // _recordNewTurn 就地追加，指示器从第二轮起就能画，不必等重新选中。
       _turns.seedEmpty(chat.id!);
@@ -416,8 +419,7 @@ class ChatViewModel {
     error.value = null;
     try {
       _queue.discardChats({chat.id!});
-      final done =
-          _runSettledByChat[chat.id!]?.future ?? _stream.settledOf(chat.id!);
+      final done = _settledOf(chat.id!);
       if (done != null) {
         _stream.stop(chat.id!);
         await done;
@@ -453,7 +455,7 @@ class ChatViewModel {
 
       final settling = <Future<void>>[];
       for (final id in ids) {
-        final done = _runSettledByChat[id]?.future ?? _stream.settledOf(id);
+        final done = _settledOf(id);
         if (done != null) {
           _stream.stop(id);
           settling.add(done);
@@ -493,14 +495,10 @@ class ChatViewModel {
   /// 并清掉按会话 id 存的草稿槽——重置后 id 从头分配，旧槽会串到新对话上。
   Future<T> runDataReset<T>(Future<T> Function() reset) async {
     _queue.clear();
-    final running = {
-      ...streamingChatIds.value,
-      ..._runSettledByChat.keys,
-      ..._stream.streamingChatIds,
-    };
+    final running = {..._runState.runningChatIds, ..._stream.streamingChatIds};
     final settling = <Future<void>>[];
     for (final id in running) {
-      final done = _runSettledByChat[id]?.future ?? _stream.settledOf(id);
+      final done = _settledOf(id);
       _stream.stop(id);
       _rename.cancel(id);
       if (done != null) settling.add(done);
@@ -567,7 +565,7 @@ class ChatViewModel {
       currentReasoningEffort.value = chat.reasoningEffort;
       currentWorkspacePath.value = chat.workspacePath;
       currentApprovalMode.value = chat.approvalMode;
-      currentTokenUsage.value = null;
+      _runState.noteUsage(null);
 
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
       _mergeLiveMessage(chat.id!);
@@ -908,7 +906,7 @@ class ChatViewModel {
     // The owner drains this chat's queue after each complete coordinator run.
     // Keep unsent input out of history and model context until its turn starts.
     while (true) {
-      if (_runSettledByChat.containsKey(chatId)) {
+      if (_runState.hasRun(chatId)) {
         _queue.enqueue(input);
         return;
       }
@@ -926,8 +924,7 @@ class ChatViewModel {
       break;
     }
 
-    final settled = Completer<void>();
-    _runSettledByChat[chatId] = settled;
+    final settled = _runState.registerRun(chatId);
     // If an earlier input could not be stored, preserve FIFO on the next send.
     final waiting = _queue.nextFor(chatId);
     if (waiting != null) {
@@ -936,10 +933,8 @@ class ChatViewModel {
     }
     try {
       while (true) {
-        if (!isStreamingChat(chatId)) {
-          streamingChatIds.value = [...streamingChatIds.value, chatId];
-        }
-        if (currentChat.value?.id == chatId) currentTokenUsage.value = null;
+        _runState.beginStreaming(chatId);
+        if (currentChat.value?.id == chatId) _runState.noteUsage(null);
         await _sendInput(input);
         _flushMessages();
         final next = _queue.nextFor(chatId);
@@ -950,16 +945,12 @@ class ChatViewModel {
       _reportError(e.toString());
     } finally {
       _flushMessages();
-      streamingChatIds.value = streamingChatIds.value
-          .where((id) => id != chatId)
-          .toList();
-      if (currentChat.value?.id == chatId) {
-        currentIteration.value = 0;
-        currentToolName.value = null;
-      }
-      if (identical(_runSettledByChat[chatId], settled)) {
-        _runSettledByChat.remove(chatId);
-      }
+      _runState.endStreaming(chatId);
+      _runState.clearLiveProgressFor(
+        chatId,
+        currentChatId: currentChat.value?.id,
+      );
+      _runState.unregisterRun(chatId, settled);
       if (!settled.isCompleted) settled.complete();
     }
   }
@@ -1020,15 +1011,15 @@ class ChatViewModel {
         }
       case RunIterationChanged(:final iteration):
         if (belongsToCurrent && isStreamingChat(chatId)) {
-          currentIteration.value = iteration;
+          _runState.noteIteration(iteration);
         }
       case RunToolNameChanged(:final toolName):
         if (belongsToCurrent && isStreamingChat(chatId)) {
-          currentToolName.value = toolName;
+          _runState.noteTool(toolName);
         }
       case RunUsageChanged(:final usage, :final chat):
         if (chat.id == currentChat.value?.id) {
-          currentTokenUsage.value = usage;
+          _runState.noteUsage(usage);
           _updateChatInLists(chat);
         }
       case RunOutcomeChanged():
@@ -1061,12 +1052,12 @@ class ChatViewModel {
     // 卡在「运行中」，发送键变成停止键。收尾以协调层的 settled 为准，
     // 正常结束、取消、出错都会完成它，不依赖某个具体事件是否到达。
     if (internal.event is RunAssistantAppended &&
-        !_reportingChatIds.contains(chatId)) {
+        !_runState.isReporting(chatId)) {
       final settled = _stream.settledOf(chatId);
       if (settled != null) {
-        _reportingChatIds.add(chatId);
+        _runState.markReporting(chatId);
         if (!isStreamingChat(chatId)) {
-          streamingChatIds.value = [...streamingChatIds.value, chatId];
+          _runState.beginStreaming(chatId);
         }
         unawaited(settled.whenComplete(() => _finishReport(chatId)));
       }
@@ -1076,16 +1067,14 @@ class ChatViewModel {
   }
 
   void _finishReport(String chatId) {
-    if (!_reportingChatIds.remove(chatId)) return;
+    if (!_runState.takeReportFinished(chatId)) return;
     // 汇报刚结束、用户的消息已接着开跑：指示归那条 sendMessage 管
-    if (_runSettledByChat.containsKey(chatId)) return;
-    streamingChatIds.value = streamingChatIds.value
-        .where((id) => id != chatId)
-        .toList();
-    if (currentChat.value?.id == chatId) {
-      currentIteration.value = 0;
-      currentToolName.value = null;
-    }
+    if (_runState.hasRun(chatId)) return;
+    _runState.endStreaming(chatId);
+    _runState.clearLiveProgressFor(
+      chatId,
+      currentChatId: currentChat.value?.id,
+    );
   }
 
   /// 事件所属会话的实体。
@@ -1107,9 +1096,13 @@ class ChatViewModel {
   void _appendOrReplaceMessage(MessageEntity message) =>
       _window.appendOrReplaceNow(message);
 
+  /// 指定对话当前的收尾 future：本对象登记的（用户发起）优先，否则问协调层
+  /// （后台任务自动汇报由它自己发起）。
+  Future<void>? _settledOf(String chatId) =>
+      _runState.settledOf(chatId) ?? _stream.settledOf(chatId);
+
   /// 指定对话是否正在流式运行。
-  bool isStreamingChat(String chatId) =>
-      streamingChatIds.value.contains(chatId);
+  bool isStreamingChat(String chatId) => _runState.isStreaming(chatId);
 
   /// 记录失败并把这次失败作为**事件**发出去。
   ///
@@ -1139,13 +1132,11 @@ class ChatViewModel {
     // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
     // 只冲刷属于这个对话的挂起增量：无条件冲刷会把别的对话的缓冲也提交掉
     _window.flushFor(chatId);
-    streamingChatIds.value = streamingChatIds.value
-        .where((id) => id != chatId)
-        .toList();
-    if (currentChat.value?.id == chatId) {
-      currentIteration.value = 0;
-      currentToolName.value = null;
-    }
+    _runState.endStreaming(chatId);
+    _runState.clearLiveProgressFor(
+      chatId,
+      currentChatId: currentChat.value?.id,
+    );
   }
 
   /// 用户对审批请求做出决策（Allow Once / Always Allow / Deny）。
@@ -1307,7 +1298,7 @@ class ChatViewModel {
     _turns.clear();
     // 待发图片切回"新对话"槽（上一个对话的那份存回它自己的槽）
     _retargetPendingImages();
-    currentTokenUsage.value = null;
+    _runState.noteUsage(null);
     await _syncDraftDefaults(inheritFrom, inheritWorkspace: inheritWorkspace);
   }
 
