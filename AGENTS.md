@@ -197,7 +197,8 @@ cd packages/athena_gui && dart run build_runner build --delete-conflicting-outpu
 
 - type：`feat` / `fix` / `refactor` / `docs` / `chore` / `build` / `test`
 - scope：包名或子系统名（`agent` / `storage` / `theme` / `athena_gui` / `step-primitives` …）
-- summary 与正文用中文，说明**为什么**这样改——尤其是被否决的方案与它的代价
+- summary 与正文用**英文**，说明**为什么**这样改——尤其是被否决的方案与它的代价
+- 正文从简：主题一行说清改了什么，正文只在「为什么」不显然时才写，通常一两句
 - 提交信息中**不添加任何工具署名或生成标记**
 - 一次提交只做一件事；大范围重排（如全仓库改名、格式化）单独成一次提交
 
