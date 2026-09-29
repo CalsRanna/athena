@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:athena_core/agent/cancel_token.dart';
@@ -42,6 +43,34 @@ class ShellTimeoutPolicy {
     }
     return (effective: raw, clamped: false, requested: raw);
   }
+}
+
+/// Shell 输出在内存里的保留上限：**内存护栏，不是输出策略**。
+///
+/// 输出策略（内联上限 24000 字符、超长转存 `tool_outputs/` 供
+/// `tool_output_read` 分页取回）在 ToolOutputStore 里，不在这里。这里只挡一种
+/// 情况：`cat` 一个几百 MB 的文件时，把整份输出攒进内存、等着那个策略生效，
+/// 进程先被 OOM 杀掉——策略再能兜底也没机会跑。
+///
+/// 上限取「远超内联上限、又小到不撑爆内存」：单流 2 MiB 以内逐字完整保留，
+/// 常规调用完全不受影响。越界后保留头部 1 MiB 与尾部 1 MiB——shell 输出的两头
+/// 最有信息量（开头是上下文，结尾往往是报错），中间丢了多少字符会显式写进结果
+/// 交给模型，让它换更窄的命令重跑，而不是收到一份看起来完整、实际被悄悄砍掉的
+/// 输出。
+///
+/// 被否决的方案：把完整输出流式落盘、让上层按文件处理。那才是这里原本的
+/// 「保留完整输出」想要的形态，但要把 runShellProcess 的返回值、shell 工具与
+/// ToolOutputStore.prepare 一起改成文件形态，属管线级改动，不该混进「先止住
+/// 内存风险」这一次里。上限在此是过渡手段。
+abstract final class ShellOutputPolicy {
+  /// 单流保留的头部字符数。
+  static const int headChars = 1 << 20;
+
+  /// 单流保留的尾部字符数（滚动窗口）。
+  static const int tailChars = 1 << 20;
+
+  /// 单流保留的总字符数；未越界时输出逐字完整。
+  static const int budgetChars = headChars + tailChars;
 }
 
 /// 共享的参数描述生成（嵌入策略数字，避免散落）。
@@ -205,15 +234,17 @@ Future<String> runShellProcess({
     return 'Error launching command: $e';
   }
 
-  final stdoutBuffer = StringBuffer();
-  final stderrBuffer = StringBuffer();
+  // 两个流各用一份带上限的捕获器。为什么必须有上限、为什么被截断后仍要
+  // 继续读取，都写在 _CappedOutputCapture 上。
+  final stdoutCapture = _CappedOutputCapture();
+  final stderrCapture = _CappedOutputCapture();
   final stdoutDone = process.stdout
       .transform(systemEncoding.decoder)
-      .listen(stdoutBuffer.write)
+      .listen(stdoutCapture.add)
       .asFuture<void>();
   final stderrDone = process.stderr
       .transform(systemEncoding.decoder)
-      .listen(stderrBuffer.write)
+      .listen(stderrCapture.add)
       .asFuture<void>();
 
   var timedOut = false;
@@ -255,8 +286,6 @@ Future<String> runShellProcess({
 
   if (cancelled) throw const CancelledException();
 
-  final stdout = stdoutBuffer.toString();
-  final stderr = stderrBuffer.toString();
   final buffer = StringBuffer();
 
   if (timedOut) {
@@ -275,17 +304,14 @@ Future<String> runShellProcess({
     buffer.writeln();
   }
 
-  if (stdout.isNotEmpty) {
-    buffer.write(stdout);
-    if (!stdout.endsWith('\n')) buffer.writeln();
+  if (stdoutCapture.isNotEmpty) {
+    _writeCaptured(buffer, stdoutCapture);
   }
-  if (stderr.isNotEmpty) {
+  if (stderrCapture.isNotEmpty) {
     buffer.writeln('[stderr]');
-    buffer.write(stderr);
-    if (!stderr.endsWith('\n')) buffer.writeln();
+    _writeCaptured(buffer, stderrCapture);
   }
   buffer.writeln('[exit code: $exitCode]');
-  // Preserve full output; the Agent applies one recoverable output policy.
   return buffer.toString();
 }
 
@@ -362,4 +388,94 @@ Future<List<int>> _unixDescendantPids(int rootPid) async {
   } catch (_) {
     return const [];
   }
+}
+
+/// 按 [ShellOutputPolicy] 的额度累积一路输出：未越界时逐字完整，越界后只留
+/// 头部与滚动尾部，中间丢弃的字符数记在账上（见 [finish]）。
+///
+/// **越界之后仍要继续读取。** 停止消费管道会让子进程写满 pipe buffer 后永久
+/// 阻塞：命令不退出，只能等超时被杀，比丢数据更糟。宁可丢数据也不能不排空。
+class _CappedOutputCapture {
+  /// 未越界前保留完整内容；越界后置 null，改由 [_head] 与 [_tail] 承担，
+  /// 内存不再随输出长度增长。
+  StringBuffer? _full = StringBuffer();
+  String? _head;
+  final Queue<String> _tail = Queue<String>();
+  int _tailLength = 0;
+  int _total = 0;
+
+  bool get isNotEmpty => _total > 0;
+
+  void add(String chunk) {
+    if (chunk.isEmpty) return;
+    _total += chunk.length;
+
+    final full = _full;
+    if (full != null) {
+      full.write(chunk);
+      if (_total <= ShellOutputPolicy.budgetChars) return;
+      // 刚越界：切成头部 + 滚动尾部，随即释放完整副本。
+      final text = full.toString();
+      _head = text.substring(0, ShellOutputPolicy.headChars);
+      final rest = text.substring(ShellOutputPolicy.headChars);
+      _tail.add(rest);
+      _tailLength = rest.length;
+      _full = null;
+      _trimTail();
+      return;
+    }
+
+    _tail.add(chunk);
+    _tailLength += chunk.length;
+    _trimTail();
+  }
+
+  /// 只保留「扔掉队首之后仍有 [ShellOutputPolicy.tailChars] 可用」的块——
+  /// 滚动窗口的不变式。
+  void _trimTail() {
+    while (_tail.length > 1 &&
+        _tailLength - _tail.first.length >= ShellOutputPolicy.tailChars) {
+      _tailLength -= _tail.removeFirst().length;
+    }
+  }
+
+  /// [head] 与 [tail] 是保留下来的两段，[dropped] 是被丢弃的字符数。
+  /// 未越界时 [head] 即全部内容、[tail] 为空、[dropped] 为 0。
+  ({String head, String tail, int dropped}) finish() {
+    final full = _full;
+    if (full != null) return (head: full.toString(), tail: '', dropped: 0);
+
+    final joined = _tail.join();
+    final tail = joined.length <= ShellOutputPolicy.tailChars
+        ? joined
+        : joined.substring(joined.length - ShellOutputPolicy.tailChars);
+    final head = _head ?? '';
+    return (
+      head: head,
+      tail: tail,
+      dropped: _total - head.length - tail.length,
+    );
+  }
+}
+
+/// 写入一段捕获到的输出；被截断时在头部与尾部之间显式说明丢了多少。
+///
+/// 文案是给模型看的（英文），并给出可执行的下一步：换更窄的命令重跑，而不是
+/// 让它以为拿到的就是全部。
+void _writeCaptured(StringBuffer buffer, _CappedOutputCapture capture) {
+  final captured = capture.finish();
+  if (captured.head.isNotEmpty) {
+    buffer.write(captured.head);
+    if (!captured.head.endsWith('\n')) buffer.writeln();
+  }
+  if (captured.dropped <= 0) return;
+
+  buffer.writeln(
+    '[output truncated: ${captured.dropped} characters dropped from the '
+    'middle; showing the first ${captured.head.length} and the last '
+    '${captured.tail.length}. Re-run with a narrower command '
+    '(head / tail / grep) to read the missing part.]',
+  );
+  buffer.write(captured.tail);
+  if (!captured.tail.endsWith('\n')) buffer.writeln();
 }
