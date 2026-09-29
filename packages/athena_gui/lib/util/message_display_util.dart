@@ -5,7 +5,7 @@ import 'package:athena_core/entity/message_entity.dart';
 
 /// 把消息划分为 UI 卡片，同时保留每条原始消息。
 ///
-/// 连续的 assistant 消息与压缩步骤共用一张外层卡片；其他角色各自占一张。卡片内部
+/// 同一 run 连续的 assistant 消息与压缩步骤共用一张外层卡片；其他角色各自占一张。卡片内部
 /// 仍逐条渲染 reasoning、正文、工具、压缩和引用，不合并或过滤消息字段。
 List<List<MessageEntity>> buildMessageDisplayCards(
   List<MessageEntity> messages,
@@ -15,7 +15,8 @@ List<List<MessageEntity>> buildMessageDisplayCards(
   for (final message in messages) {
     if (isAssistantCardMessage(message) &&
         cards.isNotEmpty &&
-        isAssistantCardMessage(cards.last.first)) {
+        isAssistantCardMessage(cards.last.first) &&
+        message.runStatistics?.id == cards.last.first.runStatistics?.id) {
       cards.last.add(message);
     } else {
       cards.add([message]);
@@ -190,13 +191,13 @@ List<AssistantMessageLayout> buildAssistantMessageLayouts(
     result.add(AssistantMessageLayout(message: message, parts: parts));
   }
 
-  // 首个 delta 到达前保留当前 Assistant 占位卡，并标记为一次性等待态。
-  if (result.isEmpty && loading) {
+  // 首个 delta 前与无正文的完成态也保留工具条，统计不依赖模型是否输出正文。
+  if (result.isEmpty && (loading || messages.last.runStatistics != null)) {
     result.add(
       AssistantMessageLayout(
         message: messages.first,
         parts: const [],
-        waitingForFirstDelta: true,
+        waitingForFirstDelta: loading,
       ),
     );
   }

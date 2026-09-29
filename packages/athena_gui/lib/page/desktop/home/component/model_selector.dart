@@ -181,12 +181,12 @@ class _DesktopModelSelectDialogTileState
     var thinkIcon = Icon(
       LucideIcons.brainCircuit,
       color: colors.iconSecondary,
-      size: 18,
+      size: AthenaIcon.regularSize,
     );
     var visualIcon = Icon(
       LucideIcons.eye,
       color: colors.iconSecondary,
-      size: 18,
+      size: AthenaIcon.regularSize,
     );
     var children = [
       Flexible(child: Text(widget.model.name, style: textStyle)),

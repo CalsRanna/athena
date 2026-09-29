@@ -50,7 +50,10 @@ class MobileSettingTile extends StatelessWidget {
       Icon(AthenaIcons.forward),
     ];
     var tileRow = IconTheme(
-      data: IconThemeData(color: colors.iconSecondary, size: 16),
+      data: IconThemeData(
+        color: colors.iconSecondary,
+        size: AthenaIcon.regularSize,
+      ),
       child: Row(children: tileChildren),
     );
     return ListTile(title: tileRow, onTap: onTap);
@@ -104,7 +107,10 @@ class MobileGridTile extends StatelessWidget {
       if (trailing != null) ...[
         const SizedBox(width: 8),
         IconTheme.merge(
-          data: IconThemeData(color: colors.textOnRaised, size: 14),
+          data: IconThemeData(
+            color: colors.textOnRaised,
+            size: AthenaIcon.inlineSize,
+          ),
           child: trailing!,
         ),
       ],

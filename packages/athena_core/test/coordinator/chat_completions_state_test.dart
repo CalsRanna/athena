@@ -42,6 +42,7 @@ void main() {
   late ChatEntity chat;
   late List<Map<String, dynamic>> bodies;
   late List<List<Map<String, dynamic>>> replies;
+  Stream<List<int>> Function(int, List<Map<String, dynamic>>)? responseStream;
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('athena_reasoning_run_');
@@ -72,16 +73,27 @@ void main() {
     chat = chat.copyWith(id: await storage.sessionRepository.createChat(chat));
     bodies = [];
     replies = [chatEvents(tools: true), chatEvents(), chatEvents()];
+    responseStream = null;
     var index = 0;
     final chatService = ChatCompletionsService(
       llmClient: LlmClient(
         retryConfig: const RetryConfig(maxAttempts: 1),
         clientFactory: ({required apiKey, required baseUrl}) {
-          final mock = MockClient((request) async {
+          final mock = MockClient.streaming((request, bodyStream) async {
             expect(request.url.path, '/v1/chat/completions');
-            bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
-            return http.Response(
-              replies[index++].map((e) => 'data: ${jsonEncode(e)}\n\n').join(),
+            bodies.add(
+              jsonDecode(await bodyStream.bytesToString())
+                  as Map<String, dynamic>,
+            );
+            final replyIndex = index++;
+            final reply = replies[replyIndex];
+            return http.StreamedResponse(
+              responseStream?.call(replyIndex, reply) ??
+                  Stream.value(
+                    utf8.encode(
+                      reply.map((e) => 'data: ${jsonEncode(e)}\n\n').join(),
+                    ),
+                  ),
               200,
               headers: {'content-type': 'text/event-stream; charset=utf-8'},
             );
@@ -142,6 +154,187 @@ void main() {
         chat: chat,
       )
       .toList();
+
+  test('累计多次调用的输出 token，排除输入与重复推理用量，重载保留且下次归零', () async {
+    for (final (index, reply) in replies.indexed) {
+      reply.add({
+        'choices': <dynamic>[],
+        'usage': {
+          'prompt_tokens': 100 + index,
+          'completion_tokens': 20 + index,
+          'completion_tokens_details': {'reasoning_tokens': 5},
+          'total_tokens': 120 + index * 2,
+        },
+      });
+    }
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    final first = events.whereType<RunAssistantAppended>().first.message;
+    expect(first.runStatistics!.outputTokens, isNull);
+    expect(first.runStatistics!.finishedAt, isNull);
+    final last = events.whereType<RunMessageUpdated>().last.message;
+    expect(last.runStatistics!.outputTokens, 41);
+    expect(last.runStatistics!.id, first.runStatistics!.id);
+    expect(last.runStatistics!.finishedAt, isNotNull);
+    expect(
+      last.runStatistics!.finishedAt!.isBefore(first.runStatistics!.startedAt),
+      isFalse,
+    );
+
+    final reopened = FileStorage(root: tmp);
+    await reopened.load();
+    final saved = await reopened.sessionRepository.getMessagesByChatId(
+      chat.id!,
+    );
+    expect(saved.last.runStatistics!.toJson(), last.runStatistics!.toJson());
+
+    final nextEvents = await send();
+    final next = nextEvents.whereType<RunMessageUpdated>().last.message;
+    expect(next.runStatistics!.outputTokens, 22);
+    expect(next.runStatistics!.id, isNot(first.runStatistics!.id));
+    expect(jsonEncode(bodies), isNot(contains('run_statistics')));
+  });
+
+  test('每次 LLM 独立计时，推理和工具参数参与计时，首包尾包与工具等待被排除', () async {
+    final responseWatches = <Stopwatch>[];
+    echo.delay = const Duration(milliseconds: 200);
+    for (final (index, reply) in replies.indexed) {
+      reply.add({
+        'choices': <dynamic>[],
+        'usage': {
+          'prompt_tokens': 100,
+          'completion_tokens': 20 + index * 20,
+          'total_tokens': 120 + index * 20,
+        },
+      });
+    }
+    responseStream = (replyIndex, events) async* {
+      final watch = Stopwatch()..start();
+      responseWatches.add(watch);
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      for (final (index, event) in events.indexed) {
+        final choices = event['choices'] as List;
+        if (choices.any((choice) => choice['finish_reason'] != null)) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        } else if (index > 0 && choices.isNotEmpty) {
+          await Future<void>.delayed(
+            Duration(milliseconds: replyIndex == 0 ? 50 : 100),
+          );
+        }
+        yield utf8.encode('data: ${jsonEncode(event)}\n\n');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      watch.stop();
+    };
+
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    final usages = events
+        .whereType<RunUsageChanged>()
+        .map((event) => event.usage)
+        .toList();
+    expect(usages, hasLength(2));
+    for (final (index, usage) in usages.indexed) {
+      final duration = usage.outputDuration!;
+      expect(duration, greaterThanOrEqualTo(const Duration(milliseconds: 90)));
+      expect(
+        responseWatches[index].elapsed - duration,
+        greaterThan(const Duration(milliseconds: 450)),
+      );
+    }
+    final last = events
+        .whereType<RunMessageUpdated>()
+        .last
+        .message
+        .runStatistics!;
+    expect(last.outputTokens, 60);
+    expect(
+      last.outputTokensPerSecond,
+      closeTo(
+        40 *
+            Duration.microsecondsPerSecond /
+            usages.last.outputDuration!.inMicroseconds,
+        0.000001,
+      ),
+    );
+    expect(
+      last.elapsedAt(last.finishedAt!) -
+          usages.fold(
+            Duration.zero,
+            (sum, usage) => sum + usage.outputDuration!,
+          ),
+      greaterThan(const Duration(milliseconds: 1100)),
+    );
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    expect(
+      saved.last.runStatistics!.outputTokensPerSecond,
+      last.outputTokensPerSecond,
+    );
+  });
+
+  test('单个输出片段无法测量生成速度，仍保存输出 token 总数', () async {
+    replies[0] = [
+      {
+        'choices': [
+          {
+            'index': 0,
+            'delta': {'content': 'done'},
+          },
+        ],
+      },
+      {
+        'choices': [
+          {'index': 0, 'delta': <String, dynamic>{}, 'finish_reason': 'stop'},
+        ],
+      },
+      {
+        'choices': <dynamic>[],
+        'usage': {
+          'prompt_tokens': 100,
+          'completion_tokens': 3,
+          'total_tokens': 103,
+        },
+      },
+    ];
+    final events = await send();
+    expect(events.whereType<RunError>(), isEmpty);
+    expect(
+      events.whereType<RunUsageChanged>().single.usage.outputDuration,
+      isNull,
+    );
+    final stats = events
+        .whereType<RunMessageUpdated>()
+        .last
+        .message
+        .runStatistics!;
+    expect(stats.outputTokens, 3);
+    expect(stats.outputTokensPerSecond, isNull);
+  });
+
+  test('取消后冻结运行时间并保留已上报的 token', () async {
+    replies.first.add({
+      'choices': <dynamic>[],
+      'usage': {
+        'prompt_tokens': 100,
+        'completion_tokens': 20,
+        'total_tokens': 120,
+      },
+    });
+    final events = <RunEvent>[];
+    await for (final event in coordinator.send(
+      message: MessageEntity(chatId: chat.id!, role: 'user', content: '检查配置'),
+      chat: chat,
+    )) {
+      events.add(event);
+      if (event is RunUsageChanged) coordinator.stop(chat.id!);
+    }
+    final last = events.whereType<RunMessageUpdated>().last.message;
+    expect(last.content, contains('[Cancelled]'));
+    expect(last.runStatistics!.outputTokens, 20);
+    expect(last.runStatistics!.finishedAt, isNotNull);
+    final saved = await storage.sessionRepository.getMessagesByChatId(chat.id!);
+    expect(saved.last.runStatistics!.toJson(), last.runStatistics!.toJson());
+  });
 
   test('reasoning 与 reasoning_details 在工具续接及文件重载后完整回传', () async {
     final events = await send();
@@ -353,6 +546,7 @@ List<Map<String, dynamic>> chatEvents({bool tools = false}) => [
 
 class _Echo extends agent.Tool {
   final values = <String>[];
+  Duration delay = Duration.zero;
   @override
   String get name => 'echo';
   @override
@@ -371,6 +565,7 @@ class _Echo extends agent.Tool {
     void Function(String partialResult)? onUpdate,
   }) async {
     values.add(args['value'] as String);
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     return 'ok';
   }
 }

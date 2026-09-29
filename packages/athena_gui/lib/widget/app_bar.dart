@@ -1,7 +1,7 @@
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_icons.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
-import 'package:athena_core/util/platform_util.dart';
+import 'package:athena_gui/widget/button.dart';
 import 'package:athena_gui/widget/window_button.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -13,7 +13,12 @@ class AthenaAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var isDesktop = PlatformUtil.isDesktop;
+    final isDesktop = switch (Theme.of(context).platform) {
+      TargetPlatform.macOS ||
+      TargetPlatform.windows ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
     if (isDesktop) {
       return _DesktopAppBar(action: action, title: title);
     }
@@ -26,25 +31,9 @@ class MobilePopButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AthenaColors>()!;
-    final iconWidget = Icon(
-      AthenaIcons.back,
-      color: colors.iconOnRaised,
-      size: 16,
-    );
-    final boxDecoration = BoxDecoration(
-      color: colors.surfaceRaised,
-      borderRadius: BorderRadius.circular(AthenaRadius.control),
-    );
-    final button = Container(
-      decoration: boxDecoration,
-      padding: const EdgeInsets.all(8),
-      child: iconWidget,
-    );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AthenaIconButton(
+      icon: AthenaIcons.back,
       onTap: () => handleTap(context),
-      child: button,
     );
   }
 
@@ -122,10 +111,6 @@ class _MobileAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const defaultLeading = Align(
-      alignment: Alignment.centerLeft,
-      child: MobilePopButton(),
-    );
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final textStyle = AthenaTextStyle.title.copyWith(color: colors.textPrimary);
     final wrappedTitle = DefaultTextStyle(
@@ -134,19 +119,20 @@ class _MobileAppBar extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       child: title ?? const SizedBox(),
     );
-    final center = Align(alignment: Alignment.center, child: wrappedTitle);
-    final trailing = Align(
-      alignment: Alignment.centerRight,
-      child: action ?? const SizedBox(),
-    );
-    final children = [
-      Expanded(child: defaultLeading),
-      Expanded(flex: 2, child: center),
-      Expanded(child: trailing),
-    ];
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: children),
+      // 触摸盒比可见按钮每边多 8；外侧留 8 后，可见按钮仍距页面边缘 16。
+      padding: const EdgeInsets.all(AthenaSpace.sm),
+      child: SizedBox(
+        height: AthenaIconButtonSize.touchTarget,
+        // 尾部可以有多个按钮，不能固定分配四分之一宽度。
+        child: NavigationToolbar(
+          leading: const MobilePopButton(),
+          middle: wrappedTitle,
+          trailing: action,
+          centerMiddle: true,
+          middleSpacing: AthenaSpace.sm,
+        ),
+      ),
     );
   }
 }

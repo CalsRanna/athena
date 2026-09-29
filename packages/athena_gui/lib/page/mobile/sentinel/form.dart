@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -188,7 +189,11 @@ class _MobileSentinelFormPageState extends State<MobileSentinelFormPage> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Icon(LucideIcons.sparkles, color: colors.textPrimary, size: 16),
+      child: Icon(
+        LucideIcons.sparkles,
+        color: colors.textPrimary,
+        size: AthenaIcon.regularSize,
+      ),
     );
   }
 

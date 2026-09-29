@@ -142,7 +142,11 @@ class _ModelDropdown extends StatelessWidget {
       color: colors.inputBackground.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(AthenaRadius.container),
     );
-    var icon = Icon(AthenaIcons.dropdown, color: colors.textInput, size: 20);
+    var icon = Icon(
+      AthenaIcons.dropdown,
+      color: colors.textInput,
+      size: AthenaIcon.inlineSize,
+    );
     var children = [Expanded(child: _buildText()), icon];
     var row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

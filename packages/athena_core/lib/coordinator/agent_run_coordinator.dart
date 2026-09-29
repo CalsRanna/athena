@@ -19,6 +19,7 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
+import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -30,6 +31,7 @@ import 'package:athena_core/service/conversation_compactor.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
+import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:openai_dart/openai_dart.dart' show ChatMessage;
 
@@ -191,6 +193,10 @@ class AgentRunCoordinator {
     }
 
     final runId = ++_nextRunId;
+    final statistics = RunStatistics(
+      id: const IdGenerator().next(),
+      startedAt: DateTime.now(),
+    );
     final cancelToken = CancelToken();
     final settled = Completer<void>();
     // 会话工作文件夹：本次 run 的路径解析基准。目录已失效（删除/改名）
@@ -238,7 +244,7 @@ class AgentRunCoordinator {
         final message =
             'Model not found (id: ${chat.modelId}). '
             'Please select a valid model and retry.';
-        yield await _recordSetupError(chatId, message);
+        yield await _recordSetupError(chatId, message, statistics);
         yield RunError(message);
         yield const RunOutcomeChanged(
           AgentRunOutcome(
@@ -258,7 +264,7 @@ class AgentRunCoordinator {
         final message =
             'Provider not found for model "${model.modelId}". '
             'Please check provider configuration and retry.';
-        yield await _recordSetupError(chatId, message);
+        yield await _recordSetupError(chatId, message, statistics);
         yield RunError(message);
         yield const RunOutcomeChanged(
           AgentRunOutcome(
@@ -314,7 +320,9 @@ class AgentRunCoordinator {
       // 3. 追加 assistant 占位消息
       assistantMessage = await _manageService.appendAssistantPlaceholder(
         chatId,
+        runStatistics: statistics,
       );
+      _liveMessages[chatId] = assistantMessage;
       yield RunAssistantAppended(assistantMessage);
       cancelToken.throwIfCancelled();
 
@@ -379,12 +387,15 @@ class AgentRunCoordinator {
       if (cancelledTarget == null && userMessageStored) {
         cancelledTarget = await _manageService.appendAssistantPlaceholder(
           chatId,
+          runStatistics: statistics,
         );
         appended = true;
       }
       if (cancelledTarget != null) {
         final cancelled = await _manageService.recordCancelledOnMessage(
-          cancelledTarget,
+          cancelledTarget.copyWith(
+            runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+          ),
         );
         _liveMessages[chatId] = cancelled;
         if (appended) {
@@ -430,8 +441,15 @@ class AgentRunCoordinator {
   /// 消息落进会话：与运行中出错（[ChatStoreService.recordErrorOnMessage]）
   /// 同一形态。只发 [RunError] 的话，用户消息下面什么都没有——GUI 与 TUI 都
   /// 只能靠一闪而过的提示，重开会话后更看不出这条消息为什么没有回复。
-  Future<RunEvent> _recordSetupError(String chatId, String message) async {
-    final placeholder = await _manageService.appendAssistantPlaceholder(chatId);
+  Future<RunEvent> _recordSetupError(
+    String chatId,
+    String message,
+    RunStatistics statistics,
+  ) async {
+    final placeholder = await _manageService.appendAssistantPlaceholder(
+      chatId,
+      runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+    );
     final failed = await _manageService.recordErrorOnMessage(
       placeholder,
       message,
@@ -562,6 +580,10 @@ class AgentRunCoordinator {
     }
 
     final runId = ++_nextRunId;
+    final statistics = RunStatistics(
+      id: const IdGenerator().next(),
+      startedAt: DateTime.now(),
+    );
     final cancelToken = CancelToken();
     final settled = Completer<void>();
     _reportingChatIds.add(chatId);
@@ -629,6 +651,7 @@ class AgentRunCoordinator {
 
       final assistantMessage = await _manageService.appendAssistantPlaceholder(
         chatId,
+        runStatistics: statistics,
       );
       _liveMessages[chatId] = assistantMessage;
       emit(RunAssistantAppended(assistantMessage));
@@ -756,6 +779,7 @@ class AgentRunCoordinator {
     CancelToken cancelToken,
   ) async* {
     var current = assistantMessage;
+    var statistics = assistantMessage.runStatistics!;
     var contentBuffer = StringBuffer();
     var reasoningBuffer = StringBuffer();
     var toolCallsJson = <Map<String, dynamic>>[];
@@ -777,7 +801,10 @@ class AgentRunCoordinator {
       }
       await _manageService.finalizeAssistantMessage(current);
       if (hadReasoning) yield RunMessageUpdated(current);
-      current = await _manageService.appendAssistantPlaceholder(chat.id!);
+      current = await _manageService.appendAssistantPlaceholder(
+        chat.id!,
+        runStatistics: statistics,
+      );
       contentBuffer = StringBuffer();
       reasoningBuffer = StringBuffer();
       toolCallsJson = [];
@@ -791,11 +818,15 @@ class AgentRunCoordinator {
         // Terminal compaction events must reach the UI even after Stop. The
         // placeholder becomes the step; the following answer gets a new ID.
         if (event is AgentCompactionEvent) {
-          current = event.step.toMessage();
+          current = event.step.toMessage().copyWith(runStatistics: statistics);
+          await _manageService.finalizeAssistantMessage(current);
           _liveMessages[chat.id!] = current;
-          yield RunCompactionChanged(event.step);
+          yield RunCompactionChanged(event.step, runStatistics: statistics);
           if (event.step.isTerminal) {
-            current = await _manageService.appendAssistantPlaceholder(chat.id!);
+            current = await _manageService.appendAssistantPlaceholder(
+              chat.id!,
+              runStatistics: statistics,
+            );
             _liveMessages[chat.id!] = current;
             yield RunAssistantAppended(current);
           }
@@ -881,6 +912,10 @@ class AgentRunCoordinator {
         } else if (event is AgentDoneEvent) {
           current = current.copyWith(content: event.content);
         } else if (event is AgentUsageEvent) {
+          // 累计整个 run 的输出用量；completionTokens 已包含推理 token，
+          // 不能再加 reasoningTokens，也不能混入 promptTokens。
+          statistics = statistics.withUsage(event.usage);
+          current = current.copyWith(runStatistics: statistics);
           await _chatRepo.recordUsage(
             chat.id!,
             event.usage.promptTokens,
@@ -919,7 +954,12 @@ class AgentRunCoordinator {
         toolResultsJson,
       );
 
+      current = current.copyWith(
+        runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+      );
       await _manageService.finalizeAssistantMessage(current);
+      _liveMessages[chat.id!] = current;
+      yield RunMessageUpdated(current);
       if (!sawOutcome) {
         yield RunOutcomeChanged(
           AgentRunOutcome(
@@ -939,7 +979,11 @@ class AgentRunCoordinator {
         toolCallsJson,
         toolResultsJson,
       );
-      final cancelled = await _manageService.recordCancelledOnMessage(current);
+      final cancelled = await _manageService.recordCancelledOnMessage(
+        current.copyWith(
+          runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+        ),
+      );
       _liveMessages[chat.id!] = cancelled;
       yield RunMessageUpdated(cancelled);
       if (!sawOutcome) {
@@ -953,6 +997,9 @@ class AgentRunCoordinator {
     } catch (e) {
       // A failed append after compaction still leaves current pointing at the
       // completed step. Report the run error without changing its summary.
+      current = current.copyWith(
+        runStatistics: statistics.copyWith(finishedAt: DateTime.now()),
+      );
       if (current.role != 'compaction') {
         current = _closeOpenToolCalls(
           current,
@@ -963,6 +1010,10 @@ class AgentRunCoordinator {
         final failed = await _manageService.recordErrorOnMessage(current, e);
         _liveMessages[chat.id!] = failed;
         yield RunMessageUpdated(failed);
+      } else {
+        await _manageService.finalizeAssistantMessage(current);
+        _liveMessages[chat.id!] = current;
+        yield RunMessageUpdated(current);
       }
       if (!sawOutcome) {
         yield RunOutcomeChanged(

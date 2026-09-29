@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// 步骤类卡片（工具 / 推理 / 压缩 / 步骤组）共用的视觉原语。
 ///
 /// 这些卡片没有底板，直接坐在页面底色上，因此统一用 `textSecondary` 前景、
-/// 15 号图标、单行省略文案；运行中的折叠头带一条流动 shimmer 高光。
+/// 常规档图标、单行省略文案；运行中的折叠头带一条流动 shimmer 高光。
 /// 之前同一套「Material > InkWell > Shimmer > Row[Icon, Text]」在五处各写了
 /// 一份，此处合并为唯一实现，只保留头部与结果正文两个原语。
 /// 头部那次合并遗留了 `Material` + `InkWell`：全站 `splashFactory` 已关掉水波，
@@ -62,7 +62,11 @@ class _StepHeaderState extends State<StepHeader> {
           active: widget.running,
           child: Row(
             children: [
-              Icon(widget.icon, size: 15, color: foreground),
+              Icon(
+                widget.icon,
+                size: AthenaIcon.regularSize,
+                color: foreground,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

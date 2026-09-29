@@ -130,9 +130,17 @@ class _ProviderListTile extends StatelessWidget {
       Flexible(child: Text(provider.name, style: titleTextStyle)),
       if (provider.enabled) SizedBox(width: 8),
       if (provider.enabled)
-        Icon(LucideIcons.toggleRight, size: 16, color: colors.iconSecondary),
+        Icon(
+          LucideIcons.toggleRight,
+          size: AthenaIcon.regularSize,
+          color: colors.iconSecondary,
+        ),
     ];
-    var icon = Icon(AthenaIcons.more, color: colors.iconSecondary, size: 16);
+    var icon = Icon(
+      AthenaIcons.more,
+      color: colors.iconSecondary,
+      size: AthenaIcon.regularSize,
+    );
     var actionButton = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => openBottomSheet(context),

@@ -91,14 +91,16 @@ class AthenaSettingsPanel extends StatelessWidget {
           width: width,
           height: height,
           decoration: decoration,
-          foregroundDecoration: Theme.of(context).brightness == Brightness.dark
-              ? BoxDecoration(
-                  borderRadius: BorderRadius.circular(
-                    AthenaSettings.panelRadius,
-                  ),
-                  border: Border.all(color: colors.border),
-                )
-              : null,
+          // 两种主题都保留前景装饰：从 null 切到非 null 会改变 Container
+          // 的子树层级，销毁右侧 AutoRouter，丢失已消费的子路由与页面状态。
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AthenaSettings.panelRadius),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? colors.border
+                  : colors.border.withValues(alpha: 0),
+            ),
+          ),
           // 面板内必须有 Material：设置路由是**非透明**路由，没有 Scaffold，
           // 而内容区里的输入框（TextField）需要 Material 祖先。
           child: Material(
@@ -213,7 +215,11 @@ class AthenaSettingsBackLink extends StatelessWidget {
       height: AthenaFontSize.bodyHeight,
     );
     var children = [
-      Icon(AthenaIcons.back, color: colors.textRowLabel, size: 14),
+      Icon(
+        AthenaIcons.back,
+        color: colors.textRowLabel,
+        size: AthenaIcon.inlineSize,
+      ),
       const SizedBox(width: 6),
       Text(label, maxLines: 1, style: textStyle),
     ];
@@ -428,7 +434,11 @@ class AthenaSettingsEmptyState extends StatelessWidget {
       height: AthenaSettings.rowDescriptionHeight,
     );
     var children = [
-      Icon(icon, color: colors.iconSecondary, size: 28),
+      Icon(
+        icon,
+        color: colors.iconSecondary,
+        size: AthenaSettings.emptyStateIconSize,
+      ),
       const SizedBox(height: AthenaSpace.md),
       Text(title, style: titleStyle, textAlign: TextAlign.center),
       if (hint != null) const SizedBox(height: AthenaSpace.xs),

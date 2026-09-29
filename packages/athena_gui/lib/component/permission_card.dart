@@ -63,7 +63,7 @@ class PermissionApprovalCard extends StatelessWidget {
       children: [
         Icon(
           StepCard.toolIcon(request.toolName),
-          size: 15,
+          size: AthenaIcon.regularSize,
           color: colors.textPrimary,
         ),
         const SizedBox(width: 8),

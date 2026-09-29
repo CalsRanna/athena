@@ -17,7 +17,7 @@ class _MessageListRenderItem {
   /// 该消息在助手卡里的布局；非空表示这一项是助手卡内的一段。
   final AssistantMessageLayout? layout;
 
-  /// 该段所属整卡的消息（只有卡片头用它做"复制整轮回复"的载荷）。
+  /// 该段所属整卡的消息，用于底部工具条的复制与 run 统计。
   final List<MessageEntity> cardMessages;
 
   /// 是否为整卡的第一段 / 最后一段：卡片级上下内边距分别落在它们身上。
@@ -27,9 +27,7 @@ class _MessageListRenderItem {
   /// 与上一张卡之间的间距，只加在整卡的第一段上。
   final bool addCardSpacing;
 
-  /// 这张助手卡属于**尚未结束的那一轮**：操作条不显形。只有助手卡会为 true，
-  /// 用户消息不受影响。
-  final bool suppressActions;
+  final bool streaming;
 
   const _MessageListRenderItem({
     required this.message,
@@ -38,13 +36,16 @@ class _MessageListRenderItem {
     this.isCardHeader = false,
     this.isCardTail = false,
     required this.addCardSpacing,
-    this.suppressActions = false,
+    this.streaming = false,
   });
 
   String get key {
     final identity = message.id ?? identityHashCode(message);
     return layout == null ? 'message-$identity' : 'assistant-card-$identity';
   }
+
+  Object get cardId =>
+      cardMessages.first.id ?? identityHashCode(cardMessages.first);
 }
 
 /// 整个聊天共用的懒加载消息 Sliver。
@@ -98,6 +99,9 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
 
   final hover = AssistantCardHover();
 
+  // 工具循环追加助手消息时，统计行会移到新的卡尾；保留状态以延续数字动画。
+  final _statisticsKeys = <Object, GlobalKey>{};
+
   /// 挂在 [SliverList] 上，用来在布局之后读子项的实际位置。
   final _sliverKey = GlobalKey();
 
@@ -146,6 +150,11 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
       widget.messages,
       loading: widget.loading,
     );
+    final cardIds = {
+      for (final item in renderItems)
+        if (item.isCardTail) item.cardId,
+    };
+    _statisticsKeys.removeWhere((id, _) => !cardIds.contains(id));
     _turnStarts = [
       for (final (index, item) in renderItems.indexed)
         if (item.layout == null && item.message.role == 'user') index,
@@ -176,7 +185,10 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
               isCardTail: item.isCardTail,
               sentinel: widget.sentinel,
               hover: hover,
-              suppressActions: item.suppressActions,
+              streaming: item.streaming,
+              statisticsKey: item.isCardTail
+                  ? _statisticsKeys.putIfAbsent(item.cardId, () => GlobalKey())
+                  : null,
             );
           } else {
             child = MessageListTile(
@@ -340,18 +352,7 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
 }) {
   final cards = buildMessageDisplayCards(messages);
   final result = <_MessageListRenderItem>[];
-  // 流式中先算出「正在进行的这一轮」的起点：最后一条用户消息。只有**这张轮次里的
-  // 助手卡**受它影响（操作条不显形），用户消息照常 hover 显形。卡片不会跨用户消息
-  // （助手卡的成员只可能是 assistant / compaction），所以一张卡要么整张在内、
-  // 要么整张在外。
-  final activeTurnStart = loading
-      ? _activeTurnStartIndex(messages)
-      : messages.length;
-  var messageIndex = 0;
-
   for (final (cardIndex, cardMessages) in cards.indexed) {
-    final cardStart = messageIndex;
-    messageIndex += cardMessages.length;
     final message = cardMessages.first;
     if (!isAssistantCardMessage(message)) {
       result.add(
@@ -360,11 +361,14 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
       continue;
     }
 
-    final suppressActions = cardStart + cardMessages.length > activeTurnStart;
+    final streaming =
+        loading &&
+        cardIndex == cards.length - 1 &&
+        cardMessages.last.runStatistics?.finishedAt == null;
 
     final layouts = buildAssistantMessageLayouts(
       cardMessages,
-      loading: loading && cardIndex == cards.length - 1,
+      loading: streaming,
     );
     if (layouts.isEmpty) continue;
     for (final (index, layout) in layouts.indexed) {
@@ -376,24 +380,11 @@ List<_MessageListRenderItem> _buildMessageListRenderItems(
           isCardHeader: index == 0,
           isCardTail: index == layouts.length - 1,
           addCardSpacing: cardIndex > 0 && index == 0,
-          suppressActions: suppressActions,
+          streaming: streaming,
         ),
       );
     }
   }
 
   return result;
-}
-
-/// 正在进行的这一轮的起始消息下标：**最后一条用户消息**。
-///
-/// 一轮 = 一条用户消息 + 它之后的所有助手消息，所以从这条用户消息起、含它在内
-/// 的助手卡都算"还没结束"（这条用户消息本身不算，它的操作条照常 hover 显形）。
-/// 列表里没有用户消息时（历史被压缩、只剩助手消息等）退化成只剩最后一条，
-/// 宁可少藏也不要整列都藏。
-int _activeTurnStartIndex(List<MessageEntity> messages) {
-  for (var index = messages.length - 1; index >= 0; index--) {
-    if (messages[index].role == 'user') return index;
-  }
-  return messages.length - 1;
 }

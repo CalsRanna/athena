@@ -46,7 +46,7 @@ void main() {
       final iconFinder = find.byIcon(StepCard.toolIcon(toolName));
       expect(iconFinder, findsOneWidget);
       final icon = tester.widget<Icon>(iconFinder);
-      expect(icon.size, 15);
+      expect(icon.size, 16);
       expect(icon.color, theme.extension<AthenaColors>()!.textPrimary);
       expect(find.text(toolName), findsOneWidget);
       expect(find.text('回忆项目约定'), findsOneWidget);

@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/model_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
 import 'package:athena_gui/widget/settings/control.dart';
@@ -104,7 +105,11 @@ Widget? _capabilityIcons(BuildContext context, ModelEntity model) {
     children: [
       for (var i = 0; i < icons.length; i++) ...[
         if (i > 0) const SizedBox(width: 6),
-        Icon(icons[i], size: 14, color: colors.iconSecondary),
+        Icon(
+          icons[i],
+          size: AthenaIcon.inlineSize,
+          color: colors.iconSecondary,
+        ),
       ],
     ],
   );

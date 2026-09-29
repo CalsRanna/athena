@@ -25,6 +25,10 @@ class ProviderViewModel {
     return providers.value.where((p) => p.enabled).toList();
   });
 
+  late final disabledProviders = computed(() {
+    return providers.value.where((p) => !p.enabled).toList();
+  });
+
   Future<void> initSignals() async {
     isLoading.value = true;
     error.value = null;

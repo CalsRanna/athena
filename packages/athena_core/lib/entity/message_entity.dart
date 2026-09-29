@@ -1,4 +1,5 @@
 import 'package:athena_core/extension/json_map_extension.dart';
+import 'package:athena_core/entity/run_statistics.dart';
 
 class MessageEntity {
   final String? id;
@@ -27,6 +28,9 @@ class MessageEntity {
   /// 原生停止原因、拒答说明和用量明细，不作为对话正文发送。
   final String completionDetails;
 
+  /// 本消息所属 run 的累计快照；不参与模型上下文，旧消息可没有统计。
+  final RunStatistics? runStatistics;
+
   /// 是否已被 compact 压缩。被压缩的消息不参与上下文组装，但保留在 DB 中供回溯。
   final bool compacted;
   final DateTime reasoningStartedAt;
@@ -48,6 +52,7 @@ class MessageEntity {
     this.messagesState = '',
     this.chatCompletionsState = '',
     this.completionDetails = '',
+    this.runStatistics,
     this.compacted = false,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -71,6 +76,11 @@ class MessageEntity {
       messagesState: json.getString('messages_state'),
       chatCompletionsState: json.getString('chat_completions_state'),
       completionDetails: json.getString('completion_details'),
+      runStatistics: json['run_statistics'] == null
+          ? null
+          : RunStatistics.fromJson(
+              json['run_statistics'] as Map<String, dynamic>,
+            ),
       compacted: json.getBool('compacted'),
       reasoningStartedAt: json.getDateTimeOrNull('reasoning_started_at'),
       reasoningUpdatedAt: json.getDateTimeOrNull('reasoning_updated_at'),
@@ -94,6 +104,7 @@ class MessageEntity {
       'messages_state': messagesState,
       'chat_completions_state': chatCompletionsState,
       'completion_details': completionDetails,
+      if (runStatistics != null) 'run_statistics': runStatistics!.toJson(),
       'compacted': compacted ? 1 : 0,
       'reasoning_started_at': reasoningStartedAt.millisecondsSinceEpoch,
       'reasoning_updated_at': reasoningUpdatedAt.millisecondsSinceEpoch,
@@ -116,6 +127,7 @@ class MessageEntity {
     String? messagesState,
     String? chatCompletionsState,
     String? completionDetails,
+    RunStatistics? runStatistics,
     bool? compacted,
     DateTime? reasoningStartedAt,
     DateTime? reasoningUpdatedAt,
@@ -136,6 +148,7 @@ class MessageEntity {
       messagesState: messagesState ?? this.messagesState,
       chatCompletionsState: chatCompletionsState ?? this.chatCompletionsState,
       completionDetails: completionDetails ?? this.completionDetails,
+      runStatistics: runStatistics ?? this.runStatistics,
       compacted: compacted ?? this.compacted,
       reasoningStartedAt: reasoningStartedAt ?? this.reasoningStartedAt,
       reasoningUpdatedAt: reasoningUpdatedAt ?? this.reasoningUpdatedAt,

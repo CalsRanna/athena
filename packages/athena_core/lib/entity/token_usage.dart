@@ -11,6 +11,10 @@ class TokenUsage {
   final int? cachedTokens;
   final int? cacheCreationTokens;
 
+  /// Observed time from the first to the last output chunk of this response.
+  /// Null when fewer than two output chunks were received.
+  final Duration? outputDuration;
+
   const TokenUsage({
     required this.promptTokens,
     this.completionTokens,
@@ -18,6 +22,7 @@ class TokenUsage {
     this.reasoningTokens,
     this.cachedTokens,
     this.cacheCreationTokens,
+    this.outputDuration,
   });
 
   @override
@@ -30,7 +35,8 @@ class TokenUsage {
           totalTokens == other.totalTokens &&
           reasoningTokens == other.reasoningTokens &&
           cachedTokens == other.cachedTokens &&
-          cacheCreationTokens == other.cacheCreationTokens;
+          cacheCreationTokens == other.cacheCreationTokens &&
+          outputDuration == other.outputDuration;
 
   @override
   int get hashCode => Object.hash(
@@ -40,6 +46,7 @@ class TokenUsage {
     reasoningTokens,
     cachedTokens,
     cacheCreationTokens,
+    outputDuration,
   );
 
   @override

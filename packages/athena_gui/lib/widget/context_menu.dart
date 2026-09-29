@@ -254,7 +254,11 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
         child: SizedBox(
           width: 16,
           child: selected
-              ? Icon(LucideIcons.check, size: 16, color: colors.textPrimary)
+              ? Icon(
+                  LucideIcons.check,
+                  size: AthenaIcon.regularSize,
+                  color: colors.textPrimary,
+                )
               : null,
         ),
       );
@@ -265,7 +269,11 @@ class _DesktopContextMenuTileState extends State<DesktopContextMenuTile> {
         : Row(
             children: [
               if (widget.icon != null) ...[
-                Icon(widget.icon, size: 16, color: textColor),
+                Icon(
+                  widget.icon,
+                  size: AthenaIcon.regularSize,
+                  color: textColor,
+                ),
                 const SizedBox(width: 10),
               ],
               Expanded(child: textBlock),
@@ -378,7 +386,11 @@ class _DesktopContextMenuTileWithSubmenuState
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(widget.text, style: textStyle),
-        Icon(AthenaIcons.forward, color: textColor, size: 16),
+        Icon(
+          AthenaIcons.forward,
+          color: textColor,
+          size: AthenaIcon.regularSize,
+        ),
       ],
     );
     var container = Container(

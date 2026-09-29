@@ -22,43 +22,43 @@ class SettingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var children = [
       MobileSettingTile(
-        leading: Icon(LucideIcons.workflow, size: 24),
+        leading: Icon(LucideIcons.workflow, size: AthenaIcon.largeSize),
         onTap: () => MobileAgentRoute().push<void>(context),
         title: 'Agent',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(AthenaIcons.connection, size: 24),
+        leading: Icon(AthenaIcons.connection, size: AthenaIcon.largeSize),
         onTap: () => MobileProviderListRoute().push<void>(context),
         title: 'Provider',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.userRound, size: 24),
+        leading: Icon(LucideIcons.userRound, size: AthenaIcon.largeSize),
         onTap: () => MobileSentinelListRoute().push<void>(context),
         title: 'Sentinel',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.bookOpen, size: 24),
+        leading: Icon(LucideIcons.bookOpen, size: AthenaIcon.largeSize),
         onTap: () => MobileSkillListRoute().push<void>(context),
         title: 'Skills',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.brain, size: 24),
+        leading: Icon(LucideIcons.brain, size: AthenaIcon.largeSize),
         onTap: () => MobileExperienceListRoute().push<void>(context),
         title: 'Experiences',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.cpu, size: 24),
+        leading: Icon(LucideIcons.cpu, size: AthenaIcon.largeSize),
         onTap: () => MobileDefaultModelFormRoute().push<void>(context),
         title: 'Default Model',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.database, size: 24),
+        leading: Icon(LucideIcons.database, size: AthenaIcon.largeSize),
         onTap: () => MobileDataRoute().push<void>(context),
         title: 'Data',
         trailing: '',
@@ -66,14 +66,14 @@ class SettingPage extends StatelessWidget {
       Watch((context) {
         final mode = GetIt.instance<SettingViewModel>().themeMode.value;
         return MobileSettingTile(
-          leading: Icon(LucideIcons.moon, size: 24),
+          leading: Icon(LucideIcons.moon, size: AthenaIcon.largeSize),
           onTap: () => _showAppearanceSheet(context),
           title: 'Appearance',
           trailing: _themeModeLabel(mode),
         );
       }),
       MobileSettingTile(
-        leading: Icon(LucideIcons.info, size: 24),
+        leading: Icon(LucideIcons.info, size: AthenaIcon.largeSize),
         onTap: () => MobileAboutRoute().push<void>(context),
         title: 'About Athena',
         trailing: '',

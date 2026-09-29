@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/component/base64_image.dart';
+import 'package:athena_gui/component/run_statistics_label.dart';
 import 'package:athena_gui/component/step_card.dart';
-import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
@@ -98,6 +98,7 @@ class _AssistantMessageListTileState extends State<_AssistantMessageListTile> {
       isCardTail: true,
       sentinel: widget.sentinel,
       hover: hover,
+      streaming: widget.loading,
     );
   }
 }
@@ -116,8 +117,8 @@ class AssistantMessageItem extends StatelessWidget {
   /// 卡片级 hover 归属：操作条挂在整条助手消息上，而不是某一段上。
   final AssistantCardHover hover;
 
-  /// 本轮尚未结束：操作条不显形。整卡同值，卡内各段无需各自判断。
-  final bool suppressActions;
+  final bool streaming;
+  final Key? statisticsKey;
 
   const AssistantMessageItem({
     super.key,
@@ -127,7 +128,8 @@ class AssistantMessageItem extends StatelessWidget {
     required this.isCardTail,
     required this.sentinel,
     required this.hover,
-    this.suppressActions = false,
+    this.streaming = false,
+    this.statisticsKey,
   });
 
   @override
@@ -152,7 +154,8 @@ class AssistantMessageItem extends StatelessWidget {
         cardMessages: cardMessages,
         sentinel: sentinel,
         hover: hover,
-        suppressActions: suppressActions,
+        streaming: streaming,
+        statisticsKey: statisticsKey,
         cardId: cardMessages.first.id ?? identityHashCode(cardMessages.first),
       ),
     );
@@ -176,8 +179,8 @@ class _AssistantMessageSegment extends StatelessWidget {
   final SentinelEntity sentinel;
   final AssistantCardHover hover;
 
-  /// 本轮尚未结束：操作条不显形。
-  final bool suppressActions;
+  final bool streaming;
+  final Key? statisticsKey;
 
   /// 本段所属助手卡的标识，用来判定"指针是否在这张卡上"。
   final Object cardId;
@@ -190,7 +193,8 @@ class _AssistantMessageSegment extends StatelessWidget {
     required this.cardMessages,
     required this.sentinel,
     required this.hover,
-    required this.suppressActions,
+    required this.streaming,
+    required this.statisticsKey,
     required this.cardId,
   });
 
@@ -201,19 +205,8 @@ class _AssistantMessageSegment extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [Expanded(child: _AssistantMessageContent(layout: layout))],
     );
-    final showActions = isCardTail && !layout.waitingForFirstDelta;
-    // 操作条排在**整卡最后一段的正下方**（放在消息底部，不是浮在
-    // 右侧）。它常驻占位、默认全透明，hover 才淡入，所以卡片高度不随 hover
-    // 变化，正文也不会被压窄。
-    //
-    // 显形条件是**整条消息行** hover（`.group\/message-row:hover
-    // [data-cds=MessageActions]`）：指针落在卡内任意一段都算。本仓每段消息各
-    // 占一个列表项，所以 hover 状态放在卡片级的 [AssistantCardHover] 上——
-    // 各段只上报进出，最后一段订阅它决定操作条是否可见，正文不参与重建。
-    //
-    // 本轮未结束时（[suppressActions]）hover 也不显形：这一轮还在跑，Copy 只能
-    // 拿到半截正文。这里仍走 `visible: false` 而不是把控件摘掉——摘掉的话收尾
-    // 瞬间操作条凭空出现，卡片高度变 28，流式末尾会跳一下。
+    // 首个 delta 前也由底部工具条表达运行状态；切换为复制按钮时保持同一行高。
+    // 完成后沿用整卡 hover，只有工具条订阅它，正文不参与重建。
     Widget result = MouseRegion(
       onEnter: (_) => hover.enter(cardId),
       onExit: (_) => hover.leave(cardId),
@@ -221,12 +214,20 @@ class _AssistantMessageSegment extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           row,
-          if (showActions)
+          if (isCardTail)
             ValueListenableBuilder<Object?>(
               valueListenable: hover.hoveredCard,
               builder: (context, hoveredCard, _) => MessageActionBar(
-                visible: hoveredCard == cardId && !suppressActions,
-                onCopy: () => _copyAssistantMessages(cardMessages),
+                visible: streaming || hoveredCard == cardId,
+                leading: streaming ? const StreamingIndicator() : null,
+                onCopy: streaming
+                    ? null
+                    : () => _copyAssistantMessages(cardMessages),
+                trailing: RunStatisticsLabel(
+                  key: statisticsKey,
+                  statistics: cardMessages.last.runStatistics,
+                  streaming: streaming,
+                ),
               ),
             ),
         ],
@@ -245,9 +246,6 @@ class _AssistantMessageContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = layout.message;
     final children = <Widget>[];
-    if (layout.waitingForFirstDelta) {
-      children.add(const _AssistantMessageWaitingPart());
-    }
     for (final (index, part) in layout.parts.indexed) {
       switch (part) {
         case StepsPart():
@@ -289,15 +287,29 @@ void _copyAssistantMessages(List<MessageEntity> messages) {
   _copyMessageContent(content);
 }
 
-class _AssistantMessageWaitingPart extends StatelessWidget {
-  const _AssistantMessageWaitingPart();
+class StreamingIndicator extends StatelessWidget {
+  const StreamingIndicator({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const StepHeader(
-      icon: LucideIcons.sparkles,
-      label: 'Working…',
-      running: true,
+    final colors = Theme.of(context).extension<AthenaColors>()!;
+    return SizedBox(
+      width: AthenaIcon.regularSize,
+      height: AthenaIconButtonSize.compact,
+      child: Center(
+        child: CircularProgressIndicator(
+          constraints: const BoxConstraints.tightFor(
+            width: AthenaIcon.regularSize,
+            height: AthenaIcon.regularSize,
+          ),
+          padding: EdgeInsets.zero,
+          strokeWidth: AthenaIcon.compactStroke,
+          strokeAlign: CircularProgressIndicator.strokeAlignInside,
+          strokeCap: StrokeCap.round,
+          color: colors.textSecondary,
+          semanticsLabel: 'Streaming',
+        ),
+      ),
     );
   }
 }
@@ -525,10 +537,7 @@ class AssistantCardHover {
 /// 里（`AnimatedOpacity`，不是 `Visibility`），所以静止时高度仍被占住，
 /// hover 只改透明度、不引起跳动，也不会挤压正文宽度。
 ///
-/// [visible] 由调用方决定：既包含 hover 归属，也包含"这一轮是否已经结束"。
-/// **尚未结束的那一轮里的助手消息不显形**（流式中悬在助手正文上看不到操作条，
-/// 收尾后才恢复）；用户消息不受影响，照常 hover 显形。调用方**不要**在未结束时
-/// 把控件从树上摘掉，摘掉会让卡片高度在收尾瞬间变 28，末尾跳一下。
+/// [visible] 由调用方决定：助手运行中常显，完成后与用户消息一样 hover 显形。
 ///
 /// 时序：
 /// - **只动透明度**，不做缩放（旧版加的 `scale(0.9)` 是自创的，无依据）；
@@ -539,12 +548,16 @@ class MessageActionBar extends StatelessWidget {
   final bool visible;
   final VoidCallback? onCopy;
   final VoidCallback? onResend;
+  final Widget? leading;
+  final Widget? trailing;
 
   const MessageActionBar({
     super.key,
     required this.visible,
     this.onCopy,
     this.onResend,
+    this.leading,
+    this.trailing,
   });
 
   // 操作条的显隐时序，**刻意不取 [AthenaMotion] 的档位**：
@@ -576,6 +589,7 @@ class MessageActionBar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (leading != null) leading!,
               if (onCopy != null)
                 _MessageActionButton(
                   icon: LucideIcons.copy,
@@ -588,6 +602,7 @@ class MessageActionBar extends StatelessWidget {
                   tooltip: 'Retry',
                   onTap: onResend,
                 ),
+              if (trailing != null) ...[const SizedBox(width: 8), trailing!],
             ],
           ),
         ),
@@ -598,7 +613,7 @@ class MessageActionBar extends StatelessWidget {
 
 /// 操作条上的一个 ghost 图标按钮。
 ///
-/// 尺寸：控件高 24，图标 16，圆角 [AthenaRadius.row]，
+/// 尺寸：控件用紧凑档，图标用常规档，圆角 [AthenaRadius.row]，
 /// hover 填充为 `textPrimary` 的 alpha-1 档（浅色约 5%）。
 class _MessageActionButton extends StatefulWidget {
   final IconData icon;
@@ -625,14 +640,18 @@ class _MessageActionButtonState extends State<_MessageActionButton> {
         onTap: widget.onTap,
         cursor: SystemMouseCursors.click,
         builder: (context, hover) => Container(
-          width: 24,
-          height: 24,
+          width: AthenaIconButtonSize.compact,
+          height: AthenaIconButtonSize.compact,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.textPrimary.withValues(alpha: hover ? 0.05 : 0),
             borderRadius: BorderRadius.circular(AthenaRadius.row),
           ),
-          child: Icon(widget.icon, size: 16, color: colors.iconSecondary),
+          child: Icon(
+            widget.icon,
+            size: AthenaIcon.regularSize,
+            color: colors.iconSecondary,
+          ),
         ),
       ),
     );

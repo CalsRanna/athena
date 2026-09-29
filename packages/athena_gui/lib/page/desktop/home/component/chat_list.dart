@@ -283,7 +283,11 @@ class _MoreButton extends StatelessWidget {
         cursor: SystemMouseCursors.click,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Icon(AthenaIcons.more, size: 14, color: colors.iconSecondary),
+          child: Icon(
+            AthenaIcons.more,
+            size: AthenaIcon.inlineSize,
+            color: colors.iconSecondary,
+          ),
         ),
       ),
     );

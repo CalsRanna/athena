@@ -29,7 +29,11 @@ class QueuedMessages extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(AthenaIcons.time, size: 14, color: colors.textSecondary),
+              Icon(
+                AthenaIcons.time,
+                size: AthenaIcon.inlineSize,
+                color: colors.textSecondary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Queued (${messages.length})',
@@ -100,7 +104,7 @@ class QueuedMessages extends StatelessWidget {
                               children: [
                                 Icon(
                                   LucideIcons.image,
-                                  size: 13,
+                                  size: AthenaIcon.inlineSize,
                                   color: colors.textSecondary,
                                 ),
                                 const SizedBox(width: 4),

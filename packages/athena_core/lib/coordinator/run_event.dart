@@ -3,6 +3,7 @@ import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/agent/run_outcome.dart';
 import 'package:athena_core/entity/token_usage.dart';
+import 'package:athena_core/entity/run_statistics.dart';
 
 /// 协调层**内部发起**的 run（后台任务完成后的自动汇报）的事件。
 ///
@@ -30,7 +31,8 @@ class RunMessageStored extends RunEvent {
 
 class RunCompactionChanged extends RunEvent {
   final CompactionStep step;
-  const RunCompactionChanged(this.step);
+  final RunStatistics? runStatistics;
+  const RunCompactionChanged(this.step, {this.runStatistics});
 }
 
 class RunAssistantAppended extends RunEvent {

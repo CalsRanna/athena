@@ -7,31 +7,43 @@ import 'package:flutter/material.dart';
 class AthenaIconButton extends StatelessWidget {
   final IconData icon;
   final void Function()? onTap;
-  final EdgeInsets? padding;
-  const AthenaIconButton({
-    super.key,
-    required this.icon,
-    this.onTap,
-    this.padding,
-  });
+  const AthenaIconButton({super.key, required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AthenaColors>()!;
-    final iconWidget = Icon(icon, color: colors.iconOnRaised, size: 16);
+    final iconWidget = Icon(
+      icon,
+      color: colors.iconOnRaised,
+      size: AthenaIcon.regularSize,
+    );
     final boxDecoration = BoxDecoration(
       color: colors.surfaceRaised,
       borderRadius: BorderRadius.circular(AthenaRadius.control),
     );
     final button = Container(
       decoration: boxDecoration,
-      padding: padding ?? const EdgeInsets.all(12),
+      width: AthenaIconButtonSize.regular,
+      height: AthenaIconButtonSize.regular,
+      alignment: Alignment.center,
       child: iconWidget,
     );
+    final targetSize = switch (Theme.of(context).platform) {
+      TargetPlatform.android ||
+      TargetPlatform.iOS ||
+      TargetPlatform.fuchsia => AthenaIconButtonSize.touchTarget,
+      _ => AthenaIconButtonSize.regular,
+    };
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: MouseRegion(cursor: SystemMouseCursors.click, child: button),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: SizedBox.square(
+          dimension: targetSize,
+          child: Center(child: button),
+        ),
+      ),
     );
   }
 }
@@ -84,7 +96,10 @@ class _AthenaPrimaryButtonState extends State<AthenaPrimaryButton> {
               fontWeight: FontWeight.w600,
             ),
             child: IconTheme.merge(
-              data: IconThemeData(color: foreground, size: 14),
+              data: IconThemeData(
+                color: foreground,
+                size: AthenaIcon.inlineSize,
+              ),
               child: widget.child,
             ),
           ),
@@ -138,7 +153,7 @@ class _AthenaSecondaryButtonState extends State<AthenaSecondaryButton> {
         child: DefaultTextStyle(
           style: AthenaTextStyle.label.copyWith(color: foreground),
           child: IconTheme.merge(
-            data: IconThemeData(color: foreground, size: 14),
+            data: IconThemeData(color: foreground, size: AthenaIcon.inlineSize),
             child: widget.child,
           ),
         ),
@@ -195,8 +210,8 @@ class AthenaGhostIconButton extends StatefulWidget {
     super.key,
     required this.icon,
     this.onTap,
-    this.box = 28,
-    this.iconSize = 14,
+    this.box = AthenaIconButtonSize.compact,
+    this.iconSize = AthenaIcon.inlineSize,
   });
 
   @override

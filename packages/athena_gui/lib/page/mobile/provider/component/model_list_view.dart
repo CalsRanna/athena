@@ -68,19 +68,23 @@ class _ModelTile extends StatelessWidget {
       Flexible(child: nameText),
       if (model.isPreset) SizedBox(width: 8),
       if (model.isPreset)
-        Icon(LucideIcons.lockKeyhole, size: 16, color: colors.iconSecondary),
+        Icon(
+          LucideIcons.lockKeyhole,
+          size: AthenaIcon.regularSize,
+          color: colors.iconSecondary,
+        ),
       const SizedBox(width: 8),
       AthenaTag.small(text: model.modelId),
     ];
     var thinkIcon = Icon(
       LucideIcons.brainCircuit,
       color: colors.iconSecondary,
-      size: 18,
+      size: AthenaIcon.regularSize,
     );
     var visualIcon = Icon(
       LucideIcons.eye,
       color: colors.iconSecondary,
-      size: 18,
+      size: AthenaIcon.regularSize,
     );
     var subtitleChildren = [
       _buildSubtitle(context),

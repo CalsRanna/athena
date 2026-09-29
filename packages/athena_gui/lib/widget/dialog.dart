@@ -100,7 +100,11 @@ class AthenaDialog {
     var content = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(style.icon, color: style.accentColor, size: 16),
+        Icon(
+          style.icon,
+          color: style.accentColor,
+          size: AthenaIcon.regularSize,
+        ),
         const SizedBox(width: 8),
         Flexible(child: Text(message, style: textStyle)),
       ],
@@ -544,7 +548,7 @@ class _DesktopMessageOverlay extends StatelessWidget {
     );
     final screenWidth = MediaQuery.sizeOf(context).width;
     final children = [
-      Icon(style.icon, color: style.accentColor, size: 16),
+      Icon(style.icon, color: style.accentColor, size: AthenaIcon.regularSize),
       const SizedBox(width: 8),
       Flexible(child: Text(message, style: textStyle)),
     ];

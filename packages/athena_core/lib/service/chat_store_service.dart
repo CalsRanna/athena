@@ -4,6 +4,7 @@ import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/entity/run_statistics.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
@@ -141,11 +142,15 @@ class ChatStoreService {
   }
 
   /// 创建并落库一条空的 assistant 占位消息，返回带 id 与 seq 的 entity
-  Future<MessageEntity> appendAssistantPlaceholder(String chatId) async {
+  Future<MessageEntity> appendAssistantPlaceholder(
+    String chatId, {
+    RunStatistics? runStatistics,
+  }) async {
     final placeholder = MessageEntity(
       chatId: chatId,
       role: 'assistant',
       content: '',
+      runStatistics: runStatistics,
     );
     return _messageRepository.storeMessage(placeholder);
   }

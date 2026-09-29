@@ -119,7 +119,7 @@ class _FooterTileState extends State<_FooterTile> {
     );
     var chevron = Icon(
       AthenaIcons.dropdown,
-      size: 14,
+      size: AthenaIcon.inlineSize,
       color: colors.iconSecondary,
     );
     var row = Row(

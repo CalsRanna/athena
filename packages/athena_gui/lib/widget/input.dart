@@ -118,7 +118,7 @@ class _AthenaInputState extends State<AthenaInput> {
           onTap: () => setState(() => revealed = !revealed),
           child: Icon(
             revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-            size: 18,
+            size: AthenaIcon.regularSize,
             color: colors.border,
           ),
         ),

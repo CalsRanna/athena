@@ -1,3 +1,4 @@
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_gui/widget/app_bar.dart';
@@ -24,19 +25,19 @@ class _MobileDataPageState extends State<MobileDataPage> {
   Widget build(BuildContext context) {
     var children = [
       MobileSettingTile(
-        leading: Icon(LucideIcons.fileOutput, size: 24),
+        leading: Icon(LucideIcons.fileOutput, size: AthenaIcon.largeSize),
         onTap: _handleExport,
         title: 'Export',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.fileInput, size: 24),
+        leading: Icon(LucideIcons.fileInput, size: AthenaIcon.largeSize),
         onTap: _handleImport,
         title: 'Import',
         trailing: '',
       ),
       MobileSettingTile(
-        leading: Icon(LucideIcons.databaseBackup, size: 24),
+        leading: Icon(LucideIcons.databaseBackup, size: AthenaIcon.largeSize),
         onTap: _handleReset,
         title: 'Reset',
         trailing: '',

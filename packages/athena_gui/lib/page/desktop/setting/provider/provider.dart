@@ -95,10 +95,20 @@ class _DesktopSettingProviderPageState
     final colors = Theme.of(context).extension<AthenaColors>()!;
     final models = modelViewModel.models.value;
     var rows = <Widget>[
-      for (final provider in providers)
-        _buildProviderRow(provider, models, colors),
+      _buildProviderGroup(
+        'Enabled',
+        providerViewModel.enabledProviders.value,
+        models,
+        colors,
+      ),
+      _buildProviderGroup(
+        'Disabled',
+        providerViewModel.disabledProviders.value,
+        models,
+        colors,
+      ),
     ];
-    if (rows.isEmpty) {
+    if (providers.isEmpty) {
       rows = [
         AthenaSettingsEmptyState(
           icon: AthenaIcons.connection,
@@ -144,6 +154,36 @@ class _DesktopSettingProviderPageState
     );
   }
 
+  Widget _buildProviderGroup(
+    String title,
+    List<ProviderEntity> providers,
+    List<ModelEntity> models,
+    AthenaColors colors,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AthenaSettingsInset(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AthenaSpace.md),
+            child: Text(
+              '$title · ${providers.length}',
+              style: AthenaTextStyle.section.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        AthenaSettingsGroup(
+          children: [
+            for (final provider in providers)
+              _buildProviderRow(provider, models, colors),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildProviderRow(
     ProviderEntity provider,
     List<ModelEntity> models,
@@ -153,7 +193,6 @@ class _DesktopSettingProviderPageState
     final parts = <String>[
       count == 1 ? '1 model' : '$count models',
       provider.apiKey.trim().isEmpty ? 'No API key' : 'API key set',
-      if (!provider.enabled) 'Disabled',
     ];
     final dot = AthenaSettingsDot(
       color: provider.enabled ? colors.statusSuccess : colors.switchTrackOff,
@@ -164,6 +203,7 @@ class _DesktopSettingProviderPageState
       description: parts.join(' · '),
       leading: dot,
       chevron: true,
+      dimmed: !provider.enabled,
       selected: _selection.selectedIds.contains(provider.id),
       onTap: () => _handleProviderTap(provider),
       onSecondaryTap: (details) => _openProviderContextMenu(details, provider),
@@ -193,7 +233,11 @@ class _DesktopSettingProviderPageState
   }
 
   void _handleProviderTap(ProviderEntity provider) {
-    final providers = providerViewModel.providers.value;
+    // Shift 范围选择必须与分组后的显示顺序一致，不能沿用仓储顺序。
+    final providers = [
+      ...providerViewModel.enabledProviders.value,
+      ...providerViewModel.disabledProviders.value,
+    ];
     final activate = _selection.handleTap(
       provider.id,
       ids: providers
@@ -443,14 +487,18 @@ class _DesktopSettingProviderPageState
           message: 'Reasoning',
           child: Icon(
             LucideIcons.brainCircuit,
-            size: 14,
+            size: AthenaIcon.inlineSize,
             color: colors.iconSecondary,
           ),
         ),
       if (model.vision)
         Tooltip(
           message: 'Vision',
-          child: Icon(LucideIcons.eye, size: 14, color: colors.iconSecondary),
+          child: Icon(
+            LucideIcons.eye,
+            size: AthenaIcon.inlineSize,
+            color: colors.iconSecondary,
+          ),
         ),
     ];
     if (icons.isEmpty) return const SizedBox();

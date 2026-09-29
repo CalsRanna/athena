@@ -47,6 +47,21 @@ abstract final class AthenaSpace {
   static const sidebar = 288.0;
 }
 
+/// 通用图标按角色选档；控件内部标记与窗口控制的例外见 DESIGN.md §7。
+abstract final class AthenaIcon {
+  static const inlineSize = 14.0;
+  static const regularSize = 16.0;
+  static const largeSize = 24.0;
+  static const compactStroke = 1.5;
+}
+
+/// 图标按钮的可见盒子与触摸区域分开定义，避免统一外观时缩小点击范围。
+abstract final class AthenaIconButtonSize {
+  static const compact = 28.0;
+  static const regular = 32.0;
+  static const touchTarget = 48.0;
+}
+
 /// 以 Medium 正文 14 / 22 为基准的四级字号。
 ///
 /// 辅助文字 12 / 18、常规 UI 14 / 22、标题 16 / 24、空态标题 20 / 28。
@@ -221,8 +236,8 @@ abstract final class AthenaFont {
 
 /// 过渡时长。**按感知档位分级，不按组件分级。**
 ///
-/// 五个档位是"人眼能分辨的快慢"：60–100 是"瞬间"，150 是"一下"，240 是"缓缓"，
-/// 1800+ 是"持续循环"，3 秒是"停留"。**不要**为某个组件新加一个贴着自己名字的
+/// 六个档位是"人眼能分辨的快慢"：60–100 是"瞬间"，150 是"一下"，240 是"缓缓"，
+/// 500 是"渐变"，1800+ 是"持续循环"，3 秒是"停留"。**不要**为某个组件新加一个贴着自己名字的
 /// 常量——差值在 20ms 以内的两档（如 140 与 150）人眼分不出，共用一档即可。
 ///
 /// 选档只看两件事：**这是不是交互反馈**（是 → [hover]），**要不要跟手**
@@ -243,6 +258,9 @@ abstract final class AthenaMotion {
   /// 慢档：240ms。用于**位置与视口迁移**：滚动跳转到某一轮、回弹（`easeOutBack`）。
   /// 这类动画位移大，来得太快会让人失去空间感。
   static const Duration slow = Duration(milliseconds: 240);
+
+  /// 渐变档：500ms。用于需要看清中间值的数值过渡。
+  static const Duration slower = Duration(milliseconds: 500);
 
   /// 循环档：1800ms。**持续重复**的装饰动画绕一圈的时长（工具头 shimmer）。
   ///
@@ -306,7 +324,7 @@ abstract final class AthenaShadow {
 
 /// 统一的等宽文字样式入口。
 ///
-/// 只有代码 / 工具 / 技术标签用它；正文与 UI 一律不传 fontFamily，
+/// 代码 / 工具 / 技术标签与动态运行统计用它；普通正文与 UI 不传 fontFamily，
 /// 走主题里的系统字体。
 TextStyle athenaMono({
   Color? color,

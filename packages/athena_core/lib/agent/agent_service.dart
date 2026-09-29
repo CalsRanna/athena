@@ -1020,10 +1020,33 @@ class _AgentLoop {
     // streamingCalls / announcedIds 仅本轮流式期间使用，故作为局部状态。
     final streamingCalls = <int, _StreamingToolCall>{};
     final announcedIds = <String>{};
+    final outputWatch = Stopwatch();
+    Duration? outputDuration;
 
     try {
       await for (final chunk in stream) {
         _token.throwIfCancelled();
+        final delta = chunk.firstChoice?.delta;
+        final reasoningDelta = delta?.reasoningContent ?? delta?.reasoning;
+        final textDelta = chunk.textDelta;
+        final hasOutput =
+            reasoningDelta?.isNotEmpty == true ||
+            textDelta?.isNotEmpty == true ||
+            delta?.toolCalls?.any(
+                  (call) =>
+                      call.function?.name?.isNotEmpty == true ||
+                      call.function?.arguments?.isNotEmpty == true,
+                ) ==
+                true;
+        if (hasOutput) {
+          // 在产出 UI 事件前取时间；只量本次 LLM 的输出片段，不计首包等待、
+          // finish/usage 尾包等待或随后执行工具的时间。单片响应无法测得速率。
+          if (outputWatch.isRunning) {
+            outputDuration = outputWatch.elapsed;
+          } else {
+            outputWatch.start();
+          }
+        }
         st.accumulator.add(chunk);
         if (chunk is ChatCompletionsStateChunk) {
           st.chatCompletionsState = chunk.state;
@@ -1038,11 +1061,9 @@ class _AgentLoop {
           yield AgentMessagesStateEvent(chunk.state);
         }
 
-        final delta = chunk.firstChoice?.delta;
         if (delta != null) {
-          final rc = delta.reasoningContent ?? delta.reasoning;
-          if (rc != null && rc.isNotEmpty) {
-            yield AgentEvent.reasoning(rc);
+          if (reasoningDelta != null && reasoningDelta.isNotEmpty) {
+            yield AgentEvent.reasoning(reasoningDelta);
           }
 
           if (delta.toolCalls != null) {
@@ -1081,9 +1102,8 @@ class _AgentLoop {
           }
         }
 
-        final td = chunk.textDelta;
-        if (td != null && td.isNotEmpty) {
-          yield AgentEvent.text(td);
+        if (textDelta != null && textDelta.isNotEmpty) {
+          yield AgentEvent.text(textDelta);
         }
       }
     } catch (e) {
@@ -1091,6 +1111,8 @@ class _AgentLoop {
       // CancelledException 呈现（取消优先于底层错误），否则原样抛出。
       _token.throwIfCancelled();
       rethrow;
+    } finally {
+      outputWatch.stop();
     }
 
     _service._logUsage(st.accumulator.usage);
@@ -1111,6 +1133,7 @@ class _AgentLoop {
           cacheCreationTokens: usage is CacheUsage
               ? usage.cacheCreationTokens
               : null,
+          outputDuration: outputDuration,
         ),
       );
     }

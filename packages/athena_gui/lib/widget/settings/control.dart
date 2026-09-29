@@ -140,7 +140,11 @@ class _AthenaSettingsSelectState extends State<AthenaSettingsSelect> {
         height: AthenaFontSize.bodyHeight,
       ),
     );
-    var chevron = Icon(AthenaIcons.dropdown, color: colors.textWeak, size: 14);
+    var chevron = Icon(
+      AthenaIcons.dropdown,
+      color: colors.textWeak,
+      size: AthenaIcon.inlineSize,
+    );
     return AthenaHover(
       onTap: _handleTap,
       cursor: SystemMouseCursors.click,
@@ -284,9 +288,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
       if (widget.obscure) ...[
         const SizedBox(width: 4),
         AthenaGhostIconButton(
-          box: 24,
           icon: revealed ? LucideIcons.eyeOff : LucideIcons.eye,
-          iconSize: 14,
           onTap: () => setState(() => revealed = !revealed),
         ),
       ],
@@ -441,9 +443,7 @@ class AthenaSettingsMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Builder(
       builder: (context) => AthenaGhostIconButton(
-        box: 24,
         icon: AthenaIcons.more,
-        iconSize: 14,
         onTap: () => _open(context),
       ),
     );

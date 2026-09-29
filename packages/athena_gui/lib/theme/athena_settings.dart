@@ -48,7 +48,7 @@ abstract final class AthenaSettings {
   static const navRowPadding = 12.0;
 
   /// 导航图标。实测图标盒 16。
-  static const navIconSize = 16.0;
+  static const navIconSize = AthenaIcon.regularSize;
 
   /// 图标与标签间距。实测图标 160..176、文字起于 189。
   static const navIconGap = 12.0;
@@ -68,7 +68,7 @@ abstract final class AthenaSettings {
   /// 搜索框与设置控件同高，给 22 行盒留出上下呼吸空间。
   static const searchHeight = 36.0;
   static const searchRadius = AthenaRadius.control;
-  static const searchIconSize = 14.0;
+  static const searchIconSize = AthenaIcon.inlineSize;
   static const searchFontSize = AthenaFontSize.body;
   static const searchTopMargin = 13.0;
 
@@ -147,6 +147,9 @@ abstract final class AthenaSettings {
   static const fontSizeForEmptySearch = AthenaFontSize.row;
 
   /// 关闭按钮：字形约 10，内缩对齐内容区右缘（1136）与顶缘（68）。
-  static const closeIconSize = 14.0;
+  static const closeIconSize = AthenaIcon.inlineSize;
   static const closeInset = 15.0;
+
+  /// 独立空态展示保留现有比例，不参与列表与操作图标的三档映射。
+  static const emptyStateIconSize = 28.0;
 }

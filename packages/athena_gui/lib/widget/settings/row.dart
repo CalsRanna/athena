@@ -145,7 +145,7 @@ class _AthenaSettingsRowState extends State<AthenaSettingsRow> {
       trailing = Icon(
         AthenaIcons.forward,
         color: colors.iconSecondary,
-        size: 14,
+        size: AthenaIcon.inlineSize,
       );
     }
     var row = Row(

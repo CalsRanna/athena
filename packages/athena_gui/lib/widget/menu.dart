@@ -71,7 +71,10 @@ class _DesktopMenuTileState extends State<DesktopMenuTile> {
             ? widget.leadingBuilder!(hover)
             : widget.leading;
         var iconTheme = IconTheme(
-          data: IconThemeData(color: contentColor, size: 15),
+          data: IconThemeData(
+            color: contentColor,
+            size: AthenaIcon.regularSize,
+          ),
           child: leading ?? const SizedBox(),
         );
         var trailing =

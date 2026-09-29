@@ -52,7 +52,11 @@ class _MobileSkillDetailPageState extends State<MobileSkillDetailPage> {
           ),
         ),
         if (skill.isBuiltin)
-          Icon(LucideIcons.lockKeyhole, size: 16, color: colors.iconSecondary),
+          Icon(
+            LucideIcons.lockKeyhole,
+            size: AthenaIcon.regularSize,
+            color: colors.iconSecondary,
+          ),
       ];
       var children = [
         Row(children: nameRowChildren),

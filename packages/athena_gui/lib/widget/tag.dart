@@ -88,7 +88,10 @@ class _AthenaTagButtonState extends State<AthenaTagButton> {
         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
       ),
       child: IconTheme.merge(
-        data: IconThemeData(color: foregroundColor, size: 14),
+        data: IconThemeData(
+          color: foregroundColor,
+          size: AthenaIcon.inlineSize,
+        ),
         child: widget.child,
       ),
     );
@@ -200,7 +203,10 @@ class _AthenaContextChipState extends State<AthenaContextChip> {
             children: [
               if (widget.leading != null) ...[
                 IconTheme(
-                  data: IconThemeData(color: foreground, size: 13),
+                  data: IconThemeData(
+                    color: foreground,
+                    size: AthenaIcon.inlineSize,
+                  ),
                   child: widget.leading!,
                 ),
                 const SizedBox(width: 6),

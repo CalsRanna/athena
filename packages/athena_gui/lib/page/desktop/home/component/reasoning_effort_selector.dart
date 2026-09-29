@@ -188,7 +188,7 @@ class _HelpIcon extends StatelessWidget {
         cursor: SystemMouseCursors.help,
         child: Icon(
           LucideIcons.circleQuestionMark,
-          size: 14,
+          size: AthenaIcon.inlineSize,
           color: colors.iconSecondary,
         ),
       ),

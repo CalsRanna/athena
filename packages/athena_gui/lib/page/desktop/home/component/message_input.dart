@@ -662,7 +662,7 @@ class _SendButton extends StatelessWidget {
           child: Icon(
             streaming ? LucideIcons.square : LucideIcons.arrowUp,
             color: streaming || imagesReady ? colors.accent : colors.textWeak,
-            size: 16,
+            size: AthenaIcon.regularSize,
           ),
         ),
       );

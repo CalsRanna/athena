@@ -1,5 +1,6 @@
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/widget/context_menu.dart';
@@ -29,7 +30,11 @@ class DesktopSentinelSelectMenu extends StatelessWidget {
     final current = GetIt.instance<ChatViewModel>().currentSentinel.value;
     // Direct chat 与未保存的默认角色都没有 ID，按占位实体区分。
     final direct = identical(current, SentinelViewModel.directChatSentinel);
-    final tick = Icon(LucideIcons.check, size: 16, color: colors.textPrimary);
+    final tick = Icon(
+      LucideIcons.check,
+      size: AthenaIcon.regularSize,
+      color: colors.textPrimary,
+    );
     return DesktopContextMenu(
       offset: Offset(anchor.left, anchor.top - 8),
       upward: true,

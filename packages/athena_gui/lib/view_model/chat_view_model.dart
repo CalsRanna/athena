@@ -1080,9 +1080,12 @@ class ChatViewModel {
     // 事件属于其他对话时仅落库（coordinator 内部），不污染当前列表。
     final belongsToCurrent = chatId == currentChat.value?.id;
     switch (event) {
-      case RunCompactionChanged(:final step):
+      case RunCompactionChanged(:final step, :final runStatistics):
         if (belongsToCurrent) {
-          _bufferAppendMessage(step.toMessage(), chatId);
+          _bufferAppendMessage(
+            step.toMessage().copyWith(runStatistics: runStatistics),
+            chatId,
+          );
           _flushMessages();
         }
       case RunMessageStored(:final message):
