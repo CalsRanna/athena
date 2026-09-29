@@ -16,6 +16,7 @@ import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/agent/permission/permission_prompt.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/coordinator/streaming_message_buffer.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_selection_delegate.dart';
@@ -300,22 +301,18 @@ class ChatViewModel {
 
   // ─── 流式增量合并 ───────────────────────────────────────────────
   //
-  // LLM 每个 token 产生一个 RunMessageUpdated，直写 messages 信号会让
-  // 每个 delta 触发「整表复制 + 整个 ListView 重建 + markdown 全量重解析」，
-  // 消息数 M、输出 N token 时是 O(N·M) 复制加 O(N²) 解析。
-  //
-  // 这里把窗口内的增量合并成一次信号写入（athena_tui 的 ChatController
-  // 已用同一方案，见其 _flushSoon 注释）：追加与更新共用同一个 pending
-  // 列表，保证「先追加占位、再更新内容」的顺序不被打乱——顺序一旦反转，
-  // replaceWhere 找不到目标就会静默丢弃增量。
+  // 合并策略本身在 core 的 [StreamingMessageBuffer] 里（TUI 的 ChatController
+  // 用同一份）：LLM 每个 token 产生一个 RunMessageUpdated，直写 messages 信号
+  // 会让每个 delta 触发「整表复制 + 整个 ListView 重建 + markdown 全量重解析」，
+  // 消息数 M、输出 N token 时是 O(N·M) 复制加 O(N²) 解析。这里只负责把「提交到
+  // 哪里」定下来：写 messages 信号。
 
-  /// 待冲刷的消息列表；null 表示无挂起增量。
-  List<MessageEntity>? _pendingMessages;
-
-  /// [_pendingMessages] 所属对话；切换对话后残留的缓冲不得写入新列表。
-  String? _pendingChatId;
-
-  Timer? _flushTimer;
+  /// 合并窗口由构造参数给出（默认见 [StreamingMessageBuffer.defaultInterval]）。
+  late final StreamingMessageBuffer _buffer = StreamingMessageBuffer(
+    interval: _flushInterval,
+    snapshot: () => messages.value,
+    commit: (pending) => messages.value = pending,
+  );
 
   /// chatId → 当前 sendMessage 的完整收尾。用户点击停止后 UI 会立即退出
   /// streaming，但同一对话的新消息要在旧 run 落库完成后再启动，避免迟到
@@ -335,64 +332,18 @@ class ChatViewModel {
   /// 运行指示由自动汇报点亮的会话（汇报 run 收尾时据此熄灭）。
   final Set<String> _reportingChatIds = {};
 
-  /// 取出可变的 pending 列表（首次从当前信号值复制一份，之后原地变异，
-  /// 省掉每个事件一次的整表复制）。
-  List<MessageEntity> _pendingFor(String chatId) {
-    if (_pendingMessages == null || _pendingChatId != chatId) {
-      _pendingMessages = List<MessageEntity>.of(messages.value);
-      _pendingChatId = chatId;
-    }
-    return _pendingMessages!;
-  }
-
   /// 流式追加/替换（占位消息、用户消息、内容增量）。
-  ///
-  /// 流式增量几乎总是命中最后一条消息，先按尾部快速判定，避免每个事件
-  /// 都对整个列表做一次 indexWhere——高 token 速率下这是每秒上千次
-  /// O(消息数) 扫描。
   void _bufferAppendMessage(MessageEntity message, String chatId) {
-    final pending = _pendingFor(chatId);
-    if (pending.isNotEmpty && pending.last.id == message.id) {
-      pending[pending.length - 1] = message;
-      _scheduleFlush();
-      return;
-    }
-    final index = pending.indexWhere((m) => m.id == message.id);
-    if (index >= 0) {
-      pending[index] = message;
-    } else {
-      pending.add(message);
-    }
-    _scheduleFlush();
-  }
-
-  void _scheduleFlush() {
-    _flushTimer ??= Timer(_flushInterval, () {
-      _flushTimer = null;
-      _flushMessages();
-    });
+    _buffer.add(message, scope: chatId);
   }
 
   /// 立即把挂起增量写入信号。收尾、以及任何需要读到最新列表的用户
   /// 操作（删除、展开）之前必须调用，否则会读到过期的 messages.value。
-  void _flushMessages() {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    final pending = _pendingMessages;
-    if (pending == null) return;
-    _pendingMessages = null;
-    _pendingChatId = null;
-    messages.value = pending;
-  }
+  void _flushMessages() => _buffer.flush();
 
   /// 丢弃挂起增量。整表被替换（切换对话、新建草稿）时使用——此时
   /// 冲刷旧缓冲只会把上一个对话的消息写进新列表。
-  void _discardPendingMessages() {
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    _pendingMessages = null;
-    _pendingChatId = null;
-  }
+  void _discardPendingMessages() => _buffer.discard();
 
   ChatViewModel({
     required ChatStoreService manageService,
@@ -1234,7 +1185,8 @@ class ChatViewModel {
     _stream.stop(chatId);
     // 用户可见状态立即停止；进程终止、取消落库等由现有 send Future 在后台
     // 完成。新输入会加入队列，等待旧 run 收尾后再写入聊天记录。
-    if (_pendingChatId == chatId) _flushMessages();
+    // 只冲刷属于这个对话的挂起增量：无条件冲刷会把别的对话的缓冲也提交掉
+    if (_buffer.hasPendingFor(chatId)) _buffer.flush();
     streamingChatIds.value = streamingChatIds.value
         .where((id) => id != chatId)
         .toList();

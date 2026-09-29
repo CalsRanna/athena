@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/coordinator/streaming_message_buffer.dart';
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -147,6 +148,22 @@ class ChatController {
     return trimmed;
   }
 
+  /// 流式高频更新合并：合并策略在 core 的 [StreamingMessageBuffer] 里
+  /// （GUI 的 ChatViewModel 用同一份）。这里只决定「提交到哪里」——TUI 要按窗口
+  /// 裁头，所以提交前过一遍 [_trimWindow]。
+  ///
+  /// 100ms 而非 50ms：一次提交 = 全树 build + 流式消息全量 layout
+  /// （TextLayoutEngine 超线性，10k+ 字符时 10-30ms）+ 全树 paint。帧率减半直接
+  /// 减半 CPU；LLM 输出 ~10-50 token/s，100ms 窗口每次仍含多个 token，视觉无感。
+  late final StreamingMessageBuffer _buffer = StreamingMessageBuffer(
+    snapshot: () => messages.value,
+    commit: (pending) {
+      // UI 拆解后不再写信号（订阅已失效，写了会抛 SignalEffectException）
+      if (!_active) return;
+      messages.value = _trimWindow(pending);
+    },
+  );
+
   // ─── 状态 ────────────────────────────────────────────────
 
   /// 聊天列表(含最后一条消息内容),按 pinned + updated_at 排序。
@@ -205,8 +222,7 @@ class ChatController {
   /// 释放资源并阻止后续信号写入。幂等;由 AthenaApp.dispose 调用。
   void dispose() {
     _disposed = true;
-    _flushTimer?.cancel();
-    _flushTimer = null;
+    _buffer.discard();
     _internalEventsSub?.cancel();
     _internalEventsSub = null;
   }
@@ -398,17 +414,10 @@ class ChatController {
   /// 切换聊天后消失,仅内存展示。
   void pushTransientMessage(MessageEntity message) {
     if (!_active) return;
-    final pending = _pendingList;
-    if (pending == null) {
-      // 无流式增量:同步写入,不留定时器(定时器会越过 UI 拆解边界,
-      // 拆解后触发写信号)
-      messages.value = _trimWindow([...messages.value, message]);
-    } else {
-      // 流式增量在 pending 中:并入同一批 flush(直接写 messages.value
-      // 会被 pending 整体覆盖丢弃);flush 定时器已由流式事件创建。
-      // pending 私有且与 messages.value 分离,可直接变异零复制
-      pending.add(message);
-    }
+    // 必须先并入缓冲再立即提交：直接写 messages.value 会被挂起的 pending
+    // 在下一个窗口整体覆盖掉。走同一条提交路径也顺带保证窗口裁剪一致。
+    _buffer.add(message, scope: currentChat.value?.id);
+    _buffer.flush();
   }
 
   /// 选中聊天并加载其消息。
@@ -424,9 +433,7 @@ class ChatController {
     if (!_active) return;
     // 清掉未 flush 的 pending(瞬态消息/流式增量):否则 100ms 后 flush
     // 会用旧聊天的 pending 整体覆盖新聊天列表
-    _pendingList = null;
-    _flushTimer?.cancel();
-    _flushTimer = null;
+    _buffer.discard();
     final messages = await _loadRecentMessages(chat.id!);
     if (!_active) return; // 等待 IO 期间 UI 拆解
     // 返回满窗口 → 文件里可能还有更早的;不足 → 已到文件头
@@ -538,10 +545,8 @@ class ChatController {
     error.value = null;
     isStreaming.value = true;
     currentTokenUsage.value = null;
-    _pendingList = null;
+    _buffer.discard();
     _backgroundWork = null;
-    _flushTimer?.cancel();
-    _flushTimer = null;
 
     // 记录 in-flight future:退出路径(waitForSend)等待收尾完全结束。
     // _doSend 在首个 await 处挂起,此处赋值无竞态;identical 兜底防
@@ -584,15 +589,13 @@ class ChatController {
     } catch (e) {
       if (_active) error.value = e.toString();
     } finally {
-      _flushTimer?.cancel();
-      _flushTimer = null;
       // UI 已拆解:不再写信号(订阅已失效,写了会抛 SignalEffectException)
       if (_active) {
-        if (_pendingList != null) {
-          messages.value = _pendingList!;
-          _pendingList = null;
-        }
+        // 收尾前把挂起增量提交掉,否则最后一段输出会留在缓冲里不显示
+        _buffer.flush();
         isStreaming.value = false;
+      } else {
+        _buffer.discard();
       }
     }
   }
@@ -612,12 +615,7 @@ class ChatController {
     _bridge.stop(chatId);
 
     // 可见状态立即停止；_doSend 继续在后台接收取消收尾事件并持久化。
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    if (_pendingList != null) {
-      messages.value = _pendingList!;
-      _pendingList = null;
-    }
+    _buffer.flush();
     isStreaming.value = false;
   }
 
@@ -752,36 +750,14 @@ class ChatController {
     // 防御:非当前聊天的流式增量不进入列表(selectChat 已有流式守卫,
     // 此过滤兜底未来的新调用路径,与 RunUsageChanged 的 chat.id 检查一致)
     if (message.chatId != currentChat.value?.id) return;
-    // 基础是"待 flush 的 pending(若有)",不能直接用 messages.value:
-    // 未 flush 时 value 还是旧列表,会把 pending 中未推送的消息丢掉。
-    // pending 首次创建时与 messages.value 分离(复制),之后直接变异
-    // 零复制——消息数 N 时每事件 O(1) 而非 O(N)(LLM 每 token 一事件,
-    // 长对话时每事件复制整个列表是显著开销)。
-    final pending = _pendingList;
-    if (pending == null) {
-      _pendingList = [...messages.value, message];
-    } else {
-      pending.add(message);
-    }
-    _flushSoon();
+    _buffer.add(message, scope: currentChat.value?.id);
   }
 
   /// 替换或追加消息(队列输入的本地显示与接续 run 的 RunMessageStored 幂等):
   /// 同 id 替换,否则追加。
   void _applyOrPushMessage(MessageEntity message) {
     if (message.chatId != currentChat.value?.id) return;
-    final pending = _pendingList;
-    if (pending == null) {
-      _pendingList = [...messages.value, message];
-    } else {
-      final index = pending.indexWhere((m) => m.id == message.id);
-      if (index >= 0) {
-        pending[index] = message;
-      } else {
-        pending.add(message);
-      }
-    }
-    _flushSoon();
+    _buffer.add(message, scope: currentChat.value?.id);
   }
 
   void _applyMessageUpdate(MessageEntity message) {
@@ -791,42 +767,12 @@ class ChatController {
     // 已被窗口裁掉的旧消息(如长时间流式后 finalize 的早期占位消息):
     // 丢弃,不 add——否则会错位插到列表尾部
     if (minId != null && message.seq < minId) return;
-    final pending = _pendingList ?? List<MessageEntity>.of(messages.value);
-    final index = pending.indexWhere((m) => m.id == message.id);
-    if (index >= 0) {
-      pending[index] = message;
-    } else {
-      pending.add(message);
-    }
-    _pendingList = pending;
-    _flushSoon();
+    _buffer.add(message, scope: currentChat.value?.id);
   }
-
-  List<MessageEntity>? _pendingList;
-  Timer? _flushTimer;
 
   /// 内部 run（自动汇报）的事件订阅：控制器构造时订阅，dispose 时释放。
   StreamSubscription<InternalRunEvent>? _internalEventsSub;
 
   /// 当前流式状态是否由自动汇报点亮（用于决定收尾时是否清除指示）。
   bool _reporting = false;
-
-  /// 流式高频更新合并:窗口内多次更新只通知 UI 一次。
-  ///
-  /// 100ms 而非 50ms:一次 flush 帧的成本 = 全树 build + 流式消息全量
-  /// layout(TextLayoutEngine 超线性,10k+ 字符时 10-30ms)+ 全树 paint。
-  /// 帧率减半直接减半 CPU 占用;LLM 输出 ~10-50 token/s,100ms 窗口
-  /// 每次 flush 仍包含多个 token,视觉上无感。
-  void _flushSoon() {
-    _flushTimer ??= Timer(const Duration(milliseconds: 100), () {
-      _flushTimer = null;
-      // UI 拆解后(dispose 已 cancel timer,此处兜底)不再写信号
-      if (!_active) return;
-      if (_pendingList != null) {
-        // 窗口截头:流式增量只加尾部,超窗时裁掉头部历史(可重新加载)
-        messages.value = _trimWindow(_pendingList!);
-        _pendingList = null;
-      }
-    });
-  }
 }
