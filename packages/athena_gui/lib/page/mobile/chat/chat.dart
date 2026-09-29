@@ -1,6 +1,5 @@
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
-import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
@@ -234,25 +233,46 @@ class _MobileChatPageState extends State<MobileChatPage> {
   }
 
   Future<void> sendMessage(ChatEntity? chat) async {
-    final text = controller.text;
-    if (text.isEmpty) return;
+    final sourceChatId = viewModel.currentChat.value?.id;
 
-    if (chat == null) {
-      chat = await viewModel.createChat();
-      if (chat == null) return;
-    }
-
-    controller.clear();
-    scrollController.followBottom();
-
-    var message = MessageEntity(
-      chatId: chat.id ?? '',
-      role: 'user',
-      content: text,
-      imageUrls: '',
+    // 与桌面共用同一份「校验 + 必要时落草稿 + 构造消息」。移动端此前自己写了
+    // 一遍，漏了三样：文本没 trim（纯空格也会发出去）、不检查有没有启用模型、
+    // 不重查等待期间的页面/对话/附件竞态。
+    final prepared = await viewModel.prepareUserInput(
+      text: controller.text,
+      // 移动端没有图片附件入口
+      images: const [],
+      chat: chat,
+      // 模型列表在 initState 已经加载过，正常路径不该每次发送都重拉；只有
+      // 列表为空时才补一次（覆盖「init 还没跑完用户就发出去了」）。
+      ensureModelsReady: () async {
+        if (modelViewModel.enabledModels.value.isEmpty) {
+          await modelViewModel.loadEnabledModels();
+        }
+        return modelViewModel.enabledModels.value.isNotEmpty;
+      },
+      stillValid: (target, draftJustCreated) =>
+          mounted &&
+          viewModel.currentChat.value?.id ==
+              (draftJustCreated ? target?.id : sourceChatId),
     );
+    if (!mounted) return;
 
-    await viewModel.sendMessage(message, chat: chat);
+    switch (prepared.outcome) {
+      case SendUserInputOutcome.sent:
+        controller.clear();
+        scrollController.followBottom();
+        await viewModel.sendMessage(prepared.message!, chat: prepared.chat!);
+      case SendUserInputOutcome.noEnabledModels:
+        AthenaDialog.warning('You should enable a provider first');
+      case SendUserInputOutcome.noModel:
+        AthenaDialog.warning('You should select a model first');
+      case SendUserInputOutcome.emptyInput ||
+          SendUserInputOutcome.imagesNotReady ||
+          SendUserInputOutcome.superseded ||
+          SendUserInputOutcome.cancelled:
+        break;
+    }
   }
 
   void terminateStreaming() {

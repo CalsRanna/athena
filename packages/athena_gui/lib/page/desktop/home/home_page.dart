@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
@@ -192,62 +191,53 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       _restoreComposerDraft(chatViewModel.currentChat.value?.id);
 
   Future<void> sendMessage() async {
-    var text = controller.text.trim();
-    final images = chatViewModel.pendingImages.value;
     final sourceChatId = chatViewModel.currentChat.value?.id;
-    if (images.any((image) => !image.isReady)) return;
-    if (text.isEmpty && images.isEmpty) return;
+    final images = chatViewModel.pendingImages.value;
 
-    // 检查是否有可用的模型
-    await modelViewModel.loadEnabledModels();
-    if (!mounted ||
-        chatViewModel.currentChat.value?.id != sourceChatId ||
-        !identical(images, chatViewModel.pendingImages.value)) {
-      return;
-    }
-    if (modelViewModel.enabledModels.value.isEmpty) {
-      AthenaDialog.warning('You should enable a provider first');
-      return;
-    }
-
-    // 草稿态：首条消息发送时才把草稿落盘成对话
-    var chat = chatViewModel.currentChat.value;
-    if (chat == null) {
-      chat = await chatViewModel.createChat();
-      if (chat == null) return;
-      // 落盘后输入框这段文字（马上要发出去）改归这条新对话，免得下次新建对话
-      // 又把刚发出的句子填回输入框
-      _composerKey = chat.id;
-    }
-    // 模型读取、草稿落盘期间可能又贴入图片，不能发送旧快照后清掉新附件。
-    if (!mounted ||
-        chatViewModel.currentChat.value?.id != chat.id ||
-        !identical(images, chatViewModel.pendingImages.value)) {
-      return;
-    }
-
-    // 检查当前聊天的模型是否有效
-    var model = chatViewModel.currentModel.value;
-    if (model == null || model.id == null) {
-      AthenaDialog.warning('You should select a model first');
-      return;
-    }
-
-    controller.clear();
-    scrollController.followBottom();
-    final imageUrls = images
-        .map((image) => base64Encode(image.bytes!))
-        .toList();
-
-    var message = MessageEntity(
-      chatId: chat.id ?? '',
-      role: 'user',
-      content: text,
-      imageUrls: imageUrls.join(','),
+    // 校验、必要时落草稿、构造消息都在 ViewModel 里（移动端走同一份）；
+    // 这里只负责呈现：清输入框、滚动到底、按结论弹提示。
+    final prepared = await chatViewModel.prepareUserInput(
+      text: controller.text,
+      images: images,
+      chat: chatViewModel.currentChat.value,
+      ensureModelsReady: () async {
+        await modelViewModel.loadEnabledModels();
+        return modelViewModel.enabledModels.value.isNotEmpty;
+      },
+      // 每个 await 之后重查：页面还在、对话没切、附件没换。草稿落盘前当前
+      // 对话仍是来源对话，落盘后才应该是刚落的这一条——两处口径不同，所以
+      // 要结合 draftJustCreated 判断。
+      stillValid: (target, draftJustCreated) =>
+          mounted &&
+          identical(images, chatViewModel.pendingImages.value) &&
+          chatViewModel.currentChat.value?.id ==
+              (draftJustCreated ? target?.id : sourceChatId),
     );
-    chatViewModel.clearPendingImages();
+    if (!mounted) return;
 
-    await chatViewModel.sendMessage(message, chat: chat);
+    switch (prepared.outcome) {
+      case SendUserInputOutcome.sent:
+        // 草稿态下首条消息才把草稿落盘成对话：输入框这段文字改归这条新对话，
+        // 免得下次新建对话又把刚发出的句子填回输入框
+        if (sourceChatId == null && prepared.chat != null) {
+          _composerKey = prepared.chat!.id;
+        }
+        controller.clear();
+        scrollController.followBottom();
+        await chatViewModel.sendMessage(
+          prepared.message!,
+          chat: prepared.chat!,
+        );
+      case SendUserInputOutcome.noEnabledModels:
+        AthenaDialog.warning('You should enable a provider first');
+      case SendUserInputOutcome.noModel:
+        AthenaDialog.warning('You should select a model first');
+      case SendUserInputOutcome.emptyInput ||
+          SendUserInputOutcome.imagesNotReady ||
+          SendUserInputOutcome.superseded ||
+          SendUserInputOutcome.cancelled:
+        break;
+    }
   }
 
   void terminateStreaming() {

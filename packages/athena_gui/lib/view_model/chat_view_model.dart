@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -937,6 +938,109 @@ class ChatViewModel {
   // Agent 流式交互
   // ═══════════════════════════════════════════════════════════════
 
+  /// 整理一次用户输入：校验、必要时落草稿、构造消息。
+  ///
+  /// 桌面与移动的发送流程此前各写一遍，已经漂移——移动端不 trim、不检查是否有
+  /// 启用模型、也不重查竞态。这里只收「能不能发、发什么、发给哪条对话」；输入框
+  /// 文本、清空、滚动、弹窗文案这些呈现留给各自页面，所以本方法**不发送**：
+  /// 页面拿到 [SendUserInputOutcome.sent] 后自行调 [sendMessage]，从而保持
+  /// 「校验 → 清空输入框 → 发送」这个顺序不变。
+  ///
+  /// [ensureModelsReady] 由页面提供（加载模型列表并回答「现在至少有一个可用
+  /// 模型吗」），这样本类不必依赖 ModelViewModel。
+  ///
+  /// [stillValid] 同样由页面提供，用来表达「页面还在、对话没切、附件没换」。
+  /// 它带两个参数，因为两处重查的口径本来就不同：草稿落盘**前**只能要求
+  /// 「当前对话还是我进来时那条」（草稿态下当前对话仍是来源对话）；落盘**后**
+  /// 才要求「当前对话就是我刚要发出的那条新对话」。把它们合成一个参数会让
+  /// 草稿发送在第一处重查就被判为过期。
+  Future<
+    ({SendUserInputOutcome outcome, MessageEntity? message, ChatEntity? chat})
+  >
+  prepareUserInput({
+    required String text,
+    required List<PendingImage> images,
+    ChatEntity? chat,
+    required Future<bool> Function() ensureModelsReady,
+    bool Function(ChatEntity? target, bool draftJustCreated)? stillValid,
+  }) async {
+    final trimmed = text.trim();
+    if (images.any((image) => !image.isReady)) {
+      return (
+        outcome: SendUserInputOutcome.imagesNotReady,
+        message: null,
+        chat: null,
+      );
+    }
+    if (trimmed.isEmpty && images.isEmpty) {
+      return (
+        outcome: SendUserInputOutcome.emptyInput,
+        message: null,
+        chat: null,
+      );
+    }
+
+    // 先备模型再落草稿：没有可用模型就没必要留下一条发不出去的空白对话
+    final modelsReady = await ensureModelsReady();
+    if (stillValid != null && !stillValid(chat, false)) {
+      return (
+        outcome: SendUserInputOutcome.superseded,
+        message: null,
+        chat: null,
+      );
+    }
+    if (!modelsReady) {
+      return (
+        outcome: SendUserInputOutcome.noEnabledModels,
+        message: null,
+        chat: null,
+      );
+    }
+
+    var target = chat;
+    var draftCreated = false;
+    if (target == null) {
+      target = await createChat();
+      draftCreated = true;
+      if (target == null) {
+        return (
+          outcome: SendUserInputOutcome.cancelled,
+          message: null,
+          chat: null,
+        );
+      }
+    }
+    // 模型列表与草稿落盘都可能耗时：期间又贴了图就不能发旧快照。
+    // draftJustCreated 传真实值——传成恒 true 会把「页面开着 X、当前对话是 Y」
+    // 这种本来发得出去的情况静默判成过期。
+    if (stillValid != null && !stillValid(target, draftCreated)) {
+      return (
+        outcome: SendUserInputOutcome.superseded,
+        message: null,
+        chat: null,
+      );
+    }
+
+    final model = currentModel.value;
+    if (model == null || model.id == null) {
+      return (
+        outcome: SendUserInputOutcome.noModel,
+        message: null,
+        chat: target,
+      );
+    }
+
+    final message = MessageEntity(
+      chatId: target.id ?? '',
+      role: 'user',
+      content: trimmed,
+      imageUrls: images.map((image) => base64Encode(image.bytes!)).join(','),
+    );
+    // 附件已被这条消息消费掉；await 期间再贴的图不该被这次发送清掉
+    clearPendingImages();
+    return (outcome: SendUserInputOutcome.sent, message: message, chat: target);
+  }
+
   Future<void> sendMessage(
     MessageEntity message, {
     required ChatEntity chat,
@@ -1541,4 +1645,29 @@ class ChatViewModel {
     // 起点是启动时从旧全局设置播种的那一档。
     currentApprovalMode.value = _settingViewModel.newChatApprovalMode.value;
   }
+}
+
+/// [ChatViewModel.prepareUserInput] 的结论。页面据此决定呈现什么
+/// （弹哪句提示、要不要清输入框），所以每种「不发送」都有自己的取值。
+enum SendUserInputOutcome {
+  /// 已备好消息，页面可以调 [ChatViewModel.sendMessage] 了。
+  sent,
+
+  /// trim 之后文本为空、且没有附件。
+  emptyInput,
+
+  /// 附件还在读/解码，字节没就绪。
+  imagesNotReady,
+
+  /// 没有启用的 provider / 模型。
+  noEnabledModels,
+
+  /// 目标对话没有可用模型。
+  noModel,
+
+  /// 等待期间页面被拆掉、切了对话或换了附件。
+  superseded,
+
+  /// 建草稿失败。
+  cancelled,
 }
