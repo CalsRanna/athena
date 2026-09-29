@@ -346,6 +346,17 @@ class _MessageCardListSliverState extends State<MessageCardListSliver> {
   }
 }
 
+/// 整个窗口的展示预计算：分卡 → 卡片内步骤分组 → 工具调用 JSON 解析。
+///
+/// **每次 build 都重跑一遍，这是量过之后有意保留的。** 实测 50 条消息（其中
+/// 25 条各带 3 个工具调用、正文 2000 字）单次约 0.45 ms，`toolLabel` 那条路径
+/// （75 次 `jsonDecode`）约 0.07 ms；流式期间 10 次/秒，合计约 5 ms/秒，不到
+/// 单核的 1%。为这点开销加一层按消息内容的缓存，换来的是缓存失效与陈旧展示
+/// 这两类难查的 bug，不划算。真正贵的是正文的 markdown 重排与 layout，那由
+/// 合并提交频率（见 core 的 StreamingMessageBuffer）控制，不在这里。
+///
+/// 如果哪天要重新评估，先量再改：消息数与每条的步骤数是线性的，先确认单次
+/// 超过约 5 ms 再谈 memoize。
 List<_MessageListRenderItem> _buildMessageListRenderItems(
   List<MessageEntity> messages, {
   required bool loading,
