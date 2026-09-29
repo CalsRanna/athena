@@ -28,7 +28,6 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
 import 'package:athena_gui/util/clipboard_image_service.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
-import 'package:athena_gui/widget/dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:signals/signals.dart';
 
@@ -1311,14 +1310,26 @@ class ChatViewModel {
   bool isStreamingChat(String chatId) =>
       streamingChatIds.value.contains(chatId);
 
-  /// 记录失败并以提示条告知用户。
+  /// 记录失败并把这次失败作为**事件**发出去。
   ///
-  /// [error] 信号在界面上没有常驻的展示位：只写信号的话，建会话、删消息、
-  /// 读列表之类的失败对用户完全不可见。
+  /// [error] 是状态（最后一次失败，供测试与诊断读），[errors] 是事件（每次失败
+  /// 都发一次，供呈现层弹提示）。分成两条是因为「显示一次」不该由状态承担：同一个
+  /// 字符串连着失败两次时，只要状态没变，状态型监听什么都看不到。
+  ///
+  /// ViewModel **不弹 UI**：此前这里是仓库里唯一一处 ViewModel 直接调
+  /// `AthenaDialog`，于是任何会报错的路径都要求 Router 已挂载，测试也没法在无 UI
+  /// 的情况下跑。呈现交给 `ChatErrorDialogListener`（页面各包一层），与 settings
+  /// 下 skill / sentinel / provider / experience 页面「VM 只写状态、页面自己呈现」
+  /// 的口径一致。
   void _reportError(String message) {
     error.value = message;
-    AthenaDialog.error(message);
+    _errors.add(message);
   }
+
+  final _errors = StreamController<String>.broadcast();
+
+  /// 每次失败发一次的事件流；见 [_reportError]。
+  Stream<String> get errors => _errors.stream;
 
   /// 停止指定对话的 Agent 运行。
   void stopGenerating(String chatId) {

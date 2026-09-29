@@ -7,6 +7,7 @@ import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/desktop/home/component/chat_list.dart';
 import 'package:athena_gui/page/desktop/home/component/home_shortcuts.dart';
+import 'package:athena_gui/component/chat_error_dialog_listener.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/page/desktop/home/component/message_input.dart';
 import 'package:athena_gui/page/desktop/home/component/message_list.dart';
@@ -65,9 +66,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       // 首页之上的路由，它们打开时焦点不在这棵子树里，快捷键自然不生效。
       return DesktopHomeShortcuts(
         onNewChat: startNewChat,
-        child: AthenaScaffold(
-          appBar: _buildAppBar(context),
-          body: Row(children: children),
+        // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
+        child: ChatErrorDialogListener(
+          errors: chatViewModel.errors,
+          child: AthenaScaffold(
+            appBar: _buildAppBar(context),
+            body: Row(children: children),
+          ),
         ),
       );
     });

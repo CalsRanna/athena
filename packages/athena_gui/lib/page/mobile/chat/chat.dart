@@ -3,6 +3,7 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
 import 'package:athena_gui/page/mobile/chat/component/chat_bottom_sheet.dart';
+import 'package:athena_gui/component/chat_error_dialog_listener.dart';
 import 'package:athena_gui/component/message_list_scroll_controller.dart';
 import 'package:athena_gui/component/queued_messages.dart';
 import 'package:athena_gui/page/mobile/chat/component/message_list_view.dart';
@@ -63,13 +64,17 @@ class _MobileChatPageState extends State<MobileChatPage> {
       },
     );
 
-    return AthenaScaffold(
-      appBar: AthenaAppBar(action: actionButton, title: _buildTitle()),
-      body: Column(
-        children: [
-          Expanded(child: _buildContent()),
-          _buildInput(),
-        ],
+    // 失败提示由页面呈现：ViewModel 只发事件（见 ChatViewModel.errors）
+    return ChatErrorDialogListener(
+      errors: viewModel.errors,
+      child: AthenaScaffold(
+        appBar: AthenaAppBar(action: actionButton, title: _buildTitle()),
+        body: Column(
+          children: [
+            Expanded(child: _buildContent()),
+            _buildInput(),
+          ],
+        ),
       ),
     );
   }

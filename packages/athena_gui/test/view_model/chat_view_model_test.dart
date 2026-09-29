@@ -201,6 +201,25 @@ void main() {
     expect(result.message?.imageUrls, '');
   });
 
+  /// 失败以事件形式发出去，由页面呈现（`ChatErrorDialogListener`）。
+  ///
+  /// ViewModel 不再自己弹对话框：此前那是仓库里唯一一处 VM 直接调 AthenaDialog，
+  /// 于是任何会报错的路径都要求 Router 已挂载，测试也没法在无 UI 的情况下跑。
+  testWidgets('失败会作为事件发到 errors 流', (tester) async {
+    final seen = <String>[];
+    final subscription = viewModel.errors.listen(seen.add);
+    addTearDown(subscription.cancel);
+
+    // 隔离的空数据目录里没有可用模型，createChat 走失败分支
+    final created = await tester.runAsync(() => viewModel.createChat());
+    // 广播流是异步投递的，让微任务跑完
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+
+    expect(created, isNull);
+    expect(seen, ['Failed to create chat']);
+    expect(viewModel.error.value, 'Failed to create chat', reason: '状态也要留痕');
+  });
+
   /// 置顶的表征测试。
   ///
   /// 它同时在改写前后成立——这是一次性能重构，行为必须不变：原先无论成败都
@@ -224,8 +243,9 @@ void main() {
       await viewModel.getChats();
     }
 
-    List<String> ids(List<ChatEntity> chats) =>
-        [for (final chat in chats) chat.title];
+    List<String> ids(List<ChatEntity> chats) => [
+      for (final chat in chats) chat.title,
+    ];
 
     testWidgets('置顶较旧的一条：两条列表都翻到最前，顺序一致', (tester) async {
       await tester.runAsync(() async {
@@ -236,11 +256,10 @@ void main() {
 
         expect(ids(viewModel.chats.value), ['旧', '新']);
         expect(viewModel.chats.value.first.pinned, isTrue);
-        expect(
-          ids([for (final h in viewModel.chatHistories.value) h.chat]),
-          ['旧', '新'],
-          reason: '两条平行列表必须同序，侧栏按它们配对渲染',
-        );
+        expect(ids([for (final h in viewModel.chatHistories.value) h.chat]), [
+          '旧',
+          '新',
+        ], reason: '两条平行列表必须同序，侧栏按它们配对渲染');
         expect(
           viewModel.chatHistories.value.first.chat.pinned,
           isTrue,
@@ -260,15 +279,11 @@ void main() {
 
         expect(viewModel.chats.value, hasLength(2));
         expect(viewModel.chatHistories.value, hasLength(2));
-        expect(
-          ids(viewModel.chats.value).toSet(),
-          {'新', '旧'},
-          reason: '就地更新不能漏掉或多出条目',
-        );
-        expect(
-          viewModel.chats.value.every((chat) => !chat.pinned),
-          isTrue,
-        );
+        expect(ids(viewModel.chats.value).toSet(), {
+          '新',
+          '旧',
+        }, reason: '就地更新不能漏掉或多出条目');
+        expect(viewModel.chats.value.every((chat) => !chat.pinned), isTrue);
       });
     });
   });
