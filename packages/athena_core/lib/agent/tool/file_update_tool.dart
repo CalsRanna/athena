@@ -114,18 +114,18 @@ class FileUpdateTool implements Tool {
           'or provide more surrounding context to make old_string unique.';
     }
 
-    final updated = _applyReplace(
+    // 匹配走归一化串，替换切回原文：见 _applyReplacePreservingOriginal
+    final updated = _applyReplacePreservingOriginal(
+      content,
       normalized,
       oldString,
       newString,
       replaceAll,
-      lineEnding,
     );
-    final restored = _restoreQuotes(updated, content);
     return _writeSafely(
       file,
       mtimeBefore,
-      _normalizeLineEndings(restored, lineEnding),
+      _normalizeLineEndings(updated, lineEnding),
     );
   }
 
@@ -145,19 +145,50 @@ class FileUpdateTool implements Tool {
         .replaceAll('\u00bb', '"');
   }
 
-  String _restoreQuotes(String updated, String original) {
-    for (final pair in [
-      ('"', ['\u201c', '\u201d']),
-      ("'", ['\u2018', '\u2019']),
-    ]) {
-      final straight = pair.$1;
-      if (!original.contains(straight)) continue;
-      final hasCurly = pair.$2.any((c) => original.contains(c));
-      if (hasCurly) {
-        return updated;
+  /// 在 [normalized] 上定位、在 [original] 上替换。
+  ///
+  /// 匹配必须走归一化串——模型从 file_read 看到的是原文，但它可能拿直引号
+  /// 去匹配弯引号文件。替换**不能**落在归一化串上：把归一化结果写回去会把
+  /// 全文的弯引号拉直，改一行就毁掉整份文档的排版。
+  ///
+  /// [_normalizeQuotes] 只做单字符到单字符的替换、不改变长度，所以两个串的
+  /// 下标一一对应：用它定位、按同样的下标切 [original]，未被替换的字节逐字
+  /// 保留。这也正是「先归一化再事后还原引号」那条路走不通的原因——替换前后
+  /// 长度一变，就再也认不出哪些区域是没被碰过的。
+  String _applyReplacePreservingOriginal(
+    String original,
+    String normalized,
+    String oldString,
+    String newString,
+    bool replaceAll,
+  ) {
+    final first = normalized.indexOf(oldString);
+    if (first < 0) return original;
+
+    if (!replaceAll) {
+      // 与 [_applyReplace] 同一条既有行为：整行删掉时顺手吃掉它留下的换行
+      var after = original.substring(first + oldString.length);
+      if (newString.isEmpty &&
+          !oldString.endsWith('\n') &&
+          after.startsWith('\n')) {
+        after = after.substring(1);
       }
+      return '${original.substring(0, first)}$newString$after';
     }
-    return updated;
+
+    final buffer = StringBuffer();
+    var consumed = 0;
+    var cursor = 0;
+    while (true) {
+      final index = normalized.indexOf(oldString, cursor);
+      if (index < 0) break;
+      buffer.write(original.substring(consumed, index));
+      buffer.write(newString);
+      consumed = index + oldString.length;
+      cursor = consumed;
+    }
+    buffer.write(original.substring(consumed));
+    return buffer.toString();
   }
 
   int _countMatches(String content, String search) {
