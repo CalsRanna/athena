@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/experience_repository.dart';
@@ -40,8 +41,11 @@ void main() {
     });
   }
 
-  test('两个平台的 shell 使用相同终端图标', () {
-    for (final name in ['bash', 'powershell']) {
+  // 断言直接遍历 core 的清单，而不是再抄一份 ['bash', 'powershell']：
+  // core 新增 shell 工具时这条自动跟着扩展，图标映射也必须跟上。
+  test('core 里的每个 shell 工具都用终端图标', () {
+    expect(kShellToolNames, isNotEmpty);
+    for (final name in kShellToolNames) {
       expect(StepCard.toolIcon(name), LucideIcons.terminal);
     }
   });

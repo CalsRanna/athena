@@ -1,3 +1,4 @@
+import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/entity/compaction_step.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/util/compaction_step_formatter.dart';
@@ -44,9 +45,16 @@ class StepCard extends StatefulWidget {
   // ─── 共享的静态工具函数 ────────────────────────────────
 
   /// 工具图标映射（Lucide 图标库）。审批卡沿用同一映射。
+  ///
+  /// shell 这一组不在这里逐个列名：清单是引擎的事实（`kShellToolNames`），
+  /// 新增一个 shell 工具时它自动拿到终端图标，不必回来改这里。
+  ///
+  /// 文件那一组**不能**照搬 `kFileToolNames`：那个集合是权限口径上的「路径
+  /// 工具」（file_read / file_write / file_update），而图标上 `tool_output_read`
+  /// 也归文件一档——两个分组依据不同，硬套会漏掉它。
   static IconData toolIcon(String toolName) {
+    if (kShellToolNames.contains(toolName)) return LucideIcons.terminal;
     return switch (toolName) {
-      'bash' || 'powershell' => LucideIcons.terminal,
       'background_task' => LucideIcons.listTodo,
       'ask_user_question' => LucideIcons.messageCircleQuestion,
       'file_read' || 'tool_output_read' => LucideIcons.file,
