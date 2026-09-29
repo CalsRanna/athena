@@ -28,6 +28,17 @@ String normalizePathForMatch(String path) {
 /// `resolveSymbolicLinksSync`，是因为后者要求整条路径存在——新建文件、
 /// 链接到不存在目标的悬空链接（写入会凭空创建目标）都得一并解析。
 /// 目标尚不存在的尾部原样保留。
+///
+/// **已知边界：解析不了时退回词法路径，调用方分辨不出「解析失败」与「本来就没有
+/// 链接」。** 这不是遗漏，是原语限制：父目录不可执行（EACCES）时，`typeSync` 与
+/// `FileStat.statSync` 的返回与「路径真的不存在」完全一样——实测两者都不抛异常，
+/// 都返回 `notFound`。要区分只能靠 errno（例如逐级父目录 `listSync` 看错误码），
+/// 代价是每次路径解析都要列目录，否决。
+///
+/// 后果必须说清楚：链接的父目录读不了时，审批卡、会话缓存与 deny 规则都会基于
+/// **词法路径**判断，而文件真正落到哪里是未知的；`realPathChangedSinceApproval`
+/// 用的是同一个函数，会得出「没有变化」的结论，也拦不住。此前这里写的
+/// 「执行侧的复核会拦住不一致」在解析失败这条路上并不成立。
 String resolveRealPathSync(String path) {
   final normalized = normalizePathForMatch(path);
   try {
@@ -58,7 +69,9 @@ String resolveRealPathSync(String path) {
     }
     return normalizePathForMatch(resolved);
   } catch (_) {
-    // 无权读取链接等异常：退回词法结果，执行侧的复核会拦住不一致
+    // 只有 typeSync 认定是链接、targetSync 却失败时才会进来（链接被并发替换或
+    // 删除）。这里本来可以改成返回 null、让调用方拒绝执行，但那条路只在竞态下
+    // 可达、写不出会先失败的测试，于是按上面的边界记录现状，不引入测不到的代码。
     return normalized;
   }
 }
