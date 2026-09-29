@@ -753,11 +753,47 @@ class ChatViewModel {
   Future<void> togglePin(ChatEntity chat) async {
     error.value = null;
     try {
-      await _manageService.togglePin(chat);
-      await getChats();
+      final updated = await _manageService.togglePin(chat);
+      if (updated != null) _applyPinnedLocally(updated);
     } catch (e) {
       _reportError(e.toString());
     }
+  }
+
+  /// 就地应用置顶结果，不重读会话目录。
+  ///
+  /// 此前这里无论成败都 `await getChats()`——那是 `getAllChats` +
+  /// `getAllChatsWithLastMessage` 两趟全目录扫描（每条会话至少一次文件读），
+  /// 点一下置顶的代价与会话数成正比。置顶只动一条会话，按仓储同一条排序口径
+  /// （置顶优先，再按 updatedAt 倒序）重排这两条平行列表即可。
+  ///
+  /// 两条列表必须同序：侧栏按索引把它们配对渲染。
+  void _applyPinnedLocally(ChatEntity updated) {
+    if (chats.value.isNotEmpty) {
+      chats.value = [
+        for (final chat in chats.value)
+          if (chat.id == updated.id) updated else chat,
+      ]..sort(_byPinnedThenUpdated);
+    }
+    if (chatHistories.value.isNotEmpty) {
+      chatHistories.value = [
+        for (final history in chatHistories.value)
+          if (history.chat.id == updated.id)
+            ChatHistoryEntity(
+              chat: updated,
+              lastMessageContent: history.lastMessageContent,
+            )
+          else
+            history,
+      ]..sort((a, b) => _byPinnedThenUpdated(a.chat, b.chat));
+    }
+  }
+
+  /// 与仓储（`getAllChats` / `getAllChatsWithLastMessage`）同一条排序口径。
+  static int _byPinnedThenUpdated(ChatEntity a, ChatEntity b) {
+    final pinned = (b.pinned ? 1 : 0).compareTo(a.pinned ? 1 : 0);
+    if (pinned != 0) return pinned;
+    return b.updatedAt.compareTo(a.updatedAt);
   }
 
   void clearSelection() => _selection.clearSelection();

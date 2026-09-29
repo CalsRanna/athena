@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_gui/di.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
@@ -198,5 +199,77 @@ void main() {
     );
 
     expect(result.message?.imageUrls, '');
+  });
+
+  /// 置顶的表征测试。
+  ///
+  /// 它同时在改写前后成立——这是一次性能重构，行为必须不变：原先无论成败都
+  /// `await getChats()`（重读整个 sessions/ 目录两趟），改成按同一条排序口径
+  /// 就地更新两条平行列表。下面钉住的正是「就地更新容易改错的地方」：标志位、
+  /// 两条列表的顺序一致、以及不重复不丢。
+  group('置顶', () {
+    Future<void> seedTwoChats() async {
+      final repo = GetIt.instance<ChatRepository>();
+      for (final (title, day) in [('旧', 1), ('新', 2)]) {
+        await repo.createChat(
+          ChatEntity(
+            title: title,
+            modelId: 'm1',
+            sentinelId: null,
+            createdAt: DateTime(2026, 1, day),
+            updatedAt: DateTime(2026, 1, day),
+          ),
+        );
+      }
+      await viewModel.getChats();
+    }
+
+    List<String> ids(List<ChatEntity> chats) =>
+        [for (final chat in chats) chat.title];
+
+    testWidgets('置顶较旧的一条：两条列表都翻到最前，顺序一致', (tester) async {
+      await tester.runAsync(() async {
+        await seedTwoChats();
+        expect(ids(viewModel.chats.value), ['新', '旧'], reason: '前置条件：按更新时间倒序');
+
+        await viewModel.togglePin(viewModel.chats.value[1]);
+
+        expect(ids(viewModel.chats.value), ['旧', '新']);
+        expect(viewModel.chats.value.first.pinned, isTrue);
+        expect(
+          ids([for (final h in viewModel.chatHistories.value) h.chat]),
+          ['旧', '新'],
+          reason: '两条平行列表必须同序，侧栏按它们配对渲染',
+        );
+        expect(
+          viewModel.chatHistories.value.first.chat.pinned,
+          isTrue,
+          reason: 'history 里那份 chat 也要跟着翻',
+        );
+      });
+    });
+
+    testWidgets('取消置顶：标志位回到 false，不重复不丢', (tester) async {
+      await tester.runAsync(() async {
+        await seedTwoChats();
+        final target = viewModel.chats.value[1];
+        await viewModel.togglePin(target);
+        expect(viewModel.chats.value.first.pinned, isTrue);
+
+        await viewModel.togglePin(viewModel.chats.value.first);
+
+        expect(viewModel.chats.value, hasLength(2));
+        expect(viewModel.chatHistories.value, hasLength(2));
+        expect(
+          ids(viewModel.chats.value).toSet(),
+          {'新', '旧'},
+          reason: '就地更新不能漏掉或多出条目',
+        );
+        expect(
+          viewModel.chats.value.every((chat) => !chat.pinned),
+          isTrue,
+        );
+      });
+    });
   });
 }

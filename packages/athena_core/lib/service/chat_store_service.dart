@@ -107,13 +107,20 @@ class ChatStoreService {
     );
   }
 
-  Future<void> togglePin(ChatEntity chat) async {
+  /// 切换置顶，返回更新后的会话；会话已被删除时返回 null。
+  ///
+  /// 返回实体是为了让调用方能**就地**更新列表：置顶只改一条会话，调用方若为此
+  /// 重读整个 `sessions/` 目录，代价会随会话数线性增长。
+  Future<ChatEntity?> togglePin(ChatEntity chat) async {
     // 先读最新行再改 pinned，避免整行覆盖写回旧快照
     final latest = await _chatRepository.getChatById(chat.id!);
-    if (latest == null) return;
-    await _chatRepository.updateChat(
-      latest.copyWith(pinned: !latest.pinned, updatedAt: DateTime.now()),
+    if (latest == null) return null;
+    final updated = latest.copyWith(
+      pinned: !latest.pinned,
+      updatedAt: DateTime.now(),
     );
+    await _chatRepository.updateChat(updated);
+    return updated;
   }
 
   /// 从 [fromIndex] 起删掉 [messages] 里的全部消息。
