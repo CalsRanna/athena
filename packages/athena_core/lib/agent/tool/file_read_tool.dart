@@ -69,8 +69,17 @@ class FileReadTool implements Tool {
     if (changed != null) return symlinkChangedError(path, changed);
     final normalized = normalizePathForMatch(path);
     if (isSensitivePath(normalized)) {
-      return 'Error: Blocked: reading sensitive credential paths '
-          '($path) requires approval';
+      // 硬拦，与 protectedWritePathError 同一口径。原文案写的是
+      // 「requires approval」，但这条在审批之后无条件返回——批准在这里不起作用，
+      // 那样写会让模型以为换个说法或重试就能过。
+      //
+      // 注意别把这条读成「凭据读不出来」：bash 里的 `cat ~/.ssh/id_rsa` 归
+      // 审批管，用户会看到具体命令并自己决定。file_read 没有按路径默认弹审批的
+      // 机制，所以这里直接拒绝；两者是刻意的差异，不是漏洞。
+      return 'Error: Blocked: reading credential or Athena data paths '
+          '($path) is not allowed regardless of approval, because the contents '
+          'would enter the conversation context. Ask the user to provide the '
+          'specific value you need instead.';
     }
 
     final file = File(normalized);
