@@ -21,16 +21,27 @@ void main() {
     String arguments, {
     String name = 'file_read',
     String? result = 'ok',
+    String id = 'call-1',
   }) => ToolCallStep(
-    id: 'call-1',
+    id: id,
     toolName: name,
     arguments: arguments,
     result: result,
   );
 
-  ReasoningStep reasoning() => ReasoningStep(
-    MessageEntity(chatId: '1', role: 'assistant', reasoningContent: '想想'),
-  );
+  /// 默认耗时 0：构造用固定时刻，汇总里的 `Thought X seconds` 才是定值。
+  ReasoningStep reasoning({Duration thought = Duration.zero}) {
+    final startedAt = DateTime(2026);
+    return ReasoningStep(
+      MessageEntity(
+        chatId: '1',
+        role: 'assistant',
+        reasoningContent: '想想',
+        reasoningStartedAt: startedAt,
+        reasoningUpdatedAt: startedAt.add(thought),
+      ),
+    );
+  }
 
   ContextCompactionStep compaction({bool live = true}) => ContextCompactionStep(
     step: CompactionStep(
@@ -84,6 +95,29 @@ void main() {
     });
   });
 
+  group('runningLabel（进行中的组头）', () {
+    test('当前步是工具调用：描述后接累计用量', () {
+      expect(
+        StepCard.runningLabel([
+          reasoning(thought: const Duration(milliseconds: 3200)),
+          tool('{"call_description":"运行测试"}'),
+        ]),
+        '运行测试 · Used 1 tool · Thought 3.2 seconds',
+      );
+    });
+
+    test('当前步不是工具调用：只有自己的文案，不接汇总', () {
+      expect(
+        StepCard.runningLabel([
+          tool('{"call_description":"运行测试"}'),
+          reasoning(),
+        ]),
+        'Thinking',
+      );
+      expect(StepCard.runningLabel([reasoning(), compaction()]), '正在压缩上下文…');
+    });
+  });
+
   for (final grouped in [false, true]) {
     testWidgets('${grouped ? '分组' : '单步'}工具头从占位变为描述，不泄露参数', (tester) async {
       const description = '读取配置文件';
@@ -105,7 +139,11 @@ void main() {
         ]);
 
         final header = tester.widget<StepHeader>(find.byType(StepHeader));
-        expect(header.label, expected);
+        expect(
+          header.label,
+          grouped ? '$expected · Used 1 tool · Thought 0.0 seconds' : expected,
+          reason: '组头在运行中接上截至此刻的汇总，单步卡只有自己的文案',
+        );
         expect(header.label, isNot(contains('/tmp/config')));
       }
 
@@ -115,15 +153,24 @@ void main() {
       ], live: grouped);
       expect(
         tester.widget<StepHeader>(find.byType(StepHeader)).label,
-        description,
+        grouped
+            ? '$description · Used 1 tool · Thought 0.0 seconds'
+            : description,
       );
 
       if (grouped) {
         await tester.tap(find.byType(StepHeader));
         await tester.pump();
         final headers = tester.widgetList<StepHeader>(find.byType(StepHeader));
-        expect(headers.first.label, description);
-        expect(headers.last.label, description);
+        expect(
+          headers.first.label,
+          '$description · Used 1 tool · Thought 0.0 seconds',
+        );
+        expect(
+          headers.last.label,
+          description,
+          reason: '展开后的子项只写自己的文案，不重复组头的汇总',
+        );
       }
     });
   }
@@ -147,7 +194,10 @@ void main() {
     testWidgets('当前步缺 call_description：文案通用、图标是该工具的图标', (tester) async {
       await pumpCard(tester, [reasoning(), tool('{"path":"a.dart"}')]);
 
-      expect(find.text('Using a tool'), findsOneWidget);
+      expect(
+        find.text('Using a tool · Used 1 tool · Thought 0.0 seconds'),
+        findsOneWidget,
+      );
       expect(find.byIcon(LucideIcons.file), findsOneWidget);
       expect(find.byIcon(LucideIcons.wrench), findsNothing);
     });
@@ -161,7 +211,10 @@ void main() {
         ),
       ]);
 
-      expect(find.text('抓取文档'), findsOneWidget);
+      expect(
+        find.text('抓取文档 · Used 1 tool · Thought 0.0 seconds'),
+        findsOneWidget,
+      );
       expect(find.byIcon(LucideIcons.search), findsOneWidget);
     });
 
@@ -176,6 +229,56 @@ void main() {
       expect(find.byIcon(LucideIcons.file), findsNothing);
     });
 
+    testWidgets('当前步是工具调用：描述后接累计用量，含正在跑的那一个', (tester) async {
+      final thought = reasoning(thought: const Duration(milliseconds: 3200));
+      final running = tool(
+        '{"call_description":"运行测试"}',
+        name: 'bash',
+        id: 'call-2',
+        result: null,
+      );
+      await pumpCard(tester, [
+        thought,
+        tool('{"call_description":"读取配置文件"}'),
+        running,
+      ]);
+      expect(
+        find.text('运行测试 · Used 2 tools · Thought 3.2 seconds'),
+        findsOneWidget,
+      );
+
+      // 它返回后数字不跳：进行中就已经把正在跑的那个算进去了
+      await pumpCard(tester, [
+        thought,
+        tool('{"call_description":"读取配置文件"}'),
+        tool('{"call_description":"运行测试"}', name: 'bash', id: 'call-2'),
+      ]);
+      expect(
+        find.text('运行测试 · Used 2 tools · Thought 3.2 seconds'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('展开后的子项只写自己，不重复组头的汇总', (tester) async {
+      await pumpCard(tester, [
+        reasoning(thought: const Duration(milliseconds: 3200)),
+        tool('{"call_description":"读取配置文件"}', result: null),
+      ]);
+      await tester.tap(find.byType(StepHeader));
+      await tester.pump();
+
+      expect(
+        tester
+            .widgetList<StepHeader>(find.byType(StepHeader))
+            .map((header) => header.label),
+        [
+          '读取配置文件 · Used 1 tool · Thought 3.2 seconds',
+          'Thought 3.2 seconds',
+          '读取配置文件',
+        ],
+      );
+    });
+
     testWidgets('工具后转入推理和压缩时切换图标，结束后恢复汇总', (tester) async {
       final completedTool = tool('{}');
       final thought = reasoning();
@@ -184,6 +287,11 @@ void main() {
       expect(find.text('Thinking'), findsOneWidget);
       expect(find.byIcon(LucideIcons.sparkles), findsOneWidget);
       expect(find.byIcon(LucideIcons.wrench), findsNothing);
+      expect(
+        find.textContaining('Used 1 tool'),
+        findsNothing,
+        reason: '当前步不是工具调用时不接汇总',
+      );
 
       await pumpCard(tester, [completedTool, thought, compaction()]);
 

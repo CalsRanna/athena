@@ -14,7 +14,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 同一个 widget 按 [steps] 的长度决定形态（Composite）：
 /// - **单步**：头部是该步骤自己的图标 / 文案 / 运行态，展开后显示它的正文
 ///   （推理文本 / 工具结果 / 压缩详情）。
-/// - **多步**：头部进行中显示当前（最后一个）步骤文案，结束后显示汇总
+/// - **多步**：头部进行中显示当前（最后一个）步骤文案，当前步是工具调用时后面
+///   再接截至此刻的汇总；结束后只显示汇总
 ///   （`Used 2 tools · Thought 3.2 seconds · Compacted once`）；展开后按时间序
 ///   逐行嵌套单步 [StepCard]，各自可再展开。
 ///
@@ -119,6 +120,23 @@ class StepCard extends StatefulWidget {
     ToolCallStep step => toolLabel(step.arguments),
     ContextCompactionStep step => compactionLabel(step),
   };
+
+  /// 组进行中折叠头文案 + 截至此刻的汇总：`运行测试 · Used 2 tools · Thought 3.2 seconds`。
+  ///
+  /// 汇总与结束态共用 [summaryLabel]，工具数**包含正在跑的那一个**：一个工具
+  /// 返回时数字不跳，只有新工具开始时才 +1。
+  ///
+  /// 后缀只在当前步是**工具调用**时接：那时头部就是"在跑哪个工具"，把用量摆在
+  /// 同一行才读得通。当前步是推理 / 压缩时不接——头部正说着 `Thinking`、
+  /// 压缩状态，后面紧跟一个 `Thought X seconds` 会读成两种时态。
+  ///
+  /// 只有**组头**经过这里（子项走 [_faceOf]），展开后每行不会把同一份用量重复
+  /// 一遍——同一个工具的描述已经上下各出现一次，用量再重复一遍只会让列表变吵。
+  static String runningLabel(List<AssistantStep> steps) {
+    final current = currentLabel(steps.last);
+    if (steps.last is! ToolCallStep) return current;
+    return '$current · ${summaryLabel(steps)}';
+  }
 
   @override
   State<StepCard> createState() => _StepCardState();
@@ -234,7 +252,7 @@ class _StepCardState extends State<StepCard> {
     return (
       icon: widget.live ? _faceOf(last).icon : genericIcon,
       label: widget.live
-          ? StepCard.currentLabel(last)
+          ? StepCard.runningLabel(steps)
           : StepCard.summaryLabel(steps),
       mono: widget.live && last is ToolCallStep,
       running: running,
