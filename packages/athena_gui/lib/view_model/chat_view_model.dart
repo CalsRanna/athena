@@ -23,6 +23,7 @@ import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
+import 'package:athena_gui/view_model/chat_params_state.dart';
 import 'package:athena_gui/view_model/chat_run_state.dart';
 import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:athena_gui/view_model/pending_image_store.dart';
@@ -37,9 +38,6 @@ import 'package:signals/signals.dart';
 /// 持有全部 UI 状态（Signal），直接调用 Service/Repository 完成简单操作，
 /// 将复杂的流式 Agent 交互委托给 [AgentStreamDelegate]（通过 Stream 事件通信）。
 class ChatViewModel {
-  static const int defaultDraftRetention = -1;
-  static const double defaultDraftTemperature = 1.0;
-
   /// 历史对话首次及每次向上翻页加载的原始消息数。
   static const int messagePageSize = 50;
 
@@ -118,25 +116,31 @@ class ChatViewModel {
   // 下面这组 `current*` 是"当前选中对话"的参数；没有选中对话时
   // （[currentChat] 为 null，即草稿态）它们就是草稿本身：composer 上改的
   // 每一项都只写在这里，直到首条消息发送时由 [createChat] 一次性落盘。
-  final currentModel = signal<ModelEntity?>(null);
-  final currentProvider = signal<ProviderEntity?>(null);
-  final currentSentinel = signal<SentinelEntity?>(null);
-  final currentRetention = signal(defaultDraftRetention);
-  final currentTemperature = signal(defaultDraftTemperature);
-
-  /// 当前对话（或草稿态）的推理强度。null = 不传参、使用模型默认。
-  final currentReasoningEffort = signal<String>(
-    ChatEntity.defaultReasoningEffort,
+  /// 当前 composer 指向的那条对话（或草稿）的参数，整块在 [ChatParamsState] 里。
+  late final ChatParamsState _params = ChatParamsState(
+    settingViewModel: _settingViewModel,
+    modelViewModel: _modelViewModel,
+    sentinelViewModel: _sentinelViewModel,
+    supportService: _supportService,
   );
 
+  Signal<ModelEntity?> get currentModel => _params.currentModel;
+  Signal<ProviderEntity?> get currentProvider => _params.currentProvider;
+  Signal<SentinelEntity?> get currentSentinel => _params.currentSentinel;
+  Signal<int> get currentRetention => _params.currentRetention;
+  Signal<double> get currentTemperature => _params.currentTemperature;
+
+  /// 当前对话（或草稿态）的推理强度。null = 不传参、使用模型默认。
+  Signal<String> get currentReasoningEffort => _params.currentReasoningEffort;
+
   /// 当前对话（或草稿态）的工作文件夹，null = 不指定。
-  final currentWorkspacePath = signal<String?>(null);
+  Signal<String?> get currentWorkspacePath => _params.currentWorkspacePath;
 
   /// 当前对话（或草稿态）的工具审批档位。
   ///
   /// 草稿态的初值取 `AgentSettings.newChatApprovalMode`（启动时从旧的全局
   /// 设置播种），草稿改档只写这里，首条消息发送时随草稿一起落盘。
-  final currentApprovalMode = signal(ApprovalMode.defaultMode);
+  Signal<ApprovalMode> get currentApprovalMode => _params.currentApprovalMode;
   Signal<int> get currentIteration => _runState.currentIteration;
   Signal<String?> get currentToolName => _runState.currentToolName;
   Signal<TokenUsage?> get currentTokenUsage => _runState.currentTokenUsage;
@@ -192,10 +196,6 @@ class ChatViewModel {
     if (currentChat.value?.id == updated.id) {
       currentChat.value = updated;
     }
-  }
-
-  SentinelEntity? _displaySentinel(ChatEntity chat, SentinelEntity? sentinel) {
-    return chat.hasSentinel ? sentinel : SentinelViewModel.directChatSentinel;
   }
 
   /// 窗口分页、流式合并与加载代次整块在 [MessageWindowStore] 里；这里只转发。
@@ -384,9 +384,12 @@ class ChatViewModel {
       // 草稿落盘成对话：待发图片的槽位跟着改名（列表内容原地不动——调用方
       // 发送首条消息时马上要读 [pendingImages]）；文字草稿的槽位由页面同步。
       _images.claimFor(chat.id!);
-      currentModel.value = model;
-      currentProvider.value = provider;
-      currentSentinel.value = sentinel;
+      _params.setFromChat(
+        chat,
+        model: model,
+        provider: provider,
+        sentinel: sentinel,
+      );
       _runState.noteUsage(null);
       // 新对话的轮次数是已知的 0：直接建缓存，之后每落一条 user 消息由
       // _recordNewTurn 就地追加，指示器从第二轮起就能画，不必等重新选中。
@@ -557,14 +560,12 @@ class ChatViewModel {
 
       // 切走后旧对话的挂起增量不得写进新列表
       _window.applyPage((hasOlder: page.hasOlder, messages: result.messages));
-      currentModel.value = result.model;
-      currentProvider.value = result.provider;
-      currentSentinel.value = _displaySentinel(chat, result.sentinel);
-      currentRetention.value = chat.retention;
-      currentTemperature.value = chat.temperature;
-      currentReasoningEffort.value = chat.reasoningEffort;
-      currentWorkspacePath.value = chat.workspacePath;
-      currentApprovalMode.value = chat.approvalMode;
+      _params.setFromChat(
+        chat,
+        model: result.model,
+        provider: result.provider,
+        sentinel: result.sentinel,
+      );
       _runState.noteUsage(null);
 
       // 该对话正在流式运行时,DB 里只有迭代边界前的旧态,用内存快照恢复实时进度
@@ -679,12 +680,7 @@ class ChatViewModel {
       _applyChatUpdate(
         persist: () => _supportService.updateModel(chat, model.id!),
         // 用调用方传进来的实体而不是落库结果：provider 要按它的 id 去查
-        sync: (updated) async {
-          currentModel.value = model;
-          currentProvider.value = await _supportService.getProviderForModel(
-            model.providerId,
-          );
-        },
+        sync: (updated) => _params.setModel(model),
       );
 
   Future<void> updateSentinel(
@@ -692,13 +688,13 @@ class ChatViewModel {
     required ChatEntity chat,
   }) => _applyChatUpdate(
     persist: () => _supportService.updateSentinel(chat, sentinel.id),
-    sync: (_) => currentSentinel.value = sentinel,
+    sync: (_) => _params.setSentinel(sentinel),
   );
 
   Future<void> updateRetention(int retention, {required ChatEntity chat}) =>
       _applyChatUpdate(
         persist: () => _supportService.updateRetention(chat, retention),
-        sync: (updated) => currentRetention.value = updated.retention,
+        sync: (updated) => _params.setRetention(updated.retention),
       );
 
   Future<void> updateTemperature(
@@ -706,7 +702,7 @@ class ChatViewModel {
     required ChatEntity chat,
   }) => _applyChatUpdate(
     persist: () => _supportService.updateTemperature(chat, temperature),
-    sync: (updated) => currentTemperature.value = updated.temperature,
+    sync: (updated) => _params.setTemperature(updated.temperature),
   );
 
   Future<void> updateReasoningEffort(
@@ -714,7 +710,7 @@ class ChatViewModel {
     required ChatEntity chat,
   }) => _applyChatUpdate(
     persist: () => _supportService.updateReasoningEffort(chat, effort),
-    sync: (updated) => currentReasoningEffort.value = updated.reasoningEffort,
+    sync: (updated) => _params.setReasoningEffort(updated.reasoningEffort),
   );
 
   /// 弹出系统目录选择器设置本会话（或草稿）的工作文件夹。
@@ -743,7 +739,7 @@ class ChatViewModel {
   Future<void> updateWorkspacePath(String? path, {required ChatEntity chat}) =>
       _applyChatUpdate(
         persist: () => _supportService.updateWorkspacePath(chat, path),
-        sync: (updated) => currentWorkspacePath.value = updated.workspacePath,
+        sync: (updated) => _params.setWorkspacePath(updated.workspacePath),
       );
 
   /// 设置本会话的工具审批档位。
@@ -754,40 +750,30 @@ class ChatViewModel {
     required ChatEntity chat,
   }) => _applyChatUpdate(
     persist: () => _supportService.updateApprovalMode(chat, mode),
-    sync: (updated) => currentApprovalMode.value = updated.approvalMode,
+    sync: (updated) => _params.setApprovalMode(updated.approvalMode),
   );
 
   Future<void> updateCurrentModel(ModelEntity model) async {
-    currentModel.value = model;
-    currentProvider.value = await _supportService.getProviderForModel(
-      model.providerId,
-    );
+    await _params.setModel(model);
   }
 
-  void updateCurrentSentinel(SentinelEntity sentinel) {
-    // 草稿态的显式选择（含入口注入的绑定角色），落盘时随草稿一起写入。
-    currentSentinel.value = sentinel;
-  }
+  /// 草稿态的显式选择（含入口注入的绑定角色），落盘时随草稿一起写入。
+  void updateCurrentSentinel(SentinelEntity sentinel) =>
+      _params.setSentinel(sentinel);
 
-  void updateCurrentRetention(int retention) {
-    currentRetention.value = retention;
-  }
+  void updateCurrentRetention(int retention) => _params.setRetention(retention);
 
-  void updateCurrentTemperature(double temperature) {
-    currentTemperature.value = temperature;
-  }
+  void updateCurrentTemperature(double temperature) =>
+      _params.setTemperature(temperature);
 
-  void updateCurrentReasoningEffort(String effort) {
-    currentReasoningEffort.value = effort;
-  }
+  void updateCurrentReasoningEffort(String effort) =>
+      _params.setReasoningEffort(effort);
 
-  void updateCurrentWorkspacePath(String? path) {
-    currentWorkspacePath.value = path;
-  }
+  void updateCurrentWorkspacePath(String? path) =>
+      _params.setWorkspacePath(path);
 
-  void updateCurrentApprovalMode(ApprovalMode mode) {
-    currentApprovalMode.value = mode;
-  }
+  void updateCurrentApprovalMode(ApprovalMode mode) =>
+      _params.setApprovalMode(mode);
 
   // ═══════════════════════════════════════════════════════════════
   // Agent 流式交互
@@ -1305,52 +1291,14 @@ class ChatViewModel {
   /// 继承来源对话的角色。显式"不用角色"（sentinel_id = null）继承成同一个保留
   /// 值；其余按 id 回仓储解析，这样隐藏的预设角色也能带过来（它们在
   /// [SentinelViewModel.sentinels] 里根本不出现）。
-  Future<SentinelEntity?> _inheritedSentinel(ChatEntity chat) async {
-    if (!chat.hasSentinel) return SentinelViewModel.directChatSentinel;
-    final listed = _sentinelViewModel.sentinels.value
-        .where((s) => s.id == chat.sentinelId)
-        .firstOrNull;
-    return listed ?? await _sentinelViewModel.getSentinelById(chat.sentinelId!);
-  }
-
+  /// 进入草稿态时把八个参数重置成「下一条对话的起点」；逻辑在 [ChatParamsState] 里。
   Future<void> _syncDraftDefaults(
     ChatEntity? inheritFrom, {
     required bool inheritWorkspace,
-  }) async {
-    currentModel.value = _settingViewModel.chatModel.value;
-    currentProvider.value = _settingViewModel.chatModelProvider.value;
-
-    if (currentModel.value == null) {
-      await _modelViewModel.loadEnabledModels();
-      currentModel.value = _modelViewModel.enabledModels.value.firstOrNull;
-      if (currentModel.value != null) {
-        currentProvider.value = await _supportService.getProviderForModel(
-          currentModel.value!.providerId,
-        );
-      }
-    }
-
-    if (_sentinelViewModel.sentinels.value.isEmpty) {
-      await _sentinelViewModel.getSentinels();
-    }
-    // 来源对话的角色已被删/解析不到时退回默认角色，与选中该对话时的显示
-    // 口径一致（`_displaySentinel` 也是这么兜底的）。
-    final inherited = inheritFrom == null
-        ? null
-        : await _inheritedSentinel(inheritFrom);
-    currentSentinel.value =
-        inherited ?? _sentinelViewModel.defaultSentinel.value;
-    currentRetention.value = defaultDraftRetention;
-    currentTemperature.value = defaultDraftTemperature;
-    currentReasoningEffort.value = ChatEntity.defaultReasoningEffort;
-    currentWorkspacePath.value = inheritWorkspace
-        ? inheritFrom?.workspacePath
-        : null;
-    // 审批档位不继承来源会话：它是「这条会话里我打算放行到什么程度」，从
-    // 一条 bypass 的会话点新建对话时，用户多半正要开始改动别的项目。
-    // 起点是启动时从旧全局设置播种的那一档。
-    currentApprovalMode.value = _settingViewModel.newChatApprovalMode.value;
-  }
+  }) => _params.resetToDraftDefaults(
+    inheritFrom,
+    inheritWorkspace: inheritWorkspace,
+  );
 }
 
 /// [ChatViewModel.prepareUserInput] 的结论。页面据此决定呈现什么

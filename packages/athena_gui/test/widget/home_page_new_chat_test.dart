@@ -12,6 +12,7 @@ import 'package:athena_gui/page/desktop/home/component/workspace_indicator.dart'
 import 'package:athena_gui/page/desktop/home/home_page.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/view_model/chat_params_state.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -313,7 +314,7 @@ void main() {
     // 继承只是初值：模型/保留策略不跟着走（用户只要求角色与文件夹）
     expect(
       GetIt.instance<ChatViewModel>().currentRetention.value,
-      ChatViewModel.defaultDraftRetention,
+      ChatParamsState.defaultDraftRetention,
     );
   });
 
