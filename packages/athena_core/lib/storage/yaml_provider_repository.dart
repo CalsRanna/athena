@@ -83,7 +83,7 @@ class YamlProviderRepository implements ProviderRepository {
     // 同步只改格式元数据。守卫条件全部在锁内、基于锁内读到的最新实体判定:
     // 审批与同步可能与 GUI/TUI 的编辑并发,不能把编辑开始时的旧快照(旧的
     // API key、启用状态、手动选择)写回去。
-    return _store.mutate(id, (provider) {
+    return _store.mutate(id, (ProviderEntity provider) {
       final trailingSlashes = RegExp(r'/+$');
       if (!provider.isPreset ||
           !provider.apiFormatAuto ||
@@ -127,7 +127,12 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
-  Future<void> deleteAllProviders() => _store.deleteAll();
+  /// 清空全部 provider。**模型随 provider 文件消失**,不再单独清理。
+  Future<void> deleteAllProviders() async {
+    for (final id in await _store.providerIds()) {
+      await _store.delete(id);
+    }
+  }
 
   @override
   Future<void> importProviders(List<ProviderEntity> providers) {

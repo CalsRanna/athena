@@ -10,6 +10,7 @@ import 'package:athena_core/coordinator/run_event.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/model_entity.dart';
+import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/service/chat_completions_service.dart';
 import 'package:athena_core/service/chat_message_converter.dart';
@@ -111,20 +112,40 @@ void main() {
     expect(events.whereType<RunError>(), hasLength(1));
   });
 
-  test('provider 不存在：同样落库', () async {
+  test('删掉 provider 后，它的模型一并消失，不留孤儿', () async {
+    // 模型现在存在所属 provider 的文件里,删 provider 就是删文件。
+    // 旧的 models.json 布局下这两件事是分开的(先删 provider 再删模型),
+    // 中间失败就会留下指向不存在 provider 的模型;这里断言那条路已经不存在。
+    final providerId = await storage.providerRepository.storeProvider(
+      ProviderEntity(
+        name: 'Gone',
+        baseUrl: 'https://gone.example/v1',
+        apiKey: 'k',
+        createdAt: now,
+      ),
+    );
     final modelId = await storage.modelRepository.createModel(
       ModelEntity(
         name: 'orphan',
         modelId: 'orphan-model',
-        providerId: '999',
+        providerId: providerId,
         createdAt: now,
         updatedAt: now,
       ),
     );
+    expect(await storage.modelRepository.getModelById(modelId), isNotNull);
 
+    await storage.providerRepository.deleteProvider(providerId);
+
+    expect(await storage.modelRepository.getModelById(modelId), isNull);
+    expect(await storage.modelRepository.getAllModels(), isEmpty);
+
+    // 会话仍引用着那个已消失的模型:报的是「模型不存在」,而不是「provider
+    // 不存在」——后者在「模型与 provider 同文件」之后已不可达(模型读得出来
+    // 就说明 provider 文件在)。coordinator 里仍保留 provider 为空的分支,
+    // 那防的是两次读之间的竞态。
     final (_, messages) = await sendWithModel(modelId);
-
     expect(messages.last.role, 'assistant');
-    expect(messages.last.content, startsWith('Error: Provider not found'));
+    expect(messages.last.content, startsWith('Error: Model not found'));
   });
 }

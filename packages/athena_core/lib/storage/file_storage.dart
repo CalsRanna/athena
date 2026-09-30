@@ -1,14 +1,19 @@
 import 'dart:io';
 
+import 'package:athena_core/repository/model_repository.dart';
+import 'package:athena_core/repository/sentinel_repository.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/storage_id_migration.dart';
-import 'package:athena_core/storage/json_array_model_repository.dart';
-import 'package:athena_core/storage/json_array_sentinel_repository.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
+import 'package:athena_core/storage/models_into_providers_migration.dart';
 import 'package:athena_core/storage/provider_files_migration.dart';
+import 'package:athena_core/storage/provider_model_repository.dart';
 import 'package:athena_core/storage/provider_store.dart';
+import 'package:athena_core/storage/sentinel_files_migration.dart';
+import 'package:athena_core/storage/sentinel_store.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/storage/yaml_provider_repository.dart';
+import 'package:athena_core/storage/yaml_sentinel_repository.dart';
 import 'package:path/path.dart' as p;
 
 /// 本地文件持久化的目录布局与仓储装配。GUI 与 TUI 共享同一根目录。
@@ -20,12 +25,14 @@ import 'package:path/path.dart' as p;
 ///                            # 消息 responses_state 保存 Responses 推理续接状态
 ///                            # 消息 messages_state 保存 Messages thinking/signature 及请求前缀指纹
 ///                            # chat_completions_state 保存兼容端原生推理/拒答；completion_details 保存停止与用量明细
-///   models.json               # 模型列表(JSON 数组)
-///   sentinels.json            # 角色列表(JSON 数组，旧 avatar 字段读取时忽略)
 ///   storage_version.json      # 格式版本与旧模型 ID 映射（GUI 偏好迁移用）
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
-///   setting.yaml              # TUI 默认模型（provider 配置自 v3 起在 providers/）
-///   providers/{id}.yaml        # 一个 provider 一个文件（含 API key、API 格式元数据与自动同步开关）
+///   setting.yaml              # TUI 默认模型
+///   providers/{id}.yaml        # 一个 provider 一个文件：provider 配置(含 API key)
+///                            # + 它名下的模型（`models:` 段）
+///   sentinels/{id}.yaml        # 一个角色一个文件
+///   models.json.migrated      # 旧的整体模型表，已并入 providers/；只作留档
+///   sentinels.json.migrated   # 旧的整体角色表，同上
 ///   models_dev_cache.json     # models.dev 目录缓存
 ///   tool_outputs/             # 工具长输出(内容寻址)
 ///   background_tasks/         # 运行中的后台任务(按属主进程记账,供孤儿清理)
@@ -45,20 +52,23 @@ class FileStorage {
       sessionsDir: sessionsDir,
       idGenerator: idGenerator,
     );
-    modelRepository = JsonArrayModelRepository(
-      file: modelsFile,
-      idGenerator: idGenerator,
-    );
-    sentinelRepository = JsonArraySentinelRepository(
-      file: sentinelsFile,
-      idGenerator: idGenerator,
-    );
     userSettings = UserSettingsStore(file: this.settingFile);
     providerStore = ProviderStore(directory: providersDir);
     providerRepository = YamlProviderRepository(
       store: providerStore,
       idGenerator: idGenerator,
     );
+    // 模型存在所属 provider 的文件里：仓储与 provider 共用同一个 Store
+    modelRepository = ProviderModelRepository(
+      store: providerStore,
+      idGenerator: idGenerator,
+    );
+    sentinelStore = SentinelStore(directory: sentinelsDir);
+    sentinelRepositoryImpl = YamlSentinelRepository(
+      store: sentinelStore,
+      idGenerator: idGenerator,
+    );
+    sentinelRepository = sentinelRepositoryImpl;
   }
 
   final Directory root;
@@ -69,7 +79,12 @@ class FileStorage {
 
   Directory get sessionsDir => Directory(p.join(root.path, 'sessions'));
   Directory get providersDir => Directory(p.join(root.path, 'providers'));
+  Directory get sentinelsDir => Directory(p.join(root.path, 'sentinels'));
+
+  /// 旧的整表模型文件;新布局下只作为迁移来源与留档(`.migrated`)。
   File get modelsFile => File(p.join(root.path, 'models.json'));
+
+  /// 旧的整表角色文件;同上。
   File get sentinelsFile => File(p.join(root.path, 'sentinels.json'));
 
   /// 仅用于识别、清理旧格式，不再写入计数。
@@ -86,11 +101,13 @@ class FileStorage {
   /// 同一实例同时承担 ChatRepository 与 MessageRepository:对话与其消息
   /// 同生命周期,删对话即删文件。
   late final JsonlSessionRepository sessionRepository;
-  late final JsonArrayModelRepository modelRepository;
-  late final JsonArraySentinelRepository sentinelRepository;
+  late final ModelRepository modelRepository;
+  late final SentinelRepository sentinelRepository;
   late final UserSettingsStore userSettings;
   late final ProviderStore providerStore;
   late final YamlProviderRepository providerRepository;
+  late final SentinelStore sentinelStore;
+  late final YamlSentinelRepository sentinelRepositoryImpl;
 
   /// 启动升级保留的模型身份映射，供 GUI 的旧 SharedPreferences 迁移。
   Map<String, String> legacyModelIds = {};
@@ -107,6 +124,18 @@ class FileStorage {
       settingFile: settingFile,
       providersDir: providersDir,
     ).run();
+    // provider 已成为一个一个文件之后,模型才知道该并进哪个文件;两条迁移都
+    // 依赖上一步的整数 id 转换结果。
+    await ModelsIntoProvidersMigration(
+      root: root,
+      modelsFile: modelsFile,
+      providerStore: providerStore,
+    ).run();
+    await SentinelFilesMigration(
+      root: root,
+      sentinelsFile: sentinelsFile,
+      sentinelStore: sentinelStore,
+    ).run();
     await providerRepository.load();
   }
 
@@ -114,7 +143,10 @@ class FileStorage {
   ///
   /// 从旧存储导入时据此判断目标是否为空。
   Future<bool> hasData() async {
+    // 含迁移前的旧整表文件与迁移后的目录:升级前/后都要答得对
     if (await modelsFile.exists() || await sentinelsFile.exists()) return true;
+    if (await providerStore.count() > 0) return true;
+    if (await sentinelStore.count() > 0) return true;
     if (!await sessionsDir.exists()) return false;
     await for (final entity in sessionsDir.list()) {
       if (entity is File && entity.path.endsWith('.jsonl')) return true;
@@ -132,9 +164,13 @@ class FileStorage {
     if (await sessionsDir.exists()) {
       await sessionsDir.delete(recursive: true);
     }
-    for (final file in [modelsFile, sentinelsFile, metaFile]) {
+    for (final file in [metaFile]) {
       if (await file.exists()) await file.delete();
     }
+    // 模型随 provider 文件消失,所以清 provider 就等于清模型
     await providerRepository.deleteAllProviders();
+    for (final sentinel in await sentinelStore.list()) {
+      await sentinelStore.delete(sentinel.id!);
+    }
   }
 }

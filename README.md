@@ -110,7 +110,19 @@ cd packages/athena_tui && dart pub get && dart run bin/athena.dart
 2. 在 GUI 设置 → Provider 或 TUI `/providers` 里给要用的 provider 填 API key
 3. 同步下来的 preset provider 默认是**禁用**状态，需要手动启用
 
-provider 也可以手工加：在 `~/.athena/providers/` 下放一个 `{id}.yaml`（`{id}` 是文件名、也是它的身份），填上 `name` / `baseUrl` / `apiKey` 即可，重启就能在设置里看到。
+provider 也可以手工加：在 `~/.athena/providers/` 下放一个 `{id}.yaml`（`{id}` 是文件名、也是它的身份），填上 `name` / `baseUrl` / `apiKey`，底下再列出它暴露的模型。自建网关一个文件写到底，重启就能在设置里看到：
+
+```yaml
+name: "My Gateway"
+baseUrl: "https://gateway.example/v1"
+apiKey: "sk-..."
+enabled: true
+models:
+  - id: "gw-chat"          # 本地身份，随便取一个不重复的字符串
+    name: "Gateway Chat"
+    modelId: "gpt-oss-120b" # 真正发给端点的模型名
+    contextWindow: 131072
+```
 
 内置的种子数据只有角色「Athena」一项；provider 与模型完全由 models.dev 同步产生。
 
@@ -121,10 +133,9 @@ provider 也可以手工加：在 `~/.athena/providers/` 下放一个 `{id}.yaml
 ```
 ~/.athena/
 ├── sessions/{chatId}.jsonl     # 一个会话一个文件：首行是会话元数据，其后每行一条消息
-├── models.json                 # 模型（JSON 数组）
-├── sentinels.json              # 角色（JSON 数组）
+├── providers/{id}.yaml         # 一个 provider 一个文件：配置（含 API key）+ 它名下的模型
+├── sentinels/{id}.yaml         # 一个角色一个文件
 ├── setting.yaml                # TUI 默认模型
-├── providers/{id}.yaml         # provider 配置，一个 provider 一个文件（含 API key）
 ├── permissions.json            # 权限规则
 ├── models_dev_cache.json       # models.dev 目录缓存
 ├── tool_outputs/{sha256}.txt   # 超长工具输出，内容寻址

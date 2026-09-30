@@ -102,21 +102,26 @@ void main() {
   });
 
   group('损坏文件在写入前备份', () {
-    test('sentinels.json 损坏后写入，原内容留在备份里', () async {
-      const original = '[{"id": 1, "name": "我的角色", "prompt": "..."'; // 截断
-      storage.sentinelsFile
+    test('角色文件损坏后写入，原内容留在备份里', () async {
+      const original = 'name: "我的角色"\nprompt: "..."\ntags: [oops\n'; // 截断
+      final file = File(p.join(storage.sentinelsDir.path, '7.yaml'));
+      file
         ..createSync(recursive: true)
         ..writeAsStringSync(original);
 
-      await storage.sentinelRepository.getSentinelsCount(); // 只读不备份
-      expect(backupsOf(storage.sentinelsFile), isEmpty);
-
       final store = storage.sentinelRepository;
-      expect(await store.getAllSentinels(), isEmpty);
-      // 启动种子看到 0 个角色就会写入默认角色——正是覆盖的触发点
-      await store.createSentinel(SentinelEntity(name: 'Athena'));
+      await store.getSentinelsCount(); // 只读不备份
+      expect(backupsOf(file), isEmpty);
 
-      final backups = backupsOf(storage.sentinelsFile);
+      // 损坏的文件读时按「不存在」处理,不影响其他角色
+      expect(await store.getAllSentinels(), isEmpty);
+      expect(await store.getSentinelById('7'), isNull);
+
+      // 改写同一个角色前先备份——启动种子看到 0 个角色就会写入默认角色,
+      // 「写到一个已存在的损坏文件」正是覆盖的触发点
+      await store.createSentinel(SentinelEntity(id: '7', name: 'Athena'));
+
+      final backups = backupsOf(file);
       expect(backups, hasLength(1));
       expect(backups.single.readAsStringSync(), original);
     });

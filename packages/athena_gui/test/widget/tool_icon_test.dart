@@ -4,7 +4,8 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/experience_repository.dart';
-import 'package:athena_core/storage/json_array_sentinel_repository.dart';
+import 'package:athena_core/storage/sentinel_store.dart';
+import 'package:athena_core/storage/yaml_sentinel_repository.dart';
 import 'package:athena_core/storage/json_file_key_value_store.dart';
 import 'package:athena_gui/component/step_card.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,8 +19,10 @@ void main() {
       final registry = buildToolRegistry(
         skillRegistry: SkillRegistry(),
         experienceRepository: ExperienceRepository(homeDir: temp.path),
-        sentinelRepository: JsonArraySentinelRepository(
-          file: File.fromUri(temp.uri.resolve('sentinels.json')),
+        sentinelRepository: YamlSentinelRepository(
+          store: SentinelStore(
+            directory: Directory.fromUri(temp.uri.resolve('sentinels')),
+          ),
         ),
         store: JsonFileKeyValueStore(
           file: File.fromUri(temp.uri.resolve('kv.json')),

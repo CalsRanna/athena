@@ -32,8 +32,12 @@ void main() {
   });
 
   Future<void> settle(WidgetTester tester) async {
-    // 页面初始化与启停操作会串行读写临时仓储。
-    for (var i = 0; i < 20; i++) {
+    // 页面初始化与启停操作会串行读写临时仓储。窗口数决定「能让多少个真实
+    // 文件 I/O 完成」:widget 测试跑在 fake-async 里,只有 runAsync 的窗口
+    // 内真实 Future 才会推进,而 provider 列表现在要逐个解析目录下的文件
+    // (一个 provider 一个文件),比旧的单个 models.json/整表数组多出若干倍
+    // 次 I/O。给足余量,不然表现成「initSignals 永久挂起」。
+    for (var i = 0; i < 60; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );

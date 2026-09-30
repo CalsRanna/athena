@@ -295,6 +295,15 @@ Future<void> main(List<String> args) async {
     await write('models.json', [
       {'id': 1},
     ]);
+    // 模型现在归在 provider 名下,迁移源里要有一个同 id 的 provider,
+    // 它才落得进 providers/{fixed-provider}.yaml
+    await write('setting.yaml', '''
+providers:
+  - id: "fixed-provider"
+    name: "Fixed"
+    baseUrl: "https://fixed.example/v1"
+    apiKey: "k"
+''');
     final staged = [
       {'id': 'fixed-model', 'provider_id': 'fixed-provider'},
     ];
@@ -302,9 +311,23 @@ Future<void> main(List<String> args) async {
     await write('.id-migration-v2/ready.json', {
       'files': [
         {'source': 'models.json', 'target': 'models.json', 'staged': '0.new'},
+        {'source': '@settings', 'target': '@settings', 'staged': '1.new'},
       ],
       'legacy_model_ids': {'1': 'fixed-model'},
     });
+    await write(
+      '.id-migration-v2/1.new',
+      jsonEncode({
+        'providers': [
+          {
+            'id': 'fixed-provider',
+            'name': 'Fixed',
+            'baseUrl': 'https://fixed.example/v1',
+            'apiKey': 'k',
+          },
+        ],
+      }),
+    );
     await storage.load();
     expect(
       (await storage.modelRepository.getAllModels()).single.id,

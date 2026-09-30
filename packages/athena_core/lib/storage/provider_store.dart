@@ -1,195 +1,215 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:athena_core/entity/api_format.dart';
+import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
-import 'package:athena_core/storage/file_lock.dart';
-import 'package:athena_core/util/logger_util.dart';
-import 'package:athena_core/util/yaml_scalar.dart';
-import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
+import 'package:athena_core/storage/yaml_entity_directory.dart';
 
-/// 每 provider 一个 YAML 文件的存储(`~/.athena/providers/{id}.yaml`)。
+/// provider 及其模型的文件存储(`~/.athena/providers/{id}.yaml`)。
 ///
-/// 取代旧的 `setting.yaml` 里那个 `providers:` 数组段:一个 provider 一个
-/// 文件,新增/删除自定义 provider 不必再动含全部 API key 的大文件;单个文件
-/// 损坏也只影响它自己(旧布局下一次 YAML 语法错误就让整个 provider 列表读成
-/// 空,下次写入把所有人的 key 一起抹掉)。
+/// 一个 provider 一个文件,文件里既有 provider 自己的配置,也有它提供的模型:
 ///
-/// **文件名就是身份**。`id` 取自文件名,文件里的 `id:` 字段只为可读性写出、
-/// 读时忽略——于是手工复制一个文件就得到一个新身份的 provider,不必先想好
-/// 新 UUID(副本里那行旧 id 会在它第一次被保存时改写)。
+/// ```yaml
+/// id: "01a0e62b-..."
+/// name: "Deep Seek"
+/// baseUrl: "https://api.deepseek.com/v1"
+/// apiKey: "sk-..."
+/// models:
+///   - id: "01a0e62b-92e4-..."
+///     modelId: "deepseek-v4-flash"
+///     ...
+/// ```
 ///
-/// id 会拼进文件路径,因此限定为单个文件名段([_validId]);否则 `../x` 这样
-/// 的 id 会写到目录外去(导入的 JSON 备份里带什么 id 由文件说了算)。
+/// 模型并入 provider 文件,是因为它离开 provider 没有意义:一个自建网关的
+/// provider 配置与它暴露的模型现在写在一个文件里,不必再维护两份互相引用的
+/// 数据、也不会留下「provider 没了、模型还在」的孤儿。
 ///
-/// 锁粒度是**每个 provider 一把**([lockFileFor] 给出的 `{id}.yaml.lock`),
-/// GUI 与 TUI 编辑不同 provider 时互不阻塞;列表级操作(清空后导入)另取
-/// 目录锁(`providers.lock`)与列举互斥。两把锁按「目录锁 → 文件锁」的方向
-/// 获取,不存在反向路径,因此不会死锁。
+/// **provider 的身份是文件名**(见 [YamlEntityDirectory]);**模型的身份是它
+/// 自己的 `id`**,必须显式写在文件里——`sessions/{chatId}.jsonl` 里存的
+/// `model_id` 就是这个值,不能由文件名或列表位置推导。
 ///
-/// 锁文件不随数据文件删除:文件锁按 inode 记账,删掉一个正被别处持有的锁
-/// 文件会让后来者在新 inode 上加锁,互斥就此失效。删除 provider 会留下空的
-/// `{id}.yaml.lock`,这是刻意的。
+/// 本类只管「一个 provider 文件里的 provider 与它的模型」;跨 provider 的查询
+/// 与排序在仓储层。
 class ProviderStore {
-  ProviderStore({required Directory directory}) : _directory = directory;
+  ProviderStore({required Directory directory})
+    : _directory = YamlEntityDirectory(directory: directory);
 
-  final Directory _directory;
+  final YamlEntityDirectory _directory;
 
-  static const _extension = '.yaml';
+  static const _modelsKey = 'models';
 
-  /// id 直接拼进文件名,必须限制为单个文件名段(与经验的 id 校验同口径)。
-  static final _validId = RegExp(r'^[A-Za-z0-9_-]+$');
+  Directory get directory => _directory.directory;
 
-  /// id 是否存在且可作为文件名段。
-  static bool isValidId(String id) => _validId.hasMatch(id);
+  static bool isValidId(String id) => YamlEntityDirectory.isValidId(id);
 
-  /// [id] 对应的数据文件。
-  File fileFor(String id) => File(p.join(_directory.path, '$id$_extension'));
+  // ---------------------------------------------------------------------------
+  // provider
+  // ---------------------------------------------------------------------------
 
-  /// 目录级锁:与 [lockFileFor] 对文件的关系一致,只是目标换成目录。
-  /// 放在目录外侧(`providers.lock`),不与数据文件混在同一个目录里。
-  File get _directoryLock => File('${_directory.path}.lock');
+  /// 目录下全部 provider 的 id(不解析文件内容)。
+  ///
+  /// 模型按 provider 文件分散存放,整表操作(清空全部模型、按导入覆盖)要先
+  /// 知道有哪些文件;这里只要文件名,不必把每个文件解析成实体。
+  Future<List<String>> providerIds() => _directory.listIds();
 
   /// 全部 provider(按文件名列举,顺序不定;排序由仓储层决定)。
-  ///
-  /// **不加锁**。旧实现(`JsonArrayStore.readAll`)同样不加锁,理由一致:写入
-  /// 是「原子替换」(临时文件 + rename),读到的要么是旧文件要么是新文件,
-  /// 不会看到写了一半的内容。这一点在本项目尤其重要——widget 测试跑在
-  /// fake-async 里,`FileLock.blockingExclusive` 在那里永远不返回,加锁的读会
-  /// 让整个界面初始化挂死。
-  ///
-  /// 代价是可能撞见 [replaceAll](导入)的中间态(清空后、逐个写回前)。导入
-  /// 是用户显式触发的短操作,紧随其后的读取会看到最终状态,可以接受;要让
-  /// 列举与导入互斥就得让所有读都排队,不划算。
-  ///
-  /// 单个文件损坏时跳过并告警,不影响其余 provider。
   Future<List<ProviderEntity>> list() async {
-    if (!await _directory.exists()) return <ProviderEntity>[];
     final entities = <ProviderEntity>[];
-    await for (final entry in _directory.list()) {
-      if (entry is! File || !entry.path.endsWith(_extension)) continue;
-      final entity = await _readFile(entry);
+    for (final id in await _directory.listIds()) {
+      final entity = await read(id);
       if (entity != null) entities.add(entity);
     }
     return entities;
   }
 
-  /// 读取单个 provider;不存在或损坏返回 null。不加锁,理由见 [list]。
+  /// 读取单个 provider(不含模型);不存在或损坏返回 null。
   Future<ProviderEntity?> read(String id) async {
-    if (!_validId.hasMatch(id)) return null;
-    final file = fileFor(id);
-    if (!await file.exists()) return null;
-    return _readFile(file);
+    final raw = await _directory.readRaw(id);
+    return raw == null ? null : parseProvider(id, raw);
   }
 
-  /// 覆盖写入(不存在则创建)。[ProviderEntity.id] 必须非空。
+  /// 覆盖写入 provider(不存在则创建),**保留文件里已有的 [modelsKey] 段**。
   ///
-  /// 目标已存在但读不出来时(手工编辑写出语法错误)先备份再覆盖:这里是盲写,
-  /// 不像 [mutate] 那样本来就要读一次,若不额外检查,损坏文件里的 API key 会
-  /// 被整文件覆盖直接抹掉。
+  /// 保留模型段是必须的:仓储层到处用 `copyWith` 改 provider 的一个字段再整体
+  /// 写回(改 key、改名、启停、格式同步),而 [ProviderEntity] 不持有模型。
+  /// 若这里直接覆盖,那些调用会把模型段整段抹掉。
   Future<void> write(ProviderEntity provider) {
     final id = provider.id;
-    if (id == null || !_validId.hasMatch(id)) {
+    if (id == null || !isValidId(id)) {
       throw ArgumentError('Invalid provider id: $id');
     }
-    final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
-      if (await file.exists()) await _readFile(file, forWrite: true);
-      await _writeFile(file, provider);
+    return _directory.upsertRaw(id, (current) {
+      final raw = encodeProvider(provider);
+      final models = current[_modelsKey];
+      if (models != null) raw[_modelsKey] = models;
+      return raw;
     });
   }
 
-  /// 读-改-写单个 provider:全过程持该文件的跨进程锁。
+  /// 读-改-写单个 provider,**保留文件里已有的 [modelsKey] 段**。
   ///
-  /// [transform] 拿到锁内读到的最新实体,返回新实体写回;返回 null 表示本次
-  /// 不改写(调用方的守卫条件不满足)。文件不存在或损坏时不做任何事并返回
-  /// false——「更新一个已被删除的 provider」不应把它复活。
+  /// [transform] 拿到锁内读到的最新实体,返回新实体写回;返回 null 表示本次不
+  /// 改写(调用方的守卫条件不满足)。文件不存在或损坏时不做任何事并返回 false
+  /// ——「更新一个已被删除的 provider」不应把它复活。
   ///
-  /// 与旧实现(读整个文件、改、再写回整个文件)的差别正在这里:同步进程只
-  /// 需要关心它要改的那一个 provider,外层的凭据编辑不会被旧快照盖回去。
+  /// 保留模型段的理由同 [write]:模型不在 [ProviderEntity] 里,整文件覆盖会把
+  /// 它们抹掉。
   Future<bool> mutate(
     String id,
     ProviderEntity? Function(ProviderEntity current) transform,
   ) {
-    if (!_validId.hasMatch(id)) return Future.value(false);
-    final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
-      if (!await file.exists()) return false;
-      final current = await _readFile(file, forWrite: true);
-      if (current == null) return false;
-      final updated = transform(current);
-      if (updated == null) return false;
-      await _writeFile(file, updated);
-      return true;
-    });
+    var wrote = false;
+    return _directory
+        .mutateRaw(id, (current) {
+          final updated = transform(parseProvider(id, current));
+          if (updated == null) return null;
+          wrote = true;
+          final raw = encodeProvider(updated);
+          final models = current[_modelsKey];
+          if (models != null) raw[_modelsKey] = models;
+          return raw;
+        })
+        .then((_) => wrote);
   }
 
-  /// 删除单个 provider(不存在视为成功)。
-  Future<void> delete(String id) {
-    if (!_validId.hasMatch(id)) return Future.value();
-    final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
-      if (await file.exists()) await file.delete();
-    });
-  }
-
-  /// 整目录替换为 [providers](导入用):先清空再写入,持目录锁。
+  /// 删除整个 provider 文件——它名下的模型随文件一起消失。
   ///
-  /// 每个实体的 id 必须非空(导入的数据带着原 id 进来);缺 id 的调用方应先
-  /// 补齐,否则无从决定文件名。逐个写入时各自取该文件的锁,与并发的单条
-  /// 编辑按「谁后写谁赢」排队。
+  /// 这就是「模型属于 provider」的直接结果:不再需要先删模型再删 provider 的
+  /// 两步操作,也不会在第一步失败后留下孤儿模型。
+  Future<void> delete(String id) => _directory.deleteRaw(id);
+
+  /// 整目录替换(导入 provider):保留每个 provider 名下的模型。
+  ///
+  /// 调用方随后用 [replaceModelsOf] 覆盖模型段,两步合起来才是完整的导入。
   Future<void> replaceAll(List<ProviderEntity> providers) {
-    return withFileLock(_directoryLock, () async {
-      for (final provider in providers) {
-        final id = provider.id;
-        if (id == null || !_validId.hasMatch(id)) {
-          throw ArgumentError('Invalid provider id: $id');
-        }
+    return _directory.replaceAllRaw([
+      for (final provider in providers)
+        (provider.id!, encodeProvider(provider)),
+    ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // provider 名下的模型
+  // ---------------------------------------------------------------------------
+
+  /// 全部 provider 的全部模型。
+  ///
+  /// 每轮对话都要按 id 找模型,而模型 id 本身不含 provider 信息,只能逐个文件
+  /// 找。实测 12 个 provider / 156 个模型一次全扫约 3ms,可以接受;真要更快就
+  /// 得引入索引,那是另一回事。
+  Future<List<ModelEntity>> listAllModels() async {
+    final models = <ModelEntity>[];
+    for (final id in await _directory.listIds()) {
+      models.addAll(await readModels(id));
+    }
+    return models;
+  }
+
+  /// 某个 provider 名下的模型;文件不存在或损坏返回空列表。
+  Future<List<ModelEntity>> readModels(String providerId) async {
+    final raw = await _directory.readRaw(providerId);
+    if (raw == null) return const [];
+    return parseModels(providerId, raw[_modelsKey]);
+  }
+
+  /// 按模型自身的 id 查找(跨全部 provider)。找不到返回 null。
+  Future<ModelEntity?> findModel(String modelId) async {
+    for (final id in await _directory.listIds()) {
+      for (final model in await readModels(id)) {
+        if (model.id == modelId) return model;
       }
-      if (await _directory.exists()) {
-        await for (final entry in _directory.list()) {
-          if (entry is! File || !entry.path.endsWith(_extension)) continue;
-          await entry.delete();
-        }
-      }
-      for (final provider in providers) {
-        final file = fileFor(provider.id!);
-        await withFileLock(lockFileFor(file), () => _writeFile(file, provider));
-      }
+    }
+    return null;
+  }
+
+  /// 在 [providerId] 的文件里对模型列表做一次读-改-写,返回 [transform] 的结果。
+  ///
+  /// 增删改单个模型都走这里:整个 provider 文件的锁由 [YamlEntityDirectory]
+  /// 保证,一次只落盘一次(而不是每个模型读写一遍整份文件)。
+  ///
+  /// [strict] 为 true 时,provider 文件必须已存在——不存在就抛 [StateError]。
+  /// 新建模型走严格模式:模型属于某个 provider,往一个不存在的 provider 名下
+  /// 写模型是调用方的错误(旧的 `models.json` 整表实现由表结构强制了这一点,
+  /// 拆成文件后必须显式保住,否则会静默留下一个只含模型的孤儿文件)。
+  /// 删除、整段替换等「provider 可能已被删掉」的场景用宽松模式。
+  Future<T> mutateModels<T>(
+    String providerId,
+    T Function(List<ModelEntity> models) transform, {
+    bool strict = false,
+  }) async {
+    if (strict && (await _directory.readRaw(providerId)) == null) {
+      throw StateError('Provider does not exist: $providerId');
+    }
+    late T result;
+    await _directory.mutateRaw(providerId, (current) {
+      final models = parseModels(providerId, current[_modelsKey]);
+      result = transform(models);
+      current[_modelsKey] = [for (final model in models) encodeModel(model)];
+      return current;
+    });
+    return result;
+  }
+
+  /// 用 [models] 整体替换某个 provider 文件里的模型段。
+  Future<void> replaceModelsOf(String providerId, List<ModelEntity> models) {
+    return _directory.mutateRaw(providerId, (current) {
+      current[_modelsKey] = [for (final model in models) encodeModel(model)];
+      return current;
     });
   }
 
-  /// 清空全部 provider;不触碰锁文件(见类注释)。
-  Future<void> deleteAll() => replaceAll(const []);
-
-  /// provider 文件数。只数文件、不解析内容;id 不合法的文件(如手工放进去的
-  /// 备注文件)不计入。不加锁,理由见 [list]。
-  ///
-  /// 注意与 [list] 的口径不同:损坏的文件这里照样计入。仓储层的
-  /// `getProvidersCount` 走的是 [list].length(损坏即视为不存在),这里留给
-  /// 需要「磁盘上有几个文件」的场景。
-  Future<int> count() async {
-    if (!await _directory.exists()) return 0;
-    var total = 0;
-    await for (final entry in _directory.list()) {
-      if (entry is! File || !entry.path.endsWith(_extension)) continue;
-      if (_validId.hasMatch(p.basenameWithoutExtension(entry.path))) total++;
-    }
-    return total;
-  }
+  /// provider 文件数。只数文件、不解析内容。不加锁。
+  Future<int> count() => _directory.count();
 
   // ---------------------------------------------------------------------------
   // 解析与编码
   // ---------------------------------------------------------------------------
 
-  /// 把单个 provider 文件的 YAML 映射解析成实体。
+  /// provider 文件的 YAML 映射 → 实体。
   ///
-  /// 字段缺失或类型不符一律降级(空串 / false / 纪元时间)而不是抛错:这个
-  /// 目录标明可以手工编辑,一处笔误不该让整个 provider 消失。旧布局
-  /// (`setting.yaml` 的 `providers:` 段)的解析口径与此完全相同,迁移
-  /// 过来的文件读出来是同一个实体。
-  static ProviderEntity parseYaml(String id, Map raw) {
+  /// 字段缺失或类型不符一律降级(空串 / false / 纪元时间)而不是抛错:这个目录
+  /// 标明可以手工编辑,一处笔误不该让整个 provider 消失。
+  static ProviderEntity parseProvider(String id, Map raw) {
     return ProviderEntity(
       id: id,
       // 防御:手工编辑可能写入非字符串值(如裸数字被 YAML 解析为 int),
@@ -210,61 +230,88 @@ class ProviderStore {
     );
   }
 
-  /// 实体的 YAML 文本。键名保持旧 `setting.yaml` 的 camelCase 拼写,迁移前后
-  /// 的文件长相一致,手工编辑的经验可以直接沿用。
-  static String encode(ProviderEntity provider) {
-    final buf = StringBuffer()
-      ..writeln('# Athena provider 配置:可手工编辑,重启生效')
-      ..writeln('# 文件名(去掉 .yaml)就是它的 id,不要与别的文件重名')
-      ..writeln();
-    buf.writeln('id: ${YamlScalarCodec.encode(provider.id)}');
-    buf.writeln('name: ${YamlScalarCodec.encode(provider.name)}');
-    buf.writeln('baseUrl: ${YamlScalarCodec.encode(provider.baseUrl)}');
-    buf.writeln('apiKey: ${YamlScalarCodec.encode(provider.apiKey)}');
-    buf.writeln(
-      'apiFormat: ${YamlScalarCodec.encode(provider.apiFormat.value)}',
-    );
-    buf.writeln('apiFormatAuto: ${provider.apiFormatAuto}');
-    buf.writeln('enabled: ${provider.enabled}');
-    buf.writeln('isPreset: ${provider.isPreset}');
-    buf.writeln(
-      'createdAt: ${YamlScalarCodec.encode(provider.createdAt.toIso8601String())}',
-    );
-    return buf.toString();
+  /// 实体 → 文件映射的标量部分(不含模型;模型由 [encodeModel] 逐条展开)。
+  static Map<String, dynamic> encodeProvider(ProviderEntity provider) => {
+    'id': provider.id,
+    'name': provider.name,
+    'baseUrl': provider.baseUrl,
+    'apiKey': provider.apiKey,
+    'apiFormat': provider.apiFormat.value,
+    'apiFormatAuto': provider.apiFormatAuto,
+    'enabled': provider.enabled,
+    'isPreset': provider.isPreset,
+    'createdAt': provider.createdAt.toIso8601String(),
+  };
+
+  /// [modelsKey] 下的原始列表 → 实体。
+  ///
+  /// 条目缺 id、或 id 不是合法文件名段时跳过:模型 id 只是数据、不拼路径,但
+  /// 缺 id 的模型无法被任何会话引用,留着只会让选择器多出一条点不动的项。
+  static List<ModelEntity> parseModels(String providerId, Object? raw) {
+    // 返回的必须是**可变**列表:mutateModels 会把它交给调用方增删。返回
+    // `const []` 时一个 add 就会抛 "Cannot add to an unmodifiable list"。
+    if (raw is! List) return <ModelEntity>[];
+    final models = <ModelEntity>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final json = Map<String, dynamic>.from(item);
+      final id = json['id'];
+      if (id is! String || id.isEmpty) continue;
+      models.add(
+        ModelEntity(
+          id: id,
+          name: json['name'] is String ? json['name'] as String : '',
+          modelId: json['modelId'] is String ? json['modelId'] as String : '',
+          providerId: providerId,
+          contextWindow: json['contextWindow'] is num
+              ? (json['contextWindow'] as num).toInt()
+              : 0,
+          outputLimit: json['outputLimit'] is num
+              ? (json['outputLimit'] as num).toInt()
+              : 0,
+          inputPrice: json['inputPrice'] is String
+              ? json['inputPrice'] as String
+              : '',
+          outputPrice: json['outputPrice'] is String
+              ? json['outputPrice'] as String
+              : '',
+          releasedAt: json['releasedAt'] is String
+              ? json['releasedAt'] as String
+              : '',
+          reasoning: json['reasoning'] == true,
+          vision: json['vision'] == true,
+          isPreset: json['isPreset'] == true,
+          createdAt: json['createdAt'] is String
+              ? DateTime.tryParse(json['createdAt'] as String) ??
+                    DateTime.fromMillisecondsSinceEpoch(0)
+              : DateTime.fromMillisecondsSinceEpoch(0),
+          updatedAt: json['updatedAt'] is String
+              ? DateTime.tryParse(json['updatedAt'] as String) ??
+                    DateTime.fromMillisecondsSinceEpoch(0)
+              : DateTime.fromMillisecondsSinceEpoch(0),
+        ),
+      );
+    }
+    return models;
   }
 
-  /// [forWrite] 为 true 时(写锁内、随后要覆盖这个文件)遇到损坏内容先备份成
-  /// `.corrupt-{时间戳}`:这个目录可以手工编辑,一个语法错误不该让下一次写入
-  /// 把 API key 永久抹掉。
-  Future<ProviderEntity?> _readFile(File file, {bool forWrite = false}) async {
-    final id = p.basenameWithoutExtension(file.path);
-    if (!_validId.hasMatch(id)) {
-      LoggerUtil.w('Provider file ${file.path} has an invalid id, skipped');
-      return null;
-    }
-    try {
-      final raw = loadYaml(await file.readAsString());
-      // 空文件 / 只有注释时 loadYaml 返回 null,按缺失处理
-      if (raw == null) return null;
-      if (raw is! Map) {
-        throw const FormatException('provider file is not a map');
-      }
-      return parseYaml(id, raw);
-    } catch (e) {
-      if (forWrite) {
-        final backup = await preserveCorruptFile(file);
-        LoggerUtil.w('${file.path} is corrupt ($e), backed up to $backup');
-      } else {
-        LoggerUtil.w('Provider file ${file.path} is unreadable ($e), skipped');
-      }
-      return null;
-    }
-  }
-
-  /// 写入 [file] 对应的实体。id 以**文件名**为准写回,避免手工改名后文件里
-  /// 那行旧 id 与文件名长期不一致。调用方须已持有该文件的锁。
-  Future<void> _writeFile(File file, ProviderEntity provider) async {
-    final id = p.basenameWithoutExtension(file.path);
-    await atomicWriteString(file, encode(provider.copyWith(id: id)));
-  }
+  /// 模型 → 文件映射。键名与 JSON 备份的 `toJson()` 不同(那边是下划线),
+  /// 这里是给人看的 YAML,用 camelCase 与 provider 的其余字段保持一致。
+  ///
+  /// `providerId` 不写出:它就是所属文件名,写出来只会和文件名不一致。
+  static Map<String, dynamic> encodeModel(ModelEntity model) => {
+    'id': model.id,
+    'name': model.name,
+    'modelId': model.modelId,
+    'contextWindow': model.contextWindow,
+    'outputLimit': model.outputLimit,
+    'inputPrice': model.inputPrice,
+    'outputPrice': model.outputPrice,
+    'releasedAt': model.releasedAt,
+    'reasoning': model.reasoning,
+    'vision': model.vision,
+    'isPreset': model.isPreset,
+    'createdAt': model.createdAt.toIso8601String(),
+    'updatedAt': model.updatedAt.toIso8601String(),
+  };
 }
