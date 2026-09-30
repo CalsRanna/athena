@@ -13,7 +13,6 @@ import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 运行状态（运行指示、排队、重置）在 ChatViewModel 里的记账。
 ///
@@ -26,7 +25,6 @@ void main() {
   late ChatViewModel viewModel;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

@@ -29,14 +29,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory tempRoot;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({'text_size': 'large'});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',
@@ -50,6 +49,11 @@ void main() {
           (_) async => null,
         );
     tempRoot = Directory.systemTemp.createTempSync('athena_text_size_test');
+    // 持久化的字号档位现在落在 ~/.athena/setting.yaml；写入必须先于
+    // initTextSize，否则读到的永远只是默认档
+    File(p.join(tempRoot.path, '.athena', 'setting.yaml'))
+      ..createSync(recursive: true)
+      ..writeAsStringSync('text_size: "large"\n');
     DI.ensureInitialized(homeDirOverride: tempRoot.path);
   });
 

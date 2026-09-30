@@ -80,7 +80,7 @@ class PermissionApprovalCard extends StatelessWidget {
             StepCard.toolLabel(request.arguments),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: athenaMono(color: colors.textPrimary),
+            style: AthenaTextStyle.caption.copyWith(color: colors.textPrimary),
           ),
         ),
       ],
@@ -97,7 +97,7 @@ class PermissionApprovalCard extends StatelessWidget {
           width: double.infinity,
           child: Text(
             formatToolArgsForApproval(request.toolName, request.arguments),
-            style: athenaMono(color: colors.textPrimary),
+            style: AthenaTextStyle.caption.copyWith(color: colors.textPrimary),
           ),
         ),
       ),

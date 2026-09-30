@@ -366,7 +366,6 @@ class _DesktopSettingProviderPageState
                 child: AthenaSettingsTextField(
                   controller: urlController,
                   placeholder: 'https://api.example.com/v1',
-                  mono: true,
                   onBlur: () => _commitUrl(provider),
                   onSubmitted: (_) => _commitUrl(provider),
                 ),
@@ -453,7 +452,9 @@ class _DesktopSettingProviderPageState
               _buildCapabilities(model, colors),
               Text(
                 model.modelId,
-                style: athenaMono(color: colors.textSecondary),
+                style: AthenaTextStyle.caption.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
               const SizedBox(width: 8),
               AthenaSettingsMenuButton(

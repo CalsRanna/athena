@@ -14,7 +14,6 @@ import 'package:athena_gui/view_model/setting_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 当前会话参数的契约。
 ///
@@ -27,7 +26,6 @@ void main() {
   late SentinelViewModel sentinels;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

@@ -25,6 +25,8 @@ dependencies:
   path: ^1.8.0
   signals: ^6.2.0
   signals_flutter: ^6.2.0
+  # 只被 lib/storage/prefs_into_setting_migration.dart 使用：一次性把旧版本的
+  # 偏好搬进 ~/.athena/setting.yaml。设置本身已不走 SharedPreferences。
   shared_preferences: ^2.0.15
   # mcp_dart:
   #   git:

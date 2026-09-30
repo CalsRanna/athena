@@ -11,6 +11,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_scroll_behavior.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_core/util/platform_util.dart';
+import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
 import 'package:athena_gui/util/single_instance_util.dart';
 import 'package:athena_gui/util/system_tray_util.dart';
 import 'package:athena_gui/util/window_util.dart';
@@ -39,6 +40,7 @@ void main(List<String> args) async {
     );
     final windowBg = colorsOf(resolved);
     await WindowUtil.instance.ensureInitialized(
+      settings: GetIt.instance<FileStorage>().userSettings,
       backgroundColor: windowBg.surface,
     );
     await SystemTrayUtil.instance.ensureInitialized(
@@ -46,6 +48,10 @@ void main(List<String> args) async {
         // 优雅退出：停止所有后台任务（强杀时走不到这里，由下次启动的
         // recoverOrphans 清理遗留进程）。
         await GetIt.instance<BackgroundTaskService>().stopAll();
+        // 窗口尺寸是防抖写的，退出前把还没落盘的那次补上
+        await WindowUtil.instance.flushWindowSize(
+          GetIt.instance<FileStorage>().userSettings,
+        );
       },
     );
     // 上次进程被强杀会留下后台任务子进程：启动时核对并清理。
@@ -63,6 +69,8 @@ void main(List<String> args) async {
 Future<void> _bootstrapStorage() async {
   final storage = GetIt.instance<FileStorage>();
   await storage.load();
+  // 旧版 GUI 把偏好放在 SharedPreferences 里，一次性搬进 setting.yaml
+  await const PrefsIntoSettingMigration().run(storage.userSettings);
   await const SentinelSeed().applyIfNeeded(
     sentinelRepo: storage.sentinelRepository,
   );
@@ -128,7 +136,9 @@ class _AthenaAppState extends State<AthenaApp> with WindowListener {
 
   @override
   void onWindowResized() {
-    WindowUtil.instance.saveWindowSize();
+    WindowUtil.instance.saveWindowSize(
+      GetIt.instance<FileStorage>().userSettings,
+    );
   }
 
   bool _handleKeyEvent(KeyEvent event) {

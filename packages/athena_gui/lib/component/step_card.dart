@@ -151,13 +151,7 @@ class StepCard extends StatefulWidget {
 }
 
 /// 卡片头部与可展开正文的表现描述；[body] 为 null 表示当前不可展开。
-typedef _Face = ({
-  IconData icon,
-  String label,
-  bool mono,
-  bool running,
-  Widget? body,
-});
+typedef _Face = ({IconData icon, String label, bool running, Widget? body});
 
 class _StepCardState extends State<StepCard> {
   bool _expanded = false;
@@ -192,7 +186,6 @@ class _StepCardState extends State<StepCard> {
           StepHeader(
             icon: face.icon,
             label: face.label,
-            mono: face.mono,
             running: face.running && !widget.nested,
             onTap: body == null ? null : _toggle,
           ),
@@ -208,21 +201,18 @@ class _StepCardState extends State<StepCard> {
     ReasoningStep(:final message) => (
       icon: LucideIcons.sparkles,
       label: widget.live ? 'Thinking' : StepCard.thoughtLabel(message),
-      mono: false,
       running: widget.live,
       body: _ReasoningBody(message: message, onTap: _toggle),
     ),
     ToolCallStep tool => (
       icon: StepCard.toolIcon(tool.toolName),
       label: StepCard.toolLabel(tool.arguments),
-      mono: true,
       running: !tool.hasResult,
       body: tool.hasResult ? _resultBody(tool.result!) : null,
     ),
     ContextCompactionStep compaction => (
       icon: LucideIcons.fileArchive,
       label: StepCard.compactionLabel(compaction),
-      mono: false,
       running: compaction.running,
       body: compaction.running
           ? null
@@ -262,7 +252,6 @@ class _StepCardState extends State<StepCard> {
       label: widget.live
           ? StepCard.runningLabel(steps)
           : StepCard.summaryLabel(steps),
-      mono: widget.live && last is ToolCallStep,
       running: running,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

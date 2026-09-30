@@ -40,7 +40,7 @@ class _CallToolRequestBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       'Call tool: ${element.textContent}',
-      style: athenaMono(color: colors.textOnCode),
+      style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -177,7 +177,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = athenaMono(color: colors.textOnCode);
+    var textStyle = AthenaTextStyle.caption.copyWith(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -304,7 +304,7 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: athenaMono(color: colors.textOnCode),
+              style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
             ),
           ),
           Padding(
@@ -471,8 +471,11 @@ class _ReferenceBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      // 引用徽标字形比 mono 档小 2：这是徽标尺寸，不是文字档位（DESIGN.md §3 例外）
-      style: athenaMono(fontSize: 10, color: colors.textOnCode),
+      // 徽标字号比 caption 档小 2：这是徽标尺寸，不是文字档位（DESIGN.md §3 例外）
+      style: AthenaTextStyle.caption.copyWith(
+        fontSize: 10,
+        color: colors.textOnCode,
+      ),
     );
     var container = Container(
       decoration: boxDecoration,
@@ -520,7 +523,11 @@ class _SupBuilder extends MarkdownElementBuilder {
     );
     var text = Text(
       element.textContent,
-      style: athenaMono(fontSize: 10, color: colors.textOnCode),
+      // 与引用徽标同规格：徽标尺寸，不是文字档位
+      style: AthenaTextStyle.caption.copyWith(
+        fontSize: 10,
+        color: colors.textOnCode,
+      ),
     );
     var container = Container(
       decoration: boxDecoration,

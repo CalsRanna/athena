@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:athena_gui/util/shared_preference_util.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -10,7 +10,22 @@ enum WindowEvent { shown }
 class WindowUtil {
   static final WindowUtil instance = WindowUtil._();
 
+  /// 窗口尺寸的键名。这两个键只由本类读写（它们表达的是窗口本身的状态，
+  /// 不是某个 ViewModel 的设置项），所以常量放在这里。
+  static const _keyWindowHeight = 'window_height';
+  static const _keyWindowWidth = 'window_width';
+
+  /// 默认尺寸。宽度取 1080 与 [WindowOptions.minimumSize] 同宽——比它小的
+  /// 值会在启动瞬间先按小尺寸设帧、随后才被最小尺寸钳住，白闪一下。
+  static const _defaultSize = Size(1080, 720);
+
+  /// 拖动窗口时 `resized` 逐帧触发，而落盘是「读-改-整文件写 + 跨进程锁」，
+  /// 每帧写一次既慢又与另一进程争锁。攒到尾沿一次写。
+  static const _saveDebounce = Duration(milliseconds: 500);
+
   final _controller = StreamController<WindowEvent>();
+
+  Timer? _saveTimer;
 
   WindowUtil._();
 
@@ -23,17 +38,21 @@ class WindowUtil {
 
   /// [backgroundColor] 窗口原生背景色（需与当前主题背景一致，
   /// 浅色主题下避免露出默认黑底）。
-  Future<void> ensureInitialized({Color? backgroundColor}) async {
+  Future<void> ensureInitialized({
+    required UserSettingsStore settings,
+    Color? backgroundColor,
+  }) async {
     if (Platform.isAndroid || Platform.isIOS) return;
-    var instance = SharedPreferenceUtil.instance;
-    var height = await instance.getWindowHeight();
-    var width = await instance.getWindowWidth();
+    final width =
+        await settings.getDouble(_keyWindowWidth) ?? _defaultSize.width;
+    final height =
+        await settings.getDouble(_keyWindowHeight) ?? _defaultSize.height;
     await windowManager.ensureInitialized();
 
     final options = WindowOptions(
       titleBarStyle: TitleBarStyle.hidden,
       center: true,
-      minimumSize: const Size(1080, 720),
+      minimumSize: _defaultSize,
       size: Size(width, height),
       windowButtonVisibility: false,
       backgroundColor: backgroundColor,
@@ -92,12 +111,26 @@ class WindowUtil {
     await windowManager.unmaximize();
   }
 
-  /// Save current window size to SharedPreferences.
-  Future<void> saveWindowSize() async {
+  /// 记下当前窗口尺寸，等拖动停下来再落盘（见 [_saveDebounce]）。
+  ///
+  /// 传入的 store 只在真正写入时用到；拖动期间只是重置计时器。
+  void saveWindowSize(UserSettingsStore settings) {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(_saveDebounce, () => _writeWindowSize(settings));
+  }
+
+  Future<void> _writeWindowSize(UserSettingsStore settings) async {
     if (await windowManager.isMaximized()) return;
     final size = await windowManager.getSize();
-    final instance = SharedPreferenceUtil.instance;
-    await instance.setWindowHeight(size.height);
-    await instance.setWindowWidth(size.width);
+    await settings.setDouble(_keyWindowHeight, size.height);
+    await settings.setDouble(_keyWindowWidth, size.width);
+  }
+
+  /// 立即写入未落盘的尺寸（退出前调用；[saveWindowSize] 的防抖会被取消）。
+  Future<void> flushWindowSize(UserSettingsStore settings) async {
+    if (_saveTimer == null) return;
+    _saveTimer!.cancel();
+    _saveTimer = null;
+    await _writeWindowSize(settings);
   }
 }

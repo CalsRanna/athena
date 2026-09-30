@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 移动端发送入口的接线：页面必须走 [ChatViewModel.prepareUserInput]。
 ///
@@ -24,7 +23,6 @@ void main() {
   late Directory tempRoot;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

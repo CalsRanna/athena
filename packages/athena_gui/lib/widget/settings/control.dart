@@ -194,8 +194,6 @@ class AthenaSettingsTextField extends StatefulWidget {
   final bool enabled;
   final bool autofocus;
 
-  /// 等宽（URL、模型 id 这类技术值）。
-  final bool mono;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
   final ValueChanged<String>? onChanged;
@@ -208,7 +206,6 @@ class AthenaSettingsTextField extends StatefulWidget {
     this.obscure = false,
     this.enabled = true,
     this.autofocus = false,
-    this.mono = false,
     this.keyboardType,
     this.inputFormatters,
     this.onChanged,
@@ -253,9 +250,7 @@ class _AthenaSettingsTextFieldState extends State<AthenaSettingsTextField> {
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var base = widget.mono
-        ? athenaMono(fontSize: AthenaSettings.controlFontSize)
-        : const TextStyle(fontSize: AthenaSettings.controlFontSize);
+    var base = const TextStyle(fontSize: AthenaSettings.controlFontSize);
     var textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
       height: AthenaFontSize.bodyHeight,
@@ -314,7 +309,6 @@ class AthenaSettingsTextArea extends StatefulWidget {
   final int minLines;
   final int? maxLines;
   final bool enabled;
-  final bool mono;
   final ValueChanged<String>? onChanged;
   const AthenaSettingsTextArea({
     super.key,
@@ -323,7 +317,6 @@ class AthenaSettingsTextArea extends StatefulWidget {
     this.minLines = 6,
     this.maxLines,
     this.enabled = true,
-    this.mono = false,
     this.onChanged,
   });
 
@@ -360,9 +353,7 @@ class _AthenaSettingsTextAreaState extends State<AthenaSettingsTextArea> {
       border: Border.all(color: focused ? colors.accent : colors.neutralBorder),
       borderRadius: BorderRadius.circular(AthenaSettings.controlRadius),
     );
-    var base = widget.mono
-        ? athenaMono(fontSize: AthenaSettings.controlFontSize)
-        : const TextStyle(fontSize: AthenaSettings.controlFontSize);
+    var base = const TextStyle(fontSize: AthenaSettings.controlFontSize);
     var textStyle = base.copyWith(
       color: widget.enabled ? colors.textInput : colors.textSecondary,
       height: AthenaFontSize.bodyHeight,

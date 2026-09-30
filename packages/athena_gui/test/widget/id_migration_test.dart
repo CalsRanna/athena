@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_gui/di.dart';
+import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/sentinel_view_model.dart';
 import 'package:athena_gui/view_model/setting_view_model.dart';
@@ -34,6 +35,8 @@ void main() {
       ]),
     );
     await storage.load();
+    // 生产上这一步在 main 的启动序列里（_bootstrapStorage）
+    await const PrefsIntoSettingMigration().run(storage.userSettings);
   });
 
   tearDown(() async {
@@ -53,7 +56,9 @@ void main() {
       'chat_naming_model_id',
       'sentinel_metadata_generation_model_id',
     ]) {
-      expect(prefs.get(key), model.id);
+      // prefs 里的整数已经搬进 setting.yaml 并换成了 UUID；源键被移除
+      expect(prefs.get(key), isNull);
+      expect(await storage.userSettings.getString(key), model.id);
     }
     expect(settings.chatModel.value?.id, model.id);
     expect(settings.chatNamingModel.value?.id, model.id);

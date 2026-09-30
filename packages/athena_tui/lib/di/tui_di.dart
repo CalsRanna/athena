@@ -25,11 +25,9 @@ import 'package:athena_core/util/logger_util.dart';
 import 'package:athena_core/service/model_catalog_service.dart';
 import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_core/storage/agent_settings.dart';
-import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_tui/bridge/tui_agent_bridge.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/file_storage.dart';
-import 'package:athena_core/storage/json_file_key_value_store.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:path/path.dart' as p;
 import 'package:athena_tui/view_model/chat_controller.dart';
@@ -80,7 +78,6 @@ class TuiDi {
 
   // Storage
   late final FileStorage storage;
-  late final KeyValueStore keyValueStore;
   late final UserSettingsStore userSettings;
   late final File userSettingsFile;
 
@@ -170,12 +167,8 @@ class TuiDi {
     sentinelRepo = storage.sentinelRepository;
     experienceRepo = ExperienceRepository();
 
-    keyValueStore = JsonFileKeyValueStore(
-      file: File('${_dataDir.path}/kv.json'),
-    );
-
     // ── Agent 基础 ──
-    agentSettings = AgentSettings(store: keyValueStore);
+    agentSettings = AgentSettings(store: userSettings);
     permissionService = PermissionService(store: PermissionStore());
     skillRegistry = SkillRegistry();
     skillRegistry.loadAll();
@@ -187,7 +180,7 @@ class TuiDi {
       skillRegistry: skillRegistry,
       experienceRepository: experienceRepo,
       sentinelRepository: sentinelRepo,
-      store: keyValueStore,
+      settings: userSettings,
       outputStore: outputStore,
       backgroundTasks: BackgroundTaskService(
         stateDirectory: storage.backgroundTasksDir,

@@ -266,7 +266,6 @@ class _DesktopSettingSkillPageState extends State<DesktopSettingSkillPage> {
                 controller: bodyController,
                 enabled: !readOnly,
                 minLines: 16,
-                mono: true,
                 placeholder: '# When to use\n\n# Steps\n',
               ),
             ),

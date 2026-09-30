@@ -26,9 +26,7 @@ import 'package:athena_core/service/model_resolver.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
-import 'package:athena_core/storage/key_value_store.dart';
 import 'package:athena_core/util/platform_util.dart';
-import 'package:athena_gui/storage/shared_prefs_key_value_store.dart';
 import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:athena_gui/view_model/delegate/agent_stream_delegate.dart';
 import 'package:athena_gui/view_model/delegate/chat_rename_delegate.dart';
@@ -178,14 +176,9 @@ class DI {
       () => PermissionService(store: getIt<PermissionStore>()),
     );
 
-    // 键值存储（核心接口，GUI 用 SharedPreferences 实现）
-    getIt.registerLazySingleton<KeyValueStore>(
-      () => SharedPrefsKeyValueStore(),
-    );
-
-    // Agent 设置（核心，持久化走 KeyValueStore）
+    // Agent 设置（核心，持久化走两个前端共用的 setting.yaml）
     getIt.registerLazySingleton(
-      () => AgentSettings(store: getIt<KeyValueStore>()),
+      () => AgentSettings(store: storage.userSettings),
     );
 
     getIt.registerLazySingleton(() {
@@ -205,7 +198,7 @@ class DI {
         skillRegistry: getIt<SkillRegistry>(),
         experienceRepository: getIt<ExperienceRepository>(),
         sentinelRepository: getIt<SentinelRepository>(),
-        store: getIt<KeyValueStore>(),
+        settings: storage.userSettings,
         outputStore: getIt<ToolOutputStore>(),
         backgroundTasks: getIt<BackgroundTaskService>(),
         onSentinelChanged: () => getIt<SentinelViewModel>().getSentinels(),

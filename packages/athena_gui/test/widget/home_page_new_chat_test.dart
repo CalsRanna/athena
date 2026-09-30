@@ -21,7 +21,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 首页"新建对话"整条链路的验收（页级）：点侧栏 New chat、按 ⌘N / Ctrl+N
 /// 之后，焦点必须真的落在 composer 输入框上——也就是
@@ -37,7 +36,6 @@ void main() {
   late Directory tempRoot;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',
@@ -69,13 +67,34 @@ void main() {
 
   /// 交替「真实异步窗口 + pump」把一次 async 动作推完。页面里的 I/O 是一条
   /// 串行 await 链，只放一次 runAsync 只够第一段（原因见 [pumpHome]）。
-  Future<void> settle(WidgetTester tester, {int rounds = 10}) async {
+  ///
+  /// 20 轮是按最长的单次动作（`prepareNewChatDraft`：读设置 → 取角色 → 落
+  /// 草稿）实测定的，比它长再调；调小了会表现成「断言读到中间态」而不是报错。
+  Future<void> settle(WidgetTester tester, {int rounds = 20}) async {
     for (var i = 0; i < rounds; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 10)),
       );
       await tester.pump();
     }
+  }
+
+  /// 交替「真实异步窗口 + pump」直到 [done] 为真。
+  ///
+  /// 不能把整个 Future 塞进一次 `runAsync` 去 await：这条链中间的 continuation
+  /// 要等下一帧才排空（同 [pumpHome] 的道理），一次 runAsync 会永远等不到完成。
+  Future<void> settleUntil(
+    WidgetTester tester,
+    bool Function() done, {
+    int maxRounds = 200,
+  }) async {
+    for (var i = 0; i < maxRounds && !done(); i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    await settle(tester);
   }
 
   Future<void> pumpHome(WidgetTester tester) async {
@@ -91,15 +110,20 @@ void main() {
     // `_initState` 是一串真实文件 I/O（会话、设置、模型），而且一个接一个
     // await：只放一次真实异步窗口不够——每完成一段 I/O，它的 continuation 要等
     // 下一帧才排空，下一个 I/O 又需要新的真实异步窗口。所以交替「真实异步窗口
-    // + pump」，直到焦点落进输入框（那就是 init 走完的标志）。
-    for (var i = 0; i < 50 && !composerFocused(tester); i++) {
+    // + pump」，把这条链推完。
+    //
+    // **不看焦点提前退出**：composer 首帧就可能持焦，用它当「init 走完」的标志
+    // 会让循环立刻结束，剩下的链只能靠下面那 10 轮 settle 推——设置改走
+    // `setting.yaml`（原先是一次 SharedPreferences 平台调用）后，链尾的
+    // 「读设置 → 取角色 → 落草稿」需要约 50 轮才走完，10 轮远远不够。
+    // 固定跑满这个预算，别让它随 I/O 段数变化而失效。
+    for (var i = 0; i < 50; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump();
     }
-    // 焦点落进输入框不等于 init 链走完（composer 首帧就可能持焦），而草稿的
-    // 角色/工作文件夹是链尾才设的信号：再走几轮，别让断言读到中间态。
+    // 草稿的角色/工作文件夹是链尾才设的信号：再走几轮，别让断言读到中间态。
     await settle(tester);
   }
 
@@ -156,11 +180,13 @@ void main() {
   }
 
   /// 选中一条对话（等价于用户在侧栏点它）；此刻它就是"当前对话"。
+  /// 选中一条对话（等价于用户在侧栏点它）；此刻它就是"当前对话"。
   Future<void> selectSourceChat(WidgetTester tester, ChatEntity chat) async {
-    await tester.runAsync(
-      () => GetIt.instance<ChatViewModel>().selectChat(chat),
-    );
-    await settle(tester);
+    var done = false;
+    GetIt.instance<ChatViewModel>()
+        .selectChat(chat)
+        .whenComplete(() => done = true);
+    await settleUntil(tester, () => done);
   }
 
   /// 点侧栏的 "New chat" 行。顶栏标题在草稿态也是 'New chat'，所以按侧栏子树

@@ -11,7 +11,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// `AthenaDialog` 的平台分派走 `ThemeData.platform`，两端分支都要能在测试里
 /// 走通。这条路径原先读 `PlatformUtil`（`dart:io` 的 `Platform`），测试里
@@ -22,7 +21,6 @@ void main() {
   late Directory tempRoot;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

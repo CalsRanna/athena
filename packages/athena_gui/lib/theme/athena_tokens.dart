@@ -111,7 +111,7 @@ abstract final class AthenaFontSize {
 ///
 /// 每个预设都携带所属层级的行盒，组件不再各自覆盖比例行高。
 ///
-/// 等宽不在这里：代码 / 工具参数 / 输出走 [athenaMono]。
+/// 等宽不在这里：只有 [athenaMono] 用等宽，而它只服务随运行刷新的数字。
 abstract final class AthenaTextStyle {
   /// 空态欢迎大标题：20 / 28 / w600。
   static const hero = TextStyle(
@@ -196,17 +196,20 @@ enum AthenaTextSize {
     height: lineHeight / fontSize,
   );
 
-  TextStyle get code => athenaMono(
-    fontSize: fontSize,
-    fontWeight: FontWeight.w400,
-    height: lineHeight / fontSize,
-  );
+  /// 消息里的代码与工具输出：**与 [prose] 完全同值**，只是名字不同。
+  ///
+  /// 代码曾经走等宽（Menlo）：同字号下 Menlo 的 x-height 比系统字体高约 7%，
+  /// 于是代码看着比正文大一号；而列对齐只在等宽下成立。最后选择放弃列对齐、
+  /// 与正文同族——消息列表里只保留一种文字质感。保留这个名字是为了让调用点
+  /// 仍然读作「代码」，也留一个回退点（改回等宽只需改这一处）。
+  TextStyle get code => prose;
 }
 
 /// 字体族。
 ///
-/// **UI 与正文走系统字体**（`null` = 平台默认：macOS SF Pro / Windows Segoe UI）——
-/// 侧栏、设置、按钮、正文都是比例字体，等宽只有代码与终端在用。
+/// **UI、正文与代码走系统字体**（`null` = 平台默认：macOS SF Pro / Windows Segoe UI）——
+/// 侧栏、设置、按钮、正文、消息里的代码块与工具输出都是比例字体，
+/// 等宽只剩 [athenaMono] 一个用处：随运行刷新的动态数值。
 /// 早期实现把整个 UI 做成等宽，那是误读。
 abstract final class AthenaFont {
   /// UI 与正文：交给平台默认字体（含 CJK 回退）。
@@ -219,7 +222,7 @@ abstract final class AthenaFont {
     'Noto Sans CJK SC',
   ];
 
-  /// 代码与终端：等宽。
+  /// 动态数值（运行统计）：等宽让数字更新时行宽不抖。
   static const mono = 'Menlo';
 
   static const monoFallback = <String>[
@@ -322,10 +325,11 @@ abstract final class AthenaShadow {
   ];
 }
 
-/// 统一的等宽文字样式入口。
+/// 统一的等宽文字样式入口，只服务**随运行刷新的动态数值**（运行统计）。
 ///
-/// 代码 / 工具 / 技术标签与动态运行统计用它；普通正文与 UI 不传 fontFamily，
-/// 走主题里的系统字体。
+/// 正文、代码块、行内代码、工具输出、设置里的技术值一律不传 `fontFamily`，
+/// 走主题里的系统字体：等宽在同字号下比系统字体高约 7%（Menlo 的 x-height
+/// 0.547em 对 SF Pro 的 0.508em），并列时会显得大一号。
 TextStyle athenaMono({
   Color? color,
   double fontSize = AthenaFontSize.mono,

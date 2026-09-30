@@ -141,14 +141,19 @@ class ProviderFilesMigration {
   }
 
   /// 写回移除 providers 段后的 setting.yaml,保留其余键与标量类型。
+  ///
+  /// 接受全部标量类型(bool / num / String),不只是 int 与 String:这个文件
+  /// 现在由两个前端共用,存着主题、字号、窗口尺寸这类 bool 与 double 偏好。
+  /// 按旧口径只写 int/String 的话,一条 providers 段的迁移会把它们静默抹掉。
   Future<void> _writeSetting(Map<String, dynamic> map) async {
     final buf = StringBuffer()
-      ..writeln('# Athena 用户配置:TUI 默认模型')
+      ..writeln('# Athena 用户配置:GUI 与 TUI 共用,可手工编辑')
       ..writeln('# 修改后重启生效;运行中配置会同步回写')
       ..writeln();
     for (final entry in map.entries) {
       final value = entry.value;
-      if (value is int || value is String) {
+      if (value == null) continue;
+      if (value is bool || value is num || value is String) {
         buf.writeln('${entry.key}: ${YamlScalarCodec.encode(value)}');
       }
     }

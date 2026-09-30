@@ -2,23 +2,22 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:athena_core/agent/cancel_token.dart';
-import 'package:athena_core/storage/key_value_store.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:http/http.dart' as http;
 
 import 'tool_interface.dart';
 
 class WebSearchTool implements Tool, CancellableTool {
-  /// API key 存放依赖注入的 [KeyValueStore]（GUI=SharedPreferences，TUI=JSON 文件）。
-  WebSearchTool({KeyValueStore? store}) : _store = store;
+  /// API key 存在两个前端共用的 `~/.athena/setting.yaml` 里。
+  WebSearchTool({UserSettingsStore? settings}) : _settings = settings;
 
-  final KeyValueStore? _store;
+  final UserSettingsStore? _settings;
 
   @override
   ExecutionMode get executionMode => ExecutionMode.parallel;
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => true;
 
-  static const _keyBraveApiKey = 'brave_api_key';
   static const _defaultTimeout = Duration(seconds: 15);
   static const _maxResults = 10;
 
@@ -62,14 +61,15 @@ class WebSearchTool implements Tool, CancellableTool {
   }) async {
     final query = args['query'] as String;
 
-    final store = _store;
-    if (store == null) {
+    final settings = _settings;
+    if (settings == null) {
       return 'Error: Brave Search API key store not configured.';
     }
-    final apiKey = await store.getString(_keyBraveApiKey);
+    final apiKey = await settings.loadBraveApiKey();
     if (apiKey == null || apiKey.isEmpty) {
       return 'Error: Brave Search API key not configured. '
-          'Set it in settings with key "$_keyBraveApiKey". '
+          'Set it in settings with key '
+          '"${UserSettingsStore.braveApiKeyKey}". '
           'Get a free key at https://brave.com/search/api/';
     }
 

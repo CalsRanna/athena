@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 移动端从某条对话出来再点「新对话」：页面一打开就是空白草稿。进入草稿态
 /// 要等模型与角色两段 IO，这段时间 ViewModel 的当前对话还是上一条——不能
@@ -24,7 +23,6 @@ void main() {
   late ChatViewModel viewModel;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

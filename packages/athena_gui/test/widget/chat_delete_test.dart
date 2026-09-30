@@ -9,7 +9,6 @@ import 'package:athena_gui/view_model/chat_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 删除对话之后的**视图落点**（`ChatViewModel.deleteChat` / `deleteChats`）：
 ///
@@ -27,7 +26,6 @@ void main() {
   late ChatViewModel viewModel;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

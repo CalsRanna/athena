@@ -22,7 +22,7 @@ import 'package:athena_core/agent/tool/web_fetch_tool.dart';
 import 'package:athena_core/agent/tool/web_search_tool.dart';
 import 'package:athena_core/repository/experience_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
-import 'package:athena_core/storage/key_value_store.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 
 /// 内置工具集的唯一真相源。
@@ -37,7 +37,7 @@ ToolRegistry buildToolRegistry({
   required SkillRegistry skillRegistry,
   required ExperienceRepository experienceRepository,
   required SentinelRepository sentinelRepository,
-  required KeyValueStore store,
+  required UserSettingsStore settings,
   ToolOutputStore? outputStore,
 
   /// 后台任务登记表（桌面端有 shell 才有意义）。null = 新建一个。
@@ -71,7 +71,7 @@ ToolRegistry buildToolRegistry({
   if (isMobile) {
     registry.registerAll([
       WebFetchTool(),
-      WebSearchTool(store: store),
+      WebSearchTool(settings: settings),
       SkillTool(skillRegistry),
       SkillEvolveTool(skillRegistry: skillRegistry, homeDir: mobileHomeDir),
       ExperienceLearnTool(repository: experienceRepository),
@@ -107,7 +107,7 @@ ToolRegistry buildToolRegistry({
     // 移动端暂无对应的提问卡片，故只在桌面端注册。
     AskUserQuestionTool(),
     WebFetchTool(),
-    WebSearchTool(store: store),
+    WebSearchTool(settings: settings),
     SkillTool(skillRegistry),
     SkillEvolveTool(skillRegistry: skillRegistry),
     ExperienceLearnTool(repository: experienceRepository),

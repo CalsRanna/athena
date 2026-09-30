@@ -12,34 +12,31 @@ import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/util/platform_util.dart';
 import 'package:athena_core/util/retry.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
-import 'package:window_manager/window_manager.dart';
 
-/// SettingViewModel 使用 SharedPreferences 管理应用设置
-/// 不依赖数据库，所有设置都存储在本地偏好设置中
+/// 应用设置的 ViewModel。
+///
+/// 持久化走 core 的 [UserSettingsStore]（`~/.athena/setting.yaml`，与 TUI 共用
+/// 同一份文件）。这里只定义 GUI 自己的键名——键名的语义属于这一端，core 只负责
+/// 存；core 自己也消费的键（如 Brave API key）走 store 的具名访问器，不在这里
+/// 另写一份字面量。
 class SettingViewModel {
-  // SharedPreferences keys
-  static const String _keyWindowHeight = 'window_height';
-  static const String _keyWindowWidth = 'window_width';
-
+  // GUI 偏好的键名
   static const String _keyChatModelId = 'chat_model_id';
   static const String _keyChatNamingModelId = 'chat_naming_model_id';
   static const String _keySentinelMetadataGenerationModelId =
       'sentinel_metadata_generation_model_id';
   static const String _keyMaxRetries = 'max_retries';
-  static const String _keyBraveApiKey = 'brave_api_key';
   static const String _keyThemeMode = 'theme_mode';
   static const String _keyTextSize = 'text_size';
-  // Window 尺寸
-  final windowHeight = signal(720.0);
-  final windowWidth = signal(960.0);
+
   // 模型 ID 设置
   final chatModelId = signal('');
   final chatNamingModelId = signal('');
@@ -52,7 +49,7 @@ class SettingViewModel {
   final chatNamingModelProvider = signal<ProviderEntity?>(null);
   final sentinelMetadataGenerationModelProvider = signal<ProviderEntity?>(null);
 
-  /// 委托核心 [AgentSettings]（持久化走 KeyValueStore）。
+  /// 委托核心 [AgentSettings]（持久化走 [UserSettingsStore]）。
   Signal<int> get maxAgentIterations => _agentSettings.maxAgentIterations;
 
   /// 新建会话的审批档位起点（会话自己的档位在 `ChatEntity.approvalMode`）。
@@ -95,36 +92,38 @@ class SettingViewModel {
        _agentSettings = agentSettings,
        _storage = storage;
 
+  /// `~/.athena/setting.yaml`（与 TUI 共用同一个文件）。
+  UserSettingsStore get _settings => _storage.userSettings;
+
   /// 清除所有设置（恢复默认）
   Future<void> clearAllSettings() async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.clear();
+    await _settings.clear();
     await initSignals(); // 重新加载默认值
   }
 
   /// 加载所有设置
   Future<void> initSignals() async {
-    final instance = await SharedPreferences.getInstance();
     for (final key in [
       _keyChatModelId,
       _keyChatNamingModelId,
       _keySentinelMetadataGenerationModelId,
     ]) {
-      final old = instance.get(key);
+      // 更早的版本把模型 id 存成整数;启动升级时保留了 整数 → UUID 的映射,
+      // 这里换成 UUID 并落盘。get() 保留原始类型,这个 is int 判断才成立。
+      final old = await _settings.get(key);
       if (old is int) {
-        await instance.setString(key, _storage.legacyModelIds['$old'] ?? '');
+        await _settings.setString(key, _storage.legacyModelIds['$old'] ?? '');
       }
     }
-    windowHeight.value = instance.getDouble(_keyWindowHeight) ?? 720.0;
-    windowWidth.value = instance.getDouble(_keyWindowWidth) ?? 960.0;
-    chatModelId.value = instance.getString(_keyChatModelId) ?? '';
-    chatNamingModelId.value = instance.getString(_keyChatNamingModelId) ?? '';
+    chatModelId.value = await _settings.getString(_keyChatModelId) ?? '';
+    chatNamingModelId.value =
+        await _settings.getString(_keyChatNamingModelId) ?? '';
     sentinelMetadataGenerationModelId.value =
-        instance.getString(_keySentinelMetadataGenerationModelId) ?? '';
+        await _settings.getString(_keySentinelMetadataGenerationModelId) ?? '';
     await _agentSettings.init();
-    maxRetries.value = instance.getInt(_keyMaxRetries) ?? 10;
+    maxRetries.value = await _settings.getInt(_keyMaxRetries) ?? 10;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: maxRetries.value));
-    braveApiKey.value = instance.getString(_keyBraveApiKey) ?? '';
+    braveApiKey.value = await _settings.loadBraveApiKey() ?? '';
     chatModel.value = await _modelRepository.getModelById(chatModelId.value);
     chatNamingModel.value = await _modelRepository.getModelById(
       chatNamingModelId.value,
@@ -150,39 +149,34 @@ class SettingViewModel {
     await initTextSize();
   }
 
-  /// 从 SharedPreferences 加载主题模式（启动时调用）。
+  /// 从设置文件加载主题模式（启动时调用）。
   Future<void> initThemeMode() async {
-    final instance = await SharedPreferences.getInstance();
-    final saved = instance.getString(_keyThemeMode);
+    final saved = await _settings.getString(_keyThemeMode);
     themeMode.value = ThemeMode.values.asNameMap()[saved] ?? ThemeMode.light;
   }
 
   /// 切换主题模式并持久化。
   Future<void> setThemeMode(ThemeMode mode) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keyThemeMode, mode.name);
+    await _settings.setString(_keyThemeMode, mode.name);
     themeMode.value = mode;
   }
 
-  /// 从 SharedPreferences 加载字号档位（启动时调用）。
+  /// 从设置文件加载字号档位（启动时调用）。
   Future<void> initTextSize() async {
-    final instance = await SharedPreferences.getInstance();
-    final saved = instance.getString(_keyTextSize);
+    final saved = await _settings.getString(_keyTextSize);
     textSize.value =
         AthenaTextSize.values.asNameMap()[saved] ?? AthenaTextSize.medium;
   }
 
   /// 切换固定字号档位并持久化，由 `AthenaWorkspaceTextSize` 在消息列表内应用。
   Future<void> setTextSize(AthenaTextSize size) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keyTextSize, size.name);
+    await _settings.setString(_keyTextSize, size.name);
     textSize.value = size;
   }
 
   /// 更新聊天模型 ID
   Future<void> updateChatModelId(String modelId) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keyChatModelId, modelId);
+    await _settings.setString(_keyChatModelId, modelId);
     chatModelId.value = modelId;
     chatModel.value = await _modelRepository.getModelById(modelId);
     if (chatModel.value != null) {
@@ -194,8 +188,7 @@ class SettingViewModel {
 
   /// 更新聊天命名模型 ID
   Future<void> updateChatNamingModelId(String modelId) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keyChatNamingModelId, modelId);
+    await _settings.setString(_keyChatNamingModelId, modelId);
     chatNamingModelId.value = modelId;
     chatNamingModel.value = await _modelRepository.getModelById(modelId);
     if (chatNamingModel.value != null) {
@@ -207,8 +200,7 @@ class SettingViewModel {
 
   /// 更新 Sentinel 元数据生成模型 ID
   Future<void> updateSentinelMetadataGenerationModelId(String modelId) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keySentinelMetadataGenerationModelId, modelId);
+    await _settings.setString(_keySentinelMetadataGenerationModelId, modelId);
     sentinelMetadataGenerationModelId.value = modelId;
     sentinelMetadataGenerationModel.value = await _modelRepository.getModelById(
       modelId,
@@ -221,16 +213,17 @@ class SettingViewModel {
 
   /// 更新最大重试次数
   Future<void> updateMaxRetries(int max) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setInt(_keyMaxRetries, max);
+    await _settings.setInt(_keyMaxRetries, max);
     maxRetries.value = max;
     _llmClient.updateRetryConfig(RetryConfig(maxAttempts: max));
   }
 
-  /// 更新 Brave Search API Key
+  /// 更新 Brave Search API Key。
+  ///
+  /// 写入的是 `UserSettingsStore.braveApiKeyKey`——core 的 `WebSearchTool`
+  /// 读的就是这个键，两处不再各写一份字面量。
   Future<void> updateBraveApiKey(String key) async {
-    final instance = await SharedPreferences.getInstance();
-    await instance.setString(_keyBraveApiKey, key);
+    await _settings.saveBraveApiKey(key);
     braveApiKey.value = key;
   }
 
@@ -242,17 +235,6 @@ class SettingViewModel {
   /// 开关后台任务完成后的自动汇报。
   Future<void> updateBackgroundTaskReports(bool enabled) async {
     await _agentSettings.updateBackgroundTaskReports(enabled);
-  }
-
-  /// 更新窗口尺寸
-  Future<void> updateWindowSize() async {
-    if (await windowManager.isMaximized()) return;
-    final size = await windowManager.getSize();
-    final instance = await SharedPreferences.getInstance();
-    await instance.setDouble(_keyWindowHeight, size.height);
-    await instance.setDouble(_keyWindowWidth, size.width);
-    windowHeight.value = size.height;
-    windowWidth.value = size.width;
   }
 
   /// 导出数据到 JSON 文件

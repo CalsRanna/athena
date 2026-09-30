@@ -75,7 +75,6 @@ class _DesktopModelFormDialogState extends State<DesktopModelFormDialog> {
         child: AthenaSettingsTextField(
           controller: valueController,
           autofocus: widget.model == null,
-          mono: true,
           placeholder: 'model-id',
         ),
       ),

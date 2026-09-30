@@ -25,7 +25,7 @@ import 'package:athena_core/service/chat_update_service.dart';
 import 'package:athena_core/service/llm_client.dart';
 import 'package:athena_core/storage/agent_settings.dart';
 import 'package:athena_core/storage/file_storage.dart';
-import 'package:athena_core/storage/json_file_key_value_store.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:openai_dart/openai_dart.dart';
@@ -90,7 +90,7 @@ void main() {
       skillRegistry: SkillRegistry(),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
       sentinelRepository: storage.sentinelRepository,
-      store: JsonFileKeyValueStore(file: File(p.join(tmp.path, 'kv.json'))),
+      settings: UserSettingsStore(file: File(p.join(tmp.path, 'setting.yaml'))),
       outputStore: outputStore,
       backgroundTasks: tasks,
       defaultWorkdir: tmp.path,

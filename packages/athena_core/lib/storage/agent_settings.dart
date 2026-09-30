@@ -1,12 +1,12 @@
 import 'package:athena_core/entity/approval_mode.dart';
-import 'package:athena_core/storage/key_value_store.dart';
+import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:signals/signals.dart';
 
 /// Agent 运行相关的设置项，由核心协调层消费。
 ///
-/// 持久化走注入的 [KeyValueStore]（GUI=SharedPreferences，TUI=JSON 文件）。
+/// 持久化走注入的 [UserSettingsStore]（`~/.athena/setting.yaml`，两个前端共用）。
 class AgentSettings {
-  AgentSettings({KeyValueStore? store}) : _store = store;
+  AgentSettings({UserSettingsStore? store}) : _store = store;
 
   static const _keyMaxAgentIterations = 'max_agent_iterations';
   static const _keyBackgroundTaskReports = 'background_task_reports';
@@ -17,7 +17,7 @@ class AgentSettings {
   /// 更早的布尔开关（0 关 / 1 开），在 [_keyLegacyApprovalMode] 还没写过时读。
   static const _keyLegacyAiApprovalEnabled = 'ai_approval_enabled';
 
-  final KeyValueStore? _store;
+  final UserSettingsStore? _store;
 
   final maxAgentIterations = signal(100);
 
@@ -43,9 +43,9 @@ class AgentSettings {
       maxAgentIterations.value = v;
     }
     await _seedNewChatApprovalMode(store);
-    final reports = await store.getInt(_keyBackgroundTaskReports);
+    final reports = await store.getBool(_keyBackgroundTaskReports);
     if (reports != null) {
-      backgroundTaskReports.value = reports != 0;
+      backgroundTaskReports.value = reports;
     }
   }
 
@@ -56,7 +56,7 @@ class AgentSettings {
   /// 都读过之后删除，避免它们以无主状态长期留在存储里。
   ///
   /// 已有会话不受影响：它们的档位在各自的会话文件里，缺列的回落默认档。
-  Future<void> _seedNewChatApprovalMode(KeyValueStore store) async {
+  Future<void> _seedNewChatApprovalMode(UserSettingsStore store) async {
     final mode = ApprovalMode.fromKey(
       await store.getString(_keyLegacyApprovalMode),
     );
@@ -77,7 +77,7 @@ class AgentSettings {
   /// 开关后台任务完成后的自动汇报。
   Future<void> updateBackgroundTaskReports(bool enabled) async {
     backgroundTaskReports.value = enabled;
-    await _store?.setInt(_keyBackgroundTaskReports, enabled ? 1 : 0);
+    await _store?.setBool(_keyBackgroundTaskReports, enabled);
   }
 
   /// 更新最大 Agent 迭代次数。

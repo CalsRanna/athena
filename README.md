@@ -135,7 +135,7 @@ models:
 ├── sessions/{chatId}.jsonl     # 一个会话一个文件：首行是会话元数据，其后每行一条消息
 ├── providers/{id}.yaml         # 一个 provider 一个文件：配置（含 API key）+ 它名下的模型
 ├── sentinels/{id}.yaml         # 一个角色一个文件
-├── setting.yaml                # TUI 默认模型
+├── setting.yaml                # 用户偏好，两个前端共用（默认模型、主题、字号、窗口尺寸…）
 ├── permissions.json            # 权限规则
 ├── models_dev_cache.json       # models.dev 目录缓存
 ├── tool_outputs/{sha256}.txt   # 超长工具输出，内容寻址

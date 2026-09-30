@@ -27,7 +27,8 @@ import 'package:path/path.dart' as p;
 ///                            # chat_completions_state 保存兼容端原生推理/拒答；completion_details 保存停止与用量明细
 ///   storage_version.json      # 格式版本与旧模型 ID 映射（GUI 偏好迁移用）
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
-///   setting.yaml              # TUI 默认模型
+///   setting.yaml              # 用户配置:两个前端共用(GUI 与 TUI 的界面偏好
+///                            # + core 的 brave API key / Agent 迭代上限)
 ///   providers/{id}.yaml        # 一个 provider 一个文件：provider 配置(含 API key)
 ///                            # + 它名下的模型（`models:` 段）
 ///   sentinels/{id}.yaml        # 一个角色一个文件
@@ -73,8 +74,7 @@ class FileStorage {
 
   final Directory root;
 
-  /// 用户配置文件;默认 `root/setting.yaml`(只剩 TUI 默认模型),TUI 测试
-  /// 可单独指定。
+  /// 用户配置文件;默认 `root/setting.yaml`,两个前端共用同一份。
   final File settingFile;
 
   Directory get sessionsDir => Directory(p.join(root.path, 'sessions'));

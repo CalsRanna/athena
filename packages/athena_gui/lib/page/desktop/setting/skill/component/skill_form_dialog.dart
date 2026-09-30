@@ -43,7 +43,6 @@ class _DesktopSkillFormDialogState extends State<DesktopSkillFormDialog> {
         child: AthenaSettingsTextField(
           controller: nameController,
           autofocus: true,
-          mono: true,
           placeholder: 'kebab-case-name',
         ),
       ),

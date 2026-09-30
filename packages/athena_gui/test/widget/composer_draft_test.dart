@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// composer 的输入内容（文字与待发图片）按对话分开存：A 里打的字不该跟着进 B，
 /// 切回 A 时原来那句还在。
@@ -26,7 +25,6 @@ void main() {
   late Directory tempRoot;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',

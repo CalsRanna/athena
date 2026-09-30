@@ -19,13 +19,20 @@ final _random = Random();
 /// **必须把原文件的权限位套回临时文件。** 临时文件是新 inode、默认 0644，rename
 /// 过去会把 0755 的脚本变成不可执行——实测如此，是一次静默的功能损失。所以目标
 /// 已存在时先 chmod 再 rename；chmod 失败就抛错，不做事后补救。
+///
+/// **只在权限位真的不同时才 chmod。** `chmod` 要起一个进程（dart:io 没有它），
+/// 而 `Process.run` 在 widget 测试的 fake-async zone 里永不完成——每次保存都无
+/// 条件 chmod，会让所有「写一个已存在的文件」的 UI 路径在测试里挂死。绝大多数
+/// 情况下临时文件已经是 0644、目标也是 0644，这一次 stat 就把进程省掉了。
 Future<void> replaceFileContent(File target, String content) async {
   await target.parent.create(recursive: true);
   final existingMode = _existingMode(target);
   final temporary = File('${target.path}.$pid.${_random.nextInt(1 << 32)}.tmp');
   try {
     await temporary.writeAsString(content, flush: true);
-    if (existingMode != null) await _applyMode(temporary.path, existingMode);
+    if (existingMode != null && _existingMode(temporary) != existingMode) {
+      await _applyMode(temporary.path, existingMode);
+    }
     await temporary.rename(target.path);
   } catch (_) {
     try {

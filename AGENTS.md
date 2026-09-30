@@ -33,7 +33,9 @@ athena_tui ──┘
 
 - 页面、组件、主题、平台集成（窗口、托盘、剪贴板、单实例）
 - 前端专有的状态编排（`ChatViewModel` / `ChatController`）
-- 前端专有的持久化实现（GUI 的 `SharedPrefsKeyValueStore`）
+- 前端专有的持久化实现与一次性迁移（GUI 把旧的 SharedPreferences 偏好搬进
+  `setting.yaml` 的 `PrefsIntoSettingMigration`；用户偏好本身存在 core 的
+  `UserSettingsStore` 里，两个前端共用同一份 `~/.athena/setting.yaml`）
 
 界面文案、交互反馈、平台差异（弹窗审批 vs 终端内联审批）属于前端。
 

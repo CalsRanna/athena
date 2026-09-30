@@ -15,7 +15,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +41,6 @@ void main() {
           return null;
       }
     });
-    SharedPreferences.setMockInitialValues({});
     tempRoot = Directory.systemTemp.createTempSync('athena_clipboard_test');
     ClipboardImageService.tempDirProvider = () async => tempRoot;
     png = File('asset/image/launcher_icon_macos_512x512.png').readAsBytesSync();

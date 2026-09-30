@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 /// 头部那次合并遗留了 `Material` + `InkWell`：全站 `splashFactory` 已关掉水波，
 /// 这层 `Material` 只为满足 InkWell 的祖先要求而存在，已换成 [AthenaHover]。
 
-/// 折叠头：图标 + 单行文案（[mono] 时等宽）+ 运行中 shimmer。
+/// 折叠头：图标 + 单行文案 + 运行中 shimmer。
 ///
 /// [onTap] 为 null 时不可点（光标为普通箭头），用于结果未返回或纯展示的头。
 ///
@@ -24,7 +24,6 @@ import 'package:flutter/material.dart';
 class StepHeader extends StatefulWidget {
   final IconData icon;
   final String label;
-  final bool mono;
   final bool running;
   final VoidCallback? onTap;
 
@@ -32,7 +31,6 @@ class StepHeader extends StatefulWidget {
     super.key,
     required this.icon,
     required this.label,
-    this.mono = false,
     this.running = false,
     this.onTap,
   });
@@ -55,9 +53,7 @@ class _StepHeaderState extends State<StepHeader> {
         final foreground = interactive && hovered
             ? colors.textPrimary
             : colors.textSecondary;
-        final style = widget.mono
-            ? athenaMono(color: foreground)
-            : AthenaTextStyle.caption.copyWith(color: foreground);
+        final style = AthenaTextStyle.caption.copyWith(color: foreground);
         return StepHeaderShimmer(
           active: widget.running,
           child: Row(
@@ -84,7 +80,7 @@ class _StepHeaderState extends State<StepHeader> {
   }
 }
 
-/// 展开后的结果正文：等宽、最多 10 行、`Error:` 前缀标红；点击整块收起。
+/// 展开后的结果正文：与消息正文同族、最多 10 行、`Error:` 前缀标红；点击整块收起。
 class StepResultBody extends StatelessWidget {
   final String text;
   final VoidCallback? onTap;

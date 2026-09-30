@@ -12,7 +12,6 @@ import 'package:athena_gui/view_model/pending_image.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// 桌面与移动的发送流程此前各写一遍，移动端漏了 trim、模型校验与竞态重查。
 /// 两边现在都走 [ChatViewModel.prepareUserInput]，这些断言锁住「能不能发、
@@ -22,7 +21,6 @@ void main() {
   late ChatViewModel viewModel;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     PackageInfo.setMockInitialValues(
       appName: 'Athena',
       packageName: 'com.athena',
