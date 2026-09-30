@@ -639,6 +639,7 @@ class _CopyActionButton extends StatelessWidget {
                   child: CopiedLabel(
                     color: colors.textSecondary,
                     iconSize: AthenaIcon.regularSize,
+                    textStyle: AthenaTextStyle.caption,
                   ),
                 )
               : _actionBarIcon(LucideIcons.copy, colors),

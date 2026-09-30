@@ -3,6 +3,7 @@ import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/widget/hover.dart';
 import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// 步骤类卡片（工具 / 推理 / 压缩 / 步骤组）共用的视觉原语。
 ///
@@ -13,18 +14,25 @@ import 'package:flutter/material.dart';
 /// 头部那次合并遗留了 `Material` + `InkWell`：全站 `splashFactory` 已关掉水波，
 /// 这层 `Material` 只为满足 InkWell 的祖先要求而存在，已换成 [AthenaHover]。
 
-/// 折叠头：图标 + 单行文案 + 运行中 shimmer。
+/// 折叠头：图标 + 单行文案 + 展开箭头 + 运行中 shimmer。
 ///
-/// [onTap] 为 null 时不可点（光标为普通箭头），用于结果未返回或纯展示的头。
+/// [onTap] 为 null 时不可点（光标为普通箭头），也不显示箭头，用于没有正文的头。
 ///
 /// 静止前景是次级文字色；**可点的头在 hover 时整条（图标 + 文案）提亮到正文色**
 /// `textPrimary`——与 [AthenaTextButton] 的 `textSecondary → textPrimary` 同一口径：
 /// 前景提亮即"这里能点开"。运行中的头由 shimmer 的 `srcIn` 统一改色，彼时提亮被
-/// 覆盖，观感以 shimmer 为准（无妨：此时它本就没有可展开的正文）。
+/// 覆盖，观感以 shimmer 为准。
+///
+/// [expanded] 只驱动箭头方向：展开后箭头指向下，并**保持可见**（不再依赖 hover），
+/// 这样鼠标移开后仍能提示"点它可以收起"。
 class StepHeader extends StatefulWidget {
   final IconData icon;
   final String label;
   final bool running;
+
+  /// 展开态：箭头指向下。收起时箭头指向右，与整行一起构成「点这里展开」的提示。
+  final bool expanded;
+
   final VoidCallback? onTap;
 
   const StepHeader({
@@ -32,6 +40,7 @@ class StepHeader extends StatefulWidget {
     required this.icon,
     required this.label,
     this.running = false,
+    this.expanded = false,
     this.onTap,
   });
 
@@ -53,8 +62,10 @@ class _StepHeaderState extends State<StepHeader> {
         final foreground = interactive && hovered
             ? colors.textPrimary
             : colors.textSecondary;
-        // 与正文同档同重：卡片里没有比正文更小或更重的文字层级
-        final style = AthenaTextStyle.body.copyWith(color: foreground);
+        // 与消息正文同一档：折叠头随 Text size 变，卡片里没有更小或更重的层级
+        final style = AthenaWorkspaceTextSize.of(
+          context,
+        ).prose.copyWith(color: foreground);
         return StepHeaderShimmer(
           active: widget.running,
           child: Row(
@@ -65,7 +76,8 @@ class _StepHeaderState extends State<StepHeader> {
                 color: foreground,
               ),
               const SizedBox(width: 8),
-              Expanded(
+              // 标签只占自己的宽度：箭头要跟在它后面，而不是被推到行尾
+              Flexible(
                 child: Text(
                   widget.label,
                   maxLines: 1,
@@ -73,6 +85,25 @@ class _StepHeaderState extends State<StepHeader> {
                   style: style,
                 ),
               ),
+              // 展开提示只给可展开的头（没有正文的头点了也没反应）。
+              // 隐藏时仍占位：否则 hover 进出会让标签可用的宽度变一下。
+              if (interactive) ...[
+                const SizedBox(width: 4),
+                AnimatedOpacity(
+                  opacity: hovered || widget.expanded ? 1 : 0,
+                  duration: AthenaMotion.hover,
+                  child: AnimatedRotation(
+                    // 四分之一圈：指向右 → 指向下
+                    turns: widget.expanded ? 0.25 : 0,
+                    duration: AthenaMotion.hover,
+                    child: Icon(
+                      LucideIcons.chevronRight,
+                      size: AthenaIcon.inlineSize,
+                      color: foreground,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );

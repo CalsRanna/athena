@@ -6,6 +6,7 @@ import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
 import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,6 +71,19 @@ void main() {
     ),
   );
 
+  /// 把鼠标移进某个组件：hover 相关的断言都靠它进入 hover 态。
+  Future<TestGesture> movePointerTo(
+    WidgetTester tester,
+    Offset position,
+  ) async {
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(position);
+    await tester.pump();
+    return gesture;
+  }
+
   group('currentLabel', () {
     test('有 call_description 时用模型自述', () {
       expect(
@@ -97,7 +111,7 @@ void main() {
   });
 
   group('runningLabel（进行中的组头）', () {
-    test('当前步是工具调用：描述后接累计用量', () {
+    test('当前步是工具调用：描述后接累计用量（含正在跑的那一个）', () {
       expect(
         StepCard.runningLabel([
           reasoning(thought: const Duration(milliseconds: 3200)),
@@ -107,15 +121,25 @@ void main() {
       );
     });
 
-    test('当前步不是工具调用：只有自己的文案，不接汇总', () {
+    test('当前步是推理：Thinking 后接已结算的用量，正在跑的这段不算进耗时', () {
       expect(
         StepCard.runningLabel([
           tool('{"call_description":"运行测试"}'),
           reasoning(),
         ]),
-        'Thinking',
+        'Thinking · Used 1 tool',
       );
-      expect(StepCard.runningLabel([reasoning(), compaction()]), '正在压缩上下文…');
+    });
+
+    test('当前步是压缩：状态后接已结算的用量，正在跑的这次不算进次数', () {
+      expect(
+        StepCard.runningLabel([reasoning(), compaction()]),
+        '正在压缩上下文… · Thought 0.0 seconds',
+      );
+    });
+
+    test('还没有任何已结算步骤：只有当前步自己的文案', () {
+      expect(StepCard.runningLabel([reasoning()]), 'Thinking');
     });
   });
 
@@ -285,18 +309,21 @@ void main() {
       final thought = reasoning();
       await pumpCard(tester, [completedTool, thought]);
 
-      expect(find.text('Thinking'), findsOneWidget);
+      expect(find.text('Thinking · Used 1 tool'), findsOneWidget);
       expect(find.byIcon(LucideIcons.sparkles), findsOneWidget);
       expect(find.byIcon(LucideIcons.wrench), findsNothing);
       expect(
-        find.textContaining('Used 1 tool'),
+        find.textContaining('Thought'),
         findsNothing,
-        reason: '当前步不是工具调用时不接汇总',
+        reason: '正在跑的那段推理不计入自己的耗时',
       );
 
       await pumpCard(tester, [completedTool, thought, compaction()]);
 
-      expect(find.text('正在压缩上下文…'), findsOneWidget);
+      expect(
+        find.text('正在压缩上下文… · Used 1 tool · Thought 0.0 seconds'),
+        findsOneWidget,
+      );
       expect(find.byIcon(LucideIcons.fileArchive), findsOneWidget);
       expect(find.byIcon(LucideIcons.wrench), findsNothing);
 
@@ -335,18 +362,6 @@ void main() {
       tester.element(find.byType(StepHeader)),
     ).extension<AthenaColors>()!;
 
-    Future<TestGesture> movePointerTo(
-      WidgetTester tester,
-      Offset position,
-    ) async {
-      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await gesture.addPointer(location: Offset.zero);
-      addTearDown(gesture.removePointer);
-      await gesture.moveTo(position);
-      await tester.pump();
-      return gesture;
-    }
-
     testWidgets('可点头部：图标与文案一起提亮，移开还原', (tester) async {
       await pumpCard(tester, [
         tool('{"call_description":"读取配置文件"}'),
@@ -368,15 +383,21 @@ void main() {
       expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
     });
 
-    testWidgets('不可点头部（结果未返回）：hover 不提亮，仍是次级色', (tester) async {
-      await pumpCard(tester, [
-        tool('{"call_description":"读取配置文件"}', result: null),
-      ], live: false);
+    testWidgets('不可点头部（没有正文）：hover 不提亮，仍是次级色', (tester) async {
+      // 今天三种步骤都有正文，这条契约在组件层验证：没有正文的头不该可点。
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAthenaThemeData(AthenaColorMode.light),
+          home: const Scaffold(
+            body: StepHeader(icon: LucideIcons.wrench, label: 'Using a tool'),
+          ),
+        ),
+      );
       final colors = colorsOf(tester);
 
       await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
-      expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
-      expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
+      expect(labelColor(tester, 'Using a tool'), colors.textSecondary);
+      expect(iconColor(tester, LucideIcons.wrench), colors.textSecondary);
     });
   });
 
@@ -384,12 +405,27 @@ void main() {
     // 卡片里的文字与消息正文同档**同重**。折叠头与推理正文曾在两次排版重构的
     // 交接处落到 `caption` 档（12），折叠头还一度挂在 `label` 档的 w500 上——
     // 同一处漂移发生过两次，钉在这里。
-    testWidgets('折叠头与正文同档同重', (tester) async {
-      await pumpCard(tester, [tool('{"call_description":"读取配置文件"}')]);
+    testWidgets('折叠头跟随 Text size 档位，字重是正文档', (tester) async {
+      for (final size in AthenaTextSize.values) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: buildAthenaThemeData(AthenaColorMode.light),
+            home: Scaffold(
+              body: AthenaWorkspaceTextSize(
+                size: size,
+                child: StepCard(
+                  steps: [tool('{"call_description":"读取配置文件"}')],
+                  live: false,
+                ),
+              ),
+            ),
+          ),
+        );
 
-      final header = tester.widget<Text>(find.text('读取配置文件'));
-      expect(header.style?.fontSize, AthenaTextStyle.body.fontSize);
-      expect(header.style?.fontWeight, AthenaTextStyle.body.fontWeight);
+        final header = tester.widget<Text>(find.text('读取配置文件'));
+        expect(header.style?.fontSize, size.prose.fontSize);
+        expect(header.style?.fontWeight, AthenaTextStyle.body.fontWeight);
+      }
     });
 
     testWidgets('推理正文与消息正文同档同重（跟随 Text size）', (tester) async {
@@ -406,5 +442,79 @@ void main() {
         closeTo(AthenaTextSize.medium.lineHeight, 0.001),
       );
     });
+  });
+
+  group('展开提示（箭头）', () {
+    AnimatedRotation rotation(WidgetTester tester) =>
+        tester.widget<AnimatedRotation>(
+          find.ancestor(
+            of: find.byIcon(LucideIcons.chevronRight),
+            matching: find.byType(AnimatedRotation),
+          ),
+        );
+
+    /// 显隐由 opacity 表达，不是加删组件——隐藏时仍占位。
+    double arrowOpacity(WidgetTester tester) => tester
+        .widget<AnimatedOpacity>(
+          find.ancestor(
+            of: find.byIcon(LucideIcons.chevronRight),
+            matching: find.byType(AnimatedOpacity),
+          ),
+        )
+        .opacity;
+
+    testWidgets('静止不显示，hover 显形，展开后保持可见并转向下', (tester) async {
+      await pumpCard(tester, [
+        tool('{"call_description":"读取配置文件"}'),
+      ], live: false);
+
+      expect(arrowOpacity(tester), 0);
+      expect(rotation(tester).turns, 0, reason: '收起时指向右');
+
+      await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
+      expect(arrowOpacity(tester), 1);
+
+      await tester.tap(find.byType(StepHeader));
+      await tester.pump();
+      expect(rotation(tester).turns, 0.25, reason: '展开后指向下');
+      expect(arrowOpacity(tester), 1, reason: '展开后不再依赖 hover');
+    });
+
+    testWidgets('没有正文的头不给箭头（组件层契约）', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAthenaThemeData(AthenaColorMode.light),
+          home: const Scaffold(
+            body: StepHeader(icon: LucideIcons.wrench, label: 'Using a tool'),
+          ),
+        ),
+      );
+
+      await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
+      expect(find.byIcon(LucideIcons.chevronRight), findsNothing);
+    });
+  });
+
+  testWidgets('运行中的工具也能展开：正文是一句占位，不铺参数', (tester) async {
+    const args = '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
+    await pumpCard(tester, [tool(args, result: null)]);
+
+    expect(find.text(StepCard.usingToolLabel), findsNothing, reason: '折叠时只有头部');
+
+    await tester.tap(find.byType(StepHeader));
+    // 运行中的头带循环 shimmer，pumpAndSettle 不会收敛
+    await tester.pump();
+    expect(find.text(StepCard.usingToolLabel), findsOneWidget);
+    expect(find.textContaining('/tmp/config.json'), findsNothing);
+  });
+
+  testWidgets('结果返回后正文是结果本身，不再铺开参数', (tester) async {
+    const args = '{"call_description":"读取配置文件","path":"/tmp/config.json"}';
+    await pumpCard(tester, [tool(args)], live: false);
+
+    await tester.tap(find.byType(StepHeader));
+    await tester.pump();
+    expect(find.textContaining('/tmp/config.json'), findsNothing);
+    expect(find.text('ok'), findsOneWidget);
   });
 }

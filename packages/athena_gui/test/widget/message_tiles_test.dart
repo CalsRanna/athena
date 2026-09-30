@@ -229,6 +229,11 @@ void main() {
     expect(find.byIcon(LucideIcons.check), findsOneWidget);
     expect(find.text('Copied'), findsOneWidget);
     expect(
+      tester.widget<Text>(find.text('Copied')).style?.fontSize,
+      AthenaTextStyle.caption.fontSize,
+      reason: '工具条的「Copied」跟着自己那行（caption），不走代码块的正文档',
+    );
+    expect(
       tester.getSize(find.byType(MessageActionBar)).height,
       height,
       reason: '「Copied」只该把按钮加宽，不该顶高工具条',

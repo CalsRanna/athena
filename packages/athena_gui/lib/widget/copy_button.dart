@@ -63,18 +63,19 @@ class _CopyFeedbackState extends State<CopyFeedback> {
 /// 「已复制」的内容：勾 + "Copied"。
 ///
 /// 移动端只给勾：这是瞬时反馈，不该为一个马上要复原的提示把宽度撑出去
-/// （代码块标题行、消息工具条都因此不动）。[iconSize] 与 [color] 由各自的
-/// 容器决定——代码块语言条与自己的文案同号（`inlineSize`），消息工具条与
-/// 自己的行内图标同档（`regularSize`）。文案固定走正文档：它出现在正文旁边，
-/// 比正文小一号会显得是另一层的信息。
+/// （代码块标题行、消息工具条都因此不动）。[iconSize]、[color] 与 [textStyle]
+/// 由各自的容器决定——代码块语言条整行走正文档（`inlineSize` / `body`），
+/// 消息工具条与自己那行的图标（`regularSize`）和文案（`caption`）同档。
 class CopiedLabel extends StatelessWidget {
   final Color color;
   final double iconSize;
+  final TextStyle textStyle;
 
   const CopiedLabel({
     super.key,
     required this.color,
     this.iconSize = AthenaIcon.inlineSize,
+    this.textStyle = AthenaTextStyle.body,
   });
 
   @override
@@ -86,7 +87,7 @@ class CopiedLabel extends StatelessWidget {
       children: [
         icon,
         const SizedBox(width: 4),
-        Text('Copied', style: AthenaTextStyle.body.copyWith(color: color)),
+        Text('Copied', style: textStyle.copyWith(color: color)),
       ],
     );
   }

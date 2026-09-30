@@ -177,7 +177,9 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = AthenaTextStyle.body.copyWith(color: colors.textOnCode);
+    var textStyle = AthenaWorkspaceTextSize.of(
+      context,
+    ).prose.copyWith(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -308,7 +310,9 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: AthenaTextStyle.body.copyWith(color: colors.textOnCode),
+              style: AthenaWorkspaceTextSize.of(
+                context,
+              ).prose.copyWith(color: colors.textOnCode),
             ),
           ),
           Padding(
@@ -361,7 +365,7 @@ class _FlutterMarkdown extends StatelessWidget {
     var borderSide = BorderSide(color: colors.border, width: 1);
     // 标题与正文同号、同行高、同字族，只以加粗区分层级：
     // 层级交给字重与间距，不靠放大字号（见 DESIGN.md §1）
-    var heading = body?.copyWith(fontWeight: FontWeight.bold);
+    var heading = body?.copyWith(fontWeight: FontWeight.w500);
     // 以 Theme 为基底，覆盖文字/链接/代码色为品牌语义色，
     // 避免 flutter_markdown 默认的硬编码 Colors.blue 链接与深色文字。
     var markdownStyleSheet = base.copyWith(
@@ -389,10 +393,10 @@ class _FlutterMarkdown extends StatelessWidget {
       listBullet: body,
       // 表格文本与正文同号同行高：flutter_markdown 的 tableHead / tableBody
       // 默认取主题的 textTheme.bodyMedium，不会跟随会话正文的固定档位。
-      // 表头只保留字重差异（w600），与标题"同号不同重"的处理一致。
+      // 表头只保留字重差异（w500），与标题"同号不同重"的处理一致。
       tableHead: body?.copyWith(
         color: colors.textPrimary,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
       ),
       tableBody: body?.copyWith(color: colors.textPrimary),
       blockquoteDecoration: BoxDecoration(border: Border(left: borderSide)),

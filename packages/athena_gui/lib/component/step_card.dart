@@ -15,10 +15,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// 同一个 widget 按 [steps] 的长度决定形态（Composite）：
 /// - **单步**：头部是该步骤自己的图标 / 文案 / 运行态，展开后显示它的正文
 ///   （推理文本 / 工具结果 / 压缩详情）。
-/// - **多步**：头部进行中显示当前（最后一个）步骤文案，当前步是工具调用时后面
-///   再接截至此刻的汇总；结束后只显示汇总
-///   （`Used 2 tools · Thought 3.2 seconds · Compacted once`）；展开后按时间序
-///   逐行嵌套单步 [StepCard]，各自可再展开。
+/// - **多步**：头部进行中显示当前（最后一个）步骤文案，后面再接**已结算**步骤的
+///   汇总；结束后只显示汇总（`Used 2 tools · Thought 3.2 seconds · Compacted once`）；
+///   展开后按时间序逐行嵌套单步 [StepCard]，各自可再展开。
 ///
 /// 每种步骤类型（推理 / 工具 / 压缩）只在 [_faceOf] 里有一份"表现描述"，新增
 /// 类型时先加 `AssistantStep` 子类，再补这一处 switch 与汇总计数。
@@ -71,11 +70,15 @@ class StepCard extends StatefulWidget {
     };
   }
 
+  /// 解析不出模型自述时的通用文案：头部与「结果返回前」的正文共用这一句。
+  static const usingToolLabel = 'Using a tool';
+
   /// 单步、组头、嵌套工具项与审批卡共用的标题，不展示参数预览。
   ///
-  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则显示通用文案。
+  /// 参数 JSON 完整且包含有效的 call_description 后显示描述；否则显示
+  /// [usingToolLabel]。
   static String toolLabel(String arguments) =>
-      toolCallDescription(arguments) ?? 'Using a tool';
+      toolCallDescription(arguments) ?? usingToolLabel;
 
   /// 推理结束态标题：`Thought 2.0 seconds`。
   static String thoughtLabel(MessageEntity message) {
@@ -131,27 +134,37 @@ class StepCard extends StatefulWidget {
 
   /// 组进行中折叠头文案 + 截至此刻的汇总：`运行测试 · Used 2 tools · Thought 3.2 seconds`。
   ///
-  /// 汇总与结束态共用 [summaryLabel]，工具数**包含正在跑的那一个**：一个工具
-  /// 返回时数字不跳，只有新工具开始时才 +1。
+  /// 汇总与结束态共用 [summaryLabel]，差别只在**正在跑的那一步算不算**——判据是
+  /// 它的贡献是否已经定下来：
   ///
-  /// 后缀只在当前步是**工具调用**时接：那时头部就是"在跑哪个工具"，把用量摆在
-  /// 同一行才读得通。当前步是推理 / 压缩时不接——头部正说着 `Thinking`、
-  /// 压缩状态，后面紧跟一个 `Thought X seconds` 会读成两种时态。
+  /// - 工具是**计数**：开始即确定，而且一个工具返回时数字不能跳，所以照旧含它自己；
+  /// - 推理的耗时、压缩的次数还在长：先不计，等它结束、下一步开始时才出现。
+  ///
+  /// 三种当前步都接后缀，`Thinking` / 压缩状态说的是"此刻在做什么"，后缀说的是
+  /// "这个 run 已经用了多少"，两件事本就该同时可见；不接的话它们就成了唯一看不到
+  /// 进度的两个状态。`Thinking` 后面**不会**再跟一个实时增长的 `Thought X seconds`
+  /// ——正在跑的这段推理不计入自己的耗时，同一件事不说两遍。
   ///
   /// 只有**组头**经过这里（子项走 [_faceOf]），展开后每行不会把同一份用量重复
   /// 一遍——同一个工具的描述已经上下各出现一次，用量再重复一遍只会让列表变吵。
   static String runningLabel(List<AssistantStep> steps) {
     final current = currentLabel(steps.last);
-    if (steps.last is! ToolCallStep) return current;
-    return '$current · ${summaryLabel(steps)}';
+    final settled = switch (steps.last) {
+      ToolCallStep() => steps,
+      ReasoningStep() => steps.sublist(0, steps.length - 1),
+      ContextCompactionStep(:final running) =>
+        running ? steps.sublist(0, steps.length - 1) : steps,
+    };
+    final summary = summaryLabel(settled);
+    return summary.isEmpty ? current : '$current · $summary';
   }
 
   @override
   State<StepCard> createState() => _StepCardState();
 }
 
-/// 卡片头部与可展开正文的表现描述；[body] 为 null 表示当前不可展开。
-typedef _Face = ({IconData icon, String label, bool running, Widget? body});
+/// 卡片头部与可展开正文的表现描述。
+typedef _Face = ({IconData icon, String label, bool running, Widget body});
 
 class _StepCardState extends State<StepCard> {
   bool _expanded = false;
@@ -187,9 +200,10 @@ class _StepCardState extends State<StepCard> {
             icon: face.icon,
             label: face.label,
             running: face.running && !widget.nested,
-            onTap: body == null ? null : _toggle,
+            expanded: _expanded,
+            onTap: _toggle,
           ),
-          if (body != null && _expanded) body,
+          if (_expanded) body,
         ],
       ),
     );
@@ -208,15 +222,16 @@ class _StepCardState extends State<StepCard> {
       icon: StepCard.toolIcon(tool.toolName),
       label: StepCard.toolLabel(tool.arguments),
       running: !tool.hasResult,
-      body: tool.hasResult ? _resultBody(tool.result!) : null,
+      // 结果未返回时正文只有一句占位：参数不铺进消息列表（它可能又长又敏感），
+      // 展开只是确认"它已经在跑了"。结果到了换成结果本身，展开态保持不变。
+      body: _resultBody(tool.result ?? StepCard.usingToolLabel),
     ),
     ContextCompactionStep compaction => (
       icon: LucideIcons.fileArchive,
       label: StepCard.compactionLabel(compaction),
       running: compaction.running,
-      body: compaction.running
-          ? null
-          : _resultBody(_compactionDetails(compaction)),
+      // 压缩中也能展开：此刻的详情是"覆盖多少条消息、多少 tokens"
+      body: _resultBody(_compactionDetails(compaction)),
     ),
   };
 

@@ -395,10 +395,9 @@ void main() {
           notMono: true,
         );
       }
-      // 语言条整行与正文档同号同重（14 / w400 / 图标 14）。它不随会话档位变：
-      // 档位只作用于正文与代码内容，语言条是标签（DESIGN.md §3）。
+      // 语言条整行跟随会话档位（与代码正文同号），字重是正文档的 w400
       final language = tester.widget<Text>(find.text('dart')).style;
-      expect(language?.fontSize, AthenaTextStyle.body.fontSize);
+      expect(language?.fontSize, fontSize);
       expect(language?.fontWeight, AthenaTextStyle.body.fontWeight);
       expect(
         tester.widget<Icon>(find.byIcon(LucideIcons.code)).size,
