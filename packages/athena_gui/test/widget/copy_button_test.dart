@@ -64,4 +64,26 @@ void main() {
     expect(find.byIcon(LucideIcons.copy), findsOneWidget);
     expect(find.text('Copied'), findsNothing);
   });
+
+  // 代码块语言条整行走正文档；这个键与那行文案同号，不再是容器比例的 12。
+  testWidgets('图标与「Copied」文案与同行文案同号', (tester) async {
+    await tester.pumpWidget(host(CopyButton(onTap: () {})));
+
+    expect(
+      tester.widget<Icon>(find.byIcon(LucideIcons.copy)).size,
+      AthenaIcon.inlineSize,
+    );
+
+    await tester.tap(find.byType(CopyButton));
+    await tester.pump(AthenaMotion.hover);
+    await tester.pump();
+    expect(
+      tester.widget<Icon>(find.byIcon(LucideIcons.check)).size,
+      AthenaIcon.inlineSize,
+    );
+    expect(
+      tester.widget<Text>(find.text('Copied')).style?.fontSize,
+      AthenaTextStyle.body.fontSize,
+    );
+  });
 }

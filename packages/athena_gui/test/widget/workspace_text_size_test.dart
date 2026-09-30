@@ -28,6 +28,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 
@@ -394,6 +395,15 @@ void main() {
           notMono: true,
         );
       }
+      // 语言条整行与正文档同号同重（14 / w400 / 图标 14）。它不随会话档位变：
+      // 档位只作用于正文与代码内容，语言条是标签（DESIGN.md §3）。
+      final language = tester.widget<Text>(find.text('dart')).style;
+      expect(language?.fontSize, AthenaTextStyle.body.fontSize);
+      expect(language?.fontWeight, AthenaTextStyle.body.fontWeight);
+      expect(
+        tester.widget<Icon>(find.byIcon(LucideIcons.code)).size,
+        AthenaIcon.inlineSize,
+      );
       expect(tester.takeException(), isNull);
     }
   });

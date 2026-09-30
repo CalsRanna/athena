@@ -64,12 +64,18 @@ class _CopyFeedbackState extends State<CopyFeedback> {
 ///
 /// 移动端只给勾：这是瞬时反馈，不该为一个马上要复原的提示把宽度撑出去
 /// （代码块标题行、消息工具条都因此不动）。[iconSize] 与 [color] 由各自的
-/// 容器决定——代码块是浅底上的 12，消息工具条与自己的行内图标同档。
+/// 容器决定——代码块语言条与自己的文案同号（`inlineSize`），消息工具条与
+/// 自己的行内图标同档（`regularSize`）。文案固定走正文档：它出现在正文旁边，
+/// 比正文小一号会显得是另一层的信息。
 class CopiedLabel extends StatelessWidget {
   final Color color;
   final double iconSize;
 
-  const CopiedLabel({super.key, required this.color, this.iconSize = 12.0});
+  const CopiedLabel({
+    super.key,
+    required this.color,
+    this.iconSize = AthenaIcon.inlineSize,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +86,7 @@ class CopiedLabel extends StatelessWidget {
       children: [
         icon,
         const SizedBox(width: 4),
-        Text('Copied', style: AthenaTextStyle.caption.copyWith(color: color)),
+        Text('Copied', style: AthenaTextStyle.body.copyWith(color: color)),
       ],
     );
   }
@@ -105,11 +111,14 @@ class CopyButton extends StatelessWidget {
       builder: (context, copied) => AnimatedSwitcher(
         duration: AthenaMotion.hover,
         child: copied
-            ? CopiedLabel(color: color ?? colors.textSecondaryOnRaised)
+            ? CopiedLabel(
+                color: color ?? colors.textSecondaryOnRaised,
+                iconSize: AthenaIcon.inlineSize,
+              )
             : Icon(
                 LucideIcons.copy,
                 color: base.withValues(alpha: 0.4),
-                size: 12.0,
+                size: AthenaIcon.inlineSize,
               ),
       ),
     );

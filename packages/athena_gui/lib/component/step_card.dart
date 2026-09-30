@@ -5,8 +5,8 @@ import 'package:athena_core/util/compaction_step_formatter.dart';
 import 'package:athena_core/util/tool_args_formatter.dart';
 import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
-import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
+import 'package:athena_gui/widget/workspace_text_size.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -278,7 +278,7 @@ class _StepCardState extends State<StepCard> {
   });
 }
 
-/// 推理正文：非等宽、点击整块收起。
+/// 推理正文：与消息正文同档（跟随 Text size）、点击整块收起。
 class _ReasoningBody extends StatelessWidget {
   final MessageEntity message;
   final VoidCallback onTap;
@@ -295,7 +295,9 @@ class _ReasoningBody extends StatelessWidget {
         width: double.infinity,
         child: Text(
           message.reasoningContent,
-          style: AthenaTextStyle.caption.copyWith(color: colors.textSecondary),
+          style: AthenaWorkspaceTextSize.of(
+            context,
+          ).prose.copyWith(color: colors.textSecondary),
         ),
       ),
     );

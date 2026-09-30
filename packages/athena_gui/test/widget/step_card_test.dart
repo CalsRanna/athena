@@ -4,6 +4,7 @@ import 'package:athena_gui/component/step_card.dart';
 import 'package:athena_gui/component/step_primitives.dart';
 import 'package:athena_gui/theme/athena_colors.dart';
 import 'package:athena_gui/theme/athena_theme.dart';
+import 'package:athena_gui/theme/athena_tokens.dart';
 import 'package:athena_gui/util/message_display_util.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -376,6 +377,34 @@ void main() {
       await movePointerTo(tester, tester.getCenter(find.byType(StepHeader)));
       expect(labelColor(tester, '读取配置文件'), colors.textSecondary);
       expect(iconColor(tester, LucideIcons.file), colors.textSecondary);
+    });
+  });
+
+  group('字号档位', () {
+    // 卡片里的文字与消息正文同档**同重**。折叠头与推理正文曾在两次排版重构的
+    // 交接处落到 `caption` 档（12），折叠头还一度挂在 `label` 档的 w500 上——
+    // 同一处漂移发生过两次，钉在这里。
+    testWidgets('折叠头与正文同档同重', (tester) async {
+      await pumpCard(tester, [tool('{"call_description":"读取配置文件"}')]);
+
+      final header = tester.widget<Text>(find.text('读取配置文件'));
+      expect(header.style?.fontSize, AthenaTextStyle.body.fontSize);
+      expect(header.style?.fontWeight, AthenaTextStyle.body.fontWeight);
+    });
+
+    testWidgets('推理正文与消息正文同档同重（跟随 Text size）', (tester) async {
+      await pumpCard(tester, [reasoning()]);
+      await tester.tap(find.byType(StepHeader));
+      // 运行中的头带循环 shimmer，pumpAndSettle 不会收敛
+      await tester.pump();
+
+      final body = tester.widget<Text>(find.text('想想'));
+      expect(body.style?.fontSize, AthenaTextSize.medium.prose.fontSize);
+      expect(body.style?.fontWeight, AthenaTextStyle.body.fontWeight);
+      expect(
+        body.style!.height! * body.style!.fontSize!,
+        closeTo(AthenaTextSize.medium.lineHeight, 0.001),
+      );
     });
   });
 }

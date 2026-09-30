@@ -177,7 +177,7 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       color: colors.cardHeader,
     );
     var padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
-    var textStyle = AthenaTextStyle.caption.copyWith(color: colors.textOnCode);
+    var textStyle = AthenaTextStyle.body.copyWith(color: colors.textOnCode);
     final language =
         element.attributes['class']?.replaceFirst('language-', '') ??
         'plain text';
@@ -188,7 +188,11 @@ class _CodeBlockBuilder extends MarkdownElementBuilder {
       style: textStyle,
     );
     // header 左端是"这是什么"（图标 + 语言标签），右端是"能对它做什么"（复制）
-    var icon = Icon(LucideIcons.code, size: 12, color: colors.textOnCode);
+    var icon = Icon(
+      LucideIcons.code,
+      size: AthenaIcon.inlineSize,
+      color: colors.textOnCode,
+    );
     // CopyButton 的图标按传入色 40% 透明度渲染。默认取色 textOnRaised 在浅色
     // 主题下是纯白，落在近白的语言条上等于隐形；这里显式用代码面上的正文色。
     var copyButton = Tooltip(
@@ -304,7 +308,7 @@ class _FootnotesMarkdownBody extends MarkdownBody {
             // 头部只有一行标签，与代码块的语言标签同规格
             child: Text(
               'Footnotes',
-              style: AthenaTextStyle.caption.copyWith(color: colors.textOnCode),
+              style: AthenaTextStyle.body.copyWith(color: colors.textOnCode),
             ),
           ),
           Padding(

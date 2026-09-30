@@ -53,7 +53,8 @@ class _StepHeaderState extends State<StepHeader> {
         final foreground = interactive && hovered
             ? colors.textPrimary
             : colors.textSecondary;
-        final style = AthenaTextStyle.caption.copyWith(color: foreground);
+        // 与正文同档同重：卡片里没有比正文更小或更重的文字层级
+        final style = AthenaTextStyle.body.copyWith(color: foreground);
         return StepHeaderShimmer(
           active: widget.running,
           child: Row(
