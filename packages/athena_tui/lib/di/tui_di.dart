@@ -31,6 +31,7 @@ import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:athena_core/storage/json_file_key_value_store.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
+import 'package:path/path.dart' as p;
 import 'package:athena_tui/view_model/chat_controller.dart';
 
 /// TUI 组合根:手写依赖装配(镜像 athena_gui 的 di.dart,不用 GetIt)。
@@ -156,9 +157,10 @@ class TuiDi {
     );
 
     // ── Repositories(布局与装配见 FileStorage,与 GUI 共用)──
-    // setting.yaml 固定在 $HOME/.athena 下:测试覆盖 dataDirectory 时
-    // provider 配置仍走用户主目录,与旧行为一致
-    userSettingsFile = File('$_homeDir/.athena/setting.yaml');
+    // 用户配置与 provider 目录都跟随数据根:此前 setting.yaml 固定拼在
+    // $HOME 下,`dataDirectory` 只覆盖 dataDirectory 而不同时覆盖 homeDir 时
+    // (如某些测试),会把 provider 写进真实主目录去。
+    userSettingsFile = File(p.join(_dataDir.path, 'setting.yaml'));
     storage = FileStorage(root: _dataDir, settingFile: userSettingsFile);
     chatRepo = storage.sessionRepository;
     messageRepo = storage.sessionRepository;
@@ -256,8 +258,8 @@ class TuiDi {
       providerRepo: providerRepo,
       sentinelRepo: sentinelRepo,
       supportService: supportService,
-      // 模型切换 / apiKey 变更写回 setting.yaml
-      // 模型切换写回 yaml(provider 由 YamlProviderRepository 直接持久化)
+      // 模型切换写回 setting.yaml(provider 由 YamlProviderRepository
+      // 直接持久化到 providers/ 下的单文件)
       onModelSwitched: persistCurrentModelId,
     );
   }

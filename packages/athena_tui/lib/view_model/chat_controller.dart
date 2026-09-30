@@ -380,8 +380,8 @@ class ChatController {
     if (trimmed.isNotEmpty) {
       error.value = null;
     }
-    // provider 由 YamlProviderRepository 直接持久化到 setting.yaml,
-    // 无需额外写回
+    // provider 由 YamlProviderRepository 直接持久化到 providers/ 下的
+    // 单文件,无需额外写回
   }
 
   /// 保存 provider 的 API 格式(供 /format)。

@@ -346,7 +346,7 @@ class _DesktopSettingProviderPageState
               label: 'API key',
               description: provider.apiKey.trim().isEmpty
                   ? 'Required before any of its models can be used.'
-                  : 'Stored locally in setting.yaml.',
+                  : 'Stored locally in providers/.',
               control: SizedBox(
                 width: AthenaSettingsControlWidth.wide,
                 child: AthenaSettingsTextField(

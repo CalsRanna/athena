@@ -121,15 +121,33 @@ void main() {
       expect(backups.single.readAsStringSync(), original);
     });
 
-    test('setting.yaml 语法错误时，保存 provider / 默认模型前先备份', () async {
-      const original = 'providers:\n  - id: 1\n    apiKey: "sk-unterminated\n';
+    test('setting.yaml 语法错误时，保存默认模型前先备份', () async {
+      const original = 'model: "sk-unterminated\n';
       storage.settingFile
         ..createSync(recursive: true)
         ..writeAsStringSync(original);
 
       await storage.userSettings.saveModelId('deepseek-chat');
-      await storage.providerRepository.storeProvider(
+
+      final backups = backupsOf(storage.settingFile);
+      expect(backups, isNotEmpty);
+      expect(backups.first.readAsStringSync(), original);
+    });
+
+    test('provider 文件语法错误时，改写前先备份自己', () async {
+      const original = 'name: n\napiKey: "sk-unterminated\n';
+      final file = File(p.join(storage.providersDir.path, 'broken.yaml'));
+      file
+        ..createSync(recursive: true)
+        ..writeAsStringSync(original);
+      // 损坏的 provider 读时跳过，不影响其余 provider
+      expect(await storage.providerRepository.getProvidersCount(), 0);
+      expect(await storage.providerRepository.getAllProviders(), isEmpty);
+
+      // 改写同一个 provider 前先备份，原内容不会因为整文件覆盖而丢失
+      await storage.providerRepository.updateProvider(
         ProviderEntity(
+          id: 'broken',
           name: 'n',
           baseUrl: 'https://x',
           apiKey: 'k',
@@ -137,7 +155,7 @@ void main() {
         ),
       );
 
-      final backups = backupsOf(storage.settingFile);
+      final backups = backupsOf(file);
       expect(backups, isNotEmpty);
       expect(backups.first.readAsStringSync(), original);
     });

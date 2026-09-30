@@ -1,95 +1,77 @@
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/repository/provider_repository.dart';
-import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_generator.dart';
-import 'package:athena_core/storage/serial_lock.dart';
-import 'package:athena_core/storage/user_settings_store.dart';
+import 'package:athena_core/storage/provider_store.dart';
 
-/// ProviderRepository 的 YAML 实现(`~/.athena/setting.yaml`)。
+/// ProviderRepository 的文件实现:一个 provider 一个 YAML 文件
+/// (`~/.athena/providers/{id}.yaml`,布局与读写语义见 `ProviderStore`)。
 ///
-/// - **yaml 是唯一真相**:每次读都重新解析文件(几 KB,可忽略),不在
-///   内存里另存一份权威副本——GUI 与 TUI 共享此文件且可能同时运行,
-///   内存副本会把对方刚写入的 provider 覆盖掉
-/// - **yaml 持久化全部 provider**(含尚未配 key 的模板 provider):
-///   GUI 的 provider 设置页需要在重启后仍列出它们供用户填 key;
-///   目录同步在 TTL 内会跳过,不能依赖同步重建
-/// - 修改在"进程内串行 + 跨进程文件锁"内完成读-改-写
+/// - **文件是唯一真相**:每次读都重新列举目录(GUI 与 TUI 共享此目录且可能
+///   同时运行,内存副本会把对方刚写入的 provider 覆盖掉)
+/// - **全部 provider 都落盘**(含尚未配 key 的模板 provider):GUI 的设置页
+///   需要在重启后仍列出它们供用户填 key;目录同步在 TTL 内会跳过,不能依赖
+///   同步重建
+/// - 修改在「进程内串行 + 跨进程文件锁」内完成读-改-写,且锁只覆盖被改的
+///   那一个 provider
 ///
-/// id 分配:新 provider 使用 UUIDv7，与 models.json 的 providerId
-/// 引用保持一致。
+/// 列表顺序由**名字**决定(见 [_byName]):一个文件一个 provider 之后,列举
+/// 顺序来自目录、不稳定,必须有确定的排序键。按名字排还有一个好处:用户新增
+/// provider 时不必考虑它排在哪儿,叫什么都决定了位置。
 class YamlProviderRepository implements ProviderRepository {
   YamlProviderRepository({
-    required UserSettingsStore store,
+    required ProviderStore store,
     IdGenerator idGenerator = const IdGenerator(),
   }) : _store = store,
        _idGenerator = idGenerator;
 
-  final UserSettingsStore _store;
+  final ProviderStore _store;
   final IdGenerator _idGenerator;
-  Future<void>? _lock;
 
   /// 兼容旧调用:不再有内存副本,无需预加载。保留以便装配层统一调用。
   Future<void> load() async {}
 
-  Future<T> _mutate<T>(Future<T> Function(List<ProviderEntity> all) action) {
-    return serialLock(
-      _lock,
-      () => withFileLock(lockFileFor(_store.file), () async {
-        final all = await _store.loadProviders();
-        final result = await action(all);
-        await _store.saveProviders(all);
-        return result;
-      }),
-      (f) => _lock = f,
-    );
+  /// 用户可见列表按名字排,大小写不敏感(避免 `deepseek` 与 `Deep Seek`
+  /// 被拆到列表两端);同名时按 id 兜底,保证顺序稳定且与文件系统无关。
+  static int _byName(ProviderEntity a, ProviderEntity b) {
+    final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    if (byName != 0) return byName;
+    return (a.id ?? '').compareTo(b.id ?? '');
+  }
+
+  Future<List<ProviderEntity>> _sorted() async {
+    final all = await _store.list();
+    all.sort(_byName);
+    return all;
   }
 
   @override
-  Future<List<ProviderEntity>> getAllProviders() => _store.loadProviders();
+  Future<List<ProviderEntity>> getAllProviders() => _sorted();
 
   @override
-  Future<ProviderEntity?> getProviderById(String id) async {
-    for (final provider in await getAllProviders()) {
-      if (provider.id == id) return provider;
-    }
-    return null;
-  }
+  Future<ProviderEntity?> getProviderById(String id) => _store.read(id);
 
   @override
   Future<List<ProviderEntity>> getEnabledProviders() async {
     return [
-      for (final p in await getAllProviders())
+      for (final p in await _sorted())
         if (p.enabled) p,
     ];
   }
 
   @override
-  Future<String> storeProvider(ProviderEntity provider) {
-    return _mutate((all) async {
-      if (provider.id != null) {
-        // 已带 id(如导入保留原始 id):更新或追加
-        final index = all.indexWhere((p) => p.id == provider.id);
-        if (index >= 0) {
-          all[index] = provider;
-        } else {
-          all.add(provider);
-        }
-        return provider.id!;
-      }
-      final newId = _idGenerator.next();
-      all.add(provider.copyWith(id: newId));
-      return newId;
-    });
+  Future<String> storeProvider(ProviderEntity provider) async {
+    final id = provider.id ?? _idGenerator.next();
+    // 已带 id(如导入保留原始 id)时覆盖同名文件;否则写入刚生成的新 id。
+    await _store.write(provider.copyWith(id: id));
+    return id;
   }
 
   @override
-  Future<void> updateProvider(ProviderEntity provider) {
-    return _mutate((all) async {
-      final id = provider.id;
-      final index = id == null ? -1 : all.indexWhere((p) => p.id == id);
-      if (index >= 0) all[index] = provider;
-    });
+  Future<void> updateProvider(ProviderEntity provider) async {
+    final id = provider.id;
+    if (id == null) return;
+    await _store.write(provider);
   }
 
   @override
@@ -98,57 +80,34 @@ class YamlProviderRepository implements ProviderRepository {
     required String baseUrl,
     required ApiFormat apiFormat,
   }) {
-    // 同步可能与 GUI/TUI 编辑配置并发，必须在文件锁内读取最新实体，
-    // 不能把同步开始时读到的 API key、启用状态或手动选择写回去。
-    return serialLock(
-      _lock,
-      () => withFileLock(lockFileFor(_store.file), () async {
-        final all = await _store.loadProviders();
-        final index = all.indexWhere((p) => p.id == id);
-        if (index < 0) return;
-        final provider = all[index];
-        final trailingSlashes = RegExp(r'/+$');
-        if (!provider.isPreset ||
-            !provider.apiFormatAuto ||
-            provider.baseUrl.replaceFirst(trailingSlashes, '') !=
-                baseUrl.replaceFirst(trailingSlashes, '') ||
-            provider.apiFormat == apiFormat) {
-          return;
-        }
-        all[index] = provider.copyWith(
-          apiFormat: apiFormat,
-          apiFormatAuto: true,
-        );
-        await _store.saveProviders(all);
-      }),
-      (f) => _lock = f,
-    );
-  }
-
-  @override
-  Future<void> deleteProvider(String id) {
-    return _mutate((all) async {
-      all.removeWhere((p) => p.id == id);
-    });
-  }
-
-  @override
-  Future<int> getProvidersCount() async => (await getAllProviders()).length;
-
-  @override
-  Future<void> batchStoreProviders(List<ProviderEntity> providers) {
-    return _mutate((all) async {
-      for (final provider in providers) {
-        final index = provider.id == null
-            ? -1
-            : all.indexWhere((p) => p.id == provider.id);
-        if (index >= 0) {
-          all[index] = provider;
-        } else {
-          all.add(provider);
-        }
+    // 同步只改格式元数据。守卫条件全部在锁内、基于锁内读到的最新实体判定:
+    // 审批与同步可能与 GUI/TUI 的编辑并发,不能把编辑开始时的旧快照(旧的
+    // API key、启用状态、手动选择)写回去。
+    return _store.mutate(id, (provider) {
+      final trailingSlashes = RegExp(r'/+$');
+      if (!provider.isPreset ||
+          !provider.apiFormatAuto ||
+          provider.baseUrl.replaceFirst(trailingSlashes, '') !=
+              baseUrl.replaceFirst(trailingSlashes, '') ||
+          provider.apiFormat == apiFormat) {
+        return null;
       }
+      return provider.copyWith(apiFormat: apiFormat, apiFormatAuto: true);
     });
+  }
+
+  @override
+  Future<void> deleteProvider(String id) => _store.delete(id);
+
+  @override
+  Future<int> getProvidersCount() async => (await _sorted()).length;
+
+  @override
+  Future<void> batchStoreProviders(List<ProviderEntity> providers) async {
+    for (final provider in providers) {
+      final id = provider.id ?? _idGenerator.next();
+      await _store.write(provider.copyWith(id: id));
+    }
   }
 
   @override
@@ -168,16 +127,15 @@ class YamlProviderRepository implements ProviderRepository {
   }
 
   @override
-  Future<void> deleteAllProviders() {
-    return _mutate((all) async => all.clear());
-  }
+  Future<void> deleteAllProviders() => _store.deleteAll();
 
   @override
   Future<void> importProviders(List<ProviderEntity> providers) {
-    return _mutate((all) async {
-      all
-        ..clear()
-        ..addAll(providers);
-    });
+    return _store.replaceAll([
+      for (final provider in providers)
+        provider.id == null
+            ? provider.copyWith(id: _idGenerator.next())
+            : provider,
+    ]);
   }
 }

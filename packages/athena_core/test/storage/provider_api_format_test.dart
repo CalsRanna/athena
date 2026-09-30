@@ -5,6 +5,7 @@ import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/file_storage.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -17,41 +18,45 @@ void main() {
   });
   tearDown(() => directory.delete(recursive: true));
 
-  test('旧 YAML 默认兼容格式并允许自动同步，显式格式默认手动', () async {
-    await atomicWriteString(storage.settingFile, '''
-providers:
-  - id: '1'
-    name: Legacy
-  - id: '2'
-    name: Manual
-    apiFormat: messages
-  - id: '3'
-    name: Invalid
-    apiFormat: [responses]
-''');
-    final providers = await storage.providerRepository.getAllProviders();
-    expect(providers[0].apiFormat, ApiFormat.chatCompletions);
-    expect(providers[0].apiFormatAuto, isTrue);
-    expect(providers[1].apiFormat, ApiFormat.messages);
-    expect(providers[1].apiFormatAuto, isFalse);
-    expect(providers[2].apiFormat, ApiFormat.chatCompletions);
+  test('缺省 apiFormat 默认兼容格式并允许自动同步，显式格式默认手动', () async {
+    await _writeProvider(storage, 'legacy', 'name: Legacy\n');
+    await _writeProvider(
+      storage,
+      'manual',
+      'name: Manual\napiFormat: messages\n',
+    );
+    await _writeProvider(
+      storage,
+      'invalid',
+      'name: Invalid\napiFormat: [responses]\n',
+    );
+    final byName = {
+      for (final p in await storage.providerRepository.getAllProviders())
+        p.name: p,
+    };
+    expect(byName['Legacy']!.apiFormat, ApiFormat.chatCompletions);
+    expect(byName['Legacy']!.apiFormatAuto, isTrue);
+    expect(byName['Manual']!.apiFormat, ApiFormat.messages);
+    expect(byName['Manual']!.apiFormatAuto, isFalse);
+    expect(byName['Invalid']!.apiFormat, ApiFormat.chatCompletions);
   });
 
-  test('保存 TUI 默认模型不会改变旧配置与显式配置的自动模式', () async {
-    await atomicWriteString(storage.settingFile, '''
-providers:
-  - id: '1'
-    name: Legacy
-  - id: '2'
-    name: Manual
-    apiFormat: messages
-''');
+  test('保存 TUI 默认模型不会改变 provider 的自动模式', () async {
+    await _writeProvider(storage, 'legacy', 'name: Legacy\n');
+    await _writeProvider(
+      storage,
+      'manual',
+      'name: Manual\napiFormat: messages\n',
+    );
     await storage.userSettings.saveModelId('test-model');
-    final providers = await storage.providerRepository.getAllProviders();
-    expect(providers[0].apiFormat, ApiFormat.chatCompletions);
-    expect(providers[0].apiFormatAuto, isTrue);
-    expect(providers[1].apiFormat, ApiFormat.messages);
-    expect(providers[1].apiFormatAuto, isFalse);
+    final byName = {
+      for (final p in await storage.providerRepository.getAllProviders())
+        p.name: p,
+    };
+    expect(byName['Legacy']!.apiFormat, ApiFormat.chatCompletions);
+    expect(byName['Legacy']!.apiFormatAuto, isTrue);
+    expect(byName['Manual']!.apiFormat, ApiFormat.messages);
+    expect(byName['Manual']!.apiFormatAuto, isFalse);
     expect(await storage.userSettings.loadModelId(), 'test-model');
   });
 
@@ -136,6 +141,14 @@ providers:
     }
   });
 }
+
+/// 直接写一个 provider 文件:模拟用户手工编辑这个目录(文件即身份,
+/// 内容里不必有 id)。
+Future<void> _writeProvider(FileStorage storage, String id, String body) =>
+    atomicWriteString(
+      File(p.join(storage.providersDir.path, '$id.yaml')),
+      body,
+    );
 
 ProviderEntity _provider() => ProviderEntity(
   name: 'Example',

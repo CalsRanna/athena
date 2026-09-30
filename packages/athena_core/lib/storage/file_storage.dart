@@ -5,6 +5,8 @@ import 'package:athena_core/storage/storage_id_migration.dart';
 import 'package:athena_core/storage/json_array_model_repository.dart';
 import 'package:athena_core/storage/json_array_sentinel_repository.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
+import 'package:athena_core/storage/provider_files_migration.dart';
+import 'package:athena_core/storage/provider_store.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_core/storage/yaml_provider_repository.dart';
 import 'package:path/path.dart' as p;
@@ -22,7 +24,8 @@ import 'package:path/path.dart' as p;
 ///   sentinels.json            # 角色列表(JSON 数组，旧 avatar 字段读取时忽略)
 ///   storage_version.json      # 格式版本与旧模型 ID 映射（GUI 偏好迁移用）
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
-///   setting.yaml              # provider 配置(含 API key、API 格式元数据与自动同步开关)与 TUI 默认模型
+///   setting.yaml              # TUI 默认模型（provider 配置自 v3 起在 providers/）
+///   providers/{id}.yaml        # 一个 provider 一个文件（含 API key、API 格式元数据与自动同步开关）
 ///   models_dev_cache.json     # models.dev 目录缓存
 ///   tool_outputs/             # 工具长输出(内容寻址)
 ///   background_tasks/         # 运行中的后台任务(按属主进程记账,供孤儿清理)
@@ -51,18 +54,21 @@ class FileStorage {
       idGenerator: idGenerator,
     );
     userSettings = UserSettingsStore(file: this.settingFile);
+    providerStore = ProviderStore(directory: providersDir);
     providerRepository = YamlProviderRepository(
-      store: userSettings,
+      store: providerStore,
       idGenerator: idGenerator,
     );
   }
 
   final Directory root;
 
-  /// provider 配置文件;默认 `root/setting.yaml`,TUI 测试可单独指定。
+  /// 用户配置文件;默认 `root/setting.yaml`(只剩 TUI 默认模型),TUI 测试
+  /// 可单独指定。
   final File settingFile;
 
   Directory get sessionsDir => Directory(p.join(root.path, 'sessions'));
+  Directory get providersDir => Directory(p.join(root.path, 'providers'));
   File get modelsFile => File(p.join(root.path, 'models.json'));
   File get sentinelsFile => File(p.join(root.path, 'sentinels.json'));
 
@@ -83,6 +89,7 @@ class FileStorage {
   late final JsonArrayModelRepository modelRepository;
   late final JsonArraySentinelRepository sentinelRepository;
   late final UserSettingsStore userSettings;
+  late final ProviderStore providerStore;
   late final YamlProviderRepository providerRepository;
 
   /// 启动升级保留的模型身份映射，供 GUI 的旧 SharedPreferences 迁移。
@@ -92,6 +99,13 @@ class FileStorage {
     legacyModelIds = await StorageIdMigration(
       root: root,
       settingFile: settingFile,
+    ).run();
+    // 整数 id 已在上一步转换完毕,这里只把 setting.yaml 的 providers 段摊成
+    // 独立文件(见 [ProviderFilesMigration]),顺序不可颠倒。
+    await ProviderFilesMigration(
+      root: root,
+      settingFile: settingFile,
+      providersDir: providersDir,
     ).run();
     await providerRepository.load();
   }
@@ -110,6 +124,10 @@ class FileStorage {
 
   /// 清空全部业务数据(会话、模型、角色、provider),不动
   /// 目录缓存与工具输出。调用方随后应重新执行种子。
+  ///
+  /// provider 走仓储的逐个删除而不是删掉 `providers/` 整个目录:目录里还有
+  /// 迁移标记 `.version` 与各 provider 的 `.lock`,删目录会把标记一起清掉,
+  /// 下次启动会重新尝试(已无 providers 段的)迁移。
   Future<void> reset() async {
     if (await sessionsDir.exists()) {
       await sessionsDir.delete(recursive: true);
