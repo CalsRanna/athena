@@ -5,6 +5,7 @@ import 'package:athena_core/repository/provider_repository.dart';
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_gui/service/sentinel_service.dart';
 import 'package:athena_gui/extension/list_signal_extension.dart';
+import 'package:athena_core/seed/sentinel_seed.dart';
 import 'package:signals/signals.dart';
 
 class SentinelViewModel {
@@ -52,12 +53,21 @@ class SentinelViewModel {
 
   static const defaultName = SentinelEntity.athenaName;
 
-  static SentinelEntity get defaultSentinelEntity => SentinelEntity(
-    name: defaultName,
-    description: '一个友好且高效的聊天助手,随时为您提供信息和帮助。',
-    prompt: '你是一个智能聊天助手。',
-    tags: '',
-  );
+  /// 兜底角色：只在库中没有 Athena 时使用（种子未跑、数据被手工清空）。
+  ///
+  /// 提示词取 [SentinelSeed.builtins] 里的 Athena 条目，而不是就地再写一份——
+  /// 两份文案必然漂移，兜底角色本就是「种子缺失时的临时替身」，与真正的
+  /// Athena 用同一份提示词才符合预期。
+  static SentinelEntity get defaultSentinelEntity {
+    final athena = SentinelSeed.builtins.firstWhere((b) => b.$1 == defaultName);
+    return SentinelEntity(
+      name: athena.$1,
+      description: athena.$2,
+      prompt: athena.$3,
+      tags: athena.$4,
+      isPreset: true,
+    );
+  }
 
   late final tags = computed(() {
     var allTags = <String>[];
@@ -83,7 +93,7 @@ class SentinelViewModel {
         entity = entity.copyWith(id: id);
         loadedSentinels = [entity];
       } else {
-        // 预设角色仅 Athena 展示,其余隐藏(数据仍在库中,聊天引用可解析);
+        // 预设角色仅白名单内的展示,其余隐藏(数据仍在库中,聊天引用可解析);
         // 过滤后为空时用默认实体兜底,保证聊天页始终有可选角色
         var visible = loadedSentinels.where((s) => s.isListVisible).toList();
         if (visible.isEmpty) visible = [defaultSentinelEntity];

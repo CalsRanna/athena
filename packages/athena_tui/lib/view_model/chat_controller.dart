@@ -345,7 +345,7 @@ class ChatController {
 
   /// 全部可用角色(供选择弹层使用)。
   ///
-  /// 预设角色仅 Athena 展示([SentinelEntity.isListVisible]),
+  /// 预设角色里只有白名单内的展示([SentinelEntity.isListVisible]),
   /// 其余预设角色隐藏;数据仍在库中,已存聊天引用不受影响。
   Future<List<SentinelEntity>> get availableSentinels async {
     final all = await _sentinelRepo.getAllSentinels();

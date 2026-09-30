@@ -18,9 +18,6 @@ class SentinelEvolveTool implements Tool {
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => false;
 
-  /// 内置 sentinel 的名称，其内容可改进但名称不可修改
-  static const builtinSentinelName = 'Athena';
-
   final SentinelRepository _repository;
   final SentinelHistoryStore _historyStore;
   final void Function()? _onChanged;
@@ -120,15 +117,17 @@ class SentinelEvolveTool implements Tool {
       return 'Error: new_prompt must not be empty.';
     }
 
-    // 内置 sentinel 不允许改名
-    if (original.name == builtinSentinelName) {
+    // 内置 sentinel 不允许改名（判据在实体上：预设角色全部锁定名字）。
+    // 白名单里的 Athena / Daedalus 与未展示的预设角色同为预设，统一处理，
+    // 免得新增一个内置角色就要回来再加一次判断。
+    if (original.isNameLocked) {
       final requestedName = (newName != null && newName.isNotEmpty)
           ? newName
           : original.name;
-      if (requestedName != builtinSentinelName) {
-        return 'Error: The built-in "$builtinSentinelName" sentinel cannot be '
+      if (requestedName != original.name) {
+        return 'Error: The built-in "${original.name}" sentinel cannot be '
             'renamed. You can improve its prompt, description, and tags, '
-            'but the name must remain "$builtinSentinelName".';
+            'but the name must remain "${original.name}".';
       }
     }
 

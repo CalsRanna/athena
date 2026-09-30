@@ -14,9 +14,6 @@ class SentinelRevertTool implements Tool {
   @override
   bool canExecuteParallel(Map<String, dynamic> args) => false;
 
-  /// 内置 sentinel 的名称（与 SentinelEvolveTool 约定一致）。
-  static const builtinSentinelName = 'Athena';
-
   final SentinelRepository _repository;
   final SentinelHistoryStore _historyStore;
   final void Function()? _onChanged;
