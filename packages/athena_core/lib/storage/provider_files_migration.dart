@@ -25,24 +25,25 @@ import 'package:yaml/yaml.dart';
 /// 「已完成」误判成「待迁移」)。
 class ProviderFilesMigration {
   ProviderFilesMigration({
-    required Directory root,
     required File settingFile,
     required Directory providersDir,
-  }) : _root = root,
-       _settingFile = settingFile,
-       _providersDir = providersDir;
+    required LockRegistry locks,
+  }) : _settingFile = settingFile,
+       _providersDir = providersDir,
+       _locks = locks;
 
   static const version = 1;
 
-  final Directory _root;
   final File _settingFile;
   final Directory _providersDir;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
 
   static const _providersKey = 'providers';
 
   File get _marker => File(p.join(_providersDir.path, '.version'));
-  File get _lockFile =>
-      File(p.join(_root.path, '.provider-files-migration.lock'));
+  File get _lockFile => _locks.named('provider-files-migration');
 
   Future<void> run() {
     return withFileLock(_lockFile, () async {

@@ -12,12 +12,14 @@ import 'package:test/test.dart';
 void main() {
   late Directory tmp;
   late File file;
+  late LockRegistry locks;
   late UserSettingsStore store;
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('athena_settings_');
     file = File(p.join(tmp.path, 'setting.yaml'));
-    store = UserSettingsStore(file: file);
+    locks = LockRegistry(tmp);
+    store = UserSettingsStore(file: file, locks: locks);
   });
 
   tearDown(() => tmp.delete(recursive: true));
@@ -130,8 +132,8 @@ void main() {
     });
 
     test('两个实例交替写，后写的不会丢先前写的', () async {
-      final gui = UserSettingsStore(file: file);
-      final tui = UserSettingsStore(file: file);
+      final gui = UserSettingsStore(file: file, locks: locks);
+      final tui = UserSettingsStore(file: file, locks: locks);
 
       await gui.setString('theme_mode', 'dark');
       await tui.saveModelId('m');
@@ -143,8 +145,8 @@ void main() {
     });
 
     test('并发写不同键全部保留', () async {
-      final a = UserSettingsStore(file: file);
-      final b = UserSettingsStore(file: file);
+      final a = UserSettingsStore(file: file, locks: locks);
+      final b = UserSettingsStore(file: file, locks: locks);
       await Future.wait([
         for (var i = 0; i < 10; i++) (i.isEven ? a : b).setInt('key_$i', i),
       ]);
@@ -226,10 +228,15 @@ void main() {
   });
 
   group('与文件锁共存', () {
-    test('锁文件不参与数据读写', () async {
+    test('锁写在 .locks/ 下，数据文件旁边不留锁文件', () async {
       await store.setString('theme_mode', 'dark');
-      expect(await lockFileFor(file).exists(), isTrue);
+      expect(await locks.forTarget(file).exists(), isTrue);
       expect(await store.getString('theme_mode'), 'dark');
+      // 锁集中到数据根的 .locks/ 下之后,数据目录里不再散落 {name}.lock
+      expect(
+        tmp.listSync().map((e) => p.basename(e.path)),
+        isNot(contains('setting.yaml.lock')),
+      );
     });
   });
 }

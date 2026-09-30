@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/yaml_entity_directory.dart';
 
 /// 角色的文件存储(`~/.athena/sentinels/{id}.yaml`),一个角色一个文件。
@@ -13,8 +14,8 @@ import 'package:athena_core/storage/yaml_entity_directory.dart';
 /// `sentinels/by-id/{id}/history/` 的快照目录都引用它。所以角色**改名字不能换
 /// 文件**——与 provider 一致但理由更强,改名必须原地改写而不是改名文件。
 class SentinelStore {
-  SentinelStore({required Directory directory})
-    : _directory = YamlEntityDirectory(directory: directory);
+  SentinelStore({required Directory directory, required LockRegistry locks})
+    : _directory = YamlEntityDirectory(directory: directory, locks: locks);
 
   final YamlEntityDirectory _directory;
 

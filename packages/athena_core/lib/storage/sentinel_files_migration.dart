@@ -17,22 +17,23 @@ import 'package:path/path.dart' as p;
 /// 式写入,重复执行结果相同)。
 class SentinelFilesMigration {
   SentinelFilesMigration({
-    required Directory root,
     required File sentinelsFile,
     required SentinelStore sentinelStore,
-  }) : _root = root,
-       _sentinelsFile = sentinelsFile,
-       _store = sentinelStore;
+    required LockRegistry locks,
+  }) : _sentinelsFile = sentinelsFile,
+       _store = sentinelStore,
+       _locks = locks;
 
   static const version = 1;
 
-  final Directory _root;
   final File _sentinelsFile;
   final SentinelStore _store;
 
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   File get _marker => File(p.join(_store.directory.path, '.version'));
-  File get _lockFile =>
-      File(p.join(_root.path, '.sentinel-files-migration.lock'));
+  File get _lockFile => _locks.named('sentinel-files-migration');
 
   Future<void> run() {
     return withFileLock(_lockFile, () async {

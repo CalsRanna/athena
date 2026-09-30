@@ -7,6 +7,7 @@ import 'package:athena_core/entity/chat_history_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/chat_repository.dart';
 import 'package:athena_core/repository/message_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
 import 'package:athena_core/util/logger_util.dart';
@@ -26,11 +27,17 @@ class JsonlSessionRepository
     implements ChatRepository, MessageRepository, RecentMessageRepository {
   JsonlSessionRepository({
     required Directory sessionsDir,
+    required LockRegistry locks,
     IdGenerator idGenerator = const IdGenerator(),
   }) : _sessionsDir = sessionsDir,
+       _locks = locks,
        _idGenerator = idGenerator;
 
   final Directory _sessionsDir;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   final IdGenerator _idGenerator;
 
   /// 按 chatId 缓存共享的 store:SessionJsonlStore 的串行锁是实例字段,
@@ -50,6 +57,7 @@ class JsonlSessionRepository
       chatId,
       () => SessionJsonlStore(
         file: File(p.join(_sessionsDir.path, '$chatId.jsonl')),
+        locks: _locks,
         idGenerator: _idGenerator,
       ),
     );

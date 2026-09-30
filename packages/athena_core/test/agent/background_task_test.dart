@@ -6,6 +6,7 @@ import 'package:athena_core/agent/task/background_task.dart';
 import 'package:athena_core/agent/tool/background_task_tool.dart';
 import 'package:athena_core/agent/tool/bash_shell_tool.dart';
 import 'package:athena_core/agent/tool/tool_interface.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -14,8 +15,13 @@ import 'package:test/test.dart';
 void main() {
   final isWindows = Platform.isWindows;
 
+  /// 传了孤儿目录就必须有锁仓库(见 `BackgroundTaskService` 的构造说明):
+  /// 这里把该目录本身当数据根,锁落在它下面的 `.locks/` 里。
   BackgroundTaskService service({Directory? stateDirectory}) =>
-      BackgroundTaskService(stateDirectory: stateDirectory);
+      BackgroundTaskService(
+        stateDirectory: stateDirectory,
+        locks: stateDirectory == null ? null : LockRegistry(stateDirectory),
+      );
 
   Future<BackgroundTask> start(
     BackgroundTaskService tasks, {

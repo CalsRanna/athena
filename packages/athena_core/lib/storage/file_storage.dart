@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:athena_core/repository/model_repository.dart';
 import 'package:athena_core/repository/sentinel_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/storage_id_migration.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
@@ -29,6 +30,7 @@ import 'package:path/path.dart' as p;
 ///   backups/ids-v1/            # 首次 UUID 迁移前的原始数据备份
 ///   setting.yaml              # 用户配置:两个前端共用(GUI 与 TUI 的界面偏好
 ///                            # + core 的 brave API key / Agent 迭代上限)
+///   permissions.json          # 权限规则(GUI 与 TUI 共用,可手工编辑)
 ///   providers/{id}.yaml        # 一个 provider 一个文件：provider 配置(含 API key)
 ///                            # + 它名下的模型（`models:` 段）
 ///   sentinels/{id}.yaml        # 一个角色一个文件
@@ -37,6 +39,8 @@ import 'package:path/path.dart' as p;
 ///   models_dev_cache.json     # models.dev 目录缓存
 ///   tool_outputs/             # 工具长输出(内容寻址)
 ///   background_tasks/         # 运行中的后台任务(按属主进程记账,供孤儿清理)
+///   .locks/                   # 跨进程锁文件:镜像上面各数据文件的相对路径,
+///                            # 内容为空,只做互斥(见 [LockRegistry])
 /// ```
 ///
 /// 持久化身份使用 UUIDv7，生成不访问磁盘；消息顺序使用会话内 seq。
@@ -47,14 +51,16 @@ import 'package:path/path.dart' as p;
 /// 不反向持有数据。
 class FileStorage {
   FileStorage({required this.root, File? settingFile})
-    : settingFile = settingFile ?? File(p.join(root.path, 'setting.yaml')) {
+    : settingFile = settingFile ?? File(p.join(root.path, 'setting.yaml')),
+      locks = LockRegistry(root) {
     idGenerator = const IdGenerator();
     sessionRepository = JsonlSessionRepository(
       sessionsDir: sessionsDir,
+      locks: locks,
       idGenerator: idGenerator,
     );
-    userSettings = UserSettingsStore(file: this.settingFile);
-    providerStore = ProviderStore(directory: providersDir);
+    userSettings = UserSettingsStore(file: this.settingFile, locks: locks);
+    providerStore = ProviderStore(directory: providersDir, locks: locks);
     providerRepository = YamlProviderRepository(
       store: providerStore,
       idGenerator: idGenerator,
@@ -64,7 +70,7 @@ class FileStorage {
       store: providerStore,
       idGenerator: idGenerator,
     );
-    sentinelStore = SentinelStore(directory: sentinelsDir);
+    sentinelStore = SentinelStore(directory: sentinelsDir, locks: locks);
     sentinelRepositoryImpl = YamlSentinelRepository(
       store: sentinelStore,
       idGenerator: idGenerator,
@@ -74,8 +80,17 @@ class FileStorage {
 
   final Directory root;
 
+  /// 锁文件仓库:所有跨进程锁的落点都在 `root/.locks/` 下,见 [LockRegistry]。
+  final LockRegistry locks;
+
   /// 用户配置文件;默认 `root/setting.yaml`,两个前端共用同一份。
   final File settingFile;
+
+  /// 权限规则文件(GUI 与 TUI 共用,可手工编辑;见 `PermissionStore`)。
+  ///
+  /// 它由这里给出而不是让权限模块自己拼 `$HOME`:换了数据根(移动端、TUI 的
+  /// `--data-dir`)之后仍然要写进同一个根,否则规则会落到真实主目录去。
+  File get permissionsFile => File(p.join(root.path, 'permissions.json'));
 
   Directory get sessionsDir => Directory(p.join(root.path, 'sessions'));
   Directory get providersDir => Directory(p.join(root.path, 'providers'));
@@ -116,25 +131,26 @@ class FileStorage {
     legacyModelIds = await StorageIdMigration(
       root: root,
       settingFile: settingFile,
+      locks: locks,
     ).run();
     // 整数 id 已在上一步转换完毕,这里只把 setting.yaml 的 providers 段摊成
     // 独立文件(见 [ProviderFilesMigration]),顺序不可颠倒。
     await ProviderFilesMigration(
-      root: root,
       settingFile: settingFile,
       providersDir: providersDir,
+      locks: locks,
     ).run();
     // provider 已成为一个一个文件之后,模型才知道该并进哪个文件;两条迁移都
     // 依赖上一步的整数 id 转换结果。
     await ModelsIntoProvidersMigration(
-      root: root,
       modelsFile: modelsFile,
       providerStore: providerStore,
+      locks: locks,
     ).run();
     await SentinelFilesMigration(
-      root: root,
       sentinelsFile: sentinelsFile,
       sentinelStore: sentinelStore,
+      locks: locks,
     ).run();
     await providerRepository.load();
   }
@@ -158,8 +174,11 @@ class FileStorage {
   /// 目录缓存与工具输出。调用方随后应重新执行种子。
   ///
   /// provider 走仓储的逐个删除而不是删掉 `providers/` 整个目录:目录里还有
-  /// 迁移标记 `.version` 与各 provider 的 `.lock`,删目录会把标记一起清掉,
-  /// 下次启动会重新尝试(已无 providers 段的)迁移。
+  /// 迁移标记 `.version`,删目录会把标记一起清掉,下次启动会重新尝试
+  /// (已无 providers 段的)迁移。
+  ///
+  /// 同样不动 `.locks/`:另一实例可能正持着里面的锁,删掉会让互斥静默失效
+  /// (见 [LockRegistry])。
   Future<void> reset() async {
     if (await sessionsDir.exists()) {
       await sessionsDir.delete(recursive: true);

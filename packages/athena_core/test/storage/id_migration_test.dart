@@ -61,6 +61,7 @@ void main() {
   test('消息 UUID 逆序生成时，分页、更新、压缩仍按 seq', () async {
     final repo = JsonlSessionRepository(
       sessionsDir: storage.sessionsDir,
+      locks: storage.locks,
       idGenerator: _ReversedIds(),
     );
     final chatId = await repo.createChat(chat('ordered'));

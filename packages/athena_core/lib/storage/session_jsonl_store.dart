@@ -21,8 +21,9 @@ import 'package:athena_core/util/logger_util.dart';
 /// - **单写者锁**:所有修改在单次锁内完成(读-改-写原子),流式期间
 ///   的 update(整文件重写)与 append 并发时不丢行(锁是实例字段,调用方
 ///   必须按文件缓存共享实例,锁才能跨调用生效)
-/// - **跨进程文件锁**:GUI 与 TUI 共享目录,修改再套一层 `.lock` 排它,
-///   另一进程的重写(rename 换 inode)不会吞掉本进程的 append
+/// - **跨进程文件锁**:GUI 与 TUI 共享目录,修改再套一层跨进程排它锁
+///   (`<root>/.locks/` 下,见 [LockRegistry]),另一进程的重写(rename 换
+///   inode)不会吞掉本进程的 append
 /// - **原子写**:整文件重写走临时文件 + rename;读不加锁,读到的要么是
 ///   旧文件要么是新文件
 /// - **损坏容错**:损坏行(含非法 UTF-8)跳过并记日志,chat 记录缺失时按无会话
@@ -31,10 +32,15 @@ import 'package:athena_core/util/logger_util.dart';
 class SessionJsonlStore {
   SessionJsonlStore({
     required this.file,
+    required LockRegistry locks,
     this.idGenerator = const IdGenerator(),
-  });
+  }) : _locks = locks;
 
   final File file;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   final IdGenerator idGenerator;
 
   Future<void>? _lock;
@@ -49,7 +55,7 @@ class SessionJsonlStore {
 
   /// 修改:进程内串行 + 跨进程文件锁。
   Future<T> _mutate<T>(Future<T> Function() action) {
-    return _serialized(() => withFileLock(lockFileFor(file), action));
+    return _serialized(() => withFileLock(_locks.forTarget(file), action));
   }
 
   // ─────────────────────────── 会话元数据(首行) ───────────────────────────

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:athena_core/entity/api_format.dart';
 import 'package:athena_core/entity/model_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/yaml_entity_directory.dart';
 
 /// provider 及其模型的文件存储(`~/.athena/providers/{id}.yaml`)。
@@ -31,8 +32,8 @@ import 'package:athena_core/storage/yaml_entity_directory.dart';
 /// 本类只管「一个 provider 文件里的 provider 与它的模型」;跨 provider 的查询
 /// 与排序在仓储层。
 class ProviderStore {
-  ProviderStore({required Directory directory})
-    : _directory = YamlEntityDirectory(directory: directory);
+  ProviderStore({required Directory directory, required LockRegistry locks})
+    : _directory = YamlEntityDirectory(directory: directory, locks: locks);
 
   final YamlEntityDirectory _directory;
 

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/repository/message_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/id_generator.dart';
 import 'package:athena_core/storage/jsonl_session_repository.dart';
 import 'package:athena_core/storage/session_jsonl_store.dart';
@@ -55,6 +56,7 @@ Future<void> main(List<String> args) async {
 Future<void> _initial(Directory dir, String chatId, int pageSize) async {
   final repository = JsonlSessionRepository(
     sessionsDir: dir,
+    locks: LockRegistry(dir.parent),
     idGenerator: const IdGenerator(),
   );
   late MessageWindow window;
@@ -91,8 +93,13 @@ Future<void> _chainedPages(File file, int pages) async {
   );
 }
 
-SessionJsonlStore _store(File file) =>
-    SessionJsonlStore(file: file, idGenerator: const IdGenerator());
+/// 只读基准:读路径不加锁,锁仓库只是构造参数,按生产布局给它会话目录的上一级
+/// (这样万一哪天量到写路径,锁的位置与运行时一致)。
+SessionJsonlStore _store(File file) => SessionJsonlStore(
+  file: file,
+  locks: LockRegistry(file.parent.parent),
+  idGenerator: const IdGenerator(),
+);
 
 Future<double> _best(Future<void> Function() action, {int runs = 7}) async {
   final samples = <double>[];

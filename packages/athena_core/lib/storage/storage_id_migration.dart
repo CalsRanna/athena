@@ -57,11 +57,18 @@ class LegacyIdMap {
 /// 执行。格式版本最后落盘，因此中断后不会把半迁移目录当作可用仓储。
 /// 两个新版进程同时启动时由同一把跨进程迁移锁串行。
 class StorageIdMigration {
-  StorageIdMigration({required this.root, required this.settingFile});
+  StorageIdMigration({
+    required this.root,
+    required this.settingFile,
+    required LockRegistry locks,
+  }) : _locks = locks;
 
   static const version = 2;
   final Directory root;
   final File settingFile;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
   final _ids = LegacyIdMap();
 
   File get versionFile => File(p.join(root.path, 'storage_version.json'));
@@ -69,44 +76,38 @@ class StorageIdMigration {
   Directory get _backup => Directory(p.join(root.path, 'backups', 'ids-v1'));
   File get _journal => File(p.join(_work.path, 'ready.json'));
 
-  Future<Map<String, String>> run() => withFileLock(
-    File(p.join(root.path, '.storage-migration.lock')),
-    () async {
-      if (await versionFile.exists()) {
-        final state = jsonDecode(await versionFile.readAsString()) as Map;
-        if (state['version'] != version) {
-          throw StateError('Unsupported storage version: ${state['version']}');
-        }
-        return Map<String, String>.from(
-          state['legacy_model_ids'] as Map? ?? {},
-        );
+  Future<Map<String, String>>
+  run() => withFileLock(_locks.named('storage-migration'), () async {
+    if (await versionFile.exists()) {
+      final state = jsonDecode(await versionFile.readAsString()) as Map;
+      if (state['version'] != version) {
+        throw StateError('Unsupported storage version: ${state['version']}');
       }
-      if (!await _journal.exists()) await _prepare();
-      final journal = jsonDecode(await _journal.readAsString()) as Map;
-      final entries = (journal['files'] as List).cast<Map>();
-      // 所有新文件先落盘，再清理旧文件名；断电后可用同一清单重放。
-      for (final entry in entries) {
-        final target = entry['target'] as String?;
-        if (target == null) continue;
-        final staged = File(p.join(_work.path, entry['staged'] as String));
-        await atomicWriteString(_file(target), await staged.readAsString());
-      }
-      for (final entry in entries) {
-        if (entry['source'] == entry['target']) continue;
-        final source = _file(entry['source'] as String);
-        if (await source.exists()) await source.delete();
-      }
-      final models = Map<String, String>.from(
-        journal['legacy_model_ids'] as Map,
-      );
-      await atomicWriteString(
-        versionFile,
-        jsonEncode({'version': version, 'legacy_model_ids': models}),
-      );
-      await _work.delete(recursive: true);
-      return models;
-    },
-  );
+      return Map<String, String>.from(state['legacy_model_ids'] as Map? ?? {});
+    }
+    if (!await _journal.exists()) await _prepare();
+    final journal = jsonDecode(await _journal.readAsString()) as Map;
+    final entries = (journal['files'] as List).cast<Map>();
+    // 所有新文件先落盘，再清理旧文件名；断电后可用同一清单重放。
+    for (final entry in entries) {
+      final target = entry['target'] as String?;
+      if (target == null) continue;
+      final staged = File(p.join(_work.path, entry['staged'] as String));
+      await atomicWriteString(_file(target), await staged.readAsString());
+    }
+    for (final entry in entries) {
+      if (entry['source'] == entry['target']) continue;
+      final source = _file(entry['source'] as String);
+      if (await source.exists()) await source.delete();
+    }
+    final models = Map<String, String>.from(journal['legacy_model_ids'] as Map);
+    await atomicWriteString(
+      versionFile,
+      jsonEncode({'version': version, 'legacy_model_ids': models}),
+    );
+    await _work.delete(recursive: true);
+    return models;
+  });
 
   File _file(String key) {
     if (key == '@settings') return settingFile;

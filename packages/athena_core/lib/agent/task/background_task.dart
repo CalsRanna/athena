@@ -150,14 +150,25 @@ class BackgroundTaskService {
   BackgroundTaskService({
     DateTime Function()? now,
     Directory? stateDirectory,
+    LockRegistry? locks,
     this.maxRetainedPerChat = 20,
   }) : _now = now ?? DateTime.now,
-       _stateDirectory = stateDirectory;
+       _stateDirectory = stateDirectory,
+       _locks = stateDirectory == null
+           ? null
+           : locks ??
+                 (throw ArgumentError(
+                   'stateDirectory 必须与 locks 一起提供:孤儿记录文件的锁'
+                   '放在数据根的 .locks/ 下,不知道根就无处加锁',
+                 ));
 
   final DateTime Function() _now;
 
   /// 孤儿记录目录（null = 不记录：该宿主放弃跨进程清理）。
   final Directory? _stateDirectory;
+
+  /// 锁放哪由它决定;与 [_stateDirectory] 同生共死,见构造参数说明。
+  final LockRegistry? _locks;
 
   /// 每个会话保留的已完成任务上限（运行中的永不淘汰）。
   final int maxRetainedPerChat;
@@ -402,10 +413,11 @@ class BackgroundTaskService {
     recover,
   }) async {
     final dir = _stateDirectory;
-    if (dir == null) return;
+    final locks = _locks;
+    if (dir == null || locks == null) return;
     final file = File(p.join(dir.path, _orphanFileName));
     try {
-      await withFileLock(lockFileFor(file), () async {
+      await withFileLock(locks.forTarget(file), () async {
         final mine = <Map<String, Object?>>[];
         for (final task in runningTasks) {
           final taskPid = task._process?.pid;

@@ -31,9 +31,14 @@ import 'package:yaml/yaml.dart';
 /// 跨进程文件锁并**重新读盘**,不做内存缓存——GUI 与 TUI 可能同时运行,各自
 /// 缓存会在对方的写入之上整文件覆盖。
 class UserSettingsStore {
-  UserSettingsStore({required File file}) : _file = file;
+  UserSettingsStore({required File file, required LockRegistry locks})
+    : _file = file,
+      _locks = locks;
 
   final File _file;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
 
   /// 配置文件(供仓储层对其加跨进程锁)。
   File get file => _file;
@@ -91,7 +96,7 @@ class UserSettingsStore {
     // null 等于「没有这个设置」:写进文件会经 YamlScalarCodec 变成空串,
     // 与「键不存在」的语义就分不开了
     if (value == null) return remove(key);
-    return withFileLock(lockFileFor(_file), () async {
+    return withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       map[key] = value;
       await _writeMap(map);
@@ -107,7 +112,7 @@ class UserSettingsStore {
   Future<void> setDouble(String key, double value) => set(key, value);
 
   Future<void> remove(String key) {
-    return withFileLock(lockFileFor(_file), () async {
+    return withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       if (map.remove(key) == null) return;
       await _writeMap(map);
@@ -116,7 +121,7 @@ class UserSettingsStore {
 
   /// 清空全部设置(「Reset Athena」用)。文件本身保留,只剩文件头注释。
   Future<void> clear() {
-    return withFileLock(lockFileFor(_file), () async {
+    return withFileLock(_locks.forTarget(_file), () async {
       final map = await _readMap(forWrite: true);
       if (map.isEmpty) return;
       await _writeMap({});

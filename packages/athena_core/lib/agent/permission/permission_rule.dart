@@ -222,7 +222,7 @@ class PermissionRule {
   }
 }
 
-/// 规则持久化存储(`~/.athena/permissions.json`)。
+/// 规则持久化存储(`FileStorage.permissionsFile`,GUI 与 TUI 共用)。
 ///
 /// GUI 与 TUI 共用这个文件,用户也会手工编辑它(deny 规则只能手写):
 /// - **写**:跨进程锁内「读磁盘最新内容 → 合并 → 原子写回」,不拿进程里的
@@ -232,26 +232,38 @@ class PermissionRule {
 /// - **损坏**:单条坏规则跳过并记日志;整文件解析失败时保留内存中最后一份
 ///   有效规则,下次写入前把坏文件备份成 `.corrupt-{时间戳}` 再重写
 ///
-/// 未调用 [load] 的实例只用内存里的 [rules](测试用),不读磁盘。
+/// 未调用 [load] 的实例只用内存里的 [rules](测试用),不读磁盘。落盘文件与它的
+/// 锁都由装配层从数据根传入,**不再自己拼 `$HOME`**:否则换了数据根(移动端、
+/// TUI 的 `--data-dir`)之后,规则仍会写进真实主目录。
 class PermissionStore {
-  PermissionStore({File? file}) : _fileOverride = file;
+  /// [file] 与 [locks] 成对提供:[file] 是落点,[locks] 决定它的锁放哪(见
+  /// [LockRegistry])。都不提供 = 纯内存实例(测试)。
+  PermissionStore({File? file, LockRegistry? locks})
+    : _file = file,
+      _locks = file == null
+          ? null
+          : locks ??
+                (throw ArgumentError(
+                  'permissions 文件的锁需要与 file 配套的 LockRegistry',
+                ));
 
-  final File? _fileOverride;
+  /// 落盘文件;null = 纯内存实例,此时 [_locks] 也为 null。
+  final File? _file;
+
+  /// 锁放哪由它决定;仅当 [_file] 非空时非空。
+  final LockRegistry? _locks;
+
   List<PermissionRule> rules = [];
 
   bool _loaded = false;
   (DateTime, int)? _loadedStamp;
 
-  File get _file {
-    if (_fileOverride != null) return _fileOverride;
-    final home =
-        Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '';
-    return File('$home/.athena/permissions.json');
-  }
-
+  /// 开始与磁盘同步。没配置落盘文件时调用它是装配错误:那意味着本该持久化的
+  /// 规则会静默只留在内存里,重启即丢。
   Future<void> load() async {
+    if (_file == null) {
+      throw StateError('PermissionStore 未配置落盘文件,不能 load()');
+    }
     _loaded = true;
     _reload();
   }
@@ -271,8 +283,9 @@ class PermissionStore {
       if (!_contains(rules, rule)) rules.add(rule);
       return;
     }
-    final file = _file;
-    await withFileLock(lockFileFor(file), () async {
+    final file = _file!;
+    final locks = _locks!;
+    await withFileLock(locks.forTarget(file), () async {
       var current = _parse(file);
       if (current == null) {
         // 坏文件以内存里最后一份有效规则为基础重写,先留备份
@@ -293,14 +306,14 @@ class PermissionStore {
   }
 
   void _reload() {
-    final parsed = _parse(_file);
+    final parsed = _parse(_file!);
     // 解析失败保留已有规则:清空会让 deny 规则在这段时间里失效
     if (parsed != null) rules = parsed;
     _loadedStamp = _stamp();
   }
 
   (DateTime, int)? _stamp() {
-    final stat = _file.statSync();
+    final stat = _file!.statSync();
     if (stat.type == FileSystemEntityType.notFound) return null;
     return (stat.modified, stat.size);
   }

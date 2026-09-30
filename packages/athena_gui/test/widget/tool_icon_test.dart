@@ -4,6 +4,7 @@ import 'package:athena_core/agent/permission/permission_rule.dart';
 import 'package:athena_core/agent/skill/skill_registry.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/repository/experience_repository.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/sentinel_store.dart';
 import 'package:athena_core/storage/yaml_sentinel_repository.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
@@ -22,10 +23,12 @@ void main() {
         sentinelRepository: YamlSentinelRepository(
           store: SentinelStore(
             directory: Directory.fromUri(temp.uri.resolve('sentinels')),
+            locks: LockRegistry(temp),
           ),
         ),
         settings: UserSettingsStore(
           file: File.fromUri(temp.uri.resolve('setting.yaml')),
+          locks: LockRegistry(temp),
         ),
         defaultWorkdir: temp.path,
         mobileHomeDir: temp.path,

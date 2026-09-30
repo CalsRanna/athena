@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/user_settings_store.dart';
 import 'package:athena_gui/storage/prefs_into_setting_migration.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +15,10 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('athena_prefs_migration_');
-    settings = UserSettingsStore(file: File(p.join(tmp.path, 'setting.yaml')));
+    settings = UserSettingsStore(
+      file: File(p.join(tmp.path, 'setting.yaml')),
+      locks: LockRegistry(tmp),
+    );
   });
 
   tearDown(() => tmp.delete(recursive: true));

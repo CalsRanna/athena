@@ -12,6 +12,7 @@ import 'package:athena_core/agent/tool/tool_output_store.dart';
 import 'package:athena_core/agent/tool/tool_set.dart';
 import 'package:athena_core/coordinator/agent_run_coordinator.dart';
 import 'package:athena_core/coordinator/run_event.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/entity/approval_mode.dart';
 import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
@@ -84,13 +85,19 @@ void main() {
       ),
     );
 
-    tasks = BackgroundTaskService(stateDirectory: storage.backgroundTasksDir);
+    tasks = BackgroundTaskService(
+      stateDirectory: storage.backgroundTasksDir,
+      locks: storage.locks,
+    );
     final outputStore = ToolOutputStore(directory: storage.toolOutputsDir);
     final toolRegistry = buildToolRegistry(
       skillRegistry: SkillRegistry(),
       experienceRepository: ExperienceRepository(homeDir: tmp.path),
       sentinelRepository: storage.sentinelRepository,
-      settings: UserSettingsStore(file: File(p.join(tmp.path, 'setting.yaml'))),
+      settings: UserSettingsStore(
+        file: File(p.join(tmp.path, 'setting.yaml')),
+        locks: LockRegistry(tmp),
+      ),
       outputStore: outputStore,
       backgroundTasks: tasks,
       defaultWorkdir: tmp.path,

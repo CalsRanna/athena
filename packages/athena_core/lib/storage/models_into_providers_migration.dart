@@ -22,23 +22,24 @@ import 'package:path/path.dart' as p;
 /// 被读取,下次启动也不会再触发本迁移(标记已落盘)。
 class ModelsIntoProvidersMigration {
   ModelsIntoProvidersMigration({
-    required Directory root,
     required File modelsFile,
     required ProviderStore providerStore,
-  }) : _root = root,
-       _modelsFile = modelsFile,
-       _providerStore = providerStore;
+    required LockRegistry locks,
+  }) : _modelsFile = modelsFile,
+       _providerStore = providerStore,
+       _locks = locks;
 
   static const version = 1;
 
-  final Directory _root;
   final File _modelsFile;
   final ProviderStore _providerStore;
 
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
+
   File get _marker =>
       File(p.join(_providerStore.directory.path, '.models-version'));
-  File get _lockFile =>
-      File(p.join(_root.path, '.models-into-providers-migration.lock'));
+  File get _lockFile => _locks.named('models-into-providers-migration');
 
   Future<void> run() {
     return withFileLock(_lockFile, () async {

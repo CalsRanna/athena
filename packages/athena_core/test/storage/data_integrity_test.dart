@@ -7,6 +7,7 @@ import 'package:athena_core/entity/chat_entity.dart';
 import 'package:athena_core/entity/message_entity.dart';
 import 'package:athena_core/entity/provider_entity.dart';
 import 'package:athena_core/entity/sentinel_entity.dart';
+import 'package:athena_core/storage/file_lock.dart';
 import 'package:athena_core/storage/file_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
@@ -229,8 +230,8 @@ void main() {
     );
 
     test('另一实例的写入被看见，也不会被本实例的旧列表覆盖', () async {
-      final gui = PermissionStore(file: file);
-      final tui = PermissionStore(file: file);
+      final gui = PermissionStore(file: file, locks: LockRegistry(tmp));
+      final tui = PermissionStore(file: file, locks: LockRegistry(tmp));
       await gui.load();
       await tui.load();
 
@@ -244,7 +245,7 @@ void main() {
       file.writeAsStringSync(jsonEncode(json));
       await gui.add(PermissionRule.forToolCall('bash', 'npm test').single);
 
-      final patterns = PermissionStore(file: file);
+      final patterns = PermissionStore(file: file, locks: LockRegistry(tmp));
       await patterns.load();
       expect(
         patterns.rules.map((r) => r.pattern),
@@ -253,7 +254,7 @@ void main() {
     });
 
     test('整文件损坏：保留内存中的规则，写入前备份坏文件', () async {
-      final store = PermissionStore(file: file);
+      final store = PermissionStore(file: file, locks: LockRegistry(tmp));
       await store.add(deny('never')); // 未 load：纯内存，不落盘
       expect(file.existsSync(), isFalse);
 
@@ -270,7 +271,7 @@ void main() {
         backupsOf(file).single.readAsStringSync(),
         '{"rules": [ truncated',
       );
-      final reloaded = PermissionStore(file: file);
+      final reloaded = PermissionStore(file: file, locks: LockRegistry(tmp));
       await reloaded.load();
       expect(reloaded.rules.map((r) => r.pattern), ['rm -rf /', 'ls']);
     });
@@ -311,7 +312,10 @@ void main() {
         ]),
       );
 
-      final service = BackgroundTaskService(stateDirectory: dir);
+      final service = BackgroundTaskService(
+        stateDirectory: dir,
+        locks: LockRegistry(tmp),
+      );
       addTearDown(service.dispose);
       final killed = await service.recoverOrphans();
 

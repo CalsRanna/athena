@@ -24,15 +24,23 @@ import 'package:yaml/yaml.dart';
 /// - 内容损坏时读按「不存在」处理;写入前先备份成 `.corrupt-{时间戳}`,
 ///   这个目录标明可以手工编辑,一个语法错误不该让下一次写入把内容抹掉。
 ///
-/// 锁文件不随数据文件删除:文件锁按 inode 记账,删掉一个正被别处持有的锁文件
-/// 会让后来者在新 inode 上加锁,互斥就此失效。删除实体留下的空 `{id}.yaml.lock`
-/// 是刻意的。
+/// 锁文件不在数据目录里:它们由 [LockRegistry] 统一放在数据根的 `.locks/` 下,
+/// 并镜像数据文件的相对路径(`sentinels/{id}.yaml` 的锁在
+/// `.locks/sentinels/{id}.yaml.lock`)。所以遍历这个目录时只会看到数据文件与
+/// `.version` 标记,不必再考虑锁文件。
 ///
 /// 本类只搬运 `Map`,实体层的解析与编码由各自的 Store 负责。
 class YamlEntityDirectory {
-  YamlEntityDirectory({required Directory directory}) : _directory = directory;
+  YamlEntityDirectory({
+    required Directory directory,
+    required LockRegistry locks,
+  }) : _directory = directory,
+       _locks = locks;
 
   final Directory _directory;
+
+  /// 锁放哪由它决定,见 [LockRegistry]。
+  final LockRegistry _locks;
 
   static const extension = '.yaml';
 
@@ -46,10 +54,9 @@ class YamlEntityDirectory {
   File fileFor(String id) => File(p.join(_directory.path, '$id$extension'));
 
   /// 目录级锁:`replaceAllRaw` 的「清空 + 重建」与并发的单条写互斥。
-  /// 放在目录外侧(`{name}.lock`),不与数据文件混在同一目录里。
-  File get _directoryLock => File('${_directory.path}.lock');
+  File get _directoryLock => _locks.forDirectory(_directory);
 
-  /// 目录下全部合法 id;实体文件之外的任何东西(id 不合法的文件、锁文件、
+  /// 目录下全部合法 id;实体文件之外的任何东西(id 不合法的文件、标记文件、
   /// 子目录)一律跳过。不加锁,理由见类注释。
   Future<List<String>> listIds() async {
     if (!await _directory.exists()) return const [];
@@ -81,7 +88,7 @@ class YamlEntityDirectory {
   Future<void> writeRaw(String id, Map<String, dynamic> raw) {
     _requireValidId(id);
     final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
+    return withFileLock(_locks.forTarget(file), () async {
       if (await file.exists()) await _readFile(file, forWrite: true);
       await _writeFile(file, raw);
     });
@@ -98,7 +105,7 @@ class YamlEntityDirectory {
   ) {
     if (!_validId.hasMatch(id)) return Future.value(false);
     final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
+    return withFileLock(_locks.forTarget(file), () async {
       if (!await file.exists()) return false;
       final current = await _readFile(file, forWrite: true);
       if (current == null) return false;
@@ -120,7 +127,7 @@ class YamlEntityDirectory {
   ) {
     _requireValidId(id);
     final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
+    return withFileLock(_locks.forTarget(file), () async {
       final current = await file.exists()
           ? await _readFile(file, forWrite: true)
           : null;
@@ -132,7 +139,7 @@ class YamlEntityDirectory {
   Future<void> deleteRaw(String id) {
     if (!_validId.hasMatch(id)) return Future.value();
     final file = fileFor(id);
-    return withFileLock(lockFileFor(file), () async {
+    return withFileLock(_locks.forTarget(file), () async {
       if (await file.exists()) await file.delete();
     });
   }
@@ -156,7 +163,7 @@ class YamlEntityDirectory {
       }
       for (final (id, raw) in rows) {
         final file = fileFor(id);
-        await withFileLock(lockFileFor(file), () => _writeFile(file, raw));
+        await withFileLock(_locks.forTarget(file), () => _writeFile(file, raw));
       }
     });
   }

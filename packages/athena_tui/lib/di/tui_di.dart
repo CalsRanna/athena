@@ -169,7 +169,12 @@ class TuiDi {
 
     // ── Agent 基础 ──
     agentSettings = AgentSettings(store: userSettings);
-    permissionService = PermissionService(store: PermissionStore());
+    permissionService = PermissionService(
+      store: PermissionStore(
+        file: storage.permissionsFile,
+        locks: storage.locks,
+      ),
+    );
     skillRegistry = SkillRegistry();
     skillRegistry.loadAll();
     skillRegistry.registerBuiltin(kSelfEvolveSkill);
@@ -184,6 +189,7 @@ class TuiDi {
       outputStore: outputStore,
       backgroundTasks: BackgroundTaskService(
         stateDirectory: storage.backgroundTasksDir,
+        locks: storage.locks,
       ),
       defaultWorkdir: _workspace,
     );

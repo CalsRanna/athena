@@ -73,6 +73,7 @@ void main() {
   group('loadRecentRows', () {
     SessionJsonlStore storeOf(String chatId) => SessionJsonlStore(
       file: File(p.join(storage.sessionsDir.path, '$chatId.jsonl')),
+      locks: storage.locks,
       idGenerator: storage.idGenerator,
     );
 
