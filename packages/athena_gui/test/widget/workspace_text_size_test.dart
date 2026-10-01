@@ -190,12 +190,15 @@ void main() {
       await tester.pumpWidget(const AthenaApp());
       await settle(tester);
       // 尺寸比较必须等草稿角色初始化完成，不能拿加载占位与最终角色比较。
-      for (
-        var i = 0;
-        i < 100 &&
-            GetIt.instance<ChatViewModel>().currentSentinel.value == null;
-        i++
-      ) {
+      //
+      // 等待上限按真实时间给，不能按迭代次数给：这条启动链上每个 await 都要
+      // 一整轮 runAsync + pump 才推得动，迭代数≈链上的 await 数（本地实测
+      // 96 次约 1.4s，而这同一段链的应用侧真实工作量只有 54ms），按次数卡
+      // 上限时余量只剩几次，CI runner 更慢、又并发跑多个测试文件，多占几次
+      // 就越过上限，表现为断言 currentSentinel 仍为 null。
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      while (GetIt.instance<ChatViewModel>().currentSentinel.value == null &&
+          DateTime.now().isBefore(deadline)) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );
