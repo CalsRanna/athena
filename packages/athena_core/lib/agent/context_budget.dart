@@ -168,3 +168,29 @@ class ContextBudget {
         imageTokens;
   }
 }
+
+/// [error] 是否是"输入超出模型上下文窗口"这一类失败。
+///
+/// 三家的错误都不走结构化字段，只能在客户端按文案认：OpenAI 兼容端
+/// `context_length_exceeded` / "maximum context length"、Anthropic
+/// "prompt is too long" / "exceed context limit"、Google 兼容端
+/// "exceeds the maximum number of tokens"，以及 [ContextBudget.prepare]
+/// 自己抛的 "Context budget exceeded"。
+///
+/// 只认这些明确的说法：认不出就返回 false，让错误照常冒泡——宁可少恢复一次，
+/// 也不要把无关失败（鉴权、路由、配额）当成超限去重试。
+bool isContextOverflowError(Object error) {
+  final text = error.toString().toLowerCase();
+  return _contextOverflowMarkers.any(text.contains);
+}
+
+const _contextOverflowMarkers = [
+  'context budget exceeded',
+  'context_length_exceeded',
+  'maximum context length',
+  'exceeds the maximum number of tokens',
+  'exceed context limit',
+  'prompt is too long',
+  'input is too long',
+  'too many input tokens',
+];

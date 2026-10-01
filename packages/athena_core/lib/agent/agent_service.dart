@@ -841,6 +841,48 @@ class _AgentLoop {
     }
   }
 
+  /// 超限兜底的前置条件：会话按自动档管理上下文、宿主提供了压缩回调、错误确实是
+  /// "输入太长"，且本轮还没有任何流式产出。
+  ///
+  /// 已经流给用户的内容收不回来——重试会把新响应接在旧文字后面——所以有产出时
+  /// 保持原样抛错，由上层如实结束这一轮。
+  bool _canRecoverFromOverflow(Object error, _TurnState st) =>
+      _chat.retention == -1 &&
+      _onCompact != null &&
+      st.accumulator.content.isEmpty &&
+      st.accumulator.reasoning.isEmpty &&
+      st.accumulator.reasoningContent.isEmpty &&
+      st.accumulator.toolCalls.isEmpty &&
+      isContextOverflowError(error);
+
+  /// 压缩一次，并把步骤事件透传给前端；压缩后 [_messages] 换成落库历史重建的
+  /// 候选（系统块 + 摘要 + 尾部原文）。
+  ///
+  /// 调用方负责判断"该不该压缩"：迭代开头按预算判断，超限兜底则强制压缩。
+  Stream<AgentEvent> _compactNow(List<Tool>? tools) async* {
+    final onCompact = _onCompact;
+    if (onCompact == null) return;
+    await for (final update in onCompact(
+      ContextCompactionRequest(
+        messages: List.of(_messages),
+        tools: tools,
+        budget: _budget,
+        outputs: _service._toolRegistry.outputStore,
+        cancelToken: _token,
+      ),
+    )) {
+      if (update.messages != null) {
+        _messages
+          ..clear()
+          ..addAll(update.messages!);
+        // 压缩从落库历史重建上下文，临时通知需在请求前重新加入。
+        _unacknowledgedBackgroundTaskIds.clear();
+      }
+      yield AgentCompactionEvent(update.step);
+    }
+    _token.throwIfCancelled();
+  }
+
   /// 单轮迭代：取消检查 → LLM 流式 → 追加 assistant 消息
   /// → 截断保护 → 工具执行 → iterationComplete。
   ///
@@ -855,25 +897,7 @@ class _AgentLoop {
     if (_chat.retention == -1 &&
         _onCompact != null &&
         _budget.shouldCompact(_messages, tools)) {
-      await for (final update in _onCompact(
-        ContextCompactionRequest(
-          messages: List.of(_messages),
-          tools: tools,
-          budget: _budget,
-          outputs: _service._toolRegistry.outputStore,
-          cancelToken: _token,
-        ),
-      )) {
-        if (update.messages != null) {
-          _messages
-            ..clear()
-            ..addAll(update.messages!);
-          // 压缩从落库历史重建上下文，临时通知需在请求前重新加入。
-          _unacknowledgedBackgroundTaskIds.clear();
-        }
-        yield AgentCompactionEvent(update.step);
-      }
-      _token.throwIfCancelled();
+      yield* _compactNow(tools);
     }
     // 项目约定由用户手工维护，run 进行中也可能被编辑：size/mtime 变化即就地
     // 替换（文件消失或清空时保留已注入内容，见 ProjectInstructions.refresh）。
@@ -913,21 +937,45 @@ class _AgentLoop {
         completedTasks.map((task) => task.id),
       );
     }
-    final requestMessages = await _budget.prepare(
-      messages: _messages,
-      tools: tools,
-      outputs: _service._toolRegistry.outputStore,
-    );
-    _token.throwIfCancelled();
-    final request = ChatCompletionCreateRequest(
-      model: _model.modelId,
-      messages: requestMessages,
-      tools: tools,
-      // jsonMode：声明模型输出 JSON 对象
-      responseFormat: _jsonMode ? ResponseFormat.jsonObject() : null,
-    );
-
-    yield* _streamTurn(request, st);
+    // 超限兜底：估算与 provider 的口径总有偏差（单条消息过大、未计入的隐藏 token
+    // 都会低估），直接失败等于让用户丢掉整轮。第一次超限就强制压缩一次再试，且
+    // 只试一次——第二次仍失败说明压缩帮不上忙，如实抛错。
+    var overflowRecovered = false;
+    while (true) {
+      try {
+        final requestMessages = await _budget.prepare(
+          messages: _messages,
+          tools: tools,
+          outputs: _service._toolRegistry.outputStore,
+        );
+        _token.throwIfCancelled();
+        // 这里必须用 await for + yield，不能写 yield*：`yield*` 把内层流的异常
+        // 直接转交给下游监听者，同层的 catch 收不到（Dart 的 async* 语义），
+        // 超限兜底就永远触发不了。
+        await for (final event in _streamTurn(
+          ChatCompletionCreateRequest(
+            model: _model.modelId,
+            messages: requestMessages,
+            tools: tools,
+            // jsonMode：声明模型输出 JSON 对象
+            responseFormat: _jsonMode ? ResponseFormat.jsonObject() : null,
+          ),
+          st,
+        )) {
+          yield event;
+        }
+        break;
+      } catch (error) {
+        // 取消优先：兜底不能把"用户点了停止"变成一次重试。
+        _token.throwIfCancelled();
+        if (overflowRecovered || !_canRecoverFromOverflow(error, st)) {
+          rethrow;
+        }
+        overflowRecovered = true;
+        yield* _compactNow(tools);
+        _token.throwIfCancelled();
+      }
+    }
 
     final toolCalls = st.accumulator.toolCalls;
     final truncated = st.accumulator.finishReason == FinishReason.length;

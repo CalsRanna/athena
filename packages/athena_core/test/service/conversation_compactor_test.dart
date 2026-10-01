@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:athena_core/agent/cancel_token.dart';
@@ -84,7 +85,7 @@ void main() {
         MessageEntity(chatId: chatId, role: role, content: content),
       );
 
-  Future<List<CompactionStep>> compact(
+  Future<List<ContextCompactionUpdate>> compactUpdates(
     List<ChatMessage> messages, {
     required ContextBudget budget,
     required _FakeSummaryService service,
@@ -95,7 +96,7 @@ void main() {
       converter: converter,
       chatService: service,
     );
-    final steps = <CompactionStep>[];
+    final updates = <ContextCompactionUpdate>[];
     await for (final update in compactor.compact(
       request: ContextCompactionRequest(
         messages: messages,
@@ -124,10 +125,25 @@ void main() {
         updatedAt: now,
       ),
     )) {
-      steps.add(update.step);
+      updates.add(update);
     }
-    return steps;
+    return updates;
   }
+
+  Future<List<CompactionStep>> compact(
+    List<ChatMessage> messages, {
+    required ContextBudget budget,
+    required _FakeSummaryService service,
+    required MessageEntity placeholder,
+  }) async => [
+    for (final update in await compactUpdates(
+      messages,
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    ))
+      update.step,
+  ];
 
   test('短历史：摘要预算随覆盖内容收缩，压缩仍然减少上下文', () async {
     // 前缀（工具 schema、注入的系统块）已经吃掉大半窗口，真正的历史很短——
@@ -196,5 +212,105 @@ void main() {
       );
     }
     expect(steps.last.phase, CompactionPhase.completed);
+  });
+
+  test('尾部原文保留：最新记录留在上下文里，只有更早的部分被摘要', () async {
+    final budget = ContextBudget(window);
+    // 更早的记录约 10000 token，超出尾部预算；最新的约 2000 token 放得下。
+    final older = 'a' * 20000;
+    final newer = 'b' * 4000;
+    final olderRecord = await store('user', older);
+    final newerRecord = await store('user', newer);
+    final placeholder = await store('assistant', '');
+
+    final service = _FakeSummaryService('c' * 1000);
+    final updates = await compactUpdates(
+      [
+        ChatMessage.system('s' * 60000),
+        ChatMessage.user(older),
+        ChatMessage.user(newer),
+      ],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    expect(last.step.coveredMessageIds, [olderRecord.id]);
+    expect(last.step.messageCount, 1);
+    // 最新一条原样留在请求里：说明它没有被摘要替换掉。
+    expect(
+      ((last.messages!.last as UserMessage).content as UserTextContent).text,
+      newer,
+    );
+    final sent = jsonEncode(
+      service.requests.single.map((message) => message.toJson()).toList(),
+    );
+    expect(sent.contains(older.substring(0, 200)), isTrue);
+    expect(sent.contains(newer.substring(0, 200)), isFalse);
+
+    // 只有被覆盖的记录标记为已压缩：尾部还要参与后续组装。
+    final stored = await storage.sessionRepository.getMessagesByChatId(
+      chatId,
+      includeCompacted: true,
+    );
+    expect(stored.firstWhere((m) => m.id == olderRecord.id).compacted, isTrue);
+    expect(stored.firstWhere((m) => m.id == newerRecord.id).compacted, isFalse);
+  });
+
+  test('尾部预算装得下全部历史时，只留到被覆盖部分仍够长', () async {
+    final budget = ContextBudget(window);
+    // 三条各约 1000 token，合计小于尾部预算（窗口 1/10）：全留会让覆盖为空，
+    // 摘要预算的下限（max(128, …)）就不再收缩，压缩会入不敷出。
+    final first = await store('user', 'd' * 2000);
+    await store('user', 'e' * 2000);
+    await store('user', 'f' * 2000);
+    final placeholder = await store('assistant', '');
+
+    final service = _FakeSummaryService('c' * 300);
+    final updates = await compactUpdates(
+      [
+        ChatMessage.system('s' * 60000),
+        ChatMessage.user('d' * 2000),
+        ChatMessage.user('e' * 2000),
+        ChatMessage.user('f' * 2000),
+      ],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    expect(last.step.coveredMessageIds, [first.id]);
+    expect(last.messages, hasLength(4), reason: '系统块 + 摘要 + 两条尾部原文');
+    expect(
+      ((last.messages![2] as UserMessage).content as UserTextContent).text,
+      'e' * 2000,
+    );
+    expect(
+      ((last.messages![3] as UserMessage).content as UserTextContent).text,
+      'f' * 2000,
+    );
+  });
+
+  test('历史整体都很短时退回全量摘要：覆盖为空比保留尾部更糟', () async {
+    final budget = ContextBudget(window);
+    final only = await store('user', 'g' * 900);
+    final placeholder = await store('assistant', '');
+
+    final service = _FakeSummaryService('c' * 60);
+    final updates = await compactUpdates(
+      [ChatMessage.system('s' * 60000), ChatMessage.user('g' * 900)],
+      budget: budget,
+      service: service,
+      placeholder: placeholder,
+    );
+    final last = updates.last;
+
+    expect(last.step.phase, CompactionPhase.completed);
+    expect(last.step.coveredMessageIds, [only.id]);
+    expect(last.messages, hasLength(2), reason: '系统块 + 摘要，没有尾部原文');
   });
 }

@@ -28,6 +28,17 @@ class ConversationCompactor {
   final ChatMessageConverter _converter;
   final ChatCompletionsService _chatService;
 
+  /// 尾部原文规模的绝对上限，与 Codex 的 `COMPACT_USER_MESSAGE_MAX_TOKENS`
+  /// 取同一量级：最近的内容是任务现场，只留摘要会丢形态。
+  static const int _maxTailTokens = 20000;
+
+  /// 尾部之外留给固定开销的余量：摘要消息的包装前缀（约 100 字符）与逐条消息的
+  /// 估算开销。留出它，`系统 + 摘要 + 尾部` 就能直接落在输入上限内。
+  static const int _candidateOverheadTokens = 256;
+
+  /// 被摘要内容的下限，低于它尾部必须让位，理由见 [_tailLength]。
+  static const int _minCoverTokens = 512;
+
   Stream<ContextCompactionUpdate> compact({
     required ContextCompactionRequest request,
     required String chatId,
@@ -70,21 +81,8 @@ class ConversationCompactor {
         throw StateError('No conversation history to compact');
       }
 
-      final coverage = ConversationSummary.create(
-        chatId: chatId,
-        content: '',
-        coveredRecords: records,
-      );
-      step = step.copyWith(
-        phase: CompactionPhase.summarizing,
-        messageCount: records.length,
-        coveredMessageIds: ConversationSummary.coveredIds(coverage).toList(),
-        throughSeq: ConversationSummary.position(coverage),
-      );
-      await _repository.updateMessage(step.toMessage());
-      yield ContextCompactionUpdate(step);
-      token.throwIfCancelled();
-
+      // 每条历史只转换一次：尾部选择与摘要共用同一批分组（convertMessage 会读
+      // 工具输出的读回缓存，重复转换随会话长度线性累积）。
       final groups = <List<ChatMessage>>[
         for (final record in records)
           await _converter.convertMessage(
@@ -92,16 +90,59 @@ class ConversationCompactor {
             includeReasoning: model.reasoning,
           ),
       ];
+      token.throwIfCancelled();
+
+      final systemMessages = request.messages
+          .whereType<SystemMessage>()
+          .toList();
+      final cap = _summaryCap(model.contextWindow);
+      // 尾部原文预算（估算口径，见 [_tailLength]）：窗口的 1/10 与 [_maxTailTokens]
+      // 取小，再让出系统块、摘要上限与固定开销的位置。摘要长度不超过 cap，所以
+      // 「系统 + 摘要 + 尾部 ≤ 输入上限」直接成立，不需要事后回缩——回缩会改变
+      // 覆盖范围，而摘要已经写完了。
+      final tailBudget = max(
+        0,
+        min(
+          min(_maxTailTokens, max(0, model.contextWindow ~/ 10)),
+          request.budget.inputLimit -
+              request.budget.estimate(systemMessages, request.tools) -
+              cap -
+              _candidateOverheadTokens,
+        ),
+      );
+      final tailLength = _tailLength([
+        for (final group in groups) request.budget.estimate(group, null),
+      ], tailBudget);
+      final coveredCount = records.length - tailLength;
+      final covered = records.sublist(0, coveredCount);
+      final coveredGroups = groups.sublist(0, coveredCount);
+      final tailGroups = groups.sublist(coveredCount);
+
+      final coverage = ConversationSummary.create(
+        chatId: chatId,
+        content: '',
+        coveredRecords: covered,
+      );
+      step = step.copyWith(
+        phase: CompactionPhase.summarizing,
+        messageCount: covered.length,
+        coveredMessageIds: ConversationSummary.coveredIds(coverage).toList(),
+        throughSeq: ConversationSummary.position(coverage),
+      );
+      await _repository.updateMessage(step.toMessage());
+      yield ContextCompactionUpdate(step);
+      token.throwIfCancelled();
+
       // 摘要必须小于它替换掉的内容，否则提交前的守卫（`after >= beforeTokens`）
       // 会拒绝这次压缩，表现为"第一次压缩必定失败、等下一轮历史长大才成功"。
       // 模型给的绝对上限（min(4096, 窗口/10)）对短历史来说太大了。
       final allowance = _summaryAllowance(
-        groups,
+        coveredGroups,
         request.budget,
         model.contextWindow,
       );
       final summary = await _summarize(
-        groups,
+        coveredGroups,
         request,
         provider,
         model,
@@ -115,8 +156,11 @@ class ConversationCompactor {
         finishedAt: DateTime.now(),
       );
       final candidate = <ChatMessage>[
-        ...request.messages.whereType<SystemMessage>(),
+        ...systemMessages,
         ...await _converter.convertMessage(completed.toMessage()),
+        // 尾部原文排在摘要之后：摘要覆盖的是更早的历史，顺序必须和
+        // ConversationSummary.activeHistory 的排序一致（摘要 position = throughSeq）。
+        for (final group in tailGroups) ...group,
       ];
       final after = request.budget.estimate(candidate, request.tools);
       if (after >= step.beforeTokens || after > request.budget.inputLimit) {
@@ -141,7 +185,7 @@ class ConversationCompactor {
         try {
           await _repository.markAsCompacted(
             chatId,
-            records.map((m) => m.id!).toSet(),
+            covered.map((m) => m.id!).toSet(),
           );
         } catch (error) {
           LoggerUtil.w('Compact: coverage committed; marking failed: $error');
@@ -174,6 +218,10 @@ class ConversationCompactor {
     }
   }
 
+  /// 摘要的绝对上限（token 估算口径）：模型给的窗口比例上限。
+  int _summaryCap(int contextWindow) =>
+      min(4096, max(128, contextWindow ~/ 10));
+
   /// 摘要长度上限（token 估算口径）：模型给的绝对上限与覆盖内容的 1/4 取小。
   ///
   /// 取 1/4 是为了让替换真的节省上下文（摘要自身也占上下文，留 4 倍收缩比
@@ -183,11 +231,38 @@ class ConversationCompactor {
     ContextBudget budget,
     int contextWindow,
   ) {
-    final cap = min(4096, max(128, contextWindow ~/ 10));
+    final cap = _summaryCap(contextWindow);
     final covered = budget.estimate([
       for (final group in groups) ...group,
     ], null);
     return min(cap, max(128, covered ~/ 4));
+  }
+
+  /// 尾部原文条数：从最新往回累积，直到再加一条就超出 [tailBudget]。
+  ///
+  /// 最近的内容是任务现场（最新用户请求、刚读到的文件、刚跑完的命令），一件不剩
+  /// 地换成摘要会丢掉它的形态。Codex 是同一取舍（`build_compacted_history` 按
+  /// 20k token 保留最近的用户消息原文），这里不限角色：助手的结论与最近一批工具
+  /// 结果同样是恢复任务所需的。
+  ///
+  /// 尾部让位规则：被覆盖的前缀小于 [_minCoverTokens] 时，摘要预算的下限
+  /// （`max(128, …)`）不再随覆盖内容收缩，"摘要比被替换内容还长"会让提交守卫拒绝
+  /// 压缩。全部记录都放得下时前缀就是 0，同样落回这条退化路径——此时没有更早的
+  /// 历史可摘要，行为与保留尾部之前一致。该循环同时保证前缀非空。
+  int _tailLength(List<int> tokens, int tailBudget) {
+    final total = tokens.fold<int>(0, (sum, token) => sum + token);
+    var kept = 0;
+    var tailTokens = 0;
+    for (var i = tokens.length - 1; i >= 0; i--) {
+      if (tailTokens + tokens[i] > tailBudget) break;
+      tailTokens += tokens[i];
+      kept++;
+    }
+    while (kept > 0 && total - tailTokens < _minCoverTokens) {
+      tailTokens -= tokens[tokens.length - kept];
+      kept--;
+    }
+    return kept;
   }
 
   Future<String> _summarize(

@@ -163,4 +163,40 @@ void main() {
       );
     });
   });
+
+  group('超限错误识别', () {
+    test('认出三家协议各自的"prompt 太长"文案', () {
+      const messages = [
+        "Error code: 400 - {'error': {'code': 'context_length_exceeded'}}",
+        "This model's maximum context length is 128000 tokens",
+        'prompt is too long: 210000 tokens > 200000 maximum',
+        'input length and `max_tokens` exceed context limit',
+        'The input token count exceeds the maximum number of tokens allowed',
+        'Context budget exceeded: approximately 90000 input tokens',
+      ];
+      for (final message in messages) {
+        expect(
+          isContextOverflowError(StateError(message)),
+          isTrue,
+          reason: message,
+        );
+      }
+    });
+
+    test('别的失败不当作超限，避免误触发重试', () {
+      const messages = [
+        'Error code: 401 - invalid api key',
+        'Error code: 404 - model not found',
+        'rate limit exceeded',
+        'Connection closed before full header was received',
+      ];
+      for (final message in messages) {
+        expect(
+          isContextOverflowError(StateError(message)),
+          isFalse,
+          reason: message,
+        );
+      }
+    });
+  });
 }
